@@ -1,0 +1,61 @@
+@startuml Use Case Diagram
+left to right direction
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam roundcorner 10
+skinparam usecase {
+    BackgroundColor White
+    BorderColor DarkSlateGray
+    ArrowColor Black
+}
+
+actor "Guest" as Guest
+actor "User" as User
+actor "Admin" as Admin
+
+User --|> Guest
+Admin --|> User
+
+rectangle "Authentication System" {
+    package "Public Access" {
+        (Register)
+        (Login)
+        (Forgot Password)
+        (Verify OTP)
+        (Reset Password)
+    }
+
+    package "Account Management" {
+        (View Profile)
+        (Edit Profile)
+        (Logout)
+        (Upload Avatar)
+    }
+
+    package "Administration" {
+        (Manage Users)
+    }
+
+    ' Relationships within Public Access
+    (Register) ..> (Verify OTP) : <<include>>
+    (Forgot Password) ..> (Verify OTP) : <<include>>
+    (Forgot Password) ..> (Reset Password) : <<include>>
+
+    ' Relationships within Account Management
+    (Edit Profile) <.. (Upload Avatar) : <<extend>>
+
+    ' Connections for Guest
+    Guest -- (Register)
+    Guest -- (Login)
+    Guest -- (Forgot Password)
+    
+    ' Connections for User
+    User -- (View Profile)
+    User -- (Edit Profile)
+    User -- (Logout)
+    
+    ' Connections for Admin
+    Admin -- (Manage Users)
+}
+
+@enduml
