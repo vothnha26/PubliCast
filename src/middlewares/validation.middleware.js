@@ -33,7 +33,32 @@ const verifyOTPValidation = [
   }
 ];
 
+const loginValidation = [
+  body('email')
+    .isEmail()
+    .withMessage('Invalid email address')
+    .normalizeEmail()
+    .notEmpty()
+    .withMessage('Email is required'),
+  body('password')
+    .notEmpty()
+    .withMessage('Password is required')
+    .isLength({ min: 8 })
+    .withMessage('Password must be at least 8 characters long'),
+  (req, res, next) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ 
+        message: 'Validation failed',
+        errors: errors.array() 
+      });
+    }
+    next();
+  }
+];
+
 module.exports = {
   registerValidation,
-  verifyOTPValidation
+  verifyOTPValidation,
+  loginValidation
 };

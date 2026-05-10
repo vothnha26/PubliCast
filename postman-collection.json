@@ -1,0 +1,469 @@
+{
+  "info": {
+    "name": "PubliCast Login API",
+    "description": "Complete Login API with JWT, Rate Limiting, Role-Based Access",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "1. REGISTER",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "if (pm.response.code === 201 || pm.response.code === 200) {",
+              "    pm.test('✅ Register successful', function() {",
+              "        pm.expect(pm.response.code).to.be.oneOf([200, 201]);",
+              "    });",
+              "    console.log('User registered. Go to next: VERIFY OTP');",
+              "} else {",
+              "    pm.test('❌ Register failed', function() {",
+              "        var jsonData = pm.response.json();",
+              "        console.log('Error:', jsonData.message);",
+              "    });",
+              "}"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"Test User\",\n  \"email\": \"{{email}}\",\n  \"password\": \"{{password}}\",\n  \"confirmPassword\": \"{{password}}\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/auth/register",
+          "host": ["{{baseUrl}}", "auth", "register"],
+          "protocol": "http"
+        }
+      }
+    },
+    {
+      "name": "2. VERIFY OTP",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "if (pm.response.code === 200) {",
+              "    pm.test('✅ OTP verified', function() {",
+              "        var jsonData = pm.response.json();",
+              "        pm.expect(jsonData.message).to.include('verified');",
+              "    });",
+              "    console.log('User verified. Go to next: LOGIN');",
+              "} else {",
+              "    pm.test('❌ OTP verification failed', function() {",
+              "        var jsonData = pm.response.json();",
+              "        console.log('Error:', jsonData.message);",
+              "    });",
+              "}"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"{{email}}\",\n  \"otp\": \"123456\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/auth/verify-otp",
+          "host": ["{{baseUrl}}", "auth", "verify-otp"],
+          "protocol": "http"
+        }
+      }
+    },
+    {
+      "name": "3. LOGIN (Get Tokens)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "if (pm.response.code === 200) {",
+              "    pm.test('✅ Login successful', function() {",
+              "        var jsonData = pm.response.json();",
+              "        pm.expect(jsonData.message).to.include('successful');",
+              "        pm.expect(jsonData.role).to.be.oneOf(['USER', 'ADMIN']);",
+              "        pm.expect(jsonData.redirectUrl).to.exist;",
+              "    });",
+              "    ",
+              "    // Extract tokens from cookies",
+              "    var cookies = pm.cookies.jar().cookies;",
+              "    cookies.forEach(cookie => {",
+              "        if (cookie.name === 'accessToken') {",
+              "            pm.environment.set('accessToken', cookie.value);",
+              "            console.log('✅ accessToken saved');",
+              "        }",
+              "        if (cookie.name === 'refreshToken') {",
+              "            pm.environment.set('refreshToken', cookie.value);",
+              "            console.log('✅ refreshToken saved');",
+              "        }",
+              "    });",
+              "    ",
+              "    var jsonData = pm.response.json();",
+              "    console.log('Role:', jsonData.role);",
+              "    console.log('Redirect:', jsonData.redirectUrl);",
+              "} else if (pm.response.code === 429) {",
+              "    pm.test('❌ Rate limited (5 attempts exceeded)', function() {",
+              "        pm.expect(pm.response.code).to.equal(429);",
+              "    });",
+              "} else {",
+              "    pm.test('❌ Login failed', function() {",
+              "        var jsonData = pm.response.json();",
+              "        console.log('Error:', jsonData.message);",
+              "    });",
+              "}"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"{{email}}\",\n  \"password\": \"{{password}}\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/auth/login",
+          "host": ["{{baseUrl}}", "auth", "login"],
+          "protocol": "http"
+        }
+      }
+    },
+    {
+      "name": "4. GET USER PROFILE",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "if (pm.response.code === 200) {",
+              "    pm.test('✅ User profile retrieved', function() {",
+              "        var jsonData = pm.response.json();",
+              "        pm.expect(jsonData.data.role).to.equal('USER');",
+              "        pm.expect(jsonData.data.status).to.equal('ACTIVE');",
+              "    });",
+              "    var jsonData = pm.response.json();",
+              "    console.log('User:', jsonData.data.email);",
+              "    console.log('Role:', jsonData.data.role);",
+              "} else if (pm.response.code === 401) {",
+              "    pm.test('❌ Unauthorized - Token missing or expired', function() {",
+              "        pm.expect(pm.response.code).to.equal(401);",
+              "    });",
+              "} else if (pm.response.code === 403) {",
+              "    pm.test('❌ Forbidden - Wrong role (must be USER)', function() {",
+              "        pm.expect(pm.response.code).to.equal(403);",
+              "    });",
+              "}"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/user/profile",
+          "host": ["{{baseUrl}}", "user", "profile"],
+          "protocol": "http"
+        }
+      }
+    },
+    {
+      "name": "5. GET ADMIN PROFILE",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "if (pm.response.code === 200) {",
+              "    pm.test('✅ Admin profile retrieved', function() {",
+              "        var jsonData = pm.response.json();",
+              "        pm.expect(jsonData.data.role).to.equal('ADMIN');",
+              "    });",
+              "    var jsonData = pm.response.json();",
+              "    console.log('Admin:', jsonData.data.email);",
+              "} else if (pm.response.code === 403) {",
+              "    pm.test('❌ Forbidden - User role cannot access admin', function() {",
+              "        pm.expect(pm.response.code).to.equal(403);",
+              "    });",
+              "} else if (pm.response.code === 401) {",
+              "    pm.test('❌ Unauthorized - Need login first', function() {",
+              "        pm.expect(pm.response.code).to.equal(401);",
+              "    });",
+              "}"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/admin/profile",
+          "host": ["{{baseUrl}}", "admin", "profile"],
+          "protocol": "http"
+        }
+      }
+    },
+    {
+      "name": "6. REFRESH TOKEN",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "if (pm.response.code === 200) {",
+              "    pm.test('✅ Token refreshed', function() {",
+              "        var jsonData = pm.response.json();",
+              "        pm.expect(jsonData.message).to.include('refreshed');",
+              "    });",
+              "    ",
+              "    // Extract new tokens",
+              "    var cookies = pm.cookies.jar().cookies;",
+              "    cookies.forEach(cookie => {",
+              "        if (cookie.name === 'accessToken') {",
+              "            pm.environment.set('accessToken', cookie.value);",
+              "            console.log('✅ New accessToken set');",
+              "        }",
+              "        if (cookie.name === 'refreshToken') {",
+              "            pm.environment.set('refreshToken', cookie.value);",
+              "            console.log('✅ New refreshToken set');",
+              "        }",
+              "    });",
+              "} else if (pm.response.code === 401) {",
+              "    pm.test('❌ Refresh token expired or invalid', function() {",
+              "        pm.expect(pm.response.code).to.equal(401);",
+              "    });",
+              "}"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/auth/refresh",
+          "host": ["{{baseUrl}}", "auth", "refresh"],
+          "protocol": "http"
+        }
+      }
+    },
+    {
+      "name": "7. LOGOUT",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "if (pm.response.code === 200) {",
+              "    pm.test('✅ Logout successful', function() {",
+              "        var jsonData = pm.response.json();",
+              "        pm.expect(jsonData.message).to.include('Logout');",
+              "    });",
+              "    pm.environment.set('accessToken', '');",
+              "    pm.environment.set('refreshToken', '');",
+              "    console.log('✅ Tokens cleared from environment');",
+              "} else if (pm.response.code === 401) {",
+              "    pm.test('❌ Unauthorized - Already logged out', function() {",
+              "        pm.expect(pm.response.code).to.equal(401);",
+              "    });",
+              "}"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/auth/logout",
+          "host": ["{{baseUrl}}", "auth", "logout"],
+          "protocol": "http"
+        }
+      }
+    },
+    {
+      "name": "TEST: Rate Limit - Attempt 1",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Attempt 1 of 5', function() {",
+              "    pm.expect(pm.response.code).to.oneOf([200, 401]);",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"test@example.com\",\n  \"password\": \"wrongpassword\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/auth/login",
+          "host": ["{{baseUrl}}", "auth", "login"],
+          "protocol": "http"
+        }
+      }
+    },
+    {
+      "name": "TEST: Rate Limit - Attempt 6 (Should Block)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('❌ Should be blocked with 429 (Too Many Requests)', function() {",
+              "    pm.expect(pm.response.code).to.equal(429);",
+              "    var jsonData = pm.response.json();",
+              "    console.log('Message:', jsonData.message);",
+              "    console.log('Reset in:', jsonData.resetIn, 'seconds');",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"test@example.com\",\n  \"password\": \"wrongpassword\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/auth/login",
+          "host": ["{{baseUrl}}", "auth", "login"],
+          "protocol": "http"
+        }
+      }
+    },
+    {
+      "name": "TEST: Invalid Email Format",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('❌ Should reject invalid email format (400)', function() {",
+              "    pm.expect(pm.response.code).to.equal(400);",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"notanemail\",\n  \"password\": \"{{password}}\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/auth/login",
+          "host": ["{{baseUrl}}", "auth", "login"],
+          "protocol": "http"
+        }
+      }
+    },
+    {
+      "name": "TEST: Password Too Short",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('❌ Should reject password < 8 chars (400)', function() {",
+              "    pm.expect(pm.response.code).to.equal(400);",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"{{email}}\",\n  \"password\": \"short\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/auth/login",
+          "host": ["{{baseUrl}}", "auth", "login"],
+          "protocol": "http"
+        }
+      }
+    },
+    {
+      "name": "TEST: Missing Token (401)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('❌ Should return 401 without token', function() {",
+              "    pm.expect(pm.response.code).to.equal(401);",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/user/profile",
+          "host": ["{{baseUrl}}", "user", "profile"],
+          "protocol": "http"
+        }
+      }
+    }
+  ]
+}

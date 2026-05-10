@@ -2,6 +2,8 @@ const bcrypt = require('bcryptjs');
 const userRepository = require('../repositories/user.repository');
 const otpService = require('./otp.service');
 const emailService = require('./email.service');
+const jwtUtils = require('../utils/jwt.utils');
+const redisClient = require('../config/redis');
 
 const { USER_STATUS, AUTH_PROVIDERS, ERROR_MESSAGES } = require('../utils/constants');
 
@@ -48,6 +50,143 @@ class AuthService {
     await otpService.deleteOTP(email);
 
     return { message: ERROR_MESSAGES.ACTIVATION_SUCCESS };
+  }
+
+  /**
+   * Login user with email and password
+   * @param {string} email - user email
+   * @param {string} password - user password
+   * @returns {Promise<Object>} - { accessToken, refreshToken, role }
+   */
+  async login(email, password) {
+    // Find user by email with password hash
+    const user = await userRepository.findByEmailWithPassword(email);
+
+    if (!user) {
+      const error = new Error(ERROR_MESSAGES.INVALID_CREDENTIALS);
+      error.status = 401;
+      throw error;
+    }
+
+    // Check account status
+    if (user.status === USER_STATUS.INACTIVE) {
+      const error = new Error(ERROR_MESSAGES.ACCOUNT_NOT_ACTIVATED);
+      error.status = 403;
+      throw error;
+    }
+
+    if (user.status === USER_STATUS.BANNED) {
+      const error = new Error(ERROR_MESSAGES.ACCOUNT_BANNED);
+      error.status = 403;
+      throw error;
+    }
+
+    // Verify password
+    const isValidPassword = await bcrypt.compare(password, user.passwordHash);
+    if (!isValidPassword) {
+      const error = new Error(ERROR_MESSAGES.INVALID_CREDENTIALS);
+      error.status = 401;
+      throw error;
+    }
+
+    // Generate JWT tokens
+    const accessToken = jwtUtils.generateAccessToken({
+      id: user.id,
+      email: user.email,
+      role: user.role
+    });
+
+    const refreshToken = jwtUtils.generateRefreshToken({
+      id: user.id
+    });
+
+    // Hash and save refresh token to Redis
+    const hashedRefreshToken = jwtUtils.hashRefreshToken(refreshToken);
+    await redisClient.setEx(
+      `refresh:${user.id}`,
+      jwtUtils.getRefreshTokenRedisExpiry(),
+      hashedRefreshToken
+    );
+
+    return {
+      accessToken,
+      refreshToken,
+      role: user.role,
+      user: {
+        id: user.id,
+        email: user.email,
+        fullName: user.fullName,
+        role: user.role
+      }
+    };
+  }
+
+  /**
+   * Refresh access token
+   * @param {string} refreshToken - refresh token from cookie/request
+   * @param {string} userId - user ID from token
+   * @returns {Promise<Object>} - { accessToken, refreshToken }
+   */
+  async refreshTokens(refreshToken, userId) {
+    try {
+      // Verify refresh token signature
+      const decoded = jwtUtils.verifyRefreshToken(refreshToken);
+
+      if (decoded.id !== userId) {
+        throw new Error('Token user mismatch');
+      }
+
+      // Check refresh token in Redis
+      const storedHash = await redisClient.get(`refresh:${userId}`);
+      const tokenHash = jwtUtils.hashRefreshToken(refreshToken);
+
+      if (!storedHash || storedHash !== tokenHash) {
+        throw new Error('Refresh token not found or invalid');
+      }
+
+      // Get user data
+      const user = await userRepository.findById(userId);
+      if (!user || user.status !== USER_STATUS.ACTIVE) {
+        throw new Error('User not found or inactive');
+      }
+
+      // Generate new tokens
+      const newAccessToken = jwtUtils.generateAccessToken({
+        id: user.id,
+        email: user.email,
+        role: user.role
+      });
+
+      const newRefreshToken = jwtUtils.generateRefreshToken({
+        id: user.id
+      });
+
+      // Update refresh token in Redis (rotation)
+      const newTokenHash = jwtUtils.hashRefreshToken(newRefreshToken);
+      await redisClient.setEx(
+        `refresh:${userId}`,
+        jwtUtils.getRefreshTokenRedisExpiry(),
+        newTokenHash
+      );
+
+      return {
+        accessToken: newAccessToken,
+        refreshToken: newRefreshToken
+      };
+    } catch (error) {
+      const err = new Error(error.message || 'Token refresh failed');
+      err.status = 401;
+      throw err;
+    }
+  }
+
+  /**
+   * Logout user - delete refresh token
+   * @param {string} userId - user ID
+   */
+  async logout(userId) {
+    await redisClient.del(`refresh:${userId}`);
+    return { message: 'Logout successful' };
   }
 }
 

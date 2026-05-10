@@ -8,6 +8,13 @@ class UserRepository {
     });
   }
 
+  async findById(id) {
+    return await prisma.user.findUnique({
+      where: { id },
+      include: { accounts: true }
+    });
+  }
+
   async createUser(userData, accountData) {
     return await prisma.user.create({
       data: {
@@ -24,6 +31,29 @@ class UserRepository {
       where: { email },
       data: { status, verifiedAt }
     });
+  }
+
+  /**
+   * Get user with password hash for login
+   */
+  async findByEmailWithPassword(email) {
+    const user = await prisma.user.findUnique({
+      where: { email },
+      include: { 
+        accounts: true
+      }
+    });
+
+    if (user && user.accounts && user.accounts.length > 0) {
+      // Find LOCAL account for password
+      const localAccount = user.accounts.find(acc => acc.provider === 'LOCAL');
+      return {
+        ...user,
+        passwordHash: localAccount?.passwordHash || null
+      };
+    }
+
+    return user;
   }
 }
 

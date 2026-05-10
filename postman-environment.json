@@ -1,0 +1,48 @@
+{
+  "id": "publicast-env",
+  "name": "PubliCast Login API - Development",
+  "values": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:5000/api",
+      "type": "string",
+      "enabled": true
+    },
+    {
+      "key": "email",
+      "value": "user@example.com",
+      "type": "string",
+      "enabled": true
+    },
+    {
+      "key": "password",
+      "value": "Password123",
+      "type": "string",
+      "enabled": true
+    },
+    {
+      "key": "accessToken",
+      "value": "",
+      "type": "string",
+      "enabled": true
+    },
+    {
+      "key": "refreshToken",
+      "value": "",
+      "type": "string",
+      "enabled": true
+    },
+    {
+      "key": "adminEmail",
+      "value": "admin@example.com",
+      "type": "string",
+      "enabled": true
+    },
+    {
+      "key": "adminPassword",
+      "value": "AdminPass123",
+      "type": "string",
+      "enabled": true
+    }
+  ]
+}
