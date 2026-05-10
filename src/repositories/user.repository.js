@@ -33,6 +33,16 @@ class UserRepository {
     });
   }
 
+  async updateLocalPassword(email, passwordHash) {
+    return await prisma.userAccount.updateMany({
+      where: {
+        provider: 'LOCAL',
+        user: { email }
+      },
+      data: { passwordHash }
+    });
+  }
+
   /**
    * Get user with password hash for login
    */

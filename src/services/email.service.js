@@ -16,6 +16,14 @@ class EmailService {
       `Mã OTP của bạn là: ${otp}. Mã có hiệu lực trong 10 phút.`
     );
   }
+
+  async sendForgotPasswordOTP(email, otp) {
+    await this.strategy.send(
+      email,
+      'Mã OTP đặt lại mật khẩu PubliCast',
+      `Mã OTP đặt lại mật khẩu của bạn là: ${otp}. Mã có hiệu lực trong 5 phút.`
+    );
+  }
 }
 
 module.exports = new EmailService();

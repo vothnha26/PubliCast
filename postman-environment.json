@@ -21,6 +21,12 @@
       "enabled": true
     },
     {
+      "key": "newPassword",
+      "value": "NewPassword123",
+      "type": "string",
+      "enabled": true
+    },
+    {
       "key": "accessToken",
       "value": "",
       "type": "string",

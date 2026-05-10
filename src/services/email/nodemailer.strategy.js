@@ -9,9 +9,16 @@ class NodemailerStrategy extends EmailStrategy {
     
     const user = process.env.EMAIL_USER || process.env.GMAIL_USER;
     const pass = process.env.EMAIL_PASS || process.env.GMAIL_PASS;
+    this.useConsoleEmail = process.env.NODE_ENV !== 'production' && (
+      !user ||
+      !pass ||
+      user === 'your_email@gmail.com' ||
+      pass === 'your_app_password_16_chars'
+    );
 
-    if (!user || !pass) {
-      console.error('CRITICAL: Email credentials (EMAIL_USER/GMAIL_USER) are missing in .env');
+    if (this.useConsoleEmail) {
+      console.warn('Email credentials are not configured. OTP emails will be printed to console.');
+      return;
     }
 
     this.transporter = nodemailer.createTransport({
@@ -26,6 +33,15 @@ class NodemailerStrategy extends EmailStrategy {
   }
 
   async send(to, subject, text) {
+    if (this.useConsoleEmail) {
+      console.log('----- DEV EMAIL -----');
+      console.log(`To: ${to}`);
+      console.log(`Subject: ${subject}`);
+      console.log(text);
+      console.log('---------------------');
+      return;
+    }
+
     await this.transporter.sendMail({
       from: '"PubliCast" <noreply@publicast.com>',
       to,

@@ -2,7 +2,14 @@ const express = require('express');
 const authController = require('../controllers/auth.controller');
 const authRateLimiter = require('../middlewares/rate-limit.middleware');
 const loginRateLimiter = require('../middlewares/login-rate-limit.middleware');
-const { registerValidation, verifyOTPValidation, loginValidation } = require('../middlewares/validation.middleware');
+const { forgotPasswordRateLimiter, resetPasswordRateLimiter } = require('../middlewares/password-reset-rate-limit.middleware');
+const {
+  registerValidation,
+  verifyOTPValidation,
+  loginValidation,
+  forgotPasswordValidation,
+  resetPasswordValidation
+} = require('../middlewares/validation.middleware');
 const { verifyAuth } = require('../middlewares/auth.middleware');
 
 const router = express.Router();
@@ -12,6 +19,12 @@ router.post('/register', authRateLimiter, registerValidation, authController.reg
 
 // Email verification
 router.post('/verify-otp', verifyOTPValidation, authController.verifyOTP);
+
+// Forgot password
+router.post('/forgot-password', forgotPasswordRateLimiter, forgotPasswordValidation, authController.forgotPassword);
+
+// Reset password
+router.post('/reset-password', resetPasswordRateLimiter, resetPasswordValidation, authController.resetPassword);
 
 // Login with rate limiting and validation
 router.post('/login', loginRateLimiter.middleware(), loginValidation, authController.login);

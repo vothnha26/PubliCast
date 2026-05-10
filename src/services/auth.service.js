@@ -7,6 +7,11 @@ const redisClient = require('../config/redis');
 
 const { USER_STATUS, AUTH_PROVIDERS, ERROR_MESSAGES } = require('../utils/constants');
 
+const FORGOT_PASSWORD_OTP_PREFIX = 'forgot-otp';
+const FORGOT_PASSWORD_ATTEMPTS_PREFIX = 'forgot-otp-attempts';
+const FORGOT_PASSWORD_OTP_EXPIRY_SECONDS = 5 * 60;
+const MAX_RESET_OTP_ATTEMPTS = 3;
+
 class AuthService {
   async register(name, email, password) {
     const existingUser = await userRepository.findByEmail(email);
@@ -187,6 +192,98 @@ class AuthService {
   async logout(userId) {
     await redisClient.del(`refresh:${userId}`);
     return { message: 'Logout successful' };
+  }
+
+  /**
+   * Request forgot password OTP.
+   * Always returns a generic success message to avoid leaking registered emails.
+   */
+  async forgotPassword(email) {
+    const normalizedEmail = email.toLowerCase();
+    const user = await userRepository.findByEmailWithPassword(normalizedEmail);
+
+    if (user && user.status === USER_STATUS.ACTIVE) {
+      const otp = await otpService.generateOTP();
+      await redisClient.setEx(
+        `${FORGOT_PASSWORD_OTP_PREFIX}:${normalizedEmail}`,
+        FORGOT_PASSWORD_OTP_EXPIRY_SECONDS,
+        otp
+      );
+      await redisClient.del(`${FORGOT_PASSWORD_ATTEMPTS_PREFIX}:${normalizedEmail}`);
+      await emailService.sendForgotPasswordOTP(normalizedEmail, otp);
+    }
+
+    return { message: ERROR_MESSAGES.FORGOT_PASSWORD_OTP_SENT };
+  }
+
+  /**
+   * Verify forgot password OTP and update the LOCAL account password.
+   */
+  async resetPassword(email, otp, newPassword) {
+    const normalizedEmail = email.toLowerCase();
+    const otpKey = `${FORGOT_PASSWORD_OTP_PREFIX}:${normalizedEmail}`;
+    const attemptsKey = `${FORGOT_PASSWORD_ATTEMPTS_PREFIX}:${normalizedEmail}`;
+
+    const savedOTP = await redisClient.get(otpKey);
+    if (!savedOTP) {
+      const error = new Error(ERROR_MESSAGES.RESET_PASSWORD_OTP_EXPIRED);
+      error.status = 400;
+      throw error;
+    }
+
+    if (savedOTP !== otp) {
+      const attempts = await redisClient.incr(attemptsKey);
+      if (attempts === 1) {
+        await redisClient.expire(attemptsKey, FORGOT_PASSWORD_OTP_EXPIRY_SECONDS);
+      }
+
+      if (attempts >= MAX_RESET_OTP_ATTEMPTS) {
+        await Promise.all([
+          redisClient.del(otpKey),
+          redisClient.del(attemptsKey)
+        ]);
+
+        const error = new Error(ERROR_MESSAGES.RESET_PASSWORD_OTP_LOCKED);
+        error.status = 400;
+        throw error;
+      }
+
+      const remainingAttempts = MAX_RESET_OTP_ATTEMPTS - attempts;
+      const error = new Error(`${ERROR_MESSAGES.RESET_PASSWORD_INVALID_OTP}. ${remainingAttempts} attempts remaining`);
+      error.status = 400;
+      error.remainingAttempts = remainingAttempts;
+      throw error;
+    }
+
+    const user = await userRepository.findByEmailWithPassword(normalizedEmail);
+    if (!user || user.status !== USER_STATUS.ACTIVE || !user.passwordHash) {
+      const error = new Error(ERROR_MESSAGES.RESET_PASSWORD_OTP_EXPIRED);
+      error.status = 400;
+      throw error;
+    }
+
+    const isSamePassword = await bcrypt.compare(newPassword, user.passwordHash);
+    if (isSamePassword) {
+      const error = new Error(ERROR_MESSAGES.NEW_PASSWORD_SAME_AS_OLD);
+      error.status = 400;
+      throw error;
+    }
+
+    const passwordHash = await bcrypt.hash(newPassword, 10);
+    const updateResult = await userRepository.updateLocalPassword(normalizedEmail, passwordHash);
+    if (!updateResult.count) {
+      const error = new Error('Local account not found');
+      error.status = 404;
+      throw error;
+    }
+
+    await Promise.all([
+      redisClient.del(otpKey),
+      redisClient.del(attemptsKey),
+      redisClient.del(`refresh:${user.id}`)
+    ]);
+
+    return { message: ERROR_MESSAGES.RESET_PASSWORD_SUCCESS };
   }
 }
 

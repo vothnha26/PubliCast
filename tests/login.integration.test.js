@@ -1,12 +1,12 @@
 const request = require('supertest');
-const app = require('../app');
-const userRepository = require('../repositories/user.repository');
-const authService = require('../services/auth.service');
-const redisClient = require('../config/redis');
+const app = require('../src/app');
+const userRepository = require('../src/repositories/user.repository');
+const authService = require('../src/services/auth.service');
+const redisClient = require('../src/config/redis');
 const bcrypt = require('bcryptjs');
-const jwtUtils = require('../utils/jwt.utils');
+const jwtUtils = require('../src/utils/jwt.utils');
 
-const { USER_STATUS, USER_ROLES } = require('../utils/constants');
+const { USER_STATUS, USER_ROLES } = require('../src/utils/constants');
 
 // Mock user data
 const testUser = {

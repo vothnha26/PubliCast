@@ -39,11 +39,7 @@
           "mode": "raw",
           "raw": "{\n  \"name\": \"Test User\",\n  \"email\": \"{{email}}\",\n  \"password\": \"{{password}}\",\n  \"confirmPassword\": \"{{password}}\"\n}"
         },
-        "url": {
-          "raw": "{{baseUrl}}/auth/register",
-          "host": ["{{baseUrl}}", "auth", "register"],
-          "protocol": "http"
-        }
+        "url": "{{baseUrl}}/auth/register"
       }
     },
     {
@@ -81,15 +77,95 @@
           "mode": "raw",
           "raw": "{\n  \"email\": \"{{email}}\",\n  \"otp\": \"123456\"\n}"
         },
-        "url": {
-          "raw": "{{baseUrl}}/auth/verify-otp",
-          "host": ["{{baseUrl}}", "auth", "verify-otp"],
-          "protocol": "http"
-        }
+        "url": "{{baseUrl}}/auth/verify-otp"
       }
     },
     {
-      "name": "3. LOGIN (Get Tokens)",
+      "name": "3. FORGOT PASSWORD (Request OTP)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "if (pm.response.code === 200) {",
+              "    pm.test('Forgot password OTP request accepted', function() {",
+              "        var jsonData = pm.response.json();",
+              "        pm.expect(jsonData.message).to.include('OTP sent');",
+              "    });",
+              "    console.log('Check email for reset OTP. Go to next: RESET PASSWORD');",
+              "} else if (pm.response.code === 429) {",
+              "    pm.test('Forgot password rate limited', function() {",
+              "        pm.expect(pm.response.code).to.equal(429);",
+              "    });",
+              "} else {",
+              "    pm.test('Forgot password request failed', function() {",
+              "        var jsonData = pm.response.json();",
+              "        console.log('Error:', jsonData.message);",
+              "    });",
+              "}"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"{{email}}\"\n}"
+        },
+        "url": "{{baseUrl}}/auth/forgot-password"
+      }
+    },
+    {
+      "name": "4. RESET PASSWORD",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "if (pm.response.code === 200) {",
+              "    pm.test('Password reset successful', function() {",
+              "        var jsonData = pm.response.json();",
+              "        pm.expect(jsonData.message).to.include('Password reset successfully');",
+              "    });",
+              "    pm.environment.set('password', pm.environment.get('newPassword'));",
+              "    console.log('Password reset. Login with the new password.');",
+              "} else {",
+              "    pm.test('Password reset failed', function() {",
+              "        var jsonData = pm.response.json();",
+              "        console.log('Error:', jsonData.message);",
+              "        if (jsonData.remainingAttempts !== undefined) {",
+              "            console.log('Remaining attempts:', jsonData.remainingAttempts);",
+              "        }",
+              "    });",
+              "}"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"{{email}}\",\n  \"otp\": \"123456\",\n  \"newPassword\": \"{{newPassword}}\",\n  \"confirmPassword\": \"{{newPassword}}\"\n}"
+        },
+        "url": "{{baseUrl}}/auth/reset-password"
+      }
+    },
+    {
+      "name": "5. LOGIN (Get Tokens)",
       "event": [
         {
           "listen": "test",
@@ -145,15 +221,11 @@
           "mode": "raw",
           "raw": "{\n  \"email\": \"{{email}}\",\n  \"password\": \"{{password}}\"\n}"
         },
-        "url": {
-          "raw": "{{baseUrl}}/auth/login",
-          "host": ["{{baseUrl}}", "auth", "login"],
-          "protocol": "http"
-        }
+        "url": "{{baseUrl}}/auth/login"
       }
     },
     {
-      "name": "4. GET USER PROFILE",
+      "name": "6. GET USER PROFILE",
       "event": [
         {
           "listen": "test",
@@ -184,15 +256,11 @@
       "request": {
         "method": "GET",
         "header": [],
-        "url": {
-          "raw": "{{baseUrl}}/user/profile",
-          "host": ["{{baseUrl}}", "user", "profile"],
-          "protocol": "http"
-        }
+        "url": "{{baseUrl}}/user/profile"
       }
     },
     {
-      "name": "5. GET ADMIN PROFILE",
+      "name": "7. GET ADMIN PROFILE",
       "event": [
         {
           "listen": "test",
@@ -221,15 +289,11 @@
       "request": {
         "method": "GET",
         "header": [],
-        "url": {
-          "raw": "{{baseUrl}}/admin/profile",
-          "host": ["{{baseUrl}}", "admin", "profile"],
-          "protocol": "http"
-        }
+        "url": "{{baseUrl}}/admin/profile"
       }
     },
     {
-      "name": "6. REFRESH TOKEN",
+      "name": "8. REFRESH TOKEN",
       "event": [
         {
           "listen": "test",
@@ -265,15 +329,11 @@
       "request": {
         "method": "POST",
         "header": [],
-        "url": {
-          "raw": "{{baseUrl}}/auth/refresh",
-          "host": ["{{baseUrl}}", "auth", "refresh"],
-          "protocol": "http"
-        }
+        "url": "{{baseUrl}}/auth/refresh"
       }
     },
     {
-      "name": "7. LOGOUT",
+      "name": "9. LOGOUT",
       "event": [
         {
           "listen": "test",
@@ -299,11 +359,7 @@
       "request": {
         "method": "POST",
         "header": [],
-        "url": {
-          "raw": "{{baseUrl}}/auth/logout",
-          "host": ["{{baseUrl}}", "auth", "logout"],
-          "protocol": "http"
-        }
+        "url": "{{baseUrl}}/auth/logout"
       }
     },
     {
@@ -332,11 +388,7 @@
           "mode": "raw",
           "raw": "{\n  \"email\": \"test@example.com\",\n  \"password\": \"wrongpassword\"\n}"
         },
-        "url": {
-          "raw": "{{baseUrl}}/auth/login",
-          "host": ["{{baseUrl}}", "auth", "login"],
-          "protocol": "http"
-        }
+        "url": "{{baseUrl}}/auth/login"
       }
     },
     {
@@ -368,11 +420,7 @@
           "mode": "raw",
           "raw": "{\n  \"email\": \"test@example.com\",\n  \"password\": \"wrongpassword\"\n}"
         },
-        "url": {
-          "raw": "{{baseUrl}}/auth/login",
-          "host": ["{{baseUrl}}", "auth", "login"],
-          "protocol": "http"
-        }
+        "url": "{{baseUrl}}/auth/login"
       }
     },
     {
@@ -401,11 +449,7 @@
           "mode": "raw",
           "raw": "{\n  \"email\": \"notanemail\",\n  \"password\": \"{{password}}\"\n}"
         },
-        "url": {
-          "raw": "{{baseUrl}}/auth/login",
-          "host": ["{{baseUrl}}", "auth", "login"],
-          "protocol": "http"
-        }
+        "url": "{{baseUrl}}/auth/login"
       }
     },
     {
@@ -434,11 +478,7 @@
           "mode": "raw",
           "raw": "{\n  \"email\": \"{{email}}\",\n  \"password\": \"short\"\n}"
         },
-        "url": {
-          "raw": "{{baseUrl}}/auth/login",
-          "host": ["{{baseUrl}}", "auth", "login"],
-          "protocol": "http"
-        }
+        "url": "{{baseUrl}}/auth/login"
       }
     },
     {
@@ -458,11 +498,7 @@
       "request": {
         "method": "GET",
         "header": [],
-        "url": {
-          "raw": "{{baseUrl}}/user/profile",
-          "host": ["{{baseUrl}}", "user", "profile"],
-          "protocol": "http"
-        }
+        "url": "{{baseUrl}}/user/profile"
       }
     }
   ]

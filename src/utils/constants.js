@@ -31,7 +31,14 @@ const ERROR_MESSAGES = {
   // Profile
   USER_NOT_FOUND: 'User not found',
   AUTHENTICATION_REQUIRED: 'Authentication required',
-  ACCESS_DENIED: 'Access denied'
+  ACCESS_DENIED: 'Access denied',
+  // Forgot password
+  FORGOT_PASSWORD_OTP_SENT: 'OTP sent if email exists',
+  RESET_PASSWORD_SUCCESS: 'Password reset successfully',
+  RESET_PASSWORD_OTP_EXPIRED: 'OTP has expired, please request again',
+  RESET_PASSWORD_INVALID_OTP: 'Invalid OTP',
+  RESET_PASSWORD_OTP_LOCKED: 'Invalid OTP too many times. Please request a new OTP.',
+  NEW_PASSWORD_SAME_AS_OLD: 'New password must differ from old'
 };
 
 const JWT_CONFIG = {

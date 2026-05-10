@@ -128,6 +128,105 @@ Set-Cookie: refreshToken=<jwt_token>; Path=/; HttpOnly; SameSite=Strict; Max-Age
 
 ---
 
+## POST /auth/forgot-password
+
+Request an OTP to reset password. The API always returns `200` for valid email format, even if the email does not exist, to avoid leaking account information.
+
+### Request
+
+```http
+POST /api/auth/forgot-password HTTP/1.1
+Content-Type: application/json
+
+{
+  "email": "user@example.com"
+}
+```
+
+### Response - Success (200)
+
+```json
+{
+  "message": "OTP sent if email exists"
+}
+```
+
+### Response - Validation Error (400)
+
+```json
+{
+  "message": "Validation failed",
+  "errors": []
+}
+```
+
+### Rate Limiting
+
+- **Max requests**: 3 requests per 15 minutes
+- **Tracked by**: IP address
+
+---
+
+## POST /auth/reset-password
+
+Verify forgot-password OTP and set a new password.
+
+### Request
+
+```http
+POST /api/auth/reset-password HTTP/1.1
+Content-Type: application/json
+
+{
+  "email": "user@example.com",
+  "otp": "123456",
+  "newPassword": "NewPassword123",
+  "confirmPassword": "NewPassword123"
+}
+```
+
+### Response - Success (200)
+
+```json
+{
+  "message": "Password reset successfully"
+}
+```
+
+### Response - OTP Expired (400)
+
+```json
+{
+  "message": "OTP has expired, please request again"
+}
+```
+
+### Response - Invalid OTP (400)
+
+```json
+{
+  "message": "Invalid OTP. 2 attempts remaining",
+  "remainingAttempts": 2
+}
+```
+
+After 3 wrong OTP attempts, the OTP is deleted and the user must request a new one.
+
+### Response - New Password Same As Old (400)
+
+```json
+{
+  "message": "New password must differ from old"
+}
+```
+
+### Rate Limiting
+
+- **Max requests**: 5 requests per 15 minutes
+- **Tracked by**: IP address
+
+---
+
 ## POST /auth/refresh
 
 Refresh access token using refresh token.
@@ -337,6 +436,9 @@ Authorization: Bearer <jwt_token>
 | 401  | Access token required     | Missing authentication        |
 | 401  | Access token expired      | Token expired, need refresh   |
 | 401  | Invalid refresh token     | Refresh token is invalid      |
+| 400  | OTP has expired           | Forgot-password OTP expired   |
+| 400  | Invalid OTP               | Forgot-password OTP mismatch  |
+| 400  | New password must differ  | New password equals old one   |
 | 403  | Account not activated     | Email not verified yet        |
 | 403  | Account banned            | Account is banned             |
 | 403  | Access denied             | Insufficient role permissions |

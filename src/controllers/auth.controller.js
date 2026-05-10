@@ -29,6 +29,40 @@ class AuthController {
   }
 
   /**
+   * Request forgot password OTP.
+   * POST /api/auth/forgot-password
+   */
+  async forgotPassword(req, res) {
+    try {
+      const { email } = req.body;
+      const result = await authService.forgotPassword(email.toLowerCase());
+      res.status(200).json(result);
+    } catch (error) {
+      const status = error.status || 500;
+      res.status(status).json({ message: error.message });
+    }
+  }
+
+  /**
+   * Verify OTP and set a new password.
+   * POST /api/auth/reset-password
+   */
+  async resetPassword(req, res) {
+    try {
+      const { email, otp, newPassword } = req.body;
+      const result = await authService.resetPassword(email.toLowerCase(), otp, newPassword);
+      res.status(200).json(result);
+    } catch (error) {
+      const status = error.status || 500;
+      const body = { message: error.message };
+      if (error.remainingAttempts !== undefined) {
+        body.remainingAttempts = error.remainingAttempts;
+      }
+      res.status(status).json(body);
+    }
+  }
+
+  /**
    * Login user
    * POST /api/auth/login
    */
