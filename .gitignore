@@ -8,3 +8,8 @@ yarn-debug.log*
 yarn-error.log*
 .idea/
 .vscode/
+
+# Documentation and temporary files
+*.txt
+*.puml
+!docs/**/*.puml

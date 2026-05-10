@@ -1,0 +1,62 @@
+@startuml Register Sequence Diagram
+autonumber
+skinparam Style strictuml
+
+actor "Client/Browser" as Client
+participant "API Server" as Server
+participant "Rate Limiter" as RateLimit
+participant "Validation MW" as Validation
+database "Database" as DB
+participant "Redis" as Redis
+participant "Email Server" as Email
+
+== Giai đoạn 1: Đăng ký tài khoản ==
+
+Client -> Server : POST /api/auth/register { name, email, password, confirmPassword }
+Server -> RateLimit : Kiểm tra IP: < 5 requests / 15 phút?
+alt Vượt giới hạn
+    RateLimit -> Server : Trả về lỗi
+    Server -> Client : 429 Too Many Requests
+else Hợp lệ
+    RateLimit -> Server : OK
+    Server -> Validation : Chạy express-validator: notEmpty, isEmail, isLength(>=8), escape
+    alt Validation lỗi
+        Validation -> Server : Danh sách lỗi
+        Server -> Client : 400 Bad Request { errors[] }
+    else Validation thành công
+        Validation -> Server : OK
+        Server -> DB : SELECT * FROM users WHERE email = ?
+        alt Email đã tồn tại
+            DB -> Server : User object
+            Server -> Client : 409 Conflict 'Email already exists'
+        else Email chưa tồn tại
+            DB -> Server : null
+            Server -> Server : bcrypt.hash(password, 10)
+            Server -> DB : INSERT INTO users (name, email, password_hash, status='pending')
+            Server -> Server : Sinh OTP 6 số ngẫu nhiên
+            Server -> Redis : SET otp:<email> <otp> EX 600 (10 phút)
+            Server -> Email : sendMail({ to: email, subject: 'OTP kích hoạt', text: otp })
+            Server -> Client : 201 Created { message: 'Kiểm tra email để kích hoạt' }
+        end
+    end
+end
+
+== Giai đoạn 2: Xác minh OTP ==
+
+Client -> Server : POST /api/auth/verify-otp { email, otp }
+Server -> Redis : GET otp:<email>
+Redis -> Server : Trả về OTP đã lưu (hoặc null)
+alt OTP hết hạn hoặc không tồn tại
+    Server -> Client : 400 Bad Request 'OTP expired'
+else OTP tồn tại
+    Server -> Server : So sánh OTP
+    alt OTP không khớp
+        Server -> Client : 400 Bad Request 'Invalid OTP'
+    else OTP khớp
+        Server -> DB : UPDATE users SET status='active' WHERE email = ?
+        Server -> Redis : DEL otp:<email>
+        Server -> Client : 200 OK { message: 'Kích hoạt thành công' }
+    end
+end
+
+@enduml
