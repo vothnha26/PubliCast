@@ -65,6 +65,16 @@ class UserRepository {
 
     return user;
   }
+
+  /**
+   * Update user profile (fullName, avatarUrl)
+   */
+  async updateProfile(userId, profileData) {
+    return await prisma.user.update({
+      where: { id: userId },
+      data: profileData
+    });
+  }
 }
 
 module.exports = new UserRepository();

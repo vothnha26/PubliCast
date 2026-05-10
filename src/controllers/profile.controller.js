@@ -1,4 +1,5 @@
 const userRepository = require('../repositories/user.repository');
+const profileService = require('../services/profile.service');
 
 class ProfileController {
   /**
@@ -56,6 +57,31 @@ class ProfileController {
       });
     } catch (error) {
       res.status(500).json({ message: error.message });
+    }
+  }
+
+  /**
+   * Edit user profile
+   * For /profile/edit endpoint
+   */
+  async editProfile(req, res) {
+    try {
+      const userId = req.user.id;
+      const { fullName, avatarUrl } = req.body;
+
+      // Call service to edit profile
+      const updatedUser = await profileService.editProfile(userId, {
+        fullName,
+        avatarUrl
+      });
+
+      res.status(200).json({
+        message: 'Profile updated successfully',
+        data: updatedUser
+      });
+    } catch (error) {
+      const statusCode = error.status || 500;
+      res.status(statusCode).json({ message: error.message });
     }
   }
 }

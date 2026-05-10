@@ -105,10 +105,34 @@ const resetPasswordValidation = [
   }
 ];
 
+const editProfileValidation = [
+  body('fullName')
+    .optional()
+    .trim()
+    .notEmpty().withMessage('Full name cannot be empty if provided')
+    .isLength({ min: 2, max: 100 })
+    .withMessage('Full name must be between 2 and 100 characters'),
+  body('avatarUrl')
+    .optional()
+    .isURL()
+    .withMessage('Invalid avatar URL'),
+  (req, res, next) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({
+        message: 'Validation failed',
+        errors: errors.array()
+      });
+    }
+    next();
+  }
+];
+
 module.exports = {
   registerValidation,
   verifyOTPValidation,
   loginValidation,
   forgotPasswordValidation,
-  resetPasswordValidation
+  resetPasswordValidation,
+  editProfileValidation
 };

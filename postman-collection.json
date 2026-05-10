@@ -500,6 +500,121 @@
         "header": [],
         "url": "{{baseUrl}}/user/profile"
       }
+    },
+    {
+      "name": "10. EDIT PROFILE",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "if (pm.response.code === 200) {",
+              "    pm.test('✅ Profile updated successfully', function() {",
+              "        var jsonData = pm.response.json();",
+              "        pm.expect(jsonData.message).to.include('Profile updated');",
+              "        pm.expect(jsonData.data).to.have.property('fullName');",
+              "        pm.expect(jsonData.data).to.have.property('avatarUrl');",
+              "    });",
+              "    var jsonData = pm.response.json();",
+              "    console.log('✅ Profile updated');",
+              "    console.log('Full Name:', jsonData.data.fullName);",
+              "    console.log('Avatar URL:', jsonData.data.avatarUrl);",
+              "} else if (pm.response.code === 400) {",
+              "    pm.test('❌ Validation failed', function() {",
+              "        var jsonData = pm.response.json();",
+              "        pm.expect(jsonData.message).to.include('Validation');",
+              "    });",
+              "} else if (pm.response.code === 401) {",
+              "    pm.test('❌ Unauthorized - Token missing or expired', function() {",
+              "        pm.expect(pm.response.code).to.equal(401);",
+              "    });",
+              "} else if (pm.response.code === 403) {",
+              "    pm.test('❌ Forbidden - Account banned', function() {",
+              "        pm.expect(pm.response.code).to.equal(403);",
+              "    });",
+              "} else if (pm.response.code === 404) {",
+              "    pm.test('❌ User not found', function() {",
+              "        pm.expect(pm.response.code).to.equal(404);",
+              "    });",
+              "}"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "PUT",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"fullName\": \"Thanh Huy 2\",\n  \"avatarUrl\": \"https://example.com/avatar.jpg\"\n}"
+        },
+        "url": "{{baseUrl}}/profile/edit"
+      }
+    },
+    {
+      "name": "TEST: Edit Profile - Invalid URL Format",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Should reject invalid avatar URL format', function() {",
+              "    pm.expect(pm.response.code).to.equal(400);",
+              "    var jsonData = pm.response.json();",
+              "    pm.expect(jsonData.message).to.include('Validation');",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "PUT",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"fullName\": \"John Doe\",\n  \"avatarUrl\": \"not-a-valid-url\"\n}"
+        },
+        "url": "{{baseUrl}}/profile/edit"
+      }
+    },
+    {
+      "name": "TEST: Edit Profile - Full Name Too Short",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Should reject full name < 2 characters', function() {",
+              "    pm.expect(pm.response.code).to.equal(400);",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "PUT",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"fullName\": \"A\"\n}"
+        },
+        "url": "{{baseUrl}}/profile/edit"
+      }
     }
   ]
 }
