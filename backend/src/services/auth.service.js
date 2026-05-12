@@ -14,7 +14,8 @@ const MAX_RESET_OTP_ATTEMPTS = 3;
 
 class AuthService {
   async register(name, email, password) {
-    const existingUser = await userRepository.findByEmail(email);
+    const normalizedEmail = email.toLowerCase();
+    const existingUser = await userRepository.findByEmail(normalizedEmail);
     if (existingUser) {
       const error = new Error(ERROR_MESSAGES.EMAIL_ALREADY_EXISTS);
       error.status = 409;
@@ -25,19 +26,20 @@ class AuthService {
     
     // Create user with status INACTIVE (pending)
     const user = await userRepository.createUser(
-      { fullName: name, email, status: USER_STATUS.INACTIVE },
+      { fullName: name, email: normalizedEmail, status: USER_STATUS.INACTIVE },
       { provider: AUTH_PROVIDERS.LOCAL, passwordHash }
     );
 
     const otp = await otpService.generateOTP();
-    await otpService.saveOTP(email, otp);
-    await emailService.sendOTP(email, otp);
+    await otpService.saveOTP(normalizedEmail, otp);
+    await emailService.sendOTP(normalizedEmail, otp);
 
     return user;
   }
 
   async verifyOTP(email, otp) {
-    const savedOTP = await otpService.getOTP(email);
+    const normalizedEmail = email.toLowerCase();
+    const savedOTP = await otpService.getOTP(normalizedEmail);
     
     if (!savedOTP) {
       const error = new Error(ERROR_MESSAGES.OTP_EXPIRED);
@@ -51,10 +53,73 @@ class AuthService {
       throw error;
     }
 
-    await userRepository.updateStatus(email, USER_STATUS.ACTIVE, new Date());
-    await otpService.deleteOTP(email);
+    const user = await userRepository.updateStatus(normalizedEmail, USER_STATUS.ACTIVE, new Date());
+    await otpService.deleteOTP(normalizedEmail);
 
-    return { message: ERROR_MESSAGES.ACTIVATION_SUCCESS };
+    // Generate JWT tokens for auto-login
+    const accessToken = jwtUtils.generateAccessToken({
+      id: user.id,
+      email: user.email,
+      role: user.role
+    });
+
+    const refreshToken = jwtUtils.generateRefreshToken({
+      id: user.id
+    });
+
+    // Hash and save refresh token to Redis
+    const hashedRefreshToken = jwtUtils.hashRefreshToken(refreshToken);
+    await redisClient.setEx(
+      `refresh:${user.id}`,
+      jwtUtils.getRefreshTokenRedisExpiry(),
+      hashedRefreshToken
+    );
+
+    return { 
+      message: ERROR_MESSAGES.ACTIVATION_SUCCESS,
+      accessToken,
+      refreshToken,
+      user: {
+        id: user.id,
+        email: user.email,
+        fullName: user.fullName,
+        role: user.role
+      }
+    };
+  }
+
+  async resendOTP(email) {
+    const normalizedEmail = email.toLowerCase();
+    const throttleKey = `resend-otp-throttle:${normalizedEmail}`;
+    const isThrottled = await redisClient.get(throttleKey);
+
+    if (isThrottled) {
+      const error = new Error('Vui lòng đợi 60 giây trước khi yêu cầu mã mới');
+      error.status = 429;
+      throw error;
+    }
+
+    const user = await userRepository.findByEmail(normalizedEmail);
+    if (!user) {
+      const error = new Error(ERROR_MESSAGES.INVALID_EMAIL);
+      error.status = 404;
+      throw error;
+    }
+
+    if (user.status !== USER_STATUS.INACTIVE) {
+      const error = new Error('Tài khoản đã được kích hoạt hoặc đang bị khóa');
+      error.status = 400;
+      throw error;
+    }
+
+    const otp = await otpService.generateOTP();
+    await otpService.saveOTP(normalizedEmail, otp);
+    await emailService.sendOTP(normalizedEmail, otp);
+
+    // Set throttle key for 60 seconds
+    await redisClient.setEx(throttleKey, 60, '1');
+
+    return { message: 'Mã OTP mới đã được gửi vào email của bạn' };
   }
 
   /**

@@ -19,6 +19,7 @@ router.post('/register', authRateLimiter, registerValidation, authController.reg
 
 // Email verification
 router.post('/verify-otp', verifyOTPValidation, authController.verifyOTP);
+router.post('/resend-otp', authRateLimiter, forgotPasswordValidation, authController.resendOTP);
 
 // Forgot password
 router.post('/forgot-password', forgotPasswordRateLimiter, forgotPasswordValidation, authController.forgotPassword);

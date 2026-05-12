@@ -1,9 +1,11 @@
 import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { useSelector } from 'react-redux';
+import { Toaster } from 'sonner';
 import Dashboard from './App';
 import Login from '../pages/auth/Login';
 import Register from '../pages/auth/Register';
+import VerifyOTP from '../pages/auth/VerifyOTP';
 import ForgotPassword from '../pages/auth/ForgotPassword';
 import Profile from '../pages/auth/Profile';
 import ProtectedRoute from '../components/ProtectedRoute';
@@ -17,9 +19,11 @@ function RootRedirect() {
 export default function RootApp() {
   return (
     <BrowserRouter>
+      <Toaster position="top-right" richColors />
       <Routes>
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
+        <Route path="/verify-otp" element={<VerifyOTP />} />
         <Route path="/forgot" element={<ForgotPassword />} />
 
         <Route

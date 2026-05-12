@@ -6,6 +6,7 @@ import { useAppDispatch } from '../../hooks';
 import { login } from '../../features/auth/authSlice';
 import { useNavigate, Link } from 'react-router-dom';
 import { Mail, Lock, Zap } from 'lucide-react';
+import { toast } from 'sonner';
 
 export default function Login() {
   const dispatch = useAppDispatch();
@@ -49,6 +50,15 @@ export default function Login() {
           errorMsg = value;
           break;
         }
+      }
+
+      // Auto-redirect for unactivated accounts
+      if (backendMsg.includes('Account not activated')) {
+        toast.info('Tài khoản chưa kích hoạt. Đang chuyển hướng đến trang xác thực...');
+        setTimeout(() => {
+          navigate('/verify-otp', { state: { email } });
+        }, 1500);
+        return;
       }
       
       // If no match found, use the backend message or default

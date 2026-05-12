@@ -34,3 +34,30 @@ export const registerRequest = async (payload: any) => {
     throw error;
   }
 };
+
+export const verifyOTPRequest = async (payload: { email: string; otp: string }) => {
+  try {
+    const res = await api.post('/auth/verify-otp', payload);
+    return res.data;
+  } catch (error: any) {
+    if (error.response?.data?.message) {
+      throw new Error(error.response.data.message);
+    }
+    if (error.response?.data?.errors?.[0]?.msg) {
+      throw new Error(error.response.data.errors[0].msg);
+    }
+    throw error;
+  }
+};
+
+export const resendOTPRequest = async (email: string) => {
+  try {
+    const res = await api.post('/auth/resend-otp', { email });
+    return res.data;
+  } catch (error: any) {
+    if (error.response?.data?.message) {
+      throw new Error(error.response.data.message);
+    }
+    throw error;
+  }
+};

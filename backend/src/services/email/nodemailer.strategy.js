@@ -9,15 +9,23 @@ class NodemailerStrategy extends EmailStrategy {
     
     const user = process.env.EMAIL_USER || process.env.GMAIL_USER;
     const pass = process.env.EMAIL_PASS || process.env.GMAIL_PASS;
-    this.useConsoleEmail = process.env.NODE_ENV !== 'production' && (
-      !user ||
-      !pass ||
-      user === 'your_email@gmail.com' ||
-      pass === 'your_app_password_16_chars'
-    );
+
+    // Check if using placeholder or missing credentials
+    const isPlaceholder = (user === 'your_email@gmail.com' || pass === 'your_app_password_16_chars');
+    const isMissing = !user || !pass;
+
+    // Use console email if in dev and missing/placeholder, OR if explicitly requested
+    this.useConsoleEmail = (process.env.NODE_ENV !== 'production' && (isMissing || isPlaceholder));
 
     if (this.useConsoleEmail) {
-      console.warn('Email credentials are not configured. OTP emails will be printed to console.');
+      console.warn('⚠️ Email credentials are not configured or using placeholders. OTP emails will be printed to console.');
+      return;
+    }
+
+    if (isMissing) {
+      console.error('❌ Error: Email credentials (EMAIL_USER/EMAIL_PASS) are missing.');
+      // Fallback to console instead of crashing with "Missing credentials for PLAIN"
+      this.useConsoleEmail = true;
       return;
     }
 

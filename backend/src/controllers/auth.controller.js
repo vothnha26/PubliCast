@@ -21,6 +21,43 @@ class AuthController {
     try {
       const { email, otp } = req.body;
       const result = await authService.verifyOTP(email, otp);
+
+      // Set HttpOnly cookies for tokens (Auto-login)
+      if (result.accessToken && result.refreshToken) {
+        const accessTokenMaxAge = 15 * 60 * 1000;
+        const refreshTokenMaxAge = 7 * 24 * 60 * 60 * 1000;
+
+        res.cookie('accessToken', result.accessToken, {
+          httpOnly: true,
+          secure: process.env.NODE_ENV === 'production',
+          sameSite: 'strict',
+          maxAge: accessTokenMaxAge,
+          path: '/'
+        });
+
+        res.cookie('refreshToken', result.refreshToken, {
+          httpOnly: true,
+          secure: process.env.NODE_ENV === 'production',
+          sameSite: 'strict',
+          maxAge: refreshTokenMaxAge,
+          path: '/'
+        });
+      }
+
+      res.status(200).json({
+        message: result.message,
+        user: result.user
+      });
+    } catch (error) {
+      const status = error.status || 500;
+      res.status(status).json({ message: error.message });
+    }
+  }
+
+  async resendOTP(req, res) {
+    try {
+      const { email } = req.body;
+      const result = await authService.resendOTP(email);
       res.status(200).json(result);
     } catch (error) {
       const status = error.status || 500;

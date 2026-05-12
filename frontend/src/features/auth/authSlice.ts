@@ -1,5 +1,5 @@
 import { createAsyncThunk, createSlice, PayloadAction } from '@reduxjs/toolkit';
-import { loginRequest, registerRequest } from './authAPI';
+import { loginRequest, registerRequest, verifyOTPRequest, resendOTPRequest } from './authAPI';
 
 interface User { id?: string; name?: string; email?: string }
 
@@ -24,6 +24,16 @@ export const login = createAsyncThunk('auth/login', async (payload: { email: str
 
 export const register = createAsyncThunk('auth/register', async (payload: any) => {
   const data = await registerRequest(payload);
+  return data;
+});
+
+export const verifyOTP = createAsyncThunk('auth/verifyOTP', async (payload: { email: string; otp: string }) => {
+  const data = await verifyOTPRequest(payload);
+  return data;
+});
+
+export const resendOTP = createAsyncThunk('auth/resendOTP', async (email: string) => {
+  const data = await resendOTPRequest(email);
   return data;
 });
 
@@ -63,6 +73,31 @@ const authSlice = createSlice({
       .addCase(register.rejected, (state, action) => {
         state.status = 'failed';
         state.error = action.error.message || 'Register failed';
+      })
+      
+      .addCase(verifyOTP.pending, (state) => {
+        state.status = 'loading';
+        state.error = null;
+      })
+      .addCase(verifyOTP.fulfilled, (state, action: PayloadAction<any>) => {
+        state.status = 'succeeded';
+        state.user = action.payload?.user || null;
+      })
+      .addCase(verifyOTP.rejected, (state, action) => {
+        state.status = 'failed';
+        state.error = action.error.message || 'Verification failed';
+      })
+
+      .addCase(resendOTP.pending, (state) => {
+        state.status = 'loading';
+        state.error = null;
+      })
+      .addCase(resendOTP.fulfilled, (state) => {
+        state.status = 'succeeded';
+      })
+      .addCase(resendOTP.rejected, (state, action) => {
+        state.status = 'failed';
+        state.error = action.error.message || 'Resend OTP failed';
       });
   },
 });
