@@ -55,9 +55,56 @@ export const forgotPasswordRequest = async (email: string) => {
   }
 };
 
+export interface EditProfilePayload {
+  fullName: string;
+  avatarUrl?: string;
+  phone?: string;
+  address?: string;
+  bio?: string;
+}
+
 export const resetPasswordRequest = async (payload: ResetPasswordPayload) => {
   try {
     const res = await api.post('/auth/reset-password', payload);
+    return res.data;
+  } catch (error: any) {
+    const message = getApiErrorMessage(error);
+    if (message) throw new Error(message);
+    throw error;
+  }
+};
+
+export const editProfileRequest = async (payload: EditProfilePayload) => {
+  try {
+    const res = await api.put('/profile/edit', payload);
+    return res.data;
+  } catch (error: any) {
+    const message = getApiErrorMessage(error);
+    if (message) throw new Error(message);
+    throw error;
+  }
+};
+
+export const getUserProfileRequest = async () => {
+  try {
+    const res = await api.get('/user/profile');
+    return res.data;
+  } catch (error: any) {
+    const message = getApiErrorMessage(error);
+    if (message) throw new Error(message);
+    throw error;
+  }
+};
+
+export const uploadAvatarRequest = async (file: File) => {
+  try {
+    const formData = new FormData();
+    formData.append('avatar', file);
+    const res = await api.post('/upload/avatar', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
     return res.data;
   } catch (error: any) {
     const message = getApiErrorMessage(error);

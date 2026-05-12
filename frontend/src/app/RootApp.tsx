@@ -2,7 +2,7 @@ import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { useSelector } from 'react-redux';
 import { Toaster } from 'sonner';
-import Dashboard from './App';
+import Dashboard from '../pages/auth/dashboard/DashBoard.tsx';
 import Login from '../pages/auth/Login';
 import Register from '../pages/auth/Register';
 import VerifyOTP from '../pages/auth/VerifyOTP';

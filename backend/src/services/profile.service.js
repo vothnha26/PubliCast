@@ -5,7 +5,7 @@ class ProfileService {
   /**
    * Edit user profile
    * @param {string} userId - User ID
-   * @param {Object} profileData - Data to update { fullName, avatarUrl }
+   * @param {Object} profileData - Data to update { fullName, avatarUrl, phone, address, bio }
    * @returns {Promise<Object>} - Updated user object
    */
   async editProfile(userId, profileData) {
@@ -32,6 +32,15 @@ class ProfileService {
     if (profileData.avatarUrl !== undefined) {
       updateData.avatarUrl = profileData.avatarUrl;
     }
+    if (profileData.phone !== undefined) {
+      updateData.phone = profileData.phone.trim() || null;
+    }
+    if (profileData.address !== undefined) {
+      updateData.address = profileData.address.trim() || null;
+    }
+    if (profileData.bio !== undefined) {
+      updateData.bio = profileData.bio.trim() || null;
+    }
 
     // If nothing to update
     if (Object.keys(updateData).length === 0) {
@@ -48,6 +57,9 @@ class ProfileService {
       email: updatedUser.email,
       fullName: updatedUser.fullName,
       avatarUrl: updatedUser.avatarUrl,
+      phone: updatedUser.phone,
+      address: updatedUser.address,
+      bio: updatedUser.bio,
       role: updatedUser.role,
       status: updatedUser.status,
       createdAt: updatedUser.createdAt,

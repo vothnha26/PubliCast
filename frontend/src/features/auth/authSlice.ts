@@ -5,11 +5,23 @@ import {
   registerRequest,
   resendOTPRequest,
   resetPasswordRequest,
+  editProfileRequest,
+  getUserProfileRequest,
+  uploadAvatarRequest,
   ResetPasswordPayload,
   verifyOTPRequest
 } from './authAPI';
 
-interface User { id?: string; name?: string; email?: string }
+interface User {
+  id?: string;
+  name?: string;
+  fullName?: string;
+  email?: string;
+  avatarUrl?: string;
+  phone?: string;
+  address?: string;
+  bio?: string;
+}
 
 interface AuthState {
   user: User | null;
@@ -54,6 +66,21 @@ export const forgotPassword = createAsyncThunk('auth/forgotPassword', async (ema
 
 export const resetPassword = createAsyncThunk('auth/resetPassword', async (payload: ResetPasswordPayload) => {
   const data = await resetPasswordRequest(payload);
+  return data;
+});
+
+export const getUserProfile = createAsyncThunk('auth/getUserProfile', async (_, thunkAPI) => {
+  const data = await getUserProfileRequest();
+  return data;
+});
+
+export const editProfile = createAsyncThunk('auth/editProfile', async (payload: { fullName: string; avatarUrl?: string }, thunkAPI) => {
+  const data = await editProfileRequest(payload);
+  return data;
+});
+
+export const uploadAvatar = createAsyncThunk('auth/uploadAvatar', async (file: File, thunkAPI) => {
+  const data = await uploadAvatarRequest(file);
   return data;
 });
 
@@ -173,6 +200,53 @@ const authSlice = createSlice({
       .addCase(resetPassword.rejected, (state, action) => {
         state.status = 'failed';
         state.error = action.error.message || 'Password reset failed';
+        state.message = null;
+      })
+      .addCase(editProfile.pending, (state) => {
+        state.status = 'loading';
+        state.error = null;
+        state.message = null;
+      })
+      .addCase(editProfile.fulfilled, (state, action: PayloadAction<any>) => {
+        state.status = 'succeeded';
+        state.user = action.payload?.data || state.user;
+        state.message = action.payload?.message || 'Profile updated successfully';
+      })
+      .addCase(editProfile.rejected, (state, action) => {
+        state.status = 'failed';
+        state.error = action.error.message || 'Update profile failed';
+        state.message = null;
+      })
+      .addCase(getUserProfile.pending, (state) => {
+        state.status = 'loading';
+        state.error = null;
+        state.message = null;
+      })
+      .addCase(getUserProfile.fulfilled, (state, action: PayloadAction<any>) => {
+        state.status = 'succeeded';
+        state.user = action.payload?.data || state.user;
+        state.message = action.payload?.message || 'Profile loaded successfully';
+      })
+      .addCase(getUserProfile.rejected, (state, action) => {
+        state.status = 'failed';
+        state.error = action.error.message || 'Load profile failed';
+        state.message = null;
+      })
+      .addCase(uploadAvatar.pending, (state) => {
+        state.status = 'loading';
+        state.error = null;
+        state.message = null;
+      })
+      .addCase(uploadAvatar.fulfilled, (state, action: PayloadAction<any>) => {
+        state.status = 'succeeded';
+        if (state.user && action.payload?.data?.avatarUrl) {
+          state.user.avatarUrl = action.payload.data.avatarUrl;
+        }
+        state.message = action.payload?.message || 'Avatar uploaded successfully';
+      })
+      .addCase(uploadAvatar.rejected, (state, action) => {
+        state.status = 'failed';
+        state.error = action.error.message || 'Upload avatar failed';
         state.message = null;
       });
   },

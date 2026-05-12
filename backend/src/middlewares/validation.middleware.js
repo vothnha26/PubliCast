@@ -106,15 +106,29 @@ const resetPasswordValidation = [
 
 const editProfileValidation = [
   body('fullName')
-    .optional()
+    .optional({ checkFalsy: true })
     .trim()
-    .notEmpty().withMessage('Full name cannot be empty if provided')
     .isLength({ min: 2, max: 100 })
     .withMessage('Full name must be between 2 and 100 characters'),
   body('avatarUrl')
-    .optional()
+    .optional({ checkFalsy: true })
     .isURL()
     .withMessage('Invalid avatar URL'),
+  body('phone')
+    .optional({ checkFalsy: true })
+    .trim()
+    .isLength({ max: 20 })
+    .withMessage('Phone number must not exceed 20 characters'),
+  body('address')
+    .optional({ checkFalsy: true })
+    .trim()
+    .isLength({ max: 200 })
+    .withMessage('Address must not exceed 200 characters'),
+  body('bio')
+    .optional({ checkFalsy: true })
+    .trim()
+    .isLength({ max: 500 })
+    .withMessage('Bio must not exceed 500 characters'),
   (req, res, next) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
