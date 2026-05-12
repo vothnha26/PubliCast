@@ -68,7 +68,7 @@ class AuthService {
     const user = await userRepository.findByEmailWithPassword(email);
 
     if (!user) {
-      const error = new Error(ERROR_MESSAGES.INVALID_CREDENTIALS);
+      const error = new Error(ERROR_MESSAGES.INVALID_EMAIL);
       error.status = 401;
       throw error;
     }
@@ -89,7 +89,7 @@ class AuthService {
     // Verify password
     const isValidPassword = await bcrypt.compare(password, user.passwordHash);
     if (!isValidPassword) {
-      const error = new Error(ERROR_MESSAGES.INVALID_CREDENTIALS);
+      const error = new Error(ERROR_MESSAGES.INVALID_PASSWORD);
       error.status = 401;
       throw error;
     }

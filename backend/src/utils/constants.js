@@ -23,6 +23,8 @@ const ERROR_MESSAGES = {
   // Login errors
   LOGIN_SUCCESS: 'Login successful',
   INVALID_CREDENTIALS: 'Invalid email or password',
+  INVALID_EMAIL: 'Email does not exist',
+  INVALID_PASSWORD: 'Password is incorrect',
   ACCOUNT_NOT_ACTIVATED: 'Account not activated. Please verify your email first.',
   ACCOUNT_BANNED: 'Your account has been banned',
   TOO_MANY_LOGIN_ATTEMPTS: 'Too many login attempts. Please try again later.',
