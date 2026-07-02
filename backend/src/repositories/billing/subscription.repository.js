@@ -33,6 +33,16 @@ class SubscriptionRepository {
   }
 
   /**
+   * Find all active plans
+   */
+  async findAllActivePlans() {
+    return prisma.plan.findMany({
+      where: { isActive: true },
+      include: { planLimit: true, products: true }
+    });
+  }
+
+  /**
    * Find plan by Name
    */
   async findPlanByName(name) {

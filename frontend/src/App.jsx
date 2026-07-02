@@ -138,7 +138,7 @@ export default function App() {
               <Route path="/scheduler" element={<Navigate to="/dashboard" replace />} />
               <Route path="/live" element={<Navigate to="/dashboard" replace />} />
               <Route path="/live/setup" element={<Navigate to="/dashboard" replace />} />
-              <Route path="/analytics" element={<ProtectedRoute><AnalyticsPage /></ProtectedRoute>} />
+              <Route path="/analytics" element={<Navigate to="/media-library" replace />} />
               <Route path="/planner" element={<ProtectedRoute><PlannerLayout /></ProtectedRoute>}>
                 <Route index element={<Navigate to="calendar" replace />} />
                 <Route path="calendar" element={<WeeklyCalendarView />} />

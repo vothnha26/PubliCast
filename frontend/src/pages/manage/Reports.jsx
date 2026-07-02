@@ -244,8 +244,11 @@ export function ReportsPage() {
   // Email automation monthly states (Screenshot 3)
   const [receiveEmail, setReceiveEmail] = useState(false);
   const [emailText, setEmailText] = useState("Monthly report for you.");
-  const [emailsList, setEmailsList] = useState(["alexandracaceres@metricool.com"]);
+  const [emailsList, setEmailsList] = useState([]);
   const [newEmailInput, setNewEmailInput] = useState("");
+  const [brandMembers, setBrandMembers] = useState([]);
+  const [membersLoading, setMembersLoading] = useState(false);
+  const [isMembersDropdownOpen, setIsMembersDropdownOpen] = useState(false);
 
   // Stepper 1 States (Pages & Sections - Comprehensive list from Screenshots)
   const [templateName, setTemplateName] = useState("New Template");
@@ -460,6 +463,40 @@ export function ReportsPage() {
     // Reset data khi đổi brand
     setPreviewData(null);
     setDataLoaded(false);
+  }, [activeBrand]);
+
+  useEffect(() => {
+    const fetchScheduleConfig = async () => {
+      if (!activeBrand?.id) return;
+      try {
+        const response = await apiService.get(`/reports/schedule-config?brandId=${activeBrand.id}`);
+        const config = response.data?.config;
+        if (config) {
+          setReceiveEmail(config.receiveEmail || false);
+          setEmailsList(config.emailsList || []);
+          setEmailText(config.emailText || "Monthly report for you.");
+        }
+      } catch (error) {
+        console.error("Failed to fetch schedule config:", error);
+      }
+    };
+    fetchScheduleConfig();
+  }, [activeBrand]);
+
+  useEffect(() => {
+    const fetchBrandMembers = async () => {
+      if (!activeBrand?.id) return;
+      setMembersLoading(true);
+      try {
+        const response = await apiService.get(`/team?brandId=${activeBrand.id}`);
+        setBrandMembers(response.data?.data || []);
+      } catch (error) {
+        console.error("Failed to fetch brand members:", error);
+      } finally {
+        setMembersLoading(false);
+      }
+    };
+    fetchBrandMembers();
   }, [activeBrand]);
 
   const getEnabledPages = () => {
@@ -1739,23 +1776,49 @@ export function ReportsPage() {
     setEmailsList(prev => prev.filter(e => e !== email));
   };
 
-  const handleSaveSchedule = () => {
+  const handleSaveSchedule = async () => {
     if (receiveEmail && emailsList.length === 0) {
       toast.error("Vui lòng nhập ít nhất một địa chỉ Email nhận.");
       return;
     }
-    toast.success("Đã lưu cấu hình gửi báo cáo định kỳ hàng tháng.");
+    const toastId = toast.loading("Đang lưu cấu hình gửi báo cáo...");
+    try {
+      await apiService.post(`/reports/schedule-config?brandId=${activeBrand.id}`, {
+        receiveEmail,
+        emailsList,
+        emailText
+      });
+      toast.success("Đã lưu cấu hình gửi báo cáo định kỳ hàng tháng.", { id: toastId });
+    } catch (error) {
+      toast.error(error.response?.data?.message || "Không thể lưu cấu hình gửi báo cáo định kỳ.", { id: toastId });
+    }
   };
 
-  const handleSendTestReport = () => {
+  const handleSendTestReport = async () => {
     if (emailsList.length === 0) {
-      toast.error("Vui lòng nhập địa chỉ Email nhận thử nghiệm.");
+      toast.error("Vui lòng chọn hoặc nhập địa chỉ Email nhận thử nghiệm.");
       return;
     }
-    toast.loading("Đang gửi báo cáo thử nghiệm...", { id: "test-report" });
-    setTimeout(() => {
-      toast.success("Báo cáo thử nghiệm đã được gửi thành công!", { id: "test-report" });
-    }, 1500);
+    toast.loading("Đang tạo và gửi báo cáo qua Email...", { id: "test-report" });
+    try {
+      const platforms = ["Facebook", "YouTube", "Instagram", "TikTok", "Telegram", "Discord"];
+      await apiService.post(`/reports/send-test?brandId=${activeBrand.id}`, {
+        title: templateName || "Social Media Insights",
+        format: "Excel",
+        dateRange: period,
+        platforms,
+        isWhiteLabel: false,
+        brandLogoUrl: logoUrl,
+        brandColorHex: selectedColor,
+        selectedWidgets,
+        emails: emailsList,
+        message: emailText
+      });
+      toast.success("Báo cáo thử nghiệm đã được gửi thành công đến các email được chọn!", { id: "test-report" });
+    } catch (error) {
+      console.error(error);
+      toast.error(error.response?.data?.message || "Không thể gửi báo cáo thử nghiệm qua email.", { id: "test-report" });
+    }
   };
 
   // Print high-quality PDF report directly from frontend
@@ -1810,6 +1873,27 @@ export function ReportsPage() {
     if (enabledPages.includes("telegram")) platforms.push("Telegram");
     if (platforms.length === 0) platforms.push("Facebook");
 
+    // Map UI selectedWidgets configuration to Backend includedSections
+    const includedSections = [];
+    
+    // Overview Section: if any summary metrics are selected
+    if (selectedWidgets.followers || selectedWidgets.postImpressions || selectedWidgets.postInteractions) {
+      includedSections.push('Overview');
+    }
+    // Channels Section: if growth of any active platforms is selected
+    if (selectedWidgets.fbGrowth || selectedWidgets.igGrowth || selectedWidgets.ytGrowth || selectedWidgets.ttGrowth || selectedWidgets.dcGrowth) {
+      includedSections.push('Channels');
+    }
+    // TopPosts Section: if posts details/ranking are selected
+    if (selectedWidgets.posts || selectedWidgets.rankingOfPosts || selectedWidgets.fbRankingOfPosts || selectedWidgets.igRankingOfPosts || selectedWidgets.ytRankingOfVideos || selectedWidgets.ttPosts) {
+      includedSections.push('TopPosts');
+    }
+
+    // Default fallback
+    if (includedSections.length === 0) {
+      includedSections.push('Overview', 'Channels', 'TopPosts');
+    }
+
     const toastId = toast.loading(`Đang khởi tạo báo cáo ${format}...`);
     try {
       const res = await apiService.post(`/reports?brandId=${activeBrand.id}`, {
@@ -1819,7 +1903,9 @@ export function ReportsPage() {
         platforms,
         isWhiteLabel: true,
         brandLogoUrl: logoUrl,
-        brandColorHex: selectedColor
+        brandColorHex: selectedColor,
+        includedSections,
+        selectedWidgets
       });
       
       setReports(prev => [res.data.report, ...prev]);
@@ -1842,19 +1928,33 @@ export function ReportsPage() {
     }
   };
 
-  const handleDownload = (fileUrl, title) => {
+  const handleDownload = async (fileUrl, title) => {
     if (!fileUrl) return;
-    const backendBase = (import.meta.env.VITE_API_BASE_URL || "http://localhost:3000/api").replace('/api', '');
-    const downloadUrl = `${backendBase}${fileUrl}`;
-    
-    const link = document.createElement("a");
-    link.href = downloadUrl;
-    link.setAttribute("download", title);
-    link.target = "_blank";
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    toast.success(`Đang tải xuống file: ${title}`);
+    const toastId = toast.loading(`Đang tải xuống file: ${title}...`);
+    try {
+      const backendBase = (import.meta.env.VITE_API_BASE_URL || "http://localhost:3000/api").replace('/api', '');
+      const fullUrl = `${backendBase}${fileUrl}`;
+      
+      const response = await window.fetch(fullUrl);
+      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+      
+      const blob = await response.blob();
+      const downloadUrl = window.URL.createObjectURL(blob);
+      
+      const link = document.createElement("a");
+      link.href = downloadUrl;
+      link.setAttribute("download", title);
+      document.body.appendChild(link);
+      link.click();
+      
+      // Cleanup
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(downloadUrl);
+      toast.success(`Tải xuống thành công: ${title}`, { id: toastId });
+    } catch (err) {
+      console.error("Lỗi khi tải xuống file:", err);
+      toast.error("Không thể tải xuống file. Vui lòng thử lại sau.", { id: toastId });
+    }
   };
 
   const handleLogoUpload = (e) => {
@@ -3405,27 +3505,93 @@ export function ReportsPage() {
 
               {receiveEmail && (
                 <div className="space-y-3 pt-1 animate-in fade-in duration-200">
-                  <div>
-                    <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Email người nhận</label>
-                    <div className="flex gap-2">
-                      <input 
-                        type="email"
-                        placeholder="example@mail.com"
-                        value={newEmailInput}
-                        onChange={(e) => setNewEmailInput(e.target.value)}
-                        className="flex-1 bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-xs font-semibold outline-none focus:border-gray-400"
-                      />
-                      <button 
-                        onClick={() => {
-                          if (newEmailInput && !emailsList.includes(newEmailInput)) {
-                            setEmailsList([...emailsList, newEmailInput]);
-                            setNewEmailInput("");
-                          }
-                        }}
-                        className="bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-bold px-3 rounded-xl transition-all cursor-pointer"
-                      >
-                        Add
-                      </button>
+                  <div className="space-y-2">
+                    <div>
+                      <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Chọn từ thành viên của Brand</label>
+                      <div className="relative">
+                        <button
+                          type="button"
+                          onClick={() => setIsMembersDropdownOpen(!isMembersDropdownOpen)}
+                          className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2.5 text-xs font-semibold text-left flex items-center justify-between hover:bg-gray-100 transition-all outline-none"
+                        >
+                          <span className="text-gray-600">
+                            {membersLoading ? "Đang tải thành viên..." : "Bấm để chọn thành viên..."}
+                          </span>
+                          <ChevronDown size={14} className="text-gray-400" />
+                        </button>
+
+                        {isMembersDropdownOpen && (
+                          <>
+                            <div className="fixed inset-0 z-40" onClick={() => setIsMembersDropdownOpen(false)} />
+                            <div className="absolute left-0 right-0 mt-1 bg-white border border-gray-200 rounded-xl shadow-lg z-50 max-h-48 overflow-y-auto p-1.5 space-y-1">
+                              {brandMembers.length === 0 ? (
+                                <p className="text-[10px] text-gray-400 text-center py-2 uppercase font-bold tracking-wider">Không có thành viên nào</p>
+                              ) : (
+                                brandMembers.map(member => {
+                                  const isAdded = emailsList.includes(member.email);
+                                  return (
+                                    <button
+                                      key={member.id}
+                                      type="button"
+                                      onClick={() => {
+                                        if (!isAdded) {
+                                          setEmailsList([...emailsList, member.email]);
+                                        }
+                                        setIsMembersDropdownOpen(false);
+                                      }}
+                                      className="w-full text-left px-2.5 py-1.5 hover:bg-gray-50 rounded-lg flex items-center justify-between transition-all group"
+                                    >
+                                      <div className="flex items-center gap-2">
+                                        <div className="w-6 h-6 rounded-lg bg-gray-900 text-white flex items-center justify-center text-[10px] font-bold overflow-hidden">
+                                          {member.avatar ? (
+                                            <img src={member.avatar} alt="" className="w-full h-full object-cover" />
+                                          ) : (
+                                            (member.name || member.email).charAt(0).toUpperCase()
+                                          )}
+                                        </div>
+                                        <div>
+                                          <div className="text-[11px] font-bold text-gray-800">{member.name}</div>
+                                          <div className="text-[9px] text-gray-400 font-medium">{member.email}</div>
+                                        </div>
+                                      </div>
+                                      {isAdded ? (
+                                        <span className="text-[9px] bg-green-50 text-green-600 font-bold px-1.5 py-0.5 rounded-md">Đã thêm</span>
+                                      ) : (
+                                        <Plus size={12} className="text-gray-400 group-hover:text-black transition-colors" />
+                                      )}
+                                    </button>
+                                  );
+                                })
+                              )}
+                            </div>
+                          </>
+                        )}
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Hoặc nhập Email khác</label>
+                      <div className="flex gap-2">
+                        <input 
+                          type="email"
+                          placeholder="example@mail.com"
+                          value={newEmailInput}
+                          onChange={(e) => setNewEmailInput(e.target.value)}
+                          className="flex-1 bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-xs font-semibold outline-none focus:border-gray-400"
+                        />
+                        <button 
+                          type="button"
+                          onClick={() => {
+                            if (newEmailInput && !emailsList.includes(newEmailInput)) {
+                              setEmailsList([...emailsList, newEmailInput]);
+                              setNewEmailInput("");
+                            }
+                          }}
+                          className="bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-bold px-3 rounded-xl transition-all cursor-pointer"
+                        >
+                          Add
+                        </button>
+                      </div>
                     </div>
                   </div>
 
@@ -3448,6 +3614,23 @@ export function ReportsPage() {
                       placeholder="Hi, here is your monthly analytics report..."
                     />
                   </div>
+
+                  <div className="flex gap-2 pt-2 border-t border-gray-100">
+                    <button
+                      type="button"
+                      onClick={handleSendTestReport}
+                      className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer active:scale-95 text-center"
+                    >
+                      Gửi thử nghiệm
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleSaveSchedule}
+                      className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer active:scale-95 text-center shadow-sm"
+                    >
+                      Lưu lịch trình
+                    </button>
+                  </div>
                 </div>
               )}
             </div>
@@ -3459,23 +3642,57 @@ export function ReportsPage() {
               {reports.length === 0 ? (
                 <p className="text-xs text-gray-400 text-center py-4">Chưa có bản ghi báo cáo nào được tạo.</p>
               ) : (
-                reports.map(rep => (
-                  <div key={rep.id} className="flex justify-between items-center bg-gray-50 p-2.5 rounded-xl border border-gray-150">
-                    <div className="flex items-center gap-2">
-                      <FileText size={16} className="text-red-500" />
-                      <div>
-                        <p className="text-xs font-bold text-gray-700 truncate max-w-[130px]">{rep.title || "Báo cáo phân tích"}</p>
-                        <p className="text-[9px] text-gray-400 font-semibold">{new Date(rep.createdAt).toLocaleDateString()}</p>
+                reports.map(rep => {
+                  const isPdf = rep.format === 'PDF';
+                  const backendBase = (import.meta.env.VITE_API_BASE_URL || "http://localhost:3000/api").replace('/api', '');
+                  const fileUrl = rep.fileUrl || rep.pdfUrl; // Fallback
+                  const isXlsx = fileUrl && fileUrl.endsWith('.xlsx');
+                  const formatLabel = isPdf ? "PDF" : (isXlsx ? "EXCEL" : "CSV");
+                  
+                  return (
+                    <div key={rep.id} className="flex justify-between items-center bg-gray-50 p-2.5 rounded-xl border border-gray-150">
+                      <div className="flex items-center gap-2">
+                        <FileText size={16} className={isPdf ? "text-red-500" : "text-emerald-600"} />
+                        <div>
+                          <p className="text-xs font-bold text-gray-700 truncate max-w-[130px]">{rep.title || "Báo cáo phân tích"}</p>
+                          <p className="text-[9px] text-gray-400 font-semibold">
+                            {new Date(rep.createdAt).toLocaleDateString()} • <span className="uppercase">{formatLabel}</span>
+                          </p>
+                        </div>
                       </div>
+                      {isPdf ? (
+                        <button 
+                          onClick={() => {
+                            if (fileUrl) {
+                              window.open(`${backendBase}${fileUrl}`, "_blank");
+                            } else {
+                              toast.error("Không tìm thấy đường dẫn file báo cáo.");
+                            }
+                          }}
+                          className="text-blue-600 hover:underline text-[10px] font-bold cursor-pointer"
+                        >
+                          VIEW
+                        </button>
+                      ) : (
+                        <button 
+                          onClick={() => {
+                            if (fileUrl) {
+                              const downloadFileName = rep.title
+                                ? (isXlsx && !rep.title.toLowerCase().endsWith('.xlsx') ? `${rep.title}.xlsx` : rep.title)
+                                : (isXlsx ? "report.xlsx" : "report.csv");
+                              handleDownload(fileUrl, downloadFileName);
+                            } else {
+                              toast.error("Không tìm thấy đường dẫn file báo cáo.");
+                            }
+                          }}
+                          className="text-emerald-600 hover:underline text-[10px] font-bold cursor-pointer"
+                        >
+                          DOWNLOAD
+                        </button>
+                      )}
                     </div>
-                    <button 
-                      onClick={() => window.open(rep.pdfUrl, "_blank")}
-                      className="text-blue-600 hover:underline text-[10px] font-bold cursor-pointer"
-                    >
-                      VIEW
-                    </button>
-                  </div>
-                ))
+                  );
+                })
               )}
             </div>
           </div>

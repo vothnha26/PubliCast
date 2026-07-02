@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { Send, Paperclip, X, Sparkles, Settings, RefreshCw, Layers, Check, Copy, Bookmark, BookOpen, UserCheck, ChevronRight } from "lucide-react";
+import { Send, Paperclip, X, Sparkles, Settings, RefreshCw, Layers, Check, Copy, Bookmark, BookOpen, UserCheck, ChevronRight, History, Clock } from "lucide-react";
 import { toast } from "sonner";
 import apiService from "../../services/api";
 import { useBrand } from "../../context/BrandContext";
@@ -47,10 +47,14 @@ function AiMessageBubble({ msg, activeBrand, autoLists, openPostCreator }) {
   };
 
   const handleInsertIntoPost = () => {
+    const platformsToUse = availablePlatforms.length > 0
+      ? availablePlatforms.map(p => p.toUpperCase())
+      : [activeTab.toUpperCase()];
+
     openPostCreator({
       template: {
         caption: `${currentCaption}\n\n${currentHashtags.join(" ")}`,
-        platforms: [activeTab.toUpperCase()]
+        platforms: platformsToUse
       }
     });
     toast.success("Đã nạp nội dung vào màn hình soạn thảo!");
@@ -60,10 +64,14 @@ function AiMessageBubble({ msg, activeBrand, autoLists, openPostCreator }) {
     if (!activeBrand?.id) return;
     setIsQuickPosting(true);
     try {
+      const platformsToUse = availablePlatforms.length > 0
+        ? availablePlatforms.map(p => p.toUpperCase())
+        : [activeTab.toUpperCase()];
+
       const payload = {
         caption: currentCaption,
         hashtags: currentHashtags,
-        targetPlatforms: [activeTab.toUpperCase()],
+        targetPlatforms: platformsToUse,
         autoListId: toAutoList ? selectedAutoListId : undefined,
         status: status,
         isLibrary: isLibrary
@@ -199,6 +207,15 @@ export function AIAssistant() {
   const { activeBrand } = useBrand();
   const { openPostCreator } = usePostCreator();
 
+  // Get platforms that support text and are connected (exclude YOUTUBE)
+  const connectedTextPlatforms = activeBrand?.socialAccounts
+    ?.filter(sa => sa.isConnected && sa.platform !== "YOUTUBE")
+    ?.map(sa => sa.platform.toLowerCase()) || [];
+
+  const availableTextPlatforms = connectedTextPlatforms.length > 0
+    ? Array.from(new Set(connectedTextPlatforms))
+    : ["facebook", "instagram", "linkedin", "tiktok"];
+
   // Tab View State: "chat" or "settings" Managed via URL Query Parameter
   const [searchParams, setSearchParams] = useSearchParams();
   const currentTab = searchParams.get("tab") || "chat";
@@ -221,7 +238,7 @@ export function AIAssistant() {
   const [isTyping, setIsTyping] = useState(false);
 
   // Selected Options for Generation (Supports multi-select platforms)
-  const [selectedPlatforms, setSelectedPlatforms] = useState(["facebook", "instagram"]);
+  const [selectedPlatforms, setSelectedPlatforms] = useState(availableTextPlatforms);
   const [selectedFormat, setSelectedFormat] = useState("Caption");
 
   // Dynamic Config & Labels fetched from Backend
@@ -255,6 +272,30 @@ export function AIAssistant() {
   const [autoLists, setAutoLists] = useState([]);
   const [isSavingVoice, setIsSavingVoice] = useState(false);
 
+  // History States
+  const [historyItems, setHistoryItems] = useState([]);
+  const [historyTotal, setHistoryTotal] = useState(0);
+  const [historyPage, setHistoryPage] = useState(1);
+  const [historyTotalPages, setHistoryTotalPages] = useState(1);
+  const [isLoadingHistory, setIsLoadingHistory] = useState(false);
+
+  const loadHistory = async (page = 1) => {
+    if (!activeBrand?.id) return;
+    setIsLoadingHistory(true);
+    try {
+      const res = await apiService.get(`/ai/history?brandId=${activeBrand.id}&page=${page}&limit=10`);
+      setHistoryItems(res.data.items || []);
+      setHistoryTotal(res.data.total || 0);
+      setHistoryPage(res.data.page || 1);
+      setHistoryTotalPages(res.data.totalPages || 1);
+    } catch (err) {
+      console.error("Failed to load AI history:", err);
+      toast.error("Không thể tải lịch sử sáng tạo AI.");
+    } finally {
+      setIsLoadingHistory(false);
+    }
+  };
+
   // Multimodal State
   const [imageFile, setImageFile] = useState(null);
   const [imagePreview, setImagePreview] = useState(null);
@@ -287,6 +328,25 @@ export function AIAssistant() {
       loadSettings();
       loadAutoLists();
     }
+  }, [activeBrand?.id]);
+
+  // Sync selectedPlatforms with availableTextPlatforms when activeBrand changes
+  useEffect(() => {
+    if (availableTextPlatforms.length > 0) {
+      setSelectedPlatforms(availableTextPlatforms);
+    }
+  }, [activeBrand?.id]);
+
+  // Load history when active brand, currentTab or historyPage changes
+  useEffect(() => {
+    if (activeBrand?.id && currentTab === "history") {
+      loadHistory(historyPage);
+    }
+  }, [activeBrand?.id, currentTab, historyPage]);
+
+  // Reset history page when active brand changes
+  useEffect(() => {
+    setHistoryPage(1);
   }, [activeBrand?.id]);
 
   // Scroll to bottom of chat
@@ -331,14 +391,17 @@ export function AIAssistant() {
       // Initialize active tone to default settings
       setTone(data.defaultTone || "PROFESSIONAL");
 
-      // Initialize active platforms list from target platforms settings
+      // Initialize active platforms list from target platforms settings, filtering by available text platforms
       if (data.targetPlatforms) {
         const plats = data.targetPlatforms
           .split(/[,,;]/)
           .map(p => p.trim().toLowerCase())
           .filter(Boolean);
-        if (plats.length > 0) {
-          setSelectedPlatforms(plats);
+        const filtered = plats.filter(p => availableTextPlatforms.includes(p));
+        if (filtered.length > 0) {
+          setSelectedPlatforms(filtered);
+        } else {
+          setSelectedPlatforms([availableTextPlatforms[0]]);
         }
       }
     } catch (err) {
@@ -452,6 +515,7 @@ export function AIAssistant() {
       setMessages((prev) => [...prev, aiMsg]);
       setCreditsUsed(res.data.creditsUsed);
       setCreditsLimit(res.data.creditsLimit);
+      loadHistory(1);
     } catch (err) {
       console.error(err);
       toast.error(err.message || "Gặp lỗi trong quá trình tạo nội dung AI.");
@@ -491,7 +555,6 @@ export function AIAssistant() {
           <p className="text-xs text-gray-500 mt-0.5">Tối ưu bài viết đa nền tảng, thiết lập Brand Voice thông minh.</p>
         </div>
         
-        {/* Navigation Tabs */}
         <div className="flex bg-gray-100 p-1 rounded-xl gap-1.5 border border-gray-200/50">
           <button 
             onClick={() => setCurrentTab("chat")}
@@ -502,6 +565,16 @@ export function AIAssistant() {
             }`}
           >
             Trò chuyện & Sáng tạo
+          </button>
+          <button 
+            onClick={() => setCurrentTab("history")}
+            className={`px-4 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+              currentTab === "history" 
+                ? "bg-white text-gray-900 shadow-sm" 
+                : "text-gray-500 hover:text-gray-800"
+            }`}
+          >
+            Lịch sử sáng tạo
           </button>
           <button 
             onClick={() => setCurrentTab("settings")}
@@ -517,7 +590,7 @@ export function AIAssistant() {
       </div>
 
       {/* Main Tab Render Workspace */}
-      {currentTab === "chat" ? (
+      {currentTab === "chat" && (
         <div className="grid grid-cols-5 gap-6 flex-1 overflow-hidden" style={{ minHeight: 0 }}>
           {/* Left Chat Screen (col-span-4) */}
           <div className="col-span-4 flex flex-col h-full bg-white rounded-2xl border border-gray-200/80 shadow-sm overflow-hidden">
@@ -666,7 +739,7 @@ export function AIAssistant() {
 
                     {showPlatformDropdown && (
                       <div className="absolute left-0 mt-1 w-48 bg-white rounded-xl shadow-lg border border-gray-100 py-1.5 z-20 animate-in fade-in slide-in-from-top-1 duration-150">
-                        {["facebook", "instagram", "linkedin", "tiktok"].map((plat) => {
+                        {availableTextPlatforms.map((plat) => {
                           const isSelected = selectedPlatforms.includes(plat);
                           return (
                             <label
@@ -853,7 +926,212 @@ export function AIAssistant() {
             </div>
           </div>
         </div>
-      ) : (
+      )}
+
+      {currentTab === "history" && (
+        <div className="flex-1 bg-white rounded-2xl border border-gray-200/80 shadow-sm p-6 overflow-y-auto max-w-4xl mx-auto w-full flex flex-col">
+          {/* Header */}
+          <div className="flex items-center justify-between mb-6 border-b border-gray-100 pb-4">
+            <div className="flex items-center gap-2.5">
+              <div className="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center">
+                <History size={20} />
+              </div>
+              <div>
+                <h2 className="text-sm font-bold text-gray-900">Lịch sử yêu cầu sáng tạo</h2>
+                <p className="text-xs text-gray-500 mt-0.5">Xem lại và sử dụng lại các Prompt bạn đã yêu cầu Trợ lý AI thực hiện trước đây.</p>
+              </div>
+            </div>
+            <button
+              onClick={() => loadHistory(1)}
+              className="p-2 text-gray-400 hover:text-gray-700 transition-colors bg-gray-50 border border-gray-200 rounded-xl flex items-center justify-center cursor-pointer"
+              title="Làm mới lịch sử"
+            >
+              <RefreshCw size={14} className={isLoadingHistory ? "animate-spin text-indigo-600" : ""} />
+            </button>
+          </div>
+
+          {/* History List */}
+          {isLoadingHistory ? (
+            <div className="flex-1 flex flex-col gap-4">
+              {[1, 2, 3].map((n) => (
+                <div key={n} className="p-4 rounded-2xl border border-gray-100 bg-gray-50/40 animate-pulse flex flex-col gap-3">
+                  <div className="flex justify-between items-center">
+                    <div className="h-4 bg-gray-200 rounded w-1/4" />
+                    <div className="h-3 bg-gray-200 rounded w-1/6" />
+                  </div>
+                  <div className="h-4 bg-gray-200 rounded w-3/4" />
+                  <div className="flex gap-2">
+                    <div className="h-5 bg-gray-200 rounded w-12" />
+                    <div className="h-5 bg-gray-200 rounded w-12" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : historyItems.length === 0 ? (
+            <div className="flex-1 flex flex-col items-center justify-center p-8 text-center text-gray-500 gap-3">
+              <div className="w-12 h-12 rounded-full bg-gray-50 flex items-center justify-center text-gray-400">
+                <History size={22} />
+              </div>
+              <div>
+                <h3 className="text-xs font-bold text-gray-700">Không tìm thấy lịch sử sáng tạo</h3>
+                <p className="text-[11px] text-gray-400 mt-0.5">Thương hiệu này chưa thực hiện yêu cầu tạo nội dung nào bằng AI.</p>
+              </div>
+              <button
+                onClick={() => setCurrentTab("chat")}
+                className="mt-2 px-4 py-2 bg-indigo-600 text-white font-bold text-xs rounded-xl shadow-md shadow-indigo-100 hover:bg-indigo-700 transition-all cursor-pointer"
+              >
+                Trải nghiệm AI ngay
+              </button>
+            </div>
+          ) : (
+            <div className="flex-1 flex flex-col gap-4">
+              <div className="flex flex-col gap-4">
+                {historyItems.map((item) => {
+                  let meta = {};
+                  try {
+                    meta = JSON.parse(item.details || "{}");
+                  } catch (e) {
+                    meta = { prompt: item.details || "" };
+                  }
+
+                  const handleReusePrompt = () => {
+                    try {
+                      setInput(meta.prompt || "");
+                      if (meta.tone) setTone(meta.tone);
+                      if (meta.language) setLanguage(meta.language);
+                      if (meta.situation) setSituation(meta.situation);
+                      if (meta.genre) {
+                        const genreStr = String(meta.genre);
+                        const formatMatch = supportedFormats.find(f => genreStr.startsWith(f.value));
+                        if (formatMatch) {
+                          setSelectedFormat(formatMatch.value);
+                          const cleanGenre = genreStr.replace(formatMatch.value, "").replace(/[()]/g, "").trim();
+                          setGenre(cleanGenre);
+                        } else {
+                          setGenre(genreStr);
+                        }
+                      }
+                      if (meta.platform) {
+                        if (Array.isArray(meta.platform)) {
+                          setSelectedPlatforms(meta.platform);
+                        } else if (typeof meta.platform === "string") {
+                          setSelectedPlatforms(meta.platform.split(","));
+                        }
+                      }
+                      setCurrentTab("chat");
+                      toast.success("Đã nạp prompt và cấu hình vào màn hình chat!");
+                    } catch (err) {
+                      console.error("Error reusing prompt:", err);
+                      toast.error("Không thể sử dụng lại prompt này: " + err.message);
+                    }
+                  };
+
+                  return (
+                    <div 
+                      key={item.id} 
+                      className="p-5 rounded-2xl border border-gray-200/80 bg-white shadow-sm flex flex-col gap-3.5 hover:border-indigo-100 hover:shadow-indigo-50/10 hover:shadow-lg transition-all"
+                    >
+                      {/* Header metadata */}
+                      <div className="flex justify-between items-start gap-4">
+                        <div className="flex items-center gap-2">
+                          <div className="w-7 h-7 rounded-full bg-gray-100 text-gray-700 font-bold text-[10px] flex items-center justify-center">
+                            {item.user?.name ? item.user.name.charAt(0).toUpperCase() : "U"}
+                          </div>
+                          <div>
+                            <div className="text-[10px] font-bold text-gray-700">{item.user?.name || "Người dùng"}</div>
+                            <div className="text-[9px] text-gray-400 font-medium">{item.user?.email || ""}</div>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-1 text-[9px] text-gray-400 font-bold bg-gray-50 border border-gray-150 px-2 py-0.5 rounded-md">
+                          <Clock size={10} />
+                          {new Date(item.createdAt).toLocaleString("vi-VN", {
+                            day: "2-digit",
+                            month: "2-digit",
+                            year: "numeric",
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })}
+                        </div>
+                      </div>
+
+                      {/* Content Prompt box */}
+                      <div className="bg-gray-50 rounded-xl p-3 border border-gray-100 text-xs font-semibold text-gray-800 leading-relaxed italic whitespace-pre-wrap">
+                        "{meta.prompt}"
+                      </div>
+
+                      {/* Attribute Pills */}
+                      <div className="flex flex-wrap gap-1.5 items-center">
+                        {meta.platform && (
+                          <span className="text-[9px] font-bold px-2 py-0.5 rounded-md bg-indigo-50 text-indigo-700 border border-indigo-100/50">
+                            Nền tảng: {meta.platform.toUpperCase()}
+                          </span>
+                        )}
+                        {meta.tone && (
+                          <span className="text-[9px] font-bold px-2 py-0.5 rounded-md bg-purple-50 text-purple-700 border border-purple-100/50">
+                            Văn phong: {toneLabels[meta.tone] || meta.tone}
+                          </span>
+                        )}
+                        {meta.genre && (
+                          <span className="text-[9px] font-bold px-2 py-0.5 rounded-md bg-amber-50 text-amber-700 border border-amber-100/50">
+                            Dạng: {meta.genre}
+                          </span>
+                        )}
+                        {meta.situation && (
+                          <span className="text-[9px] font-bold px-2 py-0.5 rounded-md bg-rose-50 text-rose-700 border border-rose-100/50">
+                            Bối cảnh: {meta.situation}
+                          </span>
+                        )}
+                        {meta.language && (
+                          <span className="text-[9px] font-bold px-2 py-0.5 rounded-md bg-teal-50 text-teal-700 border border-teal-100/50">
+                            Ngôn ngữ: {meta.language === "vi" ? "Tiếng Việt 🇻🇳" : "Tiếng Anh 🇬🇧"}
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Actions */}
+                      <div className="flex justify-end border-t border-gray-100 pt-3 mt-1">
+                        <button
+                          onClick={handleReusePrompt}
+                          className="px-3.5 py-1.5 bg-gray-900 hover:bg-gray-800 text-white font-bold text-[10px] rounded-lg flex items-center gap-1.5 cursor-pointer shadow-sm"
+                        >
+                          <Sparkles size={11} /> Sử dụng lại Prompt
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Pagination UI */}
+              {historyTotalPages > 1 && (
+                <div className="flex items-center justify-between border-t border-gray-100 pt-4 mt-2">
+                  <span className="text-[10px] text-gray-500 font-bold">
+                    Hiển thị trang {historyPage} / {historyTotalPages} ({historyTotal} kết quả)
+                  </span>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => setHistoryPage((prev) => Math.max(1, prev - 1))}
+                      disabled={historyPage === 1 || isLoadingHistory}
+                      className="px-3 py-1.5 text-[10px] font-bold border border-gray-250 rounded-lg hover:bg-gray-50 disabled:bg-gray-100 disabled:text-gray-400 disabled:border-gray-200 transition-colors cursor-pointer"
+                    >
+                      Trang trước
+                    </button>
+                    <button
+                      onClick={() => setHistoryPage((prev) => Math.min(historyTotalPages, prev + 1))}
+                      disabled={historyPage === historyTotalPages || isLoadingHistory}
+                      className="px-3 py-1.5 text-[10px] font-bold border border-gray-250 rounded-lg hover:bg-gray-50 disabled:bg-gray-100 disabled:text-gray-400 disabled:border-gray-200 transition-colors cursor-pointer"
+                    >
+                      Trang sau
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
+      {currentTab === "settings" && (
         /* Tab 2: Brand Voice Settings */
         <div className="flex-1 bg-white rounded-2xl border border-gray-200/80 shadow-sm p-6 overflow-y-auto max-w-4xl mx-auto w-full">
           <div className="flex items-center gap-2 mb-6 border-b border-gray-100 pb-4">

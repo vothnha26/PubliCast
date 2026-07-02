@@ -1,55 +1,34 @@
 import * as React from "react";
-import { useState, useRef } from "react";
-import { Plus, X, Upload, ImageIcon, GripVertical, Edit } from "lucide-react";
+import { useState } from "react";
+import { Plus, X, ImageIcon, GripVertical, Edit } from "lucide-react";
 import { toast } from "sonner";
-import apiService from "../../../services/api";
+import { MediaUploadModal } from "./MediaUploadModal";
 
 export function FacebookAlbumComposer({ brandId, albumMedia = [], setAlbumMedia, onEditPhoto }) {
-  const [isUploading, setIsUploading] = useState(false);
-  const fileInputRef = useRef(null);
+  const [showUploadModal, setShowUploadModal] = useState(false);
 
-  const handleFileChange = async (e) => {
-    const files = Array.from(e.target.files);
-    if (files.length === 0) return;
-
-    setIsUploading(true);
-    const uploadedItems = [];
-
-    for (const file of files) {
-      if (!file.type.startsWith("image/")) {
-        toast.error(`${file.name} is not an image file`);
-        continue;
-      }
-
-      const formData = new FormData();
-      formData.append("video", file); // Key matches backend expectation for post upload
-
-      try {
-        const res = await apiService.post(`/posts/upload?brandId=${brandId}`, formData, {
-          headers: {
-            "Content-Type": "multipart/form-data"
-          }
-        });
-        const path = res.data.videoUrl;
-        
-        uploadedItems.push({
-          id: `local_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-          previewUrl: URL.createObjectURL(file),
-          path,
-          caption: ""
-        });
-      } catch (err) {
-        toast.error(`Failed to upload ${file.name}`);
-        console.error(err);
-      }
+  const handleAcceptMedia = (items) => {
+    const nonImages = items.filter(item => item.file && !item.file.type.startsWith("image/"));
+    if (nonImages.length > 0) {
+      toast.error("Only image files are allowed for Facebook Album");
     }
 
-    if (uploadedItems.length > 0) {
-      setAlbumMedia((prev) => [...prev, ...uploadedItems]);
-      toast.success(`Successfully uploaded ${uploadedItems.length} photos`);
+    const validItems = items.filter(item => {
+      if (item.file) return item.file.type.startsWith("image/");
+      return true;
+    });
+
+    const newMediaItems = validItems.map((item) => ({
+      id: `local_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      previewUrl: item.previewUrl || item.path,
+      path: item.path,
+      caption: ""
+    }));
+
+    if (newMediaItems.length > 0) {
+      setAlbumMedia((prev) => [...prev, ...newMediaItems]);
+      toast.success(`Successfully added ${newMediaItems.length} photo(s)`);
     }
-    setIsUploading(false);
-    if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
   const handleCaptionChange = (id, text) => {
@@ -70,28 +49,12 @@ export function FacebookAlbumComposer({ brandId, albumMedia = [], setAlbumMedia,
         </label>
         <button
           type="button"
-          onClick={() => fileInputRef.current?.click()}
-          disabled={isUploading}
+          onClick={() => setShowUploadModal(true)}
           className="flex items-center gap-1.5 px-3 py-1.5 text-[10px] font-black uppercase tracking-widest bg-black text-white hover:bg-gray-800 transition-all rounded-xl cursor-pointer disabled:opacity-50"
         >
-          {isUploading ? (
-            <svg className="animate-spin h-3.5 w-3.5 text-white" fill="none" viewBox="0 0 24 24">
-              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-            </svg>
-          ) : (
-            <Plus size={12} />
-          )}
-          {isUploading ? "Uploading..." : "Add Photos"}
+          <Plus size={12} />
+          Add Photos
         </button>
-        <input
-          type="file"
-          ref={fileInputRef}
-          multiple
-          accept="image/*"
-          className="hidden"
-          onChange={handleFileChange}
-        />
       </div>
 
       {albumMedia.length === 0 ? (
@@ -149,6 +112,14 @@ export function FacebookAlbumComposer({ brandId, albumMedia = [], setAlbumMedia,
           ))}
         </div>
       )}
+      <MediaUploadModal
+        isOpen={showUploadModal}
+        brandId={brandId}
+        onClose={() => setShowUploadModal(false)}
+        onAccept={handleAcceptMedia}
+        multiple={true}
+        initialTab="computer"
+      />
     </div>
   );
 }

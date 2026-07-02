@@ -10,5 +10,6 @@ router.get('/reviewers', approvalWorkflowController.getPotentialReviewers);
 router.get('/', approvalWorkflowController.getWorkflows);
 router.post('/', approvalWorkflowController.createWorkflow);
 router.post('/:id/review', approvalWorkflowController.reviewWorkflow);
+router.put('/:id/reassign', approvalWorkflowController.reassignWorkflow);
 
 module.exports = router;

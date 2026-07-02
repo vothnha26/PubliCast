@@ -115,6 +115,18 @@ class MediaLibraryService {
     return this._formatMediaFile(media);
   }
 
+  /**
+   * Rename media file
+   */
+  async renameMedia(id, brandId, filename) {
+    const media = await mediaLibraryRepository.findById(id);
+    if (!media || media.brandId !== brandId) {
+      throw new Error('Media file not found');
+    }
+    const updated = await mediaLibraryRepository.update(id, { filename });
+    return this._formatMediaFile(updated);
+  }
+
   // ============= Private Helper Methods =============
 
   _getResourceType(mimeType) {

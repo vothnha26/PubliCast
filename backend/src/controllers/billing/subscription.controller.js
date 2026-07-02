@@ -88,6 +88,40 @@ class SubscriptionController {
       data: result
     });
   });
+
+  /**
+   * GET /api/billing/subscriptions/history
+   * Query: ?brandId=xxx
+   */
+  getPaymentHistory = asyncHandler(async (req, res) => {
+    const { brandId } = req.query;
+    if (!brandId) return res.status(400).json({ message: 'brandId là bắt buộc' });
+
+    const paymentRepository = require('../../repositories/billing/payment.repository');
+    const history = await paymentRepository.findHistoryByBrandId(brandId);
+    res.status(200).json({ data: history });
+  });
+
+  /**
+   * POST /api/billing/subscriptions/cancel
+   * Body: { transactionCode }
+   */
+  cancelPayment = asyncHandler(async (req, res) => {
+    const { transactionCode } = req.body;
+    if (!transactionCode) return res.status(400).json({ message: 'transactionCode là bắt buộc' });
+
+    await subscriptionService.cancelPendingPayment(transactionCode);
+    res.status(200).json({ message: 'Hủy yêu cầu thanh toán thành công' });
+  });
+
+  /**
+   * GET /api/billing/subscriptions/plans
+   * Get all active subscription plans
+   */
+  getPlans = asyncHandler(async (req, res) => {
+    const plans = await subscriptionService.getPlans();
+    res.status(200).json({ data: plans });
+  });
 }
 
 module.exports = new SubscriptionController();

@@ -125,6 +125,18 @@ class ProfileController {
     const result = await profileService.changePassword(userId, currentPassword, newPassword);
     res.status(200).json(result);
   });
+
+  /**
+   * Set default brand
+   * PUT /api/profile/default-brand
+   */
+  setDefaultBrand = asyncHandler(async (req, res) => {
+    const userId = req.user.id;
+    const { defaultBrandId } = req.body;
+
+    const result = await profileService.setDefaultBrand(userId, defaultBrandId);
+    res.status(200).json(result);
+  });
 }
 
 module.exports = new ProfileController();

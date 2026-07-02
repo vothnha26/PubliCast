@@ -155,11 +155,11 @@ export function PlatformDashboardPage() {
     let rows = [];
     let fileName = `publicast_${platform}_report_${activeTab}`;
 
-    if (activeTab === "published" || activeTab === "posts_list") {
+    if (activeTab === "published" || activeTab === "posts_list" || activeTab === "posts") {
       headers = ["Content", "Published At", "Reach", "Views", "Reactions", "Comments", "Shares", "Clicks"];
       rows = (publishedVideos || []).map(v => [
-        v.message || v.title,
-        new Date(v.date || v.publishedAt).toLocaleDateString(),
+        v.message || v.title || "",
+        v.date || v.publishedAt ? new Date(v.date || v.publishedAt).toLocaleDateString() : "",
         v.reach || 0,
         v.views || 0,
         v.reactions || v.likes || 0,
@@ -170,17 +170,21 @@ export function PlatformDashboardPage() {
     } else if (activeTab === "competitors") {
       headers = ["Competitor Name", "Handle", "Subscribers", "Total Views", "Total Videos", "Added At"];
       rows = (competitors || []).map(c => [
-        c.competitorDisplayName,
-        c.competitorHandle,
+        c.competitorDisplayName || "",
+        c.competitorHandle || "",
         c.followersCount || 0,
         0, 0,
-        new Date(c.addedAt).toLocaleDateString()
+        c.addedAt ? new Date(c.addedAt).toLocaleDateString() : ""
       ]);
     }
 
-    const csvContent = [
+    // Build CSV with UTF-8 BOM for Excel compatibility and proper character escaping
+    const csvContent = "\uFEFF" + [
       headers.join(","),
-      ...rows.map(r => r.map(cell => `"${cell}"`).join(","))
+      ...rows.map(r => r.map(cell => {
+        const cleanCell = String(cell ?? '').replace(/"/g, '""');
+        return `"${cleanCell}"`;
+      }).join(","))
     ].join("\n");
 
     const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });

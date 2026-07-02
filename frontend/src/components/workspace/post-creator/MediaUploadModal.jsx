@@ -5,11 +5,13 @@ import { toast } from "sonner";
 import apiService from "../../../services/api";
 import { useMediaLibrary } from "../../../hooks/useMediaLibrary";
 
-export function MediaUploadModal({ isOpen, onClose, onAccept, brandId, initialTab = "computer" }) {
+export function MediaUploadModal({ isOpen, onClose, onAccept, brandId, initialTab = "computer", multiple = false }) {
   const [activeTab, setActiveTab] = useState(initialTab); // 'computer' | 'url' | 'library'
   const [dragActive, setDragActive] = useState(false);
   const [selectedFile, setSelectedFile] = useState(null);
+  const [selectedFiles, setSelectedFiles] = useState([]);
   const [fileUrlInput, setFileUrlInput] = useState("");
+  const [fileUrlsInput, setFileUrlsInput] = useState("");
   const [isUploading, setIsUploading] = useState(false);
   
   // Library management using our custom hook
@@ -25,12 +27,25 @@ export function MediaUploadModal({ isOpen, onClose, onAccept, brandId, initialTa
   } = useMediaLibrary();
 
   const [selectedLibraryFile, setSelectedLibraryFile] = useState(null);
+  const [selectedLibraryFiles, setSelectedLibraryFiles] = useState([]);
   const fileInputRef = useRef(null);
 
   // Sync tab if initialTab changes
   React.useEffect(() => {
     setActiveTab(initialTab);
   }, [initialTab]);
+
+  // Reset states on open/close
+  React.useEffect(() => {
+    if (!isOpen) {
+      setSelectedFile(null);
+      setSelectedFiles([]);
+      setSelectedLibraryFile(null);
+      setSelectedLibraryFiles([]);
+      setFileUrlInput("");
+      setFileUrlsInput("");
+    }
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
@@ -48,69 +63,175 @@ export function MediaUploadModal({ isOpen, onClose, onAccept, brandId, initialTa
     e.preventDefault();
     e.stopPropagation();
     setDragActive(false);
-    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-      const file = e.dataTransfer.files[0];
-      setSelectedFile(file);
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      if (multiple) {
+        const files = Array.from(e.dataTransfer.files);
+        setSelectedFiles(prev => [...prev, ...files]);
+      } else {
+        setSelectedFile(e.dataTransfer.files[0]);
+      }
     }
   };
 
   const handleFileChange = (e) => {
-    if (e.target.files && e.target.files[0]) {
-      setSelectedFile(e.target.files[0]);
+    if (e.target.files && e.target.files.length > 0) {
+      if (multiple) {
+        const files = Array.from(e.target.files);
+        setSelectedFiles(prev => [...prev, ...files]);
+      } else {
+        setSelectedFile(e.target.files[0]);
+      }
+    }
+  };
+
+  const handleSelectLibraryItem = (file) => {
+    if (multiple) {
+      setSelectedLibraryFiles(prev => {
+        const exists = prev.some(item => item.id === file.id);
+        if (exists) {
+          return prev.filter(item => item.id !== file.id);
+        } else {
+          return [...prev, file];
+        }
+      });
+    } else {
+      setSelectedLibraryFile(file);
     }
   };
 
   const handleAccept = async () => {
     if (activeTab === "computer") {
-      if (!selectedFile) {
-        toast.error("Please select a file first");
-        return;
-      }
-      
-      setIsUploading(true);
-      const formData = new FormData();
-      formData.append("video", selectedFile); // Key matches backend expectation for post upload
+      if (multiple) {
+        if (selectedFiles.length === 0) {
+          toast.error("Please select at least one file");
+          return;
+        }
+        setIsUploading(true);
+        const uploadedItems = [];
+        const toastId = toast.loading(`Uploading ${selectedFiles.length} file(s)...`);
 
-      try {
-        const res = await apiService.post(`/posts/upload?brandId=${brandId}`, formData, {
-          headers: {
-            "Content-Type": "multipart/form-data"
+        try {
+          for (const file of selectedFiles) {
+            const formData = new FormData();
+            formData.append("video", file);
+            const res = await apiService.post(`/posts/upload?brandId=${brandId}`, formData, {
+              headers: {
+                "Content-Type": "multipart/form-data"
+              }
+            });
+            uploadedItems.push({
+              file,
+              path: res.data.videoUrl,
+              previewUrl: URL.createObjectURL(file)
+            });
           }
-        });
-        const path = res.data.videoUrl;
+          toast.success("All files uploaded successfully", { id: toastId });
+          onAccept(uploadedItems);
+          onClose();
+          setSelectedFiles([]);
+        } catch (err) {
+          toast.error("Failed to upload one or more files", { id: toastId });
+          console.error(err);
+        } finally {
+          setIsUploading(false);
+        }
+      } else {
+        if (!selectedFile) {
+          toast.error("Please select a file first");
+          return;
+        }
         
-        onAccept(selectedFile, path);
-        toast.success("File uploaded successfully");
-        onClose();
-        setSelectedFile(null);
-      } catch (err) {
-        toast.error("Failed to upload file");
-        console.error(err);
-      } finally {
-        setIsUploading(false);
+        setIsUploading(true);
+        const formData = new FormData();
+        formData.append("video", selectedFile); // Key matches backend expectation for post upload
+
+        try {
+          const res = await apiService.post(`/posts/upload?brandId=${brandId}`, formData, {
+            headers: {
+              "Content-Type": "multipart/form-data"
+            }
+          });
+          const path = res.data.videoUrl;
+          
+          onAccept(selectedFile, path);
+          toast.success("File uploaded successfully");
+          onClose();
+          setSelectedFile(null);
+        } catch (err) {
+          toast.error("Failed to upload file");
+          console.error(err);
+        } finally {
+          setIsUploading(false);
+        }
       }
     } else if (activeTab === "library") {
-      if (!selectedLibraryFile) {
-        toast.error("Please select a file from the library");
-        return;
+      if (multiple) {
+        if (selectedLibraryFiles.length === 0) {
+          toast.error("Please select at least one file from the library");
+          return;
+        }
+        const items = selectedLibraryFiles.map(file => ({
+          file: null,
+          path: file.url,
+          previewUrl: file.thumbnail || file.url
+        }));
+        onAccept(items);
+        toast.success(`${items.length} file(s) selected from library`);
+        onClose();
+        setSelectedLibraryFiles([]);
+      } else {
+        if (!selectedLibraryFile) {
+          toast.error("Please select a file from the library");
+          return;
+        }
+        onAccept(null, selectedLibraryFile.url);
+        toast.success("File selected from library");
+        onClose();
+        setSelectedLibraryFile(null);
       }
-      onAccept(null, selectedLibraryFile.url);
-      toast.success("File selected from library");
-      onClose();
     } else {
-      if (!fileUrlInput.trim()) {
-        toast.error("Please enter a valid URL");
-        return;
+      if (multiple) {
+        const urls = fileUrlsInput
+          .split("\n")
+          .map(url => url.trim())
+          .filter(url => url.length > 0);
+
+        if (urls.length === 0) {
+          toast.error("Please enter at least one URL");
+          return;
+        }
+
+        const invalidUrl = urls.find(url => !url.startsWith("http://") && !url.startsWith("https://"));
+        if (invalidUrl) {
+          toast.error(`Invalid URL: ${invalidUrl}. Must start with http:// or https://`);
+          return;
+        }
+
+        const items = urls.map(url => ({
+          file: null,
+          path: url,
+          previewUrl: url
+        }));
+
+        onAccept(items);
+        toast.success(`${items.length} media link(s) accepted`);
+        onClose();
+        setFileUrlsInput("");
+      } else {
+        if (!fileUrlInput.trim()) {
+          toast.error("Please enter a valid URL");
+          return;
+        }
+        if (!fileUrlInput.startsWith("http://") && !fileUrlInput.startsWith("https://")) {
+          toast.error("URL must start with http:// or https://");
+          return;
+        }
+        
+        onAccept(null, fileUrlInput.trim());
+        toast.success("Media link accepted");
+        onClose();
+        setFileUrlInput("");
       }
-      if (!fileUrlInput.startsWith("http://") && !fileUrlInput.startsWith("https://")) {
-        toast.error("URL must start with http:// or https://");
-        return;
-      }
-      
-      onAccept(null, fileUrlInput.trim());
-      toast.success("Media link accepted");
-      onClose();
-      setFileUrlInput("");
     }
   };
 
@@ -158,28 +279,71 @@ export function MediaUploadModal({ isOpen, onClose, onAccept, brandId, initialTa
         <div className="p-6 min-h-[260px] flex flex-col justify-center">
           
           {activeTab === "computer" && (
-            <div 
-              onDragEnter={handleDrag}
-              onDragOver={handleDrag}
-              onDragLeave={handleDrag}
-              onDrop={handleDrop}
-              onClick={() => fileInputRef.current?.click()}
-              className={`border-2 border-dashed rounded-2xl p-8 flex flex-col items-center justify-center text-center cursor-pointer transition-all min-h-[180px] ${
-                dragActive 
-                  ? "border-[#2D1D35] bg-purple-50/30" 
-                  : "border-gray-200 hover:border-gray-300"
-              }`}
-            >
-              <input 
-                type="file" 
-                ref={fileInputRef} 
-                onChange={handleFileChange} 
-                accept="image/*,video/*" 
-                className="hidden" 
-              />
-              
-              {selectedFile ? (
-                <div className="space-y-3">
+            <div className="space-y-4">
+              <div 
+                onDragEnter={handleDrag}
+                onDragOver={handleDrag}
+                onDragLeave={handleDrag}
+                onDrop={handleDrop}
+                onClick={() => fileInputRef.current?.click()}
+                className={`border-2 border-dashed rounded-2xl p-6 flex flex-col items-center justify-center text-center cursor-pointer transition-all min-h-[140px] ${
+                  dragActive 
+                    ? "border-[#2D1D35] bg-purple-50/30" 
+                    : "border-gray-200 hover:border-gray-300"
+                }`}
+              >
+                <input 
+                  type="file" 
+                  ref={fileInputRef} 
+                  onChange={handleFileChange} 
+                  accept="image/*,video/*" 
+                  multiple={multiple}
+                  className="hidden" 
+                />
+                
+                <div className="space-y-2">
+                  <div className="w-10 h-10 rounded-full bg-gray-50 flex items-center justify-center text-gray-400 mx-auto">
+                    <Upload size={20} />
+                  </div>
+                  <p className="text-xs font-bold text-gray-500">
+                    Click to select or drag your file(s) here.
+                  </p>
+                </div>
+              </div>
+
+              {multiple && selectedFiles.length > 0 && (
+                <div className="border border-gray-100 rounded-2xl p-4 bg-gray-50/50 space-y-2 max-h-[180px] overflow-y-auto pr-1 scrollbar-thin">
+                  <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">
+                    Selected Files ({selectedFiles.length})
+                  </p>
+                  {selectedFiles.map((file, index) => (
+                    <div key={index} className="flex items-center justify-between p-2.5 bg-white border border-gray-100 rounded-xl shadow-sm text-xs font-bold text-gray-700">
+                      <div className="flex items-center gap-2 truncate max-w-[320px]">
+                        {file.type.startsWith("image/") ? (
+                          <ImageIcon size={14} className="text-purple-600" />
+                        ) : (
+                          <Video size={14} className="text-blue-500" />
+                        )}
+                        <span className="truncate">{file.name}</span>
+                        <span className="text-[9px] text-gray-400 font-semibold uppercase">({(file.size / (1024 * 1024)).toFixed(2)} MB)</span>
+                      </div>
+                      <button 
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSelectedFiles(prev => prev.filter((_, i) => i !== index));
+                        }}
+                        className="text-gray-400 hover:text-red-500 transition-colors p-1"
+                      >
+                        <X size={14} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {!multiple && selectedFile && (
+                <div className="space-y-3 p-4 border border-gray-100 rounded-2xl bg-gray-50/50 flex flex-col items-center">
                   <div className="w-12 h-12 rounded-full bg-purple-100 flex items-center justify-center text-[#2D1D35] mx-auto">
                     {selectedFile.type.startsWith("image/") ? (
                       <ImageIcon size={24} />
@@ -199,15 +363,6 @@ export function MediaUploadModal({ isOpen, onClose, onAccept, brandId, initialTa
                     <CheckCircle2 size={12} />
                     Selected Successfully
                   </div>
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  <div className="w-10 h-10 rounded-full bg-gray-50 flex items-center justify-center text-gray-400 mx-auto">
-                    <Upload size={20} />
-                  </div>
-                  <p className="text-xs font-bold text-gray-500">
-                    Click to select or drag your file here.
-                  </p>
                 </div>
               )}
             </div>
@@ -267,41 +422,47 @@ export function MediaUploadModal({ isOpen, onClose, onAccept, brandId, initialTa
                    ))}
 
                    {/* Render Media Files */}
-                   {libraryFiles.map(file => (
-                     <button
-                       key={file.id}
-                       onClick={() => setSelectedLibraryFile(file)}
-                       className={`aspect-square rounded-2xl overflow-hidden border-2 transition-all relative group ${
-                         selectedLibraryFile?.id === file.id ? 'border-purple-600 ring-4 ring-purple-100' : 'border-transparent hover:border-gray-200'
-                       }`}
-                     >
-                        {file.thumbnail ? (
-                          <img src={file.thumbnail} alt="" className="w-full h-full object-cover" />
-                        ) : (
-                          <div className="w-full h-full bg-gray-50 flex items-center justify-center text-3xl">
-                             {file.emoji}
-                          </div>
-                        )}
-                        
-                        {selectedLibraryFile?.id === file.id && (
-                          <div className="absolute inset-0 bg-purple-600/10 flex items-center justify-center">
-                             <div className="w-8 h-8 bg-purple-600 rounded-full flex items-center justify-center shadow-lg">
-                               <CheckCircle2 size={16} className="text-white" />
-                             </div>
-                          </div>
-                        )}
+                   {libraryFiles.map(file => {
+                     const isSelected = multiple
+                       ? selectedLibraryFiles.some(item => item.id === file.id)
+                       : selectedLibraryFile?.id === file.id;
 
-                        {file.type === 'video' && (
-                          <div className="absolute top-2 right-2 px-1.5 py-0.5 bg-black/60 backdrop-blur rounded text-[8px] font-black text-white uppercase tracking-tighter">
-                            Video
-                          </div>
-                        )}
+                     return (
+                       <button
+                         key={file.id}
+                         onClick={() => handleSelectLibraryItem(file)}
+                         className={`aspect-square rounded-2xl overflow-hidden border-2 transition-all relative group ${
+                           isSelected ? 'border-purple-600 ring-4 ring-purple-100' : 'border-transparent hover:border-gray-200'
+                         }`}
+                       >
+                          {file.thumbnail ? (
+                            <img src={file.thumbnail} alt="" className="w-full h-full object-cover" />
+                          ) : (
+                            <div className="w-full h-full bg-gray-50 flex items-center justify-center text-3xl">
+                               {file.emoji}
+                            </div>
+                          )}
+                          
+                          {isSelected && (
+                            <div className="absolute inset-0 bg-purple-600/10 flex items-center justify-center">
+                               <div className="w-8 h-8 bg-purple-600 rounded-full flex items-center justify-center shadow-lg">
+                                 <CheckCircle2 size={16} className="text-white" />
+                               </div>
+                            </div>
+                          )}
 
-                        <div className="absolute bottom-0 left-0 right-0 p-2 bg-gradient-to-t from-black/60 to-transparent text-white text-[9px] font-bold truncate opacity-0 group-hover:opacity-100 transition-opacity">
-                           {file.name}
-                        </div>
-                     </button>
-                   ))}
+                          {file.type === 'video' && (
+                            <div className="absolute top-2 right-2 px-1.5 py-0.5 bg-black/60 backdrop-blur rounded text-[8px] font-black text-white uppercase tracking-tighter">
+                              Video
+                            </div>
+                          )}
+
+                          <div className="absolute bottom-0 left-0 right-0 p-2 bg-gradient-to-t from-black/60 to-transparent text-white text-[9px] font-bold truncate opacity-0 group-hover:opacity-100 transition-opacity">
+                             {file.name}
+                          </div>
+                       </button>
+                     );
+                   })}
                 </div>
               )}
             </div>
@@ -311,19 +472,30 @@ export function MediaUploadModal({ isOpen, onClose, onAccept, brandId, initialTa
             <div className="space-y-4">
               <div className="space-y-2">
                 <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block">
-                  Media URL Link
+                  {multiple ? "Media URL Links (one per line)" : "Media URL Link"}
                 </label>
                 <div className="relative">
-                  <input
-                    type="url"
-                    value={fileUrlInput}
-                    onChange={(e) => setFileUrlInput(e.target.value)}
-                    placeholder="https://example.com/image.jpg"
-                    className="w-full px-4 py-3 bg-white border border-gray-200 rounded-2xl text-xs font-semibold focus:border-black outline-none"
-                  />
+                  {multiple ? (
+                    <textarea
+                      value={fileUrlsInput}
+                      onChange={(e) => setFileUrlsInput(e.target.value)}
+                      placeholder="https://example.com/image1.jpg&#10;https://example.com/image2.jpg"
+                      className="w-full px-4 py-3 bg-white border border-gray-200 rounded-2xl text-xs font-semibold focus:border-black outline-none resize-none min-h-[100px]"
+                    />
+                  ) : (
+                    <input
+                      type="url"
+                      value={fileUrlInput}
+                      onChange={(e) => setFileUrlInput(e.target.value)}
+                      placeholder="https://example.com/image.jpg"
+                      className="w-full px-4 py-3 bg-white border border-gray-200 rounded-2xl text-xs font-semibold focus:border-black outline-none"
+                    />
+                  )}
                 </div>
                 <p className="text-[10px] text-gray-400 font-medium leading-normal">
-                  Provide a direct URL to a photo (.png, .jpg) or video (.mp4).
+                  {multiple 
+                    ? "Provide direct URLs to photos (.png, .jpg) or videos (.mp4), each on a separate line."
+                    : "Provide a direct URL to a photo (.png, .jpg) or video (.mp4)."}
                 </p>
               </div>
             </div>

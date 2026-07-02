@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import brandService from '../services/brand.service';
+import profileService from '../services/profile.service';
 import { toast } from 'sonner';
 import { useAuthStore } from './useAuthStore';
 import { STORAGE_KEYS } from '../constants/storageKeys';
@@ -7,6 +8,7 @@ import { STORAGE_KEYS } from '../constants/storageKeys';
 export const useBrandStore = create((set, get) => ({
   brands: [],
   activeBrand: null,
+  defaultBrandId: null,
   loading: false,
 
   fetchBrands: async (selectId = null) => {
@@ -21,22 +23,26 @@ export const useBrandStore = create((set, get) => ({
 
       if (brandList.length > 0) {
         const savedBrandId = selectId || localStorage.getItem(STORAGE_KEYS.ACTIVE_BRAND_ID);
-        
-        if (savedBrandId === "NONE") {
+        // Priority: explicit selectId > localStorage > defaultBrandId from profile > first brand
+        const userDefaultBrandId = useAuthStore.getState().user?.defaultBrandId;
+
+        if (savedBrandId === 'NONE') {
           set({ activeBrand: null });
         } else {
-          const matchedBrand = brandList.find(b => b.id === savedBrandId);
-          const currentActive = matchedBrand || brandList[0];
-          set({ activeBrand: currentActive });
-          localStorage.setItem(STORAGE_KEYS.ACTIVE_BRAND_ID, currentActive.id);
+          const matchedBrand =
+            brandList.find(b => b.id === savedBrandId) ||
+            (userDefaultBrandId && brandList.find(b => b.id === userDefaultBrandId)) ||
+            brandList[0];
+          set({ activeBrand: matchedBrand, defaultBrandId: userDefaultBrandId || null });
+          localStorage.setItem(STORAGE_KEYS.ACTIVE_BRAND_ID, matchedBrand.id);
         }
       } else {
         set({ activeBrand: null });
         localStorage.removeItem(STORAGE_KEYS.ACTIVE_BRAND_ID);
       }
     } catch (error) {
-      console.error("Failed to fetch brands:", error);
-      toast.error("Không thể tải danh sách thương hiệu");
+      console.error('Failed to fetch brands:', error);
+      toast.error('Không thể tải danh sách thương hiệu');
     } finally {
       set({ loading: false });
     }
@@ -106,8 +112,39 @@ export const useBrandStore = create((set, get) => ({
     await get().fetchBrands(selectId);
   },
 
+  setDefaultBrand: async (brandId) => {
+    try {
+      await profileService.setDefaultBrand(brandId);
+      // Update auth store user object
+      const currentUser = useAuthStore.getState().user;
+      if (currentUser) {
+        useAuthStore.setState({ user: { ...currentUser, defaultBrandId: brandId } });
+      }
+      set({ defaultBrandId: brandId });
+      const brandName = get().brands.find(b => b.id === brandId)?.name;
+      toast.success(`Đã đặt “${brandName}” làm thương hiệu mặc định`);
+    } catch (error) {
+      toast.error(error.message || 'Không thể thiết lập thương hiệu mặc định');
+      throw error;
+    }
+  },
+
+  clearDefaultBrand: async () => {
+    try {
+      await profileService.setDefaultBrand(null);
+      const currentUser = useAuthStore.getState().user;
+      if (currentUser) {
+        useAuthStore.setState({ user: { ...currentUser, defaultBrandId: null } });
+      }
+      set({ defaultBrandId: null });
+      toast.success('Đã xóa thương hiệu mặc định');
+    } catch (error) {
+      toast.error(error.message || 'Không thể xóa thương hiệu mặc định');
+    }
+  },
+
   reset: () => {
-    set({ brands: [], activeBrand: null });
+    set({ brands: [], activeBrand: null, defaultBrandId: null });
     localStorage.removeItem(STORAGE_KEYS.ACTIVE_BRAND_ID);
   }
 }));

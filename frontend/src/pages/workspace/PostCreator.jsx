@@ -13,6 +13,7 @@ import { useFeatureGate } from "../../hooks/useFeatureGate";
 import { PRODUCT_IDS, FEATURE_GATE_REGISTRY } from "../../constants/products";
 import postService from "../../services/post.service";
 import { usePostCreatorForm } from "../../hooks/usePostCreatorForm";
+import { useAuthStore } from "../../store/useAuthStore";
 import { ShortsIcon } from "../../components/workspace/post-creator/ShortsIcon";
 import { MediaDropdown } from "../../components/workspace/post-creator/MediaDropdown";
 import { EmojiPickerPopover } from "../../components/workspace/post-creator/EmojiPickerPopover";
@@ -166,12 +167,36 @@ export function PostCreatorPage() {
     setDiscordOpen,
     albumMedia,
     setAlbumMedia,
+    postMedia,
+    setPostMedia,
     threadsWhoCanReply,
-    setThreadsWhoCanReply
+    setThreadsWhoCanReply,
+    notes,
+    setNotes
   } = usePostCreatorForm();
 
   const [threadsOpen, setThreadsOpen] = useState(false);
+  const [isNotesOpen, setIsNotesOpen] = useState(false);
+  const { user } = useAuthStore();
   const [isUploadingThumbnail, setIsUploadingThumbnail] = useState(false);
+  const [newNoteText, setNewNoteText] = useState("");
+
+  const handleAddNoteClick = () => {
+    if (!newNoteText.trim()) return;
+    const newNote = {
+      author: user?.fullName || user?.email || 'Thành viên',
+      timestamp: new Date().toISOString(),
+      text: newNoteText.trim()
+    };
+    setNotes(prev => [...prev, newNote]);
+    setNewNoteText("");
+    toast.success("Đã thêm ghi chú");
+  };
+
+  const handleDeleteNoteClick = (idx) => {
+    setNotes(prev => prev.filter((_, i) => i !== idx));
+    toast.success("Đã xóa ghi chú");
+  };
 
   const discordAccounts = activeBrand?.socialAccounts?.filter(sa => sa.platform === 'DISCORD' && sa.isConnected) || [];
 
@@ -700,9 +725,18 @@ export function PostCreatorPage() {
                          </button>
                        </div>
                   </div>
-                  <button className="flex items-center gap-2 px-3 py-1.5 text-gray-400 hover:text-gray-600 transition-colors cursor-pointer">
+                  <button 
+                    type="button"
+                    onClick={() => setIsNotesOpen(true)}
+                    className="flex items-center gap-2 px-3 py-1.5 text-gray-400 hover:text-gray-600 transition-colors cursor-pointer relative"
+                  >
                      <FileText size={16} />
-                     <span className="text-[11px] font-bold uppercase tracking-widest">Notes</span>
+                     <span className="text-[11px] font-bold uppercase tracking-widest font-sans">Notes</span>
+                     {notes && notes.length > 0 && (
+                       <span className="absolute -top-1 -right-1 bg-black text-white text-[8px] font-black w-4 h-4 rounded-full flex items-center justify-center border border-white animate-scale-in">
+                         {notes.length}
+                       </span>
+                     )}
                   </button>
               </div>
 
@@ -715,7 +749,7 @@ export function PostCreatorPage() {
                     className="w-full p-6 text-sm font-medium leading-relaxed outline-none min-h-[350px] resize-none"
                     placeholder="What's on your mind?"
                   />
-                  {(videoFile || uploadedVideoPath) && !isImageFile && (
+                  {(!postMedia || postMedia.length === 0) && (videoFile || uploadedVideoPath) && !isImageFile && (
                      <div className="px-6 py-3 border-t border-gray-50 bg-gray-50/50 flex items-center justify-between animate-in fade-in slide-in-from-top-1">
                        <div className="flex items-center gap-2 text-xs font-bold text-gray-700">
                          <Youtube className="text-red-500 fill-red-500" size={16} />
@@ -742,8 +776,54 @@ export function PostCreatorPage() {
                     </div>
                   ) : (
                     <>
+                      {/* Multiple thumbnails for standard posts */}
+                      {postMedia && postMedia.length > 0 ? (
+                        <div className="px-6 pb-4 bg-white flex flex-wrap gap-4 animate-in fade-in duration-300">
+                          {postMedia.map((item, index) => {
+                            const isItemVid = item.path && (
+                              item.path.endsWith(".mp4") || 
+                              item.path.endsWith(".mov") || 
+                              item.path.endsWith(".avi") || 
+                              item.path.includes("/video/upload/")
+                            );
+                            return (
+                              <div key={index} className="relative group">
+                                <div className="w-16 h-16 rounded-2xl overflow-hidden border border-gray-100 shadow-md bg-gray-50 flex items-center justify-center">
+                                  {isItemVid ? (
+                                    <video src={item.previewUrl} className="w-full h-full object-cover" />
+                                  ) : (
+                                    <img src={item.previewUrl} alt="Preview" className="w-full h-full object-cover" />
+                                  )}
+                                </div>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setPostMedia(prev => {
+                                      const next = prev.filter((_, i) => i !== index);
+                                      if (next.length > 0) {
+                                        setVideoFile(next[0].file);
+                                        setVideoFileUrl(next[0].previewUrl);
+                                        setUploadedVideoPath(next[0].path);
+                                      } else {
+                                        setVideoFile(null);
+                                        setVideoFileUrl("");
+                                        setUploadedVideoPath("");
+                                      }
+                                      return next;
+                                    });
+                                  }}
+                                  className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-red-500 hover:bg-red-600 text-white flex items-center justify-center cursor-pointer shadow-md opacity-0 group-hover:opacity-100 transition-opacity z-20"
+                                >
+                                  <X size={10} />
+                                </button>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      ) : null}
+
                       {/* Thumbnail Image display */}
-                      {isImageFile && videoFileUrl && (
+                      {(!postMedia || postMedia.length === 0) && isImageFile && videoFileUrl && (
                         <div className="px-6 pb-4 bg-white flex flex-wrap gap-3 animate-in fade-in duration-300">
                           <div className="relative">
                             {/* Image Container with aspect ratio and rounded borders */}
@@ -1640,19 +1720,47 @@ export function PostCreatorPage() {
         <div className="flex-[0.8] flex flex-col bg-[#F3F4F6]">
            {/* Preview Toolbar */}
            <div className="p-6 flex items-center justify-between">
-              <div className="w-10 h-10 rounded-full bg-white flex items-center justify-center shadow-sm">
-                 {activePlatform === 'youtube' ? (
-                    <Youtube className="text-[#FF0000] fill-[#FF0000]" size={20} />
-                 ) : activePlatform === 'tiktok' ? (
-                    <svg className="w-5 h-5 text-black fill-current" viewBox="0 0 24 24">
-                       <path d="M12.53.02C13.84 0 15.14.01 16.44 0c.08 1.53.63 3.09 1.75 4.17 1.12 1.11 2.7 1.62 4.24 1.79v4.03c-1.44-.17-2.89-.6-4.09-1.5-1.1-1.02-1.7-2.48-1.9-3.96-.03 2.49 0 4.99 0 7.48-.02 1.9-.38 3.82-1.39 5.43-1.46 2.42-4.13 3.84-6.93 3.55-3.05-.2-5.78-2.44-6.39-5.46-.73-3.27.97-6.9 4.13-7.91 1.09-.34 2.24-.39 3.37-.2v4.02c-1.22-.32-2.58-.09-3.55.74-.95.83-1.29 2.19-1.03 3.4.31 1.65 1.84 2.91 3.53 2.78 1.94-.04 3.42-1.8 3.25-3.73-.02-2.91 0-5.83 0-8.74.02-3.11-.02-6.22.02-9.33z"/>
-                    </svg>
-                 ) : activePlatform === 'instagram' ? (
-                     <Instagram className="text-[#DD2A7B]" size={20} />
-                  ) : (
-                    <svg className="w-5 h-5 text-[#1877F2] fill-[#1877F2]" viewBox="0 0 24 24">
-                       <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
-                    </svg>
+              <div className="flex items-center gap-2">
+                 {selectedPlatforms.map((platform) => {
+                    const isActive = platform === activePlatform;
+                    return (
+                       <button
+                          key={platform}
+                          type="button"
+                          onClick={() => setActivePlatform(platform)}
+                          title={`Switch to ${platform} preview`}
+                          className={`w-10 h-10 rounded-full flex items-center justify-center shadow-sm transition-all cursor-pointer hover:scale-105 ${
+                             isActive ? 'bg-black text-white scale-110' : 'bg-white text-gray-500 hover:bg-gray-100 hover:text-black'
+                          }`}
+                       >
+                          {platform === 'youtube' ? (
+                             <Youtube size={18} className={isActive ? 'text-white fill-white' : 'text-[#FF0000] fill-[#FF0000]'} />
+                          ) : platform === 'tiktok' ? (
+                             <svg className={`w-4.5 h-4.5 ${isActive ? 'text-white fill-white' : 'text-black fill-current'}`} viewBox="0 0 24 24">
+                                <path d="M12.53.02C13.84 0 15.14.01 16.44 0c.08 1.53.63 3.09 1.75 4.17 1.12 1.11 2.7 1.62 4.24 1.79v4.03c-1.44-.17-2.89-.6-4.09-1.5-1.1-1.02-1.7-2.48-1.9-3.96-.03 2.49 0 4.99 0 7.48-.02 1.9-.38 3.82-1.39 5.43-1.46 2.42-4.13 3.84-6.93 3.55-3.05-.2-5.78-2.44-6.39-5.46-.73-3.27.97-6.9 4.13-7.91 1.09-.34 2.24-.39 3.37-.2v4.02c-1.22-.32-2.58-.09-3.55.74-.95.83-1.29 2.19-1.03 3.4.31 1.65 1.84 2.91 3.53 2.78 1.94-.04 3.42-1.8 3.25-3.73-.02-2.91 0-5.83 0-8.74.02-3.11-.02-6.22.02-9.33z"/>
+                             </svg>
+                          ) : platform === 'instagram' ? (
+                             <Instagram size={18} className={isActive ? 'text-white' : 'text-[#DD2A7B]'} />
+                          ) : platform === 'linkedin' ? (
+                             <Linkedin size={18} className={isActive ? 'text-white' : 'text-[#0077B5] fill-[#0077B5]'} />
+                          ) : platform === 'telegram' ? (
+                             <Send size={16} className={`rotate-45 ${isActive ? 'text-white' : 'text-[#0088cc] fill-[#0088cc]'}`} />
+                          ) : platform === 'discord' ? (
+                             <MessageSquare size={18} className={isActive ? 'text-white' : 'text-[#5865F2]'} />
+                          ) : platform === 'threads' ? (
+                             <span className="text-[10px] font-black tracking-tight">Th</span>
+                          ) : (
+                             <svg className={`w-4.5 h-4.5 ${isActive ? 'text-white fill-white' : 'text-[#1877F2] fill-[#1877F2]'}`} viewBox="0 0 24 24">
+                                <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
+                             </svg>
+                          )}
+                       </button>
+                    );
+                 })}
+                 {selectedPlatforms.length === 0 && (
+                    <div className="w-10 h-10 rounded-full bg-white flex items-center justify-center shadow-sm text-gray-300">
+                       <AlertCircle size={20} />
+                    </div>
                  )}
               </div>
               <div className="flex gap-2 bg-white/50 p-1 rounded-2xl backdrop-blur-md">
@@ -1728,24 +1836,31 @@ export function PostCreatorPage() {
           isOpen={showUploadModal}
           initialTab={uploadModalTab}
           brandId={activeBrand?.id}
+          multiple={!isUploadingThumbnail}
           onClose={() => {
             setShowUploadModal(false);
             setIsUploadingThumbnail(false);
           }}
-          onAccept={(file, path) => {
+          onAccept={(result, path) => {
             if (isUploadingThumbnail) {
               setYoutubeThumbnail(path);
               setIsUploadingThumbnail(false);
             } else {
-              if (file) {
-                setVideoFile(file);
-                const previewUrl = URL.createObjectURL(file);
-                setVideoFileUrl(previewUrl);
-              } else {
-                setVideoFile(null);
-                setVideoFileUrl(path);
-              }
-              setUploadedVideoPath(path);
+              const items = Array.isArray(result) ? result : [{ file: result, path, previewUrl: result ? URL.createObjectURL(result) : path }];
+              setPostMedia(prev => {
+                const newItems = items.map(item => ({
+                  file: item.file,
+                  previewUrl: item.previewUrl || item.path,
+                  path: item.path
+                }));
+                const updated = [...prev, ...newItems];
+                if (updated.length > 0) {
+                  setVideoFile(updated[0].file);
+                  setVideoFileUrl(updated[0].previewUrl);
+                  setUploadedVideoPath(updated[0].path);
+                }
+                return updated;
+              });
               setImageTransform({ rotation: 0, flipH: false, flipV: false, filter: 'none' }); // reset transform on new upload
             }
           }}
@@ -2014,6 +2129,111 @@ export function PostCreatorPage() {
         )}
         </div>
       </div>
+
+      {/* Modal Ghi chú nội bộ (Team Notes) */}
+      {isNotesOpen && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[100] p-4 animate-in fade-in duration-200">
+          <div className="bg-white rounded-[32px] shadow-[0_20px_50px_rgba(0,0,0,0.15)] border border-gray-100 w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200 p-6 flex flex-col max-h-[80vh] text-left">
+            {/* Header */}
+            <div className="flex items-start justify-between pb-4 border-b border-gray-100">
+              <div className="space-y-1">
+                <div className="flex items-center gap-2">
+                  <FileText size={18} className="text-gray-800" />
+                  <h3 className="text-base font-bold text-[#0A0A0A] tracking-tight">Thảo luận & Ghi chú nội bộ</h3>
+                </div>
+                <p className="text-[11px] text-gray-400 font-semibold leading-relaxed uppercase tracking-widest">
+                  Ghi chú chỉ hiển thị trong nội bộ team
+                </p>
+              </div>
+              <button 
+                onClick={() => setIsNotesOpen(false)}
+                className="text-gray-400 hover:text-black transition-colors cursor-pointer p-1 rounded-full hover:bg-gray-100"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            {/* Notes List */}
+            <div className="flex-1 overflow-y-auto py-4 space-y-3.5 scrollbar-thin max-h-[40vh]">
+              {!notes || notes.length === 0 ? (
+                <div className="py-12 flex flex-col items-center justify-center text-center space-y-3 text-gray-400">
+                  <div className="p-4 bg-gray-50 rounded-2xl">
+                    <MessageSquare size={24} className="text-gray-300" />
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-[11px] font-black uppercase tracking-wider text-gray-400">Chưa có ghi chú nào</p>
+                    <p className="text-[12px] text-gray-400 font-medium px-6">Hãy viết lời nhắn hoặc lưu ý đầu tiên cho bài viết này.</p>
+                  </div>
+                </div>
+              ) : (
+                notes.map((note, index) => {
+                  const initials = note.author ? note.author.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase() : 'M';
+                  const hash = note.author ? note.author.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0) : index;
+                  const bgColors = ["bg-[#E6F4EA] text-[#137333]", "bg-[#FEF7E0] text-[#B06000]", "bg-[#FCE8E6] text-[#C5221F]", "bg-[#F3F4F6] text-[#1F2937]", "bg-[#E4F7F6] text-[#00796B]"];
+                  const badgeStyle = bgColors[hash % bgColors.length];
+                  
+                  return (
+                    <div key={index} className="flex gap-3 group animate-in fade-in slide-in-from-bottom-2 duration-200">
+                      <div className={`w-8 h-8 rounded-xl flex items-center justify-center text-[10px] font-black uppercase tracking-widest shrink-0 ${badgeStyle}`}>
+                        {initials}
+                      </div>
+                      <div className="flex-1 min-w-0 bg-gray-50 rounded-2xl p-3.5 relative">
+                        <div className="flex items-center justify-between gap-2 mb-1">
+                          <span className="text-[11px] font-bold text-gray-800 truncate">{note.author}</span>
+                          <span className="text-[9px] text-gray-400 font-medium tracking-tight whitespace-nowrap">
+                            {new Date(note.timestamp).toLocaleString('vi-VN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' })}
+                          </span>
+                        </div>
+                        <p className="text-xs text-gray-700 font-medium leading-relaxed break-words whitespace-pre-wrap">{note.text}</p>
+                        
+                        {/* Delete button (hidden until hover) */}
+                        <button
+                          onClick={() => handleDeleteNoteClick(index)}
+                          className="absolute -top-1 -right-1 p-1 bg-white border border-gray-100 shadow-sm rounded-full text-gray-400 hover:text-red-500 hover:border-red-100 opacity-0 group-hover:opacity-100 transition-all cursor-pointer"
+                          title="Xóa ghi chú này"
+                        >
+                          <Trash2 size={12} />
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+
+            {/* Add Note Input Area */}
+            <div className="pt-4 border-t border-gray-100 space-y-3">
+              <textarea
+                placeholder="Nhập ghi chú hoặc phản hồi mới..."
+                value={newNoteText}
+                onChange={(e) => setNewNoteText(e.target.value)}
+                className="w-full px-4 py-3 bg-gray-50 border border-transparent rounded-2xl text-[12px] font-medium text-[#0A0A0A] outline-none focus:bg-white focus:border-gray-200 transition-all placeholder-gray-400 min-h-[80px] resize-none"
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    handleAddNoteClick();
+                  }
+                }}
+              />
+              <div className="flex items-center justify-between gap-3">
+                <span className="text-[10px] text-gray-400 font-semibold uppercase tracking-widest">
+                  Enter để gửi nhanh
+                </span>
+                <button
+                  type="button"
+                  onClick={handleAddNoteClick}
+                  disabled={!newNoteText.trim()}
+                  className="flex items-center gap-1.5 px-5 py-2.5 bg-[#0A0A0A] hover:bg-black disabled:bg-gray-100 disabled:text-gray-400 text-white text-[11px] font-black uppercase tracking-widest rounded-2xl transition-all cursor-pointer shadow-md hover:shadow-lg disabled:shadow-none"
+                >
+                  <span>Lưu ghi chú</span>
+                  <Send size={12} className="rotate-45" />
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {blockedProductId && (
         <div className="fixed inset-0 z-[3000] flex items-center justify-center bg-black/60 backdrop-blur-sm">
           <div className="bg-white rounded-3xl p-8 max-w-md w-full shadow-2xl text-center relative overflow-hidden animate-in zoom-in-95 duration-200 mx-4">

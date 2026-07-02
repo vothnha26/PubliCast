@@ -267,6 +267,21 @@ class SubscriptionService {
 
     return { success: true, reason: 'ACTIVATED' };
   }
+
+  async getPlans() {
+    return subscriptionRepository.findAllActivePlans();
+  }
+
+  async cancelPendingPayment(transactionCode) {
+    const pending = await paymentRepository.findPendingByCode(transactionCode);
+    if (!pending) {
+      throw new Error('Không tìm thấy giao dịch thanh toán');
+    }
+    if (pending.status !== 'PENDING') {
+      throw new Error('Giao dịch không ở trạng thái chờ thanh toán');
+    }
+    return paymentRepository.updatePendingStatus(transactionCode, 'CANCELLED');
+  }
 }
 
 // DIP: Factory decides which gateway to use based on env

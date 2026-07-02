@@ -13,6 +13,7 @@ router.use(verifyAuth);
 router.get('/', teamController.getTeamMembers);
 router.post('/invite', teamController.inviteMember);
 router.put('/:id/role', teamController.updateMemberRole);
+router.post('/:id/resend-invite', teamController.resendInvitation);
 router.delete('/:id', teamController.removeMember);
 
 module.exports = router;

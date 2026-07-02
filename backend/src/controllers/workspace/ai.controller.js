@@ -44,6 +44,19 @@ class AiController {
     const post = await aiService.quickPost(userId, brandId, req.body);
     res.status(201).json(post);
   });
+
+  getHistory = asyncHandler(async (req, res) => {
+    const { brandId, page, limit } = req.query;
+    if (!brandId) {
+      return res.status(400).json({ error: 'Missing brandId parameter' });
+    }
+    const history = await aiService.getHistory(
+      brandId,
+      page ? parseInt(page) : 1,
+      limit ? parseInt(limit) : 10
+    );
+    res.json(history);
+  });
 }
 
 module.exports = new AiController();

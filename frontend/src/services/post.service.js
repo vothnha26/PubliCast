@@ -43,6 +43,19 @@ class PostService {
     const response = await apiService.get('/posts/platform-limits');
     return response.data;
   }
+
+  async getReviewers(brandId) {
+    const response = await apiService.get(`/brands/${brandId}/workflows/reviewers`);
+    return response.data;
+  }
+
+  async reassignReviewer(brandId, workflowId, reviewerIds, policy) {
+    const response = await apiService.put(`/brands/${brandId}/workflows/${workflowId}/reassign`, {
+      reviewerIds,
+      policy
+    });
+    return response.data;
+  }
 }
 
 const postService = new PostService();

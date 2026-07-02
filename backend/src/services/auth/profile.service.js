@@ -1,5 +1,6 @@
 const userRepository = require('../../repositories/auth/user.repository');
 const brandService = require('../../services/workspace/brand.service');
+const brandRepository = require('../../repositories/workspace/brand.repository');
 const { ERROR_MESSAGES } = require('../../utils/constants');
 
 class ProfileService {
@@ -39,6 +40,7 @@ class ProfileService {
       isActive: user.isActive,
       isEmailVerified: user.isEmailVerified,
       createdAt: user.createdAt,
+      defaultBrandId: user.defaultBrandId || null,
       accounts: user.accounts.map(acc => ({
         id: acc.id,
         provider: acc.provider,
@@ -212,6 +214,38 @@ class ProfileService {
     }
 
     return { message: 'Thay đổi mật khẩu thành công' };
+  }
+
+  /**
+   * Set default brand for user
+   * @param {string} userId
+   * @param {string|null} defaultBrandId - Brand ID to set as default, or null to clear
+   */
+  async setDefaultBrand(userId, defaultBrandId) {
+    // Validate user exists
+    const user = await userRepository.findById(userId);
+    if (!user) {
+      const error = new Error(ERROR_MESSAGES.USER_NOT_FOUND || 'User not found');
+      error.status = 404;
+      throw error;
+    }
+
+    // If clearing default brand
+    if (!defaultBrandId || defaultBrandId === 'NONE') {
+      await userRepository.updateProfile(userId, { defaultBrandId: null });
+      return { message: 'Đã xóa thương hiệu mặc định', defaultBrandId: null };
+    }
+
+    // Validate user can access this brand
+    const canAccess = await brandRepository.userCanAccessBrand(userId, defaultBrandId);
+    if (!canAccess) {
+      const error = new Error('Bạn không có quyền truy cập thương hiệu này');
+      error.status = 403;
+      throw error;
+    }
+
+    await userRepository.updateProfile(userId, { defaultBrandId });
+    return { message: 'Đã thiết lập thương hiệu mặc định thành công', defaultBrandId };
   }
 }
 

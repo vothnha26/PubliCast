@@ -33,6 +33,11 @@ export function SettingsPage() {
   const [newPassword, setNewPassword] = useState("");
   const [isUpdatingPassword, setIsUpdatingPassword] = useState(false);
 
+  // Billing States
+  const [currentPlan, setCurrentPlan] = useState(null);
+  const [paymentHistory, setPaymentHistory] = useState([]);
+  const [loadingBilling, setLoadingBilling] = useState(false);
+
   // Support History Tickets State (Closed tickets)
   const [tickets, setTickets] = useState([]);
   const [selectedTicket, setSelectedTicket] = useState(null);
@@ -119,6 +124,22 @@ export function SettingsPage() {
       fetchActiveSession();
     }
   }, [activeTab, activeBrand]);
+
+  useEffect(() => {
+    if (activeTab === "billing" && activeBrand?.id) {
+      setLoadingBilling(true);
+      Promise.all([
+        apiService.get(`/billing/subscriptions/current?brandId=${activeBrand.id}`),
+        apiService.get(`/billing/subscriptions/history?brandId=${activeBrand.id}`)
+      ])
+        .then(([currentRes, historyRes]) => {
+          setCurrentPlan(currentRes.data.data);
+          setPaymentHistory(historyRes.data.data || []);
+        })
+        .catch(console.error)
+        .finally(() => setLoadingBilling(false));
+    }
+  }, [activeTab, activeBrand?.id]);
 
   // Real-time socket event subscription for active support ticket
   useEffect(() => {
@@ -270,6 +291,24 @@ export function SettingsPage() {
       toast.error("Không thể tải nội dung phiên chat");
     } finally {
       setLoadingMessages(false);
+    }
+  };
+
+  const handleCancelPayment = async (transactionCode) => {
+    const isConfirmed = window.confirm("Bạn có chắc chắn muốn hủy yêu cầu thanh toán này không?");
+    if (!isConfirmed) return;
+
+    try {
+      await apiService.post('/billing/subscriptions/cancel', { transactionCode });
+      toast.success("Hủy yêu cầu thanh toán thành công!");
+      if (activeBrand?.id) {
+        setLoadingBilling(true);
+        const historyRes = await apiService.get(`/billing/subscriptions/history?brandId=${activeBrand.id}`);
+        setPaymentHistory(historyRes.data.data || []);
+        setLoadingBilling(false);
+      }
+    } catch (err) {
+      toast.error(err.response?.data?.message || err.message || "Không thể hủy yêu cầu thanh toán.");
     }
   };
 
@@ -814,19 +853,133 @@ export function SettingsPage() {
         )}
 
         {activeTab === "billing" && (
-          <div className="animate-in fade-in duration-300">
-             <div className="p-10 border-2 border-dashed border-gray-100 rounded-3xl flex flex-col items-center justify-center text-center">
-                <CreditCard size={48} className="text-gray-200 mb-4" />
-                <h3 className="text-lg font-bold text-[#0A0A0A]">Billing portal</h3>
-                <p className="text-sm text-gray-500 mt-2 max-w-sm">Manage your current subscription, invoices and payment methods.</p>
-                <button 
-                  onClick={() => navigate("/pricing")} 
-                  data-testid="billing-upgrade-btn"
-                  className="mt-6 px-8 py-2.5 bg-[#0A0A0A] text-white rounded-xl text-sm font-bold hover:bg-gray-800 transition-all shadow-md flex items-center gap-2"
-                >
-                   View Plans & Upgrade <ExternalLink size={14} />
-                </button>
-             </div>
+          <div className="space-y-8 animate-in fade-in duration-300">
+             {loadingBilling ? (
+               <div className="flex items-center justify-center p-20">
+                 <Loader2 className="animate-spin text-gray-400" size={32} />
+               </div>
+             ) : (
+               <>
+                 {/* Current Plan Card */}
+                 <div className="bg-slate-50 border border-slate-100 rounded-3xl p-6 flex flex-col md:flex-row md:items-center justify-between gap-6">
+                   <div className="space-y-2">
+                     <div className="flex items-center gap-2">
+                       <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Gói hiện tại</span>
+                       <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                         currentPlan?.status === 'ACTIVE' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
+                       }`}>
+                         {currentPlan?.status || 'Chưa đăng ký'}
+                       </span>
+                     </div>
+                     <h3 className="text-xl font-extrabold text-[#0A0A0A]">
+                       {currentPlan?.planName ? currentPlan.planName.charAt(0) + currentPlan.planName.slice(1).toLowerCase() : 'Free Plan'}
+                     </h3>
+                     {currentPlan?.periodEnd ? (
+                       <p className="text-xs text-gray-500 font-medium">
+                         Ngày hết hạn: <b>{new Date(currentPlan.periodEnd).toLocaleDateString('vi-VN', { year: 'numeric', month: 'long', day: 'numeric' })}</b>
+                       </p>
+                     ) : (
+                       <p className="text-xs text-gray-500 font-medium">
+                         Trải nghiệm các tính năng mở rộng của hệ thống.
+                       </p>
+                     )}
+                   </div>
+                   
+                   <button 
+                     onClick={() => navigate("/pricing")} 
+                     data-testid="billing-upgrade-btn"
+                     className="px-6 py-3 bg-[#0A0A0A] hover:bg-gray-800 text-white rounded-xl text-xs font-bold transition-all shadow-md flex items-center gap-2 self-start md:self-auto"
+                   >
+                     Nâng cấp gói dịch vụ <ExternalLink size={14} />
+                   </button>
+                 </div>
+
+                 {/* Payment History Section */}
+                 <div className="space-y-4">
+                   <div>
+                     <h3 className="text-sm font-bold text-[#0A0A0A]">Lịch sử giao dịch</h3>
+                     <p className="text-xs text-gray-400 mt-1">Các lượt thanh toán nâng cấp tài khoản và mua Add-on qua cổng thanh toán QR code.</p>
+                   </div>
+
+                   {paymentHistory.length === 0 ? (
+                     <div className="p-10 border border-gray-150 rounded-3xl flex flex-col items-center justify-center text-center bg-gray-50/30">
+                       <CreditCard size={32} className="text-gray-300 mb-2" />
+                       <p className="text-xs text-gray-400 font-medium">Chưa có giao dịch thanh toán nào được thực hiện.</p>
+                     </div>
+                   ) : (
+                     <div className="border border-gray-100 rounded-2xl overflow-hidden shadow-sm bg-white">
+                       <table className="w-full border-collapse text-left">
+                         <thead>
+                           <tr className="bg-slate-50 border-b border-gray-100">
+                             <th className="p-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Mã Giao Dịch</th>
+                             <th className="p-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Sản Phẩm</th>
+                             <th className="p-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Số Tiền</th>
+                             <th className="p-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Thời Gian</th>
+                             <th className="p-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Trạng Thái</th>
+                           </tr>
+                         </thead>
+                         <tbody>
+                           {paymentHistory.map((history) => {
+                             const isPaid = history.status === 'PAID';
+                             const isPending = history.status === 'PENDING';
+                             const isExpired = history.status === 'EXPIRED';
+                             const isCancelled = history.status === 'CANCELLED';
+                             
+                             let statusLabel = 'Đang chờ';
+                             let statusClass = 'bg-amber-100 text-amber-700';
+                             if (isPaid) {
+                               statusLabel = 'Thành công';
+                               statusClass = 'bg-green-100 text-green-700';
+                             } else if (isExpired) {
+                               statusLabel = 'Đã hết hạn';
+                               statusClass = 'bg-gray-100 text-gray-600';
+                             } else if (isCancelled) {
+                               statusLabel = 'Đã hủy';
+                               statusClass = 'bg-red-100 text-red-700';
+                             } else if (history.status === 'UNDERPAID') {
+                               statusLabel = 'Thiếu tiền';
+                               statusClass = 'bg-red-100 text-red-700';
+                             }
+
+                             const productName = history.plan 
+                               ? `Nâng cấp gói ${history.plan.name.charAt(0) + history.plan.name.slice(1).toLowerCase()}` 
+                               : history.addon 
+                                 ? `Mua Add-on: ${history.addon.name}` 
+                                 : 'Thanh toán dịch vụ';
+
+                             return (
+                               <tr key={history.id} className="border-b border-gray-100 hover:bg-slate-50/40 transition-colors">
+                                 <td className="p-4 text-xs font-mono text-gray-600 font-bold">{history.transactionCode}</td>
+                                 <td className="p-4 text-xs font-medium text-gray-700">{productName}</td>
+                                 <td className="p-4 text-xs font-bold text-gray-900">{Number(history.amount).toLocaleString('vi-VN')} VND</td>
+                                 <td className="p-4 text-xs text-gray-500 font-medium font-sans">
+                                   {new Date(history.createdAt).toLocaleString('vi-VN')}
+                                 </td>
+                                 <td className="p-4">
+                                   <div className="flex items-center gap-2">
+                                     <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${statusClass}`}>
+                                       {statusLabel}
+                                     </span>
+                                     {isPending && (
+                                       <button
+                                         onClick={() => handleCancelPayment(history.transactionCode)}
+                                         className="text-[10px] font-bold text-red-500 hover:text-red-700 hover:underline transition-all active:scale-95 cursor-pointer bg-transparent border-none p-0 outline-none"
+                                       >
+                                         Hủy
+                                       </button>
+                                     )}
+                                   </div>
+                                 </td>
+                               </tr>
+                             );
+                           })}
+                         </tbody>
+                       </table>
+                     </div>
+                   )}
+                 </div>
+               </>
+             )}
           </div>
         )}
       </div>

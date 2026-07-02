@@ -22,6 +22,11 @@ class ProfileService {
     const response = await apiService.put('/profile/edit', payload);
     return response.data;
   }
+
+  async setDefaultBrand(brandId) {
+    const response = await apiService.put('/profile/default-brand', { defaultBrandId: brandId });
+    return response.data;
+  }
 }
 
 const profileService = new ProfileService();

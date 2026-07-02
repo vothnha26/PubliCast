@@ -24,7 +24,7 @@ export function Sidebar() {
       items: [
         { icon: <LayoutDashboard size={15} />, label: "Dashboard", path: "/dashboard" },
         { icon: <Calendar size={15} />, label: "Planner", path: "/planner", badge: 12 },
-        { icon: <TrendingUp size={15} />, label: "Analytics", path: "/analytics" },
+        { icon: <Image size={15} />, label: "Media Library", path: "/media-library" },
       ] },
     {
       label: "Livestream",
@@ -39,7 +39,6 @@ export function Sidebar() {
       label: "Content",
       items: [
         { icon: <BookOpen size={15} />, label: "Content Planner", path: "/planner" },
-        { icon: <Image size={15} />, label: "Media Library", path: "/media-library" },
         { icon: <Link2 size={15} />, label: "SmartLinks", path: "/smartlinks" },
       ] },
     {

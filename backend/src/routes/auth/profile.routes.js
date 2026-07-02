@@ -76,4 +76,11 @@ router.put(
   profileController.changePassword
 );
 
+// Set default brand - requires authentication
+router.put(
+  '/profile/default-brand',
+  verifyAuth,
+  profileController.setDefaultBrand
+);
+
 module.exports = router;

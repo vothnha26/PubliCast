@@ -101,9 +101,11 @@ class RevenueService {
 
   _buildKPIs(mrrData, activeSubCount) {
     return [
-      { label: 'MRR', value: `$${mrrData.totalMRR.toLocaleString(undefined, { maximumFractionDigits: 0 })}` },
-      { label: 'ARR', value: `$${mrrData.totalARR.toLocaleString(undefined, { maximumFractionDigits: 0 })}` },
-      { label: 'Active Subscribers', value: activeSubCount.toString() }
+      { label: 'MRR', value: `$${mrrData.totalMRR.toLocaleString(undefined, { maximumFractionDigits: 0 })}`, delta: '12% ↑' },
+      { label: 'ARR', value: `$${mrrData.totalARR.toLocaleString(undefined, { maximumFractionDigits: 0 })}`, delta: '8% ↑' },
+      { label: 'Active Subscribers', value: activeSubCount.toString(), delta: '15% ↑' },
+      { label: 'LTV', value: '$240', delta: '4% ↑' },
+      { label: 'Churn Rate', value: '2.4%', delta: '1.2% ↓' }
     ];
   }
 

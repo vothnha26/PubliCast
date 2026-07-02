@@ -62,39 +62,59 @@ class AnalyticsFacade {
         followers = acc.discordAccount.memberCount;
       }
 
-      // Count posts published in this channel
-      const postsCount = await prisma.post.count({
-        where: {
-          brandId,
-          status: 'PUBLISHED',
-          targetPlatforms: {
-            contains: acc.platform
-          },
-          publishedAt: {
-            gte: dateFrom,
-            lte: dateTo
-          }
-        }
-      });
-
-      // Get the latest analytics record from DB for this account within range
-      const latestAnalytics = await prisma.analytics.findFirst({
+      // Get analytics record for this account:
+      // 1. Ưu tiên record mới nhất trong khoảng dateFrom-dateTo của report
+      // 2. Fallback: lấy record mới nhất bất kỳ (tránh trả về 0 khi sync chưa đúng kỳ)
+      let latestAnalytics = await prisma.analytics.findFirst({
         where: {
           socialAccountId: acc.id,
-          dateFrom: {
-            gte: dateFrom
-          },
-          dateTo: {
-            lte: dateTo
-          }
+          dateFrom: { gte: dateFrom },
+          dateTo: { lte: dateTo }
         },
-        include: {
-          socialAnalytics: true
-        },
-        orderBy: {
-          fetchedAt: 'desc'
-        }
+        include: { socialAnalytics: true },
+        orderBy: { fetchedAt: 'desc' }
       });
+
+      // Fallback: nếu không có record trong khoảng, lấy record mới nhất
+      if (!latestAnalytics) {
+        latestAnalytics = await prisma.analytics.findFirst({
+          where: { socialAccountId: acc.id },
+          include: { socialAnalytics: true },
+          orderBy: { fetchedAt: 'desc' }
+        });
+      }
+
+      // Count posts published in this channel
+      let postsCount = 0;
+      if (latestAnalytics && latestAnalytics.socialAnalytics) {
+        if (latestAnalytics.socialAnalytics.audienceDemographicsJson) {
+          try {
+            const rawJson = JSON.parse(latestAnalytics.socialAnalytics.audienceDemographicsJson);
+            if (rawJson.summary && typeof rawJson.summary.totalContent === 'number') {
+              postsCount = rawJson.summary.totalContent;
+            }
+          } catch (e) {
+            // ignore
+          }
+        }
+      }
+
+      // Fallback: đếm số lượng post trong DB
+      if (postsCount === 0) {
+        postsCount = await prisma.post.count({
+          where: {
+            brandId,
+            status: 'PUBLISHED',
+            targetPlatforms: {
+              contains: acc.platform
+            },
+            publishedAt: {
+              gte: dateFrom,
+              lte: dateTo
+            }
+          }
+        });
+      }
 
       let channelReach = 0;
       let channelImpressions = 0;
@@ -151,7 +171,66 @@ class AnalyticsFacade {
       });
     }
 
-    // 4. Query Published Posts to find top performing posts
+    // 4. Query & Fetch published posts from all active channels to find top performing posts
+    const allPlatformPosts = [];
+    const socialPlatformFactory = require('../social/social-platform.factory');
+
+    for (const acc of activeAccounts) {
+      let followers = 0;
+      if (acc.platform === 'YOUTUBE' && acc.youtubeChannel) {
+        followers = acc.youtubeChannel.subscribersCount;
+      } else if (acc.platform === 'FACEBOOK' && acc.facebookPage) {
+        followers = acc.facebookPage.followersCount;
+      } else if (acc.platform === 'INSTAGRAM' && acc.instagramAccount) {
+        followers = acc.instagramAccount.followersCount;
+      } else if (acc.platform === 'TIKTOK' && acc.tikTokAccount) {
+        followers = acc.tikTokAccount.followersCount;
+      } else if (acc.platform === 'LINKEDIN' && acc.linkedInAccount) {
+        followers = acc.linkedInAccount.followersCount;
+      } else if (acc.platform === 'TELEGRAM' && acc.telegramAccount) {
+        followers = acc.telegramAccount.memberCount;
+      } else if (acc.platform === 'DISCORD' && acc.discordAccount) {
+        followers = acc.discordAccount.memberCount;
+      }
+
+      try {
+        const service = socialPlatformFactory.getService(acc.platform);
+        // Fetch published videos/posts from social platform API
+        const apiResult = await service.getPublishedVideos(brandId, null, 20);
+        const apiPosts = apiResult?.videos || apiResult?.posts || apiResult?.data || [];
+
+        if (Array.isArray(apiPosts)) {
+          apiPosts.forEach(post => {
+            const pubDate = post.publishedAt ? new Date(post.publishedAt) : null;
+            // Check if post falls within the date range
+            if (pubDate && pubDate >= dateFrom && pubDate <= dateTo) {
+              const likes = post.likes || 0;
+              const comments = post.comments || 0;
+              const shares = post.shares || 0;
+              const viewsOrReach = post.views || post.reach || 0;
+
+              const denominator = viewsOrReach > 0 ? viewsOrReach : (followers || 1000);
+              const engagementRate = parseFloat((((likes + comments + shares) / denominator) * 100).toFixed(2));
+
+              allPlatformPosts.push({
+                id: post.id || post.platformPostId,
+                title: post.title || post.caption || 'Không có tiêu đề',
+                caption: post.caption || '',
+                platform: acc.platform,
+                likes,
+                comments,
+                shares,
+                engagementRate
+              });
+            }
+          });
+        }
+      } catch (err) {
+        console.warn(`[Report Sync] Failed to fetch live posts for platform ${acc.platform}:`, err.message);
+      }
+    }
+
+    // Also fetch posts from our local database to ensure scheduled/published app posts are included
     const dbPosts = await prisma.post.findMany({
       where: {
         brandId,
@@ -161,29 +240,29 @@ class AnalyticsFacade {
           lte: dateTo
         }
       },
-      take: 10,
+      take: 20,
       orderBy: {
         publishedAt: 'desc'
       }
     });
 
-    const topPosts = [];
     for (const post of dbPosts) {
-      // Parse platforms
       let platform = 'FACEBOOK';
       try {
         if (post.targetPlatforms) {
-          const parsed = JSON.parse(post.targetPlatforms);
-          if (Array.isArray(parsed) && parsed.length > 0) platform = parsed[0];
-          else if (typeof parsed === 'string') platform = parsed;
+          const parts = post.targetPlatforms.split(',').map(p => p.trim()).filter(Boolean);
+          if (parts.length > 0) platform = parts[0];
         }
       } catch (e) {
-        if (typeof post.targetPlatforms === 'string') {
-          platform = post.targetPlatforms;
-        }
+        platform = 'FACEBOOK';
       }
 
       const platformUpper = platform.toUpperCase();
+      
+      // Avoid duplicates if already fetched via API
+      const isDuplicate = allPlatformPosts.some(ap => ap.id === post.platformPostId || ap.id === post.id);
+      if (isDuplicate) continue;
+
       let likes = 0;
       let comments = 0;
       let shares = 0;
@@ -226,11 +305,10 @@ class AnalyticsFacade {
         }
       }
 
-      // Calculate post engagement rate
       const denominator = reachOrViews > 0 ? reachOrViews : (totalFollowers || 1000);
       const engagementRate = parseFloat((((likes + comments + shares) / denominator) * 100).toFixed(2));
 
-      topPosts.push({
+      allPlatformPosts.push({
         id: post.id,
         title: post.title,
         caption: post.caption,
@@ -242,9 +320,9 @@ class AnalyticsFacade {
       });
     }
 
-    // Sort top posts by engagement rate
-    topPosts.sort((a, b) => b.engagementRate - a.engagementRate);
-    const finalTopPosts = topPosts.slice(0, 5);
+    // Sort by engagement rate descending and get top 5
+    allPlatformPosts.sort((a, b) => b.engagementRate - a.engagementRate);
+    const finalTopPosts = allPlatformPosts.slice(0, 5);
 
     // 5. Aggregate overall metrics
     let totalReach = 0;

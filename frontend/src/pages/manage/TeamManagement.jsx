@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
-import { Search, UserPlus, MoreHorizontal, Check, X, Mail, Shield, User, Loader2, Plus, Edit2, Trash2, Settings, Lock, Calendar, FileText } from "lucide-react";
+import { Search, UserPlus, MoreHorizontal, Check, X, Mail, Shield, User, Loader2, Plus, Edit2, Trash2, Settings, Lock, Calendar, FileText, SendHorizonal, RefreshCw } from "lucide-react";
 import { useFilters } from "../../hooks/useFilters";
 import { useDebounce } from "../../hooks/useDebounce";
 import { useBrand } from "../../context/BrandContext";
@@ -45,6 +45,19 @@ export function TeamManagementPage() {
   
   const [selectedMember, setSelectedMember] = useState(null);
   const [selectedRole, setSelectedRole] = useState(null);
+  const [resendingId, setResendingId] = useState(null);
+
+  const handleResendInvite = async (member) => {
+    setResendingId(member.id);
+    try {
+      const res = await apiService.post(`/team/${member.id}/resend-invite`);
+      toast.success(res.data?.message || `Đã gửi lại lời mời tới ${member.email}!`);
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Gửi lại lời mời thất bại');
+    } finally {
+      setResendingId(null);
+    }
+  };
 
   // Sync debounced search to URL params
   useEffect(() => {
@@ -290,12 +303,28 @@ export function TeamManagementPage() {
                         <td className="px-6 py-4 text-[11px] text-gray-500 font-medium">{member.invitedBy}</td>
                         <td className="px-6 py-4 text-right">
                           {member.role !== SYSTEM_ROLES.OWNER && (
-                            <button 
-                              onClick={() => { setSelectedMember(member); setIsRoleOpen(true); }}
-                              className="p-2 text-gray-300 hover:text-black hover:bg-white rounded-xl transition-all opacity-0 group-hover:opacity-100"
-                            >
-                              <MoreHorizontal size={16} />
-                            </button>
+                            <div className="flex items-center justify-end gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                              {member.status === MEMBER_STATUS.PENDING && (
+                                <button
+                                  onClick={() => handleResendInvite(member)}
+                                  disabled={resendingId === member.id}
+                                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[10px] font-bold text-orange-600 bg-orange-50 hover:bg-orange-100 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                                  title="Gửi lại lời mời"
+                                >
+                                  {resendingId === member.id
+                                    ? <Loader2 size={11} className="animate-spin" />
+                                    : <RefreshCw size={11} />}
+                                  Gửi lại
+                                </button>
+                              )}
+                              <button 
+                                onClick={() => { setSelectedMember(member); setIsRoleOpen(true); }}
+                                className="p-2 text-gray-300 hover:text-black hover:bg-white rounded-xl transition-all"
+                                title="Quản lý thành viên"
+                              >
+                                <MoreHorizontal size={16} />
+                              </button>
+                            </div>
                           )}
                         </td>
                       </tr>
@@ -427,30 +456,80 @@ export function TeamManagementPage() {
 function InviteModal({ isOpen, onClose, activeBrandId, customRoles = [], onInviteSuccess }) {
   if (!isOpen) return null;
 
-  const [email, setEmail] = useState("");
+  const [emails, setEmails] = useState([]);
+  const [inputValue, setInputValue] = useState("");
   const [role, setRole] = useState(SYSTEM_ROLES.MEMBER);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const inputRef = useRef(null);
 
-  const handleInvite = async () => {
-    if (!email.trim()) {
-      toast.error("Vui lòng nhập địa chỉ email");
-      return;
+  const addEmailTag = (val) => {
+    const trimmed = val.trim().toLowerCase();
+    if (!trimmed) return;
+    const parsed = trimmed.split(/[\s,;]+/).filter(Boolean);
+    const validEmails = [];
+    const invalidEmails = [];
+    parsed.forEach(email => {
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        invalidEmails.push(email);
+      } else if (emails.includes(email)) {
+        // duplicate
+      } else {
+        validEmails.push(email);
+      }
+    });
+
+    if (invalidEmails.length > 0) {
+      toast.error(`Email không hợp lệ: ${invalidEmails.join(', ')}`);
     }
 
-    const emailList = email
-      .split(/[\s,;]+/)
-      .map(e => e.trim().toLowerCase())
-      .filter(Boolean);
+    if (validEmails.length > 0) {
+      setEmails(prev => [...prev, ...validEmails]);
+    }
+    setInputValue("");
+  };
 
-    if (emailList.length === 0) {
-      toast.error("Không tìm thấy địa chỉ email hợp lệ");
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter' || e.key === ',' || e.key === 'Tab') {
+      e.preventDefault();
+      addEmailTag(inputValue);
+    } else if (e.key === 'Backspace' && !inputValue) {
+      setEmails(prev => prev.slice(0, -1));
+    }
+  };
+
+  const handlePaste = (e) => {
+    e.preventDefault();
+    const pastedText = e.clipboardData.getData('text');
+    addEmailTag(pastedText);
+  };
+
+  const removeEmailTag = (index) => {
+    setEmails(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const handleInvite = async () => {
+    let finalEmails = [...emails];
+    if (inputValue.trim()) {
+      const trimmed = inputValue.trim().toLowerCase();
+      if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) {
+        if (!finalEmails.includes(trimmed)) {
+          finalEmails.push(trimmed);
+        }
+      } else {
+        toast.error(`Email không hợp lệ: ${trimmed}`);
+        return;
+      }
+    }
+
+    if (finalEmails.length === 0) {
+      toast.error("Vui lòng nhập ít nhất một địa chỉ email hợp lệ");
       return;
     }
 
     setIsSubmitting(true);
     try {
       const response = await apiService.post("/team/invite", {
-        emails: emailList,
+        emails: finalEmails,
         role,
         brandId: activeBrandId
       });
@@ -488,15 +567,40 @@ function InviteModal({ isOpen, onClose, activeBrandId, customRoles = [], onInvit
           <div className="space-y-2">
             <div className="flex justify-between items-center">
               <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Danh sách Email</label>
-              <span className="text-[9px] text-gray-400">Cách nhau bằng dấu phẩy hoặc xuống dòng</span>
+              <span className="text-[9px] text-gray-400">Nhập email rồi ấn Enter, Phẩy hoặc Tab</span>
             </div>
-            <div className="relative">
-              <textarea 
-                placeholder="colleague1@company.com, colleague2@company.com" 
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                rows={4}
-                className="w-full px-4 py-3 bg-gray-50 border border-transparent rounded-2xl text-xs outline-none focus:bg-white focus:border-black transition-all resize-none" 
+            <div 
+              onClick={() => inputRef.current?.focus()}
+              className="w-full px-4 py-3 bg-gray-50 border border-transparent rounded-2xl flex flex-wrap gap-2 cursor-text focus-within:bg-white focus-within:border-black focus-within:ring-1 focus-within:ring-black/10 transition-all min-h-[96px] overflow-y-auto max-h-40"
+            >
+              {emails.map((email, idx) => (
+                <div 
+                  key={idx} 
+                  className="bg-gray-100 text-gray-800 text-[11px] font-bold py-1 px-2.5 rounded-xl flex items-center gap-1 border border-gray-200"
+                >
+                  <span>{email}</span>
+                  <button 
+                    type="button" 
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      removeEmailTag(idx);
+                    }}
+                    className="text-gray-400 hover:text-red-500 hover:bg-gray-200 rounded-full p-0.5 transition-colors cursor-pointer"
+                  >
+                    <X size={10} />
+                  </button>
+                </div>
+              ))}
+              <input
+                ref={inputRef}
+                type="text"
+                value={inputValue}
+                onChange={(e) => setInputValue(e.target.value)}
+                onKeyDown={handleKeyDown}
+                onPaste={handlePaste}
+                onBlur={() => addEmailTag(inputValue)}
+                placeholder={emails.length === 0 ? "colleague1@company.com" : ""}
+                className="flex-1 min-w-[120px] text-xs outline-none bg-transparent py-1 font-medium placeholder-gray-400"
               />
             </div>
           </div>
