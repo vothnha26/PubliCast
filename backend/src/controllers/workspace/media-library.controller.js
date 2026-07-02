@@ -68,6 +68,24 @@ class MediaLibraryController {
       data: media
     });
   });
+
+  /**
+   * PATCH /api/media/:id/rename
+   */
+  renameMedia = asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    const { brandId, filename } = req.body;
+
+    if (!brandId) return res.status(400).json({ message: 'brandId is required' });
+    if (!filename) return res.status(400).json({ message: 'filename is required' });
+
+    const media = await mediaLibraryService.renameMedia(id, brandId, filename);
+
+    res.status(200).json({
+      message: 'Media file renamed successfully',
+      data: media
+    });
+  });
 }
 
 module.exports = new MediaLibraryController();

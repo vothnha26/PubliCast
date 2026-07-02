@@ -23,6 +23,7 @@ export function MediaLibraryPage() {
     clearSelection,
     deleteSelected,
     deleteFile,
+    renameFile,
     uploadFiles,
     detail,
     setDetail,
@@ -222,7 +223,7 @@ export function MediaLibraryPage() {
         </div>
 
         {/* Detail Panel */}
-        {detail && <MediaDetailPanel detail={detail} setDetail={setDetail} onDelete={deleteFile} />}
+        {detail && <MediaDetailPanel detail={detail} setDetail={setDetail} onDelete={deleteFile} onRename={renameFile} />}
       </div>
 
       {/* Pagination Footer */}

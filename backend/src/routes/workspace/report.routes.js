@@ -21,6 +21,24 @@ router.get('/', checkPermission('VIEW_ANALYTICS'), reportController.getReports);
 router.get('/preview-data', checkPermission('VIEW_ANALYTICS'), reportController.getPreviewData);
 
 /**
+ * POST /api/reports/send-test?brandId=...
+ * Generate and send report via email immediately
+ */
+router.post('/send-test', checkPermission('VIEW_ANALYTICS'), reportController.sendTestReport);
+
+/**
+ * GET /api/reports/schedule-config?brandId=...
+ * Get scheduled report configuration
+ */
+router.get('/schedule-config', checkPermission('VIEW_ANALYTICS'), reportController.getScheduleConfig);
+
+/**
+ * POST /api/reports/schedule-config?brandId=...
+ * Save scheduled report configuration
+ */
+router.post('/schedule-config', checkPermission('VIEW_ANALYTICS'), reportController.saveScheduleConfig);
+
+/**
  * POST /api/reports?brandId=...
  * Generate a new report
  */

@@ -6,77 +6,23 @@ import PaymentModal from "../../components/billing/PaymentModal";
 import { toast } from "sonner";
 import { useBrand } from "../../context/BrandContext";
 
-const PLANS = [
-  {
-    name: "Free",
-    price: { monthly: 0, annual: 0 },
-    subtitle: "Perfect to get started",
-    cta: "Current Plan",
-    ctaDisabled: true,
-    highlight: false,
-    features: {
-      social: ["1 Brand", "2 Social profiles", "10 Posts per month", "Content calendar", "Post scheduling"],
-      live: ["—", "—", "—", "—"],
-    }
-  },
-  {
-    name: "Starter",
-    price: { monthly: 2000, annual: 1700 },
-    annualTotal: 20400,
-    subtitle: "For solo creators",
-    cta: "Upgrade to Starter",
-    ctaDisabled: false,
-    highlight: false,
-    features: {
-      social: ["3 Brands", "7 Social profiles", "100 Posts per month", "Content calendar", "Post scheduling"],
-      live: ["2 Platforms", "720p Streaming", "Multi-stream", "Media library"],
-    }
-  },
-  {
-    name: "Pro",
-    price: { monthly: 2000, annual: 1700 },
-    annualTotal: 20400,
-    subtitle: "For growing teams",
-    cta: "Upgrade to Pro",
-    ctaDisabled: false,
-    highlight: true,
-    features: {
-      social: ["10 Brands", "Unlimited profiles", "500 Posts per month", "Content calendar", "Post scheduling"],
-      live: ["7 Platforms", "1080p Streaming", "Stream analytics", "Multi-stream"],
-    }
-  },
-  {
-    name: "Agency",
-    price: { monthly: 2000, annual: 1700 },
-    annualTotal: 20400,
-    subtitle: "For agencies & enterprises",
-    cta: "Upgrade to Agency",
-    ctaDisabled: false,
-    highlight: false,
-    features: {
-      social: ["Unlimited Brands", "Unlimited profiles", "Unlimited Posts", "Content calendar", "Post scheduling"],
-      live: ["All Platforms", "4K Streaming", "Stream analytics", "Multi-stream"],
-    }
-  },
-];
-
 const COMPARISON_ROWS = [
   { section: "Social Media", rows: [
-    { label: "Brands", vals: ["1", "3", "10", "Unlimited"] },
-    { label: "Social profiles", vals: ["2", "7", "Unlimited", "Unlimited"] },
-    { label: "Posts per month", vals: ["10", "100", "500", "Unlimited"] },
+    { label: "Brands", vals: ["1", "3", "10", "50"] },
+    { label: "Social profiles", vals: ["2", "5", "20", "100"] },
+    { label: "Posts per month", vals: ["10", "50", "300", "2000"] },
     { label: "Content calendar", vals: [true, true, true, true] },
     { label: "Post scheduling", vals: [true, true, true, true] },
     { label: "Media library", vals: [false, true, true, true] },
   ]},
   { section: "Livestream", rows: [
-    { label: "Platforms", vals: ["—", "2", "7", "All"] },
+    { label: "Platforms", vals: ["—", "2", "5", "10"] },
     { label: "Streaming quality", vals: ["—", "720p", "1080p", "4K"] },
     { label: "Stream analytics", vals: [false, false, true, true] },
     { label: "Multi-stream", vals: [false, true, true, true] },
   ]},
   { section: "Team & Approval", rows: [
-    { label: "Users", vals: ["1", "3", "10", "Unlimited"] },
+    { label: "Users", vals: ["1", "3", "10", "50"] },
     { label: "Custom roles", vals: [false, false, true, true] },
     { label: "Approval workflow", vals: [false, false, true, true] },
   ]},
@@ -95,6 +41,7 @@ const PLAN_TIER = { FREE: 0, STARTER: 1, PRO: 2, AGENCY: 3 };
 export function PricingPage() {
   const { activeBrand } = useBrand();
   const [currentPlan, setCurrentPlan] = useState(null);
+  const [dbPlans, setDbPlans] = useState([]);
   const [billingCycle, setBillingCycle] = useState("monthly");
   const [expandComparison, setExpandComparison] = useState(false);
   const [openFaq, setOpenFaq] = useState(null);
@@ -109,19 +56,72 @@ export function PricingPage() {
         .then(res => setCurrentPlan(res.data.data))
         .catch(console.error);
     }
+    
+    apiService.get('/billing/subscriptions/plans')
+      .then(res => {
+        const sorted = res.data.data.sort((a, b) => {
+          const rankA = PLAN_TIER[a.name.toUpperCase()] ?? 99;
+          const rankB = PLAN_TIER[b.name.toUpperCase()] ?? 99;
+          return rankA - rankB;
+        });
+        setDbPlans(sorted);
+      })
+      .catch(console.error);
+
     apiService.get('/billing/subscriptions/addons')
       .then(res => setAddonsList(res.data.data))
       .catch(console.error);
   }, [activeBrand?.id]);
 
+  // Transform dbPlans to the structure expected by the UI
+  const PLANS = dbPlans.map(dbPlan => {
+    const limit = dbPlan.planLimit || {};
+    
+    const monthlyPrice = Number(dbPlan.priceAmount);
+    const annualPrice = Math.round(monthlyPrice * 0.83); // 17% discount
+    const annualTotal = annualPrice * 12;
+
+    const name = dbPlan.name.charAt(0) + dbPlan.name.slice(1).toLowerCase();
+    const highlight = dbPlan.name.toUpperCase() === "PRO";
+    const cta = dbPlan.name.toUpperCase() === "FREE" ? "Current Plan" : `Upgrade to ${name}`;
+    const ctaDisabled = dbPlan.name.toUpperCase() === "FREE";
+
+    // Build features list dynamically from DB details
+    const features = [];
+    if (limit.maxBrands) features.push(`${limit.maxBrands} Brand${limit.maxBrands > 1 ? 's' : ''}`);
+    if (limit.maxSocialProfiles) features.push(`${limit.maxSocialProfiles} Social profile${limit.maxSocialProfiles > 1 ? 's' : ''}`);
+    if (limit.maxPostsPerMonth) features.push(`${limit.maxPostsPerMonth} Post${limit.maxPostsPerMonth > 1 ? 's' : ''} per month`);
+    if (limit.maxTeamSeats && limit.maxTeamSeats > 1) features.push(`${limit.maxTeamSeats} Team seats`);
+    
+    // Add active products
+    if (dbPlan.products && dbPlan.products.length > 0) {
+      dbPlan.products.forEach(p => {
+        features.push(p.name);
+      });
+    }
+
+    return {
+      id: dbPlan.id,
+      name,
+      dbName: dbPlan.name,
+      price: { monthly: monthlyPrice, annual: annualPrice },
+      annualTotal,
+      subtitle: dbPlan.description,
+      cta,
+      ctaDisabled,
+      highlight,
+      features
+    };
+  });
+
   // currentPlan.planName comes from DB as uppercase (e.g. "PRO", "STARTER")
   const currentTierRank = PLAN_TIER[currentPlan?.planName?.toUpperCase()] ?? 0;
 
   const handleUpgrade = async (plan) => {
-    const planTierRank = PLAN_TIER[plan.name.toUpperCase()] ?? 0;
+    const planTierRank = PLAN_TIER[plan.dbName?.toUpperCase()] ?? PLAN_TIER[plan.name.toUpperCase()] ?? 0;
     const isCurrentPlan =
-      currentPlan?.planName?.toUpperCase() === plan.name.toUpperCase()
-      || (plan.name === 'Free' && (!currentPlan || currentPlan.planName?.toUpperCase() === 'FREE'));
+      currentPlan?.planName?.toUpperCase() === plan.dbName?.toUpperCase()
+      || (plan.dbName?.toUpperCase() === 'FREE' && (!currentPlan || currentPlan.planName?.toUpperCase() === 'FREE'));
     const isLowerPlan = planTierRank < currentTierRank;
     if (plan.ctaDisabled || isCurrentPlan || isLowerPlan) return;
 
@@ -138,12 +138,8 @@ export function PricingPage() {
         return;
       }
 
-      // We should ideally fetch plan list from backend to get the exact UUID.
-      // Assuming for now that we pass the plan name or a known mapping.
-      // The backend initiates payment via planId, so we pass a placeholder or the name.
-      // In a full implementation, PLANS array would come from API.
       const res = await apiService.post('/billing/subscriptions/initiate', {
-        planId: plan.name,  // backend looks up by name as fallback
+        planId: plan.id,
         brandId: activeBrand.id,
         billingCycle: billingCycle === 'annual' ? 'ANNUAL' : 'MONTHLY'
       });
@@ -172,6 +168,14 @@ export function PricingPage() {
       toast.error(err.message || "Không thể khởi tạo mua Addon");
     }
   };
+
+  if (dbPlans.length === 0) {
+    return (
+      <div className="flex-1 flex items-center justify-center bg-[#F8F8F7]">
+        <div style={{ fontSize: 14, color: "#6B7280" }}>Đang tải cấu hình gói dịch vụ...</div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex-1 overflow-y-auto bg-[#F8F8F7]" style={{ padding: "32px 24px" }}>
@@ -289,7 +293,7 @@ export function PricingPage() {
             <div style={{ height: 0.5, background: "#E5E7EB", marginBottom: 14 }} />
 
             <div className="flex flex-col gap-1.5 mb-5">
-              {Object.entries(plan.features).flatMap(([, feats]) => feats).slice(0, 5).map((feat, i) => (
+              {plan.features.slice(0, 5).map((feat, i) => (
                 <div key={i} className="flex items-start gap-2">
                   {feat === "—" ? (
                     <Minus size={12} style={{ color: "#D1D5DB", marginTop: 1, flexShrink: 0 }} />

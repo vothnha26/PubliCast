@@ -131,6 +131,45 @@ class AiService {
       isLibrary: postData.isLibrary || false
     }, userId, brandId);
   }
+
+  async getHistory(brandId, page = 1, limit = 10) {
+    const skip = (page - 1) * limit;
+    const [items, total] = await Promise.all([
+      prisma.auditLog.findMany({
+        where: {
+          brandId,
+          action: 'AI_GENERATE_CONTENT'
+        },
+        orderBy: {
+          createdAt: 'desc'
+        },
+        skip,
+        take: limit,
+        include: {
+          user: {
+            select: {
+              name: true,
+              email: true
+            }
+          }
+        }
+      }),
+      prisma.auditLog.count({
+        where: {
+          brandId,
+          action: 'AI_GENERATE_CONTENT'
+        }
+      })
+    ]);
+
+    return {
+      items,
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit)
+    };
+  }
 }
 
 module.exports = new AiService();

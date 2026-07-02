@@ -4,12 +4,24 @@ import { usePostCreator } from "../../../context/PostCreatorContext";
 import { useConfirm } from "@/hooks/useConfirm";
 import { useBrandPermission } from "../../../hooks/useBrandPermission";
 
-export function MediaDetailPanel({ detail, setDetail, onDelete }) {
+export function MediaDetailPanel({ detail, setDetail, onDelete, onRename }) {
   const { openPostCreator } = usePostCreator();
   const confirm = useConfirm();
   const { hasPermission } = useBrandPermission();
   const hasCreatePermission = hasPermission('CREATE_POSTS');
   const hasDeletePermission = hasPermission('DELETE_POSTS');
+
+  const [fileName, setFileName] = React.useState(detail?.name || "");
+
+  React.useEffect(() => {
+    setFileName(detail?.name || "");
+  }, [detail]);
+
+  const handleRename = () => {
+    if (fileName && fileName.trim() !== "" && fileName !== detail?.name) {
+      onRename(detail.id, fileName.trim());
+    }
+  };
 
   if (!detail) return null;
 
@@ -59,10 +71,20 @@ export function MediaDetailPanel({ detail, setDetail, onDelete }) {
         <div className="space-y-4">
            <div className="p-3 bg-gray-50 rounded-xl border border-gray-100">
               <input 
-                defaultValue={detail.name}
+                value={fileName}
+                onChange={(e) => setFileName(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    handleRename();
+                  }
+                }}
+                onBlur={handleRename}
                 className="w-full bg-transparent border-none text-xs font-bold text-gray-800 focus:ring-0 outline-none"
               />
            </div>
+           <span className="text-[9px] text-gray-400 block px-1 -mt-2">
+             Nhấn Enter hoặc click ra ngoài để lưu tên mới
+           </span>
 
            <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1">

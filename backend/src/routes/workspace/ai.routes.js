@@ -11,6 +11,7 @@ router.use(verifyAuth);
 router.get('/config', aiController.getConfig);
 router.get('/settings', aiController.getSettings);
 router.put('/settings', aiController.updateSettings);
+router.get('/history', aiController.getHistory);
 router.post('/generate', requireFeature(PRODUCT_IDS.AI_CONTENT_ENGINE), aiController.generateContent);
 router.post('/quick-post', requireFeature(PRODUCT_IDS.AI_CONTENT_ENGINE), aiController.quickPost);
 

@@ -355,6 +355,26 @@ class PostService {
     if (p.metadata) {
       try { options = JSON.parse(p.metadata); } catch (e) {}
     }
+
+    // Format approval workflow info (latest workflow)
+    let approvalInfo = null;
+    if (p.approvalWorkflows && p.approvalWorkflows.length > 0) {
+      const latestWorkflow = p.approvalWorkflows[0];
+      approvalInfo = {
+        workflowId: latestWorkflow.id,
+        workflowStatus: latestWorkflow.status,
+        approvalPolicy: latestWorkflow.approvalPolicy,
+        requesterId: latestWorkflow.requesterId,
+        reviewers: (latestWorkflow.reviewers || []).map(r => ({
+          id: r.reviewer?.id,
+          name: r.reviewer?.name,
+          avatarUrl: r.reviewer?.avatarUrl,
+          status: r.status,
+          comment: r.comment
+        }))
+      };
+    }
+
     return {
       id: p.id,
       title: p.title,
@@ -366,11 +386,14 @@ class PostService {
       createdAt: p.createdAt,
       deletedAt: p.deletedAt,
       creator: p.creator?.name || 'Unknown',
+      creatorId: p.creator?.id,
+      creatorAvatar: p.creator?.avatarUrl,
       thumbnail: p.mediaThumbnailUrls ? p.mediaThumbnailUrls.split(SEPARATORS.COMMA)[0] : null,
       mediaUrls: p.mediaUrls ? p.mediaUrls.split(SEPARATORS.COMMA).map(m => m.trim()) : [],
       altText: p.altText,
       isLibrary: p.isLibrary,
-      options
+      options,
+      approvalInfo
     };
   }
 

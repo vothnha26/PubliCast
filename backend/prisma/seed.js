@@ -148,7 +148,7 @@ async function main() {
     data: {
       name: 'FREE',
       priceAmount: 0,
-      currency: 'USD',
+      currency: 'VND',
       billingCycle: 'MONTHLY',
       description: 'Free Plan for beginners',
       planLimitId: freeLimit.id,
@@ -160,8 +160,8 @@ async function main() {
   const starterPlan = await prisma.plan.create({
     data: {
       name: 'STARTER',
-      priceAmount: 19.00,
-      currency: 'USD',
+      priceAmount: 2000,
+      currency: 'VND',
       billingCycle: 'MONTHLY',
       description: 'Starter Plan for growing creators',
       planLimitId: starterLimit.id,
@@ -179,8 +179,8 @@ async function main() {
   const proPlan = await prisma.plan.create({
     data: {
       name: 'PRO',
-      priceAmount: 49.00,
-      currency: 'USD',
+      priceAmount: 3000,
+      currency: 'VND',
       billingCycle: 'MONTHLY',
       description: 'Professional Plan for marketers',
       planLimitId: proLimit.id,
@@ -203,8 +203,8 @@ async function main() {
   const agencyPlan = await prisma.plan.create({
     data: {
       name: 'AGENCY',
-      priceAmount: 199.00,
-      currency: 'USD',
+      priceAmount: 5000,
+      currency: 'VND',
       billingCycle: 'MONTHLY',
       description: 'Agency Plan for large teams',
       planLimitId: agencyLimit.id,
@@ -516,6 +516,49 @@ async function main() {
       specificTimes: '09:00,15:00,21:00',
       activeDays: 'MON,TUE,WED,THU,FRI,SAT,SUN',
       isActive: true
+    }
+  });
+
+  console.log('Seeding AIAssistant contexts for vothanhnha26@gmail.com...');
+  await prisma.aIAssistant.create({
+    data: {
+      brandId: brand1.id,
+      defaultTone: 'CREATIVE',
+      defaultLanguage: 'vi',
+      brandVoiceContext: 'PubliCast Sports là kênh tin tức và phân tích thể thao chuyên nghiệp, cập nhật liên tục mọi diễn biến nóng hổi, nhận định chuyên sâu và kết quả các trận đấu hấp dẫn tại ngày hội bóng đá lớn nhất hành tinh World Cup 2026.',
+      targetAudience: 'Người hâm mộ bóng đá Việt Nam, những người yêu thích tin tức thể thao và người theo dõi kỳ World Cup 2026.',
+      targetPlatforms: 'facebook,instagram,tiktok',
+      creditsLimit: 1000,
+      creditsUsed: 12,
+      usageCountThisMonth: 12
+    }
+  });
+
+  await prisma.aIAssistant.create({
+    data: {
+      brandId: brand2.id,
+      defaultTone: 'PROFESSIONAL',
+      defaultLanguage: 'vi',
+      brandVoiceContext: 'Nhà Tiên Tri World Cup 2026 - Kênh phân tích số liệu thống kê khoa học, dự đoán tỷ số bằng siêu máy tính, nhận định kèo đấu bóng đá chuyên nghiệp dựa trên phong độ các đội tuyển.',
+      targetAudience: 'Cộng đồng đam mê chiến thuật bóng đá, phân tích dữ liệu thể thao và người chơi Fantasy Cup.',
+      targetPlatforms: 'facebook,linkedin',
+      creditsLimit: 1000,
+      creditsUsed: 5,
+      usageCountThisMonth: 5
+    }
+  });
+
+  await prisma.aIAssistant.create({
+    data: {
+      brandId: brand3.id,
+      defaultTone: 'FRIENDLY',
+      defaultLanguage: 'vi',
+      brandVoiceContext: 'Võ Thanh Nhã Football Vlog - Nhật ký trải nghiệm không khí lễ hội World Cup 2026 tại 3 nước đồng chủ nhà Mỹ, Canada và Mexico. Chia sẻ khoảnh khắc ăn mừng sôi động, hậu trường sân vận động và văn hóa bóng đá đường phố.',
+      targetAudience: 'Người xem vlog thể thao, fan bóng đá thích khám phá văn hóa du lịch thể thao.',
+      targetPlatforms: 'tiktok,youtube,facebook',
+      creditsLimit: 1000,
+      creditsUsed: 0,
+      usageCountThisMonth: 0
     }
   });
 

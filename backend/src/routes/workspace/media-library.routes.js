@@ -41,4 +41,9 @@ router.post('/save-direct', mediaLibraryController.saveDirectMedia);
  */
 router.delete('/:id', mediaLibraryController.deleteMedia);
 
+/**
+ * PATCH /api/media/:id/rename
+ */
+router.patch('/:id/rename', mediaLibraryController.renameMedia);
+
 module.exports = router;

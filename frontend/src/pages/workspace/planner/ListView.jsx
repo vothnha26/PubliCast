@@ -3,7 +3,8 @@ import { useState, useEffect } from "react";
 import { 
   Search, Filter, MoreHorizontal, Plus, 
   Trash2, CheckCircle, Clock, AlertCircle,
-  ExternalLink, Eye, ChevronDown, Youtube, PlayCircle, Loader2, Facebook
+  ExternalLink, Eye, ChevronDown, Youtube, PlayCircle, Loader2, Facebook, Gem, RefreshCw,
+  Users, UserCheck, Edit2, X as XIcon
 } from "lucide-react";
 import { usePostCreator } from "../../../context/PostCreatorContext";
 import { PlatformIcon } from "@/components/shared/PlatformIcon";
@@ -38,6 +39,8 @@ export function ListView() {
   const { activeBrand } = useBrand();
   const [meta, setMeta] = useState({ total: 0, page: 1, totalPages: 1 });
   const [activeMenuId, setActiveMenuId] = useState(null);
+  const [repostingIds, setRepostingIds] = useState([]);
+  const [reviewerPanel, setReviewerPanel] = useState({ open: false, post: null, availableReviewers: [], selectedIds: [], policy: 'AT_LEAST_ONE', saving: false });
 
   const { openPostCreator } = usePostCreator();
   const { filters, updateFilters, clearFilters, searchParamsString } = useFilters({
@@ -194,7 +197,87 @@ export function ListView() {
     }
   };
 
+  const handleRepost = async (postId) => {
+    if (!activeBrand) return;
+    setRepostingIds(prev => [...prev, postId]);
+    const toastId = toast.loading("Đang tiến hành đăng lại bài viết...");
+    try {
+      await postService.updatePost(postId, {
+        brandId: activeBrand.id,
+        status: "published"
+      });
+      toast.success("Đã kích hoạt đăng lại bài viết thành công!", { id: toastId });
+      fetchPosts();
+    } catch (err) {
+      console.error(err);
+      toast.error(err.message || "Đăng lại bài viết thất bại.", { id: toastId });
+    } finally {
+      setRepostingIds(prev => prev.filter(id => id !== postId));
+    }
+  };
+
+  const openReviewerPanel = async (post) => {
+    if (!activeBrand || !post.approvalInfo) return;
+    try {
+      const res = await postService.getReviewers(activeBrand.id);
+      const available = res.data || [];
+      const currentIds = (post.approvalInfo.reviewers || []).map(r => r.id).filter(Boolean);
+      setReviewerPanel({
+        open: true,
+        post,
+        availableReviewers: available,
+        selectedIds: currentIds,
+        policy: post.approvalInfo.approvalPolicy || 'AT_LEAST_ONE',
+        saving: false
+      });
+    } catch {
+      toast.error('Không thể tải danh sách người duyệt');
+    }
+  };
+
+  const handleSaveReviewers = async () => {
+    const { post, selectedIds, policy } = reviewerPanel;
+    if (!post?.approvalInfo?.workflowId) return;
+    setReviewerPanel(p => ({ ...p, saving: true }));
+    try {
+      await postService.reassignReviewer(activeBrand.id, post.approvalInfo.workflowId, selectedIds, policy);
+      toast.success('Đã cập nhật người duyệt thành công');
+      setReviewerPanel(p => ({ ...p, open: false }));
+      fetchPosts();
+    } catch (err) {
+      toast.error(err.message || 'Không thể cập nhật người duyệt');
+      setReviewerPanel(p => ({ ...p, saving: false }));
+    }
+  };
+
+  const handleSaveToLibrary = async (post) => {
+    if (!activeBrand) return;
+    const toastId = toast.loading("Đang lưu bài viết thành template...");
+    try {
+      const templateData = {
+        brandId: activeBrand.id,
+        title: post.title ? `${post.title} (Template)` : "Untitled Template",
+        caption: post.caption,
+        type: post.type || "IMAGE",
+        targetPlatforms: post.platforms || [],
+        mediaUrls: post.mediaUrls || [],
+        mediaThumbnailUrls: post.thumbnail ? [post.thumbnail] : [],
+        isLibrary: true,
+        status: "DRAFT",
+        options: post.options || {}
+      };
+      await postService.createPost(templateData);
+      toast.success("Lưu bài viết vào Thư viện thành công!", { id: toastId });
+    } catch (err) {
+      console.error(err);
+      toast.error(err.message || "Lưu bài viết thất bại.", { id: toastId });
+    } finally {
+      setActiveMenuId(null);
+    }
+  };
+
   return (
+    <>
     <div className="flex-1 flex flex-col p-6 space-y-6">
       {/* Search & Actions Bar */}
       <div className="flex items-center justify-between">
@@ -283,6 +366,7 @@ export function ListView() {
                      <th className="px-4 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-[0.1em]">Scheduled For</th>
                      <th className="px-4 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-[0.1em]">Status</th>
                      <th className="px-4 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-[0.1em]">Author</th>
+                     <th className="px-4 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-[0.1em]">Reviewers</th>
                      <th className="px-6 py-4 text-right"></th>
                   </tr>
                </thead>
@@ -313,6 +397,7 @@ export function ListView() {
                               <div className="w-12 h-3 bg-gray-50 rounded" />
                            </div>
                         </td>
+                        <td className="px-4 py-5"><div className="w-8 h-8 rounded-full bg-gray-100" /></td>
                         <td className="px-6 py-5 text-right"><div className="w-8 h-8 bg-gray-100 rounded-lg inline-block" /></td>
                      </tr>
                   ))}
@@ -351,6 +436,7 @@ export function ListView() {
                      <th className="px-4 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-[0.1em]">Scheduled For</th>
                      <th className="px-4 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-[0.1em]">Status</th>
                      <th className="px-4 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-[0.1em]">Author</th>
+                     <th className="px-4 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-[0.1em]">Reviewers</th>
                      <th className="px-6 py-4 text-right"></th>
                   </tr>
                </thead>
@@ -419,9 +505,76 @@ export function ListView() {
                              <span className="text-[11px] font-medium text-gray-600">{post.creator}</span>
                           </div>
                        </td>
-                       <td className="px-6 py-5 text-right relative">
-                         <div className="flex items-center justify-end gap-1">
-                           <AccessGuard feature="DELETE_POSTS">
+                       <td className="px-4 py-5">
+                          {post.approvalInfo?.reviewers?.length > 0 ? (
+                            <div className="flex items-center gap-1">
+                              <div className="flex -space-x-1.5">
+                                {post.approvalInfo.reviewers.slice(0, 3).map(r => (
+                                  <div key={r.id} title={r.name} className={`w-6 h-6 rounded-full border-2 border-white flex items-center justify-center text-[9px] font-bold overflow-hidden shadow-sm ${
+                                    r.status === 'APPROVED' ? 'bg-emerald-100 text-emerald-700' :
+                                    r.status === 'REJECTED' ? 'bg-red-100 text-red-700' :
+                                    'bg-amber-100 text-amber-700'
+                                  }`}>
+                                    {r.avatarUrl ? <img src={r.avatarUrl} className="w-full h-full object-cover" /> : (r.name || '?').charAt(0)}
+                                  </div>
+                                ))}
+                                {post.approvalInfo.reviewers.length > 3 && (
+                                  <div className="w-6 h-6 rounded-full border-2 border-white bg-gray-100 flex items-center justify-center text-[9px] font-bold text-gray-500">
+                                    +{post.approvalInfo.reviewers.length - 3}
+                                  </div>
+                                )}
+                              </div>
+                              {post.status === 'pending_approval' && (
+                                <button
+                                  onClick={e => { e.stopPropagation(); openReviewerPanel(post); }}
+                                  className="ml-1 p-1 rounded-md text-gray-300 hover:text-amber-500 hover:bg-amber-50 transition-all opacity-0 group-hover:opacity-100"
+                                  title="Sửa người duyệt"
+                                >
+                                  <Edit2 size={11} />
+                                </button>
+                              )}
+                            </div>
+                          ) : (
+                            post.status === 'pending_approval' ? (
+                              <button
+                                onClick={e => { e.stopPropagation(); openReviewerPanel(post); }}
+                                className="flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-medium text-amber-600 bg-amber-50 border border-amber-100 hover:bg-amber-100 transition-all"
+                              >
+                                <Users size={10} /> Assign
+                              </button>
+                            ) : <span className="text-gray-300 text-[11px]">—</span>
+                          )}
+                        </td>
+                        <td className="px-6 py-5 text-right relative">
+                          <div className="flex items-center justify-end gap-1">
+                            {post.status?.toLowerCase() === "failed" && (
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleRepost(post.id);
+                                }}
+                                disabled={repostingIds.includes(post.id)}
+                                className="p-2 text-indigo-500 hover:text-indigo-700 hover:bg-indigo-50 disabled:bg-gray-50 disabled:text-gray-300 rounded-lg transition-all border border-transparent hover:border-indigo-100 cursor-pointer flex items-center justify-center shrink-0"
+                                title="Đăng lại bài viết ngay"
+                              >
+                                {repostingIds.includes(post.id) ? (
+                                  <Loader2 size={14} className="animate-spin" />
+                                ) : (
+                                  <RefreshCw size={14} />
+                                )}
+                              </button>
+                            )}
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleSaveToLibrary(post);
+                              }}
+                              className="p-2 text-teal-500 hover:text-teal-700 hover:bg-teal-50 rounded-lg transition-all border border-transparent hover:border-teal-100 cursor-pointer flex items-center justify-center shrink-0"
+                              title="Lưu thành Template"
+                            >
+                              <Gem size={14} />
+                            </button>
+                            <AccessGuard feature="DELETE_POSTS">
                              <button
                                onClick={(e) => {
                                  e.stopPropagation();
@@ -448,29 +601,53 @@ export function ListView() {
                           {activeMenuId === post.id && (
                              <>
                                <div className="fixed inset-0 z-40" onClick={() => setActiveMenuId(null)} />
-                               <div className="absolute right-6 top-12 w-36 bg-white rounded-2xl shadow-xl border border-gray-100 py-1.5 z-50 animate-in fade-in slide-in-from-top-1 text-left overflow-hidden">
-                                  <button 
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      openPostCreator({ post });
-                                      setActiveMenuId(null);
-                                    }}
-                                    className="w-full px-4 py-2 text-[11px] font-bold text-gray-700 hover:bg-gray-50 transition-all flex items-center gap-2 cursor-pointer"
-                                  >
-                                     <span>✏️</span> {hasCreatePermission ? 'Edit Post' : 'View Post'}
-                                  </button>
-                                  <AccessGuard feature="DELETE_POSTS">
-                                    <button 
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        handleDeletePost(post.id);
-                                      }}
-                                      className="w-full px-4 py-2 text-[11px] font-bold text-red-600 hover:bg-red-50/50 transition-all flex items-center gap-2 cursor-pointer border-t border-gray-50"
-                                    >
-                                       <span>🗑️</span> Delete Post
-                                    </button>
-                                  </AccessGuard>
-                               </div>
+                               <div className="absolute right-6 top-12 w-44 bg-white rounded-2xl shadow-xl border border-gray-100 py-1.5 z-50 animate-in fade-in slide-in-from-top-1 text-left overflow-hidden">
+                                   {post.status?.toLowerCase() === "failed" && (
+                                     <button 
+                                       onClick={(e) => {
+                                         e.stopPropagation();
+                                         handleRepost(post.id);
+                                         setActiveMenuId(null);
+                                       }}
+                                       disabled={repostingIds.includes(post.id)}
+                                       className="w-full px-4 py-2 text-[11px] font-bold text-indigo-600 hover:bg-indigo-50/50 transition-all flex items-center gap-2 cursor-pointer border-b border-gray-50"
+                                     >
+                                        <span>🔄</span> {repostingIds.includes(post.id) ? 'Đang đăng...' : 'Đăng lại ngay'}
+                                     </button>
+                                   )}
+                                   <button 
+                                     onClick={(e) => {
+                                       e.stopPropagation();
+                                       openPostCreator({ post });
+                                       setActiveMenuId(null);
+                                     }}
+                                     className="w-full px-4 py-2 text-[11px] font-bold text-gray-700 hover:bg-gray-50 transition-all flex items-center gap-2 cursor-pointer"
+                                   >
+                                      <span>✏️</span> {hasCreatePermission ? 'Edit Post' : 'View Post'}
+                                   </button>
+                                   <button 
+                                     onClick={(e) => {
+                                       e.stopPropagation();
+                                       handleSaveToLibrary(post);
+                                       setActiveMenuId(null);
+                                     }}
+                                     className="w-full px-4 py-2 text-[11px] font-bold text-teal-600 hover:bg-teal-50/50 transition-all flex items-center gap-2 cursor-pointer border-t border-gray-50"
+                                   >
+                                      <span>💎</span> Lưu thành Template
+                                   </button>
+                                   <AccessGuard feature="DELETE_POSTS">
+                                     <button 
+                                       onClick={(e) => {
+                                         e.stopPropagation();
+                                         handleDeletePost(post.id);
+                                         setActiveMenuId(null);
+                                       }}
+                                       className="w-full px-4 py-2 text-[11px] font-bold text-red-600 hover:bg-red-50/50 transition-all flex items-center gap-2 cursor-pointer border-t border-gray-50"
+                                     >
+                                        <span>🗑️</span> Delete Post
+                                     </button>
+                                   </AccessGuard>
+                                </div>
                              </>
                            )}
                        </td>
@@ -505,5 +682,79 @@ export function ListView() {
          )}
       </div>
     </div>
+
+    {/* Reviewer Edit Panel */}
+    {reviewerPanel.open && (
+      <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
+        <div className="fixed inset-0 bg-black/30 backdrop-blur-sm" onClick={() => setReviewerPanel(p => ({ ...p, open: false }))} />
+        <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 p-6 animate-in slide-in-from-bottom-4 duration-200">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h3 className="text-sm font-bold text-gray-900 flex items-center gap-2"><UserCheck size={16} className="text-amber-500" /> Người duyệt bài</h3>
+              <p className="text-[11px] text-gray-400 mt-0.5 truncate max-w-[280px]">{reviewerPanel.post?.title}</p>
+            </div>
+            <button onClick={() => setReviewerPanel(p => ({ ...p, open: false }))} className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400"><XIcon size={16} /></button>
+          </div>
+
+          <div className="mb-4">
+            <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-2 block">Chính sách duyệt</label>
+            <div className="flex gap-2">
+              {[{ v: 'AT_LEAST_ONE', label: 'Ít nhất 1 người' }, { v: 'ALL', label: 'Tất cả' }].map(opt => (
+                <button key={opt.v} onClick={() => setReviewerPanel(p => ({ ...p, policy: opt.v }))}
+                  className={`flex-1 py-2 rounded-xl text-[11px] font-bold border transition-all ${
+                    reviewerPanel.policy === opt.v ? 'bg-amber-50 border-amber-300 text-amber-700' : 'bg-gray-50 border-gray-200 text-gray-500 hover:border-gray-300'
+                  }`}>
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="mb-5">
+            <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-2 block">Chọn người duyệt</label>
+            <div className="max-h-52 overflow-y-auto space-y-1 pr-1">
+              {reviewerPanel.availableReviewers.length === 0 ? (
+                <p className="text-xs text-gray-400 text-center py-4">Không có reviewer nào</p>
+              ) : reviewerPanel.availableReviewers.map(r => {
+                const selected = reviewerPanel.selectedIds.includes(r.id);
+                return (
+                  <button key={r.id}
+                    onClick={() => setReviewerPanel(p => ({
+                      ...p,
+                      selectedIds: selected ? p.selectedIds.filter(id => id !== r.id) : [...p.selectedIds, r.id]
+                    }))}
+                    className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl border transition-all text-left ${
+                      selected ? 'bg-amber-50 border-amber-200' : 'bg-white border-gray-100 hover:border-gray-200 hover:bg-gray-50'
+                    }`}
+                  >
+                    <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-[11px] font-bold text-gray-500 overflow-hidden shrink-0">
+                      {r.avatarUrl ? <img src={r.avatarUrl} className="w-full h-full object-cover" /> : (r.name || '?').charAt(0)}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[12px] font-semibold text-gray-800 truncate">{r.name}</p>
+                      <p className="text-[10px] text-gray-400 truncate">{r.email} · {r.role}</p>
+                    </div>
+                    {selected && <UserCheck size={14} className="text-amber-500 shrink-0" />}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          <div className="flex gap-2">
+            <button onClick={() => setReviewerPanel(p => ({ ...p, open: false }))} className="flex-1 py-2.5 rounded-xl border border-gray-200 text-[12px] font-bold text-gray-600 hover:bg-gray-50 transition-all">Hủy</button>
+            <button
+              onClick={handleSaveReviewers}
+              disabled={reviewerPanel.saving || reviewerPanel.selectedIds.length === 0}
+              className="flex-1 py-2.5 rounded-xl bg-amber-500 text-white text-[12px] font-bold hover:bg-amber-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2"
+            >
+              {reviewerPanel.saving ? <Loader2 size={14} className="animate-spin" /> : <UserCheck size={14} />}
+              Lưu thay đổi
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
+    </>
   );
 }

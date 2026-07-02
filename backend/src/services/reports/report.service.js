@@ -75,7 +75,7 @@ class ReportService {
    * @param {Object} payload 
    */
   async generateInstantReport(brandId, userId, payload) {
-    const { title, format, dateRange, platforms, isWhiteLabel, brandLogoUrl, brandColorHex } = payload;
+    const { title, format, dateRange, platforms, isWhiteLabel, brandLogoUrl, brandColorHex, includedSections, selectedWidgets } = payload;
 
     // 1. Fetch Brand Info
     const brand = await prisma.brand.findUnique({
@@ -100,6 +100,10 @@ class ReportService {
     // 4. Get generator strategy via Factory
     const strategy = reportStrategyFactory.getStrategy(format);
 
+    const sections = Array.isArray(includedSections) && includedSections.length > 0
+      ? includedSections
+      : ['Overview', 'Channels', 'TopPosts'];
+
     // 5. Generate file buffer
     const { buffer, contentType, extension } = await strategy.generate(
       title,
@@ -108,7 +112,9 @@ class ReportService {
       {
         isWhiteLabel,
         brandLogoUrl,
-        brandColorHex
+        brandColorHex,
+        includedSections: sections,
+        selectedWidgets: selectedWidgets || null
       }
     );
 
@@ -137,7 +143,7 @@ class ReportService {
       dateFrom,
       dateTo,
       includedPlatforms: JSON.stringify(platforms),
-      includedSections: JSON.stringify(['Overview', 'Channels', 'TopPosts']),
+      includedSections: JSON.stringify(selectedWidgets || sections),
       isWhiteLabel: !!isWhiteLabel,
       brandLogoUrl: brandLogoUrl || null,
       brandColorHex: brandColorHex || null,
@@ -238,6 +244,106 @@ class ReportService {
   async getPreviewData(brandId, dateRange, platforms) {
     const { dateFrom, dateTo } = this.parseDateRange(dateRange);
     return await analyticsFacade.getAggregatedData(brandId, dateFrom, dateTo, platforms);
+  }
+
+  /**
+   * Generate and send report via email immediately
+   */
+  async sendReportImmediately(brandId, userId, payload) {
+    const { title, format, dateRange, platforms, isWhiteLabel, brandLogoUrl, brandColorHex, includedSections, selectedWidgets, emails, message } = payload;
+
+    // 1. Fetch Brand Info
+    const brand = await prisma.brand.findUnique({
+      where: { id: brandId }
+    });
+
+    if (!brand) {
+      throw new Error('Thương hiệu không tồn tại.');
+    }
+
+    // 2. Parse date range
+    const { dateFrom, dateTo } = this.parseDateRange(dateRange);
+
+    // 3. Get aggregated analytics data via Facade
+    const aggregatedData = await analyticsFacade.getAggregatedData(
+      brandId, 
+      dateFrom, 
+      dateTo, 
+      platforms
+    );
+
+    // 4. Get generator strategy via Factory
+    const strategy = reportStrategyFactory.getStrategy(format);
+
+    const sections = Array.isArray(includedSections) && includedSections.length > 0
+      ? includedSections
+      : ['Overview', 'Channels', 'TopPosts'];
+
+    // 5. Generate file buffer
+    const { buffer, contentType, extension } = await strategy.generate(
+      title,
+      brand,
+      aggregatedData,
+      {
+        isWhiteLabel,
+        brandLogoUrl,
+        brandColorHex,
+        includedSections: sections,
+        selectedWidgets: selectedWidgets || null
+      }
+    );
+
+    const fileName = `report_${brandId}_${Date.now()}.${extension}`;
+
+    // 6. Send via email service
+    const emailService = require('../core/email.service');
+    const subject = `[PubliCast Báo cáo] ${title}`;
+    const textContent = message || `Xin chào,\n\nĐây là báo cáo phân tích định kỳ từ PubliCast cho thương hiệu ${brand.name}.\n\nTrân trọng.`;
+
+    await emailService.sendReport(
+      emails,
+      subject,
+      textContent,
+      buffer,
+      fileName,
+      contentType
+    );
+
+    return true;
+  }
+
+  /**
+   * Get scheduled report configuration for a brand
+   */
+  async getScheduleConfig(brandId) {
+    const configPath = path.join(__dirname, `../../../uploads/reports/config_${brandId}.json`);
+    if (fs.existsSync(configPath)) {
+      try {
+        const raw = fs.readFileSync(configPath, 'utf8');
+        return JSON.parse(raw);
+      } catch (e) {
+        console.error(`[ReportService] Error reading schedule config for brand ${brandId}:`, e);
+      }
+    }
+    // Default config
+    return {
+      receiveEmail: false,
+      emailsList: [],
+      emailText: 'Monthly report for you.'
+    };
+  }
+
+  /**
+   * Save scheduled report configuration for a brand
+   */
+  async saveScheduleConfig(brandId, configData) {
+    const reportsDir = path.join(__dirname, '../../../uploads/reports');
+    if (!fs.existsSync(reportsDir)) {
+      fs.mkdirSync(reportsDir, { recursive: true });
+    }
+    const configPath = path.join(reportsDir, `config_${brandId}.json`);
+    fs.writeFileSync(configPath, JSON.stringify(configData, null, 2), 'utf8');
+    return true;
   }
 }
 

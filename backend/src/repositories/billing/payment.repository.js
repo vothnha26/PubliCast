@@ -55,7 +55,16 @@ class PaymentRepository {
     });
   }
 
-  // ─── Invoice ─────────────────────────────────────────────────────
+  async findHistoryByBrandId(brandId) {
+    return prisma.pendingPayment.findMany({
+      where: { brandId },
+      orderBy: { createdAt: 'desc' },
+      include: {
+        plan: true,
+        addon: true
+      }
+    });
+  }
 
   async createInvoice({ subscriptionId, amount, currency, transactionCode }) {
     return prisma.invoice.create({

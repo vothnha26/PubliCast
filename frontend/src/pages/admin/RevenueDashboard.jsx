@@ -59,7 +59,7 @@ export function RevenueDashboard() {
           <div key={kpi.label} className="bg-white rounded-xl p-4 shadow-sm" style={{ border: "0.5px solid #E5E7EB" }}>
             <div style={{ fontSize: 11, color: "#9CA3AF", marginBottom: 4, fontWeight: 600, uppercase: true }}>{kpi.label}</div>
             <div style={{ fontSize: 20, fontWeight: 700, color: "#0A0A0A" }}>{kpi.value}</div>
-            <div style={{ fontSize: 10, color: kpi.delta.includes('↑') ? "#16A34A" : "#DC2626", fontWeight: 700 }}>{kpi.delta}</div>
+            <div style={{ fontSize: 10, color: (kpi.delta || '').includes('↑') ? "#16A34A" : "#DC2626", fontWeight: 700 }}>{kpi.delta || '0%'}</div>
             {/* Sparkline */}
             <svg viewBox="0 0 80 16" className="w-full mt-2" style={{ height: 16 }}>
               <polyline

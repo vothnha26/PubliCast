@@ -76,6 +76,30 @@ class ApprovalWorkflowController {
       next(error);
     }
   }
+
+  async reassignWorkflow(req, res, next) {
+    try {
+      const { brandId, id } = req.params;
+      const { reviewerIds, policy } = req.body;
+      const requesterId = req.user.id;
+
+      const workflow = await approvalWorkflowService.reassignWorkflow(
+        id,
+        brandId,
+        requesterId,
+        reviewerIds,
+        policy
+      );
+
+      res.status(200).json({
+        status: 'success',
+        message: 'Đã cập nhật người duyệt thành công.',
+        data: workflow
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
 }
 
 module.exports = new ApprovalWorkflowController();

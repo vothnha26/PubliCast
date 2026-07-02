@@ -1,10 +1,10 @@
 import { useState, useEffect } from "react";
 import { useNavigate, Link, useLocation } from "react-router-dom";
 import {
-  BarChart2, MessageSquare, Calendar, Link2, Megaphone, Zap,
+  BarChart2, MessageSquare, Calendar, Link2, Megaphone, Zap, Image,
   Menu, ChevronDown, Sparkles, Radio, X, Diamond, Globe, 
   Settings, LogOut, HelpCircle, Gift, ChevronRight, Bell, Search,
-  MessageCircle, Check
+  MessageCircle, Check, Star
 } from "lucide-react";
 import { useConnections } from "../context/ConnectionsContext";
 import { useAuth } from "../context/AuthContext";
@@ -105,7 +105,7 @@ export function Topbar() {
   const location = useLocation();
   const [brandOpen, setBrandOpen] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
-  const { brands, activeBrand, selectBrand, deselectBrand } = useBrand();
+  const { brands, activeBrand, selectBrand, deselectBrand, defaultBrandId, setDefaultBrand } = useBrand();
 
   // Search states
   const [searchQuery, setSearchQuery] = useState("");
@@ -290,8 +290,8 @@ export function Topbar() {
             </div>
           ) : (
             [
-              { icon: <BarChart2 size={18} />, path: "/dashboard", label: "Analytics" },
-              { icon: <BarChart2 size={18} />, path: "/analytics", label: "Reports", isNew: true },
+              { icon: <BarChart2 size={18} />, path: "/dashboard", label: "Dashboard" },
+              { icon: <Image size={18} />, path: "/media-library", label: "Media Library" },
               { icon: <MessageSquare size={18} />, path: "/manage/inbox", label: "Inbox" },
               { icon: <Calendar size={18} />, path: "/planner", label: "Planning" },
               { icon: <Link2 size={18} />, path: "/smartlinks", label: "SmartLinks" },
@@ -372,14 +372,45 @@ export function Topbar() {
                 <div className="absolute top-12 right-0 bg-white text-[#0A0A0A] rounded-xl shadow-xl p-2 z-50 min-w-[200px]" style={{ border: "1px solid #E5E7EB" }}>
                   <div className="px-3 py-2 text-[10px] font-bold text-gray-400 uppercase tracking-wider">Your Workplaces</div>
                   {brands.map(b => (
-                    <button 
-                      key={b.id} 
-                      onClick={() => { selectBrand(b.id); setBrandOpen(false); }} 
-                      className={`w-full text-left px-3 py-2 rounded-lg hover:bg-gray-100 text-sm font-medium flex items-center justify-between ${activeBrand?.id === b.id ? "bg-purple-50 text-purple-700 font-bold" : ""}`}
+                    <div
+                      key={b.id}
+                      className={`flex items-center justify-between px-3 py-2 rounded-lg transition-all group ${
+                        activeBrand?.id === b.id ? 'bg-purple-50' : 'hover:bg-gray-100'
+                      }`}
                     >
-                      <span>{b.name}</span>
-                      {activeBrand?.id === b.id && <Check size={12} />}
-                    </button>
+                      <button 
+                        onClick={() => { selectBrand(b.id); setBrandOpen(false); }} 
+                        className={`flex-1 text-left text-sm font-medium flex items-center gap-2 ${
+                          activeBrand?.id === b.id ? 'text-purple-700 font-bold' : 'text-gray-700'
+                        }`}
+                      >
+                        <div className="w-5 h-5 rounded-md bg-gradient-to-br from-pink-400 to-purple-500 flex items-center justify-center text-[9px] font-bold text-white uppercase shrink-0">
+                          {b.name.charAt(0)}
+                        </div>
+                        <span className="truncate max-w-[110px]">{b.name}</span>
+                        {activeBrand?.id === b.id && <Check size={12} className="shrink-0" />}
+                      </button>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (defaultBrandId === b.id) {
+                            // Already default — clicking again does nothing (or could clear)
+                          } else {
+                            setDefaultBrand(b.id);
+                          }
+                        }}
+                        title={defaultBrandId === b.id ? 'Đang là thương hiệu mặc định' : 'Đặt làm thương hiệu mặc định'}
+                        className="p-1 rounded-md opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
+                      >
+                        <Star
+                          size={13}
+                          className={defaultBrandId === b.id
+                            ? 'fill-amber-400 text-amber-400'
+                            : 'text-gray-300 hover:text-amber-400'
+                          }
+                        />
+                      </button>
+                    </div>
                   ))}
                   {activeBrand && (
                     <button 

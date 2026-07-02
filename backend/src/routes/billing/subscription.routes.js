@@ -13,6 +13,10 @@ const subscriptionController = require('../../controllers/billing/subscription.c
 // User clicks "Upgrade" → server creates QR, returns payment data
 router.post('/initiate', verifyAuth, subscriptionController.initiatePayment);
 
+// POST /api/billing/subscriptions/cancel
+// User clicks "Hủy" to cancel a pending payment request
+router.post('/cancel', verifyAuth, subscriptionController.cancelPayment);
+
 // GET /api/billing/subscriptions/status/:transactionCode
 // Frontend polls every 3s to check if SePay confirmed the payment
 router.get('/status/:transactionCode', verifyAuth, subscriptionController.checkPaymentStatus);
@@ -20,6 +24,14 @@ router.get('/status/:transactionCode', verifyAuth, subscriptionController.checkP
 // GET /api/billing/subscriptions/current?brandId=xxx
 // Get current plan info for a brand (for Settings/Pricing page)
 router.get('/current', verifyAuth, subscriptionController.getCurrentPlan);
+
+// GET /api/billing/subscriptions/plans
+// Get all active subscription plans
+router.get('/plans', verifyAuth, subscriptionController.getPlans);
+
+// GET /api/billing/subscriptions/history
+// Get payment history for a brand
+router.get('/history', verifyAuth, subscriptionController.getPaymentHistory);
 
 // GET /api/billing/subscriptions/addons
 // Get list of all available addons

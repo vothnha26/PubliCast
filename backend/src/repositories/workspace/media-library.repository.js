@@ -37,6 +37,13 @@ class MediaLibraryRepository {
       data
     });
   }
+
+  async update(id, data) {
+    return prisma.mediaLibrary.update({
+      where: { id },
+      data
+    });
+  }
 }
 
 module.exports = new MediaLibraryRepository();

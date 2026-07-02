@@ -42,7 +42,9 @@ export function usePostCreatorForm() {
     uploadedVideoPath, 
     setUploadedVideoPath,
     albumMedia,
-    setAlbumMedia
+    setAlbumMedia,
+    postMedia,
+    setPostMedia
   } = usePostCreator();
   
   const [caption, setCaption] = useState("");
@@ -112,6 +114,7 @@ export function usePostCreatorForm() {
   const [selectedReviewerIds, setSelectedReviewerIds] = useState([]);
   const [approvalPolicy, setApprovalPolicy] = useState(APPROVAL_POLICY.AT_LEAST_ONE);
   const [requesterNote, setRequesterNote] = useState("Vui lòng phê duyệt bài viết này.");
+  const [notes, setNotes] = useState([]);
   const [isLoadingReviewers, setIsLoadingReviewers] = useState(false);
 
   useEffect(() => {
@@ -219,7 +222,7 @@ export function usePostCreatorForm() {
       videoHeight,
       uploadedVideoPath,
       platformLimits,
-      mediaCount: isAlbum ? albumMedia.length : 0
+      mediaCount: isAlbum ? albumMedia.length : (postMedia ? postMedia.length : 0)
     });
   };
 
@@ -370,6 +373,7 @@ export function usePostCreatorForm() {
         setGlobalFirstComment(opts.firstComment || "");
         setYoutubeThumbnail(opts.youtubeThumbnail || "");
         setThreadsWhoCanReply(opts.threadsWhoCanReply || "everyone");
+        setNotes(opts.notes || []);
 
         // Setup Facebook
         setFacebookType(opts.facebookType || "post");
@@ -427,6 +431,7 @@ export function usePostCreatorForm() {
         setGlobalFirstComment(opts.firstComment || "");
         setYoutubeThumbnail(opts.youtubeThumbnail || "");
         setThreadsWhoCanReply(opts.threadsWhoCanReply || "everyone");
+        setNotes(opts.notes || []);
 
         // Setup Facebook
         setFacebookType(opts.facebookType || "post");
@@ -601,10 +606,13 @@ export function usePostCreatorForm() {
         ? platformConfig.getPostType(activeSubType, hasMedia, isVid)
         : POST_TYPE.VIDEO;
 
-      // Chuẩn bị danh sách URLs và captions cho Album
+      // Chuẩn bị danh sách URLs và captions cho Album hoặc Post
       const postMediaUrls = isAlbum 
         ? albumMedia.map(item => item.path).filter(Boolean)
-        : (uploadedVideoPath ? [uploadedVideoPath] : []);
+        : (postMedia && postMedia.length > 0
+            ? postMedia.map(item => item.path).filter(Boolean)
+            : (uploadedVideoPath ? [uploadedVideoPath] : [])
+          );
       const mediaCaptions = isAlbum
         ? albumMedia.map(item => item.caption || "")
         : [];
@@ -645,7 +653,8 @@ export function usePostCreatorForm() {
           selectedDiscordChannels,
           albumMedia,
           mediaCaptions,
-          threadsWhoCanReply
+          threadsWhoCanReply,
+          notes
         }
       };
 
@@ -673,6 +682,7 @@ export function usePostCreatorForm() {
         setFacebookType(FACEBOOK_TYPE.POST);
         setInstagramType(INSTAGRAM_TYPE.POST);
         setAltText("");
+        setNotes([]);
         setTiktokPrivacy(TIKTOK_PRIVACY.PUBLIC);
         setTiktokAllowComments(true);
         setTiktokAllowDuet(true);
@@ -827,8 +837,12 @@ export function usePostCreatorForm() {
     setDiscordOpen,
     albumMedia,
     setAlbumMedia,
+    postMedia,
+    setPostMedia,
     // Threads States
     threadsWhoCanReply,
-    setThreadsWhoCanReply
+    setThreadsWhoCanReply,
+    notes,
+    setNotes
   };
 }

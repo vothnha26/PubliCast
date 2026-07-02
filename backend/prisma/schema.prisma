@@ -30,6 +30,7 @@ model User {
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
   deletedAt       DateTime?
+  defaultBrandId  String?
 
   customRole               CustomRole?          @relation("UserCustomRole", fields: [customRoleId], references: [id])
   settings                 UserSettings?
@@ -1359,7 +1360,7 @@ model SystemNotification {
   type      String
   isRead    Boolean  @default(false)
   isGlobal  Boolean  @default(false)
-  actionUrl String?
+  actionUrl String?  @db.Text
   createdAt DateTime @default(now())
 
   brand Brand? @relation(fields: [brandId], references: [id], onDelete: Cascade)

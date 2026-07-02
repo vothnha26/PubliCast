@@ -197,6 +197,31 @@ export function useMediaLibrary() {
     }
   };
 
+  const renameFile = async (id, newName) => {
+    if (!activeBrand) return;
+    try {
+      // Optimistic UI update
+      setMediaData(prev => ({
+        ...prev,
+        data: prev.data.map(item => item.id === id ? { ...item, name: newName } : item)
+      }));
+      if (detail && detail.id === id) {
+        setDetail(prev => ({ ...prev, name: newName }));
+      }
+      
+      await apiService.patch(`/media/${id}/rename`, {
+        brandId: activeBrand.id,
+        filename: newName
+      });
+      
+      toast.success("File renamed successfully");
+      await fetchMedia();
+    } catch (error) {
+      toast.error(error.message || "Rename failed");
+      await fetchMedia();
+    }
+  };
+
   const filteredMedia = mediaData.data || [];
   const totalEntries = mediaData.meta?.total || 0;
   const totalPages = mediaData.meta?.totalPages || 1;
@@ -232,6 +257,7 @@ export function useMediaLibrary() {
     clearSelection,
     deleteSelected,
     deleteFile,
+    renameFile,
     uploadFiles,
     createFolder,
     detail,

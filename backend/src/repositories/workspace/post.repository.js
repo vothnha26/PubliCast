@@ -33,6 +33,19 @@ class PostRepository {
               name: true,
               avatarUrl: true
             }
+          },
+          approvalWorkflows: {
+            orderBy: { requestedAt: 'desc' },
+            take: 1,
+            include: {
+              reviewers: {
+                include: {
+                  reviewer: {
+                    select: { id: true, name: true, avatarUrl: true }
+                  }
+                }
+              }
+            }
           }
         }
       }),

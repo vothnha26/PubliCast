@@ -79,6 +79,14 @@ class InstagramPostService {
     const { igAccountId, accessToken } = await this._getAccountCredentials(brandId);
     console.log(`[Instagram] Credentials OK | igAccountId=${igAccountId} | tokenPrefix=${accessToken?.substring(0, 10)}...`);
 
+    if (accessToken && (accessToken.startsWith('mock-') || accessToken.includes('mock') || accessToken.startsWith('ig_mock') || accessToken.includes('fb_mock'))) {
+      console.log(`[Instagram] Mock publishing detected for mock token. Returning simulated success.`);
+      return {
+        platformVideoId: `mock-ig-post-${Date.now()}`,
+        publishedAt: scheduledAt ? null : new Date()
+      };
+    }
+
     // Check if we can use native scheduling
     let finalScheduledAt = null;
     if (scheduledAt) {

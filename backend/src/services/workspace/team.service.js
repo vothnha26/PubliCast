@@ -5,7 +5,7 @@ const brandRepository = require('../../repositories/workspace/brand.repository')
 const userRepository = require('../../repositories/auth/user.repository');
 const authorizationFacade = require('../auth/authorization.facade');
 const roleResolver = require('./role-resolver');
-const { TEAM_STATUS, PERMISSION_KEYS, NOTIFICATION_TYPES } = require('../../utils/constants');
+const { TEAM_STATUS, PERMISSION_KEYS, NOTIFICATION_TYPES, WORKFLOW_STATUS } = require('../../utils/constants');
 const QueryPipeline = require('../../core/query-pipeline/query.pipeline');
 const TeamSearchFilter = require('./team/filters/search.filter');
 const TeamRoleFilter = require('./team/filters/role.filter');
@@ -164,10 +164,78 @@ class TeamService {
   }
 
   /**
+   * Resend invitation to a pending member
+   */
+  async resendInvitation(teamId, requestedByUserId) {
+    const team = await teamRepository.findById(teamId);
+    if (!team) {
+      const error = new Error('Không tìm thấy thành viên.');
+      error.status = 404;
+      throw error;
+    }
+
+    if (team.status !== 'PENDING') {
+      const error = new Error('Chỉ có thể gửi lại lời mời cho thành viên đang ở trạng thái chờ xác nhận (Pending).');
+      error.status = 400;
+      throw error;
+    }
+
+    const isAuthorized = await authorizationFacade.checkPermission(requestedByUserId, team.brandId, PERMISSION_KEYS.MANAGE_TEAM);
+    if (!isAuthorized) {
+      const error = new Error('Bạn không có quyền gửi lại lời mời.');
+      error.status = 403;
+      throw error;
+    }
+
+    const brand = await brandRepository.findBrandWithSubscription(team.brandId);
+    const requester = await userRepository.findById(requestedByUserId);
+
+    // Generate new JWT token (reset 7-day window)
+    const token = jwt.sign(
+      { teamId: team.id, email: team.user.email, brandId: team.brandId },
+      process.env.ACCESS_TOKEN_SECRET,
+      { expiresIn: '7d' }
+    );
+
+    // Update invitedAt to reflect the resend time
+    await teamRepository.update(teamId, { invitedAt: new Date(), invitedByUserId: requestedByUserId });
+
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+    const inviteUrl = `${frontendUrl}/invite?token=${token}`;
+
+    try {
+      const emailService = require('../core/email.service');
+      await emailService.sendTeamInvitation(team.user.email, requester.name, brand.name, inviteUrl, true);
+    } catch (err) {
+      console.error('[TeamService] Failed to resend invite email:', err.message);
+      const error = new Error('Không thể gửi email lời mời. Vui lòng kiểm tra cấu hình SMTP.');
+      error.status = 500;
+      throw error;
+    }
+
+    // Update notification
+    try {
+      await notificationService.create({
+        userId: team.userId,
+        brandId: team.brandId,
+        type: NOTIFICATION_TYPES.TEAM,
+        title: `Lời mời gia nhập "${brand.name}" đã được gửi lại`,
+        message: `${requester?.name || 'Ai đó'} đã gửi lại lời mời. Vui lòng kiểm tra email của bạn.`,
+        actionUrl: `/invite?token=${token}`
+      });
+    } catch (notifErr) {
+      console.error('[TeamService] Failed to create resend notification:', notifErr.message);
+    }
+
+    return { message: `Đã gửi lại lời mời tới ${team.user.email} thành công!` };
+  }
+
+  /**
    * Invite multiple team members
    */
   async inviteMembers({ emails, role, brandId, invitedByUserId }) {
     if (!Array.isArray(emails) || emails.length === 0) {
+
       const error = new Error('Danh sách email không hợp lệ.');
       error.status = 400;
       throw error;
@@ -480,6 +548,14 @@ class TeamService {
       console.error('[TeamService] Failed to create role-update notification:', notifErr.message);
     }
 
+    // Check if new role has APPROVE_POSTS permission
+    const hasApproveAfterUpdate = await this._roleHasApprovePermission(dbRole, customRoleId);
+
+    // If new role loses APPROVE_POSTS, remove from any pending workflows
+    if (!hasApproveAfterUpdate) {
+      await this._handleReviewerRemoved(team.userId, team.brandId, 'role_changed');
+    }
+
     return this._formatTeamMember(updated);
   }
 
@@ -508,6 +584,10 @@ class TeamService {
     }
 
     await teamRepository.delete(id);
+
+    // Remove kicked member from any pending approval workflows & notify requesters
+    await this._handleReviewerRemoved(team.userId, team.brandId, 'member_removed');
+
     return { message: 'Đã xóa thành viên khỏi thương hiệu thành công' };
   }
 
@@ -524,6 +604,115 @@ class TeamService {
       where: { brandId, userId, status: 'ACTIVE', role: 'ADMIN' }
     });
     return !!teamMember;
+  }
+
+  /**
+   * Kiểm tra xem dbRole/customRoleId có quyền APPROVE_POSTS không.
+   */
+  async _roleHasApprovePermission(dbRole, customRoleId) {
+    // OWNER và ADMIN luôn có quyền
+    if (dbRole === 'OWNER' || dbRole === 'ADMIN') return true;
+    if (!customRoleId) return false;
+
+    const role = await prisma.customRole.findUnique({
+      where: { id: customRoleId },
+      include: { permissions: true }
+    });
+    if (!role) return false;
+    return role.permissions.some(
+      p => p.permissionKey === PERMISSION_KEYS.APPROVE_POSTS && p.isAllowed
+    );
+  }
+
+  /**
+   * Xử lý khi một user bị xoá khỏi team hoặc mất quyền APPROVE_POSTS.
+   * - Tìm tất cả workflow PENDING trong brand mà user đang là reviewer.
+   * - Xóa WorkflowReviewer record của user đó.
+   * - Cập nhật selectedReviewers JSON.
+   * - Nếu workflow không còn reviewer nào, notify requester để bổ sung.
+   * @param {string} userId - User bị kick/đổi role
+   * @param {string} brandId
+   * @param {'member_removed'|'role_changed'} reason
+   */
+  async _handleReviewerRemoved(userId, brandId, reason) {
+    try {
+      // Tìm tất cả WorkflowReviewer records của user trong brand này đang PENDING
+      const affectedReviewers = await prisma.workflowReviewer.findMany({
+        where: {
+          reviewerId: userId,
+          status: WORKFLOW_STATUS.PENDING,
+          workflow: {
+            brandId,
+            status: WORKFLOW_STATUS.PENDING
+          }
+        },
+        include: {
+          workflow: {
+            include: {
+              post: { select: { id: true, title: true } },
+              requester: { select: { id: true, name: true } }
+            }
+          }
+        }
+      });
+
+      if (affectedReviewers.length === 0) return;
+
+      const removedUser = await userRepository.findById(userId);
+      const reasonText = reason === 'member_removed'
+        ? `đã bị xóa khỏi workspace`
+        : `đã bị đổi vai trò và không còn quyền phê duyệt`;
+
+      for (const wr of affectedReviewers) {
+        const workflow = wr.workflow;
+        if (!workflow) continue;
+
+        // 1. Xóa WorkflowReviewer record của user
+        await prisma.workflowReviewer.delete({ where: { id: wr.id } });
+
+        // 2. Cập nhật selectedReviewers JSON
+        const currentSelected = JSON.parse(workflow.selectedReviewers || '[]');
+        const updatedSelected = currentSelected.filter(id => id !== userId);
+        await prisma.approvalWorkflow.update({
+          where: { id: workflow.id },
+          data: { selectedReviewers: JSON.stringify(updatedSelected) }
+        });
+
+        // 3. Kiểm tra còn reviewer nào không
+        const remainingReviewers = await prisma.workflowReviewer.count({
+          where: { workflowId: workflow.id }
+        });
+
+        // 4. Notify requester
+        const postTitle = workflow.post?.title || 'Bài viết không rõ tiêu đề';
+        const removedName = removedUser?.name || 'Thành viên';
+
+        let notifTitle, notifMessage;
+        if (remainingReviewers === 0) {
+          notifTitle = '⚠️ Không còn người duyệt bài viết';
+          notifMessage = `"${removedName}" ${reasonText}. Bài viết "${postTitle}" hiện không còn người duyệt. Vui lòng chỉ định người duyệt mới.`;
+        } else {
+          notifTitle = '🔔 Người duyệt bài viết đã thay đổi';
+          notifMessage = `"${removedName}" ${reasonText}. Bài viết "${postTitle}" còn ${remainingReviewers} người duyệt.`;
+        }
+
+        if (workflow.requester?.id) {
+          await notificationService.create({
+            userId: workflow.requester.id,
+            brandId,
+            type: NOTIFICATION_TYPES.TEAM,
+            title: notifTitle,
+            message: notifMessage,
+            actionUrl: `/planner/list`
+          }).catch(err => console.error('[TeamService] Failed to notify requester:', err.message));
+        }
+
+        console.log(`[TeamService] Removed reviewer ${userId} from workflow ${workflow.id}. Remaining: ${remainingReviewers}`);
+      }
+    } catch (err) {
+      // Không để lỗi này chặn flow chính (kick member / đổi role)
+      console.error('[TeamService] _handleReviewerRemoved failed:', err.message);
+    }
   }
 
   _formatTeamMember(m) {

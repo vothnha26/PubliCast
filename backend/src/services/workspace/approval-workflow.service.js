@@ -273,6 +273,54 @@ class ApprovalWorkflowService {
     return updatedWorkflow;
   }
 
+  /**
+   * Thay đổi danh sách reviewer (căn chỉnh lại) cho một workflow đang PENDING.
+   * Chỉ requester hoặc owner/admin có thể thực hiện.
+   */
+  async reassignWorkflow(workflowId, brandId, requesterId, newReviewerIds = [], newPolicy = null) {
+    const workflow = await approvalWorkflowRepository.findById(workflowId);
+    if (!workflow || workflow.brandId !== brandId) {
+      const error = new Error('Không tìm thấy yêu cầu phê duyệt.');
+      error.status = 404;
+      throw error;
+    }
+
+    if (workflow.status !== WORKFLOW_STATUS.PENDING) {
+      const error = new Error('Chỉ có thể thay đổi người duyệt khi workflow đang ở trạng thái Chờ duyệt.');
+      error.status = 400;
+      throw error;
+    }
+
+    // Kiểm tra quyền: chỉ requester, owner hoặc admin mới có thể thay đổi
+    const isRequester = workflow.requesterId === requesterId;
+    const hasApprovePermission = await authorizationFacade.hasPermission(requesterId, brandId, PERMISSION_KEYS.APPROVE_POSTS);
+    if (!isRequester && !hasApprovePermission) {
+      const error = new Error('Bạn không có quyền thay đổi người duyệt cho yêu cầu này.');
+      error.status = 403;
+      throw error;
+    }
+
+    const reviewerList = Array.isArray(newReviewerIds) ? newReviewerIds.filter(Boolean) : [];
+
+    // Xóa tất cả reviewer cũ rồi tạo lại
+    await prisma.workflowReviewer.deleteMany({ where: { workflowId } });
+
+    // Cập nhật workflow với reviewer mới
+    const updateData = {
+      selectedReviewers: JSON.stringify(reviewerList),
+      reviewers: {
+        create: reviewerList.map(rId => ({
+          reviewerId: rId,
+          status: WORKFLOW_STATUS.PENDING
+        }))
+      }
+    };
+    if (newPolicy) updateData.approvalPolicy = newPolicy;
+
+    const updatedWorkflow = await approvalWorkflowRepository.update(workflowId, updateData);
+    return updatedWorkflow;
+  }
+
   // ---------------------------------------------------------------------------
   // Private helpers
   // ---------------------------------------------------------------------------

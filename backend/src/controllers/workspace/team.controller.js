@@ -93,6 +93,12 @@ class TeamController {
     const result = await teamService.removeMember(id, req.user.id);
     res.status(200).json(result);
   });
+
+  resendInvitation = asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    const result = await teamService.resendInvitation(id, req.user.id);
+    res.status(200).json(result);
+  });
 }
 
 module.exports = new TeamController();
