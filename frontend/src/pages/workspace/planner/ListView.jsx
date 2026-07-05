@@ -17,6 +17,7 @@ import { format } from "date-fns";
 import { useConfirm } from "@/hooks/useConfirm";
 import { useBrandPermission } from "../../../hooks/useBrandPermission";
 import { AccessGuard } from "../../../components/shared/AccessGuard";
+import { PostAnalyticsDetailModal } from "../../../components/workspace/PostAnalyticsDetailModal";
 
 const STATUS_STYLE = {
   published: "bg-green-50 text-green-700 border-green-100",
@@ -26,6 +27,44 @@ const STATUS_STYLE = {
   pending_approval: "bg-amber-50 text-amber-700 border-amber-100",
   approved: "bg-emerald-50 text-emerald-700 border-emerald-100",
   failed: "bg-rose-100 text-rose-800 border-rose-200"
+};
+
+const getPostLink = (platform, platformPostId) => {
+  if (!platformPostId) return null;
+  const plt = platform.toLowerCase();
+
+  let id = null;
+  if (typeof platformPostId === 'object' && platformPostId !== null) {
+    id = platformPostId[plt] || platformPostId[platform.toUpperCase()];
+  } else if (typeof platformPostId === 'string') {
+    try {
+      const parsed = JSON.parse(platformPostId);
+      if (parsed && typeof parsed === 'object') {
+        id = parsed[plt] || parsed[platform.toUpperCase()];
+      } else {
+        id = platformPostId;
+      }
+    } catch (e) {
+      id = platformPostId;
+    }
+  }
+
+  if (!id) return null;
+
+  switch (plt) {
+    case 'facebook':
+      return `https://www.facebook.com/${id}`;
+    case 'youtube':
+      return `https://www.youtube.com/watch?v=${id}`;
+    case 'instagram':
+      return `https://www.instagram.com/p/${id}`;
+    case 'tiktok':
+      return `https://www.tiktok.com/video/${id}`;
+    case 'threads':
+      return `https://www.threads.net/post/${id}`;
+    default:
+      return null;
+  }
 };
 
 export function ListView() {
@@ -41,8 +80,9 @@ export function ListView() {
   const [activeMenuId, setActiveMenuId] = useState(null);
   const [repostingIds, setRepostingIds] = useState([]);
   const [reviewerPanel, setReviewerPanel] = useState({ open: false, post: null, availableReviewers: [], selectedIds: [], policy: 'AT_LEAST_ONE', saving: false });
+  const [analyticsModal, setAnalyticsModal] = useState({ open: false, post: null });
 
-  const { openPostCreator } = usePostCreator();
+  const { openPostCreator, isOpen } = usePostCreator();
   const { filters, updateFilters, clearFilters, searchParamsString } = useFilters({
     search: "",
     status: "All",
@@ -78,7 +118,7 @@ export function ListView() {
 
   useEffect(() => {
     fetchPosts();
-  }, [activeBrand, searchParamsString]);
+  }, [activeBrand, searchParamsString, isOpen]);
 
   const toggleSelect = (id) => {
     setSelected(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
@@ -454,32 +494,64 @@ export function ListView() {
                             className="rounded border-gray-300 text-black focus:ring-black cursor-pointer" 
                           />
                        </td>
-                       <td className="px-4 py-5 cursor-pointer" onClick={() => openPostCreator({ post })}>
+                       <td className="px-4 py-5 cursor-pointer" onClick={() => {
+                         if (post.status?.toLowerCase() === 'published') {
+                           setAnalyticsModal({ open: true, post });
+                         } else {
+                           openPostCreator({ post });
+                         }
+                       }}>
                           <div className="flex items-center gap-4">
                              <div className="w-12 h-12 bg-gray-100 rounded-xl overflow-hidden shrink-0 border border-gray-100 relative group-hover:border-gray-300 transition-all shadow-sm">
                                 {post.thumbnail ? (
                                   <img src={post.thumbnail} className="w-full h-full object-cover" />
+                                ) : post.mediaUrls && post.mediaUrls.length > 0 ? (
+                                  <img src={post.mediaUrls[0]} className="w-full h-full object-cover" />
                                 ) : (
                                   <div className="w-full h-full flex items-center justify-center text-lg">📝</div>
+                                )}
+                                {post.mediaUrls && post.mediaUrls.length > 1 && (
+                                  <span className="absolute bottom-1 right-1 bg-black/85 text-[8px] font-black text-white px-1 py-0.5 rounded flex items-center justify-center gap-0.5 z-10 shadow-sm border border-white/10">
+                                    +{post.mediaUrls.length - 1}
+                                  </span>
                                 )}
                                 <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-all">
                                    <Eye size={16} className="text-white" />
                                 </div>
                              </div>
                              <div className="flex flex-col min-w-0">
-                                <span className="text-[13px] font-bold text-[#0A0A0A] truncate max-w-[250px]">{post.title}</span>
-                                <span className="text-[11px] text-gray-400 truncate max-w-[250px]">{post.caption || "No caption provided..."}</span>
+                                <span className="text-[13px] font-bold text-[#0A0A0A] truncate max-w-[250px]">
+                                  {post.title || post.caption || "Không có tiêu đề"}
+                                </span>
+                                {post.title && post.caption && (
+                                  <span className="text-[11px] text-gray-400 truncate max-w-[250px]">{post.caption}</span>
+                                )}
                              </div>
                           </div>
                        </td>
                        <td className="px-4 py-5">
                           <div className="flex items-center gap-1.5 flex-wrap">
-                             {post.platforms.map(plt => (
-                               <div key={plt} className="flex items-center gap-1 bg-gray-50 px-2 py-1 rounded-lg border border-gray-100 shadow-sm">
-                                  <PlatformIcon platform={plt} size={12} />
-                                  <span className="text-[9px] font-black uppercase tracking-tighter text-gray-600">{plt}</span>
-                               </div>
-                             ))}
+                             {post.platforms.map(plt => {
+                                const postUrl = post.status === 'published' ? getPostLink(plt, post.platformPostId) : null;
+                                return (
+                                  <div key={plt} className="flex items-center gap-1 bg-gray-50 px-2 py-1 rounded-lg border border-gray-100 shadow-sm">
+                                     <PlatformIcon platform={plt} size={12} />
+                                     <span className="text-[9px] font-black uppercase tracking-tighter text-gray-600">{plt}</span>
+                                     {postUrl && (
+                                       <a 
+                                         href={postUrl} 
+                                         target="_blank" 
+                                         rel="noopener noreferrer"
+                                         title="View original post"
+                                         className="text-gray-400 hover:text-blue-500 transition-colors ml-0.5"
+                                         onClick={(e) => e.stopPropagation()}
+                                       >
+                                         <ExternalLink size={10} />
+                                       </a>
+                                     )}
+                                  </div>
+                                );
+                              })}
                           </div>
                        </td>
                        <td className="px-4 py-5">
@@ -614,7 +686,30 @@ export function ListView() {
                                      >
                                         <span>🔄</span> {repostingIds.includes(post.id) ? 'Đang đăng...' : 'Đăng lại ngay'}
                                      </button>
+                                   )}{post.status?.toLowerCase() === "published" && (
+
+                                     <button 
+
+                                       onClick={(e) => {
+
+                                         e.stopPropagation();
+
+                                         setAnalyticsModal({ open: true, post });
+
+                                         setActiveMenuId(null);
+
+                                       }}
+
+                                       className="w-full px-4 py-2 text-[11px] font-bold text-indigo-600 hover:bg-indigo-50/50 transition-all flex items-center gap-2 cursor-pointer border-b border-gray-50 text-left"
+
+                                     >
+
+                                        <span>📊</span> Số liệu chi tiết
+
+                                     </button>
+
                                    )}
+
                                    <button 
                                      onClick={(e) => {
                                        e.stopPropagation();
@@ -755,6 +850,12 @@ export function ListView() {
         </div>
       </div>
     )}
+    <PostAnalyticsDetailModal
+      isOpen={analyticsModal.open}
+      onClose={() => setAnalyticsModal({ open: false, post: null })}
+      post={analyticsModal.post}
+      brandId={activeBrand?.id}
+    />
     </>
   );
 }

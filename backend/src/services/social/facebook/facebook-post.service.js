@@ -25,15 +25,15 @@ class FacebookPostService {
       });
   }
 
-  async getPublishedPosts(brandId, pageToken = null, limit = 10) {
-    const cacheKey = `${brandId}_${pageToken || 'first'}_${limit}`;
+  async getPublishedPosts(brandId, pageToken = null, limit = 10, socialAccountId = null) {
+    const cacheKey = `${brandId}_${pageToken || 'first'}_${limit}_${socialAccountId || 'default'}`;
     const cached = postCache.get(cacheKey);
     if (cached && cached.expiry > Date.now()) return cached.data;
 
     try {
-      const { pageId, pageAccessToken } = await this._getAccountCredentials(brandId);
+      const { pageId, pageAccessToken } = await this._getAccountCredentials(brandId, socialAccountId);
       
-      if (pageAccessToken && pageAccessToken.startsWith('mock-')) {
+      if ((pageAccessToken && pageAccessToken.startsWith('mock-')) || (pageId && pageId.startsWith('mock-')) || pageId === 'fb-page-mock') {
         return { data: [], nextPageToken: null, prevPageToken: null };
       }
 
@@ -116,6 +116,18 @@ class FacebookPostService {
         scheduledAt: finalScheduledAt
       });
       console.log(`[Facebook] ✅ Published successfully! platformPostId=${result.id}`);
+
+      // Post First Comment if published immediately
+      if (!finalScheduledAt && postData.options?.firstComment?.trim()) {
+        try {
+          console.log(`[Facebook] Posting first comment: "${postData.options.firstComment.trim()}"`);
+          await facebookGateway.createComment(result.id, postData.options.firstComment.trim(), pageAccessToken);
+          console.log(`[Facebook] First comment posted successfully.`);
+        } catch (commentErr) {
+          console.error(`[Facebook] Failed to post first comment:`, commentErr.message);
+        }
+      }
+
       return { 
         platformVideoId: result.id, 
         publishedAt: finalScheduledAt ? null : new Date() 
@@ -152,14 +164,25 @@ class FacebookPostService {
 
   // ============= Private Helper Methods =============
 
-  async _getAccountCredentials(brandId) {
-    const socialAccount = await socialAccountRepository.findByBrandAndPlatform(brandId, PLATFORMS.FACEBOOK);
-    if (!socialAccount || socialAccount.length === 0) {
+  async _getAccountCredentials(brandId, socialAccountId = null) {
+    let account;
+    if (socialAccountId) {
+      account = await socialAccountRepository.findById(socialAccountId);
+    } else {
+      const socialAccount = await socialAccountRepository.findByBrandAndPlatform(brandId, PLATFORMS.FACEBOOK);
+      if (!socialAccount || socialAccount.length === 0) {
+        throw new Error('Facebook account not connected for this brand');
+      }
+      account = socialAccount[0];
+    }
+    
+    if (!account) {
       throw new Error('Facebook account not connected for this brand');
     }
+
     return {
-      pageId: socialAccount[0].platformAccountId,
-      pageAccessToken: socialAccount[0].accessToken
+      pageId: account.platformAccountId,
+      pageAccessToken: account.accessToken
     };
   }
 

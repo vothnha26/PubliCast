@@ -1,5 +1,5 @@
-import React, { useState } from "react";
-import { BarChart2, Loader2, PlayCircle } from "lucide-react";
+import React, { useState, useMemo } from "react";
+import { BarChart2, Loader2, PlayCircle, ChevronUp, ChevronDown, ChevronsUpDown } from "lucide-react";
 import { Button } from "../../../components/ui/button";
 
 export function GenericPostsListTab({
@@ -19,13 +19,35 @@ export function GenericPostsListTab({
   onRowClick = null
 }) {
   const [searchQuery, setSearchQuery] = useState("");
+  const [sortConfig, setSortConfig] = useState({ key: null, dir: null });
 
-  const filteredPosts = (posts || []).filter((post) => {
-    return searchKeys.some((key) => {
-      const val = post[key];
-      return val && typeof val === "string" && val.toLowerCase().includes(searchQuery.toLowerCase());
+  const handleSort = (sortKey) => {
+    if (!sortKey) return;
+    setSortConfig(prev => {
+      if (prev.key !== sortKey) return { key: sortKey, dir: "asc" };
+      if (prev.dir === "asc") return { key: sortKey, dir: "desc" };
+      return { key: null, dir: null };
     });
-  });
+  };
+
+  const filteredPosts = useMemo(() => {
+    let list = (posts || []).filter(post =>
+      searchKeys.some(key => {
+        const val = post[key];
+        return val && typeof val === "string" && val.toLowerCase().includes(searchQuery.toLowerCase());
+      })
+    );
+    if (sortConfig.key && sortConfig.dir) {
+      list = [...list].sort((a, b) => {
+        const aVal = a[sortConfig.key] ?? "";
+        const bVal = b[sortConfig.key] ?? "";
+        const isNum = !isNaN(Number(aVal)) && !isNaN(Number(bVal));
+        const cmp = isNum ? Number(aVal) - Number(bVal) : String(aVal).localeCompare(String(bVal));
+        return sortConfig.dir === "desc" ? -cmp : cmp;
+      });
+    }
+    return list;
+  }, [posts, searchQuery, searchKeys, sortConfig]);
 
   return (
     <div className="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden">
@@ -93,14 +115,30 @@ export function GenericPostsListTab({
         <table className="w-full min-w-[800px]">
           <thead>
             <tr className="bg-white border-b border-gray-100">
-              {columns.map((col, idx) => (
-                <th
-                  key={idx}
-                  className={`text-left px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest ${col.className || ""}`}
-                >
-                  {col.header}
-                </th>
-              ))}
+              {columns.map((col, idx) => {
+                const isSortable = !!col.sortKey;
+                const isActive = sortConfig.key === col.sortKey;
+                const SortIcon = isActive
+                  ? (sortConfig.dir === "asc" ? ChevronUp : ChevronDown)
+                  : ChevronsUpDown;
+                return (
+                  <th
+                    key={idx}
+                    className={`text-left px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest ${col.className || ""} ${isSortable ? "cursor-pointer select-none hover:text-gray-600 transition-colors" : ""}`}
+                    onClick={() => isSortable && handleSort(col.sortKey)}
+                  >
+                    <span className="inline-flex items-center gap-1.5">
+                      {col.header}
+                      {isSortable && (
+                        <SortIcon
+                          size={12}
+                          className={isActive ? "text-black" : "text-gray-300"}
+                        />
+                      )}
+                    </span>
+                  </th>
+                );
+              })}
             </tr>
           </thead>
           {isLoading ? (

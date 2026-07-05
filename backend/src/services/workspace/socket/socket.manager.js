@@ -171,7 +171,7 @@ class SocketManager {
         } : null,
         time: savedMessage.createdAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
         timestamp: savedMessage.createdAt,
-        sender: savedMessage.senderId === ticket.userId ? 'user' : 'staff',
+        sender: (savedMessage.sender.role === 'STAFF' || savedMessage.sender.role === 'ADMIN') ? 'staff' : 'user',
         senderName: savedMessage.sender.name,
         role: savedMessage.sender.role
       };

@@ -29,27 +29,42 @@ const MANAGE_ITEMS = [
   { name: "Ads Manager", icon: <Megaphone size={18} />, path: "/manage/ads" },
 ];
 
+import { useState, useEffect } from "react";
+import apiService from "../services/api";
+
 export function SidebarWorkspace() {
   const location = useLocation();
   const currentPath = location.pathname;
   const { openConnections } = useConnections();
   const { activeBrand } = useBrand();
+  
+  const [planInfo, setPlanInfo] = useState(null);
+
+  useEffect(() => {
+    if (!activeBrand) return;
+    apiService.get(`/billing/subscriptions/current?brandId=${activeBrand.id}`)
+      .then(res => {
+        setPlanInfo(res.data.data);
+      })
+      .catch(err => {
+        console.error("Failed to fetch current plan info in sidebar:", err);
+      });
+  }, [activeBrand]);
 
   const isManageMode = currentPath.startsWith("/manage") || currentPath.startsWith("/hashtags") || currentPath.startsWith("/settings");
 
-  const planName = activeBrand?.currentPlan?.name || "FREE";
+  const planName = planInfo?.planName || "FREE";
   const isPro = planName.toUpperCase() === "PRO";
-  const currentPeriodEnd = activeBrand?.subscription?.currentPeriodEnd;
-  const nextBillDate = currentPeriodEnd 
-    ? new Date(currentPeriodEnd).toLocaleDateString("vi-VN", { year: 'numeric', month: 'numeric', day: 'numeric' })
+  const nextBillDate = planInfo?.periodEnd 
+    ? new Date(planInfo.periodEnd).toLocaleDateString("vi-VN", { year: 'numeric', month: 'numeric', day: 'numeric' })
     : "Không giới hạn";
 
   return (
     <aside
       style={{ width: 220, background: "#FFFFFF", borderRight: "1px solid #E5E7EB" }}
-      className="flex flex-col h-full shrink-0 overflow-y-auto"
+      className="flex flex-col h-full shrink-0"
     >
-      <div className="flex-1 py-6 px-3">
+      <div className="flex-1 py-6 px-3 overflow-y-auto scrollbar-none">
         {/* Section Label */}
         <div className="px-3 mb-4 flex items-center justify-between">
            <span style={{ fontSize: 10, fontWeight: 800, color: "#9CA3AF", textTransform: "uppercase", letterSpacing: "1px" }}>
@@ -149,7 +164,7 @@ export function SidebarWorkspace() {
       </div>
 
       {/* Footer Info */}
-      <div className="p-4 border-t border-gray-50">
+      <div className="p-4 border-t border-gray-50 text-left bg-white">
          <div className="bg-gray-50 rounded-xl p-3">
             <div className="flex items-center gap-2 mb-1">
                <div className={`w-2 h-2 rounded-full ${isPro ? "bg-green-500" : "bg-gray-400"}`} />

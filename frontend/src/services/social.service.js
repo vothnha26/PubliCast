@@ -8,7 +8,8 @@ class SocialService {
 
   async getMetrics(brandId, params = {}) {
     const queryParams = new URLSearchParams({ brandId, ...params }).toString();
-    const response = await apiService.get(`/social/metrics?${queryParams}`);
+    // Timeout 90s vì backend cần sync với các nền tảng (Facebook Smart Sync có thể mất 30-60s)
+    const response = await apiService.get(`/social/metrics?${queryParams}`, { timeout: 90000 });
     return response.data;
   }
 

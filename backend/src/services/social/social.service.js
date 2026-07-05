@@ -11,7 +11,7 @@ class SocialService {
   async getAggregatedMetrics(brandId, startDate, endDate, force = false) {
     const accounts = await socialAccountRepository.findByBrandAndPlatform(brandId, null); // passing null to platform to get all platforms
 
-    const withTimeout = (promise, ms = 5000, fallback) => {
+    const withTimeout = (promise, ms = 60000, fallback) => {
       let timeoutId;
       const timeoutPromise = new Promise((_, reject) => {
         timeoutId = setTimeout(() => {
@@ -43,7 +43,7 @@ class SocialService {
         const service = socialPlatformFactory.getService(account.platform);
         return await withTimeout(
           service.syncChannelMetrics(account.id, startDate, endDate, force),
-          5000,
+          60000,
           account
         );
       } catch (error) {

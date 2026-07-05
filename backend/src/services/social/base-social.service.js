@@ -51,7 +51,8 @@ class BaseSocialService {
   }
 
   async deletePost(brandId, platformPostId) {
-    throw new Error("Method 'deletePost()' must be implemented.");
+    console.warn(`[BaseSocialService] deletePost() is not supported/implemented for this platform service.`);
+    return { success: false, message: "Method 'deletePost()' is not implemented on this platform." };
   }
 
   /**

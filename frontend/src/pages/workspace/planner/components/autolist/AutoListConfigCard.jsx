@@ -1,7 +1,7 @@
 import * as React from "react";
 import { useState } from "react";
 import { 
-  Settings, ChevronDown, ChevronUp, Facebook, Youtube, 
+  Settings, ChevronDown, ChevronUp, Facebook, Youtube, Instagram,
   HelpCircle, Grid, Video, ShieldAlert, AlertCircle 
 } from "lucide-react";
 import { Switch } from "../../../../../components/ui/switch";
@@ -16,6 +16,10 @@ export function AutoListConfigCard({
   setUseUrlShortener,
   facebookContentType,
   setFacebookContentType,
+  instagramContentType,
+  setInstagramContentType,
+  threadsContentType,
+  setThreadsContentType,
   youtubeVideoType,
   setYoutubeVideoType,
   youtubePrivacy,
@@ -26,9 +30,13 @@ export function AutoListConfigCard({
   const [globalExpanded, setGlobalExpanded] = useState(true);
   const [facebookExpanded, setFacebookExpanded] = useState(true);
   const [youtubeExpanded, setYoutubeExpanded] = useState(true);
+  const [instagramExpanded, setInstagramExpanded] = useState(true);
+  const [threadsExpanded, setThreadsExpanded] = useState(true);
 
   const hasFacebook = selectedPlatforms.some(p => p.toUpperCase() === 'FACEBOOK');
   const hasYoutube = selectedPlatforms.some(p => p.toUpperCase() === 'YOUTUBE');
+  const hasInstagram = selectedPlatforms.some(p => p.toUpperCase() === 'INSTAGRAM');
+  const hasThreads = selectedPlatforms.some(p => p.toUpperCase() === 'THREADS');
 
   return (
     <div className="space-y-4 text-left">
@@ -60,7 +68,7 @@ export function AutoListConfigCard({
               <div className="flex items-center gap-2">
                 <span className="text-[11px] font-semibold text-gray-500">Repeat</span>
                 <Switch 
-                  checked={repeat} 
+                  checked={!!repeat} 
                   onCheckedChange={setRepeat} 
                   className="scale-90"
                 />
@@ -223,6 +231,84 @@ export function AutoListConfigCard({
                       <span>No, it's not a video made for kids</span>
                     </label>
                   </div>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* 4. Instagram Presets */}
+        {hasInstagram && (
+          <div className="border border-gray-200/80 rounded-2xl overflow-hidden bg-white shadow-sm">
+            {/* Header */}
+            <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 bg-gray-50/50">
+              <div className="flex items-center gap-2 text-xs font-bold text-gray-700">
+                <Instagram size={15} className="text-[#E1306C]" />
+                <span>Instagram presets</span>
+              </div>
+              
+              <button 
+                onClick={() => setInstagramExpanded(!instagramExpanded)}
+                className="text-gray-400 hover:text-black cursor-pointer"
+              >
+                {instagramExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+              </button>
+            </div>
+            
+            {/* Body */}
+            {instagramExpanded && (
+              <div className="p-5 border-t border-gray-50/50 space-y-2.5 animate-in slide-in-from-top-2 duration-200">
+                <label className="block text-[11px] font-semibold text-gray-500">Content type</label>
+                <div className="relative max-w-md">
+                  <select 
+                    value={instagramContentType}
+                    onChange={(e) => setInstagramContentType(e.target.value)}
+                    className="w-full pl-9 pr-8 py-2 border border-gray-200 rounded-xl text-xs font-bold outline-none focus:border-black appearance-none bg-white cursor-pointer shadow-sm"
+                  >
+                    <option value="post">Post</option>
+                    <option value="reel">Reel</option>
+                    <option value="story">Story</option>
+                  </select>
+                  <Grid size={14} className="absolute left-3 top-3 text-gray-400" />
+                  <ChevronDown size={14} className="absolute right-3 top-3 text-gray-400 pointer-events-none" />
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* 5. Threads Presets */}
+        {hasThreads && (
+          <div className="border border-gray-200/80 rounded-2xl overflow-hidden bg-white shadow-sm">
+            {/* Header */}
+            <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 bg-gray-50/50">
+              <div className="flex items-center gap-2 text-xs font-bold text-gray-700">
+                <span className="text-[14px] font-black text-gray-800">@</span>
+                <span>Threads presets</span>
+              </div>
+              
+              <button 
+                onClick={() => setThreadsExpanded(!threadsExpanded)}
+                className="text-gray-400 hover:text-black cursor-pointer"
+              >
+                {threadsExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+              </button>
+            </div>
+            
+            {/* Body */}
+            {threadsExpanded && (
+              <div className="p-5 border-t border-gray-50/50 space-y-2.5 animate-in slide-in-from-top-2 duration-200">
+                <label className="block text-[11px] font-semibold text-gray-500">Content type</label>
+                <div className="relative max-w-md">
+                  <select 
+                    value={threadsContentType}
+                    onChange={(e) => setThreadsContentType(e.target.value)}
+                    className="w-full pl-9 pr-8 py-2 border border-gray-200 rounded-xl text-xs font-bold outline-none focus:border-black appearance-none bg-white cursor-pointer shadow-sm"
+                  >
+                    <option value="post">Thread Post</option>
+                  </select>
+                  <Grid size={14} className="absolute left-3 top-3 text-gray-400" />
+                  <ChevronDown size={14} className="absolute right-3 top-3 text-gray-400 pointer-events-none" />
                 </div>
               </div>
             )}

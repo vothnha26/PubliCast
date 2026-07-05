@@ -38,8 +38,15 @@ function createSyncCacheProxy(realService) {
             const cachedStart = new Date(latestAnalytics.dateFrom).toISOString().split('T')[0];
             const cachedEnd = new Date(latestAnalytics.dateTo).toISOString().split('T')[0];
             cacheRangeStr = `${cachedStart} to ${cachedEnd}`;
-            
-            if (cachedStart === startDate && cachedEnd === endDate) {
+
+            // Cho phép endDate chênh lệch tối đa 1 ngày (vì "hôm nay" thường = cache ngày hôm qua)
+            // nhưng chỉ khi cooldown vẫn còn active. Nếu cooldown hết thì vẫn sync bình thường.
+            const endDateDiffMs = new Date(endDate).getTime() - new Date(cachedEnd).getTime();
+            const endDateDiffDays = endDateDiffMs / (1000 * 60 * 60 * 24);
+            const isStartSame = cachedStart === startDate;
+            const isEndAcceptable = endDateDiffDays >= 0 && endDateDiffDays <= 1;
+
+            if (isStartSame && isEndAcceptable) {
               isDifferentRange = false;
             }
           }

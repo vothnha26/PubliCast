@@ -67,6 +67,12 @@ router.post('/upload', checkPermission('CREATE_POSTS'), (req, res, next) => {
 }, postController.uploadVideo);
 
 /**
+ * GET /api/posts/:id/analytics
+ * Get historical metrics for a post
+ */
+router.get('/:id/analytics', postController.getPostAnalytics);
+
+/**
  * PUT /api/posts/:id
  * Update an existing post
  */

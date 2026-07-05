@@ -1,6 +1,35 @@
 const fs = require('fs');
 const path = require('path');
 const { PLATFORMS, SEPARATORS, API_VERSIONS, MEDIA_EXTENSIONS, FACEBOOK_API } = require('../../../utils/constants');
+const logger = require('../../../utils/logger');
+
+// Custom fetch wrapper with timeout and logging
+const fetchWithTimeout = async (url, options = {}) => {
+  const timeoutMs = options.body ? 45000 : 25000;
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
+  logger.info(`[Facebook API] Request: ${options.method || 'GET'} ${url.split('?')[0]}`);
+  try {
+    const res = await global.fetch(url, {
+      ...options,
+      signal: controller.signal
+    });
+    clearTimeout(timeoutId);
+    logger.info(`[Facebook API] Response Status: ${res.status}`);
+    return res;
+  } catch (error) {
+    clearTimeout(timeoutId);
+    if (error.name === 'AbortError') {
+      logger.error(`[Facebook API] ❌ Timeout after ${timeoutMs}ms: ${options.method || 'GET'} ${url.split('?')[0]}`);
+      throw new Error(`Facebook API request timed out after ${timeoutMs}ms`);
+    }
+    logger.error(`[Facebook API] ❌ Failed: ${error.message}`);
+    throw error;
+  }
+};
+
+const fetch = fetchWithTimeout;
 
 class FacebookGateway {
   constructor() {
@@ -179,6 +208,16 @@ class FacebookGateway {
     if (!res.ok) {
       const errData = await res.json().catch(() => ({}));
       throw new Error(errData.error?.message || 'Failed to reply to comment on Facebook');
+    }
+    return res.json();
+  }
+
+  async createComment(postId, text, pageAccessToken) {
+    const url = `${this.graphBaseUrl}/${postId}/comments?message=${encodeURIComponent(text)}&access_token=${pageAccessToken}`;
+    const res = await fetch(url, { method: 'POST' });
+    if (!res.ok) {
+      const errData = await res.json().catch(() => ({}));
+      throw new Error(errData.error?.message || 'Failed to create comment on Facebook');
     }
     return res.json();
   }

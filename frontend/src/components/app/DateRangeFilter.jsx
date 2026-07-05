@@ -34,6 +34,14 @@ export function DateRangeFilter({ className, date, setDate }) {
     return isSameDay(date?.from, value.from) && isSameDay(date?.to, value.to);
   };
 
+  const handleSelect = (range, selectedDay) => {
+    if (!range) {
+      setDate({ from: selectedDay, to: selectedDay });
+      return;
+    }
+    setDate(range);
+  };
+
   return (
     <div className={cn("grid gap-2", className)}>
       <Popover>
@@ -74,7 +82,7 @@ export function DateRangeFilter({ className, date, setDate }) {
                 mode="range"
                 defaultMonth={date?.from}
                 selected={date}
-                onSelect={setDate}
+                onSelect={handleSelect}
                 numberOfMonths={2}
                 className="rounded-md border-none"
                 classNames={{

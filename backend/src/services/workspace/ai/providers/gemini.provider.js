@@ -48,6 +48,8 @@ class GeminiProvider extends BaseAiProvider {
           responseMimeType: 'application/json',
           temperature: 0.7
         }
+      }, {
+        timeout: 45000  // 45s – cho Gemini API đủ thời gian sinh nội dung dài
       });
 
       const text = response.data.candidates[0].content.parts[0].text;

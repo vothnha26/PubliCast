@@ -49,6 +49,19 @@ class PlatformLimitController {
   });
 
   /**
+   * PATCH /api/admin/platform-limits/:id/lock
+   */
+  toggleLock = asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    const { isLocked, lockReason } = req.body;
+    const limit = await platformLimitService.toggleLock(id, isLocked, lockReason);
+    res.status(200).json({
+      message: `Platform limit configuration ${isLocked ? 'locked' : 'unlocked'} successfully`,
+      data: limit
+    });
+  });
+
+  /**
    * DELETE /api/admin/platform-limits/:id
    */
   deletePlatformLimit = asyncHandler(async (req, res) => {

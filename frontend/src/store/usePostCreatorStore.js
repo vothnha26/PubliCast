@@ -31,7 +31,7 @@ export const usePostCreatorStore = create((set) => ({
     videoFileUrl: options.defaultVideoUrl || "",
     uploadedVideoPath: options.defaultVideoPath || "",
     isUploadingVideo: options.isUploadingVideo || false,
-    albumMedia: options.post?.options?.albumMedia || [],
+    albumMedia: options.post?.options?.albumMedia || options.template?.options?.albumMedia || [],
     postMedia: options.post?.mediaUrls?.map(url => ({
       file: null,
       previewUrl: buildMediaUrl(url),

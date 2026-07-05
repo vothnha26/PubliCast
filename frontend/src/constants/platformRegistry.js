@@ -74,11 +74,13 @@ export const PLATFORM_CONFIGS = {
       return (hasMedia && isVideo) ? POST_TYPE.VIDEO : POST_TYPE.IMAGE;
     },
     validationRules: {
-      reel: [
+      _always: [
         {
           check: ({ hasMedia }) => !hasMedia,
-          message: () => "Instagram Reel -> Add at least 1 video."
-        },
+          message: () => "Instagram requires at least one photo or video to publish a post."
+        }
+      ],
+      reel: [
         {
           check: ({ hasMedia, isVideo }) => hasMedia && !isVideo,
           message: () => "Instagram Reel must be a video."
@@ -94,10 +96,6 @@ export const PLATFORM_CONFIGS = {
       ],
       story: [
         {
-          check: ({ hasMedia }) => !hasMedia,
-          message: () => "Instagram Story -> Add at least 1 image or video."
-        },
-        {
           check: ({ isVideo, videoDuration }) => isVideo && videoDuration > 15,
           message: ({ videoDuration }) => `Instagram Story videos should be 15 seconds or less. (Current: ${videoDuration.toFixed(1)}s)`
         },
@@ -106,12 +104,7 @@ export const PLATFORM_CONFIGS = {
           message: () => "Instagram Story videos should be vertical (9:16 aspect ratio)."
         }
       ],
-      post: [
-        {
-          check: ({ hasMedia }) => !hasMedia,
-          message: () => "Instagram Feed Post -> Add at least 1 image or video."
-        }
-      ]
+      post: []
     }
   },
   [PLATFORMS.YOUTUBE]: {

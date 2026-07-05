@@ -223,6 +223,24 @@ export function PostCreatorPage() {
     return isPlatformConnected(platformId) || selectedPlatforms.includes(platformId);
   };
 
+  const getPlatformLockInfo = (platformName) => {
+    const platUpper = platformName.toUpperCase();
+    const limits = platformLimits?.filter(l => l.platform === platUpper) || [];
+    if (limits.length === 0) return { isLocked: false, isFullyLocked: false };
+    
+    const activeSubType = platformName === 'facebook' ? facebookType : platformName === 'instagram' ? instagramType : platformName === 'youtube' ? youtubeType : 'video';
+    const activeLimit = limits.find(l => l.subType === activeSubType.toUpperCase());
+    
+    const isFullyLocked = limits.every(l => l.isLocked);
+    const isActiveLocked = activeLimit ? activeLimit.isLocked : false;
+    
+    return {
+      isLocked: isFullyLocked || isActiveLocked,
+      reason: activeLimit?.lockReason || limits.find(l => l.isLocked)?.lockReason || "Tạm thời bảo trì",
+      isFullyLocked
+    };
+  };
+
   const parseValidationError = (err) => {
     const match = err.match(/^\[([A-Z_]+)(?:\s*-\s*[A-Z_]+)?\]\s*(.*)$/);
     if (match) {
@@ -272,6 +290,11 @@ export function PostCreatorPage() {
   const [showTypeDropdown, setShowTypeDropdown] = useState(false);
 
   const handlePlatformClick = (platformName, hasAccess, productId) => {
+    const lockInfo = getPlatformLockInfo(platformName);
+    if (lockInfo.isFullyLocked) {
+      toast.error(`Nền tảng ${platformName.toUpperCase()} hiện đang bị khóa: ${lockInfo.reason}`);
+      return;
+    }
     if (hasAccess !== undefined && !hasAccess) {
       setBlockedProductId(productId);
       return;
@@ -374,6 +397,7 @@ export function PostCreatorPage() {
   const [showImageMenu, setShowImageMenu] = useState(false);
   const [showImageEditor, setShowImageEditor] = useState(false);
   const [editingAlbumPhoto, setEditingAlbumPhoto] = useState(null); // Lưu { id, previewUrl, path, caption } đang chỉnh sửa
+  const [editingPostMediaIndex, setEditingPostMediaIndex] = useState(null); // Lưu index của ảnh trong postMedia đang chỉnh sửa
   const [imageTransform, setImageTransform] = useState({ rotation: 0, flipH: false, flipV: false, filter: 'none' });
   const [showAltTextModal, setShowAltTextModal] = useState(false);
   
@@ -503,29 +527,37 @@ export function PostCreatorPage() {
                          {/* Facebook Item */}
                          {shouldShowPlatform("facebook") && (
                            <div className="flex items-center gap-1.5 relative">
-                             <button 
-                               type="button"
-                               data-testid="platform-select-facebook" onClick={() => handlePlatformClick("facebook", hasFacebookAccess, PRODUCT_IDS.FACEBOOK_MANAGEMENT)}
-                               className={`w-7 h-7 rounded-full flex items-center justify-center transition-all cursor-pointer relative ${
-                                 selectedPlatforms.includes('facebook')
-                                   ? activePlatform === 'facebook'
-                                     ? 'bg-[#1877F2] text-white ring-2 ring-offset-2 ring-[#1877F2]'
-                                     : 'bg-[#1877F2]/70 text-white hover:bg-[#1877F2]/80 border border-[#1877F2]'
-                                   : 'bg-gray-100 text-gray-400 hover:bg-gray-200'
-                               }`}
-                             >
-                               <svg className="w-4 h-4 fill-current" viewBox="0 0 24 24">
-                                 <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
-                               </svg>
-                               {selectedPlatforms.includes('facebook') && (
-                                 <span className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-green-500 rounded-full border border-white" />
-                               )}
-                               {!hasFacebookAccess && (
-                                 <span className="absolute -top-1.5 -right-1.5 bg-white border border-purple-100 text-purple-600 rounded-full p-0.5 shadow-sm">
-                                   <Lock size={7} strokeWidth={3} />
-                                 </span>
-                               )}
-                             </button>
+                              <button 
+                                type="button"
+                                title={getPlatformLockInfo("facebook").isFullyLocked ? `Facebook hiện đang bị khóa: ${getPlatformLockInfo("facebook").reason}` : "Facebook"}
+                                data-testid="platform-select-facebook" onClick={() => handlePlatformClick("facebook", hasFacebookAccess, PRODUCT_IDS.FACEBOOK_MANAGEMENT)}
+                                className={`w-7 h-7 rounded-full flex items-center justify-center transition-all cursor-pointer relative ${
+                                  getPlatformLockInfo("facebook").isFullyLocked
+                                    ? 'bg-red-50 text-red-400 border border-red-200 opacity-60 cursor-not-allowed'
+                                    : selectedPlatforms.includes('facebook')
+                                      ? activePlatform === 'facebook'
+                                        ? 'bg-[#1877F2] text-white ring-2 ring-offset-2 ring-[#1877F2]'
+                                        : 'bg-[#1877F2]/70 text-white hover:bg-[#1877F2]/80 border border-[#1877F2]'
+                                      : 'bg-gray-100 text-gray-400 hover:bg-gray-200'
+                                }`}
+                              >
+                                <svg className="w-4 h-4 fill-current" viewBox="0 0 24 24">
+                                  <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
+                                </svg>
+                                {selectedPlatforms.includes('facebook') && !getPlatformLockInfo("facebook").isFullyLocked && (
+                                  <span className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-green-500 rounded-full border border-white" />
+                                )}
+                                {!hasFacebookAccess && !getPlatformLockInfo("facebook").isFullyLocked && (
+                                  <span className="absolute -top-1.5 -right-1.5 bg-white border border-purple-100 text-purple-600 rounded-full p-0.5 shadow-sm">
+                                    <Lock size={7} strokeWidth={3} />
+                                  </span>
+                                )}
+                                {getPlatformLockInfo("facebook").isFullyLocked && (
+                                  <span className="absolute -top-1.5 -right-1.5 bg-red-500 text-white rounded-full p-0.5 shadow-sm border border-white">
+                                    <Lock size={7} strokeWidth={3} />
+                                  </span>
+                                )}
+                              </button>
                              
                              {selectedPlatforms.includes('facebook') && activePlatform === 'facebook' && renderTypeDropdown()}
                            </div>
@@ -534,27 +566,35 @@ export function PostCreatorPage() {
                          {/* Instagram Item */}
                          {shouldShowPlatform("instagram") && (
                            <div className="flex items-center gap-1.5 relative">
-                             <button 
-                               type="button"
-                               data-testid="platform-select-instagram" onClick={() => handlePlatformClick("instagram", hasInstagramAccess, PRODUCT_IDS.INSTAGRAM_MANAGEMENT || 'instagram_management')}
-                               className={`w-7 h-7 rounded-full flex items-center justify-center transition-all cursor-pointer relative ${
-                                 selectedPlatforms.includes('instagram')
-                                   ? activePlatform === 'instagram'
-                                     ? 'bg-gradient-to-tr from-[#F58529] via-[#DD2A7B] to-[#8134AF] text-white ring-2 ring-offset-2 ring-[#DD2A7B]'
-                                     : 'bg-gradient-to-tr from-[#F58529]/70 via-[#DD2A7B]/70 to-[#8134AF]/70 text-white hover:opacity-90 border border-[#DD2A7B]'
-                                   : 'bg-gray-100 text-gray-400 hover:bg-gray-200'
-                               }`}
-                             >
-                               <Instagram size={14} />
-                               {selectedPlatforms.includes('instagram') && (
-                                 <span className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-green-500 rounded-full border border-white" />
-                               )}
-                               {!hasInstagramAccess && (
-                                 <span className="absolute -top-1.5 -right-1.5 bg-white border border-purple-100 text-purple-600 rounded-full p-0.5 shadow-sm">
-                                   <Lock size={7} strokeWidth={3} />
-                                 </span>
-                               )}
-                             </button>
+                              <button 
+                                type="button"
+                                title={getPlatformLockInfo("instagram").isFullyLocked ? `Instagram hiện đang bị khóa: ${getPlatformLockInfo("instagram").reason}` : "Instagram"}
+                                data-testid="platform-select-instagram" onClick={() => handlePlatformClick("instagram", hasInstagramAccess, PRODUCT_IDS.INSTAGRAM_MANAGEMENT || 'instagram_management')}
+                                className={`w-7 h-7 rounded-full flex items-center justify-center transition-all cursor-pointer relative ${
+                                  getPlatformLockInfo("instagram").isFullyLocked
+                                    ? 'bg-red-50 text-red-400 border border-red-200 opacity-60 cursor-not-allowed'
+                                    : selectedPlatforms.includes('instagram')
+                                      ? activePlatform === 'instagram'
+                                        ? 'bg-gradient-to-tr from-[#F58529] via-[#DD2A7B] to-[#8134AF] text-white ring-2 ring-offset-2 ring-[#DD2A7B]'
+                                        : 'bg-gradient-to-tr from-[#F58529]/70 via-[#DD2A7B]/70 to-[#8134AF]/70 text-white hover:opacity-90 border border-[#DD2A7B]'
+                                      : 'bg-gray-100 text-gray-400 hover:bg-gray-200'
+                                }`}
+                              >
+                                <Instagram size={14} />
+                                {selectedPlatforms.includes('instagram') && !getPlatformLockInfo("instagram").isFullyLocked && (
+                                  <span className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-green-500 rounded-full border border-white" />
+                                )}
+                                {!hasInstagramAccess && !getPlatformLockInfo("instagram").isFullyLocked && (
+                                  <span className="absolute -top-1.5 -right-1.5 bg-white border border-purple-100 text-purple-600 rounded-full p-0.5 shadow-sm">
+                                    <Lock size={7} strokeWidth={3} />
+                                  </span>
+                                )}
+                                {getPlatformLockInfo("instagram").isFullyLocked && (
+                                  <span className="absolute -top-1.5 -right-1.5 bg-red-500 text-white rounded-full p-0.5 shadow-sm border border-white">
+                                    <Lock size={7} strokeWidth={3} />
+                                  </span>
+                                )}
+                              </button>
                              
                              {selectedPlatforms.includes('instagram') && activePlatform === 'instagram' && renderTypeDropdown()}
                            </div>
@@ -563,56 +603,72 @@ export function PostCreatorPage() {
                          {/* Tiktok Item */}
                          {shouldShowPlatform("tiktok") && (
                            <div className="relative">
-                             <button 
-                               type="button" 
-                               data-testid="platform-select-tiktok" onClick={() => handlePlatformClick("tiktok", hasTiktokAccess, PRODUCT_IDS.TIKTOK_CREATIVE)}
-                               className={`w-7 h-7 rounded-full flex items-center justify-center transition-all cursor-pointer relative ${
-                                 selectedPlatforms.includes('tiktok')
-                                   ? activePlatform === 'tiktok'
-                                     ? 'bg-black text-white ring-2 ring-offset-2 ring-black'
-                                     : 'bg-black/70 text-white hover:bg-black/80 border border-black'
-                                   : 'bg-gray-100 text-gray-400 hover:bg-gray-200'
-                               }`}
-                             >
-                               <svg className="w-4 h-4 fill-current" viewBox="0 0 24 24">
-                                 <path d="M12.53.02C13.84 0 15.14.01 16.44 0c.08 1.53.63 3.09 1.75 4.17 1.12 1.11 2.7 1.62 4.24 1.79v4.03c-1.44-.17-2.89-.6-4.09-1.5-1.1-1.02-1.7-2.48-1.9-3.96-.03 2.49 0 4.99 0 7.48-.02 1.9-.38 3.82-1.39 5.43-1.46 2.42-4.13 3.84-6.93 3.55-3.05-.2-5.78-2.44-6.39-5.46-.73-3.27.97-6.9 4.13-7.91 1.09-.34 2.24-.39 3.37-.2v4.02c-1.22-.32-2.58-.09-3.55.74-.95.83-1.29 2.19-1.03 3.4.31 1.65 1.84 2.91 3.53 2.78 1.94-.04 3.42-1.8 3.25-3.73-.02-2.91 0-5.83 0-8.74.02-3.11-.02-6.22.02-9.33z"/>
-                               </svg>
-                               {selectedPlatforms.includes('tiktok') && (
-                                 <span className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-green-500 rounded-full border border-white" />
-                               )}
-                               {!hasTiktokAccess && (
-                                 <span className="absolute -top-1.5 -right-1.5 bg-white border border-purple-100 text-purple-600 rounded-full p-0.5 shadow-sm">
-                                   <Lock size={7} strokeWidth={3} />
-                                 </span>
-                               )}
-                             </button>
+                              <button 
+                                type="button" 
+                                title={getPlatformLockInfo("tiktok").isFullyLocked ? `TikTok hiện đang bị khóa: ${getPlatformLockInfo("tiktok").reason}` : "TikTok"}
+                                data-testid="platform-select-tiktok" onClick={() => handlePlatformClick("tiktok", hasTiktokAccess, PRODUCT_IDS.TIKTOK_CREATIVE)}
+                                className={`w-7 h-7 rounded-full flex items-center justify-center transition-all cursor-pointer relative ${
+                                  getPlatformLockInfo("tiktok").isFullyLocked
+                                    ? 'bg-red-50 text-red-400 border border-red-200 opacity-60 cursor-not-allowed'
+                                    : selectedPlatforms.includes('tiktok')
+                                      ? activePlatform === 'tiktok'
+                                        ? 'bg-black text-white ring-2 ring-offset-2 ring-black'
+                                        : 'bg-black/70 text-white hover:bg-black/80 border border-black'
+                                      : 'bg-gray-100 text-gray-400 hover:bg-gray-200'
+                                }`}
+                              >
+                                <svg className="w-4 h-4 fill-current" viewBox="0 0 24 24">
+                                  <path d="M12.53.02C13.84 0 15.14.01 16.44 0c.08 1.53.63 3.09 1.75 4.17 1.12 1.11 2.7 1.62 4.24 1.79v4.03c-1.44-.17-2.89-.6-4.09-1.5-1.1-1.02-1.7-2.48-1.9-3.96-.03 2.49 0 4.99 0 7.48-.02 1.9-.38 3.82-1.39 5.43-1.46 2.42-4.13 3.84-6.93 3.55-3.05-.2-5.78-2.44-6.39-5.46-.73-3.27.97-6.9 4.13-7.91 1.09-.34 2.24-.39 3.37-.2v4.02c-1.22-.32-2.58-.09-3.55.74-.95.83-1.29 2.19-1.03 3.4.31 1.65 1.84 2.91 3.53 2.78 1.94-.04 3.42-1.8 3.25-3.73-.02-2.91 0-5.83 0-8.74.02-3.11-.02-6.22.02-9.33z"/>
+                                </svg>
+                                {selectedPlatforms.includes('tiktok') && !getPlatformLockInfo("tiktok").isFullyLocked && (
+                                  <span className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-green-500 rounded-full border border-white" />
+                                )}
+                                {!hasTiktokAccess && !getPlatformLockInfo("tiktok").isFullyLocked && (
+                                  <span className="absolute -top-1.5 -right-1.5 bg-white border border-purple-100 text-purple-600 rounded-full p-0.5 shadow-sm">
+                                    <Lock size={7} strokeWidth={3} />
+                                  </span>
+                                )}
+                                {getPlatformLockInfo("tiktok").isFullyLocked && (
+                                  <span className="absolute -top-1.5 -right-1.5 bg-red-500 text-white rounded-full p-0.5 shadow-sm border border-white">
+                                    <Lock size={7} strokeWidth={3} />
+                                  </span>
+                                )}
+                              </button>
                            </div>
                          )}
 
                          {/* Youtube Item */}
                          {shouldShowPlatform("youtube") && (
                            <div className="flex items-center gap-1.5 relative">
-                             <button 
-                               type="button"
-                               data-testid="platform-select-youtube" onClick={() => handlePlatformClick("youtube", hasYoutubeAccess, PRODUCT_IDS.YOUTUBE_ANALYTICS)}
-                               className={`w-7 h-7 rounded-full flex items-center justify-center transition-all cursor-pointer relative ${
-                                 selectedPlatforms.includes('youtube')
-                                   ? activePlatform === 'youtube'
-                                     ? 'bg-[#FF0000] text-white ring-2 ring-offset-2 ring-[#FF0000]'
-                                     : 'bg-[#FF0000]/70 text-white hover:bg-[#FF0000]/80 border border-[#FF0000]'
-                                   : 'bg-gray-100 text-gray-400 hover:bg-gray-200'
-                               }`}
-                             >
-                               <Youtube size={14} className={activePlatform === 'youtube' ? 'fill-white' : ''} />
-                               {selectedPlatforms.includes('youtube') && (
-                                 <span className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-green-500 rounded-full border border-white" />
-                               )}
-                               {!hasYoutubeAccess && (
-                                 <span className="absolute -top-1.5 -right-1.5 bg-white border border-purple-100 text-purple-600 rounded-full p-0.5 shadow-sm">
-                                   <Lock size={7} strokeWidth={3} />
-                                 </span>
-                               )}
-                             </button>
+                              <button 
+                                type="button"
+                                title={getPlatformLockInfo("youtube").isFullyLocked ? `YouTube hiện đang bị khóa: ${getPlatformLockInfo("youtube").reason}` : "YouTube"}
+                                data-testid="platform-select-youtube" onClick={() => handlePlatformClick("youtube", hasYoutubeAccess, PRODUCT_IDS.YOUTUBE_ANALYTICS)}
+                                className={`w-7 h-7 rounded-full flex items-center justify-center transition-all cursor-pointer relative ${
+                                  getPlatformLockInfo("youtube").isFullyLocked
+                                    ? 'bg-red-50 text-red-400 border border-red-200 opacity-60 cursor-not-allowed'
+                                    : selectedPlatforms.includes('youtube')
+                                      ? activePlatform === 'youtube'
+                                        ? 'bg-[#FF0000] text-white ring-2 ring-offset-2 ring-[#FF0000]'
+                                        : 'bg-[#FF0000]/70 text-white hover:bg-[#FF0000]/80 border border-[#FF0000]'
+                                      : 'bg-gray-100 text-gray-400 hover:bg-gray-200'
+                                }`}
+                              >
+                                <Youtube size={14} className={activePlatform === 'youtube' && !getPlatformLockInfo("youtube").isFullyLocked ? 'fill-white' : ''} />
+                                {selectedPlatforms.includes('youtube') && !getPlatformLockInfo("youtube").isFullyLocked && (
+                                  <span className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-green-500 rounded-full border border-white" />
+                                )}
+                                {!hasYoutubeAccess && !getPlatformLockInfo("youtube").isFullyLocked && (
+                                  <span className="absolute -top-1.5 -right-1.5 bg-white border border-purple-100 text-purple-600 rounded-full p-0.5 shadow-sm">
+                                    <Lock size={7} strokeWidth={3} />
+                                  </span>
+                                )}
+                                {getPlatformLockInfo("youtube").isFullyLocked && (
+                                  <span className="absolute -top-1.5 -right-1.5 bg-red-500 text-white rounded-full p-0.5 shadow-sm border border-white">
+                                    <Lock size={7} strokeWidth={3} />
+                                  </span>
+                                )}
+                              </button>
                              
                              {selectedPlatforms.includes('youtube') && activePlatform === 'youtube' && renderTypeDropdown()}
                            </div>
@@ -621,27 +677,35 @@ export function PostCreatorPage() {
                          {/* LinkedIn Item */}
                          {shouldShowPlatform("linkedin") && (
                            <div className="flex items-center gap-1.5 relative">
-                             <button 
-                               type="button"
-                               data-testid="platform-select-linkedin" onClick={() => handlePlatformClick("linkedin", hasLinkedinAccess, PRODUCT_IDS.LINKEDIN_MANAGEMENT || 'linkedin_management')}
-                               className={`w-7 h-7 rounded-full flex items-center justify-center transition-all cursor-pointer relative ${
-                                 selectedPlatforms.includes('linkedin')
-                                   ? activePlatform === 'linkedin'
-                                     ? 'bg-[#0077B5] text-white ring-2 ring-offset-2 ring-[#0077B5]'
-                                     : 'bg-[#0077B5]/70 text-white hover:bg-[#0077B5]/80 border border-[#0077B5]'
-                                   : 'bg-gray-100 text-gray-400 hover:bg-gray-200'
-                               }`}
-                             >
-                               <Linkedin size={14} className={activePlatform === 'linkedin' ? 'fill-white text-white' : ''} />
-                               {selectedPlatforms.includes('linkedin') && (
-                                 <span className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-green-500 rounded-full border border-white" />
-                               )}
-                               {!hasLinkedinAccess && (
-                                 <span className="absolute -top-1.5 -right-1.5 bg-white border border-purple-100 text-purple-600 rounded-full p-0.5 shadow-sm">
-                                   <Lock size={7} strokeWidth={3} />
-                                 </span>
-                               )}
-                             </button>
+                              <button 
+                                type="button"
+                                title={getPlatformLockInfo("linkedin").isFullyLocked ? `LinkedIn hiện đang bị khóa: ${getPlatformLockInfo("linkedin").reason}` : "LinkedIn"}
+                                data-testid="platform-select-linkedin" onClick={() => handlePlatformClick("linkedin", hasLinkedinAccess, PRODUCT_IDS.LINKEDIN_MANAGEMENT || 'linkedin_management')}
+                                className={`w-7 h-7 rounded-full flex items-center justify-center transition-all cursor-pointer relative ${
+                                  getPlatformLockInfo("linkedin").isFullyLocked
+                                    ? 'bg-red-50 text-red-400 border border-red-200 opacity-60 cursor-not-allowed'
+                                    : selectedPlatforms.includes('linkedin')
+                                      ? activePlatform === 'linkedin'
+                                        ? 'bg-[#0077B5] text-white ring-2 ring-offset-2 ring-[#0077B5]'
+                                        : 'bg-[#0077B5]/70 text-white hover:bg-[#0077B5]/80 border border-[#0077B5]'
+                                      : 'bg-gray-100 text-gray-400 hover:bg-gray-200'
+                                }`}
+                              >
+                                <Linkedin size={14} className={activePlatform === 'linkedin' && !getPlatformLockInfo("linkedin").isFullyLocked ? 'fill-white text-white' : ''} />
+                                {selectedPlatforms.includes('linkedin') && !getPlatformLockInfo("linkedin").isFullyLocked && (
+                                  <span className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-green-500 rounded-full border border-white" />
+                                )}
+                                {!hasLinkedinAccess && !getPlatformLockInfo("linkedin").isFullyLocked && (
+                                  <span className="absolute -top-1.5 -right-1.5 bg-white border border-purple-100 text-purple-600 rounded-full p-0.5 shadow-sm">
+                                    <Lock size={7} strokeWidth={3} />
+                                  </span>
+                                )}
+                                {getPlatformLockInfo("linkedin").isFullyLocked && (
+                                  <span className="absolute -top-1.5 -right-1.5 bg-red-500 text-white rounded-full p-0.5 shadow-sm border border-white">
+                                    <Lock size={7} strokeWidth={3} />
+                                  </span>
+                                )}
+                              </button>
                              
                              {selectedPlatforms.includes('linkedin') && activePlatform === 'linkedin' && renderTypeDropdown()}
                            </div>
@@ -650,22 +714,30 @@ export function PostCreatorPage() {
                          {/* Telegram Item */}
                          {shouldShowPlatform("telegram") && (
                            <div className="flex items-center gap-1.5 relative">
-                             <button 
-                               type="button"
-                               onClick={() => handlePlatformClick("telegram", true)}
-                               className={`w-7 h-7 rounded-full flex items-center justify-center transition-all cursor-pointer relative ${
-                                 selectedPlatforms.includes('telegram')
-                                   ? activePlatform === 'telegram'
-                                     ? 'bg-[#0088cc] text-white ring-2 ring-offset-2 ring-[#0088cc]'
-                                     : 'bg-[#0088cc]/70 text-white hover:bg-[#0088cc]/80 border border-[#0088cc]'
-                                   : 'bg-gray-100 text-gray-400 hover:bg-gray-200'
-                               }`}
-                             >
-                               <Send size={12} className={activePlatform === 'telegram' ? 'fill-white text-white' : 'text-gray-400'} />
-                               {selectedPlatforms.includes('telegram') && (
-                                 <span className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-green-500 rounded-full border border-white" />
-                               )}
-                             </button>
+                              <button 
+                                type="button"
+                                title={getPlatformLockInfo("telegram").isFullyLocked ? `Telegram hiện đang bị khóa: ${getPlatformLockInfo("telegram").reason}` : "Telegram"}
+                                onClick={() => handlePlatformClick("telegram", true)}
+                                className={`w-7 h-7 rounded-full flex items-center justify-center transition-all cursor-pointer relative ${
+                                  getPlatformLockInfo("telegram").isFullyLocked
+                                    ? 'bg-red-50 text-red-400 border border-red-200 opacity-60 cursor-not-allowed'
+                                    : selectedPlatforms.includes('telegram')
+                                      ? activePlatform === 'telegram'
+                                        ? 'bg-[#0088cc] text-white ring-2 ring-offset-2 ring-[#0088cc]'
+                                        : 'bg-[#0088cc]/70 text-white hover:bg-[#0088cc]/80 border border-[#0088cc]'
+                                      : 'bg-gray-100 text-gray-400 hover:bg-gray-200'
+                                }`}
+                              >
+                                <Send size={12} className={activePlatform === 'telegram' && !getPlatformLockInfo("telegram").isFullyLocked ? 'fill-white text-white' : 'text-gray-400'} />
+                                {selectedPlatforms.includes('telegram') && !getPlatformLockInfo("telegram").isFullyLocked && (
+                                  <span className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-green-500 rounded-full border border-white" />
+                                )}
+                                {getPlatformLockInfo("telegram").isFullyLocked && (
+                                  <span className="absolute -top-1.5 -right-1.5 bg-red-500 text-white rounded-full p-0.5 shadow-sm border border-white">
+                                    <Lock size={7} strokeWidth={3} />
+                                  </span>
+                                )}
+                              </button>
                              
                              {selectedPlatforms.includes('telegram') && activePlatform === 'telegram' && renderTypeDropdown()}
                            </div>
@@ -674,22 +746,30 @@ export function PostCreatorPage() {
                          {/* Discord Item */}
                          {shouldShowPlatform("discord") && (
                            <div className="flex items-center gap-1.5 relative">
-                             <button 
-                               type="button"
-                               onClick={() => handlePlatformClick("discord", true)}
-                               className={`w-7 h-7 rounded-full flex items-center justify-center transition-all cursor-pointer relative ${
-                                 selectedPlatforms.includes('discord')
-                                   ? activePlatform === 'discord'
-                                     ? 'bg-[#5865F2] text-white ring-2 ring-offset-2 ring-[#5865F2]'
-                                     : 'bg-[#5865F2]/70 text-white hover:bg-[#5865F2]/80 border border-[#5865F2]'
-                                   : 'bg-gray-100 text-gray-400 hover:bg-gray-200'
-                               }`}
-                             >
-                               <MessageSquare size={12} className={activePlatform === 'discord' ? 'fill-white text-white' : 'text-gray-400'} />
-                               {selectedPlatforms.includes('discord') && (
-                                 <span className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-green-500 rounded-full border border-white" />
-                               )}
-                             </button>
+                              <button 
+                                type="button"
+                                title={getPlatformLockInfo("discord").isFullyLocked ? `Discord hiện đang bị khóa: ${getPlatformLockInfo("discord").reason}` : "Discord"}
+                                onClick={() => handlePlatformClick("discord", true)}
+                                className={`w-7 h-7 rounded-full flex items-center justify-center transition-all cursor-pointer relative ${
+                                  getPlatformLockInfo("discord").isFullyLocked
+                                    ? 'bg-red-50 text-red-400 border border-red-200 opacity-60 cursor-not-allowed'
+                                    : selectedPlatforms.includes('discord')
+                                      ? activePlatform === 'discord'
+                                        ? 'bg-[#5865F2] text-white ring-2 ring-offset-2 ring-[#5865F2]'
+                                        : 'bg-[#5865F2]/70 text-white hover:bg-[#5865F2]/80 border border-[#5865F2]'
+                                      : 'bg-gray-100 text-gray-400 hover:bg-gray-200'
+                                }`}
+                              >
+                                <MessageSquare size={12} className={activePlatform === 'discord' && !getPlatformLockInfo("discord").isFullyLocked ? 'fill-white text-white' : 'text-gray-400'} />
+                                {selectedPlatforms.includes('discord') && !getPlatformLockInfo("discord").isFullyLocked && (
+                                  <span className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-green-500 rounded-full border border-white" />
+                                )}
+                                {getPlatformLockInfo("discord").isFullyLocked && (
+                                  <span className="absolute -top-1.5 -right-1.5 bg-red-500 text-white rounded-full p-0.5 shadow-sm border border-white">
+                                    <Lock size={7} strokeWidth={3} />
+                                  </span>
+                                )}
+                              </button>
                              
                              {selectedPlatforms.includes('discord') && activePlatform === 'discord' && renderTypeDropdown()}
                            </div>
@@ -698,22 +778,30 @@ export function PostCreatorPage() {
                          {/* Threads Item */}
                          {shouldShowPlatform("threads") && (
                            <div className="flex items-center gap-1.5 relative">
-                             <button 
-                               type="button"
-                               data-testid="platform-select-threads" onClick={() => handlePlatformClick("threads", true)}
-                               className={`w-7 h-7 rounded-full flex items-center justify-center transition-all cursor-pointer relative ${
-                                 selectedPlatforms.includes('threads')
-                                   ? activePlatform === 'threads'
-                                     ? 'bg-black text-white ring-2 ring-offset-2 ring-black'
-                                     : 'bg-black/70 text-white hover:bg-black/85 border border-black'
-                                   : 'bg-gray-100 text-gray-400 hover:bg-gray-200'
-                               }`}
-                             >
-                               <PlatformIcon platform="Threads" size={14} variant="flat" className={activePlatform === 'threads' ? 'text-white' : 'text-gray-400'} />
-                               {selectedPlatforms.includes('threads') && (
-                                 <span className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-green-500 rounded-full border border-white" />
-                               )}
-                             </button>
+                              <button 
+                                type="button"
+                                title={getPlatformLockInfo("threads").isFullyLocked ? `Threads hiện đang bị khóa: ${getPlatformLockInfo("threads").reason}` : "Threads"}
+                                data-testid="platform-select-threads" onClick={() => handlePlatformClick("threads", true)}
+                                className={`w-7 h-7 rounded-full flex items-center justify-center transition-all cursor-pointer relative ${
+                                  getPlatformLockInfo("threads").isFullyLocked
+                                    ? 'bg-red-50 text-red-400 border border-red-200 opacity-60 cursor-not-allowed'
+                                    : selectedPlatforms.includes('threads')
+                                      ? activePlatform === 'threads'
+                                        ? 'bg-black text-white ring-2 ring-offset-2 ring-black'
+                                        : 'bg-black/70 text-white hover:bg-black/85 border border-black'
+                                      : 'bg-gray-100 text-gray-400 hover:bg-gray-200'
+                                }`}
+                              >
+                                <PlatformIcon platform="Threads" size={14} variant="flat" className={activePlatform === 'threads' && !getPlatformLockInfo("threads").isFullyLocked ? 'text-white' : 'text-gray-400'} />
+                                {selectedPlatforms.includes('threads') && !getPlatformLockInfo("threads").isFullyLocked && (
+                                  <span className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-green-500 rounded-full border border-white" />
+                                )}
+                                {getPlatformLockInfo("threads").isFullyLocked && (
+                                  <span className="absolute -top-1.5 -right-1.5 bg-red-500 text-white rounded-full p-0.5 shadow-sm border border-white">
+                                    <Lock size={7} strokeWidth={3} />
+                                  </span>
+                                )}
+                              </button>
                              
                              {selectedPlatforms.includes('threads') && activePlatform === 'threads' && renderTypeDropdown()}
                            </div>
@@ -743,6 +831,21 @@ export function PostCreatorPage() {
                {/* Text Area Card */}
               <div className="border border-gray-200 rounded-[24px] overflow-hidden focus-within:border-black transition-all shadow-sm bg-white relative">
                   <input type="file" ref={fileInputRef} accept="video/*,image/*" onChange={handleVideoChange} className="hidden" data-testid="post-file-input" />
+                  
+                  {/* Title Input — hiển thị khi đang edit post hoặc platform là YouTube */}
+                  {(editingPost || activePlatform === 'youtube') && (
+                    <div className="px-6 pt-5 pb-0 border-b border-gray-100">
+                      <input
+                        type="text"
+                        data-testid="post-title-input"
+                        value={title}
+                        onChange={(e) => setTitle(e.target.value)}
+                        placeholder="Post title (optional)"
+                        className="w-full text-base font-bold text-gray-900 outline-none bg-transparent placeholder-gray-300"
+                      />
+                    </div>
+                  )}
+
                   <textarea ref={textareaRef} 
                     value={caption}
                     onChange={(e) => setCaption(e.target.value)} data-testid="post-caption-input"
@@ -788,11 +891,27 @@ export function PostCreatorPage() {
                             );
                             return (
                               <div key={index} className="relative group">
-                                <div className="w-16 h-16 rounded-2xl overflow-hidden border border-gray-100 shadow-md bg-gray-50 flex items-center justify-center">
+                                <div className="w-16 h-16 rounded-2xl overflow-hidden border border-gray-100 shadow-md bg-gray-50 flex items-center justify-center relative">
                                   {isItemVid ? (
                                     <video src={item.previewUrl} className="w-full h-full object-cover" />
                                   ) : (
-                                    <img src={item.previewUrl} alt="Preview" className="w-full h-full object-cover" />
+                                    <>
+                                      <img src={item.previewUrl} alt="Preview" className="w-full h-full object-cover" />
+                                      {/* Overlay mờ hiển thị nút Edit khi hover */}
+                                      <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                        <button
+                                          type="button"
+                                          title="Chỉnh sửa hình ảnh"
+                                          onClick={() => {
+                                            setEditingPostMediaIndex(index);
+                                            setShowImageEditor(true);
+                                          }}
+                                          className="w-7 h-7 rounded-full bg-white/90 hover:bg-white text-gray-800 flex items-center justify-center cursor-pointer shadow-md active:scale-90 transition-all"
+                                        >
+                                          <Edit size={12} />
+                                        </button>
+                                      </div>
+                                    </>
                                   )}
                                 </div>
                                 <button
@@ -1867,12 +1986,19 @@ export function PostCreatorPage() {
         />
         <ImageEditorModal 
           isOpen={showImageEditor}
-          imageUrl={editingAlbumPhoto ? (editingAlbumPhoto.previewUrl || editingAlbumPhoto.path) : videoFileUrl}
+          imageUrl={
+            editingAlbumPhoto 
+              ? (editingAlbumPhoto.previewUrl || editingAlbumPhoto.path) 
+              : (editingPostMediaIndex !== null && postMedia[editingPostMediaIndex]) 
+                ? (postMedia[editingPostMediaIndex].previewUrl || postMedia[editingPostMediaIndex].path) 
+                : videoFileUrl
+          }
           currentTransform={imageTransform}
           brandId={activeBrand?.id}
           onClose={() => {
             setShowImageEditor(false);
             setEditingAlbumPhoto(null);
+            setEditingPostMediaIndex(null);
           }}
           onSave={(file, path, fallbackTransform) => {
             if (editingAlbumPhoto) {
@@ -1889,6 +2015,27 @@ export function PostCreatorPage() {
                 )
               );
               setEditingAlbumPhoto(null);
+            } else if (editingPostMediaIndex !== null) {
+              // Update image inside postMedia
+              setPostMedia((prev) =>
+                prev.map((item, idx) =>
+                  idx === editingPostMediaIndex
+                    ? {
+                        ...item,
+                        file: file || item.file,
+                        previewUrl: file ? URL.createObjectURL(file) : (path || item.previewUrl),
+                        path: path || item.path
+                      }
+                    : item
+                )
+              );
+              // Also update the main videoFile / videoFileUrl / uploadedVideoPath if it is the first media item
+              if (editingPostMediaIndex === 0) {
+                if (file) setVideoFile(file);
+                if (file) setVideoFileUrl(URL.createObjectURL(file));
+                if (path) setUploadedVideoPath(path);
+              }
+              setEditingPostMediaIndex(null);
             } else {
               // Default behavior for single image
               if (file && path) {

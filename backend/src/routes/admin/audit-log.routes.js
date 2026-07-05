@@ -8,7 +8,7 @@ const router = express.Router();
 
 // Apply authentication and Admin role authorizations to all audit routes
 router.use(verifyAuth);
-router.use(authorize(USER_ROLES.ADMIN, USER_ROLES.OWNER));
+router.use(authorize(USER_ROLES.ADMIN));
 
 /**
  * GET /api/admin/audit-logs

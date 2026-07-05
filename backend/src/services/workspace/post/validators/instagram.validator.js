@@ -6,10 +6,10 @@ class InstagramValidator extends BaseValidator {
     errors.push(...this.validateCaption(postData.caption));
     errors.push(...this.validateMedia(mediaInfo));
 
-    // Instagram specific: Reel/Story must have video/image
+    // Instagram: ALL post types require at least one photo or video
     const { hasMedia } = mediaInfo;
-    if (['REEL', 'STORY'].includes(this.limitConfig.subType) && !hasMedia) {
-      errors.push(`Instagram ${this.limitConfig.subType.toLowerCase()} requires a media file.`);
+    if (!hasMedia) {
+      errors.push(`Instagram requires at least one photo or video to publish a post.`);
     }
 
     return errors;

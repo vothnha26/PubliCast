@@ -21,7 +21,7 @@ export function PostsLibraryView() {
   const { hasPermission } = useBrandPermission();
   const hasCreatePermission = hasPermission('CREATE_POSTS');
 
-  const { openPostCreator } = usePostCreator();
+  const { openPostCreator, isOpen } = usePostCreator();
 
   const fetchLibrary = async () => {
     if (!activeBrand) return;
@@ -41,7 +41,7 @@ export function PostsLibraryView() {
 
   useEffect(() => {
     fetchLibrary();
-  }, [activeBrand, searchTerm]);
+  }, [activeBrand, searchTerm, isOpen]);
 
   return (
     <div className="flex-1 flex flex-col p-6 space-y-6">

@@ -9,7 +9,8 @@ export function TikTokPostsTab({
   isPublishedLoading = false,
   pageSize = 5,
   setPageSize = () => {},
-  fetchPublishedVideos = () => {}
+  fetchPublishedVideos = () => {},
+  onVideoClick = null
 }) {
   // Filter videos based on selected date range
   const filteredVideos = React.useMemo(() => {
@@ -238,6 +239,7 @@ export function TikTokPostsTab({
         columns={columns}
         searchPlaceholder="Search posts..."
         searchKeys={["title", "caption"]}
+        onRowClick={onVideoClick}
       />
     </div>
   );

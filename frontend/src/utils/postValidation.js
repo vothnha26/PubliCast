@@ -22,7 +22,9 @@ export function validatePostForm({
   videoHeight,
   uploadedVideoPath,
   platformLimits = [],
-  mediaCount = 0
+  mediaCount = 0,
+  editingPost,
+  postMedia = []
 }) {
   const errors = [];
   if (isLibrary) {
@@ -37,7 +39,7 @@ export function validatePostForm({
     }
   }
 
-  const hasMedia = !!(uploadedVideoPath || videoFile);
+  const hasMedia = !!(uploadedVideoPath || videoFile || mediaCount > 0);
   const isVid = isVideoPath(videoFileUrl, videoFile);
 
   // 2. Validate từng platform được tích chọn
@@ -51,8 +53,34 @@ export function validatePostForm({
     else if (platform === 'instagram') subType = instagramType.toUpperCase();
     else if (platform === 'tiktok') subType = 'VIDEO';
 
+    // Validation không cho phép thay đổi/thêm/bớt media trên bài viết Facebook đã xuất bản (PUBLISHED)
+    if (platUpper === 'FACEBOOK' && editingPost && editingPost.status?.toUpperCase() === 'PUBLISHED') {
+      let originalUrls = [];
+      if (Array.isArray(editingPost.mediaUrls)) {
+        originalUrls = editingPost.mediaUrls.filter(Boolean);
+      } else if (typeof editingPost.mediaUrls === 'string') {
+        originalUrls = editingPost.mediaUrls.split(',').map(u => u.trim()).filter(Boolean);
+      }
+
+      const currentUrls = (postMedia || []).map(item => item.path).filter(Boolean);
+      const hasNewFiles = (postMedia || []).some(item => item.file);
+
+      const isChanged = hasNewFiles || 
+                        currentUrls.length !== originalUrls.length || 
+                        !currentUrls.every(url => originalUrls.includes(url));
+
+      if (isChanged) {
+        errors.push(`[FACEBOOK] Facebook does not support updating/modifying media on an already published post.`);
+      }
+    }
+
     // Tìm cấu hình limit động từ DB
     const limitConfig = platformLimits.find(l => l.platform === platUpper && l.subType === subType);
+
+    if (limitConfig && limitConfig.isLocked) {
+      errors.push(`[${platUpper} - ${subType}] Nền tảng này hiện đang bị khóa: ${limitConfig.lockReason || 'Tạm thời bảo trì'}`);
+      continue;
+    }
 
     if (!limitConfig) {
       // Fallback sang cấu hình static registry nếu chưa load được DB limits
@@ -132,8 +160,8 @@ export function validatePostForm({
     if (platUpper === 'YOUTUBE' && !hasMedia) {
       errors.push(`[${platUpper} - ${subType}] YouTube uploads require a video file.`);
     }
-    if (platUpper === 'INSTAGRAM' && ['REEL', 'STORY'].includes(subType) && !hasMedia) {
-      errors.push(`[${platUpper} - ${subType}] Instagram ${subType.toLowerCase()} requires a media file.`);
+    if (platUpper === 'INSTAGRAM' && !hasMedia) {
+      errors.push(`[${platUpper} - ${subType}] Instagram requires at least one photo or video to publish a post.`);
     }
     if (platUpper === 'FACEBOOK' && ['REEL', 'STORY'].includes(subType) && !hasMedia) {
       errors.push(`[${platUpper} - ${subType}] Facebook ${subType.toLowerCase()} requires a media file.`);

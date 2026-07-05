@@ -1,5 +1,26 @@
 const prisma = require('../../config/prisma');
 
+function normalizeWindowsPaths(val) {
+  if (typeof val === 'string') {
+    let clean = val.toWellFormed();
+    if (clean.includes('\\') && (/[a-zA-Z]:\\/.test(clean) || /uploads|media|temp|publicast/i.test(clean))) {
+      return clean.replace(/\\/g, '/');
+    }
+    return clean;
+  }
+  if (Array.isArray(val)) {
+    return val.map(normalizeWindowsPaths);
+  }
+  if (val && typeof val === 'object' && !(val instanceof Date)) {
+    const result = {};
+    for (const key of Object.keys(val)) {
+      result[key] = normalizeWindowsPaths(val[key]);
+    }
+    return result;
+  }
+  return val;
+}
+
 class PostRepository {
   /**
    * Find posts with filters and pagination
@@ -71,34 +92,46 @@ class PostRepository {
   }
 
   async create(data) {
-    return prisma.post.create({
-      data,
-      include: {
-        creator: {
-          select: {
-            id: true,
-            name: true,
-            avatarUrl: true
+    const cleanData = normalizeWindowsPaths(data);
+    try {
+      return await prisma.post.create({
+        data: cleanData,
+        include: {
+          creator: {
+            select: {
+              id: true,
+              name: true,
+              avatarUrl: true
+            }
           }
         }
-      }
-    });
+      });
+    } catch (error) {
+      console.error('[PostRepository.create] ERROR payload:', JSON.stringify(cleanData, null, 2));
+      throw error;
+    }
   }
 
   async update(id, data) {
-    return prisma.post.update({
-      where: { id },
-      data,
-      include: {
-        creator: {
-          select: {
-            id: true,
-            name: true,
-            avatarUrl: true
+    const cleanData = normalizeWindowsPaths(data);
+    try {
+      return await prisma.post.update({
+        where: { id },
+        data: cleanData,
+        include: {
+          creator: {
+            select: {
+              id: true,
+              name: true,
+              avatarUrl: true
+            }
           }
         }
-      }
-    });
+      });
+    } catch (error) {
+      console.error('[PostRepository.update] ERROR payload:', JSON.stringify(cleanData, null, 2));
+      throw error;
+    }
   }
 
   async findManyByIdsAndBrand(ids, brandId) {
@@ -122,9 +155,10 @@ class PostRepository {
   }
 
   async updateMany(where, data) {
+    const cleanData = normalizeWindowsPaths(data);
     return prisma.post.updateMany({
       where,
-      data
+      data: cleanData
     });
   }
 

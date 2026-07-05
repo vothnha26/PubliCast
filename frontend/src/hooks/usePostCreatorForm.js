@@ -222,7 +222,9 @@ export function usePostCreatorForm() {
       videoHeight,
       uploadedVideoPath,
       platformLimits,
-      mediaCount: isAlbum ? albumMedia.length : (postMedia ? postMedia.length : 0)
+      mediaCount: isAlbum ? albumMedia.length : (postMedia ? postMedia.length : 0),
+      editingPost,
+      postMedia
     });
   };
 
@@ -619,7 +621,7 @@ export function usePostCreatorForm() {
 
       const payload = {
         brandId: activeBrand.id,
-        title: title || (activePlatform === 'facebook' && facebookType === 'reel' ? facebookTitle : youtubeTitle) || (caption ? caption.substring(0, 50) : "New Post"),
+        title: title || (activePlatform === 'facebook' && facebookType === 'reel' ? facebookTitle : youtubeTitle) || (caption ? Array.from(caption).slice(0, 50).join('') : "New Post"),
         caption,
         type: postType,
         status,
@@ -659,12 +661,12 @@ export function usePostCreatorForm() {
       };
 
       if (editingPost) {
-        await apiService.put(`/posts/${editingPost.id}`, payload);
+        await apiService.put(`/posts/${editingPost.id}`, payload, { timeout: 60000 });
         toast.success("Post updated successfully");
         // Đóng form ngay sau khi cập nhật thành công để tránh user vô tình tạo thêm bài mới
         closePostCreator();
       } else {
-        await apiService.post('/posts', payload);
+        await apiService.post('/posts', payload, { timeout: 60000 });
         toast.success("Post created successfully");
         // Reset state sau khi tạo bài mới thành công
         setSelectedPlatforms([DEFAULT_PLATFORM]);

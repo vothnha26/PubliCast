@@ -4,11 +4,14 @@ const socialAccountRepository = require('../../../repositories/social/social-acc
 const { PLATFORMS, POST_STATUS } = require('../../../utils/constants');
 
 class TikTokVideoService {
-  async getPublishedVideos(brandId, pageToken = 0, limit = 10) {
+  async getPublishedVideos(brandId, pageToken = 0, limit = 10, socialAccountId = null) {
     try {
-      let account = await this._getAccount(brandId);
+      let account = await this._getAccount(brandId, socialAccountId);
       
-      if (account && account.accessToken && account.accessToken.startsWith('mock-')) {
+      if (account && (
+        (account.accessToken && account.accessToken.startsWith('mock-')) ||
+        (account.platformAccountId && account.platformAccountId.startsWith('mock-'))
+      )) {
         return { videos: [], nextPageToken: null, prevPageToken: null };
       }
       
@@ -63,12 +66,21 @@ class TikTokVideoService {
     }
   }
 
-  async _getAccount(brandId) {
-    const socialAccount = await socialAccountRepository.findByBrandAndPlatform(brandId, PLATFORMS.TIKTOK);
-    if (!socialAccount || socialAccount.length === 0) {
+  async _getAccount(brandId, socialAccountId = null) {
+    let account;
+    if (socialAccountId) {
+      account = await socialAccountRepository.findById(socialAccountId);
+    } else {
+      const socialAccount = await socialAccountRepository.findByBrandAndPlatform(brandId, PLATFORMS.TIKTOK);
+      if (!socialAccount || socialAccount.length === 0) {
+        throw new Error('TikTok account not connected');
+      }
+      account = socialAccount[0];
+    }
+    if (!account) {
       throw new Error('TikTok account not connected');
     }
-    return socialAccount[0];
+    return account;
   }
 
   _formatVideoList(videos) {

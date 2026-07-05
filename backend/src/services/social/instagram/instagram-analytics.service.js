@@ -17,10 +17,20 @@ class InstagramAnalyticsService {
     };
   }
 
-  _getMockAnalyticsReport(startDate, endDate, currentFollowersCount) {
+  _getMockAnalyticsReport(startDate, endDate, currentFollowersCount, isMock = false) {
     const { start, end } = this._resolveDates(startDate, endDate);
     const dailyMap = this._initializeDailyMap(start, end);
     
+    Object.keys(dailyMap).forEach((dateStr) => {
+      dailyMap[dateStr].views = 0;
+      dailyMap[dateStr].pageVisits = 0;
+      dailyMap[dateStr].totalClicks = 0;
+      dailyMap[dateStr].acquired = 0;
+      dailyMap[dateStr].lost = 0;
+      dailyMap[dateStr].totalContent = 0;
+    });
+
+    const sortedDates = Object.keys(dailyMap).sort().map(d => dailyMap[d]);
     const feedStats = {
       totalPostsInPeriod: 0,
       totalReactions: 0,
@@ -30,8 +40,7 @@ class InstagramAnalyticsService {
       imageCount: 0
     };
 
-    const sortedDates = Object.keys(dailyMap).sort().map(d => dailyMap[d]);
-    return this._calculateTotalsAndFormatResponse(sortedDates, currentFollowersCount, feedStats);
+    return this._calculateTotalsAndFormatResponse(sortedDates, currentFollowersCount || 0, feedStats);
   }
 
   async getChannelInfo(auth, startDate, endDate, socialAccountId = null) {
@@ -42,7 +51,7 @@ class InstagramAnalyticsService {
 
     if (auth.pageAccessToken && auth.pageAccessToken.startsWith('mock-')) {
       const igData = this._getEmptyChannelInfo(auth.pageId, account);
-      const analyticsData = this._getMockAnalyticsReport(startDate, endDate, igData.followersCount);
+      const analyticsData = this._getMockAnalyticsReport(startDate, endDate, igData.followersCount, true);
       return {
         ...igData,
         analytics: analyticsData
@@ -64,11 +73,11 @@ class InstagramAnalyticsService {
     };
 
     // Helper: Wrap promise with a timeout rejection
-    const withTimeout = (promise, ms = 3000) => {
+    const withTimeout = (promise, ms = 60000) => {
       let timeoutId;
       const timeoutPromise = new Promise((_, reject) => {
         timeoutId = setTimeout(() => {
-          reject(new Error('Instagram API request timeout (3000ms) exceeded'));
+          reject(new Error('Instagram API request timeout (60000ms) exceeded'));
         }, ms);
       });
       return Promise.race([promise, timeoutPromise]).finally(() => {
@@ -77,11 +86,11 @@ class InstagramAnalyticsService {
     };
 
     try {
-      return await withTimeout(fetchRealData(), 3000);
+      return await withTimeout(fetchRealData(), 60000);
     } catch (error) {
       console.warn(`[Instagram Analytics] Real API call failed or timed out (${error.message}). Falling back to empty data...`);
       const igData = this._getEmptyChannelInfo(auth.pageId, account);
-      const analyticsData = this._getMockAnalyticsReport(startDate, endDate, igData.followersCount);
+      const analyticsData = this._getMockAnalyticsReport(startDate, endDate, igData.followersCount, false);
       return {
         ...igData,
         analytics: analyticsData
@@ -127,7 +136,32 @@ class InstagramAnalyticsService {
 
       console.log(`[Instagram Analytics] Smart Sync: Requesting ${missingRanges.length} missing ranges from API for ${igAccountId}`);
 
-      // No mock fallback for real accounts to ensure clean real-time data only.
+      // Fetch real account insights
+      const insights = await instagramGateway.getAccountInsights(igAccountId, accessToken, start, end).catch(() => []);
+      for (const item of insights) {
+        if (!item.values) continue;
+        for (const val of item.values) {
+          const dateStr = val.end_time.split('T')[0];
+          if (dailyMap[dateStr]) {
+            if (item.name === 'impressions') {
+              dailyMap[dateStr].views = val.value || 0;
+            } else if (item.name === 'reach') {
+              dailyMap[dateStr].pageVisits = val.value || 0;
+            } else if (item.name === 'profile_views') {
+              dailyMap[dateStr].totalClicks = val.value || 0;
+            }
+          }
+        }
+      }
+
+      // Set follower change to 0 if not fetched
+      Object.keys(dailyMap).forEach((dateStr) => {
+        const d = dailyMap[dateStr];
+        if (d.acquired === 0 && d.lost === 0) {
+          d.acquired = 0;
+          d.lost = 0;
+        }
+      });
 
       const feedResult = await instagramGateway.getInstagramMediaFeed(igAccountId, accessToken, null, 100).catch(() => ({ data: [] }));
       const feedStats = this._processFeed(feedResult.data || [], dailyMap);
@@ -178,6 +212,11 @@ class InstagramAnalyticsService {
     
     let start = startDate || defaultStart;
     let end = endDate || defaultEnd;
+
+    if (start === end) {
+      const prevDate = new Date(new Date(start).getTime() - 24 * 60 * 60 * 1000);
+      start = prevDate.toISOString().split('T')[0];
+    }
 
     return { start, end };
   }

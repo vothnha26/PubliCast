@@ -6,9 +6,8 @@ const { USER_ROLES } = require('../../utils/constants');
 
 const router = express.Router();
 
-// Apply authentication and ADMIN/OWNER authorization to all routes
 router.use(verifyAuth);
-router.use(authorize(USER_ROLES.ADMIN, USER_ROLES.OWNER));
+router.use(authorize(USER_ROLES.ADMIN));
 
 /**
  * GET /api/admin/platform-limits
@@ -29,6 +28,11 @@ router.post('/', platformLimitController.createPlatformLimit);
  * PUT /api/admin/platform-limits/:id
  */
 router.put('/:id', platformLimitController.updatePlatformLimit);
+
+/**
+ * PATCH /api/admin/platform-limits/:id/lock
+ */
+router.patch('/:id/lock', platformLimitController.toggleLock);
 
 /**
  * DELETE /api/admin/platform-limits/:id

@@ -6,6 +6,8 @@ import autoListService from "../../../services/auto-list.service";
 import { useBrand } from "../../../context/BrandContext";
 import { toast } from "sonner";
 
+import { useConfirm } from "@/hooks/useConfirm";
+ 
 // Import Refactored Subcomponents
 import { AutoListCard } from "./components/autolist/AutoListCard";
 import { AutoListEmptyState } from "./components/autolist/AutoListEmptyState";
@@ -16,6 +18,7 @@ export function AutoListsView() {
   const [loading, setLoading] = useState(true);
   const { activeBrand } = useBrand();
   const navigate = useNavigate();
+  const confirm = useConfirm();
 
   const fetchLists = async () => {
     if (!activeBrand) return;
@@ -52,6 +55,24 @@ export function AutoListsView() {
       fetchLists();
     } catch (e) {
       toast.error("Failed to refresh queue");
+    }
+  };
+
+  const handleDelete = async (id) => {
+    const isConfirmed = await confirm({
+      title: "Delete Autolist?",
+      description: "Are you sure you want to delete this autolist? All queued posts will be orphaned.",
+      confirmText: "Delete",
+      cancelText: "Cancel",
+      variant: "destructive"
+    });
+    if (!isConfirmed) return;
+    try {
+      await autoListService.deleteAutoList(id);
+      toast.success("Autolist deleted");
+      fetchLists();
+    } catch (e) {
+      toast.error("Failed to delete autolist");
     }
   };
 
@@ -103,6 +124,7 @@ export function AutoListsView() {
               list={list} 
               onToggle={handleToggle}
               onRefresh={handleRefreshQueue}
+              onDelete={handleDelete}
               onNavigate={(id) => navigate(`/planner/autolist/${id}`)}
             />
           ))}

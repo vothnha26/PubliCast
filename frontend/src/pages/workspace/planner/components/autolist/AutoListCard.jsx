@@ -1,7 +1,6 @@
-import * as React from "react";
 import { 
   Play, Pause, RefreshCw, ChevronRight, Layers, Calendar, Clock,
-  Youtube, PlayCircle, Instagram, Facebook, Linkedin 
+  Youtube, PlayCircle, Instagram, Facebook, Linkedin, Trash2
 } from "lucide-react";
 
 const PLATFORM_BADGES = {
@@ -21,7 +20,7 @@ const borderLeftColors = {
   DEFAULT: "border-l-4 border-l-gray-300"
 };
 
-export function AutoListCard({ list, onToggle, onRefresh, onNavigate }) {
+export function AutoListCard({ list, onToggle, onRefresh, onDelete, onNavigate }) {
   const progress = list.totalPostsCount > 0 
     ? Math.round((list.publishedPostsCount / list.totalPostsCount) * 100) 
     : 0;
@@ -152,6 +151,16 @@ export function AutoListCard({ list, onToggle, onRefresh, onNavigate }) {
           <RefreshCw size={16} />
         </button>
         
+        {onDelete && (
+          <button 
+            onClick={() => onDelete(list.id)}
+            className="w-10 h-10 rounded-xl bg-white border border-red-100 hover:bg-red-50 flex items-center justify-center text-red-500 hover:text-red-600 transition-all duration-300 cursor-pointer shadow-sm active:scale-95"
+            title="Xóa hàng đợi"
+          >
+            <Trash2 size={16} />
+          </button>
+        )}
+
         <button 
           onClick={() => onNavigate(list.id)}
           className="w-10 h-10 rounded-xl bg-gray-50 hover:bg-gray-900 border border-gray-150 hover:border-transparent flex items-center justify-center text-gray-400 hover:text-white transition-all duration-300 cursor-pointer shadow-sm"

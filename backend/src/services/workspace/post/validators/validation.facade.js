@@ -8,7 +8,17 @@ class ValidationFacade {
    * @param {Object} mediaInfo Optional physical media information { hasMedia, isVideo, sizeMb, duration, format }
    * @returns {Promise<Object>} { isValid: boolean, errors: string[] }
    */
+  shouldBypassValidation(postData) {
+    // Bỏ qua validate nếu bài viết là Nháp (DRAFT) hoặc thuộc một AutoList
+    const status = postData.status;
+    const isAutoListPost = !!postData.autoListId;
+    return status === 'DRAFT' || isAutoListPost;
+  }
+
   async validatePost(postData, mediaInfo = {}) {
+    if (this.shouldBypassValidation(postData)) {
+      return { isValid: true, errors: [] };
+    }
     const { targetPlatforms = [], options = {} } = postData;
     
     // Convert targetPlatforms to array if it is string (split by comma)
@@ -58,6 +68,12 @@ class ValidationFacade {
         allowedMediaTypes: 'ALL',
         allowedFormats: 'mp4,mov,png,jpg,jpeg'
       };
+
+      // Check if platform is locked
+      if (limitConfig.isLocked) {
+        allErrors.push(`[${platUpper} - ${subType}] Nền tảng này hiện đang bị khóa: ${limitConfig.lockReason || 'Bảo trì hệ thống'}`);
+        continue;
+      }
 
       const validator = validatorFactory.getValidator(platUpper, limitConfig);
       const errors = validator.validate(postData, mediaInfo);

@@ -94,7 +94,7 @@ export function SettingsPage() {
         // Map messages to view format
         const formatted = (activeTicket.messages || []).map(m => ({
           id: m.id,
-          role: m.senderId === activeTicket.userId ? "user" : "agent",
+          role: (m.sender?.role === 'STAFF' || m.sender?.role === 'ADMIN') ? "agent" : "user",
           text: m.content,
           time: new Date(m.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
         }));
@@ -871,9 +871,26 @@ export function SettingsPage() {
                          {currentPlan?.status || 'Chưa đăng ký'}
                        </span>
                      </div>
-                     <h3 className="text-xl font-extrabold text-[#0A0A0A]">
-                       {currentPlan?.planName ? currentPlan.planName.charAt(0) + currentPlan.planName.slice(1).toLowerCase() : 'Free Plan'}
-                     </h3>
+                      <h3 className="text-xl font-extrabold text-[#0A0A0A]">
+                        {currentPlan?.planName ? currentPlan.planName.charAt(0) + currentPlan.planName.slice(1).toLowerCase() : 'Free Plan'}
+                      </h3>
+                      
+                      {/* Usage Tracker */}
+                      <div className="pt-2 pb-2 max-w-sm space-y-2">
+                        <div className="flex justify-between text-xs font-bold text-gray-700">
+                          <span>Sản lượng bài đăng đã dùng:</span>
+                          <span className="text-gray-900 font-extrabold">{currentPlan?.postsUsedThisMonth || 0} / {currentPlan?.limits?.maxPostsPerMonth || 10} bài</span>
+                        </div>
+                        <div className="w-full h-2 bg-gray-200 rounded-full overflow-hidden">
+                          <div 
+                            className="h-full bg-black rounded-full transition-all duration-500" 
+                            style={{ width: `${Math.min(((currentPlan?.postsUsedThisMonth || 0) / (currentPlan?.limits?.maxPostsPerMonth || 10)) * 100, 100)}%` }} 
+                          />
+                        </div>
+                        <p className="text-[10px] text-gray-400 font-medium italic">
+                          (Giới hạn này tự động được làm mới vào đầu chu kỳ thanh toán tiếp theo)
+                        </p>
+                      </div>
                      {currentPlan?.periodEnd ? (
                        <p className="text-xs text-gray-500 font-medium">
                          Ngày hết hạn: <b>{new Date(currentPlan.periodEnd).toLocaleDateString('vi-VN', { year: 'numeric', month: 'long', day: 'numeric' })}</b>

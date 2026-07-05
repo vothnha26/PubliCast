@@ -44,6 +44,11 @@ class PostService {
     return response.data;
   }
 
+  async getPostAnalytics(brandId, postId) {
+    const response = await apiService.get(`/posts/${postId}/analytics?brandId=${brandId}`);
+    return response.data;
+  }
+
   async getReviewers(brandId) {
     const response = await apiService.get(`/brands/${brandId}/workflows/reviewers`);
     return response.data;

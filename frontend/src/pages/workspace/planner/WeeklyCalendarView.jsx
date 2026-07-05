@@ -17,6 +17,7 @@ import { ImportOverlay } from "./components/ImportOverlay";
 import { MonthlyGrid } from "./components/MonthlyGrid";
 
 import { useBrandPermission } from "../../../hooks/useBrandPermission";
+import { PostAnalyticsDetailModal } from "../../../components/workspace/PostAnalyticsDetailModal";
 
 export function WeeklyCalendarView() {
   const { hasPermission } = useBrandPermission();
@@ -24,6 +25,11 @@ export function WeeklyCalendarView() {
 
   const [searchTerm, setSearchTerm] = useState("");
   const { openPostCreator, isOpen } = usePostCreator();
+  const [analyticsModal, setAnalyticsModal] = useState({ open: false, post: null });
+
+  const handlePostClick = (post) => {
+    openPostCreator({ post });
+  };
   const { activeBrand } = useBrand();
   const [postData, setPostData] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -89,8 +95,10 @@ export function WeeklyCalendarView() {
       // WEEK or DAY mode
       const current = new Date(selectedDate);
       const day = current.getDay();
-      const sunday = new Date(current.setDate(current.getDate() - day));
-      const saturday = new Date(current.setDate(current.getDate() - day + 6));
+      const sunday = new Date(current);
+      sunday.setDate(current.getDate() - day);
+      const saturday = new Date(current);
+      saturday.setDate(current.getDate() - day + 6);
       startDateStr = toLocalDateStr(sunday);
       endDateStr = toLocalDateStr(saturday);
     }
@@ -234,7 +242,7 @@ export function WeeklyCalendarView() {
               selectedDate={selectedDate}
               postData={postData}
               onCellClick={handleCellClick}
-              onPostClick={(post) => openPostCreator({ post })}
+              onPostClick={handlePostClick}
               visiblePlatforms={visiblePlatforms}
             />
           ) : (
@@ -243,7 +251,7 @@ export function WeeklyCalendarView() {
               groupedPosts={groupedPosts}
               currentTime={currentTime}
               onCellClick={handleCellClick}
-              onPostClick={(post) => openPostCreator({ post })}
+              onPostClick={handlePostClick}
               onCellDrop={importFromDrive}
               rowHeight={rowHeight}
               bestTimePlatform={bestTimePlatform}
@@ -262,6 +270,12 @@ export function WeeklyCalendarView() {
 
       {/* Google Drive Import Backdrop Overlay */}
       <ImportOverlay isOpen={isImporting} />
+      <PostAnalyticsDetailModal
+        isOpen={analyticsModal.open}
+        onClose={() => setAnalyticsModal({ open: false, post: null })}
+        post={analyticsModal.post}
+        brandId={activeBrand?.id}
+      />
     </div>
   );
 }

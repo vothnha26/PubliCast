@@ -195,6 +195,7 @@ export function FacebookPostsTab({
   fetchPublishedVideos = () => {},
   prevPageToken = null,
   nextPageToken = null,
+  onVideoClick = null,
 }) {
   const postsData    = realData.postsPeriod || [];
   const summary      = realData.summary     || {};
@@ -402,6 +403,7 @@ export function FacebookPostsTab({
           fetchPublishedVideos={fetchPublishedVideos}
           prevPageToken={prevPageToken}
           nextPageToken={nextPageToken}
+          onRowClick={onVideoClick}
         />
       </div>
     </div>

@@ -19,6 +19,7 @@ export function FacebookDashboard({
   fetchPublishedVideos,
   prevPageToken,
   nextPageToken,
+  onVideoClick,
   // Competitors props
   isCompetitorModalOpen,
   setIsCompetitorModalOpen,
@@ -31,6 +32,7 @@ export function FacebookDashboard({
   handleDeleteCompetitor,
   isCompetitorLoading,
   competitors,
+  isPlatformLocked = false
 }) {
   return (
     <>
@@ -50,6 +52,7 @@ export function FacebookDashboard({
           fetchPublishedVideos={fetchPublishedVideos}
           prevPageToken={prevPageToken}
           nextPageToken={nextPageToken}
+          onVideoClick={onVideoClick}
         />
       )}
 
@@ -75,6 +78,7 @@ export function FacebookDashboard({
           handleDeleteCompetitor={handleDeleteCompetitor}
           isCompetitorLoading={isCompetitorLoading}
           competitors={competitors}
+          isPlatformLocked={isPlatformLocked}
         />
       )}
     </>
