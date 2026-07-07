@@ -56,8 +56,8 @@ Bảng dưới đây là **Single Source of Truth** về trạng thái của cá
 | Agent | Trạng thái | Nhánh Git | File chỉnh sửa chính | Người kiểm tra (Bạn) |
 | :--- | :--- | :--- | :--- | :--- |
 | **Agent 1** | ⏳ Đang làm | `feature/post-creator-ai-copilot` | `ComposerBody.jsx`, `ai.controller.js` | Chưa test |
-| **Agent 2** | 💤 Chờ chạy | `feature/reports-modular-ui` | `Reports.jsx` | Chưa test |
-| **Agent 3** | 💤 Chờ chạy | `feature/global-dark-mode` | `index.css`, `ThemeContext.jsx` | Chưa test |
+| **Agent 2** | ⏳ Đang làm | `feature/reports-modular-ui` | `Reports.jsx` | Chưa test |
+| **Agent 3** | ⏳ Đang làm | `feature/global-dark-mode` | `index.css`, `ThemeContext.jsx` | Chưa test |
 
 ---
 
