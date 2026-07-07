@@ -678,13 +678,15 @@ export function PlannerToolbar({
               <div className="flex items-center gap-3 pb-2 border-b border-gray-100">
                 <div className="w-12 h-12 rounded-full bg-gradient-to-tr from-amber-500 to-fuchsia-600 p-[2px]">
                   <div className="w-full h-full rounded-full bg-white p-[2px]">
-                    <div className="w-full h-full rounded-full bg-gray-200 flex items-center justify-center font-bold text-xs">
-                      PC
+                    <div className="w-full h-full rounded-full bg-gray-200 flex items-center justify-center font-bold text-xs text-gray-700 uppercase">
+                      {activeBrand?.name ? activeBrand.name.substring(0, 2).toUpperCase() : 'PC'}
                     </div>
                   </div>
                 </div>
                 <div>
-                  <h5 className="text-[11px] font-black text-[#0A0A0A] leading-tight">publicast_creator</h5>
+                  <h5 className="text-[11px] font-black text-[#0A0A0A] leading-tight">
+                    {activeBrand?.name ? activeBrand.name.toLowerCase().replace(/\s+/g, '_') : 'publicast_creator'}
+                  </h5>
                   <p className="text-[9px] text-gray-400 font-bold uppercase tracking-widest">Feed Mockup</p>
                 </div>
               </div>

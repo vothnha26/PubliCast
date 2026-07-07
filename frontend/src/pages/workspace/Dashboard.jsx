@@ -64,6 +64,50 @@ const BRAND_PLATFORMS = [
   { name: "Threads", apiKey: "THREADS", label: "Threads" }
 ];
 
+// Strategy pattern for extracting metrics per platform to ensure SOLID OCP Compliance
+const PLATFORM_METRICS_STRATEGIES = {
+  YOUTUBE: {
+    getSubscribers: (m) => m.youtubeChannel?.subscribersCount || 0,
+    getViews: (m) => m.youtubeChannel?.totalViewsCount || 0,
+    getVideos: (m) => m.youtubeChannel?.totalVideosCount || 0,
+  },
+  FACEBOOK: {
+    getSubscribers: (m) => m.facebookPage?.followersCount || 0,
+    getViews: (m) => m.facebookPage?.likesCount || 0,
+    getVideos: (m) => 0,
+  },
+  INSTAGRAM: {
+    getSubscribers: (m) => m.instagramAccount?.followersCount || 0,
+    getViews: (m) => 0,
+    getVideos: (m) => m.instagramAccount?.mediaCount || 0,
+  },
+  THREADS: {
+    getSubscribers: (m) => m.instagramAccount?.followersCount || 0,
+    getViews: (m) => 0,
+    getVideos: (m) => m.instagramAccount?.mediaCount || 0,
+  },
+  TIKTOK: {
+    getSubscribers: (m) => m.tikTokAccount?.followersCount || 0,
+    getViews: (m) => m.tikTokAccount?.likesCount || 0,
+    getVideos: (m) => m.tikTokAccount?.videoCount || 0,
+  },
+  LINKEDIN: {
+    getSubscribers: (m) => m.linkedInAccount?.followersCount || 0,
+    getViews: (m) => 0,
+    getVideos: (m) => 0,
+  },
+  TELEGRAM: {
+    getSubscribers: (m) => m.telegramAccount?.memberCount || 0,
+    getViews: (m) => 0,
+    getVideos: (m) => 0,
+  },
+  DISCORD: {
+    getSubscribers: (m) => m.discordAccount?.memberCount || 0,
+    getViews: (m) => 0,
+    getVideos: (m) => 0,
+  }
+};
+
 export function DashboardPage() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -104,36 +148,124 @@ export function DashboardPage() {
     loadData();
   }, [activeBrand]);
 
-  const getYouTubeStats = () => {
-    const ytAccount = metrics.find(m => m.platform === 'YOUTUBE');
-    if (!ytAccount || !ytAccount.youtubeChannel) return { subscribers: 0, views: 0, videos: 0 };
-    return {
-      subscribers: ytAccount.youtubeChannel.subscribersCount,
-      views: ytAccount.youtubeChannel.totalViewsCount,
-      videos: ytAccount.youtubeChannel.totalVideosCount
-    };
+  const getAggregatedStats = () => {
+    let totalSubscribers = 0;
+    let totalViews = 0;
+    let totalVideos = 0;
+
+    metrics.forEach(m => {
+      const strategy = PLATFORM_METRICS_STRATEGIES[m.platform];
+      if (strategy) {
+        totalSubscribers += strategy.getSubscribers(m);
+        totalViews += strategy.getViews(m);
+        totalVideos += strategy.getVideos(m);
+      }
+    });
+
+    return { subscribers: totalSubscribers, views: totalViews, videos: totalVideos };
   };
 
-  const stats = getYouTubeStats();
+  const stats = getAggregatedStats();
 
-  const viewersByPlatform = [
-    { platform: "YouTube", viewers: stats.subscribers, pct: Math.min((stats.subscribers / 100000) * 100, 100) },
-    { platform: "Facebook", viewers: 0, pct: 0 },
-    { platform: "TikTok", viewers: 0, pct: 0 },
-    { platform: "Instagram", viewers: 0, pct: 0 },
-    { platform: "LinkedIn", viewers: 0, pct: 0 },
-    { platform: "Discord", viewers: 0, pct: 0 },
-  ];
+  const getViewersByPlatform = () => {
+    const list = [
+      { platform: "YouTube", key: "YOUTUBE" },
+      { platform: "Facebook", key: "FACEBOOK" },
+      { platform: "TikTok", key: "TIKTOK" },
+      { platform: "Instagram", key: "INSTAGRAM" },
+      { platform: "LinkedIn", key: "LINKEDIN" },
+      { platform: "Discord", key: "DISCORD" },
+    ];
 
-  const weeklyData = [
-    { day: "Mon", viewers: stats.subscribers * 0.8 },
-    { day: "Tue", viewers: stats.subscribers * 0.85 },
-    { day: "Wed", viewers: stats.subscribers * 0.9 },
-    { day: "Thu", viewers: stats.subscribers * 0.92 },
-    { day: "Fri", viewers: stats.subscribers * 0.95 },
-    { day: "Sat", viewers: stats.subscribers * 0.98 },
-    { day: "Sun", viewers: stats.subscribers },
-  ];
+    const maxSubscribers = Math.max(...metrics.map(m => {
+      const strategy = PLATFORM_METRICS_STRATEGIES[m.platform];
+      return strategy ? strategy.getSubscribers(m) : 0;
+    }), 1);
+
+    return list.map(item => {
+      const acc = metrics.find(m => m.platform === item.key);
+      const strategy = PLATFORM_METRICS_STRATEGIES[item.key];
+      const val = acc && strategy ? strategy.getSubscribers(acc) : 0;
+      return {
+        platform: item.platform,
+        viewers: val,
+        pct: Math.min((val / maxSubscribers) * 100, 100)
+      };
+    });
+  };
+
+  const viewersByPlatform = getViewersByPlatform();
+
+  const getWeeklyData = () => {
+    const dailyGrowth = {};
+
+    metrics.forEach(m => {
+      if (!m.analytics?.[0]?.socialAnalytics?.audienceDemographicsJson) return;
+      try {
+        const raw = JSON.parse(m.analytics[0].socialAnalytics.audienceDemographicsJson);
+        const growthList = raw.growth || [];
+        growthList.forEach(row => {
+          let dateStr = "";
+          let gained = 0;
+          let lost = 0;
+
+          if (typeof row === 'object' && !Array.isArray(row)) {
+            dateStr = row.date;
+            gained = row.subscribersGained || row.acquired || 0;
+            lost = row.subscribersLost || row.lost || 0;
+          } else if (Array.isArray(row) && row.length >= 4) {
+            dateStr = row[0];
+            gained = row[2] || 0;
+            lost = row[3] || 0;
+          }
+
+          if (dateStr) {
+            if (!dailyGrowth[dateStr]) {
+              dailyGrowth[dateStr] = { gained: 0, lost: 0 };
+            }
+            dailyGrowth[dateStr].gained += gained;
+            dailyGrowth[dateStr].lost += lost;
+          }
+        });
+      } catch (e) {
+        console.error("Failed to parse growth analytics for account", m.id, e);
+      }
+    });
+
+    const sortedDates = Object.keys(dailyGrowth).sort();
+    
+    if (sortedDates.length === 0) {
+      const days = ["T2", "T3", "T4", "T5", "T6", "T7", "CN"];
+      return days.map((day, idx) => ({
+        day,
+        viewers: Math.round(stats.subscribers * (0.8 + (idx * 0.2 / 6)))
+      }));
+    }
+
+    let currentSubscribers = stats.subscribers;
+    const result = [];
+
+    for (let i = sortedDates.length - 1; i >= 0; i--) {
+      const dateStr = sortedDates[i];
+      const growth = dailyGrowth[dateStr];
+      const netChange = growth.gained - growth.lost;
+      
+      const dateObj = new Date(dateStr);
+      const dayLabel = dateObj.toLocaleDateString("vi-VN", { weekday: 'short' });
+      
+      result.unshift({
+        day: dayLabel,
+        date: dateStr,
+        viewers: currentSubscribers
+      });
+
+      currentSubscribers = Math.max(0, currentSubscribers - netChange);
+    }
+
+    return result.slice(-7);
+  };
+
+  const weeklyData = getWeeklyData();
 
   if (loading) {
     return (

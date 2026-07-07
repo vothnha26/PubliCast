@@ -583,8 +583,11 @@ class PostService {
   _preparePostData(postData, userId, brandId) {
     const { title, caption, type = POST_TYPES.VIDEO, status = POST_STATUS.DRAFT, targetPlatforms = [], mediaUrls = [], mediaThumbnailUrls = [], scheduledAt, isLibrary = false, altText = null, autoListId = null, options = {} } = postData;
     
-    // Normalize paths recursively in options
+    // Normalize paths and Unicode recursively in options and strings
     const normalizedOptions = this._normalizePath(options);
+    const cleanTitle = this._normalizePath(title);
+    const cleanCaption = this._normalizePath(caption);
+    const cleanAltText = this._normalizePath(altText);
 
     const cleanMediaUrls = this._normalizePath(mediaUrls);
     const cleanMediaThumbnailUrls = this._normalizePath(mediaThumbnailUrls);
@@ -601,13 +604,13 @@ class PostService {
     }
 
     return {
-      brandId, createdByUserId: userId, title: title || WORKSPACE_DEFAULTS.UNTITLED, caption, type,
+      brandId, createdByUserId: userId, title: cleanTitle || WORKSPACE_DEFAULTS.UNTITLED, caption: cleanCaption, type,
       status: finalStatus,
       targetPlatforms: Array.isArray(targetPlatforms) ? targetPlatforms.join(SEPARATORS.COMMA) : targetPlatforms,
       mediaUrls: Array.isArray(cleanMediaUrls) ? cleanMediaUrls.join(SEPARATORS.COMMA) : cleanMediaUrls,
       mediaThumbnailUrls: Array.isArray(finalThumbnailUrls) ? finalThumbnailUrls.join(SEPARATORS.COMMA) : finalThumbnailUrls,
       scheduledAt: scheduledAt ? new Date(scheduledAt) : null,
-      altText, isLibrary: isLibrary === true || isLibrary === 'true',
+      altText: cleanAltText, isLibrary: isLibrary === true || isLibrary === 'true',
       autoListId,
       firstComment: normalizedOptions.firstComment || null,
       metadata: normalizedOptions ? JSON.stringify(normalizedOptions) : null
@@ -617,8 +620,8 @@ class PostService {
   _prepareUpdateData(postData) {
     const { title, caption, type, status, targetPlatforms, mediaUrls, mediaThumbnailUrls, scheduledAt, isLibrary, altText, autoListId, firstComment } = postData;
     const data = {};
-    if (title !== undefined) data.title = title || WORKSPACE_DEFAULTS.UNTITLED;
-    if (caption !== undefined) data.caption = caption;
+    if (title !== undefined) data.title = this._normalizePath(title) || WORKSPACE_DEFAULTS.UNTITLED;
+    if (caption !== undefined) data.caption = this._normalizePath(caption);
     if (type !== undefined) data.type = type;
     
     if (status !== undefined) {

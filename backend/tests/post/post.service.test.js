@@ -321,6 +321,11 @@ describe('PostService Unit Tests', () => {
 
   describe('YouTube Native Scheduling integration', () => {
     const socialPlatformFactory = require('../../src/services/social/social-platform.factory');
+    const initPostSubscribers = require('../../src/events/subscribers/post.subscriber');
+
+    beforeAll(() => {
+      initPostSubscribers();
+    });
 
     it('should trigger early YouTube native scheduling when creating a scheduled YouTube post', async () => {
       const scheduleTime = new Date(Date.now() + 3600000);
@@ -348,6 +353,9 @@ describe('PostService Unit Tests', () => {
       const mockYtServiceInstance = socialPlatformFactory.getService('YOUTUBE');
 
       const result = await postService.createPost(schedulePostInput, 'user-111', 'brand-abc');
+
+      // Chờ cho event listener bất đồng bộ chạy xong
+      await new Promise(resolve => setTimeout(resolve, 50));
 
       expect(mockYtServiceInstance.publishPost).toHaveBeenCalledWith('brand-abc', expect.objectContaining({
         title: 'YouTube Native Title',

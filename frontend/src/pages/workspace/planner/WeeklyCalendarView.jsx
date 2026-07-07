@@ -28,7 +28,11 @@ export function WeeklyCalendarView() {
   const [analyticsModal, setAnalyticsModal] = useState({ open: false, post: null });
 
   const handlePostClick = (post) => {
-    openPostCreator({ post });
+    if (post.status?.toLowerCase() === "published") {
+      setAnalyticsModal({ open: true, post });
+    } else {
+      openPostCreator({ post });
+    }
   };
   const { activeBrand } = useBrand();
   const [postData, setPostData] = useState([]);
@@ -58,6 +62,32 @@ export function WeeklyCalendarView() {
   
   // Custom Hook for Drive Imports (SOLID/SRP)
   const { isImporting, importFromDrive } = useGoogleDriveImport(activeBrand);
+  
+  const [monthlyPostCount, setMonthlyPostCount] = useState(0);
+
+  useEffect(() => {
+    if (!activeBrand) return;
+    const fetchMonthlyCount = async () => {
+      try {
+        const now = new Date();
+        const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+        const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+        const toLocalDateStr = (d) => {
+          const year = d.getFullYear();
+          const month = String(d.getMonth() + 1).padStart(2, '0');
+          const day = String(d.getDate()).padStart(2, '0');
+          return `${year}-${month}-${day}`;
+        };
+        const startStr = toLocalDateStr(startOfMonth);
+        const endStr = toLocalDateStr(endOfMonth);
+        const res = await apiService.get(`/posts?brandId=${activeBrand.id}&startDate=${startStr}&endDate=${endStr}&limit=1`);
+        setMonthlyPostCount(res.data.meta?.total || 0);
+      } catch (e) {
+        console.error("Failed to fetch monthly post count:", e);
+      }
+    };
+    fetchMonthlyCount();
+  }, [activeBrand, postData]);
   
   // Update current time every minute
   useEffect(() => {
@@ -193,9 +223,9 @@ export function WeeklyCalendarView() {
   };
 
   return (
-    <div className="flex-1 flex flex-col p-6 space-y-6 overflow-y-auto">
+    <div className="flex-1 flex flex-col p-6 space-y-6 overflow-hidden">
       {/* 1. Plan Upgrade Banner */}
-      <UpgradeBanner postedCount={postData.length} limit={20} />
+      <UpgradeBanner postedCount={monthlyPostCount} limit={activeBrand?.currentPlan?.limits?.maxPostsPerMonth || 20} />
 
       {/* 2. Navigation & Actions Toolbar */}
       <PlannerToolbar
@@ -234,7 +264,7 @@ export function WeeklyCalendarView() {
       )}
 
       {/* 3. Main Grid layout: Lịch bên trái, Tích hợp bên phải */}
-      <div className="h-[750px] flex flex-col lg:flex-row gap-6 items-stretch mb-6">
+      <div className="flex-1 min-h-0 flex flex-col lg:flex-row gap-6 items-stretch mb-6">
         {/* Lưới lịch tuần/ngày/tháng */}
         <div className="flex-1 w-full h-full">
           {calendarViewMode === 'MONTH' ? (

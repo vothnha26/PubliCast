@@ -2,8 +2,9 @@ import * as React from "react";
 import { useState, useEffect } from "react";
 import { 
   Trash2, RefreshCw, Search, Filter, 
-  MoreHorizontal, Eye, Youtube, PlayCircle, Loader2, Facebook
+  MoreHorizontal, Eye, Loader2
 } from "lucide-react";
+import { PlatformIcon } from "@/components/shared/PlatformIcon";
 import postService from "../../../services/post.service";
 import { useBrand } from "../../../context/BrandContext";
 import { toast } from "sonner";
@@ -223,14 +224,8 @@ export function HistoryView() {
                        <td className="px-4 py-5">
                           <div className="flex items-center gap-1.5 opacity-40">
                              {post.platforms.map(plt => (
-                               <div key={plt} className="flex items-center gap-1 bg-gray-50 px-2 py-1 rounded-lg border border-gray-100">
-                                  {plt === "YOUTUBE" ? (
-                                    <Youtube size={12} className="text-[#FF0000]" />
-                                  ) : plt === "FACEBOOK" ? (
-                                    <Facebook size={12} className="text-[#1877F2] fill-[#1877F2]" />
-                                  ) : (
-                                    <PlayCircle size={12} />
-                                  )}
+                               <div key={plt} className="flex items-center gap-1 bg-gray-50 px-2 py-1 rounded-lg border border-gray-100 shadow-sm">
+                                  <PlatformIcon platform={plt} size={12} />
                                   <span className="text-[9px] font-black uppercase tracking-tighter text-gray-600">{plt}</span>
                                 </div>
                              ))}

@@ -176,6 +176,15 @@ export function ListView() {
 
   const handleBulkApprove = async () => {
     if (!activeBrand || selected.length === 0) return;
+    const isConfirmed = await confirm({
+      title: "Phê duyệt bài viết?",
+      description: `Bạn có chắc chắn muốn phê duyệt ${selected.length} bài viết đã chọn?`,
+      confirmText: "Phê duyệt",
+      cancelText: "Hủy",
+      variant: "default"
+    });
+    if (!isConfirmed) return;
+
     try {
       await postService.approvePosts(activeBrand.id, selected);
       toast.success("Posts approved");
