@@ -170,52 +170,51 @@ describe('Post Creator Detailed E2E Suite', function () {
     }
   }
 
-  async function ensureLoggedIn() {
-    // Kiểm tra token thực sự trong localStorage với key 'token' (STORAGE_KEYS.TOKEN)
-    // Vì React SPA không redirect URL khi token hết hạn trên CI
-    const isTokenValid = await driver.executeScript(() => {
-      try {
-        const token = localStorage.getItem('token');
-        return !!token && token.length > 10;
-      } catch (e) {
-        return false;
-      }
-    });
-
-    const currentUrl = await driver.getCurrentUrl();
-    const isOnLoginPage = currentUrl.includes('/login') || currentUrl.includes('/register');
-
-    if (!isTokenValid || isOnLoginPage) {
-      console.log('⚠️  Session hết hạn hoặc token trống, đang tự động re-login...');
-      const email = process.env.ADMIN_EMAIL || 'vothanhnha26@gmail.com';
-      const password = process.env.ADMIN_PASSWORD || 'nhacc123@';
-      await driver.get(`${BASE_URL}/login`);
-      const emailInput = await driver.wait(until.elementLocated(By.id('email')), 15000);
-      const passwordInput = await driver.findElement(By.id('password'));
-      const submitButton = await driver.findElement(By.xpath("//button[@type='submit']"));
-      await emailInput.clear();
-      await emailInput.sendKeys(email);
-      await passwordInput.clear();
-      await passwordInput.sendKeys(password);
-      await submitButton.click();
-      await driver.wait(async () => {
-        const url = await driver.getCurrentUrl();
-        return url.includes('/dashboard') || url.includes('/start') || url.includes('/manage/connections');
-      }, 15000);
-      console.log('✅ Re-login thành công.');
-    }
+  async function performLogin() {
+    const email = process.env.ADMIN_EMAIL || 'vothanhnha26@gmail.com';
+    const password = process.env.ADMIN_PASSWORD || 'nhacc123@';
+    await driver.get(`${BASE_URL}/login`);
+    const emailInput = await driver.wait(until.elementLocated(By.id('email')), 15000);
+    const passwordInput = await driver.findElement(By.id('password'));
+    const submitButton = await driver.findElement(By.xpath("//button[@type='submit']"));
+    await emailInput.clear();
+    await emailInput.sendKeys(email);
+    await passwordInput.clear();
+    await passwordInput.sendKeys(password);
+    await submitButton.click();
+    await driver.wait(async () => {
+      const url = await driver.getCurrentUrl();
+      return url.includes('/dashboard') || url.includes('/start') || url.includes('/manage/connections');
+    }, 15000);
+    console.log('✅ Re-login thành công.');
   }
 
   async function navigateToPlannerAndPrepare() {
     const plannerUrl = `${BASE_URL}/planner/calendar`;
     await driver.get(plannerUrl);
-    await driver.sleep(1500); // Đợi React hydrate xong trước khi check token
-    // Kiểm tra session còn hợp lệ (check cả localStorage lẫn URL)
-    await ensureLoggedIn();
-    await driver.get(plannerUrl);
-    await driver.wait(until.elementLocated(By.css('[data-testid="planner-create-post-btn"]')), 15000);
-    await driver.sleep(2000); // Chờ re-render
+
+    // Nếu bị redirect về login (URL check đơn giản) → re-login ngay
+    const currentUrl = await driver.getCurrentUrl();
+    if (currentUrl.includes('/login') || currentUrl.includes('/register')) {
+      console.log('⚠️  Bị redirect về login page, đang tự động re-login...');
+      await performLogin();
+      await driver.get(plannerUrl);
+    }
+
+    // Kiểm tra bằng element thực tế: nếu planner button không hiện → session hết hạn → re-login
+    try {
+      await driver.wait(until.elementLocated(By.css('[data-testid="planner-create-post-btn"]')), 8000);
+    } catch (e) {
+      console.log('⚠️  Không tìm thấy planner button, session có thể hết hạn, đang re-login...');
+      await performLogin();
+      await driver.get(plannerUrl);
+      await driver.wait(until.elementLocated(By.css('[data-testid="planner-create-post-btn"]')), 15000);
+    }
+
+    await driver.sleep(2000); // Chờ re-render hoàn chỉnh
   }
+
+
 
 
 
