@@ -78,7 +78,8 @@ export function ComposerBody() {
     getValidationErrors,
     hasAccess,
     setBlockedProductId,
-    setIsDriveModalOpen
+    setIsDriveModalOpen,
+    platformLimits
   } = usePostCreatorFormContext();
 
   const isImageFile = videoFile 

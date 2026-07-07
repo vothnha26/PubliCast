@@ -151,11 +151,22 @@ describe('Post Creator Detailed E2E Suite', function () {
     const selector = By.css(`[data-testid="platform-select-${platform}"]`);
     const element = await driver.wait(until.elementLocated(selector), 12000);
     const className = await element.getAttribute('class');
-    const isSelected = !className.includes('bg-gray-100');
+    const isSelected = !className.includes('text-gray-400');
     
     if (isSelected !== shouldBeSelected) {
       await safeClick(selector);
       await driver.sleep(600);
+    }
+  }
+
+  async function selectPlatformOnly(targetPlatform) {
+    const platforms = ['facebook', 'instagram', 'youtube', 'tiktok', 'linkedin', 'telegram', 'discord', 'threads'];
+    for (const p of platforms) {
+      const selector = By.css(`[data-testid="platform-select-${p}"]`);
+      const elements = await driver.findElements(selector);
+      if (elements.length > 0) {
+        await ensurePlatformState(p, p === targetPlatform);
+      }
     }
   }
 
@@ -242,6 +253,13 @@ describe('Post Creator Detailed E2E Suite', function () {
         const screenshotPath = path.join(__dirname, `error_${this.currentTest.title.replace(/[^a-zA-Z0-9]/g, '_')}.png`);
         fs.writeFileSync(screenshotPath, image, 'base64');
         console.log(`📸 Đã chụp màn hình khi lỗi: ${screenshotPath}`);
+        try {
+          const logs = await driver.manage().logs().get('browser');
+          console.log('🌐 Browser Console Logs:');
+          logs.forEach(log => console.log(`[${log.level.name}] ${log.message}`));
+        } catch (logErr) {
+          console.warn('⚠️ Không thể lấy logs từ browser:', logErr.message);
+        }
       } catch (err) {
         console.error("❌ Không thể chụp ảnh màn hình lỗi:", err.message);
       }
@@ -310,7 +328,7 @@ describe('Post Creator Detailed E2E Suite', function () {
 
     const captionInput = await driver.wait(until.elementLocated(By.css('[data-testid="post-caption-input"]')), 10000);
 
-    await ensurePlatformState('facebook', true);
+    await selectPlatformOnly('facebook');
 
     const uniqueCaption = `Mocha E2E Test Post - Facebook Draft - Created at ${Date.now()}`;
     await captionInput.sendKeys(uniqueCaption);
@@ -347,7 +365,7 @@ describe('Post Creator Detailed E2E Suite', function () {
 
     const captionInput = await driver.wait(until.elementLocated(By.css('[data-testid="post-caption-input"]')), 10000);
 
-    await ensurePlatformState('instagram', true);
+    await selectPlatformOnly('instagram');
     await ensurePlatformState('threads', true);
     await ensurePlatformState('facebook', true);
 
@@ -395,7 +413,7 @@ describe('Post Creator Detailed E2E Suite', function () {
 
     const captionInput = await driver.wait(until.elementLocated(By.css('[data-testid="post-caption-input"]')), 10000);
 
-    await ensurePlatformState('threads', true);
+    await selectPlatformOnly('threads');
 
     const longCaption = 'A'.repeat(550);
     await captionInput.sendKeys(longCaption);
@@ -410,7 +428,7 @@ describe('Post Creator Detailed E2E Suite', function () {
     await safeClick(By.css('[data-testid="planner-create-post-btn"]'));
     await driver.sleep(2000);
 
-    await ensurePlatformState('youtube', true);
+    await selectPlatformOnly('youtube');
 
     const captionInput = await driver.findElement(By.css('[data-testid="post-caption-input"]'));
     await captionInput.sendKeys("Testing YouTube validation without video attachment.");
@@ -431,7 +449,7 @@ describe('Post Creator Detailed E2E Suite', function () {
     await safeClick(By.css('[data-testid="planner-create-post-btn"]'));
     await driver.sleep(2000);
 
-    await ensurePlatformState('tiktok', true);
+    await selectPlatformOnly('tiktok');
 
     const captionInput = await driver.findElement(By.css('[data-testid="post-caption-input"]'));
     await captionInput.sendKeys("Testing TikTok validation without media attachment.");
@@ -454,7 +472,7 @@ describe('Post Creator Detailed E2E Suite', function () {
 
     const captionInput = await driver.wait(until.elementLocated(By.css('[data-testid="post-caption-input"]')), 10000);
 
-    await ensurePlatformState('facebook', true);
+    await selectPlatformOnly('facebook');
 
     const uniqueCaption = `Mocha E2E Scheduled Post - Created at ${Date.now()}`;
     await captionInput.sendKeys(uniqueCaption);
@@ -483,7 +501,10 @@ describe('Post Creator Detailed E2E Suite', function () {
 
     const dateInput = await driver.findElement(By.css('[data-testid="post-scheduled-date-input"]'));
     await driver.executeScript(
-      "arguments[0].value = arguments[1]; arguments[0].dispatchEvent(new Event('change', { bubbles: true }));",
+      `const setter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set;
+      setter.call(arguments[0], arguments[1]);
+      arguments[0].dispatchEvent(new Event('input', { bubbles: true }));
+      arguments[0].dispatchEvent(new Event('change', { bubbles: true }));`,
       dateInput,
       formattedDate
     );
@@ -521,7 +542,7 @@ describe('Post Creator Detailed E2E Suite', function () {
     await safeClick(By.css('[data-testid="planner-create-post-btn"]'));
     await driver.sleep(2000);
 
-    await ensurePlatformState('facebook', true);
+    await selectPlatformOnly('facebook');
 
     // Gửi đường dẫn tuyệt đối của file ảnh thẳng vào thẻ input[type="file"]
     const imageFilePath = path.resolve(__dirname, './test_assets/sample_image.png');
@@ -548,7 +569,7 @@ describe('Post Creator Detailed E2E Suite', function () {
     await safeClick(By.css('[data-testid="planner-create-post-btn"]'));
     await driver.sleep(2000);
 
-    await ensurePlatformState('youtube', true);
+    await selectPlatformOnly('youtube');
 
     // Điền caption
     const captionInput = await driver.wait(until.elementLocated(By.css('[data-testid="post-caption-input"]')), 10000);

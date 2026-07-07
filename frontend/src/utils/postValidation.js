@@ -27,7 +27,7 @@ export function validatePostForm({
   postMedia = []
 }) {
   const errors = [];
-  if (isLibrary) {
+  if (isLibrary || selectedPublishId === 'draft') {
     return errors;
   }
 

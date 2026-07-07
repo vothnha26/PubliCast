@@ -256,6 +256,10 @@ export function PostCreatorPage() {
 
   // Context value object containing all states, handlers and variables
   const contextValue = {
+    caption,
+    setCaption,
+    title,
+    setTitle,
     selectedPlatforms,
     togglePlatform,
     activePlatform,
