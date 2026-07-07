@@ -1,0 +1,76 @@
+# PubliCast - Multi-AI Workflow & Conflict Prevention Guide
+
+Để quản lý 3 AI Agent hoạt động song song trên cùng một dự án một cách trơn tru, tránh tối đa xung đột mã nguồn (merge conflicts) và đảm bảo chất lượng, bạn nên tuân thủ quy trình quản lý dưới đây:
+
+---
+
+## 🧭 1. Nguyên Tắc Cô Lập File (File-level Isolation)
+
+Cách tốt nhất để tránh conflict là **không cho 2 AI Agent sửa chung một file** tại cùng một thời điểm. Theo sơ đồ phân chia ở tài liệu trước, chúng ta đã cô lập phạm vi hoạt động của từng Agent:
+
+- **Agent 1**: Chỉ làm việc trên màn hình Post Creator (`frontend/src/components/workspace/post-creator/ComposerBody.jsx` và API AI ở backend).
+- **Agent 2**: Chỉ hoạt động trong phần báo cáo (`frontend/src/pages/manage/Reports.jsx`).
+- **Agent 3**: Chỉ chỉnh sửa cấu hình theme CSS (`frontend/src/index.css`) và cung cấp Context.
+
+---
+
+## 🌿 2. Quy Trình Nhánh Git (Git Branching Workflow)
+
+Yêu cầu mỗi Agent bắt buộc phải chạy trên một nhánh riêng xuất phát từ nhánh chính (ví dụ: `develop` hoặc `main`):
+
+```mermaid
+gitGraph
+    commit id: "Init"
+    branch feature/post-creator-ai-copilot
+    branch feature/reports-modular-ui
+    branch feature/global-dark-mode
+    checkout feature/post-creator-ai-copilot
+    commit id: "Agent 1: AI Code"
+    checkout feature/reports-modular-ui
+    commit id: "Agent 2: Reports modular"
+    checkout feature/global-dark-mode
+    commit id: "Agent 3: CSS variables"
+```
+
+### Các bước thực hiện cho từng Agent:
+1. **Khởi tạo nhánh**: Trước khi giao việc cho Agent nào, hãy chạy lệnh tạo nhánh riêng cho Agent đó:
+   - Agent 1: `git checkout -b feature/post-creator-ai-copilot`
+   - Agent 2: `git checkout -b feature/reports-modular-ui`
+   - Agent 3: `git checkout -b feature/global-dark-mode`
+2. **Thực hiện code & Commit**: Để Agent tự động thực hiện và commit trên nhánh của mình.
+3. **Merge tuần tự (Sequential Integration)**:
+   - Khi một Agent hoàn thành, hãy merge nhánh đó vào nhánh chính (`develop`).
+   - Ngay sau đó, ở các nhánh của các Agent còn lại, hãy chạy lệnh merge nhánh chính để cập nhật code mới nhất:
+     ```bash
+     git checkout <nhánh_agent_khác>
+     git merge develop
+     ```
+     *(Việc này giúp giải quyết xung đột nhỏ ngay lập tức trên máy cục bộ của bạn thay vì đợi đến cuối dự án).*
+
+---
+
+## 📊 3. Theo Dõi Trạng Thái Bằng Bảng Check-list (Task Tracking)
+
+Bạn nên tạo một bảng theo dõi trạng thái tích hợp chung:
+
+| Agent | Trạng thái | Nhánh Git | File chỉnh sửa chính | Người kiểm tra (Bạn) |
+| :--- | :--- | :--- | :--- | :--- |
+| **Agent 1** | ⏳ Đang làm | `feature/post-creator-ai-copilot` | `ComposerBody.jsx`, `ai.controller.js` | Chưa test |
+| **Agent 2** | 💤 Chờ chạy | `feature/reports-modular-ui` | `Reports.jsx` | Chưa test |
+| **Agent 3** | 💤 Chờ chạy | `feature/global-dark-mode` | `index.css`, `ThemeContext.jsx` | Chưa test |
+
+---
+
+## 🧪 4. Quy Tắc Xác Minh Trước Khi Merge (Validation Rules)
+
+Khi bất kỳ Agent nào báo hoàn thành, **TRƯỚC KHI** merge vào nhánh chính, hãy yêu cầu Agent đó:
+1. Chạy lệnh build kiểm thử:
+   ```bash
+   npm run build
+   ```
+   Nếu build lỗi, bắt buộc Agent đó phải sửa xong lỗi build trên nhánh của nó trước.
+2. Chạy bộ test suite tự động:
+   ```bash
+   npm run test
+   ```
+3. Sau khi code đã được merge thành công, hãy chạy lại dự án và kiểm tra nhanh giao diện trên trình duyệt để đảm bảo không bị lỗi trắng màn hình.
