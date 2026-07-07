@@ -1,9 +1,9 @@
-import React from "react";
+import React, { useState } from "react";
 import { 
   Info, AlertCircle, Youtube, MoreHorizontal, Edit, Type, Trash2, 
   ImageIcon, Plus, Smile, Link2, Search, Languages, FileText, Send, 
   Linkedin, Settings, ChevronDown, Instagram, MessageSquare, X,
-  Folder, MapPin
+  Folder, MapPin, Sparkles
 } from "lucide-react";
 import { usePostCreatorFormContext } from "../../../context/PostCreatorFormContext";
 import { PlatformIcon } from "../../shared/PlatformIcon";
@@ -14,6 +14,7 @@ import { HashtagPickerPopover } from "./HashtagPickerPopover";
 import { FacebookAlbumComposer } from "./FacebookAlbumComposer";
 import { toast } from "sonner";
 import { PRODUCT_IDS } from "../../../constants/products";
+import { AICopilotPopover } from "./AICopilotPopover";
 
 // Presets Imports
 import { GlobalPresets } from "./presets/GlobalPresets";
@@ -24,6 +25,7 @@ import { DiscordPresets } from "./presets/DiscordPresets";
 import { ThreadsPresets } from "./presets/ThreadsPresets";
 
 export function ComposerBody() {
+  const [showAICopilot, setShowAICopilot] = useState(false);
   const {
     hasCreatePermission,
     hasApprovePermission,
@@ -456,6 +458,16 @@ export function ComposerBody() {
               >
                 <Folder size={18} />
               </button>
+
+              {/* AI Copilot Sparkles Button */}
+              <button 
+                type="button"
+                onClick={() => setShowAICopilot(!showAICopilot)}
+                className={`text-gray-400 hover:text-black transition-colors p-1.5 rounded-lg cursor-pointer ${showAICopilot ? 'text-purple-600 bg-purple-50' : ''}`}
+                title="AI Copilot Assistant"
+              >
+                <Sparkles size={18} className={showAICopilot ? "animate-pulse" : ""} />
+              </button>
             </div>
             
             <div className="flex items-center gap-3">
@@ -517,6 +529,16 @@ export function ComposerBody() {
               </div>
             </div>
           </div>
+
+          {/* AI Copilot Popover */}
+          {showAICopilot && (
+            <AICopilotPopover
+              caption={caption}
+              onUpdateCaption={setCaption}
+              activePlatform={activePlatform}
+              onClose={() => setShowAICopilot(false)}
+            />
+          )}
         </div>
 
         {/* Presets Accordion */}
