@@ -51,7 +51,7 @@ gitGraph
 
 ## 📊 3. Theo Dõi Trạng Thái Bằng Bảng Check-list (Task Tracking)
 
-Bạn nên tạo một bảng theo dõi trạng thái tích hợp chung:
+Bảng dưới đây là **Single Source of Truth** về trạng thái của các Agent. Bảng này phải được cập nhật thường xuyên:
 
 | Agent | Trạng thái | Nhánh Git | File chỉnh sửa chính | Người kiểm tra (Bạn) |
 | :--- | :--- | :--- | :--- | :--- |
@@ -61,7 +61,27 @@ Bạn nên tạo một bảng theo dõi trạng thái tích hợp chung:
 
 ---
 
-## 🧪 4. Quy Tắc Xác Minh Trước Khi Merge (Validation Rules)
+## 📝 4. Quy Trình Cập Nhật Trạng Thái Bắt Buộc Tại Thư Mục `conductor`
+
+Để tránh sai sót, nhầm lẫn và đè code lên nhau, **tất cả các AI Agent khi tham gia dự án phải tuân thủ nghiêm ngặt quy trình cập nhật tài liệu sau**:
+
+### Bước 1: Đánh dấu bắt đầu công việc (Bắt buộc với Agent khi nhận việc)
+Trước khi viết bất kỳ dòng code tính năng nào, Agent đó phải:
+1. Đọc file `conductor/multi-agent-management-guide.md`.
+2. Sử dụng tool thay đổi file để cập nhật trạng thái của mình trong bảng **Task Tracking (Mục 3)** từ `💤 Chờ chạy` thành `⏳ Đang làm`.
+3. Commit sự thay đổi này của file `conductor/multi-agent-management-guide.md` kèm theo một tin nhắn commit rõ ràng (ví dụ: `docs(conductor): start task AI Copilot for Agent 1`).
+
+### Bước 2: Báo cáo tiến độ (Nếu công việc kéo dài)
+Nếu nhiệm vụ lớn cần chia làm nhiều bước, Agent nên tạo hoặc cập nhật checklist chi tiết trong thư mục `conductor/` (ví dụ: `conductor/post-creator-ai-copilot.md`) để người dùng dễ theo dõi.
+
+### Bước 3: Đánh dấu hoàn tất công việc (Bắt buộc với Agent khi làm xong)
+Sau khi tính năng đã hoàn thiện và chạy thành công lệnh build/test:
+1. Agent phải cập nhật trạng thái của mình trong bảng **Task Tracking (Mục 3)** từ `⏳ Đang làm` thành `✅ Hoàn thành`.
+2. Commit sự thay đổi của file này cùng với commit code cuối cùng của tính năng trước khi đẩy lên GitHub.
+
+---
+
+## 🧪 5. Quy Tắc Xác Minh Trước Khi Merge (Validation Rules)
 
 Khi bất kỳ Agent nào báo hoàn thành, **TRƯỚC KHI** merge vào nhánh chính, hãy yêu cầu Agent đó:
 1. Chạy lệnh build kiểm thử:
