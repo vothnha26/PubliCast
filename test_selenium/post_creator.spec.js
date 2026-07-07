@@ -171,10 +171,25 @@ describe('Post Creator Detailed E2E Suite', function () {
   }
 
   async function ensureLoggedIn() {
+    // Kiểm tra token thực sự trong localStorage, không chỉ dựa vào URL
+    // Vì React SPA không redirect URL khi token hết hạn trên CI
+    const isTokenValid = await driver.executeScript(() => {
+      try {
+        const raw = localStorage.getItem('auth-storage');
+        if (!raw) return false;
+        const parsed = JSON.parse(raw);
+        const token = parsed?.state?.accessToken || parsed?.accessToken;
+        return !!token;
+      } catch (e) {
+        return false;
+      }
+    });
+
     const currentUrl = await driver.getCurrentUrl();
-    const isLoggedIn = !currentUrl.includes('/login') && !currentUrl.includes('/register');
-    if (!isLoggedIn) {
-      console.log('⚠️  Session hết hạn, đang tự động re-login...');
+    const isOnLoginPage = currentUrl.includes('/login') || currentUrl.includes('/register');
+
+    if (!isTokenValid || isOnLoginPage) {
+      console.log('⚠️  Session hết hạn hoặc token trống, đang tự động re-login...');
       const email = process.env.ADMIN_EMAIL || 'vothanhnha26@gmail.com';
       const password = process.env.ADMIN_PASSWORD || 'nhacc123@';
       await driver.get(`${BASE_URL}/login`);
@@ -197,12 +212,14 @@ describe('Post Creator Detailed E2E Suite', function () {
   async function navigateToPlannerAndPrepare() {
     const plannerUrl = `${BASE_URL}/planner/calendar`;
     await driver.get(plannerUrl);
-    // Nếu bị redirect về login thì re-login trước
+    await driver.sleep(1500); // Đợi React hydrate xong trước khi check token
+    // Kiểm tra session còn hợp lệ (check cả localStorage lẫn URL)
     await ensureLoggedIn();
     await driver.get(plannerUrl);
     await driver.wait(until.elementLocated(By.css('[data-testid="planner-create-post-btn"]')), 15000);
     await driver.sleep(2000); // Chờ re-render
   }
+
 
   before(async function () {
     const options = new chrome.Options();
