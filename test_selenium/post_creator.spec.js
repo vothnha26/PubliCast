@@ -171,15 +171,12 @@ describe('Post Creator Detailed E2E Suite', function () {
   }
 
   async function ensureLoggedIn() {
-    // Kiểm tra token thực sự trong localStorage, không chỉ dựa vào URL
+    // Kiểm tra token thực sự trong localStorage với key 'token' (STORAGE_KEYS.TOKEN)
     // Vì React SPA không redirect URL khi token hết hạn trên CI
     const isTokenValid = await driver.executeScript(() => {
       try {
-        const raw = localStorage.getItem('auth-storage');
-        if (!raw) return false;
-        const parsed = JSON.parse(raw);
-        const token = parsed?.state?.accessToken || parsed?.accessToken;
-        return !!token;
+        const token = localStorage.getItem('token');
+        return !!token && token.length > 10;
       } catch (e) {
         return false;
       }
@@ -219,6 +216,7 @@ describe('Post Creator Detailed E2E Suite', function () {
     await driver.wait(until.elementLocated(By.css('[data-testid="planner-create-post-btn"]')), 15000);
     await driver.sleep(2000); // Chờ re-render
   }
+
 
 
   before(async function () {
