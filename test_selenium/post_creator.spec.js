@@ -173,7 +173,23 @@ describe('Post Creator Detailed E2E Suite', function () {
   async function performLogin() {
     const email = process.env.ADMIN_EMAIL || 'vothanhnha26@gmail.com';
     const password = process.env.ADMIN_PASSWORD || 'nhacc123@';
+
     await driver.get(`${BASE_URL}/login`);
+
+    // Chờ React xử lý auth check (refresh token cookie có thể vẫn còn hạn)
+    // Nếu HttpOnly refresh token cookie còn hợp lệ, app sẽ tự redirect ra khỏi /login
+    await driver.sleep(3000);
+
+    const currentUrl = await driver.getCurrentUrl();
+    const isStillOnLoginPage = currentUrl.includes('/login') || currentUrl.includes('/register');
+
+    if (!isStillOnLoginPage) {
+      // App đã tự authenticate qua refresh token cookie → không cần login thủ công
+      console.log('✅ Session tự động restore qua refresh token cookie, bỏ qua re-login.');
+      return;
+    }
+
+    // Thực hiện login thủ công vì không có refresh token hoặc đã hết hạn
     const emailInput = await driver.wait(until.elementLocated(By.id('email')), 15000);
     const passwordInput = await driver.findElement(By.id('password'));
     const submitButton = await driver.findElement(By.xpath("//button[@type='submit']"));
@@ -186,8 +202,9 @@ describe('Post Creator Detailed E2E Suite', function () {
       const url = await driver.getCurrentUrl();
       return url.includes('/dashboard') || url.includes('/start') || url.includes('/manage/connections');
     }, 15000);
-    console.log('✅ Re-login thành công.');
+    console.log('✅ Re-login thủ công thành công.');
   }
+
 
   async function navigateToPlannerAndPrepare() {
     const plannerUrl = `${BASE_URL}/planner/calendar`;
