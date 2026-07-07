@@ -480,9 +480,14 @@ describe('Post Creator Detailed E2E Suite', function () {
 
   it('TC_POST_09 – Verify scheduling a post for tomorrow saves scheduledAt correctly in DB and displays on List UI', async function () {
     await seedPlatforms(['FACEBOOK']);
+    // TC_POST_09 chạy sau ~90s, session có thể đã hết tại tầng API (mặc dù UI vẫn hiển thị).
+    // Thực hiện re-login chủ động để đảm bảo token mới trước khi submit form lên server.
+    console.log('🔑 [TC_POST_09] Re-login chủ động để đảm bảo token hợp lệ trước khi submit...');
+    await performLogin();
     await navigateToPlannerAndPrepare();
     await safeClick(By.css('[data-testid="planner-create-post-btn"]'));
     await driver.sleep(2000);
+
 
     const captionInput = await driver.wait(until.elementLocated(By.css('[data-testid="post-caption-input"]')), 10000);
 
