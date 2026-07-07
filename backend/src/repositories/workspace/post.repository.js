@@ -1,3 +1,4 @@
+require('../../utils/polyfill');
 const prisma = require('../../config/prisma');
 
 function normalizeWindowsPaths(val) {
