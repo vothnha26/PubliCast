@@ -218,13 +218,15 @@ describe('Post Creator Detailed E2E Suite', function () {
   async function navigateToPlannerAndPrepare() {
     const plannerUrl = `${BASE_URL}/planner/calendar`;
     await driver.get(plannerUrl);
+    await driver.sleep(2500); // Chờ 2.5 giây để React app hoàn tất API auth check và redirect nếu có
 
     // Nếu bị redirect về login (URL check đơn giản) → re-login ngay
-    const currentUrl = await driver.getCurrentUrl();
+    let currentUrl = await driver.getCurrentUrl();
     if (currentUrl.includes('/login') || currentUrl.includes('/register')) {
-      console.log('⚠️  Bị redirect về login page, đang tự động re-login...');
+      console.log('⚠️  Bị redirect về login page sau khi load planner, đang tự động re-login...');
       await hardRelogin();
       await driver.get(plannerUrl);
+      await driver.sleep(2500);
     }
 
     // Kiểm tra bằng element thực tế: nếu planner button không hiện → session hết hạn → re-login
