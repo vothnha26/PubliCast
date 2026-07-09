@@ -174,16 +174,17 @@ describe('Post Creator Detailed E2E Suite', function () {
   }
 
   /**
-   * Inject fresh JWT token bằng cách gọi API login trực tiếp từ Node.js (không qua browser flow),
-   * sau đó dùng executeScript để ghi token vào localStorage của browser.
-   * Giải pháp này tránh hoàn toàn các vấn đề về SPA redirect, cookie HttpOnly, và session state.
+   * Inject fresh auth cookies bằng cách gọi API login trực tiếp từ Node.js,
+   * lấy Set-Cookie headers từ response, rồi inject vào browser qua Selenium addCookie().
+   * Backend dùng HttpOnly cookie (không trả token trong body) nên phải dùng cách này.
    */
   async function injectFreshToken() {
     const email = process.env.ADMIN_EMAIL || 'vothanhnha26@gmail.com';
     const password = process.env.ADMIN_PASSWORD || 'nhacc123@';
     const apiUrl = API_URL;
 
-    const token = await new Promise((resolve, reject) => {
+    // Gọi API login từ Node.js và lấy Set-Cookie headers
+    const cookies = await new Promise((resolve, reject) => {
       const payload = JSON.stringify({ email, password });
       const url = new URL(`${apiUrl}/api/auth/login`);
       const lib = url.protocol === 'https:' ? https : http;
@@ -200,14 +201,15 @@ describe('Post Creator Detailed E2E Suite', function () {
         let body = '';
         res.on('data', chunk => body += chunk);
         res.on('end', () => {
-          try {
-            const parsed = JSON.parse(body);
-            // API trả về { accessToken } hoặc { token } hoặc { data: { accessToken } }
-            const t = parsed.accessToken || parsed.token ||
-                      parsed.data?.accessToken || parsed.data?.token;
-            if (!t) return reject(new Error(`No token in response: ${body}`));
-            resolve(t);
-          } catch (e) { reject(e); }
+          if (res.statusCode !== 200) {
+            return reject(new Error(`Login API trả về ${res.statusCode}: ${body}`));
+          }
+          // Backend trả token qua Set-Cookie header (HttpOnly), không phải response body
+          const setCookieHeaders = res.headers['set-cookie'] || [];
+          if (setCookieHeaders.length === 0) {
+            return reject(new Error('Không có Set-Cookie headers trong login response'));
+          }
+          resolve(setCookieHeaders);
         });
       });
       req.on('error', reject);
@@ -215,12 +217,52 @@ describe('Post Creator Detailed E2E Suite', function () {
       req.end();
     });
 
-    // Inject token vào localStorage của browser, bỏ qua mọi SPA auth flow
-    await driver.executeScript((t) => {
-      localStorage.setItem('token', t);
-    }, token);
-    console.log('✅ [injectFreshToken] Token mới đã được inject vào browser localStorage.');
+    // Parse Set-Cookie headers và inject vào browser qua Selenium
+    // Phải đang trên đúng domain trước khi addCookie
+    const currentUrl = await driver.getCurrentUrl();
+    const targetDomain = new URL(BASE_URL).hostname; // localhost
+
+    if (!currentUrl.includes(targetDomain)) {
+      // Navigate đến domain trước để có thể set cookie
+      await driver.get(BASE_URL);
+      await driver.sleep(1000);
+    }
+
+    for (const cookieStr of cookies) {
+      // Parse: "accessToken=xxx; Path=/; HttpOnly; SameSite=Lax; Max-Age=900000"
+      const parts = cookieStr.split(';').map(p => p.trim());
+      const [nameValue, ...attrs] = parts;
+      const eqIdx = nameValue.indexOf('=');
+      const name = nameValue.substring(0, eqIdx).trim();
+      const value = nameValue.substring(eqIdx + 1).trim();
+
+      const attrMap = {};
+      for (const attr of attrs) {
+        const [k, v] = attr.split('=').map(p => p.trim());
+        attrMap[k.toLowerCase()] = v || true;
+      }
+
+      // Selenium addCookie không hỗ trợ HttpOnly flag qua JS — nhưng vẫn set được value
+      const cookieObj = {
+        name,
+        value,
+        domain: targetDomain,
+        path: attrMap['path'] || '/',
+        secure: 'secure' in attrMap,
+        httpOnly: 'httponly' in attrMap
+      };
+
+      try {
+        await driver.manage().addCookie(cookieObj);
+        console.log(`✅ Đã inject cookie: ${name}=${value.substring(0, 20)}...`);
+      } catch (e) {
+        console.warn(`⚠️ Không thể inject cookie ${name}: ${e.message}`);
+      }
+    }
+
+    console.log('✅ [injectFreshToken] Auth cookies đã được inject vào browser.');
   }
+
 
 
   async function navigateToPlannerAndPrepare() {
