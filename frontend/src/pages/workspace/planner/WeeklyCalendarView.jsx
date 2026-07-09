@@ -35,6 +35,18 @@ export function WeeklyCalendarView() {
       openPostCreator({ post });
     }
   };
+
+  const handleDuplicatePost = (post) => {
+    if (!hasCreatePermission) {
+      toast.error("You do not have permission to create posts");
+      return;
+    }
+    openPostCreator({
+      template: post,
+      defaultScheduledAt: post.scheduledAt ? new Date(post.scheduledAt) : null
+    });
+  };
+
   const { activeBrand } = useBrand();
   const [postData, setPostData] = useState([]);
   const [eventsData, setEventsData] = useState([]);
@@ -297,6 +309,7 @@ export function WeeklyCalendarView() {
               eventsData={eventsData}
               onCellClick={handleCellClick}
               onPostClick={handlePostClick}
+              onDuplicateClick={handleDuplicatePost}
               visiblePlatforms={visiblePlatforms}
             />
           ) : (
@@ -306,6 +319,7 @@ export function WeeklyCalendarView() {
               currentTime={currentTime}
               onCellClick={handleCellClick}
               onPostClick={handlePostClick}
+              onDuplicateClick={handleDuplicatePost}
               onCellDrop={importFromDrive}
               rowHeight={rowHeight}
               bestTimePlatform={bestTimePlatform}

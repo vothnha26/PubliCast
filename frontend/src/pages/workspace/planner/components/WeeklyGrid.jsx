@@ -49,6 +49,7 @@ export function WeeklyGrid({
   currentTime,
   onCellClick,
   onPostClick,
+  onDuplicateClick,
   onCellDrop,
   rowHeight = 100,
   bestTimePlatform = 'INSTAGRAM',
@@ -313,11 +314,23 @@ export function WeeklyGrid({
                           className="bg-white border border-gray-100 hover:border-gray-200/80 rounded-md p-2.5 shadow-[0_1.5px_3px_rgba(0,0,0,0.03)] hover:shadow-[0_4px_8px_rgba(0,0,0,0.06)] transition-all border-l-[3.5px] text-left flex flex-col space-y-1.5 w-full group/card"
                         >
                           {/* Top Header Row */}
-                          <div className="flex items-center justify-between">
+                          <div className="flex items-center justify-between relative">
                             {renderPlatformIcon(platform, "w-3.5 h-3.5")}
-                            <span className="text-[10px] font-bold text-gray-700 uppercase tracking-tight">
-                              {displayTime}
-                            </span>
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-[10px] font-bold text-gray-700 uppercase tracking-tight group-hover/card:hidden">
+                                {displayTime}
+                              </span>
+                              <button 
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  if (onDuplicateClick) onDuplicateClick(post);
+                                }}
+                                title="Nhân bản bài viết"
+                                className="hidden group-hover/card:flex items-center justify-center p-0.5 hover:bg-gray-100 rounded text-indigo-600 transition-colors cursor-pointer border-none shadow-none"
+                              >
+                                <span className="text-[10px]">🔂</span>
+                              </button>
+                            </div>
                           </div>
 
                           {/* Title / Description */}
