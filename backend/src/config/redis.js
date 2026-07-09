@@ -88,8 +88,10 @@ if (process.env.USE_MEMORY_REDIS === 'true') {
   const redisClient = createClient({
     url: redisUrl,
     socket: {
-      tls: isTls ? {} : undefined,
-      rejectUnauthorized: false,
+      ...(isTls ? {
+        tls: true,
+        rejectUnauthorized: false
+      } : {}),
       reconnectStrategy: (retries) => {
         if (retries > 10) {
           console.error('Redis max reconnection retries reached');
