@@ -327,7 +327,7 @@ export function ListView() {
 
   return (
     <>
-    <div className="flex-1 flex flex-col p-6 space-y-6">
+    <div className="flex-1 flex flex-col p-6 space-y-6 overflow-y-auto">
       {/* Search & Actions Bar */}
       <div className="flex items-center justify-between">
          <div className="flex items-center gap-4 flex-1 max-w-xl">

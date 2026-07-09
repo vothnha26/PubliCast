@@ -85,7 +85,7 @@ export function HistoryView() {
   };
 
   return (
-    <div className="flex-1 flex flex-col p-6 space-y-6">
+    <div className="flex-1 flex flex-col p-6 space-y-6 overflow-y-auto">
       <div className="flex items-center justify-between">
          <h2 className="text-xl font-bold text-[#0A0A0A]">Deleted Posts</h2>
          <div className="flex items-center gap-4 flex-1 max-w-md ml-8">

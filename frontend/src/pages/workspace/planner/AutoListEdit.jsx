@@ -424,7 +424,7 @@ export function AutoListEdit() {
   }
 
   return (
-    <div className="flex-1 flex flex-col bg-white min-h-screen animate-in slide-in-from-right duration-300">
+    <div className="flex-1 flex flex-col bg-white min-h-screen overflow-y-auto animate-in slide-in-from-right duration-300">
       {/* Header */}
       <AutoListHeader 
         isNew={isNew} 

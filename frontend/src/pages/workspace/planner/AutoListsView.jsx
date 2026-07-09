@@ -77,7 +77,7 @@ export function AutoListsView() {
   };
 
   return (
-    <div className="flex-1 flex flex-col p-6 space-y-6 animate-in fade-in duration-300">
+    <div className="flex-1 flex flex-col p-6 space-y-6 overflow-y-auto animate-in fade-in duration-300">
       {/* View Header */}
       <div className="flex items-center justify-between">
         <div className="space-y-1 text-left">

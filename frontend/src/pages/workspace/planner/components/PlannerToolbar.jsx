@@ -13,6 +13,14 @@ import postService from '../../../../services/post.service';
 import { buildMediaUrl } from '@/utils/url';
 import { AccessGuard } from '../../../../components/shared/AccessGuard';
 import { PlatformIcon } from '../../../../components/shared/PlatformIcon';
+import {
+  PUBLICAST_CSV_HEADERS,
+  csvCell,
+  parseCSVRow,
+  detectCSVFormat,
+  mapMetricoolRow,
+  mapPublicastRow
+} from '@/utils/csvHelper';
 
 const PLATFORM_DETAILS = {
   INSTAGRAM: {
@@ -107,119 +115,113 @@ export function PlannerToolbar({
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const fileInputRef = React.useRef(null);
 
+  // ─── Export CSV ───────────────────────────────────────────────────────────
   const handleExportCSV = () => {
     if (!postData || postData.length === 0) {
-      toast.error("No posts to export!");
+      toast.error('No posts to export!');
       return;
     }
-    const headers = ["Title", "Caption", "ScheduledAt", "Platforms", "Status"];
-    const csvRows = [
-      headers.join(","),
-      ...postData.map(post => {
-        const title = `"${(post.title || '').replace(/"/g, '""')}"`;
-        const caption = `"${(post.caption || '').replace(/"/g, '""')}"`;
-        const scheduledAt = post.scheduledAt || post.createdAt || '';
-        const platforms = `"${(post.platforms || []).join(';')}"`;
-        const status = post.status || '';
-        return [title, caption, scheduledAt, platforms, status].join(",");
-      })
-    ];
-    const csvContent = "\ufeff" + csvRows.join("\n");
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const rows = [PUBLICAST_CSV_HEADERS.join(',')];
+    postData.forEach(post => {
+      const opts = post.options || {};
+      const cells = [
+        csvCell(post.caption || ''),
+        csvCell(post.scheduledAt ? new Date(post.scheduledAt).toISOString().replace('Z', '') : ''),
+        csvCell((post.status || 'DRAFT').toUpperCase()),
+        csvCell((post.platforms || []).join(',')),
+        csvCell((post.type || 'IMAGE').toUpperCase()),
+        csvCell((post.mediaUrls || []).join('|')),
+        csvCell(post.altText || ''),
+        csvCell(post.title || ''),
+        csvCell(opts.firstComment || ''),
+        csvCell(opts.instagramPostType || ''),
+        csvCell(opts.youtubePrivacy || ''),
+        csvCell(opts.youtubeTags || ''),
+        csvCell(opts.youtubePlaylist || ''),
+        csvCell(opts.tiktokPrivacy || ''),
+        csvCell(opts.tiktokDisableComments != null ? String(opts.tiktokDisableComments) : ''),
+        csvCell(opts.facebookPostType || ''),
+        csvCell(activeBrand?.name || ''),
+        csvCell(post.id || ''),
+      ];
+      rows.push(cells.join(','));
+    });
+    const blob = new Blob(['﻿' + rows.join('\r\n')], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.setAttribute("href", url);
-    link.setAttribute("download", `publicast_planner_export_${new Date().toISOString().split('T')[0]}.csv`);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', `publicast_export_${new Date().toISOString().split('T')[0]}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-    toast.success("CSV exported successfully!");
+    URL.revokeObjectURL(url);
+    toast.success(`Exported ${postData.length} posts!`);
     setIsMoreMenuOpen(false);
   };
 
+  // ─── Import CSV ───────────────────────────────────────────────────────────
   const handleImportCSV = (e) => {
     const file = e.target.files[0];
     if (!file) return;
-    if (!activeBrand) {
-      toast.error("No active brand selected.");
-      return;
-    }
+    e.target.value = ''; // allow re-selecting same file
+    if (!activeBrand) { toast.error('No active brand selected.'); return; }
 
     const reader = new FileReader();
     reader.onload = async (event) => {
       try {
-        const text = event.target.result;
-        const lines = text.split('\n').map(line => line.trim()).filter(Boolean);
-        if (lines.length <= 1) {
-          toast.error("CSV file is empty or only contains headers.");
+        const raw = event.target.result;
+        const text = raw.charCodeAt(0) === 0xFEFF ? raw.slice(1) : raw; // strip BOM
+        const lines = text.split(/\r?\n/).filter(l => l.trim() !== '');
+        if (lines.length <= 1) { toast.error('CSV file is empty or only contains headers.'); return; }
+
+        const rawHeaders = parseCSVRow(lines[0]);
+        const format = detectCSVFormat(rawHeaders);
+        if (format === 'unknown') {
+          toast.error('Unrecognized CSV format. Use the PubliCast or Metricool template.');
           return;
         }
 
-        const headers = lines[0].split(',').map(h => h.trim().replace(/^["']|["']$/g, '').toLowerCase());
-        const titleIdx = headers.findIndex(h => h === 'title');
-        const captionIdx = headers.findIndex(h => h === 'caption');
-        const scheduledAtIdx = headers.findIndex(h => h === 'scheduledat' || h === 'date');
-        const platformsIdx = headers.findIndex(h => h === 'platforms' || h === 'platform');
-
-        if (titleIdx === -1) {
-          toast.error("CSV must contain a 'Title' column.");
-          return;
-        }
-
-        toast.info("Importing posts from CSV...");
-        let successCount = 0;
+        toast.info(`Importing from ${format === 'metricool' ? 'Metricool' : 'PubliCast'} format…`);
+        let successCount = 0, failCount = 0;
 
         for (let i = 1; i < lines.length; i++) {
           const row = parseCSVRow(lines[i]);
-          if (row.length === 0) continue;
-
-          const title = row[titleIdx] || 'Imported Post';
-          const caption = captionIdx !== -1 ? row[captionIdx] : '';
-          const scheduledAtStr = scheduledAtIdx !== -1 ? row[scheduledAtIdx] : '';
-          const platformsStr = platformsIdx !== -1 ? row[platformsIdx] : 'YOUTUBE';
-
-          const platforms = platformsStr.split(';').map(p => p.trim().toUpperCase());
-          const scheduledAt = scheduledAtStr ? new Date(scheduledAtStr) : new Date();
-
-          await postService.createPost({
-            brandId: activeBrand.id,
-            title,
-            caption,
-            platforms,
-            scheduledAt: scheduledAt.toISOString(),
-            status: 'draft'
-          });
-          successCount++;
+          if (row.every(c => c === '')) continue;
+          const p = format === 'metricool' ? mapMetricoolRow(row, rawHeaders) : mapPublicastRow(row, rawHeaders);
+          if (!p.targetPlatforms || p.targetPlatforms.length === 0) { failCount++; continue; }
+          try {
+            await postService.createPost({
+              brandId: activeBrand.id,
+              title: p.title || 'Imported Post',
+              caption: p.caption,
+              targetPlatforms: p.targetPlatforms,
+              type: p.type || 'IMAGE',
+              mediaUrls: p.mediaUrls || [],
+              altText: p.altText || null,
+              scheduledAt: p.scheduledAt ? new Date(p.scheduledAt).toISOString() : null,
+              status: p.status || 'DRAFT',
+              options: p.options || {},
+            });
+            successCount++;
+          } catch (err) {
+            console.warn(`[CSV Import] Row ${i} failed:`, err.message);
+            failCount++;
+          }
         }
 
-        toast.success(`Successfully imported ${successCount} posts from CSV!`);
-        if (fetchPosts) fetchPosts();
+        if (successCount > 0) {
+          toast.success(`Imported ${successCount} post${successCount > 1 ? 's' : ''}!${failCount > 0 ? ` (${failCount} skipped)` : ''}`);
+          if (fetchPosts) fetchPosts();
+        } else {
+          toast.error(`Import failed — ${failCount} row(s) skipped. Ensure Platforms column is filled.`);
+        }
       } catch (err) {
-        console.error(err);
-        toast.error("Failed to parse or import CSV file.");
+        console.error('[CSV Import] Parse error:', err);
+        toast.error('Failed to parse CSV. Please check the file format.');
       }
     };
-    reader.readAsText(file);
+    reader.readAsText(file, 'UTF-8');
     setIsMoreMenuOpen(false);
-  };
-
-  const parseCSVRow = (text) => {
-    const result = [];
-    let current = '';
-    let inQuotes = false;
-    for (let i = 0; i < text.length; i++) {
-      const char = text[i];
-      if (char === '"') {
-        inQuotes = !inQuotes;
-      } else if (char === ',' && !inQuotes) {
-        result.push(current.trim().replace(/^["']|["']$/g, ''));
-        current = '';
-      } else {
-        current += char;
-      }
-    }
-    result.push(current.trim().replace(/^["']|["']$/g, ''));
-    return result;
   };
 
   const togglePlatform = (platform) => {
