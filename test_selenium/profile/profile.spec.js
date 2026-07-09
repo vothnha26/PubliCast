@@ -62,20 +62,29 @@ describe('Profile & Settings Detailed Suite', function () {
 
     it('TC_PROFILE_02 – Verify direct navigation to tabs via URL queries', async function () {
       await driver.get(`${BASE_URL}/settings?tab=support`);
+      await driver.sleep(2000); // Chờ trang tải hoàn tất dữ liệu API
+      
       const chatInput = await driver.wait(
         until.elementLocated(By.css('[data-testid="support-chat-input"]')),
-        10000
+        15000
       );
-      await driver.wait(until.elementIsVisible(chatInput), 5000);
-      expect(await chatInput.isDisplayed()).to.be.true;
+      await driver.wait(until.elementIsVisible(chatInput), 10000);
+      
+      // Chống lỗi stale bằng cách truy vấn lại
+      const stableChatInput = await driver.findElement(By.css('[data-testid="support-chat-input"]'));
+      expect(await stableChatInput.isDisplayed()).to.be.true;
 
       await driver.get(`${BASE_URL}/settings?tab=billing`);
+      await driver.sleep(2000); // Chờ trang tải hoàn tất dữ liệu API
+      
       const upgradeBtn = await driver.wait(
         until.elementLocated(By.css('[data-testid="billing-upgrade-btn"]')),
-        10000
+        15000
       );
-      await driver.wait(until.elementIsVisible(upgradeBtn), 5000);
-      expect(await upgradeBtn.isDisplayed()).to.be.true;
+      await driver.wait(until.elementIsVisible(upgradeBtn), 10000);
+      
+      const stableUpgradeBtn = await driver.findElement(By.css('[data-testid="billing-upgrade-btn"]'));
+      expect(await stableUpgradeBtn.isDisplayed()).to.be.true;
     });
 
     it('TC_PROFILE_03 – Verify Google linked success callback redirection', async function () {

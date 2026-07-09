@@ -41,6 +41,7 @@ const aiRoutes = require('./routes/workspace/ai.routes');
 const reportRoutes = require('./routes/workspace/report.routes');
 const hashtagRoutes = require('./routes/workspace/hashtag.routes');
 const adAccountRoutes = require('./routes/workspace/ad-account.routes');
+const calendarEventRoutes = require('./routes/workspace/calendar-event.routes');
 
 
 // Routes - Core Domain
@@ -133,6 +134,7 @@ app.use('/api/livestreams', (_req, res) => {
 const ticketRoutes = require('./routes/workspace/ticket.routes');
 
 app.use('/api/posts', postRoutes);
+app.use('/api/calendar-events', calendarEventRoutes);
 app.use('/api/media', mediaLibraryRoutes);
 app.use('/api/media-folders', mediaFolderRoutes);
 app.use('/api/team', teamRoutes);

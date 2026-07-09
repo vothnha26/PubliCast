@@ -36,11 +36,25 @@ const renderPlatformIcon = (platformName, sizeClass = "w-3 h-3") => {
 export function MonthlyGrid({
   selectedDate,
   postData = [],
+  eventsData = [],
   onCellClick,
   onPostClick,
   visiblePlatforms = {}
 }) {
   const weekdayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+
+  // Group events by date string 'yyyy-MM-dd'
+  const eventsByDate = useMemo(() => {
+    const map = {};
+    eventsData.forEach(event => {
+      if (!event.eventDate) return;
+      const date = new Date(event.eventDate);
+      const dateStr = format(date, 'yyyy-MM-dd');
+      if (!map[dateStr]) map[dateStr] = [];
+      map[dateStr].push(event);
+    });
+    return map;
+  }, [eventsData]);
 
   // Group posts by local date string 'yyyy-MM-dd'
   const postsByDate = useMemo(() => {
@@ -121,12 +135,13 @@ export function MonthlyGrid({
       <div className="grid grid-cols-7 flex-1 divide-x divide-y divide-gray-100 bg-gray-50/10 overflow-y-auto">
         {daysInMonthGrid.map((day, idx) => {
           const cellPosts = postsByDate[day.fullStr] || [];
+          const cellEvents = eventsByDate[day.fullStr] || [];
           
           return (
             <div
               key={idx}
               onClick={() => handleDateClick(day.raw)}
-              className={`min-h-[115px] p-2 flex flex-col gap-1 transition-all hover:bg-gray-50/50 cursor-pointer relative ${
+              className={`min-h-[125px] p-2 flex flex-col gap-1 transition-all hover:bg-gray-50/50 cursor-pointer relative ${
                 day.isCurrentMonth ? "bg-white text-gray-800" : "bg-gray-50/30 text-gray-300"
               }`}
             >
@@ -139,12 +154,37 @@ export function MonthlyGrid({
                 }`}>
                   {day.date}
                 </span>
-                {cellPosts.length > 0 && (
+                {(cellPosts.length > 0 || cellEvents.length > 0) && (
                   <span className="text-[9px] font-bold text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded-full shrink-0">
-                    {cellPosts.length} posts
+                    {cellPosts.length + cellEvents.length} items
                   </span>
                 )}
               </div>
+
+              {/* Day Events (Holidays) List */}
+              {cellEvents.length > 0 && (
+                <div className="flex flex-col gap-0.5 z-10">
+                  {cellEvents.map(event => (
+                    <div 
+                      key={event.id}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        // Mở composer kèm gợi ý tên event
+                        if (onCellClick) {
+                          const eventDate = new Date(day.raw);
+                          eventDate.setHours(9, 0, 0, 0);
+                          onCellClick(eventDate, 9);
+                        }
+                      }}
+                      className="px-1.5 py-0.5 bg-rose-50 text-rose-700 border border-rose-100 rounded text-[9px] font-black tracking-tight truncate flex items-center gap-1 shadow-sm hover:bg-rose-100 transition-colors"
+                      title={event.description || event.title}
+                    >
+                      <span className="shrink-0 text-[10px]">📅</span>
+                      <span className="truncate">{event.title}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
 
               {/* Day Posts List */}
               <div className="flex-1 overflow-y-auto flex flex-col gap-1 max-h-[85px] scrollbar-none">

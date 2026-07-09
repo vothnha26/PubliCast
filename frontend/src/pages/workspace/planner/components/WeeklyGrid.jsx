@@ -53,9 +53,28 @@ export function WeeklyGrid({
   rowHeight = 100,
   bestTimePlatform = 'INSTAGRAM',
   bestTimesData = [],
+  eventsData = [],
   viewMode = 'WEEK'
 }) {
   const gridContainerRef = useRef(null);
+
+  // Group events by date string 'yyyy-MM-dd'
+  const eventsByDate = useMemo(() => {
+    const map = {};
+    if (Array.isArray(eventsData)) {
+      eventsData.forEach(event => {
+        if (!event.eventDate) return;
+        const dateObj = new Date(event.eventDate);
+        const year = dateObj.getFullYear();
+        const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+        const day = String(dateObj.getDate()).padStart(2, '0');
+        const dateStr = `${year}-${month}-${day}`;
+        if (!map[dateStr]) map[dateStr] = [];
+        map[dateStr].push(event);
+      });
+    }
+    return map;
+  }, [eventsData]);
 
   // Generate the days of the selected view (1 day for DAY mode, 7 days for WEEK mode)
   const days = useMemo(() => {
@@ -155,26 +174,54 @@ export function WeeklyGrid({
         {/* Time column spacer */}
         <div className="w-20 shrink-0 border-r border-gray-100" />
         
-        {days.map((day, idx) => (
-          <div 
-            key={idx} 
-            className="flex-1 py-4 flex items-center justify-center border-l border-gray-50 first:border-l-0"
-          >
-            {day.isToday ? (
-              <div className="px-4 py-2 bg-[#10B981] text-white rounded-lg text-xs font-black uppercase tracking-wider shadow-sm animate-in zoom-in-95 duration-200">
-                {day.shortName} {day.month}/{day.date}
-              </div>
-            ) : (
-              <div className={`text-[11px] font-bold uppercase tracking-wider transition-colors cursor-pointer py-2 ${
-                day.isSelected 
-                  ? "text-[#0A0A0A] border-b-2 border-[#0A0A0A] font-black" 
-                  : "text-gray-400 hover:text-black"
-              }`}>
-                {day.shortName} {day.month}/{day.date}
-              </div>
-            )}
-          </div>
-        ))}
+        {days.map((day, idx) => {
+          const dayEvents = eventsByDate[day.full] || [];
+
+          return (
+            <div 
+              key={idx} 
+              className="flex-1 py-3 flex flex-col items-center justify-center border-l border-gray-50 first:border-l-0 gap-1.5 min-h-[70px]"
+            >
+              {day.isToday ? (
+                <div className="px-4 py-2 bg-[#10B981] text-white rounded-lg text-xs font-black uppercase tracking-wider shadow-sm animate-in zoom-in-95 duration-200">
+                  {day.shortName} {day.month}/{day.date}
+                </div>
+              ) : (
+                <div className={`text-[11px] font-bold uppercase tracking-wider transition-colors cursor-pointer py-1.5 ${
+                  day.isSelected 
+                    ? "text-[#0A0A0A] border-b-2 border-[#0A0A0A] font-black" 
+                    : "text-gray-400 hover:text-black"
+                }`}>
+                  {day.shortName} {day.month}/{day.date}
+                </div>
+              )}
+
+              {/* Tag ngày lễ */}
+              {dayEvents.length > 0 && (
+                <div className="flex flex-col gap-1 w-full px-2 max-w-[130px]">
+                  {dayEvents.map(event => (
+                    <div 
+                      key={event.id}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (onCellClick) {
+                          const eventDate = new Date(day.raw);
+                          eventDate.setHours(9, 0, 0, 0);
+                          onCellClick(eventDate, 9);
+                        }
+                      }}
+                      className="px-1.5 py-0.5 bg-rose-50 text-rose-700 border border-rose-100 rounded text-[9px] font-black tracking-tight truncate flex items-center justify-center gap-1 shadow-sm hover:bg-rose-100 transition-colors cursor-pointer"
+                      title={event.description || event.title}
+                    >
+                      <span className="shrink-0">📅</span>
+                      <span className="truncate">{event.title}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          );
+        })}
       </div>
 
       {/* Scrollable Grid Body */}

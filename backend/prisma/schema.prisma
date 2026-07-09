@@ -129,6 +129,7 @@ model Brand {
   supportTickets     SupportTicket[]
   trackedVideos      TrackedVideo[]
   discordGuildSnapshots DiscordGuildSnapshot[]
+  calendarEvents     CalendarEvent[]
 
   @@index([ownerId])
   @@map("brands")
@@ -1646,5 +1647,22 @@ model AutoReplySetting {
 
   @@map("auto_reply_settings")
 }
+
+model CalendarEvent {
+  id          String   @id @default(uuid())
+  brandId     String?  // Nullable if global system events (holidays)
+  title       String
+  description String?  @db.Text
+  eventDate   DateTime // Date of the event
+  isSystem    Boolean  @default(false) // If true, it is a global holiday
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  brand       Brand?   @relation(fields: [brandId], references: [id], onDelete: Cascade)
+
+  @@index([brandId])
+  @@map("calendar_events")
+}
+
 
 
