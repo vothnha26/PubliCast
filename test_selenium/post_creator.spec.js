@@ -186,6 +186,7 @@ describe('Post Creator Detailed E2E Suite', function () {
       try { sessionStorage.clear(); } catch(e) {}
     });
     console.log('🧹 Đã xóa toàn bộ cookies và storage.');
+    await driver.sleep(1000);
 
     // Bước 2: Vào trang login (không có cookie nào — form login hiển thị bình thường)
     await driver.get(`${BASE_URL}/login`);
@@ -195,8 +196,10 @@ describe('Post Creator Detailed E2E Suite', function () {
 
     await emailInput.clear();
     await emailInput.sendKeys(email);
+    await driver.sleep(500);
     await passwordInput.clear();
     await passwordInput.sendKeys(password);
+    await driver.sleep(500);
     await submitButton.click();
 
     // Bước 3: Chờ redirect thành công sau login
@@ -205,6 +208,7 @@ describe('Post Creator Detailed E2E Suite', function () {
       return url.includes('/dashboard') || url.includes('/start') || url.includes('/manage');
     }, 15000);
 
+    await driver.sleep(2500); // Chờ 2.5 giây để cookie HttpOnly được đồng bộ hoàn toàn vào browser storage
     console.log('✅ [hardRelogin] Đăng nhập lại thành công, session mới đã được thiết lập.');
   }
 
