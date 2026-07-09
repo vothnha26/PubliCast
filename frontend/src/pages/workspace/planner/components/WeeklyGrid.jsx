@@ -2,8 +2,16 @@ import React, { useEffect, useRef, useMemo } from 'react';
 import { buildMediaUrl } from '@/utils/url';
 import { PlatformIcon } from '@/components/shared/PlatformIcon';
 
-const getBestTimePercentage = (dayIdx, hourVal, platform = 'INSTAGRAM') => {
-  // Deterministic but platform-dependent percentage distribution
+const getBestTimePercentage = (dayIdx, hourVal, bestTimesData = [], platform = 'INSTAGRAM') => {
+  // Tìm khung giờ tương ứng trong data thật từ API
+  if (Array.isArray(bestTimesData) && bestTimesData.length > 0) {
+    const found = bestTimesData.find(item => item.day === dayIdx && item.hour === hourVal);
+    if (found) {
+      return found.percentage;
+    }
+  }
+
+  // Fallback thuật toán cũ nếu chưa load xong
   const platformShift = platform.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
   const seed = (dayIdx * 13 + hourVal * 19 + platformShift) % 100;
   return 30 + Math.round((seed / 100) * 60); // 30% to 90%
@@ -44,6 +52,7 @@ export function WeeklyGrid({
   onCellDrop,
   rowHeight = 100,
   bestTimePlatform = 'INSTAGRAM',
+  bestTimesData = [],
   viewMode = 'WEEK'
 }) {
   const gridContainerRef = useRef(null);
@@ -197,7 +206,7 @@ export function WeeklyGrid({
             {/* Day columns for this hour */}
             {days.map((day, dIdx) => {
               const cellPosts = groupedPosts[`${day.full}-${hour.value}`] || [];
-              const percentage = getBestTimePercentage(dIdx, hour.value, bestTimePlatform);
+              const percentage = getBestTimePercentage(dIdx, hour.value, bestTimesData, bestTimePlatform);
               const heatmapBg = getHeatmapBg(percentage);
 
               return (

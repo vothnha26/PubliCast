@@ -19,7 +19,6 @@ const PLATFORMS = [
   { name: "Facebook", icon: <Facebook size={18} />, path: "/dashboard/facebook", color: "#1877F2", brand: "T" },
   { name: "Instagram", icon: <Instagram size={18} />, path: "/dashboard/instagram", color: "#E1306C", brand: "T" },
   { name: "TikTok", icon: <PlayCircle size={18} />, path: "/dashboard/tiktok", color: "#000000", brand: "T" },
-  { name: "LinkedIn", icon: <Linkedin size={18} />, path: "/dashboard/linkedin", color: "#0A66C2", brand: "T" },
   { name: "Discord", icon: <MessageSquare size={18} />, path: "/dashboard/discord", color: "#5865F2", brand: "T" },
   { name: "Threads", icon: <PlatformIcon platform="Threads" size={18} variant="flat" />, path: "/dashboard/threads", color: "#000000", brand: "T" },
   { name: "More connection", icon: <Plus size={18} />, isAction: true, color: "#3B82F6" },

@@ -548,7 +548,7 @@ export function PlannerToolbar({
                 {/* 7. Notifications */}
                 <button 
                   onClick={() => {
-                    toast.success("Notification settings updated.");
+                    navigate("/settings?tab=account");
                     setIsMoreMenuOpen(false);
                   }}
                   className="w-full px-4 py-2 text-xs font-bold text-gray-700 hover:bg-gray-50 flex items-center gap-3 group cursor-pointer transition-colors border-none bg-transparent"

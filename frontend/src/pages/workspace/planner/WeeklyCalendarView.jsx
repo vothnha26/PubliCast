@@ -64,6 +64,21 @@ export function WeeklyCalendarView() {
   const { isImporting, importFromDrive } = useGoogleDriveImport(activeBrand);
   
   const [monthlyPostCount, setMonthlyPostCount] = useState(0);
+  const [bestTimesData, setBestTimesData] = useState([]);
+
+  // Fetch Best Times to Post metrics
+  useEffect(() => {
+    if (!activeBrand) return;
+    const fetchBestTimes = async () => {
+      try {
+        const res = await apiService.get(`/posts/best-times?brandId=${activeBrand.id}&platform=${bestTimePlatform}`);
+        setBestTimesData(res.data.data || []);
+      } catch (e) {
+        console.error("Failed to fetch best times:", e);
+      }
+    };
+    fetchBestTimes();
+  }, [activeBrand, bestTimePlatform]);
 
   useEffect(() => {
     if (!activeBrand) return;
@@ -285,6 +300,7 @@ export function WeeklyCalendarView() {
               onCellDrop={importFromDrive}
               rowHeight={rowHeight}
               bestTimePlatform={bestTimePlatform}
+              bestTimesData={bestTimesData}
               viewMode={calendarViewMode}
             />
           )}

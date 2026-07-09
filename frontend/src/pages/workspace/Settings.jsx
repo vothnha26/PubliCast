@@ -4,7 +4,8 @@ import {
   User, Shield, CreditCard, Globe, 
   Mail, Lock, Smartphone, ExternalLink,
   MessageCircle, Send, Paperclip, CheckCircle2, Search,
-  AlertTriangle, Loader2, Plus, FileText, ChevronRight
+  AlertTriangle, Loader2, Plus, FileText, ChevronRight,
+  Sun, Moon, Monitor
 } from "lucide-react";
 import profileService from "../../services/profile.service";
 import apiService from "../../services/api";
@@ -12,12 +13,14 @@ import { toast } from "sonner";
 import { useConfirm } from "@/hooks/useConfirm";
 import { useBrand } from "../../context/BrandContext";
 import socketClient from "../../services/socket";
+import { useTheme } from "../../context/ThemeContext";
 
 export function SettingsPage() {
   const location = useLocation();
   const navigate = useNavigate();
   const confirm = useConfirm();
   const { activeBrand } = useBrand();
+  const { theme, setTheme } = useTheme();
   const [activeTab, setActiveTab] = useState("account");
 
   // State for form fields
@@ -526,6 +529,45 @@ export function SettingsPage() {
                    <p className="text-[10px] text-gray-400 italic">When this field is empty the monthly summary is sent to <b>{email}</b></p>
                  </div>
               </div>
+
+               {/* Theme Settings Selection */}
+               <div className="p-6 rounded-2xl bg-slate-50 dark:bg-[var(--muted)]/20 border border-slate-100 dark:border-[var(--border)] space-y-4">
+                 <div>
+                   <h3 className="text-sm font-bold text-[var(--foreground)]">Giao diện hệ thống</h3>
+                   <p className="text-[11px] text-[var(--muted-foreground)] leading-relaxed font-medium mt-1">
+                     Tùy chỉnh chế độ hiển thị giao diện phù hợp với nhu cầu sử dụng của bạn.
+                   </p>
+                 </div>
+                 
+                 <div className="grid grid-cols-3 gap-3">
+                   {[
+                     { id: "light", label: "Chế độ sáng", icon: Sun },
+                     { id: "dark", label: "Chế độ tối", icon: Moon },
+                     { id: "system", label: "Hệ thống", icon: Monitor },
+                   ].map((t) => {
+                     const Icon = t.icon;
+                     const isSelected = theme === t.id;
+                     return (
+                       <button
+                         key={t.id}
+                         type="button"
+                         onClick={() => {
+                           setTheme(t.id);
+                           toast.success(`Đã chuyển sang ${t.label}`);
+                         }}
+                         className={`flex flex-col items-center gap-2.5 p-4 rounded-xl border transition-all duration-200 cursor-pointer text-center ${
+                           isSelected
+                             ? "bg-purple-600 border-purple-600 text-white shadow-md shadow-purple-100 dark:shadow-none"
+                             : "bg-[var(--card)] border-[var(--border)] text-[var(--foreground)] hover:bg-[var(--muted)]/50"
+                         }`}
+                       >
+                         <Icon size={18} />
+                         <span className="text-[10px] font-bold tracking-tight">{t.label}</span>
+                       </button>
+                     );
+                   })}
+                 </div>
+               </div>
             </section>
 
             <button 
