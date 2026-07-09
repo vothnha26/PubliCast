@@ -1,5 +1,6 @@
 const prisma = require('../../config/prisma');
 const logger = require('../../utils/logger');
+const trendingHashtagService = require('../../services/workspace/hashtag/trending/TrendingHashtagService');
 
 /**
  * Get all hashtag sets and tracked hashtags for a brand
@@ -180,6 +181,21 @@ exports.untrackHashtag = async (req, res, next) => {
     return res.status(200).json({ message: 'Stopped tracking hashtag successfully' });
   } catch (error) {
     logger.error('Error in untrackHashtag:', error);
+    next(error);
+  }
+};
+
+/**
+ * Get trending hashtags by platform
+ * GET /api/hashtags/trending
+ */
+exports.getTrendingHashtags = async (req, res, next) => {
+  try {
+    const { platform = 'MOCK', limit = 20 } = req.query;
+    const trending = await trendingHashtagService.getTrendingHashtags(platform, parseInt(limit, 10));
+    return res.status(200).json({ trending });
+  } catch (error) {
+    logger.error('Error in getTrendingHashtags:', error);
     next(error);
   }
 };

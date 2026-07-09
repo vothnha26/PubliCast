@@ -14,6 +14,12 @@ router.use(verifyAuth);
 router.get('/', hashtagController.getHashtagData);
 
 /**
+ * GET /api/hashtags/trending
+ * Get trending hashtags by platform
+ */
+router.get('/trending', hashtagController.getTrendingHashtags);
+
+/**
  * POST /api/hashtags/sets
  * Create a new hashtag set
  */
