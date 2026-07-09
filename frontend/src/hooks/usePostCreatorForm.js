@@ -205,13 +205,31 @@ export function usePostCreatorForm() {
     });
   };
 
+  const connectedPlatforms = activeBrand?.socialAccounts
+    ?.filter(sa => sa.isConnected)
+    ?.map(sa => {
+      const mapping = {
+        FACEBOOK: "facebook",
+        INSTAGRAM: "instagram",
+        YOUTUBE: "youtube",
+        TIKTOK: "tiktok",
+        LINKEDIN: "linkedin",
+        TELEGRAM: "telegram",
+        DISCORD: "discord",
+        THREADS: "threads"
+      };
+      return mapping[sa.platform];
+    })
+    ?.filter(Boolean) || [];
+
   const getValidationErrors = () => {
     const isAlbum = selectedPlatforms.includes('facebook') && activePlatform === 'facebook' && facebookType === 'album';
+    const activeSelectedPlatforms = selectedPlatforms.filter(p => connectedPlatforms.includes(p));
     return validatePostForm({
       isLibrary,
       selectedPublishId,
       scheduledDate,
-      selectedPlatforms,
+      selectedPlatforms: activeSelectedPlatforms,
       facebookType,
       youtubeType,
       instagramType,
@@ -627,7 +645,7 @@ export function usePostCreatorForm() {
         status,
         isLibrary,
         altText,
-        targetPlatforms: selectedPlatforms.map(p => p.toUpperCase()),
+        targetPlatforms: selectedPlatforms.filter(p => connectedPlatforms.includes(p)).map(p => p.toUpperCase()),
         scheduledAt: ['schedule', 'review'].includes(selectedPublishId) ? (scheduledDate ? new Date(scheduledDate).toISOString() : null) : null,
         mediaUrls: postMediaUrls,
         reviewerIds: selectedReviewerIds,

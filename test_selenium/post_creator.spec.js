@@ -502,11 +502,6 @@ describe('Post Creator Detailed E2E Suite', function () {
 
   it('TC_POST_09 – Verify scheduling a post for tomorrow saves scheduledAt correctly in DB and displays on List UI', async function () {
     await seedPlatforms(['FACEBOOK']);
-    // TC_POST_09 chạy sau ~90s, access token 15 phút có thể đã hết hạn ở tầng API.
-    // Dùng hardRelogin(): xóa toàn bộ cookie/storage trước để ngăn auto-redirect,
-    // sau đó login qua browser — server sẽ set cookie mới đúng domain.
-    console.log('🔑 [TC_POST_09] Hard re-login để đảm bảo session mới trước khi submit...');
-    await hardRelogin();
     await navigateToPlannerAndPrepare();
     await safeClick(By.css('[data-testid="planner-create-post-btn"]'));
     await driver.sleep(2000);
