@@ -1,7 +1,10 @@
 const path = require('path');
 const fs = require('fs');
+const http = require('http');
+const https = require('https');
 require('dotenv').config({ path: path.resolve(__dirname, '.env') });
 const BASE_URL = process.env.BASE_URL || 'http://localhost:5173';
+const API_URL = process.env.API_URL || 'http://localhost:3000';
 
 const { expect } = require('chai');
 const { Builder, By, until, Key } = require('selenium-webdriver');
@@ -170,39 +173,53 @@ describe('Post Creator Detailed E2E Suite', function () {
     }
   }
 
-  async function performLogin() {
+  /**
+   * Inject fresh JWT token bằng cách gọi API login trực tiếp từ Node.js (không qua browser flow),
+   * sau đó dùng executeScript để ghi token vào localStorage của browser.
+   * Giải pháp này tránh hoàn toàn các vấn đề về SPA redirect, cookie HttpOnly, và session state.
+   */
+  async function injectFreshToken() {
     const email = process.env.ADMIN_EMAIL || 'vothanhnha26@gmail.com';
     const password = process.env.ADMIN_PASSWORD || 'nhacc123@';
+    const apiUrl = API_URL;
 
-    await driver.get(`${BASE_URL}/login`);
+    const token = await new Promise((resolve, reject) => {
+      const payload = JSON.stringify({ email, password });
+      const url = new URL(`${apiUrl}/api/auth/login`);
+      const lib = url.protocol === 'https:' ? https : http;
+      const req = lib.request({
+        hostname: url.hostname,
+        port: url.port || (url.protocol === 'https:' ? 443 : 80),
+        path: url.pathname,
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Content-Length': Buffer.byteLength(payload)
+        }
+      }, (res) => {
+        let body = '';
+        res.on('data', chunk => body += chunk);
+        res.on('end', () => {
+          try {
+            const parsed = JSON.parse(body);
+            // API trả về { accessToken } hoặc { token } hoặc { data: { accessToken } }
+            const t = parsed.accessToken || parsed.token ||
+                      parsed.data?.accessToken || parsed.data?.token;
+            if (!t) return reject(new Error(`No token in response: ${body}`));
+            resolve(t);
+          } catch (e) { reject(e); }
+        });
+      });
+      req.on('error', reject);
+      req.write(payload);
+      req.end();
+    });
 
-    // Chờ React xử lý auth check (refresh token cookie có thể vẫn còn hạn)
-    // Nếu HttpOnly refresh token cookie còn hợp lệ, app sẽ tự redirect ra khỏi /login
-    await driver.sleep(3000);
-
-    const currentUrl = await driver.getCurrentUrl();
-    const isStillOnLoginPage = currentUrl.includes('/login') || currentUrl.includes('/register');
-
-    if (!isStillOnLoginPage) {
-      // App đã tự authenticate qua refresh token cookie → không cần login thủ công
-      console.log('✅ Session tự động restore qua refresh token cookie, bỏ qua re-login.');
-      return;
-    }
-
-    // Thực hiện login thủ công vì không có refresh token hoặc đã hết hạn
-    const emailInput = await driver.wait(until.elementLocated(By.id('email')), 15000);
-    const passwordInput = await driver.findElement(By.id('password'));
-    const submitButton = await driver.findElement(By.xpath("//button[@type='submit']"));
-    await emailInput.clear();
-    await emailInput.sendKeys(email);
-    await passwordInput.clear();
-    await passwordInput.sendKeys(password);
-    await submitButton.click();
-    await driver.wait(async () => {
-      const url = await driver.getCurrentUrl();
-      return url.includes('/dashboard') || url.includes('/start') || url.includes('/manage/connections');
-    }, 15000);
-    console.log('✅ Re-login thủ công thành công.');
+    // Inject token vào localStorage của browser, bỏ qua mọi SPA auth flow
+    await driver.executeScript((t) => {
+      localStorage.setItem('token', t);
+    }, token);
+    console.log('✅ [injectFreshToken] Token mới đã được inject vào browser localStorage.');
   }
 
 
@@ -497,10 +514,11 @@ describe('Post Creator Detailed E2E Suite', function () {
 
   it('TC_POST_09 – Verify scheduling a post for tomorrow saves scheduledAt correctly in DB and displays on List UI', async function () {
     await seedPlatforms(['FACEBOOK']);
-    // TC_POST_09 chạy sau ~90s, session có thể đã hết tại tầng API (mặc dù UI vẫn hiển thị).
-    // Thực hiện re-login chủ động để đảm bảo token mới trước khi submit form lên server.
-    console.log('🔑 [TC_POST_09] Re-login chủ động để đảm bảo token hợp lệ trước khi submit...');
-    await performLogin();
+    // TC_POST_09 chạy sau ~90s, access token 15 phút có thể đã hết hạn ở tầng API.
+    // Dùng injectFreshToken() để gọi API login trực tiếp từ Node.js và inject token mới vào
+    // localStorage, tránh hoàn toàn mọi vấn đề về SPA session management và cookie flow.
+    console.log('🔑 [TC_POST_09] Injecting fresh token via direct API call...');
+    await injectFreshToken();
     await navigateToPlannerAndPrepare();
     await safeClick(By.css('[data-testid="planner-create-post-btn"]'));
     await driver.sleep(2000);
