@@ -48,6 +48,8 @@ class AuthService {
   async logout() {
     try {
       await apiService.post('/auth/logout');
+    } catch (error) {
+      console.warn('Backend logout failed:', error.message);
     } finally {
       localStorage.removeItem(STORAGE_KEYS.TOKEN);
     }

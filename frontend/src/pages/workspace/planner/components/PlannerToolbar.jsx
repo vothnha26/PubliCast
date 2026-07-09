@@ -531,7 +531,7 @@ export function PlannerToolbar({
                   }}
                   className="w-full px-4 py-2 text-xs font-bold text-gray-700 hover:bg-gray-50 flex items-center gap-3 group cursor-pointer transition-colors border-none bg-transparent"
                 >
-                  <Calendar size={14} className="text-gray-400 group-hover:text-gray-700" />
+                  <CalendarIcon size={14} className="text-gray-400 group-hover:text-gray-700" />
                   <span>Import Google Calendar (.ics)</span>
                 </button>
 

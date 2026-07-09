@@ -697,8 +697,8 @@ class PostService {
         brandId,
         status: 'PUBLISHED',
         isDeleted: false,
-        platforms: {
-          has: platform
+        targetPlatforms: {
+          contains: platform
         }
       },
       select: {
