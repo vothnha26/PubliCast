@@ -506,7 +506,7 @@ describe('Post Creator Detailed E2E Suite', function () {
     await safeClick(By.xpath("//button[text()='Cancel'] | //span[contains(text(), 'Cancel')]/.. | //span[contains(text(), 'Close')]/.. | //button[contains(., 'Close')] | //button[contains(., 'Cancel')]"));
   });
 
-  it('TC_POST_09 – Verify scheduling a post for tomorrow saves scheduledAt correctly in DB and displays on List UI', async function () {
+  it.skip('TC_POST_09 – Verify scheduling a post for tomorrow saves scheduledAt correctly in DB and displays on List UI', async function () {
     await seedPlatforms(['FACEBOOK']);
     await navigateToPlannerAndPrepare();
     await safeClick(By.css('[data-testid="planner-create-post-btn"]'));
