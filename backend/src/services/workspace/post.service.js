@@ -697,14 +697,14 @@ class PostService {
         brandId,
         status: 'PUBLISHED',
         isDeleted: false,
-        platforms: {
-          has: platform
+        targetPlatforms: {
+          contains: platform
         }
       },
       select: {
         publishedAt: true,
         scheduledAt: true,
-        metrics: {
+        postMetricHistories: {
           take: 1,
           orderBy: { timestamp: 'desc' }
         }
@@ -729,10 +729,10 @@ class PostService {
       const day = dateObj.getDay(); // 0 (Chủ nhật) -> 6 (Thứ bảy)
       const hour = dateObj.getHours(); // 0 -> 23
 
-      // Lấy tương tác (nếu có metrics)
+      // Lấy tương tác (nếu có postMetricHistories)
       let engagement = 0;
-      if (post.metrics && post.metrics.length > 0) {
-        const met = post.metrics[0];
+      if (post.postMetricHistories && post.postMetricHistories.length > 0) {
+        const met = post.postMetricHistories[0];
         // JSON structure tuỳ nền tảng (likes, comments, views, retweets...)
         let parsed = {};
         try {

@@ -45,7 +45,7 @@ export function PostsLibraryView() {
   }, [activeBrand, searchTerm, isOpen]);
 
   return (
-    <div className="flex-1 flex flex-col p-6 space-y-6">
+    <div className="flex-1 flex flex-col p-6 space-y-6 overflow-y-auto">
       {/* Premium Header */}
       <div className="flex items-center justify-between">
          <div className="flex items-center gap-3">
