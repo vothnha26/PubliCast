@@ -1,6 +1,35 @@
 const { API_VERSIONS, SEPARATORS, FACEBOOK_API } = require('../../../utils/constants');
 const path = require('path');
 const fs = require('fs');
+const logger = require('../../../utils/logger');
+
+// Custom fetch wrapper with timeout and logging
+const fetchWithTimeout = async (url, options = {}) => {
+  const timeoutMs = options.body ? 45000 : 25000;
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
+  logger.info(`[Instagram API] Request: ${options.method || 'GET'} ${url.split('?')[0]}`);
+  try {
+    const res = await global.fetch(url, {
+      ...options,
+      signal: controller.signal
+    });
+    clearTimeout(timeoutId);
+    logger.info(`[Instagram API] Response Status: ${res.status}`);
+    return res;
+  } catch (error) {
+    clearTimeout(timeoutId);
+    if (error.name === 'AbortError') {
+      logger.error(`[Instagram API] ❌ Timeout after ${timeoutMs}ms: ${options.method || 'GET'} ${url.split('?')[0]}`);
+      throw new Error(`Instagram API request timed out after ${timeoutMs}ms`);
+    }
+    logger.error(`[Instagram API] ❌ Failed: ${error.message}`);
+    throw error;
+  }
+};
+
+const fetch = fetchWithTimeout;
 
 class InstagramGateway {
   constructor() {
@@ -324,6 +353,35 @@ class InstagramGateway {
     }
     
     return res.json();
+  }
+
+  async createComment(mediaId, text, accessToken) {
+    const url = `${this.graphBaseUrl}/${mediaId}/comments?message=${encodeURIComponent(text)}&access_token=${accessToken}`;
+    
+    const res = await fetch(url, { method: 'POST' });
+    if (!res.ok) {
+      const errData = await res.json().catch(() => ({}));
+      throw new Error(errData.error?.message || 'Failed to create comment on Instagram');
+    }
+    
+    return res.json();
+  }
+
+  async getAccountInsights(igAccountId, accessToken, startDate, endDate) {
+    const since = Math.floor(new Date(startDate).getTime() / 1000);
+    const until = Math.floor(new Date(endDate).getTime() / 1000);
+    const metrics = 'impressions,reach,profile_views';
+    const url = `${this.graphBaseUrl}/${igAccountId}/insights?metric=${metrics}&period=day&since=${since}&until=${until}&access_token=${accessToken}`;
+    
+    const res = await fetch(url);
+    if (!res.ok) {
+      const errData = await res.json().catch(() => ({}));
+      console.warn(`[InstagramGateway] getAccountInsights failed:`, errData.error?.message);
+      return [];
+    }
+    
+    const data = await res.json();
+    return data.data || [];
   }
 }
 

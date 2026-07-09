@@ -60,6 +60,8 @@ async function main() {
     'user_accounts',
     'users',
     'plans',
+    'platforms',
+    'modules',
     'products',
     'plan_limits',
     'system_permissions',
@@ -132,16 +134,30 @@ async function main() {
     }
   });
 
+  console.log('Seeding Platforms...');
+  await prisma.platform.create({ data: { id: 'YT', name: 'YouTube', color: '#FF0000' } });
+  await prisma.platform.create({ data: { id: 'FB', name: 'Facebook', color: '#1877F2' } });
+  await prisma.platform.create({ data: { id: 'IG', name: 'Instagram', color: '#E1306C' } });
+  await prisma.platform.create({ data: { id: 'TK', name: 'TikTok', color: '#000000' } });
+  await prisma.platform.create({ data: { id: 'LI', name: 'LinkedIn', color: '#0A66C2' } });
+  await prisma.platform.create({ data: { id: 'X', name: 'X (Twitter)', color: '#000000' } });
+
+  console.log('Seeding Modules...');
+  await prisma.module.create({ data: { id: 'M1', name: 'Analytics', description: 'Channel statistics, metrics and growth tracking.' } });
+  await prisma.module.create({ data: { id: 'M2', name: 'Automation', description: 'Auto-posting, scheduling and queue management.' } });
+  await prisma.module.create({ data: { id: 'M3', name: 'Engagement', description: 'Inbox management, comments and direct messages.' } });
+  await prisma.module.create({ data: { id: 'M4', name: 'Competitors', description: 'Tracking and benchmarking against rival channels.' } });
+
   console.log('Seeding Products...');
-  await prisma.product.create({ data: { id: 'youtube_analytics', name: 'YouTube Analytics', category: 'Platforms' } });
-  await prisma.product.create({ data: { id: 'facebook_management', name: 'Facebook Management', category: 'Platforms' } });
-  await prisma.product.create({ data: { id: 'tiktok_creative', name: 'TikTok Creative Suite', category: 'Platforms' } });
-  await prisma.product.create({ data: { id: 'instagram_insights', name: 'Instagram Insights', category: 'Platforms' } });
-  await prisma.product.create({ data: { id: 'ai_content_engine', name: 'AI Content Engine', category: 'AI Tools' } });
-  await prisma.product.create({ data: { id: 'ai_best_time', name: 'AI Best Time Suggest', category: 'AI Tools' } });
-  await prisma.product.create({ data: { id: 'ads_manager', name: 'Ads Manager Pro', category: 'Management' } });
-  await prisma.product.create({ data: { id: 'unified_inbox', name: 'Unified Inbox', category: 'Management' } });
-  await prisma.product.create({ data: { id: 'custom_links', name: 'Custom Branded Links', category: 'Tools' } });
+  await prisma.product.create({ data: { id: 'youtube_analytics', name: 'YouTube Analytics', category: 'Platforms', platformId: 'YT', moduleId: 'M1', sku: 'PL-YT-AN', status: 'ACTIVE' } });
+  await prisma.product.create({ data: { id: 'facebook_management', name: 'Facebook Management', category: 'Platforms', platformId: 'FB', moduleId: 'M2', sku: 'PL-FB-AM', status: 'ACTIVE' } });
+  await prisma.product.create({ data: { id: 'tiktok_creative', name: 'TikTok Creative Suite', category: 'Platforms', platformId: 'TK', moduleId: 'M2', sku: 'PL-TK-CR', status: 'ACTIVE' } });
+  await prisma.product.create({ data: { id: 'instagram_insights', name: 'Instagram Insights', category: 'Platforms', platformId: 'IG', moduleId: 'M1', sku: 'PL-IG-IN', status: 'ACTIVE' } });
+  await prisma.product.create({ data: { id: 'ai_content_engine', name: 'AI Content Engine', category: 'AI Tools', sku: 'AI-CONTENT-ENGINE', status: 'ACTIVE' } });
+  await prisma.product.create({ data: { id: 'ai_best_time', name: 'AI Best Time Suggest', category: 'AI Tools', sku: 'AI-BEST-TIME', status: 'ACTIVE' } });
+  await prisma.product.create({ data: { id: 'ads_manager', name: 'Ads Manager Pro', category: 'Management', sku: 'ADS-MANAGER', status: 'ACTIVE' } });
+  await prisma.product.create({ data: { id: 'unified_inbox', name: 'Unified Inbox', category: 'Management', platformId: 'FB', moduleId: 'M3', sku: 'PL-FB-EN', status: 'ACTIVE' } });
+  await prisma.product.create({ data: { id: 'custom_links', name: 'Custom Branded Links', category: 'Tools', sku: 'CUSTOM-LINKS', status: 'ACTIVE' } });
 
   console.log('Seeding Plans...');
   const freePlan = await prisma.plan.create({

@@ -136,10 +136,15 @@ class LinkedInAnalyticsService {
     const now = new Date();
     const defaultStart = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
     const defaultEnd = now.toISOString().split('T')[0];
-    return {
-      start: startDate || defaultStart,
-      end: endDate || defaultEnd
-    };
+    let start = startDate || defaultStart;
+    let end = endDate || defaultEnd;
+
+    if (start === end) {
+      const prevDate = new Date(new Date(start).getTime() - 24 * 60 * 60 * 1000);
+      start = prevDate.toISOString().split('T')[0];
+    }
+
+    return { start, end };
   }
 
   _initializeDailyMap(start, end) {

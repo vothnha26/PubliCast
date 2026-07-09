@@ -12,9 +12,8 @@ const router = express.Router();
  * All routes require authentication and ADMIN or OWNER role
  */
 
-// Middleware: Apply authentication and admin authorization to all routes
 router.use(verifyAuth);
-router.use(authorize(USER_ROLES.ADMIN, USER_ROLES.OWNER));
+router.use(authorize(USER_ROLES.ADMIN));
 
 /**
  * GET /admin/pricing

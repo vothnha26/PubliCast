@@ -56,7 +56,10 @@ class YouTubeCommentService {
     const socialAccount = await socialAccountRepository.findByBrandAndPlatform(brandId, PLATFORMS.YOUTUBE);
     if (!socialAccount || socialAccount.length === 0) throw new Error('YouTube account not connected');
 
-    const account = socialAccount[0];
+    const account = socialAccount.find(acc => 
+      !(acc.accessToken && acc.accessToken.startsWith('mock-')) &&
+      !(acc.platformAccountId && acc.platformAccountId.startsWith('mock-'))
+    ) || socialAccount[0];
     const auth = googleOAuthService.createClient();
     auth.setCredentials({ access_token: account.accessToken });
     

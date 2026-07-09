@@ -113,6 +113,26 @@ describe('PlatformLimitService Unit Tests', () => {
     });
   });
 
+  describe('toggleLock', () => {
+    it('should lock a platform limit when given true', async () => {
+      platformLimitRepository.findById.mockResolvedValue(mockLimits[0]);
+      platformLimitRepository.update.mockResolvedValue({ ...mockLimits[0], isLocked: true, lockReason: 'Bảo trì' });
+
+      const result = await platformLimitService.toggleLock('limit-1', true, 'Bảo trì');
+      expect(result.isLocked).toBe(true);
+      expect(result.lockReason).toBe('Bảo trì');
+      expect(platformLimitRepository.update).toHaveBeenCalledWith('limit-1', {
+        isLocked: true,
+        lockReason: 'Bảo trì'
+      });
+    });
+
+    it('should throw 404 when toggling non-existent limit config', async () => {
+      platformLimitRepository.findById.mockResolvedValue(null);
+      await expect(platformLimitService.toggleLock('non-existent', true, 'Bảo trì')).rejects.toThrow('Platform limit config not found');
+    });
+  });
+
   describe('deletePlatformLimit', () => {
     it('should delete platform limit when config exists', async () => {
       platformLimitRepository.findById.mockResolvedValue(mockLimits[0]);

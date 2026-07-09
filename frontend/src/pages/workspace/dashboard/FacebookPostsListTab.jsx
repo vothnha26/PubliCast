@@ -9,6 +9,7 @@ export function FacebookPostsListTab({
   fetchPublishedVideos = () => {},
   prevPageToken = null,
   nextPageToken = null,
+  onRowClick = null,
 }) {
   // Columns configuration for Facebook Posts list
   const columns = [
@@ -93,6 +94,7 @@ export function FacebookPostsListTab({
       searchPlaceholder="Search posts..."
       searchKeys={["message"]}
       footerMessage="Showing latest Facebook posts"
+      onRowClick={onRowClick}
     />
   );
 }

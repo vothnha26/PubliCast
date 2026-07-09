@@ -12,6 +12,7 @@ import { toast } from "sonner";
 import { useBrandPermission } from "../../../hooks/useBrandPermission";
 import { AccessGuard } from "../../../components/shared/AccessGuard";
 import { buildMediaUrl } from "../../../utils/url";
+import { PlatformIcon } from "@/components/shared/PlatformIcon";
 
 export function PostsLibraryView() {
   const [posts, setPosts] = useState([]);
@@ -21,7 +22,7 @@ export function PostsLibraryView() {
   const { hasPermission } = useBrandPermission();
   const hasCreatePermission = hasPermission('CREATE_POSTS');
 
-  const { openPostCreator } = usePostCreator();
+  const { openPostCreator, isOpen } = usePostCreator();
 
   const fetchLibrary = async () => {
     if (!activeBrand) return;
@@ -41,7 +42,7 @@ export function PostsLibraryView() {
 
   useEffect(() => {
     fetchLibrary();
-  }, [activeBrand, searchTerm]);
+  }, [activeBrand, searchTerm, isOpen]);
 
   return (
     <div className="flex-1 flex flex-col p-6 space-y-6">
@@ -160,13 +161,7 @@ export function PostsLibraryView() {
                    <div className="absolute top-4 right-4 flex gap-1">
                       {item.platforms.map(plt => (
                          <div key={plt} className="w-8 h-8 rounded-full bg-white/80 backdrop-blur-md flex items-center justify-center shadow-sm border border-white/50">
-                            {plt === "YOUTUBE" ? (
-                               <Youtube size={14} className="text-[#FF0000]" />
-                             ) : plt === "FACEBOOK" ? (
-                               <Facebook size={14} className="text-[#1877F2] fill-[#1877F2]" />
-                             ) : (
-                               <PlayCircle size={14} />
-                             )}
+                            <PlatformIcon platform={plt} size={14} />
                          </div>
                       ))}
                    </div>

@@ -1,6 +1,7 @@
 const youtubeGateway = require('./youtube.gateway');
 const googleOAuthService = require('../google-oauth.service');
 const socialAccountRepository = require('../../../repositories/social/social-account.repository');
+const { Readable } = require('stream');
 
 const { PLATFORMS, POST_STATUS, YOUTUBE_PRIVACY, YOUTUBE_CATEGORIES, SEPARATORS, POST_TYPES, YOUTUBE_API } = require('../../../utils/constants');
 const fs = require('fs');
@@ -66,7 +67,10 @@ class YouTubePublishService {
     if (!socialAccount || socialAccount.length === 0) {
       throw new Error('YouTube account not connected for this brand');
     }
-    const account = socialAccount[0];
+    const account = socialAccount.find(acc => 
+      !(acc.accessToken && acc.accessToken.startsWith('mock-')) &&
+      !(acc.platformAccountId && acc.platformAccountId.startsWith('mock-'))
+    ) || socialAccount[0];
     const auth = googleOAuthService.createClient();
     auth.setCredentials({
       access_token: account.accessToken,
@@ -91,6 +95,13 @@ class YouTubePublishService {
     if (videoUrl.startsWith('http')) {
       const response = await fetch(videoUrl);
       if (!response.ok) throw new Error(`Failed to fetch video: ${videoUrl}`);
+      if (response.body && typeof response.body === 'object' && typeof response.body.pipe !== 'function') {
+        try {
+          return Readable.fromWeb(response.body);
+        } catch (e) {
+          return response.body;
+        }
+      }
       return response.body;
     }
 
@@ -175,6 +186,13 @@ class YouTubePublishService {
     if (resolvedUrl.startsWith('http')) {
       const response = await fetch(resolvedUrl);
       if (!response.ok) throw new Error(`Failed to fetch image: ${resolvedUrl}`);
+      if (response.body && typeof response.body === 'object' && typeof response.body.pipe !== 'function') {
+        try {
+          return Readable.fromWeb(response.body);
+        } catch (e) {
+          return response.body;
+        }
+      }
       return response.body;
     }
 

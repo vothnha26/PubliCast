@@ -28,6 +28,7 @@ import { TikTokDashboard } from "./dashboard/TikTokDashboard";
 import { DiscordDashboard } from "./dashboard/DiscordDashboard";
 import { InstagramAccountTab } from "./dashboard/InstagramAccountTab";
 import { ThreadsPostsTab } from "./dashboard/ThreadsPostsTab";
+import { PostAnalyticsDetailModal } from "../../components/workspace/PostAnalyticsDetailModal";
 import { usePlatformDashboard } from "../../hooks/usePlatformDashboard";
 import { DateRangeFilter } from "../../components/app/DateRangeFilter";
 import { useConnections } from "../../context/ConnectionsContext";
@@ -136,7 +137,9 @@ export function PlatformDashboardPage() {
     fetchPublishedVideos,
     isRefreshing,
     handleRefresh,
-    activeBrand
+    activeBrand,
+    isPlatformLocked,
+    platformLockReason
   } = usePlatformDashboard(platform);
 
   const { openConnections } = useConnections();
@@ -268,10 +271,10 @@ export function PlatformDashboardPage() {
            <DateRangeFilter date={dateRange} setDate={setDateRange} />
            
            <button 
-             onClick={handleRefresh}
-             disabled={isRefreshing}
-             className="p-2 hover:bg-gray-100 rounded-lg transition-colors text-gray-500 disabled:opacity-50 flex items-center justify-center"
-             title="Làm mới dữ liệu (Đồng bộ từ API)"
+             onClick={() => !isPlatformLocked && handleRefresh()}
+             disabled={isRefreshing || isPlatformLocked}
+             className="p-2 hover:bg-gray-100 rounded-lg transition-colors text-gray-500 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+             title={isPlatformLocked ? "Không thể đồng bộ dữ liệu vì nền tảng đang bị khóa" : "Làm mới dữ liệu (Đồng bộ từ API)"}
            >
              {isRefreshing ? (
                <Loader2 size={16} className="animate-spin text-indigo-600" />
@@ -290,6 +293,26 @@ export function PlatformDashboardPage() {
       </div>
 
       <div className="p-6 max-w-[1400px] mx-auto space-y-6 pb-12">
+        {isPlatformLocked && (
+          <div className="relative overflow-hidden bg-gradient-to-r from-red-50 to-rose-50 rounded-3xl p-5 border border-red-200 shadow-sm flex items-center justify-between group">
+            <div className="absolute top-0 right-0 w-32 h-32 bg-rose-200/20 rounded-full -mr-16 -mt-16 blur-2xl" />
+            <div className="flex gap-4 items-center relative z-10">
+                <div className="w-10 h-10 rounded-full bg-rose-100 flex items-center justify-center shrink-0 shadow-lg shadow-rose-200/10 border border-rose-200">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-rose-600 animate-pulse"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-red-950 flex items-center gap-2">
+                    Nền tảng tạm khóa (Platform Locked)
+                    <span className="px-2 py-0.5 text-[9px] font-extrabold tracking-wider bg-rose-600 text-white rounded-full uppercase">Locked by Admin</span>
+                  </h3>
+                  <p className="text-[11px] text-red-700 font-medium mt-0.5">
+                    {platformLockReason || "Nền tảng này hiện đang bị tạm khóa phục vụ cho mục đích bảo trì hệ thống."}
+                  </p>
+                </div>
+            </div>
+          </div>
+        )}
+
         <div className="flex items-center justify-between">
            <h2 className="text-xl font-bold text-[#0A0A0A] capitalize tracking-tight">
              {activeTab === 'posts_list' ? 'List of Posts' : activeTab}
@@ -355,8 +378,9 @@ export function PlatformDashboardPage() {
              <h3 className="text-xl font-bold text-[#0A0A0A]">{config.name} account not connected</h3>
              <p className="text-sm text-gray-500 mt-2 mb-8 max-w-sm">Connect your {config.name} account to see real-time analytics, demographics, and video performance.</p>
              <button 
-               onClick={() => openConnections(activeBrand?.id)}
-               className="px-8 py-3 bg-[#0A0A0A] text-white rounded-xl text-sm font-bold hover:bg-black/90 transition-all shadow-lg"
+               onClick={() => !isPlatformLocked && openConnections(activeBrand?.id)}
+               disabled={isPlatformLocked}
+               className="px-8 py-3 bg-[#0A0A0A] text-white rounded-xl text-sm font-bold hover:bg-black/90 transition-all shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
              >
                Connect {config.name}
              </button>
@@ -376,6 +400,7 @@ export function PlatformDashboardPage() {
             fetchPublishedVideos={fetchPublishedVideos}
             prevPageToken={prevPageToken}
             nextPageToken={nextPageToken}
+            onVideoClick={handleVideoClick}
             isCompetitorModalOpen={isCompetitorModalOpen}
             setIsCompetitorModalOpen={setIsCompetitorModalOpen}
             competitorQuery={competitorQuery}
@@ -387,6 +412,7 @@ export function PlatformDashboardPage() {
             handleDeleteCompetitor={handleDeleteCompetitor}
             isCompetitorLoading={isCompetitorLoading}
             competitors={competitors}
+            isPlatformLocked={isPlatformLocked}
           />
         ) : platform === "instagram" ? (
           <>
@@ -444,6 +470,7 @@ export function PlatformDashboardPage() {
                 fetchPublishedVideos={fetchPublishedVideos}
                 prevPageToken={prevPageToken}
                 nextPageToken={nextPageToken}
+                onVideoClick={handleVideoClick}
               />
             )}
 
@@ -459,6 +486,7 @@ export function PlatformDashboardPage() {
                 isSearching={isSearching}
                 isModalOpen={isCompetitorModalOpen}
                 setIsModalOpen={setIsCompetitorModalOpen}
+                isPlatformLocked={isPlatformLocked}
               />
             )}
           </>
@@ -474,7 +502,7 @@ export function PlatformDashboardPage() {
                       color: "bg-[#8E9BEE] text-white",
                       chartColor: "#8E9BEE",
                       type: "area",
-                      value: metrics?.followersCount || 12500
+                      value: metrics?.followersCount || 0
                     },
                     {
                       key: "views",
@@ -482,7 +510,7 @@ export function PlatformDashboardPage() {
                       color: "bg-[#A7F3D0] text-gray-900",
                       chartColor: "#A7F3D0",
                       type: "line",
-                      value: stats?.views || 32000
+                      value: stats?.views || 0
                     },
                     {
                       key: "likes",
@@ -490,7 +518,7 @@ export function PlatformDashboardPage() {
                       color: "bg-[#E6A34A] text-white",
                       chartColor: "#E6A34A",
                       type: "bar",
-                      value: stats?.likes || 2400
+                      value: stats?.likes || 0
                     }
                   ];
 
@@ -502,7 +530,7 @@ export function PlatformDashboardPage() {
                       color: "bg-[#8E9BEE] text-white",
                       chartColor: "#8E9BEE",
                       type: "area",
-                      value: totalPeriodGained || 500
+                      value: totalPeriodGained || 0
                     },
                     {
                       key: "lost",
@@ -510,7 +538,7 @@ export function PlatformDashboardPage() {
                       color: "bg-[#F7A6E0] text-white",
                       chartColor: "#F7A6E0",
                       type: "area",
-                      value: 120
+                      value: 0
                     }
                   ];
 
@@ -547,6 +575,7 @@ export function PlatformDashboardPage() {
                 fetchPublishedVideos={fetchPublishedVideos}
                 prevPageToken={prevPageToken}
                 nextPageToken={nextPageToken}
+                onVideoClick={handleVideoClick}
               />
             )}
 
@@ -562,6 +591,7 @@ export function PlatformDashboardPage() {
                 isSearching={isSearching}
                 isModalOpen={isCompetitorModalOpen}
                 setIsModalOpen={setIsCompetitorModalOpen}
+                isPlatformLocked={isPlatformLocked}
               />
             )}
           </>
@@ -578,6 +608,7 @@ export function PlatformDashboardPage() {
             pageSize={pageSize}
             setPageSize={setPageSize}
             fetchPublishedVideos={fetchPublishedVideos}
+            onVideoClick={handleVideoClick}
           />
         ) : (
           <>
@@ -591,7 +622,7 @@ export function PlatformDashboardPage() {
                         color: "bg-[#8E9BEE] text-white",
                         chartColor: "#8E9BEE",
                         type: "area",
-                        value: stats?.subscribers || totalPeriodGained || 12
+                        value: stats?.subscribers || totalPeriodGained || 0
                       },
                       {
                         key: "views",
@@ -599,7 +630,7 @@ export function PlatformDashboardPage() {
                         color: "bg-[#86EFAC] text-gray-900",
                         chartColor: "#86EFAC",
                         type: "line",
-                        value: totalPeriodViews || 13
+                        value: totalPeriodViews || 0
                       },
                       {
                         key: "revenue",
@@ -616,7 +647,7 @@ export function PlatformDashboardPage() {
                         chartColor: "#E6A34A",
                         type: "bar",
                         yAxisId: "right",
-                        value: stats?.videos || 3
+                        value: stats?.videos || 0
                       }
                     ];
 
@@ -645,7 +676,7 @@ export function PlatformDashboardPage() {
                         chartColor: "#E6A34A",
                         type: "bar",
                         yAxisId: "right",
-                        value: stats?.videos || 3
+                        value: stats?.videos || 0
                       }
                     ];
 
@@ -811,6 +842,7 @@ export function PlatformDashboardPage() {
                 handleDeleteCompetitor={handleDeleteCompetitor}
                 isCompetitorLoading={isCompetitorLoading}
                 competitors={competitors}
+                isPlatformLocked={isPlatformLocked}
               />
             )}
 
@@ -823,6 +855,7 @@ export function PlatformDashboardPage() {
                 handleTrackVideo={handleTrackVideo}
                 isTrackingLoading={isTrackingLoading}
                 trackedVideos={trackedVideos}
+                isPlatformLocked={isPlatformLocked}
               />
             )}
           </>
@@ -866,6 +899,18 @@ export function PlatformDashboardPage() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {platform !== "youtube" && selectedVideo && (
+        <PostAnalyticsDetailModal
+          isOpen={isVideoDetailModalOpen}
+          onClose={() => {
+            setSelectedVideo(null);
+            setIsVideoDetailModalOpen(false);
+          }}
+          post={selectedVideo}
+          brandId={activeBrand?.id}
+        />
+      )}
     </div>
   );
 }

@@ -48,6 +48,15 @@ const server = app.listen(PORT, async () => {
   // Then every 24 hours
   setInterval(() => discordStatsService.snapshotAllGuilds().catch(() => {}), 24 * 60 * 60 * 1000);
   logger.info('Discord daily snapshot scheduler started (every 24h)');
+
+  // Start Post interaction metrics snapshot (runs every 1h)
+  const postMetricSyncService = require('./services/social/post-metric-sync.service');
+  // Run once at startup (with delay to let DB settle)
+  setTimeout(() => postMetricSyncService.syncPostMetrics().catch(() => {}), 45_000);
+  // Then every 1 hour
+  setInterval(() => postMetricSyncService.syncPostMetrics().catch(() => {}), 1 * 60 * 60 * 1000);
+  logger.info('Post metrics sync scheduler started (every 1h)');
+
 });
 
 // ── Graceful Shutdown ───────────────────────────────────────────────────────

@@ -7,7 +7,7 @@ const { USER_ROLES } = require('../../utils/constants');
 const router = express.Router();
 
 router.use(verifyAuth);
-router.use(authorize(USER_ROLES.ADMIN, USER_ROLES.OWNER));
+router.use(authorize(USER_ROLES.ADMIN));
 
 /**
  * GET /api/admin/revenue

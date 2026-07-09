@@ -29,11 +29,12 @@ class YouTubeAnalyticsService {
   }
 
   _getEmptyChannelInfo(account = null) {
+    const existingUploadsPlaylistId = account?.youtubeChannel?.uploadsPlaylistId;
     return {
       channelId: account?.platformAccountId || 'mock-youtube-channel-id',
       username: account?.username || '@youtube_channel',
       displayName: account?.displayName || 'YouTube Channel',
-      profilePictureUrl: account?.profilePictureUrl || '',
+      profilePictureUrl: account?.profilePictureUrl || 'https://images.unsplash.com/photo-1611162617213-7d7a39e9b1d7?w=150&auto=format&fit=crop&q=60',
       statistics: {
         viewCount: '0',
         subscriberCount: '0',
@@ -46,7 +47,7 @@ class YouTubeAnalyticsService {
         customUrl: account?.username || '',
         publishedAt: new Date().toISOString(),
         thumbnails: {
-          default: { url: account?.profilePictureUrl || '' }
+          default: { url: account?.profilePictureUrl || 'https://images.unsplash.com/photo-1611162617213-7d7a39e9b1d7?w=150&auto=format&fit=crop&q=60' }
         }
       },
       analytics: {
@@ -55,7 +56,7 @@ class YouTubeAnalyticsService {
         geographic: [],
         growth: []
       },
-      uploadsPlaylistId: 'mock-uploads-playlist-id'
+      uploadsPlaylistId: (existingUploadsPlaylistId && existingUploadsPlaylistId !== 'mock-uploads-playlist-id') ? existingUploadsPlaylistId : 'mock-uploads-playlist-id'
     };
   }
 
@@ -92,11 +93,11 @@ class YouTubeAnalyticsService {
     };
 
     // Helper: Wrap promise with a timeout rejection
-    const withTimeout = (promise, ms = 3000) => {
+    const withTimeout = (promise, ms = 60000) => {
       let timeoutId;
       const timeoutPromise = new Promise((_, reject) => {
         timeoutId = setTimeout(() => {
-          reject(new Error('Google API request timeout (3000ms) exceeded'));
+          reject(new Error('Google API request timeout (60000ms) exceeded'));
         }, ms);
       });
       return Promise.race([promise, timeoutPromise]).finally(() => {
@@ -105,7 +106,7 @@ class YouTubeAnalyticsService {
     };
 
     try {
-      return await withTimeout(fetchRealData(), 3000);
+      return await withTimeout(fetchRealData(), 60000);
     } catch (error) {
       if (error.message === 'No YouTube channel found for this account') {
         throw error;
@@ -171,10 +172,15 @@ class YouTubeAnalyticsService {
   _resolveDates(startDate, endDate) {
     const defaultStart = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
     const defaultEnd = new Date().toISOString().split('T')[0];
-    return {
-      start: startDate || defaultStart,
-      end: endDate || defaultEnd
-    };
+    let start = startDate || defaultStart;
+    let end = endDate || defaultEnd;
+
+    if (start === end) {
+      const prevDate = new Date(new Date(start).getTime() - 24 * 60 * 60 * 1000);
+      start = prevDate.toISOString().split('T')[0];
+    }
+
+    return { start, end };
   }
 
   async _fetchDemographics(auth, start, end) {
@@ -331,7 +337,11 @@ class YouTubeAnalyticsService {
     const socialAccount = await socialAccountRepository.findByBrandAndPlatform(brandId, PLATFORMS.YOUTUBE);
     if (!socialAccount || socialAccount.length === 0) throw new Error('YouTube account not connected');
 
-    const auth = this._createAuthenticatedClient(socialAccount[0]);
+    const activeAccount = socialAccount.find(acc => 
+      !(acc.accessToken && acc.accessToken.startsWith('mock-')) &&
+      !(acc.platformAccountId && acc.platformAccountId.startsWith('mock-'))
+    ) || socialAccount[0];
+    const auth = this._createAuthenticatedClient(activeAccount);
 
     let channel;
     try {
@@ -366,7 +376,11 @@ class YouTubeAnalyticsService {
     const socialAccount = await socialAccountRepository.findByBrandAndPlatform(brandId, PLATFORMS.YOUTUBE);
     if (!socialAccount || socialAccount.length === 0) return competitors;
 
-    const auth = this._createAuthenticatedClient(socialAccount[0]);
+    const activeAccount = socialAccount.find(acc => 
+      !(acc.accessToken && acc.accessToken.startsWith('mock-')) &&
+      !(acc.platformAccountId && acc.platformAccountId.startsWith('mock-'))
+    ) || socialAccount[0];
+    const auth = this._createAuthenticatedClient(activeAccount);
 
     // Enrich each competitor with YouTube API data
     const enrichedCompetitors = await Promise.all(competitors.map(async (comp) => {
@@ -435,7 +449,11 @@ class YouTubeAnalyticsService {
         return this._getMockVideoAnalytics(start, end);
       }
 
-      const auth = this._createAuthenticatedClient(socialAccount[0]);
+      const activeAccount = socialAccount.find(acc => 
+        !(acc.accessToken && acc.accessToken.startsWith('mock-')) &&
+        !(acc.platformAccountId && acc.platformAccountId.startsWith('mock-'))
+      ) || socialAccount[0];
+      const auth = this._createAuthenticatedClient(activeAccount);
 
       const response = await youtubeGateway.getAnalyticsReportQuery(auth, {
         ids: 'channel==MINE',
@@ -469,23 +487,15 @@ class YouTubeAnalyticsService {
     const rows = [];
     const sDate = new Date(start);
     const eDate = new Date(end);
-    let viewsAcc = 1000 + Math.floor(Math.random() * 5000);
-    let likesAcc = 120 + Math.floor(Math.random() * 500);
-    let commentsAcc = 45 + Math.floor(Math.random() * 150);
-    const avgDuration = 180 + Math.floor(Math.random() * 300); // 3-8 minutes
 
     for (let d = new Date(sDate); d <= eDate; d.setDate(d.getDate() + 1)) {
       const dateStr = d.toISOString().split('T')[0];
-      // Random upward growth
-      viewsAcc += 150 + Math.floor(Math.random() * 450);
-      likesAcc += 12 + Math.floor(Math.random() * 35);
-      commentsAcc += 3 + Math.floor(Math.random() * 10);
       rows.push({
         date: dateStr,
-        views: viewsAcc,
-        likes: likesAcc,
-        comments: commentsAcc,
-        avgWatchTime: avgDuration
+        views: 0,
+        likes: 0,
+        comments: 0,
+        avgWatchTime: 0
       });
     }
     return rows;

@@ -243,16 +243,46 @@ model Plan {
   @@map("plans")
 }
 
-model Product {
-  id        String   @id // Uses semantic slug (e.g. 'youtube_analytics')
+model Platform {
+  id        String   @id // e.g. "YT", "FB", "TK"
   name      String   @unique
-  category  String
+  color     String   @default("#000000")
+  image     String?  @db.LongText // Base64 or URL
   createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  products  Product[]
 
-  plans     Plan[]   @relation("PlanProducts")
+  @@map("platforms")
+}
+
+model Module {
+  id          String   @id // e.g. "M1", "M2"
+  name        String   @unique
+  description String?  @db.Text
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  products    Product[]
+
+  @@map("modules")
+}
+
+model Product {
+  id         String    @id // Uses semantic slug (e.g. 'youtube_analytics' or 'yt_m1')
+  name       String    @unique
+  category   String    // e.g. 'Platforms', 'AI Tools'
+  platformId String?
+  moduleId   String?
+  sku        String?   @unique
+  status     String    @default("ACTIVE") // ACTIVE | INACTIVE
+  createdAt  DateTime  @default(now())
+
+  platform   Platform? @relation(fields: [platformId], references: [id], onDelete: Cascade)
+  module     Module?   @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  plans      Plan[]    @relation("PlanProducts")
 
   @@map("products")
 }
+
 
 
 model PlanLimit {
@@ -607,10 +637,34 @@ model Post {
   autoList          AutoList?          @relation(fields: [autoListId], references: [id], onDelete: Cascade)
   approvalWorkflows ApprovalWorkflow[]
 
+  postMetricHistories PostMetricHistory[] @relation("PostMetrics")
+
   @@index([brandId])
   @@index([createdByUserId])
   @@map("posts")
 }
+
+model PostMetricHistory {
+  id              String   @id @default(uuid())
+  brandId         String
+  postId          String
+  platform        String   // TIKTOK, FACEBOOK, YOUTUBE, etc.
+  platformPostId  String   // ID của post trên nền tảng đó
+  views           Int      @default(0)
+  likes           Int      @default(0)
+  comments        Int      @default(0)
+  shares          Int      @default(0)
+  saves           Int      @default(0)
+  timestamp       DateTime @default(now())
+
+  post            Post     @relation("PostMetrics", fields: [postId], references: [id], onDelete: Cascade)
+
+  @@index([postId])
+  @@index([brandId])
+  @@index([timestamp])
+  @@map("post_metric_histories")
+}
+
 
 model Livestream {
   id              String   @id @default(uuid())
@@ -1569,6 +1623,8 @@ model PlatformLimit {
   minVideoDuration   Int?         // in seconds
   maxVideoDuration   Int?         // in seconds
   aspectRatios       String?      // e.g. "9:16,16:9"
+  isLocked           Boolean      @default(false) // Admin co the tam khoa nen tang
+  lockReason         String?      // Ly do khoa hien thi cho nguoi dung
   createdAt          DateTime     @default(now())
   updatedAt          DateTime     @updatedAt
 

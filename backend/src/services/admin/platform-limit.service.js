@@ -66,6 +66,22 @@ class PlatformLimitService {
   }
 
   /**
+   * Toggle lock status on a limit configuration
+   */
+  async toggleLock(id, isLocked, lockReason) {
+    const existing = await platformLimitRepository.findById(id);
+    if (!existing) {
+      const error = new Error('Platform limit config not found');
+      error.statusCode = 404;
+      throw error;
+    }
+    return await platformLimitRepository.update(id, {
+      isLocked: isLocked === true || isLocked === 'true',
+      lockReason: isLocked ? (lockReason || 'Tạm thời khóa') : null
+    });
+  }
+
+  /**
    * Delete a limit configuration
    */
   async deletePlatformLimit(id) {

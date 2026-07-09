@@ -11,7 +11,8 @@ export async function uploadMediaFile(file, brandId, folderId = null) {
   const res = await apiService.post("/media/upload", formData, {
     headers: {
       "Content-Type": "multipart/form-data"
-    }
+    },
+    timeout: 120000 // 120 seconds timeout for media uploads
   });
 
   return res.data.data;

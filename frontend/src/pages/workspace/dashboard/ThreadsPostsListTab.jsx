@@ -9,6 +9,7 @@ export function ThreadsPostsListTab({
   fetchPublishedVideos = () => {},
   prevPageToken = null,
   nextPageToken = null,
+  onRowClick = null,
 }) {
   // Columns configuration for Threads Posts list
   const columns = [
@@ -89,6 +90,7 @@ export function ThreadsPostsListTab({
       searchPlaceholder="Tìm kiếm bài viết..."
       searchKeys={["message"]}
       footerMessage="Hiển thị bài đăng Threads mới nhất"
+      onRowClick={onRowClick}
     />
   );
 }

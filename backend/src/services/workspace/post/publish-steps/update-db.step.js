@@ -24,6 +24,15 @@ class UpdatePostStatusStep extends BaseStep {
       }
     }
 
+    // Build platformIdMap for successful publications
+    const platformIdMap = {};
+    results.forEach(r => {
+      if (r.success && r.result) {
+        platformIdMap[r.platform] = r.result.platformVideoId || r.result.id;
+      }
+    });
+    const platformPostIdStr = Object.keys(platformIdMap).length > 0 ? JSON.stringify(platformIdMap) : null;
+
     if (allSuccessful) {
       const primaryResult = results[0].result;
       console.log(`[UpdatePostStatusStep] 🎉 Post ${post.id} published successfully on all platforms: ${results.map(r => r.platform).join(', ')}`);
@@ -32,13 +41,13 @@ class UpdatePostStatusStep extends BaseStep {
         await this._handleLoopCycle(post, {
           status: POST_STATUS.PUBLISHED,
           publishedAt: primaryResult.publishedAt || new Date(),
-          platformPostId: primaryResult.platformVideoId || primaryResult.id
+          platformPostId: platformPostIdStr
         });
       } else {
         // Standard non-loop behavior: mark the post itself as published
         await postRepository.update(post.id, {
           status: POST_STATUS.PUBLISHED,
-          platformPostId: primaryResult.platformVideoId || primaryResult.id,
+          platformPostId: platformPostIdStr,
           publishedAt: primaryResult.publishedAt || new Date()
         });
       }
@@ -56,12 +65,14 @@ class UpdatePostStatusStep extends BaseStep {
       if (shouldLoop) {
         await this._handleLoopCycle(post, {
           status: POST_STATUS.FAILED,
-          failureReason
+          failureReason,
+          platformPostId: platformPostIdStr
         });
       } else {
         await postRepository.update(post.id, {
           status: POST_STATUS.FAILED,
-          failureReason
+          failureReason,
+          platformPostId: platformPostIdStr
         });
       }
 

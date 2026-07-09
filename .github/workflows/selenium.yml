@@ -51,7 +51,7 @@ jobs:
           # Ghi nội dung từ secret vào file .env
           echo "$ENV_CONTENT" > .env
           
-          # Xóa các dòng có thể gây xung đột nếu đã có sẵn trong secret
+          # Đã có sẵn trong secret
           sed -i '/DATABASE_URL/d' .env
           sed -i '/REDIS_HOST/d' .env
           sed -i '/REDIS_PORT/d' .env

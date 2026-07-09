@@ -4,12 +4,42 @@ import { subDays, eachDayOfInterval, format } from "date-fns";
 import { toast } from "sonner";
 import { useBrand } from "../context/BrandContext";
 import socialService from "../services/social.service";
+import postService from "../services/post.service";
 import { FALLBACK_DEMOGRAPHICS, EMPTY_ANALYTICS_DATA } from "@/mocks/dashboardFallback";
 
 export function usePlatformDashboard(platform) {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const { activeBrand } = useBrand();
+
+  const [platformLimits, setPlatformLimits] = useState([]);
+
+  useEffect(() => {
+    const fetchLimits = async () => {
+      try {
+        const res = await postService.getPlatformLimits();
+        if (res.data) {
+          setPlatformLimits(res.data);
+        }
+      } catch (err) {
+        console.error("Failed to fetch platform limits in dashboard hook", err);
+      }
+    };
+    fetchLimits();
+  }, []);
+
+  const isPlatformLocked = useMemo(() => {
+    if (!platform) return false;
+    const platUpper = platform.toUpperCase();
+    return platformLimits.some(limit => limit.platform === platUpper && limit.isLocked);
+  }, [platformLimits, platform]);
+
+  const platformLockReason = useMemo(() => {
+    if (!platform) return null;
+    const platUpper = platform.toUpperCase();
+    const lockedLimit = platformLimits.find(limit => limit.platform === platUpper && limit.isLocked);
+    return lockedLimit ? lockedLimit.lockReason : null;
+  }, [platformLimits, platform]);
   
   const [activeTab, setActiveTabState] = useState(() => {
     const tabParam = searchParams.get("tab");
@@ -106,6 +136,7 @@ export function usePlatformDashboard(platform) {
       }
     } catch (error) {
       console.error("Failed to load platform metrics:", error);
+      setMetrics(null);
       if (force) {
         toast.error("Đồng bộ số liệu thất bại");
       }
@@ -188,34 +219,38 @@ export function usePlatformDashboard(platform) {
   };
 
   const handleVideoClick = async (video) => {
-    if (platform === "facebook" || platform === "instagram") return; // Details modal not used for Facebook and Instagram posts
     setSelectedVideo(video);
     setIsVideoDetailModalOpen(true);
-    setIsVideoDetailLoading(true);
-    try {
-      const res = await socialService.getVideoAnalytics(
-        activeBrand.id, 
-        video.id,
-        dateRange.from?.toISOString().split('T')[0],
-        dateRange.to?.toISOString().split('T')[0]
-      );
-      setVideoAnalytics(res.data || []);
-    } catch (e) {
-      console.error("Failed to fetch video analytics", e);
-      toast.error("Failed to load video analytics");
-    } finally {
-      setIsVideoDetailLoading(false);
+    if (platform === "youtube") {
+      setIsVideoDetailLoading(true);
+      try {
+        const res = await socialService.getVideoAnalytics(
+          activeBrand.id, 
+          video.id,
+          dateRange.from?.toISOString().split('T')[0],
+          dateRange.to?.toISOString().split('T')[0]
+        );
+        setVideoAnalytics(res.data || []);
+      } catch (e) {
+        console.error("Failed to fetch video analytics", e);
+        toast.error("Failed to load video analytics");
+      } finally {
+        setIsVideoDetailLoading(false);
+      }
+    } else {
+      setVideoAnalytics([]);
     }
   };
 
   useEffect(() => {
+    setMetrics(null);
     if (activeBrand) {
       setLoading(true);
       loadMetrics(activeBrand.id).finally(() => setLoading(false));
     } else {
       setLoading(false);
     }
-  }, [activeBrand, platform]);
+  }, [activeBrand, platform, isPlatformLocked]);
 
   useEffect(() => {
     const tabParam = searchParams.get("tab");
@@ -381,18 +416,26 @@ export function usePlatformDashboard(platform) {
       const raw = JSON.parse(metrics.analytics[0].socialAnalytics.audienceDemographicsJson);
       
       if (platform === "facebook" || platform === "tiktok" || platform === "instagram") {
+        // Lọc theo dateRange đang chọn để chart hiển thị đúng khoảng thời gian
+        const fromStr = dateRange.from ? format(dateRange.from, 'yyyy-MM-dd') : null;
+        const toStr = dateRange.to ? format(dateRange.to, 'yyyy-MM-dd') : null;
+        const filterByRange = (arr) => {
+          if (!arr?.length || !fromStr || !toStr) return arr || [];
+          return arr.filter(item => item.date >= fromStr && item.date <= toStr);
+        };
+
         return {
           demographics: { gender: [], age: [], countries: [], trafficSource: [] },
-          balance: raw.balance || [],
-          growth: (raw.growth || []).map(g => ({
+          balance: filterByRange(raw.balance || []),
+          growth: filterByRange(raw.growth || []).map(g => ({
             ...g,
             value: g.views || 0,
             new: g.acquired || (raw.balance?.find(b => b.date === g.date)?.acquired) || 0,
             lost: g.lost || (raw.balance?.find(b => b.date === g.date)?.lost) || 0,
             videos: g.totalContent || 0
           })),
-          clicks: raw.clicks || [],
-          postsPeriod: raw.postsPeriod || [],
+          clicks: filterByRange(raw.clicks || []),
+          postsPeriod: filterByRange(raw.postsPeriod || []),
           interactions: raw.interactions || {},
           summary: raw.summary || {},
           stories: raw.stories || []
@@ -654,6 +697,8 @@ export function usePlatformDashboard(platform) {
     fetchPublishedVideos,
     isRefreshing,
     handleRefresh,
-    activeBrand
+    activeBrand,
+    isPlatformLocked,
+    platformLockReason
   };
 }

@@ -12,6 +12,7 @@ export function InstagramAccountTab({
   fetchPublishedVideos = () => {},
   prevPageToken = null,
   nextPageToken = null,
+  onVideoClick = null,
 }) {
   const accountInfo = metrics?.instagramAccount || {};
   const interactions = realData?.interactions || {};
@@ -194,6 +195,7 @@ export function InstagramAccountTab({
         searchPlaceholder="Search Instagram posts..."
         searchKeys={["message"]}
         footerMessage="Showing latest Instagram posts"
+        onRowClick={onVideoClick}
       />
     </div>
   );

@@ -15,6 +15,15 @@ export function FacebookOverviewTab({ realData = {} }) {
   const postsData     = realData.postsPeriod  || [];
   const summary       = realData.summary      || {};
 
+  // Tính tổng từ growthData (đã được filter theo dateRange) để card đồng bộ với chart
+  const periodViews      = growthData.reduce((s, d) => s + (d.views      || 0), 0);
+  const periodPageVisits = growthData.reduce((s, d) => s + (d.pageVisits || 0), 0);
+  const periodContent    = growthData.reduce((s, d) => s + (d.totalContent || 0), 0);
+  // followers là snapshot tại thời điểm cuối kỳ, không phải tổng cộng
+  const periodFollowers  = growthData.length > 0
+    ? (growthData[growthData.length - 1].followers ?? summary.followers ?? 0)
+    : (summary.followers || 0);
+
   // ── 1. GROWTH ─────────────────────────────────────────────────────────────
   const growthConfig = [
     {
@@ -23,7 +32,7 @@ export function FacebookOverviewTab({ realData = {} }) {
       color: "bg-[#86EFAC] text-gray-900",
       chartColor: "#4ADE80",
       type: "area",
-      value: summary.followers || 0,
+      value: periodFollowers,
     },
     {
       key: "views",
@@ -31,7 +40,7 @@ export function FacebookOverviewTab({ realData = {} }) {
       color: "bg-[#818CF8] text-white",
       chartColor: "#818CF8",
       type: "line",
-      value: summary.views || 0,
+      value: periodViews,
     },
     {
       key: "pageVisits",
@@ -39,7 +48,7 @@ export function FacebookOverviewTab({ realData = {} }) {
       color: "bg-[#A7F3D0] text-gray-900",
       chartColor: "#34D399",
       type: "line",
-      value: summary.pageVisits || 0,
+      value: periodPageVisits,
     },
     {
       key: "totalContent",
@@ -48,7 +57,7 @@ export function FacebookOverviewTab({ realData = {} }) {
       chartColor: "#EAB308",
       type: "bar",
       yAxisId: "right",
-      value: summary.totalContent || 0,
+      value: periodContent,
     },
   ];
 

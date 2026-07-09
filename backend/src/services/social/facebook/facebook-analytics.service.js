@@ -8,7 +8,7 @@ class FacebookAnalyticsService {
       pageId: pageId || account?.platformAccountId || 'fb-page-mock',
       username: account?.username || 'facebook_page',
       displayName: account?.displayName || 'Facebook Page',
-      profilePictureUrl: account?.profilePictureUrl || '',
+      profilePictureUrl: account?.profilePictureUrl || 'https://images.unsplash.com/photo-1614680376593-902f74fa0d41?w=150&auto=format&fit=crop&q=60',
       category: 'Social Page',
       likesCount: 0,
       followersCount: 0,
@@ -21,6 +21,14 @@ class FacebookAnalyticsService {
     const { start, end } = this._resolveDates(startDate, endDate);
     const dailyMap = this._initializeDailyMap(start, end);
     
+    Object.keys(dailyMap).forEach((dateStr) => {
+      dailyMap[dateStr].views = 0;
+      dailyMap[dateStr].pageVisits = 0;
+      dailyMap[dateStr].totalClicks = 0;
+      dailyMap[dateStr].acquired = 0;
+      dailyMap[dateStr].lost = 0;
+    });
+
     const feedStats = {
       totalPostsInPeriod: 0,
       totalReactions: 0,
@@ -31,7 +39,7 @@ class FacebookAnalyticsService {
     };
 
     const sortedDates = Object.keys(dailyMap).sort().map(d => dailyMap[d]);
-    return this._calculateTotalsAndFormatResponse(sortedDates, 0, feedStats, []);
+    return this._calculateTotalsAndFormatResponse(sortedDates, currentFollowersCount || 0, feedStats, []);
   }
 
   async getChannelInfo(auth, startDate, endDate, socialAccountId = null) {
@@ -61,11 +69,11 @@ class FacebookAnalyticsService {
     };
 
     // Helper: Wrap promise with a timeout rejection
-    const withTimeout = (promise, ms = 3000) => {
+    const withTimeout = (promise, ms = 60000) => {
       let timeoutId;
       const timeoutPromise = new Promise((_, reject) => {
         timeoutId = setTimeout(() => {
-          reject(new Error('Facebook API request timeout (3000ms) exceeded'));
+          reject(new Error('Facebook API request timeout (60000ms) exceeded'));
         }, ms);
       });
       return Promise.race([promise, timeoutPromise]).finally(() => {
@@ -74,7 +82,7 @@ class FacebookAnalyticsService {
     };
 
     try {
-      return await withTimeout(fetchRealData(), 3000);
+      return await withTimeout(fetchRealData(), 60000);
     } catch (error) {
       console.warn(`[Facebook Analytics] Real API call failed or timed out (${error.message}). Falling back to empty data...`);
       const pageData = this._getEmptyChannelInfo(auth.pageId, account);
@@ -165,10 +173,25 @@ class FacebookAnalyticsService {
           const completionRate = reach ? parseFloat(((reach - exits) / reach).toFixed(4)) : 0;
           const exitRate = mappedInsights.impressions ? parseFloat((exits / mappedInsights.impressions).toFixed(4)) : 0;
 
+          let publishedAt = new Date();
+          if (story.creation_time) {
+            const num = Number(story.creation_time);
+            if (!isNaN(num)) {
+              const isSeconds = num < 9999999999;
+              publishedAt = new Date(isSeconds ? num * 1000 : num);
+            } else {
+              const parsed = Date.parse(story.creation_time);
+              if (!isNaN(parsed)) {
+                publishedAt = new Date(parsed);
+              }
+            }
+          }
+          const expiresAt = new Date(publishedAt.getTime() + 24 * 60 * 60 * 1000);
+
           stories.push({
             platformStoryId: story.id,
-            publishedAt: story.creation_time,
-            expiresAt: new Date(new Date(story.creation_time).getTime() + 24 * 60 * 60 * 1000).toISOString(),
+            publishedAt: publishedAt.toISOString(),
+            expiresAt: expiresAt.toISOString(),
             mediaType: story.media_type || 'IMAGE',
             mediaUrl: story.media_url || null,
             thumbnailUrl: story.media_url || null,
@@ -192,7 +215,7 @@ class FacebookAnalyticsService {
       
       // Remove trailing days with no data (due to FB API delay)
       const finalData = [...sortedDates];
-      while (finalData.length > 0) {
+      while (finalData.length > 2) {
         const lastDay = finalData[finalData.length - 1];
         if (lastDay.views === 0 && lastDay.pageVisits === 0 && lastDay.acquired === 0 && lastDay.totalClicks === 0) {
           finalData.pop();
@@ -243,12 +266,17 @@ class FacebookAnalyticsService {
     let start = startDate || defaultStart;
     let end = endDate || defaultEnd;
 
+    if (start === end) {
+      const prevDate = new Date(new Date(start).getTime() - 24 * 60 * 60 * 1000);
+      start = prevDate.toISOString().split('T')[0];
+    }
+
     const startMs = new Date(start).getTime();
     const endMs = new Date(end).getTime();
     const diffDays = (endMs - startMs) / (24 * 60 * 60 * 1000);
 
-    if (diffDays > 90) {
-      const adjustedStart = new Date(endMs - 90 * 24 * 60 * 60 * 1000);
+    if (diffDays > 180) {
+      const adjustedStart = new Date(endMs - 180 * 24 * 60 * 60 * 1000);
       start = adjustedStart.toISOString().split('T')[0];
     }
 
@@ -294,10 +322,14 @@ class FacebookAnalyticsService {
           
           if (dailyMap[dateStr]) {
             if (val.value > 0) hasInsightsData = true;
-            if (name === ANALYTICS.METRICS.FACEBOOK.VIEWS) {
+            if (name === 'page_views_total') {
               dailyMap[dateStr].pageVisits = val.value || 0;
-            } else if (name === ANALYTICS.METRICS.FACEBOOK.IMPRESSIONS) {
+            } else if (name === ANALYTICS.METRICS.FACEBOOK.VIEWS || name === 'page_media_view') {
               dailyMap[dateStr].views = val.value || 0;
+            } else if (name === ANALYTICS.METRICS.FACEBOOK.IMPRESSIONS || name === 'page_total_media_view_unique') {
+              if (!dailyMap[dateStr].views) {
+                dailyMap[dateStr].views = val.value || 0;
+              }
             } else if (name === ANALYTICS.METRICS.FACEBOOK.FOLLOWS || name === 'page_fan_adds_unique') {
               dailyMap[dateStr].acquired = (dailyMap[dateStr].acquired || 0) + (val.value || 0);
             } else if (name === 'page_daily_unfollows_unique' || name === 'page_fan_removes_unique') {
@@ -353,7 +385,7 @@ class FacebookAnalyticsService {
   }
 
   _generateMockFallback(dailyMap) {
-    Object.keys(dailyMap).forEach(dateStr => {
+    Object.keys(dailyMap).forEach((dateStr) => {
       const dayData = dailyMap[dateStr];
       dayData.views = 0;
       dayData.pageVisits = 0;

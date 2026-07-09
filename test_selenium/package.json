@@ -17,7 +17,10 @@
     "test:general-dashboard": "mocha dashboard/general_dashboard.spec.js --timeout 120000",
     "test:facebook-dashboard": "mocha dashboard/facebook_dashboard.spec.js --timeout 120000",
     "test:dashboard-all": "mocha dashboard/*.spec.js --timeout 120000",
-    "test:team-management": "mocha team/team_management.spec.js --timeout 120000"
+    "test:team-management": "mocha team/team_management.spec.js --timeout 120000",
+    "test:product-matrix": "mocha admin/product.spec.js --timeout 120000",
+    "test:user-management": "mocha admin/user_management.spec.js --timeout 120000",
+    "test:reports": "mocha reports.spec.js --timeout 120000"
   },
   "dependencies": {
     "chai": "^4.3.7",

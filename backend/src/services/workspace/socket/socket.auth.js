@@ -13,7 +13,11 @@ async function socketAuthMiddleware(socket, next) {
     if (!token || token === 'dummy-token-cookie-auth') {
       const cookieHeader = socket.handshake.headers?.cookie;
       if (cookieHeader) {
-        const cookies = require('cookie').parseCookie(cookieHeader);
+        const cookies = cookieHeader.split(';').reduce((acc, c) => {
+          const parts = c.split('=');
+          acc[parts.shift().trim()] = decodeURIComponent(parts.join('='));
+          return acc;
+        }, {});
         token = cookies.accessToken;
       }
     }

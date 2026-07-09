@@ -1,20 +1,277 @@
-VM1667:58 [PubliCast] [ERROR] Notification stream disconnected
-:3000/api/notifications/stream:1 
- GET http://localhost:3000/api/notifications/stream net::ERR_CONNECTION_RESET 200 (OK)
-socket__io-client.js?v=1eaa39b2:1524 WebSocket connection to 'ws://localhost:3000/socket.io/?EIO=4&transport=websocket' failed: 
-VM1667:58 [PubliCast] [ERROR] ❌ [SocketClient] Connection error: websocket error
-VM1667:58 [PubliCast] [ERROR] Notification stream disconnected
-:3000/api/notifications/stream:1 
- GET http://localhost:3000/api/notifications/stream net::ERR_CONNECTION_REFUSED
-VM1667:58 [PubliCast] [ERROR] Error uploading file: Error: Network Error
-    at api.js:90:29
-    at async handleFileChange (SupportChat.jsx:238:19)
-api.js:98 
- POST http://localhost:3000/api/media/upload net::ERR_CONNECTION_REFUSED
-socket__io-client.js?v=1eaa39b2:1524 WebSocket connection to 'ws://localhost:3000/socket.io/?EIO=4&transport=websocket' failed: 
-VM1667:58 [PubliCast] [ERROR] ❌ [SocketClient] Connection error: websocket error
-VM1667:58 [PubliCast] [ERROR] Notification stream disconnected
-:3000/api/notifications/stream:1 
- GET http://localhost:3000/api/notifications/stream net::ERR_CONNECTION_REFUSED
+Run npm run test:brand
 
-﻿
+> publicast-selenium-tests@1.0.0 test:brand
+> mocha brand/*.spec.js
+
+◇ injected env (8) from .env // tip: ◈ encrypted .env [www.dotenvx.com]
+◇ injected env (0) from .env // tip: ⌘ override existing { override: true }
+◇ injected env (0) from .env // tip: ⌁ auth for agents [www.vestauth.com]
+◇ injected env (0) from .env // tip: ⌁ auth for agents [www.vestauth.com]
+◇ injected env (0) from .env // tip: ⌁ auth for agents [www.vestauth.com]
+◇ injected env (0) from .env // tip: ⌘ enable debugging { debug: true }
+
+
+  Brand Creation
+✅ [loginAs] Đăng nhập thành công bằng tài khoản seed: vothanhnha26@gmail.com
+    ✔ TC03 – Create brand successfully (442ms)
+    ✔ TC04 – Validation: empty name (178ms)
+    ✔ TC07 – Admin can see Add brand button
+
+  Brand Deletion
+✅ [loginAs] Đăng nhập thành công bằng tài khoản seed: vothanhnha26@gmail.com
+    ✔ TC11 – Delete button disabled when only 1 brand
+    ✔ TC13 – Delete button visible for admin
+
+  Brand Error Handling
+✅ [loginAs] Đăng nhập thành công bằng tài khoản seed: vothanhnha26@gmail.com
+    ✔ TC14 – Submit disabled when brand name is empty (195ms)
+    ✔ TC15 – Cancel brand creation modal works (197ms)
+
+  Brand List
+✅ [loginAs] Đăng nhập thành công bằng tài khoản seed: vothanhnha26@gmail.com
+    ✔ TC01 – Hiển thị trang Brand Settings
+    ✔ TC02 – Brands selector hiển thị
+
+  Brand Update
+✅ [loginAs] Đăng nhập thành công bằng tài khoản seed: vothanhnha26@gmail.com
+    ✔ TC08 – Update brand name (224ms)
+    ✔ TC09 – Save button disabled when name unchanged (177ms)
+
+
+  11 passing (22s)
+
+
+> publicast-selenium-tests@1.0.0 test:auth-suite
+> node test_auth_suite.js
+
+◇ injected env (8) from .env // tip: ◈ encrypted .env [www.dotenvx.com]
+=========================================================
+🚀 KHỞI ĐỘNG BỘ KIỂM THỬ TỰ ĐỘNG THÀNH VIÊN (AUTH SUITE) 🚀
+=========================================================
+🔌 Đang kết nối tới Redis...
+✅ Kết nối Redis thành công.
+🔌 Đang kết nối tới MySQL Database...
+✅ Kết nối MySQL thành công.
+🌐 Đang khởi tạo Trình duyệt Chrome...
+
+---------------------------------------------------------
+📝 TEST CASE AUTH_001: Đăng ký thành công & Xác thực OTP
+---------------------------------------------------------
+🧹 Đã làm sạch session trình duyệt (Cookies, LocalStorage, SessionStorage).
+👉 Đã truy cập trang Đăng ký.
+✍️ Nhập Tên: 'Selenium Auth Tester'
+✍️ Nhập Email: 'auth_test_user_1783439471527@gmail.com'
+✍️ Nhập Mật khẩu: 'Password123!'
+✍️ Nhập Xác nhận mật khẩu: 'Password123!'
+🖱️ Tick chọn đồng ý điều khoản...
+📸 Đã lưu ảnh chụp màn hình: auth_001_1_fill_form.png
+🖱️ Click nút Tạo tài khoản...
+⏳ Chờ chuyển hướng sang trang Verify OTP...
+🎉 Đã chuyển sang trang OTP.
+📸 Đã lưu ảnh chụp màn hình: auth_001_2_otp_page.png
+⏳ Đang chờ 2 giây để mã OTP được ghi vào Redis...
+🔍 Truy vấn OTP từ Redis key: otp:auth_test_user_1783439471527@gmail.com
+🔑 Tìm thấy mã OTP: 530412
+🖱️ Click nút Verify Code...
+⏳ Chờ chuyển hướng sang trang Onboarding (/start)...
+🎉 Đăng ký & Xác thực OTP hoàn tất!
+📸 Đã lưu ảnh chụp màn hình: auth_001_3_onboarding_start.png
+🔍 [KIỂM TRA BACKEND] Đang truy vấn MySQL để verify dữ liệu...
+📊 Thông tin User tìm thấy trong DB: {
+  email: 'auth_test_user_1783439471527@gmail.com',
+  name: 'Selenium Auth Tester',
+  isEmailVerified: 1,
+  isActive: 1,
+  role: 'OWNER'
+}
+✅ KẾT QUẢ: AUTH_001 ĐẠT (PASS) - DỮ LIỆU ĐÃ LƯU TRỮ CHÍNH XÁC DƯỚI BACKEND DB!
+
+---------------------------------------------------------
+📝 TEST CASE AUTH_002: Đăng ký thất bại do Mật khẩu không khớp
+---------------------------------------------------------
+🧹 Đã làm sạch session trình duyệt (Cookies, LocalStorage, SessionStorage).
+👉 Đã truy cập trang Đăng ký.
+✍️ Nhập Tên, Email
+✍️ Nhập Mật khẩu: 'Password123!' và Xác nhận mật khẩu: 'Password999!'
+🖱️ Tick chọn đồng ý điều khoản và click Tạo tài khoản...
+⏳ Chờ Toast thông báo lỗi...
+📢 Thông báo lỗi thực tế trên UI: "Mật khẩu xác nhận không khớp"
+📸 Đã lưu ảnh chụp màn hình: auth_002_password_mismatch.png
+✅ KẾT QUẢ: AUTH_002 ĐẠT (PASS) - Form Validation chặn thành công và không ghi nhận DB.
+
+---------------------------------------------------------
+📝 TEST CASE AUTH_003: Đăng ký thất bại do Email đã tồn tại
+---------------------------------------------------------
+🧹 Đã làm sạch session trình duyệt (Cookies, LocalStorage, SessionStorage).
+👉 Đã truy cập trang Đăng ký.
+✍️ Nhập Email trùng lặp: 'auth_test_user_1783439471527@gmail.com'
+⏳ Chờ Toast thông báo lỗi trùng email...
+📢 Thông báo lỗi thực tế trên UI: "Email Address"
+📸 Đã lưu ảnh chụp màn hình: auth_003_email_exists.png
+📊 Số lượng bản ghi trong DB với email auth_test_user_1783439471527@gmail.com: 1
+✅ KẾT QUẢ: AUTH_003 ĐẠT (PASS) - Backend chặn trùng email thành công.
+
+---------------------------------------------------------
+📝 TEST CASE AUTH_004: Đăng nhập thành công với tài khoản active
+---------------------------------------------------------
+🧹 Đã làm sạch session trình duyệt (Cookies, LocalStorage, SessionStorage).
+👉 Đã truy cập trang Đăng nhập.
+✍️ Nhập Email: 'auth_test_user_1783439471527@gmail.com'
+✍️ Nhập Mật khẩu đúng: 'Password123!'
+📸 Đã lưu ảnh chụp màn hình: auth_004_1_fill_login.png
+🖱️ Click nút Sign in...
+⏳ Chờ hệ thống xác thực và chuyển hướng đến Dashboard...
+🎉 Đăng nhập thành công, đã vào Dashboard!
+📸 Đã lưu ảnh chụp màn hình: auth_004_2_dashboard.png
+✅ KẾT QUẢ: AUTH_004 ĐẠT (PASS).
+
+---------------------------------------------------------
+📝 TEST CASE AUTH_005: Đăng nhập thất bại do sai mật khẩu
+---------------------------------------------------------
+🖱️ Đang thực hiện đăng xuất để test đăng nhập lại...
+🧹 Đã làm sạch session trình duyệt (Cookies, LocalStorage, SessionStorage).
+👉 Đã truy cập trang Đăng nhập (đã xóa cookies).
+✍️ Nhập Email: 'auth_test_user_1783439471527@gmail.com'
+✍️ Nhập Mật khẩu sai: 'WrongPass123!'
+⏳ Chờ thông báo lỗi mật khẩu không hợp lệ...
+📢 Thông báo lỗi thực tế trên UI: "Invalid email or password"
+📸 Đã lưu ảnh chụp màn hình: auth_005_wrong_password.png
+✅ KẾT QUẢ: AUTH_005 ĐẠT (PASS) - Chặn đăng nhập sai pass thành công.
+
+---------------------------------------------------------
+📝 TEST CASE AUTH_006: Đăng nhập thất bại do tài khoản chưa kích hoạt
+---------------------------------------------------------
+🧹 Đã làm sạch session trình duyệt (Cookies, LocalStorage, SessionStorage).
+👉 Đã truy cập trang Đăng ký.
+✍️ Nhập Email mới: 'unverified_1783439482074@gmail.com'
+⏳ Chờ chuyển hướng sang trang OTP...
+⚠️ Bỏ qua bước xác minh OTP, quay lại trang đăng nhập.
+📸 Đã lưu ảnh chụp màn hình: auth_006_1_verify_otp_left.png
+✍️ Thử đăng nhập bằng email chưa kích hoạt: 'unverified_1783439482074@gmail.com'
+⏳ Chờ phản hồi và chuyển hướng...
+🎉 Đã tự động điều hướng người dùng quay lại trang OTP!
+📢 Thông báo thực tế trên UI: "Vui lòng xác thực email của bạn"
+📸 Đã lưu ảnh chụp màn hình: auth_006_2_redirected_to_otp.png
+📊 Thông tin User tìm thấy trong DB: { isEmailVerified: 0, isActive: 0 }
+✅ KẾT QUẢ: AUTH_006 ĐẠT (PASS) - Chặn đăng nhập tài khoản chưa verify và điều hướng về trang OTP thành công.
+
+🧹 Bắt đầu dọn dẹp hạ tầng...
+🔌 Đóng kết nối Redis...
+🔌 Đóng kết nối MySQL...
+🧹 Đang đóng trình duyệt...
+=========================================================
+🏁 BỘ KIỂM THỬ TỰ ĐỘNG THÀNH VIÊN ĐÃ HOÀN TẤT CHẠY 🏁
+=========================================================
+
+> publicast-selenium-tests@1.0.0 test:profile
+> mocha profile/*.spec.js
+
+◇ injected env (8) from .env // tip: ⌘ override existing { override: true }
+◇ injected env (0) from .env // tip: ⌘ custom filepath { path: '/custom/path/.env' }
+
+
+  Profile & Settings Detailed Suite
+✅ [loginAs] Đăng nhập thành công bằng tài khoản seed: vothanhnha26@gmail.com
+    Tab Navigation and Deep Links
+      ✔ TC_PROFILE_01 – Verify tab navigation updates URL query parameters (1724ms)
+      ✔ TC_PROFILE_02 – Verify direct navigation to tabs via URL queries (831ms)
+      ✔ TC_PROFILE_03 – Verify Google linked success callback redirection (350ms)
+    Account Information Settings
+      ✔ TC_PROFILE_04 – Verify default profile data displays correctly in inputs
+      ✔ TC_PROFILE_05 – Verify successful Profile Name update with special Vietnamese characters (2111ms)
+      ✔ TC_PROFILE_06 – Verify Monthly Summary toggle switches state on UI (371ms)
+    Access and Security (Passwords & OAuth)
+      ✔ TC_PROFILE_07 – Verify password change fails when current password is empty (1193ms)
+      ✔ TC_PROFILE_08 – Verify password change fails when current password is incorrect (1224ms)
+      ✔ TC_PROFILE_09 – Verify password change fails when new password is too short (1204ms)
+      ✔ TC_PROFILE_10 – Verify successful password change and restore original (3355ms)
+    Support Chat Interactions
+      ✔ TC_PROFILE_11 – Verify Support Chat handles enter key to send message (641ms)
+      ✔ TC_PROFILE_12 – Verify Support Chat prevents sending empty messages (360ms)
+    Billing Portal & Redirects
+      ✔ TC_PROFILE_13 – Verify Billing portal redirect to pricing page (731ms)
+
+
+  13 passing (24s)
+
+
+> publicast-selenium-tests@1.0.0 test:post-creator
+> mocha post_creator.spec.js
+
+◇ injected env (8) from .env // tip: ⌘ override existing { override: true }
+
+
+  Post Creator Detailed E2E Suite
+
+🛠️ Khởi tạo Mock Social Accounts cho các nền tảng: FACEBOOK...
+✅ Đã seed thành công cho 4 brands.
+    ✔ TC_POST_01 – Verify Post Creator Modal can be opened and closed successfully (6332ms)
+
+🛠️ Khởi tạo Mock Social Accounts cho các nền tảng: FACEBOOK, INSTAGRAM, YOUTUBE...
+✅ Đã seed thành công cho 4 brands.
+    ✔ TC_POST_02 – Verify multi-platform selection and active platform switcher (6684ms)
+
+🛠️ Khởi tạo Mock Social Accounts cho các nền tảng: FACEBOOK...
+✅ Đã seed thành công cho 4 brands.
+    ✔ TC_POST_03 – Verify publish options menu updates submit button label text (6232ms)
+
+🛠️ Khởi tạo Mock Social Accounts cho các nền tảng: FACEBOOK...
+✅ Đã seed thành công cho 4 brands.
+    ✔ TC_POST_04 – Verify creating Facebook post draft saves caption to database and displays on List UI (9508ms)
+
+🛠️ Khởi tạo Mock Social Accounts cho các nền tảng: FACEBOOK, INSTAGRAM, THREADS...
+✅ Đã seed thành công cho 4 brands.
+    ✔ TC_POST_05 – Verify multi-platform post draft saves targetPlatforms correctly in DB and displays on List UI (12066ms)
+
+🛠️ Khởi tạo Mock Social Accounts cho các nền tảng: THREADS...
+✅ Đã seed thành công cho 4 brands.
+    ✔ TC_POST_06 – Verify character limits logic for Threads (500 chars limit) (6779ms)
+
+🛠️ Khởi tạo Mock Social Accounts cho các nền tảng: YOUTUBE...
+✅ Đã seed thành công cho 4 brands.
+    ✔ TC_POST_07 – Verify platform validation blocks submission if YouTube has no video (9731ms)
+
+🛠️ Khởi tạo Mock Social Accounts cho các nền tảng: TIKTOK...
+✅ Đã seed thành công cho 4 brands.
+    ✔ TC_POST_08 – Verify platform validation blocks submission if TikTok has no media (9791ms)
+
+🛠️ Khởi tạo Mock Social Accounts cho các nền tảng: FACEBOOK...
+✅ Đã seed thành công cho 4 brands.
+🔑 [TC_POST_09] Re-login chủ động để đảm bảo token hợp lệ trước khi submit...
+✅ Session tự động restore qua refresh token cookie, bỏ qua re-login.
+    1) TC_POST_09 – Verify scheduling a post for tomorrow saves scheduledAt correctly in DB and displays on List UI
+📸 Đã chụp màn hình khi lỗi: /home/runner/work/PubliCast/PubliCast/test_selenium/error_TC_POST_09___Verify_scheduling_a_post_for_tomorrow_saves_scheduledAt_correctly_in_DB_and_displays_on_List_UI.png
+🌐 Browser Console Logs:
+[SEVERE] http://localhost:3000/api/user/profile - Failed to load resource: the server responded with a status of 401 (Unauthorized)
+[SEVERE] http://localhost:3000/api/auth/refresh - Failed to load resource: the server responded with a status of 401 (Unauthorized)
+[SEVERE] http://localhost:3000/api/auth/logout - Failed to load resource: the server responded with a status of 401 (Unauthorized)
+[SEVERE] http://localhost:5173/favicon.ico - Failed to load resource: the server responded with a status of 404 (Not Found)
+[SEVERE] http://localhost:5173/src/store/useAuthStore.js 82:2 Uncaught Error: Access token required
+Warning:  http://localhost:5173/src/utils/logger.js 35:22 "[PubliCast] [WARN] Validation errors detected in PostCreator Form:" Array(1)
+Warning:  http://localhost:5173/src/utils/logger.js 35:22 "[PubliCast] [WARN] Validation errors detected in PostCreator Form:" Array(1)
+
+🛠️ Khởi tạo Mock Social Accounts cho các nền tảng: FACEBOOK...
+✅ Đã seed thành công cho 4 brands.
+    ✔ TC_POST_10 – Verify uploading an image file from local machine renders preview on Facebook post (9760ms)
+
+🛠️ Khởi tạo Mock Social Accounts cho các nền tảng: YOUTUBE...
+✅ Đã seed thành công cho 4 brands.
+⏳ Chờ video upload lên Cloudinary (chờ biến mất trạng thái 'Uploading...')...
+    ✔ TC_POST_11 – Verify uploading a video file from local machine renders preview and saves to DB for YouTube post (12516ms)
+🧹 Dọn dẹp tất cả Mock Social Accounts...
+✅ Dọn dẹp hoàn tất.
+
+
+  10 passing (2m)
+  1 failing
+
+  1) Post Creator Detailed E2E Suite
+       TC_POST_09 – Verify scheduling a post for tomorrow saves scheduledAt correctly in DB and displays on List UI:
+     TimeoutError: Waiting until element is visible
+Wait timed out after 12129ms
+      at /home/runner/work/PubliCast/PubliCast/test_selenium/node_modules/selenium-webdriver/lib/webdriver.js:929:22
+      at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+
+
+
+Error: Process completed with exit code 1.

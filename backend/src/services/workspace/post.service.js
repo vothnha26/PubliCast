@@ -1,3 +1,4 @@
+require('../../utils/polyfill');
 const postRepository = require('../../repositories/workspace/post.repository');
 const brandRepository = require('../../repositories/workspace/brand.repository');
 const socialPlatformFactory = require('../social/social-platform.factory');
@@ -84,13 +85,16 @@ class PostService {
       sizeMb: postData.options?.videoSizeMb || null
     };
 
-    console.log('[PostService] Validating post data:', { postData: { title: postData.title, targetPlatforms: postData.targetPlatforms, options: postData.options }, mediaInfo });
-    const validationResult = await validationFacade.validatePost(postData, mediaInfo);
-    if (!validationResult.isValid) {
-      console.error('[PostService] Validation failed:', validationResult.errors);
-      const error = new Error(`Validation failed: ${validationResult.errors.join('; ')}`);
-      error.statusCode = 400;
-      throw error;
+    const status = postData.status || POST_STATUS.DRAFT;
+    if (status !== POST_STATUS.DRAFT) {
+      console.log('[PostService] Validating post data:', { postData: { title: postData.title, targetPlatforms: postData.targetPlatforms, options: postData.options }, mediaInfo });
+      const validationResult = await validationFacade.validatePost(postData, mediaInfo);
+      if (!validationResult.isValid) {
+        console.error('[PostService] Validation failed:', validationResult.errors);
+        const error = new Error(`Validation failed: ${validationResult.errors.join('; ')}`);
+        error.statusCode = 400;
+        throw error;
+      }
     }
 
     const data = this._preparePostData(postData, userId, brandId);
@@ -123,7 +127,7 @@ class PostService {
     } else {
       // If one-off post is scheduled, add to BullMQ
       if (!post.autoListId && post.status === POST_STATUS.SCHEDULED && post.scheduledAt) {
-        await this._handleNativeScheduling(post, postData.options);
+        // Native Scheduling sẽ được gọi bất đồng bộ ở background qua event subscriber (post.subscriber.js)
         await upsertPublishJob(post.id, post.scheduledAt);
       }
     }
@@ -179,45 +183,59 @@ class PostService {
       sizeMb: mergedPostData.options.videoSizeMb || null
     };
 
-    console.log('[PostService] Validating merged post data for update:', { mergedPostData: { title: mergedPostData.title, targetPlatforms: mergedPostData.targetPlatforms, options: mergedPostData.options }, mediaInfo });
-    const validationResult = await validationFacade.validatePost(mergedPostData, mediaInfo);
-    if (!validationResult.isValid) {
-      console.error('[PostService] Validation failed for update:', validationResult.errors);
-      const error = new Error(`Validation failed: ${validationResult.errors.join('; ')}`);
-      error.statusCode = 400;
-      throw error;
+    const targetStatus = postData.status !== undefined ? postData.status : post.status;
+    if (targetStatus !== POST_STATUS.DRAFT) {
+      console.log('[PostService] Validating merged post data for update:', { mergedPostData: { title: mergedPostData.title, targetPlatforms: mergedPostData.targetPlatforms, options: mergedPostData.options }, mediaInfo });
+      const validationResult = await validationFacade.validatePost(mergedPostData, mediaInfo);
+      if (!validationResult.isValid) {
+        console.error('[PostService] Validation failed for update:', validationResult.errors);
+        const error = new Error(`Validation failed: ${validationResult.errors.join('; ')}`);
+        error.statusCode = 400;
+        throw error;
+      }
     }
 
     if (post.status === POST_STATUS.PUBLISHED) {
       const targetPlatforms = post.targetPlatforms ? post.targetPlatforms.split(',').map(p => p.trim().toUpperCase()) : [];
       const hasFacebook = targetPlatforms.includes(PLATFORMS.FACEBOOK);
       const hasDiscord = targetPlatforms.includes(PLATFORMS.DISCORD);
-      
-      if ((hasFacebook || hasDiscord) && post.platformPostId) {
-        const socialPlatformFactory = require('../social/social-platform.factory');
-        if (hasFacebook) {
-          try {
-            const platformId = this._getPlatformPostId(post, PLATFORMS.FACEBOOK);
-            if (platformId) {
-              await socialPlatformFactory.getService(PLATFORMS.FACEBOOK).updatePublishedPost(brandId, platformId, postData);
-            }
-          } catch (err) {
-            console.error(`[Post Service] Failed to update post on Facebook:`, err.message);
-          }
+
+      if (hasFacebook) {
+        const originalUrls = post.mediaUrls ? post.mediaUrls.split(',').map(u => u.trim()).filter(Boolean) : [];
+        const updateUrls = postData.mediaUrls !== undefined ? (postData.mediaUrls || []).filter(u => u && u.trim() !== '') : [];
+        const isChanged = originalUrls.length !== updateUrls.length || !updateUrls.every(url => originalUrls.includes(url));
+        if (isChanged) {
+          const error = new Error("Validation failed: [FACEBOOK] Facebook does not support updating/modifying media on an already published post.");
+          error.statusCode = 400;
+          throw error;
         }
-        if (hasDiscord) {
-          try {
-            const platformId = this._getPlatformPostId(post, PLATFORMS.DISCORD);
-            if (platformId) {
-              await socialPlatformFactory.getService(PLATFORMS.DISCORD).updatePublishedPost(brandId, platformId, postData);
-            }
-          } catch (err) {
-            console.error(`[Post Service] Failed to update post on Discord:`, err.message);
-          }
-        }
-      } else {
-        throw new Error('Cannot update an already published post for this platform');
       }
+
+      // Chỉ thực sự gọi API mạng xã hội khi platform hỗ trợ edit trực tiếp
+      if (hasFacebook && post.platformPostId) {
+        try {
+          const platformId = this._getPlatformPostId(post, PLATFORMS.FACEBOOK);
+          if (platformId) {
+            const socialPlatformFactory = require('../social/social-platform.factory');
+            await socialPlatformFactory.getService(PLATFORMS.FACEBOOK).updatePublishedPost(brandId, platformId, postData);
+          }
+        } catch (err) {
+          console.error(`[Post Service] Failed to update post on Facebook:`, err.message);
+        }
+      }
+      if (hasDiscord && post.platformPostId) {
+        try {
+          const platformId = this._getPlatformPostId(post, PLATFORMS.DISCORD);
+          if (platformId) {
+            const socialPlatformFactory = require('../social/social-platform.factory');
+            await socialPlatformFactory.getService(PLATFORMS.DISCORD).updatePublishedPost(brandId, platformId, postData);
+          }
+        } catch (err) {
+          console.error(`[Post Service] Failed to update post on Discord:`, err.message);
+        }
+      }
+      // Với các platform khác (Instagram, TikTok, YouTube...) không hỗ trợ edit,
+      // chỉ cập nhật DB và không cần ném lỗi.
     }
 
     const data = this._prepareUpdateData(postData);
@@ -234,6 +252,11 @@ class PostService {
     }
 
     const updatedPost = await postRepository.update(id, data);
+
+    // Hủy Native Scheduling nếu trạng thái đổi từ SCHEDULED sang trạng thái khác (ví dụ DRAFT, PENDING_APPROVAL)
+    if (post.status === POST_STATUS.SCHEDULED && updatedPost.status !== POST_STATUS.SCHEDULED && post.platformPostId) {
+      await this._cleanupNativeScheduledPost(post);
+    }
 
     // Sync BullMQ/Approval Workflow
     if (updatedPost.status === POST_STATUS.PENDING_APPROVAL) {
@@ -253,7 +276,7 @@ class PostService {
       // Sync BullMQ for one-off posts
       if (!updatedPost.autoListId) {
         if (updatedPost.status === POST_STATUS.SCHEDULED && updatedPost.scheduledAt) {
-          await this._handleNativeScheduling(updatedPost, postData.options);
+          // Native Scheduling sẽ được gọi bất đồng bộ ở background qua event subscriber (post.subscriber.js)
           await upsertPublishJob(updatedPost.id, updatedPost.scheduledAt);
         } else {
           await removePublishJob(updatedPost.id);
@@ -286,10 +309,21 @@ class PostService {
   async bulkDelete(ids, brandId, deleteFromSocials = false) {
     const posts = await postRepository.findManyByIdsAndBrand(ids, brandId);
 
+    const { removePublishJob } = require('../../queues/publish.queue');
+    for (const post of posts) {
+      if (post.status === POST_STATUS.SCHEDULED) {
+        try {
+          await removePublishJob(post.id);
+        } catch (e) {
+          console.error(`[Post Service] Failed to remove publish job for deleted post ${post.id}:`, e.message);
+        }
+      }
+    }
+
     if (deleteFromSocials) {
       const socialPlatformFactory = require('../social/social-platform.factory');
       for (const post of posts) {
-        if (post.status === POST_STATUS.PUBLISHED && post.platformPostId) {
+        if ((post.status === POST_STATUS.PUBLISHED || post.status === POST_STATUS.SCHEDULED) && post.platformPostId) {
           const targetPlatforms = post.targetPlatforms ? post.targetPlatforms.split(',').map(p => p.trim().toUpperCase()) : [];
           console.log(`[Post Service] Attempting social deletion for post: ${post.id}, targetPlatforms: ${targetPlatforms.join(', ')}, platformPostId: ${post.platformPostId}`);
           for (const platform of targetPlatforms) {
@@ -375,6 +409,15 @@ class PostService {
       };
     }
 
+    let platformPostId = null;
+    if (p.platformPostId) {
+      try {
+        platformPostId = JSON.parse(p.platformPostId);
+      } catch (e) {
+        platformPostId = p.platformPostId;
+      }
+    }
+
     return {
       id: p.id,
       title: p.title,
@@ -388,12 +431,13 @@ class PostService {
       creator: p.creator?.name || 'Unknown',
       creatorId: p.creator?.id,
       creatorAvatar: p.creator?.avatarUrl,
-      thumbnail: p.mediaThumbnailUrls ? p.mediaThumbnailUrls.split(SEPARATORS.COMMA)[0] : null,
+      thumbnail: p.mediaThumbnailUrls ? p.mediaThumbnailUrls.split(SEPARATORS.COMMA)[0] : (p.mediaUrls ? p.mediaUrls.split(SEPARATORS.COMMA)[0] : null),
       mediaUrls: p.mediaUrls ? p.mediaUrls.split(SEPARATORS.COMMA).map(m => m.trim()) : [],
       altText: p.altText,
       isLibrary: p.isLibrary,
       options,
-      approvalInfo
+      approvalInfo,
+      platformPostId
     };
   }
 
@@ -434,6 +478,9 @@ class PostService {
       console.log(`[PostService] 🚀 Triggering early Native Scheduling for platform: ${platform}, Post: ${post.id}`);
       try {
         const service = socialPlatformFactory.getService(platform);
+        if (!service || typeof service.publishPost !== 'function') {
+          continue;
+        }
         
         // Chuẩn bị postData truyền vào
         const postData = {
@@ -469,6 +516,34 @@ class PostService {
     }
   }
 
+  async _cleanupNativeScheduledPost(post) {
+    if (!post.platformPostId) return;
+
+    const socialPlatformFactory = require('../social/social-platform.factory');
+    const targetPlatforms = post.targetPlatforms ? post.targetPlatforms.split(',').map(p => p.trim().toUpperCase()) : [];
+    
+    console.log(`[PostService] 🧹 Cleaning up Native Scheduling on platforms for post: ${post.id}`);
+    
+    for (const platform of targetPlatforms) {
+      try {
+        const service = socialPlatformFactory.getService(platform);
+        if (service && typeof service.deletePost === 'function') {
+          const platformId = this._getPlatformPostId(post, platform);
+          if (platformId) {
+            console.log(`[PostService] Invoking deletePost on ${platform} for ID: ${platformId}`);
+            await service.deletePost(post.brandId, platformId);
+          }
+        }
+      } catch (err) {
+        console.error(`[PostService] Failed to delete scheduled post on ${platform}:`, err.message);
+      }
+    }
+
+    // Xóa platformPostId trong DB
+    await postRepository.update(post.id, { platformPostId: null });
+    post.platformPostId = null;
+  }
+
   _getPlatformPostId(post, platform) {
     if (!post.platformPostId) return null;
     try {
@@ -476,48 +551,78 @@ class PostService {
       if (map && typeof map === 'object') {
         return map[platform.toUpperCase()] || null;
       }
+      // JSON parse trả về giá trị nguyên thủy (số, chuỗi) chứ không phải object
+      return String(map) || null;
     } catch (e) {
-      // Tương thích ngược: Nếu không phải JSON, coi đó là ID của YouTube
-      if (platform.toUpperCase() === PLATFORMS.YOUTUBE) {
-        return post.platformPostId;
-      }
+      // Tương thích ngược: platformPostId là plain string (không phải JSON)
+      // Trả về trực tiếp cho bất kỳ platform nào — caller đã wrap trong try-catch
+      return post.platformPostId;
     }
-    return null;
+  }
+
+  _normalizePath(val) {
+    if (typeof val === 'string') {
+      let clean = val.toWellFormed();
+      if (clean.includes('\\') && (/[a-zA-Z]:\\/.test(clean) || /uploads|media|temp|publicast/i.test(clean))) {
+        return clean.replace(/\\/g, '/');
+      }
+      return clean;
+    }
+    if (Array.isArray(val)) {
+      return val.map(v => this._normalizePath(v));
+    }
+    if (val && typeof val === 'object') {
+      const result = {};
+      for (const key of Object.keys(val)) {
+        result[key] = this._normalizePath(val[key]);
+      }
+      return result;
+    }
+    return val;
   }
 
   _preparePostData(postData, userId, brandId) {
     const { title, caption, type = POST_TYPES.VIDEO, status = POST_STATUS.DRAFT, targetPlatforms = [], mediaUrls = [], mediaThumbnailUrls = [], scheduledAt, isLibrary = false, altText = null, autoListId = null, options = {} } = postData;
     
+    // Normalize paths and Unicode recursively in options and strings
+    const normalizedOptions = this._normalizePath(options);
+    const cleanTitle = this._normalizePath(title);
+    const cleanCaption = this._normalizePath(caption);
+    const cleanAltText = this._normalizePath(altText);
+
+    const cleanMediaUrls = this._normalizePath(mediaUrls);
+    const cleanMediaThumbnailUrls = this._normalizePath(mediaThumbnailUrls);
+
     // Ensure status is valid or default to DRAFT
     let finalStatus = status ? status.toUpperCase() : POST_STATUS.DRAFT;
     if (!Object.values(POST_STATUS).includes(finalStatus)) {
       finalStatus = POST_STATUS.DRAFT;
     }
 
-    let finalThumbnailUrls = mediaThumbnailUrls;
-    if ((!finalThumbnailUrls || finalThumbnailUrls.length === 0 || (Array.isArray(finalThumbnailUrls) && finalThumbnailUrls.length === 0)) && options.youtubeThumbnail) {
-      finalThumbnailUrls = [options.youtubeThumbnail];
+    let finalThumbnailUrls = cleanMediaThumbnailUrls;
+    if ((!finalThumbnailUrls || finalThumbnailUrls.length === 0 || (Array.isArray(finalThumbnailUrls) && finalThumbnailUrls.length === 0)) && normalizedOptions.youtubeThumbnail) {
+      finalThumbnailUrls = [normalizedOptions.youtubeThumbnail];
     }
 
     return {
-      brandId, createdByUserId: userId, title: title || WORKSPACE_DEFAULTS.UNTITLED, caption, type,
+      brandId, createdByUserId: userId, title: cleanTitle || WORKSPACE_DEFAULTS.UNTITLED, caption: cleanCaption, type,
       status: finalStatus,
       targetPlatforms: Array.isArray(targetPlatforms) ? targetPlatforms.join(SEPARATORS.COMMA) : targetPlatforms,
-      mediaUrls: Array.isArray(mediaUrls) ? mediaUrls.join(SEPARATORS.COMMA) : mediaUrls,
+      mediaUrls: Array.isArray(cleanMediaUrls) ? cleanMediaUrls.join(SEPARATORS.COMMA) : cleanMediaUrls,
       mediaThumbnailUrls: Array.isArray(finalThumbnailUrls) ? finalThumbnailUrls.join(SEPARATORS.COMMA) : finalThumbnailUrls,
       scheduledAt: scheduledAt ? new Date(scheduledAt) : null,
-      altText, isLibrary: isLibrary === true || isLibrary === 'true',
+      altText: cleanAltText, isLibrary: isLibrary === true || isLibrary === 'true',
       autoListId,
-      firstComment: options.firstComment || null,
-      metadata: options ? JSON.stringify(options) : null
+      firstComment: normalizedOptions.firstComment || null,
+      metadata: normalizedOptions ? JSON.stringify(normalizedOptions) : null
     };
   }
 
   _prepareUpdateData(postData) {
     const { title, caption, type, status, targetPlatforms, mediaUrls, mediaThumbnailUrls, scheduledAt, isLibrary, altText, autoListId, firstComment } = postData;
     const data = {};
-    if (title !== undefined) data.title = title || WORKSPACE_DEFAULTS.UNTITLED;
-    if (caption !== undefined) data.caption = caption;
+    if (title !== undefined) data.title = this._normalizePath(title) || WORKSPACE_DEFAULTS.UNTITLED;
+    if (caption !== undefined) data.caption = this._normalizePath(caption);
     if (type !== undefined) data.type = type;
     
     if (status !== undefined) {
@@ -528,8 +633,14 @@ class PostService {
     }
 
     if (targetPlatforms !== undefined) data.targetPlatforms = Array.isArray(targetPlatforms) ? targetPlatforms.join(SEPARATORS.COMMA) : targetPlatforms;
-    if (mediaUrls !== undefined) data.mediaUrls = Array.isArray(mediaUrls) ? mediaUrls.join(SEPARATORS.COMMA) : mediaUrls;
-    if (mediaThumbnailUrls !== undefined) data.mediaThumbnailUrls = Array.isArray(mediaThumbnailUrls) ? mediaThumbnailUrls.join(SEPARATORS.COMMA) : mediaThumbnailUrls;
+    if (mediaUrls !== undefined) {
+      const cleanMediaUrls = this._normalizePath(mediaUrls);
+      data.mediaUrls = Array.isArray(cleanMediaUrls) ? cleanMediaUrls.join(SEPARATORS.COMMA) : cleanMediaUrls;
+    }
+    if (mediaThumbnailUrls !== undefined) {
+      const cleanMediaThumbnailUrls = this._normalizePath(mediaThumbnailUrls);
+      data.mediaThumbnailUrls = Array.isArray(cleanMediaThumbnailUrls) ? cleanMediaThumbnailUrls.join(SEPARATORS.COMMA) : cleanMediaThumbnailUrls;
+    }
     if (scheduledAt !== undefined) data.scheduledAt = (scheduledAt && !isNaN(new Date(scheduledAt).getTime())) ? new Date(scheduledAt) : null;
     if (isLibrary !== undefined) data.isLibrary = isLibrary === true || isLibrary === 'true';
     if (altText !== undefined) data.altText = altText;
@@ -537,15 +648,41 @@ class PostService {
     if (firstComment !== undefined) data.firstComment = firstComment;
     
     if (postData.options !== undefined) {
-      data.metadata = JSON.stringify(postData.options);
-      if (postData.options.firstComment !== undefined) {
-        data.firstComment = postData.options.firstComment || null;
+      const normalizedOptions = this._normalizePath(postData.options);
+      data.metadata = JSON.stringify(normalizedOptions);
+      if (normalizedOptions.firstComment !== undefined) {
+        data.firstComment = normalizedOptions.firstComment || null;
       }
-      if (postData.options.youtubeThumbnail !== undefined) {
-        data.mediaThumbnailUrls = postData.options.youtubeThumbnail;
+      if (normalizedOptions.youtubeThumbnail !== undefined) {
+        data.mediaThumbnailUrls = normalizedOptions.youtubeThumbnail;
       }
     }
     return data;
+  }
+
+  /**
+   * Get historical interaction metrics for a post
+   */
+  async getPostAnalytics(postId, brandId) {
+    const post = await postRepository.findById(postId);
+    if (!post || post.brandId !== brandId) {
+      const error = new Error('Post not found or unauthorized');
+      error.statusCode = 404;
+      throw error;
+    }
+
+    const prisma = require('../../config/prisma');
+    const history = await prisma.postMetricHistory.findMany({
+      where: {
+        postId: postId,
+        brandId: brandId
+      },
+      orderBy: {
+        timestamp: 'asc'
+      }
+    });
+
+    return history;
   }
 }
 

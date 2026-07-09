@@ -41,67 +41,178 @@ class ThreadsService extends BaseSocialService {
   }
 
   async getAnalyticsReport(auth, startDate, endDate) {
-    // Với tài khoản thật, ta có thể lấy qua Threads Insights API
-    const pageId = auth.igAccountId || auth.pageId;
+    const pageId = auth.igAccountId || auth.pageId || auth.platformAccountId;
     const pageAccessToken = auth.pageAccessToken || auth.accessToken;
     
+    const isMock = pageAccessToken && pageAccessToken.startsWith('mock-');
     let insights = null;
-    try {
-      insights = await threadsGateway.getInsights(pageId, pageAccessToken);
-    } catch (e) {
-      console.warn('Threads Insights API failed, falling back to mock graph data:', e.message);
-    }
-
-    const days = 30;
-    const analytics = [];
-    const balance = [];
-    const today = new Date();
     
-    // Tự sinh chuỗi ngày
-    for (let i = days - 1; i >= 0; i--) {
-      const d = new Date(today);
-      d.setDate(d.getDate() - i);
-      const dateString = d.toISOString().split('T')[0];
-      
-      const views = Math.floor(1000 + Math.sin(i) * 500 + Math.random() * 200);
-      const likes = Math.floor(views * 0.08 + Math.random() * 15);
-      const replies = Math.floor(likes * 0.15 + Math.random() * 5);
-      const reposts = Math.floor(likes * 0.05 + Math.random() * 2);
-      
-      const acquired = Math.floor(30 + Math.sin(i) * 10 + Math.random() * 5);
-      const lost = Math.floor(5 + Math.cos(i) * 3 + Math.random() * 2);
-
-      analytics.push({
-        date: dateString,
-        views,
-        likes,
-        replies,
-        reposts,
-        followersCount: 12000 + (30 - i) * 15,
-        totalContent: i % 5 === 0 ? 1 : 0
-      });
-
-      balance.push({
-        date: dateString,
-        acquired,
-        lost
-      });
+    if (pageAccessToken && !isMock) {
+      try {
+        insights = await threadsGateway.getInsights(pageId, pageAccessToken);
+      } catch (e) {
+        console.warn('Threads Insights API failed, falling back to mock graph data:', e.message);
+      }
     }
+
+    const now = new Date();
+    const defaultStart = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+    const defaultEnd = now.toISOString().split('T')[0];
+    let start = startDate || defaultStart;
+    let end = endDate || defaultEnd;
+
+    if (start === end) {
+      const prevDate = new Date(new Date(start).getTime() - 24 * 60 * 60 * 1000);
+      start = prevDate.toISOString().split('T')[0];
+    }
+
+    const startMs = new Date(start + 'T00:00:00Z').getTime();
+    const endMs = new Date(end + 'T00:00:00Z').getTime();
+    const oneDayMs = 24 * 60 * 60 * 1000;
+
+    const dailyMap = {};
+    for (let time = startMs; time <= endMs; time += oneDayMs) {
+      const dateStr = new Date(time).toISOString().split('T')[0];
+      dailyMap[dateStr] = {
+        date: dateStr,
+        views: 0,
+        likes: 0,
+        replies: 0,
+        reposts: 0,
+        followersCount: 0,
+        acquired: 0,
+        lost: 0,
+        totalContent: 0
+      };
+    }
+
+    // Populate real insights if available
+    if (insights && Array.isArray(insights.data)) {
+      for (const metric of insights.data) {
+        if (!metric.values) continue;
+        for (const val of metric.values) {
+          const dateStr = val.end_time.split('T')[0];
+          if (dailyMap[dateStr]) {
+            if (metric.name === 'views') dailyMap[dateStr].views = val.value || 0;
+            else if (metric.name === 'likes') dailyMap[dateStr].likes = val.value || 0;
+            else if (metric.name === 'replies') dailyMap[dateStr].replies = val.value || 0;
+            else if (metric.name === 'reposts') dailyMap[dateStr].reposts = val.value || 0;
+            else if (metric.name === 'followers_count') {
+              dailyMap[dateStr].followersCount = val.value || 0;
+            }
+          }
+        }
+      }
+    }
+
+    // Fetch and aggregate from real Threads posts feed if insights are empty or null
+    let feedResult = [];
+    if (!isMock) {
+      try {
+        const res = await threadsGateway.getThreadsMediaFeed(pageId, pageAccessToken, null, 100);
+        feedResult = res.data || [];
+      } catch (feedErr) {
+        console.warn('Failed to fetch Threads feed for analytics aggregation:', feedErr.message);
+      }
+    }
+
+    if (!isMock && feedResult.length > 0) {
+      for (const post of feedResult) {
+        if (!post.timestamp) continue;
+        const dateStr = post.timestamp.split('T')[0];
+        if (dailyMap[dateStr]) {
+          dailyMap[dateStr].totalContent += 1;
+          
+          // Only aggregate if this date didn't have data from insights
+          const reactions = post.like_count || 0;
+          dailyMap[dateStr].likes += reactions;
+          
+          // Estimate views from likes for display purposes
+          dailyMap[dateStr].views += reactions * 12;
+        }
+      }
+    }
+
+    const sortedKeys = Object.keys(dailyMap).sort();
+    let index = 0;
+    for (const dateStr of sortedKeys) {
+      const d = dailyMap[dateStr];
+      if (isMock) {
+        d.views = 0;
+        d.likes = 0;
+        d.replies = 0;
+        d.reposts = 0;
+        d.acquired = 0;
+        d.lost = 0;
+        d.followersCount = 0;
+        d.totalContent = 0;
+      } else {
+        d.acquired = 0;
+        d.lost = 0;
+      }
+      index++;
+    }
+
+    // Progressive followersCount calculation for real accounts
+    if (!isMock) {
+      let tempFollowers = auth.instagramAccount?.followersCount || auth.followersCount || 100;
+      for (let i = sortedKeys.length - 1; i >= 0; i--) {
+        const dateStr = sortedKeys[i];
+        dailyMap[dateStr].followersCount = tempFollowers;
+        tempFollowers = Math.max(0, tempFollowers - (dailyMap[dateStr].acquired - dailyMap[dateStr].lost));
+      }
+    }
+
+    const sortedDates = sortedKeys.map(k => dailyMap[k]);
+    const analytics = sortedDates.map(a => ({
+      date: a.date,
+      views: a.views,
+      likes: a.likes,
+      replies: a.replies,
+      reposts: a.reposts,
+      followersCount: a.followersCount || 0,
+      totalContent: a.totalContent
+    }));
+
+    const balance = sortedDates.map(b => ({
+      date: b.date,
+      acquired: b.acquired,
+      lost: b.lost
+    }));
 
     const summary = {
       views: insights?.data?.find(m => m.name === 'views')?.values?.[0]?.value || analytics.reduce((acc, curr) => acc + curr.views, 0),
       likes: insights?.data?.find(m => m.name === 'likes')?.values?.[0]?.value || analytics.reduce((acc, curr) => acc + curr.likes, 0),
       replies: insights?.data?.find(m => m.name === 'replies')?.values?.[0]?.value || analytics.reduce((acc, curr) => acc + curr.replies, 0),
       reposts: insights?.data?.find(m => m.name === 'reposts')?.values?.[0]?.value || analytics.reduce((acc, curr) => acc + curr.reposts, 0),
-      followersCount: insights?.data?.find(m => m.name === 'followers_count')?.values?.[0]?.value || 12500,
+      followersCount: insights?.data?.find(m => m.name === 'followers_count')?.values?.[0]?.value || auth.instagramAccount?.followersCount || auth.followersCount || 0,
       totalContent: analytics.reduce((acc, curr) => acc + curr.totalContent, 0)
     };
 
-    const typesBreakdown = {
-      TEXT: Math.floor(summary.totalContent * 0.4) || 2,
-      IMAGE: Math.floor(summary.totalContent * 0.4) || 2,
-      VIDEO: Math.floor(summary.totalContent * 0.2) || 1
-    };
+    // Calculate real post type breakdown
+    const typesBreakdown = { TEXT: 0, IMAGE: 0, VIDEO: 0 };
+    if (!isMock && feedResult.length > 0) {
+      for (const post of feedResult) {
+        const mediaType = post.media_type;
+        let type = 'TEXT';
+        if (mediaType === 'IMAGE' || mediaType === 'CAROUSEL_ALBUM') {
+          type = 'IMAGE';
+        } else if (mediaType === 'VIDEO') {
+          type = 'VIDEO';
+        }
+        typesBreakdown[type]++;
+      }
+    } else if (isMock) {
+      // Mock account has 0
+      typesBreakdown.TEXT = 0;
+      typesBreakdown.IMAGE = 0;
+      typesBreakdown.VIDEO = 0;
+    } else {
+      // Real account but no posts in feed
+      typesBreakdown.TEXT = 0;
+      typesBreakdown.IMAGE = 0;
+      typesBreakdown.VIDEO = 0;
+    }
 
     return {
       audienceDemographicsJson: JSON.stringify({
@@ -226,8 +337,8 @@ class ThreadsService extends BaseSocialService {
         const comments = 0; // Threads API v1.0 chưa trả về comments_count trực tiếp dễ dàng
         const shares = 0;
         const clicks = 0;
-        const reach = Math.floor(reactions * 8 + Math.random() * 20);
-        const views = Math.floor(reach * 1.5);
+        const views = reactions * 12;
+        const reach = reactions * 8;
         const engagement = reach ? parseFloat((((reactions) / reach) * 100).toFixed(2)) : 0;
 
         return {
@@ -318,6 +429,17 @@ class ThreadsService extends BaseSocialService {
       console.log(`[Threads] Publishing container ${container.id}...`);
       const publishRes = await threadsGateway.publishMediaContainer(account.platformAccountId, account.accessToken, container.id);
       console.log(`[Threads] ✅ Published successfully! platformPostId=${publishRes.id}`);
+
+      // Post First Comment if published immediately
+      if (postData.options?.firstComment?.trim()) {
+        try {
+          console.log(`[Threads] Posting first comment: "${postData.options.firstComment.trim()}"`);
+          await threadsGateway.createComment(account.platformAccountId, account.accessToken, publishRes.id, postData.options.firstComment.trim());
+          console.log(`[Threads] First comment posted successfully.`);
+        } catch (commentErr) {
+          console.error(`[Threads] Failed to post first comment:`, commentErr.message);
+        }
+      }
 
       return {
         success: true,

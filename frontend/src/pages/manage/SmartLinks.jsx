@@ -26,6 +26,8 @@ import {
   ChevronRight,
   Twitter,
   Youtube,
+  Facebook,
+  Linkedin,
   Chrome
 } from "lucide-react";
 import { toast } from "sonner";
@@ -788,9 +790,14 @@ export function SmartLinksPage() {
                           
                           {/* Platform Logo */}
                           <div className="text-slate-650 shrink-0 w-8 h-8 rounded-lg bg-white flex items-center justify-center border border-slate-200 shadow-sm">
-                            {sIcon.platform === "twitter" && <Twitter size={16} className="text-sky-500" />}
-                            {sIcon.platform === "instagram" && <Instagram size={16} className="text-pink-600" />}
-                            {sIcon.platform === "youtube" && <Youtube size={16} className="text-red-600" />}
+                            {sIcon.platform === "twitter"   && <Twitter   size={16} className="text-sky-500" />}
+                            {sIcon.platform === "instagram" && <Instagram  size={16} className="text-pink-600" />}
+                            {sIcon.platform === "youtube"   && <Youtube   size={16} className="text-red-600" />}
+                            {sIcon.platform === "facebook"  && <Facebook  size={16} className="text-blue-600" />}
+                            {sIcon.platform === "linkedin"  && <Linkedin  size={16} className="text-sky-700" />}
+                            {sIcon.platform === "tiktok"    && <span className="text-[11px] font-black text-black">TT</span>}
+                            {sIcon.platform === "threads"   && <span className="text-[11px] font-black text-gray-800">@</span>}
+                            {sIcon.platform === "discord"   && <span className="text-[11px] font-black text-indigo-600">DC</span>}
                           </div>
 
                           {/* Select type */}
@@ -802,9 +809,14 @@ export function SmartLinksPage() {
                             }}
                             className="bg-white border border-slate-250 rounded-lg px-2 py-1 text-xs font-bold text-slate-700 outline-none"
                           >
-                            <option value="twitter">Twitter</option>
+                            <option value="twitter">Twitter / X</option>
                             <option value="instagram">Instagram</option>
-                            <option value="youtube">Youtube</option>
+                            <option value="youtube">YouTube</option>
+                            <option value="facebook">Facebook</option>
+                            <option value="tiktok">TikTok</option>
+                            <option value="linkedin">LinkedIn</option>
+                            <option value="threads">Threads</option>
+                            <option value="discord">Discord</option>
                           </select>
 
                           {/* URL Input */}
@@ -835,7 +847,7 @@ export function SmartLinksPage() {
 
                     <button
                       onClick={() => {
-                        const newIcon = { id: `s-${Date.now()}`, platform: "twitter", url: "https://", isActive: true };
+                        const newIcon = { id: `s-${Date.now()}`, platform: "instagram", url: "https://", isActive: true };
                         setSocialIcons(prev => [...prev, newIcon]);
                         toast.success("Đã thêm hàng liên kết mạng xã hội!");
                       }}

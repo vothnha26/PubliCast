@@ -49,7 +49,10 @@ class SubscriptionController {
     if (!brandId) return res.status(400).json({ message: 'brandId là bắt buộc' });
 
     const subscriptionRepository = require('../../repositories/billing/subscription.repository');
+    const postRepository = require('../../repositories/workspace/post.repository');
+
     const subscription = await subscriptionRepository.findActivePlanByBrandId(brandId);
+    const postsUsedThisMonth = await postRepository.countActivePostsThisMonth(brandId);
 
     res.status(200).json({
       data: subscription ? {
@@ -57,8 +60,13 @@ class SubscriptionController {
         billingCycle: subscription.plan.billingCycle,
         periodEnd:    subscription.currentPeriodEnd,
         status:       subscription.status,
-        limits:       subscription.plan.planLimit
-      } : null
+        limits:       subscription.plan.planLimit,
+        postsUsedThisMonth
+      } : {
+        planName:     'FREE',
+        limits:       { maxPostsPerMonth: 10 },
+        postsUsedThisMonth
+      }
     });
   });
 
