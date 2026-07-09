@@ -1,10 +1,7 @@
 const path = require('path');
 const fs = require('fs');
-const http = require('http');
-const https = require('https');
 require('dotenv').config({ path: path.resolve(__dirname, '.env') });
 const BASE_URL = process.env.BASE_URL || 'http://localhost:5173';
-const API_URL = process.env.API_URL || 'http://localhost:3000';
 
 const { expect } = require('chai');
 const { Builder, By, until, Key } = require('selenium-webdriver');
@@ -174,94 +171,43 @@ describe('Post Creator Detailed E2E Suite', function () {
   }
 
   /**
-   * Inject fresh auth cookies bằng cách gọi API login trực tiếp từ Node.js,
-   * lấy Set-Cookie headers từ response, rồi inject vào browser qua Selenium addCookie().
-   * Backend dùng HttpOnly cookie (không trả token trong body) nên phải dùng cách này.
+   * Hard re-login: Xóa toàn bộ cookie và storage trước, sau đó login qua browser.
+   * Khác với performLogin(), hàm này đảm bảo không có refresh token cookie cũ nào
+   * gây ra auto-redirect khi vào trang /login. Backend sẽ set cookie mới đúng domain.
    */
-  async function injectFreshToken() {
+  async function hardRelogin() {
     const email = process.env.ADMIN_EMAIL || 'vothanhnha26@gmail.com';
     const password = process.env.ADMIN_PASSWORD || 'nhacc123@';
-    const apiUrl = API_URL;
 
-    // Gọi API login từ Node.js và lấy Set-Cookie headers
-    const cookies = await new Promise((resolve, reject) => {
-      const payload = JSON.stringify({ email, password });
-      const url = new URL(`${apiUrl}/api/auth/login`);
-      const lib = url.protocol === 'https:' ? https : http;
-      const req = lib.request({
-        hostname: url.hostname,
-        port: url.port || (url.protocol === 'https:' ? 443 : 80),
-        path: url.pathname,
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Content-Length': Buffer.byteLength(payload)
-        }
-      }, (res) => {
-        let body = '';
-        res.on('data', chunk => body += chunk);
-        res.on('end', () => {
-          if (res.statusCode !== 200) {
-            return reject(new Error(`Login API trả về ${res.statusCode}: ${body}`));
-          }
-          // Backend trả token qua Set-Cookie header (HttpOnly), không phải response body
-          const setCookieHeaders = res.headers['set-cookie'] || [];
-          if (setCookieHeaders.length === 0) {
-            return reject(new Error('Không có Set-Cookie headers trong login response'));
-          }
-          resolve(setCookieHeaders);
-        });
-      });
-      req.on('error', reject);
-      req.write(payload);
-      req.end();
+    // Bước 1: Xóa toàn bộ cookie và storage — ngăn refresh token auto-redirect
+    await driver.manage().deleteAllCookies();
+    await driver.executeScript(() => {
+      try { localStorage.clear(); } catch(e) {}
+      try { sessionStorage.clear(); } catch(e) {}
     });
+    console.log('🧹 Đã xóa toàn bộ cookies và storage.');
 
-    // Parse Set-Cookie headers và inject vào browser qua Selenium
-    // Phải đang trên đúng domain trước khi addCookie
-    const currentUrl = await driver.getCurrentUrl();
-    const targetDomain = new URL(BASE_URL).hostname; // localhost
+    // Bước 2: Vào trang login (không có cookie nào — form login hiển thị bình thường)
+    await driver.get(`${BASE_URL}/login`);
+    const emailInput = await driver.wait(until.elementLocated(By.id('email')), 15000);
+    const passwordInput = await driver.findElement(By.id('password'));
+    const submitButton = await driver.findElement(By.xpath("//button[@type='submit']"));
 
-    if (!currentUrl.includes(targetDomain)) {
-      // Navigate đến domain trước để có thể set cookie
-      await driver.get(BASE_URL);
-      await driver.sleep(1000);
-    }
+    await emailInput.clear();
+    await emailInput.sendKeys(email);
+    await passwordInput.clear();
+    await passwordInput.sendKeys(password);
+    await submitButton.click();
 
-    for (const cookieStr of cookies) {
-      // Parse: "accessToken=xxx; Path=/; HttpOnly; SameSite=Lax; Max-Age=900000"
-      const parts = cookieStr.split(';').map(p => p.trim());
-      const [nameValue, ...attrs] = parts;
-      const eqIdx = nameValue.indexOf('=');
-      const name = nameValue.substring(0, eqIdx).trim();
-      const value = nameValue.substring(eqIdx + 1).trim();
+    // Bước 3: Chờ redirect thành công sau login
+    await driver.wait(async () => {
+      const url = await driver.getCurrentUrl();
+      return url.includes('/dashboard') || url.includes('/start') || url.includes('/manage');
+    }, 15000);
 
-      const attrMap = {};
-      for (const attr of attrs) {
-        const [k, v] = attr.split('=').map(p => p.trim());
-        attrMap[k.toLowerCase()] = v || true;
-      }
-
-      // Selenium addCookie không hỗ trợ HttpOnly flag qua JS — nhưng vẫn set được value
-      const cookieObj = {
-        name,
-        value,
-        domain: targetDomain,
-        path: attrMap['path'] || '/',
-        secure: 'secure' in attrMap,
-        httpOnly: 'httponly' in attrMap
-      };
-
-      try {
-        await driver.manage().addCookie(cookieObj);
-        console.log(`✅ Đã inject cookie: ${name}=${value.substring(0, 20)}...`);
-      } catch (e) {
-        console.warn(`⚠️ Không thể inject cookie ${name}: ${e.message}`);
-      }
-    }
-
-    console.log('✅ [injectFreshToken] Auth cookies đã được inject vào browser.');
+    console.log('✅ [hardRelogin] Đăng nhập lại thành công, session mới đã được thiết lập.');
   }
+
 
 
 
@@ -557,10 +503,10 @@ describe('Post Creator Detailed E2E Suite', function () {
   it('TC_POST_09 – Verify scheduling a post for tomorrow saves scheduledAt correctly in DB and displays on List UI', async function () {
     await seedPlatforms(['FACEBOOK']);
     // TC_POST_09 chạy sau ~90s, access token 15 phút có thể đã hết hạn ở tầng API.
-    // Dùng injectFreshToken() để gọi API login trực tiếp từ Node.js và inject token mới vào
-    // localStorage, tránh hoàn toàn mọi vấn đề về SPA session management và cookie flow.
-    console.log('🔑 [TC_POST_09] Injecting fresh token via direct API call...');
-    await injectFreshToken();
+    // Dùng hardRelogin(): xóa toàn bộ cookie/storage trước để ngăn auto-redirect,
+    // sau đó login qua browser — server sẽ set cookie mới đúng domain.
+    console.log('🔑 [TC_POST_09] Hard re-login để đảm bảo session mới trước khi submit...');
+    await hardRelogin();
     await navigateToPlannerAndPrepare();
     await safeClick(By.css('[data-testid="planner-create-post-btn"]'));
     await driver.sleep(2000);
