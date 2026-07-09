@@ -1,5 +1,6 @@
 const BaseWebhookStrategy = require('./base.webhook-strategy');
 const inboxRepository = require('../../../../repositories/social/inbox.repository');
+const autoReplyService = require('../../inbox/strategies/auto-reply/auto-reply.service');
 const { PLATFORMS, INBOX_STATUS, INBOX_TYPES, FACEBOOK_API, API_VERSIONS } = require('../../../../utils/constants');
 const logger = require('../../../../utils/logger');
 
@@ -76,6 +77,18 @@ class FacebookFeedStrategy extends BaseWebhookStrategy {
       // Notify Frontend
       const eventName = verb === 'add' ? 'new_inbox_item' : 'inbox_item_updated';
       this.notifyClient(account.brandId, eventName, savedItem);
+
+      // Execute Auto-Reply if comment is new and not from the page itself
+      if (verb === 'add' && !isFromMe) {
+        autoReplyService.executeAutoReply(
+          account.id,
+          value.message || '',
+          commentId,
+          account.brandId
+        ).catch(err => {
+          logger.error(`[FacebookFeedStrategy] Error executing auto-reply for comment ${commentId}:`, err);
+        });
+      }
 
     } else if (verb === 'remove' || verb === 'hide') {
       const existingItem = await inboxRepository.findInboxItemByPlatformId(commentId);

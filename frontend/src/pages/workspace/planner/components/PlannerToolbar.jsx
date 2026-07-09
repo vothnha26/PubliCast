@@ -93,7 +93,8 @@ export function PlannerToolbar({
   bestTimePlatform = 'INSTAGRAM',
   onBestTimePlatformChange,
   calendarViewMode = 'WEEK',
-  onCalendarViewModeChange
+  onCalendarViewModeChange,
+  onImportIcsClick
 }) {
   const navigate = useNavigate();
   const location = useLocation();
@@ -512,7 +513,7 @@ export function PlannerToolbar({
 
                 <div className="my-1 border-t border-gray-100" />
 
-                <AccessGuard feature="IMPORT_CSV">
+                 <AccessGuard feature="IMPORT_CSV">
                   <button 
                     onClick={() => fileInputRef.current?.click()}
                     className="w-full px-4 py-2 text-xs font-bold flex items-center gap-3 group transition-colors border-none bg-transparent text-gray-700 hover:bg-gray-50 cursor-pointer"
@@ -521,6 +522,18 @@ export function PlannerToolbar({
                     <span>Import CSV</span>
                   </button>
                 </AccessGuard>
+
+                {/* Import .ics */}
+                <button 
+                  onClick={() => {
+                    if (onImportIcsClick) onImportIcsClick();
+                    setIsMoreMenuOpen(false);
+                  }}
+                  className="w-full px-4 py-2 text-xs font-bold text-gray-700 hover:bg-gray-50 flex items-center gap-3 group cursor-pointer transition-colors border-none bg-transparent"
+                >
+                  <Calendar size={14} className="text-gray-400 group-hover:text-gray-700" />
+                  <span>Import Google Calendar (.ics)</span>
+                </button>
 
                 {/* 5. Export CSV */}
                 <button 
@@ -548,7 +561,7 @@ export function PlannerToolbar({
                 {/* 7. Notifications */}
                 <button 
                   onClick={() => {
-                    toast.success("Notification settings updated.");
+                    navigate("/settings?tab=account");
                     setIsMoreMenuOpen(false);
                   }}
                   className="w-full px-4 py-2 text-xs font-bold text-gray-700 hover:bg-gray-50 flex items-center gap-3 group cursor-pointer transition-colors border-none bg-transparent"

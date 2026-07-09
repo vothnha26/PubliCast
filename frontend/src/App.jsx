@@ -23,12 +23,8 @@ import { GettingStartedPage } from "./pages/workspace/Start";
 // Workspace Pages
 import { DashboardPage } from "./pages/workspace/Dashboard";
 import { PlatformDashboardPage } from "./pages/workspace/PlatformDashboard";
-import { StreamSchedulerPage } from "./pages/workspace/StreamScheduler";
-import { LiveMonitorPage } from "./pages/workspace/LiveMonitor";
-import { LiveSetupPage } from "./pages/workspace/LiveSetup";
 import { AnalyticsPage } from "./pages/workspace/Analytics";
 import { MediaLibraryPage } from "./pages/workspace/MediaLibrary";
-import { StreamHistoryPage } from "./pages/workspace/StreamHistory";
 import { SettingsPage } from "./pages/workspace/Settings";
 import { PricingPage } from "./pages/workspace/Pricing";
 import { AIAssistant } from "./pages/workspace/AIAssistant";

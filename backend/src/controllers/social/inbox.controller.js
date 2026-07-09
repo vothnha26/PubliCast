@@ -105,6 +105,38 @@ class InboxController {
     await inboxService.deleteReply(brandId, replyId);
     res.json({ message: 'Reply deleted successfully' });
   });
+
+  /**
+   * GET /api/inbox/auto-reply/settings/:socialAccountId
+   */
+  getAutoReplySettings = asyncHandler(async (req, res) => {
+    const { socialAccountId } = req.params;
+    if (!socialAccountId) {
+      return res.status(400).json({ message: 'socialAccountId is required' });
+    }
+
+    const settings = await inboxService.getAutoReplySettings(socialAccountId);
+    res.status(200).json({
+      message: 'Auto-reply settings retrieved successfully',
+      data: settings
+    });
+  });
+
+  /**
+   * POST /api/inbox/auto-reply/settings/:socialAccountId
+   */
+  saveAutoReplySettings = asyncHandler(async (req, res) => {
+    const { socialAccountId } = req.params;
+    if (!socialAccountId) {
+      return res.status(400).json({ message: 'socialAccountId is required' });
+    }
+
+    const settings = await inboxService.saveAutoReplySettings(socialAccountId, req.body);
+    res.status(200).json({
+      message: 'Auto-reply settings updated successfully',
+      data: settings
+    });
+  });
 }
 
 module.exports = new InboxController();

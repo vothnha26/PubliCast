@@ -5,29 +5,25 @@ import { X, Plus, Hash, Layers, BarChart2, Compass, Trash2, Globe, Sparkles, Ale
 import { toast } from "sonner";
 import apiService from "../../services/api";
 import { useBrand } from "../../context/BrandContext";
+import { useConfirm } from "@/hooks/useConfirm";
 
-const categories = ["Trending", "Fitness", "Food", "Tech", "Travel", "Fashion", "Business"];
+const categories = ["Instagram", "TikTok", "General"];
 const platformColors = { YT: "#FF0000", IG: "#E1306C", TK: "#000000", LI: "#0A66C2", X: "#0A0A0A" };
-
-const TREND_MOCK_HASHTAGS = [
-  { tag: "#fitness", posts: "2.4M", trend: "up" },
-  { tag: "#motivation", posts: "1.8M", trend: "up" },
-  { tag: "#gym", posts: "3.1M", trend: "stable" },
-  { tag: "#workout", posts: "2.7M", trend: "up" },
-  { tag: "#health", posts: "4.2M", trend: "stable" },
-  { tag: "#tech", posts: "1.2M", trend: "up" },
-  { tag: "#marketing", posts: "2.1M", trend: "up" },
-  { tag: "#business", posts: "1.9M", trend: "up" }
-];
 
 export function HashtagManager() {
   const { activeBrand } = useBrand();
+  const confirm = useConfirm();
   const location = useLocation();
   const navigate = useNavigate();
   
-  const [activeCategory, setActiveCategory] = useState("Trending");
+  const [activeCategory, setActiveCategory] = useState("Instagram");
   const [activeTab, setActiveTab] = useState("sets");
   const [loading, setLoading] = useState(false);
+
+  // Trending states
+  const [trendingHashtags, setTrendingHashtags] = useState([]);
+  const [trendingLoading, setTrendingLoading] = useState(false);
+  const [trendingError, setTrendingError] = useState(null);
   
   // Real DB states
   const [hashtagSets, setHashtagSets] = useState([]);
@@ -60,6 +56,30 @@ export function HashtagManager() {
   useEffect(() => {
     loadData();
   }, [activeBrand?.id]);
+
+  const loadTrendingHashtags = async (cat) => {
+    setTrendingLoading(true);
+    setTrendingError(null);
+    try {
+      let platformParam = "MOCK";
+      if (cat === "Instagram") platformParam = "INSTAGRAM";
+      if (cat === "TikTok") platformParam = "TIKTOK";
+
+      const res = await apiService.get(`/hashtags/trending?platform=${platformParam}&limit=20`);
+      setTrendingHashtags(res.data.trending || []);
+    } catch (err) {
+      setTrendingError("Không thể tải danh sách hashtag đang thịnh hành.");
+      console.error(err);
+    } finally {
+      setTrendingLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (activeTab === "discover") {
+      loadTrendingHashtags(activeCategory);
+    }
+  }, [activeTab, activeCategory]);
 
   useEffect(() => {
     const params = new URLSearchParams(location.search);
@@ -119,7 +139,13 @@ export function HashtagManager() {
 
   // Delete Set Action
   const handleDeleteSet = async (setId) => {
-    if (!window.confirm("Bạn có chắc chắn muốn xóa bộ hashtag này?")) return;
+    const isConfirmed = await confirm({
+      title: "Xóa bộ Hashtag",
+      description: "Bạn có chắc chắn muốn xóa bộ hashtag này?",
+      confirmText: "Xóa",
+      cancelText: "Hủy"
+    });
+    if (!isConfirmed) return;
     try {
       await apiService.delete(`/hashtags/sets/${setId}`);
       toast.success("Đã xóa bộ hashtag thành công.");
@@ -299,28 +325,61 @@ export function HashtagManager() {
                   ))}
                 </div>
                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                  {TREND_MOCK_HASHTAGS.map((tag) => (
-                    <div key={tag.tag} className="bg-white rounded-xl p-4 border border-gray-150 shadow-xs flex flex-col justify-between min-h-[110px]">
-                      <div>
-                        <div className="font-bold text-gray-900 text-xs flex items-center gap-1">
-                          <Globe size={11} className="text-gray-400" />
-                          {tag.tag}
+                  {trendingLoading ? (
+                    Array.from({ length: 8 }).map((_, i) => (
+                      <div key={i} className="bg-white rounded-xl p-4 border border-gray-150 shadow-xs flex flex-col justify-between min-h-[110px] animate-pulse">
+                        <div className="space-y-2">
+                          <div className="h-4 bg-gray-100 rounded w-2/3" />
+                          <div className="h-3 bg-gray-100 rounded w-1/3" />
                         </div>
-                        <div className="text-[9px] text-gray-400 font-bold uppercase mt-1">{tag.posts} posts</div>
+                        <div className="flex items-center justify-between pt-3 border-t border-gray-50">
+                          <div className="h-3 bg-gray-100 rounded w-1/2" />
+                          <div className="h-3 bg-gray-100 rounded w-1/4" />
+                        </div>
                       </div>
-                      <div className="flex items-center justify-between pt-3 border-t border-gray-50">
-                        <span className={`text-[9px] font-extrabold ${tag.trend === "up" ? "text-green-500" : "text-gray-400"}`}>
-                          {tag.trend === "up" ? "TRENDING ↑" : "STABLE →"}
-                        </span>
-                        <button 
-                          onClick={() => handleTrackNewTag(tag.tag)}
-                          className="text-[9px] font-bold text-blue-600 hover:underline cursor-pointer"
-                        >
-                          + Track Tag
-                        </button>
-                      </div>
+                    ))
+                  ) : trendingError ? (
+                    <div className="col-span-full bg-white rounded-2xl p-10 border border-gray-150 shadow-xs flex flex-col items-center justify-center text-center gap-3">
+                      <AlertCircle size={24} className="text-red-500" />
+                      <span className="text-xs text-gray-500 font-bold">{trendingError}</span>
+                      <button 
+                        onClick={() => loadTrendingHashtags(activeCategory)} 
+                        className="px-4 py-2 bg-black text-white text-[10px] font-bold rounded-lg cursor-pointer"
+                      >
+                        Tải lại
+                      </button>
                     </div>
-                  ))}
+                  ) : trendingHashtags.length === 0 ? (
+                    <div className="col-span-full bg-white rounded-2xl p-10 border border-gray-150 shadow-xs flex flex-col items-center justify-center text-center gap-2">
+                      <Compass size={24} className="text-gray-300" />
+                      <span className="text-xs text-gray-500 font-bold">Không tìm thấy hashtag nào thịnh hành.</span>
+                    </div>
+                  ) : (
+                    trendingHashtags.map((tag) => (
+                      <div key={tag.hashtag} className="bg-white rounded-xl p-4 border border-gray-150 shadow-xs flex flex-col justify-between min-h-[110px]">
+                        <div>
+                          <div className="font-bold text-gray-900 text-xs flex items-center gap-1">
+                            <Globe size={11} className="text-gray-400" />
+                            {tag.hashtag}
+                          </div>
+                          <div className="text-[9px] text-gray-400 font-bold uppercase mt-1">
+                            {tag.postsCount ? (tag.postsCount / 1000).toFixed(0) + "K" : "0"} posts
+                          </div>
+                        </div>
+                        <div className="flex items-center justify-between pt-3 border-t border-gray-50">
+                          <span className={`text-[9px] font-extrabold ${tag.growthRate > 10 ? "text-green-500" : "text-gray-400"}`}>
+                            {tag.growthRate > 10 ? `TRENDING ↑ ${tag.growthRate}%` : "STABLE →"}
+                          </span>
+                          <button 
+                            onClick={() => handleTrackNewTag(tag.hashtag)}
+                            className="text-[9px] font-bold text-blue-600 hover:underline cursor-pointer"
+                          >
+                            + Track Tag
+                          </button>
+                        </div>
+                      </div>
+                    ))
+                  )}
                 </div>
               </div>
             )}

@@ -15,6 +15,7 @@ import { WeeklyGrid } from "./components/WeeklyGrid";
 import { SidebarIntegrations } from "./components/SidebarIntegrations";
 import { ImportOverlay } from "./components/ImportOverlay";
 import { MonthlyGrid } from "./components/MonthlyGrid";
+import { IcsImportModal } from "./components/IcsImportModal";
 
 import { useBrandPermission } from "../../../hooks/useBrandPermission";
 import { PostAnalyticsDetailModal } from "../../../components/workspace/PostAnalyticsDetailModal";
@@ -36,6 +37,8 @@ export function WeeklyCalendarView() {
   };
   const { activeBrand } = useBrand();
   const [postData, setPostData] = useState([]);
+  const [eventsData, setEventsData] = useState([]);
+  const [isIcsModalOpen, setIsIcsModalOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [showSidebar, setShowSidebar] = useState(false);
   const [rowHeight, setRowHeight] = useState(100);
@@ -64,6 +67,21 @@ export function WeeklyCalendarView() {
   const { isImporting, importFromDrive } = useGoogleDriveImport(activeBrand);
   
   const [monthlyPostCount, setMonthlyPostCount] = useState(0);
+  const [bestTimesData, setBestTimesData] = useState([]);
+
+  // Fetch Best Times to Post metrics
+  useEffect(() => {
+    if (!activeBrand) return;
+    const fetchBestTimes = async () => {
+      try {
+        const res = await apiService.get(`/posts/best-times?brandId=${activeBrand.id}&platform=${bestTimePlatform}`);
+        setBestTimesData(res.data.data || []);
+      } catch (e) {
+        console.error("Failed to fetch best times:", e);
+      }
+    };
+    fetchBestTimes();
+  }, [activeBrand, bestTimePlatform]);
 
   useEffect(() => {
     if (!activeBrand) return;
@@ -134,10 +152,14 @@ export function WeeklyCalendarView() {
     }
 
     try {
-      const res = await apiService.get(`/posts?brandId=${activeBrand.id}&startDate=${startDateStr}&endDate=${endDateStr}&limit=100`);
-      setPostData(res.data.data || []);
+      const [postsRes, eventsRes] = await Promise.all([
+        apiService.get(`/posts?brandId=${activeBrand.id}&startDate=${startDateStr}&endDate=${endDateStr}&limit=100`),
+        apiService.get(`/calendar-events?brandId=${activeBrand.id}&startDate=${startDateStr}&endDate=${endDateStr}`)
+      ]);
+      setPostData(postsRes.data.data || []);
+      setEventsData(eventsRes.data.data || []);
     } catch (e) {
-      toast.error("Failed to load posts");
+      toast.error("Failed to load calendar data");
     } finally {
       setLoading(false);
     }
@@ -254,6 +276,7 @@ export function WeeklyCalendarView() {
         onBestTimePlatformChange={setBestTimePlatform}
         calendarViewMode={calendarViewMode}
         onCalendarViewModeChange={setCalendarViewMode}
+        onImportIcsClick={() => setIsIcsModalOpen(true)}
       />
 
       {loading && (
@@ -271,6 +294,7 @@ export function WeeklyCalendarView() {
             <MonthlyGrid
               selectedDate={selectedDate}
               postData={postData}
+              eventsData={eventsData}
               onCellClick={handleCellClick}
               onPostClick={handlePostClick}
               visiblePlatforms={visiblePlatforms}
@@ -285,6 +309,8 @@ export function WeeklyCalendarView() {
               onCellDrop={importFromDrive}
               rowHeight={rowHeight}
               bestTimePlatform={bestTimePlatform}
+              bestTimesData={bestTimesData}
+              eventsData={eventsData}
               viewMode={calendarViewMode}
             />
           )}
@@ -300,6 +326,15 @@ export function WeeklyCalendarView() {
 
       {/* Google Drive Import Backdrop Overlay */}
       <ImportOverlay isOpen={isImporting} />
+      
+      {/* ICS Google Calendar Import Modal */}
+      <IcsImportModal
+        isOpen={isIcsModalOpen}
+        onClose={() => setIsIcsModalOpen(false)}
+        activeBrand={activeBrand}
+        onImportSuccess={fetchPosts}
+      />
+
       <PostAnalyticsDetailModal
         isOpen={analyticsModal.open}
         onClose={() => setAnalyticsModal({ open: false, post: null })}

@@ -1,6 +1,7 @@
 const BaseWebhookStrategy = require('./base.webhook-strategy');
 const inboxRepository = require('../../../../repositories/social/inbox.repository');
 const { PLATFORMS, INBOX_STATUS, INBOX_TYPES } = require('../../../../utils/constants');
+const autoReplyService = require('../../inbox/strategies/auto-reply/auto-reply.service');
 const logger = require('../../../../utils/logger');
 
 class InstagramCommentsStrategy extends BaseWebhookStrategy {
@@ -75,6 +76,18 @@ class InstagramCommentsStrategy extends BaseWebhookStrategy {
 
     // Notify Frontend
     this.notifyClient(account.brandId, 'new_inbox_item', savedItem);
+
+    // Execute Auto-Reply if comment is new and not from the IG page itself
+    if (value.verb !== 'remove' && !isFromMe && text) {
+      autoReplyService.executeAutoReply(
+        account.id,
+        text || '',
+        commentId,
+        account.brandId
+      ).catch(err => {
+        logger.error(`[InstagramCommentsStrategy] Error executing auto-reply for comment ${commentId}:`, err);
+      });
+    }
   }
 }
 
