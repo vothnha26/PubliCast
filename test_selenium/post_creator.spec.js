@@ -219,7 +219,7 @@ describe('Post Creator Detailed E2E Suite', function () {
     const currentUrl = await driver.getCurrentUrl();
     if (currentUrl.includes('/login') || currentUrl.includes('/register')) {
       console.log('⚠️  Bị redirect về login page, đang tự động re-login...');
-      await performLogin();
+      await hardRelogin();
       await driver.get(plannerUrl);
     }
 
@@ -228,7 +228,7 @@ describe('Post Creator Detailed E2E Suite', function () {
       await driver.wait(until.elementLocated(By.css('[data-testid="planner-create-post-btn"]')), 8000);
     } catch (e) {
       console.log('⚠️  Không tìm thấy planner button, session có thể hết hạn, đang re-login...');
-      await performLogin();
+      await hardRelogin();
       await driver.get(plannerUrl);
       await driver.wait(until.elementLocated(By.css('[data-testid="planner-create-post-btn"]')), 15000);
     }

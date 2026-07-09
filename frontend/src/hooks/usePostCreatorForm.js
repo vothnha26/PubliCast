@@ -583,7 +583,7 @@ export function usePostCreatorForm() {
 
     const errors = getValidationErrors();
     if (errors.length > 0) {
-      console.warn("Validation errors detected in PostCreator Form:", errors);
+      console.warn("Validation errors detected in PostCreator Form:", JSON.stringify(errors));
       toast.error("Please resolve the validation errors first");
       return;
     }

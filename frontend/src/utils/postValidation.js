@@ -33,7 +33,7 @@ export function validatePostForm({
 
   // 1. Validate ngày lên lịch
   if (['schedule', 'review'].includes(selectedPublishId)) {
-    const isPastDate = new Date(scheduledDate).getTime() < Date.now() - 60000;
+    const isPastDate = new Date(scheduledDate).getTime() < Date.now() - 15 * 60 * 1000; // Cho phép trễ tối đa 15 phút
     if (isPastDate) {
       errors.push("Publish date can't be a past date.");
     }
