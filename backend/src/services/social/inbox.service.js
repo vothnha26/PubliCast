@@ -18,6 +18,7 @@ const FacebookDMSyncStrategy = require('./inbox/strategies/facebook-dm.strategy'
 const InstagramDMSyncStrategy = require('./inbox/strategies/instagram-dm.strategy');
 const DiscordChannelMessageStrategy = require('./inbox/strategies/discord-channel.strategy');
 const DiscordDirectMessageStrategy = require('./inbox/strategies/discord-dm.strategy');
+const TiktokCommentSyncStrategy = require('./inbox/strategies/tiktok-comment.strategy');
 const autoReplyService = require('./inbox/strategies/auto-reply/auto-reply.service');
 
 class InboxService {
@@ -37,7 +38,8 @@ class InboxService {
       new FacebookDMSyncStrategy(),
       new InstagramDMSyncStrategy(),
       new DiscordChannelMessageStrategy(),
-      new DiscordDirectMessageStrategy()
+      new DiscordDirectMessageStrategy(),
+      new TiktokCommentSyncStrategy()
     ];
   }
 
