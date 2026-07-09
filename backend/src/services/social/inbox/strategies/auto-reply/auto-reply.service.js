@@ -1,0 +1,115 @@
+const prisma = require('../../../../../config/prisma'); // Đường dẫn đến prisma client instance
+const KeywordAutoReplyStrategy = require('./keyword-reply.strategy');
+const AIAutoReplyStrategy = require('./ai-reply.strategy');
+const facebookComment = require('../../../facebook/facebook-comment.service');
+const socketManager = require('../../../../workspace/socket/socket.manager');
+const logger = require('../../../../../utils/logger');
+
+class AutoReplyService {
+  constructor() {
+    this.strategies = {
+      KEYWORD: new KeywordAutoReplyStrategy(),
+      AI: new AIAutoReplyStrategy()
+    };
+  }
+
+  /**
+   * Lấy cấu hình tự động trả lời theo socialAccountId
+   */
+  async getSettings(socialAccountId) {
+    let settings = await prisma.autoReplySetting.findUnique({
+      where: { socialAccountId }
+    });
+
+    // Nếu chưa có, tạo cấu hình mặc định
+    if (!settings) {
+      settings = await prisma.autoReplySetting.create({
+        data: {
+          socialAccountId,
+          isActive: false,
+          mode: 'KEYWORD',
+          keywordsConfig: [],
+          aiPrompt: 'Hãy trả lời câu hỏi của khách hàng một cách lịch sự và chuyên nghiệp.'
+        }
+      });
+    }
+
+    return settings;
+  }
+
+  /**
+   * Cập nhật cấu hình tự động trả lời
+   */
+  async saveSettings(socialAccountId, data) {
+    const { isActive, mode, keywordsConfig, aiPrompt } = data;
+    
+    return await prisma.autoReplySetting.upsert({
+      where: { socialAccountId },
+      update: {
+        isActive: isActive !== undefined ? isActive : undefined,
+        mode: mode || undefined,
+        keywordsConfig: keywordsConfig !== undefined ? keywordsConfig : undefined,
+        aiPrompt: aiPrompt !== undefined ? aiPrompt : undefined
+      },
+      create: {
+        socialAccountId,
+        isActive: isActive || false,
+        mode: mode || 'KEYWORD',
+        keywordsConfig: keywordsConfig || [],
+        aiPrompt: aiPrompt || 'Hãy trả lời câu hỏi của khách hàng một cách lịch sự và chuyên nghiệp.'
+      }
+    });
+  }
+
+  /**
+   * Thực hiện quy trình tự động phản hồi bình luận
+   * @param {string} socialAccountId - ID tài khoản MXH (Facebook Page ID)
+   * @param {string} commentText - Nội dung bình luận của người dùng
+   * @param {string} commentPlatformId - ID bình luận trên nền tảng (Facebook comment id)
+   * @param {string} brandId - ID Brand quản lý
+   */
+  async executeAutoReply(socialAccountId, commentText, commentPlatformId, brandId) {
+    try {
+      const settings = await this.getSettings(socialAccountId);
+      
+      if (!settings || !settings.isActive) {
+        logger.info(`[AutoReplyService] Auto-reply is disabled or not configured for account: ${socialAccountId}`);
+        return null;
+      }
+
+      const strategy = this.strategies[settings.mode];
+      if (!strategy) {
+        logger.warn(`[AutoReplyService] Unsupported auto-reply mode: ${settings.mode}`);
+        return null;
+      }
+
+      // Xác định bối cảnh/cấu hình cần truyền vào Strategy
+      const config = settings.mode === 'KEYWORD' ? settings.keywordsConfig : settings.aiPrompt;
+      
+      logger.info(`[AutoReplyService] Executing auto-reply in mode: ${settings.mode} for comment: "${commentText}"`);
+      const replyText = await strategy.reply(commentText, config);
+
+      if (!replyText) {
+        logger.info(`[AutoReplyService] No match or reply generated for comment: "${commentText}"`);
+        return null;
+      }
+
+      logger.info(`[AutoReplyService] Generated auto-reply: "${replyText}". Sending to Facebook Graph API...`);
+      
+      // Gọi Meta Graph API để reply comment
+      const savedReply = await facebookComment.replyToComment(brandId, commentPlatformId, replyText);
+
+      // Gửi Socket.io báo cho frontend cập nhật UI ngay lập tức
+      const room = `brand_room_${brandId}`;
+      socketManager.emitToRoom(room, 'new_inbox_item', savedReply);
+      logger.info(`[AutoReplyService] Broadcasted auto-reply message to room ${room}`);
+
+      return savedReply;
+    } catch (error) {
+      logger.error('[AutoReplyService] Failed to execute auto-reply:', error);
+      return null;
+    }
+  }
+}
+
+module.exports = new AutoReplyService();

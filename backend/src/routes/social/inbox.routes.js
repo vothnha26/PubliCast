@@ -39,4 +39,7 @@ router.patch('/:id/metadata', inboxController.updateMetadata);
 router.patch('/replies/:replyId', featureGate, inboxController.updateReply);
 router.delete('/replies/:replyId', featureGate, inboxController.deleteReply);
 
+router.get('/auto-reply/settings/:socialAccountId', featureGate, inboxController.getAutoReplySettings);
+router.post('/auto-reply/settings/:socialAccountId', featureGate, inboxController.saveAutoReplySettings);
+
 module.exports = router;

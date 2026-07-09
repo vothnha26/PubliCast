@@ -18,6 +18,7 @@ const FacebookDMSyncStrategy = require('./inbox/strategies/facebook-dm.strategy'
 const InstagramDMSyncStrategy = require('./inbox/strategies/instagram-dm.strategy');
 const DiscordChannelMessageStrategy = require('./inbox/strategies/discord-channel.strategy');
 const DiscordDirectMessageStrategy = require('./inbox/strategies/discord-dm.strategy');
+const autoReplyService = require('./inbox/strategies/auto-reply/auto-reply.service');
 
 class InboxService {
   constructor() {
@@ -276,6 +277,14 @@ class InboxService {
     } catch (e) {
       return null;
     }
+  }
+
+  async getAutoReplySettings(socialAccountId) {
+    return await autoReplyService.getSettings(socialAccountId);
+  }
+
+  async saveAutoReplySettings(socialAccountId, data) {
+    return await autoReplyService.saveSettings(socialAccountId, data);
   }
 }
 

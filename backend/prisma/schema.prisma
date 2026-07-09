@@ -432,6 +432,7 @@ model SocialAccount {
   youtubeChannel   YouTubeChannel?
   telegramAccount  TelegramAccount?
   discordAccount   DiscordAccount?
+  autoReplySetting AutoReplySetting?
 
   // Facebook dedicated metrics
   facebookOverviewMetrics FacebookOverviewMetric[] @relation("FacebookOverviewMetricAccount")
@@ -1630,4 +1631,20 @@ model PlatformLimit {
 
   @@unique([platform, subType])
 }
+
+model AutoReplySetting {
+  id                String   @id @default(uuid())
+  socialAccountId   String   @unique
+  isActive          Boolean  @default(false)
+  mode              String   @default("KEYWORD") // "KEYWORD" or "AI"
+  keywordsConfig    Json?    // e.g. [{"keywords": ["giá", "inbox"], "reply": "Dạ..."}]
+  aiPrompt          String?  @db.Text
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  socialAccount     SocialAccount @relation(fields: [socialAccountId], references: [id], onDelete: Cascade)
+
+  @@map("auto_reply_settings")
+}
+
 

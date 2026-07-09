@@ -3,6 +3,7 @@ import { BrowserRouter } from "react-router-dom";
 import App from "./App";
 import { AppInitializer } from "./components/AppInitializer";
 import { Toaster } from "sonner";
+import { ThemeProvider } from "./context/ThemeContext";
 import "./index.css";
 import { logger } from "@/utils/logger";
 
@@ -15,8 +16,10 @@ window.console.debug = logger.debug;
 
 createRoot(document.getElementById("root")).render(
   <BrowserRouter>
-    <AppInitializer />
-    <App />
-    <Toaster position="top-right" richColors />
+    <ThemeProvider>
+      <AppInitializer />
+      <App />
+      <Toaster position="top-right" richColors />
+    </ThemeProvider>
   </BrowserRouter>
 );

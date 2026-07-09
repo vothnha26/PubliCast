@@ -1,5 +1,6 @@
 const axios = require('axios');
 const BaseAiProvider = require('./base.provider');
+const MockAiProvider = require('./mock.provider');
 const { compileResponseSchemaInstruction, GEMINI_CONFIG } = require('../../../../config/ai.config');
 
 class GeminiProvider extends BaseAiProvider {
@@ -55,8 +56,14 @@ class GeminiProvider extends BaseAiProvider {
       const text = response.data.candidates[0].content.parts[0].text;
       return JSON.parse(text);
     } catch (error) {
-      console.error('[GeminiProvider] API call failed:', error.response?.data || error.message);
-      throw new Error(`Gemini API call failed: ${error.response?.data?.error?.message || error.message}`);
+      console.warn('[GeminiProvider] API call failed, falling back to MockAiProvider. Error details:', error.response?.data || error.message);
+      try {
+        const mockProvider = new MockAiProvider();
+        return await mockProvider.generate(prompt, options);
+      } catch (fallbackError) {
+        console.error('[GeminiProvider] Fallback to MockAiProvider also failed:', fallbackError.message);
+        throw new Error(`Gemini API call failed: ${error.response?.data?.error?.message || error.message}`);
+      }
     }
   }
 }

@@ -3,18 +3,18 @@ Run npm run test:brand
 > publicast-selenium-tests@1.0.0 test:brand
 > mocha brand/*.spec.js
 
-◇ injected env (8) from .env // tip: ◈ encrypted .env [www.dotenvx.com]
-◇ injected env (0) from .env // tip: ⌘ override existing { override: true }
-◇ injected env (0) from .env // tip: ⌁ auth for agents [www.vestauth.com]
-◇ injected env (0) from .env // tip: ⌁ auth for agents [www.vestauth.com]
-◇ injected env (0) from .env // tip: ⌁ auth for agents [www.vestauth.com]
+◇ injected env (8) from .env // tip: ◈ secrets for agents [www.dotenvx.com]
+◇ injected env (0) from .env // tip: ⌘ multiple files { path: ['.env.local', '.env'] }
+◇ injected env (0) from .env // tip: ◈ encrypted .env [www.dotenvx.com]
 ◇ injected env (0) from .env // tip: ⌘ enable debugging { debug: true }
+◇ injected env (0) from .env // tip: ⌘ override existing { override: true }
+◇ injected env (0) from .env // tip: ⌘ suppress logs { quiet: true }
 
 
   Brand Creation
 ✅ [loginAs] Đăng nhập thành công bằng tài khoản seed: vothanhnha26@gmail.com
-    ✔ TC03 – Create brand successfully (442ms)
-    ✔ TC04 – Validation: empty name (178ms)
+    ✔ TC03 – Create brand successfully (445ms)
+    ✔ TC04 – Validation: empty name (187ms)
     ✔ TC07 – Admin can see Add brand button
 
   Brand Deletion
@@ -24,8 +24,8 @@ Run npm run test:brand
 
   Brand Error Handling
 ✅ [loginAs] Đăng nhập thành công bằng tài khoản seed: vothanhnha26@gmail.com
-    ✔ TC14 – Submit disabled when brand name is empty (195ms)
-    ✔ TC15 – Cancel brand creation modal works (197ms)
+    ✔ TC14 – Submit disabled when brand name is empty (228ms)
+    ✔ TC15 – Cancel brand creation modal works (212ms)
 
   Brand List
 ✅ [loginAs] Đăng nhập thành công bằng tài khoản seed: vothanhnha26@gmail.com
@@ -34,17 +34,17 @@ Run npm run test:brand
 
   Brand Update
 ✅ [loginAs] Đăng nhập thành công bằng tài khoản seed: vothanhnha26@gmail.com
-    ✔ TC08 – Update brand name (224ms)
-    ✔ TC09 – Save button disabled when name unchanged (177ms)
+    ✔ TC08 – Update brand name (268ms)
+    ✔ TC09 – Save button disabled when name unchanged (148ms)
 
 
-  11 passing (22s)
+  11 passing (23s)
 
 
 > publicast-selenium-tests@1.0.0 test:auth-suite
 > node test_auth_suite.js
 
-◇ injected env (8) from .env // tip: ◈ encrypted .env [www.dotenvx.com]
+◇ injected env (8) from .env // tip: ⌘ custom filepath { path: '/custom/path/.env' }
 =========================================================
 🚀 KHỞI ĐỘNG BỘ KIỂM THỬ TỰ ĐỘNG THÀNH VIÊN (AUTH SUITE) 🚀
 =========================================================
@@ -60,7 +60,7 @@ Run npm run test:brand
 🧹 Đã làm sạch session trình duyệt (Cookies, LocalStorage, SessionStorage).
 👉 Đã truy cập trang Đăng ký.
 ✍️ Nhập Tên: 'Selenium Auth Tester'
-✍️ Nhập Email: 'auth_test_user_1783439471527@gmail.com'
+✍️ Nhập Email: 'auth_test_user_1783583836949@gmail.com'
 ✍️ Nhập Mật khẩu: 'Password123!'
 ✍️ Nhập Xác nhận mật khẩu: 'Password123!'
 🖱️ Tick chọn đồng ý điều khoản...
@@ -70,15 +70,15 @@ Run npm run test:brand
 🎉 Đã chuyển sang trang OTP.
 📸 Đã lưu ảnh chụp màn hình: auth_001_2_otp_page.png
 ⏳ Đang chờ 2 giây để mã OTP được ghi vào Redis...
-🔍 Truy vấn OTP từ Redis key: otp:auth_test_user_1783439471527@gmail.com
-🔑 Tìm thấy mã OTP: 530412
+🔍 Truy vấn OTP từ Redis key: otp:auth_test_user_1783583836949@gmail.com
+🔑 Tìm thấy mã OTP: 134089
 🖱️ Click nút Verify Code...
 ⏳ Chờ chuyển hướng sang trang Onboarding (/start)...
 🎉 Đăng ký & Xác thực OTP hoàn tất!
 📸 Đã lưu ảnh chụp màn hình: auth_001_3_onboarding_start.png
 🔍 [KIỂM TRA BACKEND] Đang truy vấn MySQL để verify dữ liệu...
 📊 Thông tin User tìm thấy trong DB: {
-  email: 'auth_test_user_1783439471527@gmail.com',
+  email: 'auth_test_user_1783583836949@gmail.com',
   name: 'Selenium Auth Tester',
   isEmailVerified: 1,
   isActive: 1,
@@ -95,7 +95,7 @@ Run npm run test:brand
 ✍️ Nhập Mật khẩu: 'Password123!' và Xác nhận mật khẩu: 'Password999!'
 🖱️ Tick chọn đồng ý điều khoản và click Tạo tài khoản...
 ⏳ Chờ Toast thông báo lỗi...
-📢 Thông báo lỗi thực tế trên UI: "Mật khẩu xác nhận không khớp"
+📢 Thông báo lỗi thực tế trên UI: ""
 📸 Đã lưu ảnh chụp màn hình: auth_002_password_mismatch.png
 ✅ KẾT QUẢ: AUTH_002 ĐẠT (PASS) - Form Validation chặn thành công và không ghi nhận DB.
 
@@ -104,11 +104,11 @@ Run npm run test:brand
 ---------------------------------------------------------
 🧹 Đã làm sạch session trình duyệt (Cookies, LocalStorage, SessionStorage).
 👉 Đã truy cập trang Đăng ký.
-✍️ Nhập Email trùng lặp: 'auth_test_user_1783439471527@gmail.com'
+✍️ Nhập Email trùng lặp: 'auth_test_user_1783583836949@gmail.com'
 ⏳ Chờ Toast thông báo lỗi trùng email...
 📢 Thông báo lỗi thực tế trên UI: "Email Address"
 📸 Đã lưu ảnh chụp màn hình: auth_003_email_exists.png
-📊 Số lượng bản ghi trong DB với email auth_test_user_1783439471527@gmail.com: 1
+📊 Số lượng bản ghi trong DB với email auth_test_user_1783583836949@gmail.com: 1
 ✅ KẾT QUẢ: AUTH_003 ĐẠT (PASS) - Backend chặn trùng email thành công.
 
 ---------------------------------------------------------
@@ -116,7 +116,7 @@ Run npm run test:brand
 ---------------------------------------------------------
 🧹 Đã làm sạch session trình duyệt (Cookies, LocalStorage, SessionStorage).
 👉 Đã truy cập trang Đăng nhập.
-✍️ Nhập Email: 'auth_test_user_1783439471527@gmail.com'
+✍️ Nhập Email: 'auth_test_user_1783583836949@gmail.com'
 ✍️ Nhập Mật khẩu đúng: 'Password123!'
 📸 Đã lưu ảnh chụp màn hình: auth_004_1_fill_login.png
 🖱️ Click nút Sign in...
@@ -131,7 +131,7 @@ Run npm run test:brand
 🖱️ Đang thực hiện đăng xuất để test đăng nhập lại...
 🧹 Đã làm sạch session trình duyệt (Cookies, LocalStorage, SessionStorage).
 👉 Đã truy cập trang Đăng nhập (đã xóa cookies).
-✍️ Nhập Email: 'auth_test_user_1783439471527@gmail.com'
+✍️ Nhập Email: 'auth_test_user_1783583836949@gmail.com'
 ✍️ Nhập Mật khẩu sai: 'WrongPass123!'
 ⏳ Chờ thông báo lỗi mật khẩu không hợp lệ...
 📢 Thông báo lỗi thực tế trên UI: "Invalid email or password"
@@ -143,11 +143,11 @@ Run npm run test:brand
 ---------------------------------------------------------
 🧹 Đã làm sạch session trình duyệt (Cookies, LocalStorage, SessionStorage).
 👉 Đã truy cập trang Đăng ký.
-✍️ Nhập Email mới: 'unverified_1783439482074@gmail.com'
+✍️ Nhập Email mới: 'unverified_1783583847167@gmail.com'
 ⏳ Chờ chuyển hướng sang trang OTP...
 ⚠️ Bỏ qua bước xác minh OTP, quay lại trang đăng nhập.
 📸 Đã lưu ảnh chụp màn hình: auth_006_1_verify_otp_left.png
-✍️ Thử đăng nhập bằng email chưa kích hoạt: 'unverified_1783439482074@gmail.com'
+✍️ Thử đăng nhập bằng email chưa kích hoạt: 'unverified_1783583847167@gmail.com'
 ⏳ Chờ phản hồi và chuyển hướng...
 🎉 Đã tự động điều hướng người dùng quay lại trang OTP!
 📢 Thông báo thực tế trên UI: "Vui lòng xác thực email của bạn"
@@ -166,98 +166,96 @@ Run npm run test:brand
 > publicast-selenium-tests@1.0.0 test:profile
 > mocha profile/*.spec.js
 
-◇ injected env (8) from .env // tip: ⌘ override existing { override: true }
-◇ injected env (0) from .env // tip: ⌘ custom filepath { path: '/custom/path/.env' }
+◇ injected env (8) from .env // tip: ◈ secrets for agents [www.dotenvx.com]
+◇ injected env (0) from .env // tip: ⌘ multiple files { path: ['.env.local', '.env'] }
 
 
   Profile & Settings Detailed Suite
 ✅ [loginAs] Đăng nhập thành công bằng tài khoản seed: vothanhnha26@gmail.com
     Tab Navigation and Deep Links
-      ✔ TC_PROFILE_01 – Verify tab navigation updates URL query parameters (1724ms)
-      ✔ TC_PROFILE_02 – Verify direct navigation to tabs via URL queries (831ms)
-      ✔ TC_PROFILE_03 – Verify Google linked success callback redirection (350ms)
+      ✔ TC_PROFILE_01 – Verify tab navigation updates URL query parameters (1747ms)
+      ✔ TC_PROFILE_02 – Verify direct navigation to tabs via URL queries (1022ms)
+      ✔ TC_PROFILE_03 – Verify Google linked success callback redirection (357ms)
     Account Information Settings
-      ✔ TC_PROFILE_04 – Verify default profile data displays correctly in inputs
+      ✔ TC_PROFILE_04 – Verify default profile data displays correctly in inputs (40ms)
       ✔ TC_PROFILE_05 – Verify successful Profile Name update with special Vietnamese characters (2111ms)
-      ✔ TC_PROFILE_06 – Verify Monthly Summary toggle switches state on UI (371ms)
+      ✔ TC_PROFILE_06 – Verify Monthly Summary toggle switches state on UI (373ms)
     Access and Security (Passwords & OAuth)
-      ✔ TC_PROFILE_07 – Verify password change fails when current password is empty (1193ms)
-      ✔ TC_PROFILE_08 – Verify password change fails when current password is incorrect (1224ms)
-      ✔ TC_PROFILE_09 – Verify password change fails when new password is too short (1204ms)
-      ✔ TC_PROFILE_10 – Verify successful password change and restore original (3355ms)
+      ✔ TC_PROFILE_07 – Verify password change fails when current password is empty (1191ms)
+      ✔ TC_PROFILE_08 – Verify password change fails when current password is incorrect (1252ms)
+      ✔ TC_PROFILE_09 – Verify password change fails when new password is too short (1200ms)
+      ✔ TC_PROFILE_10 – Verify successful password change and restore original (3353ms)
     Support Chat Interactions
-      ✔ TC_PROFILE_11 – Verify Support Chat handles enter key to send message (641ms)
-      ✔ TC_PROFILE_12 – Verify Support Chat prevents sending empty messages (360ms)
+      ✔ TC_PROFILE_11 – Verify Support Chat handles enter key to send message (644ms)
+      ✔ TC_PROFILE_12 – Verify Support Chat prevents sending empty messages (361ms)
     Billing Portal & Redirects
-      ✔ TC_PROFILE_13 – Verify Billing portal redirect to pricing page (731ms)
+      ✔ TC_PROFILE_13 – Verify Billing portal redirect to pricing page (641ms)
 
 
-  13 passing (24s)
+  13 passing (25s)
 
 
 > publicast-selenium-tests@1.0.0 test:post-creator
 > mocha post_creator.spec.js
 
-◇ injected env (8) from .env // tip: ⌘ override existing { override: true }
+◇ injected env (8) from .env // tip: ⌘ custom filepath { path: '/custom/path/.env' }
 
 
   Post Creator Detailed E2E Suite
 
 🛠️ Khởi tạo Mock Social Accounts cho các nền tảng: FACEBOOK...
 ✅ Đã seed thành công cho 4 brands.
-    ✔ TC_POST_01 – Verify Post Creator Modal can be opened and closed successfully (6332ms)
+    ✔ TC_POST_01 – Verify Post Creator Modal can be opened and closed successfully (8688ms)
 
 🛠️ Khởi tạo Mock Social Accounts cho các nền tảng: FACEBOOK, INSTAGRAM, YOUTUBE...
 ✅ Đã seed thành công cho 4 brands.
-    ✔ TC_POST_02 – Verify multi-platform selection and active platform switcher (6684ms)
+    ✔ TC_POST_02 – Verify multi-platform selection and active platform switcher (9010ms)
 
 🛠️ Khởi tạo Mock Social Accounts cho các nền tảng: FACEBOOK...
 ✅ Đã seed thành công cho 4 brands.
-    ✔ TC_POST_03 – Verify publish options menu updates submit button label text (6232ms)
+    ✔ TC_POST_03 – Verify publish options menu updates submit button label text (8601ms)
 
 🛠️ Khởi tạo Mock Social Accounts cho các nền tảng: FACEBOOK...
 ✅ Đã seed thành công cho 4 brands.
-    ✔ TC_POST_04 – Verify creating Facebook post draft saves caption to database and displays on List UI (9508ms)
+    ✔ TC_POST_04 – Verify creating Facebook post draft saves caption to database and displays on List UI (11926ms)
 
 🛠️ Khởi tạo Mock Social Accounts cho các nền tảng: FACEBOOK, INSTAGRAM, THREADS...
 ✅ Đã seed thành công cho 4 brands.
-    ✔ TC_POST_05 – Verify multi-platform post draft saves targetPlatforms correctly in DB and displays on List UI (12066ms)
+    ✔ TC_POST_05 – Verify multi-platform post draft saves targetPlatforms correctly in DB and displays on List UI (14474ms)
 
 🛠️ Khởi tạo Mock Social Accounts cho các nền tảng: THREADS...
 ✅ Đã seed thành công cho 4 brands.
-    ✔ TC_POST_06 – Verify character limits logic for Threads (500 chars limit) (6779ms)
+    ✔ TC_POST_06 – Verify character limits logic for Threads (500 chars limit) (9338ms)
 
 🛠️ Khởi tạo Mock Social Accounts cho các nền tảng: YOUTUBE...
 ✅ Đã seed thành công cho 4 brands.
-    ✔ TC_POST_07 – Verify platform validation blocks submission if YouTube has no video (9731ms)
+    ✔ TC_POST_07 – Verify platform validation blocks submission if YouTube has no video (12121ms)
 
 🛠️ Khởi tạo Mock Social Accounts cho các nền tảng: TIKTOK...
 ✅ Đã seed thành công cho 4 brands.
-    ✔ TC_POST_08 – Verify platform validation blocks submission if TikTok has no media (9791ms)
+    ✔ TC_POST_08 – Verify platform validation blocks submission if TikTok has no media (12142ms)
 
 🛠️ Khởi tạo Mock Social Accounts cho các nền tảng: FACEBOOK...
 ✅ Đã seed thành công cho 4 brands.
-🔑 [TC_POST_09] Re-login chủ động để đảm bảo token hợp lệ trước khi submit...
-✅ Session tự động restore qua refresh token cookie, bỏ qua re-login.
     1) TC_POST_09 – Verify scheduling a post for tomorrow saves scheduledAt correctly in DB and displays on List UI
 📸 Đã chụp màn hình khi lỗi: /home/runner/work/PubliCast/PubliCast/test_selenium/error_TC_POST_09___Verify_scheduling_a_post_for_tomorrow_saves_scheduledAt_correctly_in_DB_and_displays_on_List_UI.png
 🌐 Browser Console Logs:
 [SEVERE] http://localhost:3000/api/user/profile - Failed to load resource: the server responded with a status of 401 (Unauthorized)
 [SEVERE] http://localhost:3000/api/auth/refresh - Failed to load resource: the server responded with a status of 401 (Unauthorized)
-[SEVERE] http://localhost:3000/api/auth/logout - Failed to load resource: the server responded with a status of 401 (Unauthorized)
 [SEVERE] http://localhost:5173/favicon.ico - Failed to load resource: the server responded with a status of 404 (Not Found)
+[SEVERE] http://localhost:3000/api/auth/logout - Failed to load resource: the server responded with a status of 401 (Unauthorized)
 [SEVERE] http://localhost:5173/src/store/useAuthStore.js 82:2 Uncaught Error: Access token required
-Warning:  http://localhost:5173/src/utils/logger.js 35:22 "[PubliCast] [WARN] Validation errors detected in PostCreator Form:" Array(1)
-Warning:  http://localhost:5173/src/utils/logger.js 35:22 "[PubliCast] [WARN] Validation errors detected in PostCreator Form:" Array(1)
+Warning:  http://localhost:5173/src/utils/logger.js 35:22 "[PubliCast] [WARN] Validation errors detected in PostCreator Form:" "[\"[YOUTUBE - VIDEO] YouTube uploads require a video file.\"]"
+Warning:  http://localhost:5173/src/utils/logger.js 35:22 "[PubliCast] [WARN] Validation errors detected in PostCreator Form:" "[\"[TIKTOK - VIDEO] TikTok posts require a video file.\"]"
 
 🛠️ Khởi tạo Mock Social Accounts cho các nền tảng: FACEBOOK...
 ✅ Đã seed thành công cho 4 brands.
-    ✔ TC_POST_10 – Verify uploading an image file from local machine renders preview on Facebook post (9760ms)
+    ✔ TC_POST_10 – Verify uploading an image file from local machine renders preview on Facebook post (12004ms)
 
 🛠️ Khởi tạo Mock Social Accounts cho các nền tảng: YOUTUBE...
 ✅ Đã seed thành công cho 4 brands.
 ⏳ Chờ video upload lên Cloudinary (chờ biến mất trạng thái 'Uploading...')...
-    ✔ TC_POST_11 – Verify uploading a video file from local machine renders preview and saves to DB for YouTube post (12516ms)
+    ✔ TC_POST_11 – Verify uploading a video file from local machine renders preview and saves to DB for YouTube post (14645ms)
 🧹 Dọn dẹp tất cả Mock Social Accounts...
 ✅ Dọn dẹp hoàn tất.
 
@@ -268,7 +266,7 @@ Warning:  http://localhost:5173/src/utils/logger.js 35:22 "[PubliCast] [WARN] Va
   1) Post Creator Detailed E2E Suite
        TC_POST_09 – Verify scheduling a post for tomorrow saves scheduledAt correctly in DB and displays on List UI:
      TimeoutError: Waiting until element is visible
-Wait timed out after 12129ms
+Wait timed out after 12106ms
       at /home/runner/work/PubliCast/PubliCast/test_selenium/node_modules/selenium-webdriver/lib/webdriver.js:929:22
       at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
 
