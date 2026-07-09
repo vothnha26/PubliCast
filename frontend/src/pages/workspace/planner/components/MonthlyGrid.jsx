@@ -39,6 +39,7 @@ export function MonthlyGrid({
   eventsData = [],
   onCellClick,
   onPostClick,
+  onDuplicateClick,
   visiblePlatforms = {}
 }) {
   const weekdayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
@@ -192,7 +193,7 @@ export function MonthlyGrid({
                   <div
                     key={post.id}
                     onClick={(e) => handlePostClick(e, post)}
-                    className={`flex items-center gap-1.5 px-2 py-1 border rounded-lg text-[10px] font-bold truncate transition-all hover:scale-[1.02] active:scale-[0.98] cursor-pointer shadow-sm ${
+                    className={`flex items-center gap-1.5 px-2 py-1 border rounded-lg text-[10px] font-bold truncate transition-all hover:scale-[1.02] active:scale-[0.98] cursor-pointer shadow-sm group/mcard ${
                       STATUS_COLORS[post.status?.toLowerCase()] || 'bg-white border-gray-100 text-gray-700'
                     }`}
                     title={`${post.title || post.caption || "Untitled"} (${format(new Date(post.scheduledAt || post.createdAt), 'h:mma')})`}
@@ -207,9 +208,19 @@ export function MonthlyGrid({
                     </div>
                     
                     <span className="truncate flex-1 font-medium">{post.title || post.caption || "Untitled"}</span>
-                    <span className="text-[8px] opacity-75 font-black uppercase font-mono tracking-tight shrink-0">
+                    <span className="text-[8px] opacity-75 font-black uppercase font-mono tracking-tight shrink-0 group-hover/mcard:hidden">
                       {format(new Date(post.scheduledAt || post.createdAt), 'h:mma')}
                     </span>
+                    <button 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (onDuplicateClick) onDuplicateClick(post);
+                      }}
+                      title="Nhân bản bài viết"
+                      className="hidden group-hover/mcard:flex items-center justify-center p-0.5 hover:bg-gray-100 rounded text-indigo-600 transition-colors cursor-pointer border-none shadow-none shrink-0"
+                    >
+                      <span className="text-[9px]">🔂</span>
+                    </button>
                   </div>
                 ))}
               </div>

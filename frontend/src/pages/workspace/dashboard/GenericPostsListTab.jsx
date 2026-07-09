@@ -1,5 +1,10 @@
-import React, { useState, useMemo } from "react";
-import { BarChart2, Loader2, PlayCircle, ChevronUp, ChevronDown, ChevronsUpDown } from "lucide-react";
+import React, { useState, useMemo, useEffect } from "react";
+import { 
+  BarChart2, Loader2, PlayCircle, ChevronUp, ChevronDown, 
+  ChevronsUpDown, Star, MoreVertical, Film, Image as ImageIcon, 
+  Layers, Check, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight,
+  Sparkles
+} from "lucide-react";
 import { Button } from "../../../components/ui/button";
 
 export function GenericPostsListTab({
@@ -10,17 +15,100 @@ export function GenericPostsListTab({
   prevPageToken = null,
   nextPageToken = null,
   fetchPublishedVideos = () => {},
-  columns = [], // [{ header: string, className?: string, renderCell: (item) => ReactNode }]
   searchPlaceholder = "Search posts...",
-  searchKeys = ["title", "caption", "message"],
+  searchKeys = ["title", "caption", "message", "text"],
   emptyStateTitle = "Oops! Nothing found",
   emptyStateDescription = "Try another search query or check if your current date range matches.",
   footerMessage = "",
   onRowClick = null
 }) {
   const [searchQuery, setSearchQuery] = useState("");
-  const [sortConfig, setSortConfig] = useState({ key: null, dir: null });
+  // Mặc định sắp xếp giảm dần theo lượt xem (Views ↓) y hệt như hình ảnh thiết kế
+  const [sortConfig, setSortConfig] = useState({ key: "views", dir: "desc" });
 
+  // Quản lý việc tích chọn các hàng (Checkboxes)
+  const [selectedIds, setSelectedIds] = useState(new Set());
+  
+  // Quản lý trạng thái đánh dấu yêu thích (Star ⭐) sử dụng LocalStorage để lưu giữ dữ liệu
+  const [starredIds, setStarredIds] = useState(() => {
+    try {
+      return new Set(JSON.parse(localStorage.getItem("starred_posts") || "[]"));
+    } catch {
+      return new Set();
+    }
+  });
+
+  // Đồng bộ Starred IDs vào LocalStorage khi thay đổi
+  useEffect(() => {
+    localStorage.setItem("starred_posts", JSON.stringify(Array.from(starredIds)));
+  }, [starredIds]);
+
+  const toggleStar = (postId, e) => {
+    e.stopPropagation();
+    setStarredIds(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(postId)) {
+        newSet.delete(postId);
+      } else {
+        newSet.add(postId);
+      }
+      return newSet;
+    });
+  };
+
+  // Helper trích xuất nội dung text chính
+  const getPostText = (item) => {
+    return item.message || item.caption || item.title || item.text || "No content message";
+  };
+
+  // Helper trích xuất thumbnail hình ảnh
+  const getPostThumbnail = (item) => {
+    return item.picture || item.mediaUrl || item.thumbnailUrl || item.thumbnail || "";
+  };
+
+  // Helper định dạng số lượt xem, thích, bình luận (ví dụ: 25.81K)
+  const formatMetricNumber = (num) => {
+    if (num === undefined || num === null || isNaN(num)) return "0";
+    const val = Number(num);
+    if (val >= 1000000) {
+      return parseFloat((val / 1000000).toFixed(2)) + "M";
+    }
+    if (val >= 1000) {
+      return parseFloat((val / 1000).toFixed(2)) + "K";
+    }
+    return val.toLocaleString();
+  };
+
+  // Helper định dạng độ dài video (ví dụ: 0:23)
+  const formatDuration = (sec) => {
+    if (sec === undefined || sec === null || sec === "") return "-";
+    if (typeof sec === "string") {
+      if (sec.includes(":")) return sec;
+      sec = Number(sec);
+    }
+    if (isNaN(sec)) return "-";
+    const mins = Math.floor(sec / 60);
+    const secs = Math.floor(sec % 60);
+    return `${mins}:${secs.toString().padStart(2, "0")}`;
+  };
+
+  // Nhận dạng loại bài viết (Video/Image/Carousel)
+  const getPostType = (item) => {
+    const isVideo = item.isVideo || item.duration || item.youtubeVideoType || 
+                    item.instagramPostType === "REEL" || item.facebookPostType === "REEL" ||
+                    (item.mediaUrl && item.mediaUrl.includes(".mp4")) ||
+                    (item.thumbnailUrl && (item.title || item.views));
+    
+    // Nếu có nhiều hơn 1 media URL
+    const isCarousel = item.instagramPostType === "STORY" || item.facebookPostType === "STORY" ||
+                       (item.mediaUrls && item.mediaUrls.split(",").length > 1);
+    
+    if (isVideo) return "video";
+    if (isCarousel) return "carousel";
+    return "image";
+  };
+
+  // Sắp xếp
   const handleSort = (sortKey) => {
     if (!sortKey) return;
     setSortConfig(prev => {
@@ -30,50 +118,113 @@ export function GenericPostsListTab({
     });
   };
 
+  // Lọc và chuẩn hóa dữ liệu bài đăng cho bảng thống nhất
+  const processedPosts = useMemo(() => {
+    return (posts || []).map(post => {
+      const views = Number(post.views || post.reach || 0);
+      const likes = Number(post.likes || post.reactions || 0);
+      const comments = Number(post.comments || 0);
+      const shares = Number(post.shares || 0);
+      const duration = post.duration || "";
+      const text = getPostText(post);
+      const id = post.id || post.videoId || text; // Unique ID key
+      return {
+        ...post,
+        id,
+        text,
+        views,
+        likes,
+        comments,
+        shares,
+        duration
+      };
+    });
+  }, [posts]);
+
+  // Thực hiện tìm kiếm & Sắp xếp bài đăng
   const filteredPosts = useMemo(() => {
-    let list = (posts || []).filter(post =>
+    let list = processedPosts.filter(post =>
       searchKeys.some(key => {
         const val = post[key];
         return val && typeof val === "string" && val.toLowerCase().includes(searchQuery.toLowerCase());
       })
     );
+
     if (sortConfig.key && sortConfig.dir) {
       list = [...list].sort((a, b) => {
-        const aVal = a[sortConfig.key] ?? "";
-        const bVal = b[sortConfig.key] ?? "";
-        const isNum = !isNaN(Number(aVal)) && !isNaN(Number(bVal));
-        const cmp = isNum ? Number(aVal) - Number(bVal) : String(aVal).localeCompare(String(bVal));
+        const aVal = a[sortConfig.key] ?? 0;
+        const bVal = b[sortConfig.key] ?? 0;
+        
+        const cmp = aVal - bVal;
         return sortConfig.dir === "desc" ? -cmp : cmp;
       });
     }
     return list;
-  }, [posts, searchQuery, searchKeys, sortConfig]);
+  }, [processedPosts, searchQuery, searchKeys, sortConfig]);
+
+  // Logic Chọn nhiều / Chọn tất cả bài viết
+  const handleSelectAll = () => {
+    if (selectedIds.size === filteredPosts.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(filteredPosts.map(p => p.id)));
+    }
+  };
+
+  const handleSelectRow = (id, e) => {
+    e.stopPropagation();
+    setSelectedIds(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(id)) {
+        newSet.delete(id);
+      } else {
+        newSet.add(id);
+      }
+      return newSet;
+    });
+  };
+
+  // Phân trang đơn giản cho Dashboard List (không có next/prev page tokens thì tự động phân trang client-side)
+  const isServerPaged = !!(prevPageToken || nextPageToken);
+  const [currentPage, setCurrentPage] = useState(1);
+  const totalPages = Math.ceil(filteredPosts.length / (parseInt(pageSize) || 5));
+
+  const pagedPosts = useMemo(() => {
+    if (isServerPaged) return filteredPosts;
+    const startIdx = (currentPage - 1) * parseInt(pageSize);
+    return filteredPosts.slice(startIdx, startIdx + parseInt(pageSize));
+  }, [filteredPosts, currentPage, pageSize, isServerPaged]);
+
+  // Khi thay đổi page size, reset trang về 1
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [pageSize]);
 
   return (
-    <div className="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden">
-      {/* Header controls */}
+    <div className="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden flex flex-col transition-all">
+      {/* Thanh công cụ và tìm kiếm */}
       <div className="px-6 py-4 border-b border-gray-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-gray-50/30">
         <div className="flex items-center gap-4">
-          <h3 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">List of posts</h3>
+          <h3 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Danh sách bài đăng</h3>
           <div className="relative">
             <input
               type="text"
               placeholder={searchPlaceholder}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-8 pr-4 py-1.5 text-xs bg-white border border-gray-200 rounded-full w-64 focus:outline-none focus:ring-2 focus:ring-black/10 transition-all"
+              className="pl-8 pr-4 py-1.5 text-xs bg-white border border-gray-200 rounded-full w-64 focus:outline-none focus:ring-2 focus:ring-[#2D1D35]/10 transition-all font-medium text-gray-700"
             />
-            <BarChart2 size={12} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
           </div>
         </div>
 
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-2">
-            <span className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">Items per page:</span>
+            <span className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">Số dòng hiển thị:</span>
             <select
               value={pageSize}
-              onChange={(e) => setPageSize(parseInt(e.target.value))}
-              className="text-[10px] font-bold bg-white border border-gray-200 rounded-lg px-2 py-1 focus:outline-none cursor-pointer"
+              onChange={(e) => setPageSize(e.target.value)}
+              className="text-[10px] font-bold bg-white border border-gray-200 rounded-lg px-2.5 py-1 focus:outline-none cursor-pointer text-gray-700 shadow-sm"
             >
               <option value="5">5</option>
               <option value="10">10</option>
@@ -81,149 +232,295 @@ export function GenericPostsListTab({
               <option value="20">20</option>
             </select>
           </div>
-
-          {/* Render prev/next buttons if token-based pagination is used */}
-          {(prevPageToken || nextPageToken) && (
-            <>
-              <div className="w-px h-4 bg-gray-200 mx-2 hidden sm:block" />
-              <div className="flex items-center gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="h-7 text-[10px] font-bold"
-                  onClick={() => fetchPublishedVideos(prevPageToken)}
-                  disabled={!prevPageToken || isLoading}
-                >
-                  Previous
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="h-7 text-[10px] font-bold"
-                  onClick={() => fetchPublishedVideos(nextPageToken)}
-                  disabled={!nextPageToken || isLoading}
-                >
-                  Next
-                </Button>
-              </div>
-            </>
-          )}
         </div>
       </div>
 
+      {/* Bảng dữ liệu chính */}
       <div className="overflow-x-auto">
-        <table className="w-full min-w-[800px]">
+        <table className="w-full min-w-[900px] border-collapse">
           <thead>
             <tr className="bg-white border-b border-gray-100">
-              {columns.map((col, idx) => {
-                const isSortable = !!col.sortKey;
-                const isActive = sortConfig.key === col.sortKey;
-                const SortIcon = isActive
-                  ? (sortConfig.dir === "asc" ? ChevronUp : ChevronDown)
-                  : ChevronsUpDown;
+              {/* Checkbox Header */}
+              <th className="w-12 pl-6 py-4 text-left">
+                <div 
+                  onClick={handleSelectAll}
+                  className={`w-4 h-4 rounded border flex items-center justify-center cursor-pointer transition-all ${
+                    selectedIds.size > 0 && selectedIds.size === filteredPosts.length 
+                      ? "bg-[#2D1D35] border-[#2D1D35] text-white" 
+                      : "border-gray-300 hover:border-gray-400 bg-white"
+                  }`}
+                >
+                  {selectedIds.size > 0 && selectedIds.size === filteredPosts.length && (
+                    <Check size={10} className="stroke-[3]" />
+                  )}
+                </div>
+              </th>
+              
+              {/* Post Header */}
+              <th className="text-left px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest min-w-[280px]">Posts</th>
+              
+              {/* Type Header */}
+              <th className="text-center px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest w-16">Type</th>
+              
+              {/* Date Header */}
+              <th className="text-left px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest w-32">Date</th>
+              
+              {/* Metric Headers with Sortable */}
+              {["views", "likes", "comments", "shares"].map((metric) => {
+                const isSortActive = sortConfig.key === metric;
                 return (
                   <th
-                    key={idx}
-                    className={`text-left px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest ${col.className || ""} ${isSortable ? "cursor-pointer select-none hover:text-gray-600 transition-colors" : ""}`}
-                    onClick={() => isSortable && handleSort(col.sortKey)}
+                    key={metric}
+                    className="text-right px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest cursor-pointer select-none hover:text-gray-600 transition-colors w-24"
+                    onClick={() => handleSort(metric)}
                   >
-                    <span className="inline-flex items-center gap-1.5">
-                      {col.header}
-                      {isSortable && (
-                        <SortIcon
-                          size={12}
-                          className={isActive ? "text-black" : "text-gray-300"}
-                        />
+                    <span className="inline-flex items-center gap-1 justify-end w-full">
+                      <span className="capitalize">{metric}</span>
+                      {isSortActive ? (
+                        sortConfig.dir === "asc" ? <ChevronUp size={11} className="text-black" /> : <ChevronDown size={11} className="text-black" />
+                      ) : (
+                        <ChevronsUpDown size={11} className="text-gray-300" />
                       )}
                     </span>
                   </th>
                 );
               })}
+
+              {/* Duration Header */}
+              <th className="text-center px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest w-24">Duration</th>
             </tr>
           </thead>
+
           {isLoading ? (
             <tbody className="divide-y divide-gray-50">
               {[1, 2, 3].map((n) => (
                 <tr key={n} className="animate-pulse">
-                  {columns.map((col, colIdx) => (
-                    <td key={colIdx} className="px-6 py-4">
-                      {colIdx === 0 ? (
-                        <div className="flex items-center gap-4">
-                          <div className="w-16 h-10 bg-gray-100 rounded-lg shrink-0" />
-                          <div className="w-36 h-3 bg-gray-100 rounded" />
-                        </div>
-                      ) : colIdx === 1 ? (
-                        <div className="w-16 h-4 bg-gray-100 rounded-full" />
-                      ) : colIdx === 2 ? (
-                        <div className="w-20 h-4 bg-gray-100 rounded" />
-                      ) : (
-                        <div className="w-12 h-3 bg-gray-50 rounded" />
-                      )}
-                    </td>
-                  ))}
+                  <td className="pl-6 py-4"><div className="w-4 h-4 bg-gray-100 rounded" /></td>
+                  <td className="px-6 py-4">
+                    <div className="flex items-center gap-3">
+                      <div className="w-12 h-12 bg-gray-100 rounded-lg shrink-0" />
+                      <div className="w-36 h-3 bg-gray-100 rounded" />
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 text-center"><div className="w-8 h-4 bg-gray-50 rounded mx-auto" /></td>
+                  <td className="px-6 py-4"><div className="w-16 h-3 bg-gray-100 rounded" /></td>
+                  <td className="px-6 py-4"><div className="w-12 h-3 bg-gray-100 rounded ml-auto" /></td>
+                  <td className="px-6 py-4"><div className="w-10 h-3 bg-gray-100 rounded ml-auto" /></td>
+                  <td className="px-6 py-4"><div className="w-10 h-3 bg-gray-100 rounded ml-auto" /></td>
+                  <td className="px-6 py-4"><div className="w-10 h-3 bg-gray-100 rounded ml-auto" /></td>
+                  <td className="px-6 py-4 text-center"><div className="w-8 h-3 bg-gray-50 rounded mx-auto" /></td>
                 </tr>
               ))}
             </tbody>
           ) : (
             <tbody className="divide-y divide-gray-50">
-              {filteredPosts.length === 0 ? (
+              {pagedPosts.length === 0 ? (
                 <tr>
-                  <td colSpan={columns.length} className="px-6 py-12 text-center">
+                  <td colSpan={9} className="px-6 py-12 text-center">
                     <div className="flex flex-col items-center justify-center max-w-sm mx-auto space-y-2">
                       <div className="w-12 h-12 rounded-full bg-gray-50 flex items-center justify-center border border-gray-100 text-gray-400 mb-2">
                         <PlayCircle size={20} />
                       </div>
                       <h4 className="text-xs font-bold text-gray-900">{emptyStateTitle}</h4>
-                      <p className="text-[10px] text-gray-400">{emptyStateDescription}</p>
+                      <p className="text-[10px] text-gray-400 leading-relaxed">{emptyStateDescription}</p>
                     </div>
                   </td>
                 </tr>
               ) : (
-                filteredPosts.map((post, rowIdx) => (
-                  <tr
-                    key={rowIdx}
-                    className={`hover:bg-[#F8F8F7]/50 transition-colors ${onRowClick ? "cursor-pointer group" : ""}`}
-                    onClick={() => onRowClick && onRowClick(post)}
-                  >
-                    {columns.map((col, colIdx) => (
-                      <td key={colIdx} className="px-6 py-4">
-                        {col.renderCell(post)}
+                pagedPosts.map((post, idx) => {
+                  const isStarred = starredIds.has(post.id);
+                  const isChecked = selectedIds.has(post.id);
+                  const thumbnail = getPostThumbnail(post);
+                  const postType = getPostType(post);
+                  const postText = getPostText(post);
+                  const pubDate = new Date(post.publishedAt || post.date || new Date());
+
+                  return (
+                    <tr
+                      key={post.id || idx}
+                      className={`hover:bg-[#F8F8F7]/50 transition-colors group cursor-pointer border-b border-gray-50`}
+                      onClick={() => onRowClick && onRowClick(post)}
+                    >
+                      {/* Checkbox Cell */}
+                      <td className="pl-6 py-4" onClick={(e) => e.stopPropagation()}>
+                        <div 
+                          onClick={(e) => handleSelectRow(post.id, e)}
+                          className={`w-4 h-4 rounded border flex items-center justify-center cursor-pointer transition-all ${
+                            isChecked 
+                              ? "bg-[#2D1D35] border-[#2D1D35] text-white" 
+                              : "border-gray-300 hover:border-gray-400 bg-white"
+                          }`}
+                        >
+                          {isChecked && <Check size={10} className="stroke-[3]" />}
+                        </div>
                       </td>
-                    ))}
-                  </tr>
-                ))
+
+                      {/* Post content and Actions cell */}
+                      <td className="px-6 py-4 min-w-[280px]">
+                        <div className="flex items-center justify-between gap-4">
+                          <div className="flex items-center gap-3 min-w-0">
+                            {thumbnail ? (
+                              <div className="w-12 h-12 rounded-xl overflow-hidden border border-gray-100 shadow-sm shrink-0 bg-gray-50 relative">
+                                <img src={thumbnail} className="w-full h-full object-cover" alt="Post" />
+                              </div>
+                            ) : (
+                              <div className="w-12 h-12 rounded-xl bg-gray-50 border border-gray-100 flex items-center justify-center text-gray-400 shrink-0 shadow-sm">
+                                {postType === "video" ? <Film size={16} /> : <ImageIcon size={16} />}
+                              </div>
+                            )}
+                            <div className="flex flex-col min-w-0">
+                              <span className="text-xs font-semibold text-[#0A0A0A] line-clamp-2 leading-relaxed max-w-[260px]">
+                                {postText}
+                              </span>
+                            </div>
+                          </div>
+
+                          {/* Quick action bar y hệt như hình ảnh thiết kế (star, graph, status badge, 3-dot) */}
+                          <div className="flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity bg-white/95 px-2.5 py-1.5 rounded-full border border-gray-100 shadow-lg shrink-0" onClick={(e) => e.stopPropagation()}>
+                            {/* Star button */}
+                            <button
+                              onClick={(e) => toggleStar(post.id, e)}
+                              className="p-1 hover:bg-gray-100 rounded-lg text-gray-400 hover:text-amber-500 transition-colors border-none bg-transparent cursor-pointer"
+                              title={isStarred ? "Bỏ yêu thích" : "Đánh dấu yêu thích"}
+                            >
+                              <Star size={13} className={isStarred ? "text-amber-500 fill-amber-500" : ""} />
+                            </button>
+
+                            {/* Analytics details button */}
+                            <button
+                              onClick={() => onRowClick && onRowClick(post)}
+                              className="p-1 hover:bg-gray-100 rounded-lg text-gray-400 hover:text-[#2D1D35] transition-colors border-none bg-transparent cursor-pointer"
+                              title="Xem phân tích chi tiết"
+                            >
+                              <BarChart2 size={13} />
+                            </button>
+
+                            {/* Green Badge */}
+                            <div className="bg-[#E8FAD0] text-[#4D7C0F] border border-[#D9F99D] text-[9px] font-extrabold px-1.5 py-0.5 rounded-full flex items-center gap-1">
+                              <div className="w-1 h-1 rounded-full bg-[#4D7C0F] animate-pulse" />
+                              <span>Live</span>
+                            </div>
+
+                            {/* More button */}
+                            <button
+                              className="p-1 hover:bg-gray-100 rounded-lg text-gray-400 hover:text-gray-700 transition-colors border-none bg-transparent cursor-pointer"
+                            >
+                              <MoreVertical size={13} />
+                            </button>
+                          </div>
+                        </div>
+                      </td>
+
+                      {/* Type Cell */}
+                      <td className="px-6 py-4 text-center">
+                        <div className="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-gray-50 border border-gray-100 text-gray-500 shadow-sm">
+                          {postType === "video" ? (
+                            <Film size={14} className="text-indigo-500" />
+                          ) : postType === "carousel" ? (
+                            <Layers size={14} className="text-amber-500" />
+                          ) : (
+                            <ImageIcon size={14} className="text-emerald-500" />
+                          )}
+                        </div>
+                      </td>
+
+                      {/* Date Cell */}
+                      <td className="px-6 py-4">
+                        <div className="flex flex-col">
+                          <span className="text-[11px] font-bold text-gray-800">
+                            {pubDate.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                          </span>
+                          <span className="text-[9px] text-gray-400 font-bold uppercase mt-0.5">
+                            {pubDate.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}
+                          </span>
+                        </div>
+                      </td>
+
+                      {/* Metrics Cells */}
+                      <td className="px-6 py-4 text-right text-xs font-bold text-gray-900">
+                        {formatMetricNumber(post.views)}
+                      </td>
+                      <td className="px-6 py-4 text-right text-xs font-bold text-gray-900">
+                        {formatMetricNumber(post.likes)}
+                      </td>
+                      <td className="px-6 py-4 text-right text-xs font-bold text-gray-900">
+                        {formatMetricNumber(post.comments)}
+                      </td>
+                      <td className="px-6 py-4 text-right text-xs font-bold text-[#2D1D35]">
+                        {formatMetricNumber(post.shares)}
+                      </td>
+
+                      {/* Duration Cell */}
+                      <td className="px-6 py-4 text-center text-xs font-bold text-gray-500">
+                        {formatDuration(post.duration)}
+                      </td>
+                    </tr>
+                  );
+                })
               )}
             </tbody>
           )}
         </table>
       </div>
 
-      {footerMessage && (
-        <div className="px-6 py-4 bg-gray-50/30 flex items-center justify-between border-t border-gray-100">
-          <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
-            {footerMessage}
-          </span>
-          {/* Pagination controls inside footer as backup */}
-          {(prevPageToken || nextPageToken) && (
-            <div className="flex gap-2 sm:hidden">
+      {/* Bộ phân trang Premium Circle Design y hệt như hình 1 */}
+      <div className="px-6 py-4 bg-gray-50/30 flex items-center justify-between border-t border-gray-100 select-none">
+        <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
+          {footerMessage || `Hiển thị ${pagedPosts.length}/${filteredPosts.length} bài viết`}
+        </span>
+
+        {/* Các nút phân trang tròn */}
+        {(!isServerPaged ? totalPages > 1 : (prevPageToken || nextPageToken)) && (
+          <div className="flex items-center gap-4">
+            {/* Range text */}
+            <span className="text-[11px] font-extrabold text-gray-500">
+              {isServerPaged ? (
+                "Phân trang nền tảng"
+              ) : (
+                `${(currentPage - 1) * parseInt(pageSize) + 1}-${Math.min(currentPage * parseInt(pageSize), filteredPosts.length)} của ${filteredPosts.length}`
+              )}
+            </span>
+
+            <div className="flex items-center gap-1.5">
+              {/* Đầu tiên */}
               <button
-                onClick={() => fetchPublishedVideos(prevPageToken)}
-                disabled={!prevPageToken}
-                className="px-3 py-1 border border-gray-200 rounded-lg text-[10px] font-bold text-gray-400 hover:bg-white transition-all disabled:opacity-30"
+                disabled={isServerPaged ? !prevPageToken : currentPage === 1}
+                onClick={() => isServerPaged ? fetchPublishedVideos(null) : setCurrentPage(1)}
+                className="w-7 h-7 rounded-full bg-white border border-gray-200 flex items-center justify-center text-gray-500 hover:bg-gray-100 hover:text-black transition-all disabled:opacity-30 disabled:hover:bg-white disabled:cursor-not-allowed cursor-pointer shadow-sm"
               >
-                Previous
+                <ChevronsLeft size={13} />
               </button>
+
+              {/* Trước */}
               <button
-                onClick={() => fetchPublishedVideos(nextPageToken)}
-                disabled={!nextPageToken}
-                className="px-3 py-1 border border-gray-200 rounded-lg text-[10px] font-bold text-gray-400 hover:bg-white transition-all disabled:opacity-30"
+                disabled={isServerPaged ? !prevPageToken : currentPage === 1}
+                onClick={() => isServerPaged ? fetchPublishedVideos(prevPageToken) : setCurrentPage(prev => Math.max(prev - 1, 1))}
+                className="w-7 h-7 rounded-full bg-white border border-gray-200 flex items-center justify-center text-gray-500 hover:bg-gray-100 hover:text-black transition-all disabled:opacity-30 disabled:hover:bg-white disabled:cursor-not-allowed cursor-pointer shadow-sm"
               >
-                Next
+                <ChevronLeft size={13} />
+              </button>
+
+              {/* Sau */}
+              <button
+                disabled={isServerPaged ? !nextPageToken : currentPage === totalPages}
+                onClick={() => isServerPaged ? fetchPublishedVideos(nextPageToken) : setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                className="w-7 h-7 rounded-full bg-white border border-gray-200 flex items-center justify-center text-gray-500 hover:bg-gray-100 hover:text-black transition-all disabled:opacity-30 disabled:hover:bg-white disabled:cursor-not-allowed cursor-pointer shadow-sm"
+              >
+                <ChevronRight size={13} />
+              </button>
+
+              {/* Cuối cùng */}
+              <button
+                disabled={isServerPaged ? !nextPageToken : currentPage === totalPages}
+                onClick={() => isServerPaged ? fetchPublishedVideos(nextPageToken) : setCurrentPage(totalPages)}
+                className="w-7 h-7 rounded-full bg-white border border-gray-200 flex items-center justify-center text-gray-500 hover:bg-gray-100 hover:text-black transition-all disabled:opacity-30 disabled:hover:bg-white disabled:cursor-not-allowed cursor-pointer shadow-sm"
+              >
+                <ChevronsRight size={13} />
               </button>
             </div>
-          )}
-        </div>
-      )}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

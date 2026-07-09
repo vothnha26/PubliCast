@@ -83,8 +83,9 @@ if (process.env.USE_MEMORY_REDIS === 'true') {
   logger.warn('Using in-memory Redis fallback. Do not use this in production.');
   module.exports = createMemoryRedisClient();
 } else {
+  const redisUrl = process.env.REDIS_URL || `redis://${process.env.REDIS_HOST || '127.0.0.1'}:${process.env.REDIS_PORT || 6379}`;
   const redisClient = createClient({
-    url: `redis://${process.env.REDIS_HOST || '127.0.0.1'}:${process.env.REDIS_PORT || 6379}`,
+    url: redisUrl,
     socket: {
       reconnectStrategy: (retries) => {
         if (retries > 10) {

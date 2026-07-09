@@ -673,6 +673,7 @@ export function ListView() {
                                e.stopPropagation();
                                setActiveMenuId(activeMenuId === post.id ? null : post.id);
                              }}
+                             data-testid={`post-action-menu-${post.id}`}
                              className="p-2 text-gray-300 hover:text-black hover:bg-white rounded-lg transition-all shadow-none hover:shadow-sm border border-transparent hover:border-gray-100 cursor-pointer"
                            >
                               <MoreHorizontal size={16} />
@@ -729,6 +730,22 @@ export function ListView() {
                                    >
                                       <span>✏️</span> {hasCreatePermission ? 'Edit Post' : 'View Post'}
                                    </button>
+                                   {hasCreatePermission && (
+                                     <button 
+                                       onClick={(e) => {
+                                         e.stopPropagation();
+                                         openPostCreator({ 
+                                           template: post, 
+                                           defaultScheduledAt: post.scheduledAt ? new Date(post.scheduledAt) : null 
+                                         });
+                                         setActiveMenuId(null);
+                                       }}
+                                       data-testid="post-duplicate-btn"
+                                       className="w-full px-4 py-2 text-[11px] font-bold text-indigo-600 hover:bg-indigo-50/50 transition-all flex items-center gap-2 cursor-pointer border-t border-gray-50 text-left"
+                                     >
+                                        <span>🔂</span> Nhân bản bài viết
+                                     </button>
+                                   )}
                                    <button 
                                      onClick={(e) => {
                                        e.stopPropagation();

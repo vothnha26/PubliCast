@@ -677,4 +677,99 @@ describe('Post Creator Detailed E2E Suite', function () {
       await connection.end();
     }
   });
+
+  it('TC_POST_12_DUPLICATE – Verify Duplicating a post pre-fills fields and saves as a new post', async function () {
+    await seedPlatforms(['FACEBOOK']);
+    await navigateToPlannerAndPrepare();
+
+    // Lấy thông tin user và brand từ localStorage
+    const authData = await driver.executeScript(() => {
+      return {
+        brandId: localStorage.getItem('activeBrandId') || '',
+        token: localStorage.getItem('token') || ''
+      };
+    });
+
+    const uniqueOriginalCaption = `Original post for Duplicate Test - ${Date.now()}`;
+
+    // Tạo bài viết gốc qua API fetch trong browser context
+    const createStatus = await driver.executeScript(async (brandId, caption) => {
+      const res = await fetch('/api/posts', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify({
+          brandId,
+          title: 'Duplicate Test Original Post',
+          caption: caption,
+          targetPlatforms: ['FACEBOOK'],
+          status: 'DRAFT',
+          options: {
+            facebookType: 'post'
+          }
+        })
+      });
+      if (res.status !== 201) {
+        const text = await res.text();
+        return { status: res.status, error: text };
+      }
+      return { status: res.status };
+    }, authData.brandId, uniqueOriginalCaption);
+
+    console.log("=== CREATE POST RESULT ===", createStatus);
+
+    await driver.sleep(1000);
+
+    // Đi tới trang danh sách planner list
+    await driver.get(`${BASE_URL}/planner/list`);
+    await driver.sleep(2000);
+
+    // Tìm dòng bài viết vừa tạo
+    const postRowXpath = `//tr[descendant::*[contains(text(), '${uniqueOriginalCaption}')]]`;
+    const postRow = await driver.wait(until.elementLocated(By.xpath(postRowXpath)), 12000);
+    expect(postRow).to.exist;
+
+    // Tìm nút 3-dot dropdown menu trên dòng này và click
+    const menuBtn = await postRow.findElement(By.css('[data-testid^="post-action-menu-"]'));
+    await driver.executeScript("arguments[0].click();", menuBtn);
+    await driver.sleep(600);
+
+    // Tìm nút "Nhân bản bài viết" và click
+    const duplicateBtn = await driver.wait(until.elementLocated(By.css('[data-testid="post-duplicate-btn"]')), 8000);
+    await driver.executeScript("arguments[0].click();", duplicateBtn);
+    await driver.sleep(2000);
+
+    // Xác minh Modal PostCreator được mở ra và nội dung caption được điền sẵn
+    const captionInput = await driver.wait(until.elementLocated(By.css('[data-testid="post-caption-input"]')), 10000);
+    const existingVal = await captionInput.getAttribute('value');
+    expect(existingVal).to.equal(uniqueOriginalCaption);
+
+    // Thay đổi caption để đánh dấu bài viết nhân bản
+    const uniqueDuplicatedCaption = `Duplicated post for Duplicate Test - ${Date.now()}`;
+    await captionInput.clear();
+    await captionInput.sendKeys(uniqueDuplicatedCaption);
+    await driver.sleep(300);
+
+    // Click Save / UPDATE (nếu template post thì button hiển thị SAVE hoặc SCHEDULE, hãy click submit-btn)
+    const submitBtn = await driver.findElement(By.css('[data-testid="post-submit-btn"]'));
+    await driver.executeScript("arguments[0].click();", submitBtn);
+    await driver.wait(until.stalenessOf(captionInput), 12000);
+    await driver.sleep(2000);
+
+    // Xác minh cả hai bài viết (gốc và nhân bản) đều tồn tại
+    await driver.get(`${BASE_URL}/planner/list`);
+    await driver.sleep(2000);
+
+    const originalPostElement = await driver.findElement(By.xpath(`//*[contains(text(), '${uniqueOriginalCaption}')]`));
+    const duplicatedPostElement = await driver.findElement(By.xpath(`//*[contains(text(), '${uniqueDuplicatedCaption}')]`));
+
+    expect(originalPostElement).to.exist;
+    expect(duplicatedPostElement).to.exist;
+
+    // Dọn dẹp DB
+    await verifyAndCleanupPost(uniqueOriginalCaption);
+    await verifyAndCleanupPost(uniqueDuplicatedCaption);
+  });
 });
