@@ -2,6 +2,7 @@ const prisma = require('../../../../../config/prisma'); // Đường dẫn đế
 const KeywordAutoReplyStrategy = require('./keyword-reply.strategy');
 const AIAutoReplyStrategy = require('./ai-reply.strategy');
 const facebookComment = require('../../../facebook/facebook-comment.service');
+const instagramComment = require('../../../instagram/instagram-comment.service');
 const socketManager = require('../../../../workspace/socket/socket.manager');
 const logger = require('../../../../../utils/logger');
 
@@ -77,6 +78,15 @@ class AutoReplyService {
         return null;
       }
 
+      const socialAccount = await prisma.socialAccount.findUnique({
+        where: { id: socialAccountId }
+      });
+      if (!socialAccount) {
+        logger.warn(`[AutoReplyService] Social account not found: ${socialAccountId}`);
+        return null;
+      }
+      const platform = socialAccount.platform.toUpperCase();
+
       const strategy = this.strategies[settings.mode];
       if (!strategy) {
         logger.warn(`[AutoReplyService] Unsupported auto-reply mode: ${settings.mode}`);
@@ -94,10 +104,17 @@ class AutoReplyService {
         return null;
       }
 
-      logger.info(`[AutoReplyService] Generated auto-reply: "${replyText}". Sending to Facebook Graph API...`);
+      logger.info(`[AutoReplyService] Generated auto-reply: "${replyText}". Sending to platform ${platform} API...`);
       
-      // Gọi Meta Graph API để reply comment
-      const savedReply = await facebookComment.replyToComment(brandId, commentPlatformId, replyText);
+      let savedReply;
+      if (platform === 'FACEBOOK') {
+        savedReply = await facebookComment.replyToComment(brandId, commentPlatformId, replyText);
+      } else if (platform === 'INSTAGRAM') {
+        savedReply = await instagramComment.replyToComment(brandId, commentPlatformId, replyText);
+      } else {
+        logger.warn(`[AutoReplyService] Platform ${platform} does not support comment auto-reply yet`);
+        return null;
+      }
 
       // Gửi Socket.io báo cho frontend cập nhật UI ngay lập tức
       const room = `brand_room_${brandId}`;

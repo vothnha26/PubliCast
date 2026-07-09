@@ -72,6 +72,35 @@ export function InboxPage() {
   const [newKeywordInput, setNewKeywordInput] = useState("");
   const [newReplyInput, setNewReplyInput] = useState("");
 
+  const [selectedAutoReplyPlatform, setSelectedAutoReplyPlatform] = useState("FACEBOOK");
+  const [selectedSocialAccountId, setSelectedSocialAccountId] = useState("");
+
+  useEffect(() => {
+    if (isAutoReplyOpen) {
+      const currentPlat = platformFilter.toUpperCase();
+      if (currentPlat === "FACEBOOK" || currentPlat === "INSTAGRAM") {
+        setSelectedAutoReplyPlatform(currentPlat);
+      } else {
+        setSelectedAutoReplyPlatform("FACEBOOK");
+      }
+    }
+  }, [isAutoReplyOpen, platformFilter]);
+
+  const filteredAccountsForAutoReply = activeBrand?.socialAccounts?.filter(
+    sa => sa.platform === selectedAutoReplyPlatform && sa.isConnected
+  ) || [];
+
+  useEffect(() => {
+    if (filteredAccountsForAutoReply.length > 0) {
+      const exists = filteredAccountsForAutoReply.some(sa => sa.id === selectedSocialAccountId);
+      if (!exists) {
+        setSelectedSocialAccountId(filteredAccountsForAutoReply[0].id);
+      }
+    } else {
+      setSelectedSocialAccountId("");
+    }
+  }, [selectedAutoReplyPlatform, activeBrand?.socialAccounts]);
+
   // Sync debounced search
   useEffect(() => {
     if (debouncedSearch !== (filters.search || "")) {
@@ -259,11 +288,11 @@ export function InboxPage() {
   const facebookAccountId = activeFbAccount?.id;
 
   useEffect(() => {
-    if (isAutoReplyOpen && facebookAccountId) {
+    if (isAutoReplyOpen && selectedSocialAccountId) {
       const fetchSettings = async () => {
         setLoadingSettings(true);
         try {
-          const res = await apiService.get(`/inbox/auto-reply/settings/${facebookAccountId}`);
+          const res = await apiService.get(`/inbox/auto-reply/settings/${selectedSocialAccountId}`);
           if (res.data && res.data.data) {
             const { isActive, mode, keywordsConfig, aiPrompt } = res.data.data;
             setAutoReplyActive(isActive);
@@ -279,13 +308,16 @@ export function InboxPage() {
       };
       fetchSettings();
     }
-  }, [isAutoReplyOpen, facebookAccountId]);
+  }, [isAutoReplyOpen, selectedSocialAccountId]);
 
   const handleSaveAutoReplySettings = async () => {
-    if (!facebookAccountId) return;
+    if (!selectedSocialAccountId) {
+      toast.warning("Vui lòng kết nối tài khoản trước khi thiết lập.");
+      return;
+    }
     setSavingSettings(true);
     try {
-      await apiService.post(`/inbox/auto-reply/settings/${facebookAccountId}`, {
+      await apiService.post(`/inbox/auto-reply/settings/${selectedSocialAccountId}`, {
         isActive: autoReplyActive,
         mode: autoReplyMode,
         keywordsConfig: keywordsList,
@@ -364,7 +396,7 @@ export function InboxPage() {
               </button>
             </div>
            <div className="flex items-center gap-2">
-             {platformFilter.toLowerCase() === "facebook" && facebookAccountId && (
+             {(platformFilter.toLowerCase() === "facebook" || platformFilter.toLowerCase() === "instagram") && (
                <button 
                  onClick={() => setIsAutoReplyOpen(true)}
                  title="Auto-Reply Settings"
@@ -680,20 +712,38 @@ export function InboxPage() {
             {/* Modal Header */}
             <div className="p-6 border-b border-gray-50 flex items-center justify-between bg-gradient-to-r from-gray-50 to-white">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-2xl bg-blue-50 flex items-center justify-center text-blue-600 border border-blue-100">
-                  <Facebook className="fill-blue-600" size={20} />
+                <div className={`w-10 h-10 rounded-2xl flex items-center justify-center border ${
+                  selectedAutoReplyPlatform === "FACEBOOK" 
+                    ? "bg-blue-50 text-blue-600 border-blue-100" 
+                    : "bg-pink-50 text-pink-600 border-pink-100"
+                }`}>
+                  {selectedAutoReplyPlatform === "FACEBOOK" ? (
+                    <Facebook className="fill-blue-600" size={20} />
+                  ) : (
+                    <Instagram size={20} />
+                  )}
                 </div>
                 <div>
-                  <h3 className="text-sm font-bold text-gray-900">Meta Comment Auto-Reply Settings</h3>
-                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Configure automated comment replies for Facebook</p>
+                  <h3 className="text-sm font-bold text-gray-900">Meta Comment Auto-Reply</h3>
+                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Tự động trả lời bình luận Facebook & Instagram</p>
                 </div>
               </div>
-              <button 
-                onClick={() => setIsAutoReplyOpen(false)}
-                className="w-8 h-8 rounded-full flex items-center justify-center text-gray-400 hover:bg-gray-100 hover:text-black transition-colors"
-              >
-                ✕
-              </button>
+              <div className="flex items-center gap-2">
+                <select
+                  value={selectedAutoReplyPlatform}
+                  onChange={(e) => setSelectedAutoReplyPlatform(e.target.value)}
+                  className="bg-gray-50 border border-gray-200 text-xs rounded-xl px-2.5 py-1.5 outline-none font-bold text-gray-800 focus:border-gray-400"
+                >
+                  <option value="FACEBOOK">Facebook</option>
+                  <option value="INSTAGRAM">Instagram</option>
+                </select>
+                <button 
+                  onClick={() => setIsAutoReplyOpen(false)}
+                  className="w-8 h-8 rounded-full flex items-center justify-center text-gray-450 hover:bg-gray-150 transition-colors"
+                >
+                  ✕
+                </button>
+              </div>
             </div>
 
             {/* Modal Body */}
@@ -705,11 +755,30 @@ export function InboxPage() {
                 </div>
               ) : (
                 <>
+                  {/* Account Selector Dropdown */}
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest block">Tài khoản kết nối</label>
+                    <select
+                      value={selectedSocialAccountId}
+                      onChange={(e) => setSelectedSocialAccountId(e.target.value)}
+                      className="w-full bg-slate-50 border border-gray-200 text-xs rounded-xl px-3 py-2.5 outline-none font-semibold text-gray-800 focus:border-gray-450"
+                    >
+                      {filteredAccountsForAutoReply.map(sa => (
+                        <option key={sa.id} value={sa.id}>
+                          {sa.displayName} ({sa.platformAccountId})
+                        </option>
+                      ))}
+                      {filteredAccountsForAutoReply.length === 0 && (
+                        <option value="">-- Chưa kết nối tài khoản nào của platform này --</option>
+                      )}
+                    </select>
+                  </div>
+
                   {/* Status Toggle */}
                   <div className="flex items-center justify-between p-4 bg-gray-50/50 border border-gray-100 rounded-2xl">
                     <div>
-                      <h4 className="text-xs font-bold text-gray-900">Enable Auto-Reply</h4>
-                      <p className="text-[10px] text-gray-400 font-medium">Automatically respond to user comments on your Facebook Page.</p>
+                      <h4 className="text-xs font-bold text-gray-900">Bật tự động phản hồi</h4>
+                      <p className="text-[10px] text-gray-400 font-medium">Tự động trả lời bình luận của khách hàng trên trang.</p>
                     </div>
                     <button
                       onClick={() => setAutoReplyActive(!autoReplyActive)}

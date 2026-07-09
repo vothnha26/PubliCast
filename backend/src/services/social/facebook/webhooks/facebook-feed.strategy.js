@@ -81,7 +81,7 @@ class FacebookFeedStrategy extends BaseWebhookStrategy {
       // Execute Auto-Reply if comment is new and not from the page itself
       if (verb === 'add' && !isFromMe) {
         autoReplyService.executeAutoReply(
-          pageId,
+          account.id,
           value.message || '',
           commentId,
           account.brandId
