@@ -34,14 +34,13 @@ class TikTokAnalysisStrategy extends HashtagAnalysisStrategy {
     const challengeId = challenge.cid;
     logger.info(`[TikTokAnalysisStrategy] Found challenge ID: ${challengeId} for #${cleanTag}. Fetching posts...`);
 
-    // 2. Lấy posts từ challenge
-    const postsRes = await axios.get('https://tokapi-mobile-version.p.rapidapi.com/v1/challenge/posts', {
+    // 2. Lấy posts từ challenge (Sử dụng endpoint đúng: /v1/hashtag/posts/{challengeId})
+    const postsRes = await axios.get(`https://tokapi-mobile-version.p.rapidapi.com/v1/hashtag/posts/${challengeId}`, {
       headers: {
         'x-rapidapi-key': rapidApiKey,
         'x-rapidapi-host': 'tokapi-mobile-version.p.rapidapi.com'
       },
       params: {
-        challenge_id: challengeId,
         count: 30,
         cursor: 0
       },
