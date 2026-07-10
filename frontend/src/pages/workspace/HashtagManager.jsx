@@ -71,10 +71,10 @@ export function HashtagManager() {
     setTrendingError(null);
     try {
       const platformParam = CATEGORIES_CONFIG[cat]?.platform || "TIKTOK";
-      const res = await apiService.get(`/hashtags/trending?platform=${platformParam}&limit=20`);
+      const res = await apiService.get(`/hashtags/trending?platform=${platformParam}&limit=20&brandId=${activeBrand.id}`);
       setTrendingHashtags(res.data.trending || []);
     } catch (err) {
-      setTrendingError("Không thể tải danh sách hashtag đang thịnh hành.");
+      setTrendingError(err.response?.data?.message || "Không thể tải danh sách hashtag đang thịnh hành.");
       console.error(err);
     } finally {
       setTrendingLoading(false);

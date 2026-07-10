@@ -48,7 +48,7 @@ export function HashtagAnalysisModal({ trackerId, onClose }) {
         setData(res.data);
       } catch (err) {
         console.error(err);
-        toast.error('Không thể tải dữ liệu phân tích chi tiết.');
+        toast.error(err.response?.data?.message || 'Không thể tải dữ liệu phân tích chi tiết.');
         onClose();
       } finally {
         setLoading(false);
@@ -111,24 +111,12 @@ export function HashtagAnalysisModal({ trackerId, onClose }) {
             </div>
           </div>
           
-          <div className="flex items-center gap-2">
-            <button
-              onClick={handleRefresh}
-              disabled={isRefreshing}
-              className={`p-2 rounded-xl bg-white border border-gray-200 text-gray-400 hover:text-blue-600 hover:border-blue-200 hover:shadow-md transition-all cursor-pointer flex items-center gap-1.5 text-xs font-bold ${isRefreshing ? 'opacity-65 cursor-not-allowed' : ''}`}
-              title="Đồng bộ lại dữ liệu thật từ API Scraper"
-            >
-              <RefreshCw size={14} className={isRefreshing ? 'animate-spin text-blue-600' : ''} />
-              {isRefreshing ? 'Đang đồng bộ...' : 'Đồng bộ API'}
-            </button>
-            
-            <button 
-              onClick={onClose}
-              className="p-2 rounded-xl bg-white border border-gray-200 text-gray-400 hover:text-gray-700 hover:shadow-md transition-all cursor-pointer"
-            >
-              <X size={18} />
-            </button>
-          </div>
+          <button 
+            onClick={onClose}
+            className="p-2 rounded-xl bg-white border border-gray-200 text-gray-400 hover:text-gray-700 hover:shadow-md transition-all cursor-pointer"
+          >
+            <X size={18} />
+          </button>
         </div>
 
         {/* Tab switcher */}

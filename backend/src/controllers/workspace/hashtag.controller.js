@@ -17,6 +17,48 @@ const getPlatformCacheKey = (platform) => {
   return `hashtag:trending:${source}`;
 };
 
+// Helper để kiểm tra quyền và giới hạn hashtag theo Subscription Plan
+async function checkHashtagAccessAndLimit(brandId) {
+  if (!brandId) {
+    throw new Error('Missing brandId');
+  }
+
+  const brand = await prisma.brand.findUnique({
+    where: { id: brandId },
+    include: {
+      subscription: {
+        include: {
+          plan: true
+        }
+      }
+    }
+  });
+
+  if (!brand) {
+    return { allowed: false, reason: 'Brand workspace not found', limit: 0 };
+  }
+
+  const planName = brand.subscription?.plan?.name || 'FREE';
+
+  if (planName === 'FREE' || planName === 'STARTER') {
+    return { 
+      allowed: false, 
+      reason: `Gói ${planName} không hỗ trợ tính năng Nghiên cứu và Phân tích Hashtag. Vui lòng nâng cấp lên gói PRO hoặc AGENCY để mở khóa tính năng này.`, 
+      limit: 0, 
+      planName 
+    };
+  }
+
+  const limitMap = {
+    'PRO': 3, // Gói VIP PRO được track tối đa 3 hashtag
+    'AGENCY': 20
+  };
+
+  const limit = limitMap[planName] || 3;
+
+  return { allowed: true, limit, planName };
+}
+
 /**
  * Get all hashtag sets and tracked hashtags for a brand
  */
@@ -166,6 +208,22 @@ exports.trackHashtag = async (req, res, next) => {
       return res.status(409).json({ message: 'Hashtag is already being tracked on this platform' });
     }
 
+    // Check Subscription Limit
+    const access = await checkHashtagAccessAndLimit(brandId);
+    if (!access.allowed) {
+      return res.status(403).json({ message: access.reason });
+    }
+
+    const currentTrackedCount = await prisma.hashtagTracker.count({
+      where: { brandId }
+    });
+
+    if (currentTrackedCount >= access.limit) {
+      return res.status(403).json({
+        message: `Bạn đã đạt giới hạn số lượng hashtag theo dõi cho gói ${access.planName} (tối đa ${access.limit} hashtags). Vui lòng nâng cấp gói của bạn để theo dõi thêm.`
+      });
+    }
+
     // Create a new tracker with randomized/mock initial analytics
     const newTracker = await prisma.hashtagTracker.create({
       data: {
@@ -216,7 +274,18 @@ exports.untrackHashtag = async (req, res, next) => {
  */
 exports.getTrendingHashtags = async (req, res, next) => {
   try {
-    const { platform = 'MOCK', limit = 20 } = req.query;
+    const { platform = 'MOCK', limit = 20, brandId } = req.query;
+    
+    if (!brandId) {
+      return res.status(400).json({ message: 'Missing brandId parameter' });
+    }
+
+    // Check Access
+    const access = await checkHashtagAccessAndLimit(brandId);
+    if (!access.allowed) {
+      return res.status(403).json({ message: access.reason });
+    }
+
     const parsedLimit = parseInt(limit, 10);
     const cacheKey = getPlatformCacheKey(platform);
 
@@ -301,6 +370,12 @@ exports.getHashtagAnalysis = async (req, res, next) => {
 
     if (!tracker) {
       return res.status(404).json({ message: 'Tracked hashtag not found' });
+    }
+
+    // Check Access
+    const access = await checkHashtagAccessAndLimit(tracker.brandId);
+    if (!access.allowed) {
+      return res.status(403).json({ message: access.reason });
     }
 
     // Kiểm tra xem đã có dữ liệu phân tích trong DB chưa hoặc yêu cầu làm mới (refresh)
