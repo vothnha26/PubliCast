@@ -35,6 +35,8 @@ export function HashtagManager() {
   const [hashtagSets, setHashtagSets] = useState([]);
   const [trackedHashtags, setTrackedHashtags] = useState([]);
   const [selectedAnalysisTrackerId, setSelectedAnalysisTrackerId] = useState(null);
+  const [customTag, setCustomTag] = useState("");
+  const [customPlatform, setCustomPlatform] = useState("IG");
   
   // Editor / Create Modal States
   const [selectedSet, setSelectedSet] = useState(null); // HashtagSet Object
@@ -202,6 +204,29 @@ export function HashtagManager() {
       loadData(true);
     } catch (error) {
       toast.error(error.message || "Không thể theo dõi tag.");
+    }
+  };
+
+  // Track custom tag from stats panel input
+  const handleTrackCustomTag = async (e) => {
+    e.preventDefault();
+    if (!customTag.trim()) {
+      toast.warning("Vui lòng nhập hashtag.");
+      return;
+    }
+    if (!activeBrand?.id) return;
+    try {
+      const formatted = customTag.trim().startsWith("#") ? customTag.trim() : `#${customTag.trim()}`;
+      await apiService.post("/hashtags/track", {
+        brandId: activeBrand.id,
+        hashtag: formatted,
+        platform: customPlatform
+      });
+      toast.success(`Đang theo dõi tag: ${formatted} trên ${customPlatform === 'IG' ? 'Instagram' : 'TikTok'}`);
+      setCustomTag("");
+      loadData(true);
+    } catch (error) {
+      toast.error(error.response?.data?.message || error.message || "Không thể theo dõi tag.");
     }
   };
 
@@ -390,6 +415,37 @@ export function HashtagManager() {
 
             {activeTab === "stats" && (
               <div className="space-y-8 animate-in fade-in duration-300">
+                {/* Form thêm hashtag theo dõi thủ công */}
+                <form onSubmit={handleTrackCustomTag} className="bg-white rounded-2xl p-5 border border-gray-150 shadow-xs flex flex-wrap items-center justify-between gap-4">
+                  <div className="flex-1 min-w-[280px]">
+                    <h4 className="text-xs font-bold text-gray-800 uppercase tracking-wider mb-1">Theo dõi Hashtag mới</h4>
+                    <p className="text-[10px] text-gray-400">Nhập hashtag và chọn nền tảng để bắt đầu phân tích dữ liệu hiệu suất thật.</p>
+                  </div>
+                  <div className="flex items-center gap-3 flex-wrap">
+                    <input 
+                      type="text" 
+                      placeholder="ví dụ: #inbound18" 
+                      value={customTag}
+                      onChange={(e) => setCustomTag(e.target.value)}
+                      className="bg-white border border-gray-250 rounded-xl px-3 py-2.5 text-xs font-semibold outline-none focus:border-gray-400 w-44"
+                    />
+                    <select 
+                      value={customPlatform}
+                      onChange={(e) => setCustomPlatform(e.target.value)}
+                      className="bg-white border border-gray-250 rounded-xl px-3 py-2.5 text-xs font-bold outline-none focus:border-gray-400 cursor-pointer"
+                    >
+                      <option value="IG">Instagram</option>
+                      <option value="TK">TikTok</option>
+                    </select>
+                    <button 
+                      type="submit"
+                      className="px-5 py-2.5 bg-black hover:bg-gray-800 text-white rounded-xl text-xs font-bold transition-all cursor-pointer shadow-sm"
+                    >
+                      Theo dõi
+                    </button>
+                  </div>
+                </form>
+
                 {trackedHashtags.length === 0 ? (
                   <div className="bg-white rounded-2xl p-10 border border-gray-150 shadow-xs flex flex-col items-center justify-center text-center gap-2">
                     <AlertCircle size={24} className="text-gray-300" />
