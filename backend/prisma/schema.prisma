@@ -296,6 +296,8 @@ model PlanLimit {
   maxTeamSeats          Int
   allowCustomRoles      Boolean
   allowApprovalWorkflow Boolean
+  maxTrackedHashtags    Int           @default(0)
+  allowHashtagAnalytics Boolean       @default(false)
   createdAt             DateTime      @default(now())
 
   plans Plan[]

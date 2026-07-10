@@ -28,7 +28,11 @@ async function checkHashtagAccessAndLimit(brandId) {
     include: {
       subscription: {
         include: {
-          plan: true
+          plan: {
+            include: {
+              planLimit: true
+            }
+          }
         }
       }
     }
@@ -38,9 +42,10 @@ async function checkHashtagAccessAndLimit(brandId) {
     return { allowed: false, reason: 'Brand workspace not found', limit: 0 };
   }
 
+  const limits = brand.subscription?.plan?.planLimit;
   const planName = brand.subscription?.plan?.name || 'FREE';
 
-  if (planName === 'FREE' || planName === 'STARTER') {
+  if (!limits || !limits.allowHashtagAnalytics) {
     return { 
       allowed: false, 
       reason: `Gói ${planName} không hỗ trợ tính năng Nghiên cứu và Phân tích Hashtag. Vui lòng nâng cấp lên gói PRO hoặc AGENCY để mở khóa tính năng này.`, 
@@ -49,14 +54,7 @@ async function checkHashtagAccessAndLimit(brandId) {
     };
   }
 
-  const limitMap = {
-    'PRO': 3, // Gói VIP PRO được track tối đa 3 hashtag
-    'AGENCY': 20
-  };
-
-  const limit = limitMap[planName] || 3;
-
-  return { allowed: true, limit, planName };
+  return { allowed: true, limit: limits.maxTrackedHashtags, planName };
 }
 
 /**

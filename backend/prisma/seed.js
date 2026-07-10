@@ -91,7 +91,9 @@ async function main() {
       maxStreamQuality: 'SD',
       maxTeamSeats: 1,
       allowCustomRoles: false,
-      allowApprovalWorkflow: false
+      allowApprovalWorkflow: false,
+      maxTrackedHashtags: 0,
+      allowHashtagAnalytics: false
     }
   });
 
@@ -104,7 +106,9 @@ async function main() {
       maxStreamQuality: 'HD_720P',
       maxTeamSeats: 3,
       allowCustomRoles: true,
-      allowApprovalWorkflow: false
+      allowApprovalWorkflow: false,
+      maxTrackedHashtags: 0,
+      allowHashtagAnalytics: false
     }
   });
 
@@ -117,7 +121,9 @@ async function main() {
       maxStreamQuality: 'FHD_1080P',
       maxTeamSeats: 10,
       allowCustomRoles: true,
-      allowApprovalWorkflow: true
+      allowApprovalWorkflow: true,
+      maxTrackedHashtags: 3,
+      allowHashtagAnalytics: true
     }
   });
 
@@ -130,7 +136,9 @@ async function main() {
       maxStreamQuality: 'UHD_4K',
       maxTeamSeats: 50,
       allowCustomRoles: true,
-      allowApprovalWorkflow: true
+      allowApprovalWorkflow: true,
+      maxTrackedHashtags: 20,
+      allowHashtagAnalytics: true
     }
   });
 
