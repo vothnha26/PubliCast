@@ -2,7 +2,7 @@ const prisma = require('../../config/prisma');
 const logger = require('../../utils/logger');
 const trendingHashtagService = require('../../services/workspace/hashtag/trending/TrendingHashtagService');
 const redisClient = require('../../config/redis');
-const hashtagAnalysisGenerator = require('../../services/workspace/hashtag/hashtag-analysis-generator');
+const hashtagAnalysisFactory = require('../../services/workspace/hashtag/analysis/HashtagAnalysisFactory');
 
 // Cache 24 giờ → ~90 API calls/tháng → vừa đủ Free tier RapidAPI
 const TRENDING_CACHE_TTL_SECONDS = 24 * 60 * 60;
@@ -294,15 +294,23 @@ exports.getHashtagAnalysis = async (req, res, next) => {
     }
 
     // Kiểm tra xem đã có dữ liệu phân tích trong DB chưa.
-    // Nếu chưa có (hoặc trống), tiến hành sinh mới và cập nhật vào DB
+    // Nếu chưa có (hoặc trống), tiến hành lấy dữ liệu mới và cập nhật vào DB
     let analysisData;
     if (!tracker.trendScoreJson || !tracker.topPostsJson) {
-      // Sinh dữ liệu phân tích
-      analysisData = hashtagAnalysisGenerator.generate(tracker.hashtag, tracker.platform);
+      const strategy = hashtagAnalysisFactory.getStrategy(tracker.platform);
+      
+      try {
+        logger.info(`[HashtagAnalysis] Executing strategy ${strategy.constructor.name} for #${tracker.hashtag}...`);
+        analysisData = await strategy.analyze(tracker.hashtag, tracker);
+      } catch (err) {
+        // Tự động fallback sang Mock Strategy khi có lỗi API Scraper
+        logger.error(`[HashtagAnalysis] Strategy ${strategy.constructor.name} failed: ${err.message}. Falling back to MockAnalysisStrategy.`);
+        const MockAnalysisStrategy = require('../../services/workspace/hashtag/analysis/MockAnalysisStrategy');
+        const fallbackStrategy = new MockAnalysisStrategy();
+        analysisData = await fallbackStrategy.analyze(tracker.hashtag, tracker);
+      }
 
-      // Tách dữ liệu ra để lưu vào DB nhằm tối ưu hóa
-      // trendScoreJson sẽ lưu phần: summary, evolution, distributions, countries, usedTags, topPictures
-      // topPostsJson sẽ lưu phần: topParticipants, topPosts
+      // Tách dữ liệu ra để lưu vào DB
       const trendScoreObj = {
         summary: analysisData.summary,
         evolution: analysisData.evolution,
@@ -326,7 +334,7 @@ exports.getHashtagAnalysis = async (req, res, next) => {
         }
       });
 
-      logger.info(`[HashtagAnalysis] Generated and saved analytics for tracker: ${tracker.hashtag}`);
+      logger.info(`[HashtagAnalysis] Saved analytics data for tracker: ${tracker.hashtag}`);
     } else {
       // Đã có dữ liệu, parse từ DB
       const trendScoreObj = JSON.parse(tracker.trendScoreJson);
