@@ -2,6 +2,7 @@ const express = require('express');
 const postController = require('../../controllers/workspace/post.controller');
 const { verifyAuth } = require('../../middlewares/auth.middleware');
 const checkPermission = require('../../middlewares/permission.middleware');
+const postRateLimitMiddleware = require('../../middlewares/post-rate-limit.middleware');
 
 const router = express.Router();
 
@@ -29,8 +30,9 @@ router.get('/best-times', postController.getBestTimes);
 /**
  * POST /api/posts
  * Create a new post
+ * postRateLimitMiddleware: chặn spam (10 bài/phút, 50 bài/giờ)
  */
-router.post('/', checkPermission('CREATE_POSTS'), postController.createPost);
+router.post('/', checkPermission('CREATE_POSTS'), postRateLimitMiddleware, postController.createPost);
 
 /**
  * POST /api/posts/bulk-approve
@@ -47,8 +49,9 @@ router.delete('/bulk', checkPermission('DELETE_POSTS'), postController.bulkDelet
 /**
  * POST /api/posts/bulk-restore
  * Bulk restore posts from trash
+ * postRateLimitMiddleware: chặn spam khôi phục hàng loạt
  */
-router.post('/bulk-restore', checkPermission('CREATE_POSTS'), postController.bulkRestore);
+router.post('/bulk-restore', checkPermission('CREATE_POSTS'), postRateLimitMiddleware, postController.bulkRestore);
 
 /**
  * DELETE /api/posts/trash

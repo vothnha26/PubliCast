@@ -716,7 +716,24 @@ export function usePostCreatorForm() {
       }
     } catch (error) {
       console.error("Failed to create/update post:", error);
+      const status = error.response?.status;
       const serverMessage = error.response?.data?.message || error.message || "Failed to create post";
+
+      // Xử lý riêng HTTP 429 - Rate Limit Exceeded
+      if (status === 429) {
+        const retryAfter = error.response?.data?.retryAfter;
+        const retryText = retryAfter
+          ? retryAfter >= 60
+            ? ` Thử lại sau ${Math.ceil(retryAfter / 60)} phút.`
+            : ` Thử lại sau ${retryAfter} giây.`
+          : '';
+        toast.warning(`⏱ ${serverMessage}${retryText}`, {
+          duration: 6000,
+          id: 'post-rate-limit-toast',
+        });
+        return;
+      }
+
       console.error('[PostCreator] Server error detail:', serverMessage);
       // Tách validation errors nếu có (bắt đầu bằng "Validation failed:")
       if (serverMessage.startsWith('Validation failed:')) {
