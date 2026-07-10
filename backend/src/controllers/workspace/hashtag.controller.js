@@ -238,45 +238,27 @@ exports.getTrendingHashtags = async (req, res, next) => {
         logger.info(`[TrendingDB] HIT → platform: ${normalizedPlatform}, date: ${today.toDateString()}`);
         trending = JSON.parse(records[0].dataJson);
         fromDb = true;
+
+        // Lưu ngược lại vào Redis cache (TTL: 24h) để các request sau cực nhanh
+        try {
+          await redisClient.setEx(cacheKey, TRENDING_CACHE_TTL_SECONDS, JSON.stringify(trending));
+          logger.info(`[TrendingCache] Cached to Redis → ${cacheKey}`);
+        } catch (cacheErr) {
+          logger.warn(`[TrendingCache] Redis write failed: ${cacheErr.message}`);
+        }
       }
     } catch (dbErr) {
       logger.warn(`[TrendingDB] DB read failed: ${dbErr.message}`);
     }
 
-    // 3. DB miss → Gọi API thật từ RapidAPI
+    // Nếu cả cache và DB đều trống (chưa sync lần nào hoặc vừa deploy), 
+    // trả về mảng rỗng và kích hoạt đồng bộ chạy ngầm ngay lập tức để nạp dữ liệu cho lượt tải tiếp theo.
     if (trending.length === 0) {
-      logger.info(`[TrendingAPI] MISS → fetching from RapidAPI for platform: ${platform}`);
-      trending = await trendingHashtagService.getTrendingHashtags(platform, 30); // luôn fetch 30 để cache buffer
-
-      // Lưu snapshot vào DB
-      if (trending && trending.length > 0) {
-        try {
-          const uuid = require('crypto').randomUUID();
-          await prisma.$executeRawUnsafe(
-            'INSERT INTO hashtag_trending_snapshots (id, platform, snapshotDate, dataJson, fetchedAt) VALUES (?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE dataJson = ?, fetchedAt = ?',
-            uuid,
-            normalizedPlatform,
-            today,
-            JSON.stringify(trending),
-            new Date(),
-            JSON.stringify(trending),
-            new Date()
-          );
-          logger.info(`[TrendingDB] Saved snapshot to DB for platform: ${normalizedPlatform}`);
-        } catch (dbSaveErr) {
-          logger.warn(`[TrendingDB] DB write failed: ${dbSaveErr.message}`);
-        }
-      }
-    }
-
-    // 4. Lưu ngược lại vào Redis cache (TTL: 24h)
-    if (trending && trending.length > 0) {
-      try {
-        await redisClient.setEx(cacheKey, TRENDING_CACHE_TTL_SECONDS, JSON.stringify(trending));
-        logger.info(`[TrendingCache] Cached to Redis → ${cacheKey}`);
-      } catch (cacheErr) {
-        logger.warn(`[TrendingCache] Redis write failed: ${cacheErr.message}`);
-      }
+      logger.warn(`[TrendingAPI] Cache and DB MISS for platform ${platform}. Triggering background sync...`);
+      const hashtagSyncService = require('../../services/workspace/hashtag/hashtag-sync.service');
+      hashtagSyncService.syncTrendingHashtags().catch(err => {
+        logger.error('[TrendingAPI] Background sync failed:', err.message);
+      });
     }
 
     return res.status(200).json({ 
