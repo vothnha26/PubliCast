@@ -138,6 +138,16 @@ exports.trackHashtag = async (req, res, next) => {
       return res.status(400).json({ message: 'Missing required fields: brandId, hashtag, platform' });
     }
 
+    // Map platform short names (IG, TK) or lowercase names to database enum values (PlatformType)
+    const platformMapping = {
+      'IG': 'INSTAGRAM',
+      'TK': 'TIKTOK',
+      'INSTAGRAM': 'INSTAGRAM',
+      'TIKTOK': 'TIKTOK'
+    };
+    
+    const dbPlatform = platformMapping[platform.toUpperCase()] || platform.toUpperCase();
+
     // Clean up hashtag input
     const cleanTag = hashtag.startsWith('#') ? hashtag : `#${hashtag}`;
 
@@ -146,7 +156,7 @@ exports.trackHashtag = async (req, res, next) => {
       where: {
         brandId_platform_hashtag: {
           brandId,
-          platform,
+          platform: dbPlatform,
           hashtag: cleanTag
         }
       }
@@ -161,7 +171,7 @@ exports.trackHashtag = async (req, res, next) => {
       data: {
         brandId,
         hashtag: cleanTag,
-        platform,
+        platform: dbPlatform,
         totalPosts: Math.floor(Math.random() * 500000 + 10000),
         postsLast24h: Math.floor(Math.random() * 1200 + 50),
         totalReach: Math.floor(Math.random() * 80000 + 2000),
