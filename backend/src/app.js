@@ -41,6 +41,7 @@ const approvalWorkflowRoutes = require('./routes/workspace/approval-workflow.rou
 const aiRoutes = require('./routes/workspace/ai.routes');
 const reportRoutes = require('./routes/workspace/report.routes');
 const hashtagRoutes = require('./routes/workspace/hashtag.routes');
+const hashtagAdminRoutes = require('./routes/admin/hashtag-admin.routes');
 const adAccountRoutes = require('./routes/workspace/ad-account.routes');
 const calendarEventRoutes = require('./routes/workspace/calendar-event.routes');
 
@@ -147,6 +148,7 @@ app.use('/api/admin/products', productRoutes);
 app.use('/api/admin/platform-limits', platformLimitRoutes);
 app.use('/api/admin/users', userRoutes);
 app.use('/api/admin/announcements', announcementRoutes);
+app.use('/api/admin/hashtags', hashtagAdminRoutes);
 app.use('/api/social', socialRoutes);
 app.use('/api/brands', brandRoutes);
 app.use('/api/brands/:brandId/roles', roleRoutes);

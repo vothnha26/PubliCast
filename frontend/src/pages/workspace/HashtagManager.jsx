@@ -6,8 +6,14 @@ import { toast } from "sonner";
 import apiService from "../../services/api";
 import { useBrand } from "../../context/BrandContext";
 import { useConfirm } from "@/hooks/useConfirm";
+import { HashtagAnalysisModal } from "../../components/workspace/hashtag/HashtagAnalysisModal";
 
-const categories = ["Instagram", "TikTok", "General"];
+const CATEGORIES_CONFIG = {
+  Instagram: { platform: "INSTAGRAM", label: "Instagram" },
+  TikTok: { platform: "TIKTOK", label: "TikTok" },
+  General: { platform: "TIKTOK", label: "General" }
+};
+const categories = Object.keys(CATEGORIES_CONFIG);
 const platformColors = { YT: "#FF0000", IG: "#E1306C", TK: "#000000", LI: "#0A66C2", X: "#0A0A0A" };
 
 export function HashtagManager() {
@@ -28,6 +34,7 @@ export function HashtagManager() {
   // Real DB states
   const [hashtagSets, setHashtagSets] = useState([]);
   const [trackedHashtags, setTrackedHashtags] = useState([]);
+  const [selectedAnalysisTrackerId, setSelectedAnalysisTrackerId] = useState(null);
   
   // Editor / Create Modal States
   const [selectedSet, setSelectedSet] = useState(null); // HashtagSet Object
@@ -61,10 +68,7 @@ export function HashtagManager() {
     setTrendingLoading(true);
     setTrendingError(null);
     try {
-      let platformParam = "MOCK";
-      if (cat === "Instagram") platformParam = "INSTAGRAM";
-      if (cat === "TikTok") platformParam = "TIKTOK";
-
+      const platformParam = CATEGORIES_CONFIG[cat]?.platform || "TIKTOK";
       const res = await apiService.get(`/hashtags/trending?platform=${platformParam}&limit=20`);
       setTrendingHashtags(res.data.trending || []);
     } catch (err) {
@@ -418,15 +422,26 @@ export function HashtagManager() {
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-100">
-                          {trackedHashtags.map((row) => (
+                            {trackedHashtags.map((row) => (
                             <tr key={row.id} className="hover:bg-slate-50/50 transition-colors">
-                              <td className="px-6 py-4 text-xs font-bold text-gray-900">{row.hashtag}</td>
+                              <td 
+                                className="px-6 py-4 text-xs font-bold text-blue-600 hover:underline cursor-pointer"
+                                onClick={() => setSelectedAnalysisTrackerId(row.id)}
+                              >
+                                {row.hashtag}
+                              </td>
                               <td className="px-6 py-4 text-xs text-gray-400 font-semibold">{row.postsLast24h} posts/24h</td>
                               <td className="px-6 py-4 text-xs font-bold text-gray-900">{(row.totalReach / 1000).toFixed(1)}K reach</td>
                               <td className="px-6 py-4">
-                                <span className="px-2.5 py-0.5 rounded bg-pink-50 text-[#E1306C] text-[9px] font-bold uppercase tracking-tight">Instagram</span>
+                                <span className="px-2.5 py-0.5 rounded bg-pink-50 text-[#E1306C] text-[9px] font-bold uppercase tracking-tight">{row.platform}</span>
                               </td>
-                              <td className="px-6 py-4 text-right">
+                              <td className="px-6 py-4 text-right space-x-3">
+                                 <button 
+                                   onClick={() => setSelectedAnalysisTrackerId(row.id)}
+                                   className="text-blue-600 text-[10px] font-bold hover:underline cursor-pointer"
+                                 >
+                                   Phân tích
+                                 </button>
                                  <button 
                                    onClick={() => handleUntrackTag(row.id)}
                                    className="text-red-500 text-[10px] font-bold hover:underline cursor-pointer"
@@ -564,6 +579,13 @@ export function HashtagManager() {
               </div>
            </div>
         </div>
+      )}
+      
+      {selectedAnalysisTrackerId && (
+        <HashtagAnalysisModal 
+          trackerId={selectedAnalysisTrackerId} 
+          onClose={() => setSelectedAnalysisTrackerId(null)} 
+        />
       )}
     </div>
   );

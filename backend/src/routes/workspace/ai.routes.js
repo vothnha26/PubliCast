@@ -13,6 +13,7 @@ router.get('/settings', aiController.getSettings);
 router.put('/settings', aiController.updateSettings);
 router.get('/history', aiController.getHistory);
 router.post('/generate', requireFeature(PRODUCT_IDS.AI_CONTENT_ENGINE), aiController.generateContent);
+router.post('/refine', requireFeature(PRODUCT_IDS.AI_CONTENT_ENGINE), aiController.refineContent);
 router.post('/quick-post', requireFeature(PRODUCT_IDS.AI_CONTENT_ENGINE), aiController.quickPost);
 
 module.exports = router;

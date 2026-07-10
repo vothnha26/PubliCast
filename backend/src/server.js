@@ -57,13 +57,14 @@ const server = app.listen(PORT, async () => {
   setInterval(() => postMetricSyncService.syncPostMetrics().catch(() => {}), 1 * 60 * 60 * 1000);
   logger.info('Post metrics sync scheduler started (every 1h)');
 
-  // Start Hashtag daily trending sync (runs every 24h)
+  // Start Hashtag trending sync scheduler (interval configured in env)
   const hashtagSyncService = require('./services/workspace/hashtag/hashtag-sync.service');
+  const syncIntervalHours = parseInt(process.env.HASHTAG_SYNC_INTERVAL_HOURS, 10) || 6;
   // Run once at startup (with delay to let DB settle and populate cache/DB immediately)
   setTimeout(() => hashtagSyncService.syncTrendingHashtags().catch(() => {}), 60_000);
-  // Then every 24 hours
-  setInterval(() => hashtagSyncService.syncTrendingHashtags().catch(() => {}), 24 * 60 * 60 * 1000);
-  logger.info('Hashtag daily trending sync scheduler started (every 24h)');
+  // Then periodically
+  setInterval(() => hashtagSyncService.syncTrendingHashtags().catch(() => {}), syncIntervalHours * 60 * 60 * 1000);
+  logger.info(`Hashtag trending sync scheduler started (every ${syncIntervalHours}h)`);
 
 });
 

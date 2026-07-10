@@ -114,6 +114,10 @@ export function PostCreatorPage() {
     isUploadingVideo,
     activePopover,
     setActivePopover,
+    smartLinkTitle,
+    setSmartLinkTitle,
+    smartLinkUrl,
+    setSmartLinkUrl,
     showFirstCommentModal,
     setShowFirstCommentModal,
     isDriveModalOpen,
@@ -430,7 +434,11 @@ export function PostCreatorPage() {
     hasCreatePermission,
     hasApprovePermission,
     closePostCreator,
-    hasAccess
+    hasAccess,
+    smartLinkTitle,
+    setSmartLinkTitle,
+    smartLinkUrl,
+    setSmartLinkUrl
   };
 
   return (

@@ -14,7 +14,7 @@ import { HashtagPickerPopover } from "./HashtagPickerPopover";
 import { FacebookAlbumComposer } from "./FacebookAlbumComposer";
 import { toast } from "sonner";
 import { PRODUCT_IDS } from "../../../constants/products";
-import { AICopilotPopover } from "./AICopilotPopover";
+import AITextGeneratorModal from "./AITextGeneratorModal";
 
 // Presets Imports
 import { GlobalPresets } from "./presets/GlobalPresets";
@@ -543,15 +543,14 @@ export function ComposerBody() {
             </div>
           </div>
 
-          {/* AI Copilot Popover */}
-          {showAICopilot && (
-            <AICopilotPopover
-              caption={caption}
-              onUpdateCaption={setCaption}
-              activePlatform={activePlatform}
-              onClose={() => setShowAICopilot(false)}
-            />
-          )}
+          {/* AI Assistant Modal */}
+          <AITextGeneratorModal
+            isOpen={showAICopilot}
+            onClose={() => setShowAICopilot(false)}
+            initialText={caption}
+            onUseText={(text) => setCaption(text)}
+            activePlatform={activePlatform}
+          />
         </div>
 
         {/* ── Template Inline Editor ── */}

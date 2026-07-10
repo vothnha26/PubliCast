@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from "react";
-import { Sparkles, X, ChevronRight, Check, Copy, RefreshCw, MessageSquare, AlertCircle } from "lucide-react";
+import { Sparkles, X, ChevronRight, Check, Copy, RefreshCw, MessageSquare, AlertCircle, ChevronDown } from "lucide-react";
 import { toast } from "sonner";
 import apiService from "../../../services/api";
 import { useBrand } from "../../../context/BrandContext";
+import SelectionModal from "./SelectionModal";
 
 export function AICopilotPopover({ caption, onUpdateCaption, activePlatform, onClose }) {
   const { activeBrand } = useBrand();
@@ -16,6 +17,7 @@ export function AICopilotPopover({ caption, onUpdateCaption, activePlatform, onC
   const [result, setResult] = useState("");
   const [suggestedHashtags, setSuggestedHashtags] = useState([]);
   const [copied, setCopied] = useState(false);
+  const [showToneModal, setShowToneModal] = useState(false);
   
   // Credits status
   const [creditsLimit, setCreditsLimit] = useState(1000);
@@ -136,6 +138,15 @@ export function AICopilotPopover({ caption, onUpdateCaption, activePlatform, onC
 
   const remainingCredits = Math.max(0, creditsLimit - creditsUsed);
 
+  const TONE_OPTIONS = [
+    { value: "PROFESSIONAL", label: "Professional", emoji: "💼" },
+    { value: "CASUAL",       label: "Casual",       emoji: "🌟" },
+    { value: "FUNNY",        label: "Funny",        emoji: "😂" },
+    { value: "INSPIRATIONAL",label: "Inspirational",emoji: "✨" },
+    { value: "URGENT",       label: "Urgent",       emoji: "🚨" },
+    { value: "EDUCATIONAL",  label: "Educational",  emoji: "💡" },
+  ];
+
   return (
     <div className="absolute bottom-16 left-6 z-50 w-[420px] bg-white rounded-[24px] border border-gray-200/90 shadow-2xl p-5 flex flex-col gap-4 animate-in fade-in slide-in-from-bottom-2 duration-200 font-sans">
       {/* Header */}
@@ -171,18 +182,17 @@ export function AICopilotPopover({ caption, onUpdateCaption, activePlatform, onC
           {/* Tone */}
           <div className="flex flex-col gap-1">
             <label className="text-[9px] font-bold text-gray-400 uppercase tracking-wider">Giọng điệu</label>
-            <select
-              value={tone}
-              onChange={(e) => setTone(e.target.value)}
-              className="w-full p-2 rounded-lg border border-gray-200 text-[10px] font-bold text-gray-700 focus:outline-none focus:border-purple-500"
+            <button
+              type="button"
+              onClick={() => setShowToneModal(true)}
+              className="w-full flex items-center justify-between p-2 rounded-lg border border-gray-200 bg-white hover:border-purple-400 hover:bg-purple-50/30 transition-all cursor-pointer group"
             >
-              <option value="PROFESSIONAL">💼 Chuyên nghiệp</option>
-              <option value="CASUAL">✨ Thân thiện</option>
-              <option value="FUNNY">😂 Hài hước</option>
-              <option value="INSPIRATIONAL">🌟 Truyền cảm hứng</option>
-              <option value="URGENT">🚨 Khẩn cấp</option>
-              <option value="EDUCATIONAL">💡 Học thuật</option>
-            </select>
+              <span className="flex items-center gap-1.5 text-[10px] font-bold text-gray-700 truncate">
+                <span>{TONE_OPTIONS.find(o => o.value === tone)?.emoji}</span>
+                {TONE_OPTIONS.find(o => o.value === tone)?.label}
+              </span>
+              <ChevronDown size={12} className="text-gray-400 group-hover:text-purple-500 shrink-0 transition-colors" />
+            </button>
           </div>
 
           {/* Format */}
@@ -300,6 +310,16 @@ export function AICopilotPopover({ caption, onUpdateCaption, activePlatform, onC
         </span>
         <span>Hạn mức: {remainingCredits} / {creditsLimit} Credits còn lại</span>
       </div>
+
+      {/* Tone Selection Modal */}
+      <SelectionModal
+        isOpen={showToneModal}
+        onClose={() => setShowToneModal(false)}
+        title="Choose a tone"
+        options={TONE_OPTIONS}
+        value={tone}
+        onChange={setTone}
+      />
     </div>
   );
 }

@@ -115,11 +115,26 @@ function buildSystemInstruction({ language, tone, genre, situation, brandVoiceCo
   return instructions;
 }
 
+const AI_REFINE_ACTIONS = {
+  TRANSLATE: 'translate',
+  ADD_CTA: 'add_cta',
+  ADD_HASHTAGS: 'add_hashtags',
+  LENGTHEN: 'lengthen',
+  SHORTEN: 'shorten',
+  CHANGE_TONE: 'change_tone',
+  ADD_EMOJIS: 'add_emojis',
+  CORRECT: 'correct',
+  OPTIMIZE: 'optimize',
+  STRUCTURE: 'structure',
+  ADJUST: 'adjust'
+};
+
 module.exports = {
   AI_TONES,
   AI_LANGUAGES,
   AI_POST_FORMATS,
   DEFAULT_SUPPORTED_PLATFORMS,
+  AI_REFINE_ACTIONS,
   generateResponseSchema,
   OPENAI_CONFIG,
   GEMINI_CONFIG,

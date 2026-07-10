@@ -193,4 +193,88 @@ describe('AIService Unit Tests', () => {
       );
     });
   });
+
+  describe('refineContent', () => {
+    const mockProviderInstance = {
+      generate: jest.fn()
+    };
+
+    beforeEach(() => {
+      AiProviderFactory.getProvider.mockReturnValue(mockProviderInstance);
+    });
+
+    it('should throw 403 error if user lacks access to AI Content Engine', async () => {
+      subscriptionGate.checkFeatureAccess.mockResolvedValue(false);
+
+      await expect(
+        aiService.refineContent('user-123', 'brand-123', { text: 'Test text', action: 'add_cta' })
+      ).rejects.toThrow('Bạn không có quyền truy cập vào AI Content Engine');
+    });
+
+    it('should throw 400 error if input text is missing', async () => {
+      subscriptionGate.checkFeatureAccess.mockResolvedValue(true);
+
+      await expect(
+        aiService.refineContent('user-123', 'brand-123', { text: '', action: 'add_cta' })
+      ).rejects.toThrow('Văn bản đầu vào không được để trống');
+    });
+
+    it('should throw 400 error if action is missing', async () => {
+      subscriptionGate.checkFeatureAccess.mockResolvedValue(true);
+
+      await expect(
+        aiService.refineContent('user-123', 'brand-123', { text: 'Test text', action: '' })
+      ).rejects.toThrow('Hành động tinh chỉnh không hợp lệ');
+    });
+
+    it('should throw 403 error if credit limit is reached', async () => {
+      subscriptionGate.checkFeatureAccess.mockResolvedValue(true);
+      prisma.aIAssistant.findUnique.mockResolvedValue({
+        ...mockSettings,
+        creditsUsed: 1000,
+        creditsLimit: 1000
+      });
+
+      await expect(
+        aiService.refineContent('user-123', 'brand-123', { text: 'Test text', action: 'add_cta' })
+      ).rejects.toThrow('Hạn mức sử dụng AI hàng tháng của bạn đã hết');
+    });
+
+    it('should successfully refine content, charge 1 credit, and write audit log', async () => {
+      subscriptionGate.checkFeatureAccess.mockResolvedValue(true);
+      prisma.aIAssistant.findUnique.mockResolvedValue(mockSettings);
+      mockProviderInstance.generate.mockResolvedValue({
+        caption: 'Refined text with CTA',
+        suggestedHashtags: [],
+        platformSpecificAdjustments: {}
+      });
+      prisma.aIAssistant.update.mockResolvedValue({
+        ...mockSettings,
+        creditsUsed: 6
+      });
+
+      const result = await aiService.refineContent('user-123', 'brand-123', {
+        text: 'Original copy',
+        action: 'add_cta'
+      });
+
+      expect(result.caption).toBe('Refined text with CTA');
+      expect(result.creditsUsed).toBe(6);
+      expect(mockProviderInstance.generate).toHaveBeenCalled();
+      expect(prisma.aIAssistant.update).toHaveBeenCalledWith({
+        where: { brandId: 'brand-123' },
+        data: {
+          creditsUsed: { increment: 1 },
+          usageCountThisMonth: { increment: 1 }
+        }
+      });
+      expect(prisma.auditLog.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            action: 'AI_REFINE_CONTENT'
+          })
+        })
+      );
+    });
+  });
 });

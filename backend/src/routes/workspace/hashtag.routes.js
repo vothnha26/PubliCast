@@ -49,4 +49,10 @@ router.post('/track', hashtagController.trackHashtag);
  */
 router.delete('/track/:id', hashtagController.untrackHashtag);
 
+/**
+ * GET /api/hashtags/analysis/:id
+ * Get detailed analytics for a tracked hashtag
+ */
+router.get('/analysis/:id', hashtagController.getHashtagAnalysis);
+
 module.exports = router;

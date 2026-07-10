@@ -9,7 +9,11 @@ export function GlobalPresets() {
     globalFirstComment,
     setGlobalFirstComment,
     useUrlShortener,
-    setUseUrlShortener
+    setUseUrlShortener,
+    smartLinkTitle,
+    setSmartLinkTitle,
+    smartLinkUrl,
+    setSmartLinkUrl
   } = usePostCreatorFormContext();
 
   return (
@@ -26,7 +30,7 @@ export function GlobalPresets() {
         <ChevronDown size={16} className={`text-gray-400 transition-transform duration-300 ${globalOpen ? 'rotate-180 text-black' : ''}`} />
       </div>
       
-      <div className={`transition-all duration-300 ease-in-out overflow-hidden ${globalOpen ? 'max-h-[500px] border-t border-gray-50 p-6' : 'max-h-0'}`}>
+      <div className={`transition-all duration-300 ease-in-out overflow-hidden ${globalOpen ? 'max-h-[800px] border-t border-gray-50 p-6' : 'max-h-0'}`}>
         <div className="space-y-4">
           <div>
             <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 font-sans">First Comment</label>
@@ -38,6 +42,7 @@ export function GlobalPresets() {
             />
           </div>
 
+          {/* Toggle SmartLinks */}
           <div className="flex items-center justify-between p-4 bg-gray-50 rounded-2xl border border-gray-100 hover:bg-gray-100/50 transition-colors">
             <div className="flex items-center gap-3">
               <div className="p-2 bg-white rounded-xl shadow-sm text-gray-500">
@@ -58,6 +63,59 @@ export function GlobalPresets() {
               />
             </button>
           </div>
+
+          {/* SmartLinks Form details (hãng khi toggle bật) */}
+          {useUrlShortener && (
+            <div className="p-5 bg-purple-50/30 rounded-2xl border border-purple-100/60 flex flex-col gap-4 animate-in fade-in slide-in-from-top-1 duration-200">
+              
+              {/* Description text */}
+              <p className="text-[11px] text-purple-700/80 font-medium font-sans leading-relaxed">
+                ✨ Create your first Smartlink and automatically add post images or videos with custom links.
+              </p>
+
+              {/* Title input */}
+              <div className="flex flex-col gap-1.5">
+                <div className="flex justify-between items-center">
+                  <label className="text-[10px] font-black text-gray-500 uppercase tracking-wider font-sans">
+                    Title / Link text
+                  </label>
+                  <span className="text-[9px] font-bold text-gray-400 font-sans">
+                    {smartLinkTitle.length} / 30
+                  </span>
+                </div>
+                <input
+                  type="text"
+                  maxLength={30}
+                  value={smartLinkTitle}
+                  onChange={(e) => setSmartLinkTitle(e.target.value)}
+                  placeholder="e.g. Visit our website"
+                  className="w-full px-4 py-3 bg-white border border-gray-200 rounded-2xl text-xs font-semibold focus:border-purple-400 focus:ring-1 focus:ring-purple-400 outline-none font-sans transition-all"
+                />
+              </div>
+
+              {/* URL input */}
+              <div className="flex flex-col gap-1.5">
+                <div className="flex justify-between items-center">
+                  <label className="text-[10px] font-black text-gray-500 uppercase tracking-wider font-sans">
+                    Destination URL
+                  </label>
+                  <span className="text-[9px] font-bold text-gray-400 font-sans">
+                    {smartLinkUrl.length} / 500
+                  </span>
+                </div>
+                <input
+                  type="url"
+                  maxLength={500}
+                  value={smartLinkUrl}
+                  onChange={(e) => setSmartLinkUrl(e.target.value)}
+                  placeholder="https://example.com/promotion"
+                  className="w-full px-4 py-3 bg-white border border-gray-200 rounded-2xl text-xs font-semibold focus:border-purple-400 focus:ring-1 focus:ring-purple-400 outline-none font-sans transition-all"
+                />
+              </div>
+
+            </div>
+          )}
+
         </div>
       </div>
     </div>

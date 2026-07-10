@@ -62,6 +62,7 @@ import { AuditLog } from "./pages/admin/AuditLog";
 import { RevenueDashboard } from "./pages/admin/RevenueDashboard";
 import { AdminPlatformLock } from "./pages/admin/AdminPlatformLock";
 import { AdminAnnouncements } from "./pages/admin/AdminAnnouncements";
+import { AdminHashtags } from "./pages/admin/AdminHashtags";
 import { GlobalAnnouncementBanner } from "./components/shared/GlobalAnnouncementBanner";
 
 // Landing
@@ -188,6 +189,7 @@ export default function App() {
               <Route path="/admin/revenue" element={<ProtectedRoute allowedRoles={['ADMIN']}><RevenueDashboard /></ProtectedRoute>} />
               <Route path="/admin/platform-lock" element={<ProtectedRoute allowedRoles={['ADMIN']}><AdminPlatformLock /></ProtectedRoute>} />
               <Route path="/admin/announcements" element={<ProtectedRoute allowedRoles={['ADMIN']}><AdminAnnouncements /></ProtectedRoute>} />
+              <Route path="/admin/hashtags" element={<ProtectedRoute allowedRoles={['ADMIN']}><AdminHashtags /></ProtectedRoute>} />
  
               {/* Protected Staff Routes */}
               <Route path="/staff/chats" element={<ProtectedRoute allowedRoles={['STAFF', 'ADMIN']}><StaffChatPage /></ProtectedRoute>} />

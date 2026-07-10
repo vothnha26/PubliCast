@@ -120,6 +120,73 @@ class AiService {
     };
   }
 
+  async refineContent(userId, brandId, { text, action, option }) {
+    const hasAccess = await subscriptionGate.checkFeatureAccess(brandId, PRODUCT_IDS.AI_CONTENT_ENGINE);
+    if (!hasAccess) {
+      const error = new Error('Bạn không có quyền truy cập vào AI Content Engine. Vui lòng nâng cấp gói cước.');
+      error.statusCode = 403;
+      throw error;
+    }
+
+    if (!text) {
+      const error = new Error('Văn bản đầu vào không được để trống.');
+      error.statusCode = 400;
+      throw error;
+    }
+
+    if (!action) {
+      const error = new Error('Hành động tinh chỉnh không hợp lệ.');
+      error.statusCode = 400;
+      throw error;
+    }
+
+    const settings = await this.getSettings(brandId);
+    if (settings.creditsUsed >= settings.creditsLimit) {
+      const error = new Error('Hạn mức sử dụng AI hàng tháng của bạn đã hết.');
+      error.statusCode = 403;
+      throw error;
+    }
+
+    const refineStrategyFactory = require('./refine/refine-strategy.factory');
+    const strategy = refineStrategyFactory.getStrategy(action);
+
+    const prompt = strategy.buildPrompt(text, option);
+    const systemInstruction = strategy.getSystemInstruction();
+
+    const provider = AiProviderFactory.getProvider();
+    const result = await provider.generate(prompt, {
+      systemInstruction
+    });
+
+    const updatedSettings = await prisma.aIAssistant.update({
+      where: { brandId },
+      data: {
+        creditsUsed: { increment: 1 },
+        usageCountThisMonth: { increment: 1 }
+      }
+    });
+
+    await prisma.auditLog.create({
+      data: {
+        brandId,
+        userId,
+        action: 'AI_REFINE_CONTENT',
+        targetType: 'AI_ASSISTANT',
+        details: JSON.stringify({
+          action,
+          option,
+          textLength: text.length
+        })
+      }
+    });
+
+    return {
+      ...result,
+      creditsUsed: updatedSettings.creditsUsed,
+      creditsLimit: updatedSettings.creditsLimit
+    };
+  }
+
   async quickPost(userId, brandId, postData) {
     return postService.createPost({
       title: postData.title || `AI Post - ${new Date().toLocaleDateString()}`,

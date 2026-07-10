@@ -2,14 +2,18 @@ const prisma = require('../../config/prisma');
 const logger = require('../../utils/logger');
 const trendingHashtagService = require('../../services/workspace/hashtag/trending/TrendingHashtagService');
 const redisClient = require('../../config/redis');
+const hashtagAnalysisGenerator = require('../../services/workspace/hashtag/hashtag-analysis-generator');
 
 // Cache 24 giờ → ~90 API calls/tháng → vừa đủ Free tier RapidAPI
 const TRENDING_CACHE_TTL_SECONDS = 24 * 60 * 60;
 
-// INSTAGRAM và MOCK dùng chung 1 cache key vì cùng nguồn TokAPI
+// Trả về cache key tương ứng cho từng platform được hỗ trợ
 const getPlatformCacheKey = (platform) => {
-  const normalized = platform.toUpperCase();
-  const source = (normalized === 'INSTAGRAM' || normalized === 'MOCK') ? 'TIKTOK' : normalized;
+  const SUPPORTED_PLATFORMS = {
+    INSTAGRAM: 'INSTAGRAM',
+    TIKTOK: 'TIKTOK'
+  };
+  const source = SUPPORTED_PLATFORMS[platform.toUpperCase()] || SUPPORTED_PLATFORMS.TIKTOK;
   return `hashtag:trending:${source}`;
 };
 
@@ -218,24 +222,25 @@ exports.getTrendingHashtags = async (req, res, next) => {
       logger.warn(`[TrendingCache] Redis read failed, bypassing cache: ${cacheErr.message}`);
     }
 
-    // 2. Cache miss → Thử lấy từ DB snapshot trong ngày hôm nay
-    const today = new Date();
-    today.setHours(0, 0, 0, 0); // chỉ so khớp theo ngày
-    const normalizedPlatform = (platform.toUpperCase() === 'INSTAGRAM' || platform.toUpperCase() === 'MOCK') ? 'TIKTOK' : platform.toUpperCase();
+    // 2. Cache miss → Thử lấy từ DB snapshot mới nhất đã lưu
+    const SUPPORTED_PLATFORMS = {
+      INSTAGRAM: 'INSTAGRAM',
+      TIKTOK: 'TIKTOK'
+    };
+    const normalizedPlatform = SUPPORTED_PLATFORMS[platform.toUpperCase()] || SUPPORTED_PLATFORMS.TIKTOK;
 
     let trending = [];
     let fromDb = false;
 
     try {
-      // Sử dụng raw query để phòng trường hợp Prisma client chưa generate xong DLL do bị lock file
+      // Sử dụng raw query để lấy snapshot mới nhất của platform
       const records = await prisma.$queryRawUnsafe(
-        'SELECT dataJson FROM hashtag_trending_snapshots WHERE platform = ? AND DATE(snapshotDate) = DATE(?) LIMIT 1',
-        normalizedPlatform,
-        today
+        'SELECT dataJson FROM hashtag_trending_snapshots WHERE platform = ? ORDER BY snapshotDate DESC LIMIT 1',
+        normalizedPlatform
       );
 
       if (records && records.length > 0) {
-        logger.info(`[TrendingDB] HIT → platform: ${normalizedPlatform}, date: ${today.toDateString()}`);
+        logger.info(`[TrendingDB] HIT → platform: ${normalizedPlatform}, snapshot found`);
         trending = JSON.parse(records[0].dataJson);
         fromDb = true;
 
@@ -251,8 +256,7 @@ exports.getTrendingHashtags = async (req, res, next) => {
       logger.warn(`[TrendingDB] DB read failed: ${dbErr.message}`);
     }
 
-    // Nếu cả cache và DB đều trống (chưa sync lần nào hoặc vừa deploy), 
-    // trả về mảng rỗng và kích hoạt đồng bộ chạy ngầm ngay lập tức để nạp dữ liệu cho lượt tải tiếp theo.
+    // Nếu cả cache và DB đều trống, kích hoạt đồng bộ chạy ngầm
     if (trending.length === 0) {
       logger.warn(`[TrendingAPI] Cache and DB MISS for platform ${platform}. Triggering background sync...`);
       const hashtagSyncService = require('../../services/workspace/hashtag/hashtag-sync.service');
@@ -268,6 +272,91 @@ exports.getTrendingHashtags = async (req, res, next) => {
     });
   } catch (error) {
     logger.error('Error in getTrendingHashtags:', error);
+    next(error);
+  }
+};
+
+/**
+ * Get detailed analytics for a tracked hashtag
+ * GET /api/hashtags/analysis/:id
+ */
+exports.getHashtagAnalysis = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+
+    // Tìm tracker trong db
+    const tracker = await prisma.hashtagTracker.findUnique({
+      where: { id }
+    });
+
+    if (!tracker) {
+      return res.status(404).json({ message: 'Tracked hashtag not found' });
+    }
+
+    // Kiểm tra xem đã có dữ liệu phân tích trong DB chưa.
+    // Nếu chưa có (hoặc trống), tiến hành sinh mới và cập nhật vào DB
+    let analysisData;
+    if (!tracker.trendScoreJson || !tracker.topPostsJson) {
+      // Sinh dữ liệu phân tích
+      analysisData = hashtagAnalysisGenerator.generate(tracker.hashtag, tracker.platform);
+
+      // Tách dữ liệu ra để lưu vào DB nhằm tối ưu hóa
+      // trendScoreJson sẽ lưu phần: summary, evolution, distributions, countries, usedTags, topPictures
+      // topPostsJson sẽ lưu phần: topParticipants, topPosts
+      const trendScoreObj = {
+        summary: analysisData.summary,
+        evolution: analysisData.evolution,
+        distributions: analysisData.distributions,
+        countries: analysisData.countries,
+        usedTags: analysisData.usedTags,
+        topPictures: analysisData.topPictures
+      };
+
+      const topPostsObj = {
+        topParticipants: analysisData.topParticipants,
+        topPosts: analysisData.topPosts
+      };
+
+      await prisma.hashtagTracker.update({
+        where: { id },
+        data: {
+          trendScoreJson: JSON.stringify(trendScoreObj),
+          topPostsJson: JSON.stringify(topPostsObj),
+          lastFetchedAt: new Date()
+        }
+      });
+
+      logger.info(`[HashtagAnalysis] Generated and saved analytics for tracker: ${tracker.hashtag}`);
+    } else {
+      // Đã có dữ liệu, parse từ DB
+      const trendScoreObj = JSON.parse(tracker.trendScoreJson);
+      const topPostsObj = JSON.parse(tracker.topPostsJson);
+
+      analysisData = {
+        summary: trendScoreObj.summary,
+        evolution: trendScoreObj.evolution,
+        distributions: trendScoreObj.distributions,
+        countries: trendScoreObj.countries,
+        usedTags: trendScoreObj.usedTags,
+        topPictures: trendScoreObj.topPictures,
+        topParticipants: topPostsObj.topParticipants,
+        topPosts: topPostsObj.topPosts
+      };
+    }
+
+    return res.status(200).json({
+      id: tracker.id,
+      hashtag: tracker.hashtag,
+      platform: tracker.platform,
+      totalPosts: tracker.totalPosts,
+      totalReach: tracker.totalReach,
+      postsLast24h: tracker.postsLast24h,
+      avgEngagementRate: tracker.avgEngagementRate,
+      trendDirection: tracker.trendDirection,
+      ...analysisData
+    });
+  } catch (error) {
+    logger.error('Error in getHashtagAnalysis:', error);
     next(error);
   }
 };

@@ -22,8 +22,8 @@ class HashtagSyncService {
     const today = new Date();
     today.setHours(0, 0, 0, 0); // chỉ lấy ngày
 
-    // Chỉ cần sync TIKTOK vì INSTAGRAM & MOCK được thiết kế chia sẻ chung dữ liệu TokAPI
-    const platformsToSync = ['TIKTOK'];
+    // Đồng bộ cả TIKTOK và INSTAGRAM để tạo snapshot và phân chia dữ liệu riêng biệt
+    const platformsToSync = ['TIKTOK', 'INSTAGRAM'];
 
     for (const platform of platformsToSync) {
       try {
@@ -49,12 +49,15 @@ class HashtagSyncService {
           );
           logger.info(`[HashtagSync] DB snapshot saved for platform: ${platform}`);
 
-          // 2. Cập nhật cache Redis cho TIKTOK, INSTAGRAM và MOCK (dùng chung nguồn dữ liệu)
-          const cacheKeys = ['hashtag:trending:TIKTOK', 'hashtag:trending:INSTAGRAM', 'hashtag:trending:MOCK'];
+          // 2. Cập nhật cache Redis tương ứng với platform đang sync
+          const cacheKeys = platform === 'TIKTOK'
+            ? ['hashtag:trending:TIKTOK', 'hashtag:trending:MOCK']
+            : ['hashtag:trending:INSTAGRAM'];
+
           for (const key of cacheKeys) {
             await redisClient.setEx(key, TRENDING_CACHE_TTL_SECONDS, dataJson);
           }
-          logger.info(`[HashtagSync] Redis caches updated for all platforms.`);
+          logger.info(`[HashtagSync] Redis cache updated for platform key(s): ${cacheKeys.join(', ')}`);
         }
       } catch (err) {
         logger.error(`[HashtagSync] Failed to sync platform ${platform}:`, err.message);

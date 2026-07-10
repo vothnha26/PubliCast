@@ -103,6 +103,10 @@ export function usePostCreatorForm() {
   // Threads States
   const [threadsWhoCanReply, setThreadsWhoCanReply] = useState("everyone");
 
+  // SmartLinks States
+  const [smartLinkTitle, setSmartLinkTitle] = useState("");
+  const [smartLinkUrl, setSmartLinkUrl] = useState("");
+
   // Video metadata states for format validation
   const [videoDuration, setVideoDuration] = useState(0);
   const [videoWidth, setVideoWidth] = useState(0);
@@ -397,6 +401,8 @@ export function usePostCreatorForm() {
         setYoutubeThumbnail(opts.youtubeThumbnail || "");
         setThreadsWhoCanReply(opts.threadsWhoCanReply || "everyone");
         setNotes(opts.notes || []);
+        setSmartLinkTitle(opts.smartLinkTitle || "");
+        setSmartLinkUrl(opts.smartLinkUrl || "");
 
         // Setup Facebook
         setFacebookType(opts.facebookType || "post");
@@ -455,6 +461,8 @@ export function usePostCreatorForm() {
         setYoutubeThumbnail(opts.youtubeThumbnail || "");
         setThreadsWhoCanReply(opts.threadsWhoCanReply || "everyone");
         setNotes(opts.notes || []);
+        setSmartLinkTitle(opts.smartLinkTitle || "");
+        setSmartLinkUrl(opts.smartLinkUrl || "");
 
         // Setup Facebook
         setFacebookType(opts.facebookType || "post");
@@ -523,6 +531,8 @@ export function usePostCreatorForm() {
         setYoutubeFirstComment("");
         setGlobalFirstComment("");
         setYoutubeThumbnail("");
+        setSmartLinkTitle("");
+        setSmartLinkUrl("");
 
         // Reset Facebook
         setFacebookType(FACEBOOK_TYPE.POST);
@@ -677,7 +687,9 @@ export function usePostCreatorForm() {
           albumMedia,
           mediaCaptions,
           threadsWhoCanReply,
-          notes
+          notes,
+          smartLinkTitle,
+          smartLinkUrl
         }
       };
 
@@ -701,6 +713,8 @@ export function usePostCreatorForm() {
         setYoutubeFirstComment("");
         setGlobalFirstComment("");
         setYoutubeThumbnail("");
+        setSmartLinkTitle("");
+        setSmartLinkUrl("");
         setFacebookTitle("");
         setFacebookType(FACEBOOK_TYPE.POST);
         setInstagramType(INSTAGRAM_TYPE.POST);
@@ -883,6 +897,11 @@ export function usePostCreatorForm() {
     threadsWhoCanReply,
     setThreadsWhoCanReply,
     notes,
-    setNotes
+    setNotes,
+    // SmartLink States
+    smartLinkTitle,
+    setSmartLinkTitle,
+    smartLinkUrl,
+    setSmartLinkUrl
   };
 }

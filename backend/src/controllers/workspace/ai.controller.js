@@ -35,6 +35,16 @@ class AiController {
     res.json(result);
   });
 
+  refineContent = asyncHandler(async (req, res) => {
+    const { brandId } = req.query;
+    const userId = req.user.id;
+    if (!brandId) {
+      return res.status(400).json({ error: 'Missing brandId parameter' });
+    }
+    const result = await aiService.refineContent(userId, brandId, req.body);
+    res.json(result);
+  });
+
   quickPost = asyncHandler(async (req, res) => {
     const { brandId } = req.query;
     const userId = req.user.id;
