@@ -1,5 +1,5 @@
 import { Link, useLocation } from "react-router-dom";
-import { DollarSign, Shield, Settings2, Users, LayoutGrid, ChevronLeft, Crown, Layers, Server, Activity, Lock, MessageSquare } from "lucide-react";
+import { DollarSign, Shield, Settings2, Users, LayoutGrid, ChevronLeft, Crown, Layers, Server, Activity, Lock, MessageSquare, Megaphone } from "lucide-react";
 
 export function SidebarAdmin() {
   const location = useLocation();
@@ -13,6 +13,7 @@ export function SidebarAdmin() {
     { icon: <Lock size={18} />, label: "Platform Lock", path: "/admin/platform-lock" },
     { icon: <Shield size={18} />, label: "System Audit Log", path: "/admin/audit" },
     { icon: <MessageSquare size={18} />, label: "Support Chat", path: "/staff/chats" },
+    { icon: <Megaphone size={18} />, label: "Announcements", path: "/admin/announcements" },
   ];
 
   return (

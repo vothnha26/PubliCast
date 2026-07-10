@@ -61,6 +61,8 @@ import { AdminProducts } from "./pages/admin/AdminProducts";
 import { AuditLog } from "./pages/admin/AuditLog";
 import { RevenueDashboard } from "./pages/admin/RevenueDashboard";
 import { AdminPlatformLock } from "./pages/admin/AdminPlatformLock";
+import { AdminAnnouncements } from "./pages/admin/AdminAnnouncements";
+import { GlobalAnnouncementBanner } from "./components/shared/GlobalAnnouncementBanner";
 
 // Landing
 import { LandingPage } from "./pages/landing/LandingPage";
@@ -132,6 +134,9 @@ export default function App() {
           {/* Green accent line between Topbar and Content (Metricool style) */}
           {!isNoLayout && !showAdminSidebar && <div style={{ height: 2, background: "#D9F99D", width: "100%" }} />}
           
+          {/* Global Announcement Banner */}
+          {!isNoLayout && !showAdminSidebar && !isStaff && <GlobalAnnouncementBanner />}
+          
           <div className={`flex-1 ${isNoLayout ? "overflow-auto" : "flex flex-col min-h-0 overflow-hidden"}`}>
             <Routes>
               <Route path="/" element={<LandingPage />} />
@@ -182,6 +187,7 @@ export default function App() {
               <Route path="/admin/audit" element={<ProtectedRoute allowedRoles={['ADMIN']}><AuditLog /></ProtectedRoute>} />
               <Route path="/admin/revenue" element={<ProtectedRoute allowedRoles={['ADMIN']}><RevenueDashboard /></ProtectedRoute>} />
               <Route path="/admin/platform-lock" element={<ProtectedRoute allowedRoles={['ADMIN']}><AdminPlatformLock /></ProtectedRoute>} />
+              <Route path="/admin/announcements" element={<ProtectedRoute allowedRoles={['ADMIN']}><AdminAnnouncements /></ProtectedRoute>} />
  
               {/* Protected Staff Routes */}
               <Route path="/staff/chats" element={<ProtectedRoute allowedRoles={['STAFF', 'ADMIN']}><StaffChatPage /></ProtectedRoute>} />

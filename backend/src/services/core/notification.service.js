@@ -268,6 +268,7 @@ class NotificationService {
       desc: n.message,
       category: n.type,
       isRead: Boolean(n.isRead || hasReadReceipt),
+      isGlobal: Boolean(n.isGlobal),
       action: this._getActionLabel(n.type),
       actionUrl: n.actionUrl,
       createdAt: n.createdAt,

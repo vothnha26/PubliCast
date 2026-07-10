@@ -20,6 +20,7 @@ const revenueRoutes = require('./routes/admin/revenue.routes');
 const productRoutes = require('./routes/admin/product.routes');
 const platformLimitRoutes = require('./routes/admin/platform-limit.routes');
 const userRoutes = require('./routes/admin/user.routes');
+const announcementRoutes = require('./routes/admin/announcement.routes');
 
 // Routes - Social Domain
 const socialRoutes = require('./routes/social/social.routes');
@@ -145,6 +146,7 @@ app.use('/api/admin/revenue', revenueRoutes);
 app.use('/api/admin/products', productRoutes);
 app.use('/api/admin/platform-limits', platformLimitRoutes);
 app.use('/api/admin/users', userRoutes);
+app.use('/api/admin/announcements', announcementRoutes);
 app.use('/api/social', socialRoutes);
 app.use('/api/brands', brandRoutes);
 app.use('/api/brands/:brandId/roles', roleRoutes);
