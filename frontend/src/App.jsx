@@ -112,6 +112,8 @@ export default function App() {
   const isNoLayout = NO_LAYOUT_PATHS.includes(currentPath) || currentPath.startsWith("/s/");
   const isSuperadmin = currentPath.startsWith("/admin");
   const isStaff = currentPath.startsWith("/staff");
+  const showAdminSidebar = isSuperadmin || (isStaff && user?.role?.toUpperCase() === 'ADMIN');
+  const hideSidebar = isNoLayout || (isStaff && user?.role?.toUpperCase() !== 'ADMIN');
 
   return (
     <div className="w-full h-screen flex flex-col overflow-hidden" style={{ fontFamily: "'DM Sans', sans-serif" }}>
@@ -120,15 +122,15 @@ export default function App() {
 
       <div className="flex flex-1 overflow-hidden">
         {/* Sidebar below Topbar */}
-        {!isNoLayout && !isStaff && (
+        {!hideSidebar && (
           <>
-            {isSuperadmin ? <SidebarAdmin /> : <SidebarWorkspace />}
+            {showAdminSidebar ? <SidebarAdmin /> : <SidebarWorkspace />}
           </>
         )}
 
         <div className="flex-1 flex flex-col overflow-hidden bg-[#F8F8F7]">
           {/* Green accent line between Topbar and Content (Metricool style) */}
-          {!isNoLayout && !isSuperadmin && <div style={{ height: 2, background: "#D9F99D", width: "100%" }} />}
+          {!isNoLayout && !showAdminSidebar && <div style={{ height: 2, background: "#D9F99D", width: "100%" }} />}
           
           <div className={`flex-1 ${isNoLayout ? "overflow-auto" : "flex flex-col min-h-0 overflow-hidden"}`}>
             <Routes>
@@ -182,7 +184,7 @@ export default function App() {
               <Route path="/admin/platform-lock" element={<ProtectedRoute allowedRoles={['ADMIN']}><AdminPlatformLock /></ProtectedRoute>} />
  
               {/* Protected Staff Routes */}
-              <Route path="/staff/chats" element={<ProtectedRoute allowedRoles={['STAFF']}><StaffChatPage /></ProtectedRoute>} />
+              <Route path="/staff/chats" element={<ProtectedRoute allowedRoles={['STAFF', 'ADMIN']}><StaffChatPage /></ProtectedRoute>} />
  
               {/* Protected Common App Routes */}
               <Route path="/settings" element={<ProtectedRoute allowedRoles={CLIENT_ROLES}><SettingsPage /></ProtectedRoute>} />
