@@ -11,15 +11,21 @@ class HashtagAnalysisGenerator {
   generate(hashtag, platform) {
     const cleanTag = hashtag.replace('#', '');
     
-    // Tạo seed đơn giản dựa trên chuỗi hashtag để dữ liệu có tính nhất quán tương đối giữa các lần gọi
-    let seed = 0;
+    // FNV-1a 32-bit hash algorithm to ensure vastly different seeds for different hashtags
+    let seed = 2166136261;
     for (let i = 0; i < cleanTag.length; i++) {
-      seed += cleanTag.charCodeAt(i);
+      seed ^= cleanTag.charCodeAt(i);
+      // Tránh tràn số 32-bit trong JS bằng phép nhân bitwise
+      seed = (seed * 16777619) >>> 0;
     }
 
     const pseudoRandom = (min, max, offset = 0) => {
-      const x = Math.sin(seed + offset) * 10000;
-      const r = x - Math.floor(x);
+      // Sử dụng LCG (Linear Congruential Generator) đơn giản cho độ phân tán cao
+      const m = 0x80000000; // 2**31
+      const a = 1103515245;
+      const c = 12345;
+      const nextSeed = (a * (seed + offset) + c) % m;
+      const r = nextSeed / m;
       return Math.floor(r * (max - min + 1)) + min;
     };
 
@@ -96,20 +102,28 @@ class HashtagAnalysisGenerator {
       { countryCode: 'FR', countryName: 'France', participants: Math.floor(participants * 0.017), percent: 1.73 }
     ];
 
-    // 5. Used Tags (Word Cloud)
+    // 5. Used Tags (Word Cloud) - Chọn từ khóa ngẫu nhiên phong phú dựa vào seed để tránh trùng lặp
+    const tagPool = [
+      'marketing', 'socialmedia', 'startups', 'seo', 'contentmarketing', 'sales', 'tech', 'business', 
+      'growthhacking', 'networking', 'strategy', 'innovation', 'fitness', 'healthy', 'motivation', 
+      'workout', 'lifestyle', 'foodie', 'instafood', 'yummy', 'delicious', 'travelgram', 'wanderlust', 
+      'photography', 'beautiful', 'fashion', 'style', 'love', 'instagood', 'photooftheday', 'art', 
+      'cute', 'happy', 'picoftheday', 'nature', 'summer', 'vlog', 'comedy', 'funny', 'music', 'dance'
+    ];
+
+    // Trộn ngẫu nhiên tagPool dựa trên seed
+    const shuffledTags = [...tagPool].sort((a, b) => {
+      const randA = pseudoRandom(1, 100, tagPool.indexOf(a));
+      const randB = pseudoRandom(1, 100, tagPool.indexOf(b));
+      return randA - randB;
+    });
+
     const usedTags = [
       { text: cleanTag, value: 100 },
-      { text: 'marketing', value: pseudoRandom(45, 60, 20) },
-      { text: 'socialmedia', value: pseudoRandom(35, 50, 21) },
-      { text: 'startups', value: pseudoRandom(30, 45, 22) },
-      { text: 'seo', value: pseudoRandom(25, 40, 23) },
-      { text: 'contentmarketing', value: pseudoRandom(20, 35, 24) },
-      { text: 'sales', value: pseudoRandom(18, 30, 25) },
-      { text: 'tech', value: pseudoRandom(15, 28, 26) },
-      { text: 'business', value: pseudoRandom(15, 25, 27) },
-      { text: 'growthhacking', value: pseudoRandom(10, 20, 28) },
-      { text: 'networking', value: pseudoRandom(8, 18, 29) },
-      { text: 'strategy', value: pseudoRandom(8, 15, 30) }
+      ...shuffledTags.slice(0, 11).map((t, idx) => ({
+        text: t,
+        value: pseudoRandom(10, 60, idx + 20)
+      }))
     ];
 
     // 6. Top Pictures Grid (25 items)
