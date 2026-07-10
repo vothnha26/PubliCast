@@ -1,6 +1,7 @@
 const tiktokGateway = require('./tiktok.gateway');
 const tiktokAnalytics = require('./tiktok-analytics.service');
 const socialAccountRepository = require('../../../repositories/social/social-account.repository');
+const MockConnectionGuard = require('../mock-connection.guard');
 const { PLATFORMS, POST_STATUS } = require('../../../utils/constants');
 
 class TikTokVideoService {
@@ -8,11 +9,39 @@ class TikTokVideoService {
     try {
       let account = await this._getAccount(brandId, socialAccountId);
       
-      if (account && (
-        (account.accessToken && account.accessToken.startsWith('mock-')) ||
-        (account.platformAccountId && account.platformAccountId.startsWith('mock-'))
-      )) {
-        return { videos: [], nextPageToken: null, prevPageToken: null };
+      if (account && MockConnectionGuard.isMock(account.accessToken, account.platformAccountId)) {
+        return {
+          videos: [
+            {
+              id: 'mock-tt-vid-1',
+              title: 'Thử thách biến hình cực đỉnh theo trend mới nhất!',
+              thumbnailUrl: 'https://images.unsplash.com/photo-1598550476439-6847785fce6e?w=300&auto=format&fit=crop&q=60',
+              publishedAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(),
+              views: 125000,
+              likes: 18400,
+              comments: 2420,
+              shares: 1150,
+              duration: 35,
+              status: POST_STATUS.PUBLISHED,
+              shareUrl: 'https://www.tiktok.com'
+            },
+            {
+              id: 'mock-tt-vid-2',
+              title: 'Top 3 tips lập trình hiệu quả hơn mỗi ngày 💻',
+              thumbnailUrl: 'https://images.unsplash.com/photo-1611162617213-7d7a39e9b1d7?w=300&auto=format&fit=crop&q=60',
+              publishedAt: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000).toISOString(),
+              views: 45000,
+              likes: 3800,
+              comments: 112,
+              shares: 95,
+              duration: 58,
+              status: POST_STATUS.PUBLISHED,
+              shareUrl: 'https://www.tiktok.com'
+            }
+          ],
+          nextPageToken: null,
+          prevPageToken: null
+        };
       }
       
       // pageToken in TikTok is usually the cursor. If it's a string, try to parse it.

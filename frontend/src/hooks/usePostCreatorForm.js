@@ -232,6 +232,8 @@ export function usePostCreatorForm() {
       selectedPlatforms: activeSelectedPlatforms,
       facebookType,
       youtubeType,
+      youtubeTitle,
+      youtubeMadeForKids,
       instagramType,
       videoFileUrl,
       videoFile,
@@ -242,7 +244,8 @@ export function usePostCreatorForm() {
       platformLimits,
       mediaCount: isAlbum ? albumMedia.length : (postMedia ? postMedia.length : 0),
       editingPost,
-      postMedia
+      postMedia,
+      caption
     });
   };
 

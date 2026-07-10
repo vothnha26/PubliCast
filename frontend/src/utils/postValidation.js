@@ -1,5 +1,66 @@
 import { isVideoPath } from './url';
 import { PLATFORM_CONFIGS } from '../constants/platformRegistry';
+import { PostValidationEngine } from './validation/postValidationEngine';
+
+/**
+ * Tự động tạo rules JSON fallback từ các trường giới hạn tĩnh của PlatformLimit
+ * @param {Object} limitConfig Cấu hình limit từ DB
+ * @returns {Object} Cấu hình rules động tương thích
+ */
+function buildFallbackRules(limitConfig) {
+  const rules = { _always: [], [limitConfig.subType.toLowerCase()]: [] };
+  const plat = limitConfig.platform.toUpperCase();
+  const sub = limitConfig.subType.toLowerCase();
+
+  // 1. Kiểm tra allowedMediaTypes
+  if (limitConfig.allowedMediaTypes === 'NONE') {
+    rules._always.push({ id: `${plat}_no_media`, field: 'hasMedia', operator: 'equals', value: false, message: 'Nền tảng này không cho phép tải lên media.' });
+  } else if (limitConfig.allowedMediaTypes === 'VIDEO') {
+    rules._always.push({ id: `${plat}_only_video`, field: 'isVideo', operator: 'equals', value: true, message: 'Chỉ chấp nhận file định dạng video.' });
+  } else if (limitConfig.allowedMediaTypes === 'IMAGE') {
+    rules._always.push({ id: `${plat}_only_image`, field: 'isVideo', operator: 'equals', value: false, message: 'Chỉ chấp nhận file định dạng hình ảnh.' });
+  }
+
+  // 2. Định dạng file allowedFormats
+  if (limitConfig.allowedFormats) {
+    rules._always.push({
+      id: `${plat}_format_check`,
+      field: 'fileName',
+      operator: 'format_allowed',
+      value: limitConfig.allowedFormats,
+      message: `Định dạng file không được hỗ trợ. Các định dạng được phép: ${limitConfig.allowedFormats}`
+    });
+  }
+
+  // 3. Thời lượng video (chỉ check khi có video)
+  if (limitConfig.minVideoDuration) {
+    rules[sub].push({
+      id: `${plat}_video_min`,
+      field: 'videoDuration',
+      operator: 'lt',
+      value: limitConfig.minVideoDuration,
+      message: `Thời lượng video ({videoDuration}s) ngắn hơn yêu cầu tối thiểu là {limitValue} giây.`
+    });
+  }
+  if (limitConfig.maxVideoDuration) {
+    rules[sub].push({
+      id: `${plat}_video_max`,
+      field: 'videoDuration',
+      operator: 'gt',
+      value: limitConfig.maxVideoDuration,
+      message: `Thời lượng video ({videoDuration}s) dài hơn giới hạn cho phép là {limitValue} giây.`
+    });
+  }
+
+  // 4. Bắt buộc có media đối với Reels/Stories/Shorts/TikTok/YouTube
+  if (['TIKTOK', 'YOUTUBE'].includes(plat) || ['reel', 'story', 'shorts'].includes(sub)) {
+    rules._always.push({ id: `${plat}_require_media`, field: 'hasMedia', operator: 'equals', value: true, message: 'Nền tảng này yêu cầu phải tải lên file media.' });
+  } else if (plat === 'INSTAGRAM') {
+    rules._always.push({ id: `IG_require_media`, field: 'hasMedia', operator: 'equals', value: true, message: 'Instagram yêu cầu phải có ít nhất 1 ảnh hoặc video.' });
+  }
+
+  return rules;
+}
 
 /**
  * validatePostForm
@@ -14,6 +75,8 @@ export function validatePostForm({
   selectedPlatforms = [],
   facebookType,
   youtubeType,
+  youtubeTitle = '',
+  youtubeMadeForKids,
   instagramType,
   videoFileUrl,
   videoFile,
@@ -24,7 +87,8 @@ export function validatePostForm({
   platformLimits = [],
   mediaCount = 0,
   editingPost,
-  postMedia = []
+  postMedia = [],
+  caption = ''
 }) {
   const errors = [];
   if (isLibrary || selectedPublishId === 'draft') {
@@ -82,6 +146,22 @@ export function validatePostForm({
       continue;
     }
 
+    // Tạo Context làm giàu dữ liệu (Enriched Context)
+    const checkContext = {
+      platform,
+      hasMedia,
+      isVideo: isVid,
+      videoDuration: videoDuration || 0,
+      videoWidth: videoWidth || 0,
+      videoHeight: videoHeight || 0,
+      videoRatio: (videoWidth && videoHeight) ? (videoWidth / videoHeight) : 0,
+      captionLength: caption ? caption.length : 0,
+      mediaCount,
+      youtubeTitle,
+      youtubeMadeForKids,
+      fileName: videoFile ? videoFile.name : (uploadedVideoPath || videoFileUrl || '')
+    };
+
     if (!limitConfig) {
       // Fallback sang cấu hình static registry nếu chưa load được DB limits
       const config = PLATFORM_CONFIGS[platform];
@@ -90,15 +170,6 @@ export function validatePostForm({
         if (platform === 'facebook') activeType = facebookType;
         else if (platform === 'youtube') activeType = youtubeType;
         else if (platform === 'instagram') activeType = instagramType;
-
-        const checkContext = {
-          hasMedia,
-          isVideo: isVid,
-          videoDuration: videoDuration || 0,
-          videoWidth: videoWidth || 0,
-          videoHeight: videoHeight || 0,
-          mediaCount
-        };
 
         const alwaysRules = config.validationRules?._always || [];
         for (const rule of alwaysRules) {
@@ -117,57 +188,16 @@ export function validatePostForm({
       continue;
     }
 
-    // Thực hiện validation dựa trên DB limits
-    
-    // Check Allowed Media Types
-    if (limitConfig.allowedMediaTypes === 'NONE' && hasMedia) {
-      errors.push(`[${platUpper} - ${subType}] Media uploads are not allowed.`);
-    }
-    if (limitConfig.allowedMediaTypes === 'VIDEO' && hasMedia && !isVid) {
-      errors.push(`[${platUpper} - ${subType}] Only video files are allowed.`);
-    }
-    if (limitConfig.allowedMediaTypes === 'IMAGE' && hasMedia && isVid) {
-      errors.push(`[${platUpper} - ${subType}] Only image files are allowed.`);
+    // 3. Thực hiện validation bằng Rule Engine
+    // Tự động dựng fallback rules nếu DB chưa cấu hình rules JSON
+    const enrichedLimitConfig = { ...limitConfig };
+    if (!enrichedLimitConfig.rules) {
+      enrichedLimitConfig.rules = buildFallbackRules(enrichedLimitConfig);
     }
 
-    if (hasMedia) {
-      // Validate format
-      if (limitConfig.allowedFormats) {
-        const allowed = limitConfig.allowedFormats.split(',').map(f => f.trim().toLowerCase());
-        const fileName = videoFile ? videoFile.name : (uploadedVideoPath || videoFileUrl || '');
-        const format = fileName.split('.').pop().split('?')[0].toLowerCase();
-        
-        if (format && !allowed.includes(format)) {
-          errors.push(`[${platUpper} - ${subType}] Format "${format}" is not supported. Supported formats: ${limitConfig.allowedFormats}`);
-        }
-      }
-
-      // Validate duration (chỉ cho video)
-      if (isVid && videoDuration) {
-        if (limitConfig.minVideoDuration && videoDuration < limitConfig.minVideoDuration) {
-          errors.push(`[${platUpper} - ${subType}] Video duration (${Math.round(videoDuration)}s) is shorter than the minimum required ${limitConfig.minVideoDuration}s.`);
-        }
-        if (limitConfig.maxVideoDuration && videoDuration > limitConfig.maxVideoDuration) {
-          errors.push(`[${platUpper} - ${subType}] Video duration (${Math.round(videoDuration)}s) is longer than the maximum allowed ${limitConfig.maxVideoDuration}s.`);
-        }
-      }
-    }
-
-    // Bắt buộc có media đối với Reels/Stories/Shorts/TikTok/YouTube
-    if (platUpper === 'TIKTOK' && !hasMedia) {
-      errors.push(`[${platUpper} - ${subType}] TikTok posts require a video file.`);
-    }
-    if (platUpper === 'YOUTUBE' && !hasMedia) {
-      errors.push(`[${platUpper} - ${subType}] YouTube uploads require a video file.`);
-    }
-    if (platUpper === 'INSTAGRAM' && !hasMedia) {
-      errors.push(`[${platUpper} - ${subType}] Instagram requires at least one photo or video to publish a post.`);
-    }
-    if (platUpper === 'FACEBOOK' && ['REEL', 'STORY'].includes(subType) && !hasMedia) {
-      errors.push(`[${platUpper} - ${subType}] Facebook ${subType.toLowerCase()} requires a media file.`);
-    }
+    const dynamicErrors = PostValidationEngine.evaluateRules(enrichedLimitConfig, checkContext);
+    errors.push(...dynamicErrors);
   }
 
   return errors;
 }
-

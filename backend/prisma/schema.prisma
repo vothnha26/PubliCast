@@ -1641,6 +1641,7 @@ model PlatformLimit {
   aspectRatios       String?      // e.g. "9:16,16:9"
   isLocked           Boolean      @default(false) // Admin co the tam khoa nen tang
   lockReason         String?      // Ly do khoa hien thi cho nguoi dung
+  rules              Json?
   createdAt          DateTime     @default(now())
   updatedAt          DateTime     @updatedAt
 

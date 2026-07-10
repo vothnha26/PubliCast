@@ -59,7 +59,7 @@ export function FacebookAlbumComposer({ brandId, albumMedia = [], setAlbumMedia,
 
       {albumMedia.length === 0 ? (
         <div 
-          onClick={() => fileInputRef.current?.click()}
+          onClick={() => setShowUploadModal(true)}
           className="border-2 border-dashed border-gray-200 rounded-3xl p-10 text-center hover:border-gray-300 transition-all cursor-pointer bg-gray-50/50"
         >
           <ImageIcon size={28} className="text-gray-400 mx-auto mb-2" />
@@ -118,6 +118,7 @@ export function FacebookAlbumComposer({ brandId, albumMedia = [], setAlbumMedia,
         onClose={() => setShowUploadModal(false)}
         onAccept={handleAcceptMedia}
         multiple={true}
+        allowedType="image"
         initialTab="computer"
       />
     </div>

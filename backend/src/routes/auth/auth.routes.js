@@ -38,6 +38,6 @@ router.post('/login', loginRateLimiter.middleware(), loginValidation, authContro
 router.post('/refresh', authController.refreshToken);
 
 // Logout
-router.post('/logout', verifyAuth, authController.logout);
+router.post('/logout', authController.logout);
 
 module.exports = router;

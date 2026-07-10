@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { 
-  ShieldAlert, Lock, Unlock, AlertTriangle, Edit3, X, Check, Loader2, RefreshCw, Smartphone, Tv
+  ShieldAlert, Lock, Unlock, AlertTriangle, Edit3, X, Check, Loader2, RefreshCw, Smartphone, Tv, Eye
 } from "lucide-react";
 import apiService from "../../services/api";
 import { toast } from "sonner";
@@ -14,6 +14,10 @@ export function AdminPlatformLock() {
   const [selectedLimit, setSelectedLimit] = useState(null);
   const [lockReason, setLockReason] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
+
+  // View rules modal state
+  const [isViewModalOpen, setIsViewModalOpen] = useState(false);
+  const [viewingLimit, setViewingLimit] = useState(null);
 
   // Fetch all platform limits
   const fetchLimits = async () => {
@@ -196,24 +200,36 @@ export function AdminPlatformLock() {
                         )}
                      </td>
                      <td className="px-8 py-5 text-right">
-                        <button
-                          disabled={isItemToggling}
-                          onClick={() => handleToggle(limit)}
-                          className={`inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold transition-all shadow-sm ${
-                            limit.isLocked
-                              ? "bg-green-600 hover:bg-green-700 text-white"
-                              : "bg-red-600 hover:bg-red-700 text-white"
-                          } disabled:opacity-50`}
-                        >
-                          {isItemToggling ? (
-                            <Loader2 size={13} className="animate-spin" />
-                          ) : limit.isLocked ? (
-                            <Unlock size={13} />
-                          ) : (
-                            <Lock size={13} />
-                          )}
-                          {limit.isLocked ? "Mở khóa" : "Tạm khóa"}
-                        </button>
+                         <div className="flex justify-end gap-2">
+                           <button
+                             onClick={() => {
+                               setViewingLimit(limit);
+                               setIsViewModalOpen(true);
+                             }}
+                             className="inline-flex items-center gap-1.5 px-4 py-2 bg-white hover:bg-gray-50 text-gray-700 border border-gray-200 rounded-xl text-xs font-bold transition-all shadow-sm"
+                           >
+                             <Eye size={13} />
+                             Xem chi tiết
+                           </button>
+                           <button
+                             disabled={isItemToggling}
+                             onClick={() => handleToggle(limit)}
+                             className={`inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold transition-all shadow-sm ${
+                               limit.isLocked
+                                 ? "bg-green-600 hover:bg-green-700 text-white"
+                                 : "bg-red-600 hover:bg-red-700 text-white"
+                             } disabled:opacity-50`}
+                           >
+                             {isItemToggling ? (
+                               <Loader2 size={13} className="animate-spin" />
+                             ) : limit.isLocked ? (
+                               <Unlock size={13} />
+                             ) : (
+                               <Lock size={13} />
+                             )}
+                             {limit.isLocked ? "Mở khóa" : "Tạm khóa"}
+                           </button>
+                         </div>
                      </td>
                   </tr>
                 );
@@ -269,6 +285,94 @@ export function AdminPlatformLock() {
                    </button>
                 </div>
               </form>
+           </div>
+        </div>
+      )}
+
+      {/* View Rules Details Modal */}
+      {isViewModalOpen && viewingLimit && (
+        <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+           <div className="bg-white rounded-[32px] w-full max-w-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+              <div className="flex justify-between items-center px-8 py-6 border-b border-gray-100">
+                 <div>
+                    <h3 className="text-xl font-bold text-[#0A0A0A]">Chi Tiết Quy Tắc Validation</h3>
+                    <p className="text-xs text-gray-500 mt-1">Nền tảng: <strong className="text-black">{viewingLimit.platform}</strong> ({viewingLimit.subType})</p>
+                 </div>
+                 <button onClick={() => { setIsViewModalOpen(false); setViewingLimit(null); }} className="p-2 hover:bg-gray-100 rounded-full transition-all text-gray-400 hover:text-black">
+                   <X size={24} />
+                 </button>
+              </div>
+              <div className="p-8 space-y-6 overflow-y-auto">
+                 {/* Basic limits info */}
+                 <div className="grid grid-cols-2 gap-4">
+                    <div className="bg-gray-50 p-4 rounded-2xl border border-gray-100">
+                       <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">Giới Hạn Tệp Tin (File Size)</span>
+                       <span className="text-sm font-bold text-gray-800 mt-1 block">
+                          {viewingLimit.maxFileSizeMb ? `${viewingLimit.maxFileSizeMb} MB` : 'Không giới hạn'}
+                       </span>
+                    </div>
+                    <div className="bg-gray-50 p-4 rounded-2xl border border-gray-100">
+                       <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">Dung lượng Video tối đa</span>
+                       <span className="text-sm font-bold text-gray-800 mt-1 block">
+                          {viewingLimit.maxVideoSize ? `${(Number(viewingLimit.maxVideoSize) / (1024 * 1024)).toFixed(1)} MB` : 'Không giới hạn'}
+                       </span>
+                    </div>
+                 </div>
+
+                 {/* Rules JSON Table */}
+                 <div className="space-y-3">
+                    <h4 className="text-xs font-bold text-[#0A0A0A] uppercase tracking-wider">Danh sách quy tắc kiểm duyệt (Rules Engine)</h4>
+                    {(!viewingLimit.rules || Object.keys(viewingLimit.rules).length === 0) ? (
+                       <div className="p-4 bg-gray-50 rounded-2xl border border-gray-100 text-center text-xs text-gray-400 font-medium">
+                          Nền tảng này hiện đang dùng cấu hình kiểm duyệt mặc định, chưa nạp rules JSON.
+                       </div>
+                    ) : (
+                       <div className="border border-gray-100 rounded-2xl overflow-hidden shadow-sm">
+                          <table className="w-full text-left text-xs">
+                             <thead>
+                                <tr className="bg-gray-50 text-[10px] font-bold text-gray-400 uppercase tracking-wider border-b border-gray-100">
+                                   <th className="px-4 py-3">Loại (Subtype)</th>
+                                   <th className="px-4 py-3">Quy tắc (Field & Op)</th>
+                                   <th className="px-4 py-3">Giá trị biên</th>
+                                   <th className="px-4 py-3">Thông điệp cảnh báo</th>
+                                </tr>
+                             </thead>
+                             <tbody className="divide-y divide-gray-50 font-medium text-gray-700">
+                                {Object.entries(viewingLimit.rules).flatMap(([subTypeKey, rulesArray]) => {
+                                   if (!Array.isArray(rulesArray)) return [];
+                                   return rulesArray.map((rule, idx) => (
+                                      <tr key={`${subTypeKey}-${idx}`} className="hover:bg-gray-50/50">
+                                         <td className="px-4 py-3">
+                                            <span className="px-1.5 py-0.5 rounded bg-gray-100 text-gray-600 text-[9px] font-bold uppercase">
+                                               {subTypeKey}
+                                            </span>
+                                         </td>
+                                         <td className="px-4 py-3 font-mono text-[10px] text-blue-600">
+                                            {rule.field} <span className="text-gray-400">({rule.operator})</span>
+                                         </td>
+                                         <td className="px-4 py-3 font-mono text-[10px] text-amber-600">
+                                            {Array.isArray(rule.value) ? `[${rule.value.join(', ')}]` : String(rule.value)}
+                                         </td>
+                                         <td className="px-4 py-3 text-gray-500 max-w-[200px] truncate" title={rule.message}>
+                                            {rule.message}
+                                         </td>
+                                      </tr>
+                                   ));
+                                })}
+                             </tbody>
+                          </table>
+                       </div>
+                    )}
+                 </div>
+              </div>
+              <div className="px-8 py-6 bg-gray-50 flex border-t border-gray-100 justify-end">
+                 <button 
+                   onClick={() => { setIsViewModalOpen(false); setViewingLimit(null); }} 
+                   className="px-6 py-3 rounded-2xl border border-gray-200 bg-white text-sm font-bold text-gray-650 hover:bg-gray-50 transition-all"
+                 >
+                   Đóng
+                 </button>
+              </div>
            </div>
         </div>
       )}

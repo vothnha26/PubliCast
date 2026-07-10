@@ -2,6 +2,7 @@ const youtubeGateway = require('./youtube.gateway');
 const googleOAuthService = require('../google-oauth.service');
 const socialAccountRepository = require('../../../repositories/social/social-account.repository');
 const competitorRepository = require('../../../repositories/social/competitor.repository');
+const MockConnectionGuard = require('../mock-connection.guard');
 const { PLATFORMS, SEPARATORS, ANALYTICS, SOCIAL_TECHNICAL } = require('../../../utils/constants');
 
 class YouTubeAnalyticsService {
@@ -60,13 +61,83 @@ class YouTubeAnalyticsService {
     };
   }
 
+  _getMockAnalyticsReport(startDate, endDate) {
+    const { start, end } = this._resolveDates(startDate, endDate);
+    const startMs = new Date(start + 'T00:00:00Z').getTime();
+    const endMs = new Date(end + 'T00:00:00Z').getTime();
+    const dailyMap = {};
+    
+    let totalViews = 0;
+    for (let t = startMs; t <= endMs; t += 24 * 60 * 60 * 1000) {
+      const d = new Date(t).toISOString().split('T')[0];
+      const dailyViews = Math.round(500 + Math.random() * 800);
+      totalViews += dailyViews;
+      dailyMap[d] = {
+        date: d,
+        views: dailyViews,
+        subscribersGained: Math.round(15 + Math.random() * 25),
+        subscribersLost: Math.round(1 + Math.random() * 3),
+        totalContent: Math.random() > 0.85 ? 1 : 0
+      };
+    }
+    const growth = Object.keys(dailyMap).sort().map(d => dailyMap[d]);
+
+    return {
+      demographics: [
+        ['18-24', 'female', 12.5],
+        ['18-24', 'male', 28.3],
+        ['25-34', 'female', 18.2],
+        ['25-34', 'male', 41.0]
+      ],
+      trafficSource: [
+        ['YouTube search', Math.round(totalViews * 0.45), Math.round(totalViews * 0.45 * 8)],
+        ['Suggested videos', Math.round(totalViews * 0.30), Math.round(totalViews * 0.30 * 9)],
+        ['Direct or unknown', Math.round(totalViews * 0.15), Math.round(totalViews * 0.15 * 5)],
+        ['Browse features', Math.round(totalViews * 0.10), Math.round(totalViews * 0.10 * 7)]
+      ],
+      geographic: [
+        ['VN', Math.round(totalViews * 0.70)],
+        ['US', Math.round(totalViews * 0.15)],
+        ['JP', Math.round(totalViews * 0.08)],
+        ['SG', Math.round(totalViews * 0.07)]
+      ],
+      growth
+    };
+  }
+
   _getMockGrowthData() {
     return [];
   }
 
   async getChannelInfo(auth, startDate, endDate, account = null) {
     const accessToken = auth?.credentials?.access_token;
-    if (accessToken && accessToken.startsWith('mock-')) {
+    if (accessToken && MockConnectionGuard.isMock(accessToken, account?.platformAccountId)) {
+      if (account?.youtubeChannel) {
+        const analyticsData = await this.getAnalyticsReport(auth, startDate, endDate);
+        return {
+          channelId: account.platformAccountId,
+          username: account.username,
+          displayName: account.displayName,
+          profilePictureUrl: account.profilePictureUrl,
+          statistics: {
+            viewCount: account.youtubeChannel.totalViewsCount?.toString() || '0',
+            subscriberCount: account.youtubeChannel.subscribersCount?.toString() || '0',
+            videoCount: account.youtubeChannel.totalVideosCount?.toString() || '0',
+            hiddenSubscriberCount: false
+          },
+          snippet: {
+            title: account.displayName,
+            description: 'YouTube Channel (Mock)',
+            customUrl: account.username,
+            publishedAt: account.connectedAt?.toISOString() || new Date().toISOString(),
+            thumbnails: {
+              default: { url: account.profilePictureUrl }
+            }
+          },
+          analytics: analyticsData,
+          uploadsPlaylistId: account.youtubeChannel.uploadsPlaylistId || 'mock-uploads-playlist-id'
+        };
+      }
       return this._getEmptyChannelInfo(account);
     }
 
@@ -118,13 +189,8 @@ class YouTubeAnalyticsService {
 
   async getAnalyticsReport(auth, startDate, endDate) {
     const accessToken = auth?.credentials?.access_token;
-    if (accessToken && accessToken.startsWith('mock-')) {
-      return {
-        demographics: [],
-        trafficSource: [],
-        geographic: [],
-        growth: []
-      };
+    if (accessToken && MockConnectionGuard.isMock(accessToken)) {
+      return this._getMockAnalyticsReport(startDate, endDate);
     }
 
     try {
@@ -317,7 +383,7 @@ class YouTubeAnalyticsService {
       throw new Error('Social account not found or is not a YouTube account');
     }
 
-    if (account.accessToken && account.accessToken.startsWith('mock-')) {
+    if (account.accessToken && MockConnectionGuard.isMock(account.accessToken, account.platformAccountId)) {
       console.log(`[YouTube Analytics] Mock token detected: ${account.accessToken}. Skipping Google API sync.`);
       return account;
     }
@@ -338,8 +404,7 @@ class YouTubeAnalyticsService {
     if (!socialAccount || socialAccount.length === 0) throw new Error('YouTube account not connected');
 
     const activeAccount = socialAccount.find(acc => 
-      !(acc.accessToken && acc.accessToken.startsWith('mock-')) &&
-      !(acc.platformAccountId && acc.platformAccountId.startsWith('mock-'))
+      !MockConnectionGuard.isMock(acc.accessToken, acc.platformAccountId)
     ) || socialAccount[0];
     const auth = this._createAuthenticatedClient(activeAccount);
 
@@ -377,8 +442,7 @@ class YouTubeAnalyticsService {
     if (!socialAccount || socialAccount.length === 0) return competitors;
 
     const activeAccount = socialAccount.find(acc => 
-      !(acc.accessToken && acc.accessToken.startsWith('mock-')) &&
-      !(acc.platformAccountId && acc.platformAccountId.startsWith('mock-'))
+      !MockConnectionGuard.isMock(acc.accessToken, acc.platformAccountId)
     ) || socialAccount[0];
     const auth = this._createAuthenticatedClient(activeAccount);
 
@@ -450,8 +514,7 @@ class YouTubeAnalyticsService {
       }
 
       const activeAccount = socialAccount.find(acc => 
-        !(acc.accessToken && acc.accessToken.startsWith('mock-')) &&
-        !(acc.platformAccountId && acc.platformAccountId.startsWith('mock-'))
+        !MockConnectionGuard.isMock(acc.accessToken, acc.platformAccountId)
       ) || socialAccount[0];
       const auth = this._createAuthenticatedClient(activeAccount);
 

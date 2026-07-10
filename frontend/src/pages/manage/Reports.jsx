@@ -27,9 +27,19 @@ import {
   Maximize2,
   BarChart2,
   ChevronDown,
-  ChevronUp
+  ChevronUp,
+  Globe,
+  Cloud,
+  Pin,
+  Store,
+  Infinity as InfinityIcon,
+  TrendingUp,
+  Percent,
+  List,
+  HelpCircle
 } from "lucide-react";
 import { toast } from "sonner";
+import { TRANSLATIONS } from "../../components/manage/reports/translations";
 import { PlatformIcon } from "../../components/shared/PlatformIcon";
 import { useBrand } from "../../context/BrandContext";
 import apiService from "../../services/api";
@@ -245,8 +255,178 @@ export function ReportsPage() {
   const [customEndDate, setCustomEndDate] = useState("");
   const [isCustomPeriod, setIsCustomPeriod] = useState(false);
   const [language, setLanguage] = useState("English");
+  const t = TRANSLATIONS[language] || TRANSLATIONS.English;
   
-  // Section toggle settings (Main View)
+  // Section toggle settings (Main View - 16 platforms from Screenshot 2)
+  const [sectionConfig, setSectionConfig] = useState({
+    summary: { enabled: true, sortBy: "Impressions", maxRows: 20 },
+    web: { enabled: false, sortBy: "Page views", maxRows: 20 },
+    facebook: { enabled: true, sortBy: "Views", maxRows: 20 },
+    instagram: { enabled: false, sortBy: "Likes", maxRows: 20 },
+    threads: { enabled: false, sortBy: "Date", maxRows: 20 },
+    x: { enabled: false, sortBy: "Likes", maxRows: 20 },
+    bluesky: { enabled: false, sortBy: "Published", maxRows: 20 },
+    linkedin: { enabled: false, sortBy: "Likes", maxRows: 20 },
+    pinterest: { enabled: false, sortBy: "Date", maxRows: 20 },
+    tiktok: { enabled: false, sortBy: "Likes", maxRows: 20 },
+    googleBusiness: { enabled: false, sortBy: "", maxRows: 20 },
+    youtube: { enabled: false, sortBy: "Date", maxRows: 20 },
+    twitch: { enabled: false, sortBy: "Duration", maxRows: 20 },
+    metaAds: { enabled: false, sortBy: "Impressions", maxRows: 20 },
+    googleAds: { enabled: false, sortBy: "Impressions", maxRows: 20 },
+    tiktokAds: { enabled: false, sortBy: "Name", maxRows: 20 }
+  });
+
+  const handleSectionToggle = (platKey) => {
+    setSectionConfig(prev => {
+      const nextVal = !prev[platKey].enabled;
+      const updated = {
+        ...prev,
+        [platKey]: { ...prev[platKey], enabled: nextVal }
+      };
+      
+      // Sync to selectedWidgets
+      setSelectedWidgets(widgetPrev => {
+        const nextWidgets = { ...widgetPrev };
+        if (platKey === "summary") {
+          nextWidgets.followers = nextVal;
+          nextWidgets.postImpressions = nextVal;
+          nextWidgets.postInteractions = nextVal;
+          nextWidgets.posts = nextVal;
+          nextWidgets.rankingOfPosts = nextVal;
+        } else if (platKey === "facebook") {
+          nextWidgets.fbGrowth = nextVal;
+          nextWidgets.fbBalance = nextVal;
+          nextWidgets.fbViews = nextVal;
+          nextWidgets.fbInteractions = nextVal;
+          nextWidgets.fbTypesBreakdown = nextVal;
+          nextWidgets.fbViewsBreakdown = nextVal;
+          nextWidgets.fbRankingOfPosts = nextVal;
+        } else if (platKey === "instagram") {
+          nextWidgets.igGrowth = nextVal;
+          nextWidgets.igRankingOfPosts = nextVal;
+        } else if (platKey === "youtube") {
+          nextWidgets.ytGrowth = nextVal;
+          nextWidgets.ytRankingOfVideos = nextVal;
+        } else if (platKey === "tiktok") {
+          nextWidgets.ttGrowth = nextVal;
+          nextWidgets.ttBalance = nextVal;
+          nextWidgets.ttViews = nextVal;
+          nextWidgets.ttInteractions = nextVal;
+          nextWidgets.ttPosts = nextVal;
+        } else if (platKey === "discord") {
+          nextWidgets.dcGrowth = nextVal;
+        }
+        return nextWidgets;
+      });
+
+      return updated;
+    });
+  };
+
+  const handleSectionSortChange = (platKey, value) => {
+    setSectionConfig(prev => ({
+      ...prev,
+      [platKey]: { ...prev[platKey], sortBy: value }
+    }));
+    if (platKey === "summary") setSummarySortBy(value);
+    else if (platKey === "web") setWebSortBy(value);
+    else if (platKey === "facebook") setFbPostsSortBy(value);
+    else if (platKey === "instagram") setIgPostsSortBy(value);
+    else if (platKey === "youtube") setYtVideosSortBy(value);
+    else if (platKey === "tiktok") setTtVideosSortBy(value);
+  };
+
+  const handleSectionRowsChange = (platKey, value) => {
+    setSectionConfig(prev => ({
+      ...prev,
+      [platKey]: { ...prev[platKey], maxRows: value }
+    }));
+    if (platKey === "summary") setSummaryMaxRows(value);
+    else if (platKey === "web") setWebMaxRows(value);
+    else if (platKey === "facebook") setFbPostsMaxRows(value);
+    else if (platKey === "instagram") setIgPostsMaxRows(value);
+    else if (platKey === "youtube") setYtVideosMaxRows(value);
+    else if (platKey === "tiktok") setTtVideosMaxRows(value);
+  };
+
+  const getSectionSortOptions = (platKey) => {
+    switch(platKey) {
+      case "summary":
+        return ["Impressions", "Engagement", "Likes", "Views", "Date", "Followers"];
+      case "web":
+        return ["Page views", "Unique visitors", "Bounce rate", "Duration"];
+      case "facebook":
+        return ["Views", "Engagement", "Likes", "Reactions", "Comments", "Shares"];
+      case "instagram":
+        return ["Likes", "Comments", "Interactions", "Reaches", "Saves"];
+      case "threads":
+        return ["Date", "Likes", "Replies", "Reposts"];
+      case "x":
+        return ["Likes", "Retweets", "Replies", "Impressions"];
+      case "bluesky":
+        return ["Published", "Likes", "Replies", "Reposts"];
+      case "linkedin":
+        return ["Likes", "Comments", "Shares", "Clicks", "Impressions"];
+      case "pinterest":
+        return ["Date", "Repins", "Clicks", "Impressions"];
+      case "tiktok":
+        return ["Likes", "Views", "Comments", "Shares", "Duration"];
+      case "youtube":
+        return ["Date", "Views", "Likes", "Comments", "Duration"];
+      case "twitch":
+        return ["Duration", "Views", "Followers"];
+      case "metaAds":
+        return ["Impressions", "Clicks", "Conversions", "Spend", "CPC", "CPM"];
+      case "googleAds":
+        return ["Impressions", "Clicks", "Conversions", "Cost", "CPC"];
+      case "tiktokAds":
+        return ["Name", "Impressions", "Clicks", "Conversions", "Spend"];
+      default:
+        return [];
+    }
+  };
+
+  const renderPlatformIcon = (platKey) => {
+    switch (platKey) {
+      case "summary":
+        return <List size={16} className="text-gray-500 shrink-0" />;
+      case "web":
+        return <Globe size={16} className="text-blue-500 shrink-0" />;
+      case "facebook":
+        return <PlatformIcon platform="Facebook" size={16} className="shrink-0" />;
+      case "instagram":
+        return <PlatformIcon platform="Instagram" size={16} className="shrink-0" />;
+      case "threads":
+        return <PlatformIcon platform="Threads" size={16} className="shrink-0" />;
+      case "x":
+        return <PlatformIcon platform="X" size={16} className="shrink-0" />;
+      case "bluesky":
+        return <Cloud size={16} className="text-sky-400 fill-sky-400 shrink-0" />;
+      case "linkedin":
+        return <PlatformIcon platform="LinkedIn" size={16} className="shrink-0" />;
+      case "pinterest":
+        return <Pin size={16} className="text-red-600 fill-red-600 shrink-0" />;
+      case "tiktok":
+        return <PlatformIcon platform="TikTok" size={16} className="shrink-0" />;
+      case "googleBusiness":
+        return <Store size={16} className="text-blue-600 shrink-0" />;
+      case "youtube":
+        return <PlatformIcon platform="YouTube" size={16} className="shrink-0" />;
+      case "twitch":
+        return <PlatformIcon platform="Twitch" size={16} className="shrink-0" />;
+      case "metaAds":
+        return <InfinityIcon size={16} className="text-indigo-600 shrink-0" />;
+      case "googleAds":
+        return <TrendingUp size={16} className="text-yellow-500 shrink-0" />;
+      case "tiktokAds":
+        return <Percent size={16} className="text-black shrink-0" />;
+      default:
+        return <HelpCircle size={16} className="text-gray-400 shrink-0" />;
+    }
+  };
+
+  // Deprecated legacy states to prevent breaking references elsewhere in file
   const [sectionSummary, setSectionSummary] = useState(true);
   const [sectionWebBlog, setSectionWebBlog] = useState(false);
   const [sectionFacebook, setSectionFacebook] = useState(true);
@@ -1870,6 +2050,11 @@ export function ReportsPage() {
     }
   };
 
+    const handleDownloadDemo = () => {
+    toast.success("Downloading demo report...");
+    window.open("https://metricool.com/wp-content/uploads/Metricool-Report-Example-EN.pdf", "_blank");
+  };
+
   const handleLogoUpload = (e) => {
     const file = e.target.files[0];
     if (file) {
@@ -3056,10 +3241,10 @@ export function ReportsPage() {
         <div>
           <h1 className="text-xl font-extrabold text-gray-800 flex items-center gap-2">
             <FileText className="text-[#3B82F6] w-6 h-6" />
-            Automated Analytics Reports
+            {t.reportsTitle}
           </h1>
           <p className="text-xs text-gray-400 mt-1">
-            Lập lịch gửi email tự động hàng tháng và thiết kế báo cáo white-label đa kênh chuyên nghiệp.
+            {t.reportsSubtitle}
           </p>
         </div>
 
@@ -3070,21 +3255,21 @@ export function ReportsPage() {
             className="flex items-center gap-1.5 bg-blue-50 hover:bg-blue-100 text-blue-600 text-xs font-bold px-4 py-2.5 rounded-xl transition-all border border-blue-200 cursor-pointer shadow-sm"
           >
             <Eye size={14} />
-            XEM BÁO CÁO (PREVIEW)
+            {t.viewReportPreview}
           </button>
           <button 
             onClick={handlePrintPDF}
             className="flex items-center gap-1.5 bg-[#0a0a0a] hover:bg-gray-800 text-white text-xs font-semibold px-4 py-2.5 rounded-xl transition-all shadow-md cursor-pointer"
           >
             <Download size={14} />
-            GENERATE PDF
+            {t.generatePdf}
           </button>
           <button 
             onClick={() => handleGenerateReport("Excel")}
             className="flex items-center gap-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-semibold px-4 py-2.5 rounded-xl transition-all border border-gray-200 cursor-pointer"
           >
             <Download size={14} />
-            GENERATE EXCEL
+            {t.generateExcel}
           </button>
         </div>
       </div>
@@ -3092,13 +3277,37 @@ export function ReportsPage() {
       {/* Grid: Left Main config - Right History & Scheduled */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         
-        {/* Left Columns: Templates Config & Sections */}
+        {/* Left Columns: Upgrade Banner, Period/Language, Sections, Custom Logo, Auto Report */}
         <div className="lg:col-span-2 space-y-6">
           
-          {/* Period & Language Config Panel */}
+          {/* Upgrade plan Callout Banner (Screenshot 1) */}
+          <div className="relative bg-white rounded-2xl p-6 border border-gray-200 shadow-sm overflow-hidden flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+            <div className="flex items-start gap-4">
+              <div className="w-12 h-12 rounded-full bg-[#E6FF00] flex items-center justify-center shrink-0 shadow-sm">
+                <svg viewBox="0 0 24 24" className="w-5 h-5 text-black fill-current">
+                  <polygon points="12,2 22,12 12,22 2,12" />
+                </svg>
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-gray-900">{t.upgradeBannerTitle}</h3>
+                <p className="text-xs text-gray-500 mt-1 leading-relaxed">
+                  Deliver reports for your customers to see the effectiveness of your strategy. Create <strong className="font-extrabold text-black">custom reports</strong> by signing up for a higher plan. <span className="underline cursor-pointer text-indigo-600 font-semibold" onClick={handleDownloadDemo}>Download</span> a demo report.
+                </p>
+              </div>
+            </div>
+            <button 
+              onClick={() => toast.success("Plan Upgrade Flow Started")}
+              className="bg-black hover:bg-gray-950 text-[#E6FF00] font-bold text-xs px-5 py-3 rounded-full shrink-0 shadow-md transition-all active:scale-95 cursor-pointer"
+            >
+              {t.upgradeBtn}
+            </button>
+            <div className="absolute right-0 bottom-0 top-0 w-24 opacity-10 pointer-events-none bg-gradient-to-l from-indigo-500 to-transparent" />
+          </div>
+
+          {/* Period & Language Config Panel (Screenshot 1) */}
           <div className="bg-white rounded-2xl p-5 border border-gray-200 shadow-sm grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
-              <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Period</label>
+              <label className="block text-xs font-bold text-gray-900 mb-2">{t.period}</label>
               <div className="flex items-center gap-3">
                 <div className="flex-1 flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-xl px-3 py-2.5">
                   <Calendar size={16} className="text-gray-400" />
@@ -3107,11 +3316,11 @@ export function ReportsPage() {
                     onChange={(e) => handlePeriodChange(e.target.value)}
                     className="bg-transparent border-none text-sm font-semibold text-gray-700 outline-none w-full cursor-pointer"
                   >
-                    <option value="30 ngày qua">30 ngày qua</option>
-                    <option value="7 ngày qua">7 ngày qua</option>
-                    <option value="Tháng này">Tháng này</option>
-                    <option value="Tháng trước">Tháng trước</option>
-                    <option value="custom">Tùy chọn khoảng ngày...</option>
+                    <option value="30 ngày qua">{t.LAST_30_DAYS || "30 ngày qua"}</option>
+                    <option value="7 ngày qua">{t.LAST_7_DAYS || "7 ngày qua"}</option>
+                    <option value="Tháng này">{t.THIS_MONTH || "Tháng này"}</option>
+                    <option value="Tháng trước">{t.LAST_MONTH || "Tháng trước"}</option>
+                    <option value="custom">{t.comparePrevPeriod || "Tùy chọn khoảng ngày..."}</option>
                   </select>
                 </div>
                 <button
@@ -3124,7 +3333,7 @@ export function ReportsPage() {
                   ) : (
                     <RefreshCw size={14} />
                   )}
-                  Load Data
+                  {t.loadData}
                 </button>
               </div>
 
@@ -3150,11 +3359,11 @@ export function ReportsPage() {
                   </div>
                 </div>
               )}
-              <span className="text-[10px] text-gray-400 mt-1 block font-mono">So sánh với chu kỳ trước đó</span>
+              <span className="text-[10px] text-gray-400 mt-1.5 block font-medium">{t.comparedToMay}</span>
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Language</label>
+              <label className="block text-xs font-bold text-gray-900 mb-2">{t.language}</label>
               <select 
                 value={language}
                 onChange={(e) => setLanguage(e.target.value)}
@@ -3167,258 +3376,374 @@ export function ReportsPage() {
             </div>
           </div>
 
-          {/* Templates Section */}
-          <div className="bg-white rounded-2xl p-5 border border-gray-200 shadow-sm space-y-4">
-            <div className="flex justify-between items-center border-b border-gray-100 pb-3">
-              <h4 className="font-bold text-gray-800 text-sm">Templates</h4>
-              <button 
-                onClick={handleCreateTemplateClick}
-                className="flex items-center gap-1.5 text-[#3B82F6] hover:text-blue-700 text-xs font-bold"
-              >
-                <Plus size={14} />
-                NEW TEMPLATE
-              </button>
-            </div>
-
-            <div className="flex flex-col md:flex-row gap-4 items-stretch md:items-center">
-              <div className="flex-1">
-                <select
-                  value={selectedTemplateId}
-                  onChange={handleTemplateChange}
-                  className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2.5 text-sm text-gray-700 font-semibold outline-none cursor-pointer"
-                >
-                  <option value="">Pick a template</option>
-                  {templates.map(t => (
-                    <option key={t.id} value={t.id}>{t.name}</option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Action buttons */}
-              <div className="flex items-center gap-2.5">
-                <button
-                  onClick={handleEditTemplateClick}
-                  disabled={!selectedTemplateId}
-                  className="flex-1 md:flex-initial flex items-center justify-center gap-1 bg-white hover:bg-gray-50 border border-gray-200 text-gray-600 disabled:opacity-40 text-xs font-bold px-3 py-2.5 rounded-xl transition-all"
-                >
-                  <Edit2 size={13} />
-                  EDIT
-                </button>
-                <button
-                  onClick={handleRemoveTemplate}
-                  disabled={!selectedTemplateId}
-                  className="flex-1 md:flex-initial flex items-center justify-center gap-1 bg-white hover:bg-red-50 hover:text-red-500 border border-gray-200 text-gray-600 disabled:opacity-40 text-xs font-bold px-3 py-2.5 rounded-xl transition-all"
-                >
-                  <Trash2 size={13} />
-                  REMOVE
-                </button>
-                <button
-                  onClick={handleDuplicateTemplate}
-                  disabled={!selectedTemplateId}
-                  className="flex-1 md:flex-initial flex items-center justify-center gap-1 bg-white hover:bg-gray-50 border border-gray-200 text-gray-600 disabled:opacity-40 text-xs font-bold px-3 py-2.5 rounded-xl transition-all"
-                >
-                  <Copy size={13} />
-                  DUPLICATE
-                </button>
+          {/* Sections Config Panel (Screenshot 2) */}
+          <div className="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm space-y-6">
+            <div className="flex items-center gap-2 border-b border-gray-100 pb-4">
+              <h4 className="font-bold text-gray-900 text-sm tracking-tight">{t.sections}</h4>
+              <div className="w-4 h-4 rounded-full bg-[#E6FF00] flex items-center justify-center text-black font-bold text-[10px] cursor-help shadow-sm animate-pulse" title="Bật/tắt các nền tảng hoặc chọn từng widget hiển thị trong báo cáo">
+                i
               </div>
             </div>
-          </div>
 
-          {/* Section details configure (Premium Redesign) */}
-          <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-[0_8px_30px_rgb(0,0,0,0.04)] backdrop-blur-md bg-opacity-80 space-y-6">
-            <div className="flex items-center justify-between border-b border-gray-50 pb-4">
-              <div>
-                <h4 className="font-extrabold text-gray-900 text-sm tracking-tight">Sections & Quick Settings</h4>
-                <p className="text-[11px] text-gray-400 mt-0.5">Bật/tắt các nền tảng hoặc chọn từng widget hiển thị trong báo cáo</p>
-              </div>
-              <span className="text-[10px] text-blue-600 bg-blue-50 px-2.5 py-1 rounded-full font-bold uppercase tracking-wider">
-                Interactive Config
-              </span>
-            </div>
-            
-            <div className="space-y-3.5">
-              {/* Platforms Toggles with Premium Layout */}
-              {[
-                { 
-                  id: "summary", 
-                  label: "Summary Overview", 
-                  color: "from-blue-500 to-indigo-500",
-                  widgets: [
-                    { key: "followers", label: "Followers Overview" },
-                    { key: "postImpressions", label: "Post Impressions" },
-                    { key: "postInteractions", label: "Post Interactions" },
-                    { key: "posts", label: "Posts List" },
-                    { key: "rankingOfPosts", label: "Ranking of Posts" }
-                  ]
-                },
-                { 
-                  id: "facebook", 
-                  label: "Facebook Analysis", 
-                  color: "from-blue-600 to-blue-700",
-                  widgets: [
-                    { key: "fbGrowth", label: "Followers Growth" },
-                    { key: "fbBalance", label: "Follower Balance" },
-                    { key: "fbViews", label: "Page Views" },
-                    { key: "fbInteractions", label: "Interactions" },
-                    { key: "fbTypesBreakdown", label: "Types Breakdown" },
-                    { key: "fbViewsBreakdown", label: "Views Breakdown" },
-                    { key: "fbRankingOfPosts", label: "Ranking of Posts" }
-                  ]
-                },
-                { 
-                  id: "instagram", 
-                  label: "Instagram Analytics", 
-                  color: "from-pink-500 to-rose-500",
-                  widgets: [
-                    { key: "igGrowth", label: "Followers & Account Growth" },
-                    { key: "igRankingOfPosts", label: "Ranking of Posts" }
-                  ]
-                },
-                { 
-                  id: "youtube", 
-                  label: "YouTube Dashboard", 
-                  color: "from-red-500 to-red-600",
-                  widgets: [
-                    { key: "ytGrowth", label: "Subscribers & Views Growth" },
-                    { key: "ytRankingOfVideos", label: "Ranking of Videos" }
-                  ]
-                },
-                { 
-                  id: "tiktok", 
-                  label: "TikTok Performance", 
-                  color: "from-gray-900 to-black",
-                  widgets: [
-                    { key: "ttGrowth", label: "Followers Growth" },
-                    { key: "ttBalance", label: "Followers Balance" },
-                    { key: "ttViews", label: "Views Stats" },
-                    { key: "ttInteractions", label: "Interactions Detail" },
-                    { key: "ttPosts", label: "Videos List" }
-                  ]
-                },
-                { 
-                  id: "discord", 
-                  label: "Discord Server stats", 
-                  color: "from-indigo-500 to-purple-600",
-                  widgets: [
-                    { key: "dcGrowth", label: "Server Members Growth" }
-                  ]
-                }
-              ].map((plat) => {
-                const keys = plat.widgets.map(w => w.key);
-                const activeCount = keys.filter(k => selectedWidgets[k]).length;
-                const isAllActive = activeCount === keys.length;
-                const isExpanded = !!expandedPlatforms[plat.id];
+            <div className="space-y-4">
+              {Object.keys(sectionConfig).map((platKey) => {
+                const config = sectionConfig[platKey];
+                const hasSort = config.sortBy !== "";
+                
+                let label = platKey.charAt(0).toUpperCase() + platKey.slice(1);
+                if (platKey === "googleBusiness") label = "Google Business Profile";
+                else if (platKey === "metaAds") label = "Meta Ads";
+                else if (platKey === "googleAds") label = "Google Ads";
+                else if (platKey === "tiktokAds") label = "TikTok Ads";
 
                 return (
-                  <div 
-                    key={plat.id} 
-                    className={`border border-gray-100 rounded-2xl overflow-hidden transition-all duration-300 ${
-                      isExpanded ? "shadow-[0_4px_20px_rgba(0,0,0,0.02)] bg-slate-50/50" : "bg-white"
-                    }`}
-                  >
-                    {/* Platform Header */}
-                    <div 
-                      className="flex justify-between items-center px-4 py-3.5 hover:bg-gray-50/80 cursor-pointer select-none transition-colors"
-                      onClick={() => setExpandedPlatforms(prev => ({ ...prev, [plat.id]: !prev[plat.id] }))}
-                    >
-                      <div className="flex items-center gap-3">
-                        {/* Master Toggle Switch */}
-                        <button 
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setSelectedWidgets(prev => {
-                              const next = { ...prev };
-                              keys.forEach(k => {
-                                next[k] = !isAllActive;
-                              });
-                              return next;
-                            });
-                          }}
-                          className={`w-9 h-5 rounded-full p-0.5 transition-all duration-300 relative cursor-pointer focus:outline-none ${
-                            activeCount > 0 ? "bg-emerald-500 shadow-[0_2px_8px_rgba(16,185,129,0.3)]" : "bg-gray-200"
-                          }`}
-                        >
-                          <div className={`w-4 h-4 bg-white rounded-full shadow-md transform transition-transform duration-300 ${
-                            activeCount > 0 ? "translate-x-4" : "translate-x-0"
-                          }`} />
-                        </button>
-                        
-                        <div className="flex items-center gap-2">
-                          <div className={`w-1.5 h-6 rounded-full bg-gradient-to-b ${plat.color}`} />
-                          <span className="text-xs font-bold text-gray-800 tracking-tight">{plat.label}</span>
-                        </div>
-                      </div>
-                      
+                  <div key={platKey} className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 py-2.5 border-b border-gray-50 last:border-0">
+                    <div className="flex items-center gap-3 shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => handleSectionToggle(platKey)}
+                        className={`w-9 h-5 rounded-full p-0.5 transition-all duration-300 relative cursor-pointer focus:outline-none ${
+                          config.enabled ? "bg-emerald-500" : "bg-gray-200"
+                        }`}
+                      >
+                        <div className={`w-4 h-4 bg-white rounded-full shadow transform transition-transform duration-300 ${
+                          config.enabled ? "translate-x-4" : "translate-x-0"
+                        }`} />
+                      </button>
                       <div className="flex items-center gap-2.5">
-                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full font-mono transition-all duration-300 ${
-                          activeCount > 0 ? "bg-blue-50 text-blue-600" : "bg-gray-100 text-gray-400"
-                        }`}>
-                          {activeCount}/{plat.widgets.length}
+                        {renderPlatformIcon(platKey)}
+                        <span className={`text-xs font-bold transition-colors ${config.enabled ? "text-gray-900" : "text-gray-400"}`}>
+                          {label}
                         </span>
-                        <div className="p-1 rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors">
-                          {isExpanded ? <ChevronUp size={13} className="text-gray-500" /> : <ChevronDown size={13} className="text-gray-500" />}
-                        </div>
                       </div>
                     </div>
 
-                    {/* Collapsible Widgets Container */}
-                    {isExpanded && (
-                      <div className="px-4 pb-4 pt-1 bg-white/70 space-y-2.5 border-t border-gray-50/50 animate-in fade-in duration-200">
-                        {plat.widgets.map((widget) => {
-                          const isWidgetChecked = !!selectedWidgets[widget.key];
-                          return (
-                            <label 
-                              key={widget.key} 
-                              className={`flex items-center justify-between text-xs cursor-pointer py-2 px-3 rounded-xl select-none transition-all duration-200 border ${
-                                isWidgetChecked 
-                                  ? "bg-slate-50 border-gray-200/60 text-gray-900 font-medium" 
-                                  : "bg-transparent border-transparent text-gray-500 hover:text-gray-800"
-                              }`}
-                            >
-                              <span>{widget.label}</span>
-                              <input
-                                type="checkbox"
-                                checked={isWidgetChecked}
-                                onChange={(e) => {
-                                  setSelectedWidgets(prev => ({
-                                    ...prev,
-                                    [widget.key]: e.target.checked
-                                  }));
-                                }}
-                                className="w-4.5 h-4.5 text-emerald-600 border-gray-300 rounded-lg focus:ring-emerald-500 focus:ring-offset-0 cursor-pointer transition-all accent-emerald-500"
-                              />
-                            </label>
-                          );
-                        })}
+                    <div className="flex items-center gap-3">
+                      {hasSort && (
+                        <div className="relative pt-2 w-36">
+                          <label className="absolute top-0 left-2.5 bg-white px-1 text-[9px] font-bold text-gray-400 z-10">
+                            {t.sortBy}
+                          </label>
+                          <select
+                            disabled={!config.enabled}
+                            value={config.sortBy}
+                            onChange={(e) => handleSectionSortChange(platKey, e.target.value)}
+                            className={`w-full bg-white border rounded-xl px-2.5 py-1.5 text-xs font-semibold text-gray-700 outline-none cursor-pointer transition-all ${
+                              config.enabled ? "border-gray-200 hover:border-gray-400" : "border-gray-100 opacity-40 cursor-not-allowed"
+                            }`}
+                          >
+                            {getSectionSortOptions(platKey).map(opt => (
+                              <option key={opt} value={opt}>{opt}</option>
+                            ))}
+                          </select>
+                        </div>
+                      )}
+
+                      <div className="relative pt-2 w-24">
+                        <label className="absolute top-0 left-2.5 bg-white px-1 text-[9px] font-bold text-gray-400 z-10">
+                          {t.maxRows}
+                        </label>
+                        <select
+                          disabled={!config.enabled}
+                          value={config.maxRows}
+                          onChange={(e) => handleSectionRowsChange(platKey, parseInt(e.target.value))}
+                          className={`w-full bg-white border rounded-xl px-2.5 py-1.5 text-xs font-semibold text-gray-700 outline-none cursor-pointer transition-all ${
+                            config.enabled ? "border-gray-200 hover:border-gray-400" : "border-gray-100 opacity-40 cursor-not-allowed"
+                          }`}
+                        >
+                          <option value="5">5</option>
+                          <option value="10">10</option>
+                          <option value="15">15</option>
+                          <option value="20">20</option>
+                          <option value="50">50</option>
+                        </select>
                       </div>
-                    )}
+                    </div>
                   </div>
                 );
               })}
             </div>
           </div>
 
+          {/* Customize Logo Card (Screenshot 3) */}
+          <div className="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm space-y-4">
+            <div className="flex items-center justify-between border-b border-gray-100 pb-3">
+              <div className="flex items-center gap-2">
+                <h4 className="font-bold text-gray-900 text-sm tracking-tight">{t.customizeLogo}</h4>
+                <div className="w-5 h-5 rounded-full bg-[#E6FF00] flex items-center justify-center shadow-sm">
+                  <svg viewBox="0 0 24 24" className="w-3 h-3 text-black fill-current">
+                    <polygon points="12,2 22,12 12,22 2,12" />
+                  </svg>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex flex-col md:flex-row gap-6 items-center">
+              <div className="flex-1 w-full">
+                <input type="file" id="logo-upload-main" accept="image/*" className="hidden" onChange={handleLogoUpload} />
+                <label
+                  htmlFor="logo-upload-main"
+                  className="flex flex-col items-center justify-center border-2 border-dashed border-gray-200 rounded-xl cursor-pointer hover:border-gray-400 hover:bg-gray-50 transition-all p-6 text-center select-none"
+                  style={{ minHeight: "130px" }}
+                >
+                  {logoUrl ? (
+                    <div className="relative w-full flex flex-col items-center justify-center">
+                      <img src={logoUrl} alt="Logo" className="max-h-12 max-w-full object-contain mb-2 opacity-80" />
+                      <span className="text-[10px] text-indigo-600 font-bold bg-indigo-50 px-2 py-0.5 rounded">{t.change}</span>
+                    </div>
+                  ) : (
+                    <div className="flex flex-col items-center gap-2">
+                      <span className="text-2xl text-gray-300 font-black tracking-widest uppercase">metricool</span>
+                      <span className="text-[10px] text-gray-400">{t.selectOrDragLogo}</span>
+                    </div>
+                  )}
+                </label>
+                <p className="text-[10px] text-gray-400 text-center mt-2 leading-relaxed">
+                  {t.logoDesc}
+                </p>
+              </div>
+
+              <div className="flex flex-col sm:flex-row md:flex-col gap-3 w-full md:w-auto shrink-0">
+                <button 
+                  onClick={handleDownloadDemo}
+                  className="flex items-center justify-center gap-2 bg-white hover:bg-gray-50 text-gray-800 text-xs font-bold px-4 py-3 rounded-xl transition-all border border-gray-300 cursor-pointer shadow-sm min-w-[150px]"
+                >
+                  <FileText size={14} className="text-gray-500" />
+                  {t.downloadDemo}
+                </button>
+                
+                <button 
+                  onClick={handlePrintPDF}
+                  className="flex items-center justify-center gap-2 bg-[#E6FF00] hover:bg-[#d8f000] text-black text-xs font-bold px-4 py-3 rounded-xl transition-all shadow-sm cursor-pointer min-w-[150px]"
+                >
+                  <FileText size={14} />
+                  {t.generatePdf}
+                  <div className="w-4 h-4 rounded-full bg-black flex items-center justify-center shrink-0 ml-1">
+                    <svg viewBox="0 0 24 24" className="w-2.4 h-2.4 text-[#E6FF00] fill-current">
+                      <polygon points="12,2 22,12 12,22 2,12" />
+                    </svg>
+                  </div>
+                </button>
+
+                <button 
+                  onClick={() => handleGenerateReport("PPT")}
+                  className="flex items-center justify-center gap-2 bg-[#E6FF00] hover:bg-[#d8f000] text-black text-xs font-bold px-4 py-3 rounded-xl transition-all shadow-sm cursor-pointer min-w-[150px]"
+                >
+                  <FileText size={14} />
+                  {t.generatePpt}
+                  <div className="w-4 h-4 rounded-full bg-black flex items-center justify-center shrink-0 ml-1">
+                    <svg viewBox="0 0 24 24" className="w-2.4 h-2.4 text-[#E6FF00] fill-current">
+                      <polygon points="12,2 22,12 12,22 2,12" />
+                    </svg>
+                  </div>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Automatic Monthly Report Card (Screenshot 4) */}
+          <div className="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm space-y-4">
+            <div className="flex items-center justify-between border-b border-gray-100 pb-3">
+              <div className="flex items-center gap-2">
+                <h4 className="font-bold text-gray-900 text-sm tracking-tight">{t.automaticMonthly}</h4>
+                <div className="w-5 h-5 rounded-full bg-[#E6FF00] flex items-center justify-center shadow-sm">
+                  <svg viewBox="0 0 24 24" className="w-3 h-3 text-black fill-current">
+                    <polygon points="12,2 22,12 12,22 2,12" />
+                  </svg>
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              <div className="flex items-center gap-3 py-1">
+                <button
+                  type="button"
+                  onClick={() => setReceiveEmail(prev => !prev)}
+                  className={`w-9 h-5 rounded-full p-0.5 transition-all duration-300 relative cursor-pointer focus:outline-none ${
+                    receiveEmail ? "bg-[#3B82F6]" : "bg-gray-200"
+                  }`}
+                >
+                  <div className={`w-4 h-4 bg-white rounded-full shadow transform transition-transform duration-300 ${
+                    receiveEmail ? "translate-x-4" : "translate-x-0"
+                  }`} />
+                </button>
+                <span className="text-xs font-bold text-gray-700">{t.scheduleMonthlyEmail}</span>
+              </div>
+
+              <div className={`space-y-4 transition-all ${receiveEmail ? "opacity-100" : "opacity-40 pointer-events-none"}`}>
+                <div>
+                  <label className="block text-xs font-bold text-gray-800 mb-1">{t.recipientEmail}</label>
+                  <div className="flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-xl px-3 py-2.5">
+                    <Mail className="text-gray-400 shrink-0" size={14} />
+                    <input
+                      type="text"
+                      placeholder="example@mail.com, client@mail.com"
+                      value={emailsList.join(", ")}
+                      onChange={(e) => setEmailsList(e.target.value.split(",").map(s => s.trim()))}
+                      className="bg-transparent border-none text-xs font-semibold text-gray-700 outline-none w-full"
+                    />
+                  </div>
+                  <span className="text-[9px] text-gray-400 mt-1 block">{t.recipientEmailDesc}</span>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-gray-800 mb-1">{t.sendRepliesTo}</label>
+                  <div className="flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-xl px-3 py-2.5">
+                    <Mail className="text-gray-400 shrink-0" size={14} />
+                    <input
+                      type="email"
+                      value="vothanhnha26@gmail.com"
+                      readOnly
+                      className="bg-transparent border-none text-xs font-semibold text-gray-700 outline-none w-full cursor-not-allowed"
+                    />
+                  </div>
+                  <span className="text-[9px] text-gray-400 mt-1 block">{t.sendRepliesToDesc}</span>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-gray-800 mb-1">{t.sendingDay}</label>
+                  <input
+                    type="number"
+                    min="1"
+                    max="31"
+                    defaultValue="1"
+                    className="w-20 bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-xs font-semibold text-gray-700 outline-none"
+                  />
+                  <span className="text-[9px] text-gray-400 mt-1 block leading-relaxed">{t.sendingDayDesc}</span>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-gray-800 mb-1">{t.emailText}</label>
+                  <textarea
+                    value={emailText}
+                    onChange={(e) => setEmailText(e.target.value)}
+                    rows="3"
+                    className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2.5 text-xs font-semibold text-gray-700 outline-none resize-none leading-relaxed"
+                  />
+                </div>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-3 pt-2">
+                <button 
+                  onClick={() => toast.success("Plan Upgrade Flow Started")}
+                  className="flex items-center gap-2 bg-[#E6FF00] hover:bg-[#d8f000] text-black text-xs font-bold px-4 py-3 rounded-xl transition-all shadow-sm cursor-pointer active:scale-95"
+                >
+                  {t.upgradeBtn}
+                  <div className="w-4 h-4 rounded-full bg-black flex items-center justify-center shrink-0">
+                    <svg viewBox="0 0 24 24" className="w-2.4 h-2.4 text-[#E6FF00] fill-current">
+                      <polygon points="12,2 22,12 12,22 2,12" />
+                    </svg>
+                  </div>
+                </button>
+
+                <button 
+                  onClick={handleSendTestReport}
+                  disabled={emailsList.length === 0}
+                  className="bg-gray-100 hover:bg-gray-200 disabled:opacity-40 disabled:cursor-not-allowed text-gray-700 text-xs font-bold px-4 py-3 rounded-xl transition-all active:scale-95 cursor-pointer"
+                >
+                  {t.sendTestReport}
+                </button>
+              </div>
+            </div>
+          </div>
+
         </div>
 
-        {/* Right Column: History, Automation Settings & Scheduled Reports */}
+        {/* Right Column: Templates selector, PDF History, Quick A4 Preview */}
         <div className="space-y-6">
-          <AutomationSchedulingPanel
-            receiveEmail={receiveEmail}
-            setReceiveEmail={setReceiveEmail}
-            emailsList={emailsList}
-            setEmailsList={setEmailsList}
-            emailText={emailText}
-            setEmailText={setEmailText}
-            brandMembers={brandMembers}
-            membersLoading={membersLoading}
-            onSendTestReport={handleSendTestReport}
-            onSaveSchedule={handleSaveSchedule}
-          />
+          
+          {/* Templates Selector Card */}
+          <div className="bg-white rounded-2xl p-5 border border-gray-200 shadow-sm space-y-4">
+            <div className="flex justify-between items-center border-b border-gray-100 pb-3">
+              <h4 className="font-bold text-gray-800 text-sm">{t.templates || "Templates"}</h4>
+              <button 
+                onClick={handleCreateTemplateClick}
+                className="flex items-center gap-1.5 text-[#3B82F6] hover:text-blue-700 text-xs font-bold"
+              >
+                <Plus size={14} />
+                {t.newTemplate || "NEW TEMPLATE"}
+              </button>
+            </div>
 
+            <div className="flex flex-col gap-3">
+              <select
+                value={selectedTemplateId}
+                onChange={handleTemplateChange}
+                className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2.5 text-xs text-gray-700 font-semibold outline-none cursor-pointer"
+              >
+                <option value="">{t.pickTemplate || "Pick a template"}</option>
+                {templates.map(t => (
+                  <option key={t.id} value={t.id}>{t.name}</option>
+                ))}
+              </select>
+
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={handleEditTemplateClick}
+                  disabled={!selectedTemplateId}
+                  className="flex-1 flex items-center justify-center gap-1 bg-white hover:bg-gray-50 border border-gray-200 text-gray-600 disabled:opacity-40 text-[10px] font-bold py-2 rounded-lg transition-all"
+                >
+                  <Edit2 size={11} />
+                  {t.edit || "EDIT"}
+                </button>
+                <button
+                  onClick={handleRemoveTemplate}
+                  disabled={!selectedTemplateId}
+                  className="flex-1 flex items-center justify-center gap-1 bg-white hover:bg-red-50 hover:text-red-500 border border-gray-200 text-gray-600 disabled:opacity-40 text-[10px] font-bold py-2 rounded-lg transition-all"
+                >
+                  <Trash2 size={11} />
+                  {t.remove || "REMOVE"}
+                </button>
+                <button
+                  onClick={handleDuplicateTemplate}
+                  disabled={!selectedTemplateId}
+                  className="flex-1 flex items-center justify-center gap-1 bg-white hover:bg-gray-50 border border-gray-200 text-gray-600 disabled:opacity-40 text-[10px] font-bold py-2 rounded-lg transition-all"
+                >
+                  <Copy size={11} />
+                  {t.duplicate || "COPY"}
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Quick A4 Preview Card (Wow Factor - Scaled A4 Page) */}
+          <div className="bg-white rounded-2xl p-5 border border-gray-200 shadow-sm space-y-4">
+            <div className="flex justify-between items-center border-b border-gray-100 pb-3">
+              <h4 className="font-bold text-gray-800 text-sm">{t.a4LiveViewport || "Quick Preview"}</h4>
+              <div className="flex items-center gap-1.5 bg-gray-50 p-1 rounded-xl border border-gray-100">
+                <button 
+                  type="button"
+                  disabled={editorPreviewPage === 1}
+                  onClick={() => setEditorPreviewPage(prev => Math.max(1, prev - 1))}
+                  className="text-gray-400 hover:text-black disabled:opacity-30 transition-opacity"
+                >
+                  <ChevronLeft size={14} />
+                </button>
+                <span className="text-xs font-mono font-bold text-gray-700">
+                  {editorPreviewPage} / {getEnabledPages().length}
+                </span>
+                <button 
+                  type="button"
+                  disabled={editorPreviewPage === getEnabledPages().length}
+                  onClick={() => setEditorPreviewPage(prev => Math.min(getEnabledPages().length, prev + 1))}
+                  className="text-gray-400 hover:text-black disabled:opacity-30 transition-opacity"
+                >
+                  <ChevronRight size={14} />
+                </button>
+              </div>
+            </div>
+            <div className="rounded-xl overflow-hidden border border-gray-200 shadow-sm bg-slate-50 p-4 flex justify-center h-[340px] relative">
+              <div className="scale-[0.38] origin-top my-0 w-[210mm] h-[297mm] absolute top-4">
+                {renderA4Page(getEnabledPages()[editorPreviewPage - 1], editorPreviewPage, getEnabledPages().length)}
+              </div>
+            </div>
+          </div>
+
+          {/* Generated PDF History Panel */}
           <PdfHistoryPanel
             reports={reports}
             onDownload={handleDownload}
+            language={language}
           />
         </div>
 
@@ -3433,6 +3758,7 @@ export function ReportsPage() {
         enabledPages={getEnabledPages()}
         renderA4Page={renderA4Page}
         onPrintPDF={handlePrintPDF}
+        language={language}
       />
 
       {/* Real-time Dashboard Charts section showing actual channel performance matching preview settings */}

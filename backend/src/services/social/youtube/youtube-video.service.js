@@ -2,6 +2,7 @@ const youtubeGateway = require('./youtube.gateway');
 const googleOAuthService = require('../google-oauth.service');
 const socialAccountRepository = require('../../../repositories/social/social-account.repository');
 const trackedVideoRepository = require('../../../repositories/social/tracked-video.repository');
+const MockConnectionGuard = require('../mock-connection.guard');
 const { PLATFORMS, POST_STATUS, SEPARATORS } = require('../../../utils/constants');
 
 class YouTubeVideoService {
@@ -9,11 +10,35 @@ class YouTubeVideoService {
     try {
       const { auth, account } = await this._getAuthContext(brandId, false, socialAccountId);
       
-      if (account && (
-        (account.accessToken && account.accessToken.startsWith('mock-')) ||
-        (account.platformAccountId && account.platformAccountId.startsWith('mock-'))
-      )) {
-        return { videos: [], nextPageToken: null, prevPageToken: null };
+      if (account && MockConnectionGuard.isMock(account.accessToken, account.platformAccountId)) {
+        return {
+          videos: [
+            {
+              id: 'mock-yt-vid-1',
+              title: 'Hướng dẫn lên lịch đăng bài tự động đa kênh với PubliCast 🚀',
+              thumbnailUrl: 'https://images.unsplash.com/photo-1611162617213-7d7a39e9b1d7?w=300&auto=format&fit=crop&q=60',
+              publishedAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
+              views: '12500',
+              likes: '840',
+              comments: '124',
+              duration: 'PT15M30S',
+              status: POST_STATUS.PUBLISHED
+            },
+            {
+              id: 'mock-yt-vid-2',
+              title: 'Cẩm nang tối ưu hóa SEO Video YouTube năm 2026',
+              thumbnailUrl: 'https://images.unsplash.com/photo-1598550476439-6847785fce6e?w=300&auto=format&fit=crop&q=60',
+              publishedAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
+              views: '8400',
+              likes: '512',
+              comments: '68',
+              duration: 'PT10M15S',
+              status: POST_STATUS.PUBLISHED
+            }
+          ],
+          nextPageToken: null,
+          prevPageToken: null
+        };
       }
       const uploadsId = await this._resolveUploadsPlaylistId(auth, account);
       
@@ -42,6 +67,18 @@ class YouTubeVideoService {
     if (!videoId) throw new Error('Invalid YouTube URL');
 
     const { auth } = await this._getAuthContext(brandId);
+    if (auth?.credentials?.access_token && MockConnectionGuard.isMock(auth.credentials.access_token)) {
+      return trackedVideoRepository.upsertTrackedVideo(brandId, videoId, {
+        title: 'Video kiểm thử hiệu năng hệ thống (Mock)',
+        thumbnailUrl: 'https://images.unsplash.com/photo-1611162617213-7d7a39e9b1d7?w=300&auto=format&fit=crop&q=60',
+        lastViews: 15200,
+        lastLikes: 1120,
+        lastComments: 94,
+        channelId: 'mock-channel-id',
+        channelName: 'Trong Phuc YouTube Channel',
+        publishedAt: new Date()
+      });
+    }
     const response = await youtubeGateway.getVideosList(auth, videoId);
 
     if (!response.data.items || response.data.items.length === 0) {
@@ -60,6 +97,21 @@ class YouTubeVideoService {
     const { auth } = await this._getAuthContext(brandId, true);
     if (!auth) return null;
 
+    if (auth.credentials?.access_token && MockConnectionGuard.isMock(auth.credentials.access_token)) {
+      return {
+        id: videoId,
+        title: 'Video kiểm thử hiệu năng hệ thống (Mock)',
+        description: 'Mô tả chi tiết video kiểm thử YouTube trong môi trường phát triển.',
+        thumbnailUrl: 'https://images.unsplash.com/photo-1611162617213-7d7a39e9b1d7?w=300&auto=format&fit=crop&q=60',
+        channelId: 'mock-channel-id',
+        channelTitle: 'Trong Phuc YouTube Channel',
+        subscriberCount: 15400,
+        viewCount: 15200,
+        likeCount: 1120,
+        publishedAt: new Date().toISOString()
+      };
+    }
+
     const response = await youtubeGateway.getVideosList(auth, videoId);
     if (!response.data.items || response.data.items.length === 0) return null;
 
@@ -71,6 +123,16 @@ class YouTubeVideoService {
 
   async searchChannel(brandId, query) {
     const { auth } = await this._getAuthContext(brandId);
+    if (auth?.credentials?.access_token && MockConnectionGuard.isMock(auth.credentials.access_token)) {
+      return [
+        {
+          channelId: 'mock-chan-1',
+          title: 'Trong Phuc Vlogs',
+          description: 'Kênh chia sẻ cuộc sống và kinh nghiệm làm sản phẩm.',
+          thumbnail: 'https://images.unsplash.com/photo-1611162617213-7d7a39e9b1d7?w=150&auto=format&fit=crop&q=60'
+        }
+      ];
+    }
     const response = await youtubeGateway.searchChannels(auth, query);
 
     return (response.data.items || []).map(item => ({
@@ -89,6 +151,18 @@ class YouTubeVideoService {
     }
 
     const { auth } = await this._getAuthContext(brandId);
+    if (auth?.credentials?.access_token && MockConnectionGuard.isMock(auth.credentials.access_token)) {
+      const playlists = [
+        {
+          id: 'mock-playlist-1',
+          title: 'Danh sách hướng dẫn React & Node.js',
+          description: 'Các video tự học lập trình fullstack từ cơ bản.',
+          itemCount: 12
+        }
+      ];
+      youtubePlaylistCache.set(brandId, playlists);
+      return playlists;
+    }
     const res = await youtubeGateway.getPlaylists(auth);
     if (!res.data.items) return [];
 
@@ -116,14 +190,18 @@ class YouTubeVideoService {
         throw new Error('YouTube account not connected');
       }
       account = socialAccount.find(acc => 
-        !(acc.accessToken && acc.accessToken.startsWith('mock-')) &&
-        !(acc.platformAccountId && acc.platformAccountId.startsWith('mock-'))
+        !MockConnectionGuard.isMock(acc.accessToken, acc.platformAccountId)
       ) || socialAccount[0];
     }
 
     if (!account) {
       if (optional) return { auth: null, account: null };
       throw new Error('YouTube account not connected');
+    }
+
+    if (MockConnectionGuard.isMock(account.accessToken, account.platformAccountId)) {
+      const auth = { credentials: { access_token: account.accessToken } };
+      return { auth, account };
     }
 
     const auth = googleOAuthService.createClient();

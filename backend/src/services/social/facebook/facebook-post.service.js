@@ -1,5 +1,6 @@
 const facebookGateway = require('./facebook.gateway');
 const socialAccountRepository = require('../../../repositories/social/social-account.repository');
+const MockConnectionGuard = require('../mock-connection.guard');
 const { PLATFORMS, POST_STATUS, POST_TYPES, DEFAULT_CONFIG, SOCIAL_TECHNICAL } = require('../../../utils/constants');
 const FacebookPublishStrategyFactory = require('./publish-strategies/publish-strategy.factory');
 
@@ -33,8 +34,51 @@ class FacebookPostService {
     try {
       const { pageId, pageAccessToken } = await this._getAccountCredentials(brandId, socialAccountId);
       
-      if ((pageAccessToken && pageAccessToken.startsWith('mock-')) || (pageId && pageId.startsWith('mock-')) || pageId === 'fb-page-mock') {
-        return { data: [], nextPageToken: null, prevPageToken: null };
+      if (pageAccessToken && MockConnectionGuard.isMock(pageAccessToken, pageId)) {
+        return {
+          data: [
+            {
+              id: 'mock-fb-post-1',
+              message: 'Giải pháp Lên lịch tự động đa nền tảng tối ưu nhất cho Creators 🚀',
+              type: POST_TYPES.IMAGE,
+              mediaUrl: 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=600&auto=format&fit=crop&q=80',
+              date: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
+              status: POST_STATUS.PUBLISHED,
+              reach: 12500,
+              views: 15400,
+              reactions: 320,
+              comments: 42,
+              shares: 15,
+              clicks: 450,
+              linkClicks: 120,
+              videoViews: 0,
+              videoTimeWatched: '0:00',
+              engagement: 6.62,
+              spent: 0
+            },
+            {
+              id: 'mock-fb-post-2',
+              message: 'Cẩm nang quản lý mạng xã hội hiệu quả hơn gấp 3 lần với PubliCast Unified Inbox.',
+              type: POST_TYPES.IMAGE,
+              mediaUrl: 'https://images.unsplash.com/photo-1551836022-d5d88e9218df?w=600&auto=format&fit=crop&q=80',
+              date: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
+              status: POST_STATUS.PUBLISHED,
+              reach: 8400,
+              views: 9800,
+              reactions: 210,
+              comments: 28,
+              shares: 8,
+              clicks: 290,
+              linkClicks: 75,
+              videoViews: 0,
+              videoTimeWatched: '0:00',
+              engagement: 6.38,
+              spent: 0
+            }
+          ],
+          nextPageToken: null,
+          prevPageToken: null
+        };
       }
 
       const feedResult = await this._withTimeout(
@@ -79,7 +123,7 @@ class FacebookPostService {
     const { pageId, pageAccessToken } = await this._getAccountCredentials(brandId);
     console.log(`[Facebook] Credentials OK | pageId=${pageId} | tokenPrefix=${pageAccessToken?.substring(0, 10)}...`);
 
-    if (pageAccessToken && (pageAccessToken.startsWith('mock-') || pageAccessToken.includes('mock') || pageAccessToken.startsWith('fb_mock'))) {
+    if (pageAccessToken && MockConnectionGuard.isMock(pageAccessToken, pageId)) {
       console.log(`[Facebook] Mock publishing detected for mock token. Returning simulated success.`);
       return {
         platformVideoId: `mock-fb-post-${Date.now()}`,

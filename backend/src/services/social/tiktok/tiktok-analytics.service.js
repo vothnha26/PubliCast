@@ -1,5 +1,6 @@
 const tiktokGateway = require('./tiktok.gateway');
 const socialAccountRepository = require('../../../repositories/social/social-account.repository');
+const MockConnectionGuard = require('../mock-connection.guard');
 const { PLATFORMS, DEFAULT_CONFIG } = require('../../../utils/constants');
 
 class TikTokAnalyticsService {
@@ -16,25 +17,68 @@ class TikTokAnalyticsService {
     };
   }
 
-  _getMockAnalyticsReport(startDate, endDate, currentFollowers) {
+  _getMockAnalyticsReport(startDate, endDate, currentFollowers = 1500) {
     const { start, end } = this._resolveDates(startDate, endDate);
     const dailyMap = this._initializeDailyMap(start, end);
     
+    let totalViews = 0;
+    let totalLikes = 0;
+    let totalComments = 0;
+    let totalShares = 0;
+
+    Object.keys(dailyMap).forEach((d) => {
+      const dayViews = Math.round(1200 + Math.random() * 2000);
+      const dayLikes = Math.round(dayViews * 0.12);
+      const dayComments = Math.round(dayLikes * 0.05);
+      const dayShares = Math.round(dayLikes * 0.03);
+      
+      dailyMap[d].views = dayViews;
+      dailyMap[d].reach = Math.round(dayViews * 0.85);
+      dailyMap[d].likes = dayLikes;
+      dailyMap[d].comments = dayComments;
+      dailyMap[d].shares = dayShares;
+      dailyMap[d].totalClicks = Math.round(dayLikes * 0.1);
+      dailyMap[d].acquired = Math.round(15 + Math.random() * 35);
+      dailyMap[d].lost = Math.round(2 + Math.random() * 8);
+      dailyMap[d].totalContent = Math.random() > 0.85 ? 1 : 0;
+      
+      totalViews += dayViews;
+      totalLikes += dayLikes;
+      totalComments += dayComments;
+      totalShares += dayShares;
+    });
+
     const feedStats = {
-      totalVideosInPeriod: 0,
-      totalViews: 0,
-      totalLikes: 0,
-      totalComments: 0,
-      totalShares: 0
+      totalVideosInPeriod: Object.keys(dailyMap).filter(d => dailyMap[d].totalContent > 0).length,
+      totalViews,
+      totalLikes,
+      totalComments,
+      totalShares
     };
 
     const sortedDates = Object.keys(dailyMap).sort().map(d => dailyMap[d]);
-    return this._calculateTotalsAndFormatResponse(sortedDates, 0, feedStats);
+    return this._calculateTotalsAndFormatResponse(sortedDates, currentFollowers || 1500, feedStats);
   }
 
   async getChannelInfo(auth, startDate, endDate, account = null) {
-    if (auth.accessToken && auth.accessToken.startsWith('mock-')) {
-      const channelInfo = this._getEmptyChannelInfo(auth.accessToken, account);
+    const accessToken = auth?.accessToken || auth?.credentials?.access_token;
+    if (accessToken && MockConnectionGuard.isMock(accessToken, account?.platformAccountId)) {
+      if (account?.tikTokAccount) {
+        const followersCount = account.tikTokAccount.followersCount || 1500;
+        const analyticsData = this._getMockAnalyticsReport(startDate, endDate, followersCount);
+        return {
+          pageId: account.platformAccountId,
+          username: account.username,
+          displayName: account.displayName,
+          profilePictureUrl: account.profilePictureUrl,
+          followersCount: followersCount,
+          followingCount: account.tikTokAccount.followingCount || 240,
+          likesCount: account.tikTokAccount.likesCount || 12000,
+          videoCount: account.tikTokAccount.videoCount || 15,
+          analytics: analyticsData
+        };
+      }
+      const channelInfo = this._getEmptyChannelInfo(accessToken, account);
       const analyticsData = this._getMockAnalyticsReport(startDate, endDate, channelInfo.followersCount);
       return {
         ...channelInfo,
@@ -42,7 +86,7 @@ class TikTokAnalyticsService {
       };
     }
 
-    const userInfo = await tiktokGateway.getUserInfo(auth.accessToken);
+    const userInfo = await tiktokGateway.getUserInfo(accessToken);
     
     return {
       pageId: userInfo.open_id,
@@ -134,11 +178,16 @@ class TikTokAnalyticsService {
       throw new Error('Social account not found or is not a TikTok account');
     }
 
-    if (account.accessToken && account.accessToken.startsWith('mock-')) {
+    if (account.accessToken && MockConnectionGuard.isMock(account.accessToken, account.platformAccountId)) {
+      const followersCount = account.tikTokAccount?.followersCount || 1500;
       const channelInfo = this._getEmptyChannelInfo(account.accessToken, account);
-      const analyticsData = this._getMockAnalyticsReport(startDate, endDate, channelInfo.followersCount);
+      const analyticsData = this._getMockAnalyticsReport(startDate, endDate, followersCount);
       const accountData = {
         ...channelInfo,
+        followersCount,
+        followingCount: account.tikTokAccount?.followingCount || 240,
+        likesCount: account.tikTokAccount?.likesCount || 12000,
+        videoCount: account.tikTokAccount?.videoCount || 15,
         analytics: analyticsData
       };
       return socialAccountRepository.upsertTikTokAccount(account.brandId, accountData, {
@@ -200,7 +249,8 @@ class TikTokAnalyticsService {
     });
   }
   async getAnalyticsReport(auth, startDate, endDate, currentFollowers) {
-    if (auth && auth.accessToken && auth.accessToken.startsWith('mock-')) {
+    const accessToken = auth?.accessToken || auth?.credentials?.access_token;
+    if (accessToken && MockConnectionGuard.isMock(accessToken)) {
       return this._getMockAnalyticsReport(startDate, endDate, currentFollowers);
     }
 

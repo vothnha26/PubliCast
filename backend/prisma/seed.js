@@ -306,7 +306,7 @@ async function main() {
   const testUser = await prisma.user.create({
     data: {
       id: 'e673a8b3-5edf-4366-b1e1-4400c06eb5dd',
-      email: 'trongphuc91thcsduclap@gmail.com',
+      email: 'publicast_test_266ou0@gmail.com',
       passwordHash: testUserPasswordHash,
       name: 'Nguyễn Trọng Phúc',
       role: 'OWNER',
@@ -762,10 +762,10 @@ async function main() {
   }
 
   // ==========================================
-  // SEED FULL DATA FOR TEST USER (trongphuc91thcsduclap@gmail.com)
+  // SEED FULL DATA FOR TEST USER (publicast_test_266ou0@gmail.com)
   // INCLUDES POSTS & LIVESTREAMS FOR UI TESTING
   // ==========================================
-  console.log('Seeding full test data (including posts) for trongphuc91thcsduclap@gmail.com...');
+  console.log('Seeding full test data (including posts) for publicast_test_266ou0@gmail.com...');
 
   await prisma.team.create({
     data: {
@@ -802,6 +802,218 @@ async function main() {
       about: 'Trang kiểm thử công nghệ của Nguyễn Trọng Phúc'
     }
   });
+
+  const testSocialYT = await prisma.socialAccount.create({
+    data: {
+      brandId: testBrand.id,
+      platform: 'YOUTUBE',
+      platformAccountId: 'yt_channel_test',
+      username: '@trongphuc_test',
+      displayName: 'Trong Phuc Tech Channel',
+      accessToken: 'yt_mock_token_test',
+      scopes: 'youtube.readonly,youtube.upload',
+      isConnected: true,
+      connectedAt: new Date()
+    }
+  });
+
+  await prisma.youTubeChannel.create({
+    data: {
+      socialAccountId: testSocialYT.id,
+      channelId: 'yt_channel_test',
+      subscribersCount: 8500,
+      totalVideosCount: 42,
+      totalViewsCount: 150000
+    }
+  });
+
+  const testSocialIG = await prisma.socialAccount.create({
+    data: {
+      brandId: testBrand.id,
+      platform: 'INSTAGRAM',
+      platformAccountId: 'ig_account_test',
+      username: 'trongphuc.ig.test',
+      displayName: 'Trong Phuc IG Business',
+      accessToken: 'ig_mock_token_test',
+      scopes: 'instagram_basic,instagram_content_publish',
+      isConnected: true,
+      connectedAt: new Date()
+    }
+  });
+
+  await prisma.instagramAccount.create({
+    data: {
+      socialAccountId: testSocialIG.id,
+      accountType: 'BUSINESS',
+      followersCount: 3400,
+      mediaCount: 120
+    }
+  });
+
+  const testSocialTK = await prisma.socialAccount.create({
+    data: {
+      brandId: testBrand.id,
+      platform: 'TIKTOK',
+      platformAccountId: 'tk_account_test',
+      username: 'trongphuc.tiktok.test',
+      displayName: 'Trong Phuc TikTok Tech',
+      accessToken: 'tk_mock_token_test',
+      scopes: 'user.info.basic,video.upload',
+      isConnected: true,
+      connectedAt: new Date()
+    }
+  });
+
+  await prisma.tikTokAccount.create({
+    data: {
+      socialAccountId: testSocialTK.id,
+      followersCount: 12500,
+      followingCount: 180,
+      likesCount: 95000,
+      videoCount: 78
+    }
+  });
+
+  const testSocialTH = await prisma.socialAccount.create({
+    data: {
+      brandId: testBrand.id,
+      platform: 'THREADS',
+      platformAccountId: 'th_account_test',
+      username: 'trongphuc.threads.test',
+      displayName: 'Trong Phuc Threads Tech',
+      accessToken: 'th_mock_token_test',
+      scopes: 'threads_basic,threads_content_publish',
+      isConnected: true,
+      connectedAt: new Date()
+    }
+  });
+
+  const testSocialLI = await prisma.socialAccount.create({
+    data: {
+      brandId: testBrand.id,
+      platform: 'LINKEDIN',
+      platformAccountId: 'li_account_test',
+      username: 'trongphuc-linkedin',
+      displayName: 'Trong Phuc LinkedIn Professional',
+      accessToken: 'li_mock_token_test',
+      scopes: 'w_member_social,r_liteprofile',
+      isConnected: true,
+      connectedAt: new Date()
+    }
+  });
+
+  await prisma.linkedInAccount.create({
+    data: {
+      socialAccountId: testSocialLI.id,
+      accountType: 'PERSONAL',
+      followersCount: 2100
+    }
+  });
+
+  const testSocialTG = await prisma.socialAccount.create({
+    data: {
+      brandId: testBrand.id,
+      platform: 'TELEGRAM',
+      platformAccountId: 'tg_channel_test',
+      username: 'trongphuc_channel_test',
+      displayName: 'Trong Phuc Tech Telegram',
+      accessToken: 'tg_mock_token_test',
+      scopes: 'send_messages',
+      isConnected: true,
+      connectedAt: new Date()
+    }
+  });
+
+  await prisma.telegramAccount.create({
+    data: {
+      socialAccountId: testSocialTG.id,
+      chatType: 'channel',
+      memberCount: 520
+    }
+  });
+
+  const testSocialDC = await prisma.socialAccount.create({
+    data: {
+      brandId: testBrand.id,
+      platform: 'DISCORD',
+      platformAccountId: 'dc_guild_test',
+      username: 'trongphuc_discord',
+      displayName: 'Trong Phuc Discord Server',
+      accessToken: 'dc_mock_token_test',
+      scopes: 'bot,webhook.incoming',
+      isConnected: true,
+      connectedAt: new Date()
+    }
+  });
+
+  await prisma.discordAccount.create({
+    data: {
+      socialAccountId: testSocialDC.id,
+      guildId: 'dc_guild_test',
+      guildName: 'Trong Phuc Guild',
+      channelName: 'general',
+      memberCount: 145,
+      onlineCount: 32
+    }
+  });
+
+  // Seed Social Analytics for testBrand
+  console.log('Seeding Social Analytics for testBrand...');
+  const socialAccountsForAnalytics = [
+    { account: testSocialFB, baseFollowers: 1500, label: 'Facebook' },
+    { account: testSocialYT, baseFollowers: 8500, label: 'YouTube' },
+    { account: testSocialIG, baseFollowers: 3400, label: 'Instagram' },
+    { account: testSocialTK, baseFollowers: 12500, label: 'TikTok' }
+  ];
+
+  for (const item of socialAccountsForAnalytics) {
+    let currentFollowers = item.baseFollowers - 300;
+    for (let i = 29; i >= 0; i--) {
+      const d = new Date(today);
+      d.setDate(d.getDate() - i);
+
+      const gain = 5 + Math.round(Math.random() * 15);
+      const lost = Math.round(Math.random() * 3);
+      currentFollowers += (gain - lost);
+
+      const likes = 20 + Math.round(Math.random() * 80);
+      const comments = 5 + Math.round(Math.random() * 25);
+      const shares = Math.round(Math.random() * 10);
+      const saves = Math.round(Math.random() * 8);
+      const clicks = 10 + Math.round(Math.random() * 40);
+      const impressions = (likes + comments) * 15;
+      const reach = Math.round(impressions * 0.85);
+
+      await prisma.analytics.create({
+        data: {
+          brandId: testBrand.id,
+          socialAccountId: item.account.id,
+          dateFrom: d,
+          dateTo: d,
+          granularity: 'DAY',
+          fetchedAt: new Date(),
+          analyticsType: 'SOCIAL',
+          socialAnalytics: {
+            create: {
+              followersTotal: currentFollowers,
+              followersGain: gain,
+              followersLost: lost,
+              impressions,
+              reach,
+              engagements: likes + comments + shares + saves,
+              likes,
+              comments,
+              shares,
+              saves,
+              clicks,
+              engagementRate: ((likes + comments + shares) / Math.max(1, reach)) * 100,
+              videoViews: item.account.platform === 'YOUTUBE' || item.account.platform === 'TIKTOK' ? likes * 4 : null
+            }
+          }
+        }
+      });
+    }
+  }
 
   // Posts for testBrand
   await prisma.post.create({
@@ -1012,18 +1224,274 @@ async function main() {
   // Platform Limits
   console.log('Seeding PlatformLimits...');
   const platformLimits = [
-    { platform: 'YOUTUBE', subType: 'VIDEO', maxCaptionLength: 5000, maxFileSizeMb: 1024, allowedMediaTypes: 'VIDEO', allowedFormats: 'mp4,mov', minVideoDuration: null, maxVideoDuration: null, aspectRatios: '16:9' },
-    { platform: 'YOUTUBE', subType: 'SHORTS', maxCaptionLength: 100, maxFileSizeMb: 100, allowedMediaTypes: 'VIDEO', allowedFormats: 'mp4,mov', minVideoDuration: 1, maxVideoDuration: 60, aspectRatios: '9:16' },
-    { platform: 'FACEBOOK', subType: 'POST', maxCaptionLength: 63206, maxFileSizeMb: 100, allowedMediaTypes: 'ALL', allowedFormats: 'mp4,mov,png,jpg,jpeg', minVideoDuration: null, maxVideoDuration: null, aspectRatios: null },
-    { platform: 'FACEBOOK', subType: 'REEL', maxCaptionLength: 2000, maxFileSizeMb: 100, allowedMediaTypes: 'VIDEO', allowedFormats: 'mp4,mov', minVideoDuration: 3, maxVideoDuration: 90, aspectRatios: '9:16' },
-    { platform: 'FACEBOOK', subType: 'STORY', maxCaptionLength: 2200, maxFileSizeMb: 50, allowedMediaTypes: 'ALL', allowedFormats: 'mp4,mov,png,jpg,jpeg', minVideoDuration: 1, maxVideoDuration: 15, aspectRatios: '9:16' },
-    { platform: 'TIKTOK', subType: 'VIDEO', maxCaptionLength: 2200, maxFileSizeMb: 100, allowedMediaTypes: 'VIDEO', allowedFormats: 'mp4,mov,webm', minVideoDuration: 3, maxVideoDuration: 600, aspectRatios: '9:16' },
-    { platform: 'INSTAGRAM', subType: 'POST', maxCaptionLength: 2200, maxFileSizeMb: 100, allowedMediaTypes: 'ALL', allowedFormats: 'mp4,mov,png,jpg,jpeg', minVideoDuration: 3, maxVideoDuration: 60, aspectRatios: '1:1,4:5' },
-    { platform: 'INSTAGRAM', subType: 'REEL', maxCaptionLength: 2200, maxFileSizeMb: 100, allowedMediaTypes: 'VIDEO', allowedFormats: 'mp4,mov', minVideoDuration: 3, maxVideoDuration: 90, aspectRatios: '9:16' },
-    { platform: 'INSTAGRAM', subType: 'STORY', maxCaptionLength: 2200, maxFileSizeMb: 50, allowedMediaTypes: 'ALL', allowedFormats: 'mp4,mov,png,jpg,jpeg', minVideoDuration: 1, maxVideoDuration: 15, aspectRatios: '9:16' },
-    { platform: 'LINKEDIN', subType: 'POST', maxCaptionLength: 3000, maxFileSizeMb: 100, allowedMediaTypes: 'ALL', allowedFormats: 'mp4,mov,png,jpg,jpeg', minVideoDuration: 3, maxVideoDuration: 600, aspectRatios: null },
-    { platform: 'DISCORD', subType: 'POST', maxCaptionLength: 2000, maxFileSizeMb: 25, allowedMediaTypes: 'ALL', allowedFormats: 'mp4,mov,png,jpg,jpeg', minVideoDuration: null, maxVideoDuration: null, aspectRatios: null },
-    { platform: 'TELEGRAM', subType: 'POST', maxCaptionLength: 1024, maxFileSizeMb: 50, allowedMediaTypes: 'ALL', allowedFormats: 'mp4,mov,png,jpg,jpeg', minVideoDuration: null, maxVideoDuration: null, aspectRatios: null }
+    {
+      platform: 'YOUTUBE',
+      subType: 'VIDEO',
+      maxCaptionLength: 5000,
+      maxFileSizeMb: 1024,
+      allowedMediaTypes: 'VIDEO',
+      allowedFormats: 'mp4,mov',
+      minVideoDuration: 1,
+      maxVideoDuration: 43200,
+      aspectRatios: '16:9',
+      rules: {
+        _always: [
+          { id: 'yt_require_media', field: 'hasMedia', operator: 'equals', value: true, message: 'YouTube -> Vui lòng thêm ít nhất 1 video.' },
+          { id: 'yt_require_video', field: 'isVideo', operator: 'equals', value: true, message: 'Định dạng bài đăng YouTube phải là file video.' },
+          { id: 'yt_title_required', field: 'youtubeTitle', operator: 'is_empty', value: true, message: 'Tiêu đề video không được để trống.' },
+          { id: 'yt_title_max_len', field: 'youtubeTitle', operator: 'length_gt', value: 100, message: 'Tiêu đề video không được vượt quá 100 ký tự.' },
+          { id: 'yt_title_forbidden', field: 'youtubeTitle', operator: 'contains_any', value: ['<', '>'], message: 'Tiêu đề không được chứa các ký tự đặc biệt < hoặc >.' },
+          { id: 'yt_audience_req', field: 'youtubeMadeForKids', operator: 'is_null', value: true, message: 'Bạn phải chọn đối tượng người xem (Dành cho trẻ em hay không).' }
+        ],
+        video: [
+          { id: 'yt_video_width', field: 'videoWidth', operator: 'gt', value: 1920, message: 'Tự động đăng bài -> Chiều rộng video không được vượt quá 1920px.' }
+        ]
+      }
+    },
+    {
+      platform: 'YOUTUBE',
+      subType: 'SHORTS',
+      maxCaptionLength: 100,
+      maxFileSizeMb: 100,
+      allowedMediaTypes: 'VIDEO',
+      allowedFormats: 'mp4,mov',
+      minVideoDuration: 1,
+      maxVideoDuration: 60,
+      aspectRatios: '9:16',
+      rules: {
+        _always: [
+          { id: 'yt_require_media', field: 'hasMedia', operator: 'equals', value: true, message: 'YouTube -> Vui lòng thêm ít nhất 1 video.' },
+          { id: 'yt_require_video', field: 'isVideo', operator: 'equals', value: true, message: 'Định dạng bài đăng YouTube phải là file video.' },
+          { id: 'yt_title_required', field: 'youtubeTitle', operator: 'is_empty', value: true, message: 'Tiêu đề video không được để trống.' },
+          { id: 'yt_title_max_len', field: 'youtubeTitle', operator: 'length_gt', value: 100, message: 'Tiêu đề video không được vượt quá 100 ký tự.' },
+          { id: 'yt_title_forbidden', field: 'youtubeTitle', operator: 'contains_any', value: ['<', '>'], message: 'Tiêu đề không được chứa các ký tự đặc biệt < hoặc >.' },
+          { id: 'yt_audience_req', field: 'youtubeMadeForKids', operator: 'is_null', value: true, message: 'Bạn phải chọn đối tượng người xem (Dành cho trẻ em hay không).' }
+        ],
+        shorts: [
+          { id: 'yt_short_duration', field: 'videoDuration', operator: 'gt', value: 60, message: 'YouTube Shorts phải có thời lượng từ 60 giây trở xuống. (Hiện tại: {videoDuration}s)' },
+          { id: 'yt_short_aspect', field: 'videoRatio', operator: 'aspect_ratio', value: 'vertical_or_square', message: 'YouTube Shorts bắt buộc phải là khung hình dọc hoặc vuông.' },
+          { id: 'yt_short_width', field: 'videoWidth', operator: 'gt', value: 1920, message: 'Chiều rộng video Shorts không được lớn hơn 1920px.' }
+        ]
+      }
+    },
+    {
+      platform: 'FACEBOOK',
+      subType: 'POST',
+      maxCaptionLength: 63206,
+      maxFileSizeMb: 100,
+      allowedMediaTypes: 'ALL',
+      allowedFormats: 'mp4,mov,png,jpg,jpeg',
+      minVideoDuration: null,
+      maxVideoDuration: null,
+      aspectRatios: null,
+      rules: {
+        _always: [],
+        post: []
+      }
+    },
+    {
+      platform: 'FACEBOOK',
+      subType: 'REEL',
+      maxCaptionLength: 2000,
+      maxFileSizeMb: 100,
+      allowedMediaTypes: 'VIDEO',
+      allowedFormats: 'mp4,mov',
+      minVideoDuration: 3,
+      maxVideoDuration: 90,
+      aspectRatios: '9:16',
+      rules: {
+        _always: [],
+        reel: [
+          { id: 'fb_reel_media', field: 'hasMedia', operator: 'equals', value: true, message: 'Reels -> Vui lòng thêm 1 video.' },
+          { id: 'fb_reel_format', field: 'isVideo', operator: 'equals', value: true, message: 'Facebook Reels bắt buộc phải là file video.' },
+          { id: 'fb_reel_duration', field: 'videoDuration', operator: 'range', value: [3, 90], message: 'Facebook Reels qua API phải từ 3 giây đến tối đa 90 giây. (Hiện tại: {videoDuration}s)' },
+          { id: 'fb_reel_aspect', field: 'videoRatio', operator: 'aspect_ratio', value: 'vertical', message: 'Facebook Reels phải là khung hình dọc (Tỷ lệ chuẩn 9:16).' }
+        ]
+      }
+    },
+    {
+      platform: 'FACEBOOK',
+      subType: 'STORY',
+      maxCaptionLength: 2200,
+      maxFileSizeMb: 50,
+      allowedMediaTypes: 'ALL',
+      allowedFormats: 'mp4,mov,png,jpg,jpeg',
+      minVideoDuration: 1,
+      maxVideoDuration: 15,
+      aspectRatios: '9:16',
+      rules: {
+        _always: [],
+        story: [
+          { id: 'fb_story_media', field: 'hasMedia', operator: 'equals', value: true, message: 'Facebook Story -> Vui lòng thêm ít nhất 1 ảnh hoặc video.' },
+          { id: 'fb_story_duration', field: 'videoDuration', operator: 'gt', value: 15, message: 'Video đăng Story trên Facebook không được quá 15 giây. (Hiện tại: {videoDuration}s)' },
+          { id: 'fb_story_aspect', field: 'videoRatio', operator: 'aspect_ratio', value: 'vertical', message: 'Video đăng Story phải là khung hình dọc (Tỷ lệ 9:16).' }
+        ]
+      }
+    },
+    {
+      platform: 'FACEBOOK',
+      subType: 'ALBUM',
+      maxCaptionLength: 63206,
+      maxFileSizeMb: 100,
+      allowedMediaTypes: 'ALL',
+      allowedFormats: 'mp4,mov,png,jpg,jpeg',
+      minVideoDuration: null,
+      maxVideoDuration: null,
+      aspectRatios: null,
+      rules: {
+        _always: [],
+        album: [
+          { id: 'fb_album_min', field: 'mediaCount', operator: 'lt', value: 2, message: 'Facebook Album -> Vui lòng thêm ít nhất 2 ảnh hoặc video.' }
+        ]
+      }
+    },
+    {
+      platform: 'TIKTOK',
+      subType: 'VIDEO',
+      maxCaptionLength: 150,
+      maxFileSizeMb: 100,
+      allowedMediaTypes: 'VIDEO',
+      allowedFormats: 'mp4,mov,webm',
+      minVideoDuration: 3,
+      maxVideoDuration: 600,
+      aspectRatios: '9:16',
+      rules: {
+        _always: [],
+        video: [
+          { id: 'tt_video_media', field: 'hasMedia', operator: 'equals', value: true, message: 'TikTok -> Vui lòng thêm ít nhất 1 video.' },
+          { id: 'tt_video_format', field: 'isVideo', operator: 'equals', value: true, message: 'Bài đăng TikTok bắt buộc phải là file video.' },
+          { id: 'tt_video_caption', field: 'captionLength', operator: 'gt', value: 150, message: 'Mô tả video TikTok (caption) không được vượt quá 150 ký tự. (Hiện tại: {captionLength})' },
+          { id: 'tt_video_duration', field: 'videoDuration', operator: 'range', value: [3, 600], message: 'Thời lượng video trên TikTok phải từ 3 giây đến tối đa 10 phút. (Hiện tại: {videoDuration}s)' },
+          { id: 'tt_video_aspect', field: 'videoRatio', operator: 'aspect_ratio', value: 'vertical', message: 'Video đăng TikTok bắt buộc phải là khung hình dọc (Tỷ lệ 9:16).' }
+        ]
+      }
+    },
+    {
+      platform: 'INSTAGRAM',
+      subType: 'POST',
+      maxCaptionLength: 2200,
+      maxFileSizeMb: 100,
+      allowedMediaTypes: 'ALL',
+      allowedFormats: 'mp4,mov,png,jpg,jpeg',
+      minVideoDuration: 3,
+      maxVideoDuration: 60,
+      aspectRatios: '1:1,4:5',
+      rules: {
+        _always: [
+          { id: 'ig_require_media', field: 'hasMedia', operator: 'equals', value: true, message: 'Instagram yêu cầu phải có ít nhất 1 ảnh hoặc video để đăng bài.' }
+        ],
+        post: []
+      }
+    },
+    {
+      platform: 'INSTAGRAM',
+      subType: 'REEL',
+      maxCaptionLength: 2200,
+      maxFileSizeMb: 100,
+      allowedMediaTypes: 'VIDEO',
+      allowedFormats: 'mp4,mov',
+      minVideoDuration: 3,
+      maxVideoDuration: 90,
+      aspectRatios: '9:16',
+      rules: {
+        _always: [
+          { id: 'ig_require_media', field: 'hasMedia', operator: 'equals', value: true, message: 'Instagram yêu cầu phải có ít nhất 1 ảnh hoặc video để đăng bài.' }
+        ],
+        reel: [
+          { id: 'ig_reel_format', field: 'isVideo', operator: 'equals', value: true, message: 'Instagram Reels bắt buộc phải là video.' },
+          { id: 'ig_reel_duration', field: 'videoDuration', operator: 'range', value: [3, 90], message: 'Instagram Reels qua API phải từ 3 giây đến tối đa 90 giây. (Hiện tại: {videoDuration}s)' },
+          { id: 'ig_reel_aspect', field: 'videoRatio', operator: 'aspect_ratio', value: 'vertical', message: 'Instagram Reels phải là khung hình dọc (Tỷ lệ 9:16).' }
+        ]
+      }
+    },
+    {
+      platform: 'INSTAGRAM',
+      subType: 'STORY',
+      maxCaptionLength: 2200,
+      maxFileSizeMb: 50,
+      allowedMediaTypes: 'ALL',
+      allowedFormats: 'mp4,mov,png,jpg,jpeg',
+      minVideoDuration: 1,
+      maxVideoDuration: 15,
+      aspectRatios: '9:16',
+      rules: {
+        _always: [
+          { id: 'ig_require_media', field: 'hasMedia', operator: 'equals', value: true, message: 'Instagram yêu cầu phải có ít nhất 1 ảnh hoặc video để đăng bài.' }
+        ],
+        story: [
+          { id: 'ig_story_duration', field: 'videoDuration', operator: 'gt', value: 15, message: 'Video đăng Story trên Instagram không được quá 15 giây. (Hiện tại: {videoDuration}s)' },
+          { id: 'ig_story_aspect', field: 'videoRatio', operator: 'aspect_ratio', value: 'vertical', message: 'Video đăng Story phải là khung hình dọc (Tỷ lệ 9:16).' }
+        ]
+      }
+    },
+    {
+      platform: 'THREADS',
+      subType: 'POST',
+      maxCaptionLength: 500,
+      maxFileSizeMb: 100,
+      allowedMediaTypes: 'ALL',
+      allowedFormats: 'mp4,mov,png,jpg,jpeg',
+      minVideoDuration: null,
+      maxVideoDuration: null,
+      aspectRatios: null,
+      rules: {
+        _always: [
+          { id: 'threads_caption', field: 'captionLength', operator: 'gt', value: 500, message: 'Bài đăng Threads phải có độ dài dưới 500 ký tự. (Hiện tại: {captionLength})' }
+        ],
+        post: []
+      }
+    },
+    {
+      platform: 'LINKEDIN',
+      subType: 'POST',
+      maxCaptionLength: 3000,
+      maxFileSizeMb: 100,
+      allowedMediaTypes: 'ALL',
+      allowedFormats: 'mp4,mov,png,jpg,jpeg',
+      minVideoDuration: 3,
+      maxVideoDuration: 600,
+      aspectRatios: null,
+      rules: {
+        _always: [],
+        post: [
+          { id: 'li_caption_max', field: 'captionLength', operator: 'gt', value: 3000, message: 'Bài đăng LinkedIn phải có độ dài dưới 3000 ký tự. (Hiện tại: {captionLength})' }
+        ]
+      }
+    },
+    {
+      platform: 'DISCORD',
+      subType: 'POST',
+      maxCaptionLength: 2000,
+      maxFileSizeMb: 25,
+      allowedMediaTypes: 'ALL',
+      allowedFormats: 'mp4,mov,png,jpg,jpeg',
+      minVideoDuration: null,
+      maxVideoDuration: null,
+      aspectRatios: null,
+      rules: {
+        _always: [],
+        post: [
+          { id: 'dc_caption_max', field: 'captionLength', operator: 'gt', value: 2000, message: 'Bài đăng Discord phải có độ dài dưới 2000 ký tự. (Hiện tại: {captionLength})' }
+        ]
+      }
+    },
+    {
+      platform: 'TELEGRAM',
+      subType: 'POST',
+      maxCaptionLength: 1024,
+      maxFileSizeMb: 50,
+      allowedMediaTypes: 'ALL',
+      allowedFormats: 'mp4,mov,png,jpg,jpeg',
+      minVideoDuration: null,
+      maxVideoDuration: null,
+      aspectRatios: null,
+      rules: {
+        _always: [],
+        post: [
+          { id: 'tg_caption_max', field: 'captionLength', operator: 'gt', value: 1024, message: 'Bài đăng Telegram phải có độ dài dưới 1024 ký tự. (Hiện tại: {captionLength})' }
+        ]
+      }
+    }
   ];
 
   for (const limit of platformLimits) {

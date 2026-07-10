@@ -1,5 +1,6 @@
 const instagramGateway = require('./instagram.gateway');
 const socialAccountRepository = require('../../../repositories/social/social-account.repository');
+const MockConnectionGuard = require('../mock-connection.guard');
 const { PLATFORMS, POST_STATUS, POST_TYPES, DEFAULT_CONFIG } = require('../../../utils/constants');
 const InstagramPublishStrategyFactory = require('./publish-strategies/publish-strategy.factory');
 
@@ -32,8 +33,51 @@ class InstagramPostService {
     try {
       const { igAccountId, accessToken } = await this._getAccountCredentials(brandId);
       
-      if (accessToken && accessToken.startsWith('mock-')) {
-        return { data: [], nextPageToken: null, prevPageToken: null };
+      if (accessToken && MockConnectionGuard.isMock(accessToken, igAccountId)) {
+        return {
+          data: [
+            {
+              id: 'mock-ig-post-1',
+              message: 'Thiết lập mục tiêu và chiến lược nội dung đột phá cho năm mới 🎯',
+              type: POST_TYPES.IMAGE,
+              mediaUrl: 'https://images.unsplash.com/photo-1513151233558-d860c5398176?w=600&auto=format&fit=crop&q=80',
+              date: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
+              status: POST_STATUS.PUBLISHED,
+              reach: 9200,
+              views: 11000,
+              reactions: 450,
+              comments: 35,
+              shares: 20,
+              clicks: 180,
+              linkClicks: 40,
+              videoViews: 0,
+              videoTimeWatched: '0:00',
+              engagement: 7.45,
+              spent: 0
+            },
+            {
+              id: 'mock-ig-post-2',
+              message: 'Những tone màu chủ đạo dự kiến sẽ làm mưa làm gió trong giới design năm nay 🎨',
+              type: POST_TYPES.IMAGE,
+              mediaUrl: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=600&auto=format&fit=crop&q=80',
+              date: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
+              status: POST_STATUS.PUBLISHED,
+              reach: 6500,
+              views: 7800,
+              reactions: 280,
+              comments: 18,
+              shares: 10,
+              clicks: 120,
+              linkClicks: 25,
+              videoViews: 0,
+              videoTimeWatched: '0:00',
+              engagement: 6.74,
+              spent: 0
+            }
+          ],
+          nextPageToken: null,
+          prevPageToken: null
+        };
       }
 
       const feedResult = await this._withTimeout(
@@ -79,7 +123,7 @@ class InstagramPostService {
     const { igAccountId, accessToken } = await this._getAccountCredentials(brandId);
     console.log(`[Instagram] Credentials OK | igAccountId=${igAccountId} | tokenPrefix=${accessToken?.substring(0, 10)}...`);
 
-    if (accessToken && (accessToken.startsWith('mock-') || accessToken.includes('mock') || accessToken.startsWith('ig_mock') || accessToken.includes('fb_mock'))) {
+    if (accessToken && MockConnectionGuard.isMock(accessToken, igAccountId)) {
       console.log(`[Instagram] Mock publishing detected for mock token. Returning simulated success.`);
       return {
         platformVideoId: `mock-ig-post-${Date.now()}`,

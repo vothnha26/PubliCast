@@ -1,5 +1,6 @@
 const linkedinGateway = require('./linkedin.gateway');
 const socialAccountRepository = require('../../../repositories/social/social-account.repository');
+const MockConnectionGuard = require('../mock-connection.guard');
 const { PLATFORMS, DEFAULT_CONFIG } = require('../../../utils/constants');
 
 class LinkedInAnalyticsService {
@@ -15,25 +16,68 @@ class LinkedInAnalyticsService {
     };
   }
 
-  _getMockAnalyticsReport(startDate, endDate, currentFollowers) {
+  _getMockAnalyticsReport(startDate, endDate, currentFollowers = 1200) {
     const { start, end } = this._resolveDates(startDate, endDate);
     const dailyMap = this._initializeDailyMap(start, end);
     
+    let totalViews = 0;
+    let totalLikes = 0;
+    let totalComments = 0;
+    let totalShares = 0;
+
+    Object.keys(dailyMap).forEach((d) => {
+      const dayViews = Math.round(500 + Math.random() * 1200);
+      const dayLikes = Math.round(dayViews * 0.08);
+      const dayComments = Math.round(dayLikes * 0.15);
+      const dayShares = Math.round(dayLikes * 0.08);
+      
+      dailyMap[d].views = dayViews;
+      dailyMap[d].reach = Math.round(dayViews * 0.9);
+      dailyMap[d].likes = dayLikes;
+      dailyMap[d].comments = dayComments;
+      dailyMap[d].shares = dayShares;
+      dailyMap[d].totalClicks = Math.round(dayLikes * 0.25);
+      dailyMap[d].acquired = Math.round(5 + Math.random() * 15);
+      dailyMap[d].lost = Math.round(0 + Math.random() * 2);
+      dailyMap[d].totalContent = Math.random() > 0.9 ? 1 : 0;
+      
+      totalViews += dayViews;
+      totalLikes += dayLikes;
+      totalComments += dayComments;
+      totalShares += dayShares;
+    });
+
     const feedStats = {
-      totalVideosInPeriod: 0,
-      totalViews: 0,
-      totalLikes: 0,
-      totalComments: 0,
-      totalShares: 0
+      totalVideosInPeriod: Object.keys(dailyMap).filter(d => dailyMap[d].totalContent > 0).length,
+      totalViews,
+      totalLikes,
+      totalComments,
+      totalShares
     };
 
     const sortedDates = Object.keys(dailyMap).sort().map(d => dailyMap[d]);
-    return this._calculateTotalsAndFormatResponse(sortedDates, 0, feedStats);
+    return this._calculateTotalsAndFormatResponse(sortedDates, currentFollowers || 1200, feedStats);
   }
 
   async getChannelInfo(auth, startDate, endDate, account = null) {
-    if (auth.accessToken && auth.accessToken.startsWith('mock-')) {
-      const channelInfo = this._getEmptyChannelInfo(auth.accessToken, account);
+    const accessToken = auth?.accessToken || auth?.credentials?.access_token;
+    const pageId = auth?.pageId || account?.platformAccountId;
+    if (accessToken && MockConnectionGuard.isMock(accessToken, pageId)) {
+      if (account?.linkedInAccount) {
+        const followersCount = account.linkedInAccount.followersCount || 1200;
+        const analyticsData = this._getMockAnalyticsReport(startDate, endDate, followersCount);
+        return {
+          pageId: account.platformAccountId,
+          username: account.username,
+          displayName: account.displayName,
+          profilePictureUrl: account.profilePictureUrl,
+          followersCount: followersCount,
+          connectionsCount: account.linkedInAccount.connectionsCount || 500,
+          industry: account.linkedInAccount.industry || 'Technology',
+          analytics: analyticsData
+        };
+      }
+      const channelInfo = this._getEmptyChannelInfo(accessToken, account);
       const analyticsData = this._getMockAnalyticsReport(startDate, endDate, channelInfo.followersCount);
       return {
         ...channelInfo,
@@ -95,11 +139,15 @@ class LinkedInAnalyticsService {
       throw new Error('Social account not found or is not a LinkedIn account');
     }
 
-    if (account.accessToken && account.accessToken.startsWith('mock-')) {
+    if (account.accessToken && MockConnectionGuard.isMock(account.accessToken, account.platformAccountId)) {
+      const followersCount = account.linkedInAccount?.followersCount || 1200;
       const channelInfo = this._getEmptyChannelInfo(account.accessToken, account);
-      const analyticsData = this._getMockAnalyticsReport(startDate, endDate, channelInfo.followersCount);
+      const analyticsData = this._getMockAnalyticsReport(startDate, endDate, followersCount);
       const accountData = {
         ...channelInfo,
+        followersCount,
+        connectionsCount: account.linkedInAccount?.connectionsCount || 500,
+        industry: account.linkedInAccount?.industry || 'Technology',
         analytics: analyticsData
       };
       return socialAccountRepository.upsertLinkedInAccount(account.brandId, accountData, {
@@ -129,6 +177,10 @@ class LinkedInAnalyticsService {
   }
 
   async getAnalyticsReport(auth, startDate, endDate, currentFollowers) {
+    const accessToken = auth?.accessToken || auth?.credentials?.access_token;
+    if (accessToken && MockConnectionGuard.isMock(accessToken)) {
+      return this._getMockAnalyticsReport(startDate, endDate, currentFollowers);
+    }
     return this._getMockAnalyticsReport(startDate, endDate, currentFollowers);
   }
 

@@ -142,17 +142,35 @@ class AuthController {
    * POST /api/auth/logout
    */
   logout = asyncHandler(async (req, res) => {
-    const userId = req.user?.id;
-
-    if (!userId) {
-      return res.status(401).json({ message: 'Authentication required' });
+    let userId = null;
+    try {
+      const token = req.cookies?.accessToken || jwtUtils.extractToken(req.headers.authorization);
+      if (token) {
+        const decoded = jwtUtils.verifyAccessToken(token);
+        userId = decoded?.id;
+      }
+    } catch (err) {
+      // Bỏ qua lỗi verify token trong lúc logout
     }
 
-    await authService.logout(userId);
+    if (userId) {
+      try {
+        await authService.logout(userId);
+      } catch (err) {
+        // Bỏ qua lỗi trong DB clean up
+      }
+    }
 
-    // Clear cookies
-    res.clearCookie('accessToken', { path: '/' });
-    res.clearCookie('refreshToken', { path: '/' });
+    // Luôn luôn xóa cookies với các options chính xác
+    const cookieOptions = {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      path: '/'
+    };
+
+    res.clearCookie('accessToken', cookieOptions);
+    res.clearCookie('refreshToken', cookieOptions);
 
     res.status(200).json({ message: 'Logout successful' });
   });

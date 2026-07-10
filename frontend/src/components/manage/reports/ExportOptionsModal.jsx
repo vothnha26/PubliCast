@@ -11,6 +11,7 @@ import {
   Loader2
 } from "lucide-react";
 import { toast } from "sonner";
+import { TRANSLATIONS } from "./translations";
 
 /**
  * ExportOptionsModal
@@ -23,9 +24,11 @@ export function ExportOptionsModal({
   setPreviewPage,
   enabledPages = [],
   renderA4Page,
-  onPrintPDF
+  onPrintPDF,
+  language = "English"
 }) {
   if (!isOpen) return null;
+  const t = TRANSLATIONS[language] || TRANSLATIONS.English;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-md animate-in fade-in duration-200">
@@ -39,10 +42,10 @@ export function ExportOptionsModal({
             </div>
             <div>
               <h3 className="text-sm font-black text-gray-900 dark:text-white tracking-tight">
-                Trực Quan Hóa Báo Cáo A4 (Live Viewport)
+                {t.a4LiveViewport}
               </h3>
               <p className="text-[10px] text-gray-400 dark:text-gray-500 font-semibold">
-                Xem trước chất lượng cao định dạng trang A4 trước khi in ấn
+                {t.a4LiveSubtitle}
               </p>
             </div>
           </div>
@@ -92,19 +95,20 @@ export function ExportOptionsModal({
         <div className="bg-white dark:bg-slate-900 px-6 py-3.5 border-t border-gray-150 dark:border-slate-800 flex items-center justify-between text-xs text-gray-400">
           <span className="font-semibold text-emerald-600 flex items-center gap-1.5">
             <CheckCircle2 size={14} />
-            Trình hiển thị tự động cập nhật thời gian thực
+            {t.automaticUpdate}
           </span>
           <button 
             onClick={() => {
               onPrintPDF();
               onClose();
             }}
-            className="bg-black hover:bg-gray-800 text-white font-bold px-4 py-2 rounded-xl transition-all shadow-md flex items-center gap-1 cursor-pointer"
+            className="flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-4 py-2 rounded-xl transition-all shadow-md active:scale-95 cursor-pointer"
           >
-            <Download size={13} />
-            TẢI XUỐNG PDF
+            <Download size={14} />
+            {t.generatePdf}
           </button>
         </div>
+
       </div>
     </div>
   );
@@ -124,8 +128,10 @@ export function AutomationSchedulingPanel({
   brandMembers = [],
   membersLoading,
   onSendTestReport,
-  onSaveSchedule
+  onSaveSchedule,
+  language = "English"
 }) {
+  const t = TRANSLATIONS[language] || TRANSLATIONS.English;
   const [newEmailInput, setNewEmailInput] = useState("");
   const [isMembersDropdownOpen, setIsMembersDropdownOpen] = useState(false);
 
@@ -143,7 +149,7 @@ export function AutomationSchedulingPanel({
   return (
     <div className="bg-white dark:bg-slate-900 rounded-2xl p-5 border border-gray-200 dark:border-slate-800 shadow-sm space-y-4">
       <h4 className="font-bold text-gray-800 dark:text-white text-sm border-b border-gray-100 dark:border-slate-800 pb-3">
-        Automation & Scheduling
+        {t.automaticMonthly}
       </h4>
       <div className="space-y-4">
         <label className="flex items-center gap-3 cursor-pointer select-none">
@@ -154,7 +160,7 @@ export function AutomationSchedulingPanel({
             className="w-4.5 h-4.5 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
           />
           <span className="text-xs font-bold text-gray-700 dark:text-gray-300">
-            Tự động gửi báo cáo qua Email
+            {t.scheduleMonthlyEmail}
           </span>
         </label>
 
@@ -164,16 +170,16 @@ export function AutomationSchedulingPanel({
             <div className="space-y-2">
               <div>
                 <label className="block text-[10px] font-bold text-gray-450 uppercase mb-1">
-                  Chọn từ thành viên của Brand
+                  {t.membersLabel}
                 </label>
                 <div className="relative">
                   <button
                     type="button"
                     onClick={() => setIsMembersDropdownOpen(!isMembersDropdownOpen)}
-                    className="w-full bg-gray-50 dark:bg-slate-950 border border-gray-200 dark:border-slate-850 rounded-xl px-3 py-2.5 text-xs font-semibold text-left flex items-center justify-between hover:bg-gray-100 dark:hover:bg-slate-800 transition-all outline-none"
+                    className="w-full bg-gray-50 dark:bg-slate-955 border border-gray-200 dark:border-slate-850 rounded-xl px-3 py-2.5 text-xs font-semibold text-left flex items-center justify-between hover:bg-gray-100 dark:hover:bg-slate-800 transition-all outline-none"
                   >
                     <span className="text-gray-600 dark:text-gray-400">
-                      {membersLoading ? "Đang tải thành viên..." : "Bấm để chọn thành viên..."}
+                      {membersLoading ? t.loadingMembers : t.clickToSelectMember}
                     </span>
                     <ChevronRight size={14} className="text-gray-400 transform rotate-90" />
                   </button>
@@ -184,7 +190,7 @@ export function AutomationSchedulingPanel({
                       <div className="absolute left-0 right-0 mt-1 bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 rounded-xl shadow-lg z-50 max-h-48 overflow-y-auto p-1.5 space-y-1">
                         {brandMembers.length === 0 ? (
                           <p className="text-[10px] text-gray-400 text-center py-2 uppercase font-bold tracking-wider">
-                            Không có thành viên nào
+                            {t.noMembers}
                           </p>
                         ) : (
                           brandMembers.map(member => {
@@ -216,7 +222,7 @@ export function AutomationSchedulingPanel({
                                 </div>
                                 {isAdded ? (
                                   <span className="text-[9px] bg-green-50 text-green-600 dark:bg-green-950/30 dark:text-green-400 font-bold px-1.5 py-0.5 rounded-md">
-                                    Đã thêm
+                                    {t.alreadyAdded}
                                   </span>
                                 ) : (
                                   <Plus size={12} className="text-gray-400 group-hover:text-black dark:group-hover:text-white transition-colors" />
@@ -234,7 +240,7 @@ export function AutomationSchedulingPanel({
               {/* Add custom email */}
               <div>
                 <label className="block text-[10px] font-bold text-gray-450 uppercase mb-1">
-                  Hoặc nhập Email khác
+                  {t.orEnterCustomEmail}
                 </label>
                 <div className="flex gap-2">
                   <input 
@@ -242,14 +248,14 @@ export function AutomationSchedulingPanel({
                     placeholder="example@mail.com"
                     value={newEmailInput}
                     onChange={(e) => setNewEmailInput(e.target.value)}
-                    className="flex-1 bg-gray-50 dark:bg-slate-950 border border-gray-200 dark:border-slate-850 rounded-xl px-3 py-2 text-xs font-semibold outline-none focus:border-gray-400 dark:text-gray-200"
+                    className="flex-1 bg-gray-50 dark:bg-slate-950 border border-gray-200 dark:border-slate-855 rounded-xl px-3 py-2 text-xs font-semibold outline-none focus:border-gray-400 dark:text-gray-200"
                   />
                   <button 
                     type="button"
                     onClick={handleAddEmail}
                     className="bg-gray-100 dark:bg-slate-800 hover:bg-gray-200 dark:hover:bg-slate-700 text-gray-700 dark:text-gray-300 text-xs font-bold px-3 rounded-xl transition-all cursor-pointer"
                   >
-                    Add
+                    {t.addBtn}
                   </button>
                 </div>
               </div>
@@ -268,13 +274,13 @@ export function AutomationSchedulingPanel({
             {/* Email Message Text */}
             <div>
               <label className="block text-[10px] font-bold text-gray-450 uppercase mb-1">
-                Nội dung tin nhắn
+                {t.messageContent}
               </label>
               <textarea 
                 rows={3}
                 value={emailText}
                 onChange={(e) => setEmailText(e.target.value)}
-                className="w-full bg-gray-50 dark:bg-slate-950 border border-gray-200 dark:border-slate-850 rounded-xl px-3 py-2 text-xs font-semibold outline-none focus:border-gray-400 resize-none dark:text-gray-200"
+                className="w-full bg-gray-50 dark:bg-slate-950 border border-gray-200 dark:border-slate-855 rounded-xl px-3 py-2 text-xs font-semibold outline-none focus:border-gray-400 resize-none dark:text-gray-200"
                 placeholder="Hi, here is your monthly analytics report..."
               />
             </div>
@@ -286,14 +292,14 @@ export function AutomationSchedulingPanel({
                 onClick={onSendTestReport}
                 className="flex-1 bg-gray-100 dark:bg-slate-800 hover:bg-gray-200 dark:hover:bg-slate-700 text-gray-700 dark:text-gray-300 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer active:scale-95 text-center"
               >
-                Gửi thử nghiệm
+                {t.sendTest}
               </button>
               <button
                 type="button"
                 onClick={onSaveSchedule}
                 className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer active:scale-95 text-center shadow-sm"
               >
-                Lưu lịch trình
+                {t.saveScheduleBtn}
               </button>
             </div>
           </div>
@@ -309,16 +315,18 @@ export function AutomationSchedulingPanel({
  */
 export function PdfHistoryPanel({
   reports = [],
-  onDownload
+  onDownload,
+  language = "English"
 }) {
+  const t = TRANSLATIONS[language] || TRANSLATIONS.English;
   return (
     <div className="bg-white dark:bg-slate-900 rounded-2xl p-5 border border-gray-200 dark:border-slate-800 shadow-sm space-y-3">
       <h4 className="font-bold text-gray-800 dark:text-white text-sm border-b border-gray-100 dark:border-slate-800 pb-3">
-        Generated PDF History
+        {t.pdfHistory}
       </h4>
       <div className="space-y-2 max-h-[160px] overflow-y-auto pr-1">
         {reports.length === 0 ? (
-          <p className="text-xs text-gray-400 text-center py-4">Chưa có bản ghi báo cáo nào được tạo.</p>
+          <p className="text-xs text-gray-400 text-center py-4">{t.noHistory}</p>
         ) : (
           reports.map(rep => {
             const isPdf = rep.format === 'PDF';
@@ -333,7 +341,7 @@ export function PdfHistoryPanel({
                   <FileText size={16} className={isPdf ? "text-red-500" : "text-emerald-600"} />
                   <div className="truncate">
                     <p className="text-xs font-bold text-gray-700 dark:text-gray-300 truncate max-w-[130px]">
-                      {rep.title || "Báo cáo phân tích"}
+                      {rep.title || t.reportsTitle}
                     </p>
                     <p className="text-[9px] text-gray-400 dark:text-gray-500 font-semibold">
                       {new Date(rep.createdAt).toLocaleDateString()} • <span className="uppercase">{formatLabel}</span>
@@ -351,7 +359,7 @@ export function PdfHistoryPanel({
                     }}
                     className="text-blue-600 dark:text-blue-400 hover:underline text-[10px] font-bold cursor-pointer"
                   >
-                    VIEW
+                    {t.view}
                   </button>
                 ) : (
                   <button 
@@ -367,7 +375,7 @@ export function PdfHistoryPanel({
                     }}
                     className="text-emerald-600 dark:text-emerald-400 hover:underline text-[10px] font-bold cursor-pointer"
                   >
-                    DOWNLOAD
+                    {t.download}
                   </button>
                 )}
               </div>

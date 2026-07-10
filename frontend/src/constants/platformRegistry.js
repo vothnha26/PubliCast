@@ -127,6 +127,24 @@ export const PLATFORM_CONFIGS = {
         {
           check: ({ hasMedia, isVideo }) => hasMedia && !isVideo,
           message: () => "YouTube publication must be a video file."
+        },
+        {
+          check: ({ youtubeTitle }) => !youtubeTitle || !youtubeTitle.trim() || youtubeTitle.length > 100 || youtubeTitle.includes('<') || youtubeTitle.includes('>'),
+          message: ({ youtubeTitle }) => {
+            if (!youtubeTitle || !youtubeTitle.trim()) return "Video or short title is required and must be shorter than 100 characters. The characters < or > are not allowed.";
+            if (youtubeTitle.length > 100) return `Video or short title is required and must be shorter than 100 characters. The characters < or > are not allowed.`;
+            return "Video or short title is required and must be shorter than 100 characters. The characters < or > are not allowed.";
+          }
+        },
+        {
+          check: ({ youtubeMadeForKids }) => youtubeMadeForKids === null || youtubeMadeForKids === undefined,
+          message: () => "It is necessary to select the audience of the video."
+        }
+      ],
+      video: [
+        {
+          check: ({ isVideo, videoWidth }) => isVideo && videoWidth > 0 && videoWidth > 1920,
+          message: ({ videoWidth }) => `Auto publish → Video width can't be larger than 1920 pixels. These videos don't meet the requirements: #1 (${videoWidth}px).`
         }
       ],
       short: [
@@ -137,6 +155,10 @@ export const PLATFORM_CONFIGS = {
         {
           check: ({ videoWidth, videoHeight }) => videoWidth > 0 && videoHeight > 0 && videoWidth > videoHeight,
           message: () => "YouTube Shorts must be vertical or square. Current ratio is horizontal."
+        },
+        {
+          check: ({ isVideo, videoWidth }) => isVideo && videoWidth > 0 && videoWidth > 1920,
+          message: ({ videoWidth }) => `Video width can't be larger than 1920 pixels. These videos don't meet the requirements: #1 (${videoWidth}px).`
         }
       ]
     }

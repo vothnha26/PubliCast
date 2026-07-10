@@ -36,6 +36,7 @@ import { buildMediaUrl } from "../../utils/url";
 // Layout Sub-components
 import { ComposerHeader } from "../../components/workspace/post-creator/ComposerHeader";
 import { ComposerBody } from "../../components/workspace/post-creator/ComposerBody";
+import { ComposerErrorPanel } from "../../components/workspace/post-creator/ComposerErrorPanel";
 import { ComposerFooter } from "../../components/workspace/post-creator/ComposerFooter";
 import { PreviewHeader } from "../../components/workspace/post-creator/PreviewHeader";
 import { PreviewBody } from "../../components/workspace/post-creator/PreviewBody";
@@ -225,6 +226,7 @@ export function PostCreatorPage() {
   const [reviewerSearchQuery, setReviewerSearchQuery] = useState("");
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [uploadModalTab, setUploadModalTab] = useState("computer");
+  const [uploadMediaType, setUploadMediaType] = useState("all");
   const [showImageMenu, setShowImageMenu] = useState(false);
   const [showImageEditor, setShowImageEditor] = useState(false);
   const [editingAlbumPhoto, setEditingAlbumPhoto] = useState(null);
@@ -402,6 +404,8 @@ export function PostCreatorPage() {
     setShowUploadModal,
     uploadModalTab,
     setUploadModalTab,
+    uploadMediaType,
+    setUploadMediaType,
     showImageMenu,
     setShowImageMenu,
     showImageEditor,
@@ -462,6 +466,7 @@ export function PostCreatorPage() {
           <div className="flex-1 flex flex-col h-full overflow-hidden bg-white">
             <ComposerHeader />
             <ComposerBody />
+            <ComposerErrorPanel />
             <ComposerFooter />
           </div>
 
@@ -496,6 +501,7 @@ export function PostCreatorPage() {
           isOpen={showUploadModal}
           initialTab={uploadModalTab}
           brandId={activeBrand?.id}
+          allowedType={uploadMediaType}
           multiple={!isUploadingThumbnail}
           onClose={() => {
             setShowUploadModal(false);

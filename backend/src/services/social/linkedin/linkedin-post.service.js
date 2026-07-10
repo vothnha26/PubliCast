@@ -1,4 +1,5 @@
 const socialAccountRepository = require('../../../repositories/social/social-account.repository');
+const MockConnectionGuard = require('../mock-connection.guard');
 const { PLATFORMS } = require('../../../utils/constants');
 const LinkedInPublishStrategyFactory = require('./publish-strategies/publish-strategy.factory');
 
@@ -6,7 +7,7 @@ class LinkedInPostService {
   async publishPost(brandId, postData) {
     const { memberId, accessToken } = await this._getAccountCredentials(brandId);
 
-    if (accessToken && (accessToken.startsWith('mock-') || accessToken.includes('mock') || accessToken.startsWith('li_mock'))) {
+    if (accessToken && MockConnectionGuard.isMock(accessToken, memberId)) {
       console.log(`[LinkedIn] Mock publishing detected for mock token. Returning simulated success.`);
       return { platformVideoId: `mock-linkedin-post-${Date.now()}`, publishedAt: new Date() };
     }

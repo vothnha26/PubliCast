@@ -1,5 +1,6 @@
 const facebookGateway = require('./facebook.gateway');
 const socialAccountRepository = require('../../../repositories/social/social-account.repository');
+const MockConnectionGuard = require('../mock-connection.guard');
 const { PLATFORMS, DEFAULT_CONFIG, ANALYTICS, SOCIAL_TECHNICAL } = require('../../../utils/constants');
 
 class FacebookAnalyticsService {
@@ -17,29 +18,42 @@ class FacebookAnalyticsService {
     };
   }
 
-  _getMockAnalyticsReport(startDate, endDate, currentFollowersCount) {
+  _getMockAnalyticsReport(startDate, endDate, currentFollowersCount = 2500) {
     const { start, end } = this._resolveDates(startDate, endDate);
     const dailyMap = this._initializeDailyMap(start, end);
     
+    let totalViews = 0;
+    let totalClicks = 0;
+    let totalPageVisits = 0;
+
     Object.keys(dailyMap).forEach((dateStr) => {
-      dailyMap[dateStr].views = 0;
-      dailyMap[dateStr].pageVisits = 0;
-      dailyMap[dateStr].totalClicks = 0;
-      dailyMap[dateStr].acquired = 0;
-      dailyMap[dateStr].lost = 0;
+      const dayViews = Math.round(1500 + Math.random() * 2500);
+      const dayPageVisits = Math.round(dayViews * 0.45);
+      const dayClicks = Math.round(dayViews * 0.08);
+      
+      dailyMap[dateStr].views = dayViews;
+      dailyMap[dateStr].pageVisits = dayPageVisits;
+      dailyMap[dateStr].totalClicks = dayClicks;
+      dailyMap[dateStr].acquired = Math.round(20 + Math.random() * 40);
+      dailyMap[dateStr].lost = Math.round(1 + Math.random() * 6);
+      dailyMap[dateStr].totalContent = Math.random() > 0.8 ? 1 : 0;
+      
+      totalViews += dayViews;
+      totalPageVisits += dayPageVisits;
+      totalClicks += dayClicks;
     });
 
     const feedStats = {
-      totalPostsInPeriod: 0,
-      totalReactions: 0,
-      totalComments: 0,
-      totalShares: 0,
+      totalPostsInPeriod: Object.keys(dailyMap).filter(d => dailyMap[d].totalContent > 0).length,
+      totalReactions: Math.round(totalViews * 0.05),
+      totalComments: Math.round(totalViews * 0.01),
+      totalShares: Math.round(totalViews * 0.005),
       albumCount: 0,
-      imageCount: 0
+      imageCount: Object.keys(dailyMap).filter(d => dailyMap[d].totalContent > 0).length
     };
 
     const sortedDates = Object.keys(dailyMap).sort().map(d => dailyMap[d]);
-    return this._calculateTotalsAndFormatResponse(sortedDates, currentFollowersCount || 0, feedStats, []);
+    return this._calculateTotalsAndFormatResponse(sortedDates, currentFollowersCount || 2500, feedStats, []);
   }
 
   async getChannelInfo(auth, startDate, endDate, socialAccountId = null) {
@@ -48,8 +62,27 @@ class FacebookAnalyticsService {
       account = await socialAccountRepository.findById(socialAccountId);
     }
 
-    if (auth.pageAccessToken && auth.pageAccessToken.startsWith('mock-')) {
-      const pageData = this._getEmptyChannelInfo(auth.pageId, account);
+    const pageId = auth.pageId || account?.platformAccountId;
+    const pageAccessToken = auth.pageAccessToken || account?.accessToken;
+
+    if (pageAccessToken && MockConnectionGuard.isMock(pageAccessToken, pageId)) {
+      if (account?.facebookPage) {
+        const followersCount = account.facebookPage.followersCount || 2500;
+        const analyticsData = this._getMockAnalyticsReport(startDate, endDate, followersCount);
+        return {
+          pageId: account.platformAccountId,
+          username: account.username,
+          displayName: account.displayName,
+          profilePictureUrl: account.profilePictureUrl,
+          category: account.facebookPage.category || 'Social Page',
+          likesCount: account.facebookPage.likesCount || 2400,
+          followersCount: followersCount,
+          about: account.facebookPage.about || 'Mock Facebook Page',
+          website: account.facebookPage.website || 'https://publicast.com',
+          analytics: analyticsData
+        };
+      }
+      const pageData = this._getEmptyChannelInfo(pageId, account);
       const analyticsData = this._getMockAnalyticsReport(startDate, endDate, pageData.followersCount);
       return {
         ...pageData,
@@ -95,7 +128,7 @@ class FacebookAnalyticsService {
   }
 
   async getAnalyticsReport(pageId, pageAccessToken, startDate, endDate, currentFollowersCount, socialAccountId = null) {
-    if (pageAccessToken && pageAccessToken.startsWith('mock-')) {
+    if (pageAccessToken && MockConnectionGuard.isMock(pageAccessToken, pageId)) {
       return this._getMockAnalyticsReport(startDate, endDate, currentFollowersCount);
     }
 

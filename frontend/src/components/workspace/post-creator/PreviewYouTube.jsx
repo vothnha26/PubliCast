@@ -16,7 +16,8 @@ function ThumbsDown({ size }) {
 
 export function PreviewYouTube({ 
   caption, 
-  videoFileUrl, 
+  videoFileUrl,
+  videoFile = null,
   youtubeType = "video", 
   youtubeTitle = "", 
   youtubePlaylistId = "", 
@@ -38,6 +39,7 @@ export function PreviewYouTube({
       return (
         <PreviewShell
           videoFileUrl={videoFileUrl}
+          videoFile={videoFile}
           previewDevice={previewDevice}
           layout="vertical"
           fallbackLabel="Short Preview"
@@ -95,6 +97,7 @@ export function PreviewYouTube({
         <div className="flex items-end gap-5 justify-center max-w-[360px] mx-auto font-sans animate-in fade-in duration-300">
           <PreviewShell
             videoFileUrl={videoFileUrl}
+            videoFile={videoFile}
             previewDevice={previewDevice}
             layout="vertical"
             fallbackLabel="Short Preview"
@@ -134,6 +137,7 @@ export function PreviewYouTube({
   return (
     <PreviewShell
       videoFileUrl={videoFileUrl}
+      videoFile={videoFile}
       previewDevice={previewDevice}
       layout="card"
       aspectRatioClass="aspect-video"

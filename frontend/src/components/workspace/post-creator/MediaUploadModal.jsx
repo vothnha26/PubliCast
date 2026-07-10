@@ -5,7 +5,7 @@ import { toast } from "sonner";
 import apiService from "../../../services/api";
 import { useMediaLibrary } from "../../../hooks/useMediaLibrary";
 
-export function MediaUploadModal({ isOpen, onClose, onAccept, brandId, initialTab = "computer", multiple = false }) {
+export function MediaUploadModal({ isOpen, onClose, onAccept, brandId, initialTab = "computer", multiple = false, allowedType = "all" }) {
   const [activeTab, setActiveTab] = useState(initialTab); // 'computer' | 'url' | 'library'
   const [dragActive, setDragActive] = useState(false);
   const [selectedFile, setSelectedFile] = useState(null);
@@ -25,6 +25,15 @@ export function MediaUploadModal({ isOpen, onClose, onAccept, brandId, initialTa
     folders,
     loadingFolders
   } = useMediaLibrary();
+
+  const displayedLibraryFiles = libraryFiles.filter(file => {
+    const isVideo = file.type === "video" || file.url?.endsWith(".mp4") || file.url?.endsWith(".mov") || file.url?.endsWith(".avi");
+    const isImage = file.type === "image" || (!isVideo && (file.url?.endsWith(".jpg") || file.url?.endsWith(".jpeg") || file.url?.endsWith(".png") || file.url?.endsWith(".gif") || file.url?.endsWith(".webp")));
+    
+    if (allowedType === "image") return isImage;
+    if (allowedType === "video") return isVideo;
+    return true;
+  });
 
   const [selectedLibraryFile, setSelectedLibraryFile] = useState(null);
   const [selectedLibraryFiles, setSelectedLibraryFiles] = useState([]);
@@ -64,22 +73,48 @@ export function MediaUploadModal({ isOpen, onClose, onAccept, brandId, initialTa
     e.stopPropagation();
     setDragActive(false);
     if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-      if (multiple) {
-        const files = Array.from(e.dataTransfer.files);
-        setSelectedFiles(prev => [...prev, ...files]);
-      } else {
-        setSelectedFile(e.dataTransfer.files[0]);
+      const files = Array.from(e.dataTransfer.files).filter(file => {
+        if (allowedType === "image" && !file.type.startsWith("image/")) {
+          toast.error(`File ${file.name} is not an image`);
+          return false;
+        }
+        if (allowedType === "video" && !file.type.startsWith("video/")) {
+          toast.error(`File ${file.name} is not a video`);
+          return false;
+        }
+        return true;
+      });
+
+      if (files.length > 0) {
+        if (multiple) {
+          setSelectedFiles(prev => [...prev, ...files]);
+        } else {
+          setSelectedFile(files[0]);
+        }
       }
     }
   };
 
   const handleFileChange = (e) => {
     if (e.target.files && e.target.files.length > 0) {
-      if (multiple) {
-        const files = Array.from(e.target.files);
-        setSelectedFiles(prev => [...prev, ...files]);
-      } else {
-        setSelectedFile(e.target.files[0]);
+      const files = Array.from(e.target.files).filter(file => {
+        if (allowedType === "image" && !file.type.startsWith("image/")) {
+          toast.error(`File ${file.name} is not an image`);
+          return false;
+        }
+        if (allowedType === "video" && !file.type.startsWith("video/")) {
+          toast.error(`File ${file.name} is not a video`);
+          return false;
+        }
+        return true;
+      });
+
+      if (files.length > 0) {
+        if (multiple) {
+          setSelectedFiles(prev => [...prev, ...files]);
+        } else {
+          setSelectedFile(files[0]);
+        }
       }
     }
   };
@@ -298,7 +333,7 @@ export function MediaUploadModal({ isOpen, onClose, onAccept, brandId, initialTa
                   type="file" 
                   ref={fileInputRef} 
                   onChange={handleFileChange} 
-                  accept="image/*,video/*" 
+                  accept={allowedType === "image" ? "image/*" : allowedType === "video" ? "video/*" : "image/*,video/*"} 
                   multiple={multiple}
                   className="hidden" 
                 />
@@ -403,7 +438,7 @@ export function MediaUploadModal({ isOpen, onClose, onAccept, brandId, initialTa
                 <div className="flex items-center justify-center py-20">
                    <Loader2 size={24} className="animate-spin text-purple-600" />
                 </div>
-              ) : libraryFiles.length === 0 && folders.length === 0 ? (
+              ) : displayedLibraryFiles.length === 0 && folders.length === 0 ? (
                 <div className="text-center py-20 bg-gray-50/50 rounded-2xl border border-dashed border-gray-200">
                    <p className="text-xs text-gray-400 font-bold uppercase tracking-widest">No results found</p>
                 </div>
@@ -424,7 +459,7 @@ export function MediaUploadModal({ isOpen, onClose, onAccept, brandId, initialTa
                    ))}
 
                    {/* Render Media Files */}
-                   {libraryFiles.map(file => {
+                   {displayedLibraryFiles.map(file => {
                      const isSelected = multiple
                        ? selectedLibraryFiles.some(item => item.id === file.id)
                        : selectedLibraryFile?.id === file.id;
@@ -496,8 +531,8 @@ export function MediaUploadModal({ isOpen, onClose, onAccept, brandId, initialTa
                 </div>
                 <p className="text-[10px] text-gray-400 font-medium leading-normal">
                   {multiple 
-                    ? "Provide direct URLs to photos (.png, .jpg) or videos (.mp4), each on a separate line."
-                    : "Provide a direct URL to a photo (.png, .jpg) or video (.mp4)."}
+                    ? `Provide direct URLs to ${allowedType === 'image' ? 'photos (.png, .jpg)' : allowedType === 'video' ? 'videos (.mp4)' : 'photos (.png, .jpg) or videos (.mp4)'}, each on a separate line.`
+                    : `Provide a direct URL to a ${allowedType === 'image' ? 'photo (.png, .jpg)' : allowedType === 'video' ? 'video (.mp4)' : 'photo (.png, .jpg) or video (.mp4)'}.`}
                 </p>
               </div>
             </div>

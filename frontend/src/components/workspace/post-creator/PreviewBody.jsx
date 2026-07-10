@@ -7,6 +7,7 @@ export function PreviewBody() {
     activePlatform,
     caption,
     videoFileUrl,
+    videoFile,
     youtubeType,
     youtubeTitle,
     youtubePlaylistId,
@@ -31,6 +32,7 @@ export function PreviewBody() {
           <PreviewComponent 
             caption={caption} 
             videoFileUrl={videoFileUrl} 
+            videoFile={videoFile}
             youtubeType={youtubeType}
             youtubeTitle={youtubeTitle}
             youtubePlaylistId={youtubePlaylistId}

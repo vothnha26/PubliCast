@@ -1,9 +1,52 @@
 import * as React from "react";
+import { useState } from "react";
 import { Play } from "lucide-react";
+import { isVideoPath } from "../../../utils/url";
+
+/**
+ * SmartMedia - Renders video or image based on URL.
+ * Tries video first for unknown blob URLs, falls back to img on error.
+ */
+function SmartMedia({ url, videoFile = null, className, style, controls, muted, autoPlay, loop, alt }) {
+  const [showImg, setShowImg] = useState(false);
+
+  // If we know for certain it's a video (has extension or file MIME type), render video
+  const certainlyVideo = isVideoPath(url, videoFile);
+  // If we know for certain it's NOT a video (has image extension), render img directly
+  const certainlyImage = url && !certainlyVideo && (
+    url.endsWith('.jpg') || url.endsWith('.jpeg') || url.endsWith('.png') || 
+    url.endsWith('.gif') || url.endsWith('.webp') || url.endsWith('.avif')
+  );
+
+  if (certainlyImage || showImg) {
+    return (
+      <img
+        src={url}
+        style={style}
+        className={className}
+        alt={alt || "Preview media"}
+      />
+    );
+  }
+
+  // For certain videos or unknown blob URLs, try video first
+  return (
+    <video
+      src={url}
+      className={className}
+      controls={controls}
+      muted={muted}
+      autoPlay={autoPlay}
+      loop={loop}
+      onError={() => setShowImg(true)}
+    />
+  );
+}
 
 export function PreviewShell({
   children,
   videoFileUrl,
+  videoFile = null,
   previewDevice = "mobile",
   imageTransform = null,
   layout = "card", // "card" | "vertical"
@@ -12,14 +55,6 @@ export function PreviewShell({
   fallbackIcon,
   dark = false
 }) {
-  const isVideo = videoFileUrl && (
-    videoFileUrl.endsWith('.mp4') || 
-    videoFileUrl.endsWith('.mov') || 
-    videoFileUrl.endsWith('.avi') ||
-    videoFileUrl.endsWith('.webm') ||
-    videoFileUrl.includes('/video/upload/')
-  );
-
   const getImageStyle = (transform) => {
     if (!transform) return {};
     const { rotation = 0, flipH = false, flipV = false } = transform;
@@ -49,16 +84,16 @@ export function PreviewShell({
         {/* Background Media */}
         {videoFileUrl ? (
           <div className="absolute inset-0 z-0 flex items-center justify-center overflow-hidden">
-            {isVideo ? (
-              <video src={videoFileUrl} muted autoPlay loop className="w-full h-full object-cover" />
-            ) : (
-              <img 
-                src={videoFileUrl} 
-                style={getImageStyle(imageTransform)}
-                className={`w-full h-full object-cover ${getImageFilterClass(imageTransform?.filter)}`}
-                alt="Vertical preview media" 
-              />
-            )}
+            <SmartMedia
+              url={videoFileUrl}
+              videoFile={videoFile}
+              className="w-full h-full object-cover"
+              style={getImageStyle(imageTransform)}
+              muted
+              autoPlay
+              loop
+              alt="Vertical preview media"
+            />
           </div>
         ) : (
           <div className="absolute inset-0 z-0 bg-gradient-to-b from-[#111827] via-[#1F2937] to-[#030712] flex flex-col items-center justify-center p-6 text-center">
@@ -97,16 +132,14 @@ export function PreviewShell({
       {/* Media area */}
       {videoFileUrl ? (
         <div className={`${aspectRatioClass} bg-black flex items-center justify-center relative overflow-hidden`}>
-          {isVideo ? (
-            <video src={videoFileUrl} controls className="w-full h-full object-cover" />
-          ) : (
-            <img 
-              src={videoFileUrl} 
-              style={getImageStyle(imageTransform)}
-              className={`w-full h-full object-cover ${getImageFilterClass(imageTransform?.filter)}`}
-              alt="Feed card media" 
-            />
-          )}
+          <SmartMedia
+            url={videoFileUrl}
+            videoFile={videoFile}
+            className="w-full h-full object-cover"
+            style={getImageStyle(imageTransform)}
+            controls
+            alt="Feed card media"
+          />
         </div>
       ) : (
         <div className={`${aspectRatioClass} bg-gray-50 flex flex-col items-center justify-center text-center p-6 text-gray-400 border-y ${borderColor}`}>
@@ -126,3 +159,4 @@ export function PreviewShell({
     </div>
   );
 }
+

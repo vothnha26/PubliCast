@@ -736,11 +736,17 @@ class PostService {
         // JSON structure tuỳ nền tảng (likes, comments, views, retweets...)
         let parsed = {};
         try {
-          parsed = typeof met.value === 'string' ? JSON.parse(met.value) : met.value;
-        } catch (e) {}
-        const likes = parseInt(parsed.likes || parsed.like_count || 0, 10);
-        const comments = parseInt(parsed.comments || parsed.comment_count || 0, 10);
-        const views = parseInt(parsed.views || parsed.view_count || 0, 10);
+          const raw = met.value;
+          if (raw != null) {
+            parsed = typeof raw === 'string' ? JSON.parse(raw) : raw;
+          }
+          if (!parsed || typeof parsed !== 'object') parsed = {};
+        } catch (e) {
+          parsed = {};
+        }
+        const likes = parseInt(parsed.likes || parsed.like_count || 0, 10) || 0;
+        const comments = parseInt(parsed.comments || parsed.comment_count || 0, 10) || 0;
+        const views = parseInt(parsed.views || parsed.view_count || 0, 10) || 0;
         engagement = likes + comments * 2 + Math.round(views * 0.1);
       }
 

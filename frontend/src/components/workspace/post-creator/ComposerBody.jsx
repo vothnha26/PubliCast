@@ -1,9 +1,9 @@
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import { 
-  Info, AlertCircle, Youtube, MoreHorizontal, Edit, Type, Trash2, 
-  ImageIcon, Plus, Smile, Link2, Search, Languages, FileText, Send, 
-  Linkedin, Settings, ChevronDown, Instagram, MessageSquare, X,
-  Folder, MapPin, Sparkles
+  Info, Youtube, MoreHorizontal, Edit, Type, Trash2, 
+  ImageIcon, Plus, Smile, Link2, Search, Send, 
+  Linkedin, Instagram, MessageSquare, X,
+  Folder, MapPin, Sparkles, PenLine, Check, AlertCircle
 } from "lucide-react";
 import { usePostCreatorFormContext } from "../../../context/PostCreatorFormContext";
 import { PlatformIcon } from "../../shared/PlatformIcon";
@@ -26,6 +26,11 @@ import { ThreadsPresets } from "./presets/ThreadsPresets";
 
 export function ComposerBody() {
   const [showAICopilot, setShowAICopilot] = useState(false);
+  // Template name inline editing
+  const [templateName, setTemplateName] = useState("");
+  const [isEditingTemplateName, setIsEditingTemplateName] = useState(false);
+  const templateNameRef = useRef(null);
+
   const {
     hasCreatePermission,
     hasApprovePermission,
@@ -33,8 +38,6 @@ export function ComposerBody() {
     handleVideoChange,
     editingPost,
     activePlatform,
-    title,
-    setTitle,
     textareaRef,
     caption,
     setCaption,
@@ -75,11 +78,15 @@ export function ComposerBody() {
     setShowReviewersModal,
     requesterNote,
     setRequesterNote,
-    getValidationErrors,
     hasAccess,
     setBlockedProductId,
     setIsDriveModalOpen,
-    platformLimits
+    platformLimits,
+    showUploadModal,
+    setShowUploadModal,
+    uploadModalTab,
+    setUploadModalTab,
+    setUploadMediaType
   } = usePostCreatorFormContext();
 
   const isImageFile = videoFile 
@@ -151,9 +158,41 @@ export function ComposerBody() {
     }
   };
 
+  // Handle template name editing
+  const handleStartEditTemplateName = () => {
+    if (!templateName) setTemplateName("My Template");
+    setIsEditingTemplateName(true);
+    setTimeout(() => templateNameRef.current?.focus(), 50);
+  };
+
+  const handleSaveTemplateName = () => {
+    setIsEditingTemplateName(false);
+    if (templateName.trim()) {
+      toast.success(`Template "${templateName.trim()}" đã được lưu`);
+    }
+  };
+
+  const handleToggleLibrary = () => {
+    if (!isLibrary) {
+      setIsLibrary(true);
+      setTemplateName("My Template");
+      setIsEditingTemplateName(true);
+      setTimeout(() => templateNameRef.current?.focus(), 100);
+    } else {
+      setIsLibrary(false);
+      setIsEditingTemplateName(false);
+      setTemplateName("");
+    }
+  };
+
+
+
   return (
-    <div className="flex-1 overflow-y-auto px-8 py-6 space-y-6 scrollbar-thin">
-      <div className="w-full space-y-6">
+    <div className="flex-1 overflow-y-auto px-8 py-6 space-y-5 scrollbar-thin">
+      {/* ─────────────────────────────────────────
+          REGION 1: Post Input + Presets
+         ───────────────────────────────────────── */}
+      <div className="w-full space-y-5">
         {!hasCreatePermission && (
           <div className="bg-amber-50 border border-amber-200 text-amber-800 rounded-2xl p-4 text-xs font-bold flex items-center gap-2 animate-in fade-in">
             <Info size={16} className="text-amber-500" />
@@ -161,23 +200,9 @@ export function ComposerBody() {
           </div>
         )}
 
-        {/* Text Area Card */}
-        <div className="border border-gray-200 rounded-[24px] overflow-hidden focus-within:border-black transition-all shadow-sm bg-white relative">
+        {/* ── Text Area Card ── */}
+        <div className="border border-gray-200 rounded-[24px] focus-within:border-black transition-all shadow-sm bg-white relative">
           <input type="file" ref={fileInputRef} accept="video/*,image/*" onChange={handleVideoChange} className="hidden" data-testid="post-file-input" />
-          
-          {/* Title Input */}
-          {(editingPost || activePlatform === 'youtube') && (
-            <div className="px-6 pt-5 pb-0 border-b border-gray-100">
-              <input
-                type="text"
-                data-testid="post-title-input"
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                placeholder="Post title (optional)"
-                className="w-full text-base font-bold text-gray-900 outline-none bg-transparent placeholder-gray-300 font-sans"
-              />
-            </div>
-          )}
 
           <textarea 
             ref={textareaRef} 
@@ -339,7 +364,7 @@ export function ComposerBody() {
           )}
 
           {/* Toolbar & Character Limit */}
-          <div className="px-6 py-4 flex items-center justify-between bg-white border-t border-gray-150">
+          <div className="px-6 py-4 flex items-center justify-between bg-white border-t border-gray-150 rounded-b-[24px]">
             <div className="flex items-center gap-4">
               {/* Media Button */}
               <div className="relative">
@@ -354,9 +379,9 @@ export function ComposerBody() {
                 {activePopover === 'media' && (
                   <MediaDropdown 
                     onClose={() => setActivePopover(null)} 
-                    onSelectImage={() => { setUploadModalTab("computer"); setShowUploadModal(true); }} 
-                    onSelectVideo={() => { setUploadModalTab("computer"); setShowUploadModal(true); }} 
-                    onSelectLibrary={() => { setUploadModalTab("library"); setShowUploadModal(true); }}
+                    onSelectImage={() => { setUploadMediaType("image"); setUploadModalTab("computer"); setShowUploadModal(true); }} 
+                    onSelectVideo={() => { setUploadMediaType("video"); setUploadModalTab("computer"); setShowUploadModal(true); }} 
+                    onSelectLibrary={() => { setUploadMediaType("all"); setUploadModalTab("library"); setShowUploadModal(true); }}
                     onSelectDrive={() => {
                       if (!hasAccess(PRODUCT_IDS.GOOGLE_DRIVE)) {
                         setBlockedProductId(PRODUCT_IDS.GOOGLE_DRIVE);
@@ -447,19 +472,6 @@ export function ComposerBody() {
                 )}
               </div>
 
-              {/* Folder (Library Template Toggle) */}
-              <button 
-                type="button"
-                onClick={() => {
-                  setIsLibrary(!isLibrary);
-                  toast.success(isLibrary ? "Đã tắt chế độ mẫu" : "Đã bật chế độ lưu làm mẫu");
-                }}
-                className={`text-gray-400 hover:text-black transition-colors p-1.5 rounded-lg cursor-pointer ${isLibrary ? 'text-purple-600 bg-purple-50' : ''}`}
-                title="Save as template (Library)"
-              >
-                <Folder size={18} />
-              </button>
-
               {/* AI Copilot Sparkles Button */}
               <button 
                 type="button"
@@ -489,7 +501,7 @@ export function ComposerBody() {
                       return fallbacks[activePlatform.toLowerCase()] || 5000;
                     }
                     const limitObj = platformLimits.find(l => l.platform.toLowerCase() === activePlatform.toLowerCase());
-                    return limitObj ? limitObj.maxCharacters : 5000;
+                    return limitObj ? limitObj.maxCaptionLength : 5000;
                   })()}
                 </span>
                 <div className="absolute bottom-full right-0 mb-3 w-56 p-3 bg-white rounded-xl shadow-xl border border-gray-100 hidden group-hover:block animate-in fade-in slide-in-from-bottom-1 z-50">
@@ -539,6 +551,73 @@ export function ComposerBody() {
               activePlatform={activePlatform}
               onClose={() => setShowAICopilot(false)}
             />
+          )}
+        </div>
+
+        {/* ── Template Inline Editor ── */}
+        <div className={`rounded-2xl border transition-all duration-200 overflow-hidden ${isLibrary ? 'border-purple-200 bg-purple-50/60 shadow-sm' : 'border-dashed border-gray-200 bg-gray-50/30 hover:border-gray-300'}`}>
+          {!isLibrary ? (
+            /* Collapsed: just a subtle button */
+            <button
+              type="button"
+              onClick={handleToggleLibrary}
+              className="w-full flex items-center gap-2.5 px-4 py-3 text-gray-400 hover:text-gray-700 transition-colors cursor-pointer group"
+            >
+              <Folder size={15} className="group-hover:text-purple-500 transition-colors shrink-0" />
+              <span className="text-[11px] font-bold uppercase tracking-wider font-sans group-hover:text-purple-600">Save as template</span>
+            </button>
+          ) : (
+            /* Expanded: editable template name */
+            <div className="px-4 py-3 flex items-center gap-3">
+              <div className="w-7 h-7 rounded-xl bg-purple-100 flex items-center justify-center shrink-0">
+                <Folder size={14} className="text-purple-600" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-[9px] font-black uppercase tracking-widest text-purple-400 mb-0.5 font-sans">Template name</p>
+                {isEditingTemplateName ? (
+                  <div className="flex items-center gap-2">
+                    <input
+                      ref={templateNameRef}
+                      type="text"
+                      value={templateName}
+                      onChange={(e) => setTemplateName(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') handleSaveTemplateName();
+                        if (e.key === 'Escape') setIsEditingTemplateName(false);
+                      }}
+                      className="flex-1 text-sm font-bold text-purple-900 bg-white border border-purple-200 rounded-lg px-2.5 py-1 outline-none focus:border-purple-400 transition-all font-sans"
+                      placeholder="Enter template name..."
+                    />
+                    <button
+                      type="button"
+                      onClick={handleSaveTemplateName}
+                      className="w-7 h-7 rounded-lg bg-purple-600 hover:bg-purple-700 text-white flex items-center justify-center cursor-pointer transition-all shrink-0"
+                    >
+                      <Check size={12} />
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={handleStartEditTemplateName}
+                    className="flex items-center gap-1.5 group/name cursor-pointer"
+                  >
+                    <span className="text-sm font-bold text-purple-800 font-sans group-hover/name:text-purple-600 transition-colors">
+                      {templateName || "Unnamed template"}
+                    </span>
+                    <PenLine size={12} className="text-purple-400 opacity-0 group-hover/name:opacity-100 transition-opacity" />
+                  </button>
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={handleToggleLibrary}
+                className="w-6 h-6 rounded-full bg-purple-100 hover:bg-purple-200 text-purple-500 flex items-center justify-center cursor-pointer transition-all shrink-0"
+                title="Bỏ lưu template"
+              >
+                <X size={10} />
+              </button>
+            </div>
           )}
         </div>
 
@@ -616,30 +695,6 @@ export function ComposerBody() {
             </div>
           </div>
         )}
-
-        {/* Validation Errors Banner */}
-        {getValidationErrors().length > 0 && (
-          <div className="border border-red-100 rounded-3xl overflow-hidden bg-red-50/50 shadow-sm transition-all duration-300">
-            <div className="p-5 flex items-center justify-between text-red-700">
-              <div className="flex items-center gap-3">
-                <AlertCircle size={18} className="text-red-500 shrink-0" />
-                <span className="text-[12px] font-bold font-sans">{getValidationErrors().length} errors</span>
-              </div>
-            </div>
-            <div className="border-t border-red-100/50 px-6 py-4 space-y-2 text-left">
-              {getValidationErrors().map((err, idx) => {
-                const parsed = parseValidationError(err);
-                return (
-                  <div key={idx} className="flex items-center gap-2.5 text-xs font-medium text-gray-700 font-sans">
-                    {renderErrorIcon(parsed.platform)}
-                    <span>{parsed.message}</span>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        )}
-
       </div>
     </div>
   );
