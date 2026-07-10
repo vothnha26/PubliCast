@@ -451,7 +451,7 @@ export function HashtagManager() {
       {selectedSet && (
         <div className="fixed inset-0 z-50 flex justify-end">
            <div className="absolute inset-0 bg-black/30 backdrop-blur-xs" onClick={() => setSelectedSet(null)} />
-           <div className="w-[450px] h-full bg-white shadow-2xl flex flex-col animate-in slide-in-from-right duration-350">
+           <div className="relative z-10 w-[450px] h-full bg-white shadow-2xl flex flex-col animate-in slide-in-from-right duration-350">
               <div className="p-5 border-b border-gray-150 flex items-center justify-between">
                  <h3 className="font-bold text-sm text-gray-900 flex items-center gap-1.5">
                    <Sparkles className="text-indigo-500" size={16} />
@@ -510,7 +510,7 @@ export function HashtagManager() {
       {isCreateOpen && (
         <div className="fixed inset-0 z-50 flex justify-end">
            <div className="absolute inset-0 bg-black/30 backdrop-blur-xs" onClick={() => setIsCreateOpen(false)} />
-           <div className="w-[450px] h-full bg-white shadow-2xl flex flex-col animate-in slide-in-from-right duration-350">
+           <div className="relative z-10 w-[450px] h-full bg-white shadow-2xl flex flex-col animate-in slide-in-from-right duration-350">
               <div className="p-5 border-b border-gray-150 flex items-center justify-between">
                  <h3 className="font-bold text-sm text-gray-900 flex items-center gap-1.5">
                    <Plus className="text-blue-500" size={16} />

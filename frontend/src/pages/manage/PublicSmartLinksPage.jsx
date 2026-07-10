@@ -153,6 +153,28 @@ export function PublicSmartLinksPage() {
               borderColor: borderColor || bgColor
             } : {};
 
+            if (link.emoji === "🖼️" && link.iconUrl) {
+              return (
+                <div
+                  key={link.id}
+                  onClick={() => handleLinkClick(link.id, link.url)}
+                  className="w-full rounded-2xl overflow-hidden border border-white/10 shadow-lg cursor-pointer transform hover:scale-[1.01] active:scale-[0.99] transition-all duration-200 relative group bg-black/20"
+                >
+                  <img 
+                    src={link.iconUrl} 
+                    alt={link.title} 
+                    className="w-full h-auto object-cover max-h-56 block" 
+                  />
+                  {link.title && (
+                    <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/85 via-black/45 to-transparent p-4 text-white flex justify-between items-center">
+                      <span className="text-sm font-bold truncate">{link.title}</span>
+                      <ArrowUpRight size={16} className="opacity-75 group-hover:opacity-100 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-all shrink-0" />
+                    </div>
+                  )}
+                </div>
+              );
+            }
+
             return (
               <button
                 key={link.id}

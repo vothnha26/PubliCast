@@ -1,5 +1,6 @@
 import * as React from "react";
-import { Youtube, Facebook, Instagram, MessageSquare, EyeOff, CheckCircle } from "lucide-react";
+import { MessageSquare, EyeOff, CheckCircle } from "lucide-react";
+import { PlatformIcon } from "../shared/PlatformIcon";
 
 const PLATFORM_COLORS = {
   YouTube: "#FF0000", Facebook: "#1877F2", TikTok: "#010101",
@@ -50,14 +51,8 @@ export const ConversationItem = ({ conv, activeConv, onSelect, onUpdateStatus })
               <SafeAvatar src={conv.avatar} name={conv.user} className="w-full h-full object-cover" />
             </div>
           )}
-          <div className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-white shadow-sm border border-gray-100 flex items-center justify-center z-20">
-            {conv.platform?.toLowerCase() === "facebook" ? (
-              <Facebook className="text-[#1877F2] fill-[#1877F2]" size={10} />
-            ) : conv.platform?.toLowerCase() === "instagram" ? (
-              <Instagram className="text-[#E1306C]" size={10} />
-            ) : (
-              <Youtube className="text-[#FF0000] fill-[#FF0000]" size={10} />
-            )}
+          <div className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-white shadow-sm border border-gray-100 flex items-center justify-center z-20 overflow-hidden">
+            <PlatformIcon platform={conv.platform} size={14} />
           </div>
         </div>
 

@@ -1,6 +1,17 @@
 const prisma = require('../../config/prisma');
 const logger = require('../../utils/logger');
 const trendingHashtagService = require('../../services/workspace/hashtag/trending/TrendingHashtagService');
+const redisClient = require('../../config/redis');
+
+// Cache 24 giờ → ~90 API calls/tháng → vừa đủ Free tier RapidAPI
+const TRENDING_CACHE_TTL_SECONDS = 24 * 60 * 60;
+
+// INSTAGRAM và MOCK dùng chung 1 cache key vì cùng nguồn TokAPI
+const getPlatformCacheKey = (platform) => {
+  const normalized = platform.toUpperCase();
+  const source = (normalized === 'INSTAGRAM' || normalized === 'MOCK') ? 'TIKTOK' : normalized;
+  return `hashtag:trending:${source}`;
+};
 
 /**
  * Get all hashtag sets and tracked hashtags for a brand
@@ -192,8 +203,87 @@ exports.untrackHashtag = async (req, res, next) => {
 exports.getTrendingHashtags = async (req, res, next) => {
   try {
     const { platform = 'MOCK', limit = 20 } = req.query;
-    const trending = await trendingHashtagService.getTrendingHashtags(platform, parseInt(limit, 10));
-    return res.status(200).json({ trending });
+    const parsedLimit = parseInt(limit, 10);
+    const cacheKey = getPlatformCacheKey(platform);
+
+    // 1. Thử lấy từ Redis cache trước
+    try {
+      const cached = await redisClient.get(cacheKey);
+      if (cached) {
+        logger.info(`[TrendingCache] HIT → ${cacheKey}`);
+        const allCached = JSON.parse(cached);
+        return res.status(200).json({ trending: allCached.slice(0, parsedLimit), fromCache: true });
+      }
+    } catch (cacheErr) {
+      logger.warn(`[TrendingCache] Redis read failed, bypassing cache: ${cacheErr.message}`);
+    }
+
+    // 2. Cache miss → Thử lấy từ DB snapshot trong ngày hôm nay
+    const today = new Date();
+    today.setHours(0, 0, 0, 0); // chỉ so khớp theo ngày
+    const normalizedPlatform = (platform.toUpperCase() === 'INSTAGRAM' || platform.toUpperCase() === 'MOCK') ? 'TIKTOK' : platform.toUpperCase();
+
+    let trending = [];
+    let fromDb = false;
+
+    try {
+      // Sử dụng raw query để phòng trường hợp Prisma client chưa generate xong DLL do bị lock file
+      const records = await prisma.$queryRawUnsafe(
+        'SELECT dataJson FROM hashtag_trending_snapshots WHERE platform = ? AND DATE(snapshotDate) = DATE(?) LIMIT 1',
+        normalizedPlatform,
+        today
+      );
+
+      if (records && records.length > 0) {
+        logger.info(`[TrendingDB] HIT → platform: ${normalizedPlatform}, date: ${today.toDateString()}`);
+        trending = JSON.parse(records[0].dataJson);
+        fromDb = true;
+      }
+    } catch (dbErr) {
+      logger.warn(`[TrendingDB] DB read failed: ${dbErr.message}`);
+    }
+
+    // 3. DB miss → Gọi API thật từ RapidAPI
+    if (trending.length === 0) {
+      logger.info(`[TrendingAPI] MISS → fetching from RapidAPI for platform: ${platform}`);
+      trending = await trendingHashtagService.getTrendingHashtags(platform, 30); // luôn fetch 30 để cache buffer
+
+      // Lưu snapshot vào DB
+      if (trending && trending.length > 0) {
+        try {
+          const uuid = require('crypto').randomUUID();
+          await prisma.$executeRawUnsafe(
+            'INSERT INTO hashtag_trending_snapshots (id, platform, snapshotDate, dataJson, fetchedAt) VALUES (?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE dataJson = ?, fetchedAt = ?',
+            uuid,
+            normalizedPlatform,
+            today,
+            JSON.stringify(trending),
+            new Date(),
+            JSON.stringify(trending),
+            new Date()
+          );
+          logger.info(`[TrendingDB] Saved snapshot to DB for platform: ${normalizedPlatform}`);
+        } catch (dbSaveErr) {
+          logger.warn(`[TrendingDB] DB write failed: ${dbSaveErr.message}`);
+        }
+      }
+    }
+
+    // 4. Lưu ngược lại vào Redis cache (TTL: 24h)
+    if (trending && trending.length > 0) {
+      try {
+        await redisClient.setEx(cacheKey, TRENDING_CACHE_TTL_SECONDS, JSON.stringify(trending));
+        logger.info(`[TrendingCache] Cached to Redis → ${cacheKey}`);
+      } catch (cacheErr) {
+        logger.warn(`[TrendingCache] Redis write failed: ${cacheErr.message}`);
+      }
+    }
+
+    return res.status(200).json({ 
+      trending: trending.slice(0, parsedLimit), 
+      fromCache: false, 
+      fromDb 
+    });
   } catch (error) {
     logger.error('Error in getTrendingHashtags:', error);
     next(error);

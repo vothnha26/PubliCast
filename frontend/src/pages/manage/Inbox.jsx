@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { 
-  Search, RefreshCw, Youtube, Facebook, Instagram, Filter, MoreHorizontal, 
+  Search, RefreshCw, Filter, MoreHorizontal, 
   Loader2, MessageSquare, AlertCircle, EyeOff, CheckCircle, ExternalLink, Check,
   Settings, Sparkles, Trash2, Plus
 } from "lucide-react";
@@ -15,6 +15,7 @@ import socketClient from "../../services/socket";
 import { ConversationItem, SafeAvatar } from "../../components/inbox/ConversationItem";
 import { VideoContextCard } from "../../components/inbox/VideoContextCard";
 import { ReplyComposer } from "../../components/inbox/ReplyComposer";
+import { PlatformIcon } from "../../components/shared/PlatformIcon";
 
 export function InboxPage() {
   const { activeBrand } = useBrand();
@@ -292,7 +293,7 @@ export function InboxPage() {
       const fetchSettings = async () => {
         setLoadingSettings(true);
         try {
-          const res = await apiService.get(`/inbox/auto-reply/settings/${selectedSocialAccountId}`);
+          const res = await apiService.get(`/inbox/auto-reply/settings/${selectedSocialAccountId}?brandId=${activeBrand.id}`);
           if (res.data && res.data.data) {
             const { isActive, mode, keywordsConfig, aiPrompt } = res.data.data;
             setAutoReplyActive(isActive);
@@ -318,6 +319,7 @@ export function InboxPage() {
     setSavingSettings(true);
     try {
       await apiService.post(`/inbox/auto-reply/settings/${selectedSocialAccountId}`, {
+        brandId: activeBrand.id,
         isActive: autoReplyActive,
         mode: autoReplyMode,
         keywordsConfig: keywordsList,
@@ -362,7 +364,7 @@ export function InboxPage() {
                     : "opacity-40 hover:opacity-80"
                 }`}
               >
-                <Youtube className="text-[#FF0000] fill-[#FF0000]" size={20} />
+                <PlatformIcon platform="YouTube" size={20} />
               </button>
               <button
                 onClick={() => updateFilters({ platform: "Facebook" })}
@@ -372,7 +374,7 @@ export function InboxPage() {
                     : "opacity-40 hover:opacity-80"
                 }`}
               >
-                <Facebook className="text-[#1877F2] fill-[#1877F2]" size={20} />
+                <PlatformIcon platform="Facebook" size={20} />
               </button>
               <button
                 onClick={() => updateFilters({ platform: "Instagram", guildId: null, socialAccountId: null })}
@@ -382,7 +384,7 @@ export function InboxPage() {
                     : "opacity-40 hover:opacity-80"
                 }`}
               >
-                <Instagram className="text-[#E1306C]" size={20} />
+                <PlatformIcon platform="Instagram" size={20} />
               </button>
               <button
                 onClick={() => updateFilters({ platform: "Discord", guildId: null, socialAccountId: null })}
@@ -392,7 +394,7 @@ export function InboxPage() {
                     : "opacity-40 hover:opacity-80"
                 }`}
               >
-                <MessageSquare className="text-[#5865F2] fill-[#5865F2]" size={20} />
+                <PlatformIcon platform="Discord" size={20} />
               </button>
             </div>
            <div className="flex items-center gap-2">
@@ -471,11 +473,11 @@ export function InboxPage() {
                       className="w-full px-4 py-2.5 text-xs font-bold text-[#0A0A0A] hover:bg-[#F8F8F7] flex items-center justify-between cursor-pointer border-none bg-transparent"
                     >
                       <span>Comments</span>
-                      <div className="flex items-center gap-1.5">
-                        <Facebook className="text-[#1877F2] fill-[#1877F2]" size={14} />
-                        <Youtube className="text-[#FF0000] fill-[#FF0000]" size={14} />
-                        <Instagram className="text-[#E1306C]" size={14} />
-                        <MessageSquare className="text-[#5865F2] fill-[#5865F2]" size={14} />
+                      <div className="flex items-center gap-1">
+                        <PlatformIcon platform="Facebook" size={14} />
+                        <PlatformIcon platform="YouTube" size={14} />
+                        <PlatformIcon platform="Instagram" size={14} />
+                        <PlatformIcon platform="Discord" size={14} />
                         {filters.type === "COMMENT" && <Check size={12} className="text-green-500 ml-1" />}
                       </div>
                     </button>
@@ -594,16 +596,8 @@ export function InboxPage() {
                            <SafeAvatar src={activeConv.avatar} name={activeConv.user} className="w-full h-full object-cover" />
                         </div>
                       )}
-                      <div className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full bg-white flex items-center justify-center shadow-sm z-20">
-                          {activeConv.platform?.toLowerCase() === "facebook" ? (
-                            <Facebook className="text-[#1877F2] fill-[#1877F2]" size={8} />
-                          ) : activeConv.platform?.toLowerCase() === "instagram" ? (
-                            <Instagram className="text-[#E1306C]" size={8} />
-                          ) : activeConv.platform?.toLowerCase() === "discord" ? (
-                            <MessageSquare className="text-[#5865F2] fill-[#5865F2]" size={8} />
-                          ) : (
-                            <Youtube className="text-[#FF0000] fill-[#FF0000]" size={8} />
-                          )}
+                      <div className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full bg-white flex items-center justify-center shadow-sm z-20 overflow-hidden">
+                          <PlatformIcon platform={activeConv.platform} size={12} />
                        </div>
                     </div>
                     <div>
@@ -712,17 +706,10 @@ export function InboxPage() {
             {/* Modal Header */}
             <div className="p-6 border-b border-gray-50 flex items-center justify-between bg-gradient-to-r from-gray-50 to-white">
               <div className="flex items-center gap-3">
-                <div className={`w-10 h-10 rounded-2xl flex items-center justify-center border ${
-                  selectedAutoReplyPlatform === "FACEBOOK" 
-                    ? "bg-blue-50 text-blue-600 border-blue-100" 
-                    : "bg-pink-50 text-pink-600 border-pink-100"
-                }`}>
-                  {selectedAutoReplyPlatform === "FACEBOOK" ? (
-                    <Facebook className="fill-blue-600" size={20} />
-                  ) : (
-                    <Instagram size={20} />
-                  )}
-                </div>
+                <PlatformIcon 
+                  platform={selectedAutoReplyPlatform === "FACEBOOK" ? "Facebook" : "Instagram"} 
+                  size={40} 
+                />
                 <div>
                   <h3 className="text-sm font-bold text-gray-900">Meta Comment Auto-Reply</h3>
                   <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Tự động trả lời bình luận Facebook & Instagram</p>

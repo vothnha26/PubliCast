@@ -28,7 +28,9 @@ import {
   Youtube,
   Facebook,
   Linkedin,
-  Chrome
+  Chrome,
+  Upload,
+  FolderOpen
 } from "lucide-react";
 import { toast } from "sonner";
 import { useBrand } from "../../context/BrandContext";
@@ -88,6 +90,13 @@ export function SmartLinksPage() {
   const [newTitle, setNewTitle] = useState("");
   const [newUrl, newSetUrl] = useState("");
   const [isAddOpen, setIsAddOpen] = useState(false);
+
+  // New Media Builder States
+  const [isAddMediaOpen, setIsAddMediaOpen] = useState(false);
+  const [mediaTitle, setMediaTitle] = useState("");
+  const [mediaUrl, setMediaUrl] = useState("");
+  const [mediaImageUrl, setMediaImageUrl] = useState("");
+  const [uploadingMedia, setUploadingMedia] = useState(false);
 
   // Fetch SmartLink
   const fetchSmartLink = async () => {
@@ -351,6 +360,55 @@ export function SmartLinksPage() {
     setIsAddOpen(false);
     setNewTitle("");
     newSetUrl("");
+  };
+
+  // Add Media Link (Image block)
+  const handleAddMediaLink = (e) => {
+    if (e) e.preventDefault();
+    if (!mediaImageUrl.trim()) {
+      toast.error("Vui lòng tải ảnh lên hoặc dán liên kết ảnh");
+      return;
+    }
+
+    const newMediaItem = {
+      id: `l-${Date.now()}`,
+      title: mediaTitle.trim() || "Hình ảnh",
+      url: mediaUrl.trim() ? (mediaUrl.startsWith("http") ? mediaUrl : `https://${mediaUrl}`) : "#",
+      emoji: "🖼️",
+      isActive: true,
+      clicks: 0,
+      position: links.length,
+      bgColor: "#000000",
+      textColor: "#FFFFFF",
+      borderColor: "#000000",
+      iconUrl: mediaImageUrl,
+      linkStyle: ""
+    };
+
+    setLinks(prev => [...prev, newMediaItem]);
+    toast.success("Đã thêm khối ảnh mới vào Bio-Link!");
+    setIsAddMediaOpen(false);
+    setMediaTitle("");
+    setMediaUrl("");
+    setMediaImageUrl("");
+  };
+
+  const handleMediaImageUpload = async (event) => {
+    const file = event.target.files?.[0];
+    if (!file || !activeBrand) return;
+
+    setUploadingMedia(true);
+    try {
+      const media = await uploadMediaFile(file, activeBrand.id);
+      setMediaImageUrl(media.url);
+      toast.success("Tải ảnh lên thành công!");
+    } catch (err) {
+      console.error("Error uploading media image:", err);
+      toast.error(err?.response?.data?.message || "Không thể tải ảnh lên");
+    } finally {
+      setUploadingMedia(false);
+      event.target.value = "";
+    }
   };
 
   // Clone Link
@@ -651,6 +709,21 @@ export function SmartLinksPage() {
 
                         {/* Editor inputs fields */}
                         <div className="flex-1 space-y-3">
+                          {link.emoji === "🖼️" && link.iconUrl && (
+                            <div className="relative w-full h-32 rounded-xl overflow-hidden border border-slate-200 bg-slate-50 mb-2">
+                              <img src={link.iconUrl} alt="Preview" className="w-full h-full object-contain" />
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  updateLinkField(link.id, "iconUrl", "");
+                                  updateLinkField(link.id, "emoji", "🔗");
+                                }}
+                                className="absolute top-2 right-2 bg-black/60 hover:bg-black/80 text-white rounded-full p-1.5 transition-all"
+                              >
+                                <X size={12} />
+                              </button>
+                            </div>
+                          )}
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div className="space-y-1">
                               <label className="text-[10px] font-bold text-slate-400 uppercase">Text</label>
@@ -864,7 +937,7 @@ export function SmartLinksPage() {
                 <div className="space-y-4 py-4 text-center">
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <button 
-                      onClick={() => toast.info("Tính năng Tải ảnh lên sẽ khả dụng sau khi kết nối tài khoản Drive.")}
+                      onClick={() => setIsAddMediaOpen(true)}
                       className="flex flex-col items-center justify-center p-6 border border-slate-200 bg-slate-50 hover:bg-slate-100 rounded-2xl transition-all gap-2 group cursor-pointer"
                     >
                       <span className="p-3 bg-white text-blue-500 rounded-full shadow-sm group-hover:scale-105 transition-transform"><Image size={20} /></span>
@@ -1000,24 +1073,49 @@ export function SmartLinksPage() {
               <div className="w-full flex-1 flex flex-col gap-3">
                 {links
                   .filter(l => l.isActive)
-                  .map((link) => (
-                    <a
-                      key={link.id}
-                      href={link.url}
-                      target="_blank"
-                      rel="noreferrer"
-                      style={{
-                        backgroundColor: getLinkRenderStyle(link).bgColor,
-                        color: getLinkRenderStyle(link).textColor,
-                        borderColor: getLinkRenderStyle(link).borderColor
-                      }}
-                      className="w-full rounded-2xl py-3 px-4 text-xs font-bold text-center border transition-all hover:scale-[1.02] transform active:scale-98 duration-200 flex justify-between items-center group shadow-sm"
-                    >
-                      <span className="w-5 h-5 flex items-center justify-center shrink-0 text-base">{link.emoji || "🔗"}</span>
-                      <span className="mx-2 truncate text-center flex-1">{link.title}</span>
-                      <ArrowUpRight size={14} className="opacity-60 group-hover:opacity-100 transition-opacity shrink-0" />
-                    </a>
-                  ))}
+                  .map((link) => {
+                    if (link.emoji === "🖼️" && link.iconUrl) {
+                      return (
+                        <a
+                          key={link.id}
+                          href={link.url}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="w-full rounded-2xl overflow-hidden border border-white/10 shadow-lg cursor-pointer transform hover:scale-[1.01] active:scale-[0.99] transition-all duration-200 relative group block bg-black/20"
+                        >
+                          <img 
+                            src={link.iconUrl} 
+                            alt={link.title} 
+                            className="w-full h-auto object-cover max-h-36 block" 
+                          />
+                          {link.title && (
+                            <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/85 via-black/45 to-transparent p-3 text-white flex justify-between items-center">
+                              <span className="text-[11px] font-bold truncate">{link.title}</span>
+                              <ArrowUpRight size={13} className="opacity-75 group-hover:opacity-100 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-all shrink-0" />
+                            </div>
+                          )}
+                        </a>
+                      );
+                    }
+                    return (
+                      <a
+                        key={link.id}
+                        href={link.url}
+                        target="_blank"
+                        rel="noreferrer"
+                        style={{
+                          backgroundColor: getLinkRenderStyle(link).bgColor,
+                          color: getLinkRenderStyle(link).textColor,
+                          borderColor: getLinkRenderStyle(link).borderColor
+                        }}
+                        className="w-full rounded-2xl py-3 px-4 text-xs font-bold text-center border transition-all hover:scale-[1.02] transform active:scale-98 duration-200 flex justify-between items-center group shadow-sm"
+                      >
+                        <span className="w-5 h-5 flex items-center justify-center shrink-0 text-base">{link.emoji || "🔗"}</span>
+                        <span className="mx-2 truncate text-center flex-1">{link.title}</span>
+                        <ArrowUpRight size={14} className="opacity-60 group-hover:opacity-100 transition-opacity shrink-0" />
+                      </a>
+                    );
+                  })}
               </div>
 
               {/* Social Icons row bottom (Matching screenshot 2) */}
@@ -1102,6 +1200,136 @@ export function SmartLinksPage() {
                   className="px-4 py-2.5 rounded-xl text-sm font-semibold bg-[#4F5B66] hover:bg-[#3d4750] text-white transition-all shadow-sm"
                 >
                   Thêm ngay
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal: Add Media Link */}
+      {isAddMediaOpen && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 animate-in fade-in duration-200">
+          <div className="bg-white rounded-3xl w-full max-w-lg p-6 relative shadow-2xl border border-slate-200 mx-4 max-h-[90vh] overflow-y-auto">
+            
+            <button 
+              onClick={() => setIsAddMediaOpen(false)}
+              className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 transition-colors cursor-pointer"
+            >
+              <X size={20} />
+            </button>
+
+            <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2 mb-4">
+              <Image className="text-blue-500 w-5 h-5" />
+              Thêm khối Hình ảnh mới (Image Block)
+            </h3>
+
+            <form onSubmit={handleAddMediaLink} className="space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-slate-500 uppercase mb-1.5">Tiêu đề (Tùy chọn)</label>
+                <input
+                  type="text"
+                  placeholder="Ví dụ: Chương trình khuyến mãi hè"
+                  value={mediaTitle}
+                  onChange={(e) => setMediaTitle(e.target.value)}
+                  className="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm text-slate-800 focus:border-slate-400 outline-none transition-colors"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-500 uppercase mb-1.5">Đường dẫn khi click (URL)</label>
+                <input
+                  type="text"
+                  placeholder="Ví dụ: shop.com/discount"
+                  value={mediaUrl}
+                  onChange={(e) => setMediaUrl(e.target.value)}
+                  className="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm text-slate-800 focus:border-slate-400 outline-none transition-colors"
+                />
+              </div>
+
+              <div className="border-t border-slate-100 pt-4 space-y-3">
+                <label className="block text-xs font-bold text-slate-550 uppercase">Chọn nguồn ảnh</label>
+                
+                <div className="grid grid-cols-2 gap-3">
+                  {/* Local Upload */}
+                  <label className="flex flex-col items-center justify-center p-4 border border-dashed border-slate-300 hover:bg-slate-50 rounded-2xl cursor-pointer transition-all gap-1.5 text-center">
+                    <Upload size={16} className="text-blue-500" />
+                    <span className="text-[11px] font-bold text-slate-700">Tải lên từ thiết bị</span>
+                    <input 
+                      type="file" 
+                      accept="image/*" 
+                      onChange={handleMediaImageUpload} 
+                      className="hidden" 
+                    />
+                  </label>
+
+                  {/* Google Drive Mockup option */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      toast.info("Đã giả lập kết nối Drive! Bạn có thể dán link ảnh trực tiếp bên dưới hoặc tải lên.");
+                    }}
+                    className="flex flex-col items-center justify-center p-4 border border-dashed border-slate-300 hover:bg-slate-50 rounded-2xl cursor-pointer transition-all gap-1.5 text-center"
+                  >
+                    <FolderOpen size={16} className="text-amber-500" />
+                    <span className="text-[11px] font-bold text-slate-700">Google Drive / OneDrive</span>
+                  </button>
+                </div>
+
+                <div className="relative flex items-center py-2 select-none">
+                  <div className="flex-grow border-t border-slate-150"></div>
+                  <span className="flex-shrink mx-3 text-[10px] text-slate-400 font-bold uppercase tracking-wider">Hoặc nhúng link ảnh</span>
+                  <div className="flex-grow border-t border-slate-150"></div>
+                </div>
+
+                <div>
+                  <input
+                    type="text"
+                    placeholder="Dán liên kết ảnh trực tiếp (https://example.com/image.png)"
+                    value={mediaImageUrl}
+                    onChange={(e) => setMediaImageUrl(e.target.value)}
+                    className="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm text-slate-800 focus:border-slate-400 outline-none transition-colors font-mono text-xs"
+                  />
+                </div>
+
+                {uploadingMedia && (
+                  <div className="flex items-center gap-2 text-xs text-slate-500 justify-center">
+                    <Loader2 size={14} className="animate-spin text-blue-500" /> Đang tải ảnh lên...
+                  </div>
+                )}
+
+                {mediaImageUrl && (
+                  <div className="relative w-full h-32 rounded-2xl overflow-hidden border border-slate-200 bg-slate-50">
+                    <img 
+                      src={mediaImageUrl} 
+                      alt="Preview" 
+                      className="w-full h-full object-contain" 
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setMediaImageUrl("")}
+                      className="absolute top-2 right-2 bg-black/60 hover:bg-black/80 text-white rounded-full p-1.5 transition-all"
+                    >
+                      <X size={12} />
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              <div className="flex gap-3 justify-end pt-2 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setIsAddMediaOpen(false)}
+                  className="px-4 py-2.5 rounded-xl text-sm font-semibold border border-slate-200 hover:bg-slate-50 transition-colors"
+                >
+                  Hủy
+                </button>
+                <button
+                  type="submit"
+                  disabled={uploadingMedia || !mediaImageUrl}
+                  className="px-4 py-2.5 rounded-xl text-sm font-semibold bg-blue-600 hover:bg-blue-700 text-white transition-all shadow-sm disabled:opacity-50"
+                >
+                  Thêm khối ảnh
                 </button>
               </div>
             </form>

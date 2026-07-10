@@ -12,7 +12,7 @@ class FacebookWebhookController {
 
       if (mode === 'subscribe' && token === verifyToken) {
         logger.info('[Facebook Webhook] Verification successful.');
-        return res.status(200).send(challenge);
+        return res.status(200).send(String(challenge));
       } else {
         logger.warn('[Facebook Webhook] Verification failed. Token mismatch.');
         return res.sendStatus(403);

@@ -1317,6 +1317,20 @@ model HashtagSet {
   @@map("hashtag_sets")
 }
 
+// Snapshot dữ liệu trending hashtag từ RapidAPI, lưu theo ngày và platform
+// Dùng cho chiến lược DB + Cache: Redis fallback về DB khi restart
+model HashtagTrendingSnapshot {
+  id          String   @id @default(uuid())
+  platform    String   // "TIKTOK" | "INSTAGRAM" (dùng chung key)
+  snapshotDate DateTime // Ngày snapshot (chỉ giữ date, không giờ)
+  dataJson    String   @db.LongText // JSON array các trending hashtag
+  fetchedAt   DateTime @default(now())
+
+  @@unique([platform, snapshotDate])
+  @@index([platform, snapshotDate])
+  @@map("hashtag_trending_snapshots")
+}
+
 model AIAssistant {
   id                  String   @id @default(uuid())
   brandId             String   @unique
