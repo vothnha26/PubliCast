@@ -303,10 +303,11 @@ exports.getHashtagAnalysis = async (req, res, next) => {
       return res.status(404).json({ message: 'Tracked hashtag not found' });
     }
 
-    // Kiểm tra xem đã có dữ liệu phân tích trong DB chưa.
-    // Nếu chưa có (hoặc trống), tiến hành lấy dữ liệu mới và cập nhật vào DB
+    // Kiểm tra xem đã có dữ liệu phân tích trong DB chưa hoặc yêu cầu làm mới (refresh)
     let analysisData;
-    if (!tracker.trendScoreJson || !tracker.topPostsJson) {
+    const forceRefresh = req.query.refresh === 'true';
+
+    if (!tracker.trendScoreJson || !tracker.topPostsJson || forceRefresh) {
       const strategy = hashtagAnalysisFactory.getStrategy(tracker.platform);
       
       try {

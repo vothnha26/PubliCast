@@ -22,6 +22,22 @@ export function HashtagAnalysisModal({ trackerId, onClose }) {
   
   // States for Top Pictures sorting
   const [pictureOrderBy, setPictureOrderBy] = useState('impressions'); // impressions, likes, reposts, followers
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  // Force refresh analysis data calling Scraper API
+  const handleRefresh = async () => {
+    try {
+      setIsRefreshing(true);
+      const res = await apiService.get(`/hashtags/analysis/${trackerId}?refresh=true`);
+      setData(res.data);
+      toast.success('Đã đồng bộ thành công dữ liệu phân tích thật!');
+    } catch (err) {
+      console.error(err);
+      toast.error('Đồng bộ thất bại. Đang giữ lại bản dữ liệu cache.');
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
 
   // Fetch analysis data from API
   useEffect(() => {
@@ -95,12 +111,24 @@ export function HashtagAnalysisModal({ trackerId, onClose }) {
             </div>
           </div>
           
-          <button 
-            onClick={onClose}
-            className="p-2 rounded-xl bg-white border border-gray-200 text-gray-400 hover:text-gray-700 hover:shadow-md transition-all cursor-pointer"
-          >
-            <X size={18} />
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleRefresh}
+              disabled={isRefreshing}
+              className={`p-2 rounded-xl bg-white border border-gray-200 text-gray-400 hover:text-blue-600 hover:border-blue-200 hover:shadow-md transition-all cursor-pointer flex items-center gap-1.5 text-xs font-bold ${isRefreshing ? 'opacity-65 cursor-not-allowed' : ''}`}
+              title="Đồng bộ lại dữ liệu thật từ API Scraper"
+            >
+              <RefreshCw size={14} className={isRefreshing ? 'animate-spin text-blue-600' : ''} />
+              {isRefreshing ? 'Đang đồng bộ...' : 'Đồng bộ API'}
+            </button>
+            
+            <button 
+              onClick={onClose}
+              className="p-2 rounded-xl bg-white border border-gray-200 text-gray-400 hover:text-gray-700 hover:shadow-md transition-all cursor-pointer"
+            >
+              <X size={18} />
+            </button>
+          </div>
         </div>
 
         {/* Tab switcher */}
