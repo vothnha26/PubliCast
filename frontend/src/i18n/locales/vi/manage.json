@@ -2,6 +2,20 @@
   "inbox": {
     "title": "Hộp thư đến",
     "placeholder": "Tìm kiếm hội thoại...",
+    "searchConversation": "Tìm kiếm hội thoại...",
+    "autoReplySettings": "Cấu hình tự động phản hồi",
+    "selectConversationPrompt": "Vui lòng chọn một cuộc hội thoại ở bên trái để bắt đầu",
+    "loadingSettings": "Đang tải cấu hình...",
+    "tabs": {
+      "unresolved": "Chưa giải quyết",
+      "unread": "Chưa đọc",
+      "all": "Tất cả"
+    },
+    "pagination": {
+      "previous": "Trước",
+      "next": "Sau",
+      "pageOf": "Trang {{current}} / {{total}}"
+    },
     "noConversations": "Không tìm thấy cuộc hội thoại {{tab}} nào.",
     "selectConversation": "Vui lòng chọn một cuộc hội thoại ở bên trái để bắt đầu",
     "privateMessage": "TIN NHẮN RIÊNG",

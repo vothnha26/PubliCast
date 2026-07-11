@@ -1,12 +1,15 @@
 import React from "react";
+import { useTranslation } from "react-i18next";
 import { usePostCreatorFormContext } from "../../../context/PostCreatorFormContext";
 import { PreviewStrategies } from "./PreviewStrategies";
 
 export function PreviewBody() {
+  const { t } = useTranslation(["planner", "common"]);
   const {
     activePlatform,
     caption,
     videoFileUrl,
+    videoFile,
     youtubeType,
     youtubeTitle,
     youtubePlaylistId,
@@ -25,12 +28,13 @@ export function PreviewBody() {
   const PreviewComponent = PreviewStrategies[activePlatform];
 
   return (
-    <div className="flex-1 overflow-y-auto px-8 py-10 flex flex-col items-center justify-start space-y-8 bg-gray-50/30 scrollbar-thin">
+    <div className="flex-1 overflow-y-auto px-6 py-8 flex flex-col items-center justify-start space-y-8 bg-transparent scrollbar-thin">
       <div className="w-full max-w-sm">
         {PreviewComponent && (
           <PreviewComponent 
             caption={caption} 
-            videoFileUrl={videoFileUrl} 
+            videoFileUrl={videoFileUrl}
+            videoFile={videoFile}
             youtubeType={youtubeType}
             youtubeTitle={youtubeTitle}
             youtubePlaylistId={youtubePlaylistId}
@@ -49,12 +53,12 @@ export function PreviewBody() {
       </div>
       <p className="text-[10px] text-gray-400 text-center max-w-[280px] leading-normal font-medium uppercase tracking-tight font-sans">
         {activePlatform === 'youtube' 
-          ? 'YouTube descriptions and setup parameters are fully simulated and will be included in your post' 
+          ? t("planner:postCreator.preview.body.youtubeSimulated") 
           : activePlatform === 'tiktok'
-          ? 'TikTok video presets and details are fully simulated and will be included in your post'
+          ? t("planner:postCreator.preview.body.tiktokSimulated")
           : activePlatform === 'instagram'
-          ? 'Instagram photos, Reels, and Stories are fully simulated and will be published on your account'
-          : 'Facebook status updates, photos, and videos are fully supported and will be published on your feed'}
+          ? t("planner:postCreator.preview.body.instagramSimulated")
+          : t("planner:postCreator.preview.body.facebookSimulated")}
       </p>
     </div>
   );

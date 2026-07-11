@@ -2,6 +2,20 @@
   "inbox": {
     "title": "Inbox",
     "placeholder": "Search conversation...",
+    "searchConversation": "Search conversation...",
+    "autoReplySettings": "Auto-Reply Settings",
+    "selectConversationPrompt": "Please select a conversation on the left to begin",
+    "loadingSettings": "Loading settings...",
+    "tabs": {
+      "unresolved": "Unresolved",
+      "unread": "Unread",
+      "all": "All"
+    },
+    "pagination": {
+      "previous": "Previous",
+      "next": "Next",
+      "pageOf": "Page {{current}} of {{total}}"
+    },
     "noConversations": "No {{tab}} conversations found.",
     "selectConversation": "Please select a conversation on the left to begin",
     "privateMessage": "PRIVATE MESSAGE",
