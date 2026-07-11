@@ -194,7 +194,10 @@ export function PostCreatorPage() {
     notes,
     setNotes,
     videoSettings,
-    setVideoSettings
+    setVideoSettings,
+    getBackupPayload,
+    backupFormState,
+    closePostCreatorTemporarily
   } = usePostCreatorForm();
 
   const [threadsOpen, setThreadsOpen] = useState(false);
@@ -446,9 +449,12 @@ export function PostCreatorPage() {
     hasCreatePermission,
     hasApprovePermission,
     closePostCreator,
+    closePostCreatorTemporarily,
     hasAccess,
     showVideoEditor,
-    setShowVideoEditor
+    setShowVideoEditor,
+    getBackupPayload,
+    backupFormState
   };
 
   return (
@@ -643,16 +649,7 @@ export function PostCreatorPage() {
             toast.success(t("common:success"));
           }}
         />
-        <VideoEditorModal
-          isOpen={showVideoEditor}
-          videoUrl={videoFileUrl}
-          onClose={() => setShowVideoEditor(false)}
-          initialSettings={videoSettings}
-          onSave={(settings) => {
-            setVideoSettings(settings);
-            setShowVideoEditor(false);
-          }}
-        />
+
         <AltTextModal 
           isOpen={showAltTextModal}
           onClose={() => setShowAltTextModal(false)}

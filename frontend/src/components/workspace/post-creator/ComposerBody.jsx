@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { useTranslation } from "react-i18next";
+import { useNavigate } from "react-router-dom";
 import { 
   Info, AlertCircle, Youtube, MoreHorizontal, Edit, Type, Trash2, 
   ImageIcon, Plus, Smile, Link2, Search, Languages, FileText, Send, 
@@ -24,6 +25,7 @@ import { PRESET_REGISTRY } from "../../../constants/presetRegistry";
 
 export function ComposerBody() {
   const { t } = useTranslation(["planner", "common"]);
+  const navigate = useNavigate();
   const [showAICopilot, setShowAICopilot] = useState(false);
   const {
     hasCreatePermission,
@@ -83,7 +85,10 @@ export function ComposerBody() {
     showVideoEditor,
     setShowVideoEditor,
     setShowUploadModal,
-    setUploadModalTab
+    setUploadModalTab,
+    getBackupPayload,
+    backupFormState,
+    closePostCreatorTemporarily
   } = usePostCreatorFormContext();
 
   const isImageFile = videoFile 
@@ -191,7 +196,12 @@ export function ComposerBody() {
               <div className="flex items-center gap-3">
                 <button 
                   type="button"
-                  onClick={() => setShowVideoEditor(true)}
+                  onClick={() => {
+                    const payload = getBackupPayload();
+                    backupFormState(payload);
+                    closePostCreatorTemporarily();
+                    navigate("/workspace/video-editor");
+                  }}
                   className="text-[10px] font-black text-purple-600 hover:text-purple-800 uppercase tracking-widest transition-all cursor-pointer font-sans"
                 >
                   {t("planner:postCreator.composer.editVideo")}
@@ -233,9 +243,13 @@ export function ComposerBody() {
                                   type="button"
                                   title={t("planner:postCreator.composer.editVideo")}
                                   onClick={() => {
-                                    // Set videoFileUrl về item này trước khi mở editor
-                                    setVideoFileUrl(item.previewUrl || item.path);
-                                    setShowVideoEditor(true);
+                                    const payload = getBackupPayload();
+                                    payload.videoFileUrl = item.previewUrl || item.path;
+                                    payload.uploadedVideoPath = item.path || "";
+                                    payload.videoFile = item.file || null;
+                                    backupFormState(payload);
+                                    closePostCreatorTemporarily();
+                                    navigate("/workspace/video-editor");
                                   }}
                                   className="w-7 h-7 rounded-full bg-white/90 hover:bg-white text-gray-800 flex items-center justify-center cursor-pointer shadow-md active:scale-90 transition-all"
                                 >

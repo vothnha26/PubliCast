@@ -479,6 +479,20 @@ const TOKEN_REFRESH = {
   STARTUP_DELAY_MS: 60000
 };
 
+const VIDEO_EDITOR = {
+  PROVIDERS: {
+    GEMINI: 'GEMINI',
+    MOCK: 'MOCK'
+  },
+  MOODS: {
+    UPBEAT: 'upbeat',
+    CHILL: 'chill',
+    CORPORATE: 'corporate',
+    EPIC: 'epic'
+  },
+  DEFAULT_TRIM_DURATION: 10
+};
+
 module.exports = {
   PLATFORMS,
   USER_ROLES,
@@ -525,6 +539,7 @@ module.exports = {
   REDIS_NAMESPACES,
   REDIS_TTL,
   TOKEN_REFRESH,
+  VIDEO_EDITOR,
   splitMediaUrls
 };
 
