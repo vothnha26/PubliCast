@@ -279,6 +279,9 @@ describe('Post Creator Detailed E2E Suite', function () {
       const currentUrl = await driver.getCurrentUrl();
       return currentUrl.includes('/dashboard') || currentUrl.includes('/start') || currentUrl.includes('/manage/connections');
     }, 15000);
+
+    // Đảm bảo ngôn ngữ mặc định luôn là tiếng Anh trong suốt quá trình chạy test này
+    await driver.executeScript("localStorage.setItem('publicast-language', 'en');");
   });
 
   after(async function () {
@@ -320,7 +323,7 @@ describe('Post Creator Detailed E2E Suite', function () {
     );
     expect(captionInput).to.exist;
 
-    await safeClick(By.xpath("//span[contains(text(), 'Close')]/.. | //button[contains(., 'Close')]"));
+    await safeClick(By.css('[data-testid="post-creator-close-btn"]'));
     await driver.sleep(1500);
 
     const modalElements = await driver.findElements(By.css('[data-testid="post-caption-input"]'));
@@ -340,7 +343,7 @@ describe('Post Creator Detailed E2E Suite', function () {
     // Bỏ chọn Facebook
     await ensurePlatformState('facebook', false);
 
-    await safeClick(By.xpath("//span[contains(text(), 'Close')]/.. | //button[contains(., 'Close')]"));
+    await safeClick(By.css('[data-testid="post-creator-close-btn"]'));
   });
 
   it('TC_POST_03 – Verify publish options menu updates submit button label text', async function () {
@@ -359,7 +362,7 @@ describe('Post Creator Detailed E2E Suite', function () {
     const btnText = await submitBtn.getText();
     expect(btnText.toUpperCase()).to.equal('SAVE');
 
-    await safeClick(By.xpath("//span[contains(text(), 'Close')]/.. | //button[contains(., 'Close')]"));
+    await safeClick(By.css('[data-testid="post-creator-close-btn"]'));
   });
 
   it('TC_POST_04 – Verify creating Facebook post draft saves caption to database and displays on List UI', async function () {
@@ -461,7 +464,7 @@ describe('Post Creator Detailed E2E Suite', function () {
     await captionInput.sendKeys(longCaption);
     await driver.sleep(500);
 
-    await safeClick(By.xpath("//span[contains(text(), 'Close')]/.. | //button[contains(., 'Close')]"));
+    await safeClick(By.css('[data-testid="post-creator-close-btn"]'));
   });
 
   it('TC_POST_07 – Verify platform validation blocks submission if YouTube has no video', async function () {
@@ -482,7 +485,7 @@ describe('Post Creator Detailed E2E Suite', function () {
     const modalElements = await driver.findElements(By.css('[data-testid="post-caption-input"]'));
     expect(modalElements.length).to.be.greaterThan(0);
 
-    await safeClick(By.xpath("//button[text()='Cancel'] | //span[contains(text(), 'Cancel')]/.. | //span[contains(text(), 'Close')]/.. | //button[contains(., 'Close')] | //button[contains(., 'Cancel')]"));
+    await safeClick(By.css('[data-testid="post-creator-cancel-btn"]'));
   });
 
   it('TC_POST_08 – Verify platform validation blocks submission if TikTok has no media', async function () {
@@ -503,7 +506,7 @@ describe('Post Creator Detailed E2E Suite', function () {
     const modalElements = await driver.findElements(By.css('[data-testid="post-caption-input"]'));
     expect(modalElements.length).to.be.greaterThan(0);
 
-    await safeClick(By.xpath("//button[text()='Cancel'] | //span[contains(text(), 'Cancel')]/.. | //span[contains(text(), 'Close')]/.. | //button[contains(., 'Close')] | //button[contains(., 'Cancel')]"));
+    await safeClick(By.css('[data-testid="post-creator-cancel-btn"]'));
   });
 
   it.skip('TC_POST_09 – Verify scheduling a post for tomorrow saves scheduledAt correctly in DB and displays on List UI', async function () {
@@ -603,7 +606,7 @@ describe('Post Creator Detailed E2E Suite', function () {
     );
     expect(previewImg).to.exist;
 
-    await safeClick(By.xpath("//span[contains(text(), 'Close')]/.. | //button[contains(., 'Close')]"));
+    await safeClick(By.css('[data-testid="post-creator-close-btn"]'));
   });
 
   it('TC_POST_11 – Verify uploading a video file from local machine renders preview and saves to DB for YouTube post', async function () {

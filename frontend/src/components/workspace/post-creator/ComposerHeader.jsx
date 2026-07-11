@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { 
   PlayCircle, Lock, Instagram, Youtube, MessageSquare, Plus, FileText, 
   ChevronDown, Video, LayoutGrid, Film, PlusCircle, Check 
@@ -11,6 +12,7 @@ import { PLATFORM_CONFIGS } from "../../../constants/platformRegistry";
 import { toast } from "sonner";
 
 export function ComposerHeader() {
+  const { t } = useTranslation(["planner", "common"]);
   const {
     selectedPlatforms,
     togglePlatform,
@@ -86,7 +88,7 @@ export function ComposerHeader() {
   const handlePlatformClick = (platformName, hasAccess, productId) => {
     const lockInfo = getPlatformLockInfo(platformName);
     if (lockInfo.isFullyLocked) {
-      toast.error(`Nền tảng ${platformName.toUpperCase()} hiện đang bị khóa: ${lockInfo.reason}`);
+      toast.error(t("planner:postCreator.composer.validation.platformLocked", { platform: platformName.toUpperCase(), reason: lockInfo.reason }));
       return;
     }
     if (hasAccess !== undefined && !hasAccess) {
@@ -113,25 +115,25 @@ export function ComposerHeader() {
           <div className="absolute top-full left-0 mt-1 w-64 bg-white rounded-2xl shadow-2xl border border-gray-100 py-1.5 z-50 animate-in fade-in slide-in-from-top-1">
             {activeConfig.supportedTypes.map((typeOption) => {
               let icon = <LayoutGrid size={16} className="text-gray-600" />;
-              let subtitle = "Standard publication";
+              let subtitle = t("planner:postCreator.composer.publishType.standard");
               
               if (typeOption.id === 'reel') {
                 icon = <Film size={16} className="text-gray-600" />;
-                subtitle = "Automatic posting";
+                subtitle = t("planner:postCreator.composer.publishType.reel");
               } else if (typeOption.id === 'story') {
                 icon = <PlusCircle size={16} className="text-gray-600" />;
-                subtitle = "Automatic posting";
+                subtitle = t("planner:postCreator.composer.publishType.story");
               } else if (typeOption.id === 'short') {
                 icon = <ShortsIcon size={14} className="text-[#FF0000]" />;
-                subtitle = "Short-form vertical video";
+                subtitle = t("planner:postCreator.composer.publishType.short");
               } else if (typeOption.id === 'video') {
                 icon = <Youtube size={14} className="text-[#FF0000] fill-[#FF0000]" />;
-                subtitle = "Standard video";
+                subtitle = t("planner:postCreator.composer.publishType.video");
               } else if (typeOption.id === 'post') {
                 if (activePlatform === 'instagram') {
-                  subtitle = "Standard post on your feed";
+                  subtitle = t("planner:postCreator.composer.publishType.instagramFeed");
                 } else {
-                  subtitle = "Standard publication";
+                  subtitle = t("planner:postCreator.composer.publishType.standard");
                 }
               }
 
@@ -443,7 +445,7 @@ export function ComposerHeader() {
         className="flex items-center gap-1.5 px-3 py-1.5 border border-gray-200 bg-white hover:bg-gray-50 text-gray-600 rounded-xl transition-all cursor-pointer font-sans shadow-sm relative"
       >
         <FileText size={14} />
-        <span className="text-[11px] font-bold uppercase tracking-wider font-sans">Notes</span>
+        <span className="text-[11px] font-bold uppercase tracking-wider font-sans">{t("planner:postCreator.header.notes")}</span>
         {notes && notes.length > 0 && (
           <span className="absolute -top-1 -right-1 bg-black text-white text-[8px] font-black w-4 h-4 rounded-full flex items-center justify-center border border-white animate-scale-in">
             {notes.length}

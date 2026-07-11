@@ -371,5 +371,144 @@
   "importOverlay": {
     "title": "Importing from Drive",
     "message": "Please wait while we stream and convert the video from Google Drive to our servers..."
+  },
+  "postCreator": {
+    "templatesPicker": {
+      "loading": "Loading templates...",
+      "noTemplates": "No templates found",
+      "noTemplatesDesc": "Create templates in the Library first to load them here.",
+      "noCaption": "No caption"
+    },
+    "header": {
+      "createPost": "Create new post",
+      "editPost": "Edit scheduled post",
+      "createTemplate": "Create post template",
+      "editTemplate": "Edit post template",
+      "loadTemplate": "Load template",
+      "close": "Close",
+      "notes": "Notes"
+    },
+    "composer": {
+      "viewMode": "View Mode: You do not have permission to edit or publish this post.",
+      "uploading": "Uploading...",
+      "editVideo": "Edit Video",
+      "remove": "Remove",
+      "editImage": "Edit image",
+      "imageMenu": {
+        "edit": "Edit image",
+        "adobe": "Edit with Adobe Express",
+        "altText": "Add alt text",
+        "remove": "Remove"
+      },
+      "toolbar": {
+        "firstComment": "First Comment",
+        "locationComingSoon": "Location feature will be available soon",
+        "addLocation": "Add Location",
+        "utmLink": "UTM Link",
+        "hashtags": "Insert Hashtags",
+        "templateDisabled": "Template mode disabled",
+        "templateEnabled": "Save as template mode enabled",
+        "saveAsTemplate": "Save as template (Library)",
+        "aiCopilot": "AI Copilot Assistant"
+      },
+      "characterLimitDesc": "Character limit for {{platform}}.",
+      "approval": {
+        "title": "Post approval required",
+        "noPermission": "You do not have direct publishing permissions. Please configure a reviewer.",
+        "selectedReview": "You have selected to submit this post for approval.",
+        "noReviewer": "No reviewers selected",
+        "selectedReviewers": "Selected: {{names}}",
+        "buttonSelect": "Select reviewers",
+        "noteLabel": "Note for reviewers",
+        "notePlaceholder": "Enter note for reviewers..."
+      },
+      "publishType": {
+        "standard": "Standard publication",
+        "reel": "Instagram Reel (Automatic posting)",
+        "story": "Instagram Story (Automatic posting)",
+        "short": "YouTube Short (Short-form vertical video)",
+        "video": "YouTube Video (Standard video)",
+        "instagramFeed": "Standard post on your feed"
+      },
+      "validation": {
+        "platformLocked": "Platform {{platform}} is currently locked: {{reason}}",
+        "errorCount": "{{count}} errors"
+      },
+      "placeholders": {
+        "caption": "What's on your mind?",
+        "title": "Enter title...",
+        "tags": "Enter tags and press Enter...",
+        "note": "Enter internal discussion notes..."
+      },
+      "sections": {
+        "accounts": "Connected Accounts",
+        "noAccounts": "-- No connected accounts --",
+        "notesTitle": "Discussion & Internal Notes",
+        "notesDesc": "Notes are only visible to the team internally",
+        "noNotes": "No notes available",
+        "addNote": "Add Note",
+        "deleteNote": "Delete Note",
+        "reviewers": "Reviewers",
+        "selectReviewers": "Select reviewers",
+        "searchUser": "Search user...",
+        "uncheckAll": "Uncheck all",
+        "checkAll": "Check all",
+        "confirmSelection": "Confirm Selection",
+        "policyLabel": "To publish this post...",
+        "policyNone": "No reviewer approval required.",
+        "policyAtLeastOne": "At least one reviewer must approve it.",
+        "policyAll": "All reviewers must approve it."
+      }
+    },
+    "preview": {
+      "header": {
+        "title": "Post Preview",
+        "reviewToggle": "Reviewer preview mode",
+        "desktop": "Desktop",
+        "mobile": "Mobile",
+        "switchPreview": "Switch to {{platform}} preview"
+      },
+      "body": {
+        "mockup": "Feed Mockup",
+        "empty": "Preview your post here as you type.",
+        "youtubeSimulated": "YouTube descriptions and setup parameters are fully simulated and will be included in your post",
+        "tiktokSimulated": "TikTok video presets and details are fully simulated and will be included in your post",
+        "instagramSimulated": "Instagram photos, Reels, and Stories are fully simulated and will be published on your account",
+        "facebookSimulated": "Facebook status updates, photos, and videos are fully supported and will be published on your feed",
+        "discord": {
+          "bot": "BOT",
+          "reply": "Reply"
+        },
+        "youtube": {
+          "subscribers": "subscribers",
+          "views": "views",
+          "more": "more",
+          "videoContext": {
+            "join": "Join",
+            "subscribe": "Subscribe",
+            "share": "Share",
+            "download": "Download",
+            "clip": "Clip"
+          }
+        }
+      }
+    },
+    "footer": {
+      "cancel": "Cancel",
+      "save": "Save",
+      "send": "Send to Review",
+      "submit": "Submit",
+      "publish": "Publish Now",
+      "schedule": "Schedule",
+      "update": "Update",
+      "saveTemplate": "Save Template",
+      "publishOptions": {
+        "draft": { "label": "SAVE AS DRAFT", "sub": "Save and publish at a later time" },
+        "review": { "label": "SEND TO REVIEW", "sub": "Select reviewers" },
+        "schedule": { "label": "SAVE AND SCHEDULE", "sub": "Save changes to this post" },
+        "now": { "label": "PUBLISH NOW", "sub": "Publish with current date and time" }
+      },
+      "publishedState": "Post published — only content can be edited"
+    }
   }
 }

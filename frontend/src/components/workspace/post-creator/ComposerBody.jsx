@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { 
   Info, AlertCircle, Youtube, MoreHorizontal, Edit, Type, Trash2, 
   ImageIcon, Plus, Smile, Link2, Search, Languages, FileText, Send, 
@@ -15,12 +16,14 @@ import { FacebookAlbumComposer } from "./FacebookAlbumComposer";
 import { toast } from "sonner";
 import { PRODUCT_IDS } from "../../../constants/products";
 import { AICopilotPopover } from "./AICopilotPopover";
+import { isVideoPath } from "../../../utils/url";
 
 // Presets Imports
 import { GlobalPresets } from "./presets/GlobalPresets";
 import { PRESET_REGISTRY } from "../../../constants/presetRegistry";
 
 export function ComposerBody() {
+  const { t } = useTranslation(["planner", "common"]);
   const [showAICopilot, setShowAICopilot] = useState(false);
   const {
     hasCreatePermission,
@@ -78,7 +81,9 @@ export function ComposerBody() {
     setIsDriveModalOpen,
     platformLimits,
     showVideoEditor,
-    setShowVideoEditor
+    setShowVideoEditor,
+    setShowUploadModal,
+    setUploadModalTab
   } = usePostCreatorFormContext();
 
   const isImageFile = videoFile 
@@ -156,7 +161,7 @@ export function ComposerBody() {
         {!hasCreatePermission && (
           <div className="bg-amber-50 border border-amber-200 text-amber-800 rounded-2xl p-4 text-xs font-bold flex items-center gap-2 animate-in fade-in">
             <Info size={16} className="text-amber-500" />
-            <span className="font-sans">Chế độ Xem: Bạn không có quyền chỉnh sửa hoặc xuất bản bài viết này.</span>
+            <span className="font-sans">{t("planner:postCreator.composer.viewMode")}</span>
           </div>
         )}
 
@@ -164,19 +169,7 @@ export function ComposerBody() {
         <div className="border border-gray-200 rounded-[24px] overflow-hidden focus-within:border-black transition-all shadow-sm bg-white relative">
           <input type="file" ref={fileInputRef} accept="video/*,image/*" onChange={handleVideoChange} className="hidden" data-testid="post-file-input" />
           
-          {/* Title Input */}
-          {(editingPost || activePlatform === 'youtube') && (
-            <div className="px-6 pt-5 pb-0 border-b border-gray-100">
-              <input
-                type="text"
-                data-testid="post-title-input"
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                placeholder="Post title (optional)"
-                className="w-full text-base font-bold text-gray-900 outline-none bg-transparent placeholder-gray-300 font-sans"
-              />
-            </div>
-          )}
+
 
           <textarea 
             ref={textareaRef} 
@@ -184,7 +177,7 @@ export function ComposerBody() {
             onChange={(e) => setCaption(e.target.value)} 
             data-testid="post-caption-input"
             className="w-full p-6 text-sm font-medium leading-relaxed outline-none min-h-[350px] resize-none font-sans"
-            placeholder="What's on your mind?"
+            placeholder={t("planner:postCreator.composer.placeholders.caption")}
           />
 
           {(!postMedia || postMedia.length === 0) && (videoFile || uploadedVideoPath) && !isImageFile && (
@@ -193,7 +186,7 @@ export function ComposerBody() {
                 <Youtube className="text-red-500 fill-red-500 font-sans" size={16} />
                 <span className="truncate max-w-[300px] font-sans">{videoFile ? videoFile.name : uploadedVideoPath.split('/').pop()}</span>
                 {videoFile && <span className="text-[10px] text-gray-400 font-semibold uppercase font-sans">({(videoFile.size / (1024 * 1024)).toFixed(2)} MB)</span>}
-                {isUploadingVideo && <span className="text-[10px] text-blue-500 animate-pulse font-bold uppercase font-sans">(Uploading...)</span>}
+                {isUploadingVideo && <span className="text-[10px] text-blue-500 animate-pulse font-bold uppercase font-sans">{t("planner:postCreator.composer.uploading")}</span>}
               </div>
               <div className="flex items-center gap-3">
                 <button 
@@ -201,9 +194,9 @@ export function ComposerBody() {
                   onClick={() => setShowVideoEditor(true)}
                   className="text-[10px] font-black text-purple-600 hover:text-purple-800 uppercase tracking-widest transition-all cursor-pointer font-sans"
                 >
-                  Edit Video
+                  {t("planner:postCreator.composer.editVideo")}
                 </button>
-                <button onClick={handleRemoveVideo} className="text-[10px] font-black text-gray-400 hover:text-red-500 uppercase tracking-widest transition-colors cursor-pointer font-sans">Remove</button>
+                <button onClick={handleRemoveVideo} className="text-[10px] font-black text-gray-400 hover:text-red-500 uppercase tracking-widest transition-colors cursor-pointer font-sans">{t("planner:postCreator.composer.remove")}</button>
               </div>
             </div>
           )}
@@ -227,24 +220,36 @@ export function ComposerBody() {
               {postMedia && postMedia.length > 0 ? (
                 <div className="px-6 pb-4 bg-white flex flex-wrap gap-4 animate-in fade-in duration-300">
                   {postMedia.map((item, index) => {
-                    const isItemVid = item.path && (
-                      item.path.endsWith(".mp4") || 
-                      item.path.endsWith(".mov") || 
-                      item.path.endsWith(".avi") || 
-                      item.path.includes("/video/upload/")
-                    );
+                    const isItemVid = isVideoPath(item.previewUrl || item.path, item.file);
                     return (
                       <div key={index} className="relative group">
                         <div className="w-16 h-16 rounded-2xl overflow-hidden border border-gray-100 shadow-md bg-gray-50 flex items-center justify-center relative">
                           {isItemVid ? (
-                            <video src={item.previewUrl} className="w-full h-full object-cover" />
+                            <>
+                              <video src={item.previewUrl} className="w-full h-full object-cover" />
+                              {/* Overlay Edit Video khi hover */}
+                              <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                <button
+                                  type="button"
+                                  title={t("planner:postCreator.composer.editVideo")}
+                                  onClick={() => {
+                                    // Set videoFileUrl về item này trước khi mở editor
+                                    setVideoFileUrl(item.previewUrl || item.path);
+                                    setShowVideoEditor(true);
+                                  }}
+                                  className="w-7 h-7 rounded-full bg-white/90 hover:bg-white text-gray-800 flex items-center justify-center cursor-pointer shadow-md active:scale-90 transition-all"
+                                >
+                                  <Edit size={12} />
+                                </button>
+                              </div>
+                            </>
                           ) : (
                             <>
                               <img src={item.previewUrl} alt="Preview" className="w-full h-full object-cover" />
                               <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                                 <button
                                   type="button"
-                                  title="Chỉnh sửa hình ảnh"
+                                  title={t("planner:postCreator.composer.editImage")}
                                   onClick={() => {
                                     setEditingPostMediaIndex(index);
                                     setShowImageEditor(true);
@@ -308,7 +313,7 @@ export function ComposerBody() {
                           className="w-full flex items-center gap-2.5 px-4 py-2 hover:bg-gray-50 transition-all cursor-pointer font-bold text-gray-700 whitespace-nowrap font-sans"
                         >
                           <Edit size={14} className="text-gray-500" />
-                          Edit image
+                          {t("planner:postCreator.composer.imageMenu.edit")}
                         </button>
                         <button 
                           type="button" 
@@ -316,7 +321,7 @@ export function ComposerBody() {
                           className="w-full flex items-center gap-2.5 px-4 py-2 hover:bg-gray-50 transition-all cursor-pointer font-bold text-gray-700 whitespace-nowrap font-sans"
                         >
                           <span className="w-4 h-4 rounded-md bg-gradient-to-tr from-[#FF0000] via-[#FF0080] to-[#7F00FF] flex items-center justify-center text-[9px] font-black text-white shrink-0 select-none">A</span>
-                          Edit with Adobe Express
+                          {t("planner:postCreator.composer.imageMenu.adobe")}
                         </button>
                         <button 
                           type="button" 
@@ -324,7 +329,7 @@ export function ComposerBody() {
                           className="w-full flex items-center gap-2.5 px-4 py-2 hover:bg-gray-50 transition-all cursor-pointer font-bold text-gray-700 whitespace-nowrap font-sans"
                         >
                           <Type size={14} className="text-gray-500" />
-                          Add alt text
+                          {t("planner:postCreator.composer.imageMenu.altText")}
                         </button>
                         <div className="h-px bg-gray-100 my-1" />
                         <button 
@@ -336,7 +341,7 @@ export function ComposerBody() {
                           className="w-full flex items-center gap-2.5 px-4 py-2 hover:bg-red-50 text-red-600 transition-all cursor-pointer font-bold whitespace-nowrap font-sans"
                         >
                           <Trash2 size={14} />
-                          Remove
+                          {t("planner:postCreator.composer.imageMenu.remove")}
                         </button>
                       </div>
                     )}
@@ -362,10 +367,11 @@ export function ComposerBody() {
                 {activePopover === 'media' && (
                   <MediaDropdown 
                     onClose={() => setActivePopover(null)} 
-                    onSelectImage={() => { setUploadModalTab("computer"); setShowUploadModal(true); }} 
-                    onSelectVideo={() => { setUploadModalTab("computer"); setShowUploadModal(true); }} 
-                    onSelectLibrary={() => { setUploadModalTab("library"); setShowUploadModal(true); }}
+                    onSelectImage={() => { setUploadModalTab("computer"); setShowUploadModal(true); setActivePopover(null); }} 
+                    onSelectVideo={() => { setUploadModalTab("computer"); setShowUploadModal(true); setActivePopover(null); }} 
+                    onSelectLibrary={() => { setUploadModalTab("library"); setShowUploadModal(true); setActivePopover(null); }}
                     onSelectDrive={() => {
+                      setActivePopover(null);
                       if (!hasAccess(PRODUCT_IDS.GOOGLE_DRIVE)) {
                         setBlockedProductId(PRODUCT_IDS.GOOGLE_DRIVE);
                       } else {
@@ -401,7 +407,7 @@ export function ComposerBody() {
                 type="button"
                 onClick={() => setShowFirstCommentModal(true)}
                 className={`text-gray-400 hover:text-black transition-colors p-1.5 rounded-lg cursor-pointer ${youtubeFirstComment || globalFirstComment ? 'text-black bg-purple-50' : ''}`}
-                title="First Comment"
+                title={t("planner:postCreator.composer.toolbar.firstComment")}
               >
                 <MessageSquare size={18} />
               </button>
@@ -409,9 +415,9 @@ export function ComposerBody() {
               {/* Location Button (Placeholder) */}
               <button 
                 type="button"
-                onClick={() => toast.info("Tính năng vị trí sẽ sớm khả dụng")}
+                onClick={() => toast.info(t("planner:postCreator.composer.toolbar.locationComingSoon"))}
                 className="text-gray-400 hover:text-black transition-colors p-1.5 rounded-lg cursor-pointer"
-                title="Add Location"
+                title={t("planner:postCreator.composer.toolbar.addLocation")}
               >
                 <MapPin size={18} />
               </button>
@@ -422,7 +428,7 @@ export function ComposerBody() {
                   type="button"
                   onClick={() => setActivePopover(activePopover === 'utm' ? null : 'utm')}
                   className={`text-gray-400 hover:text-black transition-colors p-1.5 rounded-lg cursor-pointer ${activePopover === 'utm' ? 'bg-gray-100 text-black' : ''}`}
-                  title="UTM Link"
+                  title={t("planner:postCreator.composer.toolbar.utmLink")}
                 >
                   <Link2 size={18} />
                 </button>
@@ -443,7 +449,7 @@ export function ComposerBody() {
                   type="button"
                   onClick={() => setActivePopover(activePopover === 'hashtag' ? null : 'hashtag')}
                   className={`text-gray-400 hover:text-black transition-colors p-1.5 rounded-lg cursor-pointer ${activePopover === 'hashtag' ? 'bg-gray-100 text-black' : ''}`}
-                  title="Insert Hashtags"
+                  title={t("planner:postCreator.composer.toolbar.hashtags")}
                 >
                   <Search size={18} />
                 </button>
@@ -460,10 +466,10 @@ export function ComposerBody() {
                 type="button"
                 onClick={() => {
                   setIsLibrary(!isLibrary);
-                  toast.success(isLibrary ? "Đã tắt chế độ mẫu" : "Đã bật chế độ lưu làm mẫu");
+                  toast.success(isLibrary ? t("planner:postCreator.composer.toolbar.templateDisabled") : t("planner:postCreator.composer.toolbar.templateEnabled"));
                 }}
                 className={`text-gray-400 hover:text-black transition-colors p-1.5 rounded-lg cursor-pointer ${isLibrary ? 'text-purple-600 bg-purple-50' : ''}`}
-                title="Save as template (Library)"
+                title={t("planner:postCreator.composer.toolbar.saveAsTemplate")}
               >
                 <Folder size={18} />
               </button>
@@ -473,7 +479,7 @@ export function ComposerBody() {
                 type="button"
                 onClick={() => setShowAICopilot(!showAICopilot)}
                 className={`text-gray-400 hover:text-black transition-colors p-1.5 rounded-lg cursor-pointer ${showAICopilot ? 'text-purple-600 bg-purple-50' : ''}`}
-                title="AI Copilot Assistant"
+                title={t("planner:postCreator.composer.toolbar.aiCopilot")}
               >
                 <Sparkles size={18} className={showAICopilot ? "animate-pulse" : ""} />
               </button>
@@ -501,7 +507,7 @@ export function ComposerBody() {
                   })()}
                 </span>
                 <div className="absolute bottom-full right-0 mb-3 w-56 p-3 bg-white rounded-xl shadow-xl border border-gray-100 hidden group-hover:block animate-in fade-in slide-in-from-bottom-1 z-50">
-                  <p className="text-[10px] text-gray-500 leading-normal font-sans">Giới hạn độ dài bài viết của nền tảng {activePlatform}.</p>
+                  <p className="text-[10px] text-gray-500 leading-normal font-sans">{t("planner:postCreator.composer.characterLimitDesc", { platform: activePlatform })}</p>
                 </div>
               </div>
               <div className="w-px h-3.5 bg-gray-200" />
@@ -572,26 +578,26 @@ export function ComposerBody() {
               <div className="flex items-start gap-3">
                 <AlertCircle className="text-amber-500 shrink-0 mt-0.5" size={18} />
                 <div>
-                  <h4 className="text-[12px] font-black text-amber-800 uppercase tracking-wider font-sans">Yêu cầu phê duyệt bài viết</h4>
+                  <h4 className="text-[12px] font-black text-amber-800 uppercase tracking-wider font-sans">{t("planner:postCreator.composer.approval.title")}</h4>
                   <p className="text-[10px] text-amber-600 font-bold mt-1 leading-relaxed uppercase tracking-wider font-sans">
                     {!hasApprovePermission 
-                      ? "Bạn không có quyền đăng bài trực tiếp. Vui lòng cấu hình người duyệt bài."
-                      : "Bạn đã chọn gửi bài viết này để phê duyệt."}
+                      ? t("planner:postCreator.composer.approval.noPermission")
+                      : t("planner:postCreator.composer.approval.selectedReview")}
                   </p>
                   <div className="mt-2 flex flex-wrap gap-2 items-center">
                     {selectedReviewerIds.length === 0 ? (
-                      <span className="text-[10px] text-rose-600 font-bold uppercase tracking-wider bg-rose-50 px-2.5 py-1 rounded-lg border border-rose-100 font-sans">Chưa chọn người duyệt</span>
+                      <span className="text-[10px] text-rose-600 font-bold uppercase tracking-wider bg-rose-50 px-2.5 py-1 rounded-lg border border-rose-100 font-sans">{t("planner:postCreator.composer.approval.noReviewer")}</span>
                     ) : (
                       <span className="text-[10px] text-amber-800 font-bold uppercase tracking-wider bg-amber-100/50 px-2.5 py-1 rounded-lg border border-amber-200 max-w-xs truncate font-sans">
-                        Đã chọn: {selectedReviewerIds.map(id => potentialReviewers.find(r => r.id === id)?.name).filter(Boolean).join(", ")}
+                        {t("planner:postCreator.composer.approval.selectedReviewers", { names: selectedReviewerIds.map(id => potentialReviewers.find(r => r.id === id)?.name).filter(Boolean).join(", ") })}
                       </span>
                     )}
                     <span className="text-[10px] bg-amber-900 text-amber-50 px-2.5 py-1 rounded-lg font-bold uppercase tracking-wider font-sans">
                       {approvalPolicy === 'AT_LEAST_ONE' 
-                        ? 'Ít nhất 1 người duyệt' 
+                        ? t("planner:postCreator.composer.sections.policyAtLeastOne") 
                         : approvalPolicy === 'ALL' 
-                          ? 'Tất cả phải duyệt' 
-                          : 'Không yêu cầu phê duyệt'}
+                          ? t("planner:postCreator.composer.sections.policyAll") 
+                          : t("planner:postCreator.composer.sections.policyNone")}
                     </span>
                   </div>
                 </div>
@@ -602,15 +608,15 @@ export function ComposerBody() {
                 onClick={() => setShowReviewersModal(true)}
                 className="px-4 py-2.5 bg-[#0A0A0A] hover:bg-black text-white hover:shadow-md text-[10px] font-black uppercase tracking-widest rounded-xl transition-all cursor-pointer shrink-0 font-sans"
               >
-                Chọn người duyệt
+                {t("planner:postCreator.composer.approval.buttonSelect")}
               </button>
             </div>
 
             <div className="space-y-1.5 pt-2 border-t border-amber-200/40">
-              <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest font-sans">Ghi chú cho người duyệt</label>
+              <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest font-sans">{t("planner:postCreator.composer.approval.noteLabel")}</label>
               <input
                 type="text"
-                placeholder="Nhập lời nhắn gửi đến người duyệt..."
+                placeholder={t("planner:postCreator.composer.approval.notePlaceholder")}
                 value={requesterNote}
                 onChange={(e) => setRequesterNote(e.target.value)}
                 className="w-full px-4 py-3 bg-white border border-gray-200 rounded-2xl text-[11px] font-bold text-gray-700 outline-none focus:border-black transition-all font-sans"
@@ -619,28 +625,7 @@ export function ComposerBody() {
           </div>
         )}
 
-        {/* Validation Errors Banner */}
-        {getValidationErrors().length > 0 && (
-          <div className="border border-red-100 rounded-3xl overflow-hidden bg-red-50/50 shadow-sm transition-all duration-300">
-            <div className="p-5 flex items-center justify-between text-red-700">
-              <div className="flex items-center gap-3">
-                <AlertCircle size={18} className="text-red-500 shrink-0" />
-                <span className="text-[12px] font-bold font-sans">{getValidationErrors().length} errors</span>
-              </div>
-            </div>
-            <div className="border-t border-red-100/50 px-6 py-4 space-y-2 text-left">
-              {getValidationErrors().map((err, idx) => {
-                const parsed = parseValidationError(err);
-                return (
-                  <div key={idx} className="flex items-center gap-2.5 text-xs font-medium text-gray-700 font-sans">
-                    {renderErrorIcon(parsed.platform)}
-                    <span>{parsed.message}</span>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        )}
+
 
       </div>
     </div>
