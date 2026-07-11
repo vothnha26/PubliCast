@@ -5,7 +5,7 @@ import {
   Mail, Lock, Smartphone, ExternalLink,
   MessageCircle, Send, Paperclip, CheckCircle2, Search,
   AlertTriangle, Loader2, Plus, FileText, ChevronRight,
-  Sun, Moon, Monitor
+  Sun, Moon
 } from "lucide-react";
 import profileService from "../../services/profile.service";
 import apiService from "../../services/api";
@@ -14,6 +14,8 @@ import { useConfirm } from "@/hooks/useConfirm";
 import { useBrand } from "../../context/BrandContext";
 import socketClient from "../../services/socket";
 import { useTheme } from "../../context/ThemeContext";
+import { useLanguage } from "../../context/LanguageContext";
+import { LANGUAGES } from "../../constants/language";
 
 export function SettingsPage() {
   const location = useLocation();
@@ -21,6 +23,7 @@ export function SettingsPage() {
   const confirm = useConfirm();
   const { activeBrand } = useBrand();
   const { theme, setTheme } = useTheme();
+  const { language, setLanguage } = useLanguage();
   const [activeTab, setActiveTab] = useState("account");
 
   // State for form fields
@@ -530,20 +533,19 @@ export function SettingsPage() {
                  </div>
               </div>
 
-               {/* Theme Settings Selection */}
+               {/* Display Theme */}
                <div className="p-6 rounded-2xl bg-slate-50 dark:bg-[var(--muted)]/20 border border-slate-100 dark:border-[var(--border)] space-y-4">
                  <div>
-                   <h3 className="text-sm font-bold text-[var(--foreground)]">Giao diện hệ thống</h3>
+                   <h3 className="text-sm font-bold text-[var(--foreground)]">Display theme</h3>
                    <p className="text-[11px] text-[var(--muted-foreground)] leading-relaxed font-medium mt-1">
-                     Tùy chỉnh chế độ hiển thị giao diện phù hợp với nhu cầu sử dụng của bạn.
+                     Choose between light and dark interface.
                    </p>
                  </div>
-                 
-                 <div className="grid grid-cols-3 gap-3">
+
+                 <div className="grid grid-cols-2 gap-3">
                    {[
-                     { id: "light", label: "Chế độ sáng", icon: Sun },
-                     { id: "dark", label: "Chế độ tối", icon: Moon },
-                     { id: "system", label: "Hệ thống", icon: Monitor },
+                     { id: 'light', label: 'Light', icon: Sun },
+                     { id: 'dark', label: 'Dark', icon: Moon },
                    ].map((t) => {
                      const Icon = t.icon;
                      const isSelected = theme === t.id;
@@ -553,16 +555,53 @@ export function SettingsPage() {
                          type="button"
                          onClick={() => {
                            setTheme(t.id);
-                           toast.success(`Đã chuyển sang ${t.label}`);
+                           toast.success(`Switched to ${t.label} mode`);
                          }}
                          className={`flex flex-col items-center gap-2.5 p-4 rounded-xl border transition-all duration-200 cursor-pointer text-center ${
                            isSelected
-                             ? "bg-purple-600 border-purple-600 text-white shadow-md shadow-purple-100 dark:shadow-none"
+                             ? "bg-gray-900 border-gray-900 text-white shadow-md"
                              : "bg-[var(--card)] border-[var(--border)] text-[var(--foreground)] hover:bg-[var(--muted)]/50"
                          }`}
                        >
                          <Icon size={18} />
                          <span className="text-[10px] font-bold tracking-tight">{t.label}</span>
+                       </button>
+                     );
+                   })}
+                 </div>
+               </div>
+
+               {/* Language Preference */}
+               <div className="p-6 rounded-2xl bg-slate-50 dark:bg-[var(--muted)]/20 border border-slate-100 dark:border-[var(--border)] space-y-4">
+                 <div>
+                   <h3 className="text-sm font-bold text-[var(--foreground)]">Language</h3>
+                   <p className="text-[11px] text-[var(--muted-foreground)] leading-relaxed font-medium mt-1">
+                     Select your preferred interface language.
+                   </p>
+                 </div>
+
+                 <div className="grid grid-cols-2 gap-3">
+                   {LANGUAGES.map((lang) => {
+                     const isSelected = language === lang.code;
+                     return (
+                       <button
+                         key={lang.code}
+                         type="button"
+                         onClick={() => {
+                           setLanguage(lang.code);
+                           toast.success(`Language changed to ${lang.label}`);
+                         }}
+                         className={`flex items-center justify-center gap-2.5 p-4 rounded-xl border transition-all duration-200 cursor-pointer ${
+                           isSelected
+                             ? "bg-gray-900 border-gray-900 text-white shadow-md"
+                             : "bg-[var(--card)] border-[var(--border)] text-[var(--foreground)] hover:bg-[var(--muted)]/50"
+                         }`}
+                       >
+                         <span className="text-base leading-none">{lang.flag}</span>
+                         <div className="text-left">
+                           <div className="text-xs font-bold">{lang.label}</div>
+                           <div className={`text-[10px] font-medium ${ isSelected ? 'text-white/60' : 'text-[var(--muted-foreground)]'}`}>{lang.nativeLabel}</div>
+                         </div>
                        </button>
                      );
                    })}

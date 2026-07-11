@@ -6,18 +6,12 @@ const ThemeContext = createContext(null);
 
 export function ThemeProvider({ children }) {
   const [theme, setThemeState] = useState(() => {
-    const savedTheme = localStorage.getItem(STORAGE_KEYS.THEME);
-    return savedTheme || THEME_MODES.SYSTEM;
-  });
-
-  const [activeTheme, setActiveTheme] = useState(() => {
-    // Giá trị khởi tạo tạm thời của activeTheme
-    if (theme === THEME_MODES.SYSTEM) {
-      return window.matchMedia('(prefers-color-scheme: dark)').matches
-        ? THEME_MODES.DARK
-        : THEME_MODES.LIGHT;
+    const saved = localStorage.getItem(STORAGE_KEYS.THEME);
+    // Migrate legacy 'system' value to light
+    if (saved === 'system' || !Object.values(THEME_MODES).includes(saved)) {
+      return THEME_MODES.LIGHT;
     }
-    return theme;
+    return saved || THEME_MODES.LIGHT;
   });
 
   const setTheme = (newTheme) => {
@@ -31,51 +25,15 @@ export function ThemeProvider({ children }) {
 
   useEffect(() => {
     const root = window.document.documentElement;
-    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
-
-    const applyTheme = () => {
-      let resolvedTheme = theme;
-
-      if (theme === THEME_MODES.SYSTEM) {
-        resolvedTheme = mediaQuery.matches ? THEME_MODES.DARK : THEME_MODES.LIGHT;
-      }
-
-      setActiveTheme(resolvedTheme);
-
-      if (resolvedTheme === THEME_MODES.DARK) {
-        root.classList.add('dark');
-      } else {
-        root.classList.remove('dark');
-      }
-    };
-
-    applyTheme();
-
-    // Lắng nghe thay đổi của hệ thống nếu đang ở chế độ SYSTEM
-    const handleChange = () => {
-      if (theme === THEME_MODES.SYSTEM) {
-        applyTheme();
-      }
-    };
-
-    // Tương thích với các trình duyệt cũ hơn
-    if (mediaQuery.addEventListener) {
-      mediaQuery.addEventListener('change', handleChange);
+    if (theme === THEME_MODES.DARK) {
+      root.classList.add('dark');
     } else {
-      mediaQuery.addListener(handleChange);
+      root.classList.remove('dark');
     }
-
-    return () => {
-      if (mediaQuery.removeEventListener) {
-        mediaQuery.removeEventListener('change', handleChange);
-      } else {
-        mediaQuery.removeListener(handleChange);
-      }
-    };
   }, [theme]);
 
   return (
-    <ThemeContext.Provider value={{ theme, activeTheme, setTheme }}>
+    <ThemeContext.Provider value={{ theme, setTheme }}>
       {children}
     </ThemeContext.Provider>
   );

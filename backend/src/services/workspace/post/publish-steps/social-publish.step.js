@@ -1,6 +1,6 @@
 const BaseStep = require('../../../../core/pipeline/base.step');
 const socialPlatformFactory = require('../../../social/social-platform.factory');
-const { SEPARATORS } = require('../../../../utils/constants');
+const { SEPARATORS, splitMediaUrls } = require('../../../../utils/constants');
 
 class SocialPublishStep extends BaseStep {
   async execute(context) {
@@ -30,7 +30,7 @@ class SocialPublishStep extends BaseStep {
         const result = await service.publishPost(brandId, {
           title: post.title,
           caption: post.caption,
-          mediaUrls: post.mediaUrls ? post.mediaUrls.split(SEPARATORS.COMMA).map(m => m.trim()) : [],
+          mediaUrls: splitMediaUrls(post.mediaUrls),
           type: post.type,
           platformPostId: platformPostId,
           options: options

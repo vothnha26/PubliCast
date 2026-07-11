@@ -158,6 +158,7 @@ async function main() {
   await prisma.product.create({ data: { id: 'ads_manager', name: 'Ads Manager Pro', category: 'Management', sku: 'ADS-MANAGER', status: 'ACTIVE' } });
   await prisma.product.create({ data: { id: 'unified_inbox', name: 'Unified Inbox', category: 'Management', platformId: 'FB', moduleId: 'M3', sku: 'PL-FB-EN', status: 'ACTIVE' } });
   await prisma.product.create({ data: { id: 'custom_links', name: 'Custom Branded Links', category: 'Tools', sku: 'CUSTOM-LINKS', status: 'ACTIVE' } });
+  await prisma.product.create({ data: { id: 'google_drive', name: 'Google Drive Integration', category: 'Tools', sku: 'GOOGLE-DRIVE', status: 'ACTIVE' } });
 
   console.log('Seeding Plans...');
   const freePlan = await prisma.plan.create({
@@ -210,7 +211,8 @@ async function main() {
           { id: 'ai_content_engine' },
           { id: 'ai_best_time' },
           { id: 'unified_inbox' },
-          { id: 'custom_links' }
+          { id: 'custom_links' },
+          { id: 'google_drive' }
         ]
       }
     }
@@ -235,7 +237,8 @@ async function main() {
           { id: 'ai_best_time' },
           { id: 'ads_manager' },
           { id: 'unified_inbox' },
-          { id: 'custom_links' }
+          { id: 'custom_links' },
+          { id: 'google_drive' }
         ]
       }
     }

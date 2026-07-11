@@ -1,8 +1,7 @@
 /**
- * THEME_MODES - Các chế độ theme được hỗ trợ trong hệ thống.
+ * THEME_MODES - Supported display theme modes.
  */
 export const THEME_MODES = {
   LIGHT: 'light',
   DARK: 'dark',
-  SYSTEM: 'system',
 };

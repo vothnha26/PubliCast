@@ -1,3 +1,5 @@
+export const PLAN_TIERS = ["FREE", "STARTER", "PRO", "AGENCY", "ENTERPRISE"];
+
 export const ACCESS_STRATEGIES = {
   HIDE: "HIDE",             // Ẩn phần tử khỏi DOM
   DISABLE: "DISABLE",       // Render nhưng disabled nút + hiển thị lý do

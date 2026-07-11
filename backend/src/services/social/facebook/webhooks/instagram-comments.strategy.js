@@ -12,6 +12,7 @@ class InstagramCommentsStrategy extends BaseWebhookStrategy {
     logger.info(`[InstagramCommentsStrategy] Handling comment change for IG account ${instagramAccountId}`);
 
     const commentId = value.id;
+    if (value.verb !== 'remove' && await this.isDuplicateEvent(commentId)) return;
     const text = value.text;
     const authorId = value.from?.id || 'unknown';
     const authorName = value.from?.username || 'Instagram User';

@@ -2,7 +2,7 @@ require('../../utils/polyfill');
 const postRepository = require('../../repositories/workspace/post.repository');
 const brandRepository = require('../../repositories/workspace/brand.repository');
 const socialPlatformFactory = require('../social/social-platform.factory');
-const { POST_STATUS, POST_TYPES, SEPARATORS, WORKSPACE_DEFAULTS, PLATFORMS } = require('../../utils/constants');
+const { POST_STATUS, POST_TYPES, SEPARATORS, WORKSPACE_DEFAULTS, PLATFORMS, splitMediaUrls } = require('../../utils/constants');
 const { eventEmitter, EVENTS } = require('../../events/event-emitter');
 const { upsertPublishJob, removePublishJob } = require('../../queues/publish.queue');
 const authorizationFacade = require('../auth/authorization.facade');
@@ -54,6 +54,28 @@ class PostService {
     };
   }
 
+  _parseMediaInfo(firstMediaUrl, hasMedia) {
+    if (!firstMediaUrl) {
+      return { format: null, isVideo: false };
+    }
+    const cleanUrl = firstMediaUrl.split('?')[0];
+    const ext = cleanUrl.split('.').pop().toLowerCase();
+    const knownVideoExts = ['mp4', 'mov', 'webm', 'avi', 'mkv'];
+    const knownImageExts = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'heic'];
+    
+    if (knownVideoExts.includes(ext)) {
+      return { format: ext, isVideo: true };
+    } else if (knownImageExts.includes(ext)) {
+      return { format: ext, isVideo: false };
+    } else {
+      const lowercaseUrl = firstMediaUrl.toLowerCase();
+      if (lowercaseUrl.includes('video') || lowercaseUrl.includes('.mp4') || lowercaseUrl.includes('.mov') || lowercaseUrl.includes('/preview/')) {
+        return { format: 'mp4', isVideo: true };
+      }
+      return { format: 'jpg', isVideo: false };
+    }
+  }
+
   /**
    * Create a new post
    */
@@ -74,8 +96,7 @@ class PostService {
     const validMediaUrls = (postData.mediaUrls || []).filter(u => u && u.trim() !== '');
     const hasMedia = validMediaUrls.length > 0;
     const firstMediaUrl = hasMedia ? validMediaUrls[0] : null;
-    const format = firstMediaUrl ? firstMediaUrl.split('.').pop().split('?')[0].toLowerCase() : null;
-    const isVideo = hasMedia && ['mp4', 'mov', 'webm', 'avi', 'mkv'].includes(format);
+    const { format, isVideo } = this._parseMediaInfo(firstMediaUrl, hasMedia);
     
     const mediaInfo = {
       hasMedia,
@@ -172,8 +193,7 @@ class PostService {
       firstMediaUrl = hasMedia ? existingUrls[0] : null;
     }
     
-    const format = firstMediaUrl ? firstMediaUrl.split('.').pop().split('?')[0].toLowerCase() : null;
-    const isVideo = hasMedia && ['mp4', 'mov', 'webm', 'avi', 'mkv'].includes(format);
+    const { format, isVideo } = this._parseMediaInfo(firstMediaUrl, hasMedia);
     
     const mediaInfo = {
       hasMedia,
@@ -431,8 +451,8 @@ class PostService {
       creator: p.creator?.name || 'Unknown',
       creatorId: p.creator?.id,
       creatorAvatar: p.creator?.avatarUrl,
-      thumbnail: p.mediaThumbnailUrls ? p.mediaThumbnailUrls.split(SEPARATORS.COMMA)[0] : (p.mediaUrls ? p.mediaUrls.split(SEPARATORS.COMMA)[0] : null),
-      mediaUrls: p.mediaUrls ? p.mediaUrls.split(SEPARATORS.COMMA).map(m => m.trim()) : [],
+      thumbnail: p.mediaThumbnailUrls ? splitMediaUrls(p.mediaThumbnailUrls)[0] : (p.mediaUrls ? splitMediaUrls(p.mediaUrls)[0] : null),
+      mediaUrls: splitMediaUrls(p.mediaUrls),
       altText: p.altText,
       isLibrary: p.isLibrary,
       options,
@@ -486,7 +506,7 @@ class PostService {
         const postData = {
           title: post.title,
           caption: post.caption,
-          mediaUrls: post.mediaUrls ? post.mediaUrls.split(SEPARATORS.COMMA).map(m => m.trim()) : [],
+          mediaUrls: splitMediaUrls(post.mediaUrls),
           type: post.type,
           scheduledAt: post.scheduledAt,
           options: options

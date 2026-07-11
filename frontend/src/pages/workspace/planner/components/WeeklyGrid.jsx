@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useMemo } from 'react';
 import { buildMediaUrl } from '@/utils/url';
 import { PlatformIcon } from '@/components/shared/PlatformIcon';
+import { PostMediaThumbnail } from '@/components/shared/PostMediaThumbnail';
 
 const getBestTimePercentage = (dayIdx, hourVal, bestTimesData = [], platform = 'INSTAGRAM') => {
   // Tìm khung giờ tương ứng trong data thật từ API
@@ -347,17 +348,15 @@ export function WeeklyGrid({
                           {/* Media Preview/Thumbnail */}
                           {hasMedia && (
                             <div className="mt-1 flex items-center">
-                              <div className="w-10 h-10 rounded-md bg-gray-50 overflow-hidden flex items-center justify-center shrink-0 border border-gray-100 relative">
-                                {thumbUrl ? (
-                                  <img src={thumbUrl} alt="Thumbnail" className="w-full h-full object-cover" />
-                                ) : (
-                                  <div className="w-full h-full bg-gray-50 flex items-center justify-center text-[9px] text-gray-400 font-medium">
-                                    [Media]
-                                  </div>
-                                )}
+                              <div className="w-10 h-10 rounded-md overflow-hidden shrink-0 border border-gray-100 relative">
+                                <PostMediaThumbnail 
+                                  thumbnail={post.thumbnail}
+                                  mediaUrls={post.mediaUrls}
+                                  className="w-full h-full"
+                                />
                                 {/* Multi-media Indicator Overlay */}
                                 {post.mediaUrls.length > 1 && (
-                                  <div className="absolute inset-0 bg-black/45 flex items-center justify-center text-[9px] font-black text-white">
+                                  <div className="absolute inset-0 bg-black/45 flex items-center justify-center text-[9px] font-black text-white z-10">
                                     +{post.mediaUrls.length - 1}
                                   </div>
                                 )}

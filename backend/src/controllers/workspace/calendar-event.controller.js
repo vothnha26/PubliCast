@@ -64,6 +64,22 @@ class CalendarEventController {
       message: 'Calendar event deleted successfully'
     });
   });
+
+  /**
+   * GET /api/calendar-events/export-ics
+   */
+  exportIcs = asyncHandler(async (req, res) => {
+    const { brandId, startDate, endDate } = req.query;
+    if (!brandId || !startDate || !endDate) {
+      return res.status(400).json({ message: 'brandId, startDate, and endDate are required' });
+    }
+
+    const icsString = await calendarEventService.exportIcs(brandId, startDate, endDate);
+    
+    res.setHeader('Content-Type', 'text/calendar');
+    res.setHeader('Content-Disposition', 'attachment; filename="publicast-planner.ics"');
+    return res.status(200).send(icsString);
+  });
 }
 
 module.exports = new CalendarEventController();

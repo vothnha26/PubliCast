@@ -156,6 +156,12 @@ const SEPARATORS = {
   COMMA: ','
 };
 
+const splitMediaUrls = (str) => {
+  if (!str) return [];
+  return str.split(/,(?=\s*https?:\/\/|\s*\/uploads|\s*\/media|\s*\/temp|\s*[a-zA-Z]:\\|\s*\\|\s*\/)/i).map(m => m.trim()).filter(Boolean);
+};
+
+
 const BILLING_CYCLES = {
   MONTHLY: 'MONTHLY',
   ANNUAL: 'ANNUAL'
@@ -457,6 +463,22 @@ const REPORT_FREQUENCIES = {
   MONTHLY: 'MONTHLY'
 };
 
+const REDIS_NAMESPACES = {
+  WEBHOOK_DEDUP: 'wh:mid',
+  RATE_LIMIT: 'rl',
+  SYNC_CACHE: 'sync'
+};
+
+const REDIS_TTL = {
+  WEBHOOK_DEDUP_SEC: 600
+};
+
+const TOKEN_REFRESH = {
+  LOOKHEAD_DAYS: 3,
+  SCHEDULER_INTERVAL_MS: 12 * 60 * 60 * 1000,
+  STARTUP_DELAY_MS: 60000
+};
+
 module.exports = {
   PLATFORMS,
   USER_ROLES,
@@ -499,6 +521,10 @@ module.exports = {
   NOTIFICATION_LABELS,
   PRODUCT_IDS,
   REPORT_FORMATS,
-  REPORT_FREQUENCIES
+  REPORT_FREQUENCIES,
+  REDIS_NAMESPACES,
+  REDIS_TTL,
+  TOKEN_REFRESH,
+  splitMediaUrls
 };
 

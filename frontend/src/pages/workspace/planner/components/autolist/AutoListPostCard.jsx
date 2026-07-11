@@ -15,6 +15,8 @@ import { GoogleDrivePickerModal } from "@/components/workspace/post-creator/Goog
 import { toast } from "sonner";
 import apiService from "@/services/api";
 import { buildMediaUrl } from "@/utils/url";
+import { useFeatureGate } from "@/hooks/useFeatureGate";
+import { PRODUCT_IDS } from "@/constants/products";
 
 export function AutoListPostCard({ 
   post, 
@@ -36,6 +38,7 @@ export function AutoListPostCard({
   const [showFirstCommentModal, setShowFirstCommentModal] = useState(false);
   const [isDriveModalOpen, setIsDriveModalOpen] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
+  const { hasAccess } = useFeatureGate();
   const textareaRef = useRef(null);
   const fileInputRef = useRef(null);
 
@@ -240,8 +243,7 @@ export function AutoListPostCard({
                   onSelectImage={() => fileInputRef.current?.click()} 
                   onSelectVideo={() => fileInputRef.current?.click()} 
                   onSelectDrive={() => {
-                    const planName = activeBrand?.currentPlan?.name;
-                    const hasDriveAccess = planName === 'PRO' || planName === 'AGENCY';
+                    const hasDriveAccess = hasAccess(PRODUCT_IDS.GOOGLE_DRIVE);
                     if (!hasDriveAccess) {
                       toast.error("Tính năng import từ Google Drive yêu cầu gói PRO hoặc AGENCY.", {
                         action: {

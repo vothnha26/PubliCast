@@ -1,3 +1,11 @@
+process.on('uncaughtException', (err) => {
+  if (err.code === 'ECONNRESET') {
+    // Bỏ qua lỗi ngắt kết nối socket để giữ dev server hoạt động ổn định
+    return;
+  }
+  console.error('Uncaught Exception:', err);
+});
+
 import { defineConfig } from 'vite'
 import path from 'path'
 import tailwindcss from '@tailwindcss/vite'

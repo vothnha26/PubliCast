@@ -18,6 +18,8 @@ import { useConfirm } from "@/hooks/useConfirm";
 import { useBrandPermission } from "../../../hooks/useBrandPermission";
 import { AccessGuard } from "../../../components/shared/AccessGuard";
 import { PostAnalyticsDetailModal } from "../../../components/workspace/PostAnalyticsDetailModal";
+import { buildMediaUrl } from "@/utils/url";
+import { PostMediaThumbnail } from "@/components/shared/PostMediaThumbnail";
 
 const STATUS_STYLE = {
   published: "bg-green-50 text-green-700 border-green-100",
@@ -511,20 +513,18 @@ export function ListView() {
                          }
                        }}>
                           <div className="flex items-center gap-4">
-                             <div className="w-12 h-12 bg-gray-100 rounded-xl overflow-hidden shrink-0 border border-gray-100 relative group-hover:border-gray-300 transition-all shadow-sm">
-                                {post.thumbnail ? (
-                                  <img src={post.thumbnail} className="w-full h-full object-cover" />
-                                ) : post.mediaUrls && post.mediaUrls.length > 0 ? (
-                                  <img src={post.mediaUrls[0]} className="w-full h-full object-cover" />
-                                ) : (
-                                  <div className="w-full h-full flex items-center justify-center text-lg">📝</div>
-                                )}
+                             <div className="w-12 h-12 rounded-xl overflow-hidden shrink-0 border border-gray-100 relative group-hover:border-gray-300 transition-all shadow-sm">
+                                <PostMediaThumbnail 
+                                  thumbnail={post.thumbnail}
+                                  mediaUrls={post.mediaUrls}
+                                  className="w-full h-full"
+                                />
                                 {post.mediaUrls && post.mediaUrls.length > 1 && (
                                   <span className="absolute bottom-1 right-1 bg-black/85 text-[8px] font-black text-white px-1 py-0.5 rounded flex items-center justify-center gap-0.5 z-10 shadow-sm border border-white/10">
                                     +{post.mediaUrls.length - 1}
                                   </span>
                                 )}
-                                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-all">
+                                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-all z-10">
                                    <Eye size={16} className="text-white" />
                                 </div>
                              </div>

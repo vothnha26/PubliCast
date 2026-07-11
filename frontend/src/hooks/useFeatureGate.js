@@ -12,9 +12,6 @@ export function useFeatureGate() {
   const planName = activeBrand?.currentPlan?.name || 'FREE';
 
   const hasAccess = (productId) => {
-    if (productId === PRODUCT_IDS.GOOGLE_DRIVE) {
-      return planName === 'PRO' || planName === 'AGENCY';
-    }
     return allowedProducts.includes(productId);
   };
 

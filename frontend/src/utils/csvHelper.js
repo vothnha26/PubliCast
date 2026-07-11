@@ -131,7 +131,13 @@ export const mapPublicastRow = (row, headers) => {
   };
 
   const targetPlatforms = get('Platforms').split(',').map(p => p.trim().toUpperCase()).filter(Boolean);
-  const mediaUrls = get('Media URLs').split('|').map(u => u.trim()).filter(Boolean);
+  const rawUrls = get('Media URLs');
+  let mediaUrls = [];
+  if (rawUrls.includes('|')) {
+    mediaUrls = rawUrls.split('|').map(u => u.trim()).filter(Boolean);
+  } else {
+    mediaUrls = rawUrls.split(/,(?=\s*https?:\/\/|\s*\/uploads|\s*\/media|\s*\/temp|\s*[a-zA-Z]:\\|\s*\\|\s*\/)/i).map(u => u.trim()).filter(Boolean);
+  }
 
   const opts = {};
   const fc = get('First Comment'); if (fc) opts.firstComment = fc;

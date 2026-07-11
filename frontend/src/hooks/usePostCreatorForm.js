@@ -9,8 +9,8 @@ import { PLATFORM_CONFIGS } from "../constants/platformRegistry";
 import { POST_STATUS, PUBLISH_MODE, PUBLISH_MODE_TO_STATUS, STATUS_TO_PUBLISH_MODE } from "../constants/postStatus";
 import { POST_TYPE, YOUTUBE_TYPE, FACEBOOK_TYPE, INSTAGRAM_TYPE, TIKTOK_PRIVACY, APPROVAL_POLICY, YOUTUBE_DEFAULT_CATEGORY_ID } from "../constants/postTypes";
 import { buildMediaUrl, isVideoPath } from "../utils/url";
-import { validatePostForm } from "@/utils/postValidation";
-import { logger } from "@/utils/logger";
+import { validatePostForm } from "../utils/postValidation";
+import { logger } from "../utils/logger";
 import postService from "../services/post.service";
 
 const toLocalDatetimeString = (dateInput) => {
