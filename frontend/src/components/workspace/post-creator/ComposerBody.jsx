@@ -566,8 +566,8 @@ export function ComposerBody() {
            {/* Facebook Presets Accordion (Reels only) */}
           {selectedPlatforms.includes('facebook') && facebookType === 'reel' && <FacebookPresets />}
  
-          {/* Instagram Presets Accordion (Reels only) */}
-          {selectedPlatforms.includes('instagram') && instagramType === 'reel' && <InstagramPresets />}
+          {/* Instagram Presets Accordion */}
+          {selectedPlatforms.includes('instagram') && <InstagramPresets />}
 
           {/* TikTok Presets Accordion */}
           {selectedPlatforms.includes('tiktok') && <TikTokPresets />}

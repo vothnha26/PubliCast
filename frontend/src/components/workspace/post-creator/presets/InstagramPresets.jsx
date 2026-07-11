@@ -14,6 +14,7 @@ export function InstagramPresets() {
   const {
     instagramOpen,
     setInstagramOpen,
+    instagramType,
     instagramCollaborators,
     setInstagramCollaborators,
     instagramAudio,
@@ -117,7 +118,7 @@ export function InstagramPresets() {
           <div>
             <label className="flex items-center gap-1.5 text-[11px] font-bold text-gray-500 uppercase mb-2 font-sans">
               <Music size={13} />
-              Audio of Reel
+              Background Audio / Music
             </label>
             
             <div className="relative">
@@ -170,20 +171,22 @@ export function InstagramPresets() {
             </div>
           </div>
 
-          {/* Show Reel on Feed Toggle */}
-          <div className="flex items-center justify-between p-3.5 bg-gray-50/50 rounded-2xl border border-gray-100">
-            <div className="space-y-0.5">
-              <span className="text-xs font-bold text-gray-800 font-sans block">Show Reel on feed</span>
-              <span className="text-[10px] text-gray-400 font-medium block leading-relaxed">Also share your Reels to your Profile Feed.</span>
+          {/* Show Reel on Feed Toggle (Reels only) */}
+          {instagramType === 'reel' && (
+            <div className="flex items-center justify-between p-3.5 bg-gray-50/50 rounded-2xl border border-gray-100">
+              <div className="space-y-0.5">
+                <span className="text-xs font-bold text-gray-800 font-sans block">Show Reel on feed</span>
+                <span className="text-[10px] text-gray-400 font-medium block leading-relaxed">Also share your Reels to your Profile Feed.</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setInstagramShowOnFeed(!instagramShowOnFeed)}
+                className={`w-11 h-6 rounded-full transition-all duration-300 relative ${instagramShowOnFeed ? 'bg-[#E1306C]' : 'bg-gray-200'}`}
+              >
+                <span className={`absolute top-1 left-1 w-4 h-4 rounded-full bg-white transition-all duration-300 ${instagramShowOnFeed ? 'translate-x-5' : 'translate-x-0'}`} />
+              </button>
             </div>
-            <button
-              type="button"
-              onClick={() => setInstagramShowOnFeed(!instagramShowOnFeed)}
-              className={`w-11 h-6 rounded-full transition-all duration-300 relative ${instagramShowOnFeed ? 'bg-[#E1306C]' : 'bg-gray-200'}`}
-            >
-              <span className={`absolute top-1 left-1 w-4 h-4 rounded-full bg-white transition-all duration-300 ${instagramShowOnFeed ? 'translate-x-5' : 'translate-x-0'}`} />
-            </button>
-          </div>
+          )}
 
         </div>
       </div>
