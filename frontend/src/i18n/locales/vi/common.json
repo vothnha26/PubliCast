@@ -16,5 +16,6 @@
   "error": "Có lỗi xảy ra",
   "success": "Thành công",
   "yes": "Có",
-  "no": "Không"
+  "no": "Không",
+  "langLocale": "vi-VN"
 }

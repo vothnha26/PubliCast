@@ -15,7 +15,6 @@ import { WeeklyGrid } from "./components/WeeklyGrid";
 import { SidebarIntegrations } from "./components/SidebarIntegrations";
 import { ImportOverlay } from "./components/ImportOverlay";
 import { MonthlyGrid } from "./components/MonthlyGrid";
-import { IcsImportModal } from "./components/IcsImportModal";
 
 import { useBrandPermission } from "../../../hooks/useBrandPermission";
 import { PostAnalyticsDetailModal } from "../../../components/workspace/PostAnalyticsDetailModal";
@@ -50,7 +49,6 @@ export function WeeklyCalendarView() {
   const { activeBrand } = useBrand();
   const [postData, setPostData] = useState([]);
   const [eventsData, setEventsData] = useState([]);
-  const [isIcsModalOpen, setIsIcsModalOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [showSidebar, setShowSidebar] = useState(false);
   const [rowHeight, setRowHeight] = useState(100);
@@ -288,7 +286,6 @@ export function WeeklyCalendarView() {
         onBestTimePlatformChange={setBestTimePlatform}
         calendarViewMode={calendarViewMode}
         onCalendarViewModeChange={setCalendarViewMode}
-        onImportIcsClick={() => setIsIcsModalOpen(true)}
       />
 
       {loading && (
@@ -340,14 +337,6 @@ export function WeeklyCalendarView() {
 
       {/* Google Drive Import Backdrop Overlay */}
       <ImportOverlay isOpen={isImporting} />
-      
-      {/* ICS Google Calendar Import Modal */}
-      <IcsImportModal
-        isOpen={isIcsModalOpen}
-        onClose={() => setIsIcsModalOpen(false)}
-        activeBrand={activeBrand}
-        onImportSuccess={fetchPosts}
-      />
 
       <PostAnalyticsDetailModal
         isOpen={analyticsModal.open}

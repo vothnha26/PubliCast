@@ -16,5 +16,6 @@
   "error": "An error occurred",
   "success": "Success",
   "yes": "Yes",
-  "no": "No"
+  "no": "No",
+  "langLocale": "en-US"
 }

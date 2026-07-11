@@ -1,5 +1,53 @@
 {
   "title": "Content Planner",
+  "toolbar": {
+    "searchPlaceholder": "Search",
+    "thisWeek": "This week",
+    "filterStatusLabel": "Filter by Status",
+    "filterTypeLabel": "Filter by Type",
+    "statuses": {
+      "all": "All Statuses",
+      "draft": "Draft",
+      "scheduled": "Scheduled",
+      "pendingApproval": "Pending Approval",
+      "published": "Published",
+      "failed": "Failed"
+    },
+    "types": {
+      "all": "All Types",
+      "image": "Image",
+      "video": "Video",
+      "carousel": "Carousel"
+    },
+    "calendarZoom": "Calendar zoom",
+    "zooms": {
+      "small": "Small (80px)",
+      "medium": "Medium (100px)",
+      "large": "Large (120px)"
+    },
+    "calendarView": "Calendar view",
+    "views": {
+      "day": "Day View",
+      "week": "Week View",
+      "month": "Month View"
+    },
+    "socialCalendars": "Social calendars",
+    "syncImportExport": "Sync / Import / Export Data",
+    "previewFeed": "Preview feed",
+    "notifications": "Notifications",
+    "bestTimes": "Best times",
+    "selectHeatmapPlatform": "Select Heatmap Platform",
+    "createPost": "Create post",
+    "feedPreviewTitle": "Feed Preview",
+    "feedMockup": "Feed Mockup",
+    "noScheduledPosts": "No scheduled posts yet",
+    "close": "Close",
+    "toasts": {
+      "zoomLevelSet": "Zoom level set to {{size}}px",
+      "switchedTo": "Switched to {{view}}",
+      "showingBestTimes": "Showing best times for {{platform}}"
+    }
+  },
   "wizard": {
     "title": "Data Sync & Integration",
     "subtitle": "Import or export posts and schedule in CSV/ICS format",
@@ -48,6 +96,16 @@
       "format": "Output format",
       "dateRange": "Date range",
       "hint": "Your file will be compiled and ready to download after confirmation."
+    },
+    "validation": {
+      "fileStatus": "File status",
+      "validRows": "{{n}} valid rows",
+      "failedRows": "{{n}} error rows",
+      "errorList": "Error/skipped row list",
+      "errorRow": "Row {{row}}: {{title}}",
+      "guideTitle": "💡 Validation guide:",
+      "guideDesc": "Click **Continue** to inspect and preview visually each post before committing to your Schedule.",
+      "processing": "Processing..."
     },
     "buttons": {
       "back": "Back",

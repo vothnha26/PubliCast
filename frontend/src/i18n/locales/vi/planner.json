@@ -1,5 +1,53 @@
 {
   "title": "Lịch biểu nội dung",
+  "toolbar": {
+    "searchPlaceholder": "Tìm kiếm",
+    "thisWeek": "Tuần này",
+    "filterStatusLabel": "Lọc theo Trạng thái",
+    "filterTypeLabel": "Lọc theo Loại",
+    "statuses": {
+      "all": "Tất cả Trạng thái",
+      "draft": "Bản nháp",
+      "scheduled": "Đã lên lịch",
+      "pendingApproval": "Chờ phê duyệt",
+      "published": "Đã đăng",
+      "failed": "Thất bại"
+    },
+    "types": {
+      "all": "Tất cả các loại",
+      "image": "Hình ảnh",
+      "video": "Video",
+      "carousel": "Bộ sưu tập"
+    },
+    "calendarZoom": "Thu phóng lịch",
+    "zooms": {
+      "small": "Nhỏ (80px)",
+      "medium": "Trung bình (100px)",
+      "large": "Lớn (120px)"
+    },
+    "calendarView": "Chế độ xem lịch",
+    "views": {
+      "day": "Chế độ xem Ngày",
+      "week": "Chế độ xem Tuần",
+      "month": "Chế độ xem Tháng"
+    },
+    "socialCalendars": "Lịch mạng xã hội",
+    "syncImportExport": "Đồng bộ / Nhập / Xuất dữ liệu",
+    "previewFeed": "Xem trước bảng tin",
+    "notifications": "Thông báo",
+    "bestTimes": "Khung giờ vàng",
+    "selectHeatmapPlatform": "Chọn nền tảng biểu đồ nhiệt",
+    "createPost": "Tạo bài viết",
+    "feedPreviewTitle": "Xem trước bảng tin",
+    "feedMockup": "Bản nháp bảng tin",
+    "noScheduledPosts": "Chưa có bài viết lên lịch nào",
+    "close": "Đóng",
+    "toasts": {
+      "zoomLevelSet": "Cấp độ thu phóng đặt thành {{size}}px",
+      "switchedTo": "Đã chuyển sang {{view}}",
+      "showingBestTimes": "Đang hiển thị khung giờ vàng cho {{platform}}"
+    }
+  },
   "wizard": {
     "title": "Tích hợp & Đồng bộ dữ liệu",
     "subtitle": "Nhập hoặc xuất bài viết và lịch biểu bằng định dạng CSV/ICS",
@@ -48,6 +96,16 @@
       "format": "Định dạng đầu ra",
       "dateRange": "Phạm vi thời gian",
       "hint": "Tệp của bạn sẽ được tự động biên dịch, ký số mã hóa và sẵn sàng tải về trong giây lát sau khi bấm xác nhận."
+    },
+    "validation": {
+      "fileStatus": "Trạng thái tệp",
+      "validRows": "{{n}} dòng hợp lệ",
+      "failedRows": "{{n}} dòng bị lỗi",
+      "errorList": "Danh sách dòng bị lỗi/bỏ qua",
+      "errorRow": "Dòng {{row}}: {{title}}",
+      "guideTitle": "💡 Hướng dẫn kiểm tra:",
+      "guideDesc": "Bấm **Tiếp tục** để kiểm tra và xem trước nội dung trực quan từng bài viết trước khi chính thức áp dụng vào Lịch biểu của bạn.",
+      "processing": "Đang xử lý..."
     },
     "buttons": {
       "back": "Quay lại",
