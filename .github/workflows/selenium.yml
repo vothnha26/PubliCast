@@ -2,7 +2,7 @@ name: Selenium UI Automation Tests
 
 on:
   push:
-    branches: [ main, master, develop, "feature/**", "bugfix/**", "bug/**", "bug/*" ]
+    branches: [ main, master, develop, "feature/**", "feat/**", "bugfix/**", "bug/**", "bug/*" ]
   pull_request:
     branches: [ main, master, develop ]
 
