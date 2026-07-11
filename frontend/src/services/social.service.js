@@ -138,6 +138,12 @@ class SocialService {
     return response.data;
   }
 
+  async searchInstagramAudio(brandId, query) {
+    const url = `/social/instagram/audio-search?brandId=${brandId}&q=${encodeURIComponent(query)}`;
+    const response = await apiService.get(url);
+    return response.data;
+  }
+
   async disconnectInstagramAccount(brandId) {
     const response = await apiService.post('/social/instagram/disconnect', { brandId });
     return response.data;

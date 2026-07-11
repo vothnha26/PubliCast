@@ -27,7 +27,7 @@ class CarouselPublishStrategy extends InstagramPublishStrategy {
     }
 
     // 2. Tạo container cha liên kết các container con
-    const parentContainer = await instagramGateway.createCarouselContainer(igAccountId, accessToken, childrenIds, caption, scheduledAt);
+    const parentContainer = await instagramGateway.createCarouselContainer(igAccountId, accessToken, childrenIds, caption, scheduledAt, postData.options);
     
     // 3. Xuất bản container cha
     return instagramGateway.publishContainer(igAccountId, accessToken, parentContainer.id);

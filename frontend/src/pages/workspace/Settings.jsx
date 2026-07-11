@@ -68,12 +68,20 @@ export function SettingsPage() {
   useEffect(() => {
     const params = new URLSearchParams(location.search);
     const tabParam = params.get("tab");
+    const successParam = params.get("success");
+
+    if (successParam === "google_linked") {
+      toast.success(language === 'vi' ? "Liên kết tài khoản Google thành công!" : "Google account linked successfully!");
+      setActiveTab("access");
+      navigate("/settings?tab=access", { replace: true });
+      return;
+    }
     
     if (tabParam === "support") setActiveTab("support");
     else if (tabParam === "access") setActiveTab("access");
     else if (tabParam === "billing") setActiveTab("billing");
     else setActiveTab("account");
-  }, [location.search]);
+  }, [location.search, navigate, language]);
 
   // Fetch support tickets (History)
   const fetchSupportHistory = async () => {
@@ -298,6 +306,7 @@ export function SettingsPage() {
     setIsSaving(true);
     try {
       await profileService.editProfile({
+        fullName,
         name: fullName,
         receiveSummary,
         customSummaryEmail,
@@ -380,6 +389,11 @@ export function SettingsPage() {
   };
 
   const handleUpdatePassword = async () => {
+    const hasLocalAccount = accounts.some(acc => acc.provider === 'LOCAL');
+    if (hasLocalAccount && !currentPassword) {
+      toast.error("mật khẩu hiện tại là bắt buộc.");
+      return;
+    }
     if (!newPassword) {
       toast.error(language === 'vi' ? "Vui lòng nhập mật khẩu mới!" : "Please enter a new password!");
       return;

@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { ChevronDown, Instagram, Plus, X, Music, UserPlus } from "lucide-react";
 import { usePostCreatorFormContext } from "../../../../context/PostCreatorFormContext";
+import socialService from "../../../../services/social.service";
 
 const MOCK_AUDIO_TRACKS = [
   { id: "viral_pop", name: "Trending Pop Hits (Viral)" },
@@ -20,11 +21,51 @@ export function InstagramPresets() {
     instagramAudio,
     setInstagramAudio,
     instagramShowOnFeed,
-    setInstagramShowOnFeed
+    setInstagramShowOnFeed,
+    activeBrand
   } = usePostCreatorFormContext();
 
   const [collabInput, setCollabInput] = useState("");
   const [showAudioList, setShowAudioList] = useState(false);
+  const [audioSearchQuery, setAudioSearchQuery] = useState("");
+  const [audioTracks, setAudioTracks] = useState(MOCK_AUDIO_TRACKS);
+  const [isLoadingAudio, setIsLoadingAudio] = useState(false);
+
+  React.useEffect(() => {
+    if (!showAudioList || !activeBrand) return;
+
+    let isMounted = true;
+    const fetchAudio = async () => {
+      setIsLoadingAudio(true);
+      try {
+        const response = await socialService.searchInstagramAudio(activeBrand.id, audioSearchQuery);
+        if (isMounted) {
+          setAudioTracks(response.data || MOCK_AUDIO_TRACKS);
+        }
+      } catch (err) {
+        console.error("Failed to search Instagram audio:", err);
+        if (isMounted) {
+          const filtered = MOCK_AUDIO_TRACKS.filter(t => 
+            t.name.toLowerCase().includes(audioSearchQuery.toLowerCase())
+          );
+          setAudioTracks(filtered);
+        }
+      } finally {
+        if (isMounted) {
+          setIsLoadingAudio(false);
+        }
+      }
+    };
+
+    const debounceTimer = setTimeout(() => {
+      fetchAudio();
+    }, 300);
+
+    return () => {
+      isMounted = false;
+      clearTimeout(debounceTimer);
+    };
+  }, [audioSearchQuery, showAudioList, activeBrand]);
 
   const handleAddCollaborator = () => {
     const clean = collabInput.trim().replace(/^@/, "");
@@ -151,21 +192,45 @@ export function InstagramPresets() {
               )}
 
               {showAudioList && !instagramAudio && (
-                <div className="absolute left-0 right-0 mt-1 bg-white border border-gray-100 rounded-xl shadow-lg z-10 py-1.5 overflow-hidden animate-in fade-in slide-in-from-top-1 duration-150">
-                  {MOCK_AUDIO_TRACKS.map((track) => (
-                    <button
-                      key={track.id}
-                      type="button"
-                      onClick={() => {
-                        setInstagramAudio(track);
-                        setShowAudioList(false);
-                      }}
-                      className="w-full text-left px-4 py-2 hover:bg-purple-50/40 text-xs font-semibold text-gray-700 hover:text-purple-700 transition-colors flex items-center gap-2 cursor-pointer"
-                    >
-                      <Music size={12} className="text-gray-400" />
-                      {track.name}
-                    </button>
-                  ))}
+                <div className="absolute left-0 right-0 mt-1 bg-white border border-gray-100 rounded-xl shadow-lg z-10 py-2 overflow-hidden animate-in fade-in slide-in-from-top-1 duration-150 flex flex-col max-h-56">
+                  <div className="px-3 pb-2 border-b border-gray-100">
+                    <input
+                      type="text"
+                      value={audioSearchQuery}
+                      onChange={(e) => setAudioSearchQuery(e.target.value)}
+                      placeholder="Search audio on Meta..."
+                      className="w-full px-2.5 py-1.5 bg-gray-50 border border-gray-200 focus:border-purple-500 rounded-lg text-[11px] font-semibold text-gray-700 outline-none transition-colors"
+                      onClick={(e) => e.stopPropagation()}
+                    />
+                  </div>
+                  <div className="overflow-y-auto flex-1 py-1">
+                    {isLoadingAudio ? (
+                      <div className="flex items-center justify-center py-4 text-[10px] text-gray-400 font-bold gap-2">
+                        <span className="w-3.5 h-3.5 border-2 border-purple-500 border-t-transparent rounded-full animate-spin" />
+                        Searching...
+                      </div>
+                    ) : audioTracks.length === 0 ? (
+                      <div className="text-center py-4 text-[10px] text-gray-400 font-bold">
+                        No audio tracks found
+                      </div>
+                    ) : (
+                      audioTracks.map((track) => (
+                        <button
+                          key={track.id}
+                          type="button"
+                          onClick={() => {
+                            setInstagramAudio(track);
+                            setShowAudioList(false);
+                            setAudioSearchQuery("");
+                          }}
+                          className="w-full text-left px-4 py-2.5 hover:bg-purple-50/40 text-xs font-semibold text-gray-700 hover:text-purple-700 transition-colors flex items-center gap-2 cursor-pointer"
+                        >
+                          <Music size={12} className="text-gray-400" />
+                          {track.name}
+                        </button>
+                      ))
+                    )}
+                  </div>
                 </div>
               )}
             </div>
