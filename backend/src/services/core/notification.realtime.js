@@ -39,8 +39,15 @@ class NotificationRealtimeService {
   _send(res, event, payload) {
     if (res.destroyed || res.writableEnded) return;
 
-    res.write(`event: ${event}\n`);
-    res.write(`data: ${JSON.stringify(payload)}\n\n`);
+    try {
+      res.write(`event: ${event}\n`);
+      res.write(`data: ${JSON.stringify(payload)}\n\n`);
+      if (typeof res.flush === 'function') {
+        res.flush();
+      }
+    } catch (error) {
+      console.error('SSE write error:', error.message);
+    }
   }
 }
 

@@ -1,5 +1,5 @@
 import React from "react";
-import { Youtube, Instagram, Linkedin, Send, MessageSquare, AlertCircle, Smartphone, Monitor } from "lucide-react";
+import { Youtube, Instagram, Linkedin, Send, MessageSquare, AlertCircle, Smartphone, Monitor, Eye } from "lucide-react";
 import { usePostCreatorFormContext } from "../../../context/PostCreatorFormContext";
 
 export function PreviewHeader() {
@@ -57,8 +57,9 @@ export function PreviewHeader() {
         )}
       </div>
       <div className="flex gap-2 bg-white/50 p-1 rounded-2xl backdrop-blur-md">
-        <button onClick={() => setPreviewDevice("mobile")} className={`p-2 rounded-xl transition-all cursor-pointer ${previewDevice === 'mobile' ? 'bg-black text-white' : 'text-gray-400 hover:text-black'}`}><Smartphone size={18} /></button>
-        <button onClick={() => setPreviewDevice("desktop")} className={`p-2 rounded-xl transition-all cursor-pointer ${previewDevice === 'desktop' ? 'bg-black text-white' : 'text-gray-400 hover:text-black'}`}><Monitor size={18} /></button>
+        <button type="button" onClick={() => setPreviewDevice("review")} className={`p-2 rounded-xl transition-all cursor-pointer ${previewDevice === 'review' ? 'bg-black text-white' : 'text-gray-400 hover:text-black'}`} title="Review mode"><Eye size={18} /></button>
+        <button type="button" onClick={() => setPreviewDevice("mobile")} className={`p-2 rounded-xl transition-all cursor-pointer ${previewDevice === 'mobile' ? 'bg-black text-white' : 'text-gray-400 hover:text-black'}`} title="Mobile view"><Smartphone size={18} /></button>
+        <button type="button" onClick={() => setPreviewDevice("desktop")} className={`p-2 rounded-xl transition-all cursor-pointer ${previewDevice === 'desktop' ? 'bg-black text-white' : 'text-gray-400 hover:text-black'}`} title="Desktop view"><Monitor size={18} /></button>
       </div>
     </div>
   );

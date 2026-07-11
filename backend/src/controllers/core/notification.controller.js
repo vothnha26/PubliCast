@@ -53,6 +53,10 @@ class NotificationController {
     });
     res.flushHeaders?.();
 
+    res.on('error', (err) => {
+      console.warn('SSE client connection error:', err.message);
+    });
+
     const unsubscribe = notificationRealtime.subscribe(req.user.id, res);
 
     if (req.query.once === 'true') {
@@ -63,6 +67,9 @@ class NotificationController {
 
     res.on('close', () => {
       unsubscribe();
+      if (!res.writableEnded) {
+        res.end();
+      }
     });
   });
 }

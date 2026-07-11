@@ -1023,6 +1023,14 @@ async function main() {
     }
   }
 
+  // Helper to generate a date relative to today (at 00:00:00 local time) with specific hour
+  const getTestDate = (offsetDays, hour) => {
+    const d = new Date(today);
+    d.setDate(today.getDate() + offsetDays);
+    d.setHours(hour, 0, 0, 0);
+    return d;
+  };
+
   // Posts for testBrand
   await prisma.post.create({
     data: {
@@ -1033,7 +1041,7 @@ async function main() {
       type: 'IMAGE',
       status: 'DRAFT',
       targetPlatforms: 'FACEBOOK,INSTAGRAM',
-      createdAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000)
+      createdAt: getTestDate(-5, 9)
     }
   });
 
@@ -1046,8 +1054,8 @@ async function main() {
       type: 'TEXT',
       status: 'SCHEDULED',
       targetPlatforms: 'LINKEDIN',
-      scheduledAt: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000), // Lên lịch sau 2 ngày
-      createdAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000)
+      scheduledAt: getTestDate(2, 14), // Lên lịch sau 2 ngày lúc 14:00
+      createdAt: getTestDate(-1, 10)
     }
   });
 
@@ -1060,9 +1068,9 @@ async function main() {
       type: 'LINK',
       status: 'PUBLISHED',
       targetPlatforms: 'FACEBOOK',
-      publishedAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000),
+      publishedAt: getTestDate(-2, 16), // 2 ngày trước lúc 16:00
       platformPostId: 'fb_post_999123',
-      createdAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000)
+      createdAt: getTestDate(-3, 9)
     }
   });
 
@@ -1076,7 +1084,22 @@ async function main() {
       status: 'FAILED',
       targetPlatforms: 'YOUTUBE',
       failureReason: 'OAuth Token Expired. Please reconnect your account.',
-      createdAt: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000)
+      createdAt: getTestDate(-4, 11)
+    }
+  });
+
+  // Một bài post Scheduled ngay ngày hôm nay lúc 16:00 để người dùng thấy ngay lập tức khi mở Planner
+  await prisma.post.create({
+    data: {
+      brandId: testBrand.id,
+      createdByUserId: testUser.id,
+      title: 'Bài viết chia sẻ mẹo phát triển sản phẩm với AI',
+      caption: 'Làm thế nào để ứng dụng mô hình ngôn ngữ lớn (LLM) vào luồng công việc lập trình hàng ngày? Xem các mẹo sau.',
+      type: 'TEXT',
+      status: 'SCHEDULED',
+      targetPlatforms: 'LINKEDIN',
+      scheduledAt: getTestDate(0, 16), // Hôm nay lúc 16:00
+      createdAt: getTestDate(-1, 15)
     }
   });
 
@@ -1087,7 +1110,7 @@ async function main() {
       createdByUserId: testUser.id,
       title: 'Livestream hỏi đáp giải pháp PubliCast',
       description: 'Buổi giao lưu trực tiếp giải đáp mọi thắc mắc của người dùng về việc tự động hóa kế hoạch bài đăng.',
-      scheduledAt: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000),
+      scheduledAt: getTestDate(5, 20), // Lên lịch sau 5 ngày lúc 20:00
       durationMinutes: 60,
       status: 'SCHEDULED',
       streamKey: 'live_test_key_123',
@@ -1123,7 +1146,8 @@ async function main() {
       status: 'SCHEDULED',
       targetPlatforms: 'LINKEDIN',
       autoListId: testAutoList.id,
-      createdAt: new Date()
+      scheduledAt: getTestDate(0, 15), // Hôm nay lúc 15:00
+      createdAt: getTestDate(0, 15)
     }
   });
 
@@ -1225,9 +1249,601 @@ async function main() {
       isLibrary: true,
       mediaUrls: 'https://images.unsplash.com/photo-1542831371-29b0f74f9713?w=500&auto=format&fit=crop&q=60',
       mediaThumbnailUrls: 'https://images.unsplash.com/photo-1542831371-29b0f74f9713?w=500&auto=format&fit=crop&q=60',
-      createdAt: new Date()
+      createdAt: getTestDate(0, 10)
     }
   });
+
+  // AIAssistant cho testBrand
+  console.log('Seeding AIAssistant contexts for testBrand...');
+  await prisma.aIAssistant.create({
+    data: {
+      brandId: testBrand.id,
+      defaultTone: 'PROFESSIONAL',
+      defaultLanguage: 'vi',
+      brandVoiceContext: 'Trong Phuc Tech là kênh chia sẻ kiến thức chuyên sâu về công nghệ, phát triển phần mềm, kiến trúc hệ thống và áp dụng AI trong lập trình.',
+      targetAudience: 'Lập trình viên, kỹ sư phần mềm, sinh viên công nghệ thông tin tại Việt Nam.',
+      targetPlatforms: 'linkedin,facebook,youtube',
+      creditsLimit: 1000,
+      creditsUsed: 45,
+      usageCountThisMonth: 15
+    }
+  });
+
+  // AdAccount & Ad Analytics cho testBrand
+  console.log('Seeding AdAccount & Ad Analytics for testBrand...');
+  const testAdAcc = await prisma.adAccount.create({
+    data: {
+      brandId: testBrand.id,
+      platform: 'META_ADS',
+      platformAccountId: 'act_trongphuc_ad',
+      accountName: 'Meta Ads - Trong Phuc Tech Pro',
+      currency: 'VND',
+      timezone: 'Asia/Ho_Chi_Minh',
+      accessToken: 'mock_ad_token_test',
+      isActive: true
+    }
+  });
+
+  for (let i = 29; i >= 0; i--) {
+    const d = new Date(today);
+    d.setDate(d.getDate() - i);
+    const spend = 100000 + Math.round(Math.sin(i) * 30000 + Math.random() * 15000);
+    const clicks = Math.round(spend / 1200);
+    const conversions = Math.round(clicks * 0.045);
+
+    await prisma.analytics.create({
+      data: {
+        brandId: testBrand.id,
+        adAccountId: testAdAcc.id,
+        dateFrom: d,
+        dateTo: d,
+        granularity: 'DAY',
+        fetchedAt: new Date(),
+        analyticsType: 'AD',
+        adAnalytics: {
+          create: {
+            campaignId: 'camp_test_conversion',
+            campaignName: 'Tech Ebook Download Campaign',
+            totalSpend: spend,
+            impressions: clicks * 45,
+            clicks: clicks,
+            ctr: 2.2,
+            cpc: 1200,
+            cpm: 54000,
+            conversions: conversions,
+            conversionValue: conversions * 40000,
+            cpa: conversions > 0 ? spend / conversions : 0,
+            roas: conversions > 0 ? (conversions * 40000) / spend : 0,
+            reach: clicks * 38,
+            frequency: 1.15
+          }
+        }
+      }
+    });
+  }
+
+  // Facebook Dedicated Metrics (Overview, Post, Story) cho testBrand
+  console.log('Seeding Facebook Dedicated Metrics for testBrand...');
+  for (let i = 29; i >= 0; i--) {
+    const d = new Date(today);
+    d.setDate(d.getDate() - i);
+    const reach = 1000 + Math.round(Math.sin(i / 3) * 300 + Math.random() * 150);
+    const impressions = Math.round(reach * 1.3);
+    const likes = 50 + Math.round(Math.random() * 40);
+    const comments = 10 + Math.round(Math.random() * 15);
+    const shares = Math.round(Math.random() * 8);
+
+    await prisma.facebookOverviewMetric.create({
+      data: {
+        brandId: testBrand.id,
+        socialAccountId: testSocialFB.id,
+        dateFrom: d,
+        dateTo: d,
+        granularity: 'DAY',
+        followersTotal: 1500 + (30 - i) * 5,
+        followersGain: 7,
+        followersLost: 2,
+        followersNetChange: 5,
+        reach,
+        impressions,
+        organicReach: Math.round(reach * 0.7),
+        paidReach: Math.round(reach * 0.3),
+        organicImpressions: Math.round(impressions * 0.7),
+        paidImpressions: Math.round(impressions * 0.3),
+        pageClicks: 80,
+        linkClicks: 35,
+        otherClicks: 15,
+        engagements: likes + comments + shares,
+        likes,
+        comments,
+        shares,
+        reactions: likes + 5,
+        pageViews: 120,
+        uniquePageViews: 90,
+        videoViews: 200,
+        organicVideoViews: 150,
+        paidVideoViews: 50,
+        fetchedAt: new Date()
+      }
+    });
+  }
+
+  const fbPostMetricsData = [
+    {
+      platformPostId: 'fb_post_999123',
+      postType: 'LINK',
+      captionSnippet: 'Làm thế nào để phân phối nội dung đồng thời lên Facebook, TikTok...',
+      reach: 1200,
+      organicReach: 900,
+      promotedReach: 300,
+      impressions: 1600,
+      organicImpressions: 1200,
+      promotedImpressions: 400,
+      likes: 78,
+      comments: 18,
+      shares: 12,
+      reactions: 85,
+      linkClicks: 65,
+      otherClicks: 24,
+      engagementRate: 9.0
+    },
+    {
+      platformPostId: 'fb_post_test_img_1',
+      postType: 'IMAGE',
+      captionSnippet: 'Infographic: Top 10 phím tắt VS Code lập trình viên nên biết.',
+      reach: 2500,
+      organicReach: 2500,
+      promotedReach: 0,
+      impressions: 3100,
+      organicImpressions: 3100,
+      promotedImpressions: 0,
+      likes: 245,
+      comments: 42,
+      shares: 89,
+      reactions: 260,
+      linkClicks: 15,
+      otherClicks: 110,
+      engagementRate: 15.0
+    },
+    {
+      platformPostId: 'fb_post_test_video_1',
+      postType: 'VIDEO',
+      captionSnippet: 'Video hướng dẫn cài đặt và sử dụng Docker container trong 5 phút.',
+      reach: 4800,
+      organicReach: 3000,
+      promotedReach: 1800,
+      impressions: 6200,
+      organicImpressions: 4000,
+      promotedImpressions: 2200,
+      videoViews: 3100,
+      organicVideoViews: 2000,
+      promotedVideoViews: 1100,
+      avgWatchTimeSeconds: 45.2,
+      watchRate: 65.4,
+      likes: 312,
+      comments: 56,
+      shares: 48,
+      reactions: 320,
+      linkClicks: 95,
+      otherClicks: 180,
+      engagementRate: 11.5
+    }
+  ];
+
+  for (const metric of fbPostMetricsData) {
+    await prisma.facebookPostMetric.create({
+      data: {
+        brandId: testBrand.id,
+        socialAccountId: testSocialFB.id,
+        ...metric,
+        fetchedAt: new Date()
+      }
+    });
+  }
+
+  const fbStoryMetricsData = [
+    {
+      platformStoryId: 'fb_story_test_1',
+      mediaType: 'IMAGE',
+      thumbnailUrl: 'https://images.unsplash.com/photo-1542831371-29b0f74f9713?w=150&auto=format&fit=crop&q=80',
+      mediaUrl: 'https://images.unsplash.com/photo-1542831371-29b0f74f9713?w=500&auto=format&fit=crop&q=80',
+      reach: 850,
+      impressions: 920,
+      exits: 45,
+      replies: 12,
+      tapsForward: 620,
+      tapsBack: 85,
+      linkClicks: 30,
+      completionRate: 85.5,
+      exitRate: 4.8,
+      publishedAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000)
+    },
+    {
+      platformStoryId: 'fb_story_test_2',
+      mediaType: 'VIDEO',
+      thumbnailUrl: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=150&auto=format&fit=crop&q=80',
+      mediaUrl: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=500&auto=format&fit=crop&q=80',
+      reach: 1200,
+      impressions: 1350,
+      exits: 80,
+      replies: 24,
+      tapsForward: 850,
+      tapsBack: 110,
+      linkClicks: 75,
+      completionRate: 78.2,
+      exitRate: 5.9,
+      publishedAt: new Date(Date.now() - 12 * 60 * 60 * 1000)
+    }
+  ];
+
+  for (const metric of fbStoryMetricsData) {
+    await prisma.facebookStoryMetric.create({
+      data: {
+        brandId: testBrand.id,
+        socialAccountId: testSocialFB.id,
+        ...metric,
+        fetchedAt: new Date()
+      }
+    });
+  }
+
+  // Unified Inbox & Inbox Items cho testBrand
+  console.log('Seeding Unified Inbox & Inbox Items for testBrand...');
+  const testInbox = await prisma.unifiedInbox.create({
+    data: {
+      brandId: testBrand.id,
+      totalUnread: 3,
+      lastSyncAt: new Date(),
+      filterPlatforms: 'FACEBOOK,INSTAGRAM,TIKTOK,YOUTUBE',
+      filterTypes: 'COMMENT,DIRECT_MESSAGE'
+    }
+  });
+
+  const inboxItemsData = [
+    {
+      platform: 'FACEBOOK',
+      type: 'COMMENT',
+      platformItemId: 'fb_comment_1',
+      authorId: 'fb_user_1',
+      authorName: 'Nguyễn Văn A',
+      authorAvatarUrl: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100&auto=format&fit=crop&q=80',
+      content: 'Bài viết chia sẻ rất hữu ích! Có tài liệu PDF để tải về không ạ?',
+      status: 'UNREAD',
+      sentiment: 'POSITIVE',
+      tags: ['Hỏi tài liệu', 'Tiềm năng'],
+      platformCreatedAt: new Date(Date.now() - 3 * 60 * 60 * 1000),
+      syncedAt: new Date()
+    },
+    {
+      platform: 'FACEBOOK',
+      type: 'DIRECT_MESSAGE',
+      platformItemId: 'fb_dm_1',
+      authorId: 'fb_user_2',
+      authorName: 'Trần Thị B',
+      authorAvatarUrl: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100&auto=format&fit=crop&q=80',
+      content: 'Xin chào, mình muốn hỏi về chi phí gói PRO của dịch vụ bên bạn.',
+      status: 'UNREAD',
+      sentiment: 'NEUTRAL',
+      tags: ['Hỏi giá', 'Khách hàng mới'],
+      assignedUserId: testUser.id,
+      platformCreatedAt: new Date(Date.now() - 1 * 60 * 60 * 1000),
+      syncedAt: new Date()
+    },
+    {
+      platform: 'INSTAGRAM',
+      type: 'COMMENT',
+      platformItemId: 'ig_comment_1',
+      authorId: 'ig_user_1',
+      authorName: 'tech_enthusiast',
+      authorAvatarUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&auto=format&fit=crop&q=80',
+      content: 'Giao diện trông đẹp thế, khi nào thì chính thức ra mắt vậy?',
+      status: 'READ',
+      sentiment: 'POSITIVE',
+      tags: ['Quan tâm', 'UI/UX'],
+      platformCreatedAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000),
+      syncedAt: new Date()
+    },
+    {
+      platform: 'TIKTOK',
+      type: 'COMMENT',
+      platformItemId: 'tk_comment_1',
+      authorId: 'tk_user_1',
+      authorName: 'khoa_hoc_may_tinh',
+      content: 'Video ngắn gọn xúc tích, mong ra thêm phần 2 hướng dẫn deploy Docker.',
+      status: 'READ',
+      sentiment: 'POSITIVE',
+      tags: ['Yêu cầu nội dung'],
+      platformCreatedAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000),
+      syncedAt: new Date()
+    },
+    {
+      platform: 'FACEBOOK',
+      type: 'COMMENT',
+      platformItemId: 'fb_comment_neg',
+      authorId: 'fb_user_bad',
+      authorName: 'Anti Fan',
+      content: 'App dùng chán quá, kết nối mạng xã hội cứ bị lỗi suốt bực cả mình.',
+      status: 'UNREAD',
+      sentiment: 'NEGATIVE',
+      tags: ['Khiếu nại', 'Lỗi kết nối'],
+      assignedUserId: testUser.id,
+      internalNotes: ['Khách gặp lỗi kết nối Facebook. Đã báo kỹ thuật kiểm tra token.'],
+      platformCreatedAt: new Date(Date.now() - 30 * 60 * 1000),
+      syncedAt: new Date()
+    }
+  ];
+
+  for (const item of inboxItemsData) {
+    await prisma.inboxItem.create({
+      data: {
+        inboxId: testInbox.id,
+        socialAccountId: item.platform === 'FACEBOOK' ? testSocialFB.id : item.platform === 'INSTAGRAM' ? testSocialIG.id : item.platform === 'TIKTOK' ? testSocialTK.id : null,
+        ...item
+      }
+    });
+  }
+
+  // Competitor Analysis cho testBrand
+  console.log('Seeding Competitor Analysis for testBrand...');
+  const competitorsData = [
+    {
+      platform: 'FACEBOOK',
+      competitorHandle: 'competitor.tech',
+      competitorDisplayName: 'Tech Rival Page',
+      competitorAvatarUrl: 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=100&auto=format&fit=crop&q=80',
+      competitorProfileUrl: 'https://facebook.com/competitor.tech',
+      followersCount: 15200,
+      followersGrowth: 3.5,
+      avgEngagementRate: 4.2,
+      avgReach: 3200,
+      avgLikes: 120,
+      avgComments: 25,
+      avgShares: 15,
+      postsPerWeek: 12.5,
+      topPostType: 'VIDEO',
+      audienceOverlapPct: 18.5,
+      addedAt: new Date()
+    },
+    {
+      platform: 'YOUTUBE',
+      competitorHandle: 'UCrival_channel_id',
+      competitorDisplayName: 'Rival Tech Channel',
+      competitorAvatarUrl: 'https://images.unsplash.com/photo-1507238691740-187a5b1d37b8?w=100&auto=format&fit=crop&q=80',
+      competitorProfileUrl: 'https://youtube.com/rivaltech',
+      followersCount: 89000,
+      followersGrowth: 1.2,
+      avgEngagementRate: 6.8,
+      avgLikes: 2500,
+      avgComments: 450,
+      avgShares: 180,
+      postsPerWeek: 3.0,
+      topPostType: 'SHORT',
+      audienceOverlapPct: 24.0,
+      addedAt: new Date()
+    }
+  ];
+
+  for (const competitor of competitorsData) {
+    await prisma.competitorAnalysis.create({
+      data: {
+        brandId: testBrand.id,
+        ...competitor
+      }
+    });
+  }
+
+  // Hashtag Trackers & Hashtag Sets cho testBrand
+  console.log('Seeding Hashtag Trackers for testBrand...');
+  const hashtagsData = [
+    {
+      hashtag: 'nextjs',
+      platform: 'INSTAGRAM',
+      totalPosts: 1250000,
+      postsLast24h: 3500,
+      totalReach: 4500000,
+      avgEngagementRate: 3.8,
+      trendDirection: 'UP',
+      addedAt: new Date()
+    },
+    {
+      hashtag: 'productivity',
+      platform: 'INSTAGRAM',
+      totalPosts: 8900000,
+      postsLast24h: 12000,
+      totalReach: 15000000,
+      avgEngagementRate: 2.5,
+      trendDirection: 'STABLE',
+      addedAt: new Date()
+    },
+    {
+      hashtag: 'publicast',
+      platform: 'FACEBOOK',
+      totalPosts: 450,
+      postsLast24h: 15,
+      totalReach: 12000,
+      avgEngagementRate: 6.2,
+      trendDirection: 'UP',
+      addedAt: new Date()
+    }
+  ];
+
+  for (const hash of hashtagsData) {
+    await prisma.hashtagTracker.create({
+      data: {
+        brandId: testBrand.id,
+        ...hash
+      }
+    });
+  }
+
+  await prisma.hashtagSet.create({
+    data: {
+      brandId: testBrand.id,
+      name: 'Tech & Coding Set',
+      hashtags: '#nextjs #reactjs #nodejs #webdev #coding',
+      targetPlatforms: 'LINKEDIN,FACEBOOK,INSTAGRAM'
+    }
+  });
+
+  // Best Time Slots cho testBrand
+  console.log('Seeding Best Time Slots for testBrand...');
+  const platformsForBestTime = ['FACEBOOK', 'INSTAGRAM', 'YOUTUBE', 'TIKTOK'];
+  for (const plat of platformsForBestTime) {
+    for (let day = 0; day < 7; day++) {
+      const hours = [9, 15, 20];
+      for (const hr of hours) {
+        await prisma.bestTimeSlot.create({
+          data: {
+            brandId: testBrand.id,
+            platform: plat,
+            dayOfWeek: day,
+            hour: hr,
+            engagementScore: parseFloat((0.6 + Math.random() * 0.4).toFixed(2)),
+            confidenceLevel: Math.random() > 0.3 ? 'HIGH' : 'MEDIUM',
+            calculatedAt: new Date()
+          }
+        });
+      }
+    }
+  }
+
+  // Approval Workflows cho testBrand
+  console.log('Seeding Approval Workflows for testBrand...');
+  const approvalPost = await prisma.post.create({
+    data: {
+      brandId: testBrand.id,
+      createdByUserId: specialistUser.id,
+      title: 'Bài viết khảo sát ý kiến người dùng',
+      caption: 'Theo các bạn, tính năng nào của PubliCast là đáng giá nhất? Bình luận bên dưới nhé!',
+      type: 'TEXT',
+      status: 'PENDING_APPROVAL',
+      targetPlatforms: 'FACEBOOK,LINKEDIN',
+      createdAt: getTestDate(0, 11)
+    }
+  });
+
+  const workflow = await prisma.approvalWorkflow.create({
+    data: {
+      brandId: testBrand.id,
+      postId: approvalPost.id,
+      requesterId: specialistUser.id,
+      approvalPolicy: 'AT_LEAST_ONE',
+      selectedReviewers: JSON.stringify([testUser.id]),
+      status: 'PENDING',
+      requesterNote: 'Nhờ anh Phúc duyệt bài viết khảo sát này giúp em nhé.'
+    }
+  });
+
+  await prisma.workflowReviewer.create({
+    data: {
+      workflowId: workflow.id,
+      reviewerId: testUser.id,
+      status: 'PENDING'
+    }
+  });
+
+  // Media Library & Folders cho testBrand
+  console.log('Seeding Media Library & Folders for testBrand...');
+  const techFolder = await prisma.mediaFolder.create({
+    data: {
+      brandId: testBrand.id,
+      name: 'Tech Infographics'
+    }
+  });
+
+  const codeFolder = await prisma.mediaFolder.create({
+    data: {
+      brandId: testBrand.id,
+      name: 'Source Code Screenshots',
+      parentId: techFolder.id
+    }
+  });
+
+  const mediaFiles = [
+    {
+      mediaId: 'media_test_1',
+      filename: 'vscode-shortcuts.png',
+      mimeType: 'image/png',
+      sizeBytes: 1542000,
+      width: 1200,
+      height: 900,
+      storageUrl: 'https://images.unsplash.com/photo-1607799279861-4dd421887fb3?w=1200&auto=format&fit=crop&q=80',
+      thumbnailUrl: 'https://images.unsplash.com/photo-1607799279861-4dd421887fb3?w=300&auto=format&fit=crop&q=80',
+      aspectRatio: '4:3',
+      folderId: techFolder.id,
+      tags: 'VSCode, Infographic',
+      uploadedByUserId: testUser.id,
+      uploadedAt: new Date()
+    },
+    {
+      mediaId: 'media_test_2',
+      filename: 'docker-compose-config.png',
+      mimeType: 'image/png',
+      sizeBytes: 852000,
+      width: 1080,
+      height: 1080,
+      storageUrl: 'https://images.unsplash.com/photo-1605379399642-870262d3d051?w=1200&auto=format&fit=crop&q=80',
+      thumbnailUrl: 'https://images.unsplash.com/photo-1605379399642-870262d3d051?w=300&auto=format&fit=crop&q=80',
+      aspectRatio: '1:1',
+      folderId: codeFolder.id,
+      tags: 'Docker, Configuration',
+      uploadedByUserId: testUser.id,
+      uploadedAt: new Date()
+    }
+  ];
+
+  for (const media of mediaFiles) {
+    await prisma.mediaLibrary.create({
+      data: {
+        brandId: testBrand.id,
+        ...media
+      }
+    });
+  }
+
+  // Audit Logs cho testBrand
+  console.log('Seeding Audit Logs for testBrand...');
+  const auditLogsData = [
+    {
+      userId: testUser.id,
+      action: 'CONNECT_SOCIAL_ACCOUNT',
+      targetType: 'SocialAccount',
+      targetId: testSocialFB.id,
+      details: 'Đã kết nối tài khoản Facebook Page (Trong Phuc Tech Fanpage)',
+      ipAddress: '127.0.0.1',
+      userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+      createdAt: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000)
+    },
+    {
+      userId: testUser.id,
+      action: 'CREATE_POST',
+      targetType: 'Post',
+      targetId: 'fb_post_999123',
+      details: 'Đã tạo bài viết "Chia sẻ kiến thức Marketing đa kênh"',
+      ipAddress: '127.0.0.1',
+      userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+      createdAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000)
+    },
+    {
+      userId: testUser.id,
+      action: 'PUBLISH_POST',
+      targetType: 'Post',
+      targetId: 'fb_post_999123',
+      details: 'Đăng tải thành công bài viết lên Facebook Page',
+      ipAddress: '127.0.0.1',
+      userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+      createdAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000)
+    }
+  ];
+
+  for (const log of auditLogsData) {
+    await prisma.auditLog.create({
+      data: {
+        brandId: testBrand.id,
+        ...log
+      }
+    });
+  }
 
   // Platform Limits
   console.log('Seeding PlatformLimits...');

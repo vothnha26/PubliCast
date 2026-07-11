@@ -27,7 +27,7 @@ export function PreviewBody() {
 
   return (
     <div className="flex-1 overflow-y-auto px-8 py-10 flex flex-col items-center justify-start space-y-8 bg-gray-50/30 scrollbar-thin">
-      <div className="w-full max-w-sm">
+      <div className="w-full max-w-[460px]">
         {PreviewComponent && (
           <PreviewComponent 
             caption={caption} 
