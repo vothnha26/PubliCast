@@ -16,7 +16,7 @@ const MOCK_SUBTITLES = [
   { time: "00:06", text: "Enjoy editing your social videos in one place!" }
 ];
 
-export function VideoEditorModal({ isOpen, videoUrl, onClose, onSave }) {
+export function VideoEditorModal({ isOpen, videoUrl, onClose, onSave, initialSettings }) {
   const videoRef = useRef(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
@@ -46,6 +46,34 @@ export function VideoEditorModal({ isOpen, videoUrl, onClose, onSave }) {
   // Subtitle options
   const [subtitlesEnabled, setSubtitlesEnabled] = useState(false);
   const [isGeneratingSubs, setIsGeneratingSubs] = useState(false);
+
+  useEffect(() => {
+    if (isOpen) {
+      if (initialSettings) {
+        setStartTime(initialSettings.startTime ?? 0);
+        setEndTime(initialSettings.endTime ?? 10);
+        setAspectRatio(initialSettings.aspectRatio ?? "original");
+        setSelectedAudio(initialSettings.selectedAudio ?? "none");
+        setAudioVolume(initialSettings.audioVolume ?? 50);
+        setTextOverlay(initialSettings.textOverlay ?? "");
+        setTextColor(initialSettings.textColor ?? "#FFFFFF");
+        setTextSize(initialSettings.textSize ?? 18);
+        setTextPosition(initialSettings.textPosition ?? "bottom");
+        setSubtitlesEnabled(initialSettings.subtitlesEnabled ?? false);
+      } else {
+        setStartTime(0);
+        setEndTime(duration || 10);
+        setAspectRatio("original");
+        setSelectedAudio("none");
+        setAudioVolume(50);
+        setTextOverlay("");
+        setTextColor("#FFFFFF");
+        setTextSize(18);
+        setTextPosition("bottom");
+        setSubtitlesEnabled(false);
+      }
+    }
+  }, [isOpen, initialSettings, duration]);
 
   useEffect(() => {
     if (videoRef.current) {

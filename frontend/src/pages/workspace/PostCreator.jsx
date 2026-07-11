@@ -184,7 +184,9 @@ export function PostCreatorPage() {
     threadsWhoCanReply,
     setThreadsWhoCanReply,
     notes,
-    setNotes
+    setNotes,
+    videoSettings,
+    setVideoSettings
   } = usePostCreatorForm();
 
   const [threadsOpen, setThreadsOpen] = useState(false);
@@ -389,6 +391,8 @@ export function PostCreatorPage() {
     setThreadsWhoCanReply,
     notes,
     setNotes,
+    videoSettings,
+    setVideoSettings,
 
     threadsOpen,
     setThreadsOpen,
@@ -603,7 +607,9 @@ export function PostCreatorPage() {
           isOpen={showVideoEditor}
           videoUrl={videoFileUrl}
           onClose={() => setShowVideoEditor(false)}
+          initialSettings={videoSettings}
           onSave={(settings) => {
+            setVideoSettings(settings);
             setShowVideoEditor(false);
           }}
         />

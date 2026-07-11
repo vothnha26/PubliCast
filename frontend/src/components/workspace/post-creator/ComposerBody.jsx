@@ -18,12 +18,7 @@ import { AICopilotPopover } from "./AICopilotPopover";
 
 // Presets Imports
 import { GlobalPresets } from "./presets/GlobalPresets";
-import { YouTubePresets } from "./presets/YouTubePresets";
-import { FacebookPresets } from "./presets/FacebookPresets";
-import { TikTokPresets } from "./presets/TikTokPresets";
-import { DiscordPresets } from "./presets/DiscordPresets";
-import { ThreadsPresets } from "./presets/ThreadsPresets";
-import { InstagramPresets } from "./presets/InstagramPresets";
+import { PRESET_REGISTRY } from "../../../constants/presetRegistry";
 
 export function ComposerBody() {
   const [showAICopilot, setShowAICopilot] = useState(false);
@@ -560,23 +555,14 @@ export function ComposerBody() {
           {/* Global Presets Accordion */}
           <GlobalPresets />
 
-          {/* YouTube Presets Accordion */}
-          {selectedPlatforms.includes('youtube') && <YouTubePresets />}
-
-           {/* Facebook Presets Accordion (Reels only) */}
-          {selectedPlatforms.includes('facebook') && facebookType === 'reel' && <FacebookPresets />}
- 
-          {/* Instagram Presets Accordion */}
-          {selectedPlatforms.includes('instagram') && <InstagramPresets />}
-
-          {/* TikTok Presets Accordion */}
-          {selectedPlatforms.includes('tiktok') && <TikTokPresets />}
-
-          {/* Discord Presets Accordion */}
-          {selectedPlatforms.includes('discord') && <DiscordPresets />}
-
-          {/* Threads Presets Accordion */}
-          {selectedPlatforms.includes('threads') && <ThreadsPresets />}
+          {/* Dynamic Platform Presets */}
+          {Object.entries(PRESET_REGISTRY).map(([platformKey, registryItem]) => {
+            if (registryItem.shouldRender(selectedPlatforms, { facebookType })) {
+              const PresetComponent = registryItem.Component;
+              return <PresetComponent key={platformKey} />;
+            }
+            return null;
+          })}
         </div>
 
         {/* Approval Workflow Settings */}

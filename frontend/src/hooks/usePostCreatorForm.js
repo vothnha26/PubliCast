@@ -119,6 +119,7 @@ export function usePostCreatorForm() {
   const [requesterNote, setRequesterNote] = useState("Vui lòng phê duyệt bài viết này.");
   const [notes, setNotes] = useState([]);
   const [isLoadingReviewers, setIsLoadingReviewers] = useState(false);
+  const [videoSettings, setVideoSettings] = useState(null);
 
   useEffect(() => {
     const fetchReviewers = async () => {
@@ -397,6 +398,7 @@ export function usePostCreatorForm() {
         setYoutubeThumbnail(opts.youtubeThumbnail || "");
         setThreadsWhoCanReply(opts.threadsWhoCanReply || "everyone");
         setNotes(opts.notes || []);
+        setVideoSettings(opts.videoSettings || null);
 
         // Setup Facebook
         setFacebookType(opts.facebookType || "post");
@@ -458,6 +460,7 @@ export function usePostCreatorForm() {
         setYoutubeThumbnail(opts.youtubeThumbnail || "");
         setThreadsWhoCanReply(opts.threadsWhoCanReply || "everyone");
         setNotes(opts.notes || []);
+        setVideoSettings(opts.videoSettings || null);
 
         // Setup Facebook
         setFacebookType(opts.facebookType || "post");
@@ -535,6 +538,7 @@ export function usePostCreatorForm() {
         setFacebookTitle("");
         setAltText("");
         setAlbumMedia([]);
+        setVideoSettings(null);
 
         // Reset Instagram
         setInstagramType(INSTAGRAM_TYPE.POST);
@@ -692,7 +696,8 @@ export function usePostCreatorForm() {
           albumMedia,
           mediaCaptions,
           threadsWhoCanReply,
-          notes
+          notes,
+          videoSettings
         }
       };
 
@@ -724,6 +729,7 @@ export function usePostCreatorForm() {
         setInstagramShowOnFeed(true);
         setAltText("");
         setNotes([]);
+        setVideoSettings(null);
         setTiktokPrivacy(TIKTOK_PRIVACY.PUBLIC);
         setTiktokAllowComments(true);
         setTiktokAllowDuet(true);
@@ -890,6 +896,8 @@ export function usePostCreatorForm() {
     threadsWhoCanReply,
     setThreadsWhoCanReply,
     notes,
-    setNotes
+    setNotes,
+    videoSettings,
+    setVideoSettings
   };
 }
