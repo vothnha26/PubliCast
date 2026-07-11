@@ -1,10 +1,49 @@
 {
   "title": "Workspace Dashboard",
   "welcome": "Welcome back, {{name}}!",
-  "widgets": {
-    "totalPosts": "Total Posts",
-    "scheduled": "Scheduled",
+  "stats": {
+    "totalFollowers": "Total Followers",
+    "totalViews": "Total Views",
+    "totalVideos": "Total Videos",
+    "currentBrand": "Current Brand",
+    "realTime": "Real-time",
+    "selected": "Selected",
+    "uploaded": "Uploaded",
+    "youtubeNote": "YouTube Channel",
+    "uploadedNote": "Uploaded",
+    "selectedDelta": "Selected",
+    "unknownBrand": "Unknown"
+  },
+  "charts": {
+    "audienceTrend": "Audience Reach Trend",
+    "viewDetails": "View Detailed Report →"
+  },
+  "recentQueue": {
+    "title": "Recent Posts Queue",
+    "createPost": "Create Post",
+    "scheduleLink": "Post Schedule →",
+    "emptyTitle": "No posts scheduled",
+    "emptySubtitle": "Create your first post to schedule or publish immediately on social networks!",
+    "createNow": "Create Now",
+    "untitled": "Untitled Post",
+    "scheduledAt": "Scheduled: {{date}}",
+    "createdAt": "Created: {{date}}"
+  },
+  "connections": {
+    "title": "Social Connections",
+    "manage": "Manage",
+    "connected": "Connected",
+    "connect": "Connect",
+    "reachByNetwork": "Platform Reach"
+  },
+  "status": {
+    "draft": "Draft",
     "published": "Published",
+    "scheduled": "Scheduled",
+    "pending_approval": "Pending Approval",
     "failed": "Failed"
+  },
+  "toast": {
+    "googleSuccess": "Successfully logged in with Google!"
   }
 }

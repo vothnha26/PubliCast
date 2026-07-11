@@ -13,6 +13,7 @@ import { useBrand } from "../../context/BrandContext";
 import socialService from "../../services/social.service";
 import postService from "../../services/post.service";
 import { POST_STATUS } from "../../constants/postStatus";
+import { useTranslation } from "react-i18next";
 import { usePostCreator } from "../../context/PostCreatorContext";
 
 const PLATFORM_COLORS = {
@@ -109,6 +110,7 @@ const PLATFORM_METRICS_STRATEGIES = {
 };
 
 export function DashboardPage() {
+  const { t, i18n } = useTranslation(["dashboard", "common"]);
   const navigate = useNavigate();
   const location = useLocation();
   const [metrics, setMetrics] = useState([]);
@@ -120,10 +122,10 @@ export function DashboardPage() {
   useEffect(() => {
     const params = new URLSearchParams(location.search);
     if (params.get("success") === "google_login") {
-      toast.success("Đăng nhập bằng Google thành công!");
+      toast.success(t("toast.googleSuccess"));
       navigate(location.pathname, { replace: true });
     }
-  }, [location, navigate]);
+  }, [location, navigate, t]);
 
   useEffect(() => {
     const loadData = async () => {
@@ -235,7 +237,9 @@ export function DashboardPage() {
     const sortedDates = Object.keys(dailyGrowth).sort();
     
     if (sortedDates.length === 0) {
-      const days = ["T2", "T3", "T4", "T5", "T6", "T7", "CN"];
+      const days = i18n.language === 'vi' 
+        ? ["T2", "T3", "T4", "T5", "T6", "T7", "CN"] 
+        : ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
       return days.map((day, idx) => ({
         day,
         viewers: Math.round(stats.subscribers * (0.8 + (idx * 0.2 / 6)))
@@ -251,7 +255,7 @@ export function DashboardPage() {
       const netChange = growth.gained - growth.lost;
       
       const dateObj = new Date(dateStr);
-      const dayLabel = dateObj.toLocaleDateString("vi-VN", { weekday: 'short' });
+      const dayLabel = dateObj.toLocaleDateString(t("common:langLocale"), { weekday: 'short' });
       
       result.unshift({
         day: dayLabel,
@@ -325,25 +329,25 @@ export function DashboardPage() {
       {/* Stat Cards Row */}
       <div className="grid grid-cols-4 gap-4">
         <StatCard
-          label="Tổng người theo dõi"
+          label={t("stats.totalFollowers")}
           value={stats.subscribers.toLocaleString()}
-          delta="Thời gian thực"
+          delta={t("stats.realTime")}
           deltaColor="#16A34A"
         />
         <StatCard
-          label="Tổng lượt xem"
+          label={t("stats.totalViews")}
           value={stats.views.toLocaleString()}
-          note="Kênh YouTube"
+          note={t("stats.youtubeNote")}
         />
         <StatCard
-          label="Tổng video"
+          label={t("stats.totalVideos")}
           value={stats.videos.toLocaleString()}
-          note="Đã tải lên"
+          note={t("stats.uploadedNote")}
         />
         <StatCard
-          label="Thương hiệu hiện tại"
-          value={activeBrand?.name || "Không xác định"}
-          delta="Đang chọn"
+          label={t("stats.currentBrand")}
+          value={activeBrand?.name || t("stats.unknownBrand")}
+          delta={t("stats.selectedDelta")}
           deltaColor="#16A34A"
         />
       </div>
@@ -353,9 +357,9 @@ export function DashboardPage() {
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-2">
              <TrendingUp size={16} className="text-gray-400" />
-             <span className="text-sm font-bold text-[#0A0A0A] uppercase tracking-wider">Xu Hướng Lượng Người Xem</span>
+             <span className="text-sm font-bold text-[#0A0A0A] uppercase tracking-wider">{t("charts.audienceTrend")}</span>
           </div>
-          <span onClick={() => navigate("/analytics")} className="text-xs font-bold text-blue-600 cursor-pointer hover:underline">Xem Chi Tiết Báo Cáo →</span>
+          <span onClick={() => navigate("/analytics")} className="text-xs font-bold text-blue-600 cursor-pointer hover:underline">{t("charts.viewDetails")}</span>
         </div>
         <ResponsiveContainer width="100%" height={140}>
           <LineChart data={weeklyData}>
@@ -376,20 +380,20 @@ export function DashboardPage() {
         {/* Recent Posts Queue (Cột trái) */}
         <div className="col-span-7 bg-white border border-gray-100 rounded-3xl p-6 shadow-sm flex flex-col gap-5 min-h-[350px]">
           <div className="flex items-center justify-between">
-            <span className="text-sm font-bold text-[#0A0A0A] uppercase tracking-wider">Hàng chờ bài đăng gần đây</span>
+            <span className="text-sm font-bold text-[#0A0A0A] uppercase tracking-wider">{t("recentQueue.title")}</span>
             <div className="flex items-center gap-3">
               <button
                 onClick={() => openPostCreator()}
                 className="flex items-center gap-1 text-xs font-bold text-white bg-purple-700 hover:bg-purple-800 transition-colors px-3 py-1.5 rounded-lg border-none cursor-pointer"
               >
                 <Plus size={13} />
-                Tạo bài đăng
+                {t("recentQueue.createPost")}
               </button>
               <button
                 onClick={() => navigate("/planner")}
                 className="text-xs font-bold text-blue-600 hover:underline bg-transparent border-none cursor-pointer"
               >
-                Lịch đăng →
+                {t("recentQueue.scheduleLink")}
               </button>
             </div>
           </div>
@@ -397,13 +401,13 @@ export function DashboardPage() {
           {recentPosts.length === 0 ? (
             <div className="flex-1 flex flex-col items-center justify-center text-center p-6 border border-dashed border-gray-200 rounded-2xl bg-gray-50/50">
               <FileText size={40} className="text-gray-300 mb-3" />
-              <p className="text-xs font-semibold text-gray-500 mb-1">Chưa có bài đăng nào</p>
-              <p className="text-[11px] text-gray-400 max-w-[280px] mb-4">Hãy tạo bài đăng đầu tiên để lên lịch hoặc đăng ngay lên các mạng xã hội!</p>
+              <p className="text-xs font-semibold text-gray-500 mb-1">{t("recentQueue.emptyTitle")}</p>
+              <p className="text-[11px] text-gray-400 max-w-[280px] mb-4">{t("recentQueue.emptySubtitle")}</p>
               <button
                 onClick={() => openPostCreator()}
                 className="text-xs font-bold text-purple-600 hover:text-purple-700 bg-purple-50 px-4 py-2 rounded-lg border-none cursor-pointer transition-colors"
               >
-                Tạo Ngay
+                {t("recentQueue.createNow")}
               </button>
             </div>
           ) : (
@@ -429,13 +433,13 @@ export function DashboardPage() {
                       </div>
                       <div className="min-w-0 flex-1">
                         <h4 className="text-xs font-bold text-gray-800 truncate group-hover:text-purple-700 transition-colors mb-1.5">
-                          {post.title || "Bài viết không tiêu đề"}
+                          {post.title || t("recentQueue.untitled")}
                         </h4>
                         <div className="flex items-center gap-2">
                           <span className="text-[10px] text-gray-400 font-medium">
                             {post.scheduledAt 
-                              ? `Lên lịch: ${new Date(post.scheduledAt).toLocaleDateString("vi-VN")}` 
-                              : `Tạo lúc: ${new Date(post.createdAt).toLocaleDateString("vi-VN")}`
+                              ? t("recentQueue.scheduledAt", { date: new Date(post.scheduledAt).toLocaleDateString(t("common:langLocale")) }) 
+                              : t("recentQueue.createdAt", { date: new Date(post.createdAt).toLocaleDateString(t("common:langLocale")) })
                             }
                           </span>
                           <span className="text-[10px] text-gray-300">•</span>
@@ -452,7 +456,7 @@ export function DashboardPage() {
                     <div className="flex items-center gap-3 shrink-0 ml-4">
                       <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-[10px] font-bold ${statusInfo.colorClass}`}>
                         {statusInfo.icon}
-                        <span>{statusInfo.label}</span>
+                        <span>{t(`status.${statusUpper.toLowerCase()}`)}</span>
                       </div>
                       <ChevronRight size={14} className="text-gray-300 group-hover:text-gray-500 transition-colors" />
                     </div>
@@ -468,12 +472,12 @@ export function DashboardPage() {
           {/* Platform Connections Status */}
           <div className="bg-[#0A0A0A] rounded-3xl p-6 shadow-xl flex flex-col">
             <div className="flex items-center justify-between mb-5">
-              <span className="text-sm font-bold text-white uppercase tracking-widest">Kết Nối Mạng Xã Hội</span>
+              <span className="text-sm font-bold text-white uppercase tracking-widest">{t("connections.title")}</span>
               <button 
                 onClick={() => navigate("/manage/connections")}
                 className="text-[10px] font-black text-gray-400 hover:text-white uppercase tracking-wider bg-white/5 hover:bg-white/10 px-2.5 py-1 rounded-md border-none cursor-pointer transition-colors"
               >
-                Quản lý
+                {t("connections.manage")}
               </button>
             </div>
             
@@ -489,14 +493,14 @@ export function DashboardPage() {
                     <span className="text-xs font-bold text-gray-200 flex-1">{platform.label}</span>
                     {connected ? (
                       <span className="text-[9px] font-extrabold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded uppercase tracking-wider">
-                        Đã kết nối
+                        {t("connections.connected")}
                       </span>
                     ) : (
                       <button
                         onClick={() => navigate("/manage/connections")}
                         className="text-[9px] font-extrabold text-gray-400 hover:text-white bg-white/5 hover:bg-white/10 border-none px-2 py-0.5 rounded uppercase tracking-wider cursor-pointer transition-colors"
                       >
-                        Kết nối
+                        {t("connections.connect")}
                       </button>
                     )}
                   </div>
@@ -507,7 +511,7 @@ export function DashboardPage() {
 
           {/* Reach by Network */}
           <div className="bg-white border border-gray-100 rounded-3xl p-6 shadow-sm flex-1">
-            <div className="text-sm font-bold text-[#0A0A0A] uppercase tracking-wider mb-6">Độ Phủ Theo Nền Tảng</div>
+            <div className="text-sm font-bold text-[#0A0A0A] uppercase tracking-wider mb-6">{t("connections.reachByNetwork")}</div>
             <div className="flex flex-col gap-4.5">
               {viewersByPlatform.map((item) => (
                 <div key={item.platform} className="flex items-center gap-3">

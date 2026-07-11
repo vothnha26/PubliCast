@@ -9,6 +9,7 @@ import { useDebounce } from "../../hooks/useDebounce";
 import apiService from "../../services/api";
 import { useBrand } from "../../context/BrandContext";
 import { toast } from "sonner";
+import { useTranslation } from "react-i18next";
 import socketClient from "../../services/socket";
 
 // SOLID Components
@@ -17,6 +18,7 @@ import { VideoContextCard } from "../../components/inbox/VideoContextCard";
 import { ReplyComposer } from "../../components/inbox/ReplyComposer";
 
 export function InboxPage() {
+  const { t, i18n } = useTranslation(["manage", "common"]);
   const { activeBrand } = useBrand();
   const { filters, updateFilters, clearFilters, searchParamsString } = useFilters({
     tab: "Unresolved",
@@ -187,7 +189,7 @@ export function InboxPage() {
         handleUpdateStatus(activeConv.id, 'READ');
       }
     } catch (error) {
-      toast.error("Failed to load message thread");
+      toast.error(t("inbox.loadThreadFailed"));
     } finally {
       setThreadLoading(false);
     }
@@ -203,13 +205,13 @@ export function InboxPage() {
     try {
       const platform = platformFilter.toUpperCase();
       await apiService.post('/inbox/sync', { brandId: activeBrand.id, platform });
-      toast.success("Inbox synced successfully");
+      toast.success(t("inbox.syncSuccess"));
       await fetchInbox();
       if (activeConv) {
         await fetchThread();
       }
     } catch (e) {
-      toast.error("Sync failed: " + (e.response?.data?.message || e.message));
+      toast.error(t("inbox.syncFailed") + (e.response?.data?.message || e.message));
     } finally {
       setIsSyncing(false);
     }
@@ -228,7 +230,7 @@ export function InboxPage() {
         setActiveConv(prev => ({ ...prev, status: newStatus.toLowerCase(), unread: newStatus === 'UNREAD' }));
       }
     } catch (e) {
-      toast.error("Failed to update status");
+      toast.error(t("inbox.updateStatusFailed"));
     }
   };
 
@@ -241,12 +243,12 @@ export function InboxPage() {
         itemId: activeConv.id,
         text: replyText
       });
-      toast.success("Reply sent");
+      toast.success(t("inbox.replySuccess"));
       setReplyText("");
       await fetchThread();
       await fetchInbox();
     } catch (e) {
-      toast.error("Failed to send reply: " + (e.response?.data?.message || e.message));
+      toast.error(t("inbox.replyFailed") + (e.response?.data?.message || e.message));
     } finally {
       setIsReplying(false);
     }
@@ -259,28 +261,28 @@ export function InboxPage() {
         brandId: activeBrand.id,
         text: newText
       });
-      toast.success("Reply updated successfully");
+      toast.success(t("inbox.updateReplySuccess"));
       setEditingReplyId(null);
       setEditingText("");
       await fetchThread();
     } catch (e) {
-      toast.error("Failed to update reply: " + (e.response?.data?.message || e.message));
+      toast.error(t("inbox.updateReplyFailed") + (e.response?.data?.message || e.message));
     }
   };
 
   const handleDeleteReply = async (replyId) => {
     if (!activeBrand) return;
-    const isConfirmed = window.confirm("Are you sure you want to delete this reply?");
+    const isConfirmed = window.confirm(t("inbox.confirmDeleteReply"));
     if (!isConfirmed) return;
 
     try {
       await apiService.delete(`/inbox/replies/${replyId}`, {
         data: { brandId: activeBrand.id }
       });
-      toast.success("Reply deleted successfully");
+      toast.success(t("inbox.deleteReplySuccess"));
       await fetchThread();
     } catch (e) {
-      toast.error("Failed to delete reply: " + (e.response?.data?.message || e.message));
+      toast.error(t("inbox.deleteReplyFailed") + (e.response?.data?.message || e.message));
     }
   };
 
@@ -301,18 +303,18 @@ export function InboxPage() {
             setAiPromptText(aiPrompt || "");
           }
         } catch (err) {
-          toast.error("Failed to load auto-reply settings");
+          toast.error(t("inbox.settingsLoadFailed"));
         } finally {
           setLoadingSettings(false);
         }
       };
       fetchSettings();
     }
-  }, [isAutoReplyOpen, selectedSocialAccountId]);
+  }, [isAutoReplyOpen, selectedSocialAccountId, t]);
 
   const handleSaveAutoReplySettings = async () => {
     if (!selectedSocialAccountId) {
-      toast.warning("Vui lòng kết nối tài khoản trước khi thiết lập.");
+      toast.warning(t("inbox.connectFirst"));
       return;
     }
     setSavingSettings(true);
@@ -323,10 +325,10 @@ export function InboxPage() {
         keywordsConfig: keywordsList,
         aiPrompt: aiPromptText
       });
-      toast.success("Auto-reply settings saved successfully");
+      toast.success(t("inbox.settingsSuccess"));
       setIsAutoReplyOpen(false);
     } catch (err) {
-      toast.error("Failed to save settings: " + (err.response?.data?.message || err.message));
+      toast.error(t("inbox.settingsFailed") + (err.response?.data?.message || err.message));
     } finally {
       setSavingSettings(false);
     }
@@ -334,7 +336,7 @@ export function InboxPage() {
 
   const handleAddKeywordRule = () => {
     if (!newKeywordInput.trim() || !newReplyInput.trim()) {
-      toast.error("Please fill in both keywords and reply text");
+      toast.error(t("inbox.fillKeywordsError"));
       return;
     }
     const keywords = newKeywordInput.split(',').map(k => k.trim()).filter(Boolean);
@@ -399,7 +401,7 @@ export function InboxPage() {
              {(platformFilter.toLowerCase() === "facebook" || platformFilter.toLowerCase() === "instagram") && (
                <button 
                  onClick={() => setIsAutoReplyOpen(true)}
-                 title="Auto-Reply Settings"
+                 title={t("inbox.autoReplySettings")}
                  className="p-1.5 hover:bg-gray-100 rounded-full text-gray-400 cursor-pointer"
                >
                  <Settings size={18} />
@@ -413,7 +415,7 @@ export function InboxPage() {
         <div className="p-4 pb-2 flex gap-2">
            <div className="relative flex-1 group">
               <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-300" />
-              <input type="text" placeholder="Search conversation..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="w-full bg-gray-50/50 border border-gray-200 rounded-xl py-2.5 pl-10 pr-4 text-xs focus:outline-none" />
+              <input type="text" placeholder={t("inbox.searchConversation")} value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="w-full bg-gray-50/50 border border-gray-200 rounded-xl py-2.5 pl-10 pr-4 text-xs focus:outline-none" />
            </div>
             <div className="relative">
               <button 
@@ -433,7 +435,7 @@ export function InboxPage() {
                   />
                   <div className="absolute right-0 mt-2 w-64 bg-white rounded-2xl border border-gray-100 shadow-xl py-2.5 z-50 text-left animate-in fade-in slide-in-from-top-3 duration-200 font-medium">
                     <div className="px-4 py-1.5 text-[10px] font-bold text-gray-400 uppercase tracking-wider">
-                      Filter by type
+                      {t("inbox.filterByType")}
                     </div>
                     
                     <button
@@ -443,7 +445,7 @@ export function InboxPage() {
                       }}
                       className="w-full px-4 py-2.5 text-xs font-bold text-[#0A0A0A] hover:bg-[#F8F8F7] flex items-center justify-between cursor-pointer border-none bg-transparent"
                     >
-                      <span>All messages</span>
+                      <span>{t("inbox.allMessages")}</span>
                       {(!filters.type || filters.type === 'all') && <Check size={12} className="text-green-500" />}
                     </button>
 
@@ -454,7 +456,7 @@ export function InboxPage() {
                       }}
                       className="w-full px-4 py-2.5 text-xs font-bold text-[#0A0A0A] hover:bg-[#F8F8F7] flex items-center justify-between cursor-pointer border-none bg-transparent"
                     >
-                      <span>Private messages</span>
+                      <span>{t("inbox.privateMessages")}</span>
                       <div className="flex items-center gap-1.5">
                         <Facebook className="text-[#1877F2] fill-[#1877F2]" size={14} />
                         <Instagram className="text-[#E1306C]" size={14} />
@@ -470,7 +472,7 @@ export function InboxPage() {
                       }}
                       className="w-full px-4 py-2.5 text-xs font-bold text-[#0A0A0A] hover:bg-[#F8F8F7] flex items-center justify-between cursor-pointer border-none bg-transparent"
                     >
-                      <span>Comments</span>
+                      <span>{t("inbox.comments")}</span>
                       <div className="flex items-center gap-1.5">
                         <Facebook className="text-[#1877F2] fill-[#1877F2]" size={14} />
                         <Youtube className="text-[#FF0000] fill-[#FF0000]" size={14} />
@@ -493,7 +495,7 @@ export function InboxPage() {
               onChange={(e) => updateFilters({ guildId: e.target.value || null, socialAccountId: null })}
               className="flex-1 bg-gray-50 border border-gray-200 rounded-xl py-2 px-3 text-xs font-medium focus:outline-none cursor-pointer"
             >
-              <option value="">All Servers</option>
+              <option value="">{t("inbox.allServers")}</option>
               {serversList.map(srv => (
                 <option key={srv.id} value={srv.id}>{srv.name}</option>
               ))}
@@ -505,7 +507,7 @@ export function InboxPage() {
               disabled={!selectedServerId}
               className="flex-1 bg-gray-50 border border-gray-200 rounded-xl py-2 px-3 text-xs font-medium focus:outline-none cursor-pointer disabled:opacity-50"
             >
-              <option value="">All Channels</option>
+              <option value="">{t("inbox.allChannels")}</option>
               {channelsList.map(chan => (
                 <option key={chan.id} value={chan.id}>#{chan.name}</option>
               ))}
@@ -514,10 +516,10 @@ export function InboxPage() {
         )}
 
         <div className="flex px-2 border-b border-gray-50">
-           {["Unresolved", "Unread", "All"].map(t => (
-             <button key={t} onClick={() => updateFilters({ tab: t })} className={`flex-1 py-3 text-[11px] font-bold uppercase tracking-widest relative ${tabFilter === t ? "text-black" : "text-gray-400"}`}>
-               {t}
-               {tabFilter === t && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-black" />}
+           {["Unresolved", "Unread", "All"].map(tVal => (
+             <button key={tVal} onClick={() => updateFilters({ tab: tVal })} className={`flex-1 py-3 text-[11px] font-bold uppercase tracking-widest relative ${tabFilter === tVal ? "text-black" : "text-gray-400"}`}>
+               {t(`inbox.tabs.${tVal.toLowerCase()}`)}
+               {tabFilter === tVal && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-black" />}
              </button>
            ))}
            <button className="px-4 text-gray-300 hover:text-gray-600"><MoreHorizontal size={18} /></button>
@@ -529,7 +531,7 @@ export function InboxPage() {
            ) : inboxData.data?.length === 0 ? (
              <div className="p-12 text-center flex flex-col items-center gap-4">
                 <div className="w-16 h-16 bg-gray-50 rounded-3xl flex items-center justify-center text-gray-200"><MessageSquare size={32} /></div>
-                <p className="text-[11px] font-bold text-gray-400 uppercase">No {tabFilter.toLowerCase()} conversations found.</p>
+                <p className="text-[11px] font-bold text-gray-400 uppercase">{t("inbox.noConversations", { tab: t(`inbox.tabs.${tabFilter.toLowerCase()}`).toLowerCase() })}</p>
              </div>
            ) : (
              inboxData.data.map(conv => (
@@ -546,17 +548,17 @@ export function InboxPage() {
               disabled={currentPage <= 1}
               className="px-2.5 py-1.5 rounded-lg border border-gray-100 disabled:opacity-40 hover:bg-gray-50 transition-colors"
             >
-              Previous
+              {t("inbox.pagination.previous")}
             </button>
             <span>
-              Page {currentPage} of {inboxData.meta.totalPages}
+              {t("inbox.pagination.pageOf", { current: currentPage, total: inboxData.meta.totalPages })}
             </span>
             <button
               onClick={() => updateFilters({ page: currentPage + 1 })}
               disabled={currentPage >= inboxData.meta.totalPages}
               className="px-2.5 py-1.5 rounded-lg border border-gray-100 disabled:opacity-40 hover:bg-gray-50 transition-colors"
             >
-              Next
+              {t("inbox.pagination.next")}
             </button>
           </div>
         )}
@@ -573,7 +575,7 @@ export function InboxPage() {
                     </div>
                  </div>
               </div>
-              <h3 className="text-[15px] font-bold text-gray-400 uppercase tracking-[0.1em]">Please select a conversation on the left to begin</h3>
+              <h3 className="text-[15px] font-bold text-gray-400 uppercase tracking-[0.1em]">{t("inbox.selectConversationPrompt")}</h3>
            </div>
          ) : (
            <>
@@ -608,7 +610,7 @@ export function InboxPage() {
                     </div>
                     <div>
                       <h4 className="text-[13px] font-bold text-[#0A0A0A]">{activeConv.user}</h4>
-                      <div className="flex items-center gap-1"><MessageSquare className="text-gray-400" size={10} /><span className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">{activeConv.type === 'direct_message' ? 'PRIVATE MESSAGE' : 'COMMENT'}</span></div>
+                      <div className="flex items-center gap-1"><MessageSquare className="text-gray-400" size={10} /><span className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">{activeConv.type === 'direct_message' ? t("inbox.privateMessages").toUpperCase() : t("inbox.comments").toUpperCase()}</span></div>
                    </div>
                 </div>
                 <div className="flex items-center gap-2">
@@ -648,13 +650,13 @@ export function InboxPage() {
                                  }} 
                                  className="text-[10px] font-bold text-gray-400 hover:text-black transition-all bg-white border border-gray-100 px-2 py-1 rounded-lg shadow-sm cursor-pointer"
                                >
-                                 ✏️ Edit
+                                 ✏️ {t("common:edit")}
                                </button>
                                <button 
                                  onClick={() => handleDeleteReply(msg.id)} 
                                  className="text-[10px] font-bold text-red-400 hover:text-red-600 transition-all bg-white border border-gray-100 px-2 py-1 rounded-lg shadow-sm cursor-pointer"
                                >
-                                 🗑️ Delete
+                                 🗑️ {t("common:delete")}
                                </button>
                              </div>
                            )}
@@ -673,13 +675,13 @@ export function InboxPage() {
                                       onClick={() => setEditingReplyId(null)} 
                                       className="px-2.5 py-1 bg-white border border-gray-200 rounded-lg text-[10px] font-bold text-gray-500 hover:bg-gray-50 cursor-pointer"
                                     >
-                                      Cancel
+                                      {t("common:cancel")}
                                     </button>
                                     <button 
                                       onClick={() => handleUpdateReply(msg.id, editingText)} 
                                       className="px-2.5 py-1 bg-[#0A0A0A] text-white rounded-lg text-[10px] font-bold hover:scale-105 transition-all cursor-pointer"
                                     >
-                                      Save
+                                      {t("common:save")}
                                     </button>
                                   </div>
                                 </div>
@@ -688,7 +690,7 @@ export function InboxPage() {
                               )}
                               
                               <div className={`flex items-center gap-1.5 px-1 ${msg.from === "me" ? "flex-row-reverse" : ""}`}>
-                                 <span className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">{msg.from === "me" ? "Manager" : msg.author}</span>
+                                 <span className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">{msg.from === "me" ? t("inbox.managerRole") : msg.author}</span>
                                  <span className="text-[14px] text-gray-200 leading-none">·</span>
                                  <span className="text-[9px] font-bold text-gray-300 uppercase">{msg.time}</span>
                               </div>
@@ -724,8 +726,8 @@ export function InboxPage() {
                   )}
                 </div>
                 <div>
-                  <h3 className="text-sm font-bold text-gray-900">Meta Comment Auto-Reply</h3>
-                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Tự động trả lời bình luận Facebook & Instagram</p>
+                  <h3 className="text-sm font-bold text-gray-900">{t("inbox.autoReplyTitle")}</h3>
+                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">{t("inbox.autoReplySubtitle")}</p>
                 </div>
               </div>
               <div className="flex items-center gap-2">
@@ -751,13 +753,13 @@ export function InboxPage() {
               {loadingSettings ? (
                 <div className="h-60 flex flex-col items-center justify-center gap-3">
                   <Loader2 className="animate-spin text-gray-300" size={32} />
-                  <span className="text-xs text-gray-400 font-bold uppercase tracking-wider">Loading settings...</span>
+                  <span className="text-xs text-gray-400 font-bold uppercase tracking-wider">{t("inbox.loadingSettings")}</span>
                 </div>
               ) : (
                 <>
                   {/* Account Selector Dropdown */}
                   <div className="space-y-1.5">
-                    <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest block">Tài khoản kết nối</label>
+                    <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest block">{t("inbox.connectedAccount")}</label>
                     <select
                       value={selectedSocialAccountId}
                       onChange={(e) => setSelectedSocialAccountId(e.target.value)}
@@ -769,7 +771,7 @@ export function InboxPage() {
                         </option>
                       ))}
                       {filteredAccountsForAutoReply.length === 0 && (
-                        <option value="">-- Chưa kết nối tài khoản nào của platform này --</option>
+                        <option value="">{t("inbox.noConnectedAccount")}</option>
                       )}
                     </select>
                   </div>
@@ -777,8 +779,8 @@ export function InboxPage() {
                   {/* Status Toggle */}
                   <div className="flex items-center justify-between p-4 bg-gray-50/50 border border-gray-100 rounded-2xl">
                     <div>
-                      <h4 className="text-xs font-bold text-gray-900">Bật tự động phản hồi</h4>
-                      <p className="text-[10px] text-gray-400 font-medium">Tự động trả lời bình luận của khách hàng trên trang.</p>
+                      <h4 className="text-xs font-bold text-gray-900">{t("inbox.enableAutoReply")}</h4>
+                      <p className="text-[10px] text-gray-400 font-medium">{t("inbox.enableAutoReplyDesc")}</p>
                     </div>
                     <button
                       onClick={() => setAutoReplyActive(!autoReplyActive)}
@@ -794,7 +796,7 @@ export function InboxPage() {
                     <div className="space-y-6 animate-in slide-in-from-top-4 duration-300">
                       {/* Mode Selection */}
                       <div className="space-y-2">
-                        <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Response Mode</label>
+                        <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{t("inbox.responseMode")}</label>
                         <div className="flex gap-2 bg-gray-50 p-1 rounded-xl border border-gray-100">
                           <button
                             onClick={() => setAutoReplyMode("KEYWORD")}
@@ -804,7 +806,7 @@ export function InboxPage() {
                                 : "text-gray-400 hover:text-gray-600"
                             }`}
                           >
-                            💬 Keyword-based
+                            💬 {t("inbox.keywordBased")}
                           </button>
                           <button
                             onClick={() => setAutoReplyMode("AI")}
@@ -814,7 +816,7 @@ export function InboxPage() {
                                 : "text-gray-400 hover:text-gray-600"
                             }`}
                           >
-                            <Sparkles size={14} className="text-purple-500 fill-purple-100" /> AI Auto-Reply
+                            <Sparkles size={14} className="text-purple-500 fill-purple-100" /> {t("inbox.aiAutoReply")}
                           </button>
                         </div>
                       </div>
@@ -823,11 +825,11 @@ export function InboxPage() {
                       {autoReplyMode === "KEYWORD" && (
                         <div className="space-y-4">
                           <div className="space-y-2">
-                            <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Active Rules</label>
+                            <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{t("inbox.activeRules")}</label>
                             {keywordsList.length === 0 ? (
                               <div className="text-center p-6 bg-gray-50/30 border border-dashed border-gray-200 rounded-2xl flex flex-col items-center gap-2">
                                 <MessageSquare className="text-gray-300" size={24} />
-                                <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">No keyword rules created yet.</p>
+                                <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">{t("inbox.noKeywordRules")}</p>
                               </div>
                             ) : (
                               <div className="space-y-2 max-h-[220px] overflow-y-auto scrollbar-thin pr-1">
@@ -858,13 +860,13 @@ export function InboxPage() {
                           {/* Add New Rule */}
                           <div className="p-4 border border-gray-100 rounded-2xl space-y-3 bg-gray-50/30">
                             <h5 className="text-[10px] font-bold text-gray-800 uppercase tracking-wider flex items-center gap-1.5">
-                              <Plus size={12} /> Add New Keyword Rule
+                              <Plus size={12} /> {t("inbox.addNewRule")}
                             </h5>
                             <div className="space-y-3">
                               <div>
                                 <input
                                   type="text"
-                                  placeholder="Keywords (e.g. price, how much, cost. Comma separated)"
+                                  placeholder={t("inbox.keywordsPlaceholder")}
                                   value={newKeywordInput}
                                   onChange={(e) => setNewKeywordInput(e.target.value)}
                                   className="w-full bg-white border border-gray-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-gray-400"
@@ -873,7 +875,7 @@ export function InboxPage() {
                               <div className="flex gap-2">
                                 <input
                                   type="text"
-                                  placeholder="Auto response content..."
+                                  placeholder={t("inbox.replyContentPlaceholder")}
                                   value={newReplyInput}
                                   onChange={(e) => setNewReplyInput(e.target.value)}
                                   className="flex-1 bg-white border border-gray-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-gray-400"
@@ -883,7 +885,7 @@ export function InboxPage() {
                                   onClick={handleAddKeywordRule}
                                   className="bg-black text-white hover:bg-gray-800 rounded-xl px-4 py-2 text-xs font-bold transition-colors cursor-pointer"
                                 >
-                                  Add
+                                  {t("inbox.add")}
                                 </button>
                               </div>
                             </div>
@@ -894,10 +896,10 @@ export function InboxPage() {
                       {/* AI-based Config */}
                       {autoReplyMode === "AI" && (
                         <div className="space-y-3">
-                          <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">AI Agent Instructions</label>
+                          <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{t("inbox.aiAgentInstructions")}</label>
                           <textarea
                             rows={4}
-                            placeholder="Example: Be a polite customer support agent. Help customers understand product details and pricing. Guide them to send a DM for private orders."
+                            placeholder={t("inbox.aiAgentInstructionsPlaceholder")}
                             value={aiPromptText}
                             onChange={(e) => setAiPromptText(e.target.value)}
                             className="w-full bg-white border border-gray-200 rounded-2xl p-3.5 text-xs leading-relaxed focus:outline-none focus:border-gray-400 resize-none"
@@ -905,7 +907,7 @@ export function InboxPage() {
                           <div className="p-3 bg-purple-50/50 border border-purple-100 rounded-xl flex gap-2.5">
                             <Sparkles className="text-purple-500 shrink-0 mt-0.5" size={14} />
                             <p className="text-[10px] text-purple-700 font-medium leading-relaxed">
-                              <strong>AI Agent Tips:</strong> Write clear guidelines, specify the tone (e.g. friendly, professional), and describe what details (like links or contact information) it should provide in responses.
+                              <strong>{t("inbox.aiAgentTips")}</strong> {t("inbox.aiAgentTipsDesc")}
                             </p>
                           </div>
                         </div>
@@ -922,7 +924,7 @@ export function InboxPage() {
                 onClick={() => setIsAutoReplyOpen(false)}
                 className="px-4 py-2 border border-gray-200 rounded-xl text-xs font-bold text-gray-500 hover:bg-gray-50 transition-colors cursor-pointer"
               >
-                Cancel
+                {t("common:cancel")}
               </button>
               <button
                 onClick={handleSaveAutoReplySettings}
@@ -930,7 +932,7 @@ export function InboxPage() {
                 className="px-5 py-2 bg-[#0A0A0A] hover:bg-black text-white rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all disabled:opacity-40 cursor-pointer"
               >
                 {savingSettings && <Loader2 className="animate-spin" size={12} />}
-                Save Settings
+                {t("inbox.saveSettings")}
               </button>
             </div>
           </div>

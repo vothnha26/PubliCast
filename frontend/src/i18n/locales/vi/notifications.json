@@ -1,0 +1,32 @@
+{
+  "title": "Thông báo",
+  "subtitle": "Hiển thị {{count}} trên tổng số {{total}} thông báo",
+  "fromDate": "Từ ngày",
+  "toDate": "Đến ngày",
+  "unread": "Chưa đọc",
+  "clearFilters": "Xóa lọc",
+  "markAllRead": "Đánh dấu đã đọc tất cả",
+  "loadErrorTitle": "Không thể tải thông báo",
+  "tryAgain": "Thử lại",
+  "emptyTitle": "Hộp thư trống",
+  "emptyDesc": "Bạn không có thông báo nào trong danh mục này.",
+  "markAsRead": "Đánh dấu đã đọc",
+  "pageInfo": "Trang {{current}} / {{total}}",
+  "previous": "Trước",
+  "next": "Sau",
+  "categories": {
+    "all": "Tất cả thông báo",
+    "content": "Duyệt nội dung",
+    "team": "Hoạt động nhóm",
+    "platform": "Nền tảng liên kết",
+    "system": "Hệ thống & Gói cước"
+  },
+  "toasts": {
+    "dateOrderError": "Ngày bắt đầu phải trước hoặc bằng ngày kết thúc",
+    "selectStartDateFirst": "Vui lòng chọn Ngày bắt đầu trước",
+    "loadFailed": "Không thể tải thông báo",
+    "markReadFailed": "Cập nhật trạng thái đọc thất bại",
+    "markAllReadSuccess": "Đã đánh dấu đã đọc tất cả thông báo",
+    "markAllReadFailed": "Đánh dấu đã đọc tất cả thất bại"
+  }
+}

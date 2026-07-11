@@ -7,6 +7,7 @@ import { useBrand } from "../../../context/BrandContext";
 import { useGoogleDriveImport } from "../../../hooks/useGoogleDriveImport";
 import { toast } from "sonner";
 import postService from "../../../services/post.service";
+import { useTranslation } from "react-i18next";
 
 // Import SOLID Subcomponents
 import { UpgradeBanner } from "./components/UpgradeBanner";
@@ -20,6 +21,7 @@ import { useBrandPermission } from "../../../hooks/useBrandPermission";
 import { PostAnalyticsDetailModal } from "../../../components/workspace/PostAnalyticsDetailModal";
 
 export function WeeklyCalendarView() {
+  const { t } = useTranslation("planner");
   const { hasPermission } = useBrandPermission();
   const hasCreatePermission = hasPermission('CREATE_POSTS');
 
@@ -37,7 +39,7 @@ export function WeeklyCalendarView() {
 
   const handleDuplicatePost = (post) => {
     if (!hasCreatePermission) {
-      toast.error("You do not have permission to create posts");
+      toast.error(t("weeklyCalendar.noPermissionCreate"));
       return;
     }
     openPostCreator({
@@ -169,7 +171,7 @@ export function WeeklyCalendarView() {
       setPostData(postsRes.data.data || []);
       setEventsData(eventsRes.data.data || []);
     } catch (e) {
-      toast.error("Failed to load calendar data");
+      toast.error(t("weeklyCalendar.loadCalendarFail"));
     } finally {
       setLoading(false);
     }
@@ -245,7 +247,7 @@ export function WeeklyCalendarView() {
 
   const handleCellClick = (date, hour) => {
     if (!hasCreatePermission) {
-      toast.error("You do not have permission to create posts");
+      toast.error(t("weeklyCalendar.noPermissionCreate"));
       return;
     }
     // Open post creator at specific date and hour
@@ -291,7 +293,7 @@ export function WeeklyCalendarView() {
       {loading && (
         <div className="flex items-center justify-center py-4 no-print">
           <Loader2 className="animate-spin text-[#0A0A0A] mr-2" size={18} />
-          <span className="text-xs font-bold text-gray-500 uppercase tracking-widest">Loading calendar posts...</span>
+          <span className="text-xs font-bold text-gray-500 uppercase tracking-widest">{t("weeklyCalendar.loadingPosts")}</span>
         </div>
       )}
 

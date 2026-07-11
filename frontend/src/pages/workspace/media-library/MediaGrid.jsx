@@ -1,7 +1,10 @@
 import React from "react";
 import { MoreHorizontal, Folder, Play } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 export function MediaGrid({ folders = [], filteredMedia, setDetail, selected, toggleSelect, clearFilters, updateFilters }) {
+  const { t } = useTranslation("medialibrary");
+
   if (filteredMedia.length === 0 && folders.length === 0) {
     return (
       <div
@@ -11,13 +14,13 @@ export function MediaGrid({ folders = [], filteredMedia, setDetail, selected, to
         <div className="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mb-2">
            <Folder size={32} className="text-gray-200" />
         </div>
-        <span style={{ fontSize: 14, fontWeight: 600, color: "#0A0A0A" }}>No media files found</span>
-        <span style={{ fontSize: 12, color: "#9CA3AF" }}>Try adjusting your search query or file type filter.</span>
+        <span style={{ fontSize: 14, fontWeight: 600, color: "#0A0A0A" }}>{t("grid.noFiles")}</span>
+        <span style={{ fontSize: 12, color: "#9CA3AF" }}>{t("grid.noFilesDesc")}</span>
         <button
           onClick={clearFilters}
           className="mt-4 px-4 py-2 rounded-xl text-xs font-bold cursor-pointer transition-all border border-gray-200 bg-white hover:bg-gray-50"
         >
-          Reset Filters
+          {t("clearFilters")}
         </button>
       </div>
     );
@@ -37,7 +40,7 @@ export function MediaGrid({ folders = [], filteredMedia, setDetail, selected, to
           </div>
           <div className="flex-1 overflow-hidden">
              <div className="text-xs font-bold text-gray-800 truncate">{folder.name}</div>
-             <div className="text-[10px] text-gray-400 font-medium">{folder._count?.media || 0} items</div>
+             <div className="text-[10px] text-gray-400 font-medium">{folder._count?.media || 0} {t("breadcrumbFolder").toLowerCase() === 'folder' ? 'items' : 'mục'}</div>
           </div>
           <button className="opacity-0 group-hover:opacity-100 p-1 hover:bg-gray-50 rounded-lg transition-all">
              <MoreHorizontal size={14} className="text-gray-400" />
@@ -136,7 +139,7 @@ export function MediaGrid({ folders = [], filteredMedia, setDetail, selected, to
                     // Handle use in post
                   }}
                 >
-                  Use in Post
+                  {t("detailPanel.useInPost")}
                 </button>
             </div>
           </div>

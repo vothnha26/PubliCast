@@ -1,8 +1,10 @@
 import React from "react";
 import { X } from "lucide-react";
 import { useConfirm } from "@/hooks/useConfirm";
+import { useTranslation } from "react-i18next";
 
 export function BulkActionsBar({ selected, clearSelection, onDelete }) {
+  const { t } = useTranslation("medialibrary");
   const confirm = useConfirm();
   if (selected.size === 0) return null;
 
@@ -19,15 +21,15 @@ export function BulkActionsBar({ selected, clearSelection, onDelete }) {
         zIndex: 40
       }}
     >
-      <span style={{ fontSize: 12, color: "#FFF" }}>{selected.size} items selected</span>
+      <span style={{ fontSize: 12, color: "#FFF" }}>{t("bulkActions.selected", { count: selected.size })}</span>
       <div style={{ flex: 1 }} />
       <button
         onClick={async () => {
           const isConfirmed = await confirm({
-            title: "Delete Items?",
-            description: `Delete ${selected.size} items?`,
-            confirmText: "Delete",
-            cancelText: "Cancel",
+            title: t("detailPanel.delete"),
+            description: `${t("detailPanel.delete")} ${selected.size} ${t("breadcrumbFolder").toLowerCase() === 'folder' ? 'items' : 'mục'}?`,
+            confirmText: t("detailPanel.delete"),
+            cancelText: t("bulkActions.clearSelection"),
             variant: "destructive"
           });
           if (isConfirmed) {
@@ -44,11 +46,14 @@ export function BulkActionsBar({ selected, clearSelection, onDelete }) {
           cursor: "pointer"
         }}
       >
-        Delete
+        {t("detailPanel.delete")}
       </button>
-      {["Download", "Add to post"].map((a) => (
+      {[
+        { key: "Download", label: t("bulkActions.download", { defaultValue: "Download" }) },
+        { key: "Add to post", label: t("bulkActions.addToPost", { defaultValue: "Add to post" }) }
+      ].map((a) => (
         <button
-          key={a}
+          key={a.key}
           style={{
             padding: "6px 14px",
             borderRadius: 6,
@@ -59,10 +64,10 @@ export function BulkActionsBar({ selected, clearSelection, onDelete }) {
             cursor: "pointer"
           }}
         >
-          {a}
+          {a.label}
         </button>
       ))}
-      <button onClick={clearSelection} style={{ color: "#666", cursor: "pointer", background: "none", border: "none" }}>
+      <button onClick={clearSelection} style={{ color: "#666", cursor: "pointer", background: "none", border: "none" }} title={t("bulkActions.clearSelection")}>
         <X size={14} />
       </button>
     </div>

@@ -12,6 +12,8 @@ import enTopbar from './locales/en/topbar.json';
 import enDashboard from './locales/en/dashboard.json';
 import enManage from './locales/en/manage.json';
 import enErrors from './locales/en/errors.json';
+import enMedialibrary from './locales/en/medialibrary.json';
+import enNotifications from './locales/en/notifications.json';
 
 // Import all namespaces for VI
 import viCommon from './locales/vi/common.json';
@@ -22,6 +24,8 @@ import viTopbar from './locales/vi/topbar.json';
 import viDashboard from './locales/vi/dashboard.json';
 import viManage from './locales/vi/manage.json';
 import viErrors from './locales/vi/errors.json';
+import viMedialibrary from './locales/vi/medialibrary.json';
+import viNotifications from './locales/vi/notifications.json';
 
 const savedLanguage = localStorage.getItem(STORAGE_KEYS.LANGUAGE) || LANGUAGE_CODES.EN;
 
@@ -38,6 +42,8 @@ i18n
         dashboard: enDashboard,
         manage: enManage,
         errors: enErrors,
+        medialibrary: enMedialibrary,
+        notifications: enNotifications,
       },
       vi: {
         common: viCommon,
@@ -48,6 +54,8 @@ i18n
         dashboard: viDashboard,
         manage: viManage,
         errors: viErrors,
+        medialibrary: viMedialibrary,
+        notifications: viNotifications,
       },
     },
     lng: savedLanguage,

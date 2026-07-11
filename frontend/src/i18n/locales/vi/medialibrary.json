@@ -1,0 +1,57 @@
+{
+  "dragOverlayText": "Thả tệp tin vào đây để tải lên",
+  "searchPlaceholder": "Tìm kiếm media...",
+  "filterAll": "Tất cả",
+  "filterImages": "Hình ảnh",
+  "filterVideos": "Video",
+  "filterGifs": "Ảnh GIF",
+  "clearFilters": "Xóa bộ lọc",
+  "newFolder": "Thư mục mới",
+  "uploadFiles": "Tải lên tệp",
+  "uploading": "Đang tải lên...",
+  "promptFolderName": "Nhập tên thư mục:",
+  "breadcrumbMediaLibrary": "Thư viện Media",
+  "breadcrumbFolder": "Thư mục",
+  "showingFiles": "Hiển thị {{count}} trên tổng số {{total}} tệp",
+  "previous": "Trước",
+  "next": "Sau",
+  "bulkActions": {
+    "selected": "Đã chọn {{count}} mục",
+    "deleteSelected": "Xóa mục đã chọn",
+    "clearSelection": "Xóa lựa chọn",
+    "download": "Tải xuống",
+    "addToPost": "Thêm vào bài đăng"
+  },
+  "detailPanel": {
+    "title": "Thông tin chi tiết",
+    "fileName": "Tên tệp",
+    "type": "Loại",
+    "size": "Kích thước",
+    "createdAt": "Ngày tạo",
+    "dimensions": "Kích thước ảnh",
+    "duration": "Thời lượng",
+    "actions": "Hành động",
+    "rename": "Đổi tên",
+    "delete": "Xóa tệp",
+    "promptRename": "Nhập tên mới:",
+    "hintRename": "Nhấn Enter hoặc click ra ngoài để lưu tên mới",
+    "uploaded": "Ngày đăng tải",
+    "useInPost": "Sử dụng cho bài viết",
+    "deleteConfirm": "Xóa tệp?",
+    "deleteConfirmDesc": "Bạn có chắc chắn muốn xóa tệp này không?",
+    "confirm": "Xóa",
+    "cancel": "Hủy"
+  },
+  "grid": {
+    "noFiles": "Không tìm thấy tệp media nào",
+    "noFilesDesc": "Xóa bộ lọc hoặc tải lên một số tệp để bắt đầu."
+  },
+  "table": {
+    "colPreview": "Xem trước",
+    "colName": "Tên tệp",
+    "colType": "Loại",
+    "colSize": "Kích thước",
+    "colDate": "Ngày thêm",
+    "colUsedIn": "Sử dụng tại"
+  }
+}

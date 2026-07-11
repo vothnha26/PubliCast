@@ -1,7 +1,9 @@
 import * as React from "react";
 import { Youtube, Send, Loader2, Smile, Paperclip } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 export const ReplyComposer = ({ replyText, setReplyText, onReply, isReplying }) => {
+  const { t } = useTranslation(["manage", "common"]);
   const handleSubmit = (e) => {
     e.preventDefault();
     onReply();
@@ -13,7 +15,7 @@ export const ReplyComposer = ({ replyText, setReplyText, onReply, isReplying }) 
         <textarea
           value={replyText}
           onChange={(e) => setReplyText(e.target.value)}
-          placeholder="Type a message..."
+          placeholder={t("inbox.replyPlaceholder")}
           rows={3}
           className="w-full p-4 text-[13px] border-none focus:ring-0 resize-none min-h-[100px]"
         />
@@ -34,7 +36,7 @@ export const ReplyComposer = ({ replyText, setReplyText, onReply, isReplying }) 
               disabled={isReplying || !replyText}
               className="flex items-center gap-2 px-6 py-2 bg-black text-white rounded-xl text-[12px] font-bold hover:scale-105 active:scale-95 transition-all disabled:opacity-20"
             >
-              {isReplying ? <Loader2 size={16} className="animate-spin" /> : "Send (Ctrl + Enter)"}
+              {isReplying ? <Loader2 size={16} className="animate-spin" /> : t("inbox.sendCtrlEnter")}
             </button>
           </div>
         </div>

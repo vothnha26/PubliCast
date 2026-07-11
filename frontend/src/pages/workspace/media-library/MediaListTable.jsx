@@ -1,20 +1,23 @@
 import React from "react";
 import { MoreHorizontal } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 export function MediaListTable({ filteredMedia, setDetail, selected, toggleSelect, clearFilters }) {
+  const { t } = useTranslation("medialibrary");
+
   if (filteredMedia.length === 0) {
     return (
       <div style={{ background: "#FFF", border: "0.5px solid #E5E7EB", borderRadius: 12, overflow: "hidden" }}>
         <div style={{ padding: "40px 12px", textAlign: "center" }}>
           <div className="flex flex-col items-center justify-center gap-2">
-            <span style={{ fontSize: 13, fontWeight: 500, color: "#6B7280" }}>No media files found</span>
-            <span style={{ fontSize: 11, color: "#9CA3AF" }}>Try adjusting your search query or file type filter.</span>
+            <span style={{ fontSize: 13, fontWeight: 500, color: "#6B7280" }}>{t("grid.noFiles")}</span>
+            <span style={{ fontSize: 11, color: "#9CA3AF" }}>{t("grid.noFilesDesc")}</span>
             <button
               onClick={clearFilters}
               className="mt-2 px-3 py-1.5 rounded-lg text-xs font-medium cursor-pointer transition-all"
               style={{ border: "0.5px solid #E5E7EB", background: "#FFF", color: "#0A0A0A" }}
             >
-              Reset Filters
+              {t("clearFilters")}
             </button>
           </div>
         </div>
@@ -27,7 +30,16 @@ export function MediaListTable({ filteredMedia, setDetail, selected, toggleSelec
       <table style={{ width: "100%", borderCollapse: "collapse" }}>
         <thead>
           <tr style={{ background: "#FAFAFA", borderBottom: "0.5px solid #E5E7EB" }}>
-            {["", "Preview", "Filename", "Type", "Size", "Uploaded", "Used in", ""].map((h, i) => (
+            {[
+              "",
+              t("table.colPreview", { defaultValue: "Preview" }),
+              t("table.colName"),
+              t("table.colType"),
+              t("table.colSize"),
+              t("table.colDate"),
+              t("table.colUsedIn", { defaultValue: "Used in" }),
+              ""
+            ].map((h, i) => (
               <th
                 key={i}
                 style={{
