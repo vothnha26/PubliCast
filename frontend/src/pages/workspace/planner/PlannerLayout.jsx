@@ -1,14 +1,17 @@
 import * as React from "react";
 import { Outlet, NavLink } from "react-router-dom";
 import { Clock, ChevronDown } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 export function PlannerLayout() {
+  const { t } = useTranslation("planner");
+
   const tabs = [
-    { id: "calendar", label: "Calendar", path: "calendar" },
-    { id: "list", label: "List", path: "list" },
-    { id: "library", label: "Posts library", path: "library", premium: true },
-    { id: "autolists", label: "Autolists", path: "autolists" },
-    { id: "history", label: "Deleted posts", path: "history" },
+    { id: "calendar", label: t("tabs.calendar", { defaultValue: "Calendar" }), path: "calendar" },
+    { id: "list", label: t("tabs.list", { defaultValue: "List" }), path: "list" },
+    { id: "library", label: t("tabs.library", { defaultValue: "Posts library" }), path: "library", premium: true },
+    { id: "autolists", label: t("tabs.autolists", { defaultValue: "Autolists" }), path: "autolists" },
+    { id: "history", label: t("tabs.history", { defaultValue: "Deleted posts" }), path: "history" },
   ];
 
   const [time, setTime] = React.useState(new Date());

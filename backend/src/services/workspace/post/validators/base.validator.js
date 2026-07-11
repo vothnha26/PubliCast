@@ -73,6 +73,32 @@ class BaseValidator {
 
     return errors;
   }
+
+  validateVideoSettings(postData, mediaInfo = {}) {
+    const errors = [];
+    const settings = postData.options?.videoSettings;
+    if (!settings) return errors;
+
+    const { startTime, endTime, audioVolume } = settings;
+
+    if (startTime !== undefined && endTime !== undefined) {
+      if (typeof startTime !== 'number' || typeof endTime !== 'number') {
+        errors.push('Thời gian cắt video (trim settings) phải là số.');
+      } else if (startTime < 0) {
+        errors.push('Thời gian bắt đầu cắt video không được nhỏ hơn 0.');
+      } else if (startTime >= endTime) {
+        errors.push('Thời gian bắt đầu cắt video phải nhỏ hơn thời gian kết thúc.');
+      }
+    }
+
+    if (audioVolume !== undefined) {
+      if (typeof audioVolume !== 'number' || audioVolume < 0 || audioVolume > 100) {
+        errors.push('Âm lượng nhạc nền phải nằm trong khoảng từ 0 đến 100.');
+      }
+    }
+
+    return errors;
+  }
 }
 
 module.exports = BaseValidator;

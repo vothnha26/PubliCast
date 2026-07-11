@@ -1,0 +1,375 @@
+{
+  "title": "Content Planner",
+  "tabs": {
+    "calendar": "Calendar",
+    "list": "List",
+    "library": "Posts library",
+    "autolists": "Autolists",
+    "history": "Deleted posts"
+  },
+  "upgrade": {
+    "title": "Do you need a higher plan?",
+    "desc": "You have posted <span>{{posted}} out of your {{limit}}</span> available posts in your plan this month. Upgrade your plan to increase the limit.",
+    "button": "Upgrade your plan"
+  },
+  "autolists": {
+    "title": "Autolists",
+    "subtitle": "Automate post queues for publishing at preset intervals or schedules.",
+    "createBtn": "Create autolist",
+    "noAutolists": "No autolists created yet",
+    "noAutolistsDesc": "Create your first queue to automate your content strategy across multiple networks.",
+    "createFirst": "Create your first autolist",
+    "helpTitle": "How do Autolists work?",
+    "helpDesc": "Autolists automate your social media content workflow. First, set your timing cadence (active days and hourly intervals or specific target times). Then, upload or insert your draft posts. The queue manager will automatically calculate exact publish dates and dispatch them to your chosen networks.",
+    "helpStep1": "Set schedule settings",
+    "helpStep2": "Add posts to queue",
+    "helpStep3": "Automated publishing",
+    "card": {
+      "active": "Active",
+      "paused": "Paused",
+      "loop": "Loop",
+      "posts": "{{published}} / {{total}} posts",
+      "specificTime": "Specific time",
+      "everyInterval": "Every {{interval}}",
+      "notConfigured": "Not configured",
+      "days": "{{n}} day(s)",
+      "hours": "{{n}} hour(s)",
+      "minutes": "{{n}} min(s)",
+      "pauseBtn": "Pause queue",
+      "activateBtn": "Activate queue",
+      "refreshTitle": "Recalculate schedule",
+      "deleteTitle": "Delete queue",
+      "configTitle": "Configure settings"
+    },
+    "toasts": {
+      "toggleFail": "Failed to update status",
+      "toggleSuccess": "Status updated",
+      "refreshSuccess": "Queue scheduling refreshed",
+      "refreshFail": "Failed to refresh queue",
+      "deleteSuccess": "Autolist deleted",
+      "deleteFail": "Failed to delete autolist",
+      "loadFail": "Failed to load autolists"
+    },
+    "confirm": {
+      "deleteTitle": "Delete Autolist?",
+      "deleteDesc": "Are you sure you want to delete this autolist? All queued posts will be orphaned.",
+      "deleteConfirm": "Delete",
+      "deleteCancel": "Cancel"
+    }
+  },
+  "historyView": {
+    "title": "Deleted Posts",
+    "searchPlaceholder": "Search deleted posts...",
+    "selected": "{{count}} selected",
+    "restoreSelected": "Restore",
+    "emptyTrash": "Empty Trash",
+    "trashEmpty": "Trash is empty",
+    "trashEmptyDesc": "Deleted posts will appear here for 30 days before being permanently removed.",
+    "colPost": "Post",
+    "colPlatform": "Platform",
+    "colDeletedAt": "Deleted At",
+    "colAuthor": "Author",
+    "restoreBtn": "Restore",
+    "toasts": {
+      "restoreSuccess": "Post restored successfully",
+      "restoreFail": "Failed to restore post",
+      "bulkRestoreSuccess": "Selected posts restored successfully",
+      "bulkRestoreFail": "Failed to restore selected posts",
+      "emptyTrashSuccess": "Trash emptied",
+      "emptyTrashFail": "Failed to empty trash",
+      "loadFail": "Failed to load deleted posts"
+    },
+    "confirm": {
+      "emptyTrashTitle": "Empty Trash?",
+      "emptyTrashDesc": "Are you sure you want to permanently delete all posts in trash? This cannot be undone.",
+      "emptyTrashConfirm": "Empty Trash",
+      "emptyTrashCancel": "Cancel"
+    }
+  },
+  "postsLibrary": {
+    "title": "Posts Library",
+    "badge": "Templates",
+    "searchPlaceholder": "Search templates...",
+    "addTemplateBtn": "Add template",
+    "emptyTitle": "Organize your best content",
+    "emptyDesc": "Save your top-performing posts as templates and reuse them with one click. Build a library of consistent, high-quality content.",
+    "createFirstBtn": "Create First Template",
+    "useTemplate": "Use Template",
+    "editTemplate": "Edit Template",
+    "viewTemplate": "View Template",
+    "templateBadge": "Template",
+    "toasts": {
+      "loadFail": "Failed to load library posts"
+    }
+  },
+  "listView": {
+    "searchPlaceholder": "Search by title, caption...",
+    "filterStatus": "Filter by Status",
+    "selected": "{{count}} selected",
+    "approveBtn": "Approve",
+    "deleteBtn": "Delete",
+    "createPostBtn": "Create post",
+    "colPostDetails": "Post Details",
+    "colPlatform": "Platform",
+    "colScheduledFor": "Scheduled For",
+    "colStatus": "Status",
+    "colAuthor": "Author",
+    "colReviewers": "Reviewers",
+    "noPosts": "No posts found",
+    "noPostsDesc": "You haven't created any posts for this filter yet.",
+    "clearFilters": "Clear all filters",
+    "assignBtn": "Assign",
+    "editPost": "Edit Post",
+    "viewPost": "View Post",
+    "duplicatePost": "Duplicate Post",
+    "saveTemplate": "Save as Template",
+    "deletePost": "Delete Post",
+    "reposting": "Reposting...",
+    "repostNow": "Repost Now",
+    "detailStats": "Detailed stats",
+    "showingResults": "Showing {{count}} of {{total}} results",
+    "prevBtn": "Previous",
+    "nextBtn": "Next",
+    "reviewerPanel": {
+      "title": "Reviewers",
+      "policyLabel": "Approval policy",
+      "policyAtLeastOne": "At least one",
+      "policyAll": "All",
+      "selectLabel": "Select reviewers",
+      "noReviewers": "No reviewers available",
+      "cancelBtn": "Cancel",
+      "saveBtn": "Save changes"
+    },
+    "toasts": {
+      "loadFail": "Failed to load posts",
+      "bulkDeleteSuccess": "Posts deleted successfully",
+      "bulkDeleteFail": "Failed to delete posts",
+      "bulkApproveSuccess": "Posts approved",
+      "bulkApproveFail": "Failed to approve posts",
+      "deleteSuccess": "Post deleted successfully",
+      "deleteFail": "Failed to delete post",
+      "repostingLoading": "Reposting post...",
+      "repostSuccess": "Post reposted successfully!",
+      "repostFail": "Failed to repost post",
+      "loadReviewersFail": "Failed to load reviewers",
+      "saveReviewersSuccess": "Reviewers updated successfully",
+      "saveReviewersFail": "Failed to update reviewers",
+      "savingTemplate": "Saving post as template...",
+      "saveTemplateSuccess": "Successfully saved post as template!",
+      "saveTemplateFail": "Failed to save post as template"
+    }
+  },
+  "weeklyCalendar": {
+    "noPermissionCreate": "You do not have permission to create posts",
+    "loadCalendarFail": "Failed to load calendar data",
+    "loadingPosts": "Loading calendar posts..."
+  },
+  "sidebarIntegrations": {
+    "folders": {
+      "myDrive": "My drive",
+      "shared": "Shared with me",
+      "starred": "Starred",
+      "recent": "Recent"
+    },
+    "drivePromo": {
+      "title": "Google Drive",
+      "desc": "Upgrade to a Premium plan and create your content using Google Drive!",
+      "btn": "Get premium"
+    },
+    "canvaPromo": {
+      "title": "Canva",
+      "desc": "Connect your Canva account to design templates and schedule them in seconds.",
+      "btn": "Connect Canva"
+    },
+    "ideasPromo": {
+      "title": "Content Assistant",
+      "desc": "Get AI-driven ideas and trending formats customized for your audience.",
+      "btn": "Try AI Assistant"
+    },
+    "toasts": {
+      "apiDisabledTitle": "Google Drive API is Disabled",
+      "apiDisabledDesc": "You must enable the Google Drive API in your Google Console to view files:",
+      "apiDisabledClick": "👉 Click here to enable Google Drive API",
+      "apiDisabledFooter": "Then disconnect & reconnect your account.",
+      "loadFail": "Failed to load Google Drive files",
+      "authUrlFail": "Authentication URL not returned",
+      "fetchAuthUrlFail": "Failed to fetch Google authentication url",
+      "disconnectConfirmTitle": "Disconnect Google Account?",
+      "disconnectConfirmDesc": "Are you sure you want to disconnect Google Drive & YouTube?",
+      "disconnectConfirmBtn": "Disconnect",
+      "cancelBtn": "Cancel",
+      "disconnectSuccess": "Successfully disconnected Google account",
+      "disconnectFail": "Failed to disconnect Google account"
+    },
+    "explorer": {
+      "beta": "BETA",
+      "connectedAs": "Connected As",
+      "switchAccount": "Switch Account",
+      "disconnectDrive": "Disconnect Drive",
+      "verifying": "Verifying Connection...",
+      "descConnect": "Connect your Google account to access and drag video files directly into your schedule.",
+      "btnConnect": "Connect Google Drive",
+      "searchPlaceholder": "Search in Drive",
+      "syncTitle": "Sync Drive",
+      "filter": {
+        "title": "Filter",
+        "format": "File Format",
+        "size": "File Size",
+        "sizes": {
+          "all": "All Sizes",
+          "small": "Under 25 MB",
+          "medium": "Under 100 MB",
+          "large": "100 MB & Above"
+        },
+        "clear": "Clear Filters"
+      },
+      "sort": {
+        "title": "Sort",
+        "sortBy": "Sort By",
+        "fields": {
+          "name": "Name (A-Z)",
+          "date": "Date Created",
+          "size": "File Size"
+        },
+        "direction": "Direction",
+        "asc": "Asc",
+        "desc": "Desc"
+      },
+      "home": "Home",
+      "loadingFiles": "Loading Drive files...",
+      "noFiles": "No matching files found",
+      "noFilesDesc": "Upload videos, images, or PDFs to this folder, then refresh.",
+      "dragInstruction": "Drag into the calendar to create your post!"
+    }
+  },
+  "toolbar": {
+    "searchPlaceholder": "Search",
+    "thisWeek": "This week",
+    "filterStatusLabel": "Filter by Status",
+    "filterTypeLabel": "Filter by Type",
+    "statuses": {
+      "all": "All Statuses",
+      "draft": "Draft",
+      "scheduled": "Scheduled",
+      "pendingApproval": "Pending Approval",
+      "published": "Published",
+      "failed": "Failed"
+    },
+    "types": {
+      "all": "All Types",
+      "image": "Image",
+      "video": "Video",
+      "carousel": "Carousel"
+    },
+    "calendarZoom": "Calendar zoom",
+    "zooms": {
+      "small": "Small (80px)",
+      "medium": "Medium (100px)",
+      "large": "Large (120px)"
+    },
+    "calendarView": "Calendar view",
+    "views": {
+      "day": "Day View",
+      "week": "Week View",
+      "month": "Month View"
+    },
+    "socialCalendars": "Social calendars",
+    "syncImportExport": "Sync / Import / Export Data",
+    "previewFeed": "Preview feed",
+    "notifications": "Notifications",
+    "bestTimes": "Best times",
+    "selectHeatmapPlatform": "Select Heatmap Platform",
+    "createPost": "Create post",
+    "feedPreviewTitle": "Feed Preview",
+    "feedMockup": "Feed Mockup",
+    "noScheduledPosts": "No scheduled posts yet",
+    "close": "Close",
+    "toasts": {
+      "zoomLevelSet": "Zoom level set to {{size}}px",
+      "switchedTo": "Switched to {{view}}",
+      "showingBestTimes": "Showing best times for {{platform}}"
+    }
+  },
+  "wizard": {
+    "title": "Data Sync & Integration",
+    "subtitle": "Import or export posts and schedule in CSV/ICS format",
+    "steps": {
+      "setup": "Setup",
+      "validate": "Validate",
+      "filter": "Filter",
+      "preview": "Preview"
+    },
+    "actions": {
+      "importTitle": "Import Data",
+      "importDesc": "Load a list of posts from a data file into your Planner.",
+      "exportTitle": "Export Data",
+      "exportDesc": "Download your entire post schedule in a standard format."
+    },
+    "formats": {
+      "csvLabel": "Spreadsheet CSV (.csv)",
+      "icsLabel": "iCalendar (.ics)",
+      "sectionLabel": "Supported file formats"
+    },
+    "upload": {
+      "sectionLabel": "Upload file",
+      "dragHint": "Drag & drop or click to select file",
+      "formatHint": "Supports *.{{ext}} standard template"
+    },
+    "dateRange": {
+      "title": "Select export date range",
+      "fromLabel": "From date",
+      "toLabel": "To date",
+      "hint": "Posts within this range will be queried from the database to compile your download file."
+    },
+    "previewImport": {
+      "label": "Post preview ({{n}})",
+      "sublabel": "Preview helps ensure format matches exactly",
+      "colIndex": "#",
+      "colMedia": "Media",
+      "colPost": "Post",
+      "colPlatform": "Platform",
+      "colScheduled": "Scheduled at",
+      "noMedia": "Imported post",
+      "draft": "Save as draft"
+    },
+    "previewExport": {
+      "action": "Action",
+      "actionValue": "Export file (Download)",
+      "format": "Output format",
+      "dateRange": "Date range",
+      "hint": "Your file will be compiled and ready to download after confirmation."
+    },
+    "validation": {
+      "fileStatus": "File status",
+      "validRows": "{{n}} valid rows",
+      "failedRows": "{{n}} error rows",
+      "errorList": "Error/skipped row list",
+      "errorRow": "Row {{row}}: {{title}}",
+      "guideTitle": "💡 Validation guide:",
+      "guideDesc": "Click **Continue** to inspect and preview visually each post before committing to your Schedule.",
+      "processing": "Processing..."
+    },
+    "buttons": {
+      "back": "Back",
+      "cancel": "Cancel",
+      "continue": "Continue",
+      "importConfirm": "Import data",
+      "exportConfirm": "Download file"
+    },
+    "toasts": {
+      "fileReceived": "File received: {{name}}",
+      "invalidCsv": "Please select a .csv file",
+      "invalidIcs": "Please select an .ics file",
+      "noFileSelected": "Please select a file to import.",
+      "parseError": "Error reading file.",
+      "importSuccess": "Successfully imported {{n}} items into Planner!",
+      "importFailure": "Import failed or no valid rows found.",
+      "exportSuccess": "Schedule exported successfully!",
+      "exportError": "An error occurred while exporting."
+    }
+  },
+  "importOverlay": {
+    "title": "Importing from Drive",
+    "message": "Please wait while we stream and convert the video from Google Drive to our servers..."
+  }
+}

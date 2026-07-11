@@ -247,13 +247,13 @@ describe('Team Management E2E Test Suite', function () {
     await inviteSubmitBtn.click();
     await driver.sleep(1000);
 
-    const toastContainer = await driver.wait(until.elementLocated(By.xpath("//li[contains(., 'Vui lòng nhập địa chỉ email') or contains(., 'Email không được để trống')]")), 5000);
+    const toastContainer = await driver.wait(until.elementLocated(By.xpath("//li[contains(., 'Vui lòng nhập địa chỉ email') or contains(., 'Email không được để trống') or contains(., 'nhập ít nhất một địa chỉ email') or contains(., 'Please enter at least one valid email')]")), 5000);
     expect(toastContainer).to.not.be.null;
 
     await driver.sleep(2000);
 
     // 2. Gửi lời mời với Email sai format
-    const emailInput = await driver.findElement(By.tagName("textarea"));
+    const emailInput = await driver.findElement(By.xpath("//div[contains(@class, 'cursor-text')]//input"));
     await emailInput.sendKeys('invalid-email');
     await inviteSubmitBtn.click();
     await driver.sleep(1000);
@@ -271,8 +271,8 @@ describe('Team Management E2E Test Suite', function () {
     await safeClick(By.xpath("//button[contains(., 'Invite Member')]"));
     await driver.sleep(1000);
 
-    const emailInput = await driver.findElement(By.tagName("textarea"));
-    await emailInput.sendKeys('duplicate-member@gmail.com');
+    const emailInput = await driver.findElement(By.xpath("//div[contains(@class, 'cursor-text')]//input"));
+    await emailInput.sendKeys('duplicate-member@gmail.com', Key.ENTER);
 
     let inviteSubmitBtn = await driver.findElement(By.xpath("//button[contains(text(), 'Gửi lời mời tham gia')]"));
     await inviteSubmitBtn.click();
@@ -299,9 +299,9 @@ describe('Team Management E2E Test Suite', function () {
     await driver.sleep(1000);
 
     // Chờ element input email hiển thị
-    const emailInput2 = await driver.wait(until.elementLocated(By.tagName("textarea")), 10000);
+    const emailInput2 = await driver.wait(until.elementLocated(By.xpath("//div[contains(@class, 'cursor-text')]//input")), 10000);
     await driver.wait(until.elementIsVisible(emailInput2), 5000);
-    await emailInput2.sendKeys('   DUPLICATE-MEMBER@gmail.com   ');
+    await emailInput2.sendKeys('   DUPLICATE-MEMBER@gmail.com   ', Key.ENTER);
     
     inviteSubmitBtn = await driver.findElement(By.xpath("//button[contains(text(), 'Gửi lời mời tham gia')]"));
     await inviteSubmitBtn.click();
@@ -327,8 +327,8 @@ describe('Team Management E2E Test Suite', function () {
     await safeClick(By.xpath("//button[contains(., 'Invite Member')]"));
     await driver.sleep(1000);
 
-    const emailInput = await driver.findElement(By.tagName("textarea"));
-    await emailInput.sendKeys('another-member@gmail.com');
+    const emailInput = await driver.findElement(By.xpath("//div[contains(@class, 'cursor-text')]//input"));
+    await emailInput.sendKeys('another-member@gmail.com', Key.ENTER);
 
     const inviteSubmitBtn = await driver.findElement(By.xpath("//button[contains(text(), 'Gửi lời mời tham gia')]"));
     await inviteSubmitBtn.click();
@@ -394,8 +394,8 @@ describe('Team Management E2E Test Suite', function () {
     await safeClick(By.xpath("//button[contains(., 'Invite Member')]"));
     await driver.sleep(1000);
 
-    const emailInput = await driver.findElement(By.tagName("textarea"));
-    await emailInput.sendKeys(memberEmail);
+    const emailInput = await driver.findElement(By.xpath("//div[contains(@class, 'cursor-text')]//input"));
+    await emailInput.sendKeys(memberEmail, Key.ENTER);
 
     // Chọn Custom Role "Restricted Analyst" (Đợi React re-render và hiển thị nó trong modal)
     const customRoleOption = await driver.wait(until.elementLocated(By.xpath("//div[contains(text(), 'Restricted Analyst')]")), 15000);
@@ -1066,8 +1066,8 @@ describe('Team Management E2E Test Suite', function () {
     await safeClick(By.xpath("//button[contains(., 'Invite Member')]"));
     await driver.sleep(1000);
 
-    const emailInput = await driver.findElement(By.tagName("textarea"));
-    await emailInput.sendKeys('bulk1@gmail.com, bulk2@gmail.com');
+    const emailInput = await driver.findElement(By.xpath("//div[contains(@class, 'cursor-text')]//input"));
+    await emailInput.sendKeys('bulk1@gmail.com, bulk2@gmail.com', Key.ENTER);
 
     // Chọn vai trò Admin
     const adminRoleOption = await driver.wait(until.elementLocated(By.xpath("//div[contains(text(), 'Admin')]")), 5000);

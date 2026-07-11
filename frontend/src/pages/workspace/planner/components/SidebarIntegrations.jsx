@@ -9,10 +9,11 @@ import { toast } from 'sonner';
 import { useConfirm } from "@/hooks/useConfirm";
 import { useFeatureGate } from '../../../../hooks/useFeatureGate';
 import { PRODUCT_IDS } from '../../../../constants/products';
+import { useTranslation } from "react-i18next";
 
 // Custom icons mapping for category folders matching the screenshot design
 const FOLDERS = [
-  { id: 'my-drive', label: 'My drive', icon: (
+  { id: 'my-drive', labelKey: 'sidebarIntegrations.folders.myDrive', icon: (
     <div className="relative w-8 h-8 flex items-center justify-center">
       <Folder className="w-8 h-8 text-black" strokeWidth={1.5} />
       <div className="absolute inset-0 flex items-center justify-center pt-1">
@@ -24,7 +25,7 @@ const FOLDERS = [
       </div>
     </div>
   )},
-  { id: 'shared', label: 'Shared with me', icon: (
+  { id: 'shared', labelKey: 'sidebarIntegrations.folders.shared', icon: (
     <div className="relative w-8 h-8 flex items-center justify-center">
       <Folder className="w-8 h-8 text-black" strokeWidth={1.5} />
       <div className="absolute inset-0 flex items-center justify-center pt-1">
@@ -35,7 +36,7 @@ const FOLDERS = [
       </div>
     </div>
   )},
-  { id: 'starred', label: 'Starred', icon: (
+  { id: 'starred', labelKey: 'sidebarIntegrations.folders.starred', icon: (
     <div className="relative w-8 h-8 flex items-center justify-center">
       <Folder className="w-8 h-8 text-black" strokeWidth={1.5} />
       <div className="absolute inset-0 flex items-center justify-center pt-1">
@@ -45,7 +46,7 @@ const FOLDERS = [
       </div>
     </div>
   )},
-  { id: 'recent', label: 'Recent', icon: (
+  { id: 'recent', labelKey: 'sidebarIntegrations.folders.recent', icon: (
     <div className="relative w-8 h-8 flex items-center justify-center">
       <Folder className="w-8 h-8 text-black" strokeWidth={1.5} />
       <div className="absolute inset-0 flex items-center justify-center pt-1">
@@ -69,9 +70,9 @@ const INTEGRATIONS = [
         <path d="M2.14 7.82L5.57 13.64L2.14 19.45L2.14 7.82Z" fill="#2196F3" />
       </svg>
     ),
-    title: 'Google Drive',
-    description: 'Upgrade to a Premium plan and create your content using Google Drive!',
-    buttonText: 'Get premium',
+    titleKey: 'sidebarIntegrations.drivePromo.title',
+    descKey: 'sidebarIntegrations.drivePromo.desc',
+    buttonTextKey: 'sidebarIntegrations.drivePromo.btn',
     hasDiamond: true,
     illustration: () => (
       <div className="w-28 h-28 mx-auto flex items-center justify-center bg-blue-50/50 rounded-full mb-6">
@@ -91,9 +92,9 @@ const INTEGRATIONS = [
         C
       </div>
     ),
-    title: 'Canva',
-    description: 'Connect your Canva account to design templates and schedule them in seconds.',
-    buttonText: 'Connect Canva',
+    titleKey: 'sidebarIntegrations.canvaPromo.title',
+    descKey: 'sidebarIntegrations.canvaPromo.desc',
+    buttonTextKey: 'sidebarIntegrations.canvaPromo.btn',
     hasDiamond: false,
     illustration: () => (
       <div className="w-28 h-28 mx-auto flex items-center justify-center bg-[#E6F9FA] rounded-full mb-6">
@@ -110,9 +111,9 @@ const INTEGRATIONS = [
         <path d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" strokeLinecap="round" strokeLinejoin="round" />
       </svg>
     ),
-    title: 'Content Assistant',
-    description: 'Get AI-driven ideas and trending formats customized for your audience.',
-    buttonText: 'Try AI Assistant',
+    titleKey: 'sidebarIntegrations.ideasPromo.title',
+    descKey: 'sidebarIntegrations.ideasPromo.desc',
+    buttonTextKey: 'sidebarIntegrations.ideasPromo.btn',
     hasDiamond: false,
     illustration: () => (
       <div className="w-28 h-28 mx-auto flex items-center justify-center bg-yellow-50 rounded-full mb-6">
@@ -125,6 +126,7 @@ const INTEGRATIONS = [
 ];
 
 export function SidebarIntegrations({ activeBrand }) {
+  const { t } = useTranslation("planner");
   const confirm = useConfirm();
   const { hasAccess } = useFeatureGate();
   const hasDriveAccess = hasAccess(PRODUCT_IDS.GOOGLE_DRIVE);
@@ -232,22 +234,22 @@ export function SidebarIntegrations({ activeBrand }) {
 
         toast.error(
           <div className="flex flex-col gap-1 text-left text-xs font-semibold">
-            <span className="font-black text-red-600 uppercase tracking-wide">Google Drive API is Disabled</span>
-            <span className="text-gray-500 font-bold leading-normal">You must enable the Google Drive API in your Google Console to view files:</span>
+            <span className="font-black text-red-600 uppercase tracking-wide">{t("sidebarIntegrations.toasts.apiDisabledTitle")}</span>
+            <span className="text-gray-500 font-bold leading-normal">{t("sidebarIntegrations.toasts.apiDisabledDesc")}</span>
             <a 
               href={enableUrl} 
               target="_blank" 
               rel="noreferrer" 
               className="underline text-red-500 hover:text-red-700 font-black animate-pulse"
             >
-              👉 Click here to enable Google Drive API
+              {t("sidebarIntegrations.toasts.apiDisabledClick")}
             </a>
-            <span className="text-gray-400 font-bold text-[9px] uppercase mt-1">Then disconnect & reconnect your account.</span>
+            <span className="text-gray-400 font-bold text-[9px] uppercase mt-1">{t("sidebarIntegrations.toasts.apiDisabledFooter")}</span>
           </div>,
           { duration: 15000 }
         );
       } else {
-        toast.error(errMsg || 'Failed to load Google Drive files');
+        toast.error(errMsg || t("sidebarIntegrations.toasts.loadFail"));
       }
     } finally {
       setLoading(false);
@@ -277,33 +279,33 @@ export function SidebarIntegrations({ activeBrand }) {
       if (res.url) {
         window.location.href = res.url;
       } else {
-        toast.error('Authentication URL not returned');
+        toast.error(t("sidebarIntegrations.toasts.authUrlFail"));
       }
     } catch (err) {
       console.error(err);
-      toast.error('Failed to fetch Google authentication url');
+      toast.error(t("sidebarIntegrations.toasts.fetchAuthUrlFail"));
     }
   };
 
   const handleDisconnect = async () => {
     if (!activeBrand) return;
     const isConfirmed = await confirm({
-      title: "Disconnect Google Account?",
-      description: "Are you sure you want to disconnect Google Drive & YouTube?",
-      confirmText: "Disconnect",
-      cancelText: "Cancel",
+      title: t("sidebarIntegrations.toasts.disconnectConfirmTitle"),
+      description: t("sidebarIntegrations.toasts.disconnectConfirmDesc"),
+      confirmText: t("sidebarIntegrations.toasts.disconnectConfirmBtn"),
+      cancelText: t("sidebarIntegrations.toasts.cancelBtn"),
       variant: "destructive"
     });
     if (!isConfirmed) return;
     setLoading(true);
     try {
       await socialService.disconnectGoogleAccount(activeBrand.id);
-      toast.success("Successfully disconnected Google account");
+      toast.success(t("sidebarIntegrations.toasts.disconnectSuccess"));
       setConnected(false);
       setFiles([]);
     } catch (err) {
       console.error(err);
-      toast.error("Failed to disconnect Google account");
+      toast.error(t("sidebarIntegrations.toasts.disconnectFail"));
     } finally {
       setLoading(false);
     }
@@ -353,7 +355,7 @@ export function SidebarIntegrations({ activeBrand }) {
                   <path d="M15.43 2H8.57L5.13 7.82H18.87L15.43 2Z" fill="#FFC107" />
                   <path d="M2.14 7.82L5.57 13.64L2.14 19.45L2.14 7.82Z" fill="#2196F3" />
                 </svg>
-                <span className="text-[9px] font-extrabold bg-[#0A0A0A] text-white px-1.5 py-0.5 rounded uppercase tracking-wider leading-none">BETA</span>
+                <span className="text-[9px] font-extrabold bg-[#0A0A0A] text-white px-1.5 py-0.5 rounded uppercase tracking-wider leading-none">{t("sidebarIntegrations.explorer.beta")}</span>
                 {connected && (
                   <div className="flex items-center gap-1.5 ml-2 border-l border-gray-100 pl-2">
                     {connectedAccount && (
@@ -386,7 +388,7 @@ export function SidebarIntegrations({ activeBrand }) {
                         <div className="absolute top-full right-0 mt-1 w-40 bg-white border border-gray-100 rounded-xl shadow-lg py-1 z-[100] animate-in fade-in slide-in-from-top-1 text-left">
                           {connectedAccount && (
                             <div className="px-3 py-1.5 border-b border-gray-50">
-                              <span className="block text-[8px] font-black text-gray-400 uppercase tracking-widest leading-none mb-0.5">Connected As</span>
+                              <span className="block text-[8px] font-black text-gray-400 uppercase tracking-widest leading-none mb-0.5">{t("sidebarIntegrations.explorer.connectedAs")}</span>
                               <span className="block text-[9.5px] font-extrabold text-gray-800 truncate">
                                 {connectedAccount.displayName || connectedAccount.username}
                               </span>
@@ -401,7 +403,7 @@ export function SidebarIntegrations({ activeBrand }) {
                             className="w-full text-left px-3 py-2 text-[10px] font-bold text-gray-700 hover:bg-gray-50 transition-colors uppercase tracking-wider cursor-pointer border-b border-gray-50 flex items-center gap-1.5"
                           >
                             <span>🔄</span>
-                            <span>Switch Account</span>
+                            <span>{t("sidebarIntegrations.explorer.switchAccount")}</span>
                           </button>
                           <button
                             onClick={() => {
@@ -411,7 +413,7 @@ export function SidebarIntegrations({ activeBrand }) {
                             className="w-full text-left px-3 py-2 text-[10px] font-bold text-red-600 hover:bg-red-50/50 transition-colors uppercase tracking-wider cursor-pointer flex items-center gap-1.5"
                           >
                             <span>🚪</span>
-                            <span>Disconnect Drive</span>
+                            <span>{t("sidebarIntegrations.explorer.disconnectDrive")}</span>
                           </button>
                         </div>
                       )}
@@ -431,22 +433,22 @@ export function SidebarIntegrations({ activeBrand }) {
                     <path d="M2.14 7.82L5.57 13.64L2.14 19.45L2.14 7.82Z" fill="#2196F3" />
                   </svg>
                 </div>
-                <h4 className="text-xs font-black text-gray-800 uppercase mb-2">Connect Google Drive</h4>
+                <h4 className="text-xs font-black text-gray-800 uppercase mb-2">{t("sidebarIntegrations.explorer.btnConnect")}</h4>
                 <p className="text-[10px] text-gray-400 font-bold leading-relaxed mb-6 max-w-[200px]">
-                  Upgrade to a Premium plan and create your content using Google Drive!
+                  {t("sidebarIntegrations.drivePromo.desc")}
                 </p>
                 <button 
                   onClick={() => window.location.href = '/pricing'}
                   className="flex items-center justify-center gap-1.5 px-6 py-2.5 bg-gradient-to-r from-purple-600 to-orange-500 hover:from-purple-700 hover:to-orange-600 text-white rounded-xl text-xs font-bold transition-all shadow-sm cursor-pointer hover:scale-[1.02] active:scale-[0.98]"
                 >
-                  <span>Get premium</span>
+                  <span>{t("sidebarIntegrations.drivePromo.btn")}</span>
                   <span>💎</span>
                 </button>
               </div>
             ) : isVerifyingConnection ? (
               <div className="flex-1 flex flex-col items-center justify-center py-10 text-center p-6 animate-in fade-in duration-200">
                 <Loader2 className="animate-spin text-black mb-3" size={24} />
-                <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Verifying Connection...</span>
+                <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{t("sidebarIntegrations.explorer.verifying")}</span>
               </div>
             ) : !connected ? (
               <div className="flex-1 flex flex-col items-center justify-center text-center p-6 animate-in fade-in duration-200">
@@ -457,15 +459,15 @@ export function SidebarIntegrations({ activeBrand }) {
                     <path d="M2.14 7.82L5.57 13.64L2.14 19.45L2.14 7.82Z" fill="#2196F3" />
                   </svg>
                 </div>
-                <h4 className="text-xs font-black text-gray-800 uppercase mb-2">Connect Google Drive</h4>
+                <h4 className="text-xs font-black text-gray-800 uppercase mb-2">{t("sidebarIntegrations.explorer.btnConnect")}</h4>
                 <p className="text-[10px] text-gray-400 font-bold leading-relaxed mb-6 max-w-[200px]">
-                  Connect your Google account to access and drag video files directly into your schedule.
+                  {t("sidebarIntegrations.explorer.descConnect")}
                 </p>
                 <button 
                   onClick={handleConnect}
                   className="flex items-center justify-center gap-1.5 px-5 py-2.5 bg-[#FEF08A] hover:bg-[#FDE047] text-gray-900 rounded-xl text-xs font-bold transition-all shadow-sm cursor-pointer hover:scale-[1.02] active:scale-[0.98]"
                 >
-                  <span>Connect Google Drive</span>
+                  <span>{t("sidebarIntegrations.explorer.btnConnect")}</span>
                   <span>💎</span>
                 </button>
               </div>
@@ -479,7 +481,7 @@ export function SidebarIntegrations({ activeBrand }) {
                       type="text" 
                       value={searchInDrive}
                       onChange={(e) => setSearchInDrive(e.target.value)}
-                      placeholder="Search in Drive" 
+                      placeholder={t("sidebarIntegrations.explorer.searchPlaceholder")} 
                       className="w-full pl-3 pr-8 py-1.5 border border-gray-200 rounded-xl text-xs font-semibold focus:border-black outline-none placeholder:text-gray-400"
                     />
                     {searchInDrive && (
@@ -488,7 +490,7 @@ export function SidebarIntegrations({ activeBrand }) {
                       </button>
                     )}
                   </div>
-                  <button onClick={fetchDriveFiles} className="p-1.5 text-gray-500 hover:text-black hover:bg-gray-50 rounded-lg transition-all" title="Sync Drive">
+                  <button onClick={fetchDriveFiles} className="p-1.5 text-gray-500 hover:text-black hover:bg-gray-50 rounded-lg transition-all" title={t("sidebarIntegrations.explorer.syncTitle")}>
                     <RefreshCw size={14} className={loading ? "animate-spin" : ""} />
                   </button>
                   {/* Filter Trigger & Popover */}
@@ -499,7 +501,7 @@ export function SidebarIntegrations({ activeBrand }) {
                         setShowSortPopover(false);
                       }}
                       className={`p-1.5 rounded-lg transition-all relative ${showFilterPopover || filterFormat !== 'all' || filterSize !== 'all' ? 'text-black bg-gray-100' : 'text-gray-500 hover:text-black hover:bg-gray-50'}`}
-                      title="Filter"
+                      title={t("sidebarIntegrations.explorer.filter.title")}
                     >
                       <Filter size={14} />
                       {(filterFormat !== 'all' || filterSize !== 'all') && (
@@ -510,7 +512,7 @@ export function SidebarIntegrations({ activeBrand }) {
                       <div className="absolute right-0 mt-2 w-52 bg-white rounded-2xl shadow-[0_10px_35px_rgba(0,0,0,0.15)] border border-gray-100 p-3.5 z-[100] animate-in fade-in slide-in-from-top-2 text-left">
                         <div className="space-y-4">
                           <div>
-                            <span className="block text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1.5">File Format</span>
+                            <span className="block text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1.5">{t("sidebarIntegrations.explorer.filter.format")}</span>
                             <div className="flex flex-wrap gap-1">
                               {['all', 'mp4', 'webm', 'mov', 'png', 'jpg', 'pdf'].map(fmt => (
                                 <button
@@ -527,13 +529,13 @@ export function SidebarIntegrations({ activeBrand }) {
                             </div>
                           </div>
                           <div>
-                            <span className="block text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1.5">File Size</span>
+                            <span className="block text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1.5">{t("sidebarIntegrations.explorer.filter.size")}</span>
                             <div className="flex flex-col gap-1">
                               {[
-                                { id: 'all', label: 'All Sizes' },
-                                { id: 'small', label: 'Under 25 MB' },
-                                { id: 'medium', label: 'Under 100 MB' },
-                                { id: 'large', label: '100 MB & Above' }
+                                { id: 'all', label: t("sidebarIntegrations.explorer.filter.sizes.all") },
+                                { id: 'small', label: t("sidebarIntegrations.explorer.filter.sizes.small") },
+                                { id: 'medium', label: t("sidebarIntegrations.explorer.filter.sizes.medium") },
+                                { id: 'large', label: t("sidebarIntegrations.explorer.filter.sizes.large") }
                               ].map(sz => (
                                 <button
                                   key={sz.id}
@@ -557,7 +559,7 @@ export function SidebarIntegrations({ activeBrand }) {
                               }}
                               className="w-full py-1 text-center text-[8px] font-black text-red-500 hover:bg-red-50 rounded-lg transition-all uppercase tracking-wider cursor-pointer"
                             >
-                              Clear Filters
+                              {t("sidebarIntegrations.explorer.filter.clear")}
                             </button>
                           )}
                         </div>
@@ -573,7 +575,7 @@ export function SidebarIntegrations({ activeBrand }) {
                         setShowFilterPopover(false);
                       }}
                       className={`p-1.5 rounded-lg transition-all relative ${showSortPopover || sortField !== 'date' || sortOrder !== 'desc' ? 'text-black bg-gray-100' : 'text-gray-500 hover:text-black hover:bg-gray-50'}`}
-                      title="Sort"
+                      title={t("sidebarIntegrations.explorer.sort.title")}
                     >
                       <ArrowUpDown size={14} />
                     </button>
@@ -581,12 +583,12 @@ export function SidebarIntegrations({ activeBrand }) {
                       <div className="absolute right-0 mt-2 w-48 bg-white rounded-2xl shadow-[0_10px_35px_rgba(0,0,0,0.15)] border border-gray-100 p-3.5 z-[100] animate-in fade-in slide-in-from-top-2 text-left">
                         <div className="space-y-4">
                           <div>
-                            <span className="block text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1.5">Sort By</span>
+                            <span className="block text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1.5">{t("sidebarIntegrations.explorer.sort.sortBy")}</span>
                             <div className="flex flex-col gap-1">
                               {[
-                                { id: 'name', label: 'Name (A-Z)' },
-                                { id: 'date', label: 'Date Created' },
-                                { id: 'size', label: 'File Size' }
+                                { id: 'name', label: t("sidebarIntegrations.explorer.sort.fields.name") },
+                                { id: 'date', label: t("sidebarIntegrations.explorer.sort.fields.date") },
+                                { id: 'size', label: t("sidebarIntegrations.explorer.sort.fields.size") }
                               ].map(field => (
                                 <button
                                   key={field.id}
@@ -602,7 +604,7 @@ export function SidebarIntegrations({ activeBrand }) {
                             </div>
                           </div>
                           <div className="border-t border-gray-50 pt-2.5">
-                            <span className="block text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1.5">Direction</span>
+                            <span className="block text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1.5">{t("sidebarIntegrations.explorer.sort.direction")}</span>
                             <div className="flex gap-1.5">
                               <button
                                 onClick={() => {
@@ -611,7 +613,7 @@ export function SidebarIntegrations({ activeBrand }) {
                                 }}
                                 className={`flex-1 py-1 text-center text-[9px] font-bold rounded-lg transition-all cursor-pointer ${sortOrder === 'asc' ? 'bg-black text-white' : 'bg-gray-50 hover:bg-gray-100 text-gray-600'}`}
                               >
-                                Asc
+                                {t("sidebarIntegrations.explorer.sort.asc")}
                               </button>
                               <button
                                 onClick={() => {
@@ -620,7 +622,7 @@ export function SidebarIntegrations({ activeBrand }) {
                                 }}
                                 className={`flex-1 py-1 text-center text-[9px] font-bold rounded-lg transition-all cursor-pointer ${sortOrder === 'desc' ? 'bg-black text-white' : 'bg-gray-50 hover:bg-gray-100 text-gray-600'}`}
                               >
-                                Desc
+                                {t("sidebarIntegrations.explorer.sort.desc")}
                               </button>
                             </div>
                           </div>
@@ -638,12 +640,12 @@ export function SidebarIntegrations({ activeBrand }) {
                       className="flex items-center gap-1 text-[11px] font-black text-gray-500 hover:text-black transition-colors uppercase tracking-wider"
                     >
                       <ChevronLeft size={14} />
-                      <span>Home / {FOLDERS.find(f => f.id === selectedFolder)?.label}</span>
+                      <span>{t("sidebarIntegrations.explorer.home")} / {t(FOLDERS.find(f => f.id === selectedFolder)?.labelKey)}</span>
                     </button>
                   ) : (
                     <div className="flex items-center gap-1.5 text-[11px] font-black text-gray-800 uppercase tracking-wider">
                       <Home size={14} className="text-gray-500" />
-                      <span>Home</span>
+                      <span>{t("sidebarIntegrations.explorer.home")}</span>
                     </div>
                   )}
                 </div>
@@ -652,7 +654,7 @@ export function SidebarIntegrations({ activeBrand }) {
                 {loading ? (
                   <div className="flex-1 flex flex-col items-center justify-center py-10">
                     <Loader2 className="animate-spin text-black mb-2" size={20} />
-                    <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest text-center">Loading Drive files...</span>
+                    <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest text-center">{t("sidebarIntegrations.explorer.loadingFiles")}</span>
                   </div>
                 ) : viewMode === 'categories' ? (
                   /* Categories grid matching user screenshot */
@@ -669,7 +671,7 @@ export function SidebarIntegrations({ activeBrand }) {
                           </div>
                           <div className="w-full border-t border-gray-100 bg-gray-50/50 py-2 px-1 text-center shrink-0">
                             <span className="text-[9px] font-black text-gray-600 block truncate leading-none uppercase tracking-tighter">
-                              {folder.label}
+                              {t(folder.labelKey)}
                             </span>
                           </div>
                         </button>
@@ -682,9 +684,9 @@ export function SidebarIntegrations({ activeBrand }) {
                     {filteredFiles.length === 0 ? (
                       <div className="flex flex-col items-center justify-center py-12 text-center">
                         <FileVideo className="text-gray-300 mb-2" size={28} />
-                        <span className="text-[10px] font-black text-gray-400 uppercase tracking-wider">No matching files found</span>
+                        <span className="text-[10px] font-black text-gray-400 uppercase tracking-wider">{t("sidebarIntegrations.explorer.noFiles")}</span>
                         <p className="text-[9px] text-gray-400 font-bold max-w-[180px] mt-1 leading-normal">
-                          Upload videos, images, or PDFs to this folder, then refresh.
+                          {t("sidebarIntegrations.explorer.noFilesDesc")}
                         </p>
                       </div>
                     ) : (
@@ -746,7 +748,7 @@ export function SidebarIntegrations({ activeBrand }) {
                       <line x1="8" y1="12" x2="16" y2="12" />
                     </svg>
                     <span className="text-[9px] font-extrabold text-gray-500 uppercase tracking-tighter">
-                      Drag into the calendar to create your post!
+                      {t("sidebarIntegrations.explorer.dragInstruction")}
                     </span>
                   </div>
                   <div className="w-5 h-5 rounded-full bg-[#E5F9E0] border border-[#B3F5AD] flex items-center justify-center shrink-0">
@@ -761,16 +763,16 @@ export function SidebarIntegrations({ activeBrand }) {
           <div className="flex-1 flex flex-col items-center justify-center p-6 text-center">
             {activeStrategy.illustration()}
             
-            <h4 className="text-sm font-extrabold text-[#0A0A0A] mb-2">{activeStrategy.title}</h4>
+            <h4 className="text-sm font-extrabold text-[#0A0A0A] mb-2">{t(activeStrategy.titleKey)}</h4>
             <p className="text-[11px] text-gray-400 font-bold leading-relaxed max-w-[200px] mb-8">
-              {activeStrategy.description}
+              {t(activeStrategy.descKey)}
             </p>
 
             <button 
               onClick={() => window.location.href = '/pricing'}
               className="flex items-center justify-center gap-1.5 px-6 py-2.5 bg-[#FEF08A] hover:bg-[#FDE047] text-gray-900 rounded-xl text-xs font-bold transition-all shadow-sm cursor-pointer hover:scale-[1.02] active:scale-[0.98]"
             >
-              <span>{activeStrategy.buttonText}</span>
+              <span>{t(activeStrategy.buttonTextKey)}</span>
               {activeStrategy.hasDiamond && <span className="text-[10px]">💎</span>}
             </button>
           </div>

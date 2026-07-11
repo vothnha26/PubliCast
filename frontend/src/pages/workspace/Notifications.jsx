@@ -6,6 +6,7 @@ import apiService from "../../services/api";
 import { toast } from "sonner";
 import { openNotificationStream } from "../../utils/notification-stream";
 import { useBrand } from "../../context/BrandContext";
+import { useTranslation } from "react-i18next";
 
 const TYPE_ICONS = {
   stream: <Radio size={14} style={{ color: "#FFF" }} />,
@@ -17,6 +18,7 @@ const TYPE_ICONS = {
 };
 
 export function NotificationsPage() {
+  const { t } = useTranslation("notifications");
   const { activeBrand } = useBrand();
   const navigate = useNavigate();
   const { filters, updateFilters, clearFilters, searchParamsString } = useFilters({
@@ -48,7 +50,7 @@ export function NotificationsPage() {
       setNotifData(response.data);
       setErrorMessage("");
     } catch (error) {
-      const message = error.message || "Failed to load notifications";
+      const message = error.message || t("toasts.loadFailed");
       setErrorMessage(message);
       if (!silent) {
         toast.error(message);
@@ -114,7 +116,7 @@ export function NotificationsPage() {
       }));
       window.dispatchEvent(new Event("notifications:changed"));
     } catch (error) {
-      toast.error("Failed to mark as read");
+      toast.error(t("toasts.markReadFailed"));
     }
   };
 
@@ -127,9 +129,9 @@ export function NotificationsPage() {
         data: prev.data.map(n => ({ ...n, isRead: true }))
       }));
       window.dispatchEvent(new Event("notifications:changed"));
-      toast.success("All notifications marked as read");
+      toast.success(t("toasts.markAllReadSuccess"));
     } catch (error) {
-      toast.error("Failed to mark all as read");
+      toast.error(t("toasts.markAllReadFailed"));
     }
   };
 
@@ -152,11 +154,11 @@ export function NotificationsPage() {
   };
 
   const categories = [
-    { label: "Tất cả thông báo", count: counts.all || 0, key: "all", icon: <Bell size={14} /> },
-    { label: "Duyệt nội dung", count: counts.content || 0, key: "content", icon: <FileText size={14} /> },
-    { label: "Hoạt động nhóm", count: counts.team || 0, key: "team", icon: <Users size={14} /> },
-    { label: "Nền tảng liên kết", count: counts.platform || 0, key: "platform", icon: <AlertTriangle size={14} /> },
-    { label: "Hệ thống & Gói cước", count: counts.system || 0, key: "system", icon: <CreditCard size={14} /> },
+    { label: t("categories.all"), count: counts.all || 0, key: "all", icon: <Bell size={14} /> },
+    { label: t("categories.content"), count: counts.content || 0, key: "content", icon: <FileText size={14} /> },
+    { label: t("categories.team"), count: counts.team || 0, key: "team", icon: <Users size={14} /> },
+    { label: t("categories.platform"), count: counts.platform || 0, key: "platform", icon: <AlertTriangle size={14} /> },
+    { label: t("categories.system"), count: counts.system || 0, key: "system", icon: <CreditCard size={14} /> },
   ];
 
   return (
@@ -165,23 +167,23 @@ export function NotificationsPage() {
         {/* Top Controls Header */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-[var(--border)]">
           <div>
-            <h1 className="text-xl font-black text-[var(--foreground)] tracking-tight">Thông báo</h1>
+            <h1 className="text-xl font-black text-[var(--foreground)] tracking-tight">{t("title")}</h1>
             <p className="text-xs font-medium text-[var(--muted-foreground)] mt-1">
-              Hiển thị {notifications.length} trên tổng số {total} thông báo
+              {t("subtitle", { count: notifications.length, total })}
             </p>
           </div>
 
           {/* Filtering Controls */}
           <div className="flex flex-wrap items-center gap-3">
             <div className="flex items-center gap-2 bg-[var(--card)] border border-[var(--border)] rounded-xl px-3 py-1.5 shadow-sm">
-              <span className="text-[9px] font-extrabold text-[var(--muted-foreground)] uppercase">Từ ngày</span>
+              <span className="text-[9px] font-extrabold text-[var(--muted-foreground)] uppercase">{t("fromDate")}</span>
               <input
                 type="date"
                 value={filters.startDate || ""}
                 onChange={(e) => {
                   const newStart = e.target.value;
                   if (newStart && filters.endDate && newStart > filters.endDate) {
-                    toast.error("Ngày bắt đầu phải trước hoặc bằng ngày kết thúc");
+                    toast.error(t("toasts.dateOrderError"));
                     return;
                   }
                   updateFilters({ startDate: newStart });
@@ -192,7 +194,7 @@ export function NotificationsPage() {
             </div>
 
             <div className="flex items-center gap-2 bg-[var(--card)] border border-[var(--border)] rounded-xl px-3 py-1.5 shadow-sm">
-              <span className="text-[9px] font-extrabold text-[var(--muted-foreground)] uppercase">Đến ngày</span>
+              <span className="text-[9px] font-extrabold text-[var(--muted-foreground)] uppercase">{t("toDate")}</span>
               <input
                 type="date"
                 value={filters.endDate || ""}
@@ -200,11 +202,11 @@ export function NotificationsPage() {
                   const newEnd = e.target.value;
                   if (newEnd) {
                     if (!filters.startDate) {
-                      toast.error("Vui lòng chọn Ngày bắt đầu trước");
+                      toast.error(t("toasts.selectStartDateFirst"));
                       return;
                     }
                     if (filters.startDate > newEnd) {
-                      toast.error("Ngày bắt đầu phải trước hoặc bằng ngày kết thúc");
+                      toast.error(t("toasts.dateOrderError"));
                       return;
                     }
                   }
@@ -223,7 +225,7 @@ export function NotificationsPage() {
                   : "bg-[var(--card)] text-[var(--foreground)] hover:bg-[var(--muted)]/50"
               }`}
             >
-              Chưa đọc
+              {t("unread")}
             </button>
             
             {(filters.category !== "all" || filters.isRead || hasDateFilter) && (
@@ -231,7 +233,7 @@ export function NotificationsPage() {
                 onClick={clearFilters}
                 className="text-xs font-semibold px-4 py-2 rounded-xl border border-[var(--border)] bg-[var(--card)] text-[var(--muted-foreground)] hover:text-[var(--foreground)] hover:bg-[var(--muted)]/50 cursor-pointer transition-all shadow-sm"
               >
-                Xóa lọc
+                {t("clearFilters")}
               </button>
             )}
 
@@ -244,7 +246,7 @@ export function NotificationsPage() {
                   : "text-purple-600 hover:text-purple-700 hover:bg-purple-50 dark:hover:bg-purple-950/20"
               }`}
             >
-              Đánh dấu đã đọc tất cả
+              {t("markAllRead")}
             </button>
           </div>
         </div>
@@ -283,13 +285,13 @@ export function NotificationsPage() {
         {errorMessage && !loading ? (
           <div className="flex flex-col items-center justify-center py-20 text-[var(--muted-foreground)] gap-3 bg-[var(--card)] rounded-2xl border border-[var(--border)] shadow-sm">
             <XCircle size={40} className="text-red-500" />
-            <span className="text-xs font-bold uppercase tracking-wider">Không thể tải thông báo</span>
+            <span className="text-xs font-bold uppercase tracking-wider">{t("loadErrorTitle")}</span>
             <span className="text-xs text-gray-400">{errorMessage}</span>
             <button
               onClick={() => fetchNotifications()}
               className="mt-2 text-xs font-bold px-4 py-2 rounded-xl border border-[var(--border)] bg-[var(--card)] text-[var(--foreground)] hover:bg-[var(--muted)] cursor-pointer transition-all shadow-sm"
             >
-              Thử lại
+              {t("tryAgain")}
             </button>
           </div>
         ) : loading ? (
@@ -313,8 +315,8 @@ export function NotificationsPage() {
               <Bell size={28} className="animate-bounce" />
             </div>
             <div className="text-center">
-              <span className="text-xs font-bold uppercase tracking-widest text-[var(--foreground)] block">Hộp thư trống</span>
-              <span className="text-xs text-gray-400 mt-1 block">Bạn không có thông báo nào trong danh mục này.</span>
+              <span className="text-xs font-bold uppercase tracking-widest text-[var(--foreground)] block">{t("emptyTitle")}</span>
+              <span className="text-xs text-gray-400 mt-1 block">{t("emptyDesc")}</span>
             </div>
           </div>
         ) : (
@@ -376,7 +378,7 @@ export function NotificationsPage() {
                       <button 
                         onClick={() => markAsRead(notif.id)}
                         className="p-2 rounded-lg bg-[var(--muted)]/50 hover:bg-purple-100 hover:text-purple-700 dark:hover:bg-purple-950/30 text-[var(--muted-foreground)] transition-all cursor-pointer"
-                        title="Đánh dấu đã đọc"
+                        title={t("markAsRead")}
                       >
                         <CheckCircle size={15} />
                       </button>
@@ -397,7 +399,7 @@ export function NotificationsPage() {
         {!loading && totalPages >= 1 && (
           <div className="flex items-center justify-between mt-6 pt-4 border-t border-[var(--border)]">
             <span className="text-xs font-semibold text-[var(--muted-foreground)]">
-              Trang {currentPage} / {totalPages}
+              {t("pageInfo", { current: currentPage, total: totalPages })}
             </span>
             <div className="flex items-center gap-2">
               <button
@@ -409,7 +411,7 @@ export function NotificationsPage() {
                     : "bg-[var(--card)] text-[var(--foreground)] hover:bg-[var(--muted)]/50 cursor-pointer"
                 }`}
               >
-                Trước
+                {t("previous")}
               </button>
               <button
                 disabled={currentPage >= totalPages}
@@ -420,7 +422,7 @@ export function NotificationsPage() {
                     : "bg-[var(--card)] text-[var(--foreground)] hover:bg-[var(--muted)]/50 cursor-pointer"
                 }`}
               >
-                Sau
+                {t("next")}
               </button>
             </div>
           </div>

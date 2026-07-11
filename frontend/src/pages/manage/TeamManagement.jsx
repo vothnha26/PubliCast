@@ -8,10 +8,12 @@ import apiService from "../../services/api";
 import { toast } from "sonner";
 import { SYSTEM_ROLES, ASSIGNABLE_ROLES, TEAM_FILTER_ROLES, MEMBER_STATUS } from "../../constants/roles";
 import { useConfirm } from "@/hooks/useConfirm";
+import { useTranslation } from "react-i18next";
 
 const PRESET_COLORS = ["#3B82F6", "#10B981", "#F59E0B", "#EF4444", "#8B5CF6", "#EC4899", "#0A0A0A", "#6B7280"];
 
 export function TeamManagementPage() {
+  const { t } = useTranslation(["manage", "common"]);
   const { activeBrand } = useBrand();
   const confirm = useConfirm();
 
@@ -51,9 +53,9 @@ export function TeamManagementPage() {
     setResendingId(member.id);
     try {
       const res = await apiService.post(`/team/${member.id}/resend-invite`);
-      toast.success(res.data?.message || `Đã gửi lại lời mời tới ${member.email}!`);
+      toast.success(res.data?.message || t("team.inviteResent", { email: member.email }));
     } catch (error) {
-      toast.error(error.response?.data?.message || 'Gửi lại lời mời thất bại');
+      toast.error(error.response?.data?.message || t("team.resendFailed"));
     } finally {
       setResendingId(null);
     }
@@ -79,7 +81,7 @@ export function TeamManagementPage() {
       const response = await apiService.get(`/team?brandId=${activeBrand.id}&${searchParamsString}`);
       setTeamData(response.data);
     } catch (error) {
-      toast.error(error.message || "Không thể tải danh sách thành viên");
+      toast.error(error.message || t("team.loadMembersFailed"));
     } finally {
       setLoading(false);
     }
@@ -93,7 +95,7 @@ export function TeamManagementPage() {
       const response = await apiService.get(`/brands/${activeBrand.id}/roles`);
       setRoles(response.data.data || []);
     } catch (error) {
-      toast.error(error.message || "Không thể tải danh sách vai trò tùy chỉnh");
+      toast.error(error.message || t("team.loadRolesFailed"));
     } finally {
       setRolesLoading(false);
     }
@@ -126,20 +128,20 @@ export function TeamManagementPage() {
 
   const handleDeleteRole = async (roleId) => {
     const isConfirmed = await confirm({
-      title: "Xóa vai trò?",
-      description: "Bạn có chắc chắn muốn xóa vai trò tùy chỉnh này?",
-      confirmText: "Xóa",
-      cancelText: "Hủy",
+      title: t("team.deleteRoleConfirmTitle"),
+      description: t("team.deleteRoleConfirmDesc"),
+      confirmText: t("common:delete"),
+      cancelText: t("common:cancel"),
       variant: "destructive"
     });
     if (!isConfirmed) return;
     try {
       await apiService.delete(`/brands/${activeBrand.id}/roles/${roleId}`);
-      toast.success("Xóa vai trò tùy chỉnh thành công!");
+      toast.success(t("team.deleteRoleSuccess"));
       fetchRoles();
       fetchTeam();
     } catch (error) {
-      toast.error(error.message || "Không thể xóa vai trò");
+      toast.error(error.message || t("team.deleteRoleFailed"));
     }
   };
 
@@ -148,8 +150,8 @@ export function TeamManagementPage() {
       {/* Sub-header */}
       <div className="flex items-center justify-between px-8 py-6 bg-white border-b border-gray-100">
         <div>
-          <h1 className="text-xl font-bold text-[#0A0A0A] tracking-tight">Team Management</h1>
-          <p className="text-[11px] font-bold text-gray-400 uppercase tracking-widest mt-1">Manage your workspace collaborators and permissions</p>
+          <h1 className="text-xl font-bold text-[#0A0A0A] tracking-tight">{t("team.title")}</h1>
+          <p className="text-[11px] font-bold text-gray-400 uppercase tracking-widest mt-1">{t("team.subtitle")}</p>
         </div>
         <div className="flex items-center gap-2">
           {activeTab === "roles" ? (
@@ -157,14 +159,14 @@ export function TeamManagementPage() {
               onClick={() => { setSelectedRole(null); setIsRoleCreateEditOpen(true); }}
               className="flex items-center gap-2 px-4 py-2.5 bg-[#0A0A0A] text-white rounded-xl text-xs font-bold hover:bg-gray-900 transition-all shadow-sm active:scale-95"
             >
-              <Plus size={14} /> Add Custom Role
+              <Plus size={14} /> {t("team.addCustomRole")}
             </button>
           ) : (
             <button 
               onClick={() => setIsInviteOpen(true)}
               className="flex items-center gap-2 px-4 py-2.5 bg-[#0A0A0A] text-white rounded-xl text-xs font-bold hover:bg-gray-900 transition-all shadow-sm active:scale-95"
             >
-              <UserPlus size={14} /> Invite Member
+              <UserPlus size={14} /> {t("team.inviteMember")}
             </button>
           )}
         </div>
@@ -178,7 +180,7 @@ export function TeamManagementPage() {
             activeTab === "members" ? "border-black text-black" : "border-transparent text-gray-400 hover:text-gray-600"
           }`}
         >
-          Thành viên ({members.length})
+          {t("team.tabMembers", { count: members.length })}
         </button>
         <button 
           onClick={() => setActiveTab("roles")}
@@ -186,7 +188,7 @@ export function TeamManagementPage() {
             activeTab === "roles" ? "border-black text-black" : "border-transparent text-gray-400 hover:text-gray-600"
           }`}
         >
-          Vai trò tùy chỉnh ({roles.length})
+          {t("team.tabRoles", { count: roles.length })}
         </button>
       </div>
 
@@ -198,7 +200,7 @@ export function TeamManagementPage() {
               <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
               <input
                 type="text"
-                placeholder="Search by name or email..."
+                placeholder={t("team.searchPlaceholder")}
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="w-full pl-10 pr-4 py-2 bg-white border border-gray-200 rounded-xl text-xs outline-none focus:border-black transition-all"
@@ -224,7 +226,7 @@ export function TeamManagementPage() {
                 onClick={clearFilters}
                 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest hover:text-black transition-colors"
               >
-                Clear Filters
+                {t("team.clearFilters")}
               </button>
             )}
           </div>
@@ -241,14 +243,14 @@ export function TeamManagementPage() {
                   <User size={24} />
                 </div>
                 <div className="text-center">
-                  <h3 className="text-sm font-bold text-[#0A0A0A]">No members found</h3>
-                  <p className="text-[10px] text-gray-400 uppercase font-bold tracking-widest mt-1">Try adjusting your search or filters</p>
+                  <h3 className="text-sm font-bold text-[#0A0A0A]">{t("team.noMembers")}</h3>
+                  <p className="text-[10px] text-gray-400 uppercase font-bold tracking-widest mt-1">{t("team.noMembersSubtitle")}</p>
                 </div>
                 <button 
                   onClick={clearFilters}
                   className="mt-2 px-4 py-2 border border-gray-200 rounded-xl text-[10px] font-bold text-gray-500 hover:bg-gray-50 transition-all uppercase tracking-widest"
                 >
-                  Reset All Filters
+                  {t("team.resetFilters")}
                 </button>
               </div>
             ) : (
@@ -256,8 +258,8 @@ export function TeamManagementPage() {
                 <table className="w-full border-collapse">
                   <thead>
                     <tr className="bg-gray-50/50 border-b border-gray-100">
-                      {["Member", "Role", "Status", "Joined Date", "Invited By", ""].map((h) => (
-                        <th key={h} className="px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest text-left">{h}</th>
+                      {[t("team.colMember"), t("team.colRole"), t("team.colStatus"), t("team.colJoined"), t("team.colInvitedBy"), ""].map((h, idx) => (
+                        <th key={idx} className="px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest text-left">{h}</th>
                       ))}
                     </tr>
                   </thead>
@@ -287,7 +289,7 @@ export function TeamManagementPage() {
                                 <div className={`p-1.5 rounded-lg ${member.role === SYSTEM_ROLES.OWNER ? 'bg-purple-50 text-purple-600' : 'bg-gray-50 text-gray-600'}`}>
                                   {member.role === SYSTEM_ROLES.OWNER || member.role === SYSTEM_ROLES.ADMIN ? <Shield size={12} /> : <User size={12} />}
                                 </div>
-                                <span className="text-[11px] font-bold text-[#0A0A0A]">{member.role}</span>
+                                <span className="text-[11px] font-bold text-[#0A0A0A]">{t("team." + member.role.toLowerCase())}</span>
                               </>
                             )}
                           </div>
@@ -296,7 +298,7 @@ export function TeamManagementPage() {
                           <span className={`px-2.5 py-1 rounded-full text-[9px] font-bold uppercase tracking-wider ${
                             member.status === MEMBER_STATUS.ACTIVE ? 'bg-green-50 text-green-600' : 'bg-orange-50 text-orange-600'
                           }`}>
-                            {member.status}
+                            {t("team." + member.status.toLowerCase())}
                           </span>
                         </td>
                         <td className="px-6 py-4 text-[11px] text-gray-500 font-medium">{member.joinedDate}</td>
@@ -309,18 +311,18 @@ export function TeamManagementPage() {
                                   onClick={() => handleResendInvite(member)}
                                   disabled={resendingId === member.id}
                                   className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[10px] font-bold text-orange-600 bg-orange-50 hover:bg-orange-100 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-                                  title="Gửi lại lời mời"
+                                  title={t("team.resendInviteTitle")}
                                 >
                                   {resendingId === member.id
                                     ? <Loader2 size={11} className="animate-spin" />
                                     : <RefreshCw size={11} />}
-                                  Gửi lại
+                                  {t("team.resend")}
                                 </button>
                               )}
                               <button 
                                 onClick={() => { setSelectedMember(member); setIsRoleOpen(true); }}
                                 className="p-2 text-gray-300 hover:text-black hover:bg-white rounded-xl transition-all"
-                                title="Quản lý thành viên"
+                                title={t("team.manageMember")}
                               >
                                 <MoreHorizontal size={16} />
                               </button>
@@ -349,14 +351,14 @@ export function TeamManagementPage() {
                 <Settings size={24} />
               </div>
               <div className="text-center">
-                <h3 className="text-sm font-bold text-[#0A0A0A]">Chưa có vai trò tùy chỉnh nào</h3>
-                <p className="text-[10px] text-gray-400 uppercase font-bold tracking-widest mt-1">Hãy tạo vai trò tùy chỉnh đầu tiên để phân quyền chi tiết</p>
+                <h3 className="text-sm font-bold text-[#0A0A0A]">{t("team.noCustomRoles")}</h3>
+                <p className="text-[10px] text-gray-400 uppercase font-bold tracking-widest mt-1">{t("team.noCustomRolesSubtitle")}</p>
               </div>
               <button 
                 onClick={() => { setSelectedRole(null); setIsRoleCreateEditOpen(true); }}
                 className="mt-2 px-4 py-2 bg-[#0A0A0A] text-white rounded-xl text-[10px] font-bold transition-all uppercase tracking-widest"
               >
-                Tạo Custom Role
+                {t("team.createCustomRole")}
               </button>
             </div>
           ) : (
@@ -374,30 +376,30 @@ export function TeamManagementPage() {
                         <button 
                           onClick={() => { setSelectedRole(role); setIsRoleCreateEditOpen(true); }}
                           className="p-1.5 hover:bg-gray-50 rounded-lg text-gray-400 hover:text-black transition-colors"
-                          title="Sửa vai trò"
+                          title={t("team.editRole")}
                         >
                           <Edit2 size={12} />
                         </button>
                         <button 
                           onClick={() => handleDeleteRole(role.id)}
                           className="p-1.5 hover:bg-red-50 rounded-lg text-gray-400 hover:text-red-600 transition-colors"
-                          title="Xóa vai trò"
+                          title={t("team.deleteRole")}
                         >
                           <Trash2 size={12} />
                         </button>
                       </div>
                     </div>
 
-                    <p className="text-[11px] text-gray-400 font-medium mt-2 line-clamp-2">{role.description || "Không có mô tả."}</p>
+                    <p className="text-[11px] text-gray-400 font-medium mt-2 line-clamp-2">{role.description || t("team.noDescription")}</p>
                     
                     {/* Role Counts */}
                     <div className="mt-4 flex items-center gap-1.5 text-[10px] text-gray-500 font-bold uppercase tracking-wider">
-                      <User size={10} /> {role._count?.teamMembers || 0} thành viên đang gán
+                      <User size={10} /> {t("team.roleAssignedMembers", { count: role._count?.teamMembers || 0 })}
                     </div>
 
                     {/* Permissions Preview */}
                     <div className="mt-5 border-t border-gray-50 pt-4 space-y-2">
-                      <div className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">Quyền hạn kích hoạt</div>
+                      <div className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">{t("team.activePermissions")}</div>
                       <div className="flex flex-wrap gap-1.5 pt-1">
                         {role.permissions?.filter(p => p.isAllowed).map(p => {
                           const sys = systemPermissions.find(s => s.key === p.permissionKey);
@@ -408,7 +410,7 @@ export function TeamManagementPage() {
                           );
                         })}
                         {role.permissions?.filter(p => p.isAllowed).length === 0 && (
-                          <span className="text-[10px] text-gray-400 italic">Không có quyền nào được bật</span>
+                          <span className="text-[10px] text-gray-400 italic">{t("team.noActivePermissions")}</span>
                         )}
                       </div>
                     </div>
@@ -454,6 +456,7 @@ export function TeamManagementPage() {
 }
 
 function InviteModal({ isOpen, onClose, activeBrandId, customRoles = [], onInviteSuccess }) {
+  const { t } = useTranslation(["manage", "common"]);
   if (!isOpen) return null;
 
   const [emails, setEmails] = useState([]);
@@ -479,7 +482,7 @@ function InviteModal({ isOpen, onClose, activeBrandId, customRoles = [], onInvit
     });
 
     if (invalidEmails.length > 0) {
-      toast.error(`Email không hợp lệ: ${invalidEmails.join(', ')}`);
+      toast.error(t("team.emailInvalid", { emails: invalidEmails.join(', ') }));
     }
 
     if (validEmails.length > 0) {
@@ -516,13 +519,13 @@ function InviteModal({ isOpen, onClose, activeBrandId, customRoles = [], onInvit
           finalEmails.push(trimmed);
         }
       } else {
-        toast.error(`Email không hợp lệ: ${trimmed}`);
+        toast.error(t("team.emailInvalid", { emails: trimmed }));
         return;
       }
     }
 
     if (finalEmails.length === 0) {
-      toast.error("Vui lòng nhập ít nhất một địa chỉ email hợp lệ");
+      toast.error(t("team.emailRequired"));
       return;
     }
 
@@ -538,18 +541,18 @@ function InviteModal({ isOpen, onClose, activeBrandId, customRoles = [], onInvit
       
       if (failures.length > 0) {
         if (successes.length > 0) {
-          toast.warning(`Đã mời thành công ${successes.length} người. Thất bại ${failures.length} người.`);
+          toast.warning(t("team.inviteWarning", { success: successes.length, failed: failures.length }));
         } else {
-          toast.error(`Mời thành viên thất bại: ${failures[0].message}`);
+          toast.error(t("team.inviteFailed", { error: failures[0].message }));
         }
       } else {
-        toast.success(`Đã gửi lời mời thành công tới ${successes.length} thành viên!`);
+        toast.success(t("team.inviteSuccess", { count: successes.length }));
       }
 
       onInviteSuccess();
       onClose();
     } catch (error) {
-      toast.error(error.response?.data?.message || error.message || "Gửi lời mời thất bại");
+      toast.error(error.response?.data?.message || error.message || t("team.inviteFailed", { error: error.message }));
     } finally {
       setIsSubmitting(false);
     }
@@ -560,14 +563,14 @@ function InviteModal({ isOpen, onClose, activeBrandId, customRoles = [], onInvit
       <div className="absolute inset-0 bg-[#0A0A0A]/40 backdrop-blur-sm" onClick={onClose} />
       <div className="bg-white w-full max-w-lg rounded-3xl shadow-2xl relative overflow-hidden animate-in fade-in zoom-in duration-200">
         <div className="px-8 py-6 border-b border-gray-100 flex items-center justify-between">
-          <h2 className="text-lg font-bold text-[#0A0A0A]">Mời thành viên mới</h2>
+          <h2 className="text-lg font-bold text-[#0A0A0A]">{t("team.inviteModalTitle")}</h2>
           <button onClick={onClose} className="text-gray-400 hover:text-black"><X size={20} /></button>
         </div>
         <div className="p-8 space-y-6">
           <div className="space-y-2">
             <div className="flex justify-between items-center">
-              <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Danh sách Email</label>
-              <span className="text-[9px] text-gray-400">Nhập email rồi ấn Enter, Phẩy hoặc Tab</span>
+              <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{t("team.emailList")}</label>
+              <span className="text-[9px] text-gray-400">{t("team.emailHint")}</span>
             </div>
             <div 
               onClick={() => inputRef.current?.focus()}
@@ -606,7 +609,7 @@ function InviteModal({ isOpen, onClose, activeBrandId, customRoles = [], onInvit
           </div>
 
           <div className="space-y-2">
-            <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Vai trò cộng tác</label>
+            <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{t("team.inviteRole")}</label>
             <div className="grid grid-cols-2 gap-3 max-h-60 overflow-y-auto pr-1">
               {/* Static default options */}
               {ASSIGNABLE_ROLES.map((r) => (
@@ -618,9 +621,9 @@ function InviteModal({ isOpen, onClose, activeBrandId, customRoles = [], onInvit
                     role === r ? 'border-black bg-gray-50/50' : 'border-gray-100 hover:border-gray-300'
                   }`}
                 >
-                  <div className="text-[11px] font-bold text-[#0A0A0A]">{r}</div>
+                  <div className="text-[11px] font-bold text-[#0A0A0A]">{t("team." + r.toLowerCase())}</div>
                   <div className="text-[9px] text-gray-400 mt-1">
-                    {r === 'Admin' ? 'Toàn quyền quản trị viên' : r === 'Analyst' ? 'Chỉ xem số liệu thống kê' : 'Tạo nội dung & bài đăng'}
+                    {r === 'Admin' ? t("team.adminDesc") : r === 'Analyst' ? t("team.analystDesc") : t("team.memberDesc")}
                   </div>
                 </button>
               ))}
@@ -638,7 +641,7 @@ function InviteModal({ isOpen, onClose, activeBrandId, customRoles = [], onInvit
                     <span className="w-2.5 h-2.5 rounded-full border border-white shadow-sm" style={{ backgroundColor: cr.colorHex }} />
                     <div className="text-[11px] font-bold text-[#0A0A0A]">{cr.name}</div>
                   </div>
-                  <div className="text-[9px] text-gray-400 mt-1 line-clamp-1">{cr.description || "Vai trò tùy chỉnh"}</div>
+                  <div className="text-[9px] text-gray-400 mt-1 line-clamp-1">{cr.description || t("team.customRoleDesc")}</div>
                 </button>
               ))}
             </div>
@@ -651,10 +654,10 @@ function InviteModal({ isOpen, onClose, activeBrandId, customRoles = [], onInvit
           >
             {isSubmitting ? (
               <>
-                <Loader2 className="animate-spin" size={14} /> Đang gửi...
+                <Loader2 className="animate-spin" size={14} /> {t("team.sending")}
               </>
             ) : (
-              "Gửi lời mời tham gia"
+              t("team.sendInvite")
             )}
           </button>
         </div>
@@ -664,6 +667,7 @@ function InviteModal({ isOpen, onClose, activeBrandId, customRoles = [], onInvit
 }
 
 function RoleModal({ isOpen, onClose, member, customRoles = [], onSuccess }) {
+  const { t } = useTranslation(["manage", "common"]);
   const confirm = useConfirm();
   if (!isOpen) return null;
 
@@ -674,11 +678,11 @@ function RoleModal({ isOpen, onClose, member, customRoles = [], onSuccess }) {
     setIsUpdating(true);
     try {
       await apiService.put(`/team/${member.id}/role`, { role: newRole });
-      toast.success("Cập nhật vai trò thành công!");
+      toast.success(t("team.roleUpdateSuccess"));
       onSuccess();
       onClose();
     } catch (error) {
-      toast.error(error.message || "Cập nhật vai trò thất bại");
+      toast.error(error.message || t("team.roleUpdateFailed"));
     } finally {
       setIsUpdating(false);
     }
@@ -686,21 +690,21 @@ function RoleModal({ isOpen, onClose, member, customRoles = [], onSuccess }) {
 
   const handleRemoveMember = async () => {
     const isConfirmed = await confirm({
-      title: "Xóa thành viên?",
-      description: `Bạn có chắc chắn muốn xóa ${member.name} khỏi thương hiệu này?`,
-      confirmText: "Xóa",
-      cancelText: "Hủy",
+      title: t("team.removeMemberConfirmTitle"),
+      description: t("team.removeMemberConfirmDesc", { name: member.name }),
+      confirmText: t("common:delete"),
+      cancelText: t("common:cancel"),
       variant: "destructive"
     });
     if (!isConfirmed) return;
     setIsRemoving(true);
     try {
       await apiService.delete(`/team/${member.id}`);
-      toast.success("Đã xóa thành viên thành công!");
+      toast.success(t("team.removeSuccess"));
       onSuccess();
       onClose();
     } catch (error) {
-      toast.error(error.message || "Xóa thành viên thất bại");
+      toast.error(error.message || t("team.removeFailed"));
     } finally {
       setIsRemoving(false);
     }
@@ -713,7 +717,7 @@ function RoleModal({ isOpen, onClose, member, customRoles = [], onSuccess }) {
       <div className="absolute inset-0 bg-[#0A0A0A]/40 backdrop-blur-sm" onClick={onClose} />
       <div className="bg-white w-full max-w-md rounded-3xl shadow-2xl relative overflow-hidden animate-in fade-in zoom-in duration-200">
         <div className="px-8 py-6 border-b border-gray-100 flex items-center justify-between">
-          <h2 className="text-lg font-bold text-[#0A0A0A]">Quản lý vai trò</h2>
+          <h2 className="text-lg font-bold text-[#0A0A0A]">{t("team.manageRoleModalTitle")}</h2>
           <button onClick={onClose} className="text-gray-400 hover:text-black"><X size={20} /></button>
         </div>
         <div className="p-8 space-y-6">
@@ -721,11 +725,11 @@ function RoleModal({ isOpen, onClose, member, customRoles = [], onSuccess }) {
              <div className="w-12 h-12 rounded-2xl bg-[#0A0A0A] flex items-center justify-center text-white font-bold">{member.name?.charAt(0)}</div>
              <div>
                 <div className="text-sm font-bold text-[#0A0A0A]">{member.name}</div>
-                <div className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">{member.role}</div>
+                <div className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">{t("team." + member.role.toLowerCase())}</div>
              </div>
           </div>
           <div className="space-y-2">
-             <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest font-sans">Chọn Vai trò</label>
+             <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest font-sans">{t("team.selectRole")}</label>
              <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
                 {/* Default roles */}
                 {ASSIGNABLE_ROLES.map((r) => (
@@ -737,7 +741,7 @@ function RoleModal({ isOpen, onClose, member, customRoles = [], onSuccess }) {
                        currentRoleValue === r ? 'border-black bg-gray-50' : 'border-gray-100 hover:border-gray-300'
                      }`}
                    >
-                      <span className="text-[11px] font-bold text-[#0A0A0A]">{r}</span>
+                      <span className="text-[11px] font-bold text-[#0A0A0A]">{t("team." + r.toLowerCase())}</span>
                       {currentRoleValue === r && <Check size={14} />}
                    </button>
                 ))}
@@ -766,7 +770,7 @@ function RoleModal({ isOpen, onClose, member, customRoles = [], onSuccess }) {
               disabled={isRemoving}
               className="w-full py-4 border border-red-100 text-red-600 rounded-2xl text-xs font-bold hover:bg-red-50 transition-all flex items-center justify-center gap-2"
             >
-              {isRemoving ? <Loader2 className="animate-spin" size={14} /> : "Xóa khỏi Workspace"}
+              {isRemoving ? <Loader2 className="animate-spin" size={14} /> : t("team.removeMember")}
             </button>
           </div>
         </div>
@@ -776,6 +780,7 @@ function RoleModal({ isOpen, onClose, member, customRoles = [], onSuccess }) {
 }
 
 function RoleCreateEditModal({ isOpen, onClose, activeBrandId, role, onSuccess, systemPermissions = [] }) {
+  const { t } = useTranslation(["manage", "common"]);
   if (!isOpen) return null;
 
   const isEdit = !!role;
@@ -800,7 +805,7 @@ function RoleCreateEditModal({ isOpen, onClose, activeBrandId, role, onSuccess, 
 
   const handleSave = async () => {
     if (!name.trim()) {
-      toast.error("Vui lòng điền tên vai trò");
+      toast.error(t("team.roleNameRequired"));
       return;
     }
     setIsSubmitting(true);
@@ -819,7 +824,7 @@ function RoleCreateEditModal({ isOpen, onClose, activeBrandId, role, onSuccess, 
           colorHex,
           permissions: permissionsPayload
         });
-        toast.success("Cập nhật vai trò tùy chỉnh thành công!");
+        toast.success(t("team.roleSaveSuccess"));
       } else {
         await apiService.post(`/brands/${activeBrandId}/roles`, {
           name,
@@ -827,12 +832,12 @@ function RoleCreateEditModal({ isOpen, onClose, activeBrandId, role, onSuccess, 
           colorHex,
           permissions: permissionsPayload
         });
-        toast.success("Tạo vai trò tùy chỉnh thành công!");
+        toast.success(t("team.roleSaveSuccess"));
       }
       onSuccess();
       onClose();
     } catch (error) {
-      toast.error(error.message || "Lưu vai trò tùy chỉnh thất bại");
+      toast.error(error.message || t("team.roleSaveFailed"));
     } finally {
       setIsSubmitting(false);
     }
@@ -843,7 +848,7 @@ function RoleCreateEditModal({ isOpen, onClose, activeBrandId, role, onSuccess, 
       <div className="absolute inset-0 bg-[#0A0A0A]/40 backdrop-blur-sm" onClick={onClose} />
       <div className="bg-white w-full max-w-2xl rounded-3xl shadow-2xl relative overflow-hidden animate-in fade-in zoom-in duration-200">
         <div className="px-8 py-6 border-b border-gray-100 flex items-center justify-between">
-          <h2 className="text-lg font-bold text-[#0A0A0A]">{isEdit ? "Chỉnh sửa vai trò" : "Tạo vai trò tùy chỉnh"}</h2>
+          <h2 className="text-lg font-bold text-[#0A0A0A]">{isEdit ? t("team.editRoleModalTitle") : t("team.createRoleModalTitle")}</h2>
           <button onClick={onClose} className="text-gray-400 hover:text-black"><X size={20} /></button>
         </div>
         
@@ -851,10 +856,10 @@ function RoleCreateEditModal({ isOpen, onClose, activeBrandId, role, onSuccess, 
           {/* Form details */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-2">
-              <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Tên vai trò</label>
+              <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{t("team.roleName")}</label>
               <input 
                 type="text" 
-                placeholder="Ví dụ: Content Editor, Analytics Planner..." 
+                placeholder={t("team.roleNamePlaceholder")}
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 maxLength={50}
@@ -863,7 +868,7 @@ function RoleCreateEditModal({ isOpen, onClose, activeBrandId, role, onSuccess, 
             </div>
             
             <div className="space-y-2">
-              <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Màu sắc đại diện</label>
+              <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{t("team.roleColor")}</label>
               <div className="flex items-center gap-2 py-1.5">
                 {PRESET_COLORS.map(c => (
                   <button 
@@ -881,10 +886,10 @@ function RoleCreateEditModal({ isOpen, onClose, activeBrandId, role, onSuccess, 
           </div>
 
           <div className="space-y-2">
-            <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Mô tả nhiệm vụ</label>
+            <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{t("team.roleDescription")}</label>
             <input 
               type="text" 
-              placeholder="Mô tả tóm tắt quyền hạn hoặc nhiệm vụ của vai trò này..." 
+              placeholder={t("team.roleDescriptionPlaceholder")}
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               className="w-full px-4 py-3 bg-gray-50 border border-transparent rounded-2xl text-xs outline-none focus:bg-white focus:border-black transition-all font-medium"
@@ -893,11 +898,11 @@ function RoleCreateEditModal({ isOpen, onClose, activeBrandId, role, onSuccess, 
 
           {/* Permissions checkbox grid */}
           <div className="space-y-6 pt-2">
-            <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest block border-b border-gray-100 pb-2">Danh sách phân quyền chi tiết</label>
+            <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest block border-b border-gray-100 pb-2">{t("team.rolePermissionsTitle")}</label>
             
             {/* Nhóm Content & Media */}
             <div className="space-y-3">
-              <h3 className="text-[11px] font-bold text-gray-500 uppercase tracking-wider">Nhóm Quyền Nội dung & Media (Content & Media)</h3>
+              <h3 className="text-[11px] font-bold text-gray-500 uppercase tracking-wider">{t("team.groupContent")}</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {systemPermissions.filter(p => p.category === "content" || p.category === "posts").map(p => {
                   const isActive = permissions[p.key];
@@ -929,7 +934,7 @@ function RoleCreateEditModal({ isOpen, onClose, activeBrandId, role, onSuccess, 
 
             {/* Nhóm Management & Settings */}
             <div className="space-y-3">
-              <h3 className="text-[11px] font-bold text-gray-500 uppercase tracking-wider">Nhóm Quyền Quản trị & Cấu hình (Management & Settings)</h3>
+              <h3 className="text-[11px] font-bold text-gray-500 uppercase tracking-wider">{t("team.groupManagement")}</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {systemPermissions.filter(p => p.category === "management").map(p => {
                   const isActive = permissions[p.key];
@@ -967,10 +972,10 @@ function RoleCreateEditModal({ isOpen, onClose, activeBrandId, role, onSuccess, 
           >
             {isSubmitting ? (
               <>
-                <Loader2 className="animate-spin" size={14} /> Đang lưu...
+                <Loader2 className="animate-spin" size={14} /> {t("team.saving")}
               </>
             ) : (
-              "Lưu cấu hình vai trò"
+              t("team.saveRole")
             )}
           </button>
         </div>

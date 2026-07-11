@@ -1,0 +1,21 @@
+{
+  "save": "Lưu lại",
+  "cancel": "Hủy bỏ",
+  "continue": "Tiếp tục",
+  "back": "Quay lại",
+  "delete": "Xóa",
+  "edit": "Sửa",
+  "loading": "Đang tải...",
+  "processing": "Đang xử lý...",
+  "confirm": "Xác nhận",
+  "close": "Đóng",
+  "upload": "Tải lên",
+  "download": "Tải về",
+  "search": "Tìm kiếm",
+  "noData": "Không có dữ liệu",
+  "error": "Có lỗi xảy ra",
+  "success": "Thành công",
+  "yes": "Có",
+  "no": "Không",
+  "langLocale": "vi-VN"
+}

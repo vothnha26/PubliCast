@@ -12,8 +12,12 @@ import { useBrand } from "../context/BrandContext";
 import { useDebounce } from "../hooks/useDebounce";
 import apiService from "../services/api";
 import { openNotificationStream } from "../utils/notification-stream";
+import { useTranslation } from "react-i18next";
+import { useLanguage } from "../context/LanguageContext";
 
 function SettingsDrawer({ isOpen, onClose }) {
+  const { t } = useTranslation("topbar");
+  const { language } = useLanguage();
   const navigate = useNavigate();
   const { openConnections } = useConnections();
   const { logout } = useAuth();
@@ -21,22 +25,28 @@ function SettingsDrawer({ isOpen, onClose }) {
 
   const sections = [
     { items: [
-      { label: "Create Workplace", icon: <Diamond size={16} className="text-yellow-500" />, path: "/manage/workplace/new" },
-      { label: "Connections", icon: <ShareIcon size={16} className="text-blue-500" />, onClick: openConnections },
-      { label: "Brand settings", icon: <Settings size={16} className="text-gray-400" />, path: "/manage/connections?tab=brand-settings" },
+      { label: t("menu.createWorkplace"), icon: <Diamond size={16} className="text-yellow-500" />, path: "/manage/workplace/new" },
+      { label: t("menu.connections"), icon: <ShareIcon size={16} className="text-blue-500" />, onClick: openConnections },
+      { label: t("menu.brandSettings"), icon: <Settings size={16} className="text-gray-400" />, path: "/manage/connections?tab=brand-settings" },
     ]},
     { items: [
-      { label: "User management", icon: <Diamond size={16} className="text-yellow-500" />, path: "/manage/team" },
-      { label: "Plans and billing", icon: <BillingIcon size={16} className="text-blue-600" />, path: "/pricing" },
-      { label: "My tasks", icon: <Diamond size={16} className="text-yellow-500" />, path: "/manage/tasks" },
-      { label: "Language", icon: <Globe size={16} className="text-blue-500" />, extra: <span className="bg-gray-200 px-1.5 py-0.5 rounded text-[10px] font-bold">EN</span>, hasChevron: true },
-      { label: "Account settings", icon: <Settings size={16} className="text-gray-400" />, path: "/settings" },
+      { label: t("menu.userManagement"), icon: <Diamond size={16} className="text-yellow-500" />, path: "/manage/team" },
+      { label: t("menu.billing"), icon: <BillingIcon size={16} className="text-blue-600" />, path: "/pricing" },
+      { label: t("menu.myTasks"), icon: <Diamond size={16} className="text-yellow-500" />, path: "/manage/tasks" },
+      { 
+        label: t("menu.language"), 
+        icon: <Globe size={16} className="text-blue-500" />, 
+        extra: <span className="bg-gray-200 dark:bg-gray-800 dark:text-gray-200 px-1.5 py-0.5 rounded text-[10px] font-bold">{language.toUpperCase()}</span>, 
+        hasChevron: true, 
+        onClick: () => navigate("/settings?tab=account") 
+      },
+      { label: t("menu.accountSettings"), icon: <Settings size={16} className="text-gray-400" />, path: "/settings" },
     ]},
     { items: [
-      { label: "Help center", icon: <HelpCircle size={16} className="text-blue-500" /> },
-      { label: "Support Chat", icon: <MessageCircle size={16} className="text-blue-500" />, path: "/settings?tab=support" },
-      { label: "What's new", icon: <Megaphone size={16} className="text-blue-500" /> },
-      { label: "Affiliation program", icon: <Gift size={16} className="text-blue-500" /> },
+      { label: t("menu.helpCenter"), icon: <HelpCircle size={16} className="text-blue-500" /> },
+      { label: t("menu.supportChat"), icon: <MessageCircle size={16} className="text-blue-500" />, path: "/settings?tab=support" },
+      { label: t("menu.whatsNew"), icon: <Megaphone size={16} className="text-blue-500" /> },
+      { label: t("menu.affiliation"), icon: <Gift size={16} className="text-blue-500" /> },
     ]},
   ];
 
@@ -49,27 +59,27 @@ function SettingsDrawer({ isOpen, onClose }) {
         </div>
         <div className="flex-1 overflow-y-auto py-2">
            {sections.map((section, si) => (
-             <div key={si}>
-                <div className="py-1">
-                   {section.items.map((item, ii) => (
-                     <button
-                       key={ii}
-                       onClick={() => { 
-                         if(item.onClick) item.onClick();
-                         else if(item.path) navigate(item.path); 
-                         onClose(); 
-                       }}
-                       className="w-full flex items-center gap-3 px-6 py-2.5 hover:bg-[var(--muted)] transition-colors group"
-                     >
-                        <div className="shrink-0">{item.icon}</div>
-                        <span style={{ fontSize: 13, color: "var(--foreground)" }} className="flex-1 text-left">{item.label}</span>
-                        {item.extra}
-                        {item.hasChevron && <ChevronRight size={14} className="text-blue-500" />}
-                     </button>
-                   ))}
-                </div>
-                {si < sections.length - 1 && <div className="h-px bg-[var(--sidebar-border)] mx-4 my-1" />}
-             </div>
+              <div key={si}>
+                 <div className="py-1">
+                    {section.items.map((item, ii) => (
+                      <button
+                        key={ii}
+                        onClick={() => { 
+                          if(item.onClick) item.onClick();
+                          else if(item.path) navigate(item.path); 
+                          onClose(); 
+                        }}
+                        className="w-full flex items-center gap-3 px-6 py-2.5 hover:bg-[var(--muted)] transition-colors group"
+                      >
+                         <div className="shrink-0">{item.icon}</div>
+                         <span style={{ fontSize: 13, color: "var(--foreground)" }} className="flex-1 text-left">{item.label}</span>
+                         {item.extra}
+                         {item.hasChevron && <ChevronRight size={14} className="text-blue-500" />}
+                      </button>
+                    ))}
+                 </div>
+                 {si < sections.length - 1 && <div className="h-px bg-[var(--sidebar-border)] mx-4 my-1" />}
+              </div>
            ))}
            <div className="h-px bg-[var(--sidebar-border)] mx-4 my-1" />
            <button 
@@ -81,11 +91,11 @@ function SettingsDrawer({ isOpen, onClose }) {
              className="w-full flex items-center gap-3 px-6 py-4 text-red-500 hover:bg-red-500/10 transition-colors"
            >
               <LogOut size={16} />
-              <span style={{ fontSize: 13, fontWeight: 500 }}>Logout</span>
+              <span style={{ fontSize: 13, fontWeight: 500 }}>{t("menu.logout")}</span>
            </button>
         </div>
         <div className="p-6 border-t border-[var(--sidebar-border)]">
-           <button className="text-xs font-bold text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors">Legal terms</button>
+           <button className="text-xs font-bold text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors">{t("menu.legalTerms")}</button>
         </div>
       </div>
     </div>
@@ -101,6 +111,7 @@ function BillingIcon({ size, className }) {
 }
 
 export function Topbar() {
+  const { t } = useTranslation("topbar");
   const navigate = useNavigate();
   const location = useLocation();
   const [brandOpen, setBrandOpen] = useState(false);
@@ -118,10 +129,10 @@ export function Topbar() {
   const debouncedSearch = useDebounce(searchQuery, 300);
 
   const quickLinks = [
-    { name: "Analytics Dashboard", description: "Quick link to metrics and views", path: "/dashboard" },
-    { name: "Content Planner", description: "Quick link to schedule posts", path: "/planner" },
-    { name: "AI Assistant", description: "Quick link to write assistant", path: "/ai" },
-    { name: "Account Settings", description: "Quick link to user profile", path: "/settings" }
+    { name: t("quickLinks.dashboardName"), description: t("quickLinks.dashboardDesc"), path: "/dashboard" },
+    { name: t("quickLinks.plannerName"), description: t("quickLinks.plannerDesc"), path: "/planner" },
+    { name: t("quickLinks.aiName"), description: t("quickLinks.aiDesc"), path: "/ai" },
+    { name: t("quickLinks.settingsName"), description: t("quickLinks.settingsDesc"), path: "/settings" }
   ];
 
   const displayedItems = searchQuery.trim() === "" ? quickLinks : searchResults;
@@ -227,7 +238,7 @@ export function Topbar() {
           <div className="hidden md:flex relative max-w-xs flex-1">
             <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--muted-foreground)]" />
             <input 
-              placeholder="Search tools, platforms..." 
+              placeholder={t("searchPlaceholder")} 
               value={searchQuery}
               onChange={(e) => {
                 setSearchQuery(e.target.value);
@@ -290,12 +301,12 @@ export function Topbar() {
             </div>
           ) : (
             [
-              { icon: <BarChart2 size={18} />, path: "/dashboard", label: "Dashboard" },
-              { icon: <Image size={18} />, path: "/media-library", label: "Media Library" },
-              { icon: <MessageSquare size={18} />, path: "/manage/inbox", label: "Inbox" },
-              { icon: <Calendar size={18} />, path: "/planner", label: "Planning" },
-              { icon: <Link2 size={18} />, path: "/smartlinks", label: "SmartLinks" },
-              { icon: <Zap size={18} />, path: "/ai", label: "AI" },
+              { icon: <BarChart2 size={18} />, path: "/dashboard", label: t("nav.dashboard") },
+              { icon: <Image size={18} />, path: "/media-library", label: t("nav.mediaLibrary") },
+              { icon: <MessageSquare size={18} />, path: "/manage/inbox", label: t("nav.inbox") },
+              { icon: <Calendar size={18} />, path: "/planner", label: t("nav.planner") },
+              { icon: <Link2 size={18} />, path: "/smartlinks", label: t("nav.smartlinks") },
+              { icon: <Zap size={18} />, path: "/ai", label: t("nav.ai") },
             ].map((tool, i) => {
               const isActive = currentPath === tool.path;
               return (
@@ -323,7 +334,7 @@ export function Topbar() {
             <button 
               onClick={() => navigate("/notifications")}
               className="p-2 rounded-lg hover:bg-[var(--muted)] transition-colors relative text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
-              title="Notifications"
+              title={t("menu.notifications")}
             >
               <Bell size={18} />
               {unreadNotifications > 0 && (
@@ -347,7 +358,7 @@ export function Topbar() {
                 fontSize: 11 }}
             >
               <Sparkles size={13} />
-              Upgrade
+              {t("upgrade")}
             </button>
           )}
 
@@ -362,15 +373,17 @@ export function Topbar() {
                   {activeBrand ? activeBrand.name.charAt(0) : "B"}
                 </div>
                 <div className="hidden md:flex flex-col items-start text-left min-w-[80px]">
-                  <span style={{ fontSize: 11, fontWeight: 600 }}>{activeBrand ? activeBrand.name : "Select Brand"}</span>
-                  <span style={{ fontSize: 9, color: "var(--muted-foreground)" }}>{currentPath.startsWith("/manage") ? "Manager" : "Work"} mode</span>
+                  <span style={{ fontSize: 11, fontWeight: 600 }}>{activeBrand ? activeBrand.name : t("brand.select")}</span>
+                  <span style={{ fontSize: 9, color: "var(--muted-foreground)" }}>
+                    {currentPath.startsWith("/manage") ? t("managerMode") : t("workMode")}
+                  </span>
                 </div>
                 <ChevronDown size={14} className="text-[var(--muted-foreground)]" />
               </button>
               
               {brandOpen && (
                 <div className="absolute top-12 right-0 bg-[var(--card)] text-[var(--foreground)] rounded-xl shadow-xl p-2 z-50 min-w-[200px]" style={{ border: "1px solid var(--sidebar-border)" }}>
-                  <div className="px-3 py-2 text-[10px] font-bold text-[var(--muted-foreground)] uppercase tracking-wider">Your Workplaces</div>
+                  <div className="px-3 py-2 text-[10px] font-bold text-[var(--muted-foreground)] uppercase tracking-wider">{t("yourWorkplaces")}</div>
                   {brands.map(b => (
                     <div
                       key={b.id}
@@ -399,7 +412,7 @@ export function Topbar() {
                             setDefaultBrand(b.id);
                           }
                         }}
-                        title={defaultBrandId === b.id ? 'Đang là thương hiệu mặc định' : 'Đặt làm thương hiệu mặc định'}
+                        title={defaultBrandId === b.id ? t("brand.defaultActive") : t("brand.setDefault")}
                         className="p-1 rounded-md opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
                       >
                         <Star
@@ -417,7 +430,7 @@ export function Topbar() {
                       onClick={() => { deselectBrand(); setBrandOpen(false); }} 
                       className="w-full text-left px-3 py-2 rounded-lg hover:bg-red-500/10 text-sm font-medium text-red-600 flex items-center justify-between mt-1"
                     >
-                      <span>Deselect Brand</span>
+                      <span>{t("brand.deselect")}</span>
                       <X size={12} />
                     </button>
                   )}
@@ -426,13 +439,13 @@ export function Topbar() {
                     onClick={() => { navigate("/manage/connections?tab=brand-settings"); setBrandOpen(false); }} 
                     className="w-full text-left px-3 py-2 rounded-lg hover:bg-[var(--muted)] text-sm font-bold text-purple-600 dark:text-purple-400 flex items-center gap-1"
                   >
-                    <Settings size={12} /> Manage Brands
+                    <Settings size={12} /> {t("brand.manage")}
                   </button>
                   <button 
                     onClick={() => { navigate(currentPath.startsWith("/manage") ? "/dashboard" : "/manage/team"); setBrandOpen(false); }} 
                     className="w-full text-left px-3 py-2 rounded-lg hover:bg-[var(--muted)] text-sm font-bold text-blue-600 dark:text-blue-400"
                   >
-                    {currentPath.startsWith("/manage") ? "← Back to Workspace" : "Switch to Manager →"}
+                    {currentPath.startsWith("/manage") ? t("brand.backWorkspace") : t("brand.switchToManager")}
                   </button>
                 </div>
               )}

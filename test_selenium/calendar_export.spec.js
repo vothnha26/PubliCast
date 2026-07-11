@@ -96,7 +96,7 @@ describe('Calendar Export .ics Selenium Automation Test', function () {
     await driver.sleep(1500); // Chờ menu floating hiển thị
 
     const wizardBtn = await driver.wait(
-      until.elementLocated(By.xpath("//button[contains(., 'Đồng bộ / Nhập / Xuất dữ liệu')]")),
+      until.elementLocated(By.xpath("//button[contains(., 'Đồng bộ / Nhập / Xuất dữ liệu') or contains(., 'Sync / Import / Export Data')]")),
       10000
     );
     expect(wizardBtn).to.exist;
@@ -107,7 +107,7 @@ describe('Calendar Export .ics Selenium Automation Test', function () {
 
     // Chọn Export Card
     const exportCard = await driver.wait(
-      until.elementLocated(By.xpath("//button[contains(., 'Xuất dữ liệu (Export)')]")),
+      until.elementLocated(By.xpath("//button[contains(., 'Xuất dữ liệu (Export)') or contains(., 'Export Data')]")),
       10000
     );
     console.log('🖱️ Chọn hành động: Xuất dữ liệu (Export)...');
@@ -116,7 +116,7 @@ describe('Calendar Export .ics Selenium Automation Test', function () {
 
     // Chọn định dạng ICS
     const icsFormatBtn = await driver.wait(
-      until.elementLocated(By.xpath("//button[contains(., 'Lịch iCalendar (.ics)')]")),
+      until.elementLocated(By.xpath("//button[contains(., 'Lịch iCalendar (.ics)') or contains(., 'iCalendar (.ics)')]")),
       10000
     );
     console.log('🖱️ Chọn định dạng: Lịch iCalendar (.ics)...');
@@ -124,14 +124,14 @@ describe('Calendar Export .ics Selenium Automation Test', function () {
     await driver.sleep(500);
 
     // Bấm Tiếp tục sang Bước 2
-    const nextBtn1 = await driver.findElement(By.xpath("//button[contains(., 'Tiếp tục')]"));
+    const nextBtn1 = await driver.findElement(By.xpath("//button[contains(., 'Tiếp tục') or contains(., 'Continue')]"));
     console.log('🖱️ Bấm Tiếp tục sang Bước 2...');
     await nextBtn1.click();
     await driver.sleep(1000);
 
     // Bấm Tiếp tục sang Bước 3
     const nextBtn2 = await driver.wait(
-      until.elementLocated(By.xpath("//button[contains(., 'Tiếp tục')]")),
+      until.elementLocated(By.xpath("//button[contains(., 'Tiếp tục') or contains(., 'Continue')]")),
       10000
     );
     console.log('🖱️ Bấm Tiếp tục sang Bước 3...');
@@ -140,7 +140,7 @@ describe('Calendar Export .ics Selenium Automation Test', function () {
 
     // Bấm Tải về file
     const downloadBtn = await driver.wait(
-      until.elementLocated(By.xpath("//button[contains(., 'Tải về file')]")),
+      until.elementLocated(By.xpath("//button[contains(., 'Tải về file') or contains(., 'Download file')]")),
       10000
     );
     console.log('🖱️ Bấm Tải về file để kết xuất...');

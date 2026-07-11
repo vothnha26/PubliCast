@@ -140,6 +140,25 @@ class InstagramService extends BaseSocialService {
   async replyToComment(brandId, parentCommentId, text) {
     return instagramComment.replyToComment(brandId, parentCommentId, text);
   }
+
+  async searchAudio(brandId, query) {
+    const instagramGateway = require('./instagram.gateway');
+    const { accessToken } = await this._getAccountCredentials(brandId);
+    return instagramGateway.searchAudio(query, accessToken);
+  }
+
+  async _getAccountCredentials(brandId) {
+    const socialAccountRepository = require('../../../repositories/social/social-account.repository');
+    const { PLATFORMS } = require('../../../utils/constants');
+    const socialAccount = await socialAccountRepository.findByBrandAndPlatform(brandId, PLATFORMS.INSTAGRAM);
+    if (!socialAccount || socialAccount.length === 0) {
+      throw new Error('Instagram account not connected for this brand');
+    }
+    return {
+      igAccountId: socialAccount[0].platformAccountId,
+      accessToken: socialAccount[0].accessToken
+    };
+  }
 }
 
 module.exports = new InstagramService();

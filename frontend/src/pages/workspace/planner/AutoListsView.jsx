@@ -7,6 +7,7 @@ import { useBrand } from "../../../context/BrandContext";
 import { toast } from "sonner";
 
 import { useConfirm } from "@/hooks/useConfirm";
+import { useTranslation } from "react-i18next";
  
 // Import Refactored Subcomponents
 import { AutoListCard } from "./components/autolist/AutoListCard";
@@ -14,6 +15,7 @@ import { AutoListEmptyState } from "./components/autolist/AutoListEmptyState";
 import { AutoListHelpCard } from "./components/autolist/AutoListHelpCard";
 
 export function AutoListsView() {
+  const { t } = useTranslation("planner");
   const [lists, setLists] = useState([]);
   const [loading, setLoading] = useState(true);
   const { activeBrand } = useBrand();
@@ -27,7 +29,7 @@ export function AutoListsView() {
       const res = await autoListService.getAutoLists(activeBrand.id);
       setLists(res.data || []);
     } catch (e) {
-      toast.error("Failed to load autolists");
+      toast.error(t("autolists.toasts.loadFail"));
     } finally {
       setLoading(false);
     }
@@ -40,10 +42,10 @@ export function AutoListsView() {
   const handleToggle = async (id) => {
     try {
       await autoListService.toggleStatus(id);
-      toast.success("Status updated");
+      toast.success(t("autolists.toasts.toggleSuccess"));
       fetchLists();
     } catch (e) {
-      toast.error("Failed to update status");
+      toast.error(t("autolists.toasts.toggleFail"));
     }
   };
 
@@ -51,28 +53,28 @@ export function AutoListsView() {
     try {
       // In a real application, you'd trigger a recalculation endpoint
       // We will refresh the list details here to reflect updates
-      toast.success("Queue scheduling refreshed");
+      toast.success(t("autolists.toasts.refreshSuccess"));
       fetchLists();
     } catch (e) {
-      toast.error("Failed to refresh queue");
+      toast.error(t("autolists.toasts.refreshFail"));
     }
   };
 
   const handleDelete = async (id) => {
     const isConfirmed = await confirm({
-      title: "Delete Autolist?",
-      description: "Are you sure you want to delete this autolist? All queued posts will be orphaned.",
-      confirmText: "Delete",
-      cancelText: "Cancel",
+      title: t("autolists.confirm.deleteTitle"),
+      description: t("autolists.confirm.deleteDesc"),
+      confirmText: t("autolists.confirm.deleteConfirm"),
+      cancelText: t("autolists.confirm.deleteCancel"),
       variant: "destructive"
     });
     if (!isConfirmed) return;
     try {
       await autoListService.deleteAutoList(id);
-      toast.success("Autolist deleted");
+      toast.success(t("autolists.toasts.deleteSuccess"));
       fetchLists();
     } catch (e) {
-      toast.error("Failed to delete autolist");
+      toast.error(t("autolists.toasts.deleteFail"));
     }
   };
 
@@ -81,14 +83,14 @@ export function AutoListsView() {
       {/* View Header */}
       <div className="flex items-center justify-between">
         <div className="space-y-1 text-left">
-          <h2 className="text-xl font-bold text-[#0A0A0A] tracking-tight">Autolists</h2>
-          <p className="text-xs text-gray-400 font-medium">Automate post queues for publishing at preset intervals or schedules.</p>
+          <h2 className="text-xl font-bold text-[#0A0A0A] tracking-tight">{t("autolists.title")}</h2>
+          <p className="text-xs text-gray-400 font-medium">{t("autolists.subtitle")}</p>
         </div>
         <button 
           onClick={() => navigate("/planner/autolist/new")}
           className="flex items-center gap-2 px-5 py-2.5 bg-[#0A0A0A] text-white rounded-xl text-[12px] font-bold hover:scale-105 active:scale-95 transition-all shadow-lg cursor-pointer"
         >
-          <Plus size={16} /> Create autolist
+          <Plus size={16} /> {t("autolists.createBtn")}
         </button>
       </div>
 

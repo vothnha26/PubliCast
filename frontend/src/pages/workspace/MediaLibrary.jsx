@@ -5,8 +5,10 @@ import { MediaGrid } from "./media-library/MediaGrid";
 import { MediaListTable } from "./media-library/MediaListTable";
 import { MediaDetailPanel } from "./media-library/MediaDetailPanel";
 import { BulkActionsBar } from "./media-library/BulkActionsBar";
+import { useTranslation } from "react-i18next";
 
 export function MediaLibraryPage() {
+  const { t } = useTranslation("medialibrary");
   const fileInputRef = React.useRef(null);
   const {
     filters,
@@ -38,7 +40,7 @@ export function MediaLibraryPage() {
   } = useMediaLibrary();
 
   const handleCreateFolder = () => {
-    const name = prompt("Enter folder name:");
+    const name = prompt(t("promptFolderName"));
     if (name) createFolder(name);
   };
 
@@ -75,7 +77,7 @@ export function MediaLibraryPage() {
         >
           <div className="text-center">
             <Upload size={32} style={{ color: "#D1D5DB", margin: "0 auto 8px" }} />
-            <div style={{ fontSize: 16, fontWeight: 500, color: "#0A0A0A" }}>Drop files to upload</div>
+            <div style={{ fontSize: 16, fontWeight: 500, color: "#0A0A0A" }}>{t("dragOverlayText")}</div>
           </div>
         </div>
       )}
@@ -105,7 +107,7 @@ export function MediaLibraryPage() {
             }}
           />
           <input
-            placeholder="Search media..."
+            placeholder={t("searchPlaceholder")}
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             style={{
@@ -119,21 +121,26 @@ export function MediaLibraryPage() {
           />
         </div>
         <div className="flex items-center gap-1">
-          {["All", "Images", "Videos", "GIFs"].map((t) => (
+          {[
+            { key: "All", label: t("filterAll") },
+            { key: "Images", label: t("filterImages") },
+            { key: "Videos", label: t("filterVideos") },
+            { key: "GIFs", label: t("filterGifs") }
+          ].map((item) => (
             <button
-              key={t}
-              onClick={() => updateFilters({ type: t })}
+              key={item.key}
+              onClick={() => updateFilters({ type: item.key })}
               className="cursor-pointer"
               style={{
                 padding: "5px 12px",
                 borderRadius: 6,
                 fontSize: 11,
-                background: typeFilter === t ? "#0A0A0A" : "#FFF",
-                color: typeFilter === t ? "#FFF" : "#6B7280",
+                background: typeFilter === item.key ? "#0A0A0A" : "#FFF",
+                color: typeFilter === item.key ? "#FFF" : "#6B7280",
                 border: "0.5px solid #E5E7EB"
               }}
             >
-              {t}
+              {item.label}
             </button>
           ))}
         </div>
@@ -148,7 +155,7 @@ export function MediaLibraryPage() {
             className="cursor-pointer text-xs text-gray-500 hover:text-black transition-colors"
             style={{ fontSize: 12, fontWeight: 500, background: "none", border: "none", outline: "none" }}
           >
-            Clear Filters
+            {t("clearFilters")}
           </button>
         )}
 
@@ -160,7 +167,7 @@ export function MediaLibraryPage() {
             className="flex items-center gap-2 cursor-pointer px-4 py-2 bg-white border border-gray-200 rounded-xl text-xs font-bold text-gray-700 hover:bg-gray-50 transition-all"
           >
             <Folder size={14} className="text-yellow-500" />
-            New Folder
+            {t("newFolder")}
           </button>
           
           <button
@@ -174,7 +181,7 @@ export function MediaLibraryPage() {
             ) : (
               <Upload size={14} />
             )}
-            {uploading ? "Uploading..." : "Upload Files"}
+            {uploading ? t("uploading") : t("uploadFiles")}
           </button>
         </div>
       </div>
@@ -186,10 +193,10 @@ export function MediaLibraryPage() {
              onClick={() => updateFilters({ folderId: null })}
              className="hover:text-black cursor-pointer"
            >
-             Media Library
+             {t("breadcrumbMediaLibrary")}
            </button>
            <span>/</span>
-           <span className="text-gray-900">Folder</span>
+           <span className="text-gray-900">{t("breadcrumbFolder")}</span>
         </div>
       )}
 
@@ -229,7 +236,7 @@ export function MediaLibraryPage() {
       {/* Pagination Footer */}
       <div className="px-6 py-3 border-t border-gray-100 flex items-center justify-between bg-white">
         <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
-          Showing {filteredMedia.length} of {totalEntries} files
+          {t("showingFiles", { count: filteredMedia.length, total: totalEntries })}
         </span>
         <div className="flex items-center gap-2">
           <button
@@ -237,14 +244,14 @@ export function MediaLibraryPage() {
             onClick={() => updateFilters({ page: currentPage - 1 })}
             className="px-4 py-2 border rounded-xl text-[10px] font-bold text-gray-500 hover:bg-gray-50 disabled:opacity-50"
           >
-            Previous
+            {t("previous")}
           </button>
           <button
             disabled={currentPage >= totalPages || loading}
             onClick={() => updateFilters({ page: currentPage + 1 })}
             className="px-4 py-2 border rounded-xl text-[10px] font-bold text-gray-500 hover:bg-gray-50 disabled:opacity-50"
           >
-            Next
+            {t("next")}
           </button>
         </div>
       </div>

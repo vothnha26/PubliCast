@@ -70,7 +70,7 @@ describe('Notification integration hooks', () => {
 
       expect(postRepository.update).toHaveBeenCalledWith('post-1', expect.objectContaining({
         status: POST_STATUS.PUBLISHED,
-        platformPostId: 'yt-1'
+        platformPostId: '{"YouTube":"yt-1"}'
       }));
       expect(notificationService.create).toHaveBeenCalledWith(expect.objectContaining({
         userId: 'user-1',

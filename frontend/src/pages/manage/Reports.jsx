@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { 
   FileText, 
   Download, 
@@ -143,6 +144,7 @@ const getCombinedGrowth = (channels) => {
 };
 
 export function ReportsPage() {
+  const { t } = useTranslation("reports");
   const { activeBrand } = useBrand();
   const [reports, setReports] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -269,7 +271,7 @@ export function ReportsPage() {
       const res = await apiService.get(`/reports?brandId=${activeBrand.id}`);
       setReports(res.data.reports || []);
     } catch (err) {
-      toast.error("Không thể tải danh sách báo cáo.");
+      toast.error(t("toasts.listError"));
       console.error(err);
     } finally {
       setLoading(false);
@@ -284,7 +286,7 @@ export function ReportsPage() {
         </div>
         <span className="text-xs font-bold text-gray-400">{title}</span>
         <span className="text-[10px] text-gray-300 max-w-[200px] leading-relaxed">
-          Chọn Period và nhấn <strong className="text-gray-400">Load Data</strong> để xem trước dữ liệu thực
+          {t("editor.noDataDesc")}
         </span>
       </div>
       {/* Skeleton bars */}
@@ -343,11 +345,11 @@ export function ReportsPage() {
       if (res.data && res.data.data) {
         setPreviewData(res.data.data);
         setDataLoaded(true);
-        toast.success("Dữ liệu đã được tải thành công!");
+        toast.success(t("toasts.loadSuccess"));
       }
     } catch (err) {
       console.error("Lỗi khi tải dữ liệu preview:", err);
-      toast.error("Không thể tải dữ liệu. Vui lòng thử lại.");
+      toast.error(t("toasts.loadError"));
     } finally {
       setPreviewLoading(false);
     }
@@ -448,7 +450,7 @@ export function ReportsPage() {
   const renderA4Page = (pageType, pageIndex, totalPages) => {
     // Nếu chưa có data thực, hiện skeleton (trừ trang cover không cần data)
     if (!previewData && pageType !== "cover") {
-      return renderNoDataSkeleton(`${pageType.toUpperCase()} — Chưa có dữ liệu`);
+      return renderNoDataSkeleton(`${pageType.toUpperCase()} — ${t("editor.noDataTitle")}`);
     }
     const data = previewData || {};
     const brandName = activeBrand ? activeBrand.name : "My Brand";
@@ -500,8 +502,8 @@ export function ReportsPage() {
 
     const renderFooter = () => (
       <div className="flex justify-between items-center border-t pt-1.5 mt-auto text-[6.5px] text-gray-450 font-mono" style={{ borderColor: `${color}10` }}>
-        <span>Báo cáo tự động PubliCast • White-Label Analytics</span>
-        <span className="font-bold">Trang {pageIndex} / {totalPages}</span>
+        <span>{t("editor.reportFooter")}</span>
+        <span className="font-bold">{t("editor.pageIndex", { pageIndex, totalPages })}</span>
       </div>
     );
 
@@ -534,7 +536,7 @@ export function ReportsPage() {
                 {brandName.substring(0, 10)}
               </div>
             )}
-            <span className="text-[7.5px] font-mono opacity-65 tracking-wider font-bold">KỲ PHÂN TÍCH: {period}</span>
+            <span className="text-[7.5px] font-mono opacity-65 tracking-wider font-bold">{t("editor.analysisPeriod", { period })}</span>
           </div>
 
           <div className="my-auto z-10 space-y-3">
@@ -543,22 +545,22 @@ export function ReportsPage() {
                 coverBackgroundUrl ? "text-gray-800" : "text-white"
               }`}
             >
-              {reportTitle || "BÁO CÁO PHÂN TÍCH ĐA KÊNH"}
+              {reportTitle || t("editor.coverTitle")}
             </h1>
             <div className="flex flex-col text-[8.5px] opacity-70 space-y-0.5 font-mono">
               <span className="flex items-center gap-1">
                 <span className="w-1 h-1 rounded-full" style={{ backgroundColor: color }} />
                 Platform: PubliCast Analytics Suite
               </span>
-              <span>Thương hiệu: {brandName}</span>
-              <span>Định dạng: White-Label Interactive PDF</span>
+              <span>{t("editor.brandLabel", { brandName })}</span>
+              <span>{t("editor.formatLabel")}</span>
             </div>
           </div>
 
           <div className={`text-center text-[7.5px] font-mono border-t pt-2.5 z-10 ${
             coverBackgroundUrl ? "border-gray-150 text-gray-450" : "border-white/10 text-white/40"
           }`}>
-            Được kiến tạo tự động bởi PubliCast Engine © 2026
+            {t("editor.createdEngine")}
           </div>
         </div>
       );
@@ -575,36 +577,36 @@ export function ReportsPage() {
             backgroundPosition: "center"
           } : {}}
         >
-          {renderHeader("TỔNG QUAN ĐA KÊNH")}
+          {renderHeader(t("sections.overview").toUpperCase())}
 
           <div className="grid grid-cols-4 gap-3 mb-3">
             <div className="p-2 bg-gray-50 border border-gray-100 rounded-lg space-y-0.5 hover:shadow-sm transition-all" style={{ borderLeft: `3px solid ${color}` }}>
-              <div className="text-[6.5px] text-gray-400 font-bold uppercase tracking-wider">Tiếp cận (Reach)</div>
+              <div className="text-[6.5px] text-gray-400 font-bold uppercase tracking-wider">{t("sections.reach")}</div>
               <div className="text-sm font-black text-gray-850 font-mono">
                 {overview.reach >= 1000 ? `${(overview.reach / 1000).toFixed(1)}K` : overview.reach}
               </div>
             </div>
             <div className="p-2 bg-gray-50 border border-gray-100 rounded-lg space-y-0.5 hover:shadow-sm transition-all" style={{ borderLeft: `3px solid #52C79F` }}>
-              <div className="text-[6.5px] text-gray-400 font-bold uppercase tracking-wider">Hiển thị (Impressions)</div>
+              <div className="text-[6.5px] text-gray-400 font-bold uppercase tracking-wider">{t("sections.impressions")}</div>
               <div className="text-sm font-black text-gray-850 font-mono">
                 {overview.impressions >= 1000 ? `${(overview.impressions / 1000).toFixed(1)}K` : overview.impressions}
               </div>
             </div>
             <div className="p-2 bg-gray-50 border border-gray-100 rounded-lg space-y-0.5 hover:shadow-sm transition-all" style={{ borderLeft: `3px solid #E6A735` }}>
-              <div className="text-[6.5px] text-gray-400 font-bold uppercase tracking-wider">Tương tác (Engagements)</div>
+              <div className="text-[6.5px] text-gray-400 font-bold uppercase tracking-wider">{t("sections.engagements")}</div>
               <div className="text-sm font-black text-gray-850 font-mono">
                 {overview.engagements >= 1000 ? `${(overview.engagements / 1000).toFixed(1)}K` : overview.engagements}
               </div>
             </div>
             <div className="p-2 bg-gray-50 border border-gray-100 rounded-lg space-y-0.5 hover:shadow-sm transition-all" style={{ borderLeft: `3px solid #C65880` }}>
-              <div className="text-[6.5px] text-gray-400 font-bold uppercase tracking-wider">Tỷ lệ tương tác</div>
+              <div className="text-[6.5px] text-gray-400 font-bold uppercase tracking-wider">{t("sections.engagementRate")}</div>
               <div className="text-sm font-black text-gray-850 font-mono">{overview.engagementRate}%</div>
             </div>
           </div>
 
           <div className="grid grid-cols-5 gap-3 items-stretch mb-1">
             <div className="col-span-2 bg-gray-50 border border-gray-100 rounded-lg p-2.5 flex flex-col justify-between">
-              <span className="text-[7px] font-extrabold text-gray-500 uppercase tracking-wider mb-1.5">Kênh hoạt động</span>
+              <span className="text-[7px] font-extrabold text-gray-500 uppercase tracking-wider mb-1.5">{t("sections.activeChannels")}</span>
               <div className="space-y-1.5">
                 {channels.map((ch, idx) => (
                   <div key={idx} className="flex justify-between items-center text-[7.5px]">
@@ -621,7 +623,7 @@ export function ReportsPage() {
             </div>
 
             <div className="col-span-3 bg-gray-50 border border-gray-100 rounded-lg p-2.5 flex flex-col justify-between">
-              <span className="text-[7px] font-extrabold text-gray-500 uppercase tracking-wider">Xu hướng tương tác</span>
+              <span className="text-[7px] font-extrabold text-gray-500 uppercase tracking-wider">{t("sections.engagementTrend")}</span>
               {(() => {
                 const combined = getCombinedGrowth(channels);
                 const maxEng = Math.max(...combined, 1);
@@ -664,7 +666,7 @@ export function ReportsPage() {
     }
 
     if (pageType === "facebook") {
-      const fbChannel = data.channels.find(c => c.platform === "FACEBOOK") || { displayName: "Chưa kết nối Facebook", followers: 0, postsCount: 0, engagementRate: 0, reach: 0, impressions: 0, engagements: 0, likes: 0, comments: 0, shares: 0, clicks: 0 };
+      const fbChannel = data.channels.find(c => c.platform === "FACEBOOK") || { displayName: t("editor.widgetSections.facebook"), followers: 0, postsCount: 0, engagementRate: 0, reach: 0, impressions: 0, engagements: 0, likes: 0, comments: 0, shares: 0, clicks: 0 };
       const fbPosts = data.topPosts.filter(p => p.platform === "FACEBOOK").slice(0, 3);
       
       return (
@@ -680,30 +682,30 @@ export function ReportsPage() {
 
           <div className="grid grid-cols-4 gap-3 mb-2.5">
             <div className="p-2 bg-gray-50 border border-gray-100 rounded-lg space-y-0.5">
-              <span className="text-[6.5px] text-gray-450 font-bold uppercase">Người theo dõi</span>
+              <span className="text-[6.5px] text-gray-450 font-bold uppercase">{t("sections.followers")}</span>
               <div className="text-xs font-black text-blue-600 font-mono">
                 {fbChannel.followers >= 1000 ? `${(fbChannel.followers / 1000).toFixed(1)}K` : fbChannel.followers}
               </div>
             </div>
             <div className="p-2 bg-gray-50 border border-gray-100 rounded-lg space-y-0.5">
-              <span className="text-[6.5px] text-gray-450 font-bold uppercase">Tiếp cận trang</span>
+              <span className="text-[6.5px] text-gray-450 font-bold uppercase">{t("sections.pageReach")}</span>
               <div className="text-xs font-black text-gray-850 font-mono">
                 {fbChannel.reach >= 1000 ? `${(fbChannel.reach / 1000).toFixed(1)}K` : fbChannel.reach}
               </div>
             </div>
             <div className="p-2 bg-gray-50 border border-gray-100 rounded-lg space-y-0.5">
-              <span className="text-[6.5px] text-gray-450 font-bold uppercase">Số bài viết</span>
+              <span className="text-[6.5px] text-gray-450 font-bold uppercase">{t("sections.postsCount")}</span>
               <div className="text-xs font-black text-gray-850 font-mono">{fbChannel.postsCount}</div>
             </div>
             <div className="p-2 bg-gray-50 border border-gray-100 rounded-lg space-y-0.5">
-              <span className="text-[6.5px] text-gray-450 font-bold uppercase">Tương tác TB</span>
+              <span className="text-[6.5px] text-gray-450 font-bold uppercase">{t("sections.avgEngagement")}</span>
               <div className="text-xs font-black text-gray-850 font-mono">{fbChannel.engagementRate}%</div>
             </div>
           </div>
 
           <div className="grid grid-cols-5 gap-3 items-stretch mb-1">
             <div className="col-span-2 bg-gray-50 border border-gray-100 rounded-lg p-2 flex flex-col justify-between">
-              <span className="text-[7px] font-extrabold text-gray-500 uppercase tracking-wider">Lượt tiếp cận theo tuần</span>
+              <span className="text-[7px] font-extrabold text-gray-500 uppercase tracking-wider">{t("sections.weeklyReach")}</span>
               <svg viewBox="0 0 150 75" className="w-full h-12 overflow-visible">
                 <line x1="10" y1="10" x2="140" y2="10" stroke="#E2E8F0" strokeWidth="0.5" strokeDasharray="2 2" />
                 <line x1="10" y1="35" x2="140" y2="35" stroke="#E2E8F0" strokeWidth="0.5" strokeDasharray="2 2" />
@@ -726,18 +728,18 @@ export function ReportsPage() {
             </div>
 
             <div className="col-span-3 bg-gray-50 border border-gray-100 rounded-lg p-2.5 flex flex-col justify-between">
-              <span className="text-[7px] font-extrabold text-gray-500 uppercase tracking-wider mb-1.5">Bài viết tốt nhất (Top Posts)</span>
+              <span className="text-[7px] font-extrabold text-gray-500 uppercase tracking-wider mb-1.5">{t("sections.topPosts")}</span>
               <div className="space-y-1.5">
                 {fbPosts.length > 0 ? fbPosts.map((post, idx) => (
                   <div key={post.id || idx} className="border-b border-gray-150 pb-1 last:border-b-0 last:pb-0">
                     <p className="text-[7px] text-gray-700 font-bold truncate line-clamp-1 w-full">{post.title}</p>
                     <div className="flex justify-between items-center text-[6px] text-gray-400 font-mono mt-0.5">
                       <span>Likes: {post.likes} • Shares: {post.shares}</span>
-                      <span className="text-[#3B82F6] font-bold">{post.engagementRate}% Engagement</span>
+                      <span className="text-[#3B82F6] font-bold">{post.engagementRate}% {t("sections.engagementRate")}</span>
                     </div>
                   </div>
                 )) : (
-                  <div className="text-[7.5px] text-gray-400 text-center py-2">Chưa có bài viết xuất bản</div>
+                  <div className="text-[7.5px] text-gray-400 text-center py-2">{t("sections.noPosts")}</div>
                 )}
               </div>
             </div>
@@ -749,7 +751,7 @@ export function ReportsPage() {
     }
 
     if (pageType === "instagram") {
-      const igChannel = data.channels.find(c => c.platform === "INSTAGRAM") || { displayName: "Chưa kết nối Instagram", followers: 0, postsCount: 0, engagementRate: 0, reach: 0, impressions: 0, engagements: 0, likes: 0, comments: 0, shares: 0, clicks: 0 };
+      const igChannel = data.channels.find(c => c.platform === "INSTAGRAM") || { displayName: t("editor.widgetSections.instagram"), followers: 0, postsCount: 0, engagementRate: 0, reach: 0, impressions: 0, engagements: 0, likes: 0, comments: 0, shares: 0, clicks: 0 };
       const igPosts = data.topPosts.filter(p => p.platform === "INSTAGRAM").slice(0, 3);
       
       return (
@@ -765,32 +767,32 @@ export function ReportsPage() {
 
           <div className="grid grid-cols-4 gap-3 mb-2.5">
             <div className="p-2 bg-gray-50 border border-gray-100 rounded-lg space-y-0.5">
-              <span className="text-[6.5px] text-gray-450 font-bold uppercase">Người theo dõi</span>
+              <span className="text-[6.5px] text-gray-450 font-bold uppercase">{t("sections.followers")}</span>
               <div className="text-xs font-black text-pink-650 font-mono">
                 {igChannel.followers >= 1000 ? `${(igChannel.followers / 1000).toFixed(1)}K` : igChannel.followers}
               </div>
             </div>
             <div className="p-2 bg-gray-50 border border-gray-100 rounded-lg space-y-0.5">
-              <span className="text-[6.5px] text-gray-450 font-bold uppercase">Lượt tiếp cận</span>
+              <span className="text-[6.5px] text-gray-450 font-bold uppercase">{t("sections.reach")}</span>
               <div className="text-xs font-black text-gray-850 font-mono">
                 {igChannel.reach >= 1000 ? `${(igChannel.reach / 1000).toFixed(1)}K` : igChannel.reach}
               </div>
             </div>
             <div className="p-2 bg-gray-50 border border-gray-100 rounded-lg space-y-0.5">
-              <span className="text-[6.5px] text-gray-450 font-bold uppercase">Lượt hiển thị</span>
+              <span className="text-[6.5px] text-gray-450 font-bold uppercase">{t("sections.impressions")}</span>
               <div className="text-xs font-black text-gray-850 font-mono">
                 {igChannel.impressions >= 1000 ? `${(igChannel.impressions / 1000).toFixed(1)}K` : igChannel.impressions}
               </div>
             </div>
             <div className="p-2 bg-gray-50 border border-gray-100 rounded-lg space-y-0.5">
-              <span className="text-[6.5px] text-gray-450 font-bold uppercase">Bài đăng</span>
+              <span className="text-[6.5px] text-gray-450 font-bold uppercase">{t("sections.postsCount")}</span>
               <div className="text-xs font-black text-gray-850 font-mono">{igChannel.postsCount}</div>
             </div>
           </div>
 
           <div className="grid grid-cols-5 gap-3 items-stretch mb-1">
             <div className="col-span-2 bg-gray-50 border border-gray-100 rounded-lg p-2 flex flex-col justify-between">
-              <span className="text-[7px] font-extrabold text-gray-500 uppercase tracking-wider mb-1 self-start">Cơ cấu tương tác thực tế</span>
+              <span className="text-[7px] font-extrabold text-gray-500 uppercase tracking-wider mb-1 self-start">{t("sections.engagementStructure")}</span>
               {(() => {
                 const likesVal = igChannel.likes || 0;
                 const commentsVal = igChannel.comments || 0;
@@ -831,19 +833,19 @@ export function ReportsPage() {
                     <div className="flex flex-col gap-0.5 text-[5.5px] font-bold text-gray-600 font-mono">
                       <div className="flex items-center gap-1">
                         <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: color }} />
-                        <span>Thích: {likesPct.toFixed(0)}%</span>
+                        <span>{t("sections.likesLabel", { percent: likesPct.toFixed(0) })}</span>
                       </div>
                       <div className="flex items-center gap-1">
                         <span className="w-1.5 h-1.5 rounded-full bg-[#52C79F]" />
-                        <span>Bình luận: {commentsPct.toFixed(0)}%</span>
+                        <span>{t("sections.commentsLabel", { percent: commentsPct.toFixed(0) })}</span>
                       </div>
                       <div className="flex items-center gap-1">
                         <span className="w-1.5 h-1.5 rounded-full bg-[#E6A735]" />
-                        <span>Chia sẻ: {sharesPct.toFixed(0)}%</span>
+                        <span>{t("sections.sharesLabel", { percent: sharesPct.toFixed(0) })}</span>
                       </div>
                       <div className="flex items-center gap-1">
                         <span className="w-1.5 h-1.5 rounded-full bg-[#C65880]" />
-                        <span>Clicks: {clicksPct.toFixed(0)}%</span>
+                        <span>{t("sections.clicksLabel", { percent: clicksPct.toFixed(0) })}</span>
                       </div>
                     </div>
                   </div>
@@ -852,18 +854,18 @@ export function ReportsPage() {
             </div>
 
             <div className="col-span-3 bg-gray-50 border border-gray-100 rounded-lg p-2.5 flex flex-col justify-between">
-              <span className="text-[7px] font-extrabold text-gray-500 uppercase tracking-wider mb-1.5">Bài viết Instagram tốt nhất</span>
+              <span className="text-[7px] font-extrabold text-gray-500 uppercase tracking-wider mb-1.5">{t("sections.topIgPosts")}</span>
               <div className="space-y-1.5">
                 {igPosts.length > 0 ? igPosts.map((post, idx) => (
                   <div key={post.id || idx} className="border-b border-gray-150 pb-1 last:border-b-0 last:pb-0">
                     <p className="text-[7px] text-gray-700 font-bold truncate line-clamp-1 w-full">{post.title}</p>
                     <div className="flex justify-between items-center text-[6px] text-gray-400 font-mono mt-0.5">
                       <span>Likes: {post.likes} • Comments: {post.comments}</span>
-                      <span className="text-pink-500 font-bold">{post.engagementRate}% Engagement</span>
+                      <span className="text-pink-500 font-bold">{post.engagementRate}% {t("sections.engagementRate")}</span>
                     </div>
                   </div>
                 )) : (
-                  <div className="text-[7.5px] text-gray-450 text-center py-2">Chưa có bài viết xuất bản</div>
+                  <div className="text-[7.5px] text-gray-450 text-center py-2">{t("sections.noPosts")}</div>
                 )}
               </div>
             </div>
@@ -875,7 +877,7 @@ export function ReportsPage() {
     }
 
     if (pageType === "youtube") {
-      const ytChannel = data.channels.find(c => c.platform === "YOUTUBE") || { displayName: "Chưa kết nối YouTube", followers: 0, postsCount: 0, engagementRate: 0, reach: 0, impressions: 0, engagements: 0, likes: 0, comments: 0, shares: 0, clicks: 0 };
+      const ytChannel = data.channels.find(c => c.platform === "YOUTUBE") || { displayName: t("editor.widgetSections.youtube"), followers: 0, postsCount: 0, engagementRate: 0, reach: 0, impressions: 0, engagements: 0, likes: 0, comments: 0, shares: 0, clicks: 0 };
       const ytPosts = data.topPosts.filter(p => p.platform === "YOUTUBE").slice(0, 3);
       
       return (
@@ -891,30 +893,30 @@ export function ReportsPage() {
 
           <div className="grid grid-cols-4 gap-3 mb-2.5">
             <div className="p-2 bg-gray-50 border border-gray-100 rounded-lg space-y-0.5">
-              <span className="text-[6.5px] text-gray-450 font-bold uppercase">Subscribers</span>
+              <span className="text-[6.5px] text-gray-450 font-bold uppercase">{t("sections.followers")}</span>
               <div className="text-xs font-black text-red-600 font-mono">
                 {ytChannel.followers >= 1000 ? `${(ytChannel.followers / 1000).toFixed(1)}K` : ytChannel.followers}
               </div>
             </div>
             <div className="p-2 bg-gray-50 border border-gray-100 rounded-lg space-y-0.5">
-              <span className="text-[6.5px] text-gray-450 font-bold uppercase">Lượt xem</span>
+              <span className="text-[6.5px] text-gray-450 font-bold uppercase">{t("sections.totalViews")}</span>
               <div className="text-xs font-black text-gray-850 font-mono">
                 {ytChannel.impressions >= 1000 ? `${(ytChannel.impressions / 1000).toFixed(1)}K` : ytChannel.impressions}
               </div>
             </div>
             <div className="p-2 bg-gray-50 border border-gray-100 rounded-lg space-y-0.5">
-              <span className="text-[6.5px] text-gray-450 font-bold uppercase">Videos đã đăng</span>
+              <span className="text-[6.5px] text-gray-450 font-bold uppercase">{t("sections.postsCount")}</span>
               <div className="text-xs font-black text-gray-850 font-mono">{ytChannel.postsCount}</div>
             </div>
             <div className="p-2 bg-gray-50 border border-gray-100 rounded-lg space-y-0.5">
-              <span className="text-[6.5px] text-gray-450 font-bold uppercase">Tương tác TB</span>
+              <span className="text-[6.5px] text-gray-450 font-bold uppercase">{t("sections.avgEngagement")}</span>
               <div className="text-xs font-black text-gray-850 font-mono">{ytChannel.engagementRate}%</div>
             </div>
           </div>
 
           <div className="grid grid-cols-5 gap-3 items-stretch mb-1">
             <div className="col-span-2 bg-gray-50 border border-gray-100 rounded-lg p-2 flex flex-col justify-between">
-              <span className="text-[7px] font-extrabold text-gray-500 uppercase tracking-wider">Tăng trưởng Subscribers</span>
+              <span className="text-[7px] font-extrabold text-gray-500 uppercase tracking-wider">{t("sections.subscribersGrowth")}</span>
               <svg viewBox="0 0 150 75" className="w-full h-12 overflow-visible">
                 <line x1="10" y1="10" x2="140" y2="10" stroke="#E2E8F0" strokeWidth="0.5" strokeDasharray="2 2" />
                 <line x1="10" y1="35" x2="140" y2="35" stroke="#E2E8F0" strokeWidth="0.5" strokeDasharray="2 2" />
@@ -941,18 +943,18 @@ export function ReportsPage() {
             </div>
 
             <div className="col-span-3 bg-gray-50 border border-gray-100 rounded-lg p-2.5 flex flex-col justify-between">
-              <span className="text-[7px] font-extrabold text-gray-500 uppercase tracking-wider mb-1.5">Video nổi bật nhất</span>
+              <span className="text-[7px] font-extrabold text-gray-500 uppercase tracking-wider mb-1.5">{t("sections.topVideos")}</span>
               <div className="space-y-1.5">
                 {ytPosts.length > 0 ? ytPosts.map((post, idx) => (
                   <div key={post.id || idx} className="border-b border-gray-150 pb-1 last:border-b-0 last:pb-0">
                     <p className="text-[7px] text-gray-700 font-bold truncate line-clamp-1 w-full">{post.title}</p>
                     <div className="flex justify-between items-center text-[6px] text-gray-400 font-mono mt-0.5">
-                      <span>Lượt xem: {post.likes * 12} • Thích: {post.likes}</span>
+                      <span>{t("sections.totalViews")}: {post.likes * 12} • {t("sections.totalLikes")}: {post.likes}</span>
                       <span className="text-red-500 font-bold">{post.engagementRate}%</span>
                     </div>
                   </div>
                 )) : (
-                  <div className="text-[7.5px] text-gray-450 text-center py-2">Chưa có video xuất bản</div>
+                  <div className="text-[7.5px] text-gray-450 text-center py-2">{t("sections.noVideos")}</div>
                 )}
               </div>
             </div>
@@ -964,7 +966,7 @@ export function ReportsPage() {
     }
 
     if (pageType === "tiktok") {
-      const ttChannel = data.channels?.find(c => c.platform === "TIKTOK") || { displayName: "Chưa kết nối TikTok", followers: 0, postsCount: 0, engagementRate: 0, reach: 0, impressions: 0, engagements: 0, likes: 0, comments: 0, shares: 0, clicks: 0 };
+      const ttChannel = data.channels?.find(c => c.platform === "TIKTOK") || { displayName: t("editor.widgetSections.tiktok"), followers: 0, postsCount: 0, engagementRate: 0, reach: 0, impressions: 0, engagements: 0, likes: 0, comments: 0, shares: 0, clicks: 0 };
       const ttData = data.tiktok || FALLBACK_PREVIEW_DATA.tiktok;
       const ttPosts = (data.topPosts || []).filter(p => p.platform === "TIKTOK").slice(0, 4);
 
@@ -978,10 +980,10 @@ export function ReportsPage() {
           {/* KPI Strip */}
           <div className="grid grid-cols-4 gap-2.5 mb-2.5">
             {[
-              { label: "Followers", value: ttChannel.followers >= 1000 ? `${(ttChannel.followers / 1000).toFixed(1)}K` : ttChannel.followers, accent: "#000000" },
-              { label: "Total Views", value: ttChannel.impressions >= 1000 ? `${(ttChannel.impressions / 1000).toFixed(1)}K` : ttChannel.impressions, accent: "#FE2C55" },
-              { label: "Total Likes", value: ttChannel.likes >= 1000 ? `${(ttChannel.likes / 1000).toFixed(1)}K` : ttChannel.likes, accent: "#25F4EE" },
-              { label: "Avg Engagement", value: `${ttChannel.engagementRate}%`, accent: color }
+              { label: t("sections.followers"), value: ttChannel.followers >= 1000 ? `${(ttChannel.followers / 1000).toFixed(1)}K` : ttChannel.followers, accent: "#000000" },
+              { label: t("sections.totalViews"), value: ttChannel.impressions >= 1000 ? `${(ttChannel.impressions / 1000).toFixed(1)}K` : ttChannel.impressions, accent: "#FE2C55" },
+              { label: t("sections.totalLikes"), value: ttChannel.likes >= 1000 ? `${(ttChannel.likes / 1000).toFixed(1)}K` : ttChannel.likes, accent: "#25F4EE" },
+              { label: t("sections.avgEngagement"), value: `${ttChannel.engagementRate}%`, accent: color }
             ].map((kpi, i) => (
               <div key={i} className="p-2 bg-gray-50 border border-gray-100 rounded-lg space-y-0.5" style={{ borderTop: `2px solid ${kpi.accent}` }}>
                 <span className="text-[6.5px] text-gray-450 font-bold uppercase tracking-wider block">{kpi.label}</span>
@@ -993,7 +995,7 @@ export function ReportsPage() {
           <div className="grid grid-cols-5 gap-2.5 items-stretch mb-1">
             {/* Weekly Views Bar Chart */}
             <div className="col-span-2 bg-gray-50 border border-gray-100 rounded-lg p-2 flex flex-col">
-              <span className="text-[7px] font-extrabold text-gray-500 uppercase tracking-wider mb-1">Lượt xem theo tuần</span>
+              <span className="text-[7px] font-extrabold text-gray-500 uppercase tracking-wider mb-1">{t("sections.weeklyViews")}</span>
               <svg viewBox="0 0 150 70" className="w-full flex-1">
                 <line x1="10" y1="10" x2="140" y2="10" stroke="#E2E8F0" strokeWidth="0.5" strokeDasharray="2 2" />
                 <line x1="10" y1="35" x2="140" y2="35" stroke="#E2E8F0" strokeWidth="0.5" strokeDasharray="2 2" />
@@ -1033,7 +1035,7 @@ export function ReportsPage() {
                 )) : (
                   <div className="text-[7.5px] text-gray-450 text-center py-4">
                     <div className="text-2xl mb-1">🎵</div>
-                    Chưa có video TikTok nào
+                    {t("sections.noVideos")}
                   </div>
                 )}
               </div>
@@ -1046,7 +1048,7 @@ export function ReportsPage() {
     }
 
     if (pageType === "discord") {
-      const dcChannel = data.channels?.find(c => c.platform === "DISCORD") || { displayName: "Chưa kết nối Discord", followers: 0, postsCount: 0, engagementRate: 0, reach: 0, impressions: 0, engagements: 0, likes: 0, comments: 0, shares: 0, clicks: 0 };
+      const dcChannel = data.channels?.find(c => c.platform === "DISCORD") || { displayName: t("editor.widgetSections.discord"), followers: 0, postsCount: 0, engagementRate: 0, reach: 0, impressions: 0, engagements: 0, likes: 0, comments: 0, shares: 0, clicks: 0 };
       const dcData = data.discord || FALLBACK_PREVIEW_DATA.discord;
 
       return (
@@ -1059,10 +1061,10 @@ export function ReportsPage() {
           {/* KPI Strip */}
           <div className="grid grid-cols-4 gap-2.5 mb-2.5">
             {[
-              { label: "Total Members", value: dcChannel.followers >= 1000 ? `${(dcChannel.followers / 1000).toFixed(1)}K` : dcChannel.followers, accent: "#5865F2" },
-              { label: "Active Users", value: dcChannel.clicks >= 1000 ? `${(dcChannel.clicks / 1000).toFixed(1)}K` : dcChannel.clicks, accent: "#57F287" },
-              { label: "New Members", value: `+${dcChannel.likes}`, accent: color },
-              { label: "Messages", value: dcChannel.postsCount >= 1000 ? `${(dcChannel.postsCount / 1000).toFixed(1)}K` : dcChannel.postsCount, accent: "#FEE75C" }
+              { label: t("sections.totalMembers"), value: dcChannel.followers >= 1000 ? `${(dcChannel.followers / 1000).toFixed(1)}K` : dcChannel.followers, accent: "#5865F2" },
+              { label: t("sections.activeUsers"), value: dcChannel.clicks >= 1000 ? `${(dcChannel.clicks / 1000).toFixed(1)}K` : dcChannel.clicks, accent: "#57F287" },
+              { label: t("sections.newMembers"), value: `+${dcChannel.likes}`, accent: color },
+              { label: t("sections.messages"), value: dcChannel.postsCount >= 1000 ? `${(dcChannel.postsCount / 1000).toFixed(1)}K` : dcChannel.postsCount, accent: "#FEE75C" }
             ].map((kpi, i) => (
               <div key={i} className="p-2 bg-gray-50 border border-gray-100 rounded-lg space-y-0.5" style={{ borderTop: `2px solid ${kpi.accent}` }}>
                 <span className="text-[6.5px] text-gray-450 font-bold uppercase tracking-wider block">{kpi.label}</span>
@@ -1074,7 +1076,7 @@ export function ReportsPage() {
           <div className="grid grid-cols-5 gap-2.5 items-stretch mb-1">
             {/* Members Growth Chart */}
             <div className="col-span-2 bg-gray-50 border border-gray-100 rounded-lg p-2 flex flex-col">
-              <span className="text-[7px] font-extrabold text-gray-500 uppercase tracking-wider mb-1">Tăng trưởng thành viên</span>
+              <span className="text-[7px] font-extrabold text-gray-500 uppercase tracking-wider mb-1">{t("sections.memberGrowth")}</span>
               <svg viewBox="0 0 150 70" className="w-full flex-1">
                 <line x1="10" y1="10" x2="140" y2="10" stroke="#E2E8F0" strokeWidth="0.5" strokeDasharray="2 2" />
                 <line x1="10" y1="35" x2="140" y2="35" stroke="#E2E8F0" strokeWidth="0.5" strokeDasharray="2 2" />
@@ -1112,12 +1114,12 @@ export function ReportsPage() {
 
             {/* Activity Overview */}
             <div className="col-span-3 bg-gray-50 border border-gray-100 rounded-lg p-2.5 flex flex-col gap-2">
-              <span className="text-[7px] font-extrabold text-gray-500 uppercase tracking-wider">Hoạt động Server</span>
+              <span className="text-[7px] font-extrabold text-gray-500 uppercase tracking-wider">{t("sections.serverActivity")}</span>
               
               {/* Active ratio bar */}
               <div>
                 <div className="flex justify-between text-[6.5px] text-gray-500 mb-1">
-                  <span>Tỷ lệ thành viên hoạt động</span>
+                  <span>{t("sections.activeRatio")}</span>
                   <span className="font-bold" style={{ color: "#57F287" }}>
                     {dcChannel.followers > 0 ? ((dcChannel.clicks / dcChannel.followers) * 100).toFixed(1) : "0.0"}%
                   </span>
@@ -1129,7 +1131,7 @@ export function ReportsPage() {
 
               {/* Message activity per week */}
               <div>
-                <span className="text-[6.5px] text-gray-500 font-bold uppercase tracking-wider block mb-1">Tin nhắn theo tuần</span>
+                <span className="text-[6.5px] text-gray-500 font-bold uppercase tracking-wider block mb-1">{t("sections.weeklyMessages")}</span>
                 <svg viewBox="0 0 200 40" className="w-full h-8">
                   {(() => {
                     const weeklyMessages = getWeeklyData(dcChannel.analyticsData?.growth, "totalContent");
@@ -1152,7 +1154,7 @@ export function ReportsPage() {
               <div className="flex items-center gap-2 mt-auto">
                 <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
                 <span className="text-[7px] text-gray-500 font-bold">
-                  <span className="text-green-500">{dcChannel.clicks}</span> thành viên online ngay bây giờ
+                  <span className="text-green-500">{dcChannel.clicks}</span> {t("sections.onlineNow")}
                 </span>
               </div>
             </div>
@@ -1164,7 +1166,7 @@ export function ReportsPage() {
     }
 
     if (pageType === "telegram") {
-      const tgChannel = data.channels?.find(c => c.platform === "TELEGRAM") || { displayName: "Chưa kết nối Telegram", followers: 0, postsCount: 0, engagementRate: 0, reach: 0, impressions: 0, engagements: 0, likes: 0, comments: 0, shares: 0, clicks: 0 };
+      const tgChannel = data.channels?.find(c => c.platform === "TELEGRAM") || { displayName: t("editor.widgetSections.telegram"), followers: 0, postsCount: 0, engagementRate: 0, reach: 0, impressions: 0, engagements: 0, likes: 0, comments: 0, shares: 0, clicks: 0 };
       const tgData = data.telegram || FALLBACK_PREVIEW_DATA.telegram;
       const tgPosts = (data.topPosts || []).filter(p => p.platform === "TELEGRAM").slice(0, 4);
 
@@ -1178,10 +1180,10 @@ export function ReportsPage() {
           {/* KPI Strip */}
           <div className="grid grid-cols-4 gap-2.5 mb-2.5">
             {[
-              { label: "Subscribers", value: tgChannel.followers >= 1000 ? `${(tgChannel.followers / 1000).toFixed(1)}K` : tgChannel.followers, accent: "#24A1DE" },
-              { label: "Avg Post Views", value: tgChannel.reach >= 1000 ? `${(tgChannel.reach / 1000).toFixed(1)}K` : tgChannel.reach, accent: "#2AABEE" },
-              { label: "Forwarded", value: tgChannel.shares >= 1000 ? `${(tgChannel.shares / 1000).toFixed(1)}K` : tgChannel.shares, accent: color },
-              { label: "Reaction Rate", value: `${tgChannel.engagementRate}%`, accent: "#52C79F" }
+              { label: t("sections.followers"), value: tgChannel.followers >= 1000 ? `${(tgChannel.followers / 1000).toFixed(1)}K` : tgChannel.followers, accent: "#24A1DE" },
+              { label: t("sections.avgViews"), value: tgChannel.reach >= 1000 ? `${(tgChannel.reach / 1000).toFixed(1)}K` : tgChannel.reach, accent: "#2AABEE" },
+              { label: t("sections.forwarded"), value: tgChannel.shares >= 1000 ? `${(tgChannel.shares / 1000).toFixed(1)}K` : tgChannel.shares, accent: color },
+              { label: t("sections.reactionRate"), value: `${tgChannel.engagementRate}%`, accent: "#52C79F" }
             ].map((kpi, i) => (
               <div key={i} className="p-2 bg-gray-50 border border-gray-100 rounded-lg space-y-0.5" style={{ borderTop: `2px solid ${kpi.accent}` }}>
                 <span className="text-[6.5px] text-gray-450 font-bold uppercase tracking-wider block">{kpi.label}</span>
@@ -1193,7 +1195,7 @@ export function ReportsPage() {
           <div className="grid grid-cols-5 gap-2.5 items-stretch mb-1">
             {/* Views Trend Line */}
             <div className="col-span-2 bg-gray-50 border border-gray-100 rounded-lg p-2 flex flex-col">
-              <span className="text-[7px] font-extrabold text-gray-500 uppercase tracking-wider mb-1">Lượt xem bài đăng</span>
+              <span className="text-[7px] font-extrabold text-gray-500 uppercase tracking-wider mb-1">{t("sections.totalViews")}</span>
               <svg viewBox="0 0 150 70" className="w-full flex-1">
                 <line x1="10" y1="10" x2="140" y2="10" stroke="#E2E8F0" strokeWidth="0.5" strokeDasharray="2 2" />
                 <line x1="10" y1="35" x2="140" y2="35" stroke="#E2E8F0" strokeWidth="0.5" strokeDasharray="2 2" />
@@ -1232,7 +1234,7 @@ export function ReportsPage() {
             {/* Subscriber Growth + Top Posts */}
             <div className="col-span-3 bg-gray-50 border border-gray-100 rounded-lg p-2.5 flex flex-col">
               <div className="flex items-center justify-between mb-1.5">
-                <span className="text-[7px] font-extrabold text-gray-500 uppercase tracking-wider">Bài đăng nổi bật</span>
+                <span className="text-[7px] font-extrabold text-gray-500 uppercase tracking-wider">{t("sections.topPosts")}</span>
                 <span className="text-[6px] px-1.5 py-0.5 rounded font-bold text-white" style={{ backgroundColor: "#24A1DE" }}>TELEGRAM</span>
               </div>
               <div className="space-y-1.5">
@@ -1240,12 +1242,12 @@ export function ReportsPage() {
                   <div key={post.id || idx} className="border-b border-gray-100 pb-1 last:border-b-0 last:pb-0">
                     <p className="text-[7px] text-gray-700 font-bold truncate">{post.title}</p>
                     <div className="flex justify-between items-center text-[6px] text-gray-400 font-mono mt-0.5">
-                      <span>👁 {(post.views || 0).toLocaleString()} views</span>
+                      <span>👁 {(post.views || 0).toLocaleString()} {t("sections.totalViews").toLowerCase()}</span>
                       <span className="font-bold" style={{ color: "#24A1DE" }}>{post.engagementRate}% reach</span>
                     </div>
                   </div>
                 )) : (
-                  <div className="text-[7.5px] text-gray-450 text-center py-4">Chưa có bài viết xuất bản</div>
+                  <div className="text-[7.5px] text-gray-450 text-center py-4">{t("sections.noPosts")}</div>
                 )}
               </div>
               
@@ -1259,7 +1261,7 @@ export function ReportsPage() {
                   return (
                     <>
                       <div className="flex justify-between text-[6.5px] text-gray-500 mb-1">
-                        <span>Tăng trưởng subscribers (tháng)</span>
+                        <span>{t("sections.subscribersGrowthMonthly")}</span>
                         <span className="font-bold text-green-500">+{tgGrowthPct}%</span>
                       </div>
                       <div className="h-1.5 bg-gray-200 rounded-full overflow-hidden">
@@ -1322,7 +1324,7 @@ export function ReportsPage() {
           <div className="border-b pb-4 mb-4 flex items-center justify-between">
              <h4 className="text-base font-bold text-gray-800 uppercase tracking-tight flex items-center gap-2">
                <PlatformIcon platform="Facebook" size={18} />
-               Facebook Overview & Interactions
+               {t("dashboard.fbOverview")}
              </h4>
           </div>
           {(selectedWidgets.fbGrowth || selectedWidgets.fbBalance) && (
@@ -1350,24 +1352,24 @@ export function ReportsPage() {
           <div className="border-b pb-4 mb-4">
              <h4 className="text-base font-bold text-gray-800 uppercase tracking-tight flex items-center gap-2">
                <PlatformIcon platform="Instagram" size={18} />
-               Instagram Profile Analysis
+               {t("dashboard.igAnalysis")}
              </h4>
           </div>
           {selectedWidgets.igGrowth && (
             <GenericDashboardTab
-              title="Instagram Growth"
-              description="Tăng trưởng Followers, Following và số lượng bài đăng"
+              title={t("dashboard.igGrowth")}
+              description={t("dashboard.igGrowthDesc")}
               data={igRealData.growth}
               metricConfig={[
-                { key: "followers", label: "Followers", color: "bg-[#8E9BEE] text-white", chartColor: "#8E9BEE", type: "area", value: channelData.followers || 0 },
-                { key: "following", label: "Following", color: "bg-[#A7F3D0] text-gray-900", chartColor: "#A7F3D0", type: "line", value: 0 },
-                { key: "totalContent", label: "Posts", color: "bg-[#FEF08A] text-gray-900", chartColor: "#EAB308", type: "bar", yAxisId: "right", value: channelData.postsCount || 0 }
+                { key: "followers", label: t("sections.followers"), color: "bg-[#8E9BEE] text-white", chartColor: "#8E9BEE", type: "area", value: channelData.followers || 0 },
+                { key: "following", label: t("sections.following", "Following"), color: "bg-[#A7F3D0] text-gray-900", chartColor: "#A7F3D0", type: "line", value: 0 },
+                { key: "totalContent", label: t("sections.postsCount"), color: "bg-[#FEF08A] text-gray-900", chartColor: "#EAB308", type: "bar", yAxisId: "right", value: channelData.postsCount || 0 }
               ]}
               summaryGrid={[
-                { label: "Followers", value: channelData.followers || 0 },
-                { label: "Posts", value: channelData.postsCount || 0 },
-                { label: "Engagement", value: `${channelData.engagementRate || 0}%` },
-                { label: "Reach", value: channelData.reach || 0 }
+                { label: t("sections.followers"), value: channelData.followers || 0 },
+                { label: t("sections.postsCount"), value: channelData.postsCount || 0 },
+                { label: t("sections.engagementRate"), value: `${channelData.engagementRate || 0}%` },
+                { label: t("sections.reach"), value: channelData.reach || 0 }
               ]}
             />
           )}
@@ -1391,20 +1393,20 @@ export function ReportsPage() {
         videos: r.totalContent || r.videos || 0
       }));
       const ytMetricConfig = [
-        { key: "subscribers", label: "New Subscribers", color: "bg-[#EF4444] text-white", chartColor: "#EF4444", type: "area", value: ytGrowthData.reduce((a,b)=>a+(b.subscribers||0),0) },
-        { key: "views", label: "Views", color: "bg-[#818CF8] text-white", chartColor: "#818CF8", type: "line", value: channelData.impressions || 0 },
-        { key: "videos", label: "Videos", color: "bg-[#FEF08A] text-gray-900", chartColor: "#EAB308", type: "bar", yAxisId: "right", value: channelData.postsCount || 0 }
+        { key: "subscribers", label: t("sections.followers"), color: "bg-[#EF4444] text-white", chartColor: "#EF4444", type: "area", value: ytGrowthData.reduce((a,b)=>a+(b.subscribers||0),0) },
+        { key: "views", label: t("sections.totalViews"), color: "bg-[#818CF8] text-white", chartColor: "#818CF8", type: "line", value: channelData.impressions || 0 },
+        { key: "videos", label: t("sections.postsCount"), color: "bg-[#FEF08A] text-gray-900", chartColor: "#EAB308", type: "bar", yAxisId: "right", value: channelData.postsCount || 0 }
       ];
       const ytSummaryGrid = [
-        { label: "Subscribers", value: channelData.followers >= 1000 ? `${(channelData.followers/1000).toFixed(1)}K` : channelData.followers || 0 },
-        { label: "Total Views", value: channelData.impressions >= 1000 ? `${(channelData.impressions/1000).toFixed(1)}K` : channelData.impressions || 0 },
-        { label: "Videos", value: channelData.postsCount || 0 },
-        { label: "Engagement", value: `${channelData.engagementRate || 0}%` }
+        { label: t("sections.followers"), value: channelData.followers >= 1000 ? `${(channelData.followers/1000).toFixed(1)}K` : channelData.followers || 0 },
+        { label: t("sections.totalViews"), value: channelData.impressions >= 1000 ? `${(channelData.impressions/1000).toFixed(1)}K` : channelData.impressions || 0 },
+        { label: t("sections.postsCount"), value: channelData.postsCount || 0 },
+        { label: t("sections.engagementRate"), value: `${channelData.engagementRate || 0}%` }
       ];
       return (
         <GenericDashboardTab
-          title="YouTube Channel Growth"
-          description="Tăng trưởng Subscribers, lượt xem và số lượng video đã đăng"
+          title={t("dashboard.ytGrowth")}
+          description={t("dashboard.ytGrowthDesc")}
           data={ytGrowthData}
           metricConfig={ytMetricConfig}
           summaryGrid={ytSummaryGrid}
@@ -1434,18 +1436,18 @@ export function ReportsPage() {
           <div className="border-b pb-4 mb-4">
              <h4 className="text-base font-bold text-gray-800 uppercase tracking-tight flex items-center gap-2">
                <PlatformIcon platform="TikTok" size={18} />
-               TikTok Performance
+               {t("dashboard.ttPerformance")}
              </h4>
           </div>
           {selectedWidgets.ttGrowth && (
             <div>
-              <h5 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">Community Growth</h5>
+              <h5 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">{t("dashboard.ttCommunityGrowth")}</h5>
               <TikTokCommunityTab realData={ttRealData} dateRange={period} />
             </div>
           )}
           {selectedWidgets.ttViews && (
             <div>
-              <h5 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">Posts Performance</h5>
+              <h5 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">{t("dashboard.ttPostsPerformance")}</h5>
               <TikTokPostsTab
                 realData={ttRealData}
                 dateRange={period}
@@ -1470,7 +1472,7 @@ export function ReportsPage() {
           <div className="border-b pb-4 mb-4">
              <h4 className="text-base font-bold text-gray-800 uppercase tracking-tight flex items-center gap-2">
                <PlatformIcon platform="Discord" size={18} />
-               Discord Server Insights
+               {t("dashboard.dcInsights")}
              </h4>
           </div>
           {selectedWidgets.dcGrowth && (
@@ -1491,19 +1493,19 @@ export function ReportsPage() {
         members: r.members || r.followers || r.new || 0
       }));
       const tgMetricConfig = [
-        { key: "members", label: "Subscribers", color: "bg-[#24A1DE] text-white", chartColor: "#24A1DE", type: "area", value: channelData.followers || 0 },
-        { key: "views", label: "Avg Post Views", color: "bg-[#A7F3D0] text-gray-900", chartColor: "#34D399", type: "line", value: channelData.impressions || 0 }
+        { key: "members", label: t("sections.followers"), color: "bg-[#24A1DE] text-white", chartColor: "#24A1DE", type: "area", value: channelData.followers || 0 },
+        { key: "views", label: t("sections.avgViews"), color: "bg-[#A7F3D0] text-gray-900", chartColor: "#34D399", type: "line", value: channelData.impressions || 0 }
       ];
       const tgSummaryGrid = [
-        { label: "Subscribers", value: channelData.followers >= 1000 ? `${(channelData.followers/1000).toFixed(1)}K` : channelData.followers || 0 },
-        { label: "Avg Post Views", value: channelData.impressions || 0 },
-        { label: "Forwarded", value: channelData.shares || 0 },
-        { label: "Reaction Rate", value: `${channelData.engagementRate || 0}%` }
+        { label: t("sections.followers"), value: channelData.followers >= 1000 ? `${(channelData.followers/1000).toFixed(1)}K` : channelData.followers || 0 },
+        { label: t("sections.avgViews"), value: channelData.impressions || 0 },
+        { label: t("sections.forwarded"), value: channelData.shares || 0 },
+        { label: t("sections.reactionRate"), value: `${channelData.engagementRate || 0}%` }
       ];
       return (
         <GenericDashboardTab
-          title="Telegram Channel Analytics"
-          description="Tăng trưởng subscribers và lượt xem bài đăng trung bình"
+          title={t("dashboard.tgAnalytics")}
+          description={t("dashboard.tgAnalyticsDesc")}
           data={tgGrowthData}
           metricConfig={tgMetricConfig}
           summaryGrid={tgSummaryGrid}

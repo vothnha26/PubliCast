@@ -20,6 +20,7 @@ import { AccessGuard } from "../../../components/shared/AccessGuard";
 import { PostAnalyticsDetailModal } from "../../../components/workspace/PostAnalyticsDetailModal";
 import { buildMediaUrl } from "@/utils/url";
 import { PostMediaThumbnail } from "@/components/shared/PostMediaThumbnail";
+import { useTranslation } from "react-i18next";
 
 const STATUS_STYLE = {
   published: "bg-green-50 text-green-700 border-green-100",
@@ -70,6 +71,7 @@ const getPostLink = (platform, platformPostId) => {
 };
 
 export function ListView() {
+  const { t } = useTranslation("planner");
   const confirm = useConfirm();
   const { hasPermission } = useBrandPermission();
   const hasCreatePermission = hasPermission("CREATE_POSTS");
@@ -112,7 +114,7 @@ export function ListView() {
       setPosts(res.data || []);
       setMeta(res.meta || { total: 0, page: 1, totalPages: 1 });
     } catch (e) {
-      toast.error("Failed to load posts");
+      toast.error(t("listView.toasts.loadFail"));
     } finally {
       setLoading(false);
     }
@@ -168,11 +170,11 @@ export function ListView() {
 
     try {
       await postService.deletePosts(activeBrand.id, selected, deleteFromSocials);
-      toast.success("Posts deleted successfully");
+      toast.success(t("listView.toasts.bulkDeleteSuccess"));
       setSelected([]);
       fetchPosts();
     } catch (e) {
-      toast.error(e.message || "Failed to delete posts");
+      toast.error(e.message || t("listView.toasts.bulkDeleteFail"));
     }
   };
 
@@ -189,11 +191,11 @@ export function ListView() {
 
     try {
       await postService.approvePosts(activeBrand.id, selected);
-      toast.success("Posts approved");
+      toast.success(t("listView.toasts.bulkApproveSuccess"));
       setSelected([]);
       fetchPosts();
     } catch (e) {
-      toast.error(e.message || "Failed to approve posts");
+      toast.error(e.message || t("listView.toasts.bulkApproveFail"));
     }
   };
 
@@ -239,10 +241,10 @@ export function ListView() {
 
     try {
       await postService.deletePosts(activeBrand.id, [id], deleteFromSocials);
-      toast.success("Post deleted successfully");
+      toast.success(t("listView.toasts.deleteSuccess"));
       fetchPosts();
     } catch (e) {
-      toast.error(e.message || "Failed to delete post");
+      toast.error(e.message || t("listView.toasts.deleteFail"));
     } finally {
       setActiveMenuId(null);
     }
@@ -251,17 +253,17 @@ export function ListView() {
   const handleRepost = async (postId) => {
     if (!activeBrand) return;
     setRepostingIds(prev => [...prev, postId]);
-    const toastId = toast.loading("Đang tiến hành đăng lại bài viết...");
+    const toastId = toast.loading(t("listView.toasts.repostingLoading"));
     try {
       await postService.updatePost(postId, {
         brandId: activeBrand.id,
         status: "published"
       });
-      toast.success("Đã kích hoạt đăng lại bài viết thành công!", { id: toastId });
+      toast.success(t("listView.toasts.repostSuccess"), { id: toastId });
       fetchPosts();
     } catch (err) {
       console.error(err);
-      toast.error(err.message || "Đăng lại bài viết thất bại.", { id: toastId });
+      toast.error(err.message || t("listView.toasts.repostFail"), { id: toastId });
     } finally {
       setRepostingIds(prev => prev.filter(id => id !== postId));
     }
@@ -282,7 +284,7 @@ export function ListView() {
         saving: false
       });
     } catch {
-      toast.error('Không thể tải danh sách người duyệt');
+      toast.error(t("listView.toasts.loadReviewersFail"));
     }
   };
 
@@ -292,18 +294,18 @@ export function ListView() {
     setReviewerPanel(p => ({ ...p, saving: true }));
     try {
       await postService.reassignReviewer(activeBrand.id, post.approvalInfo.workflowId, selectedIds, policy);
-      toast.success('Đã cập nhật người duyệt thành công');
+      toast.success(t("listView.toasts.saveReviewersSuccess"));
       setReviewerPanel(p => ({ ...p, open: false }));
       fetchPosts();
     } catch (err) {
-      toast.error(err.message || 'Không thể cập nhật người duyệt');
+      toast.error(err.message || t("listView.toasts.saveReviewersFail"));
       setReviewerPanel(p => ({ ...p, saving: false }));
     }
   };
 
   const handleSaveToLibrary = async (post) => {
     if (!activeBrand) return;
-    const toastId = toast.loading("Đang lưu bài viết thành template...");
+    const toastId = toast.loading(t("listView.toasts.savingTemplate"));
     try {
       const templateData = {
         brandId: activeBrand.id,
@@ -318,10 +320,10 @@ export function ListView() {
         options: post.options || {}
       };
       await postService.createPost(templateData);
-      toast.success("Lưu bài viết vào Thư viện thành công!", { id: toastId });
+      toast.success(t("listView.toasts.saveTemplateSuccess"), { id: toastId });
     } catch (err) {
       console.error(err);
-      toast.error(err.message || "Lưu bài viết thất bại.", { id: toastId });
+      toast.error(err.message || t("listView.toasts.saveTemplateFail"), { id: toastId });
     } finally {
       setActiveMenuId(null);
     }
@@ -337,7 +339,7 @@ export function ListView() {
                <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-300 group-focus-within:text-gray-500 transition-all" />
                <input 
                  type="text" 
-                 placeholder="Search by title, caption..." 
+                 placeholder={t("listView.searchPlaceholder")} 
                  value={searchTerm}
                  onChange={(e) => setSearchTerm(e.target.value)}
                  className="w-full bg-white border border-gray-200 rounded-xl py-2 pl-10 pr-4 text-xs focus:outline-none focus:ring-2 focus:ring-[#D9F99D]/50 transition-all"
@@ -348,7 +350,7 @@ export function ListView() {
                   <Filter size={18} />
                </button>
                <div className="absolute top-full left-0 mt-2 w-48 bg-white rounded-2xl shadow-xl border border-gray-100 py-2 hidden group-hover:block z-50 animate-in fade-in slide-in-from-top-2">
-                  <div className="px-4 py-2 text-[10px] font-bold text-gray-400 uppercase tracking-widest border-b border-gray-50">Filter by Status</div>
+                  <div className="px-4 py-2 text-[10px] font-bold text-gray-400 uppercase tracking-widest border-b border-gray-50">{t("listView.filterStatus")}</div>
                   {["All", "Draft", "Pending_Approval", "Approved", "Scheduled", "Published", "Rejected", "Failed"].map(s => (
                     <button 
                       key={s} 
@@ -365,13 +367,13 @@ export function ListView() {
           <div className="flex items-center gap-3">
              {selected.length > 0 && (
                 <div className="flex items-center gap-2 animate-in slide-in-from-right-4 duration-300">
-                   <span className="text-xs font-bold text-gray-400 uppercase tracking-widest mr-2">{selected.length} selected</span>
+                   <span className="text-xs font-bold text-gray-400 uppercase tracking-widest mr-2">{t("listView.selected", { count: selected.length })}</span>
                    <AccessGuard feature="APPROVE_POSTS">
                       <button 
                         onClick={handleBulkApprove}
                         className="px-4 py-2 bg-white border border-gray-200 rounded-xl text-[11px] font-bold text-green-600 hover:bg-green-50 transition-all flex items-center gap-1.5 cursor-pointer shadow-sm"
                       >
-                        <CheckCircle size={14} /> Approve
+                        <CheckCircle size={14} /> {t("listView.approveBtn")}
                       </button>
                     </AccessGuard>
                    <AccessGuard feature="DELETE_POSTS">
@@ -379,7 +381,7 @@ export function ListView() {
                         onClick={handleBulkDelete}
                         className="px-4 py-2 bg-white border border-gray-200 rounded-xl text-[11px] font-bold text-red-600 hover:bg-red-50 transition-all flex items-center gap-1.5 cursor-pointer shadow-sm"
                       >
-                        <Trash2 size={14} /> Delete
+                        <Trash2 size={14} /> {t("listView.deleteBtn")}
                       </button>
                     </AccessGuard>
                 </div>
@@ -390,7 +392,7 @@ export function ListView() {
                  onClick={openPostCreator}
                  className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-[12px] font-bold bg-[#0A0A0A] text-white hover:scale-105 active:scale-95 cursor-pointer transition-all shadow-lg"
                >
-                  <Plus size={16} /> Create post
+                  <Plus size={16} /> {t("listView.createPostBtn")}
                </button>
              </AccessGuard>
           </div>
@@ -412,12 +414,12 @@ export function ListView() {
                           readOnly
                         />
                      </th>
-                     <th className="px-4 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-[0.1em]">Post Details</th>
-                     <th className="px-4 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-[0.1em]">Platform</th>
-                     <th className="px-4 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-[0.1em]">Scheduled For</th>
-                     <th className="px-4 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-[0.1em]">Status</th>
-                     <th className="px-4 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-[0.1em]">Author</th>
-                     <th className="px-4 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-[0.1em]">Reviewers</th>
+                     <th className="px-4 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-[0.1em]">{t("listView.colPostDetails")}</th>
+                     <th className="px-4 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-[0.1em]">{t("listView.colPlatform")}</th>
+                     <th className="px-4 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-[0.1em]">{t("listView.colScheduledFor")}</th>
+                     <th className="px-4 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-[0.1em]">{t("listView.colStatus")}</th>
+                     <th className="px-4 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-[0.1em]">{t("listView.colAuthor")}</th>
+                     <th className="px-4 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-[0.1em]">{t("listView.colReviewers")}</th>
                      <th className="px-6 py-4 text-right"></th>
                   </tr>
                </thead>
@@ -459,13 +461,13 @@ export function ListView() {
                <div className="w-16 h-16 bg-gray-50 rounded-2xl flex items-center justify-center text-gray-300 mb-4">
                   <PlayCircle size={32} />
                </div>
-               <h3 className="text-sm font-bold text-gray-900">No posts found</h3>
-               <p className="text-xs text-gray-400 mt-1 max-w-[250px]">You haven't created any posts for this filter yet.</p>
+               <h3 className="text-sm font-bold text-gray-900">{t("listView.noPosts")}</h3>
+               <p className="text-xs text-gray-400 mt-1 max-w-[250px]">{t("listView.noPostsDesc")}</p>
                <button 
                  onClick={clearFilters}
                  className="mt-6 px-4 py-2 text-xs font-bold text-gray-600 border border-gray-200 rounded-xl hover:bg-gray-50 transition-all cursor-pointer"
                >
-                 Clear all filters
+                 {t("listView.clearFilters")}
                </button>
             </div>
          ) : (
@@ -482,12 +484,12 @@ export function ListView() {
                           onChange={(e) => setSelected(e.target.checked ? posts.map(p => p.id) : [])}
                         />
                      </th>
-                     <th className="px-4 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-[0.1em]">Post Details</th>
-                     <th className="px-4 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-[0.1em]">Platform</th>
-                     <th className="px-4 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-[0.1em]">Scheduled For</th>
-                     <th className="px-4 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-[0.1em]">Status</th>
-                     <th className="px-4 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-[0.1em]">Author</th>
-                     <th className="px-4 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-[0.1em]">Reviewers</th>
+                     <th className="px-4 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-[0.1em]">{t("listView.colPostDetails")}</th>
+                     <th className="px-4 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-[0.1em]">{t("listView.colPlatform")}</th>
+                     <th className="px-4 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-[0.1em]">{t("listView.colScheduledFor")}</th>
+                     <th className="px-4 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-[0.1em]">{t("listView.colStatus")}</th>
+                     <th className="px-4 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-[0.1em]">{t("listView.colAuthor")}</th>
+                     <th className="px-4 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-[0.1em]">{t("listView.colReviewers")}</th>
                      <th className="px-6 py-4 text-right"></th>
                   </tr>
                </thead>
@@ -621,7 +623,7 @@ export function ListView() {
                                 onClick={e => { e.stopPropagation(); openReviewerPanel(post); }}
                                 className="flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-medium text-amber-600 bg-amber-50 border border-amber-100 hover:bg-amber-100 transition-all"
                               >
-                                <Users size={10} /> Assign
+                                <UserCheck size={10} /> {t("listView.assignBtn")}
                               </button>
                             ) : <span className="text-gray-300 text-[11px]">—</span>
                           )}
@@ -694,7 +696,7 @@ export function ListView() {
                                        disabled={repostingIds.includes(post.id)}
                                        className="w-full px-4 py-2 text-[11px] font-bold text-indigo-600 hover:bg-indigo-50/50 transition-all flex items-center gap-2 cursor-pointer border-b border-gray-50"
                                      >
-                                        <span>🔄</span> {repostingIds.includes(post.id) ? 'Đang đăng...' : 'Đăng lại ngay'}
+                                        <span>🔄</span> {repostingIds.includes(post.id) ? t("listView.reposting") : t("listView.repostNow")}
                                      </button>
                                    )}{post.status?.toLowerCase() === "published" && (
 
@@ -714,7 +716,7 @@ export function ListView() {
 
                                      >
 
-                                        <span>📊</span> Số liệu chi tiết
+                                        <span>📊</span> {t("listView.detailStats")}
 
                                      </button>
 
@@ -728,7 +730,7 @@ export function ListView() {
                                      }}
                                      className="w-full px-4 py-2 text-[11px] font-bold text-gray-700 hover:bg-gray-50 transition-all flex items-center gap-2 cursor-pointer"
                                    >
-                                      <span>✏️</span> {hasCreatePermission ? 'Edit Post' : 'View Post'}
+                                      <span>✏️</span> {hasCreatePermission ? t("listView.editPost") : t("listView.viewPost")}
                                    </button>
                                    {hasCreatePermission && (
                                      <button 
@@ -743,7 +745,7 @@ export function ListView() {
                                        data-testid="post-duplicate-btn"
                                        className="w-full px-4 py-2 text-[11px] font-bold text-indigo-600 hover:bg-indigo-50/50 transition-all flex items-center gap-2 cursor-pointer border-t border-gray-50 text-left"
                                      >
-                                        <span>🔂</span> Nhân bản bài viết
+                                        <span>🔂</span> {t("listView.duplicatePost")}
                                      </button>
                                    )}
                                    <button 
@@ -754,7 +756,7 @@ export function ListView() {
                                      }}
                                      className="w-full px-4 py-2 text-[11px] font-bold text-teal-600 hover:bg-teal-50/50 transition-all flex items-center gap-2 cursor-pointer border-t border-gray-50"
                                    >
-                                      <span>💎</span> Lưu thành Template
+                                      <span>💎</span> {t("listView.saveTemplate")}
                                    </button>
                                    <AccessGuard feature="DELETE_POSTS">
                                      <button 
@@ -765,7 +767,7 @@ export function ListView() {
                                        }}
                                        className="w-full px-4 py-2 text-[11px] font-bold text-red-600 hover:bg-red-50/50 transition-all flex items-center gap-2 cursor-pointer border-t border-gray-50"
                                      >
-                                        <span>🗑️</span> Delete Post
+                                        <span>🗑️</span> {t("listView.deletePost")}
                                      </button>
                                    </AccessGuard>
                                 </div>
@@ -780,7 +782,7 @@ export function ListView() {
             {/* Footer Pagination */}
             <div className="px-6 py-4 bg-gray-50/20 border-t border-gray-100 flex items-center justify-between">
                <span className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">
-                 Showing {posts.length} of {meta.total} results
+                 {t("listView.showingResults", { count: posts.length, total: meta.total })}
                </span>
                <div className="flex gap-2">
                   <button 
@@ -788,14 +790,14 @@ export function ListView() {
                     onClick={() => updateFilters({ page: (parseInt(filters.page) - 1).toString() })}
                     className="px-4 py-1.5 bg-white border border-gray-200 rounded-lg text-[11px] font-bold text-gray-500 hover:bg-gray-50 transition-all disabled:opacity-30 disabled:cursor-not-allowed shadow-sm cursor-pointer"
                   >
-                    Previous
+                    {t("listView.prevBtn")}
                   </button>
                   <button 
                     disabled={parseInt(filters.page) >= meta.totalPages}
                     onClick={() => updateFilters({ page: (parseInt(filters.page) + 1).toString() })}
                     className="px-4 py-1.5 bg-white border border-gray-200 rounded-lg text-[11px] font-bold text-gray-500 hover:bg-gray-50 transition-all disabled:opacity-30 disabled:cursor-not-allowed shadow-sm cursor-pointer"
                   >
-                    Next
+                    {t("listView.nextBtn")}
                   </button>
                </div>
             </div>
@@ -811,16 +813,16 @@ export function ListView() {
         <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 p-6 animate-in slide-in-from-bottom-4 duration-200">
           <div className="flex items-center justify-between mb-4">
             <div>
-              <h3 className="text-sm font-bold text-gray-900 flex items-center gap-2"><UserCheck size={16} className="text-amber-500" /> Người duyệt bài</h3>
+              <h3 className="text-sm font-bold text-gray-900 flex items-center gap-2"><UserCheck size={16} className="text-amber-500" /> {t("listView.reviewerPanel.title")}</h3>
               <p className="text-[11px] text-gray-400 mt-0.5 truncate max-w-[280px]">{reviewerPanel.post?.title}</p>
             </div>
             <button onClick={() => setReviewerPanel(p => ({ ...p, open: false }))} className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400"><XIcon size={16} /></button>
           </div>
 
           <div className="mb-4">
-            <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-2 block">Chính sách duyệt</label>
+            <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-2 block">{t("listView.reviewerPanel.policyLabel")}</label>
             <div className="flex gap-2">
-              {[{ v: 'AT_LEAST_ONE', label: 'Ít nhất 1 người' }, { v: 'ALL', label: 'Tất cả' }].map(opt => (
+              {[{ v: 'AT_LEAST_ONE', label: t("listView.reviewerPanel.policyAtLeastOne") }, { v: 'ALL', label: t("listView.reviewerPanel.policyAll") }].map(opt => (
                 <button key={opt.v} onClick={() => setReviewerPanel(p => ({ ...p, policy: opt.v }))}
                   className={`flex-1 py-2 rounded-xl text-[11px] font-bold border transition-all ${
                     reviewerPanel.policy === opt.v ? 'bg-amber-50 border-amber-300 text-amber-700' : 'bg-gray-50 border-gray-200 text-gray-500 hover:border-gray-300'
@@ -832,10 +834,10 @@ export function ListView() {
           </div>
 
           <div className="mb-5">
-            <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-2 block">Chọn người duyệt</label>
+            <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-2 block">{t("listView.reviewerPanel.selectLabel")}</label>
             <div className="max-h-52 overflow-y-auto space-y-1 pr-1">
               {reviewerPanel.availableReviewers.length === 0 ? (
-                <p className="text-xs text-gray-400 text-center py-4">Không có reviewer nào</p>
+                <p className="text-xs text-gray-400 text-center py-4">{t("listView.reviewerPanel.noReviewers")}</p>
               ) : reviewerPanel.availableReviewers.map(r => {
                 const selected = reviewerPanel.selectedIds.includes(r.id);
                 return (
@@ -863,14 +865,14 @@ export function ListView() {
           </div>
 
           <div className="flex gap-2">
-            <button onClick={() => setReviewerPanel(p => ({ ...p, open: false }))} className="flex-1 py-2.5 rounded-xl border border-gray-200 text-[12px] font-bold text-gray-600 hover:bg-gray-50 transition-all">Hủy</button>
+            <button onClick={() => setReviewerPanel(p => ({ ...p, open: false }))} className="flex-1 py-2.5 rounded-xl border border-gray-200 text-[12px] font-bold text-gray-600 hover:bg-gray-50 transition-all">{t("listView.reviewerPanel.cancelBtn")}</button>
             <button
               onClick={handleSaveReviewers}
               disabled={reviewerPanel.saving || reviewerPanel.selectedIds.length === 0}
               className="flex-1 py-2.5 rounded-xl bg-amber-500 text-white text-[12px] font-bold hover:bg-amber-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2"
             >
               {reviewerPanel.saving ? <Loader2 size={14} className="animate-spin" /> : <UserCheck size={14} />}
-              Lưu thay đổi
+              {t("listView.reviewerPanel.saveBtn")}
             </button>
           </div>
         </div>

@@ -104,6 +104,10 @@ describe('Profile & Settings Detailed Suite', function () {
         until.elementLocated(By.css('[data-testid="profile-fullname-input"]')),
         10000
       );
+      await driver.wait(async () => {
+        const val = await nameInput.getAttribute('value');
+        return val && val.trim().length > 0;
+      }, 5000);
       const currentName = await nameInput.getAttribute('value');
       expect(currentName).to.not.be.empty;
     });
@@ -165,10 +169,16 @@ describe('Profile & Settings Detailed Suite', function () {
     });
 
     it('TC_PROFILE_07 – Verify password change fails when current password is empty', async function () {
-      const newPwdInput = await driver.wait(
-        until.elementLocated(By.css('[data-testid="profile-new-password-input"]')),
+      const currentPwdInput = await driver.wait(
+        until.elementLocated(By.css('[data-testid="profile-current-password-input"]')),
         10000
       );
+      await currentPwdInput.sendKeys(Key.CONTROL, 'a');
+      await currentPwdInput.sendKeys(Key.BACK_SPACE);
+
+      const newPwdInput = await driver.findElement(By.css('[data-testid="profile-new-password-input"]'));
+      await newPwdInput.sendKeys(Key.CONTROL, 'a');
+      await newPwdInput.sendKeys(Key.BACK_SPACE);
       await newPwdInput.sendKeys('newsecretpassword');
 
       const updateBtn = await driver.findElement(By.css('[data-testid="profile-update-password-btn"]'));

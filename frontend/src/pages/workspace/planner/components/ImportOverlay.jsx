@@ -1,10 +1,14 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 
 /**
  * Reusable modal loading backdrop to show import progress.
  * Conforms to Single Responsibility Principle (SRP).
  */
-export function ImportOverlay({ isOpen, title = "Importing from Drive", message = "Please wait while we stream and convert the video from Google Drive to our servers..." }) {
+export function ImportOverlay({ isOpen, titleKey, messageKey }) {
+  const { t } = useTranslation('planner');
+  const title = titleKey ? t(titleKey) : t('importOverlay.title');
+  const message = messageKey ? t(messageKey) : t('importOverlay.message');
   if (!isOpen) return null;
 
   return (

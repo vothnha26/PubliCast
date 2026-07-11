@@ -1,0 +1,10 @@
+{
+  "auth": {
+    "loginFailed": "Email hoặc mật khẩu không chính xác",
+    "activationRequired": "Mã kích hoạt đã được gửi. Vui lòng kiểm tra email của bạn."
+  },
+  "general": {
+    "networkError": "Lỗi kết nối mạng, vui lòng thử lại sau",
+    "permissionDenied": "Bạn không có quyền thực hiện hành động này"
+  }
+}

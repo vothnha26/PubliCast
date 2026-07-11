@@ -71,6 +71,9 @@ export function usePostCreatorForm() {
   // Instagram Dropdown / Mode State
   const [instagramType, setInstagramType] = useState(INSTAGRAM_TYPE.POST);
   const [showInstagramTypeMenu, setShowInstagramTypeMenu] = useState(false);
+  const [instagramCollaborators, setInstagramCollaborators] = useState([]);
+  const [instagramAudio, setInstagramAudio] = useState(null);
+  const [instagramShowOnFeed, setInstagramShowOnFeed] = useState(true);
   const [tiktokPrivacy, setTiktokPrivacy] = useState(TIKTOK_PRIVACY.PUBLIC);
   const [tiktokAllowComments, setTiktokAllowComments] = useState(true);
   const [tiktokAllowDuet, setTiktokAllowDuet] = useState(true);
@@ -116,6 +119,7 @@ export function usePostCreatorForm() {
   const [requesterNote, setRequesterNote] = useState("Vui lòng phê duyệt bài viết này.");
   const [notes, setNotes] = useState([]);
   const [isLoadingReviewers, setIsLoadingReviewers] = useState(false);
+  const [videoSettings, setVideoSettings] = useState(null);
 
   useEffect(() => {
     const fetchReviewers = async () => {
@@ -394,6 +398,7 @@ export function usePostCreatorForm() {
         setYoutubeThumbnail(opts.youtubeThumbnail || "");
         setThreadsWhoCanReply(opts.threadsWhoCanReply || "everyone");
         setNotes(opts.notes || []);
+        setVideoSettings(opts.videoSettings || null);
 
         // Setup Facebook
         setFacebookType(opts.facebookType || "post");
@@ -401,6 +406,9 @@ export function usePostCreatorForm() {
 
         // Setup Instagram
         setInstagramType(opts.instagramType || "post");
+        setInstagramCollaborators(opts.instagramCollaborators || []);
+        setInstagramAudio(opts.instagramAudio || null);
+        setInstagramShowOnFeed(opts.instagramShowOnFeed !== undefined ? opts.instagramShowOnFeed : true);
 
         // Setup TikTok
         setTiktokPrivacy(opts.tiktokPrivacy || "public");
@@ -452,6 +460,7 @@ export function usePostCreatorForm() {
         setYoutubeThumbnail(opts.youtubeThumbnail || "");
         setThreadsWhoCanReply(opts.threadsWhoCanReply || "everyone");
         setNotes(opts.notes || []);
+        setVideoSettings(opts.videoSettings || null);
 
         // Setup Facebook
         setFacebookType(opts.facebookType || "post");
@@ -459,6 +468,9 @@ export function usePostCreatorForm() {
 
         // Setup Instagram
         setInstagramType(opts.instagramType || "post");
+        setInstagramCollaborators(opts.instagramCollaborators || []);
+        setInstagramAudio(opts.instagramAudio || null);
+        setInstagramShowOnFeed(opts.instagramShowOnFeed !== undefined ? opts.instagramShowOnFeed : true);
 
         // Setup TikTok
         setTiktokPrivacy(opts.tiktokPrivacy || "public");
@@ -526,9 +538,13 @@ export function usePostCreatorForm() {
         setFacebookTitle("");
         setAltText("");
         setAlbumMedia([]);
+        setVideoSettings(null);
 
         // Reset Instagram
         setInstagramType(INSTAGRAM_TYPE.POST);
+        setInstagramCollaborators([]);
+        setInstagramAudio(null);
+        setInstagramShowOnFeed(true);
 
         // Reset TikTok
         setTiktokPrivacy(TIKTOK_PRIVACY.PUBLIC);
@@ -570,6 +586,9 @@ export function usePostCreatorForm() {
 
     // Setup Instagram
     setInstagramType(opts.instagramType || "post");
+    setInstagramCollaborators(opts.instagramCollaborators || []);
+    setInstagramAudio(opts.instagramAudio || null);
+    setInstagramShowOnFeed(opts.instagramShowOnFeed !== undefined ? opts.instagramShowOnFeed : true);
 
     // Setup TikTok
     setTiktokPrivacy(opts.tiktokPrivacy || "public");
@@ -664,6 +683,9 @@ export function usePostCreatorForm() {
           facebookType,
           facebookTitle,
           instagramType,
+          instagramCollaborators,
+          instagramAudio,
+          instagramShowOnFeed,
           tiktokPrivacy,
           tiktokAllowComments,
           tiktokAllowDuet,
@@ -674,7 +696,8 @@ export function usePostCreatorForm() {
           albumMedia,
           mediaCaptions,
           threadsWhoCanReply,
-          notes
+          notes,
+          videoSettings
         }
       };
 
@@ -701,8 +724,12 @@ export function usePostCreatorForm() {
         setFacebookTitle("");
         setFacebookType(FACEBOOK_TYPE.POST);
         setInstagramType(INSTAGRAM_TYPE.POST);
+        setInstagramCollaborators([]);
+        setInstagramAudio(null);
+        setInstagramShowOnFeed(true);
         setAltText("");
         setNotes([]);
+        setVideoSettings(null);
         setTiktokPrivacy(TIKTOK_PRIVACY.PUBLIC);
         setTiktokAllowComments(true);
         setTiktokAllowDuet(true);
@@ -821,6 +848,12 @@ export function usePostCreatorForm() {
     setInstagramType,
     showInstagramTypeMenu,
     setShowInstagramTypeMenu,
+    instagramCollaborators,
+    setInstagramCollaborators,
+    instagramAudio,
+    setInstagramAudio,
+    instagramShowOnFeed,
+    setInstagramShowOnFeed,
     getValidationErrors,
     altText,
     setAltText,
@@ -863,6 +896,8 @@ export function usePostCreatorForm() {
     threadsWhoCanReply,
     setThreadsWhoCanReply,
     notes,
-    setNotes
+    setNotes,
+    videoSettings,
+    setVideoSettings
   };
 }

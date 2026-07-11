@@ -5,6 +5,7 @@ import { AppInitializer } from "./components/AppInitializer";
 import { Toaster } from "sonner";
 import { ThemeProvider } from "./context/ThemeContext";
 import { LanguageProvider } from "./context/LanguageContext";
+import "./i18n";
 import "./index.css";
 import { logger } from "./utils/logger";
 

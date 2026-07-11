@@ -10,7 +10,7 @@ class ReelPublishStrategy extends InstagramPublishStrategy {
     const rawMediaUrl = postData.mediaUrl || (postData.mediaUrls && postData.mediaUrls[0]);
     const mediaUrl = this.resolveUrl(rawMediaUrl);
     const { caption, scheduledAt } = postData;
-    const container = await instagramGateway.createReelContainer(igAccountId, accessToken, mediaUrl, caption, scheduledAt);
+    const container = await instagramGateway.createReelContainer(igAccountId, accessToken, mediaUrl, caption, scheduledAt, postData.options);
     await this.pollUntilReady(instagramGateway, container.id, accessToken);
     return instagramGateway.publishContainer(igAccountId, accessToken, container.id);
   }

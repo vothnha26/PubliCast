@@ -1,0 +1,68 @@
+{
+  "nav": {
+    "dashboard": "Bảng điều khiển",
+    "mediaLibrary": "Thư viện Media",
+    "inbox": "Hộp thư",
+    "planner": "Lên lịch",
+    "smartlinks": "SmartLinks",
+    "ai": "Trợ lý AI"
+  },
+  "menu": {
+    "createWorkplace": "Tạo không gian làm việc",
+    "connections": "Kết nối kênh",
+    "brandSettings": "Cài đặt thương hiệu",
+    "userManagement": "Quản lý thành viên",
+    "billing": "Gói cước & Thanh toán",
+    "myTasks": "Nhiệm vụ của tôi",
+    "language": "Ngôn ngữ",
+    "accountSettings": "Cài đặt tài khoản",
+    "helpCenter": "Trung tâm trợ giúp",
+    "supportChat": "Trò chuyện hỗ trợ",
+    "whatsNew": "Tính năng mới",
+    "affiliation": "Chương trình tiếp thị",
+    "logout": "Đăng xuất",
+    "legalTerms": "Điều khoản pháp lý"
+  },
+  "brand": {
+    "select": "Chọn thương hiệu",
+    "defaultActive": "Thương hiệu mặc định",
+    "setDefault": "Đặt làm thương hiệu mặc định",
+    "deselect": "Bỏ chọn thương hiệu",
+    "manage": "Quản lý thương hiệu",
+    "backWorkspace": "← Quay lại Workspace",
+    "switchToManager": "Chuyển sang Quản lý →"
+  },
+  "sidebar": {
+    "analytics": "Số liệu phân tích",
+    "management": "Quản trị",
+    "tools": "Công cụ",
+    "contentPlanner": "Lên lịch nội dung",
+    "approvalRequests": "Yêu cầu duyệt bài",
+    "planLabel": "Gói: {{name}}",
+    "nextBilling": "Kỳ tiếp theo: {{date}}",
+    "unlimited": "Không giới hạn",
+    "noLimit": "Hạn dùng: Không giới hạn",
+    "summary": "Tổng quan",
+    "moreConnection": "Thêm kết nối",
+    "approvalTasks": "Yêu cầu duyệt bài",
+    "hashtagTracker": "Theo dõi Hashtag",
+    "reporting": "Báo cáo",
+    "competitors": "Đối thủ",
+    "adsManager": "Trình quản lý QC"
+  },
+  "searchPlaceholder": "Tìm kiếm công cụ, nền tảng...",
+  "upgrade": "Nâng cấp",
+  "managerMode": "Chế độ Quản lý",
+  "workMode": "Chế độ Làm việc",
+  "yourWorkplaces": "Không gian làm việc",
+  "quickLinks": {
+    "dashboardName": "Bảng số liệu phân tích",
+    "dashboardDesc": "Đến nhanh báo cáo thống kê hiệu suất",
+    "plannerName": "Lịch lên bài nội dung",
+    "plannerDesc": "Đến nhanh trình quản lý & lên lịch bài viết",
+    "aiName": "Trợ lý viết bài AI",
+    "aiDesc": "Đến nhanh khung trò chuyện tạo bài với AI",
+    "settingsName": "Cài đặt tài khoản",
+    "settingsDesc": "Đến nhanh thông tin hồ sơ người dùng"
+  }
+}

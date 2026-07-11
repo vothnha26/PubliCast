@@ -13,12 +13,14 @@ import {
   INTEGRATION_ACTIONS, 
   INTEGRATION_FORMATS 
 } from '../utils/integrationStrategies';
+import { useTranslation } from 'react-i18next';
 
 /**
  * DataIntegrationWizard
  * Trình thuật sĩ hợp nhất Nhập/Xuất dữ liệu cho Planner (CSV và ICS)
  */
 export function DataIntegrationWizard({ isOpen, onClose, onRefreshData }) {
+  const { t } = useTranslation('planner');
   const { activeBrand } = useBrand();
   
   // Trạng thái từng bước
@@ -79,16 +81,16 @@ export function DataIntegrationWizard({ isOpen, onClose, onRefreshData }) {
     const ext = file.name.split('.').pop().toLowerCase();
     
     if (format === INTEGRATION_FORMATS.CSV && ext !== 'csv') {
-      toast.error('Vui lòng chọn tệp tin định dạng .csv');
+      toast.error(t('wizard.toasts.invalidCsv'));
       return;
     }
     if (format === INTEGRATION_FORMATS.ICS && ext !== 'ics') {
-      toast.error('Vui lòng chọn tệp tin định dạng .ics');
+      toast.error(t('wizard.toasts.invalidIcs'));
       return;
     }
 
     setSelectedFile(file);
-    toast.success(`Đã nhận tệp: ${file.name}`);
+    toast.success(t('wizard.toasts.fileReceived', { name: file.name }));
   };
 
   // Tiến hành bước tiếp theo
@@ -96,7 +98,7 @@ export function DataIntegrationWizard({ isOpen, onClose, onRefreshData }) {
     if (step === 1) {
       if (action === INTEGRATION_ACTIONS.IMPORT) {
         if (!selectedFile) {
-          toast.error('Vui lòng chọn tệp tin để nhập dữ liệu.');
+          toast.error(t('wizard.toasts.noFileSelected'));
           return;
         }
         
@@ -108,11 +110,11 @@ export function DataIntegrationWizard({ isOpen, onClose, onRefreshData }) {
           if (res.success) {
             setStep(2);
           } else {
-            toast.error(res.message || 'Lỗi kiểm tra tệp tin.');
+            toast.error(res.message || t('wizard.toasts.parseError'));
           }
         } catch (err) {
           console.error(err);
-          toast.error('Lỗi khi phân tích tệp tin.');
+          toast.error(t('wizard.toasts.parseError'));
         } finally {
           setIsProcessing(false);
         }
@@ -139,15 +141,15 @@ export function DataIntegrationWizard({ isOpen, onClose, onRefreshData }) {
     try {
       const res = await strategy.executeImport(activeBrand.id, parsingResult.items, null, parsingResult);
       if (res.successCount > 0) {
-        toast.success(`Đã nhập thành công ${res.successCount} mục vào Planner!`);
+        toast.success(t('wizard.toasts.importSuccess', { n: res.successCount }));
         if (onRefreshData) onRefreshData();
         onClose();
       } else {
-        toast.error('Nhập dữ liệu thất bại hoặc không có dòng nào hợp lệ.');
+        toast.error(t('wizard.toasts.importFailure'));
       }
     } catch (err) {
       console.error(err);
-      toast.error(err.response?.data?.message || 'Có lỗi xảy ra khi nhập dữ liệu.');
+      toast.error(err.response?.data?.message || t('wizard.toasts.importFailure'));
     } finally {
       setIsProcessing(false);
     }
@@ -169,11 +171,11 @@ export function DataIntegrationWizard({ isOpen, onClose, onRefreshData }) {
       link.click();
       link.parentNode.removeChild(link);
       
-      toast.success('Xuất dữ liệu lịch biểu thành công!');
+      toast.success(t('wizard.toasts.exportSuccess'));
       onClose();
     } catch (err) {
       console.error(err);
-      toast.error('Có lỗi xảy ra khi xuất dữ liệu.');
+      toast.error(t('wizard.toasts.exportError'));
     } finally {
       setIsProcessing(false);
     }
@@ -186,8 +188,8 @@ export function DataIntegrationWizard({ isOpen, onClose, onRefreshData }) {
         {/* Header */}
         <div className="px-6 py-5 border-b border-gray-100 flex items-center justify-between bg-gray-50/50">
           <div>
-            <h3 className="text-base font-black text-gray-900">Tích hợp & Đồng bộ dữ liệu</h3>
-            <p className="text-[11px] text-gray-400 font-medium">Nhập hoặc xuất bài viết và lịch biểu bằng định dạng CSV/ICS</p>
+            <h3 className="text-base font-black text-gray-900">{t('wizard.title')}</h3>
+            <p className="text-[11px] text-gray-400 font-medium">{t('wizard.subtitle')}</p>
           </div>
           <button 
             onClick={onClose} 
@@ -200,9 +202,9 @@ export function DataIntegrationWizard({ isOpen, onClose, onRefreshData }) {
         {/* Steps Breadcrumbs indicator */}
         <div className="px-8 py-4 border-b border-gray-50 flex items-center justify-center gap-10 bg-white">
           {[
-            { num: 1, label: 'Cài đặt' },
-            { num: 2, label: action === INTEGRATION_ACTIONS.IMPORT ? 'Kiểm tra' : 'Bộ lọc' },
-            { num: 3, label: 'Xem trước' }
+            { num: 1, label: t('wizard.steps.setup') },
+            { num: 2, label: action === INTEGRATION_ACTIONS.IMPORT ? t('wizard.steps.validate') : t('wizard.steps.filter') },
+            { num: 3, label: t('wizard.steps.preview') }
           ].map((s) => (
             <div key={s.num} className="flex items-center gap-2">
               <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold transition-colors ${
@@ -239,8 +241,8 @@ export function DataIntegrationWizard({ isOpen, onClose, onRefreshData }) {
                   <div className="w-8 h-8 rounded-xl bg-green-50 text-green-600 flex items-center justify-center">
                     <Upload size={18} />
                   </div>
-                  <span className="text-xs font-black text-gray-900">Nhập dữ liệu (Import)</span>
-                  <span className="text-[10px] text-gray-400 font-medium leading-relaxed">Đưa danh sách bài viết từ các tệp dữ liệu vào Planner của bạn.</span>
+                  <span className="text-xs font-black text-gray-900">{t('wizard.actions.importTitle')}</span>
+                  <span className="text-[10px] text-gray-400 font-medium leading-relaxed">{t('wizard.actions.importDesc')}</span>
                 </button>
 
                 <button
@@ -255,14 +257,14 @@ export function DataIntegrationWizard({ isOpen, onClose, onRefreshData }) {
                   <div className="w-8 h-8 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
                     <Download size={18} />
                   </div>
-                  <span className="text-xs font-black text-gray-900">Xuất dữ liệu (Export)</span>
-                  <span className="text-[10px] text-gray-400 font-medium leading-relaxed">Tải xuống toàn bộ lịch biểu bài viết của bạn ra định dạng chuẩn.</span>
+                  <span className="text-xs font-black text-gray-900">{t('wizard.actions.exportTitle')}</span>
+                  <span className="text-[10px] text-gray-400 font-medium leading-relaxed">{t('wizard.actions.exportDesc')}</span>
                 </button>
               </div>
 
               {/* Chọn định dạng */}
               <div className="space-y-2">
-                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Định dạng tệp hỗ trợ</label>
+                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{t('wizard.formats.sectionLabel')}</label>
                 <div className="flex gap-3">
                   <button
                     type="button"
@@ -270,11 +272,11 @@ export function DataIntegrationWizard({ isOpen, onClose, onRefreshData }) {
                     className={`px-4 py-3 rounded-xl border flex items-center gap-2.5 text-xs font-bold transition-all flex-1 justify-center cursor-pointer ${
                       format === INTEGRATION_FORMATS.CSV 
                         ? 'border-black bg-black text-white' 
-                        : 'border-gray-200 bg-white hover:bg-gray-50 text-gray-700'
+                        : 'border-gray-200 bg-white hover:bg-gray-55 text-gray-700'
                     }`}
                   >
                     <FileSpreadsheet size={16} />
-                    <span>Bảng tính CSV (.csv)</span>
+                    <span>{t('wizard.formats.csvLabel')}</span>
                   </button>
 
                   <button
@@ -283,11 +285,11 @@ export function DataIntegrationWizard({ isOpen, onClose, onRefreshData }) {
                     className={`px-4 py-3 rounded-xl border flex items-center gap-2.5 text-xs font-bold transition-all flex-1 justify-center cursor-pointer ${
                       format === INTEGRATION_FORMATS.ICS 
                         ? 'border-black bg-black text-white' 
-                        : 'border-gray-200 bg-white hover:bg-gray-50 text-gray-700'
+                        : 'border-gray-200 bg-white hover:bg-gray-55 text-gray-700'
                     }`}
                   >
                     <FileCode size={16} />
-                    <span>Lịch iCalendar (.ics)</span>
+                    <span>{t('wizard.formats.icsLabel')}</span>
                   </button>
                 </div>
               </div>
@@ -295,7 +297,7 @@ export function DataIntegrationWizard({ isOpen, onClose, onRefreshData }) {
               {/* Tải tệp tin lên (chỉ hiển thị khi là IMPORT) */}
               {action === INTEGRATION_ACTIONS.IMPORT && (
                 <div className="space-y-2">
-                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Tải tệp tin</label>
+                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{t('wizard.upload.sectionLabel')}</label>
                   <div 
                     onDragOver={handleDragOver}
                     onDrop={handleDrop}
@@ -310,8 +312,8 @@ export function DataIntegrationWizard({ isOpen, onClose, onRefreshData }) {
                       className="hidden" 
                     />
                     <Upload size={24} className="text-gray-400 group-hover:text-black transition-colors" />
-                    <span className="text-xs font-bold text-gray-700">Kéo & thả hoặc click để chọn file</span>
-                    <span className="text-[10px] text-gray-400 font-medium">Hỗ trợ tệp *.{format.toLowerCase()} mẫu tiêu chuẩn</span>
+                    <span className="text-xs font-bold text-gray-700">{t('wizard.upload.dragHint')}</span>
+                    <span className="text-[10px] text-gray-400 font-medium">{t('wizard.upload.formatHint', { ext: format.toLowerCase() })}</span>
                   </div>
 
                   {selectedFile && (
@@ -333,18 +335,18 @@ export function DataIntegrationWizard({ isOpen, onClose, onRefreshData }) {
                 <div className="space-y-4">
                   <div className="flex items-center gap-3 bg-gray-50/60 p-4 rounded-2xl border border-gray-100">
                     <div className="flex-1">
-                      <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Trạng thái tệp</span>
+                      <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{t('wizard.validation.fileStatus')}</span>
                       <h4 className="text-xs font-black text-gray-900 mt-0.5">{selectedFile?.name}</h4>
                     </div>
                     <div className="flex gap-2">
                       <span className="px-3 py-1 bg-green-50 text-green-700 border border-green-100 rounded-full text-[10px] font-bold flex items-center gap-1">
                         <CheckCircle2 size={10} />
-                        {parsingResult?.stats.valid} dòng hợp lệ
+                        {t('wizard.validation.validRows', { n: parsingResult?.stats.valid })}
                       </span>
                       {parsingResult?.stats.failed > 0 && (
                         <span className="px-3 py-1 bg-yellow-50 text-yellow-700 border border-yellow-100 rounded-full text-[10px] font-bold flex items-center gap-1">
                           <AlertTriangle size={10} />
-                          {parsingResult?.stats.failed} dòng bị lỗi
+                          {t('wizard.validation.failedRows', { n: parsingResult?.stats.failed })}
                         </span>
                       )}
                     </div>
@@ -353,11 +355,13 @@ export function DataIntegrationWizard({ isOpen, onClose, onRefreshData }) {
                   {/* Hiển thị lỗi phân tích nếu có */}
                   {parsingResult?.errors && parsingResult.errors.length > 0 && (
                     <div className="space-y-2">
-                      <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Danh sách dòng bị lỗi/bỏ qua</label>
+                      <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{t('wizard.validation.errorList')}</label>
                       <div className="max-h-[180px] overflow-y-auto border border-yellow-100 bg-yellow-50/30 rounded-xl divide-y divide-yellow-100/50">
                         {parsingResult.errors.map((err, idx) => (
                           <div key={idx} className="p-3 text-[11px] flex flex-col gap-0.5">
-                            <span className="font-bold text-gray-800">Dòng {err.row}: {err.title}</span>
+                            <span className="font-bold text-gray-800">
+                              {t('wizard.validation.errorRow', { row: err.row, title: err.title })}
+                            </span>
                             <span className="text-red-500 font-medium">{err.error}</span>
                           </div>
                         ))}
@@ -366,18 +370,18 @@ export function DataIntegrationWizard({ isOpen, onClose, onRefreshData }) {
                   )}
 
                   <div className="bg-blue-50 border border-blue-100 p-4 rounded-2xl text-blue-800 text-[11px] leading-relaxed">
-                    <p className="font-bold">💡 Hướng dẫn kiểm tra:</p>
-                    <p className="mt-1 font-medium">Bấm **Tiếp tục** để kiểm tra và xem trước nội dung trực quan từng bài viết trước khi chính thức áp dụng vào Lịch biểu của bạn.</p>
+                    <p className="font-bold">{t('wizard.validation.guideTitle')}</p>
+                    <p className="mt-1 font-medium">{t('wizard.validation.guideDesc')}</p>
                   </div>
                 </div>
               ) : (
                 // Cấu hình lọc khoảng ngày (EXPORT)
                 <div className="space-y-4">
-                  <h4 className="text-xs font-black text-gray-900">Chọn khoảng thời gian xuất lịch biểu</h4>
+                  <h4 className="text-xs font-black text-gray-900">{t('wizard.dateRange.title')}</h4>
                   
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-1.5 text-left">
-                      <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Từ ngày</label>
+                      <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{t('wizard.dateRange.fromLabel')}</label>
                       <input 
                         type="date" 
                         value={startDate}
@@ -387,7 +391,7 @@ export function DataIntegrationWizard({ isOpen, onClose, onRefreshData }) {
                     </div>
 
                     <div className="space-y-1.5 text-left">
-                      <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Đến ngày</label>
+                      <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{t('wizard.dateRange.toLabel')}</label>
                       <input 
                         type="date" 
                         value={endDate}
@@ -398,7 +402,7 @@ export function DataIntegrationWizard({ isOpen, onClose, onRefreshData }) {
                   </div>
 
                   <div className="bg-gray-50 border border-gray-100 p-4 rounded-2xl text-gray-500 text-[11px] leading-relaxed font-medium">
-                    Bài viết trong khoảng thời gian này sẽ được truy vấn trực tiếp từ cơ sở dữ liệu để biên dịch tệp tải về tương thích.
+                    {t('wizard.dateRange.hint')}
                   </div>
                 </div>
               )}
@@ -412,19 +416,21 @@ export function DataIntegrationWizard({ isOpen, onClose, onRefreshData }) {
                 // Bảng xem trước danh sách bài viết sẽ Import
                 <div className="space-y-3">
                   <div className="flex justify-between items-center">
-                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Xem trước danh sách bài viết ({parsingResult?.items.length})</label>
-                    <span className="text-[10px] font-bold text-gray-400">Xem trước giúp đảm bảo định dạng khớp chính xác</span>
+                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">
+                      {t('wizard.previewImport.label', { n: parsingResult?.items.length })}
+                    </label>
+                    <span className="text-[10px] font-bold text-gray-400">{t('wizard.previewImport.sublabel')}</span>
                   </div>
                   
                   <div className="border border-gray-100 rounded-2xl overflow-hidden max-h-[300px] overflow-y-auto">
                     <table className="w-full text-left border-collapse">
                       <thead>
                         <tr className="bg-gray-50 border-b border-gray-100 text-[9px] font-black text-gray-400 uppercase tracking-wider">
-                          <th className="p-3 w-10 text-center">STT</th>
-                          <th className="p-3 w-14">Media</th>
-                          <th className="p-3">Bài viết</th>
-                          <th className="p-3 w-28">Nền tảng</th>
-                          <th className="p-3 w-36">Thời gian lên lịch</th>
+                          <th className="p-3 w-10 text-center">{t('wizard.previewImport.colIndex')}</th>
+                          <th className="p-3 w-14">{t('wizard.previewImport.colMedia')}</th>
+                          <th className="p-3">{t('wizard.previewImport.colPost')}</th>
+                          <th className="p-3 w-28">{t('wizard.previewImport.colPlatform')}</th>
+                          <th className="p-3 w-36">{t('wizard.previewImport.colScheduled')}</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-gray-50 text-[11px] font-bold text-gray-700">
@@ -442,7 +448,7 @@ export function DataIntegrationWizard({ isOpen, onClose, onRefreshData }) {
                             </td>
                             <td className="p-3">
                               <div className="max-w-[200px] truncate" title={item.caption}>
-                                {item.title || item.caption || 'Bài viết nhập'}
+                                {item.title || item.caption || t('wizard.previewImport.noMedia')}
                               </div>
                               {item.caption && (
                                 <div className="text-[9px] text-gray-400 font-medium truncate max-w-[200px]">
@@ -461,8 +467,8 @@ export function DataIntegrationWizard({ isOpen, onClose, onRefreshData }) {
                             </td>
                             <td className="p-3 text-[10px] text-gray-500 font-medium">
                               {item.scheduledAt 
-                                ? new Date(item.scheduledAt).toLocaleString('vi-VN', { dateStyle: 'short', timeStyle: 'short' })
-                                : 'Lưu bản nháp'}
+                                ? new Date(item.scheduledAt).toLocaleString(t('common:langLocale') || 'vi-VN', { dateStyle: 'short', timeStyle: 'short' })
+                                : t('wizard.previewImport.draft')}
                             </td>
                           </tr>
                         ))}
@@ -475,23 +481,25 @@ export function DataIntegrationWizard({ isOpen, onClose, onRefreshData }) {
                 <div className="space-y-4">
                   <div className="bg-gray-50/60 border border-gray-100 rounded-2xl p-5 space-y-3">
                     <div className="flex justify-between items-center text-xs">
-                      <span className="font-medium text-gray-400">Hình thức hành động</span>
-                      <span className="font-black text-gray-900">Xuất tệp dữ liệu (Export)</span>
+                      <span className="font-medium text-gray-400">{t('wizard.previewExport.action')}</span>
+                      <span className="font-black text-gray-900">{t('wizard.previewExport.actionValue')}</span>
                     </div>
 
                     <div className="flex justify-between items-center text-xs">
-                      <span className="font-medium text-gray-400">Định dạng đầu ra</span>
-                      <span className="font-black text-gray-900">{format === INTEGRATION_FORMATS.CSV ? 'Bảng tính CSV (.csv)' : 'Lịch iCalendar (.ics)'}</span>
+                      <span className="font-medium text-gray-400">{t('wizard.previewExport.format')}</span>
+                      <span className="font-black text-gray-900">
+                        {format === INTEGRATION_FORMATS.CSV ? t('wizard.formats.csvLabel') : t('wizard.formats.icsLabel')}
+                      </span>
                     </div>
 
                     <div className="flex justify-between items-center text-xs">
-                      <span className="font-medium text-gray-400">Phạm vi thời gian</span>
+                      <span className="font-medium text-gray-400">{t('wizard.previewExport.dateRange')}</span>
                       <span className="font-black text-gray-900">{startDate} → {endDate}</span>
                     </div>
                   </div>
 
                   <div className="bg-blue-50 border border-blue-100 p-4 rounded-2xl text-blue-800 text-[11px] leading-relaxed">
-                    Tệp của bạn sẽ được tự động biên dịch, ký số mã hóa và sẵn sàng tải về trong giây lát sau khi bấm xác nhận.
+                    {t('wizard.previewExport.hint')}
                   </div>
                 </div>
               )}
@@ -511,7 +519,7 @@ export function DataIntegrationWizard({ isOpen, onClose, onRefreshData }) {
                 className="px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-xs font-bold text-gray-700 hover:bg-gray-50 flex items-center gap-1.5 transition-all cursor-pointer disabled:opacity-50"
               >
                 <ChevronLeft size={14} />
-                <span>Quay lại</span>
+                <span>{t('wizard.buttons.back')}</span>
               </button>
             )}
           </div>
@@ -523,7 +531,7 @@ export function DataIntegrationWizard({ isOpen, onClose, onRefreshData }) {
               disabled={isProcessing}
               className="px-4 py-2.5 bg-white border border-gray-200 hover:border-gray-300 rounded-xl text-xs font-bold text-gray-500 hover:text-gray-700 transition-all cursor-pointer disabled:opacity-50"
             >
-              Hủy bỏ
+              {t('wizard.buttons.cancel')}
             </button>
 
             {step < 3 ? (
@@ -536,11 +544,11 @@ export function DataIntegrationWizard({ isOpen, onClose, onRefreshData }) {
                 {isProcessing ? (
                   <>
                     <Loader2 size={14} className="animate-spin" />
-                    <span>Đang xử lý...</span>
+                    <span>{t('wizard.validation.processing')}</span>
                   </>
                 ) : (
                   <>
-                    <span>Tiếp tục</span>
+                    <span>{t('wizard.buttons.continue')}</span>
                     <ChevronRight size={14} />
                   </>
                 )}
@@ -555,19 +563,19 @@ export function DataIntegrationWizard({ isOpen, onClose, onRefreshData }) {
                 {isProcessing ? (
                   <>
                     <Loader2 size={14} className="animate-spin" />
-                    <span>Đang xử lý...</span>
+                    <span>{t('wizard.validation.processing')}</span>
                   </>
                 ) : (
                   <>
                     {action === INTEGRATION_ACTIONS.IMPORT ? (
                       <>
                         <Upload size={14} />
-                        <span>Nhập dữ liệu</span>
+                        <span>{t('wizard.buttons.importConfirm')}</span>
                       </>
                     ) : (
                       <>
                         <Download size={14} />
-                        <span>Tải về file</span>
+                        <span>{t('wizard.buttons.exportConfirm')}</span>
                       </>
                     )}
                   </>

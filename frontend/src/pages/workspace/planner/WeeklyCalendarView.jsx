@@ -7,6 +7,7 @@ import { useBrand } from "../../../context/BrandContext";
 import { useGoogleDriveImport } from "../../../hooks/useGoogleDriveImport";
 import { toast } from "sonner";
 import postService from "../../../services/post.service";
+import { useTranslation } from "react-i18next";
 
 // Import SOLID Subcomponents
 import { UpgradeBanner } from "./components/UpgradeBanner";
@@ -15,12 +16,12 @@ import { WeeklyGrid } from "./components/WeeklyGrid";
 import { SidebarIntegrations } from "./components/SidebarIntegrations";
 import { ImportOverlay } from "./components/ImportOverlay";
 import { MonthlyGrid } from "./components/MonthlyGrid";
-import { IcsImportModal } from "./components/IcsImportModal";
 
 import { useBrandPermission } from "../../../hooks/useBrandPermission";
 import { PostAnalyticsDetailModal } from "../../../components/workspace/PostAnalyticsDetailModal";
 
 export function WeeklyCalendarView() {
+  const { t } = useTranslation("planner");
   const { hasPermission } = useBrandPermission();
   const hasCreatePermission = hasPermission('CREATE_POSTS');
 
@@ -38,7 +39,7 @@ export function WeeklyCalendarView() {
 
   const handleDuplicatePost = (post) => {
     if (!hasCreatePermission) {
-      toast.error("You do not have permission to create posts");
+      toast.error(t("weeklyCalendar.noPermissionCreate"));
       return;
     }
     openPostCreator({
@@ -50,7 +51,6 @@ export function WeeklyCalendarView() {
   const { activeBrand } = useBrand();
   const [postData, setPostData] = useState([]);
   const [eventsData, setEventsData] = useState([]);
-  const [isIcsModalOpen, setIsIcsModalOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [showSidebar, setShowSidebar] = useState(false);
   const [rowHeight, setRowHeight] = useState(100);
@@ -171,7 +171,7 @@ export function WeeklyCalendarView() {
       setPostData(postsRes.data.data || []);
       setEventsData(eventsRes.data.data || []);
     } catch (e) {
-      toast.error("Failed to load calendar data");
+      toast.error(t("weeklyCalendar.loadCalendarFail"));
     } finally {
       setLoading(false);
     }
@@ -247,7 +247,7 @@ export function WeeklyCalendarView() {
 
   const handleCellClick = (date, hour) => {
     if (!hasCreatePermission) {
-      toast.error("You do not have permission to create posts");
+      toast.error(t("weeklyCalendar.noPermissionCreate"));
       return;
     }
     // Open post creator at specific date and hour
@@ -288,13 +288,12 @@ export function WeeklyCalendarView() {
         onBestTimePlatformChange={setBestTimePlatform}
         calendarViewMode={calendarViewMode}
         onCalendarViewModeChange={setCalendarViewMode}
-        onImportIcsClick={() => setIsIcsModalOpen(true)}
       />
 
       {loading && (
         <div className="flex items-center justify-center py-4 no-print">
           <Loader2 className="animate-spin text-[#0A0A0A] mr-2" size={18} />
-          <span className="text-xs font-bold text-gray-500 uppercase tracking-widest">Loading calendar posts...</span>
+          <span className="text-xs font-bold text-gray-500 uppercase tracking-widest">{t("weeklyCalendar.loadingPosts")}</span>
         </div>
       )}
 
@@ -340,14 +339,6 @@ export function WeeklyCalendarView() {
 
       {/* Google Drive Import Backdrop Overlay */}
       <ImportOverlay isOpen={isImporting} />
-      
-      {/* ICS Google Calendar Import Modal */}
-      <IcsImportModal
-        isOpen={isIcsModalOpen}
-        onClose={() => setIsIcsModalOpen(false)}
-        activeBrand={activeBrand}
-        onImportSuccess={fetchPosts}
-      />
 
       <PostAnalyticsDetailModal
         isOpen={analyticsModal.open}
