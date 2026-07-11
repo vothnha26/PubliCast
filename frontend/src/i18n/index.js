@@ -14,6 +14,10 @@ import enManage from './locales/en/manage.json';
 import enErrors from './locales/en/errors.json';
 import enMedialibrary from './locales/en/medialibrary.json';
 import enNotifications from './locales/en/notifications.json';
+import enHashtag from './locales/en/hashtag.json';
+import enSmartlinks from './locales/en/smartlinks.json';
+import enCompetitors from './locales/en/competitors.json';
+import enReports from './locales/en/reports.json';
 
 // Import all namespaces for VI
 import viCommon from './locales/vi/common.json';
@@ -26,6 +30,10 @@ import viManage from './locales/vi/manage.json';
 import viErrors from './locales/vi/errors.json';
 import viMedialibrary from './locales/vi/medialibrary.json';
 import viNotifications from './locales/vi/notifications.json';
+import viHashtag from './locales/vi/hashtag.json';
+import viSmartlinks from './locales/vi/smartlinks.json';
+import viCompetitors from './locales/vi/competitors.json';
+import viReports from './locales/vi/reports.json';
 
 const savedLanguage = localStorage.getItem(STORAGE_KEYS.LANGUAGE) || LANGUAGE_CODES.EN;
 
@@ -44,6 +52,10 @@ i18n
         errors: enErrors,
         medialibrary: enMedialibrary,
         notifications: enNotifications,
+        hashtag: enHashtag,
+        smartlinks: enSmartlinks,
+        competitors: enCompetitors,
+        reports: enReports,
       },
       vi: {
         common: viCommon,
@@ -56,6 +68,10 @@ i18n
         errors: viErrors,
         medialibrary: viMedialibrary,
         notifications: viNotifications,
+        hashtag: viHashtag,
+        smartlinks: viSmartlinks,
+        competitors: viCompetitors,
+        reports: viReports,
       },
     },
     lng: savedLanguage,

@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
 import { X, Plus, Hash, Layers, BarChart2, Compass, Trash2, Globe, Sparkles, AlertCircle } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import apiService from "../../services/api";
 import { useBrand } from "../../context/BrandContext";
@@ -11,6 +12,7 @@ const categories = ["Instagram", "TikTok", "General"];
 const platformColors = { YT: "#FF0000", IG: "#E1306C", TK: "#000000", LI: "#0A66C2", X: "#0A0A0A" };
 
 export function HashtagManager() {
+  const { t } = useTranslation("hashtag");
   const { activeBrand } = useBrand();
   const confirm = useConfirm();
   const location = useLocation();
@@ -46,7 +48,7 @@ export function HashtagManager() {
       setHashtagSets(res.data.sets || []);
       setTrackedHashtags(res.data.trackers || []);
     } catch (err) {
-      toast.error("Không thể tải dữ liệu Hashtags.");
+      toast.error(t("toasts.loadError"));
       console.error(err);
     } finally {
       if (!silent) setLoading(false);
@@ -68,7 +70,7 @@ export function HashtagManager() {
       const res = await apiService.get(`/hashtags/trending?platform=${platformParam}&limit=20`);
       setTrendingHashtags(res.data.trending || []);
     } catch (err) {
-      setTrendingError("Không thể tải danh sách hashtag đang thịnh hành.");
+      setTrendingError(t("toasts.trendingError"));
       console.error(err);
     } finally {
       setTrendingLoading(false);
@@ -98,7 +100,7 @@ export function HashtagManager() {
   const handleCreateSet = async (e) => {
     e.preventDefault();
     if (!setName || setTags.length === 0) {
-      toast.warning("Vui lòng điền tên bộ hashtag và thêm ít nhất một thẻ tag.");
+      toast.warning(t("toasts.validationEmpty"));
       return;
     }
     try {
@@ -109,13 +111,13 @@ export function HashtagManager() {
         targetPlatforms
       };
       await apiService.post("/hashtags/sets", payload);
-      toast.success("Đã tạo bộ hashtag thành công!");
+      toast.success(t("toasts.createSuccess"));
       setIsCreateOpen(false);
       setSetName("");
       setSetTags([]);
       loadData(true);
     } catch (error) {
-      toast.error(error.message || "Tạo bộ hashtag thất bại.");
+      toast.error(error.message || t("toasts.createError"));
     }
   };
 
@@ -129,29 +131,29 @@ export function HashtagManager() {
         targetPlatforms: selectedSet.targetPlatforms
       };
       await apiService.put(`/hashtags/sets/${selectedSet.id}`, payload);
-      toast.success("Cập nhật bộ hashtag thành công!");
+      toast.success(t("toasts.updateSuccess"));
       setSelectedSet(null);
       loadData(true);
     } catch (error) {
-      toast.error(error.message || "Cập nhật thất bại.");
+      toast.error(error.message || t("toasts.updateError"));
     }
   };
 
   // Delete Set Action
   const handleDeleteSet = async (setId) => {
     const isConfirmed = await confirm({
-      title: "Xóa bộ Hashtag",
-      description: "Bạn có chắc chắn muốn xóa bộ hashtag này?",
-      confirmText: "Xóa",
-      cancelText: "Hủy"
+      title: t("toasts.deleteConfirmTitle"),
+      description: t("toasts.deleteConfirmDesc"),
+      confirmText: t("toasts.deleteConfirmBtn"),
+      cancelText: t("toasts.cancelBtn")
     });
     if (!isConfirmed) return;
     try {
       await apiService.delete(`/hashtags/sets/${setId}`);
-      toast.success("Đã xóa bộ hashtag thành công.");
+      toast.success(t("toasts.deleteSuccess"));
       loadData(true);
     } catch (error) {
-      toast.error(error.message || "Xóa thất bại.");
+      toast.error(error.message || t("toasts.deleteError"));
     }
   };
 
@@ -178,10 +180,10 @@ export function HashtagManager() {
   const handleUntrackTag = async (trackerId) => {
     try {
       await apiService.delete(`/hashtags/track/${trackerId}`);
-      toast.success("Đã ngưng theo dõi hashtag.");
+      toast.success(t("toasts.untrackSuccess"));
       loadData(true);
     } catch (error) {
-      toast.error("Không thể ngưng theo dõi tag.");
+      toast.error(t("toasts.untrackError"));
     }
   };
 
@@ -194,10 +196,10 @@ export function HashtagManager() {
         hashtag: tagText,
         platform: "IG"
       });
-      toast.success(`Đang theo dõi tag: ${tagText}`);
+      toast.success(t("toasts.trackSuccess", { tag: tagText }));
       loadData(true);
     } catch (error) {
-      toast.error(error.message || "Không thể theo dõi tag.");
+      toast.error(error.message || t("toasts.trackError"));
     }
   };
 
@@ -208,25 +210,25 @@ export function HashtagManager() {
         <div>
           <h1 className="text-xl font-black text-gray-900 tracking-tight flex items-center gap-2">
             <Hash className="text-blue-500" size={24} />
-            Hashtag Manager & Analytics
+            {t("header.title")}
           </h1>
-          <p className="text-xs text-gray-400 mt-1">Lưu trữ bộ hashtag thương hiệu và kiểm tra phân tích reach thực tế.</p>
+          <p className="text-xs text-gray-400 mt-1">{t("header.subtitle")}</p>
         </div>
         <button 
           onClick={() => setIsCreateOpen(true)}
           className="px-5 py-2.5 rounded-xl bg-black text-white text-xs font-bold shadow-md hover:bg-gray-800 transition-all flex items-center gap-1 cursor-pointer"
         >
           <Plus size={14} />
-          CREATE SET
+          {t("header.createBtn")}
         </button>
       </div>
 
       {/* Internal Tabs */}
       <div className="px-10 bg-white border-b border-gray-100 flex gap-8">
         {[
-          { id: "sets", label: "Bộ Hashtag (My Sets)", icon: <Layers size={14} /> },
-          { id: "discover", label: "Khám phá (Discover Trend)", icon: <Compass size={14} /> },
-          { id: "stats", label: "Hiệu suất (Performance)", icon: <BarChart2 size={14} /> },
+          { id: "sets", label: t("tabs.sets"), icon: <Layers size={14} /> },
+          { id: "discover", label: t("tabs.discover"), icon: <Compass size={14} /> },
+          { id: "stats", label: t("tabs.stats"), icon: <BarChart2 size={14} /> },
         ].map(tab => (
           <button
             key={tab.id}
@@ -246,7 +248,7 @@ export function HashtagManager() {
         {loading ? (
           <div className="flex items-center justify-center py-20 text-xs text-gray-400 font-bold gap-2">
             <div className="w-5 h-5 border-2 border-t-transparent border-black rounded-full animate-spin" />
-            Đang tải dữ liệu...
+            Loading...
           </div>
         ) : (
           <>
@@ -291,7 +293,7 @@ export function HashtagManager() {
                           })}
                           className="py-1.5 px-3 rounded-lg bg-gray-50 text-gray-600 text-[10px] font-bold hover:bg-black hover:text-white transition-all cursor-pointer border border-gray-150"
                         >
-                          Sửa Set
+                          {t("sets.editBtn")}
                         </button>
                       </div>
                     </div>
@@ -306,7 +308,7 @@ export function HashtagManager() {
                    <div className="w-11 h-11 rounded-2xl bg-gray-50 border border-gray-100 flex items-center justify-center text-gray-400 group-hover:scale-110 transition-transform">
                       <Plus size={20} />
                    </div>
-                   <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">Create New Set</span>
+                   <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">{t("sets.createCard")}</span>
                 </div>
               </div>
             )}
@@ -346,13 +348,13 @@ export function HashtagManager() {
                         onClick={() => loadTrendingHashtags(activeCategory)} 
                         className="px-4 py-2 bg-black text-white text-[10px] font-bold rounded-lg cursor-pointer"
                       >
-                        Tải lại
+                        {t("discover.retryBtn")}
                       </button>
                     </div>
                   ) : trendingHashtags.length === 0 ? (
                     <div className="col-span-full bg-white rounded-2xl p-10 border border-gray-150 shadow-xs flex flex-col items-center justify-center text-center gap-2">
                       <Compass size={24} className="text-gray-300" />
-                      <span className="text-xs text-gray-500 font-bold">Không tìm thấy hashtag nào thịnh hành.</span>
+                      <span className="text-xs text-gray-500 font-bold">{t("discover.noResults")}</span>
                     </div>
                   ) : (
                     trendingHashtags.map((tag) => (
@@ -363,18 +365,18 @@ export function HashtagManager() {
                             {tag.hashtag}
                           </div>
                           <div className="text-[9px] text-gray-400 font-bold uppercase mt-1">
-                            {tag.postsCount ? (tag.postsCount / 1000).toFixed(0) + "K" : "0"} posts
+                            {tag.postsCount ? (tag.postsCount / 1000).toFixed(0) + "K" : "0"} {t("discover.posts")}
                           </div>
                         </div>
                         <div className="flex items-center justify-between pt-3 border-t border-gray-50">
                           <span className={`text-[9px] font-extrabold ${tag.growthRate > 10 ? "text-green-500" : "text-gray-400"}`}>
-                            {tag.growthRate > 10 ? `TRENDING ↑ ${tag.growthRate}%` : "STABLE →"}
+                            {tag.growthRate > 10 ? t("discover.trending", { rate: tag.growthRate }) : t("discover.stable")}
                           </span>
                           <button 
                             onClick={() => handleTrackNewTag(tag.hashtag)}
                             className="text-[9px] font-bold text-blue-600 hover:underline cursor-pointer"
                           >
-                            + Track Tag
+                            {t("discover.trackBtn")}
                           </button>
                         </div>
                       </div>
@@ -389,15 +391,15 @@ export function HashtagManager() {
                 {trackedHashtags.length === 0 ? (
                   <div className="bg-white rounded-2xl p-10 border border-gray-150 shadow-xs flex flex-col items-center justify-center text-center gap-2">
                     <AlertCircle size={24} className="text-gray-300" />
-                    <span className="text-xs text-gray-500 font-bold">Chưa theo dõi thẻ phân tích nào</span>
+                    <span className="text-xs text-gray-500 font-bold">{t("stats.empty.title")}</span>
                     <p className="text-[10px] text-gray-400 max-w-[320px]">
-                      Vào tab Khám phá và chọn bấm "+ Track Tag" để thêm thẻ hashtag phân tích reach và số bài đăng thực tế.
+                      {t("stats.empty.desc")}
                     </p>
                   </div>
                 ) : (
                   <>
                     <div className="bg-white rounded-2xl p-6 border border-gray-150 shadow-xs">
-                      <h3 className="text-xs font-bold text-gray-800 mb-6 uppercase tracking-wider">Reach Performance of Tracked Tags</h3>
+                      <h3 className="text-xs font-bold text-gray-800 mb-6 uppercase tracking-wider">{t("stats.chartTitle")}</h3>
                       <ResponsiveContainer width="100%" height={240}>
                         <BarChart data={trackedHashtags.map(t => ({ tag: t.hashtag, reach: t.totalReach || 0 }))}>
                           <XAxis dataKey="tag" tick={{ fontSize: 10, fill: "#9CA3AF", fontWeight: 700 }} axisLine={false} tickLine={false} />
@@ -412,8 +414,14 @@ export function HashtagManager() {
                       <table className="w-full text-left">
                         <thead>
                           <tr className="bg-slate-50 border-b border-gray-150">
-                            {["Hashtag", "Usage Frequency", "Avg Reach", "Platform", ""].map((h) => (
-                              <th key={h} className="px-6 py-3.5 text-[9px] font-bold text-gray-400 uppercase tracking-widest">{h}</th>
+                            {[
+                              t("stats.tableHeaders.hashtag"),
+                              t("stats.tableHeaders.frequency"),
+                              t("stats.tableHeaders.reach"),
+                              t("stats.tableHeaders.platform"),
+                              ""
+                            ].map((h, i) => (
+                              <th key={i} className="px-6 py-3.5 text-[9px] font-bold text-gray-400 uppercase tracking-widest">{h}</th>
                             ))}
                           </tr>
                         </thead>
@@ -421,8 +429,8 @@ export function HashtagManager() {
                           {trackedHashtags.map((row) => (
                             <tr key={row.id} className="hover:bg-slate-50/50 transition-colors">
                               <td className="px-6 py-4 text-xs font-bold text-gray-900">{row.hashtag}</td>
-                              <td className="px-6 py-4 text-xs text-gray-400 font-semibold">{row.postsLast24h} posts/24h</td>
-                              <td className="px-6 py-4 text-xs font-bold text-gray-900">{(row.totalReach / 1000).toFixed(1)}K reach</td>
+                              <td className="px-6 py-4 text-xs text-gray-400 font-semibold">{row.postsLast24h} {t("stats.postsPerDay")}</td>
+                              <td className="px-6 py-4 text-xs font-bold text-gray-900">{(row.totalReach / 1000).toFixed(1)}{t("stats.reachSuffix")}</td>
                               <td className="px-6 py-4">
                                 <span className="px-2.5 py-0.5 rounded bg-pink-50 text-[#E1306C] text-[9px] font-bold uppercase tracking-tight">Instagram</span>
                               </td>
@@ -431,7 +439,7 @@ export function HashtagManager() {
                                    onClick={() => handleUntrackTag(row.id)}
                                    className="text-red-500 text-[10px] font-bold hover:underline cursor-pointer"
                                  >
-                                   Ngừng Track
+                                   {t("stats.untrackBtn")}
                                  </button>
                               </td>
                             </tr>
@@ -455,13 +463,13 @@ export function HashtagManager() {
               <div className="p-5 border-b border-gray-150 flex items-center justify-between">
                  <h3 className="font-bold text-sm text-gray-900 flex items-center gap-1.5">
                    <Sparkles className="text-indigo-500" size={16} />
-                   Edit Set: {selectedSet.name}
+                   {t("editor.editTitle", { name: selectedSet.name })}
                  </h3>
                  <button onClick={() => setSelectedSet(null)} className="p-2 hover:bg-gray-100 rounded-full transition-all cursor-pointer"><X size={18} /></button>
               </div>
               <div className="p-6 flex-1 overflow-y-auto space-y-5">
                  <div>
-                    <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5 block">Tên bộ</label>
+                    <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5 block">{t("editor.nameLabel")}</label>
                     <input 
                       type="text"
                       value={selectedSet.name}
@@ -470,12 +478,12 @@ export function HashtagManager() {
                     />
                  </div>
                  <div>
-                    <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5 block">Hashtags</label>
+                    <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5 block">{t("editor.hashtagsLabel")}</label>
                     <div className="flex flex-wrap gap-1.5 p-3 rounded-xl bg-slate-50 border border-gray-150 min-h-[90px] mb-3">
-                       {selectedSet.tags.map(t => (
-                         <span key={t} className="px-2.5 py-1 bg-white rounded-lg text-[10px] font-bold flex items-center gap-1.5 border border-gray-200">
-                            {t} 
-                            <button onClick={() => setSelectedSet({ ...selectedSet, tags: selectedSet.tags.filter(x => x !== t) })} className="hover:text-red-500"><X size={11} /></button>
+                       {selectedSet.tags.map(t_node => (
+                         <span key={t_node} className="px-2.5 py-1 bg-white rounded-lg text-[10px] font-bold flex items-center gap-1.5 border border-gray-200">
+                            {t_node} 
+                            <button onClick={() => setSelectedSet({ ...selectedSet, tags: selectedSet.tags.filter(x => x !== t_node) })} className="hover:text-red-500"><X size={11} /></button>
                          </span>
                        ))}
                     </div>
@@ -483,7 +491,7 @@ export function HashtagManager() {
                     <div className="flex gap-2">
                       <input 
                         type="text"
-                        placeholder="Thêm hashtag mới..."
+                        placeholder={t("editor.addPlaceholder")}
                         value={newTagInput}
                         onChange={(e) => setNewTagInput(e.target.value)}
                         onKeyDown={addTagToForm}
@@ -493,14 +501,14 @@ export function HashtagManager() {
                         onClick={addTagToForm}
                         className="px-3.5 bg-black hover:bg-gray-800 text-white rounded-xl text-xs font-bold transition-all cursor-pointer"
                       >
-                        Thêm
+                        {t("editor.addBtn")}
                       </button>
                     </div>
                  </div>
               </div>
               <div className="p-5 bg-slate-50 border-t border-gray-150 flex gap-2">
-                 <button onClick={() => setSelectedSet(null)} className="flex-1 py-2.5 rounded-xl bg-white border border-gray-250 text-gray-700 text-xs font-bold transition-all cursor-pointer">Hủy</button>
-                 <button onClick={handleUpdateSet} className="flex-1 py-2.5 rounded-xl bg-black text-white text-xs font-bold hover:bg-gray-800 transition-all cursor-pointer shadow-sm">Lưu thay đổi</button>
+                 <button onClick={() => setSelectedSet(null)} className="flex-1 py-2.5 rounded-xl bg-white border border-gray-250 text-gray-700 text-xs font-bold transition-all cursor-pointer">{t("editor.cancelBtn")}</button>
+                 <button onClick={handleUpdateSet} className="flex-1 py-2.5 rounded-xl bg-black text-white text-xs font-bold hover:bg-gray-800 transition-all cursor-pointer shadow-sm">{t("editor.saveBtn")}</button>
               </div>
            </div>
         </div>
@@ -514,28 +522,28 @@ export function HashtagManager() {
               <div className="p-5 border-b border-gray-150 flex items-center justify-between">
                  <h3 className="font-bold text-sm text-gray-900 flex items-center gap-1.5">
                    <Plus className="text-blue-500" size={16} />
-                   Tạo bộ Hashtag mới
+                   {t("editor.createTitle")}
                  </h3>
                  <button onClick={() => setIsCreateOpen(false)} className="p-2 hover:bg-gray-100 rounded-full transition-all cursor-pointer"><X size={18} /></button>
               </div>
               <div className="p-6 flex-1 overflow-y-auto space-y-5">
                  <div>
-                    <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5 block">Tên bộ</label>
+                    <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5 block">{t("editor.nameLabel")}</label>
                     <input 
                       type="text"
-                      placeholder="e.g. Technology Trends"
+                      placeholder={t("editor.namePlaceholder")}
                       value={setName}
                       onChange={(e) => setSetName(e.target.value)}
                       className="w-full bg-slate-50 border border-gray-200 rounded-xl px-3 py-2 text-xs font-semibold outline-none focus:border-gray-400"
                     />
                  </div>
                  <div>
-                    <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5 block">Hashtags</label>
+                    <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5 block">{t("editor.hashtagsLabel")}</label>
                     <div className="flex flex-wrap gap-1.5 p-3 rounded-xl bg-slate-50 border border-gray-150 min-h-[90px] mb-3">
-                       {setTags.map(t => (
-                         <span key={t} className="px-2.5 py-1 bg-white rounded-lg text-[10px] font-bold flex items-center gap-1.5 border border-gray-200">
-                            {t} 
-                            <button onClick={() => setSetTags(prev => prev.filter(x => x !== t))} className="hover:text-red-500"><X size={11} /></button>
+                       {setTags.map(t_node => (
+                         <span key={t_node} className="px-2.5 py-1 bg-white rounded-lg text-[10px] font-bold flex items-center gap-1.5 border border-gray-200">
+                            {t_node} 
+                            <button onClick={() => setSetTags(prev => prev.filter(x => x !== t_node))} className="hover:text-red-500"><X size={11} /></button>
                          </span>
                        ))}
                     </div>
@@ -543,7 +551,7 @@ export function HashtagManager() {
                     <div className="flex gap-2">
                       <input 
                         type="text"
-                        placeholder="Thêm hashtag mới..."
+                        placeholder={t("editor.addPlaceholder")}
                         value={newTagInput}
                         onChange={(e) => setNewTagInput(e.target.value)}
                         onKeyDown={addTagToForm}
@@ -553,14 +561,14 @@ export function HashtagManager() {
                         onClick={addTagToForm}
                         className="px-3.5 bg-black hover:bg-gray-800 text-white rounded-xl text-xs font-bold transition-all cursor-pointer"
                       >
-                        Thêm
+                        {t("editor.addBtn")}
                       </button>
                     </div>
                  </div>
               </div>
               <div className="p-5 bg-slate-50 border-t border-gray-150 flex gap-2">
-                 <button onClick={() => setIsCreateOpen(false)} className="flex-1 py-2.5 rounded-xl bg-white border border-gray-250 text-gray-700 text-xs font-bold transition-all cursor-pointer">Hủy</button>
-                 <button onClick={handleCreateSet} className="flex-1 py-2.5 rounded-xl bg-black text-white text-xs font-bold hover:bg-gray-800 transition-all cursor-pointer shadow-sm">Tạo bộ</button>
+                 <button onClick={() => setIsCreateOpen(false)} className="flex-1 py-2.5 rounded-xl bg-white border border-gray-250 text-gray-700 text-xs font-bold transition-all cursor-pointer">{t("editor.cancelBtn")}</button>
+                 <button onClick={handleCreateSet} className="flex-1 py-2.5 rounded-xl bg-black text-white text-xs font-bold hover:bg-gray-800 transition-all cursor-pointer shadow-sm">{t("editor.createBtn")}</button>
               </div>
            </div>
         </div>

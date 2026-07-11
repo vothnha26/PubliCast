@@ -28,6 +28,7 @@ import {
 } from "recharts";
 import { useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
+import { useTranslation } from "react-i18next";
 import { PlatformIcon } from "../../components/shared/PlatformIcon";
 import { useBrand } from "../../context/BrandContext";
 import socialService from "../../services/social.service";
@@ -35,6 +36,7 @@ import socialService from "../../services/social.service";
 
 
 export function CompetitorsPage() {
+  const { t } = useTranslation("competitors");
   const { activeBrand } = useBrand();
   
   // Search parameters for active tab
@@ -155,7 +157,7 @@ export function CompetitorsPage() {
 
       const myBrandRecord = {
         id: "self-brand",
-        name: activeBrand.name || "Thương hiệu của bạn",
+        name: activeBrand.name || t("matrix.youBadge"),
         handle: "@your_brand",
         followers: 0, // Sẽ được tính động trong displayCompetitors
         postsPerWeek: 4,
@@ -167,7 +169,7 @@ export function CompetitorsPage() {
 
       setCompetitors([myBrandRecord, ...dbCompetitors]);
     } catch (err) {
-      toast.error("Không thể tải danh sách đối thủ cạnh tranh");
+      toast.error(t("toasts.loadError"));
       console.error(err);
     } finally {
       setLoading(false);
@@ -268,13 +270,13 @@ export function CompetitorsPage() {
   const handleSearch = async (e) => {
     e?.preventDefault();
     if (!searchQuery.trim()) {
-      toast.error("Vui lòng nhập từ khóa tìm kiếm");
+      toast.error(t("toasts.searchEmpty"));
       return;
     }
     if (!activeBrand?.id) return;
 
     if (searchPlatform !== "Facebook" && searchPlatform !== "YouTube") {
-      toast.info(`Tính năng tìm kiếm đối thủ trên ${searchPlatform} đang được phát triển.`);
+      toast.info(t("toasts.searchComingSoon", { platform: searchPlatform }));
       return;
     }
 
@@ -337,7 +339,7 @@ export function CompetitorsPage() {
         if (extractedId && extractedId.toLowerCase() !== "profile.php") {
           const directItem = {
             platformId: extractedId,
-            name: `Kết nối Page: "${extractedId}"`,
+            name: `${t("modal.directConnect")}: "${extractedId}"`,
             avatar: "",
             followers: 0,
             url: `https://facebook.com/${extractedId}`,
@@ -353,10 +355,10 @@ export function CompetitorsPage() {
 
       setSearchResults(normalized);
       if (normalized.length === 0) {
-        toast.info("Không tìm thấy kết quả phù hợp");
+        toast.info(t("toasts.noResults"));
       }
     } catch (err) {
-      toast.error("Tìm kiếm thất bại. Vui lòng kiểm tra lại cấu hình API!");
+      toast.error(t("toasts.searchError"));
       console.error(err);
     } finally {
       setSearching(false);
@@ -368,7 +370,7 @@ export function CompetitorsPage() {
     if (!activeBrand?.id) return;
 
     if (searchPlatform !== "Facebook" && searchPlatform !== "YouTube") {
-      toast.info(`Tính năng theo dõi đối thủ trên ${searchPlatform} đang được phát triển.`);
+      toast.info(t("toasts.connectComingSoon", { platform: searchPlatform }));
       return;
     }
 
@@ -379,13 +381,13 @@ export function CompetitorsPage() {
       } else {
         await socialService.addCompetitor(activeBrand.id, item.platformId);
       }
-      toast.success(`Đã theo dõi đối thủ ${item.name} thành công!`);
+      toast.success(t("toasts.connectSuccess", { name: item.name }));
       await fetchAllCompetitors();
       setIsModalOpen(false);
       setSearchQuery("");
       setSearchResults([]);
     } catch (err) {
-      toast.error("Theo dõi đối thủ thất bại. Vui lòng kiểm tra cấu hình kết nối!");
+      toast.error(t("toasts.connectError"));
       console.error(err);
     } finally {
       setConnectingId(null);
@@ -394,17 +396,17 @@ export function CompetitorsPage() {
 
   // Delete Competitor
   const handleDeleteCompetitor = async (c) => {
-    if (window.confirm(`Bạn có chắc chắn muốn xóa đối thủ ${c.name} khỏi danh sách theo dõi?`)) {
+    if (window.confirm(t("toasts.deleteConfirm", { name: c.name }))) {
       try {
         if (c.platform === "facebook") {
           await socialService.deleteFacebookCompetitor(c.id);
         } else {
           await socialService.deleteCompetitor(c.id);
         }
-        toast.success(`Đã xóa đối thủ ${c.name}`);
+        toast.success(t("toasts.deleteSuccess", { name: c.name }));
         await fetchAllCompetitors();
       } catch (err) {
-        toast.error("Xóa đối thủ thất bại.");
+        toast.error(t("toasts.deleteError"));
         console.error(err);
       }
     }
@@ -418,10 +420,10 @@ export function CompetitorsPage() {
         <div>
           <h1 className="text-2xl font-bold text-[#1A1F36] flex items-center gap-2">
             <BarChart3 className="text-[#3B82F6] w-6 h-6" />
-            Competitor Benchmarking
+            {t("header.title")}
           </h1>
           <p className="text-sm text-[#8792A2] mt-0.5">
-            So sánh thương hiệu của bạn với các đối thủ hàng đầu và tìm kiếm cảm hứng từ những nội dung thành công.
+            {t("header.subtitle")}
           </p>
         </div>
 
@@ -430,16 +432,16 @@ export function CompetitorsPage() {
           className="flex items-center gap-2 bg-[#0A0A0A] hover:bg-[#222] text-white text-sm font-semibold px-4 py-2.5 rounded-xl shadow-lg transition-all duration-300 transform active:scale-95 shrink-0 cursor-pointer"
         >
           <Plus size={16} />
-          Theo dõi đối thủ mới
+          {t("header.addBtn")}
         </button>
       </div>
 
       {/* Tabs Filter */}
       <div className="flex border-b border-gray-200">
         {[
-          { id: "all", label: "Tất cả đối thủ" },
-          { id: "facebook", label: "Facebook Pages" },
-          { id: "youtube", label: "YouTube Channels" }
+          { id: "all", label: t("tabs.all") },
+          { id: "facebook", label: t("tabs.facebook") },
+          { id: "youtube", label: t("tabs.youtube") }
         ].map((tab) => (
           <button
             key={tab.id}
@@ -458,7 +460,7 @@ export function CompetitorsPage() {
       {loading ? (
         <div className="py-24 flex flex-col items-center justify-center gap-3 text-gray-400">
           <Loader2 className="animate-spin text-gray-800" size={32} />
-          <span className="text-xs font-bold uppercase tracking-widest">Đang nạp dữ liệu đối thủ...</span>
+          <span className="text-xs font-bold uppercase tracking-widest">{t("loading")}</span>
         </div>
       ) : (
         <>
@@ -469,30 +471,30 @@ export function CompetitorsPage() {
             <div className="lg:col-span-2 bg-white rounded-2xl shadow-sm border border-[#E5E7EB] overflow-hidden flex flex-col">
               <div className="px-6 py-5 border-b border-[#E5E7EB] flex justify-between items-center">
                 <div>
-                  <h4 className="text-base font-bold text-[#1A1F36]">Chỉ số đối sánh (Benchmarking Matrix)</h4>
-                  <p className="text-xs text-[#8792A2] mt-0.5">So sánh tổng quan sức mạnh truyền thông</p>
+                  <h4 className="text-base font-bold text-[#1A1F36]">{t("matrix.title")}</h4>
+                  <p className="text-xs text-[#8792A2] mt-0.5">{t("matrix.subtitle")}</p>
                 </div>
                 <span className="text-xs text-blue-600 font-bold bg-blue-50 px-2.5 py-1 rounded-lg">
-                  Đang theo dõi {displayCompetitors.length - 1} đối thủ
+                  {t("matrix.tracking", { count: displayCompetitors.length - 1 })}
                 </span>
               </div>
 
               {displayCompetitors.length <= 1 ? (
                 <div className="py-16 text-center text-gray-400 space-y-2">
                   <AlertCircle className="mx-auto text-gray-300" size={32} />
-                  <p className="text-xs font-bold uppercase tracking-wider">Chưa có đối thủ nào được kết nối</p>
-                  <p className="text-[11px] text-gray-400 max-w-xs mx-auto">Vui lòng click "Theo dõi đối thủ mới" ở trên để bắt đầu thêm đối thủ.</p>
+                  <p className="text-xs font-bold uppercase tracking-wider">{t("matrix.empty.title")}</p>
+                  <p className="text-[11px] text-gray-400 max-w-xs mx-auto">{t("matrix.empty.desc")}</p>
                 </div>
               ) : (
                 <div className="overflow-x-auto">
                   <table className="w-full text-left border-collapse">
                     <thead>
                       <tr className="bg-[#FAFAFA] border-b border-[#E5E7EB]">
-                        <th className="py-3.5 px-6 text-xs font-bold text-[#8792A2] uppercase tracking-wider">Thương hiệu</th>
-                        <th className="py-3.5 px-6 text-xs font-bold text-[#8792A2] uppercase tracking-wider">Followers</th>
-                        <th className="py-3.5 px-6 text-xs font-bold text-[#8792A2] uppercase tracking-wider">Tần suất đăng</th>
-                        <th className="py-3.5 px-6 text-xs font-bold text-[#8792A2] uppercase tracking-wider">Tỷ lệ tương tác</th>
-                        <th className="py-3.5 px-6 text-xs font-bold text-[#8792A2] uppercase tracking-wider">Tăng trưởng</th>
+                        <th className="py-3.5 px-6 text-xs font-bold text-[#8792A2] uppercase tracking-wider">{t("matrix.cols.brand")}</th>
+                        <th className="py-3.5 px-6 text-xs font-bold text-[#8792A2] uppercase tracking-wider">{t("matrix.cols.followers")}</th>
+                        <th className="py-3.5 px-6 text-xs font-bold text-[#8792A2] uppercase tracking-wider">{t("matrix.cols.frequency")}</th>
+                        <th className="py-3.5 px-6 text-xs font-bold text-[#8792A2] uppercase tracking-wider">{t("matrix.cols.engagement")}</th>
+                        <th className="py-3.5 px-6 text-xs font-bold text-[#8792A2] uppercase tracking-wider">{t("matrix.cols.growth")}</th>
                         <th className="py-3.5 px-6 text-xs font-bold text-[#8792A2] uppercase tracking-wider"></th>
                       </tr>
                     </thead>
@@ -527,7 +529,7 @@ export function CompetitorsPage() {
                                       target="_blank" 
                                       rel="noopener noreferrer"
                                       className="hover:underline hover:text-blue-600 flex items-center gap-1 group"
-                                      title="Đi tới trang gốc đối thủ"
+                                      title={c.name}
                                     >
                                       {c.name}
                                       <ExternalLink size={12} className="text-gray-400 group-hover:text-blue-600 transition-colors inline" />
@@ -535,7 +537,7 @@ export function CompetitorsPage() {
                                   )}
                                   {c.isSelf && (
                                     <span className="text-[10px] bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded-md font-bold uppercase">
-                                      Bạn
+                                      {t("matrix.youBadge")}
                                     </span>
                                   )}
                                 </div>
@@ -558,8 +560,8 @@ export function CompetitorsPage() {
 
                           {/* Posts Per Week */}
                           <td className="py-4 px-6">
-                            <div className="text-sm font-semibold text-[#1A1F36]">{c.postsPerWeek} bài</div>
-                            <div className="text-xs text-[#8792A2]">mỗi tuần</div>
+                            <div className="text-sm font-semibold text-[#1A1F36]">{c.postsPerWeek}</div>
+                            <div className="text-xs text-[#8792A2]">{t("matrix.postsPerWeek")}</div>
                           </td>
 
                           {/* Engagement Rate */}
@@ -603,14 +605,14 @@ export function CompetitorsPage() {
               <div>
                 <h4 className="text-base font-bold text-[#1A1F36] flex items-center gap-2">
                   <Users size={18} className="text-[#10B981]" />
-                  Biểu đồ tăng trưởng Followers
+                  {t("chart.title")}
                 </h4>
-                <p className="text-xs text-[#8792A2] mt-0.5">Tốc độ mở rộng cộng đồng 5 tháng qua</p>
+                <p className="text-xs text-[#8792A2] mt-0.5">{t("chart.subtitle")}</p>
               </div>
 
               {displayCompetitors.length <= 1 ? (
                 <div className="h-60 flex flex-col items-center justify-center text-gray-400 text-xs">
-                  Không có dữ liệu biểu đồ
+                  {t("chart.noData")}
                 </div>
               ) : (
                 <div className="h-60 mt-6">
@@ -645,7 +647,7 @@ export function CompetitorsPage() {
                             stroke={color} 
                             strokeWidth={c.isSelf ? 2.5 : 1.5} 
                             fill={c.isSelf ? "url(#selfGrad)" : "none"} 
-                            name={c.isSelf ? "Bạn" : c.name} 
+                            name={c.isSelf ? t("chart.youLabel") : c.name} 
                           />
                         );
                       })}
@@ -663,19 +665,18 @@ export function CompetitorsPage() {
               <div>
                 <h4 className="text-base font-bold text-[#1A1F36] flex items-center gap-2">
                   <Flame size={18} className="text-[#EF4444] animate-bounce" />
-                  Bài viết tốt nhất của đối thủ (Top Posts)
+                  {t("topPosts.title")}
                 </h4>
-                <p className="text-xs text-[#8792A2] mt-0.5">Học hỏi chiến lược nội dung viral từ các đối thủ của bạn</p>
+                <p className="text-xs text-[#8792A2] mt-0.5">{t("topPosts.subtitle")}</p>
               </div>
             </div>
 
             {displayTopPosts.length === 0 ? (
               <div className="py-16 text-center text-gray-400 space-y-2 border border-dashed border-gray-200 rounded-3xl bg-gray-50/30">
                 <AlertCircle className="mx-auto text-gray-300" size={32} />
-                <p className="text-xs font-bold uppercase tracking-wider text-gray-700">Chưa tải được bài viết nào từ đối thủ</p>
+                <p className="text-xs font-bold uppercase tracking-wider text-gray-700">{t("topPosts.empty.title")}</p>
                 <p className="text-[11px] text-gray-400 max-w-sm mx-auto px-4">
-                  Hệ thống đang đồng bộ dữ liệu hoặc mạng xã hội giới hạn quyền truy cập feed. 
-                  Bạn có thể nhấp vào link gốc của đối thủ ở bảng Matrix phía trên để xem trực tiếp trang của họ.
+                  {t("topPosts.empty.desc")}
                 </p>
               </div>
             ) : (
@@ -746,7 +747,7 @@ export function CompetitorsPage() {
                         </div>
 
                         <span className="text-[10px] font-bold bg-[#FAFAFA] border border-[#E5E7EB] text-[#1A1F36] px-2 py-0.5 rounded-md">
-                          {post.reachRate}% Engagement
+                          {post.reachRate}% {t("topPosts.engagementLabel")}
                         </span>
                       </div>
                     </div>
@@ -777,29 +778,29 @@ export function CompetitorsPage() {
 
             <h3 className="text-lg font-bold text-[#1A1F36] flex items-center gap-2 mb-4">
               <Globe className="text-blue-500 w-5 h-5" />
-              Theo dõi đối thủ cạnh tranh mới
+              {t("modal.title")}
             </h3>
 
             <div className="space-y-4 flex-1 flex flex-col overflow-hidden">
               {availableModalPlatforms.length === 0 ? (
                 <div className="py-12 text-center text-gray-400 space-y-3 flex-1 flex flex-col justify-center items-center">
                   <AlertCircle className="text-amber-500 w-10 h-10" />
-                  <p className="text-sm font-bold uppercase tracking-wider text-[#1A1F36]">Chưa liên kết mạng xã hội</p>
+                  <p className="text-sm font-bold uppercase tracking-wider text-[#1A1F36]">{t("modal.noSocialTitle")}</p>
                   <p className="text-xs text-[#8792A2] max-w-xs px-4">
-                    Thương hiệu của bạn chưa liên kết với bất kỳ tài khoản mạng xã hội nào (Facebook, YouTube, Instagram, TikTok) để sử dụng tính năng theo dõi đối thủ.
+                    {t("modal.noSocialDesc")}
                   </p>
                   <a
                     href="/settings"
                     onClick={() => setIsModalOpen(false)}
                     className="mt-2 text-xs font-bold text-blue-600 hover:underline"
                   >
-                    Đi tới Cài đặt tài khoản
+                    {t("modal.goToSettings")}
                   </a>
                 </div>
               ) : (
                 <>
                   <div>
-                    <label className="block text-xs font-bold text-[#4F5B66] uppercase mb-1.5">Chọn mạng xã hội</label>
+                    <label className="block text-xs font-bold text-[#4F5B66] uppercase mb-1.5">{t("modal.selectPlatform")}</label>
                     <div className="grid grid-cols-2 gap-2">
                       {availableModalPlatforms.map((platform) => (
                         <button
@@ -823,18 +824,12 @@ export function CompetitorsPage() {
                   </div>
 
                   <form onSubmit={handleSearch} className="space-y-2 shrink-0">
-                    <label className="block text-xs font-bold text-[#4F5B66] uppercase">Tìm kiếm đối thủ</label>
+                    <label className="block text-xs font-bold text-[#4F5B66] uppercase">{t("modal.searchBtn")}</label>
                     <div className="flex gap-2">
                       <div className="relative flex-1">
                         <input
                           type="text"
-                          placeholder={
-                            searchPlatform === "Facebook" 
-                              ? "Nhập tên Page Facebook hoặc URL..." 
-                              : searchPlatform === "YouTube"
-                              ? "Nhập tên Kênh YouTube hoặc URL..."
-                              : `Nhập tên đối thủ ${searchPlatform} hoặc URL...`
-                          }
+                          placeholder={t("modal.searchPlaceholder")}
                           value={searchQuery}
                           onChange={(e) => setSearchQuery(e.target.value)}
                           className="w-full pl-4 pr-3 py-2.5 rounded-xl border border-[#E5E7EB] text-sm text-[#1A1F36] focus:border-[#0A0A0A] outline-none transition-colors"
@@ -846,7 +841,7 @@ export function CompetitorsPage() {
                         className="bg-black hover:bg-gray-800 text-white text-xs font-bold px-4 rounded-xl transition-all disabled:opacity-50 flex items-center justify-center gap-1.5 shrink-0 cursor-pointer"
                       >
                         {searching ? <Loader2 size={14} className="animate-spin" /> : <Search size={14} />}
-                        Tìm kiếm
+                        {t("modal.searchBtn")}
                       </button>
                     </div>
                   </form>
@@ -856,7 +851,7 @@ export function CompetitorsPage() {
                     {searching ? (
                       <div className="py-12 flex flex-col items-center justify-center gap-2 text-gray-400">
                         <Loader2 size={24} className="animate-spin text-gray-800" />
-                        <span className="text-[10px] font-bold uppercase tracking-wider">Đang tìm trên mạng xã hội...</span>
+                        <span className="text-[10px] font-bold uppercase tracking-wider">{t("modal.searching")}</span>
                       </div>
                     ) : searchResults.length > 0 ? (
                       searchResults.map((item) => (
@@ -866,7 +861,7 @@ export function CompetitorsPage() {
                         >
                           <div className="flex items-center gap-3 min-w-0">
                             {item.avatar ? (
-                              <img src={item.avatar} referrerPolicy="no-referrer" alt="" className="w-10 h-10 rounded-full object-cover border border-gray-100 shrink-0" />
+                               <img src={item.avatar} referrerPolicy="no-referrer" alt="" className="w-10 h-10 rounded-full object-cover border border-gray-100 shrink-0" />
                             ) : (
                               <div className="w-10 h-10 rounded-full bg-gray-50 text-gray-400 flex items-center justify-center font-bold text-xs uppercase shrink-0 border border-gray-100">
                                 {item.name.slice(0, 2)}
@@ -881,9 +876,9 @@ export function CompetitorsPage() {
                               </div>
                               <div className="text-[10px] text-gray-400 font-semibold mt-0.5 uppercase tracking-tight">
                                 {item.isDirect 
-                                  ? "Kết nối trực tiếp đối thủ bằng ID/Username" 
+                                  ? t("modal.directConnect") 
                                   : item.followers 
-                                    ? `${item.followers.toLocaleString()} ${searchPlatform === 'Facebook' ? 'Page Likes' : 'Subscribers'}` 
+                                    ? `${item.followers.toLocaleString()} ${t("modal.followersLabel")}` 
                                     : 'Public Channel'}
                               </div>
                             </div>
@@ -899,21 +894,21 @@ export function CompetitorsPage() {
                             ) : (
                               <Plus size={12} />
                             )}
-                            Theo dõi
+                            {t("modal.connectBtn")}
                           </button>
                         </div>
                       ))
                     ) : searchQuery && !searching ? (
                       <div className="py-12 text-center text-gray-400 space-y-2 border border-dashed border-gray-100 rounded-2xl bg-gray-50/50">
                         <AlertCircle className="mx-auto text-gray-300" size={24} />
-                        <p className="text-[10px] font-bold uppercase tracking-wider">Không tìm thấy kết quả</p>
-                        <p className="text-[11px] text-gray-400 max-w-xs mx-auto px-6">Hãy thử tìm bằng từ khóa khác hoặc dán đúng đường dẫn của Page/Channel.</p>
+                        <p className="text-[10px] font-bold uppercase tracking-wider">{t("modal.noResultsTitle")}</p>
+                        <p className="text-[11px] text-gray-400 max-w-xs mx-auto px-6">{t("modal.noResultsDesc")}</p>
                       </div>
                     ) : (
                       <div className="py-12 text-center text-gray-400 space-y-2 border border-dashed border-gray-100 rounded-2xl bg-gray-50/50">
                         <Globe className="mx-auto text-gray-300" size={24} />
-                        <p className="text-[10px] font-bold uppercase tracking-wider">Bắt đầu tìm kiếm</p>
-                        <p className="text-[11px] text-gray-400 max-w-xs mx-auto px-6">Nhập từ khóa và bấm Tìm kiếm để khám phá đối thủ trên {searchPlatform}.</p>
+                        <p className="text-[10px] font-bold uppercase tracking-wider">{t("modal.startSearchTitle")}</p>
+                        <p className="text-[11px] text-gray-400 max-w-xs mx-auto px-6">{t("modal.startSearchDesc", { platform: searchPlatform })}</p>
                       </div>
                     )}
                   </div>
@@ -930,7 +925,7 @@ export function CompetitorsPage() {
                   }}
                   className="px-4 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider border border-[#E5E7EB] hover:bg-slate-50 transition-colors cursor-pointer"
                 >
-                  Đóng
+                  {t("modal.closeBtn")}
                 </button>
               </div>
             </div>
