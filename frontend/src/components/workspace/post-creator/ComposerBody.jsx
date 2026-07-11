@@ -23,6 +23,7 @@ import { FacebookPresets } from "./presets/FacebookPresets";
 import { TikTokPresets } from "./presets/TikTokPresets";
 import { DiscordPresets } from "./presets/DiscordPresets";
 import { ThreadsPresets } from "./presets/ThreadsPresets";
+import { InstagramPresets } from "./presets/InstagramPresets";
 
 export function ComposerBody() {
   const [showAICopilot, setShowAICopilot] = useState(false);
@@ -49,6 +50,7 @@ export function ComposerBody() {
     isUploadingVideo,
     handleRemoveVideo,
     facebookType,
+    instagramType,
     activeBrand,
     albumMedia,
     setAlbumMedia,
@@ -79,7 +81,9 @@ export function ComposerBody() {
     hasAccess,
     setBlockedProductId,
     setIsDriveModalOpen,
-    platformLimits
+    platformLimits,
+    showVideoEditor,
+    setShowVideoEditor
   } = usePostCreatorFormContext();
 
   const isImageFile = videoFile 
@@ -196,7 +200,16 @@ export function ComposerBody() {
                 {videoFile && <span className="text-[10px] text-gray-400 font-semibold uppercase font-sans">({(videoFile.size / (1024 * 1024)).toFixed(2)} MB)</span>}
                 {isUploadingVideo && <span className="text-[10px] text-blue-500 animate-pulse font-bold uppercase font-sans">(Uploading...)</span>}
               </div>
-              <button onClick={handleRemoveVideo} className="text-[10px] font-black text-gray-400 hover:text-red-500 uppercase tracking-widest transition-colors cursor-pointer font-sans">Remove</button>
+              <div className="flex items-center gap-3">
+                <button 
+                  type="button"
+                  onClick={() => setShowVideoEditor(true)}
+                  className="text-[10px] font-black text-purple-600 hover:text-purple-800 uppercase tracking-widest transition-all cursor-pointer font-sans"
+                >
+                  Edit Video
+                </button>
+                <button onClick={handleRemoveVideo} className="text-[10px] font-black text-gray-400 hover:text-red-500 uppercase tracking-widest transition-colors cursor-pointer font-sans">Remove</button>
+              </div>
             </div>
           )}
 
@@ -550,8 +563,11 @@ export function ComposerBody() {
           {/* YouTube Presets Accordion */}
           {selectedPlatforms.includes('youtube') && <YouTubePresets />}
 
-          {/* Facebook Presets Accordion (Reels only) */}
+           {/* Facebook Presets Accordion (Reels only) */}
           {selectedPlatforms.includes('facebook') && facebookType === 'reel' && <FacebookPresets />}
+ 
+          {/* Instagram Presets Accordion (Reels only) */}
+          {selectedPlatforms.includes('instagram') && instagramType === 'reel' && <InstagramPresets />}
 
           {/* TikTok Presets Accordion */}
           {selectedPlatforms.includes('tiktok') && <TikTokPresets />}
