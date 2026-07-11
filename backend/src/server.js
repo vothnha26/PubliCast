@@ -57,11 +57,23 @@ const server = app.listen(PORT, async () => {
   setInterval(() => postMetricSyncService.syncPostMetrics().catch(() => {}), 1 * 60 * 60 * 1000);
   logger.info('Post metrics sync scheduler started (every 1h)');
 
+  // Start Token Auto-Refresh Service scheduler
+  const tokenRefreshService = require('./services/social/token-refresh/token-refresh.service');
+  tokenRefreshService.startScheduler();
+
 });
 
 // ── Graceful Shutdown ───────────────────────────────────────────────────────
 async function shutdown(signal) {
   logger.info(`Received ${signal}. Shutting down gracefully...`);
+
+  // Stop token refresh scheduler
+  try {
+    const tokenRefreshService = require('./services/social/token-refresh/token-refresh.service');
+    tokenRefreshService.stopScheduler();
+  } catch (err) {
+    logger.error('Error stopping token refresh scheduler', err);
+  }
 
   server.close(async () => {
     logger.info('HTTP server closed.');

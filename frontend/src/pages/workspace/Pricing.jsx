@@ -5,6 +5,7 @@ import apiService from "../../services/api";
 import PaymentModal from "../../components/billing/PaymentModal";
 import { toast } from "sonner";
 import { useBrand } from "../../context/BrandContext";
+import { PLAN_TIERS } from "../../config/accessSchema";
 
 const COMPARISON_ROWS = [
   { section: "Social Media", rows: [
@@ -36,8 +37,6 @@ const FAQ = [
 ];
 
 // Plan names in DB are UPPERCASE (FREE, STARTER, PRO, AGENCY)
-const PLAN_TIER = { FREE: 0, STARTER: 1, PRO: 2, AGENCY: 3 };
-
 export function PricingPage() {
   const { activeBrand } = useBrand();
   const [currentPlan, setCurrentPlan] = useState(null);
@@ -60,8 +59,8 @@ export function PricingPage() {
     apiService.get('/billing/subscriptions/plans')
       .then(res => {
         const sorted = res.data.data.sort((a, b) => {
-          const rankA = PLAN_TIER[a.name.toUpperCase()] ?? 99;
-          const rankB = PLAN_TIER[b.name.toUpperCase()] ?? 99;
+          const rankA = PLAN_TIERS.indexOf(a.name.toUpperCase());
+          const rankB = PLAN_TIERS.indexOf(b.name.toUpperCase());
           return rankA - rankB;
         });
         setDbPlans(sorted);
@@ -115,10 +114,10 @@ export function PricingPage() {
   });
 
   // currentPlan.planName comes from DB as uppercase (e.g. "PRO", "STARTER")
-  const currentTierRank = PLAN_TIER[currentPlan?.planName?.toUpperCase()] ?? 0;
+  const currentTierRank = Math.max(0, PLAN_TIERS.indexOf(currentPlan?.planName?.toUpperCase()));
 
   const handleUpgrade = async (plan) => {
-    const planTierRank = PLAN_TIER[plan.dbName?.toUpperCase()] ?? PLAN_TIER[plan.name.toUpperCase()] ?? 0;
+    const planTierRank = Math.max(0, PLAN_TIERS.indexOf(plan.dbName?.toUpperCase() || plan.name.toUpperCase()));
     const isCurrentPlan =
       currentPlan?.planName?.toUpperCase() === plan.dbName?.toUpperCase()
       || (plan.dbName?.toUpperCase() === 'FREE' && (!currentPlan || currentPlan.planName?.toUpperCase() === 'FREE'));
@@ -218,7 +217,7 @@ export function PricingPage() {
       {/* Plan cards */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 16, maxWidth: 1000, margin: "0 auto 32px" }}>
         {PLANS.map((plan) => {
-          const planTierRank = PLAN_TIER[plan.name.toUpperCase()] ?? 0;
+          const planTierRank = Math.max(0, PLAN_TIERS.indexOf(plan.name.toUpperCase()));
           const isCurrentPlan =
             currentPlan?.planName?.toUpperCase() === plan.name.toUpperCase()
             || (plan.name === 'Free' && (!currentPlan || currentPlan.planName?.toUpperCase() === 'FREE'));

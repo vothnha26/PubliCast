@@ -1,10 +1,31 @@
 const socialAccountRepository = require('../../../../repositories/social/social-account.repository');
 const inboxRepository = require('../../../../repositories/social/inbox.repository');
 const socketManager = require('../../../workspace/socket/socket.manager');
+const redisClient = require('../../../../config/redis');
 const logger = require('../../../../utils/logger');
-const { FACEBOOK_API } = require('../../../../utils/constants');
+const { FACEBOOK_API, REDIS_NAMESPACES, REDIS_TTL } = require('../../../../utils/constants');
 
 class BaseWebhookStrategy {
+  async isDuplicateEvent(eventId) {
+    if (!eventId) return false;
+    const key = `${REDIS_NAMESPACES.WEBHOOK_DEDUP}:${eventId}`;
+    try {
+      // Dùng Redis NX để ghi đè nếu chưa tồn tại
+      const result = await redisClient.set(key, '1', {
+        NX: true,
+        EX: REDIS_TTL.WEBHOOK_DEDUP_SEC
+      });
+      const isDuplicate = result === null;
+      if (isDuplicate) {
+        logger.info(`[BaseWebhookStrategy] Webhook duplicate detected for event: ${eventId}. Ignoring.`);
+      }
+      return isDuplicate;
+    } catch (err) {
+      logger.error(`[BaseWebhookStrategy] Redis idempotency check failed: ${err.message}. Defaulting to false.`, err);
+      return false;
+    }
+  }
+
   async getAccount(platformAccountId, platform) {
     const account = await socialAccountRepository.findByPlatformAccountIdAndPlatform(platformAccountId, platform);
     if (!account) {

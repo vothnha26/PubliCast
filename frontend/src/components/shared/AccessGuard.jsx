@@ -1,7 +1,7 @@
 import React from 'react';
 import { useBrand } from "../../context/BrandContext";
 import { useBrandPermission } from "../../hooks/useBrandPermission";
-import { FEATURE_MAP } from "../../config/accessSchema";
+import { FEATURE_MAP, PLAN_TIERS } from "../../config/accessSchema";
 import { ACCESS_STRATEGIES_REGISTRY } from "../../config/accessStrategies";
 
 export function AccessGuard({ feature, children, fallback = null, overrideStrategy = null }) {
@@ -15,9 +15,10 @@ export function AccessGuard({ feature, children, fallback = null, overrideStrate
   const hasRequiredPermission = config.permissions.every(perm => hasPermission(perm));
   
   // 2. Kiểm tra Gói Cước (Subscription Tier)
-  const currentPlan = activeBrand?.currentPlan?.name || "FREE";
-  const planRank = { "FREE": 0, "STARTER": 1, "PRO": 2, "AGENCY": 3, "ENTERPRISE": 4 };
-  const hasRequiredPlan = planRank[currentPlan] >= planRank[config.minPlan];
+  const currentPlan = (activeBrand?.currentPlan?.name || "FREE").toUpperCase();
+  const requiredPlan = (config.minPlan || "FREE").toUpperCase();
+  
+  const hasRequiredPlan = PLAN_TIERS.indexOf(currentPlan) >= PLAN_TIERS.indexOf(requiredPlan);
 
   // 3. Quyết định trạng thái
   const isAllowed = hasRequiredPermission && hasRequiredPlan;

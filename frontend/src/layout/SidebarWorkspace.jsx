@@ -3,7 +3,7 @@ import {
   Youtube, Instagram, Facebook, Linkedin,
   TrendingUp, List, Hash, Settings, Search,
   PlayCircle, FileText, Megaphone, Plus, ClipboardCheck, MessageSquare,
-  Sun, Moon, Monitor
+  Sun, Moon
 } from "lucide-react";
 import { useConnections } from "../context/ConnectionsContext";
 import { useBrand } from "../context/BrandContext";
@@ -56,7 +56,7 @@ export function SidebarWorkspace() {
   const isManageMode = currentPath.startsWith("/manage") || currentPath.startsWith("/hashtags") || currentPath.startsWith("/settings");
 
   const planName = planInfo?.planName || "FREE";
-  const isPro = planName.toUpperCase() === "PRO";
+  const isPremium = planName.toUpperCase() !== "FREE";
   const nextBillDate = planInfo?.periodEnd 
     ? new Date(planInfo.periodEnd).toLocaleDateString("vi-VN", { year: 'numeric', month: 'numeric', day: 'numeric' })
     : "Không giới hạn";
@@ -173,29 +173,28 @@ export function SidebarWorkspace() {
       <div className="p-4 border-t border-[var(--sidebar-border)] text-left bg-[var(--sidebar)] transition-colors duration-200 flex flex-col gap-4">
          <div className="bg-[var(--sidebar-accent)] rounded-xl p-3">
             <div className="flex items-center gap-2 mb-1">
-               <div className={`w-2 h-2 rounded-full ${isPro ? "bg-green-500" : "bg-gray-400"}`} />
+               <div className={`w-2 h-2 rounded-full ${isPremium ? "bg-green-500" : "bg-gray-400"}`} />
                <span className="text-[10px] font-bold text-[var(--muted-foreground)] uppercase">Gói {planName}</span>
             </div>
             <div className="text-[10px] text-[var(--muted-foreground)] opacity-85 font-medium">
-              {isPro ? `Kỳ tiếp theo: ${nextBillDate}` : "Hạn dùng: Không giới hạn"}
+              {isPremium ? `Kỳ tiếp theo: ${nextBillDate}` : "Hạn dùng: Không giới hạn"}
             </div>
          </div>
 
-         {/* Theme Switcher */}
+         {/* Theme Switcher — Light / Dark only */}
          <div className="flex items-center justify-between p-1 bg-[var(--muted)] rounded-lg transition-all duration-200">
            {[
              { mode: THEME_MODES.LIGHT, icon: <Sun size={14} />, label: "Light" },
              { mode: THEME_MODES.DARK, icon: <Moon size={14} />, label: "Dark" },
-             { mode: THEME_MODES.SYSTEM, icon: <Monitor size={14} />, label: "System" }
            ].map(({ mode, icon, label }) => {
              const isSelected = theme === mode;
              return (
                <button
                  key={mode}
                  onClick={() => setTheme(mode)}
-                 className={`flex-1 flex items-center justify-center gap-1 py-1.5 px-2 rounded-md transition-all border-none cursor-pointer group/btn select-none ${
-                   isSelected 
-                     ? "bg-[var(--card)] text-[var(--foreground)] shadow-sm font-semibold" 
+                 className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-md transition-all border-none cursor-pointer group/btn select-none ${
+                   isSelected
+                     ? "bg-[var(--card)] text-[var(--foreground)] shadow-sm font-semibold"
                      : "text-[var(--muted-foreground)] hover:text-[var(--foreground)] bg-transparent"
                  }`}
                  title={`${label} Mode`}
@@ -204,7 +203,7 @@ export function SidebarWorkspace() {
                  <span className="transition-transform duration-200 group-hover/btn:scale-110">
                    {icon}
                  </span>
-                 <span className="hidden xl:inline">{label}</span>
+                 <span>{label}</span>
                </button>
              );
            })}

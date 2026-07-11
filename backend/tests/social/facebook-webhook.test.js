@@ -6,6 +6,14 @@ const socketManager = require('../../src/services/workspace/socket/socket.manage
 jest.mock('../../src/repositories/social/social-account.repository');
 jest.mock('../../src/repositories/social/inbox.repository');
 jest.mock('../../src/services/workspace/socket/socket.manager');
+jest.mock('../../src/services/social/inbox/strategies/auto-reply/auto-reply.service', () => ({
+  executeAutoReply: jest.fn().mockResolvedValue(true)
+}));
+jest.mock('../../src/config/redis', () => ({
+  set: jest.fn()
+}));
+
+const redisClient = require('../../src/config/redis');
 
 // Mock global fetch
 global.fetch = jest.fn();
@@ -15,6 +23,7 @@ describe('Facebook Webhook Processing tests', () => {
 
   beforeEach(() => {
     process.env.FACEBOOK_VERIFY_TOKEN = verifyToken;
+    redisClient.set.mockResolvedValue('OK');
     jest.clearAllMocks();
   });
 
@@ -213,6 +222,92 @@ describe('Facebook Webhook Processing tests', () => {
           latestMessage: mockSavedMsg
         })
       );
+    });
+
+    it('should ignore duplicate message event when Redis NX returns null', async () => {
+      const mockPayload = {
+        object: 'page',
+        entry: [
+          {
+            id: 'page_123',
+            time: 1458692752478,
+            messaging: [
+              {
+                sender: { id: 'sender_456' },
+                recipient: { id: 'page_123' },
+                timestamp: 1458692752478,
+                message: {
+                  mid: 'mid_duplicate_999',
+                  text: 'Hello from Messenger again!'
+                }
+              }
+            ]
+          }
+        ]
+      };
+
+      const mockAccount = {
+        id: 'account_123',
+        brandId: 'brand_789',
+        platform: 'FACEBOOK',
+        platformAccountId: 'page_123'
+      };
+
+      socialAccountRepository.findByPlatformAccountIdAndPlatform.mockResolvedValue(mockAccount);
+      
+      // Giả lập Redis NX trả về null -> sự kiện bị trùng lặp
+      redisClient.set.mockResolvedValue(null);
+
+      await facebookWebhookService.processEvent(mockPayload);
+
+      // Webhook sẽ dừng ngay lập tức, không lưu vào DB, không gửi socket
+      expect(inboxRepository.upsertInboxItem).not.toHaveBeenCalled();
+      expect(socketManager.emitToRoom).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('FacebookWebhookService - Idempotency for Feed Comments', () => {
+    it('should ignore duplicate feed comment event when Redis NX returns null', async () => {
+      const mockPayload = {
+        object: 'page',
+        entry: [
+          {
+            id: 'page_123',
+            time: 1458291000,
+            changes: [
+              {
+                field: 'feed',
+                value: {
+                  item: 'comment',
+                  verb: 'add',
+                  comment_id: 'comment_duplicate_123',
+                  parent_id: 'post_123',
+                  post_id: 'post_123',
+                  message: 'This is a duplicate test comment'
+                }
+              }
+            ]
+          }
+        ]
+      };
+
+      const mockAccount = {
+        id: 'account_123',
+        brandId: 'brand_789',
+        platform: 'FACEBOOK',
+        platformAccountId: 'page_123'
+      };
+
+      socialAccountRepository.findByPlatformAccountIdAndPlatform.mockResolvedValue(mockAccount);
+      
+      // Giả lập Redis NX trả về null -> sự kiện bị trùng lặp
+      redisClient.set.mockResolvedValue(null);
+
+      await facebookWebhookService.processEvent(mockPayload);
+
+      // Webhook sẽ dừng ngay lập tức, không lưu vào DB, không gửi socket
+      expect(inboxRepository.upsertInboxItem).not.toHaveBeenCalled();
+      expect(socketManager.emitToRoom).not.toHaveBeenCalled();
     });
   });
 });

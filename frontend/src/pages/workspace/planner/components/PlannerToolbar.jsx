@@ -3,14 +3,17 @@ import {
   Search, ChevronLeft, ChevronRight, Filter, 
   MoreVertical, Plus, Image, Calendar as CalendarIcon,
   ChevronDown, Youtube, ZoomIn, Layers, Upload, Download,
-  Eye, Settings, Check, Instagram, PlayCircle
+  Eye, Settings, Check, Instagram, PlayCircle, X, RefreshCw
 } from 'lucide-react';
+import { DataIntegrationWizard } from './DataIntegrationWizard';
 import { DatePickerPopover } from './DatePickerPopover';
 import { toast } from 'sonner';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { format } from 'date-fns';
 import postService from '../../../../services/post.service';
+import apiService from '../../../../services/api';
 import { buildMediaUrl } from '@/utils/url';
+import { PostMediaThumbnail } from '@/components/shared/PostMediaThumbnail';
 import { AccessGuard } from '../../../../components/shared/AccessGuard';
 import { PlatformIcon } from '../../../../components/shared/PlatformIcon';
 import {
@@ -113,116 +116,7 @@ export function PlannerToolbar({
   const [isFilterMenuOpen, setIsFilterMenuOpen] = useState(false);
   const [isBestTimesOpen, setIsBestTimesOpen] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
-  const fileInputRef = React.useRef(null);
-
-  // ─── Export CSV ───────────────────────────────────────────────────────────
-  const handleExportCSV = () => {
-    if (!postData || postData.length === 0) {
-      toast.error('No posts to export!');
-      return;
-    }
-    const rows = [PUBLICAST_CSV_HEADERS.join(',')];
-    postData.forEach(post => {
-      const opts = post.options || {};
-      const cells = [
-        csvCell(post.caption || ''),
-        csvCell(post.scheduledAt ? new Date(post.scheduledAt).toISOString().replace('Z', '') : ''),
-        csvCell((post.status || 'DRAFT').toUpperCase()),
-        csvCell((post.platforms || []).join(',')),
-        csvCell((post.type || 'IMAGE').toUpperCase()),
-        csvCell((post.mediaUrls || []).join('|')),
-        csvCell(post.altText || ''),
-        csvCell(post.title || ''),
-        csvCell(opts.firstComment || ''),
-        csvCell(opts.instagramPostType || ''),
-        csvCell(opts.youtubePrivacy || ''),
-        csvCell(opts.youtubeTags || ''),
-        csvCell(opts.youtubePlaylist || ''),
-        csvCell(opts.tiktokPrivacy || ''),
-        csvCell(opts.tiktokDisableComments != null ? String(opts.tiktokDisableComments) : ''),
-        csvCell(opts.facebookPostType || ''),
-        csvCell(activeBrand?.name || ''),
-        csvCell(post.id || ''),
-      ];
-      rows.push(cells.join(','));
-    });
-    const blob = new Blob(['﻿' + rows.join('\r\n')], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.setAttribute('download', `publicast_export_${new Date().toISOString().split('T')[0]}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
-    toast.success(`Exported ${postData.length} posts!`);
-    setIsMoreMenuOpen(false);
-  };
-
-  // ─── Import CSV ───────────────────────────────────────────────────────────
-  const handleImportCSV = (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-    e.target.value = ''; // allow re-selecting same file
-    if (!activeBrand) { toast.error('No active brand selected.'); return; }
-
-    const reader = new FileReader();
-    reader.onload = async (event) => {
-      try {
-        const raw = event.target.result;
-        const text = raw.charCodeAt(0) === 0xFEFF ? raw.slice(1) : raw; // strip BOM
-        const lines = text.split(/\r?\n/).filter(l => l.trim() !== '');
-        if (lines.length <= 1) { toast.error('CSV file is empty or only contains headers.'); return; }
-
-        const rawHeaders = parseCSVRow(lines[0]);
-        const format = detectCSVFormat(rawHeaders);
-        if (format === 'unknown') {
-          toast.error('Unrecognized CSV format. Use the PubliCast or Metricool template.');
-          return;
-        }
-
-        toast.info(`Importing from ${format === 'metricool' ? 'Metricool' : 'PubliCast'} format…`);
-        let successCount = 0, failCount = 0;
-
-        for (let i = 1; i < lines.length; i++) {
-          const row = parseCSVRow(lines[i]);
-          if (row.every(c => c === '')) continue;
-          const p = format === 'metricool' ? mapMetricoolRow(row, rawHeaders) : mapPublicastRow(row, rawHeaders);
-          if (!p.targetPlatforms || p.targetPlatforms.length === 0) { failCount++; continue; }
-          try {
-            await postService.createPost({
-              brandId: activeBrand.id,
-              title: p.title || 'Imported Post',
-              caption: p.caption,
-              targetPlatforms: p.targetPlatforms,
-              type: p.type || 'IMAGE',
-              mediaUrls: p.mediaUrls || [],
-              altText: p.altText || null,
-              scheduledAt: p.scheduledAt ? new Date(p.scheduledAt).toISOString() : null,
-              status: p.status || 'DRAFT',
-              options: p.options || {},
-            });
-            successCount++;
-          } catch (err) {
-            console.warn(`[CSV Import] Row ${i} failed:`, err.message);
-            failCount++;
-          }
-        }
-
-        if (successCount > 0) {
-          toast.success(`Imported ${successCount} post${successCount > 1 ? 's' : ''}!${failCount > 0 ? ` (${failCount} skipped)` : ''}`);
-          if (fetchPosts) fetchPosts();
-        } else {
-          toast.error(`Import failed — ${failCount} row(s) skipped. Ensure Platforms column is filled.`);
-        }
-      } catch (err) {
-        console.error('[CSV Import] Parse error:', err);
-        toast.error('Failed to parse CSV. Please check the file format.');
-      }
-    };
-    reader.readAsText(file, 'UTF-8');
-    setIsMoreMenuOpen(false);
-  };
+  const [isWizardOpen, setIsWizardOpen] = useState(false);
 
   const togglePlatform = (platform) => {
     if (!onVisiblePlatformsChange) return;
@@ -254,6 +148,7 @@ export function PlannerToolbar({
   };
 
   return (
+    <>
     <div className="flex flex-col gap-4 w-full no-print">
       {/* Row 1: Search, Navigator, Filters */}
       <div className="flex flex-wrap items-center gap-3 w-full">
@@ -517,34 +412,16 @@ export function PlannerToolbar({
 
                  <AccessGuard feature="IMPORT_CSV">
                   <button 
-                    onClick={() => fileInputRef.current?.click()}
+                    onClick={() => {
+                      setIsWizardOpen(true);
+                      setIsMoreMenuOpen(false);
+                    }}
                     className="w-full px-4 py-2 text-xs font-bold flex items-center gap-3 group transition-colors border-none bg-transparent text-gray-700 hover:bg-gray-50 cursor-pointer"
                   >
-                    <Upload size={14} className="text-gray-400 group-hover:text-gray-700" />
-                    <span>Import CSV</span>
+                    <RefreshCw size={14} className="text-gray-400 group-hover:text-gray-700" />
+                    <span>Đồng bộ / Nhập / Xuất dữ liệu</span>
                   </button>
-                </AccessGuard>
-
-                {/* Import .ics */}
-                <button 
-                  onClick={() => {
-                    if (onImportIcsClick) onImportIcsClick();
-                    setIsMoreMenuOpen(false);
-                  }}
-                  className="w-full px-4 py-2 text-xs font-bold text-gray-700 hover:bg-gray-50 flex items-center gap-3 group cursor-pointer transition-colors border-none bg-transparent"
-                >
-                  <CalendarIcon size={14} className="text-gray-400 group-hover:text-gray-700" />
-                  <span>Import Google Calendar (.ics)</span>
-                </button>
-
-                {/* 5. Export CSV */}
-                <button 
-                  onClick={handleExportCSV}
-                  className="w-full px-4 py-2 text-xs font-bold text-gray-700 hover:bg-gray-50 flex items-center gap-3 group cursor-pointer transition-colors border-none bg-transparent"
-                >
-                  <Download size={14} className="text-gray-400 group-hover:text-gray-700" />
-                  <span>Export CSV</span>
-                </button>
+                 </AccessGuard>
 
                 <div className="my-1 border-t border-gray-100" />
 
@@ -663,14 +540,6 @@ export function PlannerToolbar({
         </AccessGuard>
       </div>
 
-      {/* Hidden File Input for CSV Imports */}
-      <input 
-        type="file" 
-        ref={fileInputRef} 
-        onChange={handleImportCSV} 
-        accept=".csv" 
-        style={{ display: "none" }} 
-      />
 
       {/* Feed Preview Dialog */}
       {isPreviewFeedOpen && (
@@ -716,20 +585,17 @@ export function PlannerToolbar({
                 ) : (
                   postData.map(post => {
                     const hasMedia = post.mediaUrls && post.mediaUrls.length > 0;
-                    const thumbUrl = buildMediaUrl(post.thumbnail);
                     return (
                       <div 
                         key={post.id} 
                         className="aspect-square bg-gray-50 border border-gray-100/50 relative overflow-hidden group cursor-pointer rounded-md"
                         title={post.caption || post.title}
                       >
-                        {thumbUrl ? (
-                          <img src={thumbUrl} alt="Thumbnail" className="w-full h-full object-cover group-hover:scale-105 transition-all duration-300" />
-                        ) : (
-                          <div className="w-full h-full bg-gray-50 flex items-center justify-center text-[9px] text-gray-400 font-medium">
-                            No Media
-                          </div>
-                        )}
+                        <PostMediaThumbnail 
+                          thumbnail={post.thumbnail}
+                          mediaUrls={post.mediaUrls}
+                          className="w-full h-full group-hover:scale-105 transition-all duration-300"
+                        />
                         <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                           <Eye size={16} className="text-white animate-pulse" />
                         </div>
@@ -743,5 +609,13 @@ export function PlannerToolbar({
         </div>
       )}
     </div>
+      
+      {/* Unified Import/Export Wizard Dialog */}
+      <DataIntegrationWizard 
+        isOpen={isWizardOpen}
+        onClose={() => setIsWizardOpen(false)}
+        onRefreshData={fetchPosts}
+      />
+    </>
   );
 }

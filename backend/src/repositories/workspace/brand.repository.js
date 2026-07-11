@@ -2,6 +2,23 @@ const prisma = require('../../config/prisma');
 const { BILLING_CYCLES, SUBSCRIPTION_STATUS, SYSTEM_PLANS, DEFAULT_CONFIG } = require('../../utils/constants');
 
 class BrandRepository {
+  _getBestSubscription(brandsWithSub) {
+    if (!brandsWithSub || brandsWithSub.length === 0) return null;
+    
+    let bestSub = brandsWithSub[0].subscription;
+    let maxPrice = bestSub?.plan?.priceAmount ? Number(bestSub.plan.priceAmount) : 0;
+
+    for (const b of brandsWithSub) {
+      const sub = b.subscription;
+      const price = sub?.plan?.priceAmount ? Number(sub.plan.priceAmount) : 0;
+      if (price > maxPrice) {
+        maxPrice = price;
+        bestSub = sub;
+      }
+    }
+    return bestSub;
+  }
+
   async findManyByUserId(userId) {
     const brands = await prisma.brand.findMany({
       where: {
@@ -50,15 +67,12 @@ class BrandRepository {
     const proSubscriptionsByOwner = {};
 
     for (const ownerId of ownerIds) {
-      const proBrand = await prisma.brand.findFirst({
+      const activeBrandsWithSub = await prisma.brand.findMany({
         where: {
           ownerId,
           deletedAt: null,
           subscription: {
-            status: 'ACTIVE',
-            plan: {
-              name: 'PRO'
-            }
+            status: 'ACTIVE'
           }
         },
         include: {
@@ -74,8 +88,10 @@ class BrandRepository {
           }
         }
       });
-      if (proBrand && proBrand.subscription) {
-        proSubscriptionsByOwner[ownerId] = proBrand.subscription;
+
+      const bestSub = this._getBestSubscription(activeBrandsWithSub);
+      if (bestSub) {
+        proSubscriptionsByOwner[ownerId] = bestSub;
       }
     }
 
@@ -229,16 +245,13 @@ class BrandRepository {
 
     if (!brand) return null;
 
-    // Find if the owner of this brand has any other brand with an active PRO plan
-    const proSubscriptionBrand = await prisma.brand.findFirst({
+    // Find if the owner of this brand has any other brand with an active subscription
+    const activeBrandsWithSub = await prisma.brand.findMany({
       where: {
         ownerId: brand.ownerId,
         deletedAt: null,
         subscription: {
-          status: 'ACTIVE',
-          plan: {
-            name: 'PRO'
-          }
+          status: 'ACTIVE'
         }
       },
       include: {
@@ -255,8 +268,9 @@ class BrandRepository {
       }
     });
 
-    if (proSubscriptionBrand && proSubscriptionBrand.subscription) {
-      brand.subscription = proSubscriptionBrand.subscription;
+    const bestSub = this._getBestSubscription(activeBrandsWithSub);
+    if (bestSub) {
+      brand.subscription = bestSub;
     }
 
     return brand;

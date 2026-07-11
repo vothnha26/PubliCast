@@ -25,6 +25,8 @@ class InstagramMessagingStrategy extends BaseWebhookStrategy {
       return;
     }
 
+    if (await this.isDuplicateEvent(messageId)) return;
+
     // 1. Fetch or Determine Conversation ID from Meta
     let conversationPlatformId = await this.fetchMetaConversationId(instagramAccountId, customerIgsid, account.accessToken);
     if (!conversationPlatformId) {

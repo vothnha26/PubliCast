@@ -5,6 +5,7 @@ import {
   MoreHorizontal, Eye, Loader2
 } from "lucide-react";
 import { PlatformIcon } from "@/components/shared/PlatformIcon";
+import { PostMediaThumbnail } from "@/components/shared/PostMediaThumbnail";
 import postService from "../../../services/post.service";
 import { useBrand } from "../../../context/BrandContext";
 import { toast } from "sonner";
@@ -209,12 +210,12 @@ export function HistoryView() {
                        </td>
                        <td className="px-4 py-5">
                           <div className="flex items-center gap-4">
-                             <div className="w-12 h-12 bg-gray-100 rounded-xl overflow-hidden shrink-0 border border-gray-100 grayscale opacity-50 relative shadow-sm">
-                                {post.thumbnail ? (
-                                  <img src={post.thumbnail} className="w-full h-full object-cover" />
-                                ) : (
-                                  <div className="w-full h-full flex items-center justify-center text-lg">📝</div>
-                                )}
+                             <div className="w-12 h-12 rounded-xl overflow-hidden shrink-0 border border-gray-100 grayscale opacity-50 relative shadow-sm">
+                                <PostMediaThumbnail 
+                                  thumbnail={post.thumbnail}
+                                  mediaUrls={post.mediaUrls}
+                                  className="w-full h-full"
+                                />
                              </div>
                              <div className="flex flex-col min-w-0">
                                 <span className="text-[13px] font-bold text-gray-400 line-through truncate max-w-[250px]">{post.title}</span>

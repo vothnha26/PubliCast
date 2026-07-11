@@ -24,6 +24,7 @@ class FacebookFeedStrategy extends BaseWebhookStrategy {
     const commentId = value.comment_id;
 
     if (verb === 'add' || verb === 'edited') {
+      if (await this.isDuplicateEvent(commentId)) return;
       const authorId = value.sender_id || 'unknown';
       const authorName = value.sender_name || 'Facebook User';
       const authorAvatar = FACEBOOK_API.avatarUrl(API_VERSIONS.FACEBOOK, authorId);

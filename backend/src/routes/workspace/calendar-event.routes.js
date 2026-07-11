@@ -26,6 +26,11 @@ router.post('/', checkPermission('CREATE_POSTS'), calendarEventController.create
 router.post('/import-ics', checkPermission('CREATE_POSTS'), upload.single('file'), calendarEventController.importIcs);
 
 /**
+ * GET /api/calendar-events/export-ics
+ */
+router.get('/export-ics', calendarEventController.exportIcs);
+
+/**
  * DELETE /api/calendar-events/:id
  */
 router.delete('/:id', checkPermission('DELETE_POSTS'), calendarEventController.deleteEvent);
