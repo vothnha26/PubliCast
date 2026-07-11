@@ -40,7 +40,11 @@ const fileFilter = (req, file, cb) => {
 
 const localStorage = multer.diskStorage({
   destination: (req, file, cb) => {
-    const brandId = req.body?.brandId || req.query?.brandId || 'unassigned';
+    let brandId = req.body?.brandId || req.query?.brandId || 'unassigned';
+    // Sanitize brandId to prevent Path Traversal
+    brandId = brandId.replace(/[^a-zA-Z0-9-_]/g, '');
+    if (!brandId) brandId = 'unassigned';
+    
     const uploadDir = path.join(process.cwd(), 'uploads', 'media', brandId);
     fs.mkdirSync(uploadDir, { recursive: true });
     cb(null, uploadDir);

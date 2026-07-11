@@ -1,6 +1,7 @@
 const express = require('express');
 const hashtagController = require('../../controllers/workspace/hashtag.controller');
 const { verifyAuth } = require('../../middlewares/auth.middleware');
+const checkBrandAccess = require('../../middlewares/brand-access.middleware');
 
 const router = express.Router();
 
@@ -11,7 +12,7 @@ router.use(verifyAuth);
  * GET /api/hashtags
  * Retrieve all sets and tracked hashtags for a brand
  */
-router.get('/', hashtagController.getHashtagData);
+router.get('/', checkBrandAccess, hashtagController.getHashtagData);
 
 /**
  * GET /api/hashtags/trending
@@ -23,7 +24,7 @@ router.get('/trending', hashtagController.getTrendingHashtags);
  * POST /api/hashtags/sets
  * Create a new hashtag set
  */
-router.post('/sets', hashtagController.createHashtagSet);
+router.post('/sets', checkBrandAccess, hashtagController.createHashtagSet);
 
 /**
  * PUT /api/hashtags/sets/:id
@@ -41,7 +42,7 @@ router.delete('/sets/:id', hashtagController.deleteHashtagSet);
  * POST /api/hashtags/track
  * Track a new hashtag
  */
-router.post('/track', hashtagController.trackHashtag);
+router.post('/track', checkBrandAccess, hashtagController.trackHashtag);
 
 /**
  * DELETE /api/hashtags/track/:id
