@@ -1,0 +1,10 @@
+{
+  "inbox": {
+    "title": "Inbox",
+    "placeholder": "Select a conversation"
+  },
+  "teams": {
+    "title": "Team Management",
+    "addMember": "Add Team Member"
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "inbox": {
+    "title": "Hộp thư đến",
+    "placeholder": "Chọn một cuộc hội thoại"
+  },
+  "teams": {
+    "title": "Quản lý nhóm",
+    "addMember": "Thêm thành viên nhóm"
+  }
+}

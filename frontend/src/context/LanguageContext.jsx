@@ -2,6 +2,8 @@ import { createContext, useContext, useState, useEffect } from 'react';
 import { STORAGE_KEYS } from '../constants/storageKeys';
 import { LANGUAGE_CODES } from '../constants/language';
 
+import i18n from 'i18next';
+
 const LanguageContext = createContext(null);
 
 export function LanguageProvider({ children }) {
@@ -19,6 +21,7 @@ export function LanguageProvider({ children }) {
     }
     setLanguageState(newLang);
     localStorage.setItem(STORAGE_KEYS.LANGUAGE, newLang);
+    i18n.changeLanguage(newLang);
   };
 
   // Keep <html lang="..."> in sync for accessibility & SEO

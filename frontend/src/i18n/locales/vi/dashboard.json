@@ -1,0 +1,10 @@
+{
+  "title": "Bảng điều khiển Workspace",
+  "welcome": "Chào mừng quay trở lại, {{name}}!",
+  "widgets": {
+    "totalPosts": "Tổng bài viết",
+    "scheduled": "Đã lên lịch",
+    "published": "Đã đăng",
+    "failed": "Thất bại"
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "auth": {
+    "loginFailed": "Invalid email or password",
+    "activationRequired": "Activation code sent. Please check your email."
+  },
+  "general": {
+    "networkError": "Network error, please try again later",
+    "permissionDenied": "You do not have permission to perform this action"
+  }
+}

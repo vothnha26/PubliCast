@@ -12,28 +12,30 @@ import { useState, useEffect } from "react";
 import apiService from "../services/api";
 import { useTheme } from "../context/ThemeContext";
 import { THEME_MODES } from "../constants/theme";
+import { useTranslation } from "react-i18next";
 
 const PLATFORMS = [
-  { name: "Summary", icon: <List size={18} />, path: "/dashboard", color: "#6B7280" },
+  { name: "Summary", nameKey: "sidebar.summary", icon: <List size={18} />, path: "/dashboard", color: "#6B7280" },
   { name: "YouTube", icon: <Youtube size={18} />, path: "/dashboard/youtube", color: "#FF0000", brand: "T" },
   { name: "Facebook", icon: <Facebook size={18} />, path: "/dashboard/facebook", color: "#1877F2", brand: "T" },
   { name: "Instagram", icon: <Instagram size={18} />, path: "/dashboard/instagram", color: "#E1306C", brand: "T" },
   { name: "TikTok", icon: <PlayCircle size={18} />, path: "/dashboard/tiktok", color: "#000000", brand: "T" },
   { name: "Discord", icon: <MessageSquare size={18} />, path: "/dashboard/discord", color: "#5865F2", brand: "T" },
   { name: "Threads", icon: <PlatformIcon platform="Threads" size={18} variant="flat" />, path: "/dashboard/threads", color: "#000000", brand: "T" },
-  { name: "More connection", icon: <Plus size={18} />, isAction: true, color: "#3B82F6" },
+  { name: "More connection", nameKey: "sidebar.moreConnection", icon: <Plus size={18} />, isAction: true, color: "#3B82F6" },
 ];
 
 const MANAGE_ITEMS = [
-  { name: "Brand settings", icon: <Settings size={18} />, path: "/manage/connections?tab=brand-settings" },
-  { name: "Approval Tasks", icon: <ClipboardCheck size={18} />, path: "/manage/tasks" },
-  { name: "Hashtag Tracker", icon: <Hash size={18} />, path: "/hashtags" },
-  { name: "Reporting", icon: <FileText size={18} />, path: "/manage/reports" },
-  { name: "Competitors", icon: <TrendingUp size={18} />, path: "/manage/competitors" },
-  { name: "Ads Manager", icon: <Megaphone size={18} />, path: "/manage/ads" },
+  { name: "Brand settings", nameKey: "menu.brandSettings", icon: <Settings size={18} />, path: "/manage/connections?tab=brand-settings" },
+  { name: "Approval Tasks", nameKey: "sidebar.approvalTasks", icon: <ClipboardCheck size={18} />, path: "/manage/tasks" },
+  { name: "Hashtag Tracker", nameKey: "sidebar.hashtagTracker", icon: <Hash size={18} />, path: "/hashtags" },
+  { name: "Reporting", nameKey: "sidebar.reporting", icon: <FileText size={18} />, path: "/manage/reports" },
+  { name: "Competitors", nameKey: "sidebar.competitors", icon: <TrendingUp size={18} />, path: "/manage/competitors" },
+  { name: "Ads Manager", nameKey: "sidebar.adsManager", icon: <Megaphone size={18} />, path: "/manage/ads" },
 ];
 
 export function SidebarWorkspace() {
+  const { t } = useTranslation("topbar");
   const location = useLocation();
   const currentPath = location.pathname;
   const { openConnections } = useConnections();
@@ -58,8 +60,8 @@ export function SidebarWorkspace() {
   const planName = planInfo?.planName || "FREE";
   const isPremium = planName.toUpperCase() !== "FREE";
   const nextBillDate = planInfo?.periodEnd 
-    ? new Date(planInfo.periodEnd).toLocaleDateString("vi-VN", { year: 'numeric', month: 'numeric', day: 'numeric' })
-    : "Không giới hạn";
+    ? new Date(planInfo.periodEnd).toLocaleDateString(undefined, { year: 'numeric', month: 'numeric', day: 'numeric' })
+    : t("sidebar.unlimited");
 
   return (
     <aside
@@ -70,13 +72,14 @@ export function SidebarWorkspace() {
         {/* Section Label */}
         <div className="px-3 mb-4 flex items-center justify-between">
            <span style={{ fontSize: 10, fontWeight: 800, color: "var(--muted-foreground)", textTransform: "uppercase", letterSpacing: "1px" }}>
-              {isManageMode ? "Management" : "Analytics"}
+              {isManageMode ? t("sidebar.management") : t("sidebar.analytics")}
            </span>
         </div>
 
         <nav className="flex flex-col gap-1">
           {(isManageMode ? MANAGE_ITEMS : PLATFORMS).map((item) => {
             const isActive = item.path && currentPath === item.path.split('?')[0];
+            const itemLabel = item.nameKey ? t(item.nameKey) : item.name;
             
             const content = (
               <>
@@ -94,7 +97,7 @@ export function SidebarWorkspace() {
                   }}
                   className="transition-colors group-hover:text-[var(--sidebar-foreground)]"
                 >
-                  {item.name}
+                  {itemLabel}
                 </span>
                 {isActive && !item.isAction && (
                   <div className="ml-auto w-1.5 h-1.5 rounded-full bg-[var(--sidebar-foreground)]" />
@@ -134,7 +137,7 @@ export function SidebarWorkspace() {
           <div className="mt-8 space-y-1">
             <div className="px-3 mb-4">
               <span style={{ fontSize: 10, fontWeight: 800, color: "var(--muted-foreground)", textTransform: "uppercase", letterSpacing: "1px" }}>
-                Tools
+                {t("sidebar.tools")}
               </span>
             </div>
             <Link
@@ -146,7 +149,7 @@ export function SidebarWorkspace() {
               }}
             >
               <FileText size={18} style={{ color: currentPath.startsWith("/planner") ? "var(--sidebar-foreground)" : undefined }} />
-              <span style={{ fontSize: 13, fontWeight: currentPath.startsWith("/planner") ? 600 : 400 }}>Content Planner</span>
+              <span style={{ fontSize: 13, fontWeight: currentPath.startsWith("/planner") ? 600 : 400 }}>{t("sidebar.contentPlanner")}</span>
               {currentPath.startsWith("/planner") && (
                 <div className="ml-auto w-1.5 h-1.5 rounded-full bg-[var(--sidebar-foreground)]" />
               )}
@@ -160,7 +163,7 @@ export function SidebarWorkspace() {
               }}
             >
               <ClipboardCheck size={18} style={{ color: currentPath.startsWith("/manage/tasks") ? "var(--sidebar-foreground)" : undefined }} />
-              <span style={{ fontSize: 13, fontWeight: currentPath.startsWith("/manage/tasks") ? 600 : 400 }}>Approval Requests</span>
+              <span style={{ fontSize: 13, fontWeight: currentPath.startsWith("/manage/tasks") ? 600 : 400 }}>{t("sidebar.approvalRequests")}</span>
               {currentPath.startsWith("/manage/tasks") && (
                 <div className="ml-auto w-1.5 h-1.5 rounded-full bg-[var(--sidebar-foreground)]" />
               )}
@@ -174,10 +177,15 @@ export function SidebarWorkspace() {
          <div className="bg-[var(--sidebar-accent)] rounded-xl p-3">
             <div className="flex items-center gap-2 mb-1">
                <div className={`w-2 h-2 rounded-full ${isPremium ? "bg-green-500" : "bg-gray-400"}`} />
-               <span className="text-[10px] font-bold text-[var(--muted-foreground)] uppercase">Gói {planName}</span>
+               <span className="text-[10px] font-bold text-[var(--muted-foreground)] uppercase">
+                 {t("sidebar.planLabel", { name: planName })}
+               </span>
             </div>
             <div className="text-[10px] text-[var(--muted-foreground)] opacity-85 font-medium">
-              {isPremium ? `Kỳ tiếp theo: ${nextBillDate}` : "Hạn dùng: Không giới hạn"}
+              {isPremium 
+                ? t("sidebar.nextBilling", { date: nextBillDate }) 
+                : t("sidebar.noLimit")
+              }
             </div>
          </div>
 

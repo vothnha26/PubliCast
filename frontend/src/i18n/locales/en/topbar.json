@@ -1,0 +1,68 @@
+{
+  "nav": {
+    "dashboard": "Dashboard",
+    "mediaLibrary": "Media Library",
+    "inbox": "Inbox",
+    "planner": "Planning",
+    "smartlinks": "SmartLinks",
+    "ai": "AI Assistant"
+  },
+  "menu": {
+    "createWorkplace": "Create Workplace",
+    "connections": "Connections",
+    "brandSettings": "Brand settings",
+    "userManagement": "User management",
+    "billing": "Plans and billing",
+    "myTasks": "My tasks",
+    "language": "Language",
+    "accountSettings": "Account settings",
+    "helpCenter": "Help center",
+    "supportChat": "Support Chat",
+    "whatsNew": "What's new",
+    "affiliation": "Affiliation program",
+    "logout": "Logout",
+    "legalTerms": "Legal terms"
+  },
+  "brand": {
+    "select": "Select Brand",
+    "defaultActive": "Default Brand",
+    "setDefault": "Set as default brand",
+    "deselect": "Deselect Brand",
+    "manage": "Manage Brands",
+    "backWorkspace": "← Back to Workspace",
+    "switchToManager": "Switch to Manager →"
+  },
+  "sidebar": {
+    "analytics": "Analytics",
+    "management": "Management",
+    "tools": "Tools",
+    "contentPlanner": "Content Planner",
+    "approvalRequests": "Approval Requests",
+    "planLabel": "Plan: {{name}}",
+    "nextBilling": "Next billing: {{date}}",
+    "unlimited": "Unlimited",
+    "noLimit": "Duration: Unlimited",
+    "summary": "Summary",
+    "moreConnection": "More connection",
+    "approvalTasks": "Approval Requests",
+    "hashtagTracker": "Hashtag Tracker",
+    "reporting": "Reporting",
+    "competitors": "Competitors",
+    "adsManager": "Ads Manager"
+  },
+  "searchPlaceholder": "Search tools, platforms...",
+  "upgrade": "Upgrade",
+  "managerMode": "Manager mode",
+  "workMode": "Work mode",
+  "yourWorkplaces": "Your Workplaces",
+  "quickLinks": {
+    "dashboardName": "Analytics Dashboard",
+    "dashboardDesc": "Quick link to metrics and views",
+    "plannerName": "Content Planner",
+    "plannerDesc": "Quick link to schedule posts",
+    "aiName": "AI Assistant",
+    "aiDesc": "Quick link to write assistant",
+    "settingsName": "Account Settings",
+    "settingsDesc": "Quick link to user profile"
+  }
+}

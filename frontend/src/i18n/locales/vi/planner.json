@@ -1,0 +1,71 @@
+{
+  "title": "Lịch biểu nội dung",
+  "wizard": {
+    "title": "Tích hợp & Đồng bộ dữ liệu",
+    "subtitle": "Nhập hoặc xuất bài viết và lịch biểu bằng định dạng CSV/ICS",
+    "steps": {
+      "setup": "Cài đặt",
+      "validate": "Kiểm tra",
+      "filter": "Bộ lọc",
+      "preview": "Xem trước"
+    },
+    "actions": {
+      "importTitle": "Nhập dữ liệu (Import)",
+      "importDesc": "Đưa danh sách bài viết từ các tệp dữ liệu vào Planner của bạn.",
+      "exportTitle": "Xuất dữ liệu (Export)",
+      "exportDesc": "Tải xuống toàn bộ lịch biểu bài viết của bạn ra định dạng chuẩn."
+    },
+    "formats": {
+      "csvLabel": "Bảng tính CSV (.csv)",
+      "icsLabel": "Lịch iCalendar (.ics)",
+      "sectionLabel": "Định dạng tệp hỗ trợ"
+    },
+    "upload": {
+      "sectionLabel": "Tải tệp tin",
+      "dragHint": "Kéo & thả hoặc click để chọn file",
+      "formatHint": "Hỗ trợ tệp *.{{ext}} mẫu tiêu chuẩn"
+    },
+    "dateRange": {
+      "title": "Chọn khoảng thời gian xuất lịch biểu",
+      "fromLabel": "Từ ngày",
+      "toLabel": "Đến ngày",
+      "hint": "Bài viết trong khoảng thời gian này sẽ được truy vấn trực tiếp từ cơ sở dữ liệu để biên dịch tệp tải về tương thích."
+    },
+    "previewImport": {
+      "label": "Xem trước danh sách bài viết ({{n}})",
+      "sublabel": "Xem trước giúp đảm bảo định dạng khớp chính xác",
+      "colIndex": "STT",
+      "colMedia": "Media",
+      "colPost": "Bài viết",
+      "colPlatform": "Nền tảng",
+      "colScheduled": "Thời gian lên lịch",
+      "noMedia": "Bài viết nhập",
+      "draft": "Lưu bản nháp"
+    },
+    "previewExport": {
+      "action": "Hình thức hành động",
+      "actionValue": "Xuất tệp dữ liệu (Export)",
+      "format": "Định dạng đầu ra",
+      "dateRange": "Phạm vi thời gian",
+      "hint": "Tệp của bạn sẽ được tự động biên dịch, ký số mã hóa và sẵn sàng tải về trong giây lát sau khi bấm xác nhận."
+    },
+    "buttons": {
+      "back": "Quay lại",
+      "cancel": "Hủy bỏ",
+      "continue": "Tiếp tục",
+      "importConfirm": "Nhập dữ liệu",
+      "exportConfirm": "Tải về file"
+    },
+    "toasts": {
+      "fileReceived": "Đã nhận tệp: {{name}}",
+      "invalidCsv": "Vui lòng chọn tệp tin định dạng .csv",
+      "invalidIcs": "Vui lòng chọn tệp tin định dạng .ics",
+      "noFileSelected": "Vui lòng chọn tệp tin để nhập dữ liệu.",
+      "parseError": "Lỗi khi phân tích tệp tin.",
+      "importSuccess": "Đã nhập thành công {{n}} mục vào Planner!",
+      "importFailure": "Nhập dữ liệu thất bại hoặc không có dòng nào hợp lệ.",
+      "exportSuccess": "Xuất dữ liệu lịch biểu thành công!",
+      "exportError": "Có lỗi xảy ra khi xuất dữ liệu."
+    }
+  }
+}

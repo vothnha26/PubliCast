@@ -1,0 +1,71 @@
+{
+  "title": "Content Planner",
+  "wizard": {
+    "title": "Data Sync & Integration",
+    "subtitle": "Import or export posts and schedule in CSV/ICS format",
+    "steps": {
+      "setup": "Setup",
+      "validate": "Validate",
+      "filter": "Filter",
+      "preview": "Preview"
+    },
+    "actions": {
+      "importTitle": "Import Data",
+      "importDesc": "Load a list of posts from a data file into your Planner.",
+      "exportTitle": "Export Data",
+      "exportDesc": "Download your entire post schedule in a standard format."
+    },
+    "formats": {
+      "csvLabel": "Spreadsheet CSV (.csv)",
+      "icsLabel": "iCalendar (.ics)",
+      "sectionLabel": "Supported file formats"
+    },
+    "upload": {
+      "sectionLabel": "Upload file",
+      "dragHint": "Drag & drop or click to select file",
+      "formatHint": "Supports *.{{ext}} standard template"
+    },
+    "dateRange": {
+      "title": "Select export date range",
+      "fromLabel": "From date",
+      "toLabel": "To date",
+      "hint": "Posts within this range will be queried from the database to compile your download file."
+    },
+    "previewImport": {
+      "label": "Post preview ({{n}})",
+      "sublabel": "Preview helps ensure format matches exactly",
+      "colIndex": "#",
+      "colMedia": "Media",
+      "colPost": "Post",
+      "colPlatform": "Platform",
+      "colScheduled": "Scheduled at",
+      "noMedia": "Imported post",
+      "draft": "Save as draft"
+    },
+    "previewExport": {
+      "action": "Action",
+      "actionValue": "Export file (Download)",
+      "format": "Output format",
+      "dateRange": "Date range",
+      "hint": "Your file will be compiled and ready to download after confirmation."
+    },
+    "buttons": {
+      "back": "Back",
+      "cancel": "Cancel",
+      "continue": "Continue",
+      "importConfirm": "Import data",
+      "exportConfirm": "Download file"
+    },
+    "toasts": {
+      "fileReceived": "File received: {{name}}",
+      "invalidCsv": "Please select a .csv file",
+      "invalidIcs": "Please select an .ics file",
+      "noFileSelected": "Please select a file to import.",
+      "parseError": "Error reading file.",
+      "importSuccess": "Successfully imported {{n}} items into Planner!",
+      "importFailure": "Import failed or no valid rows found.",
+      "exportSuccess": "Schedule exported successfully!",
+      "exportError": "An error occurred while exporting."
+    }
+  }
+}

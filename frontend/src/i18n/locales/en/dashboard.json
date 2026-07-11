@@ -1,0 +1,10 @@
+{
+  "title": "Workspace Dashboard",
+  "welcome": "Welcome back, {{name}}!",
+  "widgets": {
+    "totalPosts": "Total Posts",
+    "scheduled": "Scheduled",
+    "published": "Published",
+    "failed": "Failed"
+  }
+}
