@@ -32,6 +32,7 @@ import { HashtagManager } from "./pages/workspace/HashtagManager";
 import { AutoLists } from "./pages/workspace/AutoLists";
 import { ErrorPages } from "./pages/workspace/ErrorPages";
 import { NotificationsPage } from "./pages/workspace/Notifications";
+import { VideoEditorPage } from "./pages/workspace/VideoEditorPage";
 import { PlannerLayout } from "./pages/workspace/planner/PlannerLayout";
 import { WeeklyCalendarView } from "./pages/workspace/planner/WeeklyCalendarView";
 import { ListView } from "./pages/workspace/planner/ListView";
@@ -53,6 +54,8 @@ import { ReportsPage } from "./pages/manage/Reports";
 import { SmartLinksPage } from "./pages/manage/SmartLinks";
 import { PublicSmartLinksPage } from "./pages/manage/PublicSmartLinksPage";
 import { ConnectPlatformsPage } from "./pages/manage/Placeholder";
+import { LivestreamChat } from "./pages/manage/LivestreamChat";
+import { ObsChatOverlay } from "./pages/manage/ObsChatOverlay";
 
 // Admin Pages
 import { AdminPricing } from "./pages/admin/AdminPricing";
@@ -109,7 +112,7 @@ export default function App() {
     );
   }
 
-  const isNoLayout = NO_LAYOUT_PATHS.includes(currentPath) || currentPath.startsWith("/s/");
+  const isNoLayout = NO_LAYOUT_PATHS.includes(currentPath) || currentPath.startsWith("/s/") || currentPath.startsWith("/overlay/");
   const isSuperadmin = currentPath.startsWith("/admin");
   const isStaff = currentPath.startsWith("/staff");
 
@@ -162,6 +165,7 @@ export default function App() {
               <Route path="/autolists" element={<ProtectedRoute allowedRoles={CLIENT_ROLES}><AutoLists /></ProtectedRoute>} />
               <Route path="/errors" element={<ProtectedRoute allowedRoles={CLIENT_ROLES}><ErrorPages /></ProtectedRoute>} />
               <Route path="/notifications" element={<ProtectedRoute allowedRoles={CLIENT_ROLES}><NotificationsPage /></ProtectedRoute>} />
+              <Route path="/workspace/video-editor" element={<ProtectedRoute allowedRoles={CLIENT_ROLES}><VideoEditorPage /></ProtectedRoute>} />
               
               {/* Protected Manage Routes */}
               <Route path="/manage/inbox" element={<ProtectedRoute allowedRoles={CLIENT_ROLES}><FeatureGate productId={PRODUCT_IDS.UNIFIED_INBOX}><InboxPage /></FeatureGate></ProtectedRoute>} />
@@ -172,6 +176,7 @@ export default function App() {
               <Route path="/manage/tasks" element={<ProtectedRoute allowedRoles={CLIENT_ROLES}><MyTasksPage /></ProtectedRoute>} />
               <Route path="/manage/competitors" element={<ProtectedRoute allowedRoles={CLIENT_ROLES}><CompetitorsPage /></ProtectedRoute>} />
               <Route path="/manage/connections" element={<ProtectedRoute allowedRoles={CLIENT_ROLES}><BrandSettingsPage /></ProtectedRoute>} />
+              <Route path="/manage/livestream-chat" element={<ProtectedRoute allowedRoles={CLIENT_ROLES}><LivestreamChat /></ProtectedRoute>} />
               
               {/* Protected Admin Routes */}
               <Route path="/admin/pricing" element={<ProtectedRoute allowedRoles={['ADMIN']}><AdminPricing /></ProtectedRoute>} />
@@ -191,6 +196,7 @@ export default function App() {
               <Route path="/connect" element={<ProtectedRoute allowedRoles={CLIENT_ROLES}><ConnectPlatformsPage /></ProtectedRoute>} />
               <Route path="/invite" element={<InviteFlow />} />
               <Route path="/s/:slug" element={<PublicSmartLinksPage />} />
+              <Route path="/overlay/chat/:livestreamId" element={<ObsChatOverlay />} />
               
               <Route path="*" element={<Navigate to="/" />} />
             </Routes>

@@ -71,6 +71,12 @@ exports.updateHashtagSet = async (req, res, next) => {
       return res.status(404).json({ message: 'Hashtag set not found' });
     }
 
+    const authorizationFacade = require('../../services/auth/authorization.facade');
+    const hasAccess = await authorizationFacade.checkBrandAccess(req.user.id, existingSet.brandId);
+    if (!hasAccess) {
+      return res.status(403).json({ message: 'Bạn không có quyền truy cập vào tài nguyên này.' });
+    }
+
     const updatedSet = await prisma.hashtagSet.update({
       where: { id },
       data: {
@@ -101,6 +107,12 @@ exports.deleteHashtagSet = async (req, res, next) => {
     const existingSet = await prisma.hashtagSet.findUnique({ where: { id } });
     if (!existingSet) {
       return res.status(404).json({ message: 'Hashtag set not found' });
+    }
+
+    const authorizationFacade = require('../../services/auth/authorization.facade');
+    const hasAccess = await authorizationFacade.checkBrandAccess(req.user.id, existingSet.brandId);
+    if (!hasAccess) {
+      return res.status(403).json({ message: 'Bạn không có quyền truy cập vào tài nguyên này.' });
     }
 
     await prisma.hashtagSet.delete({ where: { id } });
@@ -174,6 +186,12 @@ exports.untrackHashtag = async (req, res, next) => {
     const existing = await prisma.hashtagTracker.findUnique({ where: { id } });
     if (!existing) {
       return res.status(404).json({ message: 'Tracked hashtag not found' });
+    }
+
+    const authorizationFacade = require('../../services/auth/authorization.facade');
+    const hasAccess = await authorizationFacade.checkBrandAccess(req.user.id, existing.brandId);
+    if (!hasAccess) {
+      return res.status(403).json({ message: 'Bạn không có quyền truy cập vào tài nguyên này.' });
     }
 
     await prisma.hashtagTracker.delete({ where: { id } });

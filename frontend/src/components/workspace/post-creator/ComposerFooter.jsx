@@ -1,4 +1,5 @@
 import React from "react";
+import { useTranslation } from "react-i18next";
 import { Calendar, Loader2, ChevronDown, Check } from "lucide-react";
 import { usePostCreatorFormContext } from "../../../context/PostCreatorFormContext";
 
@@ -10,6 +11,7 @@ const PUBLISH_OPTIONS = [
 ];
 
 export function ComposerFooter() {
+  const { t } = useTranslation(["planner", "common"]);
   const {
     closePostCreator,
     isLibrary,
@@ -27,11 +29,11 @@ export function ComposerFooter() {
   } = usePostCreatorFormContext();
 
   const getPublishButtonLabelText = () => {
-    if (editingPost) return 'UPDATE';
-    if (selectedPublishId === 'draft') return 'SAVE';
-    if (selectedPublishId === 'review') return 'SEND';
-    if (!hasApprovePermission) return 'SUBMIT';
-    return selectedPublishId === 'now' ? 'PUBLISH' : 'SCHEDULE';
+    if (editingPost) return t('planner:postCreator.footer.update');
+    if (selectedPublishId === 'draft') return t('planner:postCreator.footer.save');
+    if (selectedPublishId === 'review') return t('planner:postCreator.footer.send');
+    if (!hasApprovePermission) return t('planner:postCreator.footer.submit');
+    return selectedPublishId === 'now' ? t('planner:postCreator.footer.publish') : t('planner:postCreator.footer.schedule');
   };
 
   const getEditPublishOptions = () => {
@@ -52,7 +54,7 @@ export function ComposerFooter() {
 
   return (
     <div className="shrink-0 px-8 py-5 border-t border-gray-100 bg-white flex items-center justify-between z-10">
-      <button onClick={closePostCreator} className="px-6 py-2.5 rounded-xl border border-gray-200 text-xs font-bold text-gray-500 hover:bg-gray-50 hover:text-black transition-all cursor-pointer font-sans">Cancel</button>
+      <button onClick={closePostCreator} data-testid="post-creator-cancel-btn" className="px-6 py-2.5 rounded-xl border border-gray-200 text-xs font-bold text-gray-500 hover:bg-gray-50 hover:text-black transition-all cursor-pointer font-sans">{t("planner:postCreator.footer.cancel")}</button>
       
       <div className="flex items-center gap-4">
         {!isLibrary && ['schedule', 'review'].includes(selectedPublishId) && (
@@ -80,7 +82,7 @@ export function ComposerFooter() {
                 : "bg-gray-200 text-gray-400 cursor-not-allowed"
             }`}
           >
-            {isCreating ? <Loader2 size={16} className="animate-spin" /> : "Save Template"}
+            {isCreating ? <Loader2 size={16} className="animate-spin" /> : t("planner:postCreator.footer.saveTemplate")}
           </button>
         ) : (
           <div className="flex items-center font-sans">
@@ -117,13 +119,13 @@ export function ComposerFooter() {
                 <div className="absolute bottom-full right-0 mb-4 w-64 bg-white rounded-3xl shadow-[0_20px_50px_rgba(0,0,0,0.15)] border border-gray-100 py-3 z-50 animate-in slide-in-from-bottom-2">
                   {editablePublishOptions.length === 0 ? (
                     <div className="px-6 py-3 text-[10px] text-gray-400 font-bold text-center font-sans">
-                      Bài đã đăng — chỉ có thể chỉnh nội dung
+                      {t("planner:postCreator.footer.publishedState")}
                     </div>
                   ) : editablePublishOptions.map((opt) => (
                     <button key={opt.id} onClick={() => { setSelectedPublishId(opt.id); setShowPublishMenu(false); }} data-testid={`publish-option-${opt.id}`} className={`w-full flex items-center justify-between px-6 py-3 hover:bg-gray-50 transition-all text-left cursor-pointer ${selectedPublishId === opt.id ? 'bg-gray-50' : ''}`}>
                       <div>
-                        <div className="text-[10px] font-black text-gray-800 uppercase tracking-widest font-sans">{opt.label}</div>
-                        <div className="text-[9px] text-gray-400 font-bold font-sans">{opt.sub}</div>
+                        <div className="text-[10px] font-black text-gray-800 uppercase tracking-widest font-sans">{t(`planner:postCreator.footer.publishOptions.${opt.id}.label`)}</div>
+                        <div className="text-[9px] text-gray-400 font-bold font-sans">{t(`planner:postCreator.footer.publishOptions.${opt.id}.sub`)}</div>
                       </div>
                       {selectedPublishId === opt.id && <Check size={14} className="text-gray-800 shrink-0" />}
                     </button>

@@ -5,7 +5,7 @@ const app = require('../../src/app');
 const prisma = require('../../src/config/prisma');
 const socketManager = require('../../src/services/workspace/socket/socket.manager');
 const { SOCKET_EVENTS } = require('../../src/utils/socket-constants');
-const jwt = require('jsonwebtoken');
+const jwtUtils = require('../../src/utils/jwt.utils');
 
 describe('WebSocket Chat Support Integration Tests', () => {
   let server;
@@ -42,16 +42,18 @@ describe('WebSocket Chat Support Integration Tests', () => {
       }
     });
 
-    userToken = jwt.sign({ id: testUser.id }, process.env.JWT_SECRET);
+    userToken = jwtUtils.generateAccessToken({ id: testUser.id });
 
     testBrand = await prisma.brand.create({
       data: {
         name: 'WS Test Brand',
         timezone: 'Asia/Ho_Chi_Minh',
         defaultLanguage: 'vi',
-        ownerId: testUser.id,
+        owner: { connect: { id: testUser.id } },
         subscription: {
           create: {
+            currentPeriodStart: new Date(),
+            currentPeriodEnd: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
             plan: {
               connectOrCreate: {
                 where: { name_billingCycle: { name: 'FREE', billingCycle: 'MONTHLY' } },
@@ -66,7 +68,7 @@ describe('WebSocket Chat Support Integration Tests', () => {
                       maxSocialProfiles: 1,
                       maxPostsPerMonth: 10,
                       maxLivePlatforms: 1,
-                      maxStreamQuality: 'SD_480P',
+                      maxStreamQuality: 'SD',
                       maxTeamSeats: 0,
                       allowCustomRoles: false,
                       allowApprovalWorkflow: false

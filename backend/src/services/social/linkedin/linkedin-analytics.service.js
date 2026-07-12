@@ -28,7 +28,7 @@ class LinkedInAnalyticsService {
     };
 
     const sortedDates = Object.keys(dailyMap).sort().map(d => dailyMap[d]);
-    return this._calculateTotalsAndFormatResponse(sortedDates, 0, feedStats);
+    return this._calculateTotalsAndFormatResponse(sortedDates, currentFollowers, feedStats);
   }
 
   async getChannelInfo(auth, startDate, endDate, account = null) {

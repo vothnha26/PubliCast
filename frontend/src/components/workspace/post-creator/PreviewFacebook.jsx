@@ -10,6 +10,7 @@ import { PreviewFacebookAlbum } from "./PreviewFacebookAlbum";
 export function PreviewFacebook({ 
   caption, 
   videoFileUrl, 
+  videoFile = null,
   previewDevice = "mobile",
   pageName = "PubliCast Fanpage",
   facebookType = "post",
@@ -36,6 +37,7 @@ export function PreviewFacebook({
     return (
       <PreviewShell
         videoFileUrl={videoFileUrl}
+        videoFile={videoFile}
         previewDevice={previewDevice}
         imageTransform={imageTransform}
         layout="vertical"
@@ -114,6 +116,7 @@ export function PreviewFacebook({
     return (
       <PreviewShell
         videoFileUrl={videoFileUrl}
+        videoFile={videoFile}
         previewDevice={previewDevice}
         imageTransform={imageTransform}
         layout="vertical"
@@ -157,6 +160,7 @@ export function PreviewFacebook({
   return (
     <PreviewShell
       videoFileUrl={videoFileUrl}
+      videoFile={videoFile}
       previewDevice={previewDevice}
       imageTransform={imageTransform}
       layout="card"

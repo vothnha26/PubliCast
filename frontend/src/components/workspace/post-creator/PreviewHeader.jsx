@@ -1,8 +1,10 @@
 import React from "react";
+import { useTranslation } from "react-i18next";
 import { Youtube, Instagram, Linkedin, Send, MessageSquare, AlertCircle, Smartphone, Monitor } from "lucide-react";
 import { usePostCreatorFormContext } from "../../../context/PostCreatorFormContext";
 
 export function PreviewHeader() {
+  const { t } = useTranslation(["planner", "common"]);
   const {
     selectedPlatforms,
     activePlatform,
@@ -12,7 +14,7 @@ export function PreviewHeader() {
   } = usePostCreatorFormContext();
 
   return (
-    <div className="shrink-0 px-8 py-5 border-b border-gray-100 flex items-center justify-between bg-white z-10">
+    <div className="shrink-0 px-6 py-4 border-b border-gray-200/60 flex items-center justify-between bg-transparent z-10">
       <div className="flex items-center gap-2">
         {selectedPlatforms.map((platform) => {
           const isActive = platform === activePlatform;
@@ -21,7 +23,7 @@ export function PreviewHeader() {
               key={platform}
               type="button"
               onClick={() => setActivePlatform(platform)}
-              title={`Switch to ${platform} preview`}
+              title={t("planner:postCreator.preview.header.switchPreview", { platform })}
               className={`w-10 h-10 rounded-full flex items-center justify-center shadow-sm transition-all cursor-pointer hover:scale-105 ${
                 isActive ? 'bg-black text-white scale-110' : 'bg-white text-gray-500 hover:bg-gray-100 hover:text-black'
               }`}

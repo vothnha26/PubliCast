@@ -28,7 +28,8 @@ const toLocalDatetimeString = (dateInput) => {
 export function usePostCreatorForm() {
   const { 
     isOpen, 
-    closePostCreator, 
+    closePostCreator,
+    closePostCreatorTemporarily,
     editingPost, 
     templatePost,
     defaultScheduledAt,
@@ -44,7 +45,10 @@ export function usePostCreatorForm() {
     albumMedia,
     setAlbumMedia,
     postMedia,
-    setPostMedia
+    setPostMedia,
+    backupFormState,
+    restoreFormState,
+    openPostCreator
   } = usePostCreator();
   
   const [caption, setCaption] = useState("");
@@ -120,6 +124,139 @@ export function usePostCreatorForm() {
   const [notes, setNotes] = useState([]);
   const [isLoadingReviewers, setIsLoadingReviewers] = useState(false);
   const [videoSettings, setVideoSettings] = useState(null);
+
+  useEffect(() => {
+    const backup = restoreFormState();
+    if (backup) {
+      setCaption(backup.caption ?? "");
+      setTitle(backup.title ?? "");
+      setAltText(backup.altText ?? "");
+      setSelectedPlatforms(backup.selectedPlatforms ?? [DEFAULT_PLATFORM]);
+      setActivePlatform(backup.activePlatform ?? DEFAULT_PLATFORM);
+      setScheduledDate(backup.scheduledDate ?? "");
+      setIsLibrary(backup.isLibrary ?? false);
+      setGlobalOpen(backup.globalOpen ?? false);
+      setYoutubeOpen(backup.youtubeOpen ?? false);
+      setFacebookOpen(backup.facebookOpen ?? false);
+      setTiktokOpen(backup.tiktokOpen ?? false);
+      setInstagramOpen(backup.instagramOpen ?? false);
+      setInstagramType(backup.instagramType ?? INSTAGRAM_TYPE.POST);
+      setInstagramCollaborators(backup.instagramCollaborators ?? []);
+      setInstagramAudio(backup.instagramAudio ?? null);
+      setInstagramShowOnFeed(backup.instagramShowOnFeed ?? true);
+      setTiktokPrivacy(backup.tiktokPrivacy ?? TIKTOK_PRIVACY.PUBLIC);
+      setTiktokAllowComments(backup.tiktokAllowComments ?? true);
+      setTiktokAllowDuet(backup.tiktokAllowDuet ?? true);
+      setTiktokAllowStitch(backup.tiktokAllowStitch ?? true);
+      setTiktokAiGenerated(backup.tiktokAiGenerated ?? false);
+      setTiktokCommercialContent(backup.tiktokCommercialContent ?? false);
+      setSelectedDiscordChannels(backup.selectedDiscordChannels ?? []);
+      setDiscordOpen(backup.discordOpen ?? false);
+      setYoutubeType(backup.youtubeType ?? YOUTUBE_TYPE.VIDEO);
+      setFacebookType(backup.facebookType ?? FACEBOOK_TYPE.POST);
+      setFacebookTitle(backup.facebookTitle ?? "");
+      setYoutubeTitle(backup.youtubeTitle ?? "");
+      setYoutubeMadeForKids(backup.youtubeMadeForKids ?? false);
+      setYoutubePrivacy(backup.youtubePrivacy ?? "public");
+      setYoutubeCategory(backup.youtubeCategory ?? YOUTUBE_DEFAULT_CATEGORY_ID);
+      setYoutubePlaylistId(backup.youtubePlaylistId ?? "");
+      setYoutubeTags(backup.youtubeTags ?? "");
+      setYoutubeFirstComment(backup.youtubeFirstComment ?? "");
+      setGlobalFirstComment(backup.globalFirstComment ?? "");
+      setYoutubeThumbnail(backup.youtubeThumbnail ?? "");
+      setThreadsWhoCanReply(backup.threadsWhoCanReply ?? "everyone");
+      setSelectedReviewerId(backup.selectedReviewerId ?? "");
+      setSelectedReviewerIds(backup.selectedReviewerIds ?? []);
+      setApprovalPolicy(backup.approvalPolicy ?? APPROVAL_POLICY.AT_LEAST_ONE);
+      setRequesterNote(backup.requesterNote ?? "");
+      setNotes(backup.notes ?? []);
+      const currentStoreState = usePostCreator.getState();
+
+      let updatedPostMedia = backup.postMedia || [];
+      if (currentStoreState.videoFileUrl && backup.videoFileUrl && currentStoreState.videoFileUrl !== backup.videoFileUrl) {
+        updatedPostMedia = updatedPostMedia.map(item => {
+          if (item.path === backup.uploadedVideoPath || item.previewUrl === backup.videoFileUrl) {
+            return {
+              ...item,
+              previewUrl: currentStoreState.videoFileUrl,
+              path: currentStoreState.uploadedVideoPath || currentStoreState.videoFileUrl
+            };
+          }
+          return item;
+        });
+      }
+
+      setVideoSettings(currentStoreState.videoSettings || backup.videoSettings || null);
+      
+      // Mở lại popup PostCreator
+      openPostCreator({
+        post: backup.editingPost,
+        template: backup.templatePost,
+        defaultScheduledAt: backup.defaultScheduledAt,
+        isLibrary: backup.isLibrary,
+        defaultVideoUrl: currentStoreState.videoFileUrl || backup.videoFileUrl,
+        defaultVideoPath: currentStoreState.uploadedVideoPath || backup.uploadedVideoPath,
+        isUploadingVideo: backup.isUploadingVideo,
+        videoSettings: currentStoreState.videoSettings || backup.videoSettings || null,
+        postMedia: updatedPostMedia,
+        albumMedia: backup.albumMedia
+      });
+    }
+  }, []);
+
+  const getBackupPayload = () => {
+    return {
+      caption,
+      title,
+      altText,
+      selectedPlatforms,
+      activePlatform,
+      scheduledDate,
+      isLibrary,
+      globalOpen,
+      youtubeOpen,
+      facebookOpen,
+      tiktokOpen,
+      instagramOpen,
+      instagramType,
+      instagramCollaborators,
+      instagramAudio,
+      instagramShowOnFeed,
+      tiktokPrivacy,
+      tiktokAllowComments,
+      tiktokAllowDuet,
+      tiktokAllowStitch,
+      tiktokAiGenerated,
+      tiktokCommercialContent,
+      selectedDiscordChannels,
+      discordOpen,
+      youtubeType,
+      facebookType,
+      facebookTitle,
+      youtubeTitle,
+      youtubeMadeForKids,
+      youtubePrivacy,
+      youtubeCategory,
+      youtubePlaylistId,
+      youtubeTags,
+      youtubeFirstComment,
+      globalFirstComment,
+      youtubeThumbnail,
+      threadsWhoCanReply,
+      selectedReviewerId,
+      selectedReviewerIds,
+      approvalPolicy,
+      requesterNote,
+      notes,
+      videoSettings,
+      editingPost,
+      templatePost,
+      defaultScheduledAt,
+      videoFileUrl,
+      uploadedVideoPath,
+      isUploadingVideo
+    };
+  };
 
   useEffect(() => {
     const fetchReviewers = async () => {
@@ -898,6 +1035,9 @@ export function usePostCreatorForm() {
     notes,
     setNotes,
     videoSettings,
-    setVideoSettings
+    setVideoSettings,
+    getBackupPayload,
+    backupFormState,
+    closePostCreatorTemporarily
   };
 }

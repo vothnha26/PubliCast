@@ -14,6 +14,8 @@ export const usePostCreatorStore = create((set) => ({
   // State phục vụ Facebook Album
   albumMedia: [], // Mảng chứa các đối tượng { file, previewUrl, path, caption }
   postMedia: [], // Mảng chứa các đối tượng { file, previewUrl, path } for standard posts
+  videoSettings: null,
+  postCreatorFormBackup: null,
 
   setVideoFile: (val) => set({ videoFile: val }),
   setVideoFileUrl: (val) => set({ videoFileUrl: val }),
@@ -21,40 +23,69 @@ export const usePostCreatorStore = create((set) => ({
   setUploadedVideoPath: (val) => set({ uploadedVideoPath: val }),
   setAlbumMedia: (val) => set((state) => ({ albumMedia: typeof val === 'function' ? val(state.albumMedia) : val })),
   setPostMedia: (val) => set((state) => ({ postMedia: typeof val === 'function' ? val(state.postMedia) : val })),
+  setVideoSettings: (val) => set({ videoSettings: val }),
+  
+  backupFormState: (formData) => {
+    if (formData) {
+      sessionStorage.setItem('postCreatorFormBackup', JSON.stringify(formData));
+    }
+    set({ postCreatorFormBackup: formData });
+  },
+  restoreFormState: () => {
+    const backupStr = sessionStorage.getItem('postCreatorFormBackup');
+    if (backupStr) {
+      const backup = JSON.parse(backupStr);
+      set({ postCreatorFormBackup: backup });
+      return backup;
+    }
+    return null;
+  },
 
-  openPostCreator: (options = {}) => set({
+  openPostCreator: (options = {}) => set((state) => ({
     editingPost: options.post || null,
     templatePost: options.template || null,
     defaultScheduledAt: options.defaultScheduledAt || null,
     isLibrary: options.isLibrary || false,
     videoFile: null,
-    videoFileUrl: options.defaultVideoUrl || "",
-    uploadedVideoPath: options.defaultVideoPath || "",
+    videoFileUrl: options.defaultVideoUrl !== undefined ? options.defaultVideoUrl : state.videoFileUrl,
+    uploadedVideoPath: options.defaultVideoPath !== undefined ? options.defaultVideoPath : state.uploadedVideoPath,
     isUploadingVideo: options.isUploadingVideo || false,
-    albumMedia: options.post?.options?.albumMedia || options.template?.options?.albumMedia || [],
-    postMedia: options.post?.mediaUrls?.map(url => ({
-      file: null,
-      previewUrl: buildMediaUrl(url),
-      path: url
-    })) || options.template?.mediaUrls?.map(url => ({
-      file: null,
-      previewUrl: buildMediaUrl(url),
-      path: url
-    })) || [],
+    videoSettings: options.videoSettings !== undefined ? options.videoSettings : (options.post?.options?.videoSettings || state.videoSettings || null),
+    albumMedia: options.albumMedia !== undefined ? options.albumMedia : (options.post?.options?.albumMedia || options.template?.options?.albumMedia || []),
+    postMedia: options.postMedia !== undefined ? options.postMedia : (
+      options.post?.mediaUrls?.map(url => ({
+        file: null,
+        previewUrl: buildMediaUrl(url),
+        path: url
+      })) || options.template?.mediaUrls?.map(url => ({
+        file: null,
+        previewUrl: buildMediaUrl(url),
+        path: url
+      })) || []
+    ),
     isOpen: true
+  })),
+
+  closePostCreatorTemporarily: () => set({
+    isOpen: false
   }),
 
-  closePostCreator: () => set({
-    editingPost: null,
-    templatePost: null,
-    defaultScheduledAt: null,
-    isLibrary: false,
-    videoFile: null,
-    videoFileUrl: "",
-    uploadedVideoPath: "",
-    isUploadingVideo: false,
-    albumMedia: [],
-    postMedia: [],
-    isOpen: false
-  })
+  closePostCreator: () => {
+    sessionStorage.removeItem('postCreatorFormBackup');
+    set({
+      editingPost: null,
+      templatePost: null,
+      defaultScheduledAt: null,
+      isLibrary: false,
+      videoFile: null,
+      videoFileUrl: "",
+      uploadedVideoPath: "",
+      isUploadingVideo: false,
+      videoSettings: null,
+      postCreatorFormBackup: null,
+      albumMedia: [],
+      postMedia: [],
+      isOpen: false
+    });
+  }
 }));

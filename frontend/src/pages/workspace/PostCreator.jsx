@@ -9,6 +9,7 @@ import {
   Linkedin, Send, Upload, HelpCircle
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { useFeatureGate } from "../../hooks/useFeatureGate";
 import { PRODUCT_IDS, FEATURE_GATE_REGISTRY } from "../../constants/products";
 import postService from "../../services/post.service";
@@ -38,6 +39,7 @@ import { buildMediaUrl } from "../../utils/url";
 import { ComposerHeader } from "../../components/workspace/post-creator/ComposerHeader";
 import { ComposerBody } from "../../components/workspace/post-creator/ComposerBody";
 import { ComposerFooter } from "../../components/workspace/post-creator/ComposerFooter";
+import { ComposerErrorPanel } from "../../components/workspace/post-creator/ComposerErrorPanel";
 import { PreviewHeader } from "../../components/workspace/post-creator/PreviewHeader";
 import { PreviewBody } from "../../components/workspace/post-creator/PreviewBody";
 import { PreviewFooter } from "../../components/workspace/post-creator/PreviewFooter";
@@ -53,8 +55,8 @@ const PUBLISH_OPTIONS = [
 ];
 
 export function PostCreatorPage() {
-  const {
-    isOpen,
+  const { t } = useTranslation(["planner", "common"]);
+  const {    isOpen,
     closePostCreator,
     caption,
     setCaption,
@@ -192,7 +194,10 @@ export function PostCreatorPage() {
     notes,
     setNotes,
     videoSettings,
-    setVideoSettings
+    setVideoSettings,
+    getBackupPayload,
+    backupFormState,
+    closePostCreatorTemporarily
   } = usePostCreatorForm();
 
   const [threadsOpen, setThreadsOpen] = useState(false);
@@ -444,53 +449,80 @@ export function PostCreatorPage() {
     hasCreatePermission,
     hasApprovePermission,
     closePostCreator,
+    closePostCreatorTemporarily,
     hasAccess,
     showVideoEditor,
-    setShowVideoEditor
+    setShowVideoEditor,
+    getBackupPayload,
+    backupFormState
   };
 
   return (
     <PostCreatorFormProvider value={contextValue}>
-      <div className="fixed inset-0 z-[2000] bg-[#F3F4F6] flex flex-col p-6 overflow-hidden animate-in slide-in-from-bottom duration-500">
-        {/* Outer Header */}
-        <div className="flex items-center justify-between px-2 pb-4 shrink-0">
+      <div className="fixed inset-0 z-[2000] bg-[#ECEEF2] flex flex-col p-5 overflow-hidden animate-in slide-in-from-bottom duration-500">
+        {/* Outer Top Bar */}
+        <div className="flex items-center justify-between px-1 pb-4 shrink-0">
           <div className="flex items-center gap-3">
-            <h1 className="text-xl font-bold text-gray-800 font-sans">
-              {isLibrary 
-                ? (editingPost ? "Edit post template" : "Create post template") 
-                : (editingPost ? "Edit scheduled post" : "Create new post")}
-            </h1>
+            <div className="flex items-center gap-2.5">
+              <div className="w-7 h-7 rounded-lg bg-black flex items-center justify-center">
+                <svg className="w-4 h-4 text-white fill-white" viewBox="0 0 24 24"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>
+              </div>
+              <h1 className="text-[15px] font-black text-gray-900 tracking-tight font-sans">
+                {isLibrary 
+                  ? (editingPost ? t("planner:postCreator.header.editTemplate") : t("planner:postCreator.header.createTemplate")) 
+                  : (editingPost ? t("planner:postCreator.header.editPost") : t("planner:postCreator.header.createPost"))}
+              </h1>
+            </div>
             {!editingPost && !isLibrary && (
               <button 
                 onClick={handleOpenTemplatePicker}
-                className="flex items-center gap-1.5 px-3 py-1.5 bg-purple-50 text-purple-700 hover:bg-purple-100 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all transform hover:scale-105 shadow-sm border border-purple-200 cursor-pointer font-sans"
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-white text-purple-700 hover:bg-purple-50 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all shadow-sm border border-purple-200 cursor-pointer font-sans"
               >
-                <Diamond size={12} />
-                Load template
+                <Diamond size={11} />
+                {t("planner:postCreator.header.loadTemplate")}
               </button>
             )}
           </div>
-          <button onClick={closePostCreator} className="flex items-center gap-2 text-gray-500 hover:text-black transition-colors group cursor-pointer font-sans">
-            <X size={20} className="group-hover:rotate-90 transition-transform duration-300" />
-            <span className="text-[11px] font-bold uppercase tracking-widest">Close</span>
+          <button onClick={closePostCreator} data-testid="post-creator-close-btn" className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/80 hover:bg-white border border-gray-200 text-gray-500 hover:text-black transition-all group cursor-pointer font-sans shadow-sm">
+            <X size={16} className="group-hover:rotate-90 transition-transform duration-300" />
+            <span className="text-[11px] font-bold uppercase tracking-widest">{t("planner:postCreator.header.close")}</span>
           </button>
         </div>
 
-        {/* Main Workspace Panels */}
-        <div className="flex-1 bg-white border border-gray-200 rounded-[24px] shadow-lg flex overflow-hidden">
-          {/* Left Panel: Composer */}
-          <div className="flex-1 flex flex-col h-full overflow-hidden bg-white">
-            <ComposerHeader />
-            <ComposerBody />
-            <ComposerFooter />
+        {/* Main 2-Region Workspace */}
+        <div className="flex-1 flex gap-4 overflow-hidden min-h-0">
+
+          {/* ── REGION 1: COMPOSE ── */}
+          <div className="flex-[1.15] flex flex-col min-h-0 overflow-hidden">
+            {/* Region Label */}
+            <div className="flex items-center gap-2 px-1 pb-2 shrink-0">
+              <span className="text-[9px] font-black uppercase tracking-[0.15em] text-gray-400 font-sans">✏️ Compose</span>
+              <div className="flex-1 h-px bg-gray-300/50" />
+            </div>
+            {/* Compose Card */}
+            <div className="flex-1 bg-white rounded-[20px] border border-gray-200/80 shadow-sm flex flex-col overflow-hidden min-h-0">
+              <ComposerHeader />
+              <ComposerBody />
+              <ComposerErrorPanel />
+              <ComposerFooter />
+            </div>
           </div>
 
-          {/* Right Panel: Preview */}
-          <div className="flex-[0.8] flex flex-col h-full bg-[#FAFAFA] border-l border-gray-100 overflow-hidden">
-            <PreviewHeader />
-            <PreviewBody />
-            <PreviewFooter />
+          {/* ── REGION 2: PREVIEW ── */}
+          <div className="flex-[0.85] flex flex-col min-h-0 overflow-hidden">
+            {/* Region Label */}
+            <div className="flex items-center gap-2 px-1 pb-2 shrink-0">
+              <span className="text-[9px] font-black uppercase tracking-[0.15em] text-gray-400 font-sans">👁 Preview</span>
+              <div className="flex-1 h-px bg-gray-300/50" />
+            </div>
+            {/* Preview Card */}
+            <div className="flex-1 bg-[#F7F8FA] rounded-[20px] border border-gray-200/80 shadow-sm flex flex-col overflow-hidden min-h-0">
+              <PreviewHeader />
+              <PreviewBody />
+              <PreviewFooter />
+            </div>
           </div>
+
         </div>
 
         {/* Modals and Sidebars */}
@@ -526,18 +558,26 @@ export function PostCreatorPage() {
               setYoutubeThumbnail(path);
               setIsUploadingThumbnail(false);
             } else {
-              const items = Array.isArray(result) ? result : [{ file: result, path, previewUrl: result ? URL.createObjectURL(result) : path }];
+              // Normalize thành array items { file, path, previewUrl }
+              const items = Array.isArray(result)
+                ? result
+                : [{ file: result, path, previewUrl: result ? URL.createObjectURL(result) : path }];
+
               setPostMedia(prev => {
                 const newItems = items.map(item => ({
                   file: item.file,
+                  // Dùng blob URL để preview local, hoặc path nếu từ library
                   previewUrl: item.previewUrl || item.path,
                   path: item.path
                 }));
                 const updated = [...prev, ...newItems];
                 if (updated.length > 0) {
-                  setVideoFile(updated[0].file);
-                  setVideoFileUrl(updated[0].previewUrl);
-                  setUploadedVideoPath(updated[0].path);
+                  const firstItem = updated[0];
+                  // Set videoFile để isVideoPath có thể check file.type
+                  setVideoFile(firstItem.file || null);
+                  // Ưu tiên blob previewUrl để render nhanh, fallback về path (Cloudinary URL)
+                  setVideoFileUrl(firstItem.previewUrl || firstItem.path || '');
+                  setUploadedVideoPath(firstItem.path || '');
                 }
                 return updated;
               });
@@ -606,19 +646,10 @@ export function PostCreatorPage() {
               }
             }
             setShowImageEditor(false);
-            toast.success("Image edited successfully");
+            toast.success(t("common:success"));
           }}
         />
-        <VideoEditorModal
-          isOpen={showVideoEditor}
-          videoUrl={videoFileUrl}
-          onClose={() => setShowVideoEditor(false)}
-          initialSettings={videoSettings}
-          onSave={(settings) => {
-            setVideoSettings(settings);
-            setShowVideoEditor(false);
-          }}
-        />
+
         <AltTextModal 
           isOpen={showAltTextModal}
           onClose={() => setShowAltTextModal(false)}
@@ -628,7 +659,7 @@ export function PostCreatorPage() {
           initialAltText={altText}
           onSave={(text) => {
             setAltText(text);
-            toast.success("Alt text saved successfully");
+            toast.success(t("common:success"));
           }}
         />
         {showTemplatePicker && (
@@ -637,7 +668,7 @@ export function PostCreatorPage() {
               <div className="px-6 py-5 border-b border-gray-100 flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <Diamond size={16} className="text-purple-600" />
-                  <h3 className="font-bold text-[#0A0A0A] text-xs uppercase tracking-wider font-sans">Select a template</h3>
+                  <h3 className="font-bold text-[#0A0A0A] text-xs uppercase tracking-wider font-sans">{t("planner:postCreator.header.loadTemplate")}</h3>
                 </div>
                 <button 
                   onClick={() => setShowTemplatePicker(false)}
@@ -651,12 +682,12 @@ export function PostCreatorPage() {
                 {loadingTemplates ? (
                   <div className="py-12 flex flex-col items-center justify-center gap-2 text-gray-400">
                     <Loader2 className="animate-spin" size={24} />
-                    <span className="text-[10px] font-bold uppercase tracking-wider font-sans">Loading templates...</span>
+                    <span className="text-[10px] font-bold uppercase tracking-wider font-sans">{t("planner:postCreator.templatesPicker.loading")}</span>
                   </div>
                 ) : templates.length === 0 ? (
                   <div className="py-12 text-center text-gray-400 space-y-2">
-                    <p className="text-[10px] font-bold uppercase tracking-wider font-sans">No templates found</p>
-                    <p className="text-[11px] text-gray-400 font-medium font-sans">Create templates in the Library first to load them here.</p>
+                    <p className="text-[10px] font-bold uppercase tracking-wider font-sans">{t("planner:postCreator.templatesPicker.noTemplates")}</p>
+                    <p className="text-[11px] text-gray-400 font-medium font-sans">{t("planner:postCreator.templatesPicker.noTemplatesDesc")}</p>
                   </div>
                 ) : (
                   templates.map((tpl) => (
@@ -677,7 +708,7 @@ export function PostCreatorPage() {
                       </div>
                       <div className="flex-1 min-w-0">
                         <h4 className="font-bold text-xs text-gray-900 group-hover:text-purple-700 transition-colors truncate uppercase tracking-tight">{tpl.title}</h4>
-                        <p className="text-[11px] text-gray-400 line-clamp-1 mt-0.5 font-medium">{tpl.caption || "No caption"}</p>
+                        <p className="text-[11px] text-gray-400 line-clamp-1 mt-0.5 font-medium">{tpl.caption || t("planner:postCreator.templatesPicker.noCaption")}</p>
                       </div>
                       <div className="flex gap-1 shrink-0">
                         {tpl.platforms?.map(plt => (
@@ -699,7 +730,7 @@ export function PostCreatorPage() {
           <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[100] p-4 animate-in fade-in duration-200">
             <div className="bg-white rounded-3xl shadow-[0_20px_50px_rgba(0,0,0,0.15)] border border-gray-100 w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200 p-6 space-y-6 text-left">
               <div className="flex items-center justify-between">
-                <h3 className="text-base font-bold text-[#0A0A0A] tracking-tight font-sans">Select reviewers</h3>
+                <h3 className="text-base font-bold text-[#0A0A0A] tracking-tight font-sans">{t("planner:postCreator.composer.sections.selectReviewers")}</h3>
                 <button 
                   onClick={() => setShowReviewersModal(false)}
                   className="text-gray-400 hover:text-black transition-colors cursor-pointer"
@@ -711,7 +742,7 @@ export function PostCreatorPage() {
               <div className="relative">
                 <input
                   type="text"
-                  placeholder="Search user"
+                  placeholder={t("planner:postCreator.composer.sections.searchUser")}
                   value={reviewerSearchQuery}
                   onChange={(e) => setReviewerSearchQuery(e.target.value)}
                   className="w-full pl-4 pr-10 py-3 bg-gray-50 border border-transparent rounded-2xl text-[12px] font-bold text-[#0A0A0A] outline-none focus:bg-white focus:border-gray-200 transition-all placeholder-gray-400 font-sans"
@@ -722,7 +753,7 @@ export function PostCreatorPage() {
               </div>
 
               <div className="flex items-center justify-between text-[11px] font-black uppercase tracking-wider text-gray-400">
-                <span className="font-sans">Users</span>
+                <span className="font-sans">{t("planner:postCreator.composer.sections.reviewers")}</span>
                 <button 
                   type="button" 
                   onClick={() => {
@@ -735,7 +766,7 @@ export function PostCreatorPage() {
                   }}
                   className="text-[#10B981] hover:text-[#059669] transition-colors cursor-pointer font-bold lowercase first-letter:uppercase font-sans"
                 >
-                  {selectedReviewerIds.length === potentialReviewers.length ? "Uncheck all" : "Check all"}
+                  {selectedReviewerIds.length === potentialReviewers.length ? t("planner:postCreator.composer.sections.uncheckAll") : t("planner:postCreator.composer.sections.checkAll")}
                 </button>
               </div>
 
@@ -797,12 +828,12 @@ export function PostCreatorPage() {
               </div>
 
               <div className="space-y-3 pt-4 border-t border-gray-100">
-                <div className="text-[10px] font-black uppercase tracking-wider text-gray-400 font-sans">To publish this post...</div>
+                <div className="text-[10px] font-black uppercase tracking-wider text-gray-400 font-sans">{t("planner:postCreator.composer.sections.policyLabel")}</div>
                 <div className="space-y-2.5">
                   {[
-                    { id: 'NO_APPROVAL', label: 'No reviewer approval required.' },
-                    { id: 'AT_LEAST_ONE', label: 'At least one reviewer must approve it.' },
-                    { id: 'ALL', label: 'All reviewers must approve it.' }
+                    { id: 'NO_APPROVAL', label: t("planner:postCreator.composer.sections.policyNone") },
+                    { id: 'AT_LEAST_ONE', label: t("planner:postCreator.composer.sections.policyAtLeastOne") },
+                    { id: 'ALL', label: t("planner:postCreator.composer.sections.policyAll") }
                   ].map((opt) => {
                     const isSelected = approvalPolicy === opt.id;
                     return (
@@ -830,7 +861,7 @@ export function PostCreatorPage() {
                 onClick={() => setShowReviewersModal(false)}
                 className="w-full py-3.5 bg-[#0A0A0A] hover:bg-black text-white text-[11px] font-black uppercase tracking-widest rounded-2xl transition-all cursor-pointer shadow-md hover:shadow-lg active:scale-[0.98] font-sans"
               >
-                Confirm Selection
+                {t("planner:postCreator.composer.sections.confirmSelection")}
               </button>
             </div>
           </div>
@@ -844,10 +875,10 @@ export function PostCreatorPage() {
                 <div className="space-y-1">
                   <div className="flex items-center gap-2">
                     <FileText size={18} className="text-gray-800" />
-                    <h3 className="text-base font-bold text-[#0A0A0A] tracking-tight font-sans">Thảo luận & Ghi chú nội bộ</h3>
+                    <h3 className="text-base font-bold text-[#0A0A0A] tracking-tight font-sans">{t("planner:postCreator.composer.sections.notesTitle")}</h3>
                   </div>
                   <p className="text-[11px] text-gray-400 font-semibold leading-relaxed uppercase tracking-widest font-sans">
-                    Ghi chú chỉ hiển thị trong nội bộ team
+                    {t("planner:postCreator.composer.sections.notesDesc")}
                   </p>
                 </div>
                 <button 
@@ -865,8 +896,8 @@ export function PostCreatorPage() {
                       <MessageSquare size={24} className="text-gray-300" />
                     </div>
                     <div className="space-y-1">
-                      <p className="text-[11px] font-black uppercase tracking-wider text-gray-400">Chưa có ghi chú nào</p>
-                      <p className="text-[12px] text-gray-400 font-medium px-6">Hãy viết lời nhắn hoặc lưu ý đầu tiên cho bài viết này.</p>
+                      <p className="text-[11px] font-black uppercase tracking-wider text-gray-400">{t("planner:postCreator.composer.sections.noNotes")}</p>
+                      <p className="text-[12px] text-gray-400 font-medium px-6">{t("planner:postCreator.composer.placeholders.noteDesc", "Hãy viết lời nhắn hoặc lưu ý đầu tiên cho bài viết này.")}</p>
                     </div>
                   </div>
                 ) : (
@@ -893,7 +924,7 @@ export function PostCreatorPage() {
                           <button
                             onClick={() => handleDeleteNoteClick(index)}
                             className="absolute -top-1 -right-1 p-1 bg-white border border-gray-100 shadow-sm rounded-full text-gray-400 hover:text-red-500 hover:border-red-100 opacity-0 group-hover:opacity-100 transition-all cursor-pointer"
-                            title="Xóa ghi chú này"
+                            title={t("planner:postCreator.composer.sections.deleteNote")}
                           >
                             <Trash2 size={12} />
                           </button>
@@ -906,7 +937,7 @@ export function PostCreatorPage() {
 
               <div className="pt-4 border-t border-gray-100 space-y-3">
                 <textarea
-                  placeholder="Nhập ghi chú hoặc phản hồi mới..."
+                  placeholder={t("planner:postCreator.composer.placeholders.note")}
                   value={newNoteText}
                   onChange={(e) => setNewNoteText(e.target.value)}
                   className="w-full px-4 py-3 bg-gray-50 border border-transparent rounded-2xl text-[12px] font-medium text-[#0A0A0A] outline-none focus:bg-white focus:border-gray-200 transition-all placeholder-gray-400 min-h-[80px] resize-none font-sans"
@@ -919,7 +950,7 @@ export function PostCreatorPage() {
                 />
                 <div className="flex items-center justify-between gap-3">
                   <span className="text-[10px] text-gray-400 font-semibold uppercase tracking-widest font-sans">
-                    Enter để gửi nhanh
+                    {t("planner:postCreator.composer.sections.enterToSend", "Enter để gửi nhanh")}
                   </span>
                   <button
                     type="button"
@@ -927,7 +958,7 @@ export function PostCreatorPage() {
                     disabled={!newNoteText.trim()}
                     className="flex items-center gap-1.5 px-5 py-2.5 bg-[#0A0A0A] hover:bg-black disabled:bg-gray-100 disabled:text-gray-400 text-white text-[11px] font-black uppercase tracking-widest rounded-2xl transition-all cursor-pointer shadow-md hover:shadow-lg disabled:shadow-none font-sans"
                   >
-                    <span>Lưu ghi chú</span>
+                    <span>{t("planner:postCreator.composer.sections.addNote")}</span>
                     <Send size={12} className="rotate-45" />
                   </button>
                 </div>
@@ -967,7 +998,7 @@ export function PostCreatorPage() {
                 }}
                 className="w-full flex items-center justify-center gap-2 py-3 px-6 rounded-xl font-bold text-white transition-all bg-gradient-to-r from-purple-600 to-orange-500 hover:from-purple-700 hover:to-orange-600 shadow-md hover:shadow-lg active:scale-95 cursor-pointer font-sans"
               >
-                Upgrade Plan
+                {t("planner:upgrade.button")}
                 <ArrowRight size={16} />
               </button>
             </div>

@@ -38,9 +38,8 @@ describe('Social Sync Cache Proxy Tests', () => {
 
   it('should serve cached data and not call real service when lastSyncAt is within cooldown window (Cache Hit)', async () => {
     const now = Date.now();
-    // Cooldown is 12 hours (12 * 60 * 60 * 1000 = 43,200,000 ms)
-    // Let's set lastSyncAt to 1 hour ago
-    const lastSyncAt = new Date(now - 1 * 60 * 60 * 1000);
+    // Cooldown check: set lastSyncAt to 1 minute ago to be safe regardless of cooldown configuration
+    const lastSyncAt = new Date(now - 1 * 60 * 1000);
 
     const mockAccount = {
       id: 'sa_1',
@@ -48,8 +47,8 @@ describe('Social Sync Cache Proxy Tests', () => {
       lastSyncAt: lastSyncAt,
       analytics: [
         {
-          dateFrom: new Date('2026-05-20'),
-          dateTo: new Date('2026-05-25')
+          dateFrom: new Date('2026-05-20T00:00:00.000Z'),
+          dateTo: new Date('2026-05-25T00:00:00.000Z')
         }
       ]
     };

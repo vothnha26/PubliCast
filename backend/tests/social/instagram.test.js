@@ -6,7 +6,15 @@ const { PLATFORMS, POST_TYPES } = require('../../src/utils/constants');
 
 jest.mock('../../src/services/social/instagram/instagram.gateway', () => {
   return {
-    getInstagramAccountForPage: jest.fn(),
+    getInstagramAccountForPage: jest.fn().mockResolvedValue({
+      igAccountId: 'ig_123',
+      username: 'publicast_ig',
+      displayName: 'PubliCast Instagram',
+      profilePictureUrl: 'http://pic.jpg',
+      followersCount: 1500,
+      followingCount: 200,
+      mediaCount: 30
+    }),
     createImageContainer: jest.fn(),
     createVideoContainer: jest.fn(),
     createReelContainer: jest.fn(),
@@ -18,7 +26,8 @@ jest.mock('../../src/services/social/instagram/instagram.gateway', () => {
     getInstagramMediaFeed: jest.fn().mockResolvedValue({ data: [] }),
     getInstagramMediaInsights: jest.fn().mockResolvedValue([]),
     getMediaComments: jest.fn().mockResolvedValue([]),
-    replyToComment: jest.fn().mockResolvedValue({ id: 'mock_reply_id' })
+    replyToComment: jest.fn().mockResolvedValue({ id: 'mock_reply_id' }),
+    getAccountInsights: jest.fn().mockResolvedValue([])
   };
 });
 jest.mock('../../src/repositories/social/social-account.repository');
@@ -118,7 +127,7 @@ describe('Instagram Integration Service Tests', () => {
         caption: 'Hello Instagram!'
       });
 
-      expect(instagramGateway.createImageContainer).toHaveBeenCalledWith('ig_123', 'ig_access_token', 'http://pic.jpg', 'Hello Instagram!', null);
+      expect(instagramGateway.createImageContainer).toHaveBeenCalledWith('ig_123', 'ig_access_token', 'http://pic.jpg', 'Hello Instagram!', null, undefined);
       expect(instagramGateway.publishContainer).toHaveBeenCalledWith('ig_123', 'ig_access_token', 'container_photo_123');
       expect(result.platformVideoId).toBe('ig_post_photo_123');
     });
@@ -139,7 +148,7 @@ describe('Instagram Integration Service Tests', () => {
         caption: 'Awesome Reel!'
       });
 
-      expect(instagramGateway.createReelContainer).toHaveBeenCalledWith('ig_123', 'ig_access_token', 'http://video.mp4', 'Awesome Reel!', null);
+      expect(instagramGateway.createReelContainer).toHaveBeenCalledWith('ig_123', 'ig_access_token', 'http://video.mp4', 'Awesome Reel!', null, undefined);
       expect(instagramGateway.pollContainerStatus).toHaveBeenCalledWith('container_reel_123', 'ig_access_token');
       expect(instagramGateway.publishContainer).toHaveBeenCalledWith('ig_123', 'ig_access_token', 'container_reel_123');
       expect(result.platformVideoId).toBe('ig_post_reel_123');

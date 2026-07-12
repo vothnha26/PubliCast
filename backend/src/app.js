@@ -88,7 +88,12 @@ app.use(cors({
 }));
 
 // ── Body parsers — limit JSON to 10MB to prevent payload DoS ──────────────
-app.use(express.json({ limit: '10mb' }));
+app.use(express.json({
+  limit: '10mb',
+  verify: (req, res, buf) => {
+    req.rawBody = buf;
+  }
+}));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use(cookieParser());
 
@@ -128,9 +133,8 @@ app.use('/api', profileRoutes);
 app.use('/api/admin/pricing', pricingRoutes);
 app.use('/api/admin/audit-logs', auditLogRoutes);
 app.use('/api/search', searchRoutes);
-app.use('/api/livestreams', (_req, res) => {
-  res.status(503).json({ message: 'Livestream feature is temporarily disabled' });
-});
+const livestreamRoutes = require('./routes/workspace/livestream.routes');
+app.use('/api/livestreams', livestreamRoutes);
 const ticketRoutes = require('./routes/workspace/ticket.routes');
 
 app.use('/api/posts', postRoutes);

@@ -371,5 +371,144 @@
   "importOverlay": {
     "title": "Đang nhập từ Drive",
     "message": "Vui lòng đợi trong khi chúng tôi xử lý và chuyển đổi video từ Google Drive về máy chủ..."
+  },
+  "postCreator": {
+    "templatesPicker": {
+      "loading": "Đang tải mẫu...",
+      "noTemplates": "Không tìm thấy mẫu bài viết nào",
+      "noTemplatesDesc": "Tạo mẫu trong Thư viện trước để sử dụng tại đây.",
+      "noCaption": "Không có mô tả"
+    },
+    "header": {
+      "createPost": "Tạo bài viết mới",
+      "editPost": "Sửa bài viết đã lên lịch",
+      "createTemplate": "Tạo mẫu bài viết",
+      "editTemplate": "Sửa mẫu bài viết",
+      "loadTemplate": "Tải mẫu bài viết",
+      "close": "Đóng",
+      "notes": "Ghi chú"
+    },
+    "composer": {
+      "viewMode": "Chế độ Xem: Bạn không có quyền chỉnh sửa hoặc xuất bản bài viết này.",
+      "uploading": "Đang tải lên...",
+      "editVideo": "Chỉnh sửa Video",
+      "remove": "Xóa",
+      "editImage": "Chỉnh sửa hình ảnh",
+      "imageMenu": {
+        "edit": "Chỉnh sửa hình ảnh",
+        "adobe": "Chỉnh sửa với Adobe Express",
+        "altText": "Thêm văn bản thay thế",
+        "remove": "Xóa"
+      },
+      "toolbar": {
+        "firstComment": "Bình luận đầu tiên",
+        "locationComingSoon": "Tính năng vị trí sẽ sớm khả dụng",
+        "addLocation": "Thêm vị trí",
+        "utmLink": "Liên kết UTM",
+        "hashtags": "Chèn Hashtag",
+        "templateDisabled": "Đã tắt chế độ mẫu",
+        "templateEnabled": "Đã bật chế độ lưu làm mẫu",
+        "saveAsTemplate": "Lưu làm mẫu (Thư viện)",
+        "aiCopilot": "Trợ lý AI Copilot"
+      },
+      "characterLimitDesc": "Giới hạn độ dài bài viết của nền tảng {{platform}}.",
+      "approval": {
+        "title": "Yêu cầu phê duyệt bài viết",
+        "noPermission": "Bạn không có quyền đăng bài trực tiếp. Vui lòng cấu hình người duyệt bài.",
+        "selectedReview": "Bạn đã chọn gửi bài viết này để phê duyệt.",
+        "noReviewer": "Chưa chọn người duyệt",
+        "selectedReviewers": "Đã chọn: {{names}}",
+        "buttonSelect": "Chọn người duyệt",
+        "noteLabel": "Ghi chú cho người duyệt",
+        "notePlaceholder": "Nhập lời nhắn gửi đến người duyệt..."
+      },
+      "publishType": {
+        "standard": "Bài viết tiêu chuẩn",
+        "reel": "Instagram Reel (Tự động đăng)",
+        "story": "Instagram Story (Tự động đăng)",
+        "short": "YouTube Short (Video ngắn đứng)",
+        "video": "YouTube Video (Video tiêu chuẩn)",
+        "instagramFeed": "Bài viết tiêu chuẩn trên bảng tin"
+      },
+      "validation": {
+        "platformLocked": "Nền tảng {{platform}} hiện đang bị khóa: {{reason}}",
+        "errorCount": "{{count}} lỗi"
+      },
+      "placeholders": {
+        "caption": "Bạn đang nghĩ gì vậy?",
+        "title": "Nhập tiêu đề...",
+        "tags": "Nhập thẻ tag và nhấn Enter...",
+        "note": "Nhập ghi chú thảo luận nội bộ..."
+      },
+      "sections": {
+        "accounts": "Tài khoản kết nối",
+        "noAccounts": "-- Chưa kết nối tài khoản --",
+        "notesTitle": "Thảo luận & Ghi chú nội bộ",
+        "notesDesc": "Ghi chú chỉ hiển thị trong nội bộ team",
+        "noNotes": "Không có ghi chú nào",
+        "addNote": "Thêm ghi chú",
+        "deleteNote": "Xóa ghi chú",
+        "reviewers": "Người duyệt bài",
+        "selectReviewers": "Chọn người duyệt",
+        "searchUser": "Tìm kiếm người dùng...",
+        "uncheckAll": "Bỏ chọn tất cả",
+        "checkAll": "Chọn tất cả",
+        "confirmSelection": "Xác nhận lựa chọn",
+        "policyLabel": "Đăng bài viết này khi...",
+        "policyNone": "Không cần người duyệt phê duyệt.",
+        "policyAtLeastOne": "Ít nhất một người duyệt phê duyệt.",
+        "policyAll": "Tất cả người duyệt phê duyệt."
+      }
+    },
+    "preview": {
+      "header": {
+        "title": "Xem trước bài đăng",
+        "reviewToggle": "Chế độ xem trước của người duyệt",
+        "desktop": "Máy tính",
+        "mobile": "Di động",
+        "switchPreview": "Chuyển sang xem trước của {{platform}}"
+      },
+      "body": {
+        "mockup": "Bản nháp bảng tin",
+        "empty": "Xem trước bài viết của bạn tại đây khi bạn nhập nội dung.",
+        "youtubeSimulated": "Mô tả và thông số thiết lập YouTube đã được mô phỏng đầy đủ và sẽ đi kèm bài đăng của bạn",
+        "tiktokSimulated": "Thiết lập video và thông tin TikTok đã được mô phỏng đầy đủ và sẽ đi kèm bài đăng của bạn",
+        "instagramSimulated": "Ảnh Instagram, Reels, và Stories đã được mô phỏng đầy đủ và sẽ được đăng lên tài khoản của bạn",
+        "facebookSimulated": "Bài đăng trạng thái Facebook, ảnh và video đã được hỗ trợ đầy đủ và sẽ được đăng lên bảng tin của bạn",
+        "discord": {
+          "bot": "BOT",
+          "reply": "Trả lời"
+        },
+        "youtube": {
+          "subscribers": "người đăng ký",
+          "views": "lượt xem",
+          "more": "thêm",
+          "videoContext": {
+            "join": "Tham gia",
+            "subscribe": "Đăng ký",
+            "share": "Chia sẻ",
+            "download": "Tải xuống",
+            "clip": "Cắt clip"
+          }
+        }
+      }
+    },
+    "footer": {
+      "cancel": "Hủy bỏ",
+      "save": "Lưu bản nháp",
+      "send": "Gửi duyệt",
+      "submit": "Gửi đi",
+      "publish": "Đăng ngay",
+      "schedule": "Lên lịch",
+      "update": "Cập nhật",
+      "saveTemplate": "Lưu mẫu",
+      "publishOptions": {
+        "draft": { "label": "LƯU BẢN NHÁP", "sub": "Lưu và đăng sau" },
+        "review": { "label": "GỬI PHÊ DUYỆT", "sub": "Chọn người duyệt bài" },
+        "schedule": { "label": "LÊN LỊCH ĐĂNG", "sub": "Lưu thay đổi lịch đăng" },
+        "now": { "label": "ĐĂNG BÀI NGAY", "sub": "Đăng bài với thời gian hiện tại" }
+      },
+      "publishedState": "Bài đã đăng — chỉ có thể chỉnh nội dung"
+    }
   }
 }

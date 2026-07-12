@@ -2,6 +2,7 @@ const express = require('express');
 const postController = require('../../controllers/workspace/post.controller');
 const { verifyAuth } = require('../../middlewares/auth.middleware');
 const checkPermission = require('../../middlewares/permission.middleware');
+const checkBrandAccess = require('../../middlewares/brand-access.middleware');
 
 const router = express.Router();
 
@@ -12,7 +13,7 @@ router.use(verifyAuth);
  * GET /api/posts
  * Fetch all posts with filters
  */
-router.get('/', postController.getPosts);
+router.get('/', checkBrandAccess, postController.getPosts);
 
 /**
  * GET /api/posts/platform-limits
@@ -24,7 +25,7 @@ router.get('/platform-limits', postController.getPlatformLimits);
  * GET /api/posts/best-times
  * Fetch best times to post analytics based on historical published posts engagement
  */
-router.get('/best-times', postController.getBestTimes);
+router.get('/best-times', checkBrandAccess, postController.getBestTimes);
 
 /**
  * POST /api/posts
@@ -73,10 +74,25 @@ router.post('/upload', checkPermission('CREATE_POSTS'), (req, res, next) => {
 }, postController.uploadVideo);
 
 /**
+ * POST /api/posts/trim
+ */
+router.post('/trim', checkPermission('CREATE_POSTS'), postController.trimVideo);
+
+/**
+ * POST /api/posts/transcribe
+ */
+router.post('/transcribe', checkPermission('CREATE_POSTS'), postController.transcribeVideo);
+
+/**
+ * GET /api/posts/music
+ */
+router.get('/music', postController.getMusicTracks);
+
+/**
  * GET /api/posts/:id/analytics
  * Get historical metrics for a post
  */
-router.get('/:id/analytics', postController.getPostAnalytics);
+router.get('/:id/analytics', checkBrandAccess, postController.getPostAnalytics);
 
 /**
  * PUT /api/posts/:id

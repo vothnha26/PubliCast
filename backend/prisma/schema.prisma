@@ -678,6 +678,8 @@ model Livestream {
   scheduledAt     DateTime
   durationMinutes Int
   status          String   @default("DRAFT")
+  platformStreamId String?  @db.VarChar(255)
+  metadata        String?  @db.Text
   streamKey       String
   rtmpUrl         String
   targetPlatforms String   @db.Text

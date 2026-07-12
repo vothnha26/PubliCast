@@ -8,6 +8,7 @@ import { PreviewShell } from "./PreviewShell";
 export function PreviewTikTok({ 
   caption, 
   videoFileUrl, 
+  videoFile = null,
   previewDevice = "mobile",
   pageName = "nhvthanh77",
   imageTransform = null
@@ -17,6 +18,7 @@ export function PreviewTikTok({
   return (
     <PreviewShell
       videoFileUrl={videoFileUrl}
+      videoFile={videoFile}
       previewDevice={previewDevice}
       imageTransform={imageTransform}
       layout="vertical"
