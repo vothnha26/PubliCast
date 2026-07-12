@@ -12,5 +12,6 @@ router.use(verifyAuth);
  * Fetch stream history records
  */
 router.get('/history', livestreamController.getStreamHistory);
+router.get('/:id', livestreamController.getStreamById);
 
 module.exports = router;

@@ -42,6 +42,14 @@ class SocketManager {
   }
 
   /**
+   * Emit event directly to a livestream room
+   */
+  emitToLivestreamRoom(livestreamId, event, data) {
+    const room = `${ROOM_PREFIXES.LIVESTREAM}${livestreamId}`;
+    this.emitToRoom(room, event, data);
+  }
+
+  /**
    * Emit event directly to a specific user across all their active devices/connections
    */
   emitToUser(userId, event, data) {
@@ -71,6 +79,8 @@ class SocketManager {
     // Setup event listeners
     socket.on(SOCKET_EVENTS.JOIN_ROOM, (payload) => this._handleJoinRoom(socket, payload));
     socket.on(SOCKET_EVENTS.LEAVE_ROOM, (payload) => this._handleLeaveRoom(socket, payload));
+    socket.on(SOCKET_EVENTS.JOIN_LIVESTREAM, (payload) => this._handleJoinLivestream(socket, payload));
+    socket.on(SOCKET_EVENTS.LEAVE_LIVESTREAM, (payload) => this._handleLeaveLivestream(socket, payload));
     socket.on(SOCKET_EVENTS.SEND_MESSAGE, (payload) => this._handleSendMessage(socket, payload));
     socket.on(SOCKET_EVENTS.DISCONNECT, () => this._handleDisconnect(socket));
   }
@@ -111,6 +121,80 @@ class SocketManager {
       const room = `${ROOM_PREFIXES.BRAND}${brandId}`;
       socket.leave(room);
       socket.emit(SOCKET_EVENTS.LEFT_ROOM, { room, brandId });
+    }
+  }
+
+  /**
+   * Handle joining livestream chat room
+   */
+  async _handleJoinLivestream(socket, payload) {
+    try {
+      const { livestreamId } = payload;
+      if (!livestreamId) {
+        throw new Error('livestreamId is required to join livestream room');
+      }
+
+      // Check if livestream exists
+      const livestream = await prisma.livestream.findUnique({
+        where: { id: livestreamId }
+      });
+
+      if (!livestream) {
+        throw new Error('Livestream not found');
+      }
+
+      const room = `${ROOM_PREFIXES.LIVESTREAM}${livestreamId}`;
+      socket.join(room);
+      socket.emit(SOCKET_EVENTS.JOINED_ROOM, { room, livestreamId });
+      console.log(`👤 [SocketManager] User ${socket.user.name} joined livestream room ${room}`);
+
+      // Start Polling YouTube Live Chat if the target platform contains YOUTUBE
+      const targetPlatforms = livestream.targetPlatforms || '';
+      if (targetPlatforms.toUpperCase().includes('YOUTUBE')) {
+        const youtubePollingManager = require('../../social/youtube/youtube-polling.manager');
+        youtubePollingManager.startPolling(livestreamId, livestream.brandId, this);
+      }
+    } catch (err) {
+      console.error('❌ [SocketManager] Join livestream error:', err.message);
+      socket.emit(SOCKET_EVENTS.ERROR, { message: err.message });
+    }
+  }
+
+  /**
+   * Handle leaving livestream chat room
+   */
+  async _handleLeaveLivestream(socket, payload) {
+    try {
+      const { livestreamId } = payload;
+      if (!livestreamId) return;
+
+      const room = `${ROOM_PREFIXES.LIVESTREAM}${livestreamId}`;
+      socket.leave(room);
+      socket.emit(SOCKET_EVENTS.LEFT_ROOM, { room, livestreamId });
+      console.log(`👤 [SocketManager] User ${socket.user.name} left livestream room ${room}`);
+
+      // Check if room is empty to stop polling
+      this._checkAndStopYoutubePolling(livestreamId);
+    } catch (err) {
+      console.error('❌ [SocketManager] Leave livestream error:', err.message);
+    }
+  }
+
+  /**
+   * Stop polling if no clients are left in the room
+   */
+  _checkAndStopYoutubePolling(livestreamId) {
+    if (!this.io) return;
+    const room = `${ROOM_PREFIXES.LIVESTREAM}${livestreamId}`;
+    const clients = this.io.sockets.adapter.rooms.get(room);
+    if (!clients || clients.size === 0) {
+      console.log(`🔌 [SocketManager] Room ${room} is empty. Stopping YouTube polling...`);
+      try {
+        const youtubePollingManager = require('../../social/youtube/youtube-polling.manager');
+        youtubePollingManager.stopPolling(livestreamId);
+      } catch (err) {
+        console.error('❌ [SocketManager] Error stopping YouTube polling:', err.message);
+      }
     }
   }
 
@@ -211,6 +295,9 @@ class SocketManager {
   _handleDisconnect(socket) {
     const userId = socket.user.id;
     const socketId = socket.id;
+    
+    // Get rooms the socket was in before disconnect
+    const rooms = Array.from(socket.rooms || []);
 
     if (this.userSockets.has(userId)) {
       const sockets = this.userSockets.get(userId);
@@ -221,6 +308,14 @@ class SocketManager {
     }
 
     console.log(`🔌 [SocketManager] Client disconnected: ${socket.user.name} | socketId: ${socketId}`);
+
+    // Check all livestream rooms the disconnected socket belonged to
+    rooms.forEach(room => {
+      if (room.startsWith(ROOM_PREFIXES.LIVESTREAM)) {
+        const livestreamId = room.replace(ROOM_PREFIXES.LIVESTREAM, '');
+        setTimeout(() => this._checkAndStopYoutubePolling(livestreamId), 100);
+      }
+    });
   }
 }
 

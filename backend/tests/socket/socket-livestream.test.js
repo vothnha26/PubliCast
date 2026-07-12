@@ -1,4 +1,3 @@
-const request = require('supertest');
 const http = require('http');
 const ioClient = require('socket.io-client');
 const app = require('../../src/app');
@@ -6,14 +5,16 @@ const prisma = require('../../src/config/prisma');
 const socketManager = require('../../src/services/workspace/socket/socket.manager');
 const { SOCKET_EVENTS } = require('../../src/utils/socket-constants');
 const jwtUtils = require('../../src/utils/jwt.utils');
+const { PLATFORMS } = require('../../src/utils/constants');
 
-describe('WebSocket Chat Support Integration Tests', () => {
+describe('WebSocket Livestream Chat Integration Tests', () => {
   let server;
   let socketUrl;
   let userToken;
   let testUser;
   let testBrand;
-  let testTicket;
+  let testLivestream;
+  let testSocialAccount;
 
   beforeAll(async () => {
     // 1. Create a server instance for socket testing
@@ -23,7 +24,7 @@ describe('WebSocket Chat Support Integration Tests', () => {
     await new Promise((resolve) => {
       server.listen(0, () => {
         const address = server.address();
-        socketUrl = `http://localhost:${address.port}`;
+        socketUrl = `http://127.0.0.1:${address.port}`;
         resolve();
       });
     });
@@ -34,9 +35,9 @@ describe('WebSocket Chat Support Integration Tests', () => {
     // 2. Setup DB Mock Data
     testUser = await prisma.user.create({
       data: {
-        email: `ws-chat-user-${Date.now()}@example.com`,
+        email: `livestream-chat-user-${Date.now()}@example.com`,
         passwordHash: 'dummy-hash',
-        name: 'WebSocket Test User',
+        name: 'Livestream Test User',
         role: 'OWNER',
         isActive: true
       }
@@ -46,7 +47,7 @@ describe('WebSocket Chat Support Integration Tests', () => {
 
     testBrand = await prisma.brand.create({
       data: {
-        name: 'WS Test Brand',
+        name: 'Livestream Test Brand',
         timezone: 'Asia/Ho_Chi_Minh',
         defaultLanguage: 'vi',
         owner: { connect: { id: testUser.id } },
@@ -82,22 +83,48 @@ describe('WebSocket Chat Support Integration Tests', () => {
       }
     });
 
-    testTicket = await prisma.supportTicket.create({
+    // Create a YouTube social account with mock credentials
+    testSocialAccount = await prisma.socialAccount.create({
       data: {
         brandId: testBrand.id,
-        userId: testUser.id,
-        subject: 'WS Test Subject',
-        priority: 'MEDIUM',
-        status: 'OPEN'
+        platform: PLATFORMS.YOUTUBE,
+        platformAccountId: 'mock-yt-account-id',
+        displayName: 'Mock YT channel',
+        username: 'mock-username',
+        scopes: 'mock-scope',
+        accessToken: 'mock-access-token',
+        refreshToken: 'mock-refresh-token',
+        profilePictureUrl: 'https://avatar.url/mock',
+        connectedAt: new Date()
+      }
+    });
+
+    // Create a Livestream record
+    testLivestream = await prisma.livestream.create({
+      data: {
+        brandId: testBrand.id,
+        createdByUserId: testUser.id,
+        title: 'Integration Test Livestream',
+        status: 'LIVE',
+        scheduledAt: new Date(),
+        durationMinutes: 60,
+        streamKey: 'mock-key',
+        rtmpUrl: 'rtmp://mock',
+        targetPlatforms: 'YOUTUBE',
+        streamQuality: '1080p',
+        metadata: '{}',
+        platformStreamId: 'mock-live-chat-id-123'
       }
     });
   });
 
   afterAll(async () => {
     // Cleanup
-    if (testTicket) {
-      await prisma.ticketMessage.deleteMany({ where: { ticketId: testTicket.id } });
-      await prisma.supportTicket.delete({ where: { id: testTicket.id } });
+    if (testLivestream) {
+      await prisma.livestream.delete({ where: { id: testLivestream.id } });
+    }
+    if (testSocialAccount) {
+      await prisma.socialAccount.delete({ where: { id: testSocialAccount.id } });
     }
     if (testBrand) {
       const brand = await prisma.brand.findUnique({
@@ -119,66 +146,53 @@ describe('WebSocket Chat Support Integration Tests', () => {
     await prisma.$disconnect();
   });
 
-  it('should authenticate and connect client via websocket successfully', (done) => {
+  it('should handle full livestream socket lifecycle: join, poll mock comments, and leave', (done) => {
     const client = ioClient(socketUrl, {
       auth: { token: userToken },
       transports: ['websocket']
     });
+
+    let commentReceived = false;
 
     client.on('connect', () => {
       expect(client.connected).toBe(true);
+      // Join livestream room
+      client.emit(SOCKET_EVENTS.JOIN_LIVESTREAM, { livestreamId: testLivestream.id });
+    });
+
+    client.on(SOCKET_EVENTS.JOINED_LIVESTREAM, (payload) => {
+      expect(payload.livestreamId).toBe(testLivestream.id);
+      // Room joined, now we wait for the polling manager to send a mock comment
+    });
+
+    client.on(SOCKET_EVENTS.NEW_LIVESTREAM_COMMENT, (comment) => {
+      expect(comment).toHaveProperty('id');
+      expect(comment).toHaveProperty('content');
+      expect(comment.platform).toBe('youtube');
+      commentReceived = true;
+      
+      // Leave room and disconnect
+      client.emit(SOCKET_EVENTS.LEAVE_LIVESTREAM, { livestreamId: testLivestream.id });
+    });
+
+    client.on(SOCKET_EVENTS.LEFT_ROOM, (payload) => {
+      expect(payload.livestreamId).toBe(testLivestream.id);
+      clearTimeout(timeoutId);
       client.disconnect();
       done();
     });
 
     client.on('connect_error', (err) => {
+      clearTimeout(timeoutId);
       client.disconnect();
       done(err);
     });
-  });
 
-  it('should fail authentication if token is missing or invalid', (done) => {
-    const client = ioClient(socketUrl, {
-      auth: { token: 'invalid-token' },
-      transports: ['websocket']
-    });
-
-    client.on('connect_error', (err) => {
-      expect(err.message).toContain('Authentication error');
+    // Timeout fallback to prevent hanging
+    const timeoutId = setTimeout(() => {
+      if (commentReceived) return;
       client.disconnect();
-      done();
-    });
-  });
-
-  it('should join support ticket room, send a message and receive it back via broadcast', (done) => {
-    const client = ioClient(socketUrl, {
-      auth: { token: userToken },
-      transports: ['websocket']
-    });
-
-    client.on('connect', () => {
-      // 1. Join ticket room
-      client.emit(SOCKET_EVENTS.JOIN_ROOM, { ticketId: testTicket.id });
-    });
-
-    client.on(SOCKET_EVENTS.JOINED_ROOM, (payload) => {
-      expect(payload.ticketId).toBe(testTicket.id);
-
-      // 2. Send message inside the room
-      client.emit(SOCKET_EVENTS.SEND_MESSAGE, {
-        ticketId: testTicket.id,
-        messageType: 'TEXT',
-        content: 'Hello, this is WebSocket integration test!'
-      });
-    });
-
-    // 3. Hear message broadcasted back
-    client.on(SOCKET_EVENTS.NEW_MESSAGE, (msg) => {
-      expect(msg.ticketId).toBe(testTicket.id);
-      expect(msg.text).toBe('Hello, this is WebSocket integration test!');
-      expect(msg.sender).toBe('user');
-      client.disconnect();
-      done();
-    });
+      done(new Error('Timeout waiting for mock livestream comments'));
+    }, 12000);
   });
 });

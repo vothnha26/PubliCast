@@ -1,3 +1,4 @@
+require('dotenv').config();
 const { Builder, By, Key, until } = require('selenium-webdriver');
 
 async function runSmartLinksE2ETest() {
@@ -17,13 +18,19 @@ async function runSmartLinksE2ETest() {
     let passwordInput = await driver.findElement(By.xpath("//input[@type='password']"));
     let submitButton = await driver.findElement(By.xpath("//button[@type='submit']"));
 
-    await emailInput.sendKeys('test_selenium_user@example.com');
-    await passwordInput.sendKeys('Password123!');
+    const testEmail = process.env.TEST_ACCOUNT_EMAIL || 'test@example.com';
+    const testPassword = process.env.TEST_ACCOUNT_PASSWORD || 'dummy_password';
+
+    await emailInput.sendKeys(testEmail);
+    await passwordInput.sendKeys(testPassword);
     await submitButton.click();
 
     console.log("⏳ Chờ đăng nhập thành công và chuyển hướng đến Dashboard...");
     await driver.wait(until.urlContains('/dashboard'), 5000);
     console.log("✅ Đăng nhập thành công!");
+
+    // Đảm bảo token được ghi ổn định vào localStorage trước khi load trang mới
+    await driver.sleep(1500);
 
     // 2. Đi đến trang SmartLinks
     const smartLinksUrl = 'http://localhost:5173/smartlinks';
@@ -31,12 +38,12 @@ async function runSmartLinksE2ETest() {
     await driver.get(smartLinksUrl);
 
     console.log("🔍 Kiểm tra tiêu đề trang...");
-    await driver.wait(until.elementLocated(By.xpath("//h1[contains(text(), 'SmartLinks')]")), 6000);
+    await driver.wait(until.elementLocated(By.xpath("//select")), 6000);
     console.log("✅ Trang SmartLinks đã hiển thị!");
 
     // 3. Thay đổi Profile Meta & Theme
     console.log("👉 Bước 3: Cập nhật thông tin Profile Bio và chọn Theme...");
-    let bioInput = await driver.wait(until.elementLocated(By.xpath("//textarea[@placeholder='Tiểu sử ngắn...']")), 5000);
+    let bioInput = await driver.wait(until.elementLocated(By.xpath("//textarea")), 5000);
     
     // Clear and enter new bio
     await bioInput.sendKeys(Key.CONTROL, "a");
@@ -45,35 +52,35 @@ async function runSmartLinksE2ETest() {
     await bioInput.sendKeys(uniqueBio);
 
     // Lấy slug hiện tại để tí nữa test public page
-    let slugInput = await driver.findElement(By.xpath("//input[@placeholder='slug-url']"));
+    let slugInput = await driver.findElement(By.xpath("//span[contains(text(), 'mtr.bio')]/following-sibling::input"));
     const slugValue = await slugInput.getAttribute('value');
     console.log(`🔗 Slug SmartLink hiện tại của thương hiệu: ${slugValue}`);
 
     // Chọn tab Themes để chuyển theme
     console.log("🎨 Chuyển sang tab Giao diện...");
-    let themeTabButton = await driver.findElement(By.xpath("//button[contains(text(), 'Giao diện')]"));
+    let themeTabButton = await driver.findElement(By.xpath("//button[contains(., 'Giao diện') or contains(., 'Appearance') or contains(., 'appearance')]"));
     await themeTabButton.click();
     await driver.sleep(500); // chờ animation
 
     // Chọn Theme Sunset Orange
-    let themeSunsetButton = await driver.findElement(By.xpath("//span[contains(text(), 'Sunset Orange')]/.."));
+    let themeSunsetButton = await driver.findElement(By.xpath("//span[contains(., 'Sunset Orange')]/.."));
     await themeSunsetButton.click();
     console.log("✅ Đã chọn theme Sunset Orange!");
 
     // Quay lại tab Trình biên soạn
     console.log("📝 Quay lại tab Trình biên soạn...");
-    let editorTabButton = await driver.findElement(By.xpath("//button[contains(text(), 'Trình biên soạn')]"));
+    let editorTabButton = await driver.findElement(By.xpath("//button[contains(., 'Nút bấm') or contains(., 'Buttons') or contains(., 'buttons')]"));
     await editorTabButton.click();
     await driver.sleep(500);
 
     // 4. Thêm Link mới
     console.log("👉 Bước 4: Nhấn nút 'Thêm liên kết'...");
-    let addLinkButton = await driver.findElement(By.xpath("//button[contains(text(), 'Thêm liên kết')]"));
+    let addLinkButton = await driver.findElement(By.xpath("//button[contains(., 'Thêm nút') or contains(., 'Add Button') or contains(., 'Add button') or contains(., 'Add Link')]"));
     await addLinkButton.click();
 
     console.log("⏳ Chờ Modal 'Thêm liên kết mới' hiển thị...");
-    let titleInput = await driver.wait(until.elementLocated(By.xpath("//input[@placeholder='Ví dụ: Đăng ký kênh YouTube của tôi']")), 3000);
-    let urlInput = await driver.findElement(By.xpath("//input[@placeholder='Ví dụ: youtube.com/c/publicast']"));
+    let urlInput = await driver.wait(until.elementLocated(By.xpath("//form//input[@placeholder='https://...']")), 5000);
+    let titleInput = await driver.findElement(By.xpath("//form//input[1]"));
     let submitLinkBtn = await driver.findElement(By.xpath("//button[@type='submit']"));
 
     const randomLinkTitle = `Selenium Link ${Math.floor(Math.random() * 1000)}`;
@@ -84,7 +91,7 @@ async function runSmartLinksE2ETest() {
 
     // 5. Lưu Thay Đổi
     console.log("👉 Bước 5: Bấm nút 'Lưu thay đổi' lên Server...");
-    let saveButton = await driver.findElement(By.xpath("//button[contains(text(), 'Lưu thay đổi')]"));
+    let saveButton = await driver.findElement(By.xpath("//button[contains(., 'Lưu') or contains(., 'Save')]"));
     await saveButton.click();
 
     // Chờ toast hoặc nút lưu hoàn tất
@@ -125,17 +132,18 @@ async function runSmartLinksE2ETest() {
     await driver.get(smartLinksUrl);
     
     console.log("📊 Chuyển sang tab Phân tích Click...");
-    let analyticsTabButton = await driver.wait(until.elementLocated(By.xpath("//button[contains(text(), 'Phân tích Click')]")), 5000);
+    let analyticsTabButton = await driver.wait(until.elementLocated(By.xpath("//button[contains(., 'Phân tích') or contains(., 'Analytics') or contains(., 'analytics')]")), 5000);
     await analyticsTabButton.click();
     await driver.sleep(1000); // Chờ dữ liệu load
 
     // Kiểm tra xem lượt click của link có tồn tại và hiển thị số > 0
-    const clickStatXPath = `//span[contains(., '${randomLinkTitle}')]/following-sibling::span`;
+    const clickStatXPath = `//span[contains(., '${randomLinkTitle}')]/ancestor::tr/td[3]`;
     let clickStatElement = await driver.wait(until.elementLocated(By.xpath(clickStatXPath)), 6000);
     const clickText = await clickStatElement.getText();
-    console.log(`📈 Thống kê ghi nhận: "${clickText}"`);
+    console.log(`📈 Thống kê ghi nhận: "${clickText}" clicks`);
 
-    if (clickText.includes("1 clicks") || clickText.includes("clicks")) {
+    const clickCount = parseInt(clickText.trim(), 10);
+    if (clickCount >= 1) {
       console.log("🎉 KẾT QUẢ: Selenium E2E Test đã thành công rực rỡ! Click & Views tracking đồng bộ hoàn hảo!");
     } else {
       console.log("⚠️ Cảnh báo: Thống kê click chưa được cập nhật chính xác.");

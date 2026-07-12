@@ -564,7 +564,7 @@ export function SmartLinksPage() {
                       type="text"
                       value={profileName}
                       onChange={(e) => setProfileName(e.target.value)}
-                      className="w-full px-3 py-2 rounded-xl border border-slate-300 text-sm text-slate-800 focus:border-slate-450 outline-none transition-all"
+                      className="w-full px-3 py-2 rounded-xl border border-slate-300 text-sm text-slate-800 focus:border-slate-455 outline-none transition-all"
                     />
                   </div>
                   <div className="space-y-1">
@@ -587,6 +587,15 @@ export function SmartLinksPage() {
                         {t("general.copyBtn")}
                       </button>
                     </div>
+                  </div>
+                  <div className="md:col-span-2 space-y-1">
+                    <label className="text-xs font-bold text-slate-500">{t("media.bioLabel")}</label>
+                    <textarea
+                      placeholder={t("media.bioPlaceholder")}
+                      value={profileBio}
+                      onChange={(e) => setProfileBio(e.target.value)}
+                      className="w-full px-3 py-2 rounded-xl border border-slate-300 text-sm text-slate-800 focus:border-slate-455 outline-none transition-all min-h-[80px]"
+                    />
                   </div>
                 </div>
               </div>

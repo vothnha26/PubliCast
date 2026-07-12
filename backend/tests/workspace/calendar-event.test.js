@@ -67,7 +67,7 @@ describe('CalendarEventService Export tests', () => {
       // Check Post content
       expect(icsResult).toContain('UID:post_post_1@publicast.com');
       expect(icsResult).toContain('SUMMARY:[⏰ Đã đặt lịch] Bài viết Giáng Sinh');
-      expect(icsResult).toContain('FACEBOOK, INSTAGRAM');
+      expect(icsResult).toContain('FACEBOOK\\, INSTAGRAM');
       expect(icsResult).toContain('END:VCALENDAR');
     });
   });

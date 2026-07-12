@@ -10,8 +10,8 @@ describe('Inbox SOLID Strategy Integration Tests', () => {
   });
 
   describe('Strategy Registration', () => {
-    it('should register six specific strategies in InboxService', () => {
-      expect(inboxService.strategies).toHaveLength(6);
+    it('should register seven specific strategies in InboxService', () => {
+      expect(inboxService.strategies).toHaveLength(7);
       
       const strategyNames = inboxService.strategies.map(s => s.constructor.name);
       expect(strategyNames).toContain('YoutubeCommentSyncStrategy');
@@ -20,6 +20,7 @@ describe('Inbox SOLID Strategy Integration Tests', () => {
       expect(strategyNames).toContain('InstagramDMSyncStrategy');
       expect(strategyNames).toContain('DiscordChannelMessageStrategy');
       expect(strategyNames).toContain('DiscordDirectMessageStrategy');
+      expect(strategyNames).toContain('TiktokCommentSyncStrategy');
     });
   });
 

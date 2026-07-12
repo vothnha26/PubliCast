@@ -712,6 +712,60 @@ async function main() {
     }
   });
 
+  // Livestream for brand1 (Võ Thành Nhã)
+  await prisma.livestream.create({
+    data: {
+      brandId: brand1.id,
+      createdByUserId: customerUser.id,
+      title: 'Livestream Demo Giao Diện PubliCast',
+      description: 'Buổi live stream thử nghiệm hệ thống gom chat đa nền tảng.',
+      scheduledAt: new Date(),
+      durationMinutes: 90,
+      status: 'LIVE',
+      streamKey: 'live_vn_key_888',
+      rtmpUrl: 'rtmp://live.publicast.com/app',
+      targetPlatforms: 'YOUTUBE,FACEBOOK',
+      streamQuality: 'FHD_1080P',
+      platformStreamId: 'mock-live-chat-id-123'
+    }
+  });
+
+  // Livestream for brand2 (Aesthetics Tech)
+  await prisma.livestream.create({
+    data: {
+      brandId: brand2.id,
+      createdByUserId: customerUser.id,
+      title: 'Aesthetics Live Stream',
+      description: 'Review aesthetics design systems.',
+      scheduledAt: new Date(),
+      durationMinutes: 60,
+      status: 'LIVE',
+      streamKey: 'live_aes_key',
+      rtmpUrl: 'rtmp://live.publicast.com/app',
+      targetPlatforms: 'YOUTUBE,FACEBOOK',
+      streamQuality: 'FHD_1080P',
+      platformStreamId: 'mock-live-chat-id-123'
+    }
+  });
+
+  // Livestream for brand3 (Võ Thanh Nhã Brand)
+  await prisma.livestream.create({
+    data: {
+      brandId: brand3.id,
+      createdByUserId: customerUser.id,
+      title: 'Vo Thanh Nha Brand Live',
+      description: 'General livestream discussion.',
+      scheduledAt: new Date(),
+      durationMinutes: 120,
+      status: 'LIVE',
+      streamKey: 'live_vtn_key',
+      rtmpUrl: 'rtmp://live.publicast.com/app',
+      targetPlatforms: 'YOUTUBE,FACEBOOK',
+      streamQuality: 'FHD_1080P',
+      platformStreamId: 'mock-live-chat-id-123'
+    }
+  });
+
   // Ads
   const adAcc = await prisma.adAccount.create({
     data: {

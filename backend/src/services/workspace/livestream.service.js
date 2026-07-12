@@ -20,6 +20,15 @@ class LivestreamService {
   }
 
   /**
+   * Get stream details by ID
+   */
+  async getStreamById(id) {
+    const stream = await livestreamRepository.findById(id);
+    if (!stream) return null;
+    return this._formatStreamResponse(stream);
+  }
+
+  /**
    * Get filtered stream history with pagination
    */
   async getStreamHistory(queryParams, brandId) {

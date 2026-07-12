@@ -30,14 +30,16 @@ class NodemailerStrategy extends EmailStrategy {
       auth: { user, pass }
     });
 
-    // Verify connection on startup
-    this.transporter.verify((err) => {
-      if (err) {
-        console.error('❌ [EmailService] SMTP connection failed:', err.message);
-      } else {
-        console.log('✅ [EmailService] SMTP server ready');
-      }
-    });
+    // Verify connection on startup (skip in test environment to avoid console leaks)
+    if (process.env.NODE_ENV !== 'test') {
+      this.transporter.verify((err) => {
+        if (err) {
+          console.error('❌ [EmailService] SMTP connection failed:', err.message);
+        } else {
+          console.log('✅ [EmailService] SMTP server ready');
+        }
+      });
+    }
   }
 
   async send(to, subject, text, html = null, attachments = []) {

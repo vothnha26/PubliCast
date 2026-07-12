@@ -11,6 +11,9 @@ jest.mock('../../src/config/prisma', () => ({
     findUnique: jest.fn(),
     create: jest.fn(),
     upsert: jest.fn()
+  },
+  socialAccount: {
+    findUnique: jest.fn()
   }
 }));
 
@@ -114,6 +117,10 @@ describe('Meta Comment Auto-Reply Unit Tests', () => {
         isActive: true,
         mode: 'KEYWORD',
         keywordsConfig: [{ keywords: ['giá'], reply: 'Sản phẩm 150k' }]
+      });
+      prisma.socialAccount.findUnique.mockResolvedValue({
+        id: socialAccountId,
+        platform: 'FACEBOOK'
       });
 
       facebookComment.replyToComment.mockResolvedValue({ id: 'reply_abc', content: 'Sản phẩm 150k' });

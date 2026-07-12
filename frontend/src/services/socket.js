@@ -5,6 +5,9 @@ let socketURL = import.meta.env.VITE_SOCKET_URL || import.meta.env.VITE_API_BASE
 if (socketURL.endsWith('/api')) {
   socketURL = socketURL.substring(0, socketURL.length - 4);
 }
+if (!socketURL) {
+  socketURL = 'http://localhost:3000';
+}
 
 class SocketClient {
   constructor() {
