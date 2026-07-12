@@ -247,9 +247,9 @@ async function main() {
   // 1. Customer cao nhất
   const customerUser = await prisma.user.create({
     data: {
-      email: 'vothanhnha26@gmail.com',
+      email: 'huynhhoaibao216@gmail.com',
       passwordHash: customerPasswordHash,
-      name: 'Võ Thành Nhã',
+      name: 'Huỳnh Hoài Bảo',
       role: 'OWNER',
       isActive: true,
       isEmailVerified: true,
@@ -1041,15 +1041,15 @@ async function main() {
       }
     });
 
-    if (i % 2 === 0) {
-      await prisma.notificationReadReceipt.create({
-        data: {
-          notificationId: createdNotification.id,
-          userId: testUser.id,
-          readAt: new Date()
-        }
-      });
-    }
+    // if (i % 2 === 0) {
+    //   await prisma.notificationReadReceipt.create({
+    //     data: {
+    //       notificationId: createdNotification.id,
+    //       userId: testUser.id,
+    //       readAt: new Date()
+    //     }
+    //   });
+    // }
   }
 
   console.log('Seeding completed successfully.');

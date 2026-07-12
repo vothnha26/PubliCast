@@ -50,8 +50,16 @@ class GeminiProvider extends BaseAiProvider {
         }
       });
 
-      const text = response.data.candidates[0].content.parts[0].text;
-      return JSON.parse(text);
+      let text = response.data.candidates[0].content.parts[0].text;
+      
+      try {
+        // Remove markdown formatting if the model accidentally included it despite responseMimeType
+        text = text.replace(/^```json\n?/i, '').replace(/```$/i, '').trim();
+        return JSON.parse(text);
+      } catch (parseError) {
+        console.error('[GeminiProvider] Failed to parse JSON. Raw text from Gemini:', text);
+        throw new Error(`Gemini generated invalid JSON: ${parseError.message}. This is an AI hallucination, please try generating again.`);
+      }
     } catch (error) {
       console.error('[GeminiProvider] API call failed:', error.response?.data || error.message);
       throw new Error(`Gemini API call failed: ${error.response?.data?.error?.message || error.message}`);

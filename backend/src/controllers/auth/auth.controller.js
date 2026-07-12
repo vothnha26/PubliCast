@@ -12,7 +12,8 @@ class AuthController {
    */
   googleLogin = asyncHandler(async (req, res) => {
     const { state } = req.query;
-    const redirectUri = `${req.protocol}://${req.get('host')}/api/auth/google/callback`;
+    const baseUrl = process.env.BACKEND_BASE_URL || `${req.protocol}://${req.get('host')}`;
+    const redirectUri = `${baseUrl}/api/auth/google/callback`;
     const url = await authService.getGoogleAuthUrl(redirectUri, state);
     res.json({ url });
   });
@@ -23,7 +24,8 @@ class AuthController {
    */
   googleCallback = asyncHandler(async (req, res) => {
     const { code, state } = req.query;
-    const redirectUri = `${req.protocol}://${req.get('host')}/api/auth/google/callback`;
+    const baseUrl = process.env.BACKEND_BASE_URL || `${req.protocol}://${req.get('host')}`;
+    const redirectUri = `${baseUrl}/api/auth/google/callback`;
     const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
 
     const result = await authService.handleGoogleCallback(code, redirectUri);

@@ -13,8 +13,8 @@ const REFRESH_TOKEN_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
 function buildCookieOptions(maxAge) {
   return {
     httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'lax',
+    secure: true, // Required for sameSite: 'none'
+    sameSite: 'none', // Allow cross-origin requests (e.g. localhost -> ngrok)
     maxAge,
     path: '/'
   };

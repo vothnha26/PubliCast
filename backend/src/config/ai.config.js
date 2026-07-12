@@ -53,7 +53,7 @@ const OPENAI_CONFIG = {
 };
 
 const GEMINI_CONFIG = {
-  MODEL: process.env.GEMINI_MODEL || 'gemini-2.5-flash',
+  MODEL: process.env.GEMINI_MODEL || 'gemini-1.5-flash',
   API_URL_TEMPLATE: process.env.GEMINI_API_URL_TEMPLATE || 'https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={apiKey}'
 };
 
