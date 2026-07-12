@@ -1,24 +1,33 @@
 import * as React from "react";
 import { Play } from "lucide-react";
+import { isVideoPath } from "../../../utils/url";
+import { usePostCreatorFormContext } from "../../../context/PostCreatorFormContext";
+
+// Safe wrapper - returns null nếu không có context
+function useOptionalPostCreatorContext() {
+  try {
+    return usePostCreatorFormContext();
+  } catch {
+    return null;
+  }
+}
 
 export function PreviewShell({
   children,
   videoFileUrl,
+  videoFile: videoFileProp = null,
   previewDevice = "mobile",
   imageTransform = null,
   layout = "card", // "card" | "vertical"
-  aspectRatioClass = "aspect-video", // for card layout media container
+  aspectRatioClass = "aspect-video",
   fallbackLabel = "Preview not available",
   fallbackIcon,
   dark = false
 }) {
-  const isVideo = videoFileUrl && (
-    videoFileUrl.endsWith('.mp4') || 
-    videoFileUrl.endsWith('.mov') || 
-    videoFileUrl.endsWith('.avi') ||
-    videoFileUrl.endsWith('.webm') ||
-    videoFileUrl.includes('/video/upload/')
-  );
+  const ctx = useOptionalPostCreatorContext();
+  // Dùng videoFile từ context để isVideoPath detect đúng (check file.type)
+  const videoFile = videoFileProp || ctx?.videoFile || null;
+  const isVideo = isVideoPath(videoFileUrl, videoFile);
 
   const getImageStyle = (transform) => {
     if (!transform) return {};

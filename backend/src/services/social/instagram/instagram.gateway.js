@@ -1,6 +1,35 @@
 const { API_VERSIONS, SEPARATORS, FACEBOOK_API } = require('../../../utils/constants');
 const path = require('path');
 const fs = require('fs');
+const logger = require('../../../utils/logger');
+
+// Custom fetch wrapper with timeout and logging
+const fetchWithTimeout = async (url, options = {}) => {
+  const timeoutMs = options.body ? 45000 : 25000;
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
+  logger.info(`[Instagram API] Request: ${options.method || 'GET'} ${url.split('?')[0]}`);
+  try {
+    const res = await global.fetch(url, {
+      ...options,
+      signal: controller.signal
+    });
+    clearTimeout(timeoutId);
+    logger.info(`[Instagram API] Response Status: ${res.status}`);
+    return res;
+  } catch (error) {
+    clearTimeout(timeoutId);
+    if (error.name === 'AbortError') {
+      logger.error(`[Instagram API] ❌ Timeout after ${timeoutMs}ms: ${options.method || 'GET'} ${url.split('?')[0]}`);
+      throw new Error(`Instagram API request timed out after ${timeoutMs}ms`);
+    }
+    logger.error(`[Instagram API] ❌ Failed: ${error.message}`);
+    throw error;
+  }
+};
+
+const fetch = fetchWithTimeout;
 
 class InstagramGateway {
   constructor() {
@@ -40,7 +69,10 @@ class InstagramGateway {
   /**
    * Tạo media container cho hình ảnh đơn lẻ
    */
-  async createImageContainer(igAccountId, accessToken, imageUrl, caption, scheduledAt = null) {
+  /**
+   * Tạo media container cho hình ảnh đơn lẻ
+   */
+  async createImageContainer(igAccountId, accessToken, imageUrl, caption, scheduledAt = null, options = {}) {
     const url = `${this.graphBaseUrl}/${igAccountId}/media`;
     const body = {
       image_url: imageUrl,
@@ -49,6 +81,12 @@ class InstagramGateway {
     };
     if (scheduledAt) {
       body.scheduled_publish_time = Math.floor(new Date(scheduledAt).getTime() / 1000);
+    }
+    if (options.instagramCollaborators && options.instagramCollaborators.length > 0) {
+      body.collaborators = options.instagramCollaborators;
+    }
+    if (options.instagramAudio) {
+      body.audio_asset_id = options.instagramAudio.id || options.instagramAudio;
     }
 
     const res = await fetch(url, {
@@ -69,7 +107,7 @@ class InstagramGateway {
   /**
    * Tạo media container cho video đơn lẻ
    */
-  async createVideoContainer(igAccountId, accessToken, videoUrl, caption, scheduledAt = null) {
+  async createVideoContainer(igAccountId, accessToken, videoUrl, caption, scheduledAt = null, options = {}) {
     const url = `${this.graphBaseUrl}/${igAccountId}/media`;
     const body = {
       media_type: 'REELS',
@@ -79,6 +117,15 @@ class InstagramGateway {
     };
     if (scheduledAt) {
       body.scheduled_publish_time = Math.floor(new Date(scheduledAt).getTime() / 1000);
+    }
+    if (options.instagramCollaborators && options.instagramCollaborators.length > 0) {
+      body.collaborators = options.instagramCollaborators;
+    }
+    if (options.instagramAudio) {
+      body.audio_asset_id = options.instagramAudio.id || options.instagramAudio;
+    }
+    if (options.instagramShowOnFeed !== undefined) {
+      body.share_to_feed = options.instagramShowOnFeed;
     }
 
     const res = await fetch(url, {
@@ -99,7 +146,7 @@ class InstagramGateway {
   /**
    * Tạo media container cho Reels
    */
-  async createReelContainer(igAccountId, accessToken, videoUrl, caption, scheduledAt = null) {
+  async createReelContainer(igAccountId, accessToken, videoUrl, caption, scheduledAt = null, options = {}) {
     const url = `${this.graphBaseUrl}/${igAccountId}/media`;
     const body = {
       media_type: 'REELS',
@@ -109,6 +156,15 @@ class InstagramGateway {
     };
     if (scheduledAt) {
       body.scheduled_publish_time = Math.floor(new Date(scheduledAt).getTime() / 1000);
+    }
+    if (options.instagramCollaborators && options.instagramCollaborators.length > 0) {
+      body.collaborators = options.instagramCollaborators;
+    }
+    if (options.instagramAudio) {
+      body.audio_asset_id = options.instagramAudio.id || options.instagramAudio;
+    }
+    if (options.instagramShowOnFeed !== undefined) {
+      body.share_to_feed = options.instagramShowOnFeed;
     }
 
     const res = await fetch(url, {
@@ -192,7 +248,7 @@ class InstagramGateway {
   /**
    * Tạo container cha cho Album/Carousel
    */
-  async createCarouselContainer(igAccountId, accessToken, childrenIds, caption, scheduledAt = null) {
+  async createCarouselContainer(igAccountId, accessToken, childrenIds, caption, scheduledAt = null, options = {}) {
     const url = `${this.graphBaseUrl}/${igAccountId}/media`;
     const body = {
       media_type: 'CAROUSEL',
@@ -202,6 +258,12 @@ class InstagramGateway {
     };
     if (scheduledAt) {
       body.scheduled_publish_time = Math.floor(new Date(scheduledAt).getTime() / 1000);
+    }
+    if (options.instagramCollaborators && options.instagramCollaborators.length > 0) {
+      body.collaborators = options.instagramCollaborators;
+    }
+    if (options.instagramAudio) {
+      body.audio_asset_id = options.instagramAudio.id || options.instagramAudio;
     }
 
     const res = await fetch(url, {
@@ -323,6 +385,58 @@ class InstagramGateway {
       throw new Error(errData.error?.message || 'Failed to reply to comment on Instagram');
     }
     
+    return res.json();
+  }
+
+  async createComment(mediaId, text, accessToken) {
+    const url = `${this.graphBaseUrl}/${mediaId}/comments?message=${encodeURIComponent(text)}&access_token=${accessToken}`;
+    
+    const res = await fetch(url, { method: 'POST' });
+    if (!res.ok) {
+      const errData = await res.json().catch(() => ({}));
+      throw new Error(errData.error?.message || 'Failed to create comment on Instagram');
+    }
+    
+    return res.json();
+  }
+
+  async getAccountInsights(igAccountId, accessToken, startDate, endDate) {
+    const since = Math.floor(new Date(startDate).getTime() / 1000);
+    const until = Math.floor(new Date(endDate).getTime() / 1000);
+    const metrics = 'impressions,reach,profile_views';
+    const url = `${this.graphBaseUrl}/${igAccountId}/insights?metric=${metrics}&period=day&since=${since}&until=${until}&access_token=${accessToken}`;
+    
+    const res = await fetch(url);
+    if (!res.ok) {
+      const errData = await res.json().catch(() => ({}));
+      console.warn(`[InstagramGateway] getAccountInsights failed:`, errData.error?.message);
+      return [];
+    }
+    
+    const data = await res.json();
+    return data.data || [];
+  }
+
+  async searchAudio(q, accessToken) {
+    if (accessToken && (accessToken.startsWith('mock-') || accessToken.includes('mock') || accessToken.startsWith('ig_mock') || accessToken.includes('fb_mock'))) {
+      const MOCK_AUDIO_TRACKS = [
+        { id: "viral_pop", name: "Trending Pop Hits (Viral)" },
+        { id: "lofi_chill", name: "Chill Lofi Beats" },
+        { id: "synthwave", name: "Epic Cinematic Synth" },
+        { id: "acoustic", name: "Acoustic Sunset Moods" },
+        { id: "tech_vibe", name: "Tech Startup Vibe" }
+      ];
+      if (!q) return { data: MOCK_AUDIO_TRACKS };
+      return { data: MOCK_AUDIO_TRACKS.filter(t => t.name.toLowerCase().includes(q.toLowerCase())) };
+    }
+
+    const url = `${this.graphBaseUrl}/instagram_audio_search?q=${encodeURIComponent(q)}&access_token=${accessToken}`;
+    const res = await fetch(url);
+    if (!res.ok) {
+      const errData = await res.json().catch(() => ({}));
+      console.error('[InstagramGateway] searchAudio FAILED:', JSON.stringify(errData, null, 2));
+      throw new Error(errData.error?.message || 'Failed to search Instagram audio');
+    }
     return res.json();
   }
 }

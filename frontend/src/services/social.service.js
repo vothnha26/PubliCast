@@ -8,7 +8,8 @@ class SocialService {
 
   async getMetrics(brandId, params = {}) {
     const queryParams = new URLSearchParams({ brandId, ...params }).toString();
-    const response = await apiService.get(`/social/metrics?${queryParams}`);
+    // Timeout 90s vì backend cần sync với các nền tảng (Facebook Smart Sync có thể mất 30-60s)
+    const response = await apiService.get(`/social/metrics?${queryParams}`, { timeout: 90000 });
     return response.data;
   }
 
@@ -133,6 +134,12 @@ class SocialService {
 
   async getInstagramPublishedPosts(brandId, pageToken = null, limit = 10) {
     const url = `/social/instagram/published-posts?brandId=${brandId}${pageToken ? `&pageToken=${pageToken}` : ''}${limit ? `&limit=${limit}` : ''}`;
+    const response = await apiService.get(url);
+    return response.data;
+  }
+
+  async searchInstagramAudio(brandId, query) {
+    const url = `/social/instagram/audio-search?brandId=${brandId}&q=${encodeURIComponent(query)}`;
     const response = await apiService.get(url);
     return response.data;
   }

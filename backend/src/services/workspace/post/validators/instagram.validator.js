@@ -5,11 +5,21 @@ class InstagramValidator extends BaseValidator {
     const errors = [];
     errors.push(...this.validateCaption(postData.caption));
     errors.push(...this.validateMedia(mediaInfo));
+    errors.push(...this.validateVideoSettings(postData, mediaInfo));
 
-    // Instagram specific: Reel/Story must have video/image
+    // Instagram: ALL post types require at least one photo or video
     const { hasMedia } = mediaInfo;
-    if (['REEL', 'STORY'].includes(this.limitConfig.subType) && !hasMedia) {
-      errors.push(`Instagram ${this.limitConfig.subType.toLowerCase()} requires a media file.`);
+    if (!hasMedia) {
+      errors.push(`Instagram requires at least one photo or video to publish a post.`);
+    }
+
+    // Instagram Reels: check aspect ratio
+    const settings = postData.options?.videoSettings;
+    const isReel = (postData.options?.instagramType || 'post').toUpperCase() === 'REEL';
+    if (isReel && settings && settings.aspectRatio) {
+      if (settings.aspectRatio === '16:9') {
+        errors.push('Instagram Reels không hỗ trợ tỷ lệ khung hình ngang 16:9. Vui lòng chọn tỷ lệ dọc 9:16 hoặc 1:1.');
+      }
     }
 
     return errors;

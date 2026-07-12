@@ -13,6 +13,7 @@ import { useBrand } from "../../context/BrandContext";
 import socialService from "../../services/social.service";
 import postService from "../../services/post.service";
 import { POST_STATUS } from "../../constants/postStatus";
+import { useTranslation } from "react-i18next";
 import { usePostCreator } from "../../context/PostCreatorContext";
 
 const PLATFORM_COLORS = {
@@ -64,7 +65,52 @@ const BRAND_PLATFORMS = [
   { name: "Threads", apiKey: "THREADS", label: "Threads" }
 ];
 
+// Strategy pattern for extracting metrics per platform to ensure SOLID OCP Compliance
+const PLATFORM_METRICS_STRATEGIES = {
+  YOUTUBE: {
+    getSubscribers: (m) => m.youtubeChannel?.subscribersCount || 0,
+    getViews: (m) => m.youtubeChannel?.totalViewsCount || 0,
+    getVideos: (m) => m.youtubeChannel?.totalVideosCount || 0,
+  },
+  FACEBOOK: {
+    getSubscribers: (m) => m.facebookPage?.followersCount || 0,
+    getViews: (m) => m.facebookPage?.likesCount || 0,
+    getVideos: (m) => 0,
+  },
+  INSTAGRAM: {
+    getSubscribers: (m) => m.instagramAccount?.followersCount || 0,
+    getViews: (m) => 0,
+    getVideos: (m) => m.instagramAccount?.mediaCount || 0,
+  },
+  THREADS: {
+    getSubscribers: (m) => m.instagramAccount?.followersCount || 0,
+    getViews: (m) => 0,
+    getVideos: (m) => m.instagramAccount?.mediaCount || 0,
+  },
+  TIKTOK: {
+    getSubscribers: (m) => m.tikTokAccount?.followersCount || 0,
+    getViews: (m) => m.tikTokAccount?.likesCount || 0,
+    getVideos: (m) => m.tikTokAccount?.videoCount || 0,
+  },
+  LINKEDIN: {
+    getSubscribers: (m) => m.linkedInAccount?.followersCount || 0,
+    getViews: (m) => 0,
+    getVideos: (m) => 0,
+  },
+  TELEGRAM: {
+    getSubscribers: (m) => m.telegramAccount?.memberCount || 0,
+    getViews: (m) => 0,
+    getVideos: (m) => 0,
+  },
+  DISCORD: {
+    getSubscribers: (m) => m.discordAccount?.memberCount || 0,
+    getViews: (m) => 0,
+    getVideos: (m) => 0,
+  }
+};
+
 export function DashboardPage() {
+  const { t, i18n } = useTranslation(["dashboard", "common"]);
   const navigate = useNavigate();
   const location = useLocation();
   const [metrics, setMetrics] = useState([]);
@@ -76,10 +122,10 @@ export function DashboardPage() {
   useEffect(() => {
     const params = new URLSearchParams(location.search);
     if (params.get("success") === "google_login") {
-      toast.success("Đăng nhập bằng Google thành công!");
+      toast.success(t("toast.googleSuccess"));
       navigate(location.pathname, { replace: true });
     }
-  }, [location, navigate]);
+  }, [location, navigate, t]);
 
   useEffect(() => {
     const loadData = async () => {
@@ -104,36 +150,126 @@ export function DashboardPage() {
     loadData();
   }, [activeBrand]);
 
-  const getYouTubeStats = () => {
-    const ytAccount = metrics.find(m => m.platform === 'YOUTUBE');
-    if (!ytAccount || !ytAccount.youtubeChannel) return { subscribers: 0, views: 0, videos: 0 };
-    return {
-      subscribers: ytAccount.youtubeChannel.subscribersCount,
-      views: ytAccount.youtubeChannel.totalViewsCount,
-      videos: ytAccount.youtubeChannel.totalVideosCount
-    };
+  const getAggregatedStats = () => {
+    let totalSubscribers = 0;
+    let totalViews = 0;
+    let totalVideos = 0;
+
+    metrics.forEach(m => {
+      const strategy = PLATFORM_METRICS_STRATEGIES[m.platform];
+      if (strategy) {
+        totalSubscribers += strategy.getSubscribers(m);
+        totalViews += strategy.getViews(m);
+        totalVideos += strategy.getVideos(m);
+      }
+    });
+
+    return { subscribers: totalSubscribers, views: totalViews, videos: totalVideos };
   };
 
-  const stats = getYouTubeStats();
+  const stats = getAggregatedStats();
 
-  const viewersByPlatform = [
-    { platform: "YouTube", viewers: stats.subscribers, pct: Math.min((stats.subscribers / 100000) * 100, 100) },
-    { platform: "Facebook", viewers: 0, pct: 0 },
-    { platform: "TikTok", viewers: 0, pct: 0 },
-    { platform: "Instagram", viewers: 0, pct: 0 },
-    { platform: "LinkedIn", viewers: 0, pct: 0 },
-    { platform: "Discord", viewers: 0, pct: 0 },
-  ];
+  const getViewersByPlatform = () => {
+    const list = [
+      { platform: "YouTube", key: "YOUTUBE" },
+      { platform: "Facebook", key: "FACEBOOK" },
+      { platform: "TikTok", key: "TIKTOK" },
+      { platform: "Instagram", key: "INSTAGRAM" },
+      { platform: "LinkedIn", key: "LINKEDIN" },
+      { platform: "Discord", key: "DISCORD" },
+    ];
 
-  const weeklyData = [
-    { day: "Mon", viewers: stats.subscribers * 0.8 },
-    { day: "Tue", viewers: stats.subscribers * 0.85 },
-    { day: "Wed", viewers: stats.subscribers * 0.9 },
-    { day: "Thu", viewers: stats.subscribers * 0.92 },
-    { day: "Fri", viewers: stats.subscribers * 0.95 },
-    { day: "Sat", viewers: stats.subscribers * 0.98 },
-    { day: "Sun", viewers: stats.subscribers },
-  ];
+    const maxSubscribers = Math.max(...metrics.map(m => {
+      const strategy = PLATFORM_METRICS_STRATEGIES[m.platform];
+      return strategy ? strategy.getSubscribers(m) : 0;
+    }), 1);
+
+    return list.map(item => {
+      const acc = metrics.find(m => m.platform === item.key);
+      const strategy = PLATFORM_METRICS_STRATEGIES[item.key];
+      const val = acc && strategy ? strategy.getSubscribers(acc) : 0;
+      return {
+        platform: item.platform,
+        viewers: val,
+        pct: Math.min((val / maxSubscribers) * 100, 100)
+      };
+    });
+  };
+
+  const viewersByPlatform = getViewersByPlatform();
+
+  const getWeeklyData = () => {
+    const dailyGrowth = {};
+
+    metrics.forEach(m => {
+      if (!m.analytics?.[0]?.socialAnalytics?.audienceDemographicsJson) return;
+      try {
+        const raw = JSON.parse(m.analytics[0].socialAnalytics.audienceDemographicsJson);
+        const growthList = raw.growth || [];
+        growthList.forEach(row => {
+          let dateStr = "";
+          let gained = 0;
+          let lost = 0;
+
+          if (typeof row === 'object' && !Array.isArray(row)) {
+            dateStr = row.date;
+            gained = row.subscribersGained || row.acquired || 0;
+            lost = row.subscribersLost || row.lost || 0;
+          } else if (Array.isArray(row) && row.length >= 4) {
+            dateStr = row[0];
+            gained = row[2] || 0;
+            lost = row[3] || 0;
+          }
+
+          if (dateStr) {
+            if (!dailyGrowth[dateStr]) {
+              dailyGrowth[dateStr] = { gained: 0, lost: 0 };
+            }
+            dailyGrowth[dateStr].gained += gained;
+            dailyGrowth[dateStr].lost += lost;
+          }
+        });
+      } catch (e) {
+        console.error("Failed to parse growth analytics for account", m.id, e);
+      }
+    });
+
+    const sortedDates = Object.keys(dailyGrowth).sort();
+    
+    if (sortedDates.length === 0) {
+      const days = i18n.language === 'vi' 
+        ? ["T2", "T3", "T4", "T5", "T6", "T7", "CN"] 
+        : ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+      return days.map((day, idx) => ({
+        day,
+        viewers: Math.round(stats.subscribers * (0.8 + (idx * 0.2 / 6)))
+      }));
+    }
+
+    let currentSubscribers = stats.subscribers;
+    const result = [];
+
+    for (let i = sortedDates.length - 1; i >= 0; i--) {
+      const dateStr = sortedDates[i];
+      const growth = dailyGrowth[dateStr];
+      const netChange = growth.gained - growth.lost;
+      
+      const dateObj = new Date(dateStr);
+      const dayLabel = dateObj.toLocaleDateString(t("common:langLocale"), { weekday: 'short' });
+      
+      result.unshift({
+        day: dayLabel,
+        date: dateStr,
+        viewers: currentSubscribers
+      });
+
+      currentSubscribers = Math.max(0, currentSubscribers - netChange);
+    }
+
+    return result.slice(-7);
+  };
+
+  const weeklyData = getWeeklyData();
 
   if (loading) {
     return (
@@ -193,25 +329,25 @@ export function DashboardPage() {
       {/* Stat Cards Row */}
       <div className="grid grid-cols-4 gap-4">
         <StatCard
-          label="Tổng người theo dõi"
+          label={t("stats.totalFollowers")}
           value={stats.subscribers.toLocaleString()}
-          delta="Thời gian thực"
+          delta={t("stats.realTime")}
           deltaColor="#16A34A"
         />
         <StatCard
-          label="Tổng lượt xem"
+          label={t("stats.totalViews")}
           value={stats.views.toLocaleString()}
-          note="Kênh YouTube"
+          note={t("stats.youtubeNote")}
         />
         <StatCard
-          label="Tổng video"
+          label={t("stats.totalVideos")}
           value={stats.videos.toLocaleString()}
-          note="Đã tải lên"
+          note={t("stats.uploadedNote")}
         />
         <StatCard
-          label="Thương hiệu hiện tại"
-          value={activeBrand?.name || "Không xác định"}
-          delta="Đang chọn"
+          label={t("stats.currentBrand")}
+          value={activeBrand?.name || t("stats.unknownBrand")}
+          delta={t("stats.selectedDelta")}
           deltaColor="#16A34A"
         />
       </div>
@@ -221,9 +357,9 @@ export function DashboardPage() {
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-2">
              <TrendingUp size={16} className="text-gray-400" />
-             <span className="text-sm font-bold text-[#0A0A0A] uppercase tracking-wider">Xu Hướng Lượng Người Xem</span>
+             <span className="text-sm font-bold text-[#0A0A0A] uppercase tracking-wider">{t("charts.audienceTrend")}</span>
           </div>
-          <span onClick={() => navigate("/analytics")} className="text-xs font-bold text-blue-600 cursor-pointer hover:underline">Xem Chi Tiết Báo Cáo →</span>
+          <span onClick={() => navigate("/analytics")} className="text-xs font-bold text-blue-600 cursor-pointer hover:underline">{t("charts.viewDetails")}</span>
         </div>
         <ResponsiveContainer width="100%" height={140}>
           <LineChart data={weeklyData}>
@@ -244,20 +380,20 @@ export function DashboardPage() {
         {/* Recent Posts Queue (Cột trái) */}
         <div className="col-span-7 bg-white border border-gray-100 rounded-3xl p-6 shadow-sm flex flex-col gap-5 min-h-[350px]">
           <div className="flex items-center justify-between">
-            <span className="text-sm font-bold text-[#0A0A0A] uppercase tracking-wider">Hàng chờ bài đăng gần đây</span>
+            <span className="text-sm font-bold text-[#0A0A0A] uppercase tracking-wider">{t("recentQueue.title")}</span>
             <div className="flex items-center gap-3">
               <button
                 onClick={() => openPostCreator()}
                 className="flex items-center gap-1 text-xs font-bold text-white bg-purple-700 hover:bg-purple-800 transition-colors px-3 py-1.5 rounded-lg border-none cursor-pointer"
               >
                 <Plus size={13} />
-                Tạo bài đăng
+                {t("recentQueue.createPost")}
               </button>
               <button
                 onClick={() => navigate("/planner")}
                 className="text-xs font-bold text-blue-600 hover:underline bg-transparent border-none cursor-pointer"
               >
-                Lịch đăng →
+                {t("recentQueue.scheduleLink")}
               </button>
             </div>
           </div>
@@ -265,13 +401,13 @@ export function DashboardPage() {
           {recentPosts.length === 0 ? (
             <div className="flex-1 flex flex-col items-center justify-center text-center p-6 border border-dashed border-gray-200 rounded-2xl bg-gray-50/50">
               <FileText size={40} className="text-gray-300 mb-3" />
-              <p className="text-xs font-semibold text-gray-500 mb-1">Chưa có bài đăng nào</p>
-              <p className="text-[11px] text-gray-400 max-w-[280px] mb-4">Hãy tạo bài đăng đầu tiên để lên lịch hoặc đăng ngay lên các mạng xã hội!</p>
+              <p className="text-xs font-semibold text-gray-500 mb-1">{t("recentQueue.emptyTitle")}</p>
+              <p className="text-[11px] text-gray-400 max-w-[280px] mb-4">{t("recentQueue.emptySubtitle")}</p>
               <button
                 onClick={() => openPostCreator()}
                 className="text-xs font-bold text-purple-600 hover:text-purple-700 bg-purple-50 px-4 py-2 rounded-lg border-none cursor-pointer transition-colors"
               >
-                Tạo Ngay
+                {t("recentQueue.createNow")}
               </button>
             </div>
           ) : (
@@ -297,13 +433,13 @@ export function DashboardPage() {
                       </div>
                       <div className="min-w-0 flex-1">
                         <h4 className="text-xs font-bold text-gray-800 truncate group-hover:text-purple-700 transition-colors mb-1.5">
-                          {post.title || "Bài viết không tiêu đề"}
+                          {post.title || t("recentQueue.untitled")}
                         </h4>
                         <div className="flex items-center gap-2">
                           <span className="text-[10px] text-gray-400 font-medium">
                             {post.scheduledAt 
-                              ? `Lên lịch: ${new Date(post.scheduledAt).toLocaleDateString("vi-VN")}` 
-                              : `Tạo lúc: ${new Date(post.createdAt).toLocaleDateString("vi-VN")}`
+                              ? t("recentQueue.scheduledAt", { date: new Date(post.scheduledAt).toLocaleDateString(t("common:langLocale")) }) 
+                              : t("recentQueue.createdAt", { date: new Date(post.createdAt).toLocaleDateString(t("common:langLocale")) })
                             }
                           </span>
                           <span className="text-[10px] text-gray-300">•</span>
@@ -320,7 +456,7 @@ export function DashboardPage() {
                     <div className="flex items-center gap-3 shrink-0 ml-4">
                       <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-[10px] font-bold ${statusInfo.colorClass}`}>
                         {statusInfo.icon}
-                        <span>{statusInfo.label}</span>
+                        <span>{t(`status.${statusUpper.toLowerCase()}`)}</span>
                       </div>
                       <ChevronRight size={14} className="text-gray-300 group-hover:text-gray-500 transition-colors" />
                     </div>
@@ -336,12 +472,12 @@ export function DashboardPage() {
           {/* Platform Connections Status */}
           <div className="bg-[#0A0A0A] rounded-3xl p-6 shadow-xl flex flex-col">
             <div className="flex items-center justify-between mb-5">
-              <span className="text-sm font-bold text-white uppercase tracking-widest">Kết Nối Mạng Xã Hội</span>
+              <span className="text-sm font-bold text-white uppercase tracking-widest">{t("connections.title")}</span>
               <button 
                 onClick={() => navigate("/manage/connections")}
                 className="text-[10px] font-black text-gray-400 hover:text-white uppercase tracking-wider bg-white/5 hover:bg-white/10 px-2.5 py-1 rounded-md border-none cursor-pointer transition-colors"
               >
-                Quản lý
+                {t("connections.manage")}
               </button>
             </div>
             
@@ -357,14 +493,14 @@ export function DashboardPage() {
                     <span className="text-xs font-bold text-gray-200 flex-1">{platform.label}</span>
                     {connected ? (
                       <span className="text-[9px] font-extrabold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded uppercase tracking-wider">
-                        Đã kết nối
+                        {t("connections.connected")}
                       </span>
                     ) : (
                       <button
                         onClick={() => navigate("/manage/connections")}
                         className="text-[9px] font-extrabold text-gray-400 hover:text-white bg-white/5 hover:bg-white/10 border-none px-2 py-0.5 rounded uppercase tracking-wider cursor-pointer transition-colors"
                       >
-                        Kết nối
+                        {t("connections.connect")}
                       </button>
                     )}
                   </div>
@@ -375,7 +511,7 @@ export function DashboardPage() {
 
           {/* Reach by Network */}
           <div className="bg-white border border-gray-100 rounded-3xl p-6 shadow-sm flex-1">
-            <div className="text-sm font-bold text-[#0A0A0A] uppercase tracking-wider mb-6">Độ Phủ Theo Nền Tảng</div>
+            <div className="text-sm font-bold text-[#0A0A0A] uppercase tracking-wider mb-6">{t("connections.reachByNetwork")}</div>
             <div className="flex flex-col gap-4.5">
               {viewersByPlatform.map((item) => (
                 <div key={item.platform} className="flex items-center gap-3">

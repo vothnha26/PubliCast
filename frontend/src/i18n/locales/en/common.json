@@ -1,0 +1,21 @@
+{
+  "save": "Save",
+  "cancel": "Cancel",
+  "continue": "Continue",
+  "back": "Back",
+  "delete": "Delete",
+  "edit": "Edit",
+  "loading": "Loading...",
+  "processing": "Processing...",
+  "confirm": "Confirm",
+  "close": "Close",
+  "upload": "Upload",
+  "download": "Download",
+  "search": "Search",
+  "noData": "No data available",
+  "error": "An error occurred",
+  "success": "Success",
+  "yes": "Yes",
+  "no": "No",
+  "langLocale": "en-US"
+}

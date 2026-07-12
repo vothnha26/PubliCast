@@ -3,10 +3,11 @@ import { Plus, X, Check, Globe, Zap, Megaphone, Box, Layers, Filter, Edit3, Tras
 import apiService from "../../services/api";
 import { toast } from "sonner";
 
-function MatrixCell({ exists, module, platform, onAdd }) {
+function MatrixCell({ exists, module, platform, onAdd, onDisable }) {
   if (!exists) {
     return (
       <div 
+        id={`cell-add-${module.id}-${platform.id}`}
         onClick={() => onAdd(module, platform)}
         className="h-12 border border-dashed border-gray-100 rounded-xl flex items-center justify-center cursor-pointer hover:bg-gray-50 hover:border-gray-300 transition-all group"
       >
@@ -20,8 +21,7 @@ function MatrixCell({ exists, module, platform, onAdd }) {
       <div className="absolute top-1 right-1 w-1.5 h-1.5 rounded-full bg-green-500" />
       <span className="text-[10px] font-black text-[#0A0A0A] uppercase tracking-tighter">Active</span>
       <div className="hidden group-hover:flex absolute inset-0 bg-black/90 items-center justify-center gap-3 animate-in fade-in duration-150">
-         <button className="text-white hover:text-blue-400"><Edit3 size={12} /></button>
-         <button className="text-white hover:text-red-400"><Trash2 size={12} /></button>
+         <button id={`cell-delete-${module.id}-${platform.id}`} onClick={() => onDisable(module, platform)} className="text-white hover:text-red-400"><Trash2 size={12} /></button>
       </div>
     </div>
   );
@@ -79,12 +79,12 @@ function PlatformModal({ isOpen, onClose, onSave }) {
              <div className="space-y-4">
                 <div>
                    <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1 block">Platform Name</label>
-                   <input placeholder="e.g. Threads" value={name} onChange={(e) => setName(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-black outline-none text-sm font-medium" />
+                   <input id="input-platform-name" placeholder="e.g. Threads" value={name} onChange={(e) => setName(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-black outline-none text-sm font-medium" />
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                    <div>
                       <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1 block">Platform ID</label>
-                      <input placeholder="TH" value={id} onChange={(e) => setId(e.target.value.toUpperCase())} className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-black outline-none text-sm font-mono" maxLength={3} />
+                      <input id="input-platform-id" placeholder="TH" value={id} onChange={(e) => setId(e.target.value.toUpperCase())} className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-black outline-none text-sm font-mono" maxLength={3} />
                    </div>
                    <div>
                       <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1 block">Brand Color</label>
@@ -98,7 +98,7 @@ function PlatformModal({ isOpen, onClose, onSave }) {
           </div>
           <div className="px-8 py-6 bg-gray-50 flex gap-3 border-t border-gray-100">
              <button onClick={onClose} className="flex-1 py-3 rounded-2xl border border-gray-200 bg-white text-sm font-bold text-gray-600">Cancel</button>
-             <button onClick={() => { onSave({ id, name, color, image }); onClose(); }} className="flex-1 py-3 rounded-2xl bg-[#0A0A0A] text-white text-sm font-bold shadow-lg hover:bg-gray-800 transition-all">Add Platform</button>
+             <button id="btn-submit-platform" onClick={() => { onSave({ id, name, color, image }); onClose(); }} className="flex-1 py-3 rounded-2xl bg-[#0A0A0A] text-white text-sm font-bold shadow-lg hover:bg-gray-800 transition-all">Add Platform</button>
           </div>
        </div>
     </div>
@@ -112,7 +112,7 @@ function ModuleModal({ isOpen, onClose, onSave }) {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+    <div id="modal-module" className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
        <div className="bg-white rounded-[32px] w-full max-w-md shadow-2xl overflow-hidden p-8">
           <div className="flex justify-between items-center mb-6">
              <h3 className="text-xl font-bold text-[#0A0A0A]">Add New Module</h3>
@@ -121,16 +121,16 @@ function ModuleModal({ isOpen, onClose, onSave }) {
           <div className="space-y-4 mb-8">
              <div>
                 <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1 block">Module Name</label>
-                <input placeholder="e.g. Reporting" value={name} onChange={(e) => setName(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-black outline-none text-sm" />
+                <input id="input-module-name" placeholder="e.g. Reporting" value={name} onChange={(e) => setName(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-black outline-none text-sm" />
              </div>
              <div>
                 <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1 block">Description</label>
-                <textarea placeholder="e.g. Automated PDF report generation" value={desc} onChange={(e) => setDesc(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-black outline-none text-sm h-24 resize-none" />
+                <textarea id="input-module-desc" placeholder="e.g. Automated PDF report generation" value={desc} onChange={(e) => setDesc(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-black outline-none text-sm h-24 resize-none" />
              </div>
           </div>
           <div className="flex gap-3">
              <button onClick={onClose} className="flex-1 py-3 rounded-2xl border border-gray-200 bg-white text-sm font-bold text-gray-600">Cancel</button>
-             <button onClick={() => { onSave({ id: `M${Math.floor(Math.random()*100)}`, name, description: desc, icon: <Layers size={18} /> }); onClose(); }} className="flex-1 py-3 rounded-2xl bg-[#0A0A0A] text-white text-sm font-bold shadow-lg hover:bg-gray-800 transition-all">Add Module</button>
+             <button id="btn-submit-module" onClick={() => { onSave({ id: `M${Math.floor(Math.random()*100)}`, name, description: desc, icon: <Layers size={18} /> }); onClose(); }} className="flex-1 py-3 rounded-2xl bg-[#0A0A0A] text-white text-sm font-bold shadow-lg hover:bg-gray-800 transition-all">Add Module</button>
           </div>
        </div>
     </div>
@@ -171,21 +171,72 @@ export function AdminProducts() {
     setShowAddModal(true);
   };
 
-  const saveProductMatrix = () => {
-    const key = `${activeSelection.module.id}-${activeSelection.platform.id}`;
-    setMatrix({ ...matrix, [key]: { status: "Active", sku: `PROD-${Math.floor(Math.random()*1000)}` } });
-    setShowAddModal(false);
-    toast.success(`Module enabled for ${activeSelection.platform.name}`);
+  const saveProductMatrix = async () => {
+    try {
+      const response = await apiService.post("/admin/products/matrix", {
+        platformId: activeSelection.platform.id,
+        moduleId: activeSelection.module.id
+      });
+      const key = `${activeSelection.module.id}-${activeSelection.platform.id}`;
+      setMatrix({
+        ...matrix,
+        [key]: {
+          status: "ACTIVE",
+          sku: response.data.data.sku
+        }
+      });
+      setShowAddModal(false);
+      toast.success(`Module enabled for ${activeSelection.platform.name}`);
+    } catch (error) {
+      toast.error(error.response?.data?.message || "Failed to enable module");
+    }
   };
 
-  const addNewPlatform = (newPlatform) => {
-    setPlatforms([...platforms, newPlatform]);
-    toast.success("Platform added (UI only)");
+  const handleDisableProduct = async (module, platform) => {
+    if (window.confirm(`Are you sure you want to disable ${module.name} for ${platform.name}?`)) {
+      try {
+        await apiService.post("/admin/products/matrix/disable", {
+          platformId: platform.id,
+          moduleId: module.id
+        });
+        const key = `${module.id}-${platform.id}`;
+        const newMatrix = { ...matrix };
+        delete newMatrix[key];
+        setMatrix(newMatrix);
+        toast.success(`Module ${module.name} disabled for ${platform.name}`);
+      } catch (error) {
+        toast.error(error.response?.data?.message || "Failed to disable module");
+      }
+    }
   };
 
-  const addNewModule = (newModule) => {
-    setModules([...modules, newModule]);
-    toast.success("Module added (UI only)");
+  const addNewPlatform = async (newPlatform) => {
+    try {
+      const response = await apiService.post("/admin/products/platforms", {
+        id: newPlatform.id,
+        name: newPlatform.name,
+        color: newPlatform.color,
+        image: newPlatform.image
+      });
+      setPlatforms([...platforms, response.data.data]);
+      toast.success(`Platform ${newPlatform.name} added successfully`);
+    } catch (error) {
+      toast.error(error.response?.data?.message || "Failed to add platform");
+    }
+  };
+
+  const addNewModule = async (newModule) => {
+    try {
+      const response = await apiService.post("/admin/products/modules", {
+        id: newModule.id,
+        name: newModule.name,
+        description: newModule.description
+      });
+      setModules([...modules, response.data.data]);
+      toast.success(`Module ${newModule.name} added successfully`);
+    } catch (error) {
+      toast.error(error.response?.data?.message || "Failed to add module");
+    }
   };
 
   const getModuleIcon = (name) => {
@@ -218,12 +269,14 @@ export function AdminProducts() {
         </div>
         <div className="flex gap-3">
            <button 
+             id="btn-manage-modules"
              onClick={() => setShowModuleModal(true)}
              className="px-5 py-2.5 bg-white border border-gray-200 rounded-xl text-sm font-bold hover:bg-gray-50 transition-colors"
            >
              Manage Modules
            </button>
            <button 
+             id="btn-add-platform"
              onClick={() => setShowPlatformModal(true)}
              className="px-5 py-2.5 bg-[#0A0A0A] text-white rounded-xl text-sm font-bold hover:bg-gray-800 transition-all shadow-xl"
            >
@@ -272,10 +325,11 @@ export function AdminProducts() {
                       return (
                         <td key={p.id} className="p-0">
                            <MatrixCell 
-                             exists={!!matrix[key]} 
+                             exists={matrix[key] && matrix[key].status === 'ACTIVE'} 
                              module={m} 
                              platform={p} 
                              onAdd={handleAddProduct} 
+                             onDisable={handleDisableProduct}
                            />
                         </td>
                       );
@@ -300,7 +354,7 @@ export function AdminProducts() {
 
       {/* Add Product Modal (Matrix Cell Action) */}
       {showAddModal && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+        <div id="modal-matrix-add" className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
            <div className="bg-white rounded-[32px] w-full max-w-md shadow-2xl overflow-hidden p-8 animate-in zoom-in-95 duration-200">
               <div className="text-center mb-8">
                  <div className="w-16 h-16 rounded-3xl bg-gray-50 flex items-center justify-center mx-auto mb-4 border border-gray-100 shadow-inner text-gray-400">
@@ -319,8 +373,8 @@ export function AdminProducts() {
               </div>
 
               <div className="flex gap-3">
-                 <button onClick={() => setShowAddModal(false)} className="flex-1 py-3 rounded-2xl border border-gray-200 bg-white text-sm font-bold text-gray-600">Cancel</button>
-                 <button onClick={saveProductMatrix} className="flex-1 py-3 rounded-2xl bg-[#0A0A0A] text-white text-sm font-bold shadow-lg hover:bg-gray-800 transition-all">Enable Module</button>
+                 <button id="btn-cancel-matrix" onClick={() => setShowAddModal(false)} className="flex-1 py-3 rounded-2xl border border-gray-200 bg-white text-sm font-bold text-gray-600">Cancel</button>
+                 <button id="btn-submit-matrix" onClick={saveProductMatrix} className="flex-1 py-3 rounded-2xl bg-[#0A0A0A] text-white text-sm font-bold shadow-lg hover:bg-gray-800 transition-all">Enable Module</button>
               </div>
            </div>
         </div>

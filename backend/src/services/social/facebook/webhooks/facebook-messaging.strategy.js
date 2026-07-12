@@ -25,6 +25,8 @@ class FacebookMessagingStrategy extends BaseWebhookStrategy {
       return;
     }
 
+    if (await this.isDuplicateEvent(messageId)) return;
+
     // 1. Fetch or Determine Conversation ID from Meta
     let conversationPlatformId = await this.fetchMetaConversationId(pageId, customerPsid, account.accessToken);
     if (!conversationPlatformId) {

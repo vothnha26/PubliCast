@@ -1,15 +1,35 @@
 import * as React from "react";
-import { Outlet, NavLink, Navigate } from "react-router-dom";
+import { Outlet, NavLink } from "react-router-dom";
 import { Clock, ChevronDown } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 export function PlannerLayout() {
+  const { t } = useTranslation("planner");
+
   const tabs = [
-    { id: "calendar", label: "Calendar", path: "calendar" },
-    { id: "list", label: "List", path: "list" },
-    { id: "library", label: "Posts library", path: "library", premium: true },
-    { id: "autolists", label: "Autolists", path: "autolists" },
-    { id: "history", label: "Deleted posts", path: "history" },
+    { id: "calendar", label: t("tabs.calendar", { defaultValue: "Calendar" }), path: "calendar" },
+    { id: "list", label: t("tabs.list", { defaultValue: "List" }), path: "list" },
+    { id: "library", label: t("tabs.library", { defaultValue: "Posts library" }), path: "library", premium: true },
+    { id: "autolists", label: t("tabs.autolists", { defaultValue: "Autolists" }), path: "autolists" },
+    { id: "history", label: t("tabs.history", { defaultValue: "Deleted posts" }), path: "history" },
   ];
+
+  const [time, setTime] = React.useState(new Date());
+
+  React.useEffect(() => {
+    const timer = setInterval(() => {
+      setTime(new Date());
+    }, 1000); // Update every second for better responsiveness or 60000 for every minute. Let's do 1000.
+    return () => clearInterval(timer);
+  }, []);
+
+  const formattedTime = time.toLocaleTimeString("en-US", {
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+  });
+
+  const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
   return (
     <div className="flex-1 flex flex-col overflow-hidden bg-[#F8F8F7]">
@@ -41,14 +61,15 @@ export function PlannerLayout() {
 
         <div className="flex items-center gap-2 text-gray-400">
            <Clock size={14} />
-           <span className="text-[11px] font-bold text-gray-500 tracking-tight">7:19 PM - Asia/Ho_Chi_Minh</span>
+           <span className="text-[11px] font-bold text-gray-500 tracking-tight">{formattedTime} - {timezone}</span>
            <ChevronDown size={14} className="cursor-pointer" />
         </div>
       </div>
 
-      <div className="flex-1 overflow-auto">
+      <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
         <Outlet />
       </div>
     </div>
   );
 }
+

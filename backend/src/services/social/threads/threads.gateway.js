@@ -151,6 +151,25 @@ class ThreadsGateway {
     console.log(`[Threads Gateway] DELETE request succeeded. Response:`, data);
     return data;
   }
+
+  async createComment(userId, accessToken, parentPostId, text) {
+    const url = `${this.graphBaseUrl}/${userId}/threads?media_type=TEXT&text=${encodeURIComponent(text)}&reply_to_post_id=${parentPostId}&access_token=${accessToken}`;
+    const res = await fetch(url, { method: 'POST' });
+    if (!res.ok) {
+      const errData = await res.json().catch(() => ({}));
+      throw new Error(errData.error?.message || 'Failed to create Threads reply container');
+    }
+    const container = await res.json();
+    
+    // Publish reply container
+    const publishUrl = `${this.graphBaseUrl}/${userId}/threads_publish?creation_id=${container.id}&access_token=${accessToken}`;
+    const publishRes = await fetch(publishUrl, { method: 'POST' });
+    if (!publishRes.ok) {
+      const errData = await res.json().catch(() => ({}));
+      throw new Error(errData.error?.message || 'Failed to publish Threads reply container');
+    }
+    return publishRes.json();
+  }
 }
 
 module.exports = new ThreadsGateway();

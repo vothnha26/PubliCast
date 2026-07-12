@@ -12,8 +12,11 @@ import { toast } from "sonner";
 import { useBrandPermission } from "../../../hooks/useBrandPermission";
 import { AccessGuard } from "../../../components/shared/AccessGuard";
 import { buildMediaUrl } from "../../../utils/url";
+import { PlatformIcon } from "@/components/shared/PlatformIcon";
+import { useTranslation } from "react-i18next";
 
 export function PostsLibraryView() {
+  const { t } = useTranslation("planner");
   const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(true);
   const { activeBrand } = useBrand();
@@ -21,7 +24,7 @@ export function PostsLibraryView() {
   const { hasPermission } = useBrandPermission();
   const hasCreatePermission = hasPermission('CREATE_POSTS');
 
-  const { openPostCreator } = usePostCreator();
+  const { openPostCreator, isOpen } = usePostCreator();
 
   const fetchLibrary = async () => {
     if (!activeBrand) return;
@@ -33,7 +36,7 @@ export function PostsLibraryView() {
       });
       setPosts(res.data || []);
     } catch (e) {
-      toast.error("Failed to load library posts");
+      toast.error(t("postsLibrary.toasts.loadFail"));
     } finally {
       setLoading(false);
     }
@@ -41,17 +44,17 @@ export function PostsLibraryView() {
 
   useEffect(() => {
     fetchLibrary();
-  }, [activeBrand, searchTerm]);
+  }, [activeBrand, searchTerm, isOpen]);
 
   return (
-    <div className="flex-1 flex flex-col p-6 space-y-6">
+    <div className="flex-1 flex flex-col p-6 space-y-6 overflow-y-auto">
       {/* Premium Header */}
       <div className="flex items-center justify-between">
          <div className="flex items-center gap-3">
-            <h2 className="text-xl font-bold text-[#0A0A0A]">Posts Library</h2>
+            <h2 className="text-xl font-bold text-[#0A0A0A]">{t("postsLibrary.title")}</h2>
             <div className="px-3 py-1 bg-[#D9F99D] rounded-full flex items-center gap-1.5 shadow-sm border border-[#BEF264]">
                <Diamond size={12} className="text-black" />
-               <span className="text-[10px] font-bold text-black uppercase tracking-wider">Templates</span>
+               <span className="text-[10px] font-bold text-black uppercase tracking-wider">{t("postsLibrary.badge")}</span>
             </div>
          </div>
          <div className="flex items-center gap-4">
@@ -59,7 +62,7 @@ export function PostsLibraryView() {
                <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-300" />
                <input 
                  type="text" 
-                 placeholder="Search templates..." 
+                 placeholder={t("postsLibrary.searchPlaceholder")} 
                  value={searchTerm}
                  onChange={(e) => setSearchTerm(e.target.value)}
                  className="w-full bg-white border border-gray-200 rounded-xl py-2 pl-9 pr-4 text-[11px] focus:outline-none focus:ring-2 focus:ring-[#D9F99D]/50 transition-all"
@@ -70,7 +73,7 @@ export function PostsLibraryView() {
                 onClick={() => openPostCreator({ isLibrary: true })}
                 className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-[12px] font-bold bg-[#0A0A0A] text-white hover:scale-105 active:scale-95 cursor-pointer transition-all shadow-lg"
               >
-                 <Plus size={16} /> Add template
+                  <Plus size={16} /> {t("postsLibrary.addTemplateBtn")}
               </button>
             </AccessGuard>
          </div>
@@ -99,14 +102,14 @@ export function PostsLibraryView() {
               <div className="w-20 h-20 bg-[#D9F99D]/10 rounded-full flex items-center justify-center mx-auto mb-6 border border-[#D9F99D]/20">
                 <Diamond size={40} className="text-[#D9F99D] drop-shadow-lg" />
               </div>
-              <h3 className="text-2xl font-bold text-white uppercase tracking-tight">Organize your best content</h3>
-              <p className="text-gray-400 max-w-md mx-auto text-sm font-medium leading-relaxed">Save your top-performing posts as templates and reuse them with one click. Build a library of consistent, high-quality content.</p>
+              <h3 className="text-2xl font-bold text-white uppercase tracking-tight">{t("postsLibrary.emptyTitle")}</h3>
+              <p className="text-gray-400 max-w-md mx-auto text-sm font-medium leading-relaxed">{t("postsLibrary.emptyDesc")}</p>
               <AccessGuard feature="CREATE_POSTS">
                  <button 
                    onClick={() => openPostCreator({ isLibrary: true })}
                    className="mt-6 px-10 py-3 rounded-2xl text-sm font-black uppercase tracking-widest bg-[#D9F99D] text-[#0A0A0A] hover:scale-105 cursor-pointer transition-all shadow-xl"
                  >
-                   Create First Template
+                    {t("postsLibrary.createFirstBtn")}
                  </button>
                </AccessGuard>
            </div>
@@ -135,7 +138,7 @@ export function PostsLibraryView() {
                           }}
                           className="px-4 py-2 bg-[#D9F99D] hover:bg-[#bef264] text-[#0A0A0A] rounded-xl text-xs font-black uppercase tracking-wider transition-all transform hover:scale-105 shadow-md flex items-center gap-1.5 cursor-pointer"
                         >
-                          <Plus size={14} /> Use Template
+                           <Plus size={14} /> {t("postsLibrary.useTemplate")}
                         </button>
                       </AccessGuard>
                       <button 
@@ -147,12 +150,12 @@ export function PostsLibraryView() {
                       >
                         {hasCreatePermission ? (
                           <>
-                            <Edit size={14} /> Edit Template
-                          </>
-                        ) : (
-                          <>
-                            <Eye size={14} /> View Template
-                          </>
+                             <Edit size={14} /> {t("postsLibrary.editTemplate")}
+                           </>
+                         ) : (
+                           <>
+                             <Eye size={14} /> {t("postsLibrary.viewTemplate")}
+                           </>
                         )}
                       </button>
                    </div>
@@ -160,13 +163,7 @@ export function PostsLibraryView() {
                    <div className="absolute top-4 right-4 flex gap-1">
                       {item.platforms.map(plt => (
                          <div key={plt} className="w-8 h-8 rounded-full bg-white/80 backdrop-blur-md flex items-center justify-center shadow-sm border border-white/50">
-                            {plt === "YOUTUBE" ? (
-                               <Youtube size={14} className="text-[#FF0000]" />
-                             ) : plt === "FACEBOOK" ? (
-                               <Facebook size={14} className="text-[#1877F2] fill-[#1877F2]" />
-                             ) : (
-                               <PlayCircle size={14} />
-                             )}
+                            <PlatformIcon platform={plt} size={14} />
                          </div>
                       ))}
                    </div>
@@ -178,7 +175,7 @@ export function PostsLibraryView() {
                    </div>
                    <div className="flex items-center justify-between">
                       <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{item.type}</span>
-                      <span className="text-[9px] font-black text-[#065F46] bg-[#D1FAE5] px-2 py-0.5 rounded-lg uppercase tracking-tighter">Template</span>
+                      <span className="text-[9px] font-black text-[#065F46] bg-[#D1FAE5] px-2 py-0.5 rounded-lg uppercase tracking-tighter">{t("postsLibrary.templateBadge")}</span>
                    </div>
                 </div>
              </div>

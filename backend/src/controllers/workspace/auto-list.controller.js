@@ -24,6 +24,7 @@ class AutoListController {
 
   updateAutoList = asyncHandler(async (req, res) => {
     const { id } = req.params;
+    console.log(`[updateAutoList] id=${id} | body:`, JSON.stringify(req.body, null, 2));
     const data = await autoListService.updateAutoList(id, req.body);
     res.json({ data });
   });

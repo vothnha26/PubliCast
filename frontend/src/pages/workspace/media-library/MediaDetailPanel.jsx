@@ -3,8 +3,10 @@ import { X, Calendar, FileText, Maximize2, Trash2, ExternalLink } from "lucide-r
 import { usePostCreator } from "../../../context/PostCreatorContext";
 import { useConfirm } from "@/hooks/useConfirm";
 import { useBrandPermission } from "../../../hooks/useBrandPermission";
+import { useTranslation } from "react-i18next";
 
 export function MediaDetailPanel({ detail, setDetail, onDelete, onRename }) {
+  const { t } = useTranslation("medialibrary");
   const { openPostCreator } = usePostCreator();
   const confirm = useConfirm();
   const { hasPermission } = useBrandPermission();
@@ -30,8 +32,8 @@ export function MediaDetailPanel({ detail, setDetail, onDelete, onRename }) {
       className="flex flex-col bg-white border-l border-gray-100 shadow-2xl animate-in slide-in-from-right duration-300"
       style={{ flex: "0 0 320px" }}
     >
-      <div className="flex items-center justify-between px-5 py-4 border-bottom border-gray-50">
-        <h3 className="text-xs font-black uppercase tracking-widest text-gray-400">File Details</h3>
+      <div className="flex items-center justify-between px-5 py-4 border-bottom border-gray-55">
+        <h3 className="text-xs font-black uppercase tracking-widest text-gray-400">{t("detailPanel.title")}</h3>
         <button
           onClick={() => setDetail(null)}
           className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer"
@@ -83,24 +85,24 @@ export function MediaDetailPanel({ detail, setDetail, onDelete, onRename }) {
               />
            </div>
            <span className="text-[9px] text-gray-400 block px-1 -mt-2">
-             Nhấn Enter hoặc click ra ngoài để lưu tên mới
+             {t("detailPanel.hintRename", { defaultValue: "Press Enter or click outside to save" })}
            </span>
 
            <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1">
-                 <span className="text-[10px] font-black uppercase tracking-tighter text-gray-400">Type</span>
+                 <span className="text-[10px] font-black uppercase tracking-tighter text-gray-400">{t("detailPanel.type")}</span>
                  <div className="text-xs font-bold text-gray-700 capitalize">{detail.type}</div>
               </div>
               <div className="space-y-1">
-                 <span className="text-[10px] font-black uppercase tracking-tighter text-gray-400">Size</span>
+                 <span className="text-[10px] font-black uppercase tracking-tighter text-gray-400">{t("detailPanel.size")}</span>
                  <div className="text-xs font-bold text-gray-700">{detail.size}</div>
               </div>
               <div className="space-y-1">
-                 <span className="text-[10px] font-black uppercase tracking-tighter text-gray-400">Dimensions</span>
+                 <span className="text-[10px] font-black uppercase tracking-tighter text-gray-400">{t("detailPanel.dimensions")}</span>
                  <div className="text-xs font-bold text-gray-700">{detail.dim || '—'}</div>
               </div>
               <div className="space-y-1">
-                 <span className="text-[10px] font-black uppercase tracking-tighter text-gray-400">Uploaded</span>
+                 <span className="text-[10px] font-black uppercase tracking-tighter text-gray-400">{t("detailPanel.uploaded", { defaultValue: "Uploaded" })}</span>
                  <div className="text-xs font-bold text-gray-700">{detail.date}</div>
               </div>
            </div>
@@ -118,7 +120,7 @@ export function MediaDetailPanel({ detail, setDetail, onDelete, onRename }) {
                   setDetail(null);
                 }}
               >
-                Use in Post
+                {t("detailPanel.useInPost", { defaultValue: "Use in Post" })}
               </button>
             )}
             {hasDeletePermission && (
@@ -126,10 +128,10 @@ export function MediaDetailPanel({ detail, setDetail, onDelete, onRename }) {
                 className="w-full py-3 bg-white hover:bg-red-50 text-red-500 text-[11px] font-black uppercase tracking-widest rounded-xl border border-red-100 transition-all flex items-center justify-center gap-2 cursor-pointer"
                 onClick={async () => {
                   const isConfirmed = await confirm({
-                    title: "Delete File?",
-                    description: "Are you sure you want to delete this file?",
-                    confirmText: "Delete",
-                    cancelText: "Cancel",
+                    title: t("detailPanel.deleteConfirm", { defaultValue: "Delete File?" }),
+                    description: t("detailPanel.deleteConfirmDesc", { defaultValue: "Are you sure you want to delete this file?" }),
+                    confirmText: t("detailPanel.confirm", { defaultValue: "Delete" }),
+                    cancelText: t("detailPanel.cancel", { defaultValue: "Cancel" }),
                     variant: "destructive"
                   });
                   if (isConfirmed) {
@@ -138,7 +140,7 @@ export function MediaDetailPanel({ detail, setDetail, onDelete, onRename }) {
                 }}
               >
                 <Trash2 size={13} />
-                Delete
+                {t("detailPanel.delete")}
               </button>
             )}
         </div>

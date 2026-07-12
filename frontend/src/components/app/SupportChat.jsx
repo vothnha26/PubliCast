@@ -29,7 +29,7 @@ export function SupportChat() {
         // Map messages to view
         const formatted = (activeTicket.messages || []).map(m => ({
           id: m.id,
-          role: m.senderId === activeTicket.userId ? "user" : "agent",
+          role: (m.sender?.role === 'STAFF' || m.sender?.role === 'ADMIN') ? "agent" : "user",
           text: m.content,
           time: new Date(m.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
           attachment: m.attachmentUrl ? {

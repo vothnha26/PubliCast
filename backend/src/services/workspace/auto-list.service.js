@@ -32,7 +32,16 @@ class AutoListService {
   }
 
   async deleteAutoList(id) {
-    return autoListRepository.delete(id);
+    const list = await autoListRepository.findById(id);
+    if (list) {
+      console.log(`[deleteAutoList] Found list ${id} with ${list.posts ? list.posts.length : 0} posts`);
+      const pendingPosts = (list.posts || []).filter(p => p.status === POST_STATUS.SCHEDULED);
+      console.log(`[deleteAutoList] Found ${pendingPosts.length} pending scheduled posts`);
+      for (const p of pendingPosts) {
+        await removePublishJob(p.id);
+      }
+      return autoListRepository.delete(id);
+    }
   }
 
   async updateLastPostedAt(id, lastPostedAt) {
@@ -75,11 +84,13 @@ class AutoListService {
         (p.status === POST_STATUS.PUBLISHED || p.status === POST_STATUS.FAILED || p.status === POST_STATUS.REJECTED) && !p.isDeleted
       );
       
-      for (const p of postsToRevive) {
+      const baseTime = new Date();
+      for (let idx = 0; idx < postsToRevive.length; idx++) {
+        const p = postsToRevive[idx];
         // 1. Detach original post from this Autolist (so it becomes a static history record)
         await postRepository.update(p.id, { autoListId: null });
 
-        // 2. Create the revived draft in the queue
+        // 2. Create the revived draft in the queue (use incremented createdAt to preserve ordering)
         const duplicateData = {
           brandId: p.brandId,
           createdByUserId: p.createdByUserId,
@@ -100,7 +111,8 @@ class AutoListService {
           metadata: p.metadata,
           isCollaboration: p.isCollaboration,
           collaboratorHandle: p.collaboratorHandle,
-          autoListId: autoListId
+          autoListId: autoListId,
+          createdAt: new Date(baseTime.getTime() + idx * 1000)
         };
         await postRepository.create(duplicateData);
       }

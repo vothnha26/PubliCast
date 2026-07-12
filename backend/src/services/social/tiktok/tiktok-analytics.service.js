@@ -8,7 +8,7 @@ class TikTokAnalyticsService {
       pageId: account?.platformAccountId || 'mock-tiktok-page-id',
       username: account?.username || 'tiktok_user',
       displayName: account?.displayName || 'TikTok Account',
-      profilePictureUrl: account?.profilePictureUrl || '',
+      profilePictureUrl: account?.profilePictureUrl || 'https://images.unsplash.com/photo-1598550476439-6847785fce6e?w=150&auto=format&fit=crop&q=60',
       followersCount: 0,
       followingCount: 0,
       likesCount: 0,
@@ -242,10 +242,15 @@ class TikTokAnalyticsService {
     const now = new Date();
     const defaultStart = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
     const defaultEnd = now.toISOString().split('T')[0];
-    return {
-      start: startDate || defaultStart,
-      end: endDate || defaultEnd
-    };
+    let start = startDate || defaultStart;
+    let end = endDate || defaultEnd;
+
+    if (start === end) {
+      const prevDate = new Date(new Date(start).getTime() - 24 * 60 * 60 * 1000);
+      start = prevDate.toISOString().split('T')[0];
+    }
+
+    return { start, end };
   }
 
   _initializeDailyMap(start, end) {

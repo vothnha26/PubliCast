@@ -26,8 +26,11 @@ import {
   ChevronRight,
   Twitter,
   Youtube,
+  Facebook,
+  Linkedin,
   Chrome
 } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { useBrand } from "../../context/BrandContext";
 import apiService from "../../services/api";
@@ -49,6 +52,7 @@ const THEMES = [
 ];
 
 export function SmartLinksPage() {
+  const { t } = useTranslation("smartlinks");
   const { activeBrand } = useBrand();
 
   const [loading, setLoading] = useState(false);
@@ -183,7 +187,7 @@ export function SmartLinksPage() {
       }
     } catch (err) {
       console.error("Error fetching SmartLink:", err);
-      toast.error("Không thể tải cấu hình SmartLink");
+      toast.error(t("toasts.loadError"));
     } finally {
       setLoading(false);
     }
@@ -248,11 +252,11 @@ export function SmartLinksPage() {
         setIsPublished(data.isPublished);
         setLinks(data.links || []);
         setSocialIcons([]);
-        toast.success("Đã khởi tạo trang SmartLink mặc định!");
+        toast.success(t("toasts.initSuccess"));
       }
     } catch (err) {
       console.error("Error creating initial SmartLink:", err);
-      toast.error("Không thể tự động khởi tạo SmartLink");
+      toast.error(t("toasts.initError"));
     }
   };
 
@@ -302,12 +306,12 @@ export function SmartLinksPage() {
 
       const res = await apiService.put(`/smart-links/${smartLinkId}`, payload);
       if (res.data.data) {
-        toast.success("Đã lưu cấu hình SmartLinks thành công!");
+        toast.success(t("toasts.saveSuccess"));
         fetchSmartLink(); // reload clean data from server
       }
     } catch (err) {
       console.error("Error saving SmartLink:", err);
-      toast.error(err.message || "Không thể lưu cấu hình");
+      toast.error(err.message || t("toasts.saveError"));
     } finally {
       setSaving(false);
     }
@@ -317,7 +321,7 @@ export function SmartLinksPage() {
   const handleAddLink = (e) => {
     if (e) e.preventDefault();
     if (!newTitle.trim() || !newUrl.trim()) {
-      toast.error("Vui lòng điền tiêu đề và liên kết URL");
+      toast.error(t("toasts.addLinkError"));
       return;
     }
 
@@ -345,7 +349,7 @@ export function SmartLinksPage() {
       };
 
     setLinks(prev => [...prev, newLinkItem]);
-    toast.success("Đã thêm liên kết mới!");
+    toast.success(t("toasts.addLinkSuccess"));
     setIsAddOpen(false);
     setNewTitle("");
     newSetUrl("");
@@ -361,7 +365,7 @@ export function SmartLinksPage() {
       clicks: 0
     };
     setLinks(prev => [...prev, cloned]);
-    toast.info("Đã nhân bản liên kết!");
+    toast.info(t("toasts.cloneLink"));
   };
 
   // Update Link Field
@@ -381,7 +385,7 @@ export function SmartLinksPage() {
   // Delete Link
   const handleDeleteLink = (id) => {
     setLinks(prev => prev.filter(l => l.id !== id));
-    toast.info("Đã xóa liên kết tạm thời.");
+    toast.info(t("toasts.deleteLink"));
   };
 
   const handleCopyLink = () => {
@@ -389,7 +393,7 @@ export function SmartLinksPage() {
     const publicUrl = `${window.location.origin}/s/${slug}`;
     navigator.clipboard.writeText(publicUrl);
     setCopied(true);
-    toast.success("Đã sao chép liên kết Bio-Link!");
+    toast.success(t("toasts.copySuccess"));
     setTimeout(() => setCopied(false), 2000);
   };
 
@@ -400,10 +404,10 @@ export function SmartLinksPage() {
     try {
       const media = await uploadMediaFile(file, activeBrand.id);
       setAvatarUrl(media.url);
-      toast.success("Đã tải ảnh đại diện lên");
+      toast.success(t("toasts.avatarUploadSuccess"));
     } catch (err) {
       console.error("Error uploading avatar:", err);
-      toast.error(err?.response?.data?.message || "Không thể tải ảnh đại diện lên");
+      toast.error(err?.response?.data?.message || t("toasts.avatarUploadError"));
     } finally {
       event.target.value = "";
     }
@@ -416,10 +420,10 @@ export function SmartLinksPage() {
     try {
       const media = await uploadMediaFile(file, activeBrand.id);
       updateLinkField(linkId, "iconUrl", media.url);
-      toast.success("Đã tải ảnh/icon cho link");
+      toast.success(t("toasts.iconUploadSuccess"));
     } catch (err) {
       console.error("Error uploading link icon:", err);
-      toast.error(err?.response?.data?.message || "Không thể tải ảnh/icon cho link");
+      toast.error(err?.response?.data?.message || t("toasts.iconUploadError"));
     } finally {
       event.target.value = "";
     }
@@ -448,7 +452,6 @@ export function SmartLinksPage() {
     };
   };
 
-
   return (
     <div className="flex-1 flex flex-col overflow-y-auto bg-[#F3F4F6] p-6 space-y-6">
       
@@ -474,24 +477,24 @@ export function SmartLinksPage() {
               onClick={() => setIsAddOpen(true)}
               className="flex items-center gap-1.5 bg-[#F3F4F6] hover:bg-slate-200 text-slate-700 text-xs font-bold px-3 py-2 rounded-lg transition-colors uppercase border border-slate-200"
             >
-              <Plus size={14} /> New
+              <Plus size={14} /> {t("header.newBtn")}
             </button>
             <button 
               onClick={() => {
                 setSlug(`${slug}-clone`);
-                toast.success("Đã sao chép cấu hình SmartLink!");
+                toast.success(t("toasts.cloneSuccess"));
               }}
               className="flex items-center gap-1.5 bg-[#F3F4F6] hover:bg-slate-200 text-slate-700 text-xs font-bold px-3 py-2 rounded-lg transition-colors uppercase border border-slate-200"
             >
-              <Copy size={14} /> Clone
+              <Copy size={14} /> {t("header.cloneBtn")}
             </button>
             <button 
               onClick={() => {
-                toast.error("Vui lòng liên hệ quản trị viên để xóa liên kết chính.");
+                toast.error(t("toasts.deleteMain"));
               }}
               className="flex items-center gap-1.5 bg-red-50 hover:bg-red-100 text-red-650 text-xs font-bold px-3 py-2 rounded-lg transition-colors uppercase border border-red-100"
             >
-              <Trash2 size={14} /> Delete
+              <Trash2 size={14} /> {t("header.deleteBtn")}
             </button>
           </div>
         </div>
@@ -500,11 +503,11 @@ export function SmartLinksPage() {
           <button
             onClick={() => {
               fetchSmartLink();
-              toast.info("Đã khôi phục lại dữ liệu chưa lưu.");
+              toast.info(t("toasts.resetSuccess"));
             }}
             className="flex items-center gap-1.5 bg-white border border-slate-350 hover:bg-slate-50 text-slate-700 text-sm font-semibold px-4 py-2 rounded-xl transition-all shadow-sm active:scale-95 uppercase"
           >
-            <RotateCcw size={15} /> Reset
+            <RotateCcw size={15} /> {t("header.resetBtn")}
           </button>
           <button
             onClick={handleSaveChanges}
@@ -512,7 +515,7 @@ export function SmartLinksPage() {
             className="flex items-center gap-1.5 bg-[#4F5B66] hover:bg-[#3d4750] text-white text-sm font-semibold px-6 py-2 rounded-xl transition-all shadow-md active:scale-95 disabled:opacity-50 uppercase"
           >
             {saving ? <Loader2 size={15} className="animate-spin" /> : <Save size={15} />}
-            Save
+            {t("header.saveBtn")}
           </button>
         </div>
       </div>
@@ -533,7 +536,7 @@ export function SmartLinksPage() {
                   : "border-transparent text-slate-400 hover:text-slate-600"
               }`}
             >
-              Settings
+              {t("tabs.settings")}
             </button>
             <button
               onClick={() => setActiveTab("analytics")}
@@ -543,7 +546,7 @@ export function SmartLinksPage() {
                   : "border-transparent text-slate-400 hover:text-slate-600"
               }`}
             >
-              Analytics
+              {t("tabs.analytics")}
             </button>
           </div>
 
@@ -553,27 +556,27 @@ export function SmartLinksPage() {
               
               {/* General Section */}
               <div className="space-y-4">
-                <h3 className="text-sm font-bold text-slate-700">General</h3>
+                <h3 className="text-sm font-bold text-slate-700">{t("general.sectionTitle")}</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-1">
-                    <label className="text-xs font-bold text-slate-500">Name</label>
+                    <label className="text-xs font-bold text-slate-500">{t("general.nameLabel")}</label>
                     <input
                       type="text"
                       value={profileName}
                       onChange={(e) => setProfileName(e.target.value)}
-                      className="w-full px-3 py-2 rounded-xl border border-slate-300 text-sm text-slate-800 focus:border-slate-450 outline-none transition-all"
+                      className="w-full px-3 py-2 rounded-xl border border-slate-300 text-sm text-slate-800 focus:border-slate-455 outline-none transition-all"
                     />
                   </div>
                   <div className="space-y-1">
-                    <label className="text-xs font-bold text-slate-500">URL</label>
+                    <label className="text-xs font-bold text-slate-500">{t("general.urlLabel")}</label>
                     <div className="flex gap-2">
                       <div className="relative flex-1 flex items-center">
-                        <span className="absolute left-3 text-xs text-slate-450 font-mono">https://mtr.bio/</span>
+                        <span className="absolute left-3 text-xs text-slate-455 font-mono">https://mtr.bio/</span>
                         <input
                           type="text"
                           value={slug}
                           onChange={(e) => setSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ""))}
-                          className="w-full pl-28 pr-3 py-2 rounded-xl border border-slate-300 text-sm font-mono text-slate-800 focus:border-slate-450 outline-none transition-all"
+                          className="w-full pl-28 pr-3 py-2 rounded-xl border border-slate-300 text-sm font-mono text-slate-800 focus:border-slate-455 outline-none transition-all"
                         />
                       </div>
                       <button 
@@ -581,9 +584,18 @@ export function SmartLinksPage() {
                         className="bg-slate-100 hover:bg-slate-200 border border-slate-300 text-slate-700 text-xs font-bold px-4 py-2 rounded-xl transition-all flex items-center gap-1.5 active:scale-95"
                       >
                         {copied ? <CopyCheck size={14} className="text-emerald-600" /> : <Copy size={14} />}
-                        COPY
+                        {t("general.copyBtn")}
                       </button>
                     </div>
+                  </div>
+                  <div className="md:col-span-2 space-y-1">
+                    <label className="text-xs font-bold text-slate-500">{t("media.bioLabel")}</label>
+                    <textarea
+                      placeholder={t("media.bioPlaceholder")}
+                      value={profileBio}
+                      onChange={(e) => setProfileBio(e.target.value)}
+                      className="w-full px-3 py-2 rounded-xl border border-slate-300 text-sm text-slate-800 focus:border-slate-455 outline-none transition-all min-h-[80px]"
+                    />
                   </div>
                 </div>
               </div>
@@ -591,9 +603,9 @@ export function SmartLinksPage() {
               {/* Subtabs Menu: BUTTONS | MEDIA | APPEARANCE */}
               <div className="flex bg-slate-50 p-1.5 rounded-xl border border-slate-200">
                 {[
-                  { id: "buttons", name: "Buttons" },
-                  { id: "media", name: "Media" },
-                  { id: "appearance", name: "Appearance" }
+                  { id: "buttons", name: t("subtabs.buttons") },
+                  { id: "media", name: t("subtabs.media") },
+                  { id: "appearance", name: t("subtabs.appearance") }
                 ].map((sTab) => (
                   <button
                     key={sTab.id}
@@ -618,13 +630,13 @@ export function SmartLinksPage() {
                       onClick={() => setIsAddOpen(true)}
                       className="flex-1 flex items-center justify-center gap-2 border border-slate-300 hover:bg-slate-55 rounded-2xl py-3 text-xs font-bold text-slate-750 transition-all shadow-sm active:scale-98 cursor-pointer"
                     >
-                      <Link2 size={15} /> ADD BUTTON
+                      <Link2 size={15} /> {t("buttons.addButton")}
                     </button>
                     <button 
-                      onClick={() => toast.info("Tính năng Section sẽ được phát triển ở phiên bản kế tiếp.")}
+                      onClick={() => toast.info(t("toasts.sectionComingSoon"))}
                       className="flex-1 flex items-center justify-center gap-2 border border-slate-300 hover:bg-slate-55 rounded-2xl py-3 text-xs font-bold text-slate-750 transition-all shadow-sm active:scale-98 cursor-pointer"
                     >
-                      <FileText size={15} /> ADD SECTION
+                      <FileText size={15} /> {t("buttons.addSection")}
                     </button>
                   </div>
 
@@ -651,7 +663,7 @@ export function SmartLinksPage() {
                         <div className="flex-1 space-y-3">
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div className="space-y-1">
-                              <label className="text-[10px] font-bold text-slate-400 uppercase">Text</label>
+                              <label className="text-[10px] font-bold text-slate-400 uppercase">{t("buttons.textLabel")}</label>
                               <input
                                 type="text"
                                 value={link.title}
@@ -660,7 +672,7 @@ export function SmartLinksPage() {
                               />
                             </div>
                             <div className="space-y-1">
-                              <label className="text-[10px] font-bold text-slate-400 uppercase">URL</label>
+                              <label className="text-[10px] font-bold text-slate-400 uppercase">{t("buttons.urlLabel")}</label>
                               <input
                                 type="text"
                                 value={link.url}
@@ -682,7 +694,7 @@ export function SmartLinksPage() {
                                   className="w-4 h-4 rounded-full border border-slate-300 shadow-sm block" 
                                   style={{ backgroundColor: link.textColor || "#FFFFFF" }}
                                 />
-                                TEXT
+                                {t("buttons.textColorLabel")}
                                 <input 
                                   type="color" 
                                   value={link.textColor || "#FFFFFF"}
@@ -697,7 +709,7 @@ export function SmartLinksPage() {
                                   className="w-4 h-4 rounded-full border border-slate-300 shadow-sm block" 
                                   style={{ backgroundColor: link.bgColor || "#E65C9C" }}
                                 />
-                                BACKGROUND
+                                {t("buttons.bgColorLabel")}
                                 <input 
                                   type="color" 
                                   value={link.bgColor || "#E65C9C"}
@@ -712,7 +724,7 @@ export function SmartLinksPage() {
                                   className="w-4 h-4 rounded-full border border-slate-300 shadow-sm block" 
                                   style={{ backgroundColor: link.borderColor || "#E65C9C" }}
                                 />
-                                BORDER
+                                {t("buttons.borderColorLabel")}
                                 <input 
                                   type="color" 
                                   value={link.borderColor || "#E65C9C"}
@@ -728,7 +740,7 @@ export function SmartLinksPage() {
                               
                               {/* Disable label & Switch */}
                               <div className="flex items-center gap-2">
-                                <span className="text-xs text-slate-450 font-bold">Disable</span>
+                                <span className="text-xs text-slate-450 font-bold">{t("buttons.disableLabel")}</span>
                                 <button
                                   type="button"
                                   onClick={() => handleToggleLink(link.id)}
@@ -748,11 +760,11 @@ export function SmartLinksPage() {
                                 className="flex items-center gap-1 text-slate-500 hover:text-slate-800 text-xs font-bold border border-slate-200 px-2 py-1 rounded-lg hover:bg-slate-50 transition-all cursor-pointer"
                                 type="button"
                               >
-                                CLONE
+                                {t("buttons.cloneBtn")}
                               </button>
 
                               <label className="flex items-center gap-1 text-slate-500 hover:text-slate-800 text-xs font-bold border border-slate-200 px-2 py-1 rounded-lg hover:bg-slate-50 transition-all cursor-pointer">
-                                ICON
+                                {t("buttons.iconBtn")}
                                 <input
                                   type="file"
                                   accept="image/*"
@@ -780,7 +792,7 @@ export function SmartLinksPage() {
 
                   {/* Add Icon Section (Matching screenshot 2) */}
                   <div className="border-t border-slate-100 pt-6 space-y-4">
-                    <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider">ADD ICON</h4>
+                    <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider">{t("buttons.addIconTitle")}</h4>
                     
                     <div className="space-y-3">
                       {socialIcons.map((sIcon) => (
@@ -788,9 +800,14 @@ export function SmartLinksPage() {
                           
                           {/* Platform Logo */}
                           <div className="text-slate-650 shrink-0 w-8 h-8 rounded-lg bg-white flex items-center justify-center border border-slate-200 shadow-sm">
-                            {sIcon.platform === "twitter" && <Twitter size={16} className="text-sky-500" />}
-                            {sIcon.platform === "instagram" && <Instagram size={16} className="text-pink-600" />}
-                            {sIcon.platform === "youtube" && <Youtube size={16} className="text-red-600" />}
+                            {sIcon.platform === "twitter"   && <Twitter   size={16} className="text-sky-500" />}
+                            {sIcon.platform === "instagram" && <Instagram  size={16} className="text-pink-600" />}
+                            {sIcon.platform === "youtube"   && <Youtube   size={16} className="text-red-600" />}
+                            {sIcon.platform === "facebook"  && <Facebook  size={16} className="text-blue-600" />}
+                            {sIcon.platform === "linkedin"  && <Linkedin  size={16} className="text-sky-700" />}
+                            {sIcon.platform === "tiktok"    && <span className="text-[11px] font-black text-black">TT</span>}
+                            {sIcon.platform === "threads"   && <span className="text-[11px] font-black text-gray-800">@</span>}
+                            {sIcon.platform === "discord"   && <span className="text-[11px] font-black text-indigo-600">DC</span>}
                           </div>
 
                           {/* Select type */}
@@ -802,9 +819,14 @@ export function SmartLinksPage() {
                             }}
                             className="bg-white border border-slate-250 rounded-lg px-2 py-1 text-xs font-bold text-slate-700 outline-none"
                           >
-                            <option value="twitter">Twitter</option>
+                            <option value="twitter">Twitter / X</option>
                             <option value="instagram">Instagram</option>
-                            <option value="youtube">Youtube</option>
+                            <option value="youtube">YouTube</option>
+                            <option value="facebook">Facebook</option>
+                            <option value="tiktok">TikTok</option>
+                            <option value="linkedin">LinkedIn</option>
+                            <option value="threads">Threads</option>
+                            <option value="discord">Discord</option>
                           </select>
 
                           {/* URL Input */}
@@ -823,7 +845,7 @@ export function SmartLinksPage() {
                           <button 
                             onClick={() => {
                               setSocialIcons(prev => prev.filter(si => si.id !== sIcon.id));
-                              toast.info("Đã xóa nút liên kết mạng xã hội.");
+                              toast.info(t("toasts.deleteLink"));
                             }}
                             className="text-slate-400 hover:text-red-500 p-1.5 rounded-lg transition-colors cursor-pointer"
                           >
@@ -835,13 +857,13 @@ export function SmartLinksPage() {
 
                     <button
                       onClick={() => {
-                        const newIcon = { id: `s-${Date.now()}`, platform: "twitter", url: "https://", isActive: true };
+                        const newIcon = { id: `s-${Date.now()}`, platform: "instagram", url: "https://", isActive: true };
                         setSocialIcons(prev => [...prev, newIcon]);
-                        toast.success("Đã thêm hàng liên kết mạng xã hội!");
+                        toast.success(t("toasts.addLinkSuccess"));
                       }}
                       className="w-full flex items-center justify-center gap-1.5 border border-dashed border-slate-300 hover:bg-slate-50 py-2.5 rounded-xl text-xs font-bold text-slate-550 transition-all cursor-pointer"
                     >
-                      <Plus size={14} /> ADD SOCIAL ICON
+                      <Plus size={14} /> {t("icons.addBtn")}
                     </button>
                   </div>
                 </div>
@@ -852,25 +874,25 @@ export function SmartLinksPage() {
                 <div className="space-y-4 py-4 text-center">
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <button 
-                      onClick={() => toast.info("Tính năng Tải ảnh lên sẽ khả dụng sau khi kết nối tài khoản Drive.")}
+                      onClick={() => toast.info(t("toasts.driveComingSoon"))}
                       className="flex flex-col items-center justify-center p-6 border border-slate-200 bg-slate-50 hover:bg-slate-100 rounded-2xl transition-all gap-2 group cursor-pointer"
                     >
                       <span className="p-3 bg-white text-blue-500 rounded-full shadow-sm group-hover:scale-105 transition-transform"><Image size={20} /></span>
-                      <span className="text-xs font-bold text-slate-700">ADD IMAGE</span>
+                      <span className="text-xs font-bold text-slate-700">{t("media.addMediaBtn")} (Image)</span>
                     </button>
                     <button 
-                      onClick={() => toast.info("Tính năng Nhúng Video từ Youtube/Vimeo đang được hoàn thiện.")}
+                      onClick={() => toast.info(t("toasts.videoComingSoon"))}
                       className="flex flex-col items-center justify-center p-6 border border-slate-200 bg-slate-50 hover:bg-slate-100 rounded-2xl transition-all gap-2 group cursor-pointer"
                     >
                       <span className="p-3 bg-white text-purple-500 rounded-full shadow-sm group-hover:scale-105 transition-transform"><Video size={20} /></span>
-                      <span className="text-xs font-bold text-slate-700">ADD FROM VIDEO</span>
+                      <span className="text-xs font-bold text-slate-700">{t("media.addMediaBtn")} (Video)</span>
                     </button>
                     <button 
-                      onClick={() => toast.info("Kết nối tài khoản Instagram Business để kéo danh mục ảnh tự động.")}
+                      onClick={() => toast.info(t("toasts.igComingSoon"))}
                       className="flex flex-col items-center justify-center p-6 border border-slate-200 bg-slate-50 hover:bg-slate-100 rounded-2xl transition-all gap-2 group cursor-pointer"
                     >
                       <span className="p-3 bg-white text-pink-550 rounded-full shadow-sm group-hover:scale-105 transition-transform"><Instagram size={20} /></span>
-                      <span className="text-xs font-bold text-slate-700">ADD FROM INSTAGRAM</span>
+                      <span className="text-xs font-bold text-slate-700">{t("media.addMediaBtn")} (Instagram)</span>
                     </button>
                   </div>
                 </div>
@@ -879,14 +901,14 @@ export function SmartLinksPage() {
               {/* SUBTAB CONTENT: APPEARANCE (Matching screenshot 4) */}
               {activeSubTab === "appearance" && (
                 <div className="space-y-4">
-                  <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Themes</h4>
+                  <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider">{t("appearance.sectionTitle")}</h4>
                   <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
                     {THEMES.map((theme) => (
                       <button
                         key={theme.id}
                         onClick={() => {
                           setActiveTheme(theme);
-                          toast.success(`Đã chọn theme: ${theme.name}`);
+                          toast.success(t("toasts.themeSelected", { name: theme.name }));
                         }}
                         className={`flex flex-col items-center text-center p-2 rounded-xl border-2 transition-all cursor-pointer ${
                           activeTheme.id === theme.id 
@@ -1051,15 +1073,15 @@ export function SmartLinksPage() {
 
             <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2 mb-4">
               <Plus className="text-emerald-500 w-5 h-5" />
-              Thêm liên kết mới vào Bio Page
+              {t("addLink.title")}
             </h3>
 
             <form onSubmit={handleAddLink} className="space-y-4">
               <div>
-                <label className="block text-xs font-bold text-slate-500 uppercase mb-1.5">Tiêu đề nút bấm</label>
+                <label className="block text-xs font-bold text-slate-500 uppercase mb-1.5">{t("addLink.titleLabel")}</label>
                 <input
                   type="text"
-                  placeholder="Ví dụ: Đăng ký kênh YouTube của tôi"
+                  placeholder={t("addLink.titlePlaceholder")}
                   value={newTitle}
                   onChange={(e) => setNewTitle(e.target.value)}
                   className="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm text-slate-800 focus:border-slate-400 outline-none transition-colors"
@@ -1067,10 +1089,10 @@ export function SmartLinksPage() {
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-500 uppercase mb-1.5">Liên kết URL</label>
+                <label className="block text-xs font-bold text-slate-500 uppercase mb-1.5">{t("addLink.urlLabel")}</label>
                 <input
                   type="text"
-                  placeholder="Ví dụ: youtube.com/c/publicast"
+                  placeholder={t("addLink.urlPlaceholder")}
                   value={newUrl}
                   onChange={(e) => newSetUrl(e.target.value)}
                   className="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm text-slate-800 focus:border-slate-400 outline-none transition-colors"
@@ -1083,13 +1105,13 @@ export function SmartLinksPage() {
                   onClick={() => setIsAddOpen(false)}
                   className="px-4 py-2.5 rounded-xl text-sm font-semibold border border-slate-200 hover:bg-slate-50 transition-colors"
                 >
-                  Hủy
+                  {t("addLink.cancelBtn")}
                 </button>
                 <button
                   type="submit"
                   className="px-4 py-2.5 rounded-xl text-sm font-semibold bg-[#4F5B66] hover:bg-[#3d4750] text-white transition-all shadow-sm"
                 >
-                  Thêm ngay
+                  {t("addLink.addBtn")}
                 </button>
               </div>
             </form>

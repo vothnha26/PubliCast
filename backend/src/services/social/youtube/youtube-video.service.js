@@ -5,11 +5,14 @@ const trackedVideoRepository = require('../../../repositories/social/tracked-vid
 const { PLATFORMS, POST_STATUS, SEPARATORS } = require('../../../utils/constants');
 
 class YouTubeVideoService {
-  async getPublishedVideos(brandId, pageToken = null, limit = 10) {
+  async getPublishedVideos(brandId, pageToken = null, limit = 10, socialAccountId = null) {
     try {
-      const { auth, account } = await this._getAuthContext(brandId);
+      const { auth, account } = await this._getAuthContext(brandId, false, socialAccountId);
       
-      if (account && account.accessToken && account.accessToken.startsWith('mock-')) {
+      if (account && (
+        (account.accessToken && account.accessToken.startsWith('mock-')) ||
+        (account.platformAccountId && account.platformAccountId.startsWith('mock-'))
+      )) {
         return { videos: [], nextPageToken: null, prevPageToken: null };
       }
       const uploadsId = await this._resolveUploadsPlaylistId(auth, account);
@@ -102,13 +105,27 @@ class YouTubeVideoService {
 
   // ============= Private Helper Methods =============
 
-  async _getAuthContext(brandId, optional = false) {
-    const socialAccount = await socialAccountRepository.findByBrandAndPlatform(brandId, PLATFORMS.YOUTUBE);
-    if (!socialAccount || socialAccount.length === 0) {
+  async _getAuthContext(brandId, optional = false, socialAccountId = null) {
+    let account;
+    if (socialAccountId) {
+      account = await socialAccountRepository.findById(socialAccountId);
+    } else {
+      const socialAccount = await socialAccountRepository.findByBrandAndPlatform(brandId, PLATFORMS.YOUTUBE);
+      if (!socialAccount || socialAccount.length === 0) {
+        if (optional) return { auth: null, account: null };
+        throw new Error('YouTube account not connected');
+      }
+      account = socialAccount.find(acc => 
+        !(acc.accessToken && acc.accessToken.startsWith('mock-')) &&
+        !(acc.platformAccountId && acc.platformAccountId.startsWith('mock-'))
+      ) || socialAccount[0];
+    }
+
+    if (!account) {
       if (optional) return { auth: null, account: null };
       throw new Error('YouTube account not connected');
     }
-    const account = socialAccount[0];
+
     const auth = googleOAuthService.createClient();
     auth.setCredentials({ access_token: account.accessToken });
     return { auth, account };
@@ -116,7 +133,7 @@ class YouTubeVideoService {
 
   async _resolveUploadsPlaylistId(auth, account) {
     let uploadsId = account.youtubeChannel?.uploadsPlaylistId;
-    if (!uploadsId) {
+    if (!uploadsId || uploadsId === 'mock-uploads-playlist-id') {
       const channelRes = await youtubeGateway.getChannelList(auth, true);
       uploadsId = channelRes.data.items[0]?.contentDetails?.relatedPlaylists?.uploads;
     }

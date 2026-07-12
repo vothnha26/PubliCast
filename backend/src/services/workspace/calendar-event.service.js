@@ -1,0 +1,288 @@
+const prisma = require('../../config/prisma');
+
+class CalendarEventService {
+  /**
+   * Get events for a brand within a date range
+   */
+  async getEvents(brandId, startDate, endDate) {
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+
+    return prisma.calendarEvent.findMany({
+      where: {
+        OR: [
+          { isSystem: true }, // Ngày lễ quốc tế/chung
+          { brandId: brandId } // Ngày lễ riêng của brand
+        ],
+        eventDate: {
+          gte: start,
+          lte: end
+        }
+      },
+      orderBy: {
+        eventDate: 'asc'
+      }
+    });
+  }
+
+  /**
+   * Parse ICS content and import events
+   */
+  async importIcs(brandId, icsContent) {
+    // Parser dùng regex phân tích file .ics chuẩn và hỗ trợ ghép dòng bị gập (folding)
+    const rawLines = icsContent.split(/\r?\n/);
+    const lines = [];
+    for (const line of rawLines) {
+      if (line.startsWith(' ') || line.startsWith('\t')) {
+        if (lines.length > 0) {
+          lines[lines.length - 1] += line.slice(1);
+        }
+      } else {
+        lines.push(line);
+      }
+    }
+
+    const events = [];
+    let currentEvent = null;
+
+    const unescapeValue = (str) => {
+      if (!str) return '';
+      return str
+        .replace(/\\n/gi, '\n')
+        .replace(/\\,/g, ',')
+        .replace(/\\;/g, ';')
+        .replace(/\\\\/g, '\\');
+    };
+
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i].trim();
+      if (line === 'BEGIN:VEVENT') {
+        currentEvent = {};
+      } else if (line === 'END:VEVENT') {
+        if (currentEvent && currentEvent.title && currentEvent.date) {
+          events.push(currentEvent);
+        }
+        currentEvent = null;
+      } else if (currentEvent) {
+        // Parse key-value. Ví dụ: SUMMARY:Christmas Eve
+        const match = line.match(/^([A-Z0-9-]+)(;[^:]+)?:(.*)$/i);
+        if (match) {
+          const key = match[1].toUpperCase();
+          const value = match[3];
+
+          if (key === 'SUMMARY') {
+            currentEvent.title = unescapeValue(value);
+          } else if (key === 'DESCRIPTION') {
+            currentEvent.description = unescapeValue(value);
+          } else if (key === 'DTSTART') {
+            // Parse date format: 20261224T000000Z hoặc 20261224
+            let dateStr = value;
+            if (dateStr.includes('VALUE=DATE:')) {
+              dateStr = dateStr.split('VALUE=DATE:')[1];
+            }
+            
+            const y = dateStr.substring(0, 4);
+            const m = dateStr.substring(4, 6);
+            const d = dateStr.substring(6, 8);
+            
+            if (y && m && d) {
+              let dateObj;
+              if (dateStr.includes('T')) {
+                const tStr = dateStr.split('T')[1];
+                const hh = tStr.substring(0, 2) || '00';
+                const mm = tStr.substring(2, 4) || '00';
+                const ss = tStr.substring(4, 6) || '00';
+                dateObj = new Date(`${y}-${m}-${d}T${hh}:${mm}:${ss}.000Z`);
+              } else {
+                dateObj = new Date(`${y}-${m}-${d}T00:00:00.000Z`);
+              }
+              
+              if (!isNaN(dateObj.getTime())) {
+                currentEvent.date = dateObj;
+              }
+            }
+          }
+        }
+      }
+    }
+
+    if (events.length === 0) {
+      throw new Error('No valid events found in the uploaded ICS file.');
+    }
+
+    // Lưu vào database
+    const createdEvents = [];
+    for (const ev of events) {
+      const eventRecord = await prisma.calendarEvent.create({
+        data: {
+          brandId,
+          title: ev.title,
+          description: ev.description || '',
+          eventDate: ev.date,
+          isSystem: false
+        }
+      });
+      createdEvents.push(eventRecord);
+    }
+
+    return createdEvents;
+  }
+
+  /**
+   * Create a custom system or brand event
+   */
+  async createEvent(data, brandId) {
+    return prisma.calendarEvent.create({
+      data: {
+        brandId: data.isSystem ? null : brandId,
+        title: data.title,
+        description: data.description || '',
+        eventDate: new Date(data.eventDate),
+        isSystem: data.isSystem === true || data.isSystem === 'true'
+      }
+    });
+  }
+
+  /**
+   * Delete an event
+   */
+  async deleteEvent(eventId, brandId) {
+    const event = await prisma.calendarEvent.findUnique({
+      where: { id: eventId }
+    });
+
+    if (!event) {
+      const err = new Error('Event not found');
+      err.statusCode = 404;
+      throw err;
+    }
+
+    // Chỉ xoá được nếu là event hệ thống (admin) hoặc đúng brandId sở hữu
+    if (!event.isSystem && event.brandId !== brandId) {
+      const err = new Error('Unauthorized to delete this event');
+      err.statusCode = 403;
+      throw err;
+    }
+
+    return prisma.calendarEvent.delete({
+      where: { id: eventId }
+    });
+  }
+
+  /**
+   * Export calendar events and scheduled/published posts to ICS string format
+   */
+  async exportIcs(brandId, startDate, endDate) {
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+
+    // 1. Fetch calendar events
+    const events = await prisma.calendarEvent.findMany({
+      where: {
+        OR: [
+          { isSystem: true },
+          { brandId: brandId }
+        ],
+        eventDate: {
+          gte: start,
+          lte: end
+        }
+      }
+    });
+
+    // 2. Fetch posts that are scheduled or published
+    const posts = await prisma.post.findMany({
+      where: {
+        brandId,
+        isDeleted: false,
+        OR: [
+          {
+            scheduledAt: {
+              gte: start,
+              lte: end
+            }
+          },
+          {
+            publishedAt: {
+              gte: start,
+              lte: end
+            }
+          }
+        ]
+      }
+    });
+
+    // Helper to format date for ICS: YYYYMMDDTHHMMSSZ
+    const formatIcsDate = (date) => {
+      if (!date) return '';
+      const d = new Date(date);
+      return d.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
+    };
+
+    // Helper to escape values for ICS property compatibility (escapes backslashes, commas, semicolons, and newlines)
+    const escapeIcsValue = (str) => {
+      if (!str) return '';
+      return str
+        .replace(/\\/g, '\\\\')
+        .replace(/,/g, '\\,')
+        .replace(/;/g, '\\;')
+        .replace(/\r?\n/g, '\\n');
+    };
+
+    // Build ICS content
+    let icsContent = 'BEGIN:VCALENDAR\r\n';
+    icsContent += 'VERSION:2.0\r\n';
+    icsContent += 'PRODID:-//PubliCast//Planner Calendar v1.0//EN\r\n';
+    icsContent += 'CALSCALE:GREGORIAN\r\n';
+
+    // Add Events
+    for (const ev of events) {
+      const dtStamp = formatIcsDate(ev.createdAt || new Date());
+      const dtStart = formatIcsDate(ev.eventDate);
+      
+      // End date: +1 day since standard events are usually all-day or short
+      const endDateObj = new Date(ev.eventDate);
+      endDateObj.setDate(endDateObj.getDate() + 1);
+      const dtEnd = formatIcsDate(endDateObj);
+
+      icsContent += 'BEGIN:VEVENT\r\n';
+      icsContent += `UID:event_${ev.id}@publicast.com\r\n`;
+      icsContent += `DTSTAMP:${dtStamp}\r\n`;
+      icsContent += `DTSTART:${dtStart}\r\n`;
+      icsContent += `DTEND:${dtEnd}\r\n`;
+      icsContent += `SUMMARY:${escapeIcsValue(ev.title)}\r\n`;
+      icsContent += `DESCRIPTION:${escapeIcsValue(ev.description)}\r\n`;
+      icsContent += 'END:VEVENT\r\n';
+    }
+
+    // Add Posts
+    for (const post of posts) {
+      const dtStamp = formatIcsDate(post.createdAt);
+      const postDate = post.scheduledAt || post.publishedAt;
+      const dtStart = formatIcsDate(postDate);
+
+      // Post standard event duration is 1 hour
+      const endDateObj = new Date(postDate);
+      endDateObj.setHours(endDateObj.getHours() + 1);
+      const dtEnd = formatIcsDate(endDateObj);
+
+      const statusLabel = post.status === 'PUBLISHED' ? '📢 Đã đăng' : '⏰ Đã đặt lịch';
+      const platforms = post.targetPlatforms ? post.targetPlatforms.split(',').join(', ') : 'N/A';
+      const desc = `Nội dung: ${post.caption || ''}\nNền tảng: ${platforms}\nTrạng thái: ${post.status}`;
+
+      icsContent += 'BEGIN:VEVENT\r\n';
+      icsContent += `UID:post_${post.id}@publicast.com\r\n`;
+      icsContent += `DTSTAMP:${dtStamp}\r\n`;
+      icsContent += `DTSTART:${dtStart}\r\n`;
+      icsContent += `DTEND:${dtEnd}\r\n`;
+      icsContent += `SUMMARY:${escapeIcsValue(`[${statusLabel}] ${post.title}`)}\r\n`;
+      icsContent += `DESCRIPTION:${escapeIcsValue(desc)}\r\n`;
+      icsContent += 'END:VEVENT\r\n';
+    }
+
+    icsContent += 'END:VCALENDAR\r\n';
+    return icsContent;
+  }
+}
+
+module.exports = new CalendarEventService();

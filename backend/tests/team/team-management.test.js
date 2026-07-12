@@ -14,7 +14,23 @@ jest.mock('../../src/middlewares/auth.middleware', () => ({
 jest.mock('../../src/config/prisma', () => {
   const mockBrand = {
     findFirst: jest.fn(),
-    findUnique: jest.fn()
+    findUnique: jest.fn(),
+    findMany: jest.fn().mockResolvedValue([
+      {
+        id: 'brand-1',
+        ownerId: 'operator-id',
+        subscription: {
+          status: 'ACTIVE',
+          plan: {
+            name: 'PRO',
+            priceAmount: 100,
+            planLimit: {
+              maxTeamSeats: 5
+            }
+          }
+        }
+      }
+    ])
   };
   const mockTeam = {
     findMany: jest.fn(),
@@ -37,13 +53,19 @@ jest.mock('../../src/config/prisma', () => {
     findFirst: jest.fn(),
     findUnique: jest.fn()
   };
+  const mockWorkflowReviewer = {
+    findMany: jest.fn().mockResolvedValue([]),
+    delete: jest.fn().mockResolvedValue({}),
+    count: jest.fn().mockResolvedValue(0)
+  };
 
   return {
     brand: mockBrand,
     team: mockTeam,
     user: mockUser,
     userAccount: mockUserAccount,
-    customRole: mockCustomRole
+    customRole: mockCustomRole,
+    workflowReviewer: mockWorkflowReviewer
   };
 });
 

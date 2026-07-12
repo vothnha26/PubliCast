@@ -4,7 +4,7 @@ class TicketController {
   async getTickets(req, res, next) {
     try {
       const { brandId } = req.query;
-      const tickets = await ticketService.getTickets(brandId, req.query);
+      const tickets = await ticketService.getTickets(brandId, req.query, req.user);
       res.status(200).json({ status: 'success', data: tickets });
     } catch (err) {
       next(err);

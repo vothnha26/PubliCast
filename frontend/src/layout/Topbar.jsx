@@ -12,8 +12,12 @@ import { useBrand } from "../context/BrandContext";
 import { useDebounce } from "../hooks/useDebounce";
 import apiService from "../services/api";
 import { openNotificationStream } from "../utils/notification-stream";
+import { useTranslation } from "react-i18next";
+import { useLanguage } from "../context/LanguageContext";
 
 function SettingsDrawer({ isOpen, onClose }) {
+  const { t } = useTranslation("topbar");
+  const { language } = useLanguage();
   const navigate = useNavigate();
   const { openConnections } = useConnections();
   const { logout } = useAuth();
@@ -21,71 +25,77 @@ function SettingsDrawer({ isOpen, onClose }) {
 
   const sections = [
     { items: [
-      { label: "Create Workplace", icon: <Diamond size={16} className="text-yellow-500" />, path: "/manage/workplace/new" },
-      { label: "Connections", icon: <ShareIcon size={16} className="text-blue-500" />, onClick: openConnections },
-      { label: "Brand settings", icon: <Settings size={16} className="text-gray-400" />, path: "/manage/connections?tab=brand-settings" },
+      { label: t("menu.createWorkplace"), icon: <Diamond size={16} className="text-yellow-500" />, path: "/manage/workplace/new" },
+      { label: t("menu.connections"), icon: <ShareIcon size={16} className="text-blue-500" />, onClick: openConnections },
+      { label: t("menu.brandSettings"), icon: <Settings size={16} className="text-gray-400" />, path: "/manage/connections?tab=brand-settings" },
     ]},
     { items: [
-      { label: "User management", icon: <Diamond size={16} className="text-yellow-500" />, path: "/manage/team" },
-      { label: "Plans and billing", icon: <BillingIcon size={16} className="text-blue-600" />, path: "/pricing" },
-      { label: "My tasks", icon: <Diamond size={16} className="text-yellow-500" />, path: "/manage/tasks" },
-      { label: "Language", icon: <Globe size={16} className="text-blue-500" />, extra: <span className="bg-gray-200 px-1.5 py-0.5 rounded text-[10px] font-bold">EN</span>, hasChevron: true },
-      { label: "Account settings", icon: <Settings size={16} className="text-gray-400" />, path: "/settings" },
+      { label: t("menu.userManagement"), icon: <Diamond size={16} className="text-yellow-500" />, path: "/manage/team" },
+      { label: t("menu.billing"), icon: <BillingIcon size={16} className="text-blue-600" />, path: "/pricing" },
+      { label: t("menu.myTasks"), icon: <Diamond size={16} className="text-yellow-500" />, path: "/manage/tasks" },
+      { 
+        label: t("menu.language"), 
+        icon: <Globe size={16} className="text-blue-500" />, 
+        extra: <span className="bg-gray-200 dark:bg-gray-800 dark:text-gray-200 px-1.5 py-0.5 rounded text-[10px] font-bold">{language.toUpperCase()}</span>, 
+        hasChevron: true, 
+        onClick: () => navigate("/settings?tab=account") 
+      },
+      { label: t("menu.accountSettings"), icon: <Settings size={16} className="text-gray-400" />, path: "/settings" },
     ]},
     { items: [
-      { label: "Help center", icon: <HelpCircle size={16} className="text-blue-500" /> },
-      { label: "Support Chat", icon: <MessageCircle size={16} className="text-blue-500" />, path: "/settings?tab=support" },
-      { label: "What's new", icon: <Megaphone size={16} className="text-blue-500" /> },
-      { label: "Affiliation program", icon: <Gift size={16} className="text-blue-500" /> },
+      { label: t("menu.helpCenter"), icon: <HelpCircle size={16} className="text-blue-500" /> },
+      { label: t("menu.supportChat"), icon: <MessageCircle size={16} className="text-blue-500" />, path: "/settings?tab=support" },
+      { label: t("menu.whatsNew"), icon: <Megaphone size={16} className="text-blue-500" /> },
+      { label: t("menu.affiliation"), icon: <Gift size={16} className="text-blue-500" /> },
     ]},
   ];
 
   return (
     <div className="fixed inset-0 z-[100] flex justify-end">
       <div className="absolute inset-0 bg-black/20" onClick={onClose} />
-      <div className="relative w-[280px] h-full bg-white shadow-2xl flex flex-col animate-in slide-in-from-right duration-300">
-        <div className="flex items-center justify-end p-4 border-b border-gray-100 bg-[#2D1D35] text-white">
-           <button onClick={onClose} className="p-1 hover:bg-white/10 rounded-md transition-colors"><X size={24} /></button>
+      <div className="relative w-[280px] h-full bg-[var(--card)] shadow-2xl flex flex-col border-l border-[var(--sidebar-border)] animate-in slide-in-from-right duration-300">
+        <div className="flex items-center justify-end p-4 border-b border-[var(--sidebar-border)] bg-[var(--sidebar)] text-[var(--foreground)]">
+           <button onClick={onClose} className="p-1 hover:bg-[var(--muted)] rounded-md transition-colors text-[var(--foreground)]"><X size={24} /></button>
         </div>
         <div className="flex-1 overflow-y-auto py-2">
            {sections.map((section, si) => (
-             <div key={si}>
-                <div className="py-1">
-                   {section.items.map((item, ii) => (
-                     <button
-                       key={ii}
-                       onClick={() => { 
-                         if(item.onClick) item.onClick();
-                         else if(item.path) navigate(item.path); 
-                         onClose(); 
-                       }}
-                       className="w-full flex items-center gap-3 px-6 py-2.5 hover:bg-gray-50 transition-colors group"
-                     >
-                        <div className="shrink-0">{item.icon}</div>
-                        <span style={{ fontSize: 13, color: "#374151" }} className="flex-1 text-left">{item.label}</span>
-                        {item.extra}
-                        {item.hasChevron && <ChevronRight size={14} className="text-blue-500" />}
-                     </button>
-                   ))}
-                </div>
-                {si < sections.length - 1 && <div className="h-px bg-gray-100 mx-4 my-1" />}
-             </div>
+              <div key={si}>
+                 <div className="py-1">
+                    {section.items.map((item, ii) => (
+                      <button
+                        key={ii}
+                        onClick={() => { 
+                          if(item.onClick) item.onClick();
+                          else if(item.path) navigate(item.path); 
+                          onClose(); 
+                        }}
+                        className="w-full flex items-center gap-3 px-6 py-2.5 hover:bg-[var(--muted)] transition-colors group"
+                      >
+                         <div className="shrink-0">{item.icon}</div>
+                         <span style={{ fontSize: 13, color: "var(--foreground)" }} className="flex-1 text-left">{item.label}</span>
+                         {item.extra}
+                         {item.hasChevron && <ChevronRight size={14} className="text-blue-500" />}
+                      </button>
+                    ))}
+                 </div>
+                 {si < sections.length - 1 && <div className="h-px bg-[var(--sidebar-border)] mx-4 my-1" />}
+              </div>
            ))}
-           <div className="h-px bg-gray-100 mx-4 my-1" />
+           <div className="h-px bg-[var(--sidebar-border)] mx-4 my-1" />
            <button 
              onClick={async () => { 
                await logout(); 
                onClose(); 
                navigate("/login");
              }} 
-             className="w-full flex items-center gap-3 px-6 py-4 text-red-500 hover:bg-red-50 transition-colors"
+             className="w-full flex items-center gap-3 px-6 py-4 text-red-500 hover:bg-red-500/10 transition-colors"
            >
               <LogOut size={16} />
-              <span style={{ fontSize: 13, fontWeight: 500 }}>Logout</span>
+              <span style={{ fontSize: 13, fontWeight: 500 }}>{t("menu.logout")}</span>
            </button>
         </div>
-        <div className="p-6 border-t border-gray-50">
-           <button className="text-xs font-bold text-gray-400 hover:text-gray-600 transition-colors">Legal terms</button>
+        <div className="p-6 border-t border-[var(--sidebar-border)]">
+           <button className="text-xs font-bold text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors">{t("menu.legalTerms")}</button>
         </div>
       </div>
     </div>
@@ -101,6 +111,7 @@ function BillingIcon({ size, className }) {
 }
 
 export function Topbar() {
+  const { t } = useTranslation("topbar");
   const navigate = useNavigate();
   const location = useLocation();
   const [brandOpen, setBrandOpen] = useState(false);
@@ -118,10 +129,10 @@ export function Topbar() {
   const debouncedSearch = useDebounce(searchQuery, 300);
 
   const quickLinks = [
-    { name: "Analytics Dashboard", description: "Quick link to metrics and views", path: "/dashboard" },
-    { name: "Content Planner", description: "Quick link to schedule posts", path: "/planner" },
-    { name: "AI Assistant", description: "Quick link to write assistant", path: "/ai" },
-    { name: "Account Settings", description: "Quick link to user profile", path: "/settings" }
+    { name: t("quickLinks.dashboardName"), description: t("quickLinks.dashboardDesc"), path: "/dashboard" },
+    { name: t("quickLinks.plannerName"), description: t("quickLinks.plannerDesc"), path: "/planner" },
+    { name: t("quickLinks.aiName"), description: t("quickLinks.aiDesc"), path: "/ai" },
+    { name: t("quickLinks.settingsName"), description: t("quickLinks.settingsDesc"), path: "/settings" }
   ];
 
   const displayedItems = searchQuery.trim() === "" ? quickLinks : searchResults;
@@ -208,26 +219,26 @@ export function Topbar() {
   return (
     <>
       <header
-        className="flex items-center px-4 shrink-0 z-40"
+        className="flex items-center px-4 shrink-0 z-40 border-b border-[var(--sidebar-border)] transition-colors duration-200"
         style={{
           height: 56,
-          background: "#2D1D35", 
-          color: "#FFF",
+          background: "var(--sidebar)", 
+          color: "var(--foreground)",
           gap: 16 }}
       >
         {/* Left: Logo */}
         <Link to="/" className="flex items-center gap-2 no-underline shrink-0 mr-4">
           <div className="w-8 h-8 flex items-center justify-center">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="text-white"><path d="M7 11V7a5 5 0 0 1 10 0v4"/><path d="M11 11h2"/><rect width="18" height="11" x="3" y="11" rx="2"/></svg>
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="text-[var(--foreground)]"><path d="M7 11V7a5 5 0 0 1 10 0v4"/><path d="M11 11h2"/><rect width="18" height="11" x="3" y="11" rx="2"/></svg>
           </div>
         </Link>
 
         {/* Center-Left: Search Bar (Workspace & Manage only) */}
         {!isSuperadmin && (
           <div className="hidden md:flex relative max-w-xs flex-1">
-            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--muted-foreground)]" />
             <input 
-              placeholder="Search tools, platforms..." 
+              placeholder={t("searchPlaceholder")} 
               value={searchQuery}
               onChange={(e) => {
                 setSearchQuery(e.target.value);
@@ -236,17 +247,17 @@ export function Topbar() {
               onFocus={() => setIsSearchFocused(true)}
               onBlur={() => setTimeout(() => setIsSearchFocused(false), 200)}
               onKeyDown={handleKeyDown}
-              className="w-full pl-9 pr-4 py-1.5 rounded-lg bg-white/10 border-none text-xs text-white outline-none focus:bg-white/20 transition-all placeholder:text-gray-500"
+              className="w-full pl-9 pr-4 py-1.5 rounded-lg bg-[var(--muted)] border-none text-xs text-[var(--foreground)] outline-none focus:bg-[var(--accent)] transition-all placeholder:text-[var(--muted-foreground)]"
             />
             {/* Search Dropdown */}
             {isSearchFocused && (
-              <div className="absolute top-full left-0 right-0 mt-2 bg-white text-gray-900 rounded-xl shadow-2xl border border-gray-100 overflow-hidden z-[100] max-h-[350px] overflow-y-auto animate-in fade-in slide-in-from-top-2 duration-200">
-                <div className="px-4 py-2 text-[10px] font-bold text-gray-400 uppercase tracking-wider bg-gray-50 border-b border-gray-100 flex justify-between items-center">
+              <div className="absolute top-full left-0 right-0 mt-2 bg-[var(--card)] text-[var(--foreground)] rounded-xl shadow-2xl border border-[var(--sidebar-border)] overflow-hidden z-[100] max-h-[350px] overflow-y-auto animate-in fade-in slide-in-from-top-2 duration-200">
+                <div className="px-4 py-2 text-[10px] font-bold text-[var(--muted-foreground)] uppercase tracking-wider bg-[var(--sidebar-accent)] border-b border-[var(--sidebar-border)] flex justify-between items-center">
                   <span>{searchQuery.trim() === "" ? "Quick Links" : `Search Results (${displayedItems.length})`}</span>
                   {isLoading && <span className="text-[10px] text-purple-600 normal-case font-normal animate-pulse">Searching...</span>}
                 </div>
                 {displayedItems.length === 0 ? (
-                  <div className="p-4 text-center text-xs text-gray-500">
+                  <div className="p-4 text-center text-xs text-[var(--muted-foreground)]">
                     {isLoading ? "Searching database..." : `No results found for "${searchQuery}"`}
                   </div>
                 ) : (
@@ -260,15 +271,15 @@ export function Topbar() {
                       }}
                       onMouseEnter={() => setSelectedSearchIndex(index)}
                       className={`w-full flex items-center justify-between text-left px-4 py-2.5 transition-colors border-none ${
-                        index === selectedSearchIndex ? "bg-purple-50 text-purple-950" : "bg-white text-gray-700 hover:bg-gray-50"
+                        index === selectedSearchIndex ? "bg-purple-500/10 text-purple-700 dark:text-purple-300" : "bg-transparent text-[var(--foreground)] hover:bg-[var(--muted)]"
                       }`}
                     >
                       <div className="flex flex-col items-start min-w-0 flex-1">
                         <span className="text-xs font-semibold truncate w-full">{item.name}</span>
-                        <span className="text-[10px] text-gray-400 line-clamp-1 truncate w-full">{item.description}</span>
+                        <span className="text-[10px] text-[var(--muted-foreground)] line-clamp-1 truncate w-full">{item.description}</span>
                       </div>
                       {item.type && (
-                        <span className="shrink-0 ml-2 text-[8px] font-extrabold uppercase px-1.5 py-0.5 rounded bg-purple-100 text-purple-700">
+                        <span className="shrink-0 ml-2 text-[8px] font-extrabold uppercase px-1.5 py-0.5 rounded bg-purple-100 dark:bg-purple-950 text-purple-700 dark:text-purple-300">
                           {item.type}
                         </span>
                       )}
@@ -290,20 +301,20 @@ export function Topbar() {
             </div>
           ) : (
             [
-              { icon: <BarChart2 size={18} />, path: "/dashboard", label: "Dashboard" },
-              { icon: <Image size={18} />, path: "/media-library", label: "Media Library" },
-              { icon: <MessageSquare size={18} />, path: "/manage/inbox", label: "Inbox" },
-              { icon: <Calendar size={18} />, path: "/planner", label: "Planning" },
-              { icon: <Link2 size={18} />, path: "/smartlinks", label: "SmartLinks" },
-              { icon: <Zap size={18} />, path: "/ai", label: "AI" },
+              { icon: <BarChart2 size={18} />, path: "/dashboard", label: t("nav.dashboard") },
+              { icon: <Image size={18} />, path: "/media-library", label: t("nav.mediaLibrary") },
+              { icon: <MessageSquare size={18} />, path: "/manage/inbox", label: t("nav.inbox") },
+              { icon: <Calendar size={18} />, path: "/planner", label: t("nav.planner") },
+              { icon: <Link2 size={18} />, path: "/smartlinks", label: t("nav.smartlinks") },
+              { icon: <Zap size={18} />, path: "/ai", label: t("nav.ai") },
             ].map((tool, i) => {
               const isActive = currentPath === tool.path;
               return (
                 <button
                   key={i}
                   onClick={() => navigate(tool.path)}
-                  className="flex items-center gap-2 px-2.5 py-1.5 rounded-md hover:bg-white/10 transition-colors relative"
-                  style={{ color: "#FFF", backgroundColor: isActive ? "rgba(255,255,255,0.15)" : "transparent" }}
+                  className="flex items-center gap-2 px-2.5 py-1.5 rounded-md hover:bg-[var(--muted)] transition-colors relative"
+                  style={{ color: "var(--foreground)", backgroundColor: isActive ? "var(--muted)" : "transparent" }}
                   title={tool.label}
                 >
                   <div className="p-1 rounded-lg">{tool.icon}</div>
@@ -322,13 +333,13 @@ export function Topbar() {
           {!isSuperadmin && (
             <button 
               onClick={() => navigate("/notifications")}
-              className="p-2 rounded-lg hover:bg-white/10 transition-colors relative text-gray-300 hover:text-white"
-              title="Notifications"
+              className="p-2 rounded-lg hover:bg-[var(--muted)] transition-colors relative text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
+              title={t("menu.notifications")}
             >
               <Bell size={18} />
               {unreadNotifications > 0 && (
                 <span
-                  className="absolute -top-0.5 -right-0.5 min-w-4 h-4 px-1 bg-red-500 rounded-full border-2 border-[#2D1D35] text-[8px] font-bold text-white flex items-center justify-center"
+                  className="absolute -top-0.5 -right-0.5 min-w-4 h-4 px-1 bg-red-500 rounded-full border-2 border-[var(--sidebar)] text-[8px] font-bold text-white flex items-center justify-center"
                 >
                   {unreadNotifications > 9 ? "9+" : unreadNotifications}
                 </span>
@@ -347,7 +358,7 @@ export function Topbar() {
                 fontSize: 11 }}
             >
               <Sparkles size={13} />
-              Upgrade
+              {t("upgrade")}
             </button>
           )}
 
@@ -356,32 +367,34 @@ export function Topbar() {
             <div className="relative">
               <button
                 onClick={() => setBrandOpen(!brandOpen)}
-                className="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-white/10 transition-colors cursor-pointer"
+                className="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-[var(--muted)] transition-colors cursor-pointer text-[var(--foreground)]"
               >
-                <div className="w-7 h-7 rounded-lg bg-[#E1306C] flex items-center justify-center text-xs font-bold shadow-sm uppercase">
+                <div className="w-7 h-7 rounded-lg bg-[#E1306C] flex items-center justify-center text-xs font-bold shadow-sm uppercase text-white">
                   {activeBrand ? activeBrand.name.charAt(0) : "B"}
                 </div>
                 <div className="hidden md:flex flex-col items-start text-left min-w-[80px]">
-                  <span style={{ fontSize: 11, fontWeight: 600 }}>{activeBrand ? activeBrand.name : "Select Brand"}</span>
-                  <span style={{ fontSize: 9, color: "#AAA" }}>{currentPath.startsWith("/manage") ? "Manager" : "Work"} mode</span>
+                  <span style={{ fontSize: 11, fontWeight: 600 }}>{activeBrand ? activeBrand.name : t("brand.select")}</span>
+                  <span style={{ fontSize: 9, color: "var(--muted-foreground)" }}>
+                    {currentPath.startsWith("/manage") ? t("managerMode") : t("workMode")}
+                  </span>
                 </div>
-                <ChevronDown size={14} color="#666" />
+                <ChevronDown size={14} className="text-[var(--muted-foreground)]" />
               </button>
               
               {brandOpen && (
-                <div className="absolute top-12 right-0 bg-white text-[#0A0A0A] rounded-xl shadow-xl p-2 z-50 min-w-[200px]" style={{ border: "1px solid #E5E7EB" }}>
-                  <div className="px-3 py-2 text-[10px] font-bold text-gray-400 uppercase tracking-wider">Your Workplaces</div>
+                <div className="absolute top-12 right-0 bg-[var(--card)] text-[var(--foreground)] rounded-xl shadow-xl p-2 z-50 min-w-[200px]" style={{ border: "1px solid var(--sidebar-border)" }}>
+                  <div className="px-3 py-2 text-[10px] font-bold text-[var(--muted-foreground)] uppercase tracking-wider">{t("yourWorkplaces")}</div>
                   {brands.map(b => (
                     <div
                       key={b.id}
                       className={`flex items-center justify-between px-3 py-2 rounded-lg transition-all group ${
-                        activeBrand?.id === b.id ? 'bg-purple-50' : 'hover:bg-gray-100'
+                        activeBrand?.id === b.id ? 'bg-purple-500/10' : 'hover:bg-[var(--muted)]'
                       }`}
                     >
                       <button 
                         onClick={() => { selectBrand(b.id); setBrandOpen(false); }} 
                         className={`flex-1 text-left text-sm font-medium flex items-center gap-2 ${
-                          activeBrand?.id === b.id ? 'text-purple-700 font-bold' : 'text-gray-700'
+                          activeBrand?.id === b.id ? 'text-purple-700 dark:text-purple-300 font-bold' : 'text-[var(--foreground)]'
                         }`}
                       >
                         <div className="w-5 h-5 rounded-md bg-gradient-to-br from-pink-400 to-purple-500 flex items-center justify-center text-[9px] font-bold text-white uppercase shrink-0">
@@ -394,19 +407,19 @@ export function Topbar() {
                         onClick={(e) => {
                           e.stopPropagation();
                           if (defaultBrandId === b.id) {
-                            // Already default — clicking again does nothing (or could clear)
+                            // Already default
                           } else {
                             setDefaultBrand(b.id);
                           }
                         }}
-                        title={defaultBrandId === b.id ? 'Đang là thương hiệu mặc định' : 'Đặt làm thương hiệu mặc định'}
+                        title={defaultBrandId === b.id ? t("brand.defaultActive") : t("brand.setDefault")}
                         className="p-1 rounded-md opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
                       >
                         <Star
                           size={13}
                           className={defaultBrandId === b.id
                             ? 'fill-amber-400 text-amber-400'
-                            : 'text-gray-300 hover:text-amber-400'
+                            : 'text-[var(--muted-foreground)] hover:text-amber-400'
                           }
                         />
                       </button>
@@ -415,36 +428,35 @@ export function Topbar() {
                   {activeBrand && (
                     <button 
                       onClick={() => { deselectBrand(); setBrandOpen(false); }} 
-                      className="w-full text-left px-3 py-2 rounded-lg hover:bg-red-50 text-sm font-medium text-red-600 flex items-center justify-between mt-1"
+                      className="w-full text-left px-3 py-2 rounded-lg hover:bg-red-500/10 text-sm font-medium text-red-600 flex items-center justify-between mt-1"
                     >
-                      <span>Deselect Brand</span>
+                      <span>{t("brand.deselect")}</span>
                       <X size={12} />
                     </button>
                   )}
-                  <div className="h-px bg-gray-100 my-1" />
+                  <div className="h-px bg-[var(--sidebar-border)] my-1" />
                   <button 
                     onClick={() => { navigate("/manage/connections?tab=brand-settings"); setBrandOpen(false); }} 
-                    className="w-full text-left px-3 py-2 rounded-lg hover:bg-gray-100 text-sm font-bold text-purple-600 flex items-center gap-1"
+                    className="w-full text-left px-3 py-2 rounded-lg hover:bg-[var(--muted)] text-sm font-bold text-purple-600 dark:text-purple-400 flex items-center gap-1"
                   >
-                    <Settings size={12} /> Manage Brands
+                    <Settings size={12} /> {t("brand.manage")}
                   </button>
                   <button 
                     onClick={() => { navigate(currentPath.startsWith("/manage") ? "/dashboard" : "/manage/team"); setBrandOpen(false); }} 
-                    className="w-full text-left px-3 py-2 rounded-lg hover:bg-gray-100 text-sm font-bold text-blue-600"
+                    className="w-full text-left px-3 py-2 rounded-lg hover:bg-[var(--muted)] text-sm font-bold text-blue-600 dark:text-blue-400"
                   >
-                    {currentPath.startsWith("/manage") ? "← Back to Workspace" : "Switch to Manager →"}
+                    {currentPath.startsWith("/manage") ? t("brand.backWorkspace") : t("brand.switchToManager")}
                   </button>
                 </div>
               )}
             </div>
           )}
 
-          {/* Settings Drawer Trigger (Admin also sees this for Logout) */}
           {/* Settings Drawer Trigger (ONLY for Workspace & Manage) */}
           {!isSuperadmin && (
             <button
               onClick={() => setDrawerOpen(true)}
-              className="p-2 rounded-lg hover:bg-white/10 transition-colors"
+              className="p-2 rounded-lg hover:bg-[var(--muted)] transition-colors text-[var(--foreground)]"
               title="Menu"
             >
               <Menu size={20} />

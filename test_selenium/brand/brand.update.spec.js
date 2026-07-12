@@ -12,7 +12,7 @@ if (!fs.existsSync(SCREENSHOT_DIR)) {
 }
 
 const { expect } = require('chai');
-const { Builder, By, until } = require('selenium-webdriver');
+const { Builder, By, until, Key } = require('selenium-webdriver');
 const { loginAs } = require('../helpers/login');
 
 const chrome = require('selenium-webdriver/chrome');
@@ -65,7 +65,8 @@ describe('Brand Update', function () {
     );
     
     // Clear and type new name
-    await nameInput.clear();
+    await nameInput.sendKeys(Key.CONTROL, 'a');
+    await nameInput.sendKeys(Key.BACK_SPACE);
     const newName = 'UpdatedBrand_' + Date.now();
     await nameInput.sendKeys(newName);
 
@@ -90,7 +91,8 @@ describe('Brand Update', function () {
     const currentName = await nameInput.getAttribute('value');
 
     // Clear then re-type same name  
-    await nameInput.clear();
+    await nameInput.sendKeys(Key.CONTROL, 'a');
+    await nameInput.sendKeys(Key.BACK_SPACE);
     await nameInput.sendKeys(currentName);
 
     // Save button should be disabled (name same as activeBrand name)
@@ -99,3 +101,4 @@ describe('Brand Update', function () {
     expect(isDisabled).to.not.be.null; // button is disabled when name unchanged
   });
 });
+

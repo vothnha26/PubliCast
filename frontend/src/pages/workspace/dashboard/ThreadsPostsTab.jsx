@@ -178,6 +178,7 @@ export function ThreadsPostsTab({
   fetchPublishedVideos = () => {},
   prevPageToken = null,
   nextPageToken = null,
+  onVideoClick = null,
 }) {
   const postsData = realData.growth || [];
   const summary = realData.summary || {};
@@ -352,6 +353,7 @@ export function ThreadsPostsTab({
           fetchPublishedVideos={fetchPublishedVideos}
           prevPageToken={prevPageToken}
           nextPageToken={nextPageToken}
+          onRowClick={onVideoClick}
         />
       </div>
     </div>

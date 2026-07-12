@@ -1,0 +1,49 @@
+{
+  "title": "Bảng điều khiển Không gian làm việc",
+  "welcome": "Chào mừng bạn quay trở lại, {{name}}!",
+  "stats": {
+    "totalFollowers": "Tổng người theo dõi",
+    "totalViews": "Tổng lượt xem",
+    "totalVideos": "Tổng video",
+    "currentBrand": "Thương hiệu hiện tại",
+    "realTime": "Thời gian thực",
+    "selected": "Đang chọn",
+    "uploaded": "Đã tải lên",
+    "youtubeNote": "Kênh YouTube",
+    "uploadedNote": "Đã tải lên",
+    "selectedDelta": "Đang chọn",
+    "unknownBrand": "Không xác định"
+  },
+  "charts": {
+    "audienceTrend": "Xu Hướng Lượng Người Xem",
+    "viewDetails": "Xem Chi Tiết Báo Cáo →"
+  },
+  "recentQueue": {
+    "title": "Hàng chờ bài đăng gần đây",
+    "createPost": "Tạo bài đăng",
+    "scheduleLink": "Lịch đăng →",
+    "emptyTitle": "Chưa có bài đăng nào",
+    "emptySubtitle": "Hãy tạo bài đăng đầu tiên để lên lịch hoặc đăng ngay lên các mạng xã hội!",
+    "createNow": "Tạo Ngay",
+    "untitled": "Bài viết không tiêu đề",
+    "scheduledAt": "Lên lịch: {{date}}",
+    "createdAt": "Tạo lúc: {{date}}"
+  },
+  "connections": {
+    "title": "Kết Nối Mạng Xã Hội",
+    "manage": "Quản lý",
+    "connected": "Đã kết nối",
+    "connect": "Kết nối",
+    "reachByNetwork": "Độ Phủ Theo Nền Tảng"
+  },
+  "status": {
+    "draft": "Bản nháp",
+    "published": "Đã đăng",
+    "scheduled": "Đã lên lịch",
+    "pending_approval": "Chờ duyệt",
+    "failed": "Thất bại"
+  },
+  "toast": {
+    "googleSuccess": "Đăng nhập bằng Google thành công!"
+  }
+}

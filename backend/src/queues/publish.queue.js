@@ -8,18 +8,37 @@ const PUBLISH_QUEUE_NAME = 'social-publish-queue';
  * Main Publishing Queue
  * Responsible for holding jobs until their scheduled time
  */
-const publishQueue = new Queue(PUBLISH_QUEUE_NAME, {
-  ...defaultConnection,
-  defaultJobOptions: {
-    attempts: 3, // Retry 3 times if failed
-    backoff: {
-      type: 'exponential',
-      delay: 5000, // Wait 5s before first retry, then 10s, 20s...
-    },
-    removeOnComplete: true, // Keep Redis clean
-    removeOnFail: false, // Keep failed jobs for debugging
-  }
-});
+let publishQueue;
+
+if (process.env.NODE_ENV !== 'test') {
+  publishQueue = new Queue(PUBLISH_QUEUE_NAME, {
+    ...defaultConnection,
+    defaultJobOptions: {
+      attempts: 3, // Retry 3 times if failed
+      backoff: {
+        type: 'exponential',
+        delay: 5000, // Wait 5s before first retry, then 10s, 20s...
+      },
+      removeOnComplete: true, // Keep Redis clean
+      removeOnFail: false, // Keep failed jobs for debugging
+    }
+  });
+} else {
+  // Mock publishQueue for unit tests to prevent Redis open handle leaks
+  const mockFn = (val) => {
+    try {
+      return jest.fn().mockResolvedValue(val);
+    } catch {
+      return async () => val;
+    }
+  };
+  publishQueue = {
+    add: mockFn({ id: 'mock-job-id' }),
+    remove: mockFn(true),
+    close: mockFn(true),
+    client: { on: () => {} }
+  };
+}
 
 /**
  * Upsert a publishing job

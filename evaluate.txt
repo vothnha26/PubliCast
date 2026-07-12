@@ -1,0 +1,22 @@
+✅ Điểm đã xử lý tốt
+
+Toàn bộ 5 nhóm case bổ sung (chữ ký webhook, idempotency, livestream không hợp lệ, response nhanh, chuẩn hóa schema) đều đã được đưa vào với mô tả rõ ràng, cụ thể hơn cả đề xuất ban đầu của mình.
+Chi tiết hóa case "Livestream không hợp lệ" tốt hơn dự kiến: bạn đã thêm đúng 1 chi tiết quan trọng mà mình chưa nói rõ — hệ thống phải trả về response thành công (không phải lỗi) khi livestream null/ended, vì nếu trả lỗi, Facebook sẽ hiểu là gửi thất bại và retry liên tục, gây nhiễu log/tải hệ thống không cần thiết. Đây là điểm tinh tế, cho thấy bạn hiểu đúng bản chất cơ chế retry của webhook chứ không chỉ chép lại yêu cầu.
+Schema chuẩn hóa cụ thể hóa đúng field (id, authorName, authorAvatarUrl, content, platform, timestamp) — rõ ràng hơn nhiều so với mô tả chung chung trước đó, dễ implement và dễ review khi code thật.
+Case race condition đã bổ sung chi tiết quan trọng: "khi response trả về sẽ không kích hoạt lượt poll tiếp theo" — đây chính xác là điểm dễ gây leak interval nhất trong thực tế (callback bất đồng bộ hoàn thành sau khi đã cleanup), bạn đã nắm đúng.
+Đổi từ Selenium sang Postman/curl cho manual test — đúng theo đề xuất, gọn nhẹ và phù hợp giai đoạn này hơn.
+
+⚠️ Vài điểm rất nhỏ để cân nhắc thêm (không bắt buộc, chỉ là tinh chỉnh)
+1. Case "reject 401/403" nên làm rõ agent gọi là ai
+Test giả lập request "thiếu chữ ký hoặc chữ ký không khớp" — nên đảm bảo bộ test cũng cover luôn trường hợp request đến từ domain/IP lạ nhưng có chữ ký giả (không chỉ chữ ký rỗng), để chắc chắn hàm verify signature dùng đúng HMAC so sánh với App Secret, không phải chỉ check "có tồn tại header hay không".
+2. Case Quota Exceeded (403) nên phân biệt với Token hết hạn (401)
+Về mặt xử lý, 2 lỗi này nên có hành vi khác nhau:
+
+401 (token hết hạn) → dừng polling + báo streamer "cần đăng nhập lại".
+403 (quota exceeded) → dừng polling + báo "quota đã hết, thử lại sau X" — khác message, và có thể cần logic backoff dài hơn trước khi retry (vì quota thường reset theo ngày, không phải theo phút).
+
+Plan hiện gộp chung xử lý "dừng ngay + emit lỗi" cho cả 2 case — nên cân nhắc test riêng 2 message/behavior khác nhau nếu code thực tế cần phân biệt.
+3. Dedup ở YouTube polling — nên test luôn trường hợp tin nhắn mới xen giữa tin nhắn cũ
+Ngoài case "tin nhắn trùng do overlap pageToken", nên thêm 1 test: response trả về hỗn hợp (2 tin cũ đã gửi + 3 tin mới) → verify chỉ 3 tin mới được emit qua socket, không phải toàn bộ hoặc không có gì — đây là case thực tế hay xảy ra hơn là toàn bộ response trùng lặp.
+🎯 Kết luận
+Bản kế hoạch này đã đủ chín để bắt tay implement — không còn thiếu sót ở tầng "nền móng". 3 điểm mình nêu thêm ở trên chỉ là refinement, có thể vừa code vừa bổ sung test case thay vì chặn tiến độ.

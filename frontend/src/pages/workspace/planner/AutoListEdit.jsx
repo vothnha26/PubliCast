@@ -51,6 +51,8 @@ export function AutoListEdit() {
   const [autoPublish, setAutoPublish] = useState(true);
   const [useUrlShortener, setUseUrlShortener] = useState(true);
   const [facebookContentType, setFacebookContentType] = useState('post');
+  const [instagramContentType, setInstagramContentType] = useState('post');
+  const [threadsContentType, setThreadsContentType] = useState('post');
   const [youtubeVideoType, setYoutubeVideoType] = useState('video');
   const [youtubePrivacy, setYoutubePrivacy] = useState('public');
   const [youtubeMadeForKids, setYoutubeMadeForKids] = useState(false);
@@ -81,7 +83,7 @@ export function AutoListEdit() {
         if (listRes.data) {
           const list = listRes.data;
           setName(list.name);
-          setRepeat(list.loopEnabled);
+          setRepeat(!!list.loopEnabled);
           setScheduleType(list.scheduleType);
           setIntervalMinutes(list.intervalMinutes || 60);
           
@@ -115,6 +117,8 @@ export function AutoListEdit() {
               if (parsed.autoPublish !== undefined) setAutoPublish(parsed.autoPublish);
               if (parsed.useUrlShortener !== undefined) setUseUrlShortener(parsed.useUrlShortener);
               if (parsed.facebookContentType !== undefined) setFacebookContentType(parsed.facebookContentType);
+              if (parsed.instagramContentType !== undefined) setInstagramContentType(parsed.instagramContentType);
+              if (parsed.threadsContentType !== undefined) setThreadsContentType(parsed.threadsContentType);
               if (parsed.youtubeVideoType !== undefined) setYoutubeVideoType(parsed.youtubeVideoType);
               if (parsed.youtubePrivacy !== undefined) setYoutubePrivacy(parsed.youtubePrivacy);
               if (parsed.youtubeMadeForKids !== undefined) setYoutubeMadeForKids(parsed.youtubeMadeForKids);
@@ -181,6 +185,8 @@ export function AutoListEdit() {
         autoPublish,
         useUrlShortener,
         facebookContentType,
+        instagramContentType,
+        threadsContentType,
         youtubeVideoType,
         youtubePrivacy,
         youtubeMadeForKids
@@ -247,14 +253,15 @@ export function AutoListEdit() {
         caption: "",
         type: "VIDEO",
         status: "DRAFT",
-        targetPlatforms: selectedPlatforms,
+        targetPlatforms: selectedPlatforms, // Array – post.service.js truyền thẳng
         mediaUrls: [],
         autoListId: id
       });
       toast.success("Post added to queue");
       init(); // Reload details
     } catch (e) {
-      toast.error("Failed to add post to queue");
+      console.error("[handleInsertPostDirectly] Error:", e?.response?.data || e.message);
+      toast.error(e?.response?.data?.message || "Failed to add post to queue");
     }
   };
 
@@ -284,6 +291,8 @@ export function AutoListEdit() {
           autoPublish,
           useUrlShortener,
           facebookContentType,
+          instagramContentType,
+          threadsContentType,
           youtubeVideoType,
           youtubePrivacy,
           youtubeMadeForKids
@@ -303,7 +312,9 @@ export function AutoListEdit() {
         };
 
         const created = await autoListService.createAutoList(payload);
-        const savedId = created.data?.id || created.id;
+        const savedId = created.data?.id || created.data?.data?.id || created.id;
+
+        if (!savedId) throw new Error('AutoList created but no ID returned');
 
         // Now create the post for this list
         await postService.createPost({
@@ -312,7 +323,7 @@ export function AutoListEdit() {
           caption: "",
           type: "VIDEO",
           status: "DRAFT",
-          targetPlatforms: selectedPlatforms,
+          targetPlatforms: selectedPlatforms, // Array
           mediaUrls: [],
           autoListId: savedId
         });
@@ -320,7 +331,8 @@ export function AutoListEdit() {
         toast.success("Autolist created and post inserted");
         navigate(`/planner/autolist/${savedId}`);
       } catch (err) {
-        toast.error("Failed to create autolist and insert post");
+        console.error("[handleInsertPost] Error:", err?.response?.data || err.message);
+        toast.error(err?.response?.data?.message || "Failed to create autolist and insert post");
       } finally {
         setIsSaving(false);
       }
@@ -412,7 +424,7 @@ export function AutoListEdit() {
   }
 
   return (
-    <div className="flex-1 flex flex-col bg-white min-h-screen animate-in slide-in-from-right duration-300">
+    <div className="flex-1 flex flex-col bg-white min-h-screen overflow-y-auto animate-in slide-in-from-right duration-300">
       {/* Header */}
       <AutoListHeader 
         isNew={isNew} 
@@ -497,6 +509,10 @@ export function AutoListEdit() {
               setUseUrlShortener={setUseUrlShortener}
               facebookContentType={facebookContentType}
               setFacebookContentType={setFacebookContentType}
+              instagramContentType={instagramContentType}
+              setInstagramContentType={setInstagramContentType}
+              threadsContentType={threadsContentType}
+              setThreadsContentType={setThreadsContentType}
               youtubeVideoType={youtubeVideoType}
               setYoutubeVideoType={setYoutubeVideoType}
               youtubePrivacy={youtubePrivacy}

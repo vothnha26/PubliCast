@@ -5,8 +5,9 @@ import { useAuth } from "../../context/AuthContext";
 import authService from "../../services/auth.service";
 import { toast } from "sonner";
 import { STORAGE_KEYS } from "../../constants/storageKeys";
+import { useTranslation } from "react-i18next";
 
-function LeftPanel({ tagline, features }) {
+function LeftPanel({ tagline, features, trustedText }) {
   return (
     <div
       className="hidden md:flex flex-col h-full"
@@ -44,13 +45,14 @@ function LeftPanel({ tagline, features }) {
             </div>
           ))}
         </div>
-        <span style={{ fontSize: 13, color: "#777" }}>Trusted by 150,000+ creators</span>
+        <span style={{ fontSize: 13, color: "#777" }}>{trustedText}</span>
       </div>
     </div>
   );
 }
 
 export function LoginPage({ initialScreen = "login" }) {
+  const { t } = useTranslation("auth");
   const { login, register, verifyOTP } = useAuth();
   const [screen, setScreen] = useState(initialScreen);
   const [showPass, setShowPass] = useState(false);
@@ -110,7 +112,7 @@ export function LoginPage({ initialScreen = "login" }) {
   const handleLogin = async (e) => {
     if (e) e.preventDefault();
     if (!email || !password) {
-      toast.error("Vui lòng nhập đầy đủ email và mật khẩu");
+      toast.error(t("errors.fillLogin"));
       return;
     }
     setIsLoading(true);
@@ -121,7 +123,7 @@ export function LoginPage({ initialScreen = "login" }) {
       if (err.message.includes("Account not activated")) {
         localStorage.setItem(STORAGE_KEYS.IS_VERIFYING_OTP, "true");
         localStorage.setItem(STORAGE_KEYS.PENDING_VERIFY_EMAIL, email);
-        toast.info("Vui lòng xác thực email của bạn");
+        toast.info(t("errors.activationRequired"));
         navigate("/verify-otp");
       }
     } finally {
@@ -132,11 +134,11 @@ export function LoginPage({ initialScreen = "login" }) {
   const handleRegister = async (e) => {
     if (e) e.preventDefault();
     if (!fullName || !email || !password || !confirmPassword) {
-      toast.error("Vui lòng nhập đầy đủ thông tin");
+      toast.error(t("errors.fillAll"));
       return;
     }
     if (password !== confirmPassword) {
-      toast.error("Mật khẩu xác nhận không khớp");
+      toast.error(t("errors.passwordMismatch"));
       return;
     }
     setIsLoading(true);
@@ -160,7 +162,7 @@ export function LoginPage({ initialScreen = "login" }) {
   const handleVerifyOTP = async (e) => {
     if (e) e.preventDefault();
     if (!otp) {
-      toast.error("Vui lòng nhập mã OTP");
+      toast.error(t("errors.enterOtp"));
       return;
     }
     setIsLoading(true);
@@ -181,12 +183,12 @@ export function LoginPage({ initialScreen = "login" }) {
     if (resendTimer > 0) return;
     try {
       await authService.resendOTP(email);
-      toast.success("Mã mới đã được gửi!");
+      toast.success(t("verify.otpResentSuccess"));
       const expiry = Date.now() + 60 * 1000;
       localStorage.setItem(STORAGE_KEYS.RESEND_TIMER_EXPIRY, expiry.toString());
       setResendTimer(60);
     } catch (err) {
-      toast.error(err.message || "Gửi lại mã thất bại");
+      toast.error(err.message || t("verify.otpResentFailure"));
     }
   };
 
@@ -200,14 +202,14 @@ export function LoginPage({ initialScreen = "login" }) {
   };
 
   const STRENGTH_COLOR = ["#E5E7EB", "#DC2626", "#D97706", "#16A34A", "#16A34A"];
-  const STRENGTH_LABEL = ["", "Weak", "Medium", "Strong", "Very Strong"];
+  const STRENGTH_LABEL = ["", t("strength.weak"), t("strength.medium"), t("strength.strong"), t("strength.veryStrong")];
 
   const handleGoogleLogin = async () => {
     try {
       const { url } = await authService.getGoogleLoginUrl();
       if (url) window.location.href = url;
     } catch (err) {
-      toast.error("Không thể khởi động đăng nhập Google");
+      toast.error(t("errors.googleLoginFailed"));
     }
   };
 
@@ -221,6 +223,7 @@ export function LoginPage({ initialScreen = "login" }) {
             "Go live on YouTube, Facebook, TikTok & more at once",
             "Collaborate with your team using role-based permissions",
           ]}
+          trustedText="Trusted by 150,000+ creators"
         />
 
         {/* Right Panel */}
@@ -235,25 +238,25 @@ export function LoginPage({ initialScreen = "login" }) {
                    <span style={{ color: "#0A0A0A", fontSize: 16, fontWeight: 500 }}>StreamHub</span>
                 </div>
 
-                <h3 style={{ fontSize: 24, fontWeight: 500, color: "#0A0A0A", marginBottom: 4 }}>Welcome back</h3>
-                <p style={{ fontSize: 14, color: "#6B7280", marginBottom: 32 }}>Log in to your account</p>
+                <h3 style={{ fontSize: 24, fontWeight: 500, color: "#0A0A0A", marginBottom: 4 }}>{t("login.title")}</h3>
+                <p style={{ fontSize: 14, color: "#6B7280", marginBottom: 32 }}>{t("login.subtitle")}</p>
 
                 <form onSubmit={handleLogin} className="flex flex-col gap-4 mb-6">
                   <div>
-                    <label style={{ display: "block", fontSize: 12, fontWeight: 500, color: "#374151", marginBottom: 6 }}>Email address</label>
+                    <label style={{ display: "block", fontSize: 12, fontWeight: 500, color: "#374151", marginBottom: 6 }}>{t("login.emailLabel")}</label>
                     <input id="email" type="email" placeholder="you@company.com" value={email || ""} onChange={(e) => setEmail(e.target.value)}
                       style={{ width: "100%", padding: "12px 14px", borderRadius: 10, border: "0.5px solid #E5E7EB", fontSize: 14, outline: "none", height: 46 }} required />
                   </div>
                   <div>
                     <div className="flex items-center justify-between mb-1.5">
-                      <label style={{ fontSize: 12, fontWeight: 500, color: "#374151" }}>Password</label>
+                      <label style={{ fontSize: 12, fontWeight: 500, color: "#374151" }}>{t("login.passwordLabel")}</label>
                       <button 
                         type="button"
                         onClick={() => navigate("/forgot-password")}
                         className="text-[12px] color-[#2563EB] cursor-pointer bg-transparent border-none hover:underline"
                         style={{ color: "#2563EB" }}
                       >
-                        Forgot password?
+                        {t("login.forgotPassword")}
                       </button>
                     </div>
                     <div className="relative">
@@ -270,7 +273,7 @@ export function LoginPage({ initialScreen = "login" }) {
                     disabled={isLoading}
                     style={{ width: "100%", height: 46, borderRadius: 10, background: "#0A0A0A", color: "#FFF", fontSize: 14, fontWeight: 500, cursor: "pointer", marginTop: 12, border: "none", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}
                   >
-                    {isLoading ? <Loader2 size={18} className="animate-spin" /> : "Log in"}
+                    {isLoading ? <Loader2 size={18} className="animate-spin" /> : t("login.submitBtn")}
                   </button>
                 </form>
 
@@ -285,17 +288,17 @@ export function LoginPage({ initialScreen = "login" }) {
                     onClick={handleGoogleLogin}
                     style={{ width: "100%", height: 46, borderRadius: 10, background: "#FFF", color: "#0A0A0A", fontSize: 14, fontWeight: 400, cursor: "pointer", border: "0.5px solid #E5E7EB", display: "flex", alignItems: "center", justifyContent: "center", gap: 10 }}
                   >
-                    <span style={{ fontWeight: 700, fontSize: 16 }}>G</span> Continue with Google
+                    <span style={{ fontWeight: 700, fontSize: 16 }}>G</span> {t("login.continueGoogle")}
                   </button>
                   <button style={{ width: "100%", height: 46, borderRadius: 10, background: "#0A0A0A", color: "#FFF", fontSize: 14, fontWeight: 400, cursor: "pointer", border: "none", display: "flex", alignItems: "center", justifyContent: "center", gap: 10 }}>
-                    <span style={{ fontWeight: 700, fontSize: 16 }}>🍎</span> Continue with Apple
+                    <span style={{ fontWeight: 700, fontSize: 16 }}>🍎</span> {t("login.continueApple")}
                   </button>
                 </div>
 
                 <div style={{ textAlign: "center", fontSize: 14, color: "#6B7280" }}>
-                  Don't have an account?{" "}
+                  {t("login.noAccount")}{" "}
                   <span style={{ color: "#0A0A0A", fontWeight: 500, cursor: "pointer" }} onClick={() => navigate("/signup")}>
-                    Sign up free →
+                    {t("login.signupLink")}
                   </span>
                 </div>
               </>
@@ -308,22 +311,22 @@ export function LoginPage({ initialScreen = "login" }) {
                    <span style={{ color: "#0A0A0A", fontSize: 16, fontWeight: 500 }}>StreamHub</span>
                 </div>
 
-                <h3 style={{ fontSize: 24, fontWeight: 500, color: "#0A0A0A", marginBottom: 4 }}>Create your account</h3>
-                <p style={{ fontSize: 14, color: "#6B7280", marginBottom: 32 }}>Start your 14-day free trial</p>
+                <h3 style={{ fontSize: 24, fontWeight: 500, color: "#0A0A0A", marginBottom: 4 }}>{t("register.title")}</h3>
+                <p style={{ fontSize: 14, color: "#6B7280", marginBottom: 32 }}>{t("register.subtitle")}</p>
 
                 <form onSubmit={handleRegister} className="flex flex-col gap-4 mb-6">
                   <div>
-                    <label style={{ display: "block", fontSize: 12, fontWeight: 500, color: "#374151", marginBottom: 6 }}>Full Name</label>
+                    <label style={{ display: "block", fontSize: 12, fontWeight: 500, color: "#374151", marginBottom: 6 }}>{t("register.fullNameLabel")}</label>
                     <input type="text" placeholder="Your name" value={fullName} onChange={(e) => setFullName(e.target.value)}
                         style={{ width: "100%", padding: "12px 14px", borderRadius: 10, border: "0.5px solid #E5E7EB", fontSize: 14, outline: "none", height: 46 }} required />
                   </div>
                   <div>
-                    <label style={{ display: "block", fontSize: 12, fontWeight: 500, color: "#374151", marginBottom: 6 }}>Email Address</label>
+                    <label style={{ display: "block", fontSize: 12, fontWeight: 500, color: "#374151", marginBottom: 6 }}>{t("register.emailLabel")}</label>
                     <input id="email" type="email" placeholder="you@company.com" value={email} onChange={(e) => setEmail(e.target.value)}
                         style={{ width: "100%", padding: "12px 14px", borderRadius: 10, border: "0.5px solid #E5E7EB", fontSize: 14, outline: "none", height: 46 }} required />
                   </div>
                   <div>
-                    <label style={{ display: "block", fontSize: 12, fontWeight: 500, color: "#374151", marginBottom: 6 }}>Password</label>
+                    <label style={{ display: "block", fontSize: 12, fontWeight: 500, color: "#374151", marginBottom: 6 }}>{t("register.passwordLabel")}</label>
                     <div className="relative">
                       <input id="password" type={showPass ? "text" : "password"} placeholder="Min. 8 characters"
                         value={password}
@@ -348,7 +351,7 @@ export function LoginPage({ initialScreen = "login" }) {
                     )}
                   </div>
                   <div>
-                    <label style={{ display: "block", fontSize: 12, fontWeight: 500, color: "#374151", marginBottom: 6 }}>Confirm Password</label>
+                    <label style={{ display: "block", fontSize: 12, fontWeight: 500, color: "#374151", marginBottom: 6 }}>{t("register.confirmPasswordLabel")}</label>
                     <div className="relative">
                       <input type={showPass ? "text" : "password"} placeholder="••••••••"
                         value={confirmPassword}
@@ -359,7 +362,7 @@ export function LoginPage({ initialScreen = "login" }) {
                   <label className="flex items-start gap-2.5 cursor-pointer mt-2">
                     <input type="checkbox" style={{ accentColor: "#0A0A0A", marginTop: 2 }} required />
                     <span style={{ fontSize: 12, color: "#6B7280", lineHeight: 1.5 }}>
-                      I agree to the <span style={{ color: "#0A0A0A", fontWeight: 500 }}>Terms of Service</span> and <span style={{ color: "#0A0A0A", fontWeight: 500 }}>Privacy Policy</span>
+                      {t("register.termsText")}
                     </span>
                   </label>
 
@@ -368,14 +371,14 @@ export function LoginPage({ initialScreen = "login" }) {
                     disabled={isLoading}
                     style={{ width: "100%", height: 46, borderRadius: 10, background: "#0A0A0A", color: "#FFF", fontSize: 14, fontWeight: 500, cursor: "pointer", marginTop: 12, border: "none", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}
                   >
-                    {isLoading ? <Loader2 size={18} className="animate-spin" /> : "Create free account"}
+                    {isLoading ? <Loader2 size={18} className="animate-spin" /> : t("register.submitBtn")}
                   </button>
                 </form>
 
                 <div style={{ textAlign: "center", fontSize: 14, color: "#6B7280" }}>
-                  Already have an account?{" "}
+                  {t("register.hasAccount")}{" "}
                   <span style={{ color: "#0A0A0A", fontWeight: 500, cursor: "pointer" }} onClick={() => navigate("/login")}>
-                    Log in →
+                    {t("register.loginLink")}
                   </span>
                 </div>
               </>
@@ -388,12 +391,12 @@ export function LoginPage({ initialScreen = "login" }) {
                    <span style={{ color: "#0A0A0A", fontSize: 16, fontWeight: 500 }}>StreamHub</span>
                 </div>
 
-                <h3 style={{ fontSize: 24, fontWeight: 500, color: "#0A0A0A", marginBottom: 4 }}>Verify your email</h3>
-                <p style={{ fontSize: 14, color: "#6B7280", marginBottom: 32 }}>We've sent a 6-digit code to {email}</p>
+                <h3 style={{ fontSize: 24, fontWeight: 500, color: "#0A0A0A", marginBottom: 4 }}>{t("verify.title")}</h3>
+                <p style={{ fontSize: 14, color: "#6B7280", marginBottom: 32 }}>{t("verify.subtitle", { email })}</p>
 
                 <form onSubmit={handleVerifyOTP} className="flex flex-col gap-6 mb-6">
                   <div>
-                    <label style={{ display: "block", fontSize: 12, fontWeight: 500, color: "#374151", marginBottom: 6 }}>Verification Code</label>
+                    <label style={{ display: "block", fontSize: 12, fontWeight: 500, color: "#374151", marginBottom: 6 }}>{t("verify.codeLabel")}</label>
                     <input type="text" placeholder="000000" value={otp} onChange={(e) => setOtp(e.target.value)} maxLength={6}
                       style={{ width: "100%", padding: "12px 14px", borderRadius: 10, border: "0.5px solid #E5E7EB", fontSize: 24, fontWeight: 700, letterSpacing: 8, textAlign: "center", outline: "none", height: 56 }} required />
                   </div>
@@ -403,19 +406,19 @@ export function LoginPage({ initialScreen = "login" }) {
                     disabled={isLoading}
                     style={{ width: "100%", height: 46, borderRadius: 10, background: "#0A0A0A", color: "#FFF", fontSize: 14, fontWeight: 500, cursor: "pointer", border: "none", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}
                   >
-                    {isLoading ? <Loader2 size={18} className="animate-spin" /> : "Verify Code"}
+                    {isLoading ? <Loader2 size={18} className="animate-spin" /> : t("verify.submitBtn")}
                   </button>
                 </form>
 
                 <div style={{ textAlign: "center", fontSize: 14, color: "#6B7280" }}>
-                  Didn't receive code?{" "}
+                  {t("verify.noCode")}{" "}
                   <button 
                     type="button"
                     disabled={resendTimer > 0}
                     style={{ color: resendTimer > 0 ? "#9CA3AF" : "#0A0A0A", fontWeight: 500, cursor: resendTimer > 0 ? "not-allowed" : "pointer", background: "none", border: "none", padding: 0, fontSize: 14 }} 
                     onClick={handleResendOTP}
                   >
-                    {resendTimer > 0 ? `Resend in ${resendTimer}s` : "Resend →"}
+                    {resendTimer > 0 ? t("verify.resendTimer", { n: resendTimer }) : t("verify.resendBtn")}
                   </button>
                 </div>
               </>

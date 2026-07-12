@@ -196,7 +196,7 @@ class AnalyticsFacade {
       try {
         const service = socialPlatformFactory.getService(acc.platform);
         // Fetch published videos/posts from social platform API
-        const apiResult = await service.getPublishedVideos(brandId, null, 20);
+        const apiResult = await service.getPublishedVideos(brandId, null, 20, acc.id);
         const apiPosts = apiResult?.videos || apiResult?.posts || apiResult?.data || [];
 
         if (Array.isArray(apiPosts)) {
@@ -247,77 +247,72 @@ class AnalyticsFacade {
     });
 
     for (const post of dbPosts) {
-      let platform = 'FACEBOOK';
-      try {
-        if (post.targetPlatforms) {
-          const parts = post.targetPlatforms.split(',').map(p => p.trim()).filter(Boolean);
-          if (parts.length > 0) platform = parts[0];
-        }
-      } catch (e) {
-        platform = 'FACEBOOK';
+      let platforms = ['FACEBOOK'];
+      if (post.targetPlatforms) {
+        platforms = post.targetPlatforms.split(',').map(p => p.trim().toUpperCase()).filter(Boolean);
       }
 
-      const platformUpper = platform.toUpperCase();
-      
-      // Avoid duplicates if already fetched via API
-      const isDuplicate = allPlatformPosts.some(ap => ap.id === post.platformPostId || ap.id === post.id);
-      if (isDuplicate) continue;
+      for (const platformUpper of platforms) {
+        // Avoid duplicates if already fetched via API
+        const isDuplicate = allPlatformPosts.some(ap => ap.platform === platformUpper && (ap.id === post.platformPostId || ap.id === post.id));
+        if (isDuplicate) continue;
 
-      let likes = 0;
-      let comments = 0;
-      let shares = 0;
-      let reachOrViews = 0;
+        let likes = 0;
+        let comments = 0;
+        let shares = 0;
+        let reachOrViews = 0;
 
-      let currentPlatformPostId = post.platformPostId;
-      if (post.platformPostId && post.platformPostId.startsWith('{')) {
-        try {
-          const map = JSON.parse(post.platformPostId);
-          currentPlatformPostId = map[platformUpper] || null;
-        } catch (e) {
-          // ignore
-        }
-      }
-
-      if (platformUpper === 'FACEBOOK' && currentPlatformPostId) {
-        const fbMetric = await prisma.facebookPostMetric.findFirst({
-          where: {
-            platformPostId: currentPlatformPostId,
-            brandId
+        let currentPlatformPostId = post.platformPostId;
+        if (post.platformPostId && post.platformPostId.startsWith('{')) {
+          try {
+            const map = JSON.parse(post.platformPostId);
+            currentPlatformPostId = map[platformUpper] || null;
+          } catch (e) {
+            // ignore
           }
-        });
-        if (fbMetric) {
-          likes = fbMetric.likes || 0;
-          comments = fbMetric.comments || 0;
-          shares = fbMetric.shares || 0;
-          reachOrViews = fbMetric.reach || 0;
         }
-      } else if (platformUpper === 'YOUTUBE' && currentPlatformPostId) {
-        const ytMetric = await prisma.trackedVideo.findFirst({
-          where: {
-            videoId: currentPlatformPostId,
-            brandId
+
+        if (platformUpper === 'FACEBOOK' && currentPlatformPostId) {
+          const fbMetric = await prisma.facebookPostMetric.findFirst({
+            where: {
+              platformPostId: currentPlatformPostId,
+              brandId
+            }
+          });
+          if (fbMetric) {
+            likes = fbMetric.likes || 0;
+            comments = fbMetric.comments || 0;
+            shares = fbMetric.shares || 0;
+            reachOrViews = fbMetric.reach || 0;
           }
-        });
-        if (ytMetric) {
-          likes = ytMetric.lastLikes || 0;
-          comments = ytMetric.lastComments || 0;
-          reachOrViews = ytMetric.lastViews || 0;
+        } else if (platformUpper === 'YOUTUBE' && currentPlatformPostId) {
+          const ytMetric = await prisma.trackedVideo.findFirst({
+            where: {
+              videoId: currentPlatformPostId,
+              brandId
+            }
+          });
+          if (ytMetric) {
+            likes = ytMetric.lastLikes || 0;
+            comments = ytMetric.lastComments || 0;
+            reachOrViews = ytMetric.lastViews || 0;
+          }
         }
+
+        const denominator = reachOrViews > 0 ? reachOrViews : (totalFollowers || 1000);
+        const engagementRate = parseFloat((((likes + comments + shares) / denominator) * 100).toFixed(2));
+
+        allPlatformPosts.push({
+          id: post.id,
+          title: post.title,
+          caption: post.caption,
+          platform: platformUpper,
+          likes,
+          comments,
+          shares,
+          engagementRate
+        });
       }
-
-      const denominator = reachOrViews > 0 ? reachOrViews : (totalFollowers || 1000);
-      const engagementRate = parseFloat((((likes + comments + shares) / denominator) * 100).toFixed(2));
-
-      allPlatformPosts.push({
-        id: post.id,
-        title: post.title,
-        caption: post.caption,
-        platform: platformUpper,
-        likes,
-        comments,
-        shares,
-        engagementRate
-      });
     }
 
     // Sort by engagement rate descending and get top 5

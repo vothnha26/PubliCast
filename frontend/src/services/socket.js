@@ -5,6 +5,9 @@ let socketURL = import.meta.env.VITE_SOCKET_URL || import.meta.env.VITE_API_BASE
 if (socketURL.endsWith('/api')) {
   socketURL = socketURL.substring(0, socketURL.length - 4);
 }
+if (!socketURL) {
+  socketURL = 'http://localhost:3000';
+}
 
 class SocketClient {
   constructor() {
@@ -19,6 +22,11 @@ class SocketClient {
   connect(token) {
     if (this.socket?.connected) return;
 
+    // If socket exists but is not connected, disconnect it first
+    if (this.socket) {
+      this.socket.disconnect();
+    }
+
     this.socket = io(socketURL, {
       auth: { token },
       transports: ['websocket'],
@@ -29,12 +37,16 @@ class SocketClient {
       reconnectionDelay: 2000
     });
 
+    // Re-apply any active listeners to the new socket instance once during initialization
+    this.listeners.forEach((callbacks, event) => {
+      callbacks.forEach(cb => {
+        this.socket.off(event, cb); // Ensure no duplicate on this new instance
+        this.socket.on(event, cb);
+      });
+    });
+
     this.socket.on('connect', () => {
       console.log('⚡ [SocketClient] Connected to websocket server');
-      // Re-apply any active listeners on reconnect
-      this.listeners.forEach((callbacks, event) => {
-        callbacks.forEach(cb => this.socket.on(event, cb));
-      });
     });
 
     this.socket.on('connect_error', (err) => {
@@ -77,6 +89,7 @@ class SocketClient {
     this.listeners.get(event).add(callback);
 
     if (this.socket) {
+      this.socket.off(event, callback);
       this.socket.on(event, callback);
     }
   }

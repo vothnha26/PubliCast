@@ -44,6 +44,7 @@ jest.mock('../../src/config/prisma', () => {
     findUnique: jest.fn(),
     findFirst: jest.fn().mockResolvedValue({
       id: 'brand-123',
+      ownerId: 'owner-id',
       subscription: {
         status: 'ACTIVE',
         plan: {
@@ -53,7 +54,23 @@ jest.mock('../../src/config/prisma', () => {
           }
         }
       }
-    })
+    }),
+    findMany: jest.fn().mockResolvedValue([
+      {
+        id: 'brand-123',
+        ownerId: 'owner-id',
+        subscription: {
+          status: 'ACTIVE',
+          plan: {
+            name: 'PRO',
+            priceAmount: 100,
+            planLimit: {
+              maxPostsPerMonth: 100
+            }
+          }
+        }
+      }
+    ])
   };
   const mockTeam = {
     findMany: jest.fn()

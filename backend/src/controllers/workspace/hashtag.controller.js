@@ -1,5 +1,6 @@
 const prisma = require('../../config/prisma');
 const logger = require('../../utils/logger');
+const trendingHashtagService = require('../../services/workspace/hashtag/trending/TrendingHashtagService');
 
 /**
  * Get all hashtag sets and tracked hashtags for a brand
@@ -70,6 +71,12 @@ exports.updateHashtagSet = async (req, res, next) => {
       return res.status(404).json({ message: 'Hashtag set not found' });
     }
 
+    const authorizationFacade = require('../../services/auth/authorization.facade');
+    const hasAccess = await authorizationFacade.checkBrandAccess(req.user.id, existingSet.brandId);
+    if (!hasAccess) {
+      return res.status(403).json({ message: 'Bạn không có quyền truy cập vào tài nguyên này.' });
+    }
+
     const updatedSet = await prisma.hashtagSet.update({
       where: { id },
       data: {
@@ -100,6 +107,12 @@ exports.deleteHashtagSet = async (req, res, next) => {
     const existingSet = await prisma.hashtagSet.findUnique({ where: { id } });
     if (!existingSet) {
       return res.status(404).json({ message: 'Hashtag set not found' });
+    }
+
+    const authorizationFacade = require('../../services/auth/authorization.facade');
+    const hasAccess = await authorizationFacade.checkBrandAccess(req.user.id, existingSet.brandId);
+    if (!hasAccess) {
+      return res.status(403).json({ message: 'Bạn không có quyền truy cập vào tài nguyên này.' });
     }
 
     await prisma.hashtagSet.delete({ where: { id } });
@@ -175,11 +188,32 @@ exports.untrackHashtag = async (req, res, next) => {
       return res.status(404).json({ message: 'Tracked hashtag not found' });
     }
 
+    const authorizationFacade = require('../../services/auth/authorization.facade');
+    const hasAccess = await authorizationFacade.checkBrandAccess(req.user.id, existing.brandId);
+    if (!hasAccess) {
+      return res.status(403).json({ message: 'Bạn không có quyền truy cập vào tài nguyên này.' });
+    }
+
     await prisma.hashtagTracker.delete({ where: { id } });
 
     return res.status(200).json({ message: 'Stopped tracking hashtag successfully' });
   } catch (error) {
     logger.error('Error in untrackHashtag:', error);
+    next(error);
+  }
+};
+
+/**
+ * Get trending hashtags by platform
+ * GET /api/hashtags/trending
+ */
+exports.getTrendingHashtags = async (req, res, next) => {
+  try {
+    const { platform = 'MOCK', limit = 20 } = req.query;
+    const trending = await trendingHashtagService.getTrendingHashtags(platform, parseInt(limit, 10));
+    return res.status(200).json({ trending });
+  } catch (error) {
+    logger.error('Error in getTrendingHashtags:', error);
     next(error);
   }
 };

@@ -93,6 +93,7 @@ const publishedYoutubePost = {
   platformPostId: 'yt_video_abc123',
   title: 'Video YouTube đã xuất bản',
   caption: '',
+  mediaUrls: 'http://example.com/video.mp4',
   creator: { name: 'Test User' }
 };
 
@@ -176,6 +177,41 @@ describe('POST_SOCIAL - updatePost trên nền tảng đã xuất bản (PUBLISH
 
       emitSpy.mockRestore();
     });
+
+    it('should throw error if attempting to add media to a published text-only Facebook post', async () => {
+      postRepository.findById.mockResolvedValue(publishedFacebookPost);
+      authorizationFacade.hasPermission.mockResolvedValue(true);
+
+      await expect(
+        postService.updatePost(
+          POST_ID,
+          { caption: 'Nội dung đã cập nhật', mediaUrls: ['http://example.com/image.png'] },
+          BRAND_ID,
+          USER_ID
+        )
+      ).rejects.toThrow('[FACEBOOK] Facebook does not support updating/modifying media on an already published post.');
+
+      expect(postRepository.update).not.toHaveBeenCalled();
+    });
+
+    it('should throw error if attempting to modify media on a published Facebook post that already has media', async () => {
+      postRepository.findById.mockResolvedValue({
+        ...publishedFacebookPost,
+        mediaUrls: 'http://example.com/image1.png'
+      });
+      authorizationFacade.hasPermission.mockResolvedValue(true);
+
+      await expect(
+        postService.updatePost(
+          POST_ID,
+          { caption: 'Nội dung đã cập nhật', mediaUrls: ['http://example.com/image2.png'] },
+          BRAND_ID,
+          USER_ID
+        )
+      ).rejects.toThrow('[FACEBOOK] Facebook does not support updating/modifying media on an already published post.');
+
+      expect(postRepository.update).not.toHaveBeenCalled();
+    });
   });
 
   // -------------------------------------------------------------------------
@@ -209,18 +245,27 @@ describe('POST_SOCIAL - updatePost trên nền tảng đã xuất bản (PUBLISH
 
   // -------------------------------------------------------------------------
   describe('POST_SOCIAL_003 - updatePost trên YouTube (PUBLISHED)', () => {
-    it('should throw error because YouTube does not support content update via API', async () => {
+    it('should NOT throw error and update DB (database-only modifications for unsupported platforms)', async () => {
       const youtubePublishedPost = {
         ...publishedYoutubePost,
-        // YouTube không có hasFacebook || hasDiscord nên sẽ throw
       };
       postRepository.findById.mockResolvedValue(youtubePublishedPost);
+      authorizationFacade.hasPermission.mockResolvedValue(true);
+      postRepository.update.mockResolvedValue({
+        ...youtubePublishedPost,
+        caption: 'New caption'
+      });
 
-      await expect(
-        postService.updatePost('post-youtube-999', { caption: 'New caption' }, BRAND_ID, USER_ID)
-      ).rejects.toThrow('Cannot update an already published post for this platform');
+      const result = await postService.updatePost(
+        'post-youtube-999',
+        { caption: 'New caption' },
+        BRAND_ID,
+        USER_ID
+      );
 
-      expect(postRepository.update).not.toHaveBeenCalled();
+      expect(socialPlatformFactory.getService).not.toHaveBeenCalled();
+      expect(postRepository.update).toHaveBeenCalled();
+      expect(result.caption).toBe('New caption');
     });
   });
 });
@@ -241,7 +286,7 @@ describe('POST_SOCIAL - bulkDelete với deleteFromSocials = true', () => {
       postRepository.findManyByIdsAndBrand.mockResolvedValue(posts);
       socialPlatformFactory.getService.mockReturnValue(mockFacebookService);
       mockFacebookService.deletePost.mockResolvedValue({ success: true });
-      postRepository.updateMany.mockResolvedValue({ count: 2 });
+      postRepository.deleteMany.mockResolvedValue({ count: 2 });
 
       await postService.bulkDelete(['post-1', 'post-2'], BRAND_ID, true);
 
@@ -249,11 +294,11 @@ describe('POST_SOCIAL - bulkDelete với deleteFromSocials = true', () => {
       expect(socialPlatformFactory.getService).toHaveBeenCalledWith(PLATFORMS.FACEBOOK);
       expect(mockFacebookService.deletePost).toHaveBeenCalledTimes(1);
       expect(mockFacebookService.deletePost).toHaveBeenCalledWith(BRAND_ID, 'fb_111');
-      // Cả 2 bài đều bị xóa mềm trong DB
-      expect(postRepository.updateMany).toHaveBeenCalledWith(
-        { id: { in: ['post-1', 'post-2'] }, brandId: BRAND_ID },
-        expect.objectContaining({ isDeleted: true })
-      );
+      // Cả 2 bài đều bị xóa trong DB
+      expect(postRepository.deleteMany).toHaveBeenCalledWith({
+        id: { in: ['post-1', 'post-2'] },
+        brandId: BRAND_ID
+      });
     });
   });
 
@@ -266,13 +311,13 @@ describe('POST_SOCIAL - bulkDelete với deleteFromSocials = true', () => {
       postRepository.findManyByIdsAndBrand.mockResolvedValue(posts);
       socialPlatformFactory.getService.mockReturnValue(mockYoutubeService);
       mockYoutubeService.deletePost.mockResolvedValue({ success: true });
-      postRepository.updateMany.mockResolvedValue({ count: 1 });
+      postRepository.deleteMany.mockResolvedValue({ count: 1 });
 
       await postService.bulkDelete(['post-yt-1'], BRAND_ID, true);
 
       expect(socialPlatformFactory.getService).toHaveBeenCalledWith(PLATFORMS.YOUTUBE);
       expect(mockYoutubeService.deletePost).toHaveBeenCalledWith(BRAND_ID, 'yt_video_xyz');
-      expect(postRepository.updateMany).toHaveBeenCalled();
+      expect(postRepository.deleteMany).toHaveBeenCalled();
     });
   });
 
@@ -283,19 +328,19 @@ describe('POST_SOCIAL - bulkDelete với deleteFromSocials = true', () => {
         { id: 'post-1', status: POST_STATUS.PUBLISHED, targetPlatforms: PLATFORMS.FACEBOOK, platformPostId: 'fb_111', autoListId: null }
       ];
       postRepository.findManyByIdsAndBrand.mockResolvedValue(posts);
-      postRepository.updateMany.mockResolvedValue({ count: 1 });
+      postRepository.deleteMany.mockResolvedValue({ count: 1 });
 
       // deleteFromSocials = false (default)
       await postService.bulkDelete(['post-1'], BRAND_ID, false);
 
       expect(socialPlatformFactory.getService).not.toHaveBeenCalled();
-      expect(postRepository.updateMany).toHaveBeenCalled();
+      expect(postRepository.deleteMany).toHaveBeenCalled();
     });
   });
 
   // -------------------------------------------------------------------------
   describe('POST_SOCIAL_007 - bulkDelete tiếp tục xóa DB nếu social API thất bại', () => {
-    it('should still soft-delete DB records even when Discord API throws', async () => {
+    it('should still delete DB records even when Discord API throws', async () => {
       const posts = [
         { id: 'post-discord-1', status: POST_STATUS.PUBLISHED, targetPlatforms: PLATFORMS.DISCORD, platformPostId: 'discord_msg_789', autoListId: null }
       ];
@@ -303,16 +348,104 @@ describe('POST_SOCIAL - bulkDelete với deleteFromSocials = true', () => {
       socialPlatformFactory.getService.mockReturnValue(mockDiscordService);
       // Discord API fails
       mockDiscordService.deletePost.mockRejectedValue(new Error('Discord webhook error'));
-      postRepository.updateMany.mockResolvedValue({ count: 1 });
+      postRepository.deleteMany.mockResolvedValue({ count: 1 });
 
       // Should not throw - error is caught internally
       const count = await postService.bulkDelete(['post-discord-1'], BRAND_ID, true);
 
       expect(count).toBe(1);
-      expect(postRepository.updateMany).toHaveBeenCalledWith(
-        { id: { in: ['post-discord-1'] }, brandId: BRAND_ID },
-        expect.objectContaining({ isDeleted: true })
-      );
+      expect(postRepository.deleteMany).toHaveBeenCalledWith({
+        id: { in: ['post-discord-1'] },
+        brandId: BRAND_ID
+      });
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  describe('POST_SOCIAL_008 - bulkDelete với platformPostId dạng JSON map', () => {
+    it('should parse platformPostId JSON map and call deletePost for each platform with its own ID', async () => {
+      const platformMap = {
+        [PLATFORMS.FACEBOOK]: 'fb_12345',
+        [PLATFORMS.YOUTUBE]: 'yt_67890'
+      };
+      const posts = [
+        { 
+          id: 'post-multi-1', 
+          status: POST_STATUS.PUBLISHED, 
+          targetPlatforms: `${PLATFORMS.FACEBOOK}, ${PLATFORMS.YOUTUBE}`, 
+          platformPostId: JSON.stringify(platformMap), 
+          autoListId: null 
+        }
+      ];
+      postRepository.findManyByIdsAndBrand.mockResolvedValue(posts);
+
+      socialPlatformFactory.getService.mockImplementation((platform) => {
+        if (platform === PLATFORMS.FACEBOOK) return mockFacebookService;
+        if (platform === PLATFORMS.YOUTUBE) return mockYoutubeService;
+        return null;
+      });
+
+      mockFacebookService.deletePost.mockResolvedValue({ success: true });
+      mockYoutubeService.deletePost.mockResolvedValue({ success: true });
+      postRepository.deleteMany.mockResolvedValue({ count: 1 });
+
+      const count = await postService.bulkDelete(['post-multi-1'], BRAND_ID, true);
+
+      expect(count).toBe(1);
+      expect(mockFacebookService.deletePost).toHaveBeenCalledWith(BRAND_ID, 'fb_12345');
+      expect(mockYoutubeService.deletePost).toHaveBeenCalledWith(BRAND_ID, 'yt_67890');
+      expect(postRepository.deleteMany).toHaveBeenCalled();
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  describe('POST_SOCIAL_009 - bulkDelete cho bài SCHEDULED', () => {
+    it('should call facebookService.deletePost and removePublishJob for scheduled Facebook post', async () => {
+      const posts = [
+        { id: 'post-sched-1', status: POST_STATUS.SCHEDULED, targetPlatforms: PLATFORMS.FACEBOOK, platformPostId: 'fb_sched_111', autoListId: null }
+      ];
+      postRepository.findManyByIdsAndBrand.mockResolvedValue(posts);
+      socialPlatformFactory.getService.mockReturnValue(mockFacebookService);
+      mockFacebookService.deletePost.mockResolvedValue({ success: true });
+      postRepository.deleteMany.mockResolvedValue({ count: 1 });
+
+      const { removePublishJob } = require('../../src/queues/publish.queue');
+
+      await postService.bulkDelete(['post-sched-1'], BRAND_ID, true);
+
+      expect(removePublishJob).toHaveBeenCalledWith('post-sched-1');
+      expect(mockFacebookService.deletePost).toHaveBeenCalledWith(BRAND_ID, 'fb_sched_111');
+      expect(postRepository.deleteMany).toHaveBeenCalled();
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  describe('POST_SOCIAL_010 - updatePost hủy đặt lịch (SCHEDULED -> DRAFT)', () => {
+    it('should delete post on platform and remove platformPostId in DB', async () => {
+      const scheduledPost = {
+        id: 'post-sched-2',
+        brandId: BRAND_ID,
+        status: POST_STATUS.SCHEDULED,
+        targetPlatforms: PLATFORMS.FACEBOOK,
+        platformPostId: 'fb_sched_222',
+        creator: { name: 'Test User' }
+      };
+
+      postRepository.findById.mockResolvedValue(scheduledPost);
+      socialPlatformFactory.getService.mockReturnValue(mockFacebookService);
+      mockFacebookService.deletePost.mockResolvedValue({ success: true });
+      authorizationFacade.hasPermission.mockResolvedValue(true);
+      postRepository.update.mockResolvedValue({
+        ...scheduledPost,
+        status: POST_STATUS.DRAFT,
+        platformPostId: null
+      });
+
+      await postService.updatePost('post-sched-2', { status: POST_STATUS.DRAFT }, BRAND_ID, USER_ID);
+
+      expect(mockFacebookService.deletePost).toHaveBeenCalledWith(BRAND_ID, 'fb_sched_222');
+      // verifies update is called with clean platformPostId
+      expect(postRepository.update).toHaveBeenCalledWith('post-sched-2', expect.objectContaining({ platformPostId: null }));
     });
   });
 });

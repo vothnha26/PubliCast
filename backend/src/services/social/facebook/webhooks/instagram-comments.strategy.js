@@ -1,6 +1,7 @@
 const BaseWebhookStrategy = require('./base.webhook-strategy');
 const inboxRepository = require('../../../../repositories/social/inbox.repository');
 const { PLATFORMS, INBOX_STATUS, INBOX_TYPES } = require('../../../../utils/constants');
+const autoReplyService = require('../../inbox/strategies/auto-reply/auto-reply.service');
 const logger = require('../../../../utils/logger');
 
 class InstagramCommentsStrategy extends BaseWebhookStrategy {
@@ -11,6 +12,7 @@ class InstagramCommentsStrategy extends BaseWebhookStrategy {
     logger.info(`[InstagramCommentsStrategy] Handling comment change for IG account ${instagramAccountId}`);
 
     const commentId = value.id;
+    if (value.verb !== 'remove' && await this.isDuplicateEvent(commentId)) return;
     const text = value.text;
     const authorId = value.from?.id || 'unknown';
     const authorName = value.from?.username || 'Instagram User';
@@ -75,6 +77,18 @@ class InstagramCommentsStrategy extends BaseWebhookStrategy {
 
     // Notify Frontend
     this.notifyClient(account.brandId, 'new_inbox_item', savedItem);
+
+    // Execute Auto-Reply if comment is new and not from the IG page itself
+    if (value.verb !== 'remove' && !isFromMe && text) {
+      autoReplyService.executeAutoReply(
+        account.id,
+        text || '',
+        commentId,
+        account.brandId
+      ).catch(err => {
+        logger.error(`[InstagramCommentsStrategy] Error executing auto-reply for comment ${commentId}:`, err);
+      });
+    }
   }
 }
 

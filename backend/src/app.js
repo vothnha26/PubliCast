@@ -19,6 +19,7 @@ const auditLogRoutes = require('./routes/admin/audit-log.routes');
 const revenueRoutes = require('./routes/admin/revenue.routes');
 const productRoutes = require('./routes/admin/product.routes');
 const platformLimitRoutes = require('./routes/admin/platform-limit.routes');
+const userRoutes = require('./routes/admin/user.routes');
 
 // Routes - Social Domain
 const socialRoutes = require('./routes/social/social.routes');
@@ -40,6 +41,7 @@ const aiRoutes = require('./routes/workspace/ai.routes');
 const reportRoutes = require('./routes/workspace/report.routes');
 const hashtagRoutes = require('./routes/workspace/hashtag.routes');
 const adAccountRoutes = require('./routes/workspace/ad-account.routes');
+const calendarEventRoutes = require('./routes/workspace/calendar-event.routes');
 
 
 // Routes - Core Domain
@@ -86,7 +88,12 @@ app.use(cors({
 }));
 
 // ── Body parsers — limit JSON to 10MB to prevent payload DoS ──────────────
-app.use(express.json({ limit: '10mb' }));
+app.use(express.json({
+  limit: '10mb',
+  verify: (req, res, buf) => {
+    req.rawBody = buf;
+  }
+}));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use(cookieParser());
 
@@ -126,12 +133,12 @@ app.use('/api', profileRoutes);
 app.use('/api/admin/pricing', pricingRoutes);
 app.use('/api/admin/audit-logs', auditLogRoutes);
 app.use('/api/search', searchRoutes);
-app.use('/api/livestreams', (_req, res) => {
-  res.status(503).json({ message: 'Livestream feature is temporarily disabled' });
-});
+const livestreamRoutes = require('./routes/workspace/livestream.routes');
+app.use('/api/livestreams', livestreamRoutes);
 const ticketRoutes = require('./routes/workspace/ticket.routes');
 
 app.use('/api/posts', postRoutes);
+app.use('/api/calendar-events', calendarEventRoutes);
 app.use('/api/media', mediaLibraryRoutes);
 app.use('/api/media-folders', mediaFolderRoutes);
 app.use('/api/team', teamRoutes);
@@ -141,6 +148,7 @@ app.use('/api/tickets', ticketRoutes);
 app.use('/api/admin/revenue', revenueRoutes);
 app.use('/api/admin/products', productRoutes);
 app.use('/api/admin/platform-limits', platformLimitRoutes);
+app.use('/api/admin/users', userRoutes);
 app.use('/api/social', socialRoutes);
 app.use('/api/brands', brandRoutes);
 app.use('/api/brands/:brandId/roles', roleRoutes);

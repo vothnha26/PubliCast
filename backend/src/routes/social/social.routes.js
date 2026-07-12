@@ -67,6 +67,7 @@ router.post('/discord/disconnect', verifyAuth, socialConnectionController.discon
 router.post('/reassign', verifyAuth, socialConnectionController.reassignSocialAccount);
 router.get('/tiktok/published-videos', verifyAuth, tiktokController.getTikTokPublishedVideos);
 router.get('/instagram/published-posts', verifyAuth, instagramController.getInstagramPublishedPosts);
+router.get('/instagram/audio-search', verifyAuth, instagramController.searchAudio);
 router.get('/threads/published-posts', verifyAuth, threadsController.getThreadsPublishedPosts);
 
 // Real-time Metrics

@@ -1,0 +1,93 @@
+{
+  "header": {
+    "title": "SmartLinks",
+    "subtitle": "Build and customize your bio-link page to drive traffic.",
+    "newBtn": "New",
+    "cloneBtn": "Clone",
+    "deleteBtn": "Delete",
+    "resetBtn": "Reset",
+    "saveBtn": "Save"
+  },
+  "tabs": {
+    "settings": "Settings",
+    "analytics": "Analytics"
+  },
+  "subtabs": {
+    "buttons": "Buttons",
+    "media": "Media",
+    "appearance": "Appearance"
+  },
+  "general": {
+    "sectionTitle": "General",
+    "nameLabel": "Name",
+    "urlLabel": "URL",
+    "copyBtn": "Copy"
+  },
+  "buttons": {
+    "addButton": "Add Button",
+    "addSection": "Add Section",
+    "addIconTitle": "Add Icon",
+    "textLabel": "Text",
+    "urlLabel": "URL",
+    "textColorLabel": "Text",
+    "bgColorLabel": "Background",
+    "borderColorLabel": "Border",
+    "disableLabel": "Disable",
+    "cloneBtn": "Clone",
+    "iconBtn": "Icon"
+  },
+  "media": {
+    "sectionTitle": "Media",
+    "avatarLabel": "Profile Photo",
+    "uploadAvatarBtn": "Upload Photo",
+    "bioLabel": "Bio",
+    "bioPlaceholder": "Describe your brand...",
+    "noMedia": "No media yet.",
+    "addMediaBtn": "Add Media"
+  },
+  "appearance": {
+    "sectionTitle": "Themes",
+    "chooseTheme": "Choose a theme"
+  },
+  "icons": {
+    "platformLabel": "Platform",
+    "platformPlaceholder": "e.g. instagram",
+    "urlPlaceholder": "Profile URL",
+    "addBtn": "Add Icon",
+    "noIcons": "No social icons yet. Add your first one."
+  },
+  "addLink": {
+    "title": "Add New Button",
+    "titleLabel": "Button Title",
+    "titlePlaceholder": "e.g. Visit my website",
+    "urlLabel": "URL",
+    "urlPlaceholder": "https://...",
+    "addBtn": "Add",
+    "cancelBtn": "Cancel"
+  },
+  "toasts": {
+    "loadError": "Unable to load SmartLink configuration",
+    "initSuccess": "Default SmartLink page created!",
+    "initError": "Unable to automatically initialize SmartLink",
+    "saveSuccess": "SmartLinks configuration saved successfully!",
+    "saveError": "Unable to save configuration",
+    "copySuccess": "Bio-Link URL copied!",
+    "avatarUploadSuccess": "Profile photo uploaded",
+    "avatarUploadError": "Unable to upload profile photo",
+    "iconUploadSuccess": "Icon/image uploaded for link",
+    "iconUploadError": "Unable to upload icon/image for link",
+    "addLinkError": "Please enter a title and URL",
+    "addLinkSuccess": "New link added!",
+    "cloneSuccess": "SmartLink configuration cloned!",
+    "cloneLink": "Link duplicated!",
+    "deleteLink": "Link removed temporarily.",
+    "deleteMain": "Please contact admin to delete the main link.",
+    "resetSuccess": "Unsaved changes reverted.",
+    "sectionComingSoon": "Section feature coming in next version.",
+    "restoreSuccess": "Unsaved changes reverted.",
+    "driveComingSoon": "Upload image feature will be available after connecting Google Drive.",
+    "videoComingSoon": "Embed video from YouTube/Vimeo is in development.",
+    "igComingSoon": "Connect Instagram Business account to pull images automatically.",
+    "themeSelected": "Theme selected: {{name}}"
+  }
+}

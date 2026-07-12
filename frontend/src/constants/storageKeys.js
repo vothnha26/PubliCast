@@ -15,4 +15,8 @@ export const STORAGE_KEYS = {
   RESEND_TIMER_EXPIRY: 'resendTimerExpiry',
   /** Mốc thời gian hết hạn nút resend OTP (forgot password flow) */
   FORGOT_RESEND_TIMER_EXPIRY: 'forgotResendTimerExpiry',
+  /** Theme mode (light / dark) */
+  THEME: 'publicast-theme',
+  /** UI language preference (en / vi) */
+  LANGUAGE: 'publicast-language',
 };

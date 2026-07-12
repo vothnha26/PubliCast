@@ -3,10 +3,13 @@ import { BrowserRouter } from "react-router-dom";
 import App from "./App";
 import { AppInitializer } from "./components/AppInitializer";
 import { Toaster } from "sonner";
+import { ThemeProvider } from "./context/ThemeContext";
+import { LanguageProvider } from "./context/LanguageContext";
+import "./i18n";
 import "./index.css";
-import { logger } from "@/utils/logger";
+import { logger } from "./utils/logger";
 
-// Override console toàn cục để kiểm soát log môi trường production
+// Override console globally to control log output in production
 window.console.error = logger.error;
 window.console.warn = logger.warn;
 window.console.log = logger.info;
@@ -15,8 +18,12 @@ window.console.debug = logger.debug;
 
 createRoot(document.getElementById("root")).render(
   <BrowserRouter>
-    <AppInitializer />
-    <App />
-    <Toaster position="top-right" richColors />
+    <ThemeProvider>
+      <LanguageProvider>
+        <AppInitializer />
+        <App />
+        <Toaster position="top-right" richColors />
+      </LanguageProvider>
+    </ThemeProvider>
   </BrowserRouter>
 );

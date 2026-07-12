@@ -9,8 +9,8 @@ import { PLATFORM_CONFIGS } from "../constants/platformRegistry";
 import { POST_STATUS, PUBLISH_MODE, PUBLISH_MODE_TO_STATUS, STATUS_TO_PUBLISH_MODE } from "../constants/postStatus";
 import { POST_TYPE, YOUTUBE_TYPE, FACEBOOK_TYPE, INSTAGRAM_TYPE, TIKTOK_PRIVACY, APPROVAL_POLICY, YOUTUBE_DEFAULT_CATEGORY_ID } from "../constants/postTypes";
 import { buildMediaUrl, isVideoPath } from "../utils/url";
-import { validatePostForm } from "@/utils/postValidation";
-import { logger } from "@/utils/logger";
+import { validatePostForm } from "../utils/postValidation";
+import { logger } from "../utils/logger";
 import postService from "../services/post.service";
 
 const toLocalDatetimeString = (dateInput) => {
@@ -28,7 +28,8 @@ const toLocalDatetimeString = (dateInput) => {
 export function usePostCreatorForm() {
   const { 
     isOpen, 
-    closePostCreator, 
+    closePostCreator,
+    closePostCreatorTemporarily,
     editingPost, 
     templatePost,
     defaultScheduledAt,
@@ -44,7 +45,10 @@ export function usePostCreatorForm() {
     albumMedia,
     setAlbumMedia,
     postMedia,
-    setPostMedia
+    setPostMedia,
+    backupFormState,
+    restoreFormState,
+    openPostCreator
   } = usePostCreator();
   
   const [caption, setCaption] = useState("");
@@ -71,6 +75,9 @@ export function usePostCreatorForm() {
   // Instagram Dropdown / Mode State
   const [instagramType, setInstagramType] = useState(INSTAGRAM_TYPE.POST);
   const [showInstagramTypeMenu, setShowInstagramTypeMenu] = useState(false);
+  const [instagramCollaborators, setInstagramCollaborators] = useState([]);
+  const [instagramAudio, setInstagramAudio] = useState(null);
+  const [instagramShowOnFeed, setInstagramShowOnFeed] = useState(true);
   const [tiktokPrivacy, setTiktokPrivacy] = useState(TIKTOK_PRIVACY.PUBLIC);
   const [tiktokAllowComments, setTiktokAllowComments] = useState(true);
   const [tiktokAllowDuet, setTiktokAllowDuet] = useState(true);
@@ -116,6 +123,140 @@ export function usePostCreatorForm() {
   const [requesterNote, setRequesterNote] = useState("Vui lòng phê duyệt bài viết này.");
   const [notes, setNotes] = useState([]);
   const [isLoadingReviewers, setIsLoadingReviewers] = useState(false);
+  const [videoSettings, setVideoSettings] = useState(null);
+
+  useEffect(() => {
+    const backup = restoreFormState();
+    if (backup) {
+      setCaption(backup.caption ?? "");
+      setTitle(backup.title ?? "");
+      setAltText(backup.altText ?? "");
+      setSelectedPlatforms(backup.selectedPlatforms ?? [DEFAULT_PLATFORM]);
+      setActivePlatform(backup.activePlatform ?? DEFAULT_PLATFORM);
+      setScheduledDate(backup.scheduledDate ?? "");
+      setIsLibrary(backup.isLibrary ?? false);
+      setGlobalOpen(backup.globalOpen ?? false);
+      setYoutubeOpen(backup.youtubeOpen ?? false);
+      setFacebookOpen(backup.facebookOpen ?? false);
+      setTiktokOpen(backup.tiktokOpen ?? false);
+      setInstagramOpen(backup.instagramOpen ?? false);
+      setInstagramType(backup.instagramType ?? INSTAGRAM_TYPE.POST);
+      setInstagramCollaborators(backup.instagramCollaborators ?? []);
+      setInstagramAudio(backup.instagramAudio ?? null);
+      setInstagramShowOnFeed(backup.instagramShowOnFeed ?? true);
+      setTiktokPrivacy(backup.tiktokPrivacy ?? TIKTOK_PRIVACY.PUBLIC);
+      setTiktokAllowComments(backup.tiktokAllowComments ?? true);
+      setTiktokAllowDuet(backup.tiktokAllowDuet ?? true);
+      setTiktokAllowStitch(backup.tiktokAllowStitch ?? true);
+      setTiktokAiGenerated(backup.tiktokAiGenerated ?? false);
+      setTiktokCommercialContent(backup.tiktokCommercialContent ?? false);
+      setSelectedDiscordChannels(backup.selectedDiscordChannels ?? []);
+      setDiscordOpen(backup.discordOpen ?? false);
+      setYoutubeType(backup.youtubeType ?? YOUTUBE_TYPE.VIDEO);
+      setFacebookType(backup.facebookType ?? FACEBOOK_TYPE.POST);
+      setFacebookTitle(backup.facebookTitle ?? "");
+      setYoutubeTitle(backup.youtubeTitle ?? "");
+      setYoutubeMadeForKids(backup.youtubeMadeForKids ?? false);
+      setYoutubePrivacy(backup.youtubePrivacy ?? "public");
+      setYoutubeCategory(backup.youtubeCategory ?? YOUTUBE_DEFAULT_CATEGORY_ID);
+      setYoutubePlaylistId(backup.youtubePlaylistId ?? "");
+      setYoutubeTags(backup.youtubeTags ?? "");
+      setYoutubeFirstComment(backup.youtubeFirstComment ?? "");
+      setGlobalFirstComment(backup.globalFirstComment ?? "");
+      setYoutubeThumbnail(backup.youtubeThumbnail ?? "");
+      setThreadsWhoCanReply(backup.threadsWhoCanReply ?? "everyone");
+      setSelectedReviewerId(backup.selectedReviewerId ?? "");
+      setSelectedReviewerIds(backup.selectedReviewerIds ?? []);
+      setApprovalPolicy(backup.approvalPolicy ?? APPROVAL_POLICY.AT_LEAST_ONE);
+      setRequesterNote(backup.requesterNote ?? "");
+      setNotes(backup.notes ?? []);
+      const currentStoreState = usePostCreator.getState();
+
+      let updatedPostMedia = backup.postMedia || [];
+      if (currentStoreState.videoFileUrl && backup.videoFileUrl && currentStoreState.videoFileUrl !== backup.videoFileUrl) {
+        updatedPostMedia = updatedPostMedia.map(item => {
+          if (item.path === backup.uploadedVideoPath || item.previewUrl === backup.videoFileUrl) {
+            return {
+              ...item,
+              previewUrl: currentStoreState.videoFileUrl,
+              path: currentStoreState.uploadedVideoPath || currentStoreState.videoFileUrl
+            };
+          }
+          return item;
+        });
+      }
+
+      setVideoSettings(currentStoreState.videoSettings || backup.videoSettings || null);
+      
+      // Mở lại popup PostCreator
+      openPostCreator({
+        post: backup.editingPost,
+        template: backup.templatePost,
+        defaultScheduledAt: backup.defaultScheduledAt,
+        isLibrary: backup.isLibrary,
+        defaultVideoUrl: currentStoreState.videoFileUrl || backup.videoFileUrl,
+        defaultVideoPath: currentStoreState.uploadedVideoPath || backup.uploadedVideoPath,
+        isUploadingVideo: backup.isUploadingVideo,
+        videoSettings: currentStoreState.videoSettings || backup.videoSettings || null,
+        postMedia: updatedPostMedia,
+        albumMedia: backup.albumMedia
+      });
+    }
+  }, []);
+
+  const getBackupPayload = () => {
+    return {
+      caption,
+      title,
+      altText,
+      selectedPlatforms,
+      activePlatform,
+      scheduledDate,
+      isLibrary,
+      globalOpen,
+      youtubeOpen,
+      facebookOpen,
+      tiktokOpen,
+      instagramOpen,
+      instagramType,
+      instagramCollaborators,
+      instagramAudio,
+      instagramShowOnFeed,
+      tiktokPrivacy,
+      tiktokAllowComments,
+      tiktokAllowDuet,
+      tiktokAllowStitch,
+      tiktokAiGenerated,
+      tiktokCommercialContent,
+      selectedDiscordChannels,
+      discordOpen,
+      youtubeType,
+      facebookType,
+      facebookTitle,
+      youtubeTitle,
+      youtubeMadeForKids,
+      youtubePrivacy,
+      youtubeCategory,
+      youtubePlaylistId,
+      youtubeTags,
+      youtubeFirstComment,
+      globalFirstComment,
+      youtubeThumbnail,
+      threadsWhoCanReply,
+      selectedReviewerId,
+      selectedReviewerIds,
+      approvalPolicy,
+      requesterNote,
+      notes,
+      videoSettings,
+      editingPost,
+      templatePost,
+      defaultScheduledAt,
+      videoFileUrl,
+      uploadedVideoPath,
+      isUploadingVideo
+    };
+  };
 
   useEffect(() => {
     const fetchReviewers = async () => {
@@ -205,13 +346,31 @@ export function usePostCreatorForm() {
     });
   };
 
+  const connectedPlatforms = activeBrand?.socialAccounts
+    ?.filter(sa => sa.isConnected)
+    ?.map(sa => {
+      const mapping = {
+        FACEBOOK: "facebook",
+        INSTAGRAM: "instagram",
+        YOUTUBE: "youtube",
+        TIKTOK: "tiktok",
+        LINKEDIN: "linkedin",
+        TELEGRAM: "telegram",
+        DISCORD: "discord",
+        THREADS: "threads"
+      };
+      return mapping[sa.platform];
+    })
+    ?.filter(Boolean) || [];
+
   const getValidationErrors = () => {
     const isAlbum = selectedPlatforms.includes('facebook') && activePlatform === 'facebook' && facebookType === 'album';
+    const activeSelectedPlatforms = selectedPlatforms.filter(p => connectedPlatforms.includes(p));
     return validatePostForm({
       isLibrary,
       selectedPublishId,
       scheduledDate,
-      selectedPlatforms,
+      selectedPlatforms: activeSelectedPlatforms,
       facebookType,
       youtubeType,
       instagramType,
@@ -222,7 +381,9 @@ export function usePostCreatorForm() {
       videoHeight,
       uploadedVideoPath,
       platformLimits,
-      mediaCount: isAlbum ? albumMedia.length : (postMedia ? postMedia.length : 0)
+      mediaCount: isAlbum ? albumMedia.length : (postMedia ? postMedia.length : 0),
+      editingPost,
+      postMedia
     });
   };
 
@@ -374,6 +535,7 @@ export function usePostCreatorForm() {
         setYoutubeThumbnail(opts.youtubeThumbnail || "");
         setThreadsWhoCanReply(opts.threadsWhoCanReply || "everyone");
         setNotes(opts.notes || []);
+        setVideoSettings(opts.videoSettings || null);
 
         // Setup Facebook
         setFacebookType(opts.facebookType || "post");
@@ -381,6 +543,9 @@ export function usePostCreatorForm() {
 
         // Setup Instagram
         setInstagramType(opts.instagramType || "post");
+        setInstagramCollaborators(opts.instagramCollaborators || []);
+        setInstagramAudio(opts.instagramAudio || null);
+        setInstagramShowOnFeed(opts.instagramShowOnFeed !== undefined ? opts.instagramShowOnFeed : true);
 
         // Setup TikTok
         setTiktokPrivacy(opts.tiktokPrivacy || "public");
@@ -432,6 +597,7 @@ export function usePostCreatorForm() {
         setYoutubeThumbnail(opts.youtubeThumbnail || "");
         setThreadsWhoCanReply(opts.threadsWhoCanReply || "everyone");
         setNotes(opts.notes || []);
+        setVideoSettings(opts.videoSettings || null);
 
         // Setup Facebook
         setFacebookType(opts.facebookType || "post");
@@ -439,6 +605,9 @@ export function usePostCreatorForm() {
 
         // Setup Instagram
         setInstagramType(opts.instagramType || "post");
+        setInstagramCollaborators(opts.instagramCollaborators || []);
+        setInstagramAudio(opts.instagramAudio || null);
+        setInstagramShowOnFeed(opts.instagramShowOnFeed !== undefined ? opts.instagramShowOnFeed : true);
 
         // Setup TikTok
         setTiktokPrivacy(opts.tiktokPrivacy || "public");
@@ -506,9 +675,13 @@ export function usePostCreatorForm() {
         setFacebookTitle("");
         setAltText("");
         setAlbumMedia([]);
+        setVideoSettings(null);
 
         // Reset Instagram
         setInstagramType(INSTAGRAM_TYPE.POST);
+        setInstagramCollaborators([]);
+        setInstagramAudio(null);
+        setInstagramShowOnFeed(true);
 
         // Reset TikTok
         setTiktokPrivacy(TIKTOK_PRIVACY.PUBLIC);
@@ -550,6 +723,9 @@ export function usePostCreatorForm() {
 
     // Setup Instagram
     setInstagramType(opts.instagramType || "post");
+    setInstagramCollaborators(opts.instagramCollaborators || []);
+    setInstagramAudio(opts.instagramAudio || null);
+    setInstagramShowOnFeed(opts.instagramShowOnFeed !== undefined ? opts.instagramShowOnFeed : true);
 
     // Setup TikTok
     setTiktokPrivacy(opts.tiktokPrivacy || "public");
@@ -581,7 +757,7 @@ export function usePostCreatorForm() {
 
     const errors = getValidationErrors();
     if (errors.length > 0) {
-      console.warn("Validation errors detected in PostCreator Form:", errors);
+      console.warn("Validation errors detected in PostCreator Form:", JSON.stringify(errors));
       toast.error("Please resolve the validation errors first");
       return;
     }
@@ -619,13 +795,13 @@ export function usePostCreatorForm() {
 
       const payload = {
         brandId: activeBrand.id,
-        title: title || (activePlatform === 'facebook' && facebookType === 'reel' ? facebookTitle : youtubeTitle) || (caption ? caption.substring(0, 50) : "New Post"),
+        title: title || (activePlatform === 'facebook' && facebookType === 'reel' ? facebookTitle : youtubeTitle) || (caption ? Array.from(caption).slice(0, 50).join('') : "New Post"),
         caption,
         type: postType,
         status,
         isLibrary,
         altText,
-        targetPlatforms: selectedPlatforms.map(p => p.toUpperCase()),
+        targetPlatforms: selectedPlatforms.filter(p => connectedPlatforms.includes(p)).map(p => p.toUpperCase()),
         scheduledAt: ['schedule', 'review'].includes(selectedPublishId) ? (scheduledDate ? new Date(scheduledDate).toISOString() : null) : null,
         mediaUrls: postMediaUrls,
         reviewerIds: selectedReviewerIds,
@@ -644,6 +820,9 @@ export function usePostCreatorForm() {
           facebookType,
           facebookTitle,
           instagramType,
+          instagramCollaborators,
+          instagramAudio,
+          instagramShowOnFeed,
           tiktokPrivacy,
           tiktokAllowComments,
           tiktokAllowDuet,
@@ -654,17 +833,18 @@ export function usePostCreatorForm() {
           albumMedia,
           mediaCaptions,
           threadsWhoCanReply,
-          notes
+          notes,
+          videoSettings
         }
       };
 
       if (editingPost) {
-        await apiService.put(`/posts/${editingPost.id}`, payload);
+        await apiService.put(`/posts/${editingPost.id}`, payload, { timeout: 60000 });
         toast.success("Post updated successfully");
         // Đóng form ngay sau khi cập nhật thành công để tránh user vô tình tạo thêm bài mới
         closePostCreator();
       } else {
-        await apiService.post('/posts', payload);
+        await apiService.post('/posts', payload, { timeout: 60000 });
         toast.success("Post created successfully");
         // Reset state sau khi tạo bài mới thành công
         setSelectedPlatforms([DEFAULT_PLATFORM]);
@@ -681,8 +861,12 @@ export function usePostCreatorForm() {
         setFacebookTitle("");
         setFacebookType(FACEBOOK_TYPE.POST);
         setInstagramType(INSTAGRAM_TYPE.POST);
+        setInstagramCollaborators([]);
+        setInstagramAudio(null);
+        setInstagramShowOnFeed(true);
         setAltText("");
         setNotes([]);
+        setVideoSettings(null);
         setTiktokPrivacy(TIKTOK_PRIVACY.PUBLIC);
         setTiktokAllowComments(true);
         setTiktokAllowDuet(true);
@@ -801,6 +985,12 @@ export function usePostCreatorForm() {
     setInstagramType,
     showInstagramTypeMenu,
     setShowInstagramTypeMenu,
+    instagramCollaborators,
+    setInstagramCollaborators,
+    instagramAudio,
+    setInstagramAudio,
+    instagramShowOnFeed,
+    setInstagramShowOnFeed,
     getValidationErrors,
     altText,
     setAltText,
@@ -843,6 +1033,11 @@ export function usePostCreatorForm() {
     threadsWhoCanReply,
     setThreadsWhoCanReply,
     notes,
-    setNotes
+    setNotes,
+    videoSettings,
+    setVideoSettings,
+    getBackupPayload,
+    backupFormState,
+    closePostCreatorTemporarily
   };
 }

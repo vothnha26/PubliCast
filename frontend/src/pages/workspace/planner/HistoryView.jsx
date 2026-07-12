@@ -2,15 +2,19 @@ import * as React from "react";
 import { useState, useEffect } from "react";
 import { 
   Trash2, RefreshCw, Search, Filter, 
-  MoreHorizontal, Eye, Youtube, PlayCircle, Loader2, Facebook
+  MoreHorizontal, Eye, Loader2
 } from "lucide-react";
+import { PlatformIcon } from "@/components/shared/PlatformIcon";
+import { PostMediaThumbnail } from "@/components/shared/PostMediaThumbnail";
 import postService from "../../../services/post.service";
 import { useBrand } from "../../../context/BrandContext";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { useConfirm } from "@/hooks/useConfirm";
+import { useTranslation } from "react-i18next";
 
 export function HistoryView() {
+  const { t } = useTranslation("planner");
   const confirm = useConfirm();
   const [posts, setPosts] = useState([]);
   const [selected, setSelected] = useState([]);
@@ -29,7 +33,7 @@ export function HistoryView() {
       setPosts(res.data || []);
       setSelected([]);
     } catch (e) {
-      toast.error("Failed to load deleted posts");
+      toast.error(t("historyView.toasts.loadFail"));
     } finally {
       setLoading(false);
     }
@@ -46,10 +50,10 @@ export function HistoryView() {
   const handleRestore = async (id) => {
     try {
       await postService.restorePosts(activeBrand.id, [id]);
-      toast.success("Post restored successfully");
+      toast.success(t("historyView.toasts.restoreSuccess"));
       fetchDeletedPosts();
     } catch (e) {
-      toast.error("Failed to restore post");
+      toast.error(t("historyView.toasts.restoreFail"));
     }
   };
 
@@ -57,42 +61,42 @@ export function HistoryView() {
     if (!activeBrand || selected.length === 0) return;
     try {
       await postService.restorePosts(activeBrand.id, selected);
-      toast.success("Selected posts restored successfully");
+      toast.success(t("historyView.toasts.bulkRestoreSuccess"));
       setSelected([]);
       fetchDeletedPosts();
     } catch (e) {
-      toast.error("Failed to restore selected posts");
+      toast.error(t("historyView.toasts.bulkRestoreFail"));
     }
   };
 
   const handleEmptyTrash = async () => {
     const isConfirmed = await confirm({
-      title: "Empty Trash?",
-      description: "Are you sure you want to permanently delete all posts in trash? This cannot be undone.",
-      confirmText: "Empty Trash",
-      cancelText: "Cancel",
+      title: t("historyView.confirm.emptyTrashTitle"),
+      description: t("historyView.confirm.emptyTrashDesc"),
+      confirmText: t("historyView.confirm.emptyTrashConfirm"),
+      cancelText: t("historyView.confirm.emptyTrashCancel"),
       variant: "destructive"
     });
     if (!isConfirmed) return;
     try {
       await postService.emptyTrash(activeBrand.id);
-      toast.success("Trash emptied");
+      toast.success(t("historyView.toasts.emptyTrashSuccess"));
       fetchDeletedPosts();
     } catch (e) {
-      toast.error("Failed to empty trash");
+      toast.error(t("historyView.toasts.emptyTrashFail"));
     }
   };
 
   return (
-    <div className="flex-1 flex flex-col p-6 space-y-6">
+    <div className="flex-1 flex flex-col p-6 space-y-6 overflow-y-auto">
       <div className="flex items-center justify-between">
-         <h2 className="text-xl font-bold text-[#0A0A0A]">Deleted Posts</h2>
+         <h2 className="text-xl font-bold text-[#0A0A0A]">{t("historyView.title")}</h2>
          <div className="flex items-center gap-4 flex-1 max-w-md ml-8">
             <div className="relative flex-1 group">
                <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-300" />
                <input 
                  type="text" 
-                 placeholder="Search deleted posts..." 
+                 placeholder={t("historyView.searchPlaceholder")} 
                  value={searchTerm}
                  onChange={(e) => setSearchTerm(e.target.value)}
                  className="w-full bg-white border border-gray-200 rounded-xl py-2 pl-10 pr-4 text-xs focus:outline-none focus:ring-2 focus:ring-red-500/20 transition-all" 
@@ -102,12 +106,12 @@ export function HistoryView() {
          <div className="flex items-center gap-3">
             {selected.length > 0 && (
                <div className="flex items-center gap-2 animate-in slide-in-from-right-4 duration-300">
-                  <span className="text-xs font-bold text-gray-400 uppercase tracking-widest mr-2">{selected.length} selected</span>
+                  <span className="text-xs font-bold text-gray-400 uppercase tracking-widest mr-2">{selected.length} {t("historyView.selected", { count: selected.length }).replace(selected.length.toString() + ' ', '')}</span>
                   <button 
                     onClick={handleBulkRestore}
                     className="px-4 py-2 bg-white border border-gray-200 rounded-xl text-[11px] font-bold text-green-600 hover:bg-green-50 transition-all flex items-center gap-1.5 cursor-pointer shadow-sm"
                   >
-                    <RefreshCw size={14} /> Restore
+                    <RefreshCw size={14} /> {t("historyView.restoreSelected")}
                   </button>
                </div>
             )}
@@ -116,7 +120,7 @@ export function HistoryView() {
               onClick={handleEmptyTrash}
               className="text-xs font-bold text-red-500 hover:text-red-700 uppercase tracking-widest transition-colors cursor-pointer"
             >
-              Empty Trash
+              {t("historyView.emptyTrash")}
             </button>
          </div>
       </div>
@@ -136,10 +140,10 @@ export function HistoryView() {
                           readOnly
                         />
                      </th>
-                     <th className="px-4 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-[0.1em]">Post</th>
-                     <th className="px-4 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-[0.1em]">Platform</th>
-                     <th className="px-4 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-[0.1em]">Deleted At</th>
-                     <th className="px-4 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-[0.1em]">Author</th>
+                     <th className="px-4 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-[0.1em]">{t("historyView.colPost")}</th>
+                     <th className="px-4 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-[0.1em]">{t("historyView.colPlatform")}</th>
+                     <th className="px-4 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-[0.1em]">{t("historyView.colDeletedAt")}</th>
+                     <th className="px-4 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-[0.1em]">{t("historyView.colAuthor")}</th>
                      <th className="px-6 py-4 text-right"></th>
                   </tr>
                </thead>
@@ -172,8 +176,8 @@ export function HistoryView() {
                <div className="w-16 h-16 bg-gray-50 rounded-2xl flex items-center justify-center text-gray-300 mb-4">
                   <Trash2 size={32} />
                </div>
-               <h3 className="text-sm font-bold text-gray-900">Trash is empty</h3>
-               <p className="text-xs text-gray-400 mt-1 max-w-[250px]">Deleted posts will appear here for 30 days before being permanently removed.</p>
+               <h3 className="text-sm font-bold text-gray-900">{t("historyView.trashEmpty")}</h3>
+               <p className="text-xs text-gray-400 mt-1 max-w-[250px]">{t("historyView.trashEmptyDesc")}</p>
             </div>
          ) : (
             <table className="w-full text-left">
@@ -188,10 +192,10 @@ export function HistoryView() {
                           onChange={(e) => setSelected(e.target.checked ? posts.map(p => p.id) : [])}
                         />
                      </th>
-                     <th className="px-4 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-[0.1em]">Post</th>
-                     <th className="px-4 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-[0.1em]">Platform</th>
-                     <th className="px-4 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-[0.1em]">Deleted At</th>
-                     <th className="px-4 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-[0.1em]">Author</th>
+                     <th className="px-4 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-[0.1em]">{t("historyView.colPost")}</th>
+                     <th className="px-4 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-[0.1em]">{t("historyView.colPlatform")}</th>
+                     <th className="px-4 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-[0.1em]">{t("historyView.colDeletedAt")}</th>
+                     <th className="px-4 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-[0.1em]">{t("historyView.colAuthor")}</th>
                      <th className="px-6 py-4 text-right"></th>
                   </tr>
                </thead>
@@ -208,12 +212,12 @@ export function HistoryView() {
                        </td>
                        <td className="px-4 py-5">
                           <div className="flex items-center gap-4">
-                             <div className="w-12 h-12 bg-gray-100 rounded-xl overflow-hidden shrink-0 border border-gray-100 grayscale opacity-50 relative shadow-sm">
-                                {post.thumbnail ? (
-                                  <img src={post.thumbnail} className="w-full h-full object-cover" />
-                                ) : (
-                                  <div className="w-full h-full flex items-center justify-center text-lg">📝</div>
-                                )}
+                             <div className="w-12 h-12 rounded-xl overflow-hidden shrink-0 border border-gray-100 grayscale opacity-50 relative shadow-sm">
+                                <PostMediaThumbnail 
+                                  thumbnail={post.thumbnail}
+                                  mediaUrls={post.mediaUrls}
+                                  className="w-full h-full"
+                                />
                              </div>
                              <div className="flex flex-col min-w-0">
                                 <span className="text-[13px] font-bold text-gray-400 line-through truncate max-w-[250px]">{post.title}</span>
@@ -223,14 +227,8 @@ export function HistoryView() {
                        <td className="px-4 py-5">
                           <div className="flex items-center gap-1.5 opacity-40">
                              {post.platforms.map(plt => (
-                               <div key={plt} className="flex items-center gap-1 bg-gray-50 px-2 py-1 rounded-lg border border-gray-100">
-                                  {plt === "YOUTUBE" ? (
-                                    <Youtube size={12} className="text-[#FF0000]" />
-                                  ) : plt === "FACEBOOK" ? (
-                                    <Facebook size={12} className="text-[#1877F2] fill-[#1877F2]" />
-                                  ) : (
-                                    <PlayCircle size={12} />
-                                  )}
+                               <div key={plt} className="flex items-center gap-1 bg-gray-50 px-2 py-1 rounded-lg border border-gray-100 shadow-sm">
+                                  <PlatformIcon platform={plt} size={12} />
                                   <span className="text-[9px] font-black uppercase tracking-tighter text-gray-600">{plt}</span>
                                 </div>
                              ))}
@@ -250,7 +248,7 @@ export function HistoryView() {
                                 onClick={() => handleRestore(post.id)}
                                 className="px-4 py-1.5 bg-white border border-gray-200 rounded-xl text-[10px] font-bold text-gray-700 hover:bg-black hover:text-white hover:border-black transition-all cursor-pointer shadow-sm"
                              >
-                               Restore
+                              {t("historyView.restoreBtn")}
                              </button>
                           </div>
                        </td>

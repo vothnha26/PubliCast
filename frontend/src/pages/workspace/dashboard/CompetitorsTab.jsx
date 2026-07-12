@@ -35,7 +35,8 @@ export function CompetitorsTab({
   handleAddCompetitor,
   handleDeleteCompetitor,
   isCompetitorLoading,
-  competitors
+  competitors,
+  isPlatformLocked = false
 }) {
   const confirm = useConfirm();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -86,7 +87,10 @@ export function CompetitorsTab({
         
         <Dialog open={isCompetitorModalOpen} onOpenChange={setIsCompetitorModalOpen}>
           <DialogTrigger asChild>
-            <button className="flex items-center gap-2 px-4 py-2 bg-[#0A0A0A] text-white rounded-xl text-[10px] font-bold hover:bg-black/90 transition-all shadow-md cursor-pointer">
+            <button 
+              disabled={isPlatformLocked}
+              className="flex items-center gap-2 px-4 py-2 bg-[#0A0A0A] text-white rounded-xl text-[10px] font-bold hover:bg-black/90 transition-all shadow-md cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+            >
               ADD COMPETITOR
             </button>
           </DialogTrigger>
@@ -193,18 +197,17 @@ export function CompetitorsTab({
                       <td className="px-6 py-4 text-[10px] font-medium text-gray-400">{new Date(comp.addedAt).toLocaleDateString()}</td>
                       <td className="px-6 py-4 text-right sticky right-0 bg-white z-10 border-l border-gray-100/50 shadow-[-10px_0_10px_-10px_rgba(0,0,0,0.05)]">
                         <div className="flex items-center justify-end gap-2">
-                          {/* Nút Star yêu thích */}
                           <button 
-                            onClick={() => toggleFavorite(comp.id)}
-                            className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer"
-                          >
+                             onClick={() => !isPlatformLocked && toggleFavorite(comp.id)}
+                             disabled={isPlatformLocked}
+                             className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                           >
                             <Star 
                               size={16} 
                               className={favorites[comp.id] ? "fill-yellow-400 stroke-yellow-400" : "text-gray-300 hover:text-yellow-400"} 
                             />
                           </button>
                           
-                          {/* Nút 3 chấm hành động bằng DropdownMenu Portal để tránh overflow clip */}
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
                               <button className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer border-none bg-transparent focus:outline-none">
@@ -231,20 +234,22 @@ export function CompetitorsTab({
                               </DropdownMenuItem>
                               <DropdownMenuSeparator className="bg-gray-100 my-1" />
                               <DropdownMenuItem 
-                                onClick={async () => {
-                                  const isConfirmed = await confirm({
-                                    title: "Delete Competitor?",
-                                    description: "Are you sure you want to delete this competitor?",
-                                    confirmText: "Delete",
-                                    cancelText: "Cancel",
-                                    variant: "destructive"
-                                  });
-                                  if (isConfirmed) {
-                                    handleDeleteCompetitor(comp.id);
-                                  }
-                                }}
-                                className="px-4 py-2 flex items-center gap-2.5 text-xs text-red-600 hover:bg-red-50 font-medium cursor-pointer border-none outline-none focus:outline-none"
-                              >
+                                 disabled={isPlatformLocked}
+                                 onClick={async () => {
+                                   if (isPlatformLocked) return;
+                                   const isConfirmed = await confirm({
+                                     title: "Delete Competitor?",
+                                     description: "Are you sure you want to delete this competitor?",
+                                     confirmText: "Delete",
+                                     cancelText: "Cancel",
+                                     variant: "destructive"
+                                   });
+                                   if (isConfirmed) {
+                                     handleDeleteCompetitor(comp.id);
+                                   }
+                                 }}
+                                 className="px-4 py-2 flex items-center gap-2.5 text-xs text-red-600 hover:bg-red-50 font-medium cursor-pointer border-none outline-none focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed"
+                               >
                                 <Trash2 size={14} className="text-red-400" /> Delete competitor
                               </DropdownMenuItem>
                             </DropdownMenuContent>

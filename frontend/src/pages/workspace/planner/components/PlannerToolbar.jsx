@@ -3,16 +3,28 @@ import {
   Search, ChevronLeft, ChevronRight, Filter, 
   MoreVertical, Plus, Image, Calendar as CalendarIcon,
   ChevronDown, Youtube, ZoomIn, Layers, Upload, Download,
-  Eye, Settings, Check, Instagram, PlayCircle
+  Eye, Settings, Check, Instagram, PlayCircle, X, RefreshCw
 } from 'lucide-react';
+import { DataIntegrationWizard } from './DataIntegrationWizard';
 import { DatePickerPopover } from './DatePickerPopover';
 import { toast } from 'sonner';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { format } from 'date-fns';
 import postService from '../../../../services/post.service';
+import apiService from '../../../../services/api';
 import { buildMediaUrl } from '@/utils/url';
+import { PostMediaThumbnail } from '@/components/shared/PostMediaThumbnail';
 import { AccessGuard } from '../../../../components/shared/AccessGuard';
 import { PlatformIcon } from '../../../../components/shared/PlatformIcon';
+import { useTranslation } from 'react-i18next';
+import {
+  PUBLICAST_CSV_HEADERS,
+  csvCell,
+  parseCSVRow,
+  detectCSVFormat,
+  mapMetricoolRow,
+  mapPublicastRow
+} from '@/utils/csvHelper';
 
 const PLATFORM_DETAILS = {
   INSTAGRAM: {
@@ -93,8 +105,10 @@ export function PlannerToolbar({
   bestTimePlatform = 'INSTAGRAM',
   onBestTimePlatformChange,
   calendarViewMode = 'WEEK',
-  onCalendarViewModeChange
+  onCalendarViewModeChange,
+  onImportIcsClick
 }) {
+  const { t } = useTranslation(['planner', 'common']);
   const navigate = useNavigate();
   const location = useLocation();
   
@@ -104,122 +118,7 @@ export function PlannerToolbar({
   const [isFilterMenuOpen, setIsFilterMenuOpen] = useState(false);
   const [isBestTimesOpen, setIsBestTimesOpen] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
-  const fileInputRef = React.useRef(null);
-
-  const handleExportCSV = () => {
-    if (!postData || postData.length === 0) {
-      toast.error("No posts to export!");
-      return;
-    }
-    const headers = ["Title", "Caption", "ScheduledAt", "Platforms", "Status"];
-    const csvRows = [
-      headers.join(","),
-      ...postData.map(post => {
-        const title = `"${(post.title || '').replace(/"/g, '""')}"`;
-        const caption = `"${(post.caption || '').replace(/"/g, '""')}"`;
-        const scheduledAt = post.scheduledAt || post.createdAt || '';
-        const platforms = `"${(post.platforms || []).join(';')}"`;
-        const status = post.status || '';
-        return [title, caption, scheduledAt, platforms, status].join(",");
-      })
-    ];
-    const csvContent = "\ufeff" + csvRows.join("\n");
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.setAttribute("href", url);
-    link.setAttribute("download", `publicast_planner_export_${new Date().toISOString().split('T')[0]}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    toast.success("CSV exported successfully!");
-    setIsMoreMenuOpen(false);
-  };
-
-  const handleImportCSV = (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-    if (!activeBrand) {
-      toast.error("No active brand selected.");
-      return;
-    }
-
-    const reader = new FileReader();
-    reader.onload = async (event) => {
-      try {
-        const text = event.target.result;
-        const lines = text.split('\n').map(line => line.trim()).filter(Boolean);
-        if (lines.length <= 1) {
-          toast.error("CSV file is empty or only contains headers.");
-          return;
-        }
-
-        const headers = lines[0].split(',').map(h => h.trim().replace(/^["']|["']$/g, '').toLowerCase());
-        const titleIdx = headers.findIndex(h => h === 'title');
-        const captionIdx = headers.findIndex(h => h === 'caption');
-        const scheduledAtIdx = headers.findIndex(h => h === 'scheduledat' || h === 'date');
-        const platformsIdx = headers.findIndex(h => h === 'platforms' || h === 'platform');
-
-        if (titleIdx === -1) {
-          toast.error("CSV must contain a 'Title' column.");
-          return;
-        }
-
-        toast.info("Importing posts from CSV...");
-        let successCount = 0;
-
-        for (let i = 1; i < lines.length; i++) {
-          const row = parseCSVRow(lines[i]);
-          if (row.length === 0) continue;
-
-          const title = row[titleIdx] || 'Imported Post';
-          const caption = captionIdx !== -1 ? row[captionIdx] : '';
-          const scheduledAtStr = scheduledAtIdx !== -1 ? row[scheduledAtIdx] : '';
-          const platformsStr = platformsIdx !== -1 ? row[platformsIdx] : 'YOUTUBE';
-
-          const platforms = platformsStr.split(';').map(p => p.trim().toUpperCase());
-          const scheduledAt = scheduledAtStr ? new Date(scheduledAtStr) : new Date();
-
-          await postService.createPost({
-            brandId: activeBrand.id,
-            title,
-            caption,
-            platforms,
-            scheduledAt: scheduledAt.toISOString(),
-            status: 'draft'
-          });
-          successCount++;
-        }
-
-        toast.success(`Successfully imported ${successCount} posts from CSV!`);
-        if (fetchPosts) fetchPosts();
-      } catch (err) {
-        console.error(err);
-        toast.error("Failed to parse or import CSV file.");
-      }
-    };
-    reader.readAsText(file);
-    setIsMoreMenuOpen(false);
-  };
-
-  const parseCSVRow = (text) => {
-    const result = [];
-    let current = '';
-    let inQuotes = false;
-    for (let i = 0; i < text.length; i++) {
-      const char = text[i];
-      if (char === '"') {
-        inQuotes = !inQuotes;
-      } else if (char === ',' && !inQuotes) {
-        result.push(current.trim().replace(/^["']|["']$/g, ''));
-        current = '';
-      } else {
-        current += char;
-      }
-    }
-    result.push(current.trim().replace(/^["']|["']$/g, ''));
-    return result;
-  };
+  const [isWizardOpen, setIsWizardOpen] = useState(false);
 
   const togglePlatform = (platform) => {
     if (!onVisiblePlatformsChange) return;
@@ -235,11 +134,13 @@ export function PlannerToolbar({
   // Format date display based on viewMode
   const formatDateDisplay = (centerDate, viewMode) => {
     const current = new Date(centerDate);
+    const locale = t('common:langLocale') || 'en-US';
+    
     if (viewMode === 'DAY') {
-      return format(current, 'MMM d, yyyy');
+      return current.toLocaleDateString(locale, { month: 'short', day: 'numeric', year: 'numeric' });
     }
     if (viewMode === 'MONTH') {
-      return format(current, 'MMMM yyyy');
+      return current.toLocaleDateString(locale, { month: 'long', year: 'numeric' });
     }
     
     // WEEK mode (default)
@@ -247,10 +148,11 @@ export function PlannerToolbar({
     const sunday = new Date(current.setDate(current.getDate() - day));
     const saturday = new Date(current.setDate(current.getDate() - day + 6));
     const options = { year: 'numeric', month: 'short', day: 'numeric' };
-    return `${sunday.toLocaleDateString('en-US', options)} - ${saturday.toLocaleDateString('en-US', options)}`;
+    return `${sunday.toLocaleDateString(locale, options)} - ${saturday.toLocaleDateString(locale, options)}`;
   };
 
   return (
+    <>
     <div className="flex flex-col gap-4 w-full no-print">
       {/* Row 1: Search, Navigator, Filters */}
       <div className="flex flex-wrap items-center gap-3 w-full">
@@ -259,7 +161,7 @@ export function PlannerToolbar({
         <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-gray-900 transition-colors" />
         <input 
           type="text" 
-          placeholder="Search" 
+          placeholder={t('toolbar.searchPlaceholder')}
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
           className="w-full bg-white border border-gray-200 rounded-xl py-2.5 pl-10 pr-4 text-xs font-medium outline-none focus:border-gray-900 focus:ring-1 focus:ring-gray-900 transition-all text-gray-700"
@@ -271,7 +173,7 @@ export function PlannerToolbar({
         onClick={onTodayWeek}
         className="px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-xs font-bold text-gray-700 hover:bg-gray-50 active:scale-95 transition-all cursor-pointer shadow-sm"
       >
-        This week
+        {t('toolbar.thisWeek')}
       </button>
 
       {/* Date Navigation group */}
@@ -331,15 +233,15 @@ export function PlannerToolbar({
               {/* Filter Dropdown */}
               <div className="absolute left-0 mt-2 w-56 bg-white rounded-2xl border border-gray-100 shadow-xl py-3 z-50 text-left animate-in fade-in slide-in-from-top-3 duration-200 font-medium">
                 <div className="px-4 pb-1.5 border-b border-gray-100 mb-1.5">
-                  <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest">Filter by Status</span>
+                  <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest">{t('toolbar.filterStatusLabel')}</span>
                 </div>
                 {[
-                  { label: "All Statuses", value: "ALL" },
-                  { label: "Draft", value: "DRAFT" },
-                  { label: "Scheduled", value: "SCHEDULED" },
-                  { label: "Pending Approval", value: "PENDING_APPROVAL" },
-                  { label: "Published", value: "PUBLISHED" },
-                  { label: "Failed", value: "FAILED" }
+                  { label: t('toolbar.statuses.all'), value: "ALL" },
+                  { label: t('toolbar.statuses.draft'), value: "DRAFT" },
+                  { label: t('toolbar.statuses.scheduled'), value: "SCHEDULED" },
+                  { label: t('toolbar.statuses.pendingApproval'), value: "PENDING_APPROVAL" },
+                  { label: t('toolbar.statuses.published'), value: "PUBLISHED" },
+                  { label: t('toolbar.statuses.failed'), value: "FAILED" }
                 ].map(opt => (
                   <button
                     key={opt.value}
@@ -357,13 +259,13 @@ export function PlannerToolbar({
                 <div className="my-2 border-t border-gray-100" />
                 
                 <div className="px-4 pb-1.5 mb-1">
-                  <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest">Filter by Type</span>
+                  <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest">{t('toolbar.filterTypeLabel')}</span>
                 </div>
                 {[
-                  { label: "All Types", value: "ALL" },
-                  { label: "Image", value: "IMAGE" },
-                  { label: "Video", value: "VIDEO" },
-                  { label: "Carousel", value: "CAROUSEL" }
+                  { label: t('toolbar.types.all'), value: "ALL" },
+                  { label: t('toolbar.types.image'), value: "IMAGE" },
+                  { label: t('toolbar.types.video'), value: "VIDEO" },
+                  { label: t('toolbar.types.carousel'), value: "CAROUSEL" }
                 ].map(opt => (
                   <button
                     key={opt.value}
@@ -410,7 +312,7 @@ export function PlannerToolbar({
                   <button className="w-full px-4 py-2 text-xs font-bold text-gray-700 hover:bg-gray-50 flex items-center justify-between group cursor-pointer transition-colors border-none bg-transparent">
                     <div className="flex items-center gap-3">
                       <ZoomIn size={14} className="text-gray-400 group-hover:text-gray-700" />
-                      <span>Calendar zoom</span>
+                      <span>{t('toolbar.calendarZoom')}</span>
                     </div>
                     <ChevronRight size={12} className="text-gray-400" />
                   </button>
@@ -418,15 +320,15 @@ export function PlannerToolbar({
                   <div className="absolute left-full top-0 pl-1.5 hidden group-hover/sub:block animate-in fade-in slide-in-from-left-2 duration-150 z-50">
                     <div className="bg-white rounded-2xl border border-gray-100 shadow-xl py-2 w-48 text-left">
                       {[
-                        { label: "Small (80px)", value: 80 },
-                        { label: "Medium (100px)", value: 100 },
-                        { label: "Large (120px)", value: 120 }
+                        { label: t('toolbar.zooms.small'), value: 80 },
+                        { label: t('toolbar.zooms.medium'), value: 100 },
+                        { label: t('toolbar.zooms.large'), value: 120 }
                       ].map(opt => (
                         <button
                           key={opt.value}
                           onClick={() => {
                             if (onRowHeightChange) onRowHeightChange(opt.value);
-                            toast.success(`Zoom level set to ${opt.value}px`);
+                            toast.success(t('toolbar.toasts.zoomLevelSet', { size: opt.value }));
                             setIsMoreMenuOpen(false);
                           }}
                           className="w-full px-4 py-2 text-[11px] font-bold text-gray-700 hover:bg-gray-50 flex items-center justify-between cursor-pointer border-none bg-transparent"
@@ -444,7 +346,7 @@ export function PlannerToolbar({
                   <button className="w-full px-4 py-2 text-xs font-bold text-gray-700 hover:bg-gray-50 flex items-center justify-between group cursor-pointer transition-colors border-none bg-transparent">
                     <div className="flex items-center gap-3">
                       <CalendarIcon size={14} className="text-gray-400 group-hover:text-gray-700" />
-                      <span>Calendar view</span>
+                      <span>{t('toolbar.calendarView')}</span>
                     </div>
                     <ChevronRight size={12} className="text-gray-400" />
                   </button>
@@ -452,16 +354,16 @@ export function PlannerToolbar({
                   <div className="absolute left-full top-0 pl-1.5 hidden group-hover/sub:block animate-in fade-in slide-in-from-left-2 duration-150 z-50">
                     <div className="bg-white rounded-2xl border border-gray-100 shadow-xl py-2 w-48 text-left">
                       {[
-                        { label: "Day View", value: "DAY" },
-                        { label: "Week View", value: "WEEK" },
-                        { label: "Month View", value: "MONTH" }
+                        { label: t('toolbar.views.day'), value: "DAY" },
+                        { label: t('toolbar.views.week'), value: "WEEK" },
+                        { label: t('toolbar.views.month'), value: "MONTH" }
                       ].map(opt => (
                         <button
                           key={opt.value}
                           onClick={() => {
                             if (onCalendarViewModeChange) onCalendarViewModeChange(opt.value);
                             setIsMoreMenuOpen(false);
-                            toast.success(`Switched to ${opt.label}`);
+                            toast.success(t('toolbar.toasts.switchedTo', { view: opt.label }));
                           }}
                           className="w-full px-4 py-2 text-[11px] font-bold text-gray-700 hover:bg-gray-50 flex items-center justify-between cursor-pointer border-none bg-transparent"
                         >
@@ -478,7 +380,7 @@ export function PlannerToolbar({
                   <button className="w-full px-4 py-2 text-xs font-bold text-gray-700 hover:bg-gray-50 flex items-center justify-between group cursor-pointer transition-colors border-none bg-transparent">
                     <div className="flex items-center gap-3">
                       <Layers size={14} className="text-gray-400 group-hover:text-gray-700" />
-                      <span>Social calendars</span>
+                      <span>{t('toolbar.socialCalendars')}</span>
                     </div>
                     <ChevronRight size={12} className="text-gray-400" />
                   </button>
@@ -512,24 +414,18 @@ export function PlannerToolbar({
 
                 <div className="my-1 border-t border-gray-100" />
 
-                <AccessGuard feature="IMPORT_CSV">
+                 <AccessGuard feature="IMPORT_CSV">
                   <button 
-                    onClick={() => fileInputRef.current?.click()}
+                    onClick={() => {
+                      setIsWizardOpen(true);
+                      setIsMoreMenuOpen(false);
+                    }}
                     className="w-full px-4 py-2 text-xs font-bold flex items-center gap-3 group transition-colors border-none bg-transparent text-gray-700 hover:bg-gray-50 cursor-pointer"
                   >
-                    <Upload size={14} className="text-gray-400 group-hover:text-gray-700" />
-                    <span>Import CSV</span>
+                    <RefreshCw size={14} className="text-gray-400 group-hover:text-gray-700" />
+                    <span>{t('toolbar.syncImportExport')}</span>
                   </button>
-                </AccessGuard>
-
-                {/* 5. Export CSV */}
-                <button 
-                  onClick={handleExportCSV}
-                  className="w-full px-4 py-2 text-xs font-bold text-gray-700 hover:bg-gray-50 flex items-center gap-3 group cursor-pointer transition-colors border-none bg-transparent"
-                >
-                  <Download size={14} className="text-gray-400 group-hover:text-gray-700" />
-                  <span>Export CSV</span>
-                </button>
+                 </AccessGuard>
 
                 <div className="my-1 border-t border-gray-100" />
 
@@ -542,19 +438,19 @@ export function PlannerToolbar({
                   className="w-full px-4 py-2 text-xs font-bold text-gray-700 hover:bg-gray-50 flex items-center gap-3 group cursor-pointer transition-colors border-none bg-transparent"
                 >
                   <Instagram size={14} className="text-gray-400 group-hover:text-gray-700" />
-                  <span>Preview feed</span>
+                  <span>{t('toolbar.previewFeed')}</span>
                 </button>
 
                 {/* 7. Notifications */}
                 <button 
                   onClick={() => {
-                    toast.success("Notification settings updated.");
+                    navigate("/settings?tab=account");
                     setIsMoreMenuOpen(false);
                   }}
                   className="w-full px-4 py-2 text-xs font-bold text-gray-700 hover:bg-gray-50 flex items-center gap-3 group cursor-pointer transition-colors border-none bg-transparent"
                 >
                   <Settings size={14} className="text-gray-400 group-hover:text-gray-700" />
-                  <span>Notifications</span>
+                  <span>{t('toolbar.notifications')}</span>
                 </button>
 
               </div>
@@ -579,7 +475,7 @@ export function PlannerToolbar({
             >
               {PLATFORM_DETAILS[bestTimePlatform]?.icon(10)}
             </div>
-            <span className="capitalize">{PLATFORM_DETAILS[bestTimePlatform]?.label || 'Best times'}</span>
+            <span className="capitalize">{PLATFORM_DETAILS[bestTimePlatform] ? PLATFORM_DETAILS[bestTimePlatform].label : t('toolbar.bestTimes')}</span>
             <ChevronDown size={14} className="text-gray-400" />
           </button>
           
@@ -593,7 +489,7 @@ export function PlannerToolbar({
               {/* Menu */}
               <div className="absolute right-0 mt-2 w-48 bg-white rounded-2xl border border-gray-100 shadow-xl py-2 z-50 text-left animate-in fade-in slide-in-from-top-3 duration-200">
                 <div className="px-4 py-1.5 border-b border-gray-100 mb-1">
-                  <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest font-mono">Select Heatmap Platform</span>
+                  <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest font-mono">{t('toolbar.selectHeatmapPlatform')}</span>
                 </div>
                 {Object.keys(PLATFORM_DETAILS).map(key => {
                   const detail = PLATFORM_DETAILS[key];
@@ -603,7 +499,7 @@ export function PlannerToolbar({
                       onClick={() => {
                         if (onBestTimePlatformChange) onBestTimePlatformChange(key);
                         setIsBestTimesOpen(false);
-                        toast.success(`Showing best times for ${detail.label}`);
+                        toast.success(t('toolbar.toasts.showingBestTimes', { platform: detail.label }));
                       }}
                       className="w-full px-4 py-2 text-xs font-bold text-gray-700 hover:bg-gray-50 flex items-center justify-between cursor-pointer border-none bg-transparent"
                     >
@@ -643,19 +539,11 @@ export function PlannerToolbar({
             className="flex items-center gap-2 px-5 py-2.5 rounded-full text-xs font-bold bg-[#0A0A0A] hover:bg-[#1A1A1A] text-white hover:scale-[1.02] active:scale-[0.98] cursor-pointer transition-all shadow-md"
           >
             <Plus size={16} />
-            <span>Create post</span>
+            <span>{t('toolbar.createPost')}</span>
           </button>
         </AccessGuard>
       </div>
 
-      {/* Hidden File Input for CSV Imports */}
-      <input 
-        type="file" 
-        ref={fileInputRef} 
-        onChange={handleImportCSV} 
-        accept=".csv" 
-        style={{ display: "none" }} 
-      />
 
       {/* Feed Preview Dialog */}
       {isPreviewFeedOpen && (
@@ -663,12 +551,12 @@ export function PlannerToolbar({
           <div className="bg-white rounded-3xl max-w-sm w-full overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200 flex flex-col relative h-[650px] border border-gray-100">
             {/* Modal Header */}
             <div className="p-4 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
-              <span className="text-xs font-black text-gray-800 uppercase tracking-wider">Feed Preview</span>
+              <span className="text-xs font-black text-gray-800 uppercase tracking-wider">{t('toolbar.feedPreviewTitle')}</span>
               <button 
                 onClick={() => setIsPreviewFeedOpen(false)}
                 className="text-xs font-bold text-gray-400 hover:text-black hover:bg-gray-100 px-3 py-1 rounded-xl transition-all cursor-pointer border-none bg-transparent"
               >
-                Close
+                {t('toolbar.close')}
               </button>
             </div>
 
@@ -678,14 +566,16 @@ export function PlannerToolbar({
               <div className="flex items-center gap-3 pb-2 border-b border-gray-100">
                 <div className="w-12 h-12 rounded-full bg-gradient-to-tr from-amber-500 to-fuchsia-600 p-[2px]">
                   <div className="w-full h-full rounded-full bg-white p-[2px]">
-                    <div className="w-full h-full rounded-full bg-gray-200 flex items-center justify-center font-bold text-xs">
-                      PC
+                    <div className="w-full h-full rounded-full bg-gray-200 flex items-center justify-center font-bold text-xs text-gray-700 uppercase">
+                      {activeBrand?.name ? activeBrand.name.substring(0, 2).toUpperCase() : 'PC'}
                     </div>
                   </div>
                 </div>
                 <div>
-                  <h5 className="text-[11px] font-black text-[#0A0A0A] leading-tight">publicast_creator</h5>
-                  <p className="text-[9px] text-gray-400 font-bold uppercase tracking-widest">Feed Mockup</p>
+                  <h5 className="text-[11px] font-black text-[#0A0A0A] leading-tight">
+                    {activeBrand?.name ? activeBrand.name.toLowerCase().replace(/\s+/g, '_') : 'publicast_creator'}
+                  </h5>
+                  <p className="text-[9px] text-gray-400 font-bold uppercase tracking-widest">{t('toolbar.feedMockup')}</p>
                 </div>
               </div>
 
@@ -694,25 +584,22 @@ export function PlannerToolbar({
                 {postData.length === 0 ? (
                   <div className="col-span-3 py-12 text-center flex flex-col items-center justify-center text-gray-300">
                     <Instagram size={36} className="mb-2 stroke-[1.5]" />
-                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">No scheduled posts yet</p>
+                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{t('toolbar.noScheduledPosts')}</p>
                   </div>
                 ) : (
                   postData.map(post => {
                     const hasMedia = post.mediaUrls && post.mediaUrls.length > 0;
-                    const thumbUrl = buildMediaUrl(post.thumbnail);
                     return (
                       <div 
                         key={post.id} 
                         className="aspect-square bg-gray-50 border border-gray-100/50 relative overflow-hidden group cursor-pointer rounded-md"
                         title={post.caption || post.title}
                       >
-                        {thumbUrl ? (
-                          <img src={thumbUrl} alt="Thumbnail" className="w-full h-full object-cover group-hover:scale-105 transition-all duration-300" />
-                        ) : (
-                          <div className="w-full h-full bg-gray-50 flex items-center justify-center text-[9px] text-gray-400 font-medium">
-                            No Media
-                          </div>
-                        )}
+                        <PostMediaThumbnail 
+                          thumbnail={post.thumbnail}
+                          mediaUrls={post.mediaUrls}
+                          className="w-full h-full group-hover:scale-105 transition-all duration-300"
+                        />
                         <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                           <Eye size={16} className="text-white animate-pulse" />
                         </div>
@@ -726,5 +613,13 @@ export function PlannerToolbar({
         </div>
       )}
     </div>
+      
+      {/* Unified Import/Export Wizard Dialog */}
+      <DataIntegrationWizard 
+        isOpen={isWizardOpen}
+        onClose={() => setIsWizardOpen(false)}
+        onRefreshData={fetchPosts}
+      />
+    </>
   );
 }

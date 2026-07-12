@@ -23,13 +23,16 @@ export function StaffChatPage() {
 
   // Fetch all tickets for current brand
   const fetchTickets = async () => {
-    if (!activeBrand) return;
     setLoading(true);
     try {
-      const res = await apiService.get(`/tickets?brandId=${activeBrand.id}`);
+      // Staff should see all tickets across all brands to allow support chat functionality
+      const isStaff = user?.role === 'STAFF' || user?.role === 'ADMIN';
+      const url = (activeBrand && !isStaff) ? `/tickets?brandId=${activeBrand.id}` : `/tickets`;
+      const res = await apiService.get(url);
       const tickets = res.data.data || [];
       const formatted = tickets.map(t => ({
         id: t.id,
+        brandId: t.brandId,
         name: t.user.name,
         email: t.user.email,
         preview: t.messages?.[0]?.content || "No messages yet",
@@ -63,7 +66,7 @@ export function StaffChatPage() {
           id: m.id,
           text: m.content,
           time: new Date(m.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-          sender: m.senderId === ticket.userId ? 'user' : 'staff',
+          sender: (m.sender?.role === 'STAFF' || m.sender?.role === 'ADMIN') ? 'staff' : 'user',
           attachment: m.attachmentUrl ? {
             name: m.attachmentUrl.split('/').pop(),
             type: m.messageType.toLowerCase(),
@@ -81,7 +84,7 @@ export function StaffChatPage() {
   // Connect to rooms on socket
   useEffect(() => {
     fetchTickets();
-  }, [activeBrand]);
+  }, [activeBrand, user]);
 
   useEffect(() => {
     if (activeChat) {
@@ -228,13 +231,14 @@ export function StaffChatPage() {
 
   const handleFileChange = async (e) => {
     const file = e.target.files[0];
-    if (!file || !activeBrand) return;
+    const targetBrandId = activeChat ? activeChat.brandId : (activeBrand ? activeBrand.id : null);
+    if (!file || !targetBrandId) return;
 
     setIsUploading(true);
     try {
       const formData = new FormData();
       formData.append("file", file);
-      formData.append("brandId", activeBrand.id);
+      formData.append("brandId", targetBrandId);
       
       const res = await apiService.post("/media/upload", formData, {
         headers: { 'Content-Type': 'multipart/form-data' }

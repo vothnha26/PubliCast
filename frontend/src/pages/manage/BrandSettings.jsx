@@ -12,8 +12,10 @@ import { useBrand } from "../../context/BrandContext";
 import { toast } from "sonner";
 import socialService from "../../services/social.service";
 import { useConfirm } from "@/hooks/useConfirm";
+import { useTranslation } from "react-i18next";
 
 export function BrandSettingsPage() {
+  const { t } = useTranslation(["manage", "common"]);
   const location = useLocation();
   const navigate = useNavigate();
   const confirm = useConfirm();
@@ -56,11 +58,11 @@ export function BrandSettingsPage() {
     const error = params.get("error");
 
     if (success === "youtube_connected") {
-      toast.success("YouTube channel connected successfully!");
+      toast.success(t("brand.youtubeConnected"));
     } else if (success === "facebook_connected") {
-      toast.success("Facebook page connected successfully!");
+      toast.success(t("brand.facebookConnected"));
     } else if (success === "tiktok_connected") {
-      toast.success("TikTok account connected successfully!");
+      toast.success(t("brand.tiktokConnected"));
     }
 
     if (error === "social_connection_conflict") {
@@ -71,13 +73,13 @@ export function BrandSettingsPage() {
       const existingBrandName = params.get("existingBrandName");
 
       if (conflictType === "DIFFERENT_OWNER") {
-        toast.error(`Kênh "${channelName}" đang liên kết với một Workspace/Brand thuộc tài khoản khác. Vui lòng ngắt liên kết trước.`);
+        toast.error(t("brand.differentOwnerConflict", { channelName }));
       } else if (conflictType === "SAME_OWNER") {
         setConflictData({ channelName, platformAccountId, platform, existingBrandName });
       }
     } else if (error) {
       const errorMsg = params.get("message");
-      toast.error(errorMsg || `Connection error: ${error}`);
+      toast.error(errorMsg || t("brand.connectionError", { error }));
     }
     
     if (tabParam === "connections") setActiveTab("connections");
@@ -119,14 +121,14 @@ export function BrandSettingsPage() {
   const handleDeleteBrand = async () => {
     if (!selectedBrand) return;
     if (brands.length <= 1) {
-      toast.error("Không thể xóa thương hiệu duy nhất của bạn!");
+      toast.error(t("brand.cannotDeleteOnlyBrand"));
       return;
     }
     const isConfirmed = await confirm({
-      title: "Xóa thương hiệu?",
-      description: `Bạn có chắc chắn muốn xóa thương hiệu "${selectedBrand.name}" không? Thao tác này không thể hoàn tác!`,
-      confirmText: "Xóa",
-      cancelText: "Hủy",
+      title: t("brand.deleteConfirmTitle"),
+      description: t("brand.deleteConfirmDesc", { name: selectedBrand.name }),
+      confirmText: t("common:delete"),
+      cancelText: t("common:cancel"),
       variant: "destructive"
     });
     if (!isConfirmed) return;
@@ -157,12 +159,12 @@ export function BrandSettingsPage() {
     setIsUpdating(true);
     try {
       await socialService.reassignSocialAccount(conflictData.platform, conflictData.platformAccountId, activeBrand.id);
-      toast.success(`Đã chuyển kênh "${conflictData.channelName}" thành công sang brand "${activeBrand.name}"!`);
+      toast.success(t("brand.moveSuccess", { channelName: conflictData.channelName, brandName: activeBrand.name }));
       await refreshBrands(activeBrand.id);
       setConflictData(null);
       navigate(location.pathname + "?tab=connections");
     } catch (e) {
-      toast.error(e.message || "Chuyển kênh thất bại");
+      toast.error(e.message || t("brand.moveFailed"));
     } finally {
       setIsUpdating(false);
     }
@@ -178,14 +180,14 @@ export function BrandSettingsPage() {
 
   return (
     <div className="flex-1 overflow-y-auto bg-white p-8 font-sans">
-      <h1 className="text-xl font-medium text-[#0A0A0A] mb-8">Brand settings</h1>
+      <h1 className="text-xl font-medium text-[#0A0A0A] mb-8">{t("brand.title")}</h1>
 
       {/* Brands Selector Section */}
       <div className="bg-[#F8F9FB] rounded-2xl p-6 border border-gray-100 mb-10 relative">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-1.5">
-            <span className="text-sm font-bold text-[#0A0A0A]">Brands</span>
-            <span className="text-xs text-gray-400 font-medium">{brands.length > 0 ? "1 of " + brands.length : "0 of 0"}</span>
+            <span className="text-sm font-bold text-[#0A0A0A]">{t("brand.brands")}</span>
+            <span className="text-xs text-gray-400 font-medium">{brands.length > 0 ? t("brand.brandsCount", { count: brands.length }) : t("brand.noBrandsCount")}</span>
             <HelpCircle size={14} className="text-gray-300 ml-1" />
           </div>
           <button 
@@ -199,7 +201,7 @@ export function BrandSettingsPage() {
             className="flex items-center gap-2 px-4 py-1.5 bg-[#FEFCE8] border border-[#FEF08A] rounded-lg text-xs font-bold text-[#854D0E] hover:bg-[#FEF9C3] transition-all shadow-sm cursor-pointer add-brand-btn"
             data-testid="add-brand-btn"
           >
-            <Plus size={14} /> Add brand <Diamond size={12} className="fill-current" />
+            <Plus size={14} /> {t("brand.addBrand")} <Diamond size={12} className="fill-current" />
           </button>
         </div>
 
@@ -252,11 +254,11 @@ export function BrandSettingsPage() {
                onClick={() => setIsTableOverlayOpen(true)}
                className="mt-3 text-xs text-gray-400 hover:text-gray-600 font-medium ml-1 cursor-pointer"
              >
-               View as table
+               {t("brand.viewAsTable")}
              </button>
           </div>
         ) : (
-          <div className="text-gray-400 text-sm italic">No brands found. Please create one.</div>
+          <div className="text-gray-400 text-sm italic">{t("brand.noBrands")}</div>
         )}
       </div>
 
@@ -264,9 +266,9 @@ export function BrandSettingsPage() {
       <div className="flex items-center justify-between border-b border-gray-100 mb-8">
         <div className="flex gap-10">
           {[
-            { id: "brand-settings", label: "Brand settings" },
-            { id: "connections", label: "Connections" },
-            { id: "ai-configuration", label: "AI Configuration" },
+            { id: "brand-settings", label: t("brand.tabSettings") },
+            { id: "connections", label: t("brand.tabConnections") },
+            { id: "ai-configuration", label: t("brand.tabAi") },
           ].map((tab) => (
             <button key={tab.id} onClick={() => handleTabChange(tab.id)} className={`pb-4 text-sm font-black transition-all relative ${activeTab === tab.id ? "text-black" : "text-gray-400"}`}>
               {tab.label}
@@ -283,12 +285,12 @@ export function BrandSettingsPage() {
             <div className="grid grid-cols-2 gap-x-20 gap-y-10">
               <div className="space-y-8 col-span-2 md:col-span-1">
                 <div>
-                  <h3 className="text-lg font-bold text-[#0A0A0A] mb-2">Name</h3>
-                  <p className="text-sm text-gray-500 mb-4">Define a name to properly identify this brand.</p>
+                  <h3 className="text-lg font-bold text-[#0A0A0A] mb-2">{t("brand.name")}</h3>
+                  <p className="text-sm text-gray-500 mb-4">{t("brand.nameDesc")}</p>
                   <div className="space-y-1.5">
-                    <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Brand name</label>
+                    <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{t("brand.brandName")}</label>
                     <input 
-                      placeholder="Brand name" 
+                      placeholder={t("brand.brandName")} 
                       value={selectedBrand.name} 
                       onChange={(e) => setSelectedBrand({...selectedBrand, name: e.target.value})} 
                       className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-black outline-none text-sm font-medium" 
@@ -297,13 +299,13 @@ export function BrandSettingsPage() {
                   </div>
                 </div>
                 <div>
-                  <h3 className="text-lg font-bold text-[#0A0A0A] mb-2">Engagement</h3>
-                  <p className="text-sm text-gray-400 leading-relaxed">You can configure which ratio to use when calculating the engagement metric. This way, your reports will be more aligned with your own business goals.</p>
+                  <h3 className="text-lg font-bold text-[#0A0A0A] mb-2">{t("brand.engagement")}</h3>
+                  <p className="text-sm text-gray-400 leading-relaxed">{t("brand.engagementDesc")}</p>
                 </div>
               </div>
               <div className="col-span-2 md:col-span-1">
-                <h3 className="text-lg font-bold text-[#0A0A0A] mb-2">Image</h3>
-                <p className="text-sm text-gray-500 mb-4">Choose an image from your connected accounts:</p>
+                <h3 className="text-lg font-bold text-[#0A0A0A] mb-2">{t("brand.image")}</h3>
+                <p className="text-sm text-gray-500 mb-4">{t("brand.imageDesc")}</p>
                 <div className="w-16 h-16 rounded-xl bg-[#581C2C] flex items-center justify-center relative cursor-pointer border-2 border-transparent hover:border-gray-200 shadow-sm">
                   {selectedBrand.logoUrl ? (
                      <img src={selectedBrand.logoUrl} className="w-full h-full object-cover rounded-xl" />
@@ -322,9 +324,9 @@ export function BrandSettingsPage() {
                 disabled={isDeleting || brands.length <= 1}
                 className="px-6 py-3 border border-red-200 hover:bg-red-50 text-red-600 rounded-xl text-xs font-bold transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed delete-btn"
                 data-testid="delete-brand-btn"
-                title={brands.length <= 1 ? "Không thể xóa thương hiệu duy nhất của bạn" : ""}
+                title={brands.length <= 1 ? t("brand.cannotDeleteOnlyBrand") : ""}
               >
-                {isDeleting ? "Đang xóa..." : "Xóa thương hiệu"}
+                {isDeleting ? t("brand.deleting") : t("brand.deleteBrand")}
               </button>
               
               <button
@@ -335,7 +337,7 @@ export function BrandSettingsPage() {
                 data-testid="save-brand-btn"
               >
                 {isUpdating && <Loader2 className="animate-spin" size={12} />}
-                Lưu thay đổi
+                {t("brand.saveChanges")}
               </button>
             </div>
           </div>
@@ -348,7 +350,7 @@ export function BrandSettingsPage() {
         )}
 
         {activeTab === "ai-configuration" && (
-           <div className="h-64 border-2 border-dashed border-gray-100 rounded-3xl flex items-center justify-center text-gray-300 font-medium">AI model configuration...</div>
+           <div className="h-64 border-2 border-dashed border-gray-100 rounded-3xl flex items-center justify-center text-gray-300 font-medium">{t("brand.aiConfiguring")}</div>
         )}
       </div>
 
@@ -384,11 +386,9 @@ export function BrandSettingsPage() {
               <AlertTriangle size={26} className="animate-bounce" />
             </div>
 
-            <h3 className="text-lg font-bold text-[#0A0A0A] mb-2 font-sans">Đạt giới hạn số lượng thương hiệu</h3>
+            <h3 className="text-lg font-bold text-[#0A0A0A] mb-2 font-sans">{t("brand.limitReachedTitle")}</h3>
             <p className="text-sm text-gray-500 leading-relaxed mb-6 font-sans">
-              Gói hiện tại của bạn chỉ cho phép quản lý tối đa <span className="font-bold text-[#0A0A0A]">{allowedBrandsLimit} thương hiệu</span>. 
-              <br />
-              Vui lòng nâng cấp lên gói **PRO** để tạo và quản lý tới **5 thương hiệu**.
+              {t("brand.limitReachedDesc", { limit: allowedBrandsLimit })}
             </p>
 
             <div className="flex gap-4">
@@ -397,7 +397,7 @@ export function BrandSettingsPage() {
                 onClick={() => setIsLimitModalOpen(false)}
                 className="flex-1 py-3 border border-gray-200 hover:bg-gray-50 text-gray-700 rounded-xl text-xs font-bold transition-all cursor-pointer text-center font-sans"
               >
-                Hủy bỏ
+                {t("brand.cancel")}
               </button>
 
               <button
@@ -408,7 +408,7 @@ export function BrandSettingsPage() {
                 }}
                 className="flex-1 py-3 bg-gradient-to-r from-purple-600 to-orange-500 hover:from-purple-700 hover:to-orange-600 text-white rounded-xl text-xs font-bold transition-all cursor-pointer shadow-md flex items-center justify-center gap-1.5 font-sans"
               >
-                Nâng cấp ngay
+                {t("brand.upgradeNow")}
               </button>
             </div>
           </div>
@@ -423,11 +423,9 @@ export function BrandSettingsPage() {
               <AlertTriangle size={24} />
             </div>
             
-            <h3 className="text-lg font-bold text-[#0A0A0A] mb-2 font-sans">Trùng lặp liên kết kênh</h3>
+            <h3 className="text-lg font-bold text-[#0A0A0A] mb-2 font-sans">{t("brand.conflictTitle")}</h3>
             <p className="text-sm text-gray-500 leading-relaxed mb-6 font-sans">
-              Kênh <span className="font-bold text-[#0A0A0A]">"{conflictData.channelName}"</span> hiện đang được liên kết với Brand <span className="font-bold text-[#0A0A0A]">"{conflictData.existingBrandName}"</span> của bạn.
-              <br /><br />
-              Bạn có muốn di chuyển kênh này sang Brand hiện tại <span className="font-bold text-[#0A0A0A]">"{activeBrand?.name}"</span> không?
+              {t("brand.conflictDesc", { channelName: conflictData.channelName, existingBrandName: conflictData.existingBrandName, activeBrandName: activeBrand?.name })}
             </p>
             
             <div className="flex gap-4">
@@ -439,7 +437,7 @@ export function BrandSettingsPage() {
                 }}
                 className="flex-1 py-3 border border-gray-200 hover:bg-gray-50 text-gray-700 rounded-xl text-xs font-bold transition-all cursor-pointer text-center font-sans"
               >
-                Hủy bỏ
+                {t("brand.cancel")}
               </button>
               
               <button
@@ -449,7 +447,7 @@ export function BrandSettingsPage() {
                 className="flex-1 py-3 bg-[#2D1D35] hover:bg-[#3D2D45] text-white rounded-xl text-xs font-bold transition-all cursor-pointer shadow-md disabled:opacity-50 flex items-center justify-center gap-1.5 font-sans"
               >
                 {isUpdating && <Loader2 className="animate-spin" size={12} />}
-                Di chuyển kênh
+                {t("brand.moveChannel")}
               </button>
             </div>
           </div>

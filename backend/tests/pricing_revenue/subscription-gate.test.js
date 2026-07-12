@@ -80,14 +80,14 @@ describe('SubscriptionGateFacade Unit Tests', () => {
     expect(result).toBe(false);
   });
 
-  it('should return true for google_drive if the active plan name is PRO', async () => {
+  it('should return true for google_drive if the active plan contains the product', async () => {
     brandRepository.findBrandWithSubscription.mockResolvedValue({
       id: 'brand-1',
       subscription: {
         status: 'ACTIVE',
         plan: {
           name: 'PRO',
-          products: []
+          products: [{ id: PRODUCT_IDS.GOOGLE_DRIVE }]
         }
       }
     });
@@ -95,22 +95,7 @@ describe('SubscriptionGateFacade Unit Tests', () => {
     expect(result).toBe(true);
   });
 
-  it('should return true for google_drive if the active plan name is AGENCY', async () => {
-    brandRepository.findBrandWithSubscription.mockResolvedValue({
-      id: 'brand-1',
-      subscription: {
-        status: 'ACTIVE',
-        plan: {
-          name: 'AGENCY',
-          products: []
-        }
-      }
-    });
-    const result = await subscriptionGate.checkFeatureAccess('brand-1', PRODUCT_IDS.GOOGLE_DRIVE);
-    expect(result).toBe(true);
-  });
-
-  it('should return false for google_drive if the active plan name is not PRO or AGENCY', async () => {
+  it('should return false for google_drive if the active plan does not contain the product', async () => {
     brandRepository.findBrandWithSubscription.mockResolvedValue({
       id: 'brand-1',
       subscription: {

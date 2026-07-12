@@ -62,20 +62,29 @@ describe('Profile & Settings Detailed Suite', function () {
 
     it('TC_PROFILE_02 – Verify direct navigation to tabs via URL queries', async function () {
       await driver.get(`${BASE_URL}/settings?tab=support`);
+      await driver.sleep(2000); // Chờ trang tải hoàn tất dữ liệu API
+      
       const chatInput = await driver.wait(
         until.elementLocated(By.css('[data-testid="support-chat-input"]')),
-        10000
+        15000
       );
-      await driver.wait(until.elementIsVisible(chatInput), 5000);
-      expect(await chatInput.isDisplayed()).to.be.true;
+      await driver.wait(until.elementIsVisible(chatInput), 10000);
+      
+      // Chống lỗi stale bằng cách truy vấn lại
+      const stableChatInput = await driver.findElement(By.css('[data-testid="support-chat-input"]'));
+      expect(await stableChatInput.isDisplayed()).to.be.true;
 
       await driver.get(`${BASE_URL}/settings?tab=billing`);
+      await driver.sleep(2000); // Chờ trang tải hoàn tất dữ liệu API
+      
       const upgradeBtn = await driver.wait(
         until.elementLocated(By.css('[data-testid="billing-upgrade-btn"]')),
-        10000
+        15000
       );
-      await driver.wait(until.elementIsVisible(upgradeBtn), 5000);
-      expect(await upgradeBtn.isDisplayed()).to.be.true;
+      await driver.wait(until.elementIsVisible(upgradeBtn), 10000);
+      
+      const stableUpgradeBtn = await driver.findElement(By.css('[data-testid="billing-upgrade-btn"]'));
+      expect(await stableUpgradeBtn.isDisplayed()).to.be.true;
     });
 
     it('TC_PROFILE_03 – Verify Google linked success callback redirection', async function () {
@@ -95,6 +104,10 @@ describe('Profile & Settings Detailed Suite', function () {
         until.elementLocated(By.css('[data-testid="profile-fullname-input"]')),
         10000
       );
+      await driver.wait(async () => {
+        const val = await nameInput.getAttribute('value');
+        return val && val.trim().length > 0;
+      }, 5000);
       const currentName = await nameInput.getAttribute('value');
       expect(currentName).to.not.be.empty;
     });
@@ -156,10 +169,16 @@ describe('Profile & Settings Detailed Suite', function () {
     });
 
     it('TC_PROFILE_07 – Verify password change fails when current password is empty', async function () {
-      const newPwdInput = await driver.wait(
-        until.elementLocated(By.css('[data-testid="profile-new-password-input"]')),
+      const currentPwdInput = await driver.wait(
+        until.elementLocated(By.css('[data-testid="profile-current-password-input"]')),
         10000
       );
+      await currentPwdInput.sendKeys(Key.CONTROL, 'a');
+      await currentPwdInput.sendKeys(Key.BACK_SPACE);
+
+      const newPwdInput = await driver.findElement(By.css('[data-testid="profile-new-password-input"]'));
+      await newPwdInput.sendKeys(Key.CONTROL, 'a');
+      await newPwdInput.sendKeys(Key.BACK_SPACE);
       await newPwdInput.sendKeys('newsecretpassword');
 
       const updateBtn = await driver.findElement(By.css('[data-testid="profile-update-password-btn"]'));

@@ -7,6 +7,7 @@ import { useBrand } from "../../../context/BrandContext";
 import { useGoogleDriveImport } from "../../../hooks/useGoogleDriveImport";
 import { toast } from "sonner";
 import postService from "../../../services/post.service";
+import { useTranslation } from "react-i18next";
 
 // Import SOLID Subcomponents
 import { UpgradeBanner } from "./components/UpgradeBanner";
@@ -17,15 +18,39 @@ import { ImportOverlay } from "./components/ImportOverlay";
 import { MonthlyGrid } from "./components/MonthlyGrid";
 
 import { useBrandPermission } from "../../../hooks/useBrandPermission";
+import { PostAnalyticsDetailModal } from "../../../components/workspace/PostAnalyticsDetailModal";
 
 export function WeeklyCalendarView() {
+  const { t } = useTranslation("planner");
   const { hasPermission } = useBrandPermission();
   const hasCreatePermission = hasPermission('CREATE_POSTS');
 
   const [searchTerm, setSearchTerm] = useState("");
   const { openPostCreator, isOpen } = usePostCreator();
+  const [analyticsModal, setAnalyticsModal] = useState({ open: false, post: null });
+
+  const handlePostClick = (post) => {
+    if (post.status?.toLowerCase() === "published") {
+      setAnalyticsModal({ open: true, post });
+    } else {
+      openPostCreator({ post });
+    }
+  };
+
+  const handleDuplicatePost = (post) => {
+    if (!hasCreatePermission) {
+      toast.error(t("weeklyCalendar.noPermissionCreate"));
+      return;
+    }
+    openPostCreator({
+      template: post,
+      defaultScheduledAt: post.scheduledAt ? new Date(post.scheduledAt) : null
+    });
+  };
+
   const { activeBrand } = useBrand();
   const [postData, setPostData] = useState([]);
+  const [eventsData, setEventsData] = useState([]);
   const [loading, setLoading] = useState(false);
   const [showSidebar, setShowSidebar] = useState(false);
   const [rowHeight, setRowHeight] = useState(100);
@@ -52,6 +77,47 @@ export function WeeklyCalendarView() {
   
   // Custom Hook for Drive Imports (SOLID/SRP)
   const { isImporting, importFromDrive } = useGoogleDriveImport(activeBrand);
+  
+  const [monthlyPostCount, setMonthlyPostCount] = useState(0);
+  const [bestTimesData, setBestTimesData] = useState([]);
+
+  // Fetch Best Times to Post metrics
+  useEffect(() => {
+    if (!activeBrand) return;
+    const fetchBestTimes = async () => {
+      try {
+        const res = await apiService.get(`/posts/best-times?brandId=${activeBrand.id}&platform=${bestTimePlatform}`);
+        setBestTimesData(res.data.data || []);
+      } catch (e) {
+        console.error("Failed to fetch best times:", e);
+      }
+    };
+    fetchBestTimes();
+  }, [activeBrand, bestTimePlatform]);
+
+  useEffect(() => {
+    if (!activeBrand) return;
+    const fetchMonthlyCount = async () => {
+      try {
+        const now = new Date();
+        const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+        const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+        const toLocalDateStr = (d) => {
+          const year = d.getFullYear();
+          const month = String(d.getMonth() + 1).padStart(2, '0');
+          const day = String(d.getDate()).padStart(2, '0');
+          return `${year}-${month}-${day}`;
+        };
+        const startStr = toLocalDateStr(startOfMonth);
+        const endStr = toLocalDateStr(endOfMonth);
+        const res = await apiService.get(`/posts?brandId=${activeBrand.id}&startDate=${startStr}&endDate=${endStr}&limit=1`);
+        setMonthlyPostCount(res.data.meta?.total || 0);
+      } catch (e) {
+        console.error("Failed to fetch monthly post count:", e);
+      }
+    };
+    fetchMonthlyCount();
+  }, [activeBrand, postData]);
   
   // Update current time every minute
   useEffect(() => {
@@ -89,17 +155,23 @@ export function WeeklyCalendarView() {
       // WEEK or DAY mode
       const current = new Date(selectedDate);
       const day = current.getDay();
-      const sunday = new Date(current.setDate(current.getDate() - day));
-      const saturday = new Date(current.setDate(current.getDate() - day + 6));
+      const sunday = new Date(current);
+      sunday.setDate(current.getDate() - day);
+      const saturday = new Date(current);
+      saturday.setDate(current.getDate() - day + 6);
       startDateStr = toLocalDateStr(sunday);
       endDateStr = toLocalDateStr(saturday);
     }
 
     try {
-      const res = await apiService.get(`/posts?brandId=${activeBrand.id}&startDate=${startDateStr}&endDate=${endDateStr}&limit=100`);
-      setPostData(res.data.data || []);
+      const [postsRes, eventsRes] = await Promise.all([
+        apiService.get(`/posts?brandId=${activeBrand.id}&startDate=${startDateStr}&endDate=${endDateStr}&limit=100`),
+        apiService.get(`/calendar-events?brandId=${activeBrand.id}&startDate=${startDateStr}&endDate=${endDateStr}`)
+      ]);
+      setPostData(postsRes.data.data || []);
+      setEventsData(eventsRes.data.data || []);
     } catch (e) {
-      toast.error("Failed to load posts");
+      toast.error(t("weeklyCalendar.loadCalendarFail"));
     } finally {
       setLoading(false);
     }
@@ -175,7 +247,7 @@ export function WeeklyCalendarView() {
 
   const handleCellClick = (date, hour) => {
     if (!hasCreatePermission) {
-      toast.error("You do not have permission to create posts");
+      toast.error(t("weeklyCalendar.noPermissionCreate"));
       return;
     }
     // Open post creator at specific date and hour
@@ -185,9 +257,9 @@ export function WeeklyCalendarView() {
   };
 
   return (
-    <div className="flex-1 flex flex-col p-6 space-y-6 overflow-y-auto">
+    <div className="flex-1 flex flex-col p-6 space-y-6 overflow-hidden">
       {/* 1. Plan Upgrade Banner */}
-      <UpgradeBanner postedCount={postData.length} limit={20} />
+      <UpgradeBanner postedCount={monthlyPostCount} limit={activeBrand?.currentPlan?.limits?.maxPostsPerMonth || 20} />
 
       {/* 2. Navigation & Actions Toolbar */}
       <PlannerToolbar
@@ -221,20 +293,22 @@ export function WeeklyCalendarView() {
       {loading && (
         <div className="flex items-center justify-center py-4 no-print">
           <Loader2 className="animate-spin text-[#0A0A0A] mr-2" size={18} />
-          <span className="text-xs font-bold text-gray-500 uppercase tracking-widest">Loading calendar posts...</span>
+          <span className="text-xs font-bold text-gray-500 uppercase tracking-widest">{t("weeklyCalendar.loadingPosts")}</span>
         </div>
       )}
 
       {/* 3. Main Grid layout: Lịch bên trái, Tích hợp bên phải */}
-      <div className="h-[750px] flex flex-col lg:flex-row gap-6 items-stretch mb-6">
+      <div className="flex-1 min-h-0 flex flex-col lg:flex-row gap-6 items-stretch mb-6">
         {/* Lưới lịch tuần/ngày/tháng */}
         <div className="flex-1 w-full h-full">
           {calendarViewMode === 'MONTH' ? (
             <MonthlyGrid
               selectedDate={selectedDate}
               postData={postData}
+              eventsData={eventsData}
               onCellClick={handleCellClick}
-              onPostClick={(post) => openPostCreator({ post })}
+              onPostClick={handlePostClick}
+              onDuplicateClick={handleDuplicatePost}
               visiblePlatforms={visiblePlatforms}
             />
           ) : (
@@ -243,10 +317,13 @@ export function WeeklyCalendarView() {
               groupedPosts={groupedPosts}
               currentTime={currentTime}
               onCellClick={handleCellClick}
-              onPostClick={(post) => openPostCreator({ post })}
+              onPostClick={handlePostClick}
+              onDuplicateClick={handleDuplicatePost}
               onCellDrop={importFromDrive}
               rowHeight={rowHeight}
               bestTimePlatform={bestTimePlatform}
+              bestTimesData={bestTimesData}
+              eventsData={eventsData}
               viewMode={calendarViewMode}
             />
           )}
@@ -262,6 +339,13 @@ export function WeeklyCalendarView() {
 
       {/* Google Drive Import Backdrop Overlay */}
       <ImportOverlay isOpen={isImporting} />
+
+      <PostAnalyticsDetailModal
+        isOpen={analyticsModal.open}
+        onClose={() => setAnalyticsModal({ open: false, post: null })}
+        post={analyticsModal.post}
+        brandId={activeBrand?.id}
+      />
     </div>
   );
 }

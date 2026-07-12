@@ -129,6 +129,7 @@ model Brand {
   supportTickets     SupportTicket[]
   trackedVideos      TrackedVideo[]
   discordGuildSnapshots DiscordGuildSnapshot[]
+  calendarEvents     CalendarEvent[]
 
   @@index([ownerId])
   @@map("brands")
@@ -243,16 +244,46 @@ model Plan {
   @@map("plans")
 }
 
-model Product {
-  id        String   @id // Uses semantic slug (e.g. 'youtube_analytics')
+model Platform {
+  id        String   @id // e.g. "YT", "FB", "TK"
   name      String   @unique
-  category  String
+  color     String   @default("#000000")
+  image     String?  @db.LongText // Base64 or URL
   createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  products  Product[]
 
-  plans     Plan[]   @relation("PlanProducts")
+  @@map("platforms")
+}
+
+model Module {
+  id          String   @id // e.g. "M1", "M2"
+  name        String   @unique
+  description String?  @db.Text
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  products    Product[]
+
+  @@map("modules")
+}
+
+model Product {
+  id         String    @id // Uses semantic slug (e.g. 'youtube_analytics' or 'yt_m1')
+  name       String    @unique
+  category   String    // e.g. 'Platforms', 'AI Tools'
+  platformId String?
+  moduleId   String?
+  sku        String?   @unique
+  status     String    @default("ACTIVE") // ACTIVE | INACTIVE
+  createdAt  DateTime  @default(now())
+
+  platform   Platform? @relation(fields: [platformId], references: [id], onDelete: Cascade)
+  module     Module?   @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  plans      Plan[]    @relation("PlanProducts")
 
   @@map("products")
 }
+
 
 
 model PlanLimit {
@@ -402,6 +433,7 @@ model SocialAccount {
   youtubeChannel   YouTubeChannel?
   telegramAccount  TelegramAccount?
   discordAccount   DiscordAccount?
+  autoReplySetting AutoReplySetting?
 
   // Facebook dedicated metrics
   facebookOverviewMetrics FacebookOverviewMetric[] @relation("FacebookOverviewMetricAccount")
@@ -607,10 +639,34 @@ model Post {
   autoList          AutoList?          @relation(fields: [autoListId], references: [id], onDelete: Cascade)
   approvalWorkflows ApprovalWorkflow[]
 
+  postMetricHistories PostMetricHistory[] @relation("PostMetrics")
+
   @@index([brandId])
   @@index([createdByUserId])
   @@map("posts")
 }
+
+model PostMetricHistory {
+  id              String   @id @default(uuid())
+  brandId         String
+  postId          String
+  platform        String   // TIKTOK, FACEBOOK, YOUTUBE, etc.
+  platformPostId  String   // ID của post trên nền tảng đó
+  views           Int      @default(0)
+  likes           Int      @default(0)
+  comments        Int      @default(0)
+  shares          Int      @default(0)
+  saves           Int      @default(0)
+  timestamp       DateTime @default(now())
+
+  post            Post     @relation("PostMetrics", fields: [postId], references: [id], onDelete: Cascade)
+
+  @@index([postId])
+  @@index([brandId])
+  @@index([timestamp])
+  @@map("post_metric_histories")
+}
+
 
 model Livestream {
   id              String   @id @default(uuid())
@@ -622,6 +678,8 @@ model Livestream {
   scheduledAt     DateTime
   durationMinutes Int
   status          String   @default("DRAFT")
+  platformStreamId String?  @db.VarChar(255)
+  metadata        String?  @db.Text
   streamKey       String
   rtmpUrl         String
   targetPlatforms String   @db.Text
@@ -1569,9 +1627,44 @@ model PlatformLimit {
   minVideoDuration   Int?         // in seconds
   maxVideoDuration   Int?         // in seconds
   aspectRatios       String?      // e.g. "9:16,16:9"
+  isLocked           Boolean      @default(false) // Admin co the tam khoa nen tang
+  lockReason         String?      // Ly do khoa hien thi cho nguoi dung
   createdAt          DateTime     @default(now())
   updatedAt          DateTime     @updatedAt
 
   @@unique([platform, subType])
 }
+
+model AutoReplySetting {
+  id                String   @id @default(uuid())
+  socialAccountId   String   @unique
+  isActive          Boolean  @default(false)
+  mode              String   @default("KEYWORD") // "KEYWORD" or "AI"
+  keywordsConfig    Json?    // e.g. [{"keywords": ["giá", "inbox"], "reply": "Dạ..."}]
+  aiPrompt          String?  @db.Text
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  socialAccount     SocialAccount @relation(fields: [socialAccountId], references: [id], onDelete: Cascade)
+
+  @@map("auto_reply_settings")
+}
+
+model CalendarEvent {
+  id          String   @id @default(uuid())
+  brandId     String?  // Nullable if global system events (holidays)
+  title       String
+  description String?  @db.Text
+  eventDate   DateTime // Date of the event
+  isSystem    Boolean  @default(false) // If true, it is a global holiday
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  brand       Brand?   @relation(fields: [brandId], references: [id], onDelete: Cascade)
+
+  @@index([brandId])
+  @@map("calendar_events")
+}
+
+
 

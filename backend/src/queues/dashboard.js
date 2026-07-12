@@ -10,10 +10,12 @@ const { publishQueue } = require('./publish.queue');
 const serverAdapter = new ExpressAdapter();
 serverAdapter.setBasePath('/admin/queues');
 
+const boardQueues = process.env.NODE_ENV !== 'test'
+  ? [new BullMQAdapter(publishQueue)]
+  : [];
+
 createBullBoard({
-  queues: [
-    new BullMQAdapter(publishQueue)
-  ],
+  queues: boardQueues,
   serverAdapter: serverAdapter,
 });
 

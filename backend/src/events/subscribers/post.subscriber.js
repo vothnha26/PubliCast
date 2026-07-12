@@ -3,6 +3,22 @@ const postService = require('../../services/workspace/post.service');
 const autoListService = require('../../services/workspace/auto-list.service');
 const { POST_STATUS } = require('../../utils/constants');
 
+const createErrorNotification = async (post, title, message) => {
+  try {
+    const notificationService = require('../../services/core/notification.service');
+    const { NOTIFICATION_TYPES } = require('../../utils/constants');
+    await notificationService.create({
+      brandId: post.brandId,
+      userId: post.createdByUserId || null,
+      title: title,
+      message: message,
+      type: NOTIFICATION_TYPES.CONTENT
+    });
+  } catch (notifErr) {
+    console.error('[Event Error] Failed to create error notification:', notifErr.message);
+  }
+};
+
 /**
  * Initialize Post Event Subscribers
  */
@@ -15,6 +31,11 @@ const initPostSubscribers = () => {
         await postService.publishToPlatforms(post.id, options);
       } catch (err) {
         console.error(`[Event Error] Auto-publishing failed for post ${post.id}:`, err.message);
+        await createErrorNotification(
+          post,
+          'Đăng bài thất bại',
+          `Bài viết "${post.title?.substring(0, 30) || ''}" tự động đăng thất bại. Lỗi: ${err.message}`
+        );
       }
     } else if (post.status === POST_STATUS.SCHEDULED) {
       try {
@@ -22,6 +43,11 @@ const initPostSubscribers = () => {
         await postService._handleNativeScheduling(post, options);
       } catch (err) {
         console.error(`[Event Error] Native Scheduling failed for post ${post.id}:`, err.message);
+        await createErrorNotification(
+          post,
+          'Đặt lịch gốc thất bại',
+          `Bài viết "${post.title?.substring(0, 30) || ''}" đặt lịch gốc thất bại. Lỗi: ${err.message}`
+        );
       }
     }
   });
@@ -33,6 +59,11 @@ const initPostSubscribers = () => {
         await postService.publishToPlatforms(post.id, options);
       } catch (err) {
         console.error(`[Event Error] Publishing failed for updated post ${post.id}:`, err.message);
+        await createErrorNotification(
+          post,
+          'Đăng bài thất bại',
+          `Bài viết "${post.title?.substring(0, 30) || ''}" cập nhật & đăng thất bại. Lỗi: ${err.message}`
+        );
       }
     } else if (post.status === POST_STATUS.SCHEDULED) {
       try {
@@ -40,6 +71,11 @@ const initPostSubscribers = () => {
         await postService._handleNativeScheduling(post, options);
       } catch (err) {
         console.error(`[Event Error] Native Scheduling failed for updated post ${post.id}:`, err.message);
+        await createErrorNotification(
+          post,
+          'Đặt lịch gốc thất bại',
+          `Bài viết "${post.title?.substring(0, 30) || ''}" đặt lịch gốc thất bại sau khi cập nhật. Lỗi: ${err.message}`
+        );
       }
     }
   });

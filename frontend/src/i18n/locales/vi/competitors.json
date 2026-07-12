@@ -1,0 +1,78 @@
+{
+  "header": {
+    "title": "Đối sánh Đối thủ cạnh tranh",
+    "subtitle": "So sánh thương hiệu của bạn với các đối thủ hàng đầu và tìm kiếm cảm hứng từ những nội dung thành công.",
+    "addBtn": "Theo dõi đối thủ mới"
+  },
+  "tabs": {
+    "all": "Tất cả đối thủ",
+    "facebook": "Facebook Pages",
+    "youtube": "YouTube Channels"
+  },
+  "loading": "Đang nạp dữ liệu đối thủ...",
+  "matrix": {
+    "title": "Chỉ số đối sánh (Benchmarking Matrix)",
+    "subtitle": "So sánh tổng quan sức mạnh truyền thông",
+    "tracking": "Đang theo dõi {{count}} đối thủ",
+    "cols": {
+      "brand": "Thương hiệu",
+      "followers": "Followers",
+      "frequency": "Tần suất đăng",
+      "engagement": "Tỷ lệ tương tác",
+      "growth": "Tăng trưởng"
+    },
+    "postsPerWeek": "bài/tuần",
+    "youBadge": "Bạn",
+    "empty": {
+      "title": "Chưa có đối thủ nào được kết nối",
+      "desc": "Vui lòng click \"Theo dõi đối thủ mới\" ở trên để bắt đầu thêm đối thủ."
+    }
+  },
+  "chart": {
+    "title": "Biểu đồ tăng trưởng Followers",
+    "subtitle": "Tốc độ mở rộng cộng đồng 5 tháng qua",
+    "noData": "Không có dữ liệu biểu đồ",
+    "youLabel": "Bạn"
+  },
+  "topPosts": {
+    "title": "Bài viết tốt nhất của đối thủ (Top Posts)",
+    "subtitle": "Học hỏi chiến lược nội dung viral từ các đối thủ của bạn",
+    "engagementLabel": "Tương tác",
+    "empty": {
+      "title": "Chưa tải được bài viết nào từ đối thủ",
+      "desc": "Hệ thống đang đồng bộ dữ liệu hoặc mạng xã hội giới hạn quyền truy cập feed. Bạn có thể nhấp vào link gốc của đối thủ ở bảng Matrix phía trên để xem trực tiếp trang của họ."
+    }
+  },
+  "modal": {
+    "title": "Theo dõi đối thủ cạnh tranh mới",
+    "searchPlaceholder": "Tìm kiếm tên kênh hoặc nhập URL / ID...",
+    "searchBtn": "Tìm kiếm",
+    "searching": "Đang tìm kiếm...",
+    "connectBtn": "Theo dõi",
+    "connecting": "Đang kết nối...",
+    "followersLabel": "followers",
+    "directConnect": "Kết nối trực tiếp",
+    "noSocialTitle": "Chưa liên kết mạng xã hội",
+    "noSocialDesc": "Thương hiệu của bạn chưa liên kết với bất kỳ tài khoản mạng xã hội nào (Facebook, YouTube, Instagram, TikTok) để sử dụng tính năng theo dõi đối thủ.",
+    "goToSettings": "Đi tới Cài đặt tài khoản",
+    "selectPlatform": "Chọn mạng xã hội",
+    "closeBtn": "Đóng",
+    "noResultsTitle": "Không tìm thấy kết quả",
+    "noResultsDesc": "Hãy thử tìm bằng từ khóa khác hoặc dán đúng đường dẫn của Page/Channel.",
+    "startSearchTitle": "Bắt đầu tìm kiếm",
+    "startSearchDesc": "Nhập từ khóa và bấm Tìm kiếm để khám phá đối thủ trên {{platform}}."
+  },
+  "toasts": {
+    "loadError": "Không thể tải danh sách đối thủ cạnh tranh",
+    "searchEmpty": "Vui lòng nhập từ khóa tìm kiếm",
+    "searchComingSoon": "Tính năng tìm kiếm đối thủ trên {{platform}} đang được phát triển.",
+    "searchError": "Tìm kiếm thất bại. Vui lòng kiểm tra lại cấu hình API!",
+    "noResults": "Không tìm thấy kết quả phù hợp",
+    "connectSuccess": "Đã theo dõi đối thủ {{name}} thành công!",
+    "connectError": "Theo dõi đối thủ thất bại. Vui lòng kiểm tra cấu hình kết nối!",
+    "connectComingSoon": "Tính năng theo dõi đối thủ trên {{platform}} đang được phát triển.",
+    "deleteSuccess": "Đã xóa đối thủ {{name}}",
+    "deleteError": "Xóa đối thủ thất bại.",
+    "deleteConfirm": "Bạn có chắc chắn muốn xóa đối thủ {{name}} khỏi danh sách theo dõi?"
+  }
+}

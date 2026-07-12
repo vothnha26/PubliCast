@@ -14,6 +14,7 @@ export function TikTokDashboard({
   pageSize,
   setPageSize,
   fetchPublishedVideos,
+  onVideoClick,
 }) {
   return (
     <>
@@ -30,6 +31,7 @@ export function TikTokDashboard({
           pageSize={pageSize}
           setPageSize={setPageSize}
           fetchPublishedVideos={fetchPublishedVideos}
+          onVideoClick={onVideoClick}
         />
       )}
     </>

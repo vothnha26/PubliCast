@@ -1,0 +1,78 @@
+{
+  "header": {
+    "title": "Competitor Benchmarking",
+    "subtitle": "Compare your brand to top competitors and draw inspiration from successful content.",
+    "addBtn": "Track New Competitor"
+  },
+  "tabs": {
+    "all": "All Competitors",
+    "facebook": "Facebook Pages",
+    "youtube": "YouTube Channels"
+  },
+  "loading": "Loading competitor data...",
+  "matrix": {
+    "title": "Benchmarking Matrix",
+    "subtitle": "Overall social media strength comparison",
+    "tracking": "Tracking {{count}} competitors",
+    "cols": {
+      "brand": "Brand",
+      "followers": "Followers",
+      "frequency": "Post Frequency",
+      "engagement": "Engagement Rate",
+      "growth": "Growth"
+    },
+    "postsPerWeek": "posts/week",
+    "youBadge": "You",
+    "empty": {
+      "title": "No competitors connected yet",
+      "desc": "Click \"Track New Competitor\" above to get started."
+    }
+  },
+  "chart": {
+    "title": "Follower Growth Chart",
+    "subtitle": "Community expansion over the past 5 months",
+    "noData": "No chart data available",
+    "youLabel": "You"
+  },
+  "topPosts": {
+    "title": "Top Performing Competitor Posts",
+    "subtitle": "Learn viral content strategies from your competitors",
+    "engagementLabel": "Engagement",
+    "empty": {
+      "title": "No posts loaded from competitors",
+      "desc": "System is syncing data or the social platform limits feed access. You can click the competitor's original link in the Matrix table above to view their page directly."
+    }
+  },
+  "modal": {
+    "title": "Track New Competitor",
+    "searchPlaceholder": "Search channel name or enter URL / ID...",
+    "searchBtn": "Search",
+    "searching": "Searching...",
+    "connectBtn": "Track",
+    "connecting": "Connecting...",
+    "followersLabel": "followers",
+    "directConnect": "Direct connect",
+    "noSocialTitle": "No social accounts linked",
+    "noSocialDesc": "Your brand has not connected to any social media accounts (Facebook, YouTube, Instagram, TikTok) to use the competitor tracking feature.",
+    "goToSettings": "Go to Account Settings",
+    "selectPlatform": "Select social network",
+    "closeBtn": "Close",
+    "noResultsTitle": "No results found",
+    "noResultsDesc": "Try searching with a different keyword or paste the correct Page/Channel URL.",
+    "startSearchTitle": "Start searching",
+    "startSearchDesc": "Enter a keyword and click Search to discover competitors on {{platform}}."
+  },
+  "toasts": {
+    "loadError": "Unable to load competitor list",
+    "searchEmpty": "Please enter a search keyword",
+    "searchComingSoon": "Competitor search for {{platform}} is coming soon.",
+    "searchError": "Search failed. Please check your API configuration!",
+    "noResults": "No matching results found",
+    "connectSuccess": "Successfully tracking competitor {{name}}!",
+    "connectError": "Failed to track competitor. Please check connection settings!",
+    "connectComingSoon": "Competitor tracking for {{platform}} is coming soon.",
+    "deleteSuccess": "Removed competitor {{name}}",
+    "deleteError": "Failed to remove competitor.",
+    "deleteConfirm": "Are you sure you want to remove {{name}} from your tracking list?"
+  }
+}

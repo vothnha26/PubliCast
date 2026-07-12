@@ -112,6 +112,18 @@ class InstagramPostService {
         scheduledAt: finalScheduledAt
       });
       console.log(`[Instagram] ✅ Published successfully! platformPostId=${result.id}`);
+
+      // Post First Comment if published immediately
+      if (!finalScheduledAt && postData.options?.firstComment?.trim()) {
+        try {
+          console.log(`[Instagram] Posting first comment: "${postData.options.firstComment.trim()}"`);
+          await instagramGateway.createComment(result.id, postData.options.firstComment.trim(), accessToken);
+          console.log(`[Instagram] First comment posted successfully.`);
+        } catch (commentErr) {
+          console.error(`[Instagram] Failed to post first comment:`, commentErr.message);
+        }
+      }
+
       return { 
         platformVideoId: result.id, 
         publishedAt: finalScheduledAt ? null : new Date() 
@@ -123,6 +135,12 @@ class InstagramPostService {
       }
       throw err;
     }
+  }
+
+  async deletePost(brandId, platformPostId) {
+    console.log(`[Instagram Post Service] deletePost triggered for brandId: ${brandId}, platformPostId: ${platformPostId}`);
+    console.warn(`[Instagram Post Service] Instagram Graph API does not support deleting posts via 3rd party apps. Simulating success.`);
+    return { success: true, warning: 'Instagram does not support remote deletion via API' };
   }
 
   // ============= Private Helper Methods =============

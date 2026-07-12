@@ -1,9 +1,18 @@
 import React, { useEffect, useRef, useMemo } from 'react';
 import { buildMediaUrl } from '@/utils/url';
 import { PlatformIcon } from '@/components/shared/PlatformIcon';
+import { PostMediaThumbnail } from '@/components/shared/PostMediaThumbnail';
 
-const getBestTimePercentage = (dayIdx, hourVal, platform = 'INSTAGRAM') => {
-  // Deterministic but platform-dependent percentage distribution
+const getBestTimePercentage = (dayIdx, hourVal, bestTimesData = [], platform = 'INSTAGRAM') => {
+  // Tìm khung giờ tương ứng trong data thật từ API
+  if (Array.isArray(bestTimesData) && bestTimesData.length > 0) {
+    const found = bestTimesData.find(item => item.day === dayIdx && item.hour === hourVal);
+    if (found) {
+      return found.percentage;
+    }
+  }
+
+  // Fallback thuật toán cũ nếu chưa load xong
   const platformShift = platform.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
   const seed = (dayIdx * 13 + hourVal * 19 + platformShift) % 100;
   return 30 + Math.round((seed / 100) * 60); // 30% to 90%
@@ -41,12 +50,33 @@ export function WeeklyGrid({
   currentTime,
   onCellClick,
   onPostClick,
+  onDuplicateClick,
   onCellDrop,
   rowHeight = 100,
   bestTimePlatform = 'INSTAGRAM',
+  bestTimesData = [],
+  eventsData = [],
   viewMode = 'WEEK'
 }) {
   const gridContainerRef = useRef(null);
+
+  // Group events by date string 'yyyy-MM-dd'
+  const eventsByDate = useMemo(() => {
+    const map = {};
+    if (Array.isArray(eventsData)) {
+      eventsData.forEach(event => {
+        if (!event.eventDate) return;
+        const dateObj = new Date(event.eventDate);
+        const year = dateObj.getFullYear();
+        const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+        const day = String(dateObj.getDate()).padStart(2, '0');
+        const dateStr = `${year}-${month}-${day}`;
+        if (!map[dateStr]) map[dateStr] = [];
+        map[dateStr].push(event);
+      });
+    }
+    return map;
+  }, [eventsData]);
 
   // Generate the days of the selected view (1 day for DAY mode, 7 days for WEEK mode)
   const days = useMemo(() => {
@@ -146,26 +176,54 @@ export function WeeklyGrid({
         {/* Time column spacer */}
         <div className="w-20 shrink-0 border-r border-gray-100" />
         
-        {days.map((day, idx) => (
-          <div 
-            key={idx} 
-            className="flex-1 py-4 flex items-center justify-center border-l border-gray-50 first:border-l-0"
-          >
-            {day.isToday ? (
-              <div className="px-4 py-2 bg-[#10B981] text-white rounded-lg text-xs font-black uppercase tracking-wider shadow-sm animate-in zoom-in-95 duration-200">
-                {day.shortName} {day.month}/{day.date}
-              </div>
-            ) : (
-              <div className={`text-[11px] font-bold uppercase tracking-wider transition-colors cursor-pointer py-2 ${
-                day.isSelected 
-                  ? "text-[#0A0A0A] border-b-2 border-[#0A0A0A] font-black" 
-                  : "text-gray-400 hover:text-black"
-              }`}>
-                {day.shortName} {day.month}/{day.date}
-              </div>
-            )}
-          </div>
-        ))}
+        {days.map((day, idx) => {
+          const dayEvents = eventsByDate[day.full] || [];
+
+          return (
+            <div 
+              key={idx} 
+              className="flex-1 py-3 flex flex-col items-center justify-center border-l border-gray-50 first:border-l-0 gap-1.5 min-h-[70px]"
+            >
+              {day.isToday ? (
+                <div className="px-4 py-2 bg-[#10B981] text-white rounded-lg text-xs font-black uppercase tracking-wider shadow-sm animate-in zoom-in-95 duration-200">
+                  {day.shortName} {day.month}/{day.date}
+                </div>
+              ) : (
+                <div className={`text-[11px] font-bold uppercase tracking-wider transition-colors cursor-pointer py-1.5 ${
+                  day.isSelected 
+                    ? "text-[#0A0A0A] border-b-2 border-[#0A0A0A] font-black" 
+                    : "text-gray-400 hover:text-black"
+                }`}>
+                  {day.shortName} {day.month}/{day.date}
+                </div>
+              )}
+
+              {/* Tag ngày lễ */}
+              {dayEvents.length > 0 && (
+                <div className="flex flex-col gap-1 w-full px-2 max-w-[130px]">
+                  {dayEvents.map(event => (
+                    <div 
+                      key={event.id}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (onCellClick) {
+                          const eventDate = new Date(day.raw);
+                          eventDate.setHours(9, 0, 0, 0);
+                          onCellClick(eventDate, 9);
+                        }
+                      }}
+                      className="px-1.5 py-0.5 bg-rose-50 text-rose-700 border border-rose-100 rounded text-[9px] font-black tracking-tight truncate flex items-center justify-center gap-1 shadow-sm hover:bg-rose-100 transition-colors cursor-pointer"
+                      title={event.description || event.title}
+                    >
+                      <span className="shrink-0">📅</span>
+                      <span className="truncate">{event.title}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          );
+        })}
       </div>
 
       {/* Scrollable Grid Body */}
@@ -197,7 +255,7 @@ export function WeeklyGrid({
             {/* Day columns for this hour */}
             {days.map((day, dIdx) => {
               const cellPosts = groupedPosts[`${day.full}-${hour.value}`] || [];
-              const percentage = getBestTimePercentage(dIdx, hour.value, bestTimePlatform);
+              const percentage = getBestTimePercentage(dIdx, hour.value, bestTimesData, bestTimePlatform);
               const heatmapBg = getHeatmapBg(percentage);
 
               return (
@@ -257,11 +315,23 @@ export function WeeklyGrid({
                           className="bg-white border border-gray-100 hover:border-gray-200/80 rounded-md p-2.5 shadow-[0_1.5px_3px_rgba(0,0,0,0.03)] hover:shadow-[0_4px_8px_rgba(0,0,0,0.06)] transition-all border-l-[3.5px] text-left flex flex-col space-y-1.5 w-full group/card"
                         >
                           {/* Top Header Row */}
-                          <div className="flex items-center justify-between">
+                          <div className="flex items-center justify-between relative">
                             {renderPlatformIcon(platform, "w-3.5 h-3.5")}
-                            <span className="text-[10px] font-bold text-gray-700 uppercase tracking-tight">
-                              {displayTime}
-                            </span>
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-[10px] font-bold text-gray-700 uppercase tracking-tight group-hover/card:hidden">
+                                {displayTime}
+                              </span>
+                              <button 
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  if (onDuplicateClick) onDuplicateClick(post);
+                                }}
+                                title="Nhân bản bài viết"
+                                className="hidden group-hover/card:flex items-center justify-center p-0.5 hover:bg-gray-100 rounded text-indigo-600 transition-colors cursor-pointer border-none shadow-none"
+                              >
+                                <span className="text-[10px]">🔂</span>
+                              </button>
+                            </div>
                           </div>
 
                           {/* Title / Description */}
@@ -278,17 +348,15 @@ export function WeeklyGrid({
                           {/* Media Preview/Thumbnail */}
                           {hasMedia && (
                             <div className="mt-1 flex items-center">
-                              <div className="w-10 h-10 rounded-md bg-gray-50 overflow-hidden flex items-center justify-center shrink-0 border border-gray-100 relative">
-                                {thumbUrl ? (
-                                  <img src={thumbUrl} alt="Thumbnail" className="w-full h-full object-cover" />
-                                ) : (
-                                  <div className="w-full h-full bg-gray-50 flex items-center justify-center text-[9px] text-gray-400 font-medium">
-                                    [Media]
-                                  </div>
-                                )}
+                              <div className="w-10 h-10 rounded-md overflow-hidden shrink-0 border border-gray-100 relative">
+                                <PostMediaThumbnail 
+                                  thumbnail={post.thumbnail}
+                                  mediaUrls={post.mediaUrls}
+                                  className="w-full h-full"
+                                />
                                 {/* Multi-media Indicator Overlay */}
                                 {post.mediaUrls.length > 1 && (
-                                  <div className="absolute inset-0 bg-black/45 flex items-center justify-center text-[9px] font-black text-white">
+                                  <div className="absolute inset-0 bg-black/45 flex items-center justify-center text-[9px] font-black text-white z-10">
                                     +{post.mediaUrls.length - 1}
                                   </div>
                                 )}

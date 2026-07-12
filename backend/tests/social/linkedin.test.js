@@ -306,7 +306,7 @@ describe('LinkedIn Integration Service & Gateway Tests', () => {
           brandId: 'brand_123',
           platform: 'LINKEDIN',
           platformAccountId: 'mock-linkedin-id-123',
-          accessToken: 'mock_access_token'
+          accessToken: 'token_for_strategy'
         }];
 
         const createPostSpy = jest.spyOn(linkedinGateway, 'createPost').mockResolvedValue({ id: 'urn:li:share:123' });
@@ -321,7 +321,7 @@ describe('LinkedIn Integration Service & Gateway Tests', () => {
 
         expect(socialAccountRepository.findByBrandAndPlatform).toHaveBeenCalledWith('brand_123', 'LINKEDIN');
         expect(createPostSpy).toHaveBeenCalledWith(
-          'mock_access_token',
+          'token_for_strategy',
           'mock-linkedin-id-123',
           expect.objectContaining({
             caption: 'Hello LinkedIn world!',

@@ -4,7 +4,8 @@ import {
   User, Shield, CreditCard, Globe, 
   Mail, Lock, Smartphone, ExternalLink,
   MessageCircle, Send, Paperclip, CheckCircle2, Search,
-  AlertTriangle, Loader2, Plus, FileText, ChevronRight
+  AlertTriangle, Loader2, Plus, FileText, ChevronRight,
+  Sun, Moon
 } from "lucide-react";
 import profileService from "../../services/profile.service";
 import apiService from "../../services/api";
@@ -12,12 +13,19 @@ import { toast } from "sonner";
 import { useConfirm } from "@/hooks/useConfirm";
 import { useBrand } from "../../context/BrandContext";
 import socketClient from "../../services/socket";
+import { useTheme } from "../../context/ThemeContext";
+import { useLanguage } from "../../context/LanguageContext";
+import { LANGUAGES } from "../../constants/language";
+import { useTranslation } from "react-i18next";
 
 export function SettingsPage() {
+  const { t } = useTranslation("settings");
   const location = useLocation();
   const navigate = useNavigate();
   const confirm = useConfirm();
   const { activeBrand } = useBrand();
+  const { theme, setTheme } = useTheme();
+  const { language, setLanguage } = useLanguage();
   const [activeTab, setActiveTab] = useState("account");
 
   // State for form fields
@@ -60,12 +68,20 @@ export function SettingsPage() {
   useEffect(() => {
     const params = new URLSearchParams(location.search);
     const tabParam = params.get("tab");
+    const successParam = params.get("success");
+
+    if (successParam === "google_linked") {
+      toast.success(language === 'vi' ? "Liên kết tài khoản Google thành công!" : "Google account linked successfully!");
+      setActiveTab("access");
+      navigate("/settings?tab=access", { replace: true });
+      return;
+    }
     
     if (tabParam === "support") setActiveTab("support");
     else if (tabParam === "access") setActiveTab("access");
     else if (tabParam === "billing") setActiveTab("billing");
     else setActiveTab("account");
-  }, [location.search]);
+  }, [location.search, navigate, language]);
 
   // Fetch support tickets (History)
   const fetchSupportHistory = async () => {
@@ -76,7 +92,7 @@ export function SettingsPage() {
       setTickets(res.data.data || []);
     } catch (err) {
       console.error("Error fetching support history:", err);
-      toast.error("Không thể tải lịch sử hỗ trợ");
+      toast.error(t("support.errorFetchHistory"));
     } finally {
       setLoadingTickets(false);
     }
@@ -94,7 +110,7 @@ export function SettingsPage() {
         // Map messages to view format
         const formatted = (activeTicket.messages || []).map(m => ({
           id: m.id,
-          role: m.senderId === activeTicket.userId ? "user" : "agent",
+          role: (m.sender?.role === 'STAFF' || m.sender?.role === 'ADMIN') ? "agent" : "user",
           text: m.content,
           time: new Date(m.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
         }));
@@ -102,7 +118,7 @@ export function SettingsPage() {
         if (!activeTicket.assignedAgentId && formatted.length > 0) {
           formatted.push({
             role: "system",
-            text: "Hệ thống: Vui lòng đợi trong giây lát, nhân viên hỗ trợ đang được kết nối...",
+            text: t("support.systemWaitMessage"),
             time: ""
           });
         }
@@ -110,7 +126,7 @@ export function SettingsPage() {
       } else {
         setActiveSupportTicket(null);
         setActiveSupportMessages([
-          { role: "agent", text: "Chào bạn! 👋 Mình có thể hỗ trợ gì cho bạn hôm nay? Gửi tin nhắn để bắt đầu phiên hỗ trợ mới nhé.", time: "" }
+          { role: "agent", text: t("support.welcomeMessage"), time: "" }
         ]);
       }
     } catch (err) {
@@ -182,10 +198,10 @@ export function SettingsPage() {
 
       const handleStatusUpdated = (payload) => {
         if (payload.ticketId === activeSupportTicket.id && payload.status === 'RESOLVED') {
-          toast.info("Phiên hỗ trợ này đã được đóng.");
+          toast.info(t("support.sessionClosed"));
           setActiveSupportTicket(null);
           setActiveSupportMessages([
-            { role: "agent", text: "Phiên chat đã kết thúc. Bạn có thể xem lại lịch sử hỗ trợ trong Cài đặt.", time: "" }
+            { role: "agent", text: t("support.resolvedMessage"), time: "" }
           ]);
           fetchSupportHistory();
         }
@@ -205,12 +221,12 @@ export function SettingsPage() {
               ...filtered,
               {
                 role: "system",
-                text: `Hệ thống: Nhân viên ${payload.assignedAgent.name} đã kết nối vào cuộc trò chuyện.`,
+                text: t("support.agentConnected", { name: payload.assignedAgent.name }),
                 time: ""
               }
             ];
           });
-          toast.success(`Nhân viên ${payload.assignedAgent.name} đã nhận hỗ trợ phiên chat của bạn.`);
+          toast.success(t("support.agentAssigned", { name: payload.assignedAgent.name }));
         }
       };
 
@@ -242,173 +258,146 @@ export function SettingsPage() {
         });
         currentTicket = res.data.data;
         setActiveSupportTicket(currentTicket);
-        setActiveSupportMessages([]);
         socketClient.emit('join_room', { ticketId: currentTicket.id });
       }
 
-      setActiveSupportMessages(prev => {
-        const updated = [...prev, {
-          id: 'temp-' + Date.now(),
-          role: "user",
-          text: originalText,
-          time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        }];
-
-        if (!currentTicket.assignedAgentId) {
-          const filtered = updated.filter(m => m.role !== 'system');
-          filtered.push({
-            role: "system",
-            text: "Hệ thống: Vui lòng đợi trong giây lát, nhân viên hỗ trợ đang được kết nối...",
-            time: ""
-          });
-          return filtered;
-        }
-        return updated;
-      });
-
-      const payload = {
-        ticketId: currentTicket.id,
-        messageType: 'TEXT',
-        content: originalText,
+      const tempId = `temp-${Date.now()}`;
+      const tempMessage = {
+        id: tempId,
+        role: "user",
+        text: originalText,
+        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       };
 
-      socketClient.emit('send_message', payload);
+      setActiveSupportMessages(prev => [...prev, tempMessage]);
       setActiveSupportInput("");
+
+      await apiService.post(`/tickets/${currentTicket.id}/messages`, {
+        content: originalText
+      });
     } catch (err) {
-      console.error("Failed to send support message from Settings:", err);
-      toast.error("Không thể gửi tin nhắn hỗ trợ");
+      console.error("Error sending support message:", err);
+      toast.error(language === 'vi' ? "Gửi tin nhắn thất bại" : "Failed to send message");
     }
   };
 
-  const loadTicketMessages = async (ticket) => {
-    setSelectedTicket(ticket);
-    setLoadingMessages(true);
-    try {
-      const res = await apiService.get(`/tickets/${ticket.id}`);
-      setTicketMessages(res.data.data?.messages || []);
-    } catch (err) {
-      console.error("Error fetching ticket messages:", err);
-      toast.error("Không thể tải nội dung phiên chat");
-    } finally {
-      setLoadingMessages(false);
-    }
-  };
-
-  const handleCancelPayment = async (transactionCode) => {
-    const isConfirmed = window.confirm("Bạn có chắc chắn muốn hủy yêu cầu thanh toán này không?");
-    if (!isConfirmed) return;
-
-    try {
-      await apiService.post('/billing/subscriptions/cancel', { transactionCode });
-      toast.success("Hủy yêu cầu thanh toán thành công!");
-      if (activeBrand?.id) {
-        setLoadingBilling(true);
-        const historyRes = await apiService.get(`/billing/subscriptions/history?brandId=${activeBrand.id}`);
-        setPaymentHistory(historyRes.data.data || []);
-        setLoadingBilling(false);
-      }
-    } catch (err) {
-      toast.error(err.response?.data?.message || err.message || "Không thể hủy yêu cầu thanh toán.");
-    }
-  };
-
-  // Fetch profile data on mount
   useEffect(() => {
-    const fetchProfile = async () => {
-      setIsLoading(true);
-      try {
-        const res = await profileService.getUserProfile();
+    setIsLoading(true);
+    profileService.getUserProfile()
+      .then(res => {
         if (res && res.data) {
-          const userData = res.data;
-          setFullName(userData.fullName || "");
-          setEmail(userData.email || "");
-          setAccounts(userData.accounts || []);
+          setFullName(res.data.name || "");
+          setEmail(res.data.email || "");
+          setReceiveSummary(res.data.receiveSummary ?? true);
+          setCustomSummaryEmail(res.data.customSummaryEmail || "");
+          setTwoFactor(res.data.twoFactor ?? false);
+          setAccounts(res.data.accounts || []);
         }
-      } catch (err) {
-        toast.error("Không thể lấy thông tin profile");
-      } finally {
+      })
+      .catch(err => {
+        toast.error(language === 'vi' ? "Không thể tải thông tin cá nhân" : "Failed to load profile details");
+      })
+      .finally(() => {
         setIsLoading(false);
-      }
-    };
-    fetchProfile();
+      });
   }, []);
 
-  // Handle URL query parameters (e.g. google link callback redirection)
-  useEffect(() => {
-    const params = new URLSearchParams(location.search);
-    if (params.get("success") === "google_linked") {
-      toast.success("Liên kết tài khoản Google thành công!");
-      navigate("/settings?tab=access", { replace: true });
-    }
-  }, [location.search, navigate]);
-
   const handleSave = async () => {
-    if (!fullName.trim()) {
-      toast.error("Tên không được để trống");
-      return;
-    }
-    
-    if (receiveSummary && customSummaryEmail) {
-      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-      if (!emailRegex.test(customSummaryEmail)) {
-        toast.error("Email không đúng định dạng");
-        return;
-      }
-    }
-
     setIsSaving(true);
     try {
-      await profileService.editProfile({ fullName });
-      toast.success("Cập nhật thành công!");
+      await profileService.editProfile({
+        fullName,
+        name: fullName,
+        receiveSummary,
+        customSummaryEmail,
+        twoFactor
+      });
+      toast.success(language === 'vi' ? "Cập nhật hồ sơ thành công!" : "Profile updated successfully!");
     } catch (err) {
-      toast.error(err.message || "Cập nhật thất bại");
+      toast.error(err.message || (language === 'vi' ? "Cập nhật thất bại" : "Failed to update profile"));
     } finally {
       setIsSaving(false);
     }
   };
 
+  const loadTicketMessages = async (t) => {
+    setSelectedTicket(t);
+    setLoadingMessages(true);
+    try {
+      const res = await apiService.get(`/tickets/${t.id}/messages`);
+      setTicketMessages(res.data.data || []);
+    } catch (err) {
+      console.error("Error loading ticket messages:", err);
+    } finally {
+      setLoadingMessages(false);
+    }
+  };
+
   const handleLinkGoogle = async () => {
     try {
-      const res = await apiService.get("/auth/google?state=settings");
-      if (res.data && res.data.url) {
+      const res = await apiService.get("/auth/google/link");
+      if (res.data?.url) {
         window.location.href = res.data.url;
-      } else {
-        toast.error("Không thể lấy URL liên kết tài khoản Google");
       }
     } catch (err) {
-      toast.error(err.message || "Đã xảy ra lỗi khi liên kết Google");
+      toast.error(err.message || (language === 'vi' ? "Không thể khởi tạo liên kết Google" : "Failed to initialize Google linking"));
+    }
+  };
+
+  const handleCancelPayment = async (txCode) => {
+    const ok = await confirm({
+      title: language === 'vi' ? "Hủy giao dịch?" : "Cancel transaction?",
+      message: language === 'vi' 
+        ? "Bạn có chắc chắn muốn hủy giao dịch đang chờ này không?" 
+        : "Are you sure you want to cancel this pending transaction?"
+    });
+    if (!ok) return;
+
+    try {
+      await apiService.post(`/billing/transactions/${txCode}/cancel`);
+      toast.success(language === 'vi' ? "Đã hủy giao dịch thanh toán." : "Payment transaction cancelled.");
+      // Reload history
+      if (activeBrand?.id) {
+        const historyRes = await apiService.get(`/billing/subscriptions/history?brandId=${activeBrand.id}`);
+        setPaymentHistory(historyRes.data.data || []);
+      }
+    } catch (err) {
+      toast.error(err.message || (language === 'vi' ? "Lỗi khi hủy giao dịch" : "Error cancelling transaction"));
     }
   };
 
   const handleUnlink = async (provider) => {
-    const isConfirmed = await confirm({
-      title: "Hủy liên kết tài khoản?",
-      description: `Bạn có chắc chắn muốn hủy liên kết tài khoản ${provider}?`,
-      confirmText: "Hủy liên kết",
-      cancelText: "Hủy",
-      variant: "destructive"
+    const ok = await confirm({
+      title: language === 'vi' ? "Hủy liên kết?" : "Unlink account?",
+      message: language === 'vi' 
+        ? `Bạn có chắc chắn muốn hủy liên kết với tài khoản ${provider} không?` 
+        : `Are you sure you want to unlink your ${provider} account?`
     });
-    if (!isConfirmed) return;
+    if (!ok) return;
+
     try {
-      await apiService.delete(`/profile/accounts/${provider.toLowerCase()}`);
-      toast.success(`Hủy liên kết tài khoản ${provider} thành công!`);
+      await apiService.post(`/profile/accounts/unlink`, { provider });
+      toast.success(language === 'vi' ? `Hủy liên kết tài khoản ${provider} thành công!` : `Unlinked ${provider} account successfully!`);
       // Refresh profile info
       const res = await profileService.getUserProfile();
       if (res && res.data) {
         setAccounts(res.data.accounts || []);
       }
     } catch (err) {
-      toast.error(err.message || "Hủy liên kết thất bại");
+      toast.error(err.message || (language === 'vi' ? "Hủy liên kết thất bại" : "Failed to unlink"));
     }
   };
 
   const handleUpdatePassword = async () => {
-    if (!newPassword) {
-      toast.error("Vui lòng nhập mật khẩu mới!");
+    const hasLocalAccount = accounts.some(acc => acc.provider === 'LOCAL');
+    if (hasLocalAccount && !currentPassword) {
+      toast.error("mật khẩu hiện tại là bắt buộc.");
       return;
     }
-    // [BUG INJECTED] Removed password length validation check
-    // if (newPassword.length < 6) { ... }
+    if (!newPassword) {
+      toast.error(language === 'vi' ? "Vui lòng nhập mật khẩu mới!" : "Please enter a new password!");
+      return;
+    }
 
     setIsUpdatingPassword(true);
     try {
@@ -416,11 +405,11 @@ export function SettingsPage() {
         currentPassword,
         newPassword
       });
-      toast.success("Cập nhật mật khẩu thành công!");
+      toast.success(language === 'vi' ? "Cập nhật mật khẩu thành công!" : "Password updated successfully!");
       setCurrentPassword("");
       setNewPassword("");
     } catch (err) {
-      toast.error(err.message || "Không thể cập nhật mật khẩu");
+      toast.error(err.message || (language === 'vi' ? "Không thể cập nhật mật khẩu" : "Failed to update password"));
     } finally {
       setIsUpdatingPassword(false);
     }
@@ -430,14 +419,14 @@ export function SettingsPage() {
     <div className="flex-1 flex flex-col overflow-hidden bg-[#F8F8F7] p-8 font-sans">
       {/* Top horizontal navigation instead of a vertical sidebar */}
       <div className="bg-white rounded-2xl border border-gray-100 p-4 mb-6 shadow-sm flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-        <h1 className="text-lg font-extrabold text-[#0A0A0A] tracking-tight pl-2">Cài đặt hệ thống</h1>
+        <h1 className="text-lg font-extrabold text-[#0A0A0A] tracking-tight pl-2">{t("title")}</h1>
         
         <div className="flex flex-wrap gap-1 bg-gray-55/60 p-1 rounded-xl">
           {[
-            { id: "account", label: "Hồ sơ cá nhân", icon: User },
-            { id: "access", label: "Bảo mật & Đăng nhập", icon: Shield },
-            { id: "support", label: "Hỗ trợ (Chat)", icon: MessageCircle },
-            { id: "billing", label: "Cổng thanh toán", icon: CreditCard },
+            { id: "account", label: t("tabs.account"), icon: User },
+            { id: "access", label: t("tabs.security"), icon: Shield },
+            { id: "support", label: t("tabs.support"), icon: MessageCircle },
+            { id: "billing", label: t("tabs.billing"), icon: CreditCard },
           ].map((tab) => {
             const Icon = tab.icon;
             const isTabActive = activeTab === tab.id;
@@ -465,23 +454,23 @@ export function SettingsPage() {
       </div>
 
       {/* Main Settings Panel */}
-      <div className="flex-1 overflow-y-auto bg-white rounded-3xl border border-gray-100 p-8 shadow-sm">
+      <div className="flex-1 overflow-y-auto bg-white rounded-3xl border border-gray-150 p-8 shadow-sm">
         {activeTab === "account" && (
           <div className="space-y-10 animate-in fade-in duration-300">
             <div>
               <div className="flex items-center gap-2 mb-2">
                  <User size={18} className="text-gray-400" />
-                 <h2 className="text-lg font-bold text-[#0A0A0A]">Personal profile</h2>
+                 <h2 className="text-lg font-bold text-[#0A0A0A]">{t("profile.title")}</h2>
               </div>
               <p className="text-sm text-gray-500 leading-relaxed">
-                 Manage your public profile settings and customize how summary metrics are received.
+                 {t("profile.subtitle")}
               </p>
             </div>
 
             <section className="space-y-6 max-w-xl">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-1.5">
-                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Full Name</label>
+                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{t("profile.fullName")}</label>
                   <input 
                     type="text" 
                     value={fullName}
@@ -491,8 +480,8 @@ export function SettingsPage() {
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">E-mail</label>
-                  <input value={email} disabled className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 text-gray-450 text-sm font-medium" />
+                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{t("profile.email")}</label>
+                  <input value={email} disabled className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-55 text-gray-450 text-sm font-medium" />
                 </div>
               </div>
 
@@ -500,7 +489,7 @@ export function SettingsPage() {
                  <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
                        <CheckCircle2 size={18} className="text-green-600" />
-                       <span className="text-sm font-bold text-[#0A0A0A]">Monthly metrics report</span>
+                       <span className="text-sm font-bold text-[#0A0A0A]">{t("profile.metricsReport")}</span>
                     </div>
                     <div 
                       onClick={() => setReceiveSummary(!receiveSummary)}
@@ -511,21 +500,96 @@ export function SettingsPage() {
                     </div>
                  </div>
                  <p className="text-[11px] text-gray-500 leading-relaxed font-medium">
-                    We will send you a monthly analytics report containing reach, content overview, and comparison indices automatically.
+                    {t("profile.metricsReportDesc")}
                  </p>
 
                  <div className="space-y-1.5 pt-2">
-                   <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Alternative Email (Optional)</label>
+                   <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{t("profile.alternativeEmail")}</label>
                    <input 
                      type="email" 
-                     placeholder="Enter destination email address"
+                     placeholder={t("profile.alternativeEmail")}
                      value={customSummaryEmail}
                      onChange={(e) => setCustomSummaryEmail(e.target.value)}
                      className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-black outline-none text-sm font-medium" 
                    />
-                   <p className="text-[10px] text-gray-400 italic">When this field is empty the monthly summary is sent to <b>{email}</b></p>
+                   <p className="text-[10px] text-gray-400 italic">{t("profile.alternativeEmailDesc", { email })}</p>
                  </div>
               </div>
+
+               {/* Display Theme */}
+               <div className="p-6 rounded-2xl bg-slate-50 dark:bg-[var(--muted)]/20 border border-slate-100 dark:border-[var(--border)] space-y-4">
+                 <div>
+                   <h3 className="text-sm font-bold text-[var(--foreground)]">{t("profile.theme")}</h3>
+                   <p className="text-[11px] text-[var(--muted-foreground)] leading-relaxed font-medium mt-1">
+                     {t("profile.themeDesc")}
+                   </p>
+                 </div>
+
+                 <div className="grid grid-cols-2 gap-3">
+                   {[
+                     { id: 'light', label: 'Light', icon: Sun },
+                     { id: 'dark', label: 'Dark', icon: Moon },
+                   ].map((tTheme) => {
+                     const Icon = tTheme.icon;
+                     const isSelected = theme === tTheme.id;
+                     return (
+                       <button
+                         key={tTheme.id}
+                         type="button"
+                         onClick={() => {
+                           setTheme(tTheme.id);
+                           toast.success(t("profile.toastTheme", { mode: tTheme.label }));
+                         }}
+                         className={`flex flex-col items-center gap-2.5 p-4 rounded-xl border transition-all duration-200 cursor-pointer text-center ${
+                           isSelected
+                             ? "bg-gray-900 border-gray-900 text-white shadow-md"
+                             : "bg-[var(--card)] border-[var(--border)] text-[var(--foreground)] hover:bg-[var(--muted)]/50"
+                         }`}
+                       >
+                         <Icon size={18} />
+                         <span className="text-[10px] font-bold tracking-tight">{tTheme.label}</span>
+                       </button>
+                     );
+                   })}
+                 </div>
+               </div>
+
+               {/* Language Preference */}
+               <div className="p-6 rounded-2xl bg-slate-50 dark:bg-[var(--muted)]/20 border border-slate-100 dark:border-[var(--border)] space-y-4">
+                 <div>
+                   <h3 className="text-sm font-bold text-[var(--foreground)]">{t("profile.language")}</h3>
+                   <p className="text-[11px] text-[var(--muted-foreground)] leading-relaxed font-medium mt-1">
+                     {t("profile.languageDesc")}
+                   </p>
+                 </div>
+
+                 <div className="grid grid-cols-2 gap-3">
+                   {LANGUAGES.map((lang) => {
+                     const isSelected = language === lang.code;
+                     return (
+                       <button
+                         key={lang.code}
+                         type="button"
+                         onClick={() => {
+                           setLanguage(lang.code);
+                           toast.success(t("profile.toastLanguage", { lang: lang.label }));
+                         }}
+                         className={`flex items-center justify-center gap-2.5 p-4 rounded-xl border transition-all duration-200 cursor-pointer ${
+                           isSelected
+                             ? "bg-gray-900 border-gray-900 text-white shadow-md"
+                             : "bg-[var(--card)] border-[var(--border)] text-[var(--foreground)] hover:bg-[var(--muted)]/50"
+                         }`}
+                       >
+                         <span className="text-base leading-none">{lang.flag}</span>
+                         <div className="text-left">
+                           <div className="text-xs font-bold">{lang.label}</div>
+                           <div className={`text-[10px] font-medium ${ isSelected ? 'text-white/60' : 'text-[var(--muted-foreground)]'}`}>{lang.nativeLabel}</div>
+                         </div>
+                       </button>
+                     );
+                   })}
+                 </div>
+               </div>
             </section>
 
             <button 
@@ -535,7 +599,7 @@ export function SettingsPage() {
               className="px-10 py-3 bg-[#0A0A0A] text-white rounded-xl font-bold hover:bg-gray-800 transition-all shadow-lg flex items-center gap-2"
             >
               {isSaving && <Loader2 size={18} className="animate-spin" />}
-              Save All Changes
+              {t("profile.saveBtn")}
             </button>
           </div>
         )}
@@ -545,35 +609,35 @@ export function SettingsPage() {
             <div>
               <div className="flex items-center gap-2 mb-2">
                  <Shield size={18} className="text-gray-400" />
-                 <h2 className="text-lg font-bold text-[#0A0A0A]">Access information</h2>
+                 <h2 className="text-lg font-bold text-[#0A0A0A]">{t("security.title")}</h2>
               </div>
               <p className="text-sm text-gray-500 leading-relaxed">
-                 This is your access information. You'll need to introduce your password to perform any change.
+                 {t("security.subtitle")}
               </p>
             </div>
 
             <div className="space-y-6 max-w-md">
               <div className="space-y-1.5">
-                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">E-mail</label>
+                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{t("profile.email")}</label>
                 <input value={email} disabled className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 text-gray-400 text-sm font-medium" />
               </div>
 
               {accounts.some(acc => acc.provider === 'LOCAL') && (
                 <div className="space-y-1.5">
                   <div className="flex items-center justify-between">
-                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Mật khẩu hiện tại</label>
+                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{t("security.currentPassword")}</label>
                     <Link 
                       to={`/forgot-password?email=${encodeURIComponent(email)}`}
                       className="text-[10px] font-bold text-blue-600 hover:underline hover:text-blue-700 transition-colors"
                     >
-                      Quên mật khẩu?
+                      {t("security.forgotPassword")}
                     </Link>
                   </div>
                   <div className="relative">
                     <Lock size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
                     <input 
                       type="password" 
-                      placeholder="Nhập mật khẩu hiện tại" 
+                      placeholder={t("security.currentPasswordPlaceholder")} 
                       value={currentPassword}
                       onChange={(e) => setCurrentPassword(e.target.value)}
                       data-testid="profile-current-password-input"
@@ -585,13 +649,13 @@ export function SettingsPage() {
 
               <div className="space-y-1.5">
                 <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">
-                  {accounts.some(acc => acc.provider === 'LOCAL') ? "Mật khẩu mới" : "Thiết lập mật khẩu mới"}
+                  {accounts.some(acc => acc.provider === 'LOCAL') ? t("security.newPassword") : t("security.setupNewPassword")}
                 </label>
                 <div className="relative">
                   <Lock size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
                   <input 
                     type="password" 
-                    placeholder={accounts.some(acc => acc.provider === 'LOCAL') ? "Nhập mật khẩu mới" : "Tạo mật khẩu đăng nhập trực tiếp"} 
+                    placeholder={accounts.some(acc => acc.provider === 'LOCAL') ? t("security.newPasswordPlaceholder") : t("security.createNewPasswordPlaceholder")} 
                     value={newPassword}
                     onChange={(e) => setNewPassword(e.target.value)}
                     data-testid="profile-new-password-input"
@@ -600,8 +664,8 @@ export function SettingsPage() {
                 </div>
                 <p className="text-[10px] text-gray-400 italic">
                   {accounts.some(acc => acc.provider === 'LOCAL') 
-                    ? "Nhập mật khẩu mới có độ dài tối thiểu 6 ký tự để thay đổi mật khẩu hiện tại."
-                    : "Tài khoản của bạn đang đăng nhập bằng Google. Hãy thiết lập mật khẩu tại đây nếu bạn muốn đăng nhập song song bằng Email & Mật khẩu."
+                    ? t("security.passwordHint")
+                    : t("security.googleHint")
                   }
                 </p>
               </div>
@@ -610,7 +674,7 @@ export function SettingsPage() {
                  <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
                        <Smartphone size={18} className="text-blue-600" />
-                       <span className="text-sm font-bold text-[#0A0A0A]">Two factor authentication</span>
+                       <span className="text-sm font-bold text-[#0A0A0A]">{t("security.twoFactor")}</span>
                     </div>
                     <div 
                       onClick={() => setTwoFactor(!twoFactor)}
@@ -620,7 +684,7 @@ export function SettingsPage() {
                     </div>
                  </div>
                  <p className="text-[11px] text-blue-700/70 leading-relaxed font-medium">
-                    To increase the security of your account you can enable 2-factor authentication (2FA) with your mobile device.
+                    {t("security.twoFactorDesc")}
                  </p>
               </div>
               
@@ -631,15 +695,15 @@ export function SettingsPage() {
                 className="px-8 py-3 bg-[#0A0A0A] text-white rounded-xl font-bold hover:bg-gray-800 transition-all shadow-lg flex items-center gap-2"
               >
                 {isUpdatingPassword && <Loader2 size={16} className="animate-spin" />}
-                Update Access
+                {t("security.updateBtn")}
               </button>
             </div>
 
             {/* Linked Accounts Section */}
             <div className="pt-8 border-t border-gray-100 space-y-6">
               <div>
-                <h3 className="text-sm font-bold text-[#0A0A0A]">Liên kết tài khoản mạng xã hội</h3>
-                <p className="text-xs text-gray-500 mt-1">Liên kết với tài khoản Google để đăng nhập nhanh chóng bằng 1-click.</p>
+                <h3 className="text-sm font-bold text-[#0A0A0A]">{t("security.linkedAccounts")}</h3>
+                <p className="text-xs text-gray-500 mt-1">{t("security.linkedAccountsDesc")}</p>
               </div>
 
               <div className="space-y-3 max-w-xl">
@@ -655,11 +719,11 @@ export function SettingsPage() {
                       </svg>
                     </div>
                     <div>
-                      <div className="text-sm font-bold text-[#0A0A0A]">Tài khoản Google</div>
+                      <div className="text-sm font-bold text-[#0A0A0A]">{t("security.googleAccount")}</div>
                       <div className="text-xs text-gray-400 font-medium mt-0.5">
                         {accounts.some(acc => acc.provider === "GOOGLE") 
-                          ? `Đã liên kết (ID: ${accounts.find(acc => acc.provider === "GOOGLE")?.providerId || "N/A"})`
-                          : "Chưa liên kết tài khoản Google"
+                          ? t("security.linked", { id: accounts.find(acc => acc.provider === "GOOGLE")?.providerId || "N/A" })
+                          : t("security.notLinked")
                         }
                       </div>
                     </div>
@@ -670,14 +734,14 @@ export function SettingsPage() {
                       onClick={() => handleUnlink("GOOGLE")}
                       className="px-4 py-2 bg-red-50 text-red-600 border border-red-100 hover:bg-red-100 text-xs font-bold rounded-xl transition-all active:scale-95"
                     >
-                      Hủy liên kết
+                      {t("security.unlinkBtn")}
                     </button>
                   ) : (
                     <button
                       onClick={handleLinkGoogle}
-                      className="px-4 py-2 bg-white text-gray-700 border border-gray-200 hover:bg-gray-50 text-xs font-bold rounded-xl transition-all active:scale-95 flex items-center gap-1.5"
+                      className="px-4 py-2 bg-white text-gray-700 border border-gray-200 hover:bg-gray-55 text-xs font-bold rounded-xl transition-all active:scale-95 flex items-center gap-1.5"
                     >
-                      <Plus size={14} /> Liên kết ngay
+                      <Plus size={14} /> {t("security.linkNowBtn")}
                     </button>
                   )}
                 </div>
@@ -691,15 +755,15 @@ export function SettingsPage() {
           <div className="space-y-6 animate-in fade-in duration-300">
              <div className="flex items-center justify-between">
                 <div>
-                   <h2 className="text-lg font-bold text-[#0A0A0A]">Hỗ trợ kỹ thuật (Chat)</h2>
-                   <p className="text-sm text-gray-500 mt-1">Xem lại lịch sử hỗ trợ hoặc trò chuyện trực tiếp với chúng tôi.</p>
+                   <h2 className="text-lg font-bold text-[#0A0A0A]">{t("support.title")}</h2>
+                   <p className="text-sm text-gray-500 mt-1">{t("support.subtitle")}</p>
                 </div>
                 {selectedTicket && (
                   <button 
                     onClick={() => setSelectedTicket(null)}
                     className="px-4 py-2 bg-[#2D1D35] text-white hover:opacity-90 transition-all text-xs font-bold rounded-xl shadow-sm"
                   >
-                     Quay lại Chat trực tuyến
+                     {t("support.backToLive")}
                   </button>
                 )}
              </div>
@@ -719,32 +783,32 @@ export function SettingsPage() {
                         <MessageCircle size={16} />
                      </div>
                      <div>
-                       <div className="text-xs font-bold text-[#0A0A0A]">Chat trực tuyến (Live)</div>
-                       <div className="text-[9px] text-gray-400 mt-0.5">Trợ lý hỗ trợ 24/7</div>
+                       <div className="text-xs font-bold text-[#0A0A0A]">{t("support.liveChat")}</div>
+                       <div className="text-[9px] text-gray-400 mt-0.5">{t("support.liveChatDesc")}</div>
                      </div>
                    </button>
                    
                    <div className="h-px bg-gray-100 my-2" />
                    
-                   <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-2 mb-2">Các phiên đã đóng</h3>
+                   <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-2 mb-2">{t("support.closedSessions")}</h3>
                    {loadingTickets ? (
                      <div className="flex items-center justify-center p-8"><Loader2 className="animate-spin text-gray-400" size={20} /></div>
                    ) : tickets.length === 0 ? (
-                     <div className="text-xs text-gray-400 text-center py-8">Chưa có phiên hỗ trợ nào.</div>
+                     <div className="text-xs text-gray-400 text-center py-8">{t("support.noSessions")}</div>
                    ) : (
-                     tickets.map((t) => (
+                     tickets.map((ticketItem) => (
                        <button
-                         key={t.id}
-                         onClick={() => loadTicketMessages(t)}
+                         key={ticketItem.id}
+                         onClick={() => loadTicketMessages(ticketItem)}
                          className={`w-full text-left p-3 rounded-2xl border transition-all flex items-center justify-between ${
-                           selectedTicket?.id === t.id 
+                           selectedTicket?.id === ticketItem.id 
                              ? "bg-slate-50 border-slate-300/80 shadow-sm" 
                              : "border-transparent hover:bg-slate-50/50"
                          }`}
                        >
                          <div className="min-w-0">
-                           <div className="text-xs font-bold text-[#0A0A0A] truncate">{t.subject}</div>
-                           <div className="text-[9px] text-gray-400 mt-0.5 font-mono">Phiên: {t.id.substring(0, 8)}</div>
+                           <div className="text-xs font-bold text-[#0A0A0A] truncate">{ticketItem.subject}</div>
+                           <div className="text-[9px] text-gray-400 mt-0.5 font-mono">ID: {ticketItem.id.substring(0, 8)}</div>
                          </div>
                          <ChevronRight size={14} className="text-gray-400 shrink-0" />
                        </button>
@@ -760,7 +824,9 @@ export function SettingsPage() {
                        <div className="bg-[#2D1D35]/5 p-4 border-b border-gray-150 flex items-center justify-between">
                          <div>
                            <div className="text-xs font-bold text-[#0A0A0A]">{selectedTicket.subject}</div>
-                           <div className="text-[9px] text-gray-400 mt-0.5">Trạng thái: <span className="text-green-600 font-bold uppercase">{selectedTicket.status}</span> · Đóng ngày: {new Date(selectedTicket.updatedAt).toLocaleDateString()}</div>
+                           <div className="text-[9px] text-gray-400 mt-0.5">
+                             {t("support.status")}: <span className="text-green-600 font-bold uppercase">{selectedTicket.status}</span> · {t("support.closedDate", { date: new Date(selectedTicket.updatedAt).toLocaleDateString() })}
+                           </div>
                          </div>
                        </div>
                        
@@ -783,15 +849,15 @@ export function SettingsPage() {
                                      {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                    </div>
                                  </div>
-                               </div>
+                                </div>
                              );
                            })
                          )}
                        </div>
                        
                        {/* Disabled Input Info footer */}
-                       <div className="p-4 bg-gray-50 border-t border-gray-150 text-center text-[10px] text-gray-400 font-bold tracking-wider uppercase">
-                         Đây là lịch sử lưu trữ. Cuộc hội thoại này đã đóng.
+                       <div className="p-4 bg-gray-55 border-t border-gray-150 text-center text-[10px] text-gray-400 font-bold tracking-wider uppercase">
+                         {t("support.archiveHint")}
                        </div>
                      </>
                    ) : (
@@ -799,8 +865,8 @@ export function SettingsPage() {
                        {/* Active chat window box header */}
                        <div className="bg-pink-500/5 p-4 border-b border-gray-150 flex items-center justify-between">
                          <div>
-                           <div className="text-xs font-bold text-[#0A0A0A]">Chat hỗ trợ trực tiếp</div>
-                           <div className="text-[9px] text-gray-400 mt-0.5">Đặt câu hỏi để được trợ giúp ngay lập tức</div>
+                           <div className="text-xs font-bold text-[#0A0A0A]">{t("support.liveChatTitle")}</div>
+                           <div className="text-[9px] text-gray-400 mt-0.5">{t("support.liveChatSubtitle")}</div>
                          </div>
                        </div>
                        
@@ -832,9 +898,9 @@ export function SettingsPage() {
                                value={activeSupportInput}
                                onChange={(e) => setActiveSupportInput(e.target.value)}
                                onKeyDown={(e) => e.key === 'Enter' && handleSendSupportMessage()}
-                               placeholder="Nhập tin nhắn..." 
+                               placeholder={t("support.inputPlaceholder")} 
                                data-testid="support-chat-input"
-                               className="flex-1 px-4 py-2.5 bg-gray-50 border border-gray-100 rounded-xl focus:bg-white focus:border-black outline-none text-sm transition-all font-medium" 
+                               className="flex-1 px-4 py-2.5 bg-gray-55 border border-gray-100 rounded-xl focus:bg-white focus:border-black outline-none text-sm transition-all font-medium" 
                              />
                              <button 
                                onClick={handleSendSupportMessage} 
@@ -864,23 +930,42 @@ export function SettingsPage() {
                  <div className="bg-slate-50 border border-slate-100 rounded-3xl p-6 flex flex-col md:flex-row md:items-center justify-between gap-6">
                    <div className="space-y-2">
                      <div className="flex items-center gap-2">
-                       <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Gói hiện tại</span>
+                       <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{t("billing.currentPlan")}</span>
                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
                          currentPlan?.status === 'ACTIVE' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
                        }`}>
-                         {currentPlan?.status || 'Chưa đăng ký'}
+                         {currentPlan ? t("billing.planStatus", { status: currentPlan.status }) : t("billing.unregistered")}
                        </span>
                      </div>
-                     <h3 className="text-xl font-extrabold text-[#0A0A0A]">
-                       {currentPlan?.planName ? currentPlan.planName.charAt(0) + currentPlan.planName.slice(1).toLowerCase() : 'Free Plan'}
-                     </h3>
+                      <h3 className="text-xl font-extrabold text-[#0A0A0A]">
+                        {currentPlan?.planName ? currentPlan.planName.charAt(0) + currentPlan.planName.slice(1).toLowerCase() : t("billing.freePlan")}
+                      </h3>
+                      
+                      {/* Usage Tracker */}
+                      <div className="pt-2 pb-2 max-w-sm space-y-2">
+                        <div className="flex justify-between text-xs font-bold text-gray-700">
+                          <span>{t("billing.postsUsed")}</span>
+                          <span className="text-gray-900 font-extrabold">
+                            {t("billing.postsQuota", { used: currentPlan?.postsUsedThisMonth || 0, max: currentPlan?.limits?.maxPostsPerMonth || 10 })}
+                          </span>
+                        </div>
+                        <div className="w-full h-2 bg-gray-200 rounded-full overflow-hidden">
+                          <div 
+                            className="h-full bg-black rounded-full transition-all duration-500" 
+                            style={{ width: `${Math.min(((currentPlan?.postsUsedThisMonth || 0) / (currentPlan?.limits?.maxPostsPerMonth || 10)) * 100, 100)}%` }} 
+                          />
+                        </div>
+                        <p className="text-[10px] text-gray-400 font-medium italic">
+                          {t("billing.postsQuotaHint")}
+                        </p>
+                      </div>
                      {currentPlan?.periodEnd ? (
                        <p className="text-xs text-gray-500 font-medium">
-                         Ngày hết hạn: <b>{new Date(currentPlan.periodEnd).toLocaleDateString('vi-VN', { year: 'numeric', month: 'long', day: 'numeric' })}</b>
+                         {t("billing.expirationDate", { date: new Date(currentPlan.periodEnd).toLocaleDateString(language === 'vi' ? 'vi-VN' : 'en-US', { year: 'numeric', month: 'long', day: 'numeric' }) })}
                        </p>
                      ) : (
                        <p className="text-xs text-gray-500 font-medium">
-                         Trải nghiệm các tính năng mở rộng của hệ thống.
+                         {t("billing.promoHint")}
                        </p>
                      )}
                    </div>
@@ -890,32 +975,32 @@ export function SettingsPage() {
                      data-testid="billing-upgrade-btn"
                      className="px-6 py-3 bg-[#0A0A0A] hover:bg-gray-800 text-white rounded-xl text-xs font-bold transition-all shadow-md flex items-center gap-2 self-start md:self-auto"
                    >
-                     Nâng cấp gói dịch vụ <ExternalLink size={14} />
+                     {t("billing.upgradeBtn")} <ExternalLink size={14} />
                    </button>
                  </div>
 
                  {/* Payment History Section */}
                  <div className="space-y-4">
                    <div>
-                     <h3 className="text-sm font-bold text-[#0A0A0A]">Lịch sử giao dịch</h3>
-                     <p className="text-xs text-gray-400 mt-1">Các lượt thanh toán nâng cấp tài khoản và mua Add-on qua cổng thanh toán QR code.</p>
+                     <h3 className="text-sm font-bold text-[#0A0A0A]">{t("billing.transactionHistory")}</h3>
+                     <p className="text-xs text-gray-400 mt-1">{t("billing.transactionHistoryDesc")}</p>
                    </div>
 
                    {paymentHistory.length === 0 ? (
-                     <div className="p-10 border border-gray-150 rounded-3xl flex flex-col items-center justify-center text-center bg-gray-50/30">
+                     <div className="p-10 border border-gray-150 rounded-3xl flex flex-col items-center justify-center text-center bg-gray-55/30">
                        <CreditCard size={32} className="text-gray-300 mb-2" />
-                       <p className="text-xs text-gray-400 font-medium">Chưa có giao dịch thanh toán nào được thực hiện.</p>
+                       <p className="text-xs text-gray-400 font-medium">{t("billing.noTransactions")}</p>
                      </div>
                    ) : (
                      <div className="border border-gray-100 rounded-2xl overflow-hidden shadow-sm bg-white">
                        <table className="w-full border-collapse text-left">
                          <thead>
                            <tr className="bg-slate-50 border-b border-gray-100">
-                             <th className="p-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Mã Giao Dịch</th>
-                             <th className="p-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Sản Phẩm</th>
-                             <th className="p-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Số Tiền</th>
-                             <th className="p-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Thời Gian</th>
-                             <th className="p-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Trạng Thái</th>
+                             <th className="p-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">{t("billing.colTxCode")}</th>
+                             <th className="p-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">{t("billing.colProduct")}</th>
+                             <th className="p-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">{t("billing.colAmount")}</th>
+                             <th className="p-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">{t("billing.colTime")}</th>
+                             <th className="p-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">{t("billing.colStatus")}</th>
                            </tr>
                          </thead>
                          <tbody>
@@ -925,35 +1010,35 @@ export function SettingsPage() {
                              const isExpired = history.status === 'EXPIRED';
                              const isCancelled = history.status === 'CANCELLED';
                              
-                             let statusLabel = 'Đang chờ';
+                             let statusLabel = t("billing.statusPending");
                              let statusClass = 'bg-amber-100 text-amber-700';
                              if (isPaid) {
-                               statusLabel = 'Thành công';
+                               statusLabel = t("billing.statusSuccess");
                                statusClass = 'bg-green-100 text-green-700';
                              } else if (isExpired) {
-                               statusLabel = 'Đã hết hạn';
+                               statusLabel = t("billing.statusExpired");
                                statusClass = 'bg-gray-100 text-gray-600';
                              } else if (isCancelled) {
-                               statusLabel = 'Đã hủy';
+                               statusLabel = t("billing.statusCancelled");
                                statusClass = 'bg-red-100 text-red-700';
                              } else if (history.status === 'UNDERPAID') {
-                               statusLabel = 'Thiếu tiền';
+                               statusLabel = t("billing.statusUnderpaid");
                                statusClass = 'bg-red-100 text-red-700';
                              }
 
                              const productName = history.plan 
-                               ? `Nâng cấp gói ${history.plan.name.charAt(0) + history.plan.name.slice(1).toLowerCase()}` 
+                               ? t("billing.upgradeProduct", { name: history.plan.name.charAt(0) + history.plan.name.slice(1).toLowerCase() }) 
                                : history.addon 
-                                 ? `Mua Add-on: ${history.addon.name}` 
-                                 : 'Thanh toán dịch vụ';
+                                 ? t("billing.buyAddonProduct", { name: history.addon.name }) 
+                                 : t("billing.fallbackProduct");
 
                              return (
                                <tr key={history.id} className="border-b border-gray-100 hover:bg-slate-50/40 transition-colors">
                                  <td className="p-4 text-xs font-mono text-gray-600 font-bold">{history.transactionCode}</td>
                                  <td className="p-4 text-xs font-medium text-gray-700">{productName}</td>
-                                 <td className="p-4 text-xs font-bold text-gray-900">{Number(history.amount).toLocaleString('vi-VN')} VND</td>
+                                 <td className="p-4 text-xs font-bold text-gray-900">{Number(history.amount).toLocaleString(language === 'vi' ? 'vi-VN' : 'en-US')} {language === 'vi' ? 'VND' : 'VND'}</td>
                                  <td className="p-4 text-xs text-gray-500 font-medium font-sans">
-                                   {new Date(history.createdAt).toLocaleString('vi-VN')}
+                                   {new Date(history.createdAt).toLocaleString(language === 'vi' ? 'vi-VN' : 'en-US')}
                                  </td>
                                  <td className="p-4">
                                    <div className="flex items-center gap-2">
@@ -965,7 +1050,7 @@ export function SettingsPage() {
                                          onClick={() => handleCancelPayment(history.transactionCode)}
                                          className="text-[10px] font-bold text-red-500 hover:text-red-700 hover:underline transition-all active:scale-95 cursor-pointer bg-transparent border-none p-0 outline-none"
                                        >
-                                         Hủy
+                                         {t("billing.cancelBtn")}
                                        </button>
                                      )}
                                    </div>

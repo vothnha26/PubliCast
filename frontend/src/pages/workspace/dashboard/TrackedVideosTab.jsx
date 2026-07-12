@@ -20,7 +20,8 @@ export function TrackedVideosTab({
   setVideoUrl,
   handleTrackVideo,
   isTrackingLoading,
-  trackedVideos
+  trackedVideos,
+  isPlatformLocked = false
 }) {
   return (
     <div className="space-y-6">
@@ -28,7 +29,10 @@ export function TrackedVideosTab({
           <h3 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Tracked Videos</h3>
           <Dialog open={isVideoModalOpen} onOpenChange={setIsVideoModalOpen}>
              <DialogTrigger asChild>
-                <button className="px-6 py-2 bg-[#0A0A0A] text-white rounded-xl text-[10px] font-bold hover:bg-black/90 transition-all shadow-md">
+                <button 
+                  disabled={isPlatformLocked}
+                  className="px-6 py-2 bg-[#0A0A0A] text-white rounded-xl text-[10px] font-bold hover:bg-black/90 transition-all shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
+                >
                    START TRACKING
                 </button>
              </DialogTrigger>

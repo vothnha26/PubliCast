@@ -25,6 +25,26 @@ class FacebookWebhookController {
 
   handleWebhookEvent = (req, res) => {
     try {
+      // Verify Meta Webhook Signature
+      const signature = req.headers['x-hub-signature-256'];
+      if (!signature) {
+        logger.warn('[Facebook Webhook] Signature verification failed. Missing x-hub-signature-256 header.');
+        return res.sendStatus(401);
+      }
+
+      const crypto = require('crypto');
+      const parts = signature.split('=');
+      const signatureHash = parts[1];
+      const expectedHash = crypto
+        .createHmac('sha256', process.env.FACEBOOK_APP_SECRET || 'test_app_secret')
+        .update(req.rawBody || '')
+        .digest('hex');
+
+      if (signatureHash !== expectedHash) {
+        logger.warn('[Facebook Webhook] Signature verification failed. Hash mismatch.');
+        return res.sendStatus(403);
+      }
+
       const payload = req.body;
       logger.info('[Facebook Webhook] Event received:', JSON.stringify(payload));
 
@@ -37,7 +57,6 @@ class FacebookWebhookController {
       });
     } catch (error) {
       logger.error('[Facebook Webhook] Error handling event:', error);
-      // We still return 200 if possible or avoid crashing
       if (!res.headersSent) {
         res.status(200).send('EVENT_RECEIVED');
       }

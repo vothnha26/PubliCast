@@ -117,7 +117,8 @@ export function MediaUploadModal({ isOpen, onClose, onAccept, brandId, initialTa
             const res = await apiService.post(`/posts/upload?brandId=${brandId}`, formData, {
               headers: {
                 "Content-Type": "multipart/form-data"
-              }
+              },
+              timeout: 120000 // 120 seconds timeout for media uploads
             });
             uploadedItems.push({
               file,
@@ -149,7 +150,8 @@ export function MediaUploadModal({ isOpen, onClose, onAccept, brandId, initialTa
           const res = await apiService.post(`/posts/upload?brandId=${brandId}`, formData, {
             headers: {
               "Content-Type": "multipart/form-data"
-            }
+            },
+            timeout: 120000 // 120 seconds timeout for media uploads
           });
           const path = res.data.videoUrl;
           

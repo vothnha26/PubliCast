@@ -1,3 +1,11 @@
+process.on('uncaughtException', (err) => {
+  if (err.code === 'ECONNRESET') {
+    // Bỏ qua lỗi ngắt kết nối socket để giữ dev server hoạt động ổn định
+    return;
+  }
+  console.error('Uncaught Exception:', err);
+});
+
 import { defineConfig } from 'vite'
 import path from 'path'
 import tailwindcss from '@tailwindcss/vite'
@@ -33,4 +41,27 @@ export default defineConfig({
 
   // File types to support raw imports. Never add .css, .tsx, or .ts files to this.
   assetsInclude: ['**/*.svg', '**/*.csv'],
+  server: {
+    proxy: {
+      '/api': {
+        target: 'http://localhost:3000',
+        changeOrigin: true,
+        configure: (proxy, _options) => {
+          proxy.on('error', (err, _req, _res) => {
+            console.warn('Vite proxy error caught:', err.message);
+          });
+          proxy.on('proxyReq', (proxyReq, req, _res) => {
+            req.on('error', (err) => {
+              console.warn('Request socket error caught:', err.message);
+            });
+          });
+          proxy.on('proxyRes', (proxyRes, req, _res) => {
+            proxyRes.on('error', (err) => {
+              console.warn('Response socket error caught:', err.message);
+            });
+          });
+        },
+      },
+    },
+  },
 })

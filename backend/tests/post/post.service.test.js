@@ -35,6 +35,15 @@ jest.mock('../../src/queues/publish.queue', () => ({
   removePublishJob: jest.fn()
 }));
 
+jest.mock('../../src/config/prisma', () => ({
+  postMetricHistory: {
+    findMany: jest.fn()
+  },
+  platformLimit: {
+    findMany: jest.fn().mockResolvedValue([])
+  }
+}));
+
 jest.mock('../../src/services/social/social-platform.factory', () => {
   const mockYouTubeService = {
     publishPost: jest.fn().mockResolvedValue({ platformVideoId: 'ytVideoIdMock' })
@@ -212,16 +221,18 @@ describe('PostService Unit Tests', () => {
   });
 
   describe('POST_006 - updatePost (Error handling)', () => {
-    it('should throw error when trying to update an already published post', async () => {
+    it('should throw error when trying to update media of an already published Facebook post', async () => {
       postRepository.findById.mockResolvedValue({
         id: 'post-123',
         brandId: 'brand-abc',
-        status: 'PUBLISHED' // Already published
+        status: 'PUBLISHED',
+        targetPlatforms: 'FACEBOOK',
+        mediaUrls: 'url1.jpg'
       });
 
       await expect(
-        postService.updatePost('post-123', { title: 'Updated Title' }, 'brand-abc', 'user-111')
-      ).rejects.toThrow('Cannot update an already published post');
+        postService.updatePost('post-123', { mediaUrls: ['url1.jpg', 'url2.jpg'] }, 'brand-abc', 'user-111')
+      ).rejects.toThrow('Facebook does not support updating/modifying media on an already published post');
 
       expect(postRepository.update).not.toHaveBeenCalled();
     });
@@ -310,6 +321,11 @@ describe('PostService Unit Tests', () => {
 
   describe('YouTube Native Scheduling integration', () => {
     const socialPlatformFactory = require('../../src/services/social/social-platform.factory');
+    const initPostSubscribers = require('../../src/events/subscribers/post.subscriber');
+
+    beforeAll(() => {
+      initPostSubscribers();
+    });
 
     it('should trigger early YouTube native scheduling when creating a scheduled YouTube post', async () => {
       const scheduleTime = new Date(Date.now() + 3600000);
@@ -338,12 +354,100 @@ describe('PostService Unit Tests', () => {
 
       const result = await postService.createPost(schedulePostInput, 'user-111', 'brand-abc');
 
+      // Chờ cho event listener bất đồng bộ chạy xong
+      await new Promise(resolve => setTimeout(resolve, 50));
+
       expect(mockYtServiceInstance.publishPost).toHaveBeenCalledWith('brand-abc', expect.objectContaining({
         title: 'YouTube Native Title',
         scheduledAt: scheduleTime
       }));
-      expect(postRepository.update).toHaveBeenCalledWith('post-yt-native', { platformPostId: 'ytVideoIdMock' });
+      expect(postRepository.update).toHaveBeenCalledWith('post-yt-native', { platformPostId: JSON.stringify({ YOUTUBE: 'ytVideoIdMock' }) });
       expect(upsertPublishJob).toHaveBeenCalledWith('post-yt-native', scheduleTime);
     });
   });
+
+  describe('getPostAnalytics', () => {
+    it('should retrieve post metric history from prisma', async () => {
+      postRepository.findById.mockResolvedValue({
+        id: 'post-123',
+        brandId: 'brand-abc'
+      });
+
+      const mockHistory = [
+        { id: 1, views: 100, likes: 10 }
+      ];
+
+      const prismaMock = require('../../src/config/prisma');
+      prismaMock.postMetricHistory.findMany.mockResolvedValue(mockHistory);
+
+      const result = await postService.getPostAnalytics('post-123', 'brand-abc');
+
+      expect(result).toEqual(mockHistory);
+      expect(prismaMock.postMetricHistory.findMany).toHaveBeenCalledWith({
+        where: { postId: 'post-123', brandId: 'brand-abc' },
+        orderBy: { timestamp: 'asc' }
+      });
+    });
+
+    it('should throw error if post is not found or brand unauthorized', async () => {
+      postRepository.findById.mockResolvedValue(null);
+
+      await expect(
+        postService.getPostAnalytics('post-123', 'brand-abc')
+      ).rejects.toThrow('Post not found or unauthorized');
+    });
+  });
+
+  describe('Path Normalization & Sanitization', () => {
+    it('should recursively normalize Windows backslashes to forward slashes in post media paths and metadata', () => {
+      const input = {
+        title: 'Spain vs Austria',
+        caption: 'Tây Ban Nha \\ Áo \\u',
+        mediaUrls: ['D:\\projects\\uploads\\media.mp4'],
+        mediaThumbnailUrls: ['D:\\projects\\uploads\\thumb.jpg'],
+        options: {
+          youtubeThumbnail: 'D:\\projects\\uploads\\thumb.jpg',
+          albumMedia: [
+            'D:\\projects\\uploads\\image.jpg',
+            { url: 'D:\\projects\\uploads\\image2.jpg' }
+          ],
+          nested: {
+            path: 'D:\\projects\\uploads\\nested.jpg'
+          },
+          plainText: 'Tây Ban Nha \\ Áo'
+        }
+      };
+
+      const result = postService._preparePostData(input, 'user-123', 'brand-123');
+
+      expect(result.mediaUrls).toBe('D:/projects/uploads/media.mp4');
+      expect(result.mediaThumbnailUrls).toBe('D:/projects/uploads/thumb.jpg');
+      
+      const parsedMetadata = JSON.parse(result.metadata);
+      expect(parsedMetadata.youtubeThumbnail).toBe('D:/projects/uploads/thumb.jpg');
+      expect(parsedMetadata.albumMedia[0]).toBe('D:/projects/uploads/image.jpg');
+      expect(parsedMetadata.albumMedia[1].url).toBe('D:/projects/uploads/image2.jpg');
+      expect(parsedMetadata.nested.path).toBe('D:/projects/uploads/nested.jpg');
+      expect(parsedMetadata.plainText).toBe('Tây Ban Nha \\ Áo');
+      expect(result.caption).toBe('Tây Ban Nha \\ Áo \\u');
+    });
+
+    it('should convert lone surrogate Unicode strings into safe well-formed strings using toWellFormed', () => {
+      // \uD83D is a lone surrogate character (half of an emoji)
+      const input = {
+        title: 'Title with lone surrogate \uD83D',
+        caption: 'Caption',
+        options: {
+          badText: 'Bad \uD83D text'
+        }
+      };
+
+      const result = postService._preparePostData(input, 'user-123', 'brand-123');
+      expect(result.title.toWellFormed()).toBe(result.title);
+      
+      const parsedMetadata = JSON.parse(result.metadata);
+      expect(parsedMetadata.badText.toWellFormed()).toBe(parsedMetadata.badText);
+    });
+  });
 });
+

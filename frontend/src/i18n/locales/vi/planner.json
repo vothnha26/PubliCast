@@ -1,0 +1,514 @@
+{
+  "title": "Lịch biểu nội dung",
+  "tabs": {
+    "calendar": "Lịch",
+    "list": "Danh sách",
+    "library": "Thư viện bài viết",
+    "autolists": "Hàng đợi tự động",
+    "history": "Bài viết đã xóa"
+  },
+  "upgrade": {
+    "title": "Bạn cần gói cao hơn?",
+    "desc": "Bạn đã đăng <span>{{posted}} trên tổng số {{limit}}</span> bài viết giới hạn trong gói tháng này. Hãy nâng cấp gói cước để tăng giới hạn.",
+    "button": "Nâng cấp gói cước"
+  },
+  "autolists": {
+    "title": "Hàng đợi tự động",
+    "subtitle": "Tự động hóa hàng đợi bài viết để đăng theo lịch hoặc khoảng thời gian cài sẵn.",
+    "createBtn": "Tạo hàng đợi",
+    "noAutolists": "Chưa có hàng đợi nào được tạo",
+    "noAutolistsDesc": "Tạo hàng đợi đầu tiên để tự động hóa chiến lược nội dung của bạn trên nhiều mạng.",
+    "createFirst": "Tạo hàng đợi đầu tiên",
+    "helpTitle": "Hàng đợi tự động hoạt động thế nào?",
+    "helpDesc": "Autolists tự động hóa quy trình nội dung mạng xã hội của bạn. Đầu tiên, cài đặt tần suất thời gian (ngày hoạt động và khoảng thời gian theo giờ hoặc giờ cụ thể). Sau đó, tải lên hoặc chèn các bài viết nháp. Trình quản lý hàng đợi sẽ tự động tính ngày đăng chính xác và gửi đến các mạng đã chọn.",
+    "helpStep1": "Thiết lập cài đặt lịch",
+    "helpStep2": "Thêm bài viết vào hàng đợi",
+    "helpStep3": "Xuất bản tự động",
+    "card": {
+      "active": "Hoạt động",
+      "paused": "Tạm dừng",
+      "loop": "Lặp lại",
+      "posts": "{{published}} / {{total}} bài đăng",
+      "specificTime": "Giờ cụ thể",
+      "everyInterval": "Mỗi {{interval}}",
+      "notConfigured": "Chưa cấu hình",
+      "days": "{{n}} ngày",
+      "hours": "{{n}} giờ",
+      "minutes": "{{n}} phút",
+      "pauseBtn": "Tạm dừng hàng đợi",
+      "activateBtn": "Kích hoạt hàng đợi",
+      "refreshTitle": "Tự động tính lại lịch đăng",
+      "deleteTitle": "Xóa hàng đợi",
+      "configTitle": "Cấu hình cài đặt"
+    },
+    "toasts": {
+      "toggleFail": "Không thể cập nhật trạng thái",
+      "toggleSuccess": "Cập nhật trạng thái thành công",
+      "refreshSuccess": "Đã tính lại lịch hàng đợi",
+      "refreshFail": "Không thể tính lại lịch hàng đợi",
+      "deleteSuccess": "Đã xóa hàng đợi tự động",
+      "deleteFail": "Không thể xóa hàng đợi tự động",
+      "loadFail": "Không thể tải danh sách hàng đợi"
+    },
+    "confirm": {
+      "deleteTitle": "Xóa hàng đợi?",
+      "deleteDesc": "Bạn có chắc chắn muốn xóa hàng đợi này không? Tất cả bài viết trong hàng đợi sẽ bị mất liên kết.",
+      "deleteConfirm": "Xóa",
+      "deleteCancel": "Hủy"
+    }
+  },
+  "historyView": {
+    "title": "Bài viết đã xóa",
+    "searchPlaceholder": "Tìm kiếm bài viết đã xóa...",
+    "selected": "Đã chọn {{count}} mục",
+    "restoreSelected": "Khôi phục",
+    "emptyTrash": "Xóa thùng rác",
+    "trashEmpty": "Thùng rác trống",
+    "trashEmptyDesc": "Bài viết đã xóa sẽ xuất hiện ở đây trong 30 ngày trước khi bị xóa vĩnh viễn.",
+    "colPost": "Bài viết",
+    "colPlatform": "Nền tảng",
+    "colDeletedAt": "Ngày xóa",
+    "colAuthor": "Tác giả",
+    "restoreBtn": "Khôi phục",
+    "toasts": {
+      "restoreSuccess": "Đã khôi phục bài viết thành công",
+      "restoreFail": "Không thể khôi phục bài viết",
+      "bulkRestoreSuccess": "Đã khôi phục các bài viết đã chọn thành công",
+      "bulkRestoreFail": "Không thể khôi phục các bài viết đã chọn",
+      "emptyTrashSuccess": "Đã xóa sạch thùng rác",
+      "emptyTrashFail": "Không thể xóa thùng rác",
+      "loadFail": "Không thể tải danh sách bài viết đã xóa"
+    },
+    "confirm": {
+      "emptyTrashTitle": "Xóa thùng rác?",
+      "emptyTrashDesc": "Bạn có chắc chắn muốn xóa vĩnh viễn tất cả bài viết trong thùng rác không? Hành động này không thể hoàn tác.",
+      "emptyTrashConfirm": "Xóa thùng rác",
+      "emptyTrashCancel": "Hủy"
+    }
+  },
+  "postsLibrary": {
+    "title": "Thư viện bài viết",
+    "badge": "Mẫu bài viết",
+    "searchPlaceholder": "Tìm kiếm mẫu...",
+    "addTemplateBtn": "Thêm mẫu",
+    "emptyTitle": "Sắp xếp nội dung tốt nhất của bạn",
+    "emptyDesc": "Lưu các bài viết hiệu suất cao làm mẫu và tái sử dụng chỉ với một lần nhấp. Xây dựng thư viện nội dung nhất quán, chất lượng cao.",
+    "createFirstBtn": "Tạo mẫu đầu tiên",
+    "useTemplate": "Dùng mẫu này",
+    "editTemplate": "Chỉnh sửa mẫu",
+    "viewTemplate": "Xem mẫu",
+    "templateBadge": "Mẫu",
+    "toasts": {
+      "loadFail": "Không thể tải danh sách mẫu bài viết"
+    }
+  },
+  "listView": {
+    "searchPlaceholder": "Tìm kiếm theo tiêu đề, mô tả...",
+    "filterStatus": "Lọc theo trạng thái",
+    "selected": "Đã chọn {{count}} mục",
+    "approveBtn": "Phê duyệt",
+    "deleteBtn": "Xóa",
+    "createPostBtn": "Tạo bài viết",
+    "colPostDetails": "Chi tiết bài viết",
+    "colPlatform": "Nền tảng",
+    "colScheduledFor": "Lên lịch vào",
+    "colStatus": "Trạng thái",
+    "colAuthor": "Tác giả",
+    "colReviewers": "Người duyệt",
+    "noPosts": "Không tìm thấy bài viết",
+    "noPostsDesc": "Bạn chưa tạo bài viết nào cho bộ lọc này.",
+    "clearFilters": "Xóa tất cả bộ lọc",
+    "assignBtn": "Phân công",
+    "editPost": "Sửa bài viết",
+    "viewPost": "Xem bài viết",
+    "duplicatePost": "Nhân bản bài viết",
+    "saveTemplate": "Lưu thành Template",
+    "deletePost": "Xóa bài viết",
+    "reposting": "Đang đăng lại...",
+    "repostNow": "Đăng lại ngay",
+    "detailStats": "Số liệu chi tiết",
+    "showingResults": "Hiển thị {{count}} trên tổng số {{total}} kết quả",
+    "prevBtn": "Trước",
+    "nextBtn": "Sau",
+    "reviewerPanel": {
+      "title": "Người duyệt bài",
+      "policyLabel": "Chính sách duyệt",
+      "policyAtLeastOne": "Ít nhất 1 người",
+      "policyAll": "Tất cả",
+      "selectLabel": "Chọn người duyệt",
+      "noReviewers": "Không có reviewer nào",
+      "cancelBtn": "Hủy",
+      "saveBtn": "Lưu thay đổi"
+    },
+    "toasts": {
+      "loadFail": "Không thể tải danh sách bài viết",
+      "bulkDeleteSuccess": "Đã xóa bài viết thành công",
+      "bulkDeleteFail": "Không thể xóa các bài viết đã chọn",
+      "bulkApproveSuccess": "Đã duyệt các bài viết thành công",
+      "bulkApproveFail": "Không thể duyệt các bài viết đã chọn",
+      "deleteSuccess": "Đã xóa bài viết thành công",
+      "deleteFail": "Không thể xóa bài viết",
+      "repostingLoading": "Đang tiến hành đăng lại bài viết...",
+      "repostSuccess": "Đã kích hoạt đăng lại bài viết thành công!",
+      "repostFail": "Đăng lại bài viết thất bại.",
+      "loadReviewersFail": "Không thể tải danh sách người duyệt",
+      "saveReviewersSuccess": "Đã cập nhật người duyệt thành công",
+      "saveReviewersFail": "Không thể cập nhật người duyệt",
+      "savingTemplate": "Đang lưu bài viết thành template...",
+      "saveTemplateSuccess": "Lưu bài viết vào Thư viện thành công!",
+      "saveTemplateFail": "Lưu bài viết thất bại."
+    }
+  },
+  "weeklyCalendar": {
+    "noPermissionCreate": "Bạn không có quyền tạo bài viết",
+    "loadCalendarFail": "Không thể tải dữ liệu lịch",
+    "loadingPosts": "Đang tải các bài viết trên lịch..."
+  },
+  "sidebarIntegrations": {
+    "folders": {
+      "myDrive": "Drive của tôi",
+      "shared": "Được chia sẻ với tôi",
+      "starred": "Có gắn dấu sao",
+      "recent": "Gần đây"
+    },
+    "drivePromo": {
+      "title": "Google Drive",
+      "desc": "Nâng cấp lên gói Premium để quản lý và lên lịch cho nội dung của bạn thông qua Google Drive!",
+      "btn": "Nâng cấp gói Premium"
+    },
+    "canvaPromo": {
+      "title": "Canva",
+      "desc": "Kết nối tài khoản Canva để tạo các mẫu thiết kế và lên lịch đăng trong nháy mắt.",
+      "btn": "Kết nối Canva"
+    },
+    "ideasPromo": {
+      "title": "Trợ lý nội dung AI",
+      "desc": "Nhận ý tưởng bài viết và định dạng xu hướng được tối ưu hóa cho người xem của bạn.",
+      "btn": "Thử Trợ lý AI"
+    },
+    "toasts": {
+      "apiDisabledTitle": "API Google Drive đã bị vô hiệu hóa",
+      "apiDisabledDesc": "Bạn phải kích hoạt Google Drive API trong trang Google Console để xem tệp tin:",
+      "apiDisabledClick": "👉 Nhấp vào đây để kích hoạt API Google Drive",
+      "apiDisabledFooter": "Sau đó, ngắt kết nối và kết nối lại tài khoản của bạn.",
+      "loadFail": "Không thể tải danh sách tệp tin Google Drive",
+      "authUrlFail": "Không nhận được đường dẫn xác thực",
+      "fetchAuthUrlFail": "Không thể lấy đường dẫn xác thực Google",
+      "disconnectConfirmTitle": "Ngắt kết nối tài khoản Google?",
+      "disconnectConfirmDesc": "Bạn có chắc chắn muốn ngắt kết nối Google Drive và YouTube không?",
+      "disconnectConfirmBtn": "Ngắt kết nối",
+      "cancelBtn": "Hủy",
+      "disconnectSuccess": "Đã ngắt kết nối tài khoản Google thành công",
+      "disconnectFail": "Ngắt kết nối tài khoản Google thất bại"
+    },
+    "explorer": {
+      "beta": "BETA",
+      "connectedAs": "Đã kết nối với tên",
+      "switchAccount": "Chuyển đổi tài khoản",
+      "disconnectDrive": "Ngắt kết nối Drive",
+      "verifying": "Đang xác thực kết nối...",
+      "descConnect": "Kết nối tài khoản Google để truy cập và kéo thả trực tiếp các tệp tin video vào lịch đăng.",
+      "btnConnect": "Kết nối Google Drive",
+      "searchPlaceholder": "Tìm kiếm trong Drive",
+      "syncTitle": "Đồng bộ hóa Drive",
+      "filter": {
+        "title": "Bộ lọc",
+        "format": "Định dạng tệp",
+        "size": "Kích thước tệp",
+        "sizes": {
+          "all": "Tất cả kích thước",
+          "small": "Dưới 25 MB",
+          "medium": "Dưới 100 MB",
+          "large": "Từ 100 MB trở lên"
+        },
+        "clear": "Xóa bộ lọc"
+      },
+      "sort": {
+        "title": "Sắp xếp",
+        "sortBy": "Sắp xếp theo",
+        "fields": {
+          "name": "Tên (A-Z)",
+          "date": "Ngày tạo",
+          "size": "Kích thước tệp"
+        },
+        "direction": "Chiều sắp xếp",
+        "asc": "Tăng dần",
+        "desc": "Giảm dần"
+      },
+      "home": "Trang chủ",
+      "loadingFiles": "Đang tải các tệp tin từ Drive...",
+      "noFiles": "Không tìm thấy tệp tin phù hợp",
+      "noFilesDesc": "Tải các video, hình ảnh hoặc PDF vào thư mục này rồi tải lại trang.",
+      "dragInstruction": "Kéo thả vào lịch biểu để tạo bài viết của bạn!"
+    }
+  },
+  "toolbar": {
+    "searchPlaceholder": "Tìm kiếm",
+    "thisWeek": "Tuần này",
+    "filterStatusLabel": "Lọc theo Trạng thái",
+    "filterTypeLabel": "Lọc theo Loại",
+    "statuses": {
+      "all": "Tất cả Trạng thái",
+      "draft": "Bản nháp",
+      "scheduled": "Đã lên lịch",
+      "pendingApproval": "Chờ phê duyệt",
+      "published": "Đã đăng",
+      "failed": "Thất bại"
+    },
+    "types": {
+      "all": "Tất cả các loại",
+      "image": "Hình ảnh",
+      "video": "Video",
+      "carousel": "Bộ sưu tập"
+    },
+    "calendarZoom": "Thu phóng lịch",
+    "zooms": {
+      "small": "Nhỏ (80px)",
+      "medium": "Trung bình (100px)",
+      "large": "Lớn (120px)"
+    },
+    "calendarView": "Chế độ xem lịch",
+    "views": {
+      "day": "Chế độ xem Ngày",
+      "week": "Chế độ xem Tuần",
+      "month": "Chế độ xem Tháng"
+    },
+    "socialCalendars": "Lịch mạng xã hội",
+    "syncImportExport": "Đồng bộ / Nhập / Xuất dữ liệu",
+    "previewFeed": "Xem trước bảng tin",
+    "notifications": "Thông báo",
+    "bestTimes": "Khung giờ vàng",
+    "selectHeatmapPlatform": "Chọn nền tảng biểu đồ nhiệt",
+    "createPost": "Tạo bài viết",
+    "feedPreviewTitle": "Xem trước bảng tin",
+    "feedMockup": "Bản nháp bảng tin",
+    "noScheduledPosts": "Chưa có bài viết lên lịch nào",
+    "close": "Đóng",
+    "toasts": {
+      "zoomLevelSet": "Cấp độ thu phóng đặt thành {{size}}px",
+      "switchedTo": "Đã chuyển sang {{view}}",
+      "showingBestTimes": "Đang hiển thị khung giờ vàng cho {{platform}}"
+    }
+  },
+  "wizard": {
+    "title": "Tích hợp & Đồng bộ dữ liệu",
+    "subtitle": "Nhập hoặc xuất bài viết và lịch biểu bằng định dạng CSV/ICS",
+    "steps": {
+      "setup": "Cài đặt",
+      "validate": "Kiểm tra",
+      "filter": "Bộ lọc",
+      "preview": "Xem trước"
+    },
+    "actions": {
+      "importTitle": "Nhập dữ liệu (Import)",
+      "importDesc": "Đưa danh sách bài viết từ các tệp dữ liệu vào Planner của bạn.",
+      "exportTitle": "Xuất dữ liệu (Export)",
+      "exportDesc": "Tải xuống toàn bộ lịch biểu bài viết của bạn ra định dạng chuẩn."
+    },
+    "formats": {
+      "csvLabel": "Bảng tính CSV (.csv)",
+      "icsLabel": "Lịch iCalendar (.ics)",
+      "sectionLabel": "Định dạng tệp hỗ trợ"
+    },
+    "upload": {
+      "sectionLabel": "Tải tệp tin",
+      "dragHint": "Kéo & thả hoặc click để chọn file",
+      "formatHint": "Hỗ trợ tệp *.{{ext}} mẫu tiêu chuẩn"
+    },
+    "dateRange": {
+      "title": "Chọn khoảng thời gian xuất lịch biểu",
+      "fromLabel": "Từ ngày",
+      "toLabel": "Đến ngày",
+      "hint": "Bài viết trong khoảng thời gian này sẽ được truy vấn trực tiếp từ cơ sở dữ liệu để biên dịch tệp tải về tương thích."
+    },
+    "previewImport": {
+      "label": "Xem trước danh sách bài viết ({{n}})",
+      "sublabel": "Xem trước giúp đảm bảo định dạng khớp chính xác",
+      "colIndex": "STT",
+      "colMedia": "Media",
+      "colPost": "Bài viết",
+      "colPlatform": "Nền tảng",
+      "colScheduled": "Thời gian lên lịch",
+      "noMedia": "Bài viết nhập",
+      "draft": "Lưu bản nháp"
+    },
+    "previewExport": {
+      "action": "Hình thức hành động",
+      "actionValue": "Xuất tệp dữ liệu (Export)",
+      "format": "Định dạng đầu ra",
+      "dateRange": "Phạm vi thời gian",
+      "hint": "Tệp của bạn sẽ được tự động biên dịch, ký số mã hóa và sẵn sàng tải về trong giây lát sau khi bấm xác nhận."
+    },
+    "validation": {
+      "fileStatus": "Trạng thái tệp",
+      "validRows": "{{n}} dòng hợp lệ",
+      "failedRows": "{{n}} dòng bị lỗi",
+      "errorList": "Danh sách dòng bị lỗi/bỏ qua",
+      "errorRow": "Dòng {{row}}: {{title}}",
+      "guideTitle": "💡 Hướng dẫn kiểm tra:",
+      "guideDesc": "Bấm **Tiếp tục** để kiểm tra và xem trước nội dung trực quan từng bài viết trước khi chính thức áp dụng vào Lịch biểu của bạn.",
+      "processing": "Đang xử lý..."
+    },
+    "buttons": {
+      "back": "Quay lại",
+      "cancel": "Hủy bỏ",
+      "continue": "Tiếp tục",
+      "importConfirm": "Nhập dữ liệu",
+      "exportConfirm": "Tải về file"
+    },
+    "toasts": {
+      "fileReceived": "Đã nhận tệp: {{name}}",
+      "invalidCsv": "Vui lòng chọn tệp tin định dạng .csv",
+      "invalidIcs": "Vui lòng chọn tệp tin định dạng .ics",
+      "noFileSelected": "Vui lòng chọn tệp tin để nhập dữ liệu.",
+      "parseError": "Lỗi khi phân tích tệp tin.",
+      "importSuccess": "Đã nhập thành công {{n}} mục vào Planner!",
+      "importFailure": "Nhập dữ liệu thất bại hoặc không có dòng nào hợp lệ.",
+      "exportSuccess": "Xuất dữ liệu lịch biểu thành công!",
+      "exportError": "Có lỗi xảy ra khi xuất dữ liệu."
+    }
+  },
+  "importOverlay": {
+    "title": "Đang nhập từ Drive",
+    "message": "Vui lòng đợi trong khi chúng tôi xử lý và chuyển đổi video từ Google Drive về máy chủ..."
+  },
+  "postCreator": {
+    "templatesPicker": {
+      "loading": "Đang tải mẫu...",
+      "noTemplates": "Không tìm thấy mẫu bài viết nào",
+      "noTemplatesDesc": "Tạo mẫu trong Thư viện trước để sử dụng tại đây.",
+      "noCaption": "Không có mô tả"
+    },
+    "header": {
+      "createPost": "Tạo bài viết mới",
+      "editPost": "Sửa bài viết đã lên lịch",
+      "createTemplate": "Tạo mẫu bài viết",
+      "editTemplate": "Sửa mẫu bài viết",
+      "loadTemplate": "Tải mẫu bài viết",
+      "close": "Đóng",
+      "notes": "Ghi chú"
+    },
+    "composer": {
+      "viewMode": "Chế độ Xem: Bạn không có quyền chỉnh sửa hoặc xuất bản bài viết này.",
+      "uploading": "Đang tải lên...",
+      "editVideo": "Chỉnh sửa Video",
+      "remove": "Xóa",
+      "editImage": "Chỉnh sửa hình ảnh",
+      "imageMenu": {
+        "edit": "Chỉnh sửa hình ảnh",
+        "adobe": "Chỉnh sửa với Adobe Express",
+        "altText": "Thêm văn bản thay thế",
+        "remove": "Xóa"
+      },
+      "toolbar": {
+        "firstComment": "Bình luận đầu tiên",
+        "locationComingSoon": "Tính năng vị trí sẽ sớm khả dụng",
+        "addLocation": "Thêm vị trí",
+        "utmLink": "Liên kết UTM",
+        "hashtags": "Chèn Hashtag",
+        "templateDisabled": "Đã tắt chế độ mẫu",
+        "templateEnabled": "Đã bật chế độ lưu làm mẫu",
+        "saveAsTemplate": "Lưu làm mẫu (Thư viện)",
+        "aiCopilot": "Trợ lý AI Copilot"
+      },
+      "characterLimitDesc": "Giới hạn độ dài bài viết của nền tảng {{platform}}.",
+      "approval": {
+        "title": "Yêu cầu phê duyệt bài viết",
+        "noPermission": "Bạn không có quyền đăng bài trực tiếp. Vui lòng cấu hình người duyệt bài.",
+        "selectedReview": "Bạn đã chọn gửi bài viết này để phê duyệt.",
+        "noReviewer": "Chưa chọn người duyệt",
+        "selectedReviewers": "Đã chọn: {{names}}",
+        "buttonSelect": "Chọn người duyệt",
+        "noteLabel": "Ghi chú cho người duyệt",
+        "notePlaceholder": "Nhập lời nhắn gửi đến người duyệt..."
+      },
+      "publishType": {
+        "standard": "Bài viết tiêu chuẩn",
+        "reel": "Instagram Reel (Tự động đăng)",
+        "story": "Instagram Story (Tự động đăng)",
+        "short": "YouTube Short (Video ngắn đứng)",
+        "video": "YouTube Video (Video tiêu chuẩn)",
+        "instagramFeed": "Bài viết tiêu chuẩn trên bảng tin"
+      },
+      "validation": {
+        "platformLocked": "Nền tảng {{platform}} hiện đang bị khóa: {{reason}}",
+        "errorCount": "{{count}} lỗi"
+      },
+      "placeholders": {
+        "caption": "Bạn đang nghĩ gì vậy?",
+        "title": "Nhập tiêu đề...",
+        "tags": "Nhập thẻ tag và nhấn Enter...",
+        "note": "Nhập ghi chú thảo luận nội bộ..."
+      },
+      "sections": {
+        "accounts": "Tài khoản kết nối",
+        "noAccounts": "-- Chưa kết nối tài khoản --",
+        "notesTitle": "Thảo luận & Ghi chú nội bộ",
+        "notesDesc": "Ghi chú chỉ hiển thị trong nội bộ team",
+        "noNotes": "Không có ghi chú nào",
+        "addNote": "Thêm ghi chú",
+        "deleteNote": "Xóa ghi chú",
+        "reviewers": "Người duyệt bài",
+        "selectReviewers": "Chọn người duyệt",
+        "searchUser": "Tìm kiếm người dùng...",
+        "uncheckAll": "Bỏ chọn tất cả",
+        "checkAll": "Chọn tất cả",
+        "confirmSelection": "Xác nhận lựa chọn",
+        "policyLabel": "Đăng bài viết này khi...",
+        "policyNone": "Không cần người duyệt phê duyệt.",
+        "policyAtLeastOne": "Ít nhất một người duyệt phê duyệt.",
+        "policyAll": "Tất cả người duyệt phê duyệt."
+      }
+    },
+    "preview": {
+      "header": {
+        "title": "Xem trước bài đăng",
+        "reviewToggle": "Chế độ xem trước của người duyệt",
+        "desktop": "Máy tính",
+        "mobile": "Di động",
+        "switchPreview": "Chuyển sang xem trước của {{platform}}"
+      },
+      "body": {
+        "mockup": "Bản nháp bảng tin",
+        "empty": "Xem trước bài viết của bạn tại đây khi bạn nhập nội dung.",
+        "youtubeSimulated": "Mô tả và thông số thiết lập YouTube đã được mô phỏng đầy đủ và sẽ đi kèm bài đăng của bạn",
+        "tiktokSimulated": "Thiết lập video và thông tin TikTok đã được mô phỏng đầy đủ và sẽ đi kèm bài đăng của bạn",
+        "instagramSimulated": "Ảnh Instagram, Reels, và Stories đã được mô phỏng đầy đủ và sẽ được đăng lên tài khoản của bạn",
+        "facebookSimulated": "Bài đăng trạng thái Facebook, ảnh và video đã được hỗ trợ đầy đủ và sẽ được đăng lên bảng tin của bạn",
+        "discord": {
+          "bot": "BOT",
+          "reply": "Trả lời"
+        },
+        "youtube": {
+          "subscribers": "người đăng ký",
+          "views": "lượt xem",
+          "more": "thêm",
+          "videoContext": {
+            "join": "Tham gia",
+            "subscribe": "Đăng ký",
+            "share": "Chia sẻ",
+            "download": "Tải xuống",
+            "clip": "Cắt clip"
+          }
+        }
+      }
+    },
+    "footer": {
+      "cancel": "Hủy bỏ",
+      "save": "Lưu bản nháp",
+      "send": "Gửi duyệt",
+      "submit": "Gửi đi",
+      "publish": "Đăng ngay",
+      "schedule": "Lên lịch",
+      "update": "Cập nhật",
+      "saveTemplate": "Lưu mẫu",
+      "publishOptions": {
+        "draft": { "label": "LƯU BẢN NHÁP", "sub": "Lưu và đăng sau" },
+        "review": { "label": "GỬI PHÊ DUYỆT", "sub": "Chọn người duyệt bài" },
+        "schedule": { "label": "LÊN LỊCH ĐĂNG", "sub": "Lưu thay đổi lịch đăng" },
+        "now": { "label": "ĐĂNG BÀI NGAY", "sub": "Đăng bài với thời gian hiện tại" }
+      },
+      "publishedState": "Bài đã đăng — chỉ có thể chỉnh nội dung"
+    }
+  }
+}

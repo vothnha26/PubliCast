@@ -1,13 +1,14 @@
 const ticketRepository = require('../../repositories/workspace/ticket.repository');
 
 class TicketService {
-  async getTickets(brandId, queryParams) {
-    if (!brandId) {
+  async getTickets(brandId, queryParams, user) {
+    const isStaffOrAdmin = user && (user.role === 'STAFF' || user.role === 'ADMIN');
+    if (!brandId && !isStaffOrAdmin) {
       const error = new Error('Brand ID is required');
       error.status = 400;
       throw error;
     }
-    return await ticketRepository.findTickets(brandId, queryParams);
+    return await ticketRepository.findTickets(brandId || undefined, queryParams);
   }
 
   async getTicketDetails(ticketId, userId) {

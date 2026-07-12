@@ -29,13 +29,19 @@ const SOCKET_EVENTS = {
   // Real-time System Notification Events
   NOTIFICATION_CREATED: 'notification_created',
   NOTIFICATION_READ: 'notification_read',
-  NOTIFICATIONS_READ_ALL: 'notifications_read_all'
+  NOTIFICATIONS_READ_ALL: 'notifications_read_all',
+
+  // Livestream Chat Events
+  JOIN_LIVESTREAM: 'join_livestream',
+  LEAVE_LIVESTREAM: 'leave_livestream',
+  NEW_LIVESTREAM_COMMENT: 'new_livestream_comment'
 };
 
 const ROOM_PREFIXES = {
   USER: 'user_room_',
   TICKET: 'ticket_room_',
-  BRAND: 'brand_room_'
+  BRAND: 'brand_room_',
+  LIVESTREAM: 'livestream_room_'
 };
 
 const MESSAGE_TYPES = {

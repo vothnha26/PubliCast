@@ -94,6 +94,7 @@ export function FacebookCompetitorsTab({
   handleDeleteCompetitor,
   isCompetitorLoading,
   competitors = [],
+  isPlatformLocked = false,
 }) {
   const confirm = useConfirm();
   const [favorites, setFavorites] = useState({});
@@ -134,7 +135,10 @@ export function FacebookCompetitorsTab({
 
         <Dialog open={isCompetitorModalOpen} onOpenChange={setIsCompetitorModalOpen}>
           <DialogTrigger asChild>
-            <button className="flex items-center gap-2 px-4 py-2 bg-[#1877F2] text-white rounded-xl text-[10px] font-bold hover:bg-blue-600 transition-all shadow-md cursor-pointer">
+            <button 
+              disabled={isPlatformLocked}
+              className="flex items-center gap-2 px-4 py-2 bg-[#1877F2] text-white rounded-xl text-[10px] font-bold hover:bg-blue-600 transition-all shadow-md cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+            >
               ADD COMPETITOR
             </button>
           </DialogTrigger>
@@ -336,19 +340,20 @@ export function FacebookCompetitorsTab({
                       {/* Actions */}
                       <td className="px-4 py-4 text-right">
                         <div className="flex items-center justify-end gap-2">
-                          <button
-                            onClick={() => toggleFavorite(comp.id)}
-                            className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer"
-                          >
-                            <Star
-                              size={15}
-                              className={
-                                favorites[comp.id]
-                                  ? "fill-yellow-400 stroke-yellow-400"
-                                  : "text-gray-300 hover:text-yellow-400"
-                              }
-                            />
-                          </button>
+                           <button
+                             onClick={() => !isPlatformLocked && toggleFavorite(comp.id)}
+                             disabled={isPlatformLocked}
+                             className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                           >
+                             <Star
+                               size={15}
+                               className={
+                                 favorites[comp.id]
+                                   ? "fill-yellow-400 stroke-yellow-400"
+                                   : "text-gray-300 hover:text-yellow-400"
+                               }
+                             />
+                           </button>
 
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
@@ -371,23 +376,25 @@ export function FacebookCompetitorsTab({
                                 Visit Facebook page
                               </DropdownMenuItem>
                               <DropdownMenuSeparator className="bg-gray-100 my-1" />
-                              <DropdownMenuItem
-                                onClick={async () => {
-                                  const ok = await confirm({
-                                    title: "Delete Competitor?",
-                                    description:
-                                      "Are you sure you want to remove this competitor?",
-                                    confirmText: "Delete",
-                                    cancelText: "Cancel",
-                                    variant: "destructive",
-                                  });
-                                  if (ok) handleDeleteCompetitor(comp.id);
-                                }}
-                                className="px-4 py-2 flex items-center gap-2.5 text-xs text-red-600 hover:bg-red-50 font-medium cursor-pointer"
-                              >
-                                <Trash2 size={13} className="text-red-400" />
-                                Delete competitor
-                              </DropdownMenuItem>
+                               <DropdownMenuItem
+                                 disabled={isPlatformLocked}
+                                 onClick={async () => {
+                                   if (isPlatformLocked) return;
+                                   const ok = await confirm({
+                                     title: "Delete Competitor?",
+                                     description:
+                                       "Are you sure you want to remove this competitor?",
+                                     confirmText: "Delete",
+                                     cancelText: "Cancel",
+                                     variant: "destructive",
+                                   });
+                                   if (ok) handleDeleteCompetitor(comp.id);
+                                 }}
+                                 className="px-4 py-2 flex items-center gap-2.5 text-xs text-red-600 hover:bg-red-50 font-medium cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                               >
+                                 <Trash2 size={13} className="text-red-400" />
+                                 Delete competitor
+                               </DropdownMenuItem>
                             </DropdownMenuContent>
                           </DropdownMenu>
                         </div>

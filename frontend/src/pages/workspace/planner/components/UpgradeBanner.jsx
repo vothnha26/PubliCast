@@ -1,6 +1,9 @@
 import React from 'react';
+import { useTranslation, Trans } from 'react-i18next';
 
 export function UpgradeBanner({ postedCount = 0, limit = 20 }) {
+  const { t } = useTranslation("planner");
+
   return (
     <div className="bg-white border border-gray-100 rounded-3xl p-5 flex items-center justify-between shadow-sm relative overflow-hidden group min-h-[90px] no-print">
       {/* Zebra Lime/Yellow Stripes Graphic on the right */}
@@ -20,15 +23,24 @@ export function UpgradeBanner({ postedCount = 0, limit = 20 }) {
           <div className="w-9 h-9 rounded-full bg-[#E2F89C] flex items-center justify-center text-xs">💎</div>
         </div>
         <div>
-          <h3 className="text-[13px] font-extrabold text-[#0A0A0A]">Do you need a higher plan?</h3>
-          <p className="text-[11px] text-gray-500 font-bold mt-0.5">
-            You have posted <span className="text-gray-900 font-extrabold">{postedCount} out of your {limit}</span> available posts in your plan this month. Upgrade your plan to increase the limit.
+          <h3 className="text-[13px] font-extrabold text-[#0A0A0A]">{t("upgrade.title", { defaultValue: "Do you need a higher plan?" })}</h3>
+          <p className="text-[11px] text-gray-550 font-bold mt-0.5">
+            <Trans
+              t={t}
+              i18nKey="upgrade.desc"
+              values={{ posted: postedCount, limit }}
+              components={{
+                span: <span className="text-gray-900 font-extrabold" />
+              }}
+            >
+              You have posted <span>{{posted: postedCount}} out of your {{limit}}</span> available posts in your plan this month. Upgrade your plan to increase the limit.
+            </Trans>
           </p>
         </div>
       </div>
       
       <button className="px-5 py-2.5 bg-[#0A0A0A] hover:bg-[#1A1A1A] text-white rounded-full text-[11px] font-bold transition-all shadow-md relative z-10 shrink-0 hover:scale-[1.02] active:scale-[0.98] cursor-pointer">
-        Upgrade your plan
+        {t("upgrade.button", { defaultValue: "Upgrade your plan" })}
       </button>
     </div>
   );

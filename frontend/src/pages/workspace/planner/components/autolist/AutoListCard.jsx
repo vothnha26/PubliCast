@@ -1,8 +1,8 @@
-import * as React from "react";
 import { 
   Play, Pause, RefreshCw, ChevronRight, Layers, Calendar, Clock,
-  Youtube, PlayCircle, Instagram, Facebook, Linkedin 
+  Youtube, PlayCircle, Instagram, Facebook, Linkedin, Trash2
 } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 const PLATFORM_BADGES = {
   YOUTUBE: { icon: <Youtube size={11} />, color: "bg-red-50 text-red-600 border-red-100/80", label: "YouTube" },
@@ -21,7 +21,8 @@ const borderLeftColors = {
   DEFAULT: "border-l-4 border-l-gray-300"
 };
 
-export function AutoListCard({ list, onToggle, onRefresh, onNavigate }) {
+export function AutoListCard({ list, onToggle, onRefresh, onDelete, onNavigate }) {
+  const { t } = useTranslation("planner");
   const progress = list.totalPostsCount > 0 
     ? Math.round((list.publishedPostsCount / list.totalPostsCount) * 100) 
     : 0;
@@ -36,16 +37,16 @@ export function AutoListCard({ list, onToggle, onRefresh, onNavigate }) {
   const leftBorderClass = borderLeftColors[firstPlatform] || borderLeftColors.DEFAULT;
 
   const formatInterval = (minutes) => {
-    if (!minutes) return "Chưa cấu hình";
+    if (!minutes) return t("autolists.card.notConfigured");
     if (minutes % 1440 === 0) {
       const days = minutes / 1440;
-      return `${days} ngày`;
+      return t("autolists.card.days", { n: days });
     }
     if (minutes % 60 === 0) {
       const hours = minutes / 60;
-      return `${hours} giờ`;
+      return t("autolists.card.hours", { n: hours });
     }
-    return `${minutes} phút`;
+    return t("autolists.card.minutes", { n: minutes });
   };
 
   return (
@@ -85,13 +86,13 @@ export function AutoListCard({ list, onToggle, onRefresh, onNavigate }) {
               ? "bg-[#D9F99D]/40 text-[#4D7C0F] border-[#D9F99D]/60" 
               : "bg-gray-100 text-gray-500 border-gray-250"
           }`}>
-            {list.isActive ? "Hoạt động" : "Tạm dừng"}
+            {list.isActive ? t("autolists.card.active") : t("autolists.card.paused")}
           </span>
 
           {list.loopEnabled && (
             <span className="px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-indigo-50 text-indigo-700 border border-indigo-100 flex items-center gap-1 shadow-sm shrink-0">
               <RefreshCw size={10} className="text-indigo-500 animate-spin-slow" />
-              Lặp lại
+              {t("autolists.card.loop")}
             </span>
           )}
         </div>
@@ -115,15 +116,15 @@ export function AutoListCard({ list, onToggle, onRefresh, onNavigate }) {
         <div className="flex items-center gap-4 text-gray-400 text-xs pt-0.5">
           <div className="flex items-center gap-1.5 font-semibold">
             <Layers size={13} className="text-gray-400 group-hover:text-gray-600 transition-colors" />
-            <span>{list.publishedPostsCount} / {list.totalPostsCount} bài đăng</span>
+            <span>{list.publishedPostsCount} / {list.totalPostsCount} {t("autolists.card.active") === "Active" ? "posts" : "bài đăng"}</span>
           </div>
           <div className="w-px h-3 bg-gray-200" />
           <div className="flex items-center gap-1.5 font-semibold">
             <Clock size={13} className="text-gray-400 group-hover:text-gray-600 transition-colors" />
             <span>
               {list.scheduleType === 'INTERVAL' 
-                ? `Mỗi ${formatInterval(list.intervalMinutes)}` 
-                : 'Giờ cụ thể'
+                ? t("autolists.card.everyInterval", { interval: formatInterval(list.intervalMinutes) })
+                : t("autolists.card.specificTime")
               }
             </span>
           </div>
@@ -139,7 +140,7 @@ export function AutoListCard({ list, onToggle, onRefresh, onNavigate }) {
               ? "bg-white text-gray-700 hover:bg-gray-50 border-gray-150" 
               : "bg-gray-900 text-white hover:bg-black border-transparent"
           }`}
-          title={list.isActive ? "Tạm dừng hàng đợi" : "Kích hoạt hàng đợi"}
+          title={list.isActive ? t("autolists.card.pauseBtn") : t("autolists.card.activateBtn")}
         >
           {list.isActive ? <Pause size={16} /> : <Play size={16} />}
         </button>
@@ -147,15 +148,25 @@ export function AutoListCard({ list, onToggle, onRefresh, onNavigate }) {
         <button 
           onClick={() => onRefresh && onRefresh(list.id)}
           className="w-10 h-10 rounded-xl bg-white border border-gray-150 flex items-center justify-center text-gray-500 hover:text-black hover:border-gray-300 transition-all duration-300 cursor-pointer shadow-sm active:scale-95"
-          title="Tự động tính lại lịch đăng"
+          title={t("autolists.card.refreshTitle")}
         >
           <RefreshCw size={16} />
         </button>
         
+        {onDelete && (
+          <button 
+            onClick={() => onDelete(list.id)}
+            className="w-10 h-10 rounded-xl bg-white border border-red-100 hover:bg-red-50 flex items-center justify-center text-red-500 hover:text-red-600 transition-all duration-300 cursor-pointer shadow-sm active:scale-95"
+            title={t("autolists.card.deleteTitle")}
+          >
+            <Trash2 size={16} />
+          </button>
+        )}
+
         <button 
           onClick={() => onNavigate(list.id)}
           className="w-10 h-10 rounded-xl bg-gray-50 hover:bg-gray-900 border border-gray-150 hover:border-transparent flex items-center justify-center text-gray-400 hover:text-white transition-all duration-300 cursor-pointer shadow-sm"
-          title="Cấu hình cài đặt"
+          title={t("autolists.card.configTitle")}
         >
           <ChevronRight size={18} />
         </button>

@@ -36,11 +36,26 @@ const renderPlatformIcon = (platformName, sizeClass = "w-3 h-3") => {
 export function MonthlyGrid({
   selectedDate,
   postData = [],
+  eventsData = [],
   onCellClick,
   onPostClick,
+  onDuplicateClick,
   visiblePlatforms = {}
 }) {
   const weekdayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+
+  // Group events by date string 'yyyy-MM-dd'
+  const eventsByDate = useMemo(() => {
+    const map = {};
+    eventsData.forEach(event => {
+      if (!event.eventDate) return;
+      const date = new Date(event.eventDate);
+      const dateStr = format(date, 'yyyy-MM-dd');
+      if (!map[dateStr]) map[dateStr] = [];
+      map[dateStr].push(event);
+    });
+    return map;
+  }, [eventsData]);
 
   // Group posts by local date string 'yyyy-MM-dd'
   const postsByDate = useMemo(() => {
@@ -121,12 +136,13 @@ export function MonthlyGrid({
       <div className="grid grid-cols-7 flex-1 divide-x divide-y divide-gray-100 bg-gray-50/10 overflow-y-auto">
         {daysInMonthGrid.map((day, idx) => {
           const cellPosts = postsByDate[day.fullStr] || [];
+          const cellEvents = eventsByDate[day.fullStr] || [];
           
           return (
             <div
               key={idx}
               onClick={() => handleDateClick(day.raw)}
-              className={`min-h-[115px] p-2 flex flex-col gap-1 transition-all hover:bg-gray-50/50 cursor-pointer relative ${
+              className={`min-h-[125px] p-2 flex flex-col gap-1 transition-all hover:bg-gray-50/50 cursor-pointer relative ${
                 day.isCurrentMonth ? "bg-white text-gray-800" : "bg-gray-50/30 text-gray-300"
               }`}
             >
@@ -139,12 +155,37 @@ export function MonthlyGrid({
                 }`}>
                   {day.date}
                 </span>
-                {cellPosts.length > 0 && (
+                {(cellPosts.length > 0 || cellEvents.length > 0) && (
                   <span className="text-[9px] font-bold text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded-full shrink-0">
-                    {cellPosts.length} posts
+                    {cellPosts.length + cellEvents.length} items
                   </span>
                 )}
               </div>
+
+              {/* Day Events (Holidays) List */}
+              {cellEvents.length > 0 && (
+                <div className="flex flex-col gap-0.5 z-10">
+                  {cellEvents.map(event => (
+                    <div 
+                      key={event.id}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        // Mở composer kèm gợi ý tên event
+                        if (onCellClick) {
+                          const eventDate = new Date(day.raw);
+                          eventDate.setHours(9, 0, 0, 0);
+                          onCellClick(eventDate, 9);
+                        }
+                      }}
+                      className="px-1.5 py-0.5 bg-rose-50 text-rose-700 border border-rose-100 rounded text-[9px] font-black tracking-tight truncate flex items-center gap-1 shadow-sm hover:bg-rose-100 transition-colors"
+                      title={event.description || event.title}
+                    >
+                      <span className="shrink-0 text-[10px]">📅</span>
+                      <span className="truncate">{event.title}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
 
               {/* Day Posts List */}
               <div className="flex-1 overflow-y-auto flex flex-col gap-1 max-h-[85px] scrollbar-none">
@@ -152,7 +193,7 @@ export function MonthlyGrid({
                   <div
                     key={post.id}
                     onClick={(e) => handlePostClick(e, post)}
-                    className={`flex items-center gap-1.5 px-2 py-1 border rounded-lg text-[10px] font-bold truncate transition-all hover:scale-[1.02] active:scale-[0.98] cursor-pointer shadow-sm ${
+                    className={`flex items-center gap-1.5 px-2 py-1 border rounded-lg text-[10px] font-bold truncate transition-all hover:scale-[1.02] active:scale-[0.98] cursor-pointer shadow-sm group/mcard ${
                       STATUS_COLORS[post.status?.toLowerCase()] || 'bg-white border-gray-100 text-gray-700'
                     }`}
                     title={`${post.title || post.caption || "Untitled"} (${format(new Date(post.scheduledAt || post.createdAt), 'h:mma')})`}
@@ -167,9 +208,19 @@ export function MonthlyGrid({
                     </div>
                     
                     <span className="truncate flex-1 font-medium">{post.title || post.caption || "Untitled"}</span>
-                    <span className="text-[8px] opacity-75 font-black uppercase font-mono tracking-tight shrink-0">
+                    <span className="text-[8px] opacity-75 font-black uppercase font-mono tracking-tight shrink-0 group-hover/mcard:hidden">
                       {format(new Date(post.scheduledAt || post.createdAt), 'h:mma')}
                     </span>
+                    <button 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (onDuplicateClick) onDuplicateClick(post);
+                      }}
+                      title="Nhân bản bài viết"
+                      className="hidden group-hover/mcard:flex items-center justify-center p-0.5 hover:bg-gray-100 rounded text-indigo-600 transition-colors cursor-pointer border-none shadow-none shrink-0"
+                    >
+                      <span className="text-[9px]">🔂</span>
+                    </button>
                   </div>
                 ))}
               </div>
