@@ -73,16 +73,16 @@ jobs:
       - name: Start Backend Server
         working-directory: backend
         run: |
-          # Chạy background server và bypass GitHub Actions process killer
-          RUNNER_TRACKING_ID=to_prevent_killing npm start &
+          # Chạy background server và bypass GitHub Actions process killer, ghi log ra file
+          RUNNER_TRACKING_ID=to_prevent_killing npm start > backend.log 2>&1 &
 
       - name: Start Frontend App
         working-directory: frontend
         run: |
           npm install
           echo "VITE_API_BASE_URL=/api" > .env
-          # Chạy background server và bypass GitHub Actions process killer
-          RUNNER_TRACKING_ID=to_prevent_killing npm run dev &
+          # Chạy background server và bypass GitHub Actions process killer, ghi log ra file
+          RUNNER_TRACKING_ID=to_prevent_killing npm run dev > frontend.log 2>&1 &
 
       - name: Install Chrome
         run: |
@@ -137,6 +137,14 @@ jobs:
         working-directory: test_selenium
         run: |
           npm run test:general-dashboard
+
+      - name: Print Server Logs on Failure
+        if: failure()
+        run: |
+          echo "=== BACKEND LOGS ==="
+          cat backend/backend.log || true
+          echo "=== FRONTEND LOGS ==="
+          cat frontend/frontend.log || true
 
       - name: Upload Test Screenshots
         if: failure()
