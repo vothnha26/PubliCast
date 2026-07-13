@@ -65,6 +65,7 @@ app.use(logger.httpMiddleware());
 
 // ── CORS — whitelist driven by env var, not hardcoded localhost ────────────
 const ALLOWED_ORIGINS = (process.env.CORS_ALLOWED_ORIGINS || '')
+  .replace(/['"]/g, '') // Clean single/double quotes
   .split(',')
   .map(o => o.trim())
   .filter(Boolean);
@@ -76,7 +77,15 @@ app.use(cors({
 
     // Always allow localhost/127.0.0.1 in development
     const isLocalhost = origin.startsWith('http://localhost') || origin.startsWith('http://127.0.0.1');
-    const isAllowed = isLocalhost || ALLOWED_ORIGINS.includes(origin);
+    
+    // Check wildcard, exact match or auto-whitelist vercel subdomains
+    const isAllowed = isLocalhost || ALLOWED_ORIGINS.some(allowedOrigin => {
+      if (allowedOrigin.includes('*')) {
+        const regex = new RegExp('^' + allowedOrigin.replace(/\./g, '\\.').replace(/\*/g, '.*') + '$');
+        return regex.test(origin);
+      }
+      return allowedOrigin === origin;
+    }) || origin.endsWith('.vercel.app');
 
     if (isAllowed) {
       callback(null, true);
