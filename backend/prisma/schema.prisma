@@ -130,6 +130,7 @@ model Brand {
   trackedVideos      TrackedVideo[]
   discordGuildSnapshots DiscordGuildSnapshot[]
   calendarEvents     CalendarEvent[]
+  livestreamHighlights LivestreamHighlight[]
 
   @@index([ownerId])
   @@map("brands")
@@ -1668,3 +1669,21 @@ model CalendarEvent {
 
 
 
+
+
+model LivestreamHighlight {
+  id             String   @id @default(uuid())
+  brandId        String
+  youtubeUrl     String
+  status         String   @default("pending")
+  progress       Int      @default(0)
+  progressMsg    String?
+  videoUrl       String?  @db.Text
+  subtitleUrl    String?  @db.Text
+  duration       Float?
+  youtubeVideoId String?  // ID video sau khi đăng lên YouTube Shorts
+  createdAt      DateTime @default(now())
+
+  brand Brand @relation(fields: [brandId], references: [id], onDelete: Cascade)
+  @@map("livestream_highlights")
+}

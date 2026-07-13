@@ -135,6 +135,8 @@ app.use('/api/admin/audit-logs', auditLogRoutes);
 app.use('/api/search', searchRoutes);
 const livestreamRoutes = require('./routes/workspace/livestream.routes');
 app.use('/api/livestreams', livestreamRoutes);
+const highlightRoutes = require('./routes/workspace/highlight.routes');
+app.use('/api/highlights', highlightRoutes);
 const ticketRoutes = require('./routes/workspace/ticket.routes');
 
 app.use('/api/posts', postRoutes);
