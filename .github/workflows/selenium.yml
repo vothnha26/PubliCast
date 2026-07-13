@@ -114,7 +114,7 @@ jobs:
         if: ${{ !startsWith(github.ref_name, 'bug/PC-53') && !startsWith(github.ref_name, 'bug/PC-54') && !startsWith(github.ref_name, 'bug/PC-55') && !startsWith(github.ref_name, 'bug/PC-56') && !startsWith(github.ref_name, 'bugfix/PC-56') }}
         working-directory: test_selenium
         run: |
-          npm run test:brand
+          npm run test:brand || (echo "=== BACKEND LOGS ===" && cat ../backend/backend.log && exit 1)
           npm run test:auth-suite
           npm run test:profile
           npm run test:post-creator
