@@ -34,7 +34,16 @@ async function loginAs(driver, role) {
     }, 8000);
     console.log(`✅ [loginAs] Đăng nhập thành công bằng tài khoản seed: ${email}`);
   } catch (seedErr) {
-    console.log(`⚠️ [loginAs] Không thể đăng nhập bằng tài khoản seed. Tiến hành đăng ký tài khoản test mới...`);
+    const currentUrl = await driver.getCurrentUrl();
+    console.log(`⚠️ [loginAs] Không thể đăng nhập bằng tài khoản seed: ${email}. Current URL: ${currentUrl}`);
+    try {
+      const logs = await driver.manage().logs().get('browser');
+      console.log('=== BROWSER CONSOLE LOGS ON LOGIN FAILURE ===');
+      logs.forEach(log => console.log(`[${log.level.name}] ${log.message}`));
+    } catch (logErr) {
+      console.log('Could not fetch browser logs:', logErr.message);
+    }
+    console.log(`Tiến hành đăng ký tài khoản test mới...`);
     
     // Đi tới trang đăng ký
     await driver.get(`${process.env.BASE_URL || 'http://localhost:5173'}/signup`);
@@ -61,8 +70,21 @@ async function loginAs(driver, role) {
     
     await driver.findElement(By.xpath("//button[@type='submit']")).click();
     
-    // Đợi chuyển hướng sang verify OTP
-    await driver.wait(until.urlContains('/verify-otp'), 15000);
+    try {
+      // Đợi chuyển hướng sang verify OTP
+      await driver.wait(until.urlContains('/verify-otp'), 15000);
+    } catch (regErr) {
+      const currentUrl = await driver.getCurrentUrl();
+      console.log(`❌ [loginAs] Đăng ký thất bại hoặc không chuyển hướng sang verify-otp. Current URL: ${currentUrl}`);
+      try {
+        const logs = await driver.manage().logs().get('browser');
+        console.log('=== BROWSER CONSOLE LOGS ON SIGNUP FAILURE ===');
+        logs.forEach(log => console.log(`[${log.level.name}] ${log.message}`));
+      } catch (logErr) {
+        console.log('Could not fetch browser logs:', logErr.message);
+      }
+      throw regErr;
+    }
     await driver.sleep(2000); // chờ Redis cập nhật OTP
     
     // Lấy OTP từ Redis sử dụng thư viện redis chuẩn
