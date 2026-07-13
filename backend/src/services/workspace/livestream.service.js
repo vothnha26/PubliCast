@@ -72,7 +72,9 @@ class LivestreamService {
       peak: s.peakViewers,
       views: s.totalViews,
       status: s.status.toLowerCase(),
-      creator: s.creator?.name || 'Unknown'
+      creator: s.creator?.name || 'Unknown',
+      platformStreamId: s.platformStreamId,
+      metadata: s.metadata
     };
   }
 

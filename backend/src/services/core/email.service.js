@@ -1,5 +1,7 @@
 const NodemailerStrategy = require('./email/nodemailer.strategy');
 const ResendStrategy = require('./email/resend.strategy');
+const ConsoleStrategy = require('./email/console.strategy');
+const appConfig = require('../../config/app.config');
 
 class EmailService {
   constructor() {
@@ -8,11 +10,14 @@ class EmailService {
 
   getStrategy() {
     if (!this.strategy) {
-      if (process.env.RESEND_API_KEY) {
-        console.log('✉️ [EmailService] Using Resend HTTP API Strategy (Port 443)');
+      if (appConfig.sandbox.email) {
+        console.log('✉️  [EmailService] Active Sandbox mode: Redirecting outgoing emails to Terminal Console.');
+        this.strategy = new ConsoleStrategy();
+      } else if (process.env.RESEND_API_KEY) {
+        console.log('✉️  [EmailService] Using Resend HTTP API Strategy (Port 443)');
         this.strategy = new ResendStrategy();
       } else {
-        console.log('✉️ [EmailService] Using Nodemailer SMTP Strategy');
+        console.log('✉️  [EmailService] Using Nodemailer SMTP Strategy');
         this.strategy = new NodemailerStrategy();
       }
     }

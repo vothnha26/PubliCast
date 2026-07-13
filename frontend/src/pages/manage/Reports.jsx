@@ -160,6 +160,9 @@ export function ReportsPage() {
   const [receiveEmail, setReceiveEmail] = useState(false);
   const [emailText, setEmailText] = useState("Monthly report for you.");
   const [emailsList, setEmailsList] = useState([]);
+  const [dayOfMonth, setDayOfMonth] = useState(1);
+  const [scheduleFormat, setScheduleFormat] = useState("PDF");
+  const [schedulePlatforms, setSchedulePlatforms] = useState(["Facebook", "YouTube"]);
   const [newEmailInput, setNewEmailInput] = useState("");
   const [brandMembers, setBrandMembers] = useState([]);
   const [membersLoading, setMembersLoading] = useState(false);
@@ -390,6 +393,9 @@ export function ReportsPage() {
           setReceiveEmail(config.receiveEmail || false);
           setEmailsList(config.emailsList || []);
           setEmailText(config.emailText || "Monthly report for you.");
+          setDayOfMonth(config.dayOfMonth || 1);
+          setScheduleFormat(config.format || "PDF");
+          setSchedulePlatforms(config.platforms || ["Facebook", "YouTube"]);
         }
       } catch (error) {
         console.error("Failed to fetch schedule config:", error);
@@ -1701,7 +1707,10 @@ export function ReportsPage() {
       await apiService.post(`/reports/schedule-config?brandId=${activeBrand.id}`, {
         receiveEmail,
         emailsList,
-        emailText
+        emailText,
+        dayOfMonth,
+        format: scheduleFormat,
+        platforms: schedulePlatforms
       });
       toast.success("Đã lưu cấu hình gửi báo cáo định kỳ hàng tháng.", { id: toastId });
     } catch (error) {
@@ -3405,7 +3414,7 @@ export function ReportsPage() {
 
         {/* Right Column: History, Automation Settings & Scheduled Reports */}
         <div className="space-y-6">
-          <AutomationSchedulingPanel
+           <AutomationSchedulingPanel
             receiveEmail={receiveEmail}
             setReceiveEmail={setReceiveEmail}
             emailsList={emailsList}
@@ -3414,6 +3423,12 @@ export function ReportsPage() {
             setEmailText={setEmailText}
             brandMembers={brandMembers}
             membersLoading={membersLoading}
+            dayOfMonth={dayOfMonth}
+            setDayOfMonth={setDayOfMonth}
+            format={scheduleFormat}
+            setFormat={setScheduleFormat}
+            platforms={schedulePlatforms}
+            setPlatforms={setSchedulePlatforms}
             onSendTestReport={handleSendTestReport}
             onSaveSchedule={handleSaveSchedule}
           />

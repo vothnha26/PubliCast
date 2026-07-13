@@ -40,6 +40,8 @@ const server = app.listen(PORT, async () => {
 
   // Initialize BullMQ publish worker
   require('./queues/publish.worker');
+  // Initialize BullMQ video processing worker
+  require('./queues/video.worker');
 
   // Start Discord daily member snapshot (runs every 24h)
   const discordStatsService = require('./services/social/discord/discord-stats.service');
@@ -61,6 +63,9 @@ const server = app.listen(PORT, async () => {
   const tokenRefreshService = require('./services/social/token-refresh/token-refresh.service');
   tokenRefreshService.startScheduler();
 
+  // Start Automated Reports Scheduler
+  const reportSchedulerService = require('./services/reports/report-scheduler.service');
+  reportSchedulerService.start();
 });
 
 // ── Graceful Shutdown ───────────────────────────────────────────────────────
@@ -77,6 +82,31 @@ async function shutdown(signal) {
 
   server.close(async () => {
     logger.info('HTTP server closed.');
+
+    // Đóng các worker BullMQ dứt điểm và an toàn
+    try {
+      const publishWorker = require('./queues/publish.worker');
+      const videoWorker = require('./queues/video.worker');
+      console.log('[Shutdown] Closing BullMQ Workers...');
+      await Promise.all([
+        publishWorker.close(),
+        videoWorker.close()
+      ]);
+      logger.info('BullMQ workers closed.');
+    } catch (err) {
+      logger.error('Error closing BullMQ workers', err);
+    }
+
+    // Đóng Redis Connection
+    try {
+      const redisClient = require('./config/redis');
+      if (redisClient.isOpen && typeof redisClient.quit === 'function') {
+        await redisClient.quit();
+        logger.info('Redis connection closed.');
+      }
+    } catch (err) {
+      logger.error('Error closing Redis connection', err);
+    }
 
     try {
       await prisma.$disconnect();

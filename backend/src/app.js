@@ -77,9 +77,10 @@ app.use(cors({
 
     // Always allow localhost/127.0.0.1 in development
     const isLocalhost = origin.startsWith('http://localhost') || origin.startsWith('http://127.0.0.1');
+    const isNgrok = origin.endsWith('.ngrok-free.dev') || origin.endsWith('.ngrok.io');
     
     // Check wildcard, exact match or auto-whitelist vercel subdomains
-    const isAllowed = isLocalhost || ALLOWED_ORIGINS.some(allowedOrigin => {
+    const isAllowed = isLocalhost || isNgrok || ALLOWED_ORIGINS.some(allowedOrigin => {
       if (allowedOrigin.includes('*')) {
         const regex = new RegExp('^' + allowedOrigin.replace(/\./g, '\\.').replace(/\*/g, '.*') + '$');
         return regex.test(origin);

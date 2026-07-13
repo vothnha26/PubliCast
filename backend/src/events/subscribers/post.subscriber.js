@@ -27,14 +27,15 @@ const initPostSubscribers = () => {
   eventEmitter.on(EVENTS.POST.CREATED, async ({ post, options }) => {
     if (post.status === POST_STATUS.PUBLISHED) {
       try {
-        console.log(`[Event] Auto-publishing post ${post.id}`);
-        await postService.publishToPlatforms(post.id, options);
+        console.log(`[Event] Queueing auto-publishing for post ${post.id}`);
+        const { upsertPublishJob } = require('../../queues/publish.queue');
+        await upsertPublishJob(post.id, new Date());
       } catch (err) {
-        console.error(`[Event Error] Auto-publishing failed for post ${post.id}:`, err.message);
+        console.error(`[Event Error] Auto-publishing queueing failed for post ${post.id}:`, err.message);
         await createErrorNotification(
           post,
           'Đăng bài thất bại',
-          `Bài viết "${post.title?.substring(0, 30) || ''}" tự động đăng thất bại. Lỗi: ${err.message}`
+          `Bài viết "${post.title?.substring(0, 30) || ''}" xếp hàng đăng thất bại. Lỗi: ${err.message}`
         );
       }
     } else if (post.status === POST_STATUS.SCHEDULED) {
@@ -55,14 +56,15 @@ const initPostSubscribers = () => {
   eventEmitter.on(EVENTS.POST.UPDATED, async ({ post, options, statusChangedToPublished }) => {
     if (statusChangedToPublished) {
       try {
-        console.log(`[Event] Publishing updated post ${post.id}`);
-        await postService.publishToPlatforms(post.id, options);
+        console.log(`[Event] Queueing updated post ${post.id} for publishing`);
+        const { upsertPublishJob } = require('../../queues/publish.queue');
+        await upsertPublishJob(post.id, new Date());
       } catch (err) {
-        console.error(`[Event Error] Publishing failed for updated post ${post.id}:`, err.message);
+        console.error(`[Event Error] Publishing queueing failed for updated post ${post.id}:`, err.message);
         await createErrorNotification(
           post,
           'Đăng bài thất bại',
-          `Bài viết "${post.title?.substring(0, 30) || ''}" cập nhật & đăng thất bại. Lỗi: ${err.message}`
+          `Bài viết "${post.title?.substring(0, 30) || ''}" cập nhật & xếp hàng đăng thất bại. Lỗi: ${err.message}`
         );
       }
     } else if (post.status === POST_STATUS.SCHEDULED) {

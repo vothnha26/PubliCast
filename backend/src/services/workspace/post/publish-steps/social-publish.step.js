@@ -7,7 +7,7 @@ class SocialPublishStep extends BaseStep {
     const { post, platforms, options, brandId } = context;
     context.results = [];
 
-    for (const platform of platforms) {
+    const publishPromises = platforms.map(async (platform) => {
       try {
         const service = socialPlatformFactory.getService(platform);
         
@@ -37,13 +37,14 @@ class SocialPublishStep extends BaseStep {
         });
         
         console.log(`[SocialPublishStep] ✅ Successfully published post ${post.id} to platform ${platform}! Result:`, JSON.stringify(result));
-        context.results.push({ platform, success: true, result });
+        return { platform, success: true, result };
       } catch (error) {
         console.error(`[SocialPublishStep] ❌ Failed to publish post ${post.id} to platform ${platform}:`, error);
-        context.results.push({ platform, success: false, error: error.message });
-        // We continue to other platforms even if one fails
+        return { platform, success: false, error: error.message };
       }
-    }
+    });
+
+    context.results = await Promise.all(publishPromises);
   }
 }
 

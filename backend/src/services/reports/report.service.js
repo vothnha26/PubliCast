@@ -317,20 +317,25 @@ class ReportService {
    */
   async getScheduleConfig(brandId) {
     const configPath = path.join(__dirname, `../../../uploads/reports/config_${brandId}.json`);
+    let config = {
+      receiveEmail: false,
+      emailsList: [],
+      emailText: 'Monthly report for you.',
+      dayOfMonth: 1,
+      format: 'PDF',
+      platforms: ['Facebook', 'YouTube']
+    };
+
     if (fs.existsSync(configPath)) {
       try {
         const raw = fs.readFileSync(configPath, 'utf8');
-        return JSON.parse(raw);
+        const parsed = JSON.parse(raw);
+        config = { ...config, ...parsed };
       } catch (e) {
         console.error(`[ReportService] Error reading schedule config for brand ${brandId}:`, e);
       }
     }
-    // Default config
-    return {
-      receiveEmail: false,
-      emailsList: [],
-      emailText: 'Monthly report for you.'
-    };
+    return config;
   }
 
   /**
