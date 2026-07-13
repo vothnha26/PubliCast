@@ -65,39 +65,25 @@ async function loginAs(driver, role) {
     await driver.wait(until.urlContains('/verify-otp'), 15000);
     await driver.sleep(2000); // chờ Redis cập nhật OTP
     
-    // Lấy OTP từ Redis
+    // Lấy OTP từ Redis sử dụng thư viện redis chuẩn
     let otp = '123456';
     try {
-      const mysql = require('mysql2/promise');
-      const connection = await mysql.createConnection(process.env.MYSQL_URL || 'mysql://root:root_password@localhost:3307/publicast');
-      const [rows] = await connection.execute(
-        'SELECT code FROM otps WHERE email = ? ORDER BY createdAt DESC LIMIT 1',
-        [newEmail]
-      );
-      await connection.end();
-      if (rows && rows.length > 0) {
-        otp = rows[0].code;
-        console.log(`🔑 [loginAs] Lấy thành công OTP từ DB: ${otp}`);
+      const { createClient } = require('redis');
+      const redisUrl = process.env.REDIS_URL || `redis://${process.env.REDIS_HOST || 'localhost'}:${process.env.REDIS_PORT || '6379'}`;
+      const redisClient = createClient({ url: redisUrl });
+      redisClient.on('error', (err) => console.warn('Redis Client Error in login helper', err.message));
+      await redisClient.connect();
+      const redisKey = `otp:${newEmail}`;
+      const cachedOtp = await redisClient.get(redisKey);
+      await redisClient.disconnect();
+      if (cachedOtp) {
+        otp = cachedOtp;
+        console.log(`🔑 [loginAs] Lấy thành công OTP từ Redis: ${otp}`);
+      } else {
+        console.warn(`⚠️ [loginAs] Không tìm thấy mã OTP cho key ${redisKey} trong Redis.`);
       }
-    } catch (dbErr) {
-      console.warn(`⚠️ [loginAs] Không thể kết nối DB lấy OTP, thử dùng kết nối Redis...`, dbErr.message);
-      // Fallback sang đọc Redis trực tiếp nếu có cấu hình
-      try {
-        const Redis = require('ioredis');
-        const redis = new Redis({
-          host: process.env.REDIS_HOST || 'localhost',
-          port: parseInt(process.env.REDIS_PORT || '6379', 10)
-        });
-        const redisKey = `otp:${newEmail}`;
-        const cachedOtp = await redis.get(redisKey);
-        await redis.quit();
-        if (cachedOtp) {
-          otp = cachedOtp;
-          console.log(`🔑 [loginAs] Lấy thành công OTP từ Redis: ${otp}`);
-        }
-      } catch (redisErr) {
-        console.error(`❌ [loginAs] Lỗi kết nối Redis:`, redisErr.message);
-      }
+    } catch (redisErr) {
+      console.error(`❌ [loginAs] Lỗi kết nối Redis để lấy OTP:`, redisErr.message);
     }
     
     // Nhập OTP

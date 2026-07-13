@@ -73,14 +73,14 @@ jobs:
       - name: Start Backend Server
         working-directory: backend
         run: |
-          # Chạy background server, tin tưởng file .env đã tạo ở bước trên
-          npm run dev &
+          # Chạy background server bằng npm start thay vì nodemon để tránh lỗi treo trong CI
+          npm start &
 
       - name: Start Frontend App
         working-directory: frontend
         run: |
           npm install
-          echo "VITE_API_BASE_URL=http://localhost:3000/api" > .env
+          echo "VITE_API_BASE_URL=/api" > .env
           npm run dev &
 
       - name: Install Chrome
