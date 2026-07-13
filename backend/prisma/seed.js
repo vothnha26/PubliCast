@@ -266,9 +266,9 @@ async function main() {
   // 1. Customer cao nhất
   const customerUser = await prisma.user.create({
     data: {
-      email: 'huynhhoaibao216@gmail.com',
+      email: 'vothanhnha26@gmail.com',
       passwordHash: customerPasswordHash,
-      name: 'Huỳnh Hoài Bảo',
+      name: 'Võ Thanh Nhã',
       role: 'OWNER',
       isActive: true,
       isEmailVerified: true,
