@@ -18,8 +18,8 @@ class VideoProcessorFacade {
    * @param {string} params.brandId - Brand identifier for organization
    * @returns {Promise<string>} Output video URL (local path or Cloudinary URL)
    */
-  async processVideo({ videoUrl, startTime, endTime, aspectRatio, keyframes, audioUrl, audioVolume = 50, brandId = 'unassigned' }) {
-    console.log(`[VideoProcessorFacade] Starting process: videoUrl=${videoUrl}, trim=${startTime}s-${endTime}s, aspectRatio=${aspectRatio}, keyframesCount=${keyframes?.length || 0}`);
+  async processVideo({ videoUrl, startTime, endTime, aspectRatio, keyframes, audioUrl, audioVolume = 50, textOverlays = [], subtitles = [], brandId = 'unassigned' }) {
+    console.log(`[VideoProcessorFacade] Starting process: videoUrl=${videoUrl}, trim=${startTime}s-${endTime}s, aspectRatio=${aspectRatio}, keyframesCount=${keyframes?.length || 0}, textOverlaysCount=${textOverlays?.length || 0}`);
     
     const tempDir = path.join(process.cwd(), 'uploads', 'temp');
     if (!fs.existsSync(tempDir)) {
@@ -49,7 +49,9 @@ class VideoProcessorFacade {
         aspectRatio,
         keyframes,
         audioPath: localAudioPath,
-        audioVolume
+        audioVolume,
+        textOverlays,
+        subtitles
       });
 
       // 4. Handle output persistence
@@ -139,38 +141,70 @@ class VideoProcessorFacade {
     }
   }
 
-  _executeFfmpeg({ inputPath, outputPath, startTime, endTime, aspectRatio, keyframes, audioPath, audioVolume }) {
+  _buildVideoFilters({ aspectRatio, keyframes, textOverlays, subtitles, startTime }) {
+    const filters = [];
+
+    // 1. Crop & Scale Filter
+    if (aspectRatio && aspectRatio !== 'original') {
+      const cropXExpr = this._buildFfmpegCropXExpr(keyframes);
+      const escapedCropXExpr = cropXExpr.split(',').join('\\,');
+      if (aspectRatio === '1:1') {
+        filters.push(`crop=min(iw\\,ih):min(iw\\,ih):(iw-ow)*(${escapedCropXExpr}):(ih-oh)/2`);
+        filters.push('scale=720:720');
+      } else if (aspectRatio === '9:16') {
+        filters.push(`crop=min(iw\\,ih*9/16):min(iw*16/9\\,ih):(iw-ow)*(${escapedCropXExpr}):(ih-oh)/2`);
+        filters.push('scale=720:1280');
+      } else if (aspectRatio === '16:9') {
+        filters.push(`crop=min(iw\\,ih*16/9):min(iw*9/16\\,ih):(iw-ow)*(${escapedCropXExpr}):(ih-oh)/2`);
+        filters.push('scale=1280:720');
+      }
+    }
+
+    // 2. Text Overlays (Tĩnh)
+    if (Array.isArray(textOverlays)) {
+      textOverlays.forEach(overlay => {
+        const cleanText = (overlay.text || '').replace(/'/g, "'\\''").replace(/:/g, '\\:');
+        if (!cleanText) return;
+        const color = overlay.color || 'white';
+        const size = overlay.size || 24;
+        const x = overlay.x !== undefined ? overlay.x : 50;
+        const y = overlay.y !== undefined ? overlay.y : 50;
+        
+        // Căn giữa tương đối theo phần trăm toạ độ
+        filters.push(`drawtext=text='${cleanText}':x=(w*${x}/100-tw/2):y=(h*${y}/100-th/2):fontcolor=${color}:fontsize=${size}`);
+      });
+    }
+
+    // 3. Subtitles (Động theo thời gian)
+    if (Array.isArray(subtitles)) {
+      subtitles.forEach(sub => {
+        const cleanText = (sub.text || '').replace(/'/g, "'\\''").replace(/:/g, '\\:');
+        if (!cleanText) return;
+        
+        // Thời gian hiển thị tương đối so với start time đã cắt (-ss ở input)
+        const start = Math.max(0, sub.start - startTime);
+        const end = Math.max(0, sub.end - startTime);
+        
+        filters.push(`drawtext=text='${cleanText}':x=(w-tw)/2:y=h-80:fontcolor=white:fontsize=22:box=1:boxcolor=black@0.6:boxborderw=6:enable='between(t,${start.toFixed(3)},${end.toFixed(3)})'`);
+      });
+    }
+
+    return filters.join(',');
+  }
+
+  _executeFfmpeg({ inputPath, outputPath, startTime, endTime, aspectRatio, keyframes, audioPath, audioVolume, textOverlays, subtitles }) {
     return new Promise((resolve, reject) => {
-      let cmd = '';
       const duration = endTime - startTime;
       const volCoef = (audioVolume / 100).toFixed(2);
 
-      // Xác định filter crop
-      let cropFilter = '';
-      if (aspectRatio && aspectRatio !== 'original') {
-        const cropXExpr = this._buildFfmpegCropXExpr(keyframes);
-        const escapedCropXExpr = cropXExpr.split(',').join('\\,');
-        if (aspectRatio === '1:1') {
-          cropFilter = `crop=min(iw\\,ih):min(iw\\,ih):(iw-ow)*(${escapedCropXExpr}):(ih-oh)/2`;
-        } else if (aspectRatio === '9:16') {
-          cropFilter = `crop=min(iw\\,ih*9/16):min(iw*16/9\\,ih):(iw-ow)*(${escapedCropXExpr}):(ih-oh)/2`;
-        } else if (aspectRatio === '16:9') {
-          cropFilter = `crop=min(iw\\,ih*16/9):min(iw*9/16\\,ih):(iw-ow)*(${escapedCropXExpr}):(ih-oh)/2`;
-        }
-      }
+      const videoFilterString = this._buildVideoFilters({ aspectRatio, keyframes, textOverlays, subtitles, startTime });
+      const videoChain = videoFilterString ? `[0:v]${videoFilterString}[v]` : `[0:v]null[v]`;
 
+      let cmd = '';
       if (audioPath) {
-        if (cropFilter) {
-          cmd = `ffmpeg -y -ss ${startTime} -t ${duration} -i "${inputPath}" -i "${audioPath}" -filter_complex "[0:v]${cropFilter}[v];[1:a]volume=${volCoef}[a1];[0:a][a1]amix=inputs=2:duration=first[a]" -map "[v]" -map "[a]" -c:v libx264 -c:a aac -preset fast -crf 23 -strict experimental "${outputPath}"`;
-        } else {
-          cmd = `ffmpeg -y -ss ${startTime} -t ${duration} -i "${inputPath}" -i "${audioPath}" -filter_complex "[1:a]volume=${volCoef}[a1];[0:a][a1]amix=inputs=2:duration=first[a]" -map 0:v -map "[a]" -c:v libx264 -c:a aac -preset fast -crf 23 -strict experimental "${outputPath}"`;
-        }
+        cmd = `ffmpeg -y -ss ${startTime} -t ${duration} -i "${inputPath}" -i "${audioPath}" -filter_complex "${videoChain};[1:a]volume=${volCoef}[a1];[0:a][a1]amix=inputs=2:duration=first[a]" -map "[v]" -map "[a]" -c:v libx264 -c:a aac -preset superfast -crf 20 -strict experimental "${outputPath}"`;
       } else {
-        if (cropFilter) {
-          cmd = `ffmpeg -y -ss ${startTime} -t ${duration} -i "${inputPath}" -vf "${cropFilter}" -c:v libx264 -c:a aac -preset fast -crf 23 -strict experimental "${outputPath}"`;
-        } else {
-          cmd = `ffmpeg -y -ss ${startTime} -t ${duration} -i "${inputPath}" -c:v libx264 -c:a aac -preset fast -crf 23 -strict experimental "${outputPath}"`;
-        }
+        cmd = `ffmpeg -y -ss ${startTime} -t ${duration} -i "${inputPath}" -filter_complex "${videoChain}" -map "[v]" -map 0:a? -c:v libx264 -c:a aac -preset superfast -crf 20 -strict experimental "${outputPath}"`;
       }
 
       console.log(`[VideoProcessorFacade] Executing command: ${cmd}`);

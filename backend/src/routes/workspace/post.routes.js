@@ -79,6 +79,16 @@ router.post('/upload', checkPermission('CREATE_POSTS'), (req, res, next) => {
 router.post('/trim', checkPermission('CREATE_POSTS'), postController.trimVideo);
 
 /**
+ * GET /api/posts/trim/:taskId/status
+ */
+router.get('/trim/:taskId/status', postController.getTrimStatus);
+
+/**
+ * POST /api/posts/:id/retry-failed
+ */
+router.post('/:id/retry-failed', checkPermission('CREATE_POSTS'), postController.retryFailedPlatforms);
+
+/**
  * POST /api/posts/transcribe
  */
 router.post('/transcribe', checkPermission('CREATE_POSTS'), postController.transcribeVideo);

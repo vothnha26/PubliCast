@@ -10,7 +10,12 @@ class FetchPostStep extends BaseStep {
     
     context.post = post;
     context.brandId = post.brandId;
-    context.platforms = post.targetPlatforms ? post.targetPlatforms.split(SEPARATORS.COMMA).map(p => p.trim()) : [];
+    let platforms = post.targetPlatforms ? post.targetPlatforms.split(SEPARATORS.COMMA).map(p => p.trim()) : [];
+    if (context.postDataOptions && Array.isArray(context.postDataOptions.retryPlatforms)) {
+      const retryList = context.postDataOptions.retryPlatforms.map(p => p.trim().toUpperCase());
+      platforms = platforms.filter(p => retryList.includes(p.toUpperCase()));
+    }
+    context.platforms = platforms;
     
     // Parse options from metadata
     let options = context.postDataOptions || {};
