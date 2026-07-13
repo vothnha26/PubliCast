@@ -27,7 +27,10 @@ class NodemailerStrategy extends EmailStrategy {
       host: process.env.EMAIL_HOST || 'smtp.gmail.com',
       port,
       secure,
-      auth: { user, pass }
+      auth: { user, pass },
+      connectionTimeout: 10000, // 10 seconds timeout
+      greetingTimeout: 10000,
+      socketTimeout: 10000
     });
 
     // Verify connection on startup (skip in test environment to avoid console leaks)

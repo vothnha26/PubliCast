@@ -57,6 +57,9 @@ const queueDashboard = require('./queues/dashboard');
 
 const app = express();
 
+// Trust proxy for rate limiting behind reverse proxies (like Render)
+app.set('trust proxy', 1);
+
 // ── Structured HTTP request logger (replaces raw console.log) ──────────────
 app.use(logger.httpMiddleware());
 
