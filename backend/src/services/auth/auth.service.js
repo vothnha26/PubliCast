@@ -96,8 +96,8 @@ class AuthService {
       throw error;
     }
 
-    if (user.isEmailVerified || !user.isActive) {
-      const error = new Error('Tài khoản đã được kích hoạt hoặc đang bị khóa');
+    if (user.isEmailVerified) {
+      const error = new Error('Tài khoản đã được kích hoạt');
       error.status = 400;
       throw error;
     }
