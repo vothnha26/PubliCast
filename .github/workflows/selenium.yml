@@ -73,15 +73,16 @@ jobs:
       - name: Start Backend Server
         working-directory: backend
         run: |
-          # Chạy background server bằng npm start thay vì nodemon để tránh lỗi treo trong CI
-          npm start &
+          # Chạy background server và bypass GitHub Actions process killer
+          RUNNER_TRACKING_ID=to_prevent_killing npm start &
 
       - name: Start Frontend App
         working-directory: frontend
         run: |
           npm install
           echo "VITE_API_BASE_URL=/api" > .env
-          npm run dev &
+          # Chạy background server và bypass GitHub Actions process killer
+          RUNNER_TRACKING_ID=to_prevent_killing npm run dev &
 
       - name: Install Chrome
         run: |
@@ -95,7 +96,7 @@ jobs:
 
       - name: Wait for Frontend and Backend to be Ready
         run: |
-          npx wait-on -t 60000 http://localhost:5173/login http://localhost:3000/health || echo "Services might not support health endpoint, continuing..."
+          npx wait-on -t 60000 http://localhost:5173/login http://localhost:3000/health
 
       - name: Setup Selenium Test .env
         working-directory: test_selenium
