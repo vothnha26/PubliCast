@@ -46,6 +46,15 @@ class EmailService {
     );
   }
 
+  async sendResetPasswordLink(email, link) {
+    const strategy = this.getStrategy();
+    await strategy.send(
+      email,
+      'Đặt lại mật khẩu tài khoản PubliCast',
+      `Chào bạn,\n\nBạn nhận được email này vì bạn (hoặc ai đó) đã yêu cầu khôi phục mật khẩu cho tài khoản PubliCast của mình.\n\nVui lòng nhấn vào đường dẫn sau để đặt lại mật khẩu mới:\n${link}\n\nĐường dẫn này có hiệu lực trong 15 phút. Nếu bạn không yêu cầu, vui lòng bỏ qua email này.`
+    );
+  }
+
   async sendTeamInvitation(email, inviterName, brandName, inviteUrl, isResend = false) {
     const strategy = this.getStrategy();
     const subject = isResend

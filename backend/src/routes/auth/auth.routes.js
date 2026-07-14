@@ -27,6 +27,7 @@ router.post('/resend-otp', authRateLimiter, forgotPasswordValidation, authContro
 
 // Forgot password
 router.post('/forgot-password', forgotPasswordRateLimiter, forgotPasswordValidation, authController.forgotPassword);
+router.get('/verify-reset-token', authController.verifyResetToken);
 
 // Reset password
 router.post('/reset-password', resetPasswordRateLimiter, resetPasswordValidation, authController.resetPassword);
@@ -39,5 +40,11 @@ router.post('/refresh', authController.refreshToken);
 
 // Logout
 router.post('/logout', verifyAuth, authController.logout);
+
+// 2FA Routes
+router.post('/2fa/setup', verifyAuth, authController.setup2FA);
+router.post('/2fa/verify', verifyAuth, authController.verify2FA);
+router.post('/2fa/disable', verifyAuth, authController.disable2FA);
+router.post('/2fa/login-verify', authController.loginVerify2FA);
 
 module.exports = router;

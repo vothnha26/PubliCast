@@ -137,7 +137,10 @@ const ERROR_MESSAGES = {
   RESET_PASSWORD_INVALID_OTP: 'Invalid OTP',
   NEW_PASSWORD_SAME_AS_OLD: 'New password must differ from old',
   RESET_PASSWORD_SUCCESS: 'Password reset successfully',
-  USER_NOT_FOUND: 'User not found'
+  USER_NOT_FOUND: 'User not found',
+  INVALID_RESET_TOKEN: 'Mã khôi phục mật khẩu không hợp lệ hoặc đã được sử dụng.',
+  RESET_TOKEN_EXPIRED: 'Đường dẫn khôi phục mật khẩu đã hết hạn.',
+  RESET_LINK_SENT: 'Đường dẫn đặt lại mật khẩu đã được gửi đến email của bạn.'
 };
 
 const AUTOLIST_TYPES = {
@@ -197,6 +200,8 @@ const SYSTEM_PLANS = {
 
 const ANALYTICS = {
   COOLDOWN_HOURS: parseInt(process.env.SOCIAL_SYNC_COOLDOWN_HOURS) || 12,
+  // Mốc bắt đầu "lifetime" — trước ngày này YouTube Analytics không có data chi tiết theo video
+  LIFETIME_START_DATE: '2020-01-01',
   GRANULARITY: {
     DAILY: 'DAILY',
     WEEKLY: 'WEEKLY',
@@ -225,6 +230,9 @@ const ANALYTICS = {
     YOUTUBE: {
       VIEWS: 'views',
       MINUTES_WATCHED: 'estimatedMinutesWatched',
+      AVERAGE_VIEW_DURATION: 'averageViewDuration',
+      AVERAGE_VIEW_PERCENTAGE: 'averageViewPercentage',
+      UNIQUE_VIEWERS: 'uniqueViewers',
       SUBSCRIBERS_GAINED: 'subscribersGained',
       SUBSCRIBERS_LOST: 'subscribersLost',
       VIEWER_PERCENTAGE: 'viewerPercentage'
@@ -233,17 +241,20 @@ const ANALYTICS = {
   DIMENSIONS: {
     YOUTUBE: {
       TRAFFIC_SOURCE: 'insightTrafficSourceType',
+      TRAFFIC_SOURCE_DETAIL: 'insightTrafficSourceDetail',
       COUNTRY: 'country',
       DAY: 'day',
       AGE_GROUP: 'ageGroup',
       GENDER: 'gender',
+      DEVICE_TYPE: 'deviceType',
       VIDEO: 'video'
     }
   },
   SORT: {
     YOUTUBE: {
-      VIEWS_DESC: '-views',
-      DAY_ASC: 'day'
+      VIEWS_DESC:            '-views',
+      DAY_ASC:               'day',
+      MINUTES_WATCHED_DESC:  '-estimatedMinutesWatched'
     }
   }
 };
@@ -471,7 +482,80 @@ const REDIS_NAMESPACES = {
 };
 
 const REDIS_TTL = {
-  WEBHOOK_DEDUP_SEC: 600
+  WEBHOOK_DEDUP_SEC: 600,
+  VIDEO_INSIGHTS_SEC: 7200 // 2 giờ
+};
+
+/**
+ * Map YouTube Analytics API values → label tiếng Việt + màu hiển thị.
+ * Dùng cho video-insights endpoint (traffic source, device type, demographics).
+ */
+const YT_VIDEO_INSIGHTS = {
+  /**
+   * Key constants cho traffic source type — tránh magic string 'YT_SEARCH' v.v.
+   * Dùng trong filters API query.
+   */
+  TRAFFIC_SOURCE_TYPES: {
+    SHORTS:           'SHORTS',
+    YT_SEARCH:        'YT_SEARCH',
+    YT_CHANNEL:       'YT_CHANNEL',
+    EXT_URL:          'EXT_URL',
+    SUBSCRIBER:       'SUBSCRIBER',
+    NO_LINK_EMBEDDED: 'NO_LINK_EMBEDDED',
+    NOTIFICATION:     'NOTIFICATION',
+    YT_OTHER_PAGE:    'YT_OTHER_PAGE',
+    RELATED_VIDEO:    'RELATED_VIDEO',
+    END_SCREEN:       'END_SCREEN',
+    PLAYLIST:         'PLAYLIST',
+    UNKNOWN:          'UNKNOWN'
+  },
+  TRAFFIC_SOURCE: {
+    SHORTS:             { label: 'Trang video ngắn',  color: '#BEF264' },
+    YT_SEARCH:          { label: 'YouTube Tìm kiếm', color: '#8E9BEE' },
+    YT_CHANNEL:         { label: 'Trang kênh',        color: '#F9A8D4' },
+    EXT_URL:            { label: 'Website ngoài',     color: '#FCD34D' },
+    SUBSCRIBER:         { label: 'Người đăng ký',    color: '#6EE7B7' },
+    NO_LINK_EMBEDDED:   { label: 'Video nhúng',       color: '#93C5FD' },
+    NOTIFICATION:       { label: 'Thông báo',         color: '#F87171' },
+    YT_OTHER_PAGE:      { label: 'Trang YT khác',     color: '#94A3B8' },
+    RELATED_VIDEO:      { label: 'Video liên quan',   color: '#C4B5FD' },
+    END_SCREEN:         { label: 'Màn hình cuối',     color: '#FCA5A5' },
+    PLAYLIST:           { label: 'Danh sách phát',    color: '#6EE7F7' },
+    UNKNOWN:            { label: 'Khác',              color: '#D1D5DB' }
+  },
+  DEVICE_TYPE: {
+    MOBILE_PHONE: { label: 'Điện thoại',  color: '#10B981' },
+    COMPUTER:     { label: 'Máy tính',    color: '#6366F1' },
+    TV:           { label: 'TV',          color: '#F59E0B' },
+    TABLET:       { label: 'Máy tính bảng', color: '#EC4899' },
+    GAME_CONSOLE: { label: 'Game console', color: '#A78BFA' },
+    UNKNOWN:      { label: 'Khác',        color: '#D1D5DB' }
+  },
+  DEMOGRAPHICS: {
+    GENDER: {
+      MALE:   { label: 'Nam', color: '#818CF8' },
+      FEMALE: { label: 'Nữ', color: '#F472B6' }
+    }
+  },
+  /**
+   * Map country code → tên hiển thị tiếng Việt.
+   * Đặt ở đây để nhất quán với TRAFFIC_SOURCE, DEVICE_TYPE (data tách khỏi logic).
+   * Nếu code không có trong map → service trả nguyên code (fallback an toàn).
+   */
+  COUNTRY_NAMES: {
+    VN: 'Việt Nam',    US: 'Hoa Kỳ',       GB: 'Anh',
+    JP: 'Nhật Bản',   KR: 'Hàn Quốc',     CN: 'Trung Quốc',
+    IN: 'Ấn Độ',      DE: 'Đức',           FR: 'Pháp',
+    BR: 'Brazil',     CA: 'Canada',         AU: 'Úc',
+    SG: 'Singapore',  TH: 'Thái Lan',       PH: 'Philippines',
+    MY: 'Malaysia',   ID: 'Indonesia',      TW: 'Đài Loan',
+    HK: 'Hồng Kông', NL: 'Hà Lan',         ES: 'Tây Ban Nha',
+    IT: 'Ý',          RU: 'Nga',            MX: 'Mexico',
+    AR: 'Argentina',  SA: 'Ả Rập Xê Út',    AE: 'UAE',
+    NG: 'Nigeria',    EG: 'Ai Cập',         ZA: 'Nam Phi',
+    PK: 'Pakistan',   BD: 'Bangladesh',      MM: 'Myanmar',
+    KH: 'Campuchia',  LA: 'Lào'
+  }
 };
 
 const TOKEN_REFRESH = {
@@ -492,6 +576,28 @@ const VIDEO_EDITOR = {
     EPIC: 'epic'
   },
   DEFAULT_TRIM_DURATION: 10
+};
+
+/** YouTube Quota Optimization - Distributed Lock & Cache Strategy */
+const QUOTA_TTL_STRATEGY = {
+  YOUTUBE_ANALYTICS: {
+    DAILY_LIMIT: 10000,
+    THRESHOLDS: [
+      { usagePct: 0.8, ttlSec: 12 * 3600 },  // 80%+ usage → Cache 12 hours
+      { usagePct: 0.5, ttlSec: 6 * 3600 }    // 50%+ usage → Cache 6 hours
+    ],
+    DEFAULT_TTL_SEC: 2 * 3600                 // Default → Cache 2 hours
+  }
+};
+
+const LOCK_CONFIG = {
+  YOUTUBE_INSIGHTS: {
+    PREFIX: 'lock:yt:video-insights:',
+    TTL_SEC: 30,              // Lock expires after 30s (prevent deadlock on slow API)
+    POLL_INTERVAL_MS: 200,    // Check cache every 200ms while waiting
+    POLL_TIMEOUT_MS: 5000,    // Wait max 5s for background fetch
+    API_TIMEOUT_MS: 15000     // Google API call timeout 15s
+  }
 };
 
 module.exports = {
@@ -539,8 +645,11 @@ module.exports = {
   REPORT_FREQUENCIES,
   REDIS_NAMESPACES,
   REDIS_TTL,
+  YT_VIDEO_INSIGHTS,
   TOKEN_REFRESH,
   VIDEO_EDITOR,
+  QUOTA_TTL_STRATEGY,
+  LOCK_CONFIG,
   splitMediaUrls
 };
 

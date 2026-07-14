@@ -35,11 +35,26 @@ export const useAuthStore = create((set, get) => ({
   login: async (email, password) => {
     try {
       const data = await authService.login({ email, password });
+      if (data.require2FA) {
+        return data;
+      }
       await get().checkAuth();
       toast.success('Đăng nhập thành công!');
       return data;
     } catch (error) {
       toast.error(error.message || 'Đăng nhập thất bại');
+      throw error;
+    }
+  },
+
+  loginVerify2FA: async (preAuthToken, code) => {
+    try {
+      const data = await authService.loginVerify2FA({ preAuthToken, code });
+      await get().checkAuth();
+      toast.success('Đăng nhập thành công!');
+      return data;
+    } catch (error) {
+      toast.error(error.message || 'Xác thực 2FA thất bại');
       throw error;
     }
   },

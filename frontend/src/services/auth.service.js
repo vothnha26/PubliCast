@@ -45,6 +45,35 @@ class AuthService {
     return response.data;
   }
 
+  async verifyResetToken(token) {
+    const response = await apiService.get(`/auth/verify-reset-token?token=${encodeURIComponent(token)}`);
+    return response.data;
+  }
+
+  async setup2FA() {
+    const response = await apiService.post('/auth/2fa/setup');
+    return response.data;
+  }
+
+  async verify2FA(code) {
+    const response = await apiService.post('/auth/2fa/verify', { code });
+    return response.data;
+  }
+
+  async disable2FA(code) {
+    const response = await apiService.post('/auth/2fa/disable', { code });
+    return response.data;
+  }
+
+  async loginVerify2FA(payload) {
+    const response = await apiService.post('/auth/2fa/login-verify', payload);
+    const token = response.data.accessToken || response.data.token;
+    if (token) {
+      localStorage.setItem(STORAGE_KEYS.TOKEN, token);
+    }
+    return response.data;
+  }
+
   async logout() {
     try {
       await apiService.post('/auth/logout');

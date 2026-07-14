@@ -1,0 +1,2 @@
+-- AlterTable
+ALTER TABLE `social_accounts` ADD COLUMN `syncStatus` ENUM('PENDING', 'PARTIAL', 'SUCCESS', 'FAILED') NOT NULL DEFAULT 'PENDING';

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { subDays, eachDayOfInterval, format } from "date-fns";
 import { toast } from "sonner";
@@ -41,19 +41,47 @@ export function usePlatformDashboard(platform) {
     return lockedLimit ? lockedLimit.lockReason : null;
   }, [platformLimits, platform]);
   
-  const [activeTab, setActiveTabState] = useState(() => {
+  const activeTab = useMemo(() => {
     const tabParam = searchParams.get("tab");
-    if (tabParam) return tabParam;
-    return platform === "facebook" ? "overview" : "community";
-  });
+    const getTabDefault = (plat) => {
+      if (plat === "facebook") return "overview";
+      return "community";
+    };
+    
+    if (!tabParam) return getTabDefault(platform);
+    
+    const ytTabs = ["community", "demographics", "published", "viewed", "competitors"];
+    const fbTabs = ["overview", "posts", "posts_list", "stories", "competitors"];
+    const ttTabs = ["community", "posts"];
+    const discordTabs = ["community", "channels", "posts"];
+    const igTabs = ["community", "account", "competitors"];
+    const threadsTabs = ["community", "posts", "competitors"];
+    
+    let isValid = false;
+    if (platform === "facebook") {
+      isValid = fbTabs.includes(tabParam);
+    } else if (platform === "instagram") {
+      isValid = igTabs.includes(tabParam);
+    } else if (platform === "threads") {
+      isValid = threadsTabs.includes(tabParam);
+    } else if (platform === "tiktok") {
+      isValid = ttTabs.includes(tabParam);
+    } else if (platform === "discord") {
+      isValid = discordTabs.includes(tabParam);
+    } else {
+      isValid = ytTabs.includes(tabParam);
+    }
+    
+    return isValid ? tabParam : getTabDefault(platform);
+  }, [platform, searchParams]);
 
   const setActiveTab = useCallback((tab) => {
-    setActiveTabState(tab);
-    setSearchParams((prev) => {
-      prev.set("tab", tab);
-      return prev;
-    }, { replace: true });
-  }, [setSearchParams]);
+    const nextParams = new URLSearchParams(searchParams);
+    nextParams.set("tab", tab);
+    nextParams.delete("videoId");
+    nextParams.delete("competitorId");
+    setSearchParams(nextParams, { replace: true });
+  }, [searchParams, setSearchParams]);
 
   const [showInfo, setShowInfo] = useState(true);
   const [loading, setLoading] = useState(true);
@@ -113,9 +141,36 @@ export function usePlatformDashboard(platform) {
   const [isCompetitorModalOpen, setIsCompetitorModalOpen] = useState(false);
 
   // Video Detail State
-  const [selectedVideo, setSelectedVideo] = useState(null);
+  const videoIdParam = searchParams.get("videoId");
+
+  const selectedVideo = useMemo(() => {
+    if (!videoIdParam) return null;
+    return publishedVideos.find(v => (v.id === videoIdParam || v.videoId === videoIdParam)) ||
+           trackedVideos.find(v => (v.id === videoIdParam || v.videoId === videoIdParam)) ||
+           null;
+  }, [videoIdParam, publishedVideos, trackedVideos]);
+
+  const selectVideo = useCallback((video) => {
+    const nextParams = new URLSearchParams(searchParams);
+    if (video) {
+      const nextVideoId = video.id || video.videoId;
+      if (searchParams.get("videoId") !== nextVideoId) {
+        nextParams.set("videoId", nextVideoId);
+        setSearchParams(nextParams, { replace: true });
+      }
+    } else {
+      if (searchParams.has("videoId")) {
+        nextParams.delete("videoId");
+        setSearchParams(nextParams, { replace: true });
+      }
+    }
+  }, [searchParams, setSearchParams]);
+
   const [videoAnalytics, setVideoAnalytics] = useState([]);
+  const [videoInsights, setVideoInsights] = useState(null);
   const [isVideoDetailLoading, setIsVideoDetailLoading] = useState(false);
+  const [isVideoInsightsLoading, setIsVideoInsightsLoading] = useState(false);
+  const [videoInsightsError, setVideoInsightsError] = useState(null);
   const [isVideoDetailModalOpen, setIsVideoDetailModalOpen] = useState(false);
 
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -218,29 +273,10 @@ export function usePlatformDashboard(platform) {
     }
   };
 
-  const handleVideoClick = async (video) => {
-    setSelectedVideo(video);
+  const handleVideoClick = useCallback((video) => {
+    selectVideo(video);
     setIsVideoDetailModalOpen(true);
-    if (platform === "youtube") {
-      setIsVideoDetailLoading(true);
-      try {
-        const res = await socialService.getVideoAnalytics(
-          activeBrand.id, 
-          video.id,
-          dateRange.from?.toISOString().split('T')[0],
-          dateRange.to?.toISOString().split('T')[0]
-        );
-        setVideoAnalytics(res.data || []);
-      } catch (e) {
-        console.error("Failed to fetch video analytics", e);
-        toast.error("Failed to load video analytics");
-      } finally {
-        setIsVideoDetailLoading(false);
-      }
-    } else {
-      setVideoAnalytics([]);
-    }
-  };
+  }, [selectVideo]);
 
   useEffect(() => {
     setMetrics(null);
@@ -252,6 +288,18 @@ export function usePlatformDashboard(platform) {
     }
   }, [activeBrand, platform, isPlatformLocked]);
 
+  // Tự động thăm dò trạng thái đồng bộ (auto polling) mỗi 5s nếu đang PENDING hoặc PARTIAL
+  useEffect(() => {
+    if (!activeBrand || !metrics) return;
+    if (metrics.syncStatus === "PENDING" || metrics.syncStatus === "PARTIAL") {
+      const intervalId = setInterval(() => {
+        loadMetrics(activeBrand.id);
+      }, 5000);
+      return () => clearInterval(intervalId);
+    }
+  }, [activeBrand, metrics?.syncStatus, platform]);
+
+  // Validate tab parameter and set default/redirect if empty or invalid
   useEffect(() => {
     const tabParam = searchParams.get("tab");
     const getTabDefault = (plat) => {
@@ -259,17 +307,15 @@ export function usePlatformDashboard(platform) {
       return "community";
     };
     
-    if (!tabParam) {
-      setActiveTabState(getTabDefault(platform));
-    } else {
-      const ytTabs = ["community", "demographics", "published", "viewed", "competitors"];
-      const fbTabs = ["overview", "posts", "posts_list", "stories", "competitors"];
-      const ttTabs = ["community", "posts"];
-      const discordTabs = ["community", "channels", "posts"];
-      const igTabs = ["community", "account", "competitors"];
-      const threadsTabs = ["community", "posts", "competitors"];
-      
-      let isValid = false;
+    const ytTabs = ["community", "demographics", "published", "viewed", "competitors"];
+    const fbTabs = ["overview", "posts", "posts_list", "stories", "competitors"];
+    const ttTabs = ["community", "posts"];
+    const discordTabs = ["community", "channels", "posts"];
+    const igTabs = ["community", "account", "competitors"];
+    const threadsTabs = ["community", "posts", "competitors"];
+    
+    let isValid = false;
+    if (tabParam) {
       if (platform === "facebook") {
         isValid = fbTabs.includes(tabParam);
       } else if (platform === "instagram") {
@@ -283,45 +329,68 @@ export function usePlatformDashboard(platform) {
       } else {
         isValid = ytTabs.includes(tabParam);
       }
-      
-      if (isValid) {
-        setActiveTabState(tabParam);
-      } else {
-        const def = getTabDefault(platform);
-        setActiveTabState(def);
-        setSearchParams((prev) => {
-          prev.set("tab", def);
-          return prev;
-        }, { replace: true });
-      }
+    }
+    
+    if (!tabParam || !isValid) {
+      const def = getTabDefault(platform);
+      const nextParams = new URLSearchParams(searchParams);
+      nextParams.set("tab", def);
+      setSearchParams(nextParams, { replace: true });
     }
   }, [platform, searchParams, setSearchParams]);
 
+  // Reactively fetch video analytics and insights when selectedVideo changes
+  useEffect(() => {
+    if (!selectedVideo || platform !== "youtube" || !activeBrand) {
+      setVideoAnalytics([]);
+      setVideoInsights(null);
+      return;
+    }
+
+    setIsVideoDetailLoading(true);
+    setIsVideoInsightsLoading(true);
+    setVideoInsightsError(null);
+
+    const targetVideoId = selectedVideo.id || selectedVideo.videoId;
+
+    const analyticsPromise = socialService.getVideoAnalytics(
+      activeBrand.id,
+      targetVideoId,
+      dateRange.from?.toISOString().split('T')[0],
+      dateRange.to?.toISOString().split('T')[0]
+    ).then(res => setVideoAnalytics(res.data || []))
+     .catch(e => {
+       console.error("Failed to fetch video analytics", e);
+       setVideoAnalytics([]);
+     });
+
+    const insightsPromise = socialService.getVideoInsights(
+      activeBrand.id,
+      targetVideoId
+    ).then(res => setVideoInsights(res || null))
+     .catch(e => {
+       console.error("Failed to fetch video insights", e);
+       setVideoInsightsError(e.message || "Failed to load video insights");
+       setVideoInsights(null);
+     });
+
+    Promise.all([analyticsPromise, insightsPromise]).finally(() => {
+      setIsVideoDetailLoading(false);
+      setIsVideoInsightsLoading(false);
+    });
+  }, [selectedVideo, activeBrand, platform, dateRange.from, dateRange.to]);
+
+  // Auto open modal on non-YouTube platform for selectedVideo
+  useEffect(() => {
+    if (selectedVideo && platform !== "youtube") {
+      setIsVideoDetailModalOpen(true);
+    }
+  }, [selectedVideo, platform]);
+
   // Reload metrics when dateRange changes or activeBrand changes
   useEffect(() => {
-    if (activeBrand) {
-      if (!loading) {
-        loadMetrics(activeBrand.id);
-      }
-      if (selectedVideo) {
-        const refetchVideoAnalytics = async () => {
-          setIsVideoDetailLoading(true);
-          try {
-            const res = await socialService.getVideoAnalytics(
-              activeBrand.id,
-              selectedVideo.id,
-              dateRange.from?.toISOString().split('T')[0],
-              dateRange.to?.toISOString().split('T')[0]
-            );
-            setVideoAnalytics(res.data || []);
-          } catch (e) {
-            console.error("Failed to refetch video analytics", e);
-          } finally {
-            setIsVideoDetailLoading(false);
-          }
-        };
-        refetchVideoAnalytics();
-      }
+    if (activeBrand && !loading) {
+      loadMetrics(activeBrand.id);
     }
   }, [activeBrand, dateRange]);
 
@@ -461,9 +530,8 @@ export function usePlatformDashboard(platform) {
         { name: 'Female', value: Math.round(genderMap.Female), color: '#F472B6' }
       ];
 
-      if (age.length === 0 || (genderMap.Male === 0 && genderMap.Female === 0)) {
-        age = FALLBACK_DEMOGRAPHICS.age;
-        gender = FALLBACK_DEMOGRAPHICS.gender;
+      if (genderMap.Male === 0 && genderMap.Female === 0) {
+        gender = [];
       }
  
       const totalTrafficViews = (raw.trafficSource || []).reduce((a, b) => a + (Array.isArray(b) ? (b[1] || 0) : 0), 0) || 1;
@@ -475,10 +543,6 @@ export function usePlatformDashboard(platform) {
           percentage: `${Math.round(((views || 0) / totalTrafficViews) * 100)}%`,
           color: '#818CF8'
         }));
-
-      if (trafficSource.length === 0) {
-        trafficSource = FALLBACK_DEMOGRAPHICS.trafficSource;
-      }
  
       const totalGeoViews = (raw.geographic || []).reduce((a, b) => a + (Array.isArray(b) ? (b[1] || 0) : 0), 0) || 1;
       const COUNTRY_MAP = {
@@ -503,15 +567,6 @@ export function usePlatformDashboard(platform) {
             progress: Math.round(((views || 0) / totalGeoViews) * 100)
           };
         });
-
-      if (countries.length === 0) {
-        countries = [
-          { name: 'Vietnam', value: 65, flag: '🇻🇳', progress: 65 },
-          { name: 'United States', value: 15, flag: '🇺🇸', progress: 15 },
-          { name: 'India', value: 10, flag: '🇮🇳', progress: 10 },
-          { name: 'Japan', value: 5, flag: '🇯🇵', progress: 5 }
-        ];
-      }
 
       const growth = (raw.growth || [])
         .map((row) => {
@@ -679,9 +734,12 @@ export function usePlatformDashboard(platform) {
     isCompetitorModalOpen,
     setIsCompetitorModalOpen,
     selectedVideo,
-    setSelectedVideo,
+    setSelectedVideo: selectVideo,
     videoAnalytics,
+    videoInsights,
     isVideoDetailLoading,
+    isVideoInsightsLoading,
+    videoInsightsError,
     isVideoDetailModalOpen,
     setIsVideoDetailModalOpen,
     handleVideoClick,

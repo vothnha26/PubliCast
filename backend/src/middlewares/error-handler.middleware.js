@@ -6,6 +6,7 @@ const logger = require('../utils/logger');
  * Never leaks stack traces or internal details in production.
  */
 const errorHandler = (err, req, res, _next) => {
+  console.error("💥 GLOBAL ERROR CATCHED:", err);
   const statusCode = err.status || err.statusCode || 500;
   let message = err.message || 'Internal Server Error';
 

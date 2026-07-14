@@ -37,6 +37,12 @@ class SocialService {
     return response.data;
   }
 
+  async getVideoInsights(brandId, videoId) {
+    const url = `/social/youtube/video-insights?brandId=${brandId}&videoId=${videoId}`;
+    const response = await apiService.get(url, { timeout: 30000 });
+    return response.data;
+  }
+
   async searchChannels(brandId, query) {
     const response = await apiService.get(`/social/youtube/search-channels?brandId=${brandId}&query=${query}`);
     return response.data;

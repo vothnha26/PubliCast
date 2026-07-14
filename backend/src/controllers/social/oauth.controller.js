@@ -7,10 +7,12 @@ const linkedinService = require('../../services/social/linkedin');
 const linkedinGateway = require('../../services/social/linkedin/linkedin.gateway');
 const tiktokGateway = require('../../services/social/tiktok/tiktok.gateway');
 const notificationService = require('../../services/core/notification.service');
-const { SOCIAL_TECHNICAL, GOOGLE_SCOPES, FACEBOOK_SCOPES, FACEBOOK_API, DEFAULT_CONFIG, API_VERSIONS, NOTIFICATION_TYPES } = require('../../utils/constants');const asyncHandler = require('../../utils/async-handler');
+const { SOCIAL_TECHNICAL, GOOGLE_SCOPES, FACEBOOK_SCOPES, FACEBOOK_API, DEFAULT_CONFIG, API_VERSIONS, NOTIFICATION_TYPES } = require('../../utils/constants');
+const asyncHandler = require('../../utils/async-handler');
 const logger = require('../../utils/logger');
 const redisClient = require('../../config/redis');
 const crypto = require('crypto');
+const { eventEmitter, EVENTS } = require('../../events/event-emitter');
 
 class OAuthController {
   /**
@@ -63,7 +65,8 @@ class OAuthController {
     if (!brandId) return res.redirect(`${frontendUrl}/manage/connections?error=brand_id_missing`);
 
     try {
-      await youtubeService.connectChannel(brandId, code, redirectUri);
+      const socialAccount = await youtubeService.connectChannel(brandId, code, redirectUri);
+      eventEmitter.emit(EVENTS.SOCIAL.CONNECTED, { brandId, platform: 'youtube', socialAccount });
       await this._notifySocialConnected(brandId, 'YouTube');
       return res.redirect(`${frontendUrl}/manage/connections?tab=connections&success=youtube_connected`);
     } catch (error) {
@@ -107,12 +110,14 @@ class OAuthController {
 
     try {
       if (platform === 'instagram') {
-        await instagramService.connectChannel(brandId, code, redirectUri);
+        const socialAccount = await instagramService.connectChannel(brandId, code, redirectUri);
+        eventEmitter.emit(EVENTS.SOCIAL.CONNECTED, { brandId, platform: 'instagram', socialAccount });
         await this._notifySocialConnected(brandId, 'Instagram');
         return res.redirect(`${frontendUrl}/manage/connections?tab=connections&success=instagram_connected`);
       }
 
-      await facebookService.connectChannel(brandId, code, redirectUri);
+      const socialAccount = await facebookService.connectChannel(brandId, code, redirectUri);
+      eventEmitter.emit(EVENTS.SOCIAL.CONNECTED, { brandId, platform: 'facebook', socialAccount });
       await this._notifySocialConnected(brandId, 'Facebook');
       return res.redirect(`${frontendUrl}/manage/connections?tab=connections&success=facebook_connected`);
     } catch (error) {
@@ -147,7 +152,8 @@ class OAuthController {
     if (!brandId) return res.redirect(`${frontendUrl}/manage/connections?error=brand_id_missing`);
 
     try {
-      await instagramService.connectChannel(brandId, code, redirectUri);
+      const socialAccount = await instagramService.connectChannel(brandId, code, redirectUri);
+      eventEmitter.emit(EVENTS.SOCIAL.CONNECTED, { brandId, platform: 'instagram', socialAccount });
       await this._notifySocialConnected(brandId, 'Instagram');
       return res.redirect(`${frontendUrl}/manage/connections?tab=connections&success=instagram_connected`);
     } catch (error) {
@@ -193,7 +199,8 @@ class OAuthController {
     await redisClient.del(cacheKey);
 
     try {
-      await tiktokService.connectChannel(brandId, code, redirectUri, codeVerifier);
+      const socialAccount = await tiktokService.connectChannel(brandId, code, redirectUri, codeVerifier);
+      eventEmitter.emit(EVENTS.SOCIAL.CONNECTED, { brandId, platform: 'tiktok', socialAccount });
       await this._notifySocialConnected(brandId, 'TikTok');
       return res.redirect(`${frontendUrl}/manage/connections?tab=connections&success=tiktok_connected`);
     } catch (error) {
@@ -231,7 +238,8 @@ class OAuthController {
     if (!brandId) return res.redirect(`${frontendUrl}/manage/connections?error=brand_id_missing`);
 
     try {
-      await linkedinService.connectChannel(brandId, code, redirectUri);
+      const socialAccount = await linkedinService.connectChannel(brandId, code, redirectUri);
+      eventEmitter.emit(EVENTS.SOCIAL.CONNECTED, { brandId, platform: 'linkedin', socialAccount });
       await this._notifySocialConnected(brandId, 'LinkedIn');
       return res.redirect(`${frontendUrl}/manage/connections?tab=connections&success=linkedin_connected`);
     } catch (error) {
@@ -259,7 +267,8 @@ class OAuthController {
 
     try {
       const threadsService = require('../../services/social/threads');
-      await threadsService.connectChannel(brandId, code, redirectUri);
+      const socialAccount = await threadsService.connectChannel(brandId, code, redirectUri);
+      eventEmitter.emit(EVENTS.SOCIAL.CONNECTED, { brandId, platform: 'threads', socialAccount });
       await this._notifySocialConnected(brandId, 'Threads');
       return res.redirect(`${frontendUrl}/manage/connections?tab=connections&success=threads_connected`);
     } catch (error) {

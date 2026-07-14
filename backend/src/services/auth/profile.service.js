@@ -39,6 +39,7 @@ class ProfileService {
       role: user.role,
       isActive: user.isActive,
       isEmailVerified: user.isEmailVerified,
+      isTwoFactorEnabled: user.isTwoFactorEnabled,
       createdAt: user.createdAt,
       defaultBrandId: user.defaultBrandId || null,
       accounts: user.accounts.map(acc => ({

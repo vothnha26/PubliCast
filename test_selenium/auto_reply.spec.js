@@ -16,7 +16,7 @@ async function seedPlatforms(platforms) {
   console.log(`\n🛠️ Khởi tạo Mock Social Accounts cho các nền tảng: ${platforms.join(', ')}...`);
   const connection = await mysql.createConnection(process.env.MYSQL_URL || 'mysql://root:root_password@localhost:3307/publicast');
   try {
-    const email = process.env.ADMIN_EMAIL || 'vothanhnha26@gmail.com';
+    const email = process.env.ADMIN_EMAIL || 'ci-admin@publicast.test';
     const [users] = await connection.execute('SELECT id FROM users WHERE email = ?', [email]);
     if (users.length === 0) throw new Error(`User not found: ${email}`);
     const userId = users[0].id;
@@ -74,7 +74,7 @@ async function cleanupMockSocialAccounts() {
   console.log("🧹 Dọn dẹp tất cả Mock Social Accounts...");
   const connection = await mysql.createConnection(process.env.MYSQL_URL || 'mysql://root:root_password@localhost:3307/publicast');
   try {
-    const email = process.env.ADMIN_EMAIL || 'vothanhnha26@gmail.com';
+    const email = process.env.ADMIN_EMAIL || 'ci-admin@publicast.test';
     const [users] = await connection.execute('SELECT id FROM users WHERE email = ?', [email]);
     if (users.length > 0) {
       const userId = users[0].id;

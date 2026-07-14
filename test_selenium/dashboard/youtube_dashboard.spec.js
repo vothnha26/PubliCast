@@ -234,7 +234,11 @@ describe('YouTube Dashboard E2E Test Suite', function () {
     }
 
     // 4. Khởi tạo Chrome Driver
+    const { logging } = require('selenium-webdriver');
+    const prefs = new logging.Preferences();
+    prefs.setLevel(logging.Type.BROWSER, logging.Level.ALL);
     const options = new chrome.Options();
+    options.setLoggingPrefs(prefs);
     if (process.env.CI || process.env.HEADLESS) {
       options.addArguments('--headless=new');
       options.addArguments('--no-sandbox');
@@ -292,6 +296,16 @@ describe('YouTube Dashboard E2E Test Suite', function () {
         console.log(`📸 Đã chụp màn hình khi lỗi: ${screenshotPath}`);
       } catch (err) {
         console.error("❌ Không thể chụp ảnh màn hình lỗi:", err.message);
+      }
+      try {
+        const logs = await driver.manage().logs().get('browser');
+        console.log("--- [Browser Console Logs on Failure] ---");
+        for (const entry of logs) {
+          console.log(`[${entry.level.name}] ${entry.message}`);
+        }
+        console.log("-----------------------------------------");
+      } catch (err) {
+        console.error("⚠️ Cannot fetch browser console logs:", err.message);
       }
     }
   });
@@ -487,18 +501,35 @@ describe('YouTube Dashboard E2E Test Suite', function () {
     await safeClick(By.xpath("//button[text()='PUBLISHED VIDEOS']"));
     await driver.sleep(1500);
 
-    // Chú ý: Backend youtube-video.service.js trả về videos rỗng khi token bắt đầu bằng mock-
-    // Ta mong đợi Empty State hiển thị: "No videos found."
-    const emptyStateText = await driver.wait(
-      until.elementLocated(By.xpath("//h4[text()='No videos found.']")),
+    // Xác nhận video mock hiển thị
+    const videoTitle = await driver.wait(
+      until.elementLocated(By.xpath("//span[contains(text(), 'Rick Astley - Never Gonna Give You Up')]")),
       10000
     );
-    expect(await emptyStateText.isDisplayed()).to.be.true;
-    console.log("⚠️ Ghi nhận: Tab Published Videos hiển thị Empty State do backend trả về mảng videos rỗng khi sử dụng mock access token.");
+    expect(await videoTitle.isDisplayed()).to.be.true;
+    console.log("✅ Tab Published Videos hiển thị video thành công.");
   });
 
-  it('TC_YT_DB_05: Kiểm tra xem chi tiết video (Skip do videos rỗng)', async function () {
-    console.log("⏭️ Bỏ qua TC_YT_DB_05 do không có phần tử video để click trên giao diện (do backend trả về rỗng).");
+  it('TC_YT_DB_05: Kiểm tra xem chi tiết video thống kê', async function () {
+    // Click vào video để xem chi tiết
+    await safeClick(By.xpath("//span[contains(text(), 'Rick Astley - Never Gonna Give You Up')]"));
+    await driver.sleep(3000); // Đợi tải dữ liệu chi tiết
+
+    // Lấy URL hiện tại
+    const currentUrl = await driver.getCurrentUrl();
+    console.log("TC_YT_DB_05 - Current URL after video click:", currentUrl);
+
+    // Xác nhận URL chứa đúng các param mong muốn: tab=published và videoId=dQw4w9WgXcQ
+    expect(currentUrl).to.contain('tab=published');
+    expect(currentUrl).to.contain('videoId=dQw4w9WgXcQ');
+
+    // Xác nhận giao diện chi tiết video hiển thị (nút Back)
+    const backBtn = await driver.wait(
+      until.elementLocated(By.xpath("//button[@title='Quay lại danh sách']")),
+      10000
+    );
+    expect(await backBtn.isDisplayed()).to.be.true;
+    console.log("✅ Xem chi tiết video thống kê thành công không bị nhảy tab.");
   });
 
   it('TC_YT_DB_06: Kiểm tra tab Viewed Videos và thêm video YouTube để theo dõi', async function () {
@@ -638,7 +669,10 @@ describe('YouTube Dashboard E2E Test Suite', function () {
     expect(csvFile).to.not.be.undefined;
 
     // Đọc và xác minh cấu trúc file CSV
-    const csvContent = fs.readFileSync(path.join(downloadDir, csvFile), 'utf-8');
+    let csvContent = fs.readFileSync(path.join(downloadDir, csvFile), 'utf-8');
+    if (csvContent.charCodeAt(0) === 0xFEFF) {
+      csvContent = csvContent.slice(1);
+    }
     const lines = csvContent.split('\n');
     expect(lines[0]).to.equal('Competitor Name,Handle,Subscribers,Total Views,Total Videos,Added At');
     

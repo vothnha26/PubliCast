@@ -28,6 +28,14 @@ class YouTubeController {
     res.json({ data });
   });
 
+  getYouTubeVideoInsights = asyncHandler(async (req, res) => {
+    const { brandId, videoId } = req.query;
+    if (!brandId) return res.status(400).json({ message: 'brandId is required' });
+    if (!videoId)  return res.status(400).json({ message: 'videoId is required' });
+    const data = await youtubeService.getVideoInsights(brandId, videoId);
+    res.json(data);
+  });
+
   searchYouTubeChannels = asyncHandler(async (req, res) => {
     const { brandId, query } = req.query;
     const channels = await youtubeService.searchChannel(brandId, query);

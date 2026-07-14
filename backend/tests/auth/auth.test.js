@@ -1,10 +1,10 @@
 const authService = require('../../src/services/auth/auth.service');
 const userRepository = require('../../src/repositories/auth/user.repository');
-const otpService = require('../../src/services/auth/otp.service');
 const emailService = require('../../src/services/core/email.service');
 const redisClient = require('../../src/config/redis');
 const bcrypt = require('bcryptjs');
 const { eventEmitter, EVENTS } = require('../../src/events/event-emitter');
+const { ERROR_MESSAGES } = require('../../src/utils/constants');
 
 jest.mock('../../src/config/redis', () => ({
   on: jest.fn(),
@@ -30,9 +30,16 @@ jest.mock('../../src/events/event-emitter', () => ({
 }));
 
 jest.mock('../../src/repositories/auth/user.repository');
-jest.mock('../../src/services/auth/otp.service');
+jest.mock('../../src/services/auth/otp.service', () => ({
+  generateOTP: jest.fn().mockResolvedValue('123456'),
+  saveOTP: jest.fn(),
+  getOTP: jest.fn(),
+  deleteOTP: jest.fn()
+}));
 jest.mock('../../src/services/core/email.service');
 jest.mock('bcryptjs');
+
+const otpService = require('../../src/services/auth/otp.service');
 
 describe('AuthService', () => {
   beforeEach(() => {
@@ -40,13 +47,12 @@ describe('AuthService', () => {
   });
 
   describe('register', () => {
-    it('should register a new user successfully and emit event', async () => {
+    it('should register a new user successfully and emit event with OTP Strategy', async () => {
       const userData = { name: 'Test User', email: 'test@example.com', password: 'password123' };
       
       userRepository.findByEmail.mockResolvedValue(null);
       bcrypt.hash.mockResolvedValue('hashedPassword');
       userRepository.createUser.mockResolvedValue({ id: 'user-123', ...userData });
-      otpService.generateOTP.mockResolvedValue('123456');
       
       const result = await authService.register(userData.name, userData.email, userData.password);
       
@@ -55,7 +61,6 @@ describe('AuthService', () => {
       expect(userRepository.createUser).toHaveBeenCalled();
       expect(otpService.saveOTP).toHaveBeenCalledWith(userData.email, '123456');
       
-      // Verify event was emitted instead of direct emailService call
       expect(eventEmitter.emit).toHaveBeenCalledWith(EVENTS.USER.REGISTERED, expect.objectContaining({
         user: expect.any(Object),
         otp: '123456'
@@ -73,7 +78,7 @@ describe('AuthService', () => {
   });
 
   describe('verifyOTP', () => {
-    it('should verify OTP successfully', async () => {
+    it('should verify OTP successfully and activate account', async () => {
       const email = 'test@example.com';
       const otp = '123456';
       
@@ -84,7 +89,17 @@ describe('AuthService', () => {
       
       expect(userRepository.updateStatus).toHaveBeenCalledWith(email, 'ACTIVE', expect.any(Date));
       expect(otpService.deleteOTP).toHaveBeenCalledWith(email);
-      expect(result.message).toBe('Account activated successfully');
+      expect(result.message).toBe(ERROR_MESSAGES.ACTIVATION_SUCCESS);
+    });
+
+    it('should throw error if OTP has expired', async () => {
+      const email = 'test@example.com';
+      const otp = '123456';
+      
+      otpService.getOTP.mockResolvedValue(null);
+      
+      await expect(authService.verifyOTP(email, otp))
+        .rejects.toThrow('OTP has expired');
     });
 
     it('should throw error if OTP is invalid', async () => {
@@ -99,7 +114,7 @@ describe('AuthService', () => {
   });
 
   describe('forgotPassword', () => {
-    it('should send reset OTP for an active user', async () => {
+    it('should send reset Link Token for active user', async () => {
       const email = 'test@example.com';
 
       userRepository.findByEmailWithPassword.mockResolvedValue({
@@ -109,79 +124,84 @@ describe('AuthService', () => {
         isEmailVerified: true,
         passwordHash: 'oldHash'
       });
-      otpService.generateOTP.mockResolvedValue('654321');
 
       const result = await authService.forgotPassword(email);
 
-      expect(redisClient.setEx).toHaveBeenCalledWith('forgot-otp:test@example.com', 300, '654321');
-      expect(redisClient.del).toHaveBeenCalledWith('forgot-otp-attempts:test@example.com');
-      expect(emailService.sendForgotPasswordOTP).toHaveBeenCalledWith(email, '654321');
-      expect(result.message).toBe('OTP sent if email exists');
-    });
-
-    it('should return generic success if email does not exist', async () => {
-      userRepository.findByEmailWithPassword.mockResolvedValue(null);
-
-      const result = await authService.forgotPassword('missing@example.com');
-
-      expect(redisClient.setEx).not.toHaveBeenCalled();
-      expect(emailService.sendForgotPasswordOTP).not.toHaveBeenCalled();
-      expect(result.message).toBe('OTP sent if email exists');
+      expect(redisClient.setEx).toHaveBeenCalledWith(
+        expect.stringContaining('reset-token:'),
+        900,
+        email
+      );
+      expect(emailService.sendResetPasswordLink).toHaveBeenCalledWith(
+        email,
+        expect.stringContaining('/reset-password?token=')
+      );
+      expect(result.message).toBe(ERROR_MESSAGES.RESET_LINK_SENT);
     });
   });
 
-  describe('resetPassword', () => {
-    it('should reset password when OTP is valid', async () => {
+  describe('verifyResetToken', () => {
+    it('should return email if reset token is valid', async () => {
+      const token = 'valid-token';
       const email = 'test@example.com';
+      redisClient.get.mockResolvedValue(email);
 
-      redisClient.get.mockResolvedValue('123456');
+      const result = await authService.verifyResetToken(token);
+
+      expect(redisClient.get).toHaveBeenCalledWith(`reset-token:${token}`);
+      expect(result).toEqual({ valid: true, email });
+    });
+
+    it('should throw error if reset token is expired or invalid', async () => {
+      const token = 'invalid-token';
+      redisClient.get.mockResolvedValue(null);
+
+      await expect(authService.verifyResetToken(token))
+        .rejects.toThrow('Đường dẫn khôi phục mật khẩu đã hết hạn hoặc không hợp lệ.');
+    });
+  });
+
+  describe('resetPasswordWithToken', () => {
+    it('should update password successfully and clear tokens', async () => {
+      const token = 'valid-token';
+      const email = 'test@example.com';
+      const newPassword = 'newPassword123';
+
+      redisClient.get.mockResolvedValue(email);
       userRepository.findByEmailWithPassword.mockResolvedValue({
         id: 'user-123',
         email,
         isActive: true,
-        isEmailVerified: true,
         passwordHash: 'oldHash'
       });
       bcrypt.compare.mockResolvedValue(false);
       bcrypt.hash.mockResolvedValue('newHash');
       userRepository.updateLocalPassword.mockResolvedValue({ count: 1 });
 
-      const result = await authService.resetPassword(email, '123456', 'newPassword123');
+      const result = await authService.resetPasswordWithToken(token, newPassword);
 
-      expect(bcrypt.hash).toHaveBeenCalledWith('newPassword123', 10);
+      expect(bcrypt.hash).toHaveBeenCalledWith(newPassword, 10);
       expect(userRepository.updateLocalPassword).toHaveBeenCalledWith(email, 'newHash');
-      expect(redisClient.del).toHaveBeenCalledWith('forgot-otp:test@example.com');
-      expect(redisClient.del).toHaveBeenCalledWith('forgot-otp-attempts:test@example.com');
-      expect(redisClient.del).toHaveBeenCalledWith('refresh:user-123');
-      expect(result.message).toBe('Password reset successfully');
+      expect(redisClient.del).toHaveBeenCalledWith(`reset-token:${token}`);
+      expect(result.message).toBe(ERROR_MESSAGES.RESET_PASSWORD_SUCCESS);
     });
 
-    it('should reject expired OTP', async () => {
-      redisClient.get.mockResolvedValue(null);
+    it('should throw error if new password is same as old password', async () => {
+      const token = 'valid-token';
+      const email = 'test@example.com';
+      const newPassword = 'oldPassword';
 
-      await expect(authService.resetPassword('test@example.com', '123456', 'newPassword123'))
-        .rejects.toThrow('OTP has expired, please request again');
-    });
+      redisClient.get.mockResolvedValue(email);
+      userRepository.findByEmailWithPassword.mockResolvedValue({
+        id: 'user-123',
+        email,
+        isActive: true,
+        passwordHash: 'oldHash'
+      });
+      bcrypt.compare.mockResolvedValue(true);
 
-    it('should count wrong OTP attempts', async () => {
-      redisClient.get.mockResolvedValue('123456');
-      redisClient.incr.mockResolvedValue(1);
-
-      await expect(authService.resetPassword('test@example.com', '000000', 'newPassword123'))
-        .rejects.toThrow('Invalid OTP. 2 attempts remaining');
-
-      expect(redisClient.expire).toHaveBeenCalledWith('forgot-otp-attempts:test@example.com', 300);
-    });
-
-    it('should delete OTP after 3 wrong attempts', async () => {
-      redisClient.get.mockResolvedValue('123456');
-      redisClient.incr.mockResolvedValue(3);
-
-      await expect(authService.resetPassword('test@example.com', '000000', 'newPassword123'))
-        .rejects.toThrow('Too many wrong attempts. Please request a new OTP.');
-
-      expect(redisClient.del).toHaveBeenCalledWith('forgot-otp:test@example.com');
-      expect(redisClient.del).toHaveBeenCalledWith('forgot-otp-attempts:test@example.com');
+      await expect(authService.resetPasswordWithToken(token, newPassword))
+        .rejects.toThrow(ERROR_MESSAGES.NEW_PASSWORD_SAME_AS_OLD);
     });
   });
 });

@@ -74,15 +74,10 @@ const forgotPasswordValidation = [
 ];
 
 const resetPasswordValidation = [
-  body('email')
-    .isEmail()
-    .withMessage('Invalid email address')
-    .normalizeEmail(),
-  body('otp')
-    .isLength({ min: 6, max: 6 })
-    .withMessage('OTP must be 6 digits')
-    .isNumeric()
-    .withMessage('OTP must contain only numbers'),
+  body('token')
+    .notEmpty()
+    .withMessage('Mã token khôi phục mật khẩu là bắt buộc')
+    .isString(),
   body('newPassword')
     .isLength({ min: 8 })
     .withMessage('New password must be at least 8 characters long'),

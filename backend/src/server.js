@@ -42,6 +42,8 @@ const server = app.listen(PORT, async () => {
   require('./queues/publish.worker');
   // Initialize BullMQ video processing worker
   require('./queues/video.worker');
+  // Initialize BullMQ social sync worker
+  require('./queues/social.worker');
 
   // Start Discord daily member snapshot (runs every 24h)
   const discordStatsService = require('./services/social/discord/discord-stats.service');
@@ -87,10 +89,12 @@ async function shutdown(signal) {
     try {
       const publishWorker = require('./queues/publish.worker');
       const videoWorker = require('./queues/video.worker');
+      const socialWorker = require('./queues/social.worker');
       console.log('[Shutdown] Closing BullMQ Workers...');
       await Promise.all([
         publishWorker.close(),
-        videoWorker.close()
+        videoWorker.close(),
+        socialWorker.close()
       ]);
       logger.info('BullMQ workers closed.');
     } catch (err) {
@@ -149,3 +153,5 @@ process.on('unhandledRejection', (reason) => {
   process.exit(1);
 });
 
+
+// Trigger nodemon restart to reload configuration changes from .env

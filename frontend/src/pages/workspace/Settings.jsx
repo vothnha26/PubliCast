@@ -41,6 +41,15 @@ export function SettingsPage() {
   const [newPassword, setNewPassword] = useState("");
   const [isUpdatingPassword, setIsUpdatingPassword] = useState(false);
 
+  // 2FA Setup states
+  const [show2FAModal, setShow2FAModal] = useState(false);
+  const [modalType, setModalType] = useState(""); // "enable", "disable", "backup"
+  const [qrCodeUrl, setQrCodeUrl] = useState("");
+  const [secretKey, setSecretKey] = useState("");
+  const [otpCode, setOtpCode] = useState("");
+  const [backupCodes, setBackupCodes] = useState([]);
+  const [is2FALoading, setIs2FALoading] = useState(false);
+
   // Billing States
   const [currentPlan, setCurrentPlan] = useState(null);
   const [paymentHistory, setPaymentHistory] = useState([]);
@@ -73,6 +82,7 @@ export function SettingsPage() {
     if (successParam === "google_linked") {
       toast.success(language === 'vi' ? "Liên kết tài khoản Google thành công!" : "Google account linked successfully!");
       setActiveTab("access");
+      fetchUserProfile();
       navigate("/settings?tab=access", { replace: true });
       return;
     }
@@ -281,25 +291,27 @@ export function SettingsPage() {
     }
   };
 
-  useEffect(() => {
+  const fetchUserProfile = async () => {
     setIsLoading(true);
-    profileService.getUserProfile()
-      .then(res => {
-        if (res && res.data) {
-          setFullName(res.data.name || "");
-          setEmail(res.data.email || "");
-          setReceiveSummary(res.data.receiveSummary ?? true);
-          setCustomSummaryEmail(res.data.customSummaryEmail || "");
-          setTwoFactor(res.data.twoFactor ?? false);
-          setAccounts(res.data.accounts || []);
-        }
-      })
-      .catch(err => {
-        toast.error(language === 'vi' ? "Không thể tải thông tin cá nhân" : "Failed to load profile details");
-      })
-      .finally(() => {
-        setIsLoading(false);
-      });
+    try {
+      const res = await profileService.getUserProfile();
+      if (res && res.data) {
+        setFullName(res.data.name || "");
+        setEmail(res.data.email || "");
+        setReceiveSummary(res.data.receiveSummary ?? true);
+        setCustomSummaryEmail(res.data.customSummaryEmail || "");
+        setTwoFactor(res.data.isTwoFactorEnabled ?? false);
+        setAccounts(res.data.accounts || []);
+      }
+    } catch (err) {
+      toast.error(language === 'vi' ? "Không thể tải thông tin cá nhân" : "Failed to load profile details");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchUserProfile();
   }, []);
 
   const handleSave = async () => {
@@ -309,8 +321,7 @@ export function SettingsPage() {
         fullName,
         name: fullName,
         receiveSummary,
-        customSummaryEmail,
-        twoFactor
+        customSummaryEmail
       });
       toast.success(language === 'vi' ? "Cập nhật hồ sơ thành công!" : "Profile updated successfully!");
     } catch (err) {
@@ -335,7 +346,7 @@ export function SettingsPage() {
 
   const handleLinkGoogle = async () => {
     try {
-      const res = await apiService.get("/auth/google/link");
+      const res = await apiService.get("/auth/google?state=settings");
       if (res.data?.url) {
         window.location.href = res.data.url;
       }
@@ -412,6 +423,70 @@ export function SettingsPage() {
       toast.error(err.message || (language === 'vi' ? "Không thể cập nhật mật khẩu" : "Failed to update password"));
     } finally {
       setIsUpdatingPassword(false);
+    }
+  };
+
+  const handleToggle2FA = async () => {
+    if (!twoFactor) {
+      setIs2FALoading(true);
+      try {
+        const authService = (await import("../../services/auth.service")).default;
+        const res = await authService.setup2FA();
+        setQrCodeUrl(res.qrCodeDataUrl);
+        setSecretKey(res.secret);
+        setOtpCode("");
+        setModalType("enable");
+        setShow2FAModal(true);
+      } catch (err) {
+        toast.error(err.message || "Không thể khởi tạo bảo mật 2 lớp");
+      } finally {
+        setIs2FALoading(false);
+      }
+    } else {
+      setModalType("disable");
+      setOtpCode("");
+      setShow2FAModal(true);
+    }
+  };
+
+  const handleConfirmEnable2FA = async (e) => {
+    if (e) e.preventDefault();
+    if (!otpCode) {
+      toast.error("Vui lòng nhập mã OTP 6 số.");
+      return;
+    }
+    setIs2FALoading(true);
+    try {
+      const authService = (await import("../../services/auth.service")).default;
+      const res = await authService.verify2FA(otpCode);
+      setBackupCodes(res.backupCodes);
+      setTwoFactor(true);
+      setModalType("backup");
+      toast.success("Kích hoạt bảo mật 2 lớp thành công!");
+    } catch (err) {
+      toast.error(err.message || "Xác thực mã OTP thất bại.");
+    } finally {
+      setIs2FALoading(false);
+    }
+  };
+
+  const handleConfirmDisable2FA = async (e) => {
+    if (e) e.preventDefault();
+    if (!otpCode) {
+      toast.error("Vui lòng nhập mã OTP 6 số.");
+      return;
+    }
+    setIs2FALoading(true);
+    try {
+      const authService = (await import("../../services/auth.service")).default;
+      await authService.disable2FA(otpCode);
+      setTwoFactor(false);
+      setShow2FAModal(false);
+      toast.success("Đã tắt bảo mật 2 lớp thành công.");
+    } catch (err) {
+      toast.error(err.message || "Tắt bảo mật 2 lớp thất bại.");
+    } finally {
+      setIs2FALoading(false);
     }
   };
 
@@ -676,12 +751,17 @@ export function SettingsPage() {
                        <Smartphone size={18} className="text-blue-600" />
                        <span className="text-sm font-bold text-[#0A0A0A]">{t("security.twoFactor")}</span>
                     </div>
-                    <div 
-                      onClick={() => setTwoFactor(!twoFactor)}
-                      className={`w-10 h-6 rounded-full flex items-center p-1 cursor-pointer transition-all ${twoFactor ? 'bg-blue-600' : 'bg-gray-300'}`}
+                    <button 
+                      onClick={handleToggle2FA}
+                      disabled={is2FALoading}
+                      className={`w-10 h-6 rounded-full flex items-center p-1 cursor-pointer transition-all border-none outline-none ${twoFactor ? 'bg-blue-600' : 'bg-gray-300'}`}
                     >
-                      <div className={`w-4 h-4 bg-white rounded-full shadow-sm transform transition-all ${twoFactor ? 'translate-x-4' : 'translate-x-0'}`} />
-                    </div>
+                      {is2FALoading ? (
+                        <Loader2 size={12} className="animate-spin text-white mx-auto" />
+                      ) : (
+                        <div className={`w-4 h-4 bg-white rounded-full shadow-sm transform transition-all ${twoFactor ? 'translate-x-4' : 'translate-x-0'}`} />
+                      )}
+                    </button>
                  </div>
                  <p className="text-[11px] text-blue-700/70 leading-relaxed font-medium">
                     {t("security.twoFactorDesc")}
@@ -1068,6 +1148,151 @@ export function SettingsPage() {
           </div>
         )}
       </div>
+
+      {/* 2FA Modal */}
+      {show2FAModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+          <div className="bg-white rounded-3xl border border-gray-150 p-8 max-w-md w-full shadow-2xl space-y-6 transform transition-all scale-100 animate-in zoom-in-95 duration-200">
+            {modalType === "enable" && (
+              <div className="space-y-6">
+                <div className="flex items-center gap-3">
+                  <div className="p-3 bg-blue-50 text-blue-600 rounded-2xl">
+                    <Shield size={24} />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-extrabold text-[#0A0A0A]">Kích hoạt bảo mật 2 lớp</h3>
+                    <p className="text-xs text-gray-500 mt-0.5">Quét mã QR dưới đây bằng Google Authenticator hoặc ứng dụng TOTP khác.</p>
+                  </div>
+                </div>
+
+                <div className="flex flex-col items-center justify-center p-4 bg-gray-55 rounded-2xl border border-gray-100">
+                  {qrCodeUrl ? (
+                    <img src={qrCodeUrl} alt="Mã QR 2FA" className="w-48 h-48" />
+                  ) : (
+                    <div className="w-48 h-48 flex items-center justify-center">
+                      <Loader2 className="animate-spin text-gray-400" size={24} />
+                    </div>
+                  )}
+                  <div className="text-center mt-3 space-y-1">
+                    <div className="text-[10px] font-black text-gray-400 uppercase tracking-wider">Secret Key (nhập thủ công)</div>
+                    <code className="text-xs font-bold bg-white px-3 py-1.5 rounded-lg border border-gray-150 select-all tracking-wider text-[#0A0A0A] block">{secretKey}</code>
+                  </div>
+                </div>
+
+                <form onSubmit={handleConfirmEnable2FA} className="space-y-4">
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block">Mã xác thực 6 số</label>
+                    <input 
+                      type="text" 
+                      placeholder="000000" 
+                      maxLength={6}
+                      value={otpCode}
+                      onChange={(e) => setOtpCode(e.target.value)}
+                      className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-black outline-none text-center text-lg font-bold tracking-widest"
+                      required
+                    />
+                  </div>
+
+                  <div className="flex gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setShow2FAModal(false)}
+                      className="flex-1 py-3 border border-gray-200 hover:bg-gray-55 text-gray-750 text-xs font-bold rounded-xl transition-all cursor-pointer bg-white"
+                    >
+                      Hủy bỏ
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={is2FALoading}
+                      className="flex-1 py-3 bg-[#0A0A0A] hover:opacity-90 text-white text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-2 border-none cursor-pointer"
+                    >
+                      {is2FALoading && <Loader2 size={14} className="animate-spin" />}
+                      Kích hoạt
+                    </button>
+                  </div>
+                </form>
+              </div>
+            )}
+
+            {modalType === "disable" && (
+              <div className="space-y-6">
+                <div className="flex items-center gap-3">
+                  <div className="p-3 bg-red-50 text-red-600 rounded-2xl">
+                    <AlertTriangle size={24} />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-extrabold text-[#0A0A0A]">Tắt bảo mật 2 lớp</h3>
+                    <p className="text-xs text-gray-500 mt-0.5">Xác nhận bằng mã OTP 6 số từ ứng dụng Authenticator của bạn.</p>
+                  </div>
+                </div>
+
+                <form onSubmit={handleConfirmDisable2FA} className="space-y-4">
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block">Mã xác thực 6 số</label>
+                    <input 
+                      type="text" 
+                      placeholder="000000" 
+                      maxLength={6}
+                      value={otpCode}
+                      onChange={(e) => setOtpCode(e.target.value)}
+                      className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-black outline-none text-center text-lg font-bold tracking-widest"
+                      required
+                    />
+                  </div>
+
+                  <div className="flex gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setShow2FAModal(false)}
+                      className="flex-1 py-3 border border-gray-200 hover:bg-gray-55 text-gray-755 text-xs font-bold rounded-xl transition-all cursor-pointer bg-white"
+                    >
+                      Hủy bỏ
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={is2FALoading}
+                      className="flex-1 py-3 bg-red-650 hover:bg-red-700 text-white text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-2 border-none cursor-pointer"
+                    >
+                      {is2FALoading && <Loader2 size={14} className="animate-spin" />}
+                      Xác nhận tắt
+                    </button>
+                  </div>
+                </form>
+              </div>
+            )}
+
+            {modalType === "backup" && (
+              <div className="space-y-6">
+                <div className="flex items-center gap-3">
+                  <div className="p-3 bg-green-50 text-green-600 rounded-2xl">
+                    <CheckCircle2 size={24} />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-extrabold text-[#0A0A0A]">Lưu mã dự phòng (Backup Codes)</h3>
+                    <p className="text-xs text-gray-500 mt-0.5">Lưu lại 10 mã dự phòng này ở nơi an toàn. Mỗi mã chỉ dùng được một lần để đăng nhập khi mất điện thoại.</p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2 p-4 bg-gray-55 rounded-2xl border border-gray-100 font-mono text-center">
+                  {backupCodes.map((code, index) => (
+                    <div key={index} className="bg-white border border-gray-150 rounded-lg py-2 text-sm font-bold text-gray-700 select-all">
+                      {code}
+                    </div>
+                  ))}
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setShow2FAModal(false)}
+                  className="w-full py-3 bg-[#0A0A0A] hover:opacity-90 text-white text-xs font-bold rounded-xl transition-all border-none cursor-pointer"
+                >
+                  Tôi đã lưu lại
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

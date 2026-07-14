@@ -54,11 +54,7 @@ export function ForgotPasswordPage() {
     const params = new URLSearchParams(window.location.search);
     return params.get("email") || "";
   });
-  const [otp, setOtp] = useState("");
-  const [newPassword, setNewPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
   const [submitted, setSubmitted] = useState(false);
-  const [isResetting, setIsResetting] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [resendTimer, setResendTimer] = useState(0);
   const navigate = useNavigate();
@@ -100,31 +96,9 @@ export function ForgotPasswordPage() {
       localStorage.setItem(STORAGE_KEYS.FORGOT_RESEND_TIMER_EXPIRY, expiry.toString());
       setResendTimer(60);
       
-      toast.success(t("forgot.toastSent"));
+      toast.success("Liên kết khôi phục mật khẩu đã được gửi!");
     } catch (err) {
       toast.error(err.message || t("forgot.toastSendFailed"));
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleResetPassword = async (e) => {
-    e.preventDefault();
-    if (!otp || !newPassword || !confirmPassword) {
-      toast.error(t("errors.fillAll"));
-      return;
-    }
-    if (newPassword !== confirmPassword) {
-      toast.error(t("errors.passwordMismatch"));
-      return;
-    }
-    setIsLoading(true);
-    try {
-      await authService.resetPassword({ email, otp, newPassword, confirmPassword });
-      toast.success(t("forgot.toastResetSuccess"));
-      navigate("/login");
-    } catch (err) {
-      toast.error(err.message || t("forgot.toastResetFailed"));
     } finally {
       setIsLoading(false);
     }
@@ -136,9 +110,9 @@ export function ForgotPasswordPage() {
     try {
       await authService.forgotPassword(email);
       const expiry = Date.now() + 60 * 1000;
-      localStorage.setItem("forgotResendTimerExpiry", expiry.toString());
+      localStorage.setItem(STORAGE_KEYS.FORGOT_RESEND_TIMER_EXPIRY, expiry.toString());
       setResendTimer(60);
-      toast.success(t("forgot.toastResent"));
+      toast.success("Đã gửi lại liên kết khôi phục mật khẩu!");
     } catch (err) {
       toast.error(err.message || t("forgot.toastResendFailed"));
     } finally {
@@ -191,97 +165,32 @@ export function ForgotPasswordPage() {
                 </button>
               </form>
             </div>
-          ) : !isResetting ? (
+          ) : (
             <div className="text-center animate-in zoom-in-95 duration-300">
               <div className="w-16 h-16 bg-green-50 rounded-full flex items-center justify-center mx-auto mb-6">
                 <Mail size={32} className="text-green-600" />
               </div>
-              <h3 style={{ fontSize: 22, fontWeight: 500, color: "#0A0A0A", marginBottom: 12 }}>{t("forgot.checkEmailTitle")}</h3>
+              <h3 style={{ fontSize: 22, fontWeight: 500, color: "#0A0A0A", marginBottom: 12 }}>Kiểm tra Email</h3>
               <p style={{ fontSize: 14, color: "#6B7280", lineHeight: 1.6, marginBottom: 32 }}>
-                {t("forgot.checkEmailDesc", { email })}
+                Chúng tôi đã gửi một liên kết đặt lại mật khẩu đến địa chỉ email <strong>{email}</strong>. Vui lòng kiểm tra hộp thư của bạn (bao gồm cả thư rác).
               </p>
               
               <div className="space-y-4">
                 <button 
-                  onClick={() => setIsResetting(true)}
-                  className="w-full py-3 bg-[#0A0A0A] text-white rounded-xl text-sm font-bold hover:bg-gray-800 transition-all flex items-center justify-center gap-2"
-                >
-                  {t("forgot.enterCodeBtn")}
-                </button>
-                <button 
                   onClick={handleResend}
                   disabled={isLoading || resendTimer > 0}
-                  className="w-full py-3 border border-gray-200 rounded-xl text-sm font-bold text-gray-600 hover:bg-gray-55 transition-all flex items-center justify-center gap-2"
+                  className="w-full py-3 border border-gray-200 rounded-xl text-sm font-bold text-gray-600 hover:bg-gray-50 hover:text-black transition-all flex items-center justify-center gap-2"
                 >
                   {isLoading && <Loader2 size={16} className="animate-spin" />}
-                  {resendTimer > 0 ? t("forgot.resendTimer", { n: resendTimer }) : t("forgot.resendBtn")}
-                </button>
-              </div>
-            </div>
-          ) : (
-            <div className="animate-in fade-in slide-in-from-bottom-2 duration-300">
-              <h3 style={{ fontSize: 24, fontWeight: 500, color: "#0A0A0A", marginBottom: 8 }}>{t("forgot.resetTitle")}</h3>
-              <p style={{ fontSize: 14, color: "#6B7280", marginBottom: 32 }}>
-                {t("forgot.resetSubtitle")}
-              </p>
-
-              <form onSubmit={handleResetPassword} className="space-y-6">
-                <div>
-                  <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">{t("forgot.codeLabel")}</label>
-                  <input 
-                    type="text" 
-                    required
-                    placeholder="000000" 
-                    value={otp}
-                    onChange={(e) => setOtp(e.target.value)}
-                    maxLength={6}
-                    className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-[#0A0A0A] outline-none text-2xl font-bold tracking-[0.5em] text-center transition-all" 
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">{t("forgot.newPasswordLabel")}</label>
-                  <div className="relative">
-                    <Lock size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                    <input 
-                      type="password" 
-                      required
-                      placeholder={t("forgot.newPasswordPlaceholder")} 
-                      value={newPassword}
-                      onChange={(e) => setNewPassword(e.target.value)}
-                      className="w-full pl-10 pr-4 py-3 rounded-xl border border-gray-200 focus:border-[#0A0A0A] outline-none text-sm transition-all" 
-                    />
-                  </div>
-                </div>
-                <div>
-                  <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">{t("forgot.confirmPasswordLabel")}</label>
-                  <div className="relative">
-                    <Lock size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                    <input 
-                      type="password" 
-                      required
-                      placeholder="••••••••" 
-                      value={confirmPassword}
-                      onChange={(e) => setConfirmPassword(e.target.value)}
-                      className="w-full pl-10 pr-4 py-3 rounded-xl border border-gray-200 focus:border-[#0A0A0A] outline-none text-sm transition-all" 
-                    />
-                  </div>
-                </div>
-
-                <button
-                  type="submit"
-                  disabled={isLoading}
-                  className="w-full py-3 bg-[#0A0A0A] text-white rounded-xl text-sm font-bold hover:bg-gray-800 transition-all shadow-lg flex items-center justify-center gap-2"
-                >
-                  {isLoading ? <Loader2 size={16} className="animate-spin" /> : t("forgot.resetSubmitBtn")}
+                  {resendTimer > 0 ? `Gửi lại sau ${resendTimer}s` : "Gửi lại email khôi phục"}
                 </button>
                 <button 
-                  type="button"
-                  onClick={() => setIsResetting(false)}
-                  className="w-full py-2 text-sm text-gray-500 hover:text-black transition-colors"
+                  onClick={() => navigate("/login")}
+                  className="w-full py-3 bg-[#0A0A0A] text-white rounded-xl text-sm font-bold hover:bg-gray-800 transition-all flex items-center justify-center gap-2"
                 >
-                  {t("forgot.backBtn")}
+                  Trở lại Đăng nhập
                 </button>
-              </form>
+              </div>
             </div>
           )}
         </div>
