@@ -277,7 +277,7 @@ class FacebookPostService {
       message: 'Bài viết mẫu Facebook (Mock)',
       type: POST_TYPES.IMAGE,
       mediaUrl: '',
-      permalinkUrl: null,
+      permalinkUrl: `https://www.facebook.com/${platformPostId}`,
       date: new Date().toISOString(),
       platform: 'facebook',
       reach: 1200,
