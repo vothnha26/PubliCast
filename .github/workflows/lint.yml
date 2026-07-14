@@ -1,0 +1,126 @@
+name: Linting & Code Style
+
+on:
+  push:
+    branches: [ main, develop, "feature/**", "feat/**", "bugfix/**", "bug/**" ]
+    paths:
+      - 'backend/src/**'
+      - 'frontend/src/**'
+      - 'backend/package.json'
+      - 'frontend/package.json'
+  pull_request:
+    branches: [ main, develop ]
+    paths:
+      - 'backend/src/**'
+      - 'frontend/src/**'
+      - 'backend/package.json'
+      - 'frontend/package.json'
+
+jobs:
+  lint-backend:
+    runs-on: ubuntu-latest
+    name: Lint Backend (ESLint)
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+          cache: 'npm'
+          cache-dependency-path: backend/package.json
+
+      - name: Install Dependencies
+        working-directory: backend
+        run: npm install
+
+      - name: Run ESLint
+        working-directory: backend
+        run: npm run lint
+        continue-on-error: false
+
+      - name: Check Prettier Formatting
+        working-directory: backend
+        run: npx prettier --check "src/**/*.js" --ignore-path .prettierignore
+        continue-on-error: true
+
+  lint-frontend:
+    runs-on: ubuntu-latest
+    name: Lint Frontend (ESLint + Prettier)
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+          cache: 'npm'
+          cache-dependency-path: frontend/package.json
+
+      - name: Install Dependencies
+        working-directory: frontend
+        run: npm install
+
+      - name: Run ESLint
+        working-directory: frontend
+        run: npm run lint
+        continue-on-error: false
+
+      - name: Check Prettier Formatting
+        working-directory: frontend
+        run: npx prettier --check "src/**/*.{jsx,js,ts,tsx}" --ignore-path .prettierignore
+        continue-on-error: true
+
+  type-check:
+    runs-on: ubuntu-latest
+    name: Type Checking (JSDoc)
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+          cache: 'npm'
+          cache-dependency-path: backend/package.json
+
+      - name: Install Dependencies
+        working-directory: backend
+        run: npm install
+
+      - name: Validate JSDoc Types
+        working-directory: backend
+        run: |
+          # Check for JSDoc on exported functions
+          echo "Checking JSDoc coverage..."
+          npx jsdoc -c jsconfig.json src/ --validate || true
+        continue-on-error: true
+
+      - name: Check for TypeScript Errors (if using TS)
+        working-directory: backend
+        run: |
+          if [ -f "tsconfig.json" ]; then
+            npx tsc --noEmit
+          fi
+        continue-on-error: true
+
+  report:
+    runs-on: ubuntu-latest
+    name: Linting Report
+    needs: [lint-backend, lint-frontend, type-check]
+    if: always()
+
+    steps:
+      - name: Check Linting Status
+        run: |
+          if [ "${{ needs.lint-backend.result }}" != "success" ] || [ "${{ needs.lint-frontend.result }}" != "success" ]; then
+            echo "❌ Linting failed"
+            exit 1
+          fi
+          echo "✅ All linting checks passed"

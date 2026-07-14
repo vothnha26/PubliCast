@@ -50,7 +50,7 @@ class AuthController {
     if (state === 'settings') {
       res.redirect(`${frontendUrl}/settings?tab=access&success=google_linked`);
     } else {
-      res.redirect(`${frontendUrl}/dashboard?success=google_login`);
+      res.redirect(`${frontendUrl}/dashboard?success=google_login&token=${result.accessToken}&refreshToken=${result.refreshToken}`);
     }
   });
 

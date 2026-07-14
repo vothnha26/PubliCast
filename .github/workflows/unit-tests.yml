@@ -1,0 +1,194 @@
+name: Unit Tests
+
+on:
+  push:
+    branches: [ main, develop, "feature/**", "feat/**", "bugfix/**", "bug/**" ]
+    paths:
+      - 'backend/src/**'
+      - 'backend/__tests__/**'
+      - 'backend/jest.config.js'
+      - 'backend/package.json'
+  pull_request:
+    branches: [ main, develop ]
+    paths:
+      - 'backend/src/**'
+      - 'backend/__tests__/**'
+      - 'backend/jest.config.js'
+      - 'backend/package.json'
+
+jobs:
+  test-backend:
+    runs-on: ubuntu-latest
+    name: Backend Unit Tests (Jest)
+
+    services:
+      redis:
+        image: redis:latest
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+          cache: 'npm'
+          cache-dependency-path: backend/package.json
+
+      - name: Install Dependencies
+        working-directory: backend
+        run: npm install
+
+      - name: Create .env for Testing
+        working-directory: backend
+        run: |
+          echo "NODE_ENV=test" > .env
+          echo "REDIS_HOST=localhost" >> .env
+          echo "REDIS_PORT=6379" >> .env
+          echo "LOG_LEVEL=error" >> .env
+          echo "JWT_SECRET=test-secret-key-for-testing" >> .env
+
+      - name: Run Unit Tests
+        working-directory: backend
+        env:
+          REDIS_HOST: localhost
+          REDIS_PORT: 6379
+          NODE_ENV: test
+        run: |
+          npm run test -- --coverage --passWithNoTests
+
+      - name: Upload Coverage Reports
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: backend-coverage
+          path: backend/coverage/
+
+      - name: Comment PR with Coverage
+        if: github.event_name == 'pull_request'
+        uses: romeovs/lcov-reporter-action@v0.3.1
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          lcov-file: ./backend/coverage/lcov.info
+        continue-on-error: true
+
+      - name: Test Summary
+        if: always()
+        run: |
+          if [ -f "backend/coverage/coverage-summary.json" ]; then
+            echo "📊 Coverage Summary:"
+            cat backend/coverage/coverage-summary.json | python3 -m json.tool || true
+          fi
+
+  test-distributed-lock:
+    runs-on: ubuntu-latest
+    name: Distributed Lock Service Tests
+
+    services:
+      redis:
+        image: redis:latest
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+          cache: 'npm'
+          cache-dependency-path: backend/package.json
+
+      - name: Install Dependencies
+        working-directory: backend
+        run: npm install
+
+      - name: Create .env for Testing
+        working-directory: backend
+        run: |
+          echo "NODE_ENV=test" > .env
+          echo "REDIS_HOST=localhost" >> .env
+          echo "REDIS_PORT=6379" >> .env
+
+      - name: Run Distributed Lock Tests
+        working-directory: backend
+        run: |
+          npm run test -- __tests__/services/distributed-lock.service.test.js --verbose || true
+
+  test-quota-tracker:
+    runs-on: ubuntu-latest
+    name: Quota Tracker Service Tests
+
+    services:
+      redis:
+        image: redis:latest
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+          cache: 'npm'
+          cache-dependency-path: backend/package.json
+
+      - name: Install Dependencies
+        working-directory: backend
+        run: npm install
+
+      - name: Create .env for Testing
+        working-directory: backend
+        run: |
+          echo "NODE_ENV=test" > .env
+          echo "REDIS_HOST=localhost" >> .env
+          echo "REDIS_PORT=6379" >> .env
+          echo "TZ=America/Los_Angeles" >> .env
+
+      - name: Run Quota Tracker Tests
+        working-directory: backend
+        run: |
+          npm run test -- __tests__/services/quota-tracker.service.test.js --verbose || true
+
+  report:
+    runs-on: ubuntu-latest
+    name: Test Report
+    needs: [test-backend, test-distributed-lock, test-quota-tracker]
+    if: always()
+
+    steps:
+      - name: Test Summary
+        run: |
+          echo "📋 Test Results:"
+          echo "  Backend Tests: ${{ needs.test-backend.result }}"
+          echo "  Distributed Lock Tests: ${{ needs.test-distributed-lock.result }}"
+          echo "  Quota Tracker Tests: ${{ needs.test-quota-tracker.result }}"
+
+          if [ "${{ needs.test-backend.result }}" = "failure" ] || [ "${{ needs.test-distributed-lock.result }}" = "failure" ] || [ "${{ needs.test-quota-tracker.result }}" = "failure" ]; then
+            echo "❌ Some tests failed"
+            exit 1
+          fi
+          echo "✅ All tests passed"

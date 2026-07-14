@@ -578,6 +578,28 @@ const VIDEO_EDITOR = {
   DEFAULT_TRIM_DURATION: 10
 };
 
+/** YouTube Quota Optimization - Distributed Lock & Cache Strategy */
+const QUOTA_TTL_STRATEGY = {
+  YOUTUBE_ANALYTICS: {
+    DAILY_LIMIT: 10000,
+    THRESHOLDS: [
+      { usagePct: 0.8, ttlSec: 12 * 3600 },  // 80%+ usage → Cache 12 hours
+      { usagePct: 0.5, ttlSec: 6 * 3600 }    // 50%+ usage → Cache 6 hours
+    ],
+    DEFAULT_TTL_SEC: 2 * 3600                 // Default → Cache 2 hours
+  }
+};
+
+const LOCK_CONFIG = {
+  YOUTUBE_INSIGHTS: {
+    PREFIX: 'lock:yt:video-insights:',
+    TTL_SEC: 30,              // Lock expires after 30s (prevent deadlock on slow API)
+    POLL_INTERVAL_MS: 200,    // Check cache every 200ms while waiting
+    POLL_TIMEOUT_MS: 5000,    // Wait max 5s for background fetch
+    API_TIMEOUT_MS: 15000     // Google API call timeout 15s
+  }
+};
+
 module.exports = {
   PLATFORMS,
   USER_ROLES,
@@ -626,6 +648,8 @@ module.exports = {
   YT_VIDEO_INSIGHTS,
   TOKEN_REFRESH,
   VIDEO_EDITOR,
+  QUOTA_TTL_STRATEGY,
+  LOCK_CONFIG,
   splitMediaUrls
 };
 
