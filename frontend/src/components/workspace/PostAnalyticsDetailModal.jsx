@@ -22,6 +22,15 @@ export function PostAnalyticsDetailModal({ isOpen, onClose, post, brandId }) {
   const [historyAnalytics, setHistoryAnalytics] = useState(null);
   const [loadingHistory, setLoadingHistory] = useState(false);
 
+  // Facebook post-level metrics
+  const [fbInsights, setFbInsights] = useState(null);
+  const [fbInsightsError, setFbInsightsError] = useState(null);
+  const [loadingFbInsights, setLoadingFbInsights] = useState(false);
+  const [fbAnalytics, setFbAnalytics] = useState(null);
+  const [fbAnalyticsError, setFbAnalyticsError] = useState(null);
+  const [loadingFbAnalytics, setLoadingFbAnalytics] = useState(false);
+  const [fbAnalyticsRetryKey, setFbAnalyticsRetryKey] = useState(0);
+
   // Get available platforms for this post
   const platforms = post?.platforms || [];
 
@@ -96,11 +105,74 @@ export function PostAnalyticsDetailModal({ isOpen, onClose, post, brandId }) {
     fetchHistory();
   }, [activePlatform, post, isOpen, brandId]);
 
+  // Extract the platform-specific post ID (post.platformPostId may be a single
+  // string ID or an object keyed by platform for multi-platform posts).
+  const extractPlatformPostId = (rawPost, platformKey) => {
+    if (!rawPost?.platformPostId) return rawPost?.id || null;
+    if (typeof rawPost.platformPostId === "object") {
+      return rawPost.platformPostId[platformKey] || rawPost.platformPostId[platformKey.toUpperCase()] || null;
+    }
+    try {
+      const parsed = JSON.parse(rawPost.platformPostId);
+      return parsed[platformKey] || parsed[platformKey.toUpperCase()] || null;
+    } catch (e) {
+      return rawPost.platformPostId;
+    }
+  };
+
+  // Fetch Facebook post-level insights and analytics (partial failure: each
+  // API call has its own loading/error state so one failing doesn't block the other)
+  useEffect(() => {
+    if (!isOpen || !post || activePlatform.toLowerCase() !== "facebook") {
+      setFbInsights(null);
+      setFbInsightsError(null);
+      setFbAnalytics(null);
+      setFbAnalyticsError(null);
+      return;
+    }
+
+    const fbPostId = extractPlatformPostId(post, "facebook");
+    if (!fbPostId) return;
+
+    const fetchInsights = async () => {
+      setLoadingFbInsights(true);
+      setFbInsightsError(null);
+      try {
+        const res = await socialService.getFacebookPostInsights(brandId, fbPostId);
+        setFbInsights(res?.data || null);
+      } catch (err) {
+        console.error("Failed to load Facebook post insights:", err);
+        setFbInsightsError(err?.response?.data?.message || err.message || "Không thể tải dữ liệu phân tích.");
+      } finally {
+        setLoadingFbInsights(false);
+      }
+    };
+
+    const fetchAnalytics = async () => {
+      setLoadingFbAnalytics(true);
+      setFbAnalyticsError(null);
+      try {
+        const res = await socialService.getFacebookPostAnalytics(brandId, fbPostId);
+        setFbAnalytics(res?.data || null);
+      } catch (err) {
+        console.error("Failed to load Facebook post analytics:", err);
+        setFbAnalyticsError(err?.response?.data?.message || err.message || "Không thể tải biểu đồ tăng trưởng.");
+      } finally {
+        setLoadingFbAnalytics(false);
+      }
+    };
+
+    // Run in parallel — a failure in one must not block the other (Partial Failure handling)
+    fetchInsights();
+    fetchAnalytics();
+  }, [activePlatform, post, isOpen, brandId, fbAnalyticsRetryKey]);
+
   if (!isOpen || !post) return null;
 
   const isYouTube = activePlatform.toLowerCase() === "youtube";
   const isTikTok = activePlatform.toLowerCase() === "tiktok";
-  const isSupported = isYouTube || isTikTok;
+  const isFacebook = activePlatform.toLowerCase() === "facebook";
+  const isSupported = isYouTube || isTikTok || isFacebook;
 
   // ── YouTube Metrics Aggregation ──────────────────────────────────────────
   const ytTotalViews = ytAnalytics ? ytAnalytics.reduce((sum, d) => sum + (d.views || 0), 0) : null;
@@ -148,7 +220,7 @@ export function PostAnalyticsDetailModal({ isOpen, onClose, post, brandId }) {
     return hrs > 0 ? `${hrs}h ${mins}m` : `${mins}m`;
   };
 
-  const isLoading = isYouTube ? loadingYt : loadingHistory;
+  const isLoading = isYouTube ? loadingYt : isFacebook ? loadingFbInsights : loadingHistory;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -283,7 +355,7 @@ export function PostAnalyticsDetailModal({ isOpen, onClose, post, brandId }) {
               <div className="text-center space-y-1.5 max-w-sm">
                 <h4 className="text-sm font-black text-gray-700">Chưa hỗ trợ phân tích chi tiết</h4>
                 <p className="text-[11px] text-gray-400 leading-relaxed">
-                  Hiện tại phân tích số liệu chi tiết cấp bài viết hỗ trợ cho <strong>YouTube</strong> và <strong>TikTok</strong>. 
+                  Hiện tại phân tích số liệu chi tiết cấp bài viết hỗ trợ cho <strong>YouTube</strong>, <strong>TikTok</strong> và <strong>Facebook</strong>.
                   Các nền tảng khác ({activePlatform}) chưa được đồng bộ số liệu chi tiết.
                 </p>
               </div>
@@ -337,6 +409,49 @@ export function PostAnalyticsDetailModal({ isOpen, onClose, post, brandId }) {
                         </div>
                       </div>
                     </div>
+                  ) : isFacebook ? (
+                    /* Facebook Overview Metrics */
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                      <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm flex flex-col relative overflow-hidden group hover:border-gray-200 transition-all">
+                        <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Reach</span>
+                        <span className="text-2xl font-black text-black mt-2">
+                          {fbInsights ? fbInsights.reach.toLocaleString() : "—"}
+                        </span>
+                        <div className="absolute right-3 bottom-3 text-blue-100 group-hover:text-blue-500 transition-colors">
+                          <Eye size={20} />
+                        </div>
+                      </div>
+
+                      <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm flex flex-col relative overflow-hidden group hover:border-gray-200 transition-all">
+                        <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Cảm xúc</span>
+                        <span className="text-2xl font-black text-black mt-2">
+                          {fbInsights ? fbInsights.reactions.total.toLocaleString() : "—"}
+                        </span>
+                        <div className="absolute right-3 bottom-3 text-rose-100 group-hover:text-rose-500 transition-colors">
+                          <Heart size={20} />
+                        </div>
+                      </div>
+
+                      <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm flex flex-col relative overflow-hidden group hover:border-gray-200 transition-all">
+                        <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Bình luận</span>
+                        <span className="text-2xl font-black text-black mt-2">
+                          {fbInsights ? fbInsights.comments.toLocaleString() : "—"}
+                        </span>
+                        <div className="absolute right-3 bottom-3 text-purple-100 group-hover:text-purple-500 transition-colors">
+                          <MessageCircle size={20} />
+                        </div>
+                      </div>
+
+                      <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm flex flex-col relative overflow-hidden group hover:border-gray-200 transition-all">
+                        <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Chia sẻ</span>
+                        <span className="text-2xl font-black text-black mt-2">
+                          {fbInsights ? fbInsights.shares.toLocaleString() : "—"}
+                        </span>
+                        <div className="absolute right-3 bottom-3 text-green-100 group-hover:text-green-500 transition-colors">
+                          <Share2 size={20} />
+                        </div>
+                      </div>
+                    </div>
                   ) : (
                     /* TikTok Overview Metrics */
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -349,7 +464,7 @@ export function PostAnalyticsDetailModal({ isOpen, onClose, post, brandId }) {
                           <Eye size={20} />
                         </div>
                       </div>
-                      
+
                       <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm flex flex-col relative overflow-hidden group hover:border-gray-200 transition-all">
                         <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Lượt thích</span>
                         <span className="text-2xl font-black text-black mt-2">
@@ -387,17 +502,53 @@ export function PostAnalyticsDetailModal({ isOpen, onClose, post, brandId }) {
                     <div className="flex justify-between items-center mb-6">
                       <div>
                         <h4 className="text-xs font-black text-gray-400 uppercase tracking-widest">
-                          {isYouTube ? "Tỷ lệ xem trung bình theo ngày" : "Tăng trưởng lượt xem video"}
+                          {isYouTube ? "Tỷ lệ xem trung bình theo ngày" : isFacebook ? "Tăng trưởng lượt xem bài viết" : "Tăng trưởng lượt xem video"}
                         </h4>
                         <p className="text-[10px] text-gray-400 mt-0.5">
-                          {isYouTube 
-                            ? "Phần trăm thời lượng video xem trung bình mỗi ngày" 
-                            : "Biểu đồ thể hiện lượt xem tăng thêm qua từng khung giờ"}
+                          {isYouTube
+                            ? "Phần trăm thời lượng video xem trung bình mỗi ngày"
+                            : isFacebook
+                              ? "Số liệu tổng hợp lượt xem, reach và click của bài viết"
+                              : "Biểu đồ thể hiện lượt xem tăng thêm qua từng khung giờ"}
                         </p>
                       </div>
                     </div>
 
-                    {isYouTube ? (
+                    {isFacebook ? (
+                      fbAnalyticsError ? (
+                        <div className="h-40 flex flex-col items-center justify-center gap-2 text-center">
+                          <AlertCircle size={20} className="text-red-400" />
+                          <p className="text-xs text-red-500 font-medium">{fbAnalyticsError}</p>
+                          <button
+                            onClick={() => setFbAnalyticsRetryKey((k) => k + 1)}
+                            className="mt-1 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider bg-gray-100 hover:bg-gray-200 text-gray-600 transition-colors cursor-pointer"
+                          >
+                            <RefreshCw size={11} /> Thử lại
+                          </button>
+                        </div>
+                      ) : loadingFbAnalytics ? (
+                        <div className="h-40 flex items-center justify-center text-xs text-gray-400">
+                          Đang tải dữ liệu tăng trưởng...
+                        </div>
+                      ) : fbAnalytics && fbAnalytics.length > 0 ? (
+                        <div className="grid grid-cols-3 gap-4">
+                          {[
+                            { label: "Lượt xem", value: fbAnalytics[0].views },
+                            { label: "Reach", value: fbAnalytics[0].reach },
+                            { label: "Lượt click", value: fbAnalytics[0].clicks }
+                          ].map((stat) => (
+                            <div key={stat.label} className="bg-gray-50 rounded-2xl p-4 text-center">
+                              <div className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">{stat.label}</div>
+                              <div className="text-xl font-black text-black mt-1">{stat.value.toLocaleString()}</div>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="h-40 flex items-center justify-center text-xs text-gray-400">
+                          Chưa có đủ dữ liệu để hiển thị biểu đồ.
+                        </div>
+                      )
+                    ) : isYouTube ? (
                       retentionData.length > 0 ? (
                         <div className="h-[260px] w-full">
                           <ResponsiveContainer width="100%" height="100%">
@@ -466,6 +617,13 @@ export function PostAnalyticsDetailModal({ isOpen, onClose, post, brandId }) {
                       </p>
                     </div>
                   )}
+
+                  {isFacebook && fbInsightsError && (
+                    <div className="flex items-start gap-2.5 p-4 bg-red-50 rounded-2xl border border-red-100">
+                      <AlertCircle size={15} className="text-red-500 shrink-0 mt-0.5" />
+                      <p className="text-[10px] text-red-700 leading-normal">{fbInsightsError}</p>
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -477,6 +635,42 @@ export function PostAnalyticsDetailModal({ isOpen, onClose, post, brandId }) {
                     <div className="text-center">
                       <p className="text-sm font-bold text-gray-500">Nguồn lưu lượng</p>
                       <p className="text-[11px] text-gray-400 mt-1">API YouTube Analytics cấp bài viết chưa hỗ trợ phân tách nguồn lưu lượng.</p>
+                    </div>
+                  </div>
+                ) : isFacebook ? (
+                  /* Facebook Reactions Breakdown */
+                  <div className="space-y-6">
+                    <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm">
+                      <h4 className="text-xs font-black text-gray-400 uppercase tracking-widest mb-6">
+                        Phân tích cảm xúc (Reactions Breakdown)
+                      </h4>
+                      {fbInsightsError ? (
+                        <div className="h-40 flex items-center justify-center text-xs text-red-500">
+                          {fbInsightsError}
+                        </div>
+                      ) : loadingFbInsights ? (
+                        <div className="h-40 flex items-center justify-center text-xs text-gray-400">
+                          Đang tải dữ liệu cảm xúc...
+                        </div>
+                      ) : fbInsights?.reactions?.breakdown ? (
+                        <div className="h-[240px] w-full">
+                          <ResponsiveContainer width="100%" height="100%">
+                            <ReChartsBarChart
+                              data={Object.entries(fbInsights.reactions.breakdown).map(([type, value]) => ({ type, value }))}
+                            >
+                              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#F3F4F6" />
+                              <XAxis dataKey="type" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: "#9CA3AF" }} />
+                              <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: "#9CA3AF" }} />
+                              <Tooltip contentStyle={{ borderRadius: 12, border: "none", boxShadow: "0 4px 12px rgba(0,0,0,0.05)" }} />
+                              <Bar dataKey="value" fill="#8E9BEE" radius={[6, 6, 0, 0]} />
+                            </ReChartsBarChart>
+                          </ResponsiveContainer>
+                        </div>
+                      ) : (
+                        <div className="h-40 flex items-center justify-center text-xs text-gray-400">
+                          Chưa có đủ dữ liệu cảm xúc để hiển thị.
+                        </div>
+                      )}
                     </div>
                   </div>
                 ) : (
@@ -519,6 +713,49 @@ export function PostAnalyticsDetailModal({ isOpen, onClose, post, brandId }) {
                     <div className="text-center">
                       <p className="text-sm font-bold text-gray-500">Nhân khẩu học người xem</p>
                       <p className="text-[11px] text-gray-400 mt-1">Dữ liệu audience per-video chưa được hỗ trợ. Vui lòng xem tab Demographics trên YouTube Dashboard.</p>
+                    </div>
+                  </div>
+                ) : isFacebook ? (
+                  /* Facebook Demographics & Geography */
+                  <div className="space-y-6">
+                    {/* Age/Gender — always deprecated */}
+                    <div className="bg-white rounded-3xl border border-gray-100 p-6 flex items-start gap-3">
+                      <Info size={16} className="text-amber-500 shrink-0 mt-0.5" />
+                      <p className="text-[11px] text-gray-500 leading-relaxed">
+                        Facebook đã ngừng cung cấp dữ liệu nhân khẩu học theo độ tuổi/giới tính qua Graph API.
+                      </p>
+                    </div>
+
+                    {/* Geography */}
+                    <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm">
+                      <h4 className="text-xs font-black text-gray-400 uppercase tracking-widest mb-6">
+                        Địa lý người theo dõi (Page-level)
+                      </h4>
+                      {fbInsightsError ? (
+                        <div className="h-40 flex items-center justify-center text-xs text-red-500">{fbInsightsError}</div>
+                      ) : loadingFbInsights ? (
+                        <div className="h-40 flex items-center justify-center text-xs text-gray-400">Đang tải dữ liệu địa lý...</div>
+                      ) : fbInsights?.geography?.available ? (
+                        <div className="space-y-2">
+                          {Object.entries(fbInsights.geography.data)
+                            .sort(([, a], [, b]) => b - a)
+                            .slice(0, 8)
+                            .map(([country, count]) => (
+                              <div key={country} className="flex items-center justify-between text-xs">
+                                <span className="text-gray-600 font-medium">{country}</span>
+                                <span className="text-gray-900 font-bold">{count.toLocaleString()}</span>
+                              </div>
+                            ))}
+                        </div>
+                      ) : fbInsights?.geography?.reason === "insufficient_data" ? (
+                        <div className="h-32 flex items-center justify-center text-center text-xs text-gray-400 max-w-sm mx-auto">
+                          Trang chưa có đủ dữ liệu để thống kê địa lý (yêu cầu số lượng người theo dõi tối thiểu từ Meta).
+                        </div>
+                      ) : (
+                        <div className="h-32 flex items-center justify-center text-xs text-gray-400">
+                          Chưa có dữ liệu địa lý.
+                        </div>
+                      )}
                     </div>
                   </div>
                 ) : (

@@ -529,6 +529,7 @@ export function PlatformDashboardPage() {
         ) : platform === "facebook" ? (
           <FacebookDashboard
             metrics={metrics}
+            loading={loading}
             dateRange={dateRange}
             setDateRange={setDateRange}
             realData={realData}

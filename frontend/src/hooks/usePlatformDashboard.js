@@ -399,9 +399,9 @@ export function usePlatformDashboard(platform) {
     if (activeTab === "viewed" && platform !== "facebook") fetchTracked();
     if (activeTab === "competitors") fetchCompetitors();
     if (
-      activeTab === "published" || 
-      activeTab === "posts_list" || 
-      (activeTab === "posts" && (platform === "tiktok" || platform === "threads")) ||
+      activeTab === "published" ||
+      activeTab === "posts_list" ||
+      (activeTab === "posts" && (platform === "tiktok" || platform === "threads" || platform === "facebook")) ||
       (activeTab === "community" && platform === "youtube")
     ) {
       fetchPublishedVideos(null, pageSize);
