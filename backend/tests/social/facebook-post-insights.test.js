@@ -52,8 +52,8 @@ describe('FacebookPostService — Post Insights & Analytics', () => {
 
       expect(facebookGateway.getPostDetails).not.toHaveBeenCalled();
       expect(facebookGateway.getPostInsights).not.toHaveBeenCalled();
-      expect(result.id).toBe(POST_ID);
-      expect(result.platform).toBe('facebook');
+      expect(result.postDetails.id).toBe(POST_ID);
+      expect(result.postDetails.platform).toBe('facebook');
       expect(result.reactions.breakdown).toEqual(
         expect.objectContaining({ LIKE: expect.any(Number), LOVE: expect.any(Number) })
       );

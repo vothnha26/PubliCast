@@ -199,13 +199,15 @@ class FacebookPostService {
         const demographics = await this._getPageDemographicsCached(brandId, pageId, pageAccessToken);
 
         result = {
-          id: post.id,
-          message: post.message || post.story || DEFAULT_CONFIG.NO_CONTENT,
-          type: this._determinePostType(post),
-          mediaUrl: post.full_picture || '',
-          permalinkUrl: post.permalink_url || null,
-          date: post.created_time,
-          platform: 'facebook',
+          postDetails: {
+            id: post.id,
+            message: post.message || post.story || DEFAULT_CONFIG.NO_CONTENT,
+            type: this._determinePostType(post),
+            mediaUrl: post.full_picture || '',
+            permalinkUrl: post.permalink_url || null,
+            date: post.created_time,
+            platform: 'facebook'
+          },
           reach: metrics.reach || 0,
           views: metrics.views || 0,
           clicks: metrics.clicks || 0,
@@ -273,13 +275,15 @@ class FacebookPostService {
 
   _buildMockPostDetails(platformPostId) {
     return {
-      id: platformPostId,
-      message: 'Bài viết mẫu Facebook (Mock)',
-      type: POST_TYPES.IMAGE,
-      mediaUrl: '',
-      permalinkUrl: `https://www.facebook.com/${platformPostId}`,
-      date: new Date().toISOString(),
-      platform: 'facebook',
+      postDetails: {
+        id: platformPostId,
+        message: 'Bài viết mẫu Facebook (Mock)',
+        type: POST_TYPES.IMAGE,
+        mediaUrl: '',
+        permalinkUrl: `https://www.facebook.com/${platformPostId}`,
+        date: new Date().toISOString(),
+        platform: 'facebook'
+      },
       reach: 1200,
       views: 1800,
       clicks: 45,

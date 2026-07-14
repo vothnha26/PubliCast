@@ -269,11 +269,11 @@ class YouTubeAnalyticsEnhancedService {
    * @private
    */
   async _fetchInsightsSummary(auth, videoId) {
-    return youtubeGateway.getReports(auth, { ids: `contentOwner==MINE`, metrics: 'views,estimatedMinutesWatched', filters: `video==${videoId}` });
+    return youtubeGateway.getAnalyticsReportQuery(auth, { ids: `contentOwner==MINE`, metrics: 'views,estimatedMinutesWatched', filters: `video==${videoId}` });
   }
 
   async _fetchInsightsTrafficSource(auth, videoId) {
-    return youtubeGateway.getReports(auth, {
+    return youtubeGateway.getAnalyticsReportQuery(auth, {
       ids: 'contentOwner==MINE',
       metrics: 'views,estimatedMinutesWatched',
       dimensions: 'insightTrafficSourceType',
@@ -282,7 +282,7 @@ class YouTubeAnalyticsEnhancedService {
   }
 
   async _fetchInsightsDeviceType(auth, videoId) {
-    return youtubeGateway.getReports(auth, {
+    return youtubeGateway.getAnalyticsReportQuery(auth, {
       ids: 'contentOwner==MINE',
       metrics: 'views,estimatedMinutesWatched',
       dimensions: 'deviceType',
@@ -291,7 +291,7 @@ class YouTubeAnalyticsEnhancedService {
   }
 
   async _fetchInsightsDemographics(auth, videoId) {
-    return youtubeGateway.getReports(auth, {
+    return youtubeGateway.getAnalyticsReportQuery(auth, {
       ids: 'contentOwner==MINE',
       metrics: 'viewPercentage',
       dimensions: 'ageGroup,gender',
@@ -300,7 +300,7 @@ class YouTubeAnalyticsEnhancedService {
   }
 
   async _fetchInsightsGeography(auth, videoId) {
-    return youtubeGateway.getReports(auth, {
+    return youtubeGateway.getAnalyticsReportQuery(auth, {
       ids: 'contentOwner==MINE',
       metrics: 'views',
       dimensions: 'country',
@@ -310,7 +310,7 @@ class YouTubeAnalyticsEnhancedService {
   }
 
   async _fetchInsightsSearchTerms(auth, videoId) {
-    return youtubeGateway.getReports(auth, {
+    return youtubeGateway.getAnalyticsReportQuery(auth, {
       ids: 'contentOwner==MINE',
       metrics: 'views,clicks',
       dimensions: 'insightSearchTerm',
