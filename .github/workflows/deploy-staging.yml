@@ -1,8 +1,11 @@
 name: Deploy to Staging
 
 on:
-  push:
-    branches: [develop]
+  # NOTE: auto-trigger on push to develop is disabled until a real staging
+  # server exists. STAGING_SSH_KEY / STAGING_DEPLOY_HOST / STAGING_DEPLOY_USER
+  # secrets are not configured, so every push-triggered run fails at the SSH
+  # step (empty host/user -> `ssh -i key @` -> exit 255). Re-enable the push
+  # trigger once a staging server + those 3 secrets are set up.
   workflow_dispatch:
     inputs:
       environment:
