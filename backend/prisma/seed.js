@@ -299,10 +299,11 @@ async function main() {
   const memberPassword = process.env.MEMBER_PASSWORD || 'nhacc123@';
   const memberHash = await bcrypt.hash(memberPassword, 10);
 
-  // Upsert admin user
+  // Upsert admin user (passwordHash stored on User model directly)
   const adminUser = await prisma.user.upsert({
     where: { email: adminEmail },
     update: {
+      passwordHash: adminHash,
       isActive: true,
       isEmailVerified: true,
       role: 'ADMIN'
@@ -310,15 +311,10 @@ async function main() {
     create: {
       email: adminEmail,
       name: 'CI Admin',
+      passwordHash: adminHash,
       isActive: true,
       isEmailVerified: true,
-      role: 'ADMIN',
-      userAccounts: {
-        create: {
-          provider: 'LOCAL',
-          passwordHash: adminHash
-        }
-      }
+      role: 'ADMIN'
     }
   });
 
@@ -329,6 +325,7 @@ async function main() {
     const memberUser = await prisma.user.upsert({
       where: { email: memberEmail },
       update: {
+        passwordHash: memberHash,
         isActive: true,
         isEmailVerified: true,
         role: 'MEMBER'
@@ -336,15 +333,10 @@ async function main() {
       create: {
         email: memberEmail,
         name: 'CI Member',
+        passwordHash: memberHash,
         isActive: true,
         isEmailVerified: true,
-        role: 'MEMBER',
-        userAccounts: {
-          create: {
-            provider: 'LOCAL',
-            passwordHash: memberHash
-          }
-        }
+        role: 'MEMBER'
       }
     });
     console.log(`✅ Member user ensured: ${memberEmail}`);
