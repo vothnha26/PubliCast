@@ -300,13 +300,16 @@ async function main() {
   const memberHash = await bcrypt.hash(memberPassword, 10);
 
   // Upsert admin user (passwordHash stored on User model directly)
+  // NOTE: role is OWNER, not ADMIN — 'ADMIN' is the platform super-admin role
+  // and redirects to /admin/revenue, which breaks the Selenium brand/workspace flows
+  // that expect /dashboard, /start, or /manage/connections after login.
   const adminUser = await prisma.user.upsert({
     where: { email: adminEmail },
     update: {
       passwordHash: adminHash,
       isActive: true,
       isEmailVerified: true,
-      role: 'ADMIN'
+      role: 'OWNER'
     },
     create: {
       email: adminEmail,
@@ -314,7 +317,7 @@ async function main() {
       passwordHash: adminHash,
       isActive: true,
       isEmailVerified: true,
-      role: 'ADMIN'
+      role: 'OWNER'
     }
   });
 
@@ -328,7 +331,7 @@ async function main() {
         passwordHash: memberHash,
         isActive: true,
         isEmailVerified: true,
-        role: 'MEMBER'
+        role: 'STAFF'
       },
       create: {
         email: memberEmail,
@@ -336,7 +339,7 @@ async function main() {
         passwordHash: memberHash,
         isActive: true,
         isEmailVerified: true,
-        role: 'MEMBER'
+        role: 'STAFF'
       }
     });
     console.log(`✅ Member user ensured: ${memberEmail}`);
