@@ -68,10 +68,10 @@ jobs:
           echo "PORT=3000" >> .env
 
           # Ensure seed creates test users matching Selenium credentials
-          echo "ADMIN_EMAIL=vothanhnha26@gmail.com" >> .env
-          echo "ADMIN_PASSWORD=nhacc123@" >> .env
-          echo "MEMBER_EMAIL=vothanhnha26@gmail.com" >> .env
-          echo "MEMBER_PASSWORD=nhacc123@" >> .env
+          echo "ADMIN_EMAIL=${{ secrets.TEST_ADMIN_EMAIL }}" >> .env
+          echo "ADMIN_PASSWORD=${{ secrets.TEST_ADMIN_PASSWORD }}" >> .env
+          echo "MEMBER_EMAIL=${{ secrets.TEST_ADMIN_EMAIL }}" >> .env
+          echo "MEMBER_PASSWORD=${{ secrets.TEST_ADMIN_PASSWORD }}" >> .env
 
       - name: Setup Backend Database
         working-directory: backend
@@ -123,10 +123,10 @@ jobs:
       - name: Setup Selenium Test .env
         working-directory: test_selenium
         run: |
-          echo "ADMIN_EMAIL=vothanhnha26@gmail.com" > .env
-          echo "ADMIN_PASSWORD=nhacc123@" >> .env
-          echo "MEMBER_EMAIL=vothanhnha26@gmail.com" >> .env
-          echo "MEMBER_PASSWORD=nhacc123@" >> .env
+          echo "ADMIN_EMAIL=${{ secrets.TEST_ADMIN_EMAIL }}" > .env
+          echo "ADMIN_PASSWORD=${{ secrets.TEST_ADMIN_PASSWORD }}" >> .env
+          echo "MEMBER_EMAIL=${{ secrets.TEST_ADMIN_EMAIL }}" >> .env
+          echo "MEMBER_PASSWORD=${{ secrets.TEST_ADMIN_PASSWORD }}" >> .env
           echo "BASE_URL=http://localhost:5173" >> .env
           echo "API_URL=http://localhost:3000" >> .env
           echo "MYSQL_URL=mysql://root:root_password@localhost:3307/publicast" >> .env
