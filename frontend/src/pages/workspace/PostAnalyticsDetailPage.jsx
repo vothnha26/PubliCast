@@ -4,17 +4,10 @@ import { ArrowLeft, AlertTriangle } from "lucide-react";
 import { format } from "date-fns";
 import { PlatformIcon } from "../../components/shared/PlatformIcon";
 import { PLATFORM_STRATEGIES } from "../../strategies/postAnalytics";
+import { POST_ANALYTICS_TAB, POST_ANALYTICS_TAB_LABEL } from "../../constants/postAnalyticsTabs";
+import { DateRangeFilter } from "../../components/app/DateRangeFilter";
+import { PostAnalyticsHeaderStatsSkeleton, PostAnalyticsTabContentSkeleton } from "../../components/workspace/PostAnalyticsSkeleton";
 import { useBrand } from "../../context/BrandContext";
-
-const TAB_LABELS = {
-  overview: "Tổng quan",
-  reactions: "Cảm xúc",
-  audience: "Người xem",
-  traffic: "Nguồn lưu lượng",
-  devices: "Thiết bị",
-  geography: "Địa lý",
-  search: "Tìm kiếm"
-};
 
 export function PostAnalyticsDetailPage() {
   const { platform, postId } = useParams();
@@ -24,7 +17,7 @@ export function PostAnalyticsDetailPage() {
 
   const strategy = PLATFORM_STRATEGIES[platform];
 
-  const [activeTab, setActiveTab] = useState(strategy?.supportedTabs?.[0] || "overview");
+  const [activeTab, setActiveTab] = useState(strategy?.supportedTabs?.[0] || POST_ANALYTICS_TAB.OVERVIEW);
   const [data, setData] = useState({
     metadata: { status: "loading", data: null },
     insights: { status: "loading", data: null },
@@ -133,7 +126,11 @@ export function PostAnalyticsDetailPage() {
 
         {/* Header Stats */}
         <div className="mt-6 relative z-10">
-          {strategy.renderHeaderStats(data)}
+          {data.metadata?.status === "loading" ? (
+            <PostAnalyticsHeaderStatsSkeleton />
+          ) : (
+            strategy.renderHeaderStats(data)
+          )}
         </div>
       </div>
 
@@ -150,20 +147,23 @@ export function PostAnalyticsDetailPage() {
                   : "border-transparent text-gray-400 hover:text-black"
               }`}
             >
-              {TAB_LABELS[tab] || tab}
+              {POST_ANALYTICS_TAB_LABEL[tab] || tab}
             </button>
           ))}
         </div>
 
-        <div className="text-[10px] font-bold text-gray-400 flex items-center gap-1.5">
-          <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
-          Được cập nhật tự động
-        </div>
+        {strategy.supportsDateRange && (
+          <DateRangeFilter date={dateRange} setDate={setDateRange} />
+        )}
       </div>
 
       {/* Body Content */}
       <div className="p-6 space-y-6">
-        {strategy.renderTabContent(activeTab, data, dateRange, setDateRange)}
+        {data.metadata?.status === "loading" ? (
+          <PostAnalyticsTabContentSkeleton />
+        ) : (
+          strategy.renderTabContent(activeTab, data, dateRange, setDateRange)
+        )}
       </div>
     </div>
   );

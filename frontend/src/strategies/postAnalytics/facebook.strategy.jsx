@@ -16,6 +16,7 @@ export const facebookStrategy = {
     POST_ANALYTICS_TAB.REACTIONS,
     POST_ANALYTICS_TAB.AUDIENCE
   ],
+  supportsDateRange: true,
 
   async fetchData(brandId, postId, dateRange) {
     const result = {

@@ -18,6 +18,7 @@ export const youtubeStrategy = {
     POST_ANALYTICS_TAB.GEOGRAPHY,
     POST_ANALYTICS_TAB.SEARCH
   ],
+  supportsDateRange: true,
 
   async fetchData(brandId, postId, dateRange) {
     const result = {

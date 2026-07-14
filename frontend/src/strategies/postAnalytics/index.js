@@ -9,6 +9,9 @@ export function validateStrategyContract(strategy, platform) {
       throw new Error(`Platform strategy for "${platform}" must implement "${key}"`);
     }
   }
+  if (typeof strategy.supportsDateRange !== "boolean") {
+    throw new Error(`Platform strategy for "${platform}" must implement "supportsDateRange" as a boolean`);
+  }
 }
 
 validateStrategyContract(youtubeStrategy, "youtube");

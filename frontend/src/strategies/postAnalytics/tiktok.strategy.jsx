@@ -12,6 +12,7 @@ export const tiktokStrategy = {
     POST_ANALYTICS_TAB.OVERVIEW,
     POST_ANALYTICS_TAB.AUDIENCE
   ],
+  supportsDateRange: false,
 
   async fetchData(brandId, postId) {
     const result = {
