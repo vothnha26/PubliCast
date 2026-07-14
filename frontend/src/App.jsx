@@ -15,6 +15,7 @@ import { PRODUCT_IDS } from "./constants/products";
 // Auth Pages
 import { LoginPage } from "./pages/auth/Login";
 import { ForgotPasswordPage } from "./pages/auth/ForgotPassword";
+import { ResetPasswordPage } from "./pages/auth/ResetPassword";
 import { InviteFlow } from "./pages/auth/InviteFlow";
 
 // Onboarding
@@ -72,7 +73,7 @@ import { LandingPage } from "./pages/landing/LandingPage";
 import UpsellModal from "./components/billing/UpsellModal";
 
 const CLIENT_ROLES = ["OWNER", "MANAGER", "USER", "EDITOR", "VIEWER", "ANALYST", "STREAM_MANAGER", "CONTENT_MANAGER", "CONTENT_CREATOR", "STREAM_OPERATOR", "CLIENT"];
-const NO_LAYOUT_PATHS = ["/", "/login", "/signup", "/verify-otp", "/start", "/forgot-password", "/connect", "/invite", "/manage/workplace/new"];
+const NO_LAYOUT_PATHS = ["/", "/login", "/signup", "/register", "/register/verify-otp", "/reset-password", "/start", "/forgot-password", "/connect", "/invite", "/manage/workplace/new"];
 
 export default function App() {
   const { isAuthenticated, loading, logout, user } = useAuthStore();
@@ -96,7 +97,7 @@ export default function App() {
   useEffect(() => {
     const handleSessionExpired = () => {
       logout();
-      const publicPaths = ["/", "/login", "/signup", "/verify-otp", "/forgot-password", "/invite"];
+      const publicPaths = ["/", "/login", "/signup", "/register", "/register/verify-otp", "/reset-password", "/forgot-password", "/invite"];
       if (!publicPaths.includes(window.location.pathname)) {
         navigate('/login', { replace: true });
       }
@@ -139,9 +140,12 @@ export default function App() {
               <Route path="/" element={<LandingPage />} />
               <Route path="/login" element={isAuthenticated ? <Navigate to={getRedirectPath()} /> : <LoginPage initialScreen="login" />} />
               <Route path="/signup" element={isAuthenticated ? <Navigate to={getRedirectPath()} /> : <LoginPage initialScreen="signup" />} />
-              <Route path="/verify-otp" element={<LoginPage initialScreen="verify-otp" />} />
+              <Route path="/register" element={isAuthenticated ? <Navigate to={getRedirectPath()} /> : <LoginPage initialScreen="signup" />} />
+              <Route path="/register/verify-otp" element={<LoginPage initialScreen="verify-otp" />} />
+              <Route path="/verify-otp" element={<Navigate to="/register/verify-otp" replace />} />
               <Route path="/start" element={<ProtectedRoute allowedRoles={CLIENT_ROLES}><GettingStartedPage /></ProtectedRoute>} />
               <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+              <Route path="/reset-password" element={<ResetPasswordPage />} />
               
               {/* Protected Workspace Routes */}
               <Route path="/dashboard" element={<ProtectedRoute allowedRoles={CLIENT_ROLES}><DashboardPage /></ProtectedRoute>} />

@@ -103,35 +103,68 @@ class UserRepository {
     });
   }
 
-  async upsertSocialUser(userData, accountData) {
+  async upsertSocialUser(userData, accountData, currentUserId = null) {
     const { email, name, avatarUrl } = userData;
     const { provider, providerId } = accountData;
 
-    // Try to find user by email first to link accounts
-    const existingUser = await prisma.user.findUnique({
-      where: { email: email.toLowerCase() },
-      include: { accounts: true }
-    });
+    let existingUser = null;
+
+    if (currentUserId) {
+      existingUser = await prisma.user.findUnique({
+        where: { id: currentUserId },
+        include: { accounts: true }
+      });
+    }
+
+    if (!existingUser) {
+      // Try to find user by email first to link accounts
+      existingUser = await prisma.user.findUnique({
+        where: { email: email.toLowerCase() },
+        include: { accounts: true }
+      });
+    }
 
     if (existingUser) {
-      // Check if this provider account already exists
+      // Check if this provider account already exists on the user
       const existingAccount = existingUser.accounts.find(acc => acc.provider === provider);
       
       if (!existingAccount) {
-        // Link new social account to existing user
-        await prisma.userAccount.create({
-          data: {
-            userId: existingUser.id,
-            provider,
-            providerId,
-            lastLoginAt: new Date()
-          }
+        // First check if this specific Google account is linked to another user
+        const otherAccount = await prisma.userAccount.findFirst({
+          where: { provider, providerId }
         });
+
+        if (otherAccount) {
+          // Relink this account to the current user
+          await prisma.userAccount.update({
+            where: { id: otherAccount.id },
+            data: { userId: existingUser.id, lastLoginAt: new Date() }
+          });
+        } else {
+          // Link new social account to existing user
+          await prisma.userAccount.create({
+            data: {
+              userId: existingUser.id,
+              provider,
+              providerId,
+              lastLoginAt: new Date()
+            }
+          });
+        }
       } else {
-        // Update existing account's lastLoginAt
+        // Update existing account's providerId and lastLoginAt
         await prisma.userAccount.update({
           where: { id: existingAccount.id },
-          data: { lastLoginAt: new Date() }
+          data: { providerId, lastLoginAt: new Date() }
+        });
+
+        // Clean up other users who might have been linked to this google account
+        await prisma.userAccount.deleteMany({
+          where: {
+            provider,
+            providerId,
+            userId: { not: existingUser.id }
+          }
         });
       }
 

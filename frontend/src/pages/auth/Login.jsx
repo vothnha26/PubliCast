@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { Eye, EyeOff, Wifi, Check, Loader2 } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
 import authService from "../../services/auth.service";
@@ -53,7 +53,7 @@ function LeftPanel({ tagline, features, trustedText }) {
 
 export function LoginPage({ initialScreen = "login" }) {
   const { t } = useTranslation("auth");
-  const { login, register, verifyOTP } = useAuth();
+  const { login, register, verifyOTP, loginVerify2FA } = useAuth();
   const [screen, setScreen] = useState(initialScreen);
   const [showPass, setShowPass] = useState(false);
   const [email, setEmail] = useState("");
@@ -61,10 +61,13 @@ export function LoginPage({ initialScreen = "login" }) {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [fullName, setFullName] = useState("");
   const [otp, setOtp] = useState("");
+  const [preAuthToken, setPreAuthToken] = useState("");
+  const [twoFactorCode, setTwoFactorCode] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [passStrength, setPassStrength] = useState(0);
   const [resendTimer, setResendTimer] = useState(0);
   const navigate = useNavigate();
+  const location = useLocation();
 
   // Restore timer from localStorage on mount
   useEffect(() => {
@@ -79,25 +82,19 @@ export function LoginPage({ initialScreen = "login" }) {
     }
   }, []);
 
-  // Restore state on F5
+  // Restore state from router state
   useEffect(() => {
-    const pendingEmail = localStorage.getItem(STORAGE_KEYS.PENDING_VERIFY_EMAIL);
-    
-    // Nếu đang ở URL /verify-otp mà có email chờ xác thực
-    if (initialScreen === "verify-otp" && pendingEmail) {
-      setEmail(pendingEmail);
+    if (initialScreen === "verify-otp") {
+      const stateEmail = location.state?.email;
+      if (!stateEmail) {
+        toast.error("Không tìm thấy thông tin xác thực. Vui lòng đăng ký lại.");
+        navigate("/signup", { replace: true });
+        return;
+      }
+      setEmail(stateEmail);
     }
-    
     setScreen(initialScreen);
-  }, [initialScreen]);
-
-  // Persist state to localStorage for verify flow
-  useEffect(() => {
-    if (screen === "verify-otp" && email) {
-      localStorage.setItem(STORAGE_KEYS.IS_VERIFYING_OTP, "true");
-      localStorage.setItem(STORAGE_KEYS.PENDING_VERIFY_EMAIL, email);
-    }
-  }, [screen, email]);
+  }, [initialScreen, location.state, navigate]);
 
   useEffect(() => {
     let interval;
@@ -117,15 +114,35 @@ export function LoginPage({ initialScreen = "login" }) {
     }
     setIsLoading(true);
     try {
-      await login(email, password);
+      const res = await login(email, password);
+      if (res && res.require2FA) {
+        setPreAuthToken(res.preAuthToken);
+        setScreen("verify-2fa");
+      } else {
+        navigate("/dashboard");
+      }
+    } catch (err) {
+      if (err.message && err.message.includes("Account not activated")) {
+        toast.info(t("errors.activationRequired"));
+        navigate("/register/verify-otp", { state: { email } });
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleVerify2FA = async (e) => {
+    if (e) e.preventDefault();
+    if (!twoFactorCode) {
+      toast.error("Vui lòng nhập mã xác thực bảo mật 2 lớp.");
+      return;
+    }
+    setIsLoading(true);
+    try {
+      await loginVerify2FA(preAuthToken, twoFactorCode);
       navigate("/dashboard");
     } catch (err) {
-      if (err.message.includes("Account not activated")) {
-        localStorage.setItem(STORAGE_KEYS.IS_VERIFYING_OTP, "true");
-        localStorage.setItem(STORAGE_KEYS.PENDING_VERIFY_EMAIL, email);
-        toast.info(t("errors.activationRequired"));
-        navigate("/verify-otp");
-      }
+      // Handled by store
     } finally {
       setIsLoading(false);
     }
@@ -144,14 +161,12 @@ export function LoginPage({ initialScreen = "login" }) {
     setIsLoading(true);
     try {
       await register({ name: fullName, email, password, confirmPassword });
-      localStorage.setItem(STORAGE_KEYS.IS_VERIFYING_OTP, "true");
-      localStorage.setItem(STORAGE_KEYS.PENDING_VERIFY_EMAIL, email);
       
       const expiry = Date.now() + 60 * 1000;
       localStorage.setItem(STORAGE_KEYS.RESEND_TIMER_EXPIRY, expiry.toString());
       setResendTimer(60);
       
-      navigate("/verify-otp");
+      navigate("/register/verify-otp", { state: { email } });
     } catch (err) {
       // Error handled by AuthContext
     } finally {
@@ -213,7 +228,7 @@ export function LoginPage({ initialScreen = "login" }) {
     }
   };
 
-  if (screen === "login" || screen === "signup" || screen === "verify-otp") {
+  if (screen === "login" || screen === "signup" || screen === "verify-otp" || screen === "verify-2fa") {
     return (
       <div className="flex h-screen w-full bg-white overflow-hidden">
         <LeftPanel
@@ -381,6 +396,45 @@ export function LoginPage({ initialScreen = "login" }) {
                     {t("register.loginLink")}
                   </span>
                 </div>
+              </>
+            ) : screen === "verify-2fa" ? (
+              <>
+                <div className="md:hidden flex items-center gap-2 mb-8">
+                   <div style={{ width: 28, height: 28, background: "#0A0A0A", borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                      <Wifi size={14} color="#FFF" />
+                   </div>
+                   <span style={{ color: "#0A0A0A", fontSize: 16, fontWeight: 500 }}>StreamHub</span>
+                </div>
+
+                <h3 style={{ fontSize: 24, fontWeight: 500, color: "#0A0A0A", marginBottom: 4 }}>Bảo mật 2 lớp</h3>
+                <p style={{ fontSize: 14, color: "#6B7280", marginBottom: 32 }}>Vui lòng nhập mã xác thực từ ứng dụng Authenticator của bạn hoặc mã backup dự phòng.</p>
+
+                <form onSubmit={handleVerify2FA} className="flex flex-col gap-6 mb-6">
+                  <div>
+                    <label style={{ display: "block", fontSize: 12, fontWeight: 500, color: "#374151", marginBottom: 6 }}>Mã xác thực (TOTP / Backup Code)</label>
+                    <input type="text" placeholder="000000" value={twoFactorCode} onChange={(e) => setTwoFactorCode(e.target.value)} maxLength={8}
+                      style={{ width: "100%", padding: "12px 14px", borderRadius: 10, border: "0.5px solid #E5E7EB", fontSize: 24, fontWeight: 700, letterSpacing: 4, textAlign: "center", outline: "none", height: 56 }} required />
+                  </div>
+
+                  <button
+                    type="submit"
+                    disabled={isLoading}
+                    style={{ width: "100%", height: 46, borderRadius: 10, background: "#0A0A0A", color: "#FFF", fontSize: 14, fontWeight: 500, cursor: "pointer", border: "none", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}
+                  >
+                    {isLoading ? <Loader2 size={18} className="animate-spin" /> : "Xác nhận đăng nhập"}
+                  </button>
+                  <button 
+                    type="button"
+                    onClick={() => {
+                      setScreen("login");
+                      setTwoFactorCode("");
+                    }}
+                    style={{ width: "100%", marginTop: 12 }}
+                    className="text-center text-sm text-gray-500 hover:text-black transition-colors bg-transparent border-none cursor-pointer"
+                  >
+                    Quay lại đăng nhập
+                  </button>
+                </form>
               </>
             ) : (
               <>

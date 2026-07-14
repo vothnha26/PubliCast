@@ -6,8 +6,14 @@ const tokenService = require('./token.service');
 const googleOAuthService = require('../social/google-oauth.service');
 const brandService = require('../workspace/brand.service');
 const { eventEmitter, EVENTS } = require('../../events/event-emitter');
-const { USER_STATUS, AUTH_PROVIDERS, ERROR_MESSAGES } = require('../../utils/constants');
+const { USER_STATUS, AUTH_PROVIDERS, ERROR_MESSAGES, DEFAULT_CONFIG } = require('../../utils/constants');
 const redisClient = require('../../config/redis');
+const { OtpVerificationStrategy, LinkTokenVerificationStrategy, VerificationContext } = require('./verification.strategy');
+const {
+  UserExistenceValidator, EmailVerificationValidator, UserStatusValidator, PasswordValidator,
+  ThrottleValidator, OtpUserExistenceValidator, OtpVerificationStatusValidator,
+  ResetTokenValidator, ResetUserValidator, PasswordConstraintValidator
+} = require('./validators');
 
 const FORGOT_PASSWORD_OTP_PREFIX = 'forgot-otp';
 const FORGOT_PASSWORD_ATTEMPTS_PREFIX = 'forgot-otp-attempts';
@@ -33,8 +39,8 @@ class AuthService {
       { provider: AUTH_PROVIDERS.LOCAL, passwordHash }
     );
 
-    const otp = await otpService.generateOTP();
-    await otpService.saveOTP(normalizedEmail, otp);
+    const otpContext = new VerificationContext(new OtpVerificationStrategy());
+    const otp = await otpContext.generate(normalizedEmail);
     console.log(`🔑 [OTP] Generated registration OTP for ${normalizedEmail}: ${otp}`);
 
     // Emit event for side-effects (Brand creation, Email sending)
@@ -45,22 +51,10 @@ class AuthService {
 
   async verifyOTP(email, otp) {
     const normalizedEmail = email.toLowerCase();
-    const savedOTP = await otpService.getOTP(normalizedEmail);
-    
-    if (!savedOTP) {
-      const error = new Error(ERROR_MESSAGES.OTP_EXPIRED);
-      error.status = 400;
-      throw error;
-    }
-
-    if (savedOTP !== otp) {
-      const error = new Error(ERROR_MESSAGES.INVALID_OTP);
-      error.status = 400;
-      throw error;
-    }
+    const otpContext = new VerificationContext(new OtpVerificationStrategy());
+    await otpContext.verify(normalizedEmail, otp);
 
     const user = await userRepository.updateStatus(normalizedEmail, USER_STATUS.ACTIVE, new Date());
-    await otpService.deleteOTP(normalizedEmail);
 
     // Generate JWT tokens for auto-login via TokenService
     const { accessToken, refreshToken } = await tokenService.generateAndSaveTokens(user);
@@ -80,67 +74,63 @@ class AuthService {
 
   async resendOTP(email) {
     const normalizedEmail = email.toLowerCase();
-    const throttleKey = `resend-otp-throttle:${normalizedEmail}`;
-    const isThrottled = await redisClient.get(throttleKey);
 
-    if (isThrottled) {
-      const error = new Error('Vui lòng đợi 60 giây trước khi yêu cầu mã mới');
-      error.status = 429;
-      throw error;
-    }
+    // Initialize OTP validation chain
+    const throttle = new ThrottleValidator();
+    const otpUserExistence = new OtpUserExistenceValidator();
+    const otpVerificationStatus = new OtpVerificationStatusValidator();
 
-    const user = await userRepository.findByEmail(normalizedEmail);
-    if (!user) {
-      const error = new Error(ERROR_MESSAGES.INVALID_EMAIL);
-      error.status = 404;
-      throw error;
-    }
+    throttle
+      .setNext(otpUserExistence)
+      .setNext(otpVerificationStatus);
 
-    if (user.isEmailVerified) {
-      const error = new Error('Tài khoản đã được kích hoạt');
-      error.status = 400;
-      throw error;
-    }
+    const context = { email: normalizedEmail };
+    await throttle.validate(context);
 
-    const otp = await otpService.generateOTP();
-    await otpService.saveOTP(normalizedEmail, otp);
+    const user = context.user;
+    const otpContext = new VerificationContext(new OtpVerificationStrategy());
+    const otp = await otpContext.generate(normalizedEmail);
     await emailService.sendOTP(normalizedEmail, otp);
 
     // Set throttle key for 60 seconds
+    const throttleKey = `resend-otp-throttle:${normalizedEmail}`;
     await redisClient.setEx(throttleKey, 60, '1');
 
     return { message: 'Mã OTP mới đã được gửi vào email của bạn' };
   }
 
   async login(email, password) {
-    const user = await userRepository.findByEmailWithPassword(email);
+    const normalizedEmail = email.toLowerCase();
 
-    if (!user) {
-      const error = new Error(ERROR_MESSAGES.INVALID_EMAIL);
-      error.status = 401;
-      throw error;
-    }
+    // Initialize Login validation chain
+    const userExistence = new UserExistenceValidator();
+    const emailVerification = new EmailVerificationValidator();
+    const userStatus = new UserStatusValidator();
+    const passwordCheck = new PasswordValidator();
 
-    if (!user.isEmailVerified) {
-      const error = new Error(ERROR_MESSAGES.ACCOUNT_NOT_ACTIVATED);
-      error.status = 403;
-      throw error;
-    }
+    userExistence
+      .setNext(emailVerification)
+      .setNext(userStatus)
+      .setNext(passwordCheck);
 
-    if (!user.isActive) {
-      const error = new Error(ERROR_MESSAGES.ACCOUNT_BANNED);
-      error.status = 403;
-      throw error;
-    }
+    const context = { email: normalizedEmail, password };
+    await userExistence.validate(context);
 
-    const isValidPassword = await bcrypt.compare(password, user.passwordHash);
-    if (!isValidPassword) {
-      const error = new Error(ERROR_MESSAGES.INVALID_PASSWORD);
-      error.status = 401;
-      throw error;
-    }
-
+    const user = context.user;
     await userRepository.updateProfile(user.id, { lastLoginAt: new Date() });
+
+    // Kiểm tra bảo mật 2 lớp
+    if (user.isTwoFactorEnabled) {
+      const crypto = require('crypto');
+      const preAuthToken = crypto.randomBytes(32).toString('hex');
+      const preAuthKey = `pre-auth:${preAuthToken}`;
+      await redisClient.setEx(preAuthKey, 300, user.id);
+
+      return {
+        require2FA: true,
+        preAuthToken
+      };
+    }
 
     // Generate JWT tokens via TokenService
     const { accessToken, refreshToken } = await tokenService.generateAndSaveTokens(user);
@@ -205,7 +195,7 @@ class AuthService {
     return googleOAuthService.getAuthUrl(scopes, state, redirectUri);
   }
 
-  async handleGoogleCallback(code, redirectUri) {
+  async handleGoogleCallback(code, redirectUri, currentUserId = null) {
     const tokens = await googleOAuthService.getTokens(code, redirectUri);
     const profile = await googleOAuthService.getUserInfo(tokens);
 
@@ -224,7 +214,7 @@ class AuthService {
       providerId: profile.id
     };
 
-    const result = await userRepository.upsertSocialUser(userData, accountData);
+    const result = await userRepository.upsertSocialUser(userData, accountData, currentUserId);
     const user = result.user;
 
     const brands = await brandService.getUserBrands(user.id);
@@ -252,85 +242,220 @@ class AuthService {
     const user = await userRepository.findByEmailWithPassword(normalizedEmail);
 
     if (user && user.isActive && user.isEmailVerified) {
-      const otp = await otpService.generateOTP();
-      await redisClient.setEx(
-        `${FORGOT_PASSWORD_OTP_PREFIX}:${normalizedEmail}`,
-        FORGOT_PASSWORD_OTP_EXPIRY_SECONDS,
-        otp
-      );
-      await redisClient.del(`${FORGOT_PASSWORD_ATTEMPTS_PREFIX}:${normalizedEmail}`);
-      console.log(`🔑 [OTP] Generated forgot password OTP for ${normalizedEmail}: ${otp}`);
-      await emailService.sendForgotPasswordOTP(normalizedEmail, otp);
+      const tokenContext = new VerificationContext(new LinkTokenVerificationStrategy());
+      const token = await tokenContext.generate(normalizedEmail);
+      
+      const resetLink = `${DEFAULT_CONFIG.FRONTEND_URL}/reset-password?token=${token}`;
+      console.log(`🔑 [Reset Link] Generated password reset link for ${normalizedEmail}: ${resetLink}`);
+      await emailService.sendResetPasswordLink(normalizedEmail, resetLink);
     }
 
-    return { message: ERROR_MESSAGES.FORGOT_PASSWORD_OTP_SENT };
+    return { message: ERROR_MESSAGES.RESET_LINK_SENT };
   }
 
-  async resetPassword(email, otp, newPassword) {
-    const normalizedEmail = email.toLowerCase();
-    const otpKey = `${FORGOT_PASSWORD_OTP_PREFIX}:${normalizedEmail}`;
-    const attemptsKey = `${FORGOT_PASSWORD_ATTEMPTS_PREFIX}:${normalizedEmail}`;
+  async verifyResetToken(token) {
+    const strategy = new LinkTokenVerificationStrategy();
+    const email = await strategy.verify(token);
+    return { valid: true, email };
+  }
 
-    const savedOTP = await redisClient.get(otpKey);
-    if (!savedOTP) {
-      const error = new Error(ERROR_MESSAGES.RESET_PASSWORD_OTP_EXPIRED);
-      error.status = 400;
-      throw error;
-    }
+  async resetPasswordWithToken(token, newPassword) {
+    // Initialize Reset Password validation chain
+    const resetToken = new ResetTokenValidator();
+    const resetUser = new ResetUserValidator();
+    const passwordConstraint = new PasswordConstraintValidator();
 
-    if (savedOTP !== otp) {
-      const attempts = await redisClient.incr(attemptsKey);
-      if (attempts === 1) {
-        await redisClient.expire(attemptsKey, FORGOT_PASSWORD_OTP_EXPIRY_SECONDS);
-      }
+    resetToken
+      .setNext(resetUser)
+      .setNext(passwordConstraint);
 
-      if (attempts >= MAX_RESET_OTP_ATTEMPTS) {
-        await Promise.all([
-          redisClient.del(otpKey),
-          redisClient.del(attemptsKey)
-        ]);
+    const context = { token, newPassword };
+    await resetToken.validate(context);
 
-        const error = new Error(ERROR_MESSAGES.RESET_PASSWORD_OTP_LOCKED);
-        error.status = 400;
-        throw error;
-      }
-
-      const remainingAttempts = MAX_RESET_OTP_ATTEMPTS - attempts;
-      const error = new Error(`${ERROR_MESSAGES.RESET_PASSWORD_INVALID_OTP}. ${remainingAttempts} attempts remaining`);
-      error.status = 400;
-      error.remainingAttempts = remainingAttempts;
-      throw error;
-    }
-
-    const user = await userRepository.findByEmailWithPassword(normalizedEmail);
-    if (!user || !user.isActive || !user.passwordHash) {
-      const error = new Error(ERROR_MESSAGES.RESET_PASSWORD_OTP_EXPIRED);
-      error.status = 400;
-      throw error;
-    }
-
-    const isSamePassword = await bcrypt.compare(newPassword, user.passwordHash);
-    if (isSamePassword) {
-      const error = new Error(ERROR_MESSAGES.NEW_PASSWORD_SAME_AS_OLD);
-      error.status = 400;
-      throw error;
-    }
+    const email = context.email;
+    const user = context.user;
+    const strategy = context.strategy;
 
     const passwordHash = await bcrypt.hash(newPassword, 10);
-    const updateResult = await userRepository.updateLocalPassword(normalizedEmail, passwordHash);
+    const updateResult = await userRepository.updateLocalPassword(email, passwordHash);
     if (!updateResult) {
-      const error = new Error('Password update failed');
+      const error = new Error('Cập nhật mật khẩu thất bại.');
       error.status = 500;
       throw error;
     }
 
+    // Clear user tokens across devices and delete current reset token
     await Promise.all([
-      redisClient.del(otpKey),
-      redisClient.del(attemptsKey),
+      strategy.delete(token),
       tokenService.clearTokens(user.id)
     ]);
 
     return { message: ERROR_MESSAGES.RESET_PASSWORD_SUCCESS };
+  }
+
+  async setup2FA(userId) {
+    const user = await userRepository.findById(userId);
+    if (!user) {
+      const error = new Error('Không tìm thấy người dùng');
+      error.status = 404;
+      throw error;
+    }
+    if (user.isTwoFactorEnabled) {
+      const error = new Error('Tài khoản đã được kích hoạt bảo mật 2 lớp');
+      error.status = 400;
+      throw error;
+    }
+
+    const { TwoFactorVerificationStrategy } = require('./verification.strategy');
+    const strategy = new TwoFactorVerificationStrategy();
+    const secret = await strategy.generate(user.email);
+
+    // Lưu secret tạm thời vào DB
+    await userRepository.updateProfile(userId, { twoFactorSecret: secret });
+
+    // Tạo otpauth url cho authenticator app
+    const otpauthUrl = `otpauth://totp/PubliCast:${user.email}?secret=${secret}&issuer=PubliCast`;
+    
+    // Tạo QR Code
+    const QRCode = require('qrcode');
+    const qrCodeDataUrl = await QRCode.toDataURL(otpauthUrl);
+
+    return {
+      secret,
+      qrCodeDataUrl
+    };
+  }
+
+  async verify2FA(userId, code) {
+    const user = await userRepository.findById(userId);
+    if (!user || !user.twoFactorSecret) {
+      const error = new Error('Bảo mật 2 lớp chưa được cài đặt');
+      error.status = 400;
+      throw error;
+    }
+
+    const { TwoFactorVerificationStrategy } = require('./verification.strategy');
+    const strategy = new TwoFactorVerificationStrategy();
+    await strategy.verify(user.twoFactorSecret, code);
+
+    // Tạo 10 mã dự phòng backup codes
+    const crypto = require('crypto');
+    const backupCodes = [];
+    const hashedBackupCodes = [];
+
+    for (let i = 0; i < 10; i++) {
+      const plainCode = crypto.randomBytes(4).toString('hex'); // 8 ký tự hex
+      backupCodes.push(plainCode);
+      const hashed = crypto.createHash('sha256').update(plainCode).digest('hex');
+      hashedBackupCodes.push(hashed);
+    }
+
+    // Cập nhật trạng thái bật 2FA và lưu backup codes dạng JSON
+    await userRepository.updateProfile(userId, {
+      isTwoFactorEnabled: true,
+      twoFactorBackupCodes: JSON.stringify(hashedBackupCodes)
+    });
+
+    return {
+      backupCodes
+    };
+  }
+
+  async disable2FA(userId, code) {
+    const user = await userRepository.findById(userId);
+    if (!user || !user.isTwoFactorEnabled || !user.twoFactorSecret) {
+      const error = new Error('Bảo mật 2 lớp chưa được kích hoạt');
+      error.status = 400;
+      throw error;
+    }
+
+    const { TwoFactorVerificationStrategy } = require('./verification.strategy');
+    const strategy = new TwoFactorVerificationStrategy();
+    await strategy.verify(user.twoFactorSecret, code);
+
+    await userRepository.updateProfile(userId, {
+      isTwoFactorEnabled: false,
+      twoFactorSecret: null,
+      twoFactorBackupCodes: null
+    });
+
+    return { message: 'Đã tắt bảo mật 2 lớp thành công' };
+  }
+
+  async loginVerify2FA(preAuthToken, code) {
+    const preAuthKey = `pre-auth:${preAuthToken}`;
+    const userId = await redisClient.get(preAuthKey);
+
+    if (!userId) {
+      const error = new Error('Yêu cầu xác thực đã hết hạn hoặc không hợp lệ.');
+      error.status = 401;
+      throw error;
+    }
+
+    const user = await userRepository.findById(userId);
+    if (!user || !user.isTwoFactorEnabled) {
+      const error = new Error('Tài khoản chưa được kích hoạt bảo mật 2 lớp.');
+      error.status = 400;
+      throw error;
+    }
+
+    let verified = false;
+    let isBackupUsed = false;
+
+    // 1. Kiểm tra backup codes trước
+    if (user.twoFactorBackupCodes) {
+      const crypto = require('crypto');
+      const hashedBackupCodes = JSON.parse(user.twoFactorBackupCodes);
+      const hashedInput = crypto.createHash('sha256').update(code).digest('hex');
+      const codeIndex = hashedBackupCodes.indexOf(hashedInput);
+
+      if (codeIndex !== -1) {
+        verified = true;
+        isBackupUsed = true;
+        // Xóa mã backup đã sử dụng
+        hashedBackupCodes.splice(codeIndex, 1);
+        await userRepository.updateProfile(userId, {
+          twoFactorBackupCodes: JSON.stringify(hashedBackupCodes)
+        });
+      }
+    }
+
+    // 2. Kiểm tra TOTP code
+    if (!verified) {
+      const { TwoFactorVerificationStrategy } = require('./verification.strategy');
+      const strategy = new TwoFactorVerificationStrategy();
+      try {
+        await strategy.verify(user.twoFactorSecret, code);
+        verified = true;
+      } catch (err) {
+        // Bỏ qua lỗi TOTP để nếu không verify được thì ném lỗi mã xác thực không chính xác cuối cùng
+      }
+    }
+
+    if (!verified) {
+      const error = new Error('Mã xác thực không chính xác.');
+      error.status = 400;
+      throw error;
+    }
+
+    // Đăng nhập thành công, xóa preAuthToken
+    await redisClient.del(preAuthKey);
+
+    // Cấp JWT tokens
+    const { accessToken, refreshToken } = await tokenService.generateAndSaveTokens(user);
+
+    return {
+      accessToken,
+      refreshToken,
+      role: user.role,
+      user: {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        role: user.role
+      },
+      isBackupUsed
+    };
   }
 }
 

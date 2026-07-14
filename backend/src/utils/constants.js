@@ -137,7 +137,10 @@ const ERROR_MESSAGES = {
   RESET_PASSWORD_INVALID_OTP: 'Invalid OTP',
   NEW_PASSWORD_SAME_AS_OLD: 'New password must differ from old',
   RESET_PASSWORD_SUCCESS: 'Password reset successfully',
-  USER_NOT_FOUND: 'User not found'
+  USER_NOT_FOUND: 'User not found',
+  INVALID_RESET_TOKEN: 'Mã khôi phục mật khẩu không hợp lệ hoặc đã được sử dụng.',
+  RESET_TOKEN_EXPIRED: 'Đường dẫn khôi phục mật khẩu đã hết hạn.',
+  RESET_LINK_SENT: 'Đường dẫn đặt lại mật khẩu đã được gửi đến email của bạn.'
 };
 
 const AUTOLIST_TYPES = {

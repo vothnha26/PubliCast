@@ -24,11 +24,27 @@ class AuthController {
    */
   googleCallback = asyncHandler(async (req, res) => {
     const { code, state } = req.query;
+    console.log(`[BACKEND DEBUG googleCallback] query state: "${state}", cookies:`, req.cookies);
     const baseUrl = process.env.BACKEND_BASE_URL || `${req.protocol}://${req.get('host')}`;
     const redirectUri = `${baseUrl}/api/auth/google/callback`;
     const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
 
-    const result = await authService.handleGoogleCallback(code, redirectUri);
+    let currentUserId = null;
+    if (state === 'settings') {
+      const token = req.cookies?.accessToken;
+      console.log(`[BACKEND DEBUG googleCallback] Found token in cookies: "${token ? 'YES' : 'NO'}"`);
+      if (token) {
+        try {
+          const decoded = jwtUtils.verifyAccessToken(token);
+          currentUserId = decoded.id;
+          console.log(`[BACKEND DEBUG googleCallback] Token verified successfully, userId: "${currentUserId}"`);
+        } catch (err) {
+          console.error(`[BACKEND DEBUG googleCallback] Token verification failed:`, err.message);
+        }
+      }
+    }
+
+    const result = await authService.handleGoogleCallback(code, redirectUri, currentUserId);
     setAuthCookies(res, result.accessToken, result.refreshToken);
 
     if (state === 'settings') {
@@ -68,7 +84,7 @@ class AuthController {
   });
 
   /**
-   * Request forgot password OTP.
+   * Request forgot password Reset Link.
    * POST /api/auth/forgot-password
    */
   forgotPassword = asyncHandler(async (req, res) => {
@@ -78,12 +94,28 @@ class AuthController {
   });
 
   /**
-   * Verify OTP and set a new password.
+   * Verify Reset Token.
+   * GET /api/auth/verify-reset-token
+   */
+  verifyResetToken = asyncHandler(async (req, res) => {
+    const { token } = req.query;
+    if (!token) {
+      return res.status(400).json({ message: 'Mã token khôi phục mật khẩu là bắt buộc.' });
+    }
+    const result = await authService.verifyResetToken(token);
+    res.status(200).json(result);
+  });
+
+  /**
+   * Reset password using Token.
    * POST /api/auth/reset-password
    */
   resetPassword = asyncHandler(async (req, res) => {
-    const { email, otp, newPassword } = req.body;
-    const result = await authService.resetPassword(email.toLowerCase(), otp, newPassword);
+    const { token, newPassword } = req.body;
+    if (!token || !newPassword) {
+      return res.status(400).json({ message: 'Token và mật khẩu mới là bắt buộc.' });
+    }
+    const result = await authService.resetPasswordWithToken(token, newPassword);
     res.status(200).json(result);
   });
 
@@ -100,6 +132,13 @@ class AuthController {
       // Reset rate limit on successful login
       if (req.rateLimit) {
         await loginRateLimiter.resetAttempts(req.rateLimit.email, req.rateLimit.ip);
+      }
+
+      if (result.require2FA) {
+        return res.status(200).json({
+          require2FA: true,
+          preAuthToken: result.preAuthToken
+        });
       }
 
       // Set tokens via HttpOnly cookies only — do NOT return raw tokens in body (XSS risk)
@@ -157,6 +196,52 @@ class AuthController {
     res.clearCookie('refreshToken', { path: '/' });
 
     res.status(200).json({ message: 'Logout successful' });
+  });
+
+  setup2FA = asyncHandler(async (req, res) => {
+    const userId = req.user.id;
+    const result = await authService.setup2FA(userId);
+    res.status(200).json(result);
+  });
+
+  verify2FA = asyncHandler(async (req, res) => {
+    const userId = req.user.id;
+    const { code } = req.body;
+    if (!code) {
+      return res.status(400).json({ message: 'Mã OTP xác thực là bắt buộc.' });
+    }
+    const result = await authService.verify2FA(userId, code);
+    res.status(200).json(result);
+  });
+
+  disable2FA = asyncHandler(async (req, res) => {
+    const userId = req.user.id;
+    const { code } = req.body;
+    if (!code) {
+      return res.status(400).json({ message: 'Mã OTP xác thực là bắt buộc.' });
+    }
+    const result = await authService.disable2FA(userId, code);
+    res.status(200).json(result);
+  });
+
+  loginVerify2FA = asyncHandler(async (req, res) => {
+    const { preAuthToken, code } = req.body;
+    if (!preAuthToken || !code) {
+      return res.status(400).json({ message: 'Token xác thực tạm thời và mã OTP là bắt buộc.' });
+    }
+
+    const result = await authService.loginVerify2FA(preAuthToken, code);
+
+    // Set cookies
+    setAuthCookies(res, result.accessToken, result.refreshToken);
+
+    res.status(200).json({
+      message: ERROR_MESSAGES.LOGIN_SUCCESS,
+      role: result.role,
+      redirectUrl: result.role === USER_ROLES.ADMIN ? '/admin/profile' : '/user/profile',
+      user: result.user,
+      isBackupUsed: result.isBackupUsed
+    });
   });
 }
 
