@@ -6,6 +6,8 @@ import { useBrand } from "../context/BrandContext";
 import socialService from "../services/social.service";
 import postService from "../services/post.service";
 import { FALLBACK_DEMOGRAPHICS, EMPTY_ANALYTICS_DATA } from "@/mocks/dashboardFallback";
+import { mapToPostPreview } from "../utils/postPreview";
+import { buildPostDetailRoute } from "../constants/routes";
 
 export function usePlatformDashboard(platform) {
   const navigate = useNavigate();
@@ -140,39 +142,6 @@ export function usePlatformDashboard(platform) {
   const [isVideoModalOpen, setIsVideoModalOpen] = useState(false);
   const [isCompetitorModalOpen, setIsCompetitorModalOpen] = useState(false);
 
-  // Video Detail State
-  const videoIdParam = searchParams.get("videoId");
-
-  const selectedVideo = useMemo(() => {
-    if (!videoIdParam) return null;
-    return publishedVideos.find(v => (v.id === videoIdParam || v.videoId === videoIdParam)) ||
-           trackedVideos.find(v => (v.id === videoIdParam || v.videoId === videoIdParam)) ||
-           null;
-  }, [videoIdParam, publishedVideos, trackedVideos]);
-
-  const selectVideo = useCallback((video) => {
-    const nextParams = new URLSearchParams(searchParams);
-    if (video) {
-      const nextVideoId = video.id || video.videoId;
-      if (searchParams.get("videoId") !== nextVideoId) {
-        nextParams.set("videoId", nextVideoId);
-        setSearchParams(nextParams, { replace: true });
-      }
-    } else {
-      if (searchParams.has("videoId")) {
-        nextParams.delete("videoId");
-        setSearchParams(nextParams, { replace: true });
-      }
-    }
-  }, [searchParams, setSearchParams]);
-
-  const [videoAnalytics, setVideoAnalytics] = useState([]);
-  const [videoInsights, setVideoInsights] = useState(null);
-  const [isVideoDetailLoading, setIsVideoDetailLoading] = useState(false);
-  const [isVideoInsightsLoading, setIsVideoInsightsLoading] = useState(false);
-  const [videoInsightsError, setVideoInsightsError] = useState(null);
-  const [isVideoDetailModalOpen, setIsVideoDetailModalOpen] = useState(false);
-
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   const loadMetrics = async (brandId, force = false) => {
@@ -274,9 +243,24 @@ export function usePlatformDashboard(platform) {
   };
 
   const handleVideoClick = useCallback((video) => {
-    selectVideo(video);
-    setIsVideoDetailModalOpen(true);
-  }, [selectVideo]);
+    const extractPlatformPostId = (rawPost, platformKey) => {
+      if (!rawPost?.platformPostId) return rawPost?.id || rawPost?.videoId || null;
+      if (typeof rawPost.platformPostId === "object") {
+        return rawPost.platformPostId[platformKey] || rawPost.platformPostId[platformKey.toUpperCase()] || null;
+      }
+      try {
+        const parsed = JSON.parse(rawPost.platformPostId);
+        return parsed[platformKey] || parsed[platformKey.toUpperCase()] || null;
+      } catch (e) {
+        return rawPost.platformPostId;
+      }
+    };
+
+    const postId = extractPlatformPostId(video, platform) || video.id || video.videoId;
+    navigate(buildPostDetailRoute(platform, postId), {
+      state: { post: mapToPostPreview(video, platform) }
+    });
+  }, [navigate, platform]);
 
   useEffect(() => {
     setMetrics(null);
@@ -338,54 +322,6 @@ export function usePlatformDashboard(platform) {
       setSearchParams(nextParams, { replace: true });
     }
   }, [platform, searchParams, setSearchParams]);
-
-  // Reactively fetch video analytics and insights when selectedVideo changes
-  useEffect(() => {
-    if (!selectedVideo || platform !== "youtube" || !activeBrand) {
-      setVideoAnalytics([]);
-      setVideoInsights(null);
-      return;
-    }
-
-    setIsVideoDetailLoading(true);
-    setIsVideoInsightsLoading(true);
-    setVideoInsightsError(null);
-
-    const targetVideoId = selectedVideo.id || selectedVideo.videoId;
-
-    const analyticsPromise = socialService.getVideoAnalytics(
-      activeBrand.id,
-      targetVideoId,
-      dateRange.from?.toISOString().split('T')[0],
-      dateRange.to?.toISOString().split('T')[0]
-    ).then(res => setVideoAnalytics(res.data || []))
-     .catch(e => {
-       console.error("Failed to fetch video analytics", e);
-       setVideoAnalytics([]);
-     });
-
-    const insightsPromise = socialService.getVideoInsights(
-      activeBrand.id,
-      targetVideoId
-    ).then(res => setVideoInsights(res || null))
-     .catch(e => {
-       console.error("Failed to fetch video insights", e);
-       setVideoInsightsError(e.message || "Failed to load video insights");
-       setVideoInsights(null);
-     });
-
-    Promise.all([analyticsPromise, insightsPromise]).finally(() => {
-      setIsVideoDetailLoading(false);
-      setIsVideoInsightsLoading(false);
-    });
-  }, [selectedVideo, activeBrand, platform, dateRange.from, dateRange.to]);
-
-  // Auto open modal on non-YouTube platform for selectedVideo
-  useEffect(() => {
-    if (selectedVideo && platform !== "youtube") {
-      setIsVideoDetailModalOpen(true);
-    }
-  }, [selectedVideo, platform]);
 
   // Reload metrics when dateRange changes or activeBrand changes
   useEffect(() => {
@@ -733,15 +669,6 @@ export function usePlatformDashboard(platform) {
     setIsVideoModalOpen,
     isCompetitorModalOpen,
     setIsCompetitorModalOpen,
-    selectedVideo,
-    setSelectedVideo: selectVideo,
-    videoAnalytics,
-    videoInsights,
-    isVideoDetailLoading,
-    isVideoInsightsLoading,
-    videoInsightsError,
-    isVideoDetailModalOpen,
-    setIsVideoDetailModalOpen,
     handleVideoClick,
     stats,
     realData,

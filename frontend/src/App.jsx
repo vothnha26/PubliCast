@@ -24,6 +24,7 @@ import { GettingStartedPage } from "./pages/workspace/Start";
 // Workspace Pages
 import { DashboardPage } from "./pages/workspace/Dashboard";
 import { PlatformDashboardPage } from "./pages/workspace/PlatformDashboard";
+import { PostAnalyticsDetailPage } from "./pages/workspace/PostAnalyticsDetailPage";
 import { AnalyticsPage } from "./pages/workspace/Analytics";
 import { MediaLibraryPage } from "./pages/workspace/MediaLibrary";
 import { SettingsPage } from "./pages/workspace/Settings";
@@ -150,6 +151,7 @@ export default function App() {
               {/* Protected Workspace Routes */}
               <Route path="/dashboard" element={<ProtectedRoute allowedRoles={CLIENT_ROLES}><DashboardPage /></ProtectedRoute>} />
               <Route path="/dashboard/:platform" element={<ProtectedRoute allowedRoles={CLIENT_ROLES}><PlatformDashboardPage /></ProtectedRoute>} />
+              <Route path="/dashboard/:platform/post/:postId" element={<ProtectedRoute allowedRoles={CLIENT_ROLES}><PostAnalyticsDetailPage /></ProtectedRoute>} />
               <Route path="/scheduler" element={<Navigate to="/dashboard" replace />} />
               <Route path="/live" element={<Navigate to="/dashboard" replace />} />
               <Route path="/live/setup" element={<Navigate to="/dashboard" replace />} />
