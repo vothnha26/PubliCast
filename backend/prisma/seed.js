@@ -323,6 +323,34 @@ async function main() {
 
   console.log(`✅ Admin user ensured: ${adminEmail}`);
 
+  // Pre-create a brand for the admin user on the STARTER plan (maxBrands: 3).
+  // Without this, the backend's lazy auto-brand-creation (profile.service.js)
+  // creates one brand on FREE plan (maxBrands: 1) on first login. Since the DB
+  // is truncated every seed run, that single brand immediately hits the FREE
+  // limit, which makes the frontend's "Add brand" button open the Limit
+  // Reached modal instead of the Create Brand modal — breaking every
+  // Selenium test that expects to create/delete brands (TC03, TC04, TC14, TC15).
+  const existingBrand = await prisma.brand.findFirst({ where: { ownerId: adminUser.id } });
+  if (!existingBrand) {
+    await prisma.brand.create({
+      data: {
+        name: 'New Workspace',
+        timezone: 'Asia/Ho_Chi_Minh',
+        defaultLanguage: 'vi',
+        owner: { connect: { id: adminUser.id } },
+        subscription: {
+          create: {
+            planId: starterPlan.id,
+            status: 'ACTIVE',
+            currentPeriodStart: new Date(),
+            currentPeriodEnd: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
+          }
+        }
+      }
+    });
+    console.log(`✅ Default brand (STARTER plan) created for ${adminEmail}`);
+  }
+
   // Upsert member user (if different from admin)
   if (memberEmail !== adminEmail) {
     const memberUser = await prisma.user.upsert({
