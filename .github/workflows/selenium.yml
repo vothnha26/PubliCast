@@ -50,23 +50,45 @@ jobs:
         run: |
           # Ghi nội dung từ secret vào file .env
           echo "$ENV_CONTENT" > .env
-          
+
           # Đã có sẵn trong secret
           sed -i '/DATABASE_URL/d' .env
           sed -i '/REDIS_HOST/d' .env
           sed -i '/REDIS_PORT/d' .env
           sed -i '/PORT/d' .env
-          
+          sed -i '/ADMIN_EMAIL/d' .env
+          sed -i '/ADMIN_PASSWORD/d' .env
+          sed -i '/MEMBER_EMAIL/d' .env
+          sed -i '/MEMBER_PASSWORD/d' .env
+
           # Ghi đè cấu hình cho môi trường CI
           echo "DATABASE_URL=mysql://root:root_password@localhost:3307/publicast" >> .env
           echo "REDIS_HOST=localhost" >> .env
           echo "REDIS_PORT=6379" >> .env
           echo "PORT=3000" >> .env
 
+          # Ensure seed creates test users matching Selenium credentials
+          echo "ADMIN_EMAIL=vothanhnha26@gmail.com" >> .env
+          echo "ADMIN_PASSWORD=nhacc123@" >> .env
+          echo "MEMBER_EMAIL=vothanhnha26@gmail.com" >> .env
+          echo "MEMBER_PASSWORD=nhacc123@" >> .env
+
       - name: Setup Backend Database
         working-directory: backend
         run: |
           npm install
+
+          # Wait for MySQL to be ready
+          echo "Waiting for MySQL service to accept connections..."
+          for i in {1..30}; do
+            if mysqladmin ping -h 127.0.0.1 -P 3307 -u root -proot_password --silent 2>/dev/null; then
+              echo "✅ MySQL is ready"
+              break
+            fi
+            echo "⏳ MySQL not ready yet, retrying... ($i/30)"
+            sleep 2
+          done
+
           npx prisma db push
           node prisma/seed.js
 

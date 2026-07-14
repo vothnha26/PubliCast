@@ -287,6 +287,69 @@ async function main() {
     });
   }
 
+  console.log('Seeding test users for CI/tests...');
+  const bcrypt = require('bcryptjs');
+
+  // Create deterministic test users matching Selenium/test credentials
+  const adminEmail = process.env.ADMIN_EMAIL || 'vothanhnha26@gmail.com';
+  const adminPassword = process.env.ADMIN_PASSWORD || 'nhacc123@';
+  const adminHash = await bcrypt.hash(adminPassword, 10);
+
+  const memberEmail = process.env.MEMBER_EMAIL || 'vothanhnha26@gmail.com';
+  const memberPassword = process.env.MEMBER_PASSWORD || 'nhacc123@';
+  const memberHash = await bcrypt.hash(memberPassword, 10);
+
+  // Upsert admin user
+  const adminUser = await prisma.user.upsert({
+    where: { email: adminEmail },
+    update: {
+      isActive: true,
+      isEmailVerified: true,
+      role: 'ADMIN'
+    },
+    create: {
+      email: adminEmail,
+      name: 'CI Admin',
+      isActive: true,
+      isEmailVerified: true,
+      role: 'ADMIN',
+      userAccounts: {
+        create: {
+          provider: 'LOCAL',
+          passwordHash: adminHash
+        }
+      }
+    }
+  });
+
+  console.log(`✅ Admin user ensured: ${adminEmail}`);
+
+  // Upsert member user (if different from admin)
+  if (memberEmail !== adminEmail) {
+    const memberUser = await prisma.user.upsert({
+      where: { email: memberEmail },
+      update: {
+        isActive: true,
+        isEmailVerified: true,
+        role: 'MEMBER'
+      },
+      create: {
+        email: memberEmail,
+        name: 'CI Member',
+        isActive: true,
+        isEmailVerified: true,
+        role: 'MEMBER',
+        userAccounts: {
+          create: {
+            provider: 'LOCAL',
+            passwordHash: memberHash
+          }
+        }
+      }
+    });
+    console.log(`✅ Member user ensured: ${memberEmail}`);
+  }
+
   console.log('Seeding completed successfully.');
 }
 
