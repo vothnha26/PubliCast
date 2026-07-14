@@ -81,7 +81,7 @@ async function seedPlatforms(platforms) {
   console.log(`\n🛠️ Khởi tạo Mock Social Accounts cho các nền tảng: ${platforms.join(', ')}...`);
   const connection = await mysql.createConnection(process.env.MYSQL_URL || 'mysql://root:root_password@localhost:3307/publicast');
   try {
-    const email = process.env.ADMIN_EMAIL || 'vothanhnha26@gmail.com';
+    const email = process.env.ADMIN_EMAIL || 'ci-admin@publicast.test';
     const [users] = await connection.execute('SELECT id FROM users WHERE email = ?', [email]);
     if (users.length === 0) throw new Error(`User not found: ${email}`);
     const userId = users[0].id;
@@ -149,7 +149,7 @@ async function cleanupMockSocialAccounts() {
   console.log("🧹 Dọn dẹp tất cả Mock Social Accounts...");
   const connection = await mysql.createConnection(process.env.MYSQL_URL || 'mysql://root:root_password@localhost:3307/publicast');
   try {
-    const email = process.env.ADMIN_EMAIL || 'vothanhnha26@gmail.com';
+    const email = process.env.ADMIN_EMAIL || 'ci-admin@publicast.test';
     const [users] = await connection.execute('SELECT id FROM users WHERE email = ?', [email]);
     if (users.length > 0) {
       const userId = users[0].id;
@@ -245,7 +245,7 @@ describe('Post Creator Detailed E2E Suite', function () {
    * gây ra auto-redirect khi vào trang /login. Backend sẽ set cookie mới đúng domain.
    */
   async function hardRelogin() {
-    const email = process.env.ADMIN_EMAIL || 'vothanhnha26@gmail.com';
+    const email = process.env.ADMIN_EMAIL || 'ci-admin@publicast.test';
     const password = process.env.ADMIN_PASSWORD || 'nhacc123@';
 
     // Bước 1: Xóa toàn bộ cookie và storage — ngăn refresh token auto-redirect
@@ -354,7 +354,7 @@ describe('Post Creator Detailed E2E Suite', function () {
     const passwordInput = await driver.findElement(By.id('password'));
     const submitButton = await driver.findElement(By.xpath("//button[@type='submit']"));
 
-    const email = process.env.ADMIN_EMAIL || 'vothanhnha26@gmail.com';
+    const email = process.env.ADMIN_EMAIL || 'ci-admin@publicast.test';
     const password = process.env.ADMIN_PASSWORD || 'nhacc123@';
 
     await emailInput.sendKeys(email);

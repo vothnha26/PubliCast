@@ -44,7 +44,7 @@ describe('Autolists E2E UI Test Suite (7 Cases + DB Assertion + Speedrun)', func
   before(async function () {
     // 1. Kết nối DB để lấy user và brand, đồng thời seed mock social account
     dbConnection = await mysql.createConnection(process.env.MYSQL_URL || 'mysql://root:root_password@localhost:3307/publicast');
-    const email = process.env.ADMIN_EMAIL || 'vothanhnha26@gmail.com';
+    const email = process.env.ADMIN_EMAIL || 'ci-admin@publicast.test';
     
     const [users] = await dbConnection.execute('SELECT id FROM users WHERE email = ?', [email]);
     if (users.length === 0) throw new Error(`User not found: ${email}`);
@@ -110,7 +110,7 @@ describe('Autolists E2E UI Test Suite (7 Cases + DB Assertion + Speedrun)', func
         await dbConnection.execute('DELETE FROM auto_lists WHERE name IN (?, ?)', [queueName, updatedQueueName]);
         
         // Xóa tất cả mock social accounts của các brand
-        const [users] = await dbConnection.execute('SELECT id FROM users WHERE email = ?', [process.env.ADMIN_EMAIL || 'vothanhnha26@gmail.com']);
+        const [users] = await dbConnection.execute('SELECT id FROM users WHERE email = ?', [process.env.ADMIN_EMAIL || 'ci-admin@publicast.test']);
         if (users.length > 0) {
           const [brands] = await dbConnection.execute('SELECT id FROM brands WHERE ownerId = ? OR id IN (SELECT brandId FROM teams WHERE userId = ?)', [users[0].id, users[0].id]);
           for (const b of brands) {
