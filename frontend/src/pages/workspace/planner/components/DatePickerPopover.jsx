@@ -2,10 +2,10 @@ import React, { useState } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 
 export function DatePickerPopover({ isOpen, onClose, selectedDate, onSelectDate }) {
-  if (!isOpen) return null;
-
   // Local view month and year
   const [viewDate, setViewDate] = useState(new Date(selectedDate));
+
+  if (!isOpen) return null;
 
   const year = viewDate.getFullYear();
   const month = viewDate.getMonth(); // 0-indexed

@@ -457,13 +457,13 @@ export function TeamManagementPage() {
 
 function InviteModal({ isOpen, onClose, activeBrandId, customRoles = [], onInviteSuccess }) {
   const { t } = useTranslation(["manage", "common"]);
-  if (!isOpen) return null;
-
   const [emails, setEmails] = useState([]);
   const [inputValue, setInputValue] = useState("");
   const [role, setRole] = useState(SYSTEM_ROLES.MEMBER);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const inputRef = useRef(null);
+
+  if (!isOpen) return null;
 
   const addEmailTag = (val) => {
     const trimmed = val.trim().toLowerCase();
@@ -669,10 +669,10 @@ function InviteModal({ isOpen, onClose, activeBrandId, customRoles = [], onInvit
 function RoleModal({ isOpen, onClose, member, customRoles = [], onSuccess }) {
   const { t } = useTranslation(["manage", "common"]);
   const confirm = useConfirm();
-  if (!isOpen) return null;
-
   const [isUpdating, setIsUpdating] = useState(false);
   const [isRemoving, setIsRemoving] = useState(false);
+
+  if (!isOpen) return null;
 
   const handleUpdateRole = async (newRole) => {
     setIsUpdating(true);
@@ -781,9 +781,6 @@ function RoleModal({ isOpen, onClose, member, customRoles = [], onSuccess }) {
 
 function RoleCreateEditModal({ isOpen, onClose, activeBrandId, role, onSuccess, systemPermissions = [] }) {
   const { t } = useTranslation(["manage", "common"]);
-  if (!isOpen) return null;
-
-  const isEdit = !!role;
   const [name, setName] = useState(role?.name || "");
   const [description, setDescription] = useState(role?.description || "");
   const [colorHex, setColorHex] = useState(role?.colorHex || PRESET_COLORS[0]);
@@ -796,8 +793,11 @@ function RoleCreateEditModal({ isOpen, onClose, activeBrandId, role, onSuccess, 
     });
     return map;
   });
-
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  if (!isOpen) return null;
+
+  const isEdit = !!role;
 
   const togglePermission = (key) => {
     setPermissions(prev => ({ ...prev, [key]: !prev[key] }));
