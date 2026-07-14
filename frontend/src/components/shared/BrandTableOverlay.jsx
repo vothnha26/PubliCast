@@ -1,5 +1,5 @@
 import React from "react";
-import { X, Search, Youtube, ExternalLink, ArrowUp, ArrowDown } from "lucide-react";
+import { X, Search, Youtube, Facebook, ExternalLink, ArrowUp, ArrowDown } from "lucide-react";
 
 export function BrandTableOverlay({ isOpen, onClose, onSelect, brands = [] }) {
   if (!isOpen) return null;

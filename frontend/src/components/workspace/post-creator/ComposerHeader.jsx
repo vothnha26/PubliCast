@@ -1,8 +1,8 @@
 import React, { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { 
-  PlayCircle, Lock, Instagram, Youtube, MessageSquare, Plus, FileText, 
-  ChevronDown, Video, LayoutGrid, Film, PlusCircle, Check 
+  PlayCircle, Lock, Instagram, Youtube, MessageSquare, Plus, FileText,
+  ChevronDown, Video, LayoutGrid, Film, PlusCircle, Check, Send
 } from "lucide-react";
 import { usePostCreatorFormContext } from "../../../context/PostCreatorFormContext";
 import { PlatformIcon } from "../../shared/PlatformIcon";
