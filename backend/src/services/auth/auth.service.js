@@ -22,7 +22,19 @@ const MAX_RESET_OTP_ATTEMPTS = 3;
 
 class AuthService {
   async register(name, email, password) {
-    const normalizedEmail = email.toLowerCase();
+    // Defensive validation
+    if (!email || typeof email !== 'string') {
+      const err = new Error('Invalid email address');
+      err.status = 400;
+      throw err;
+    }
+    if (!password || typeof password !== 'string') {
+      const err = new Error('Invalid password');
+      err.status = 400;
+      throw err;
+    }
+
+    const normalizedEmail = email.trim().toLowerCase();
     
     const existingUser = await userRepository.findByEmail(normalizedEmail);
     if (existingUser) {
@@ -50,7 +62,19 @@ class AuthService {
   }
 
   async verifyOTP(email, otp) {
-    const normalizedEmail = email.toLowerCase();
+    // Defensive validation
+    if (!email || typeof email !== 'string') {
+      const err = new Error('Invalid email address');
+      err.status = 400;
+      throw err;
+    }
+    if (!otp || typeof otp !== 'string') {
+      const err = new Error('Invalid OTP');
+      err.status = 400;
+      throw err;
+    }
+
+    const normalizedEmail = email.trim().toLowerCase();
     const otpContext = new VerificationContext(new OtpVerificationStrategy());
     await otpContext.verify(normalizedEmail, otp);
 
@@ -73,7 +97,14 @@ class AuthService {
   }
 
   async resendOTP(email) {
-    const normalizedEmail = email.toLowerCase();
+    // Defensive validation
+    if (!email || typeof email !== 'string') {
+      const err = new Error('Invalid email address');
+      err.status = 400;
+      throw err;
+    }
+
+    const normalizedEmail = email.trim().toLowerCase();
 
     // Initialize OTP validation chain
     const throttle = new ThrottleValidator();
@@ -100,7 +131,19 @@ class AuthService {
   }
 
   async login(email, password) {
-    const normalizedEmail = email.toLowerCase();
+    // Defensive validation
+    if (!email || typeof email !== 'string') {
+      const err = new Error('Invalid email address');
+      err.status = 400;
+      throw err;
+    }
+    if (!password || typeof password !== 'string') {
+      const err = new Error('Invalid password');
+      err.status = 400;
+      throw err;
+    }
+
+    const normalizedEmail = email.trim().toLowerCase();
 
     // Initialize Login validation chain
     const userExistence = new UserExistenceValidator();

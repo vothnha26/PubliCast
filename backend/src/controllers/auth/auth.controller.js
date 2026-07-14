@@ -56,7 +56,19 @@ class AuthController {
 
   register = asyncHandler(async (req, res) => {
     const { name, email, password } = req.body;
-    const user = await authService.register(name, email, password);
+
+    // Defensive input validation
+    if (!name || typeof name !== 'string' || !name.trim()) {
+      return res.status(400).json({ message: 'Name is required' });
+    }
+    if (!email || typeof email !== 'string' || !email.trim()) {
+      return res.status(400).json({ message: 'Email is required' });
+    }
+    if (!password || typeof password !== 'string' || !password.trim()) {
+      return res.status(400).json({ message: 'Password is required' });
+    }
+
+    const user = await authService.register(name.trim(), email.trim(), password);
     res.status(201).json({
       message: ERROR_MESSAGES.REGISTRATION_SUCCESS,
       userId: user.id
@@ -65,7 +77,16 @@ class AuthController {
 
   verifyOTP = asyncHandler(async (req, res) => {
     const { email, otp } = req.body;
-    const result = await authService.verifyOTP(email, otp);
+
+    // Defensive input validation
+    if (!email || typeof email !== 'string' || !email.trim()) {
+      return res.status(400).json({ message: 'Email is required' });
+    }
+    if (!otp || typeof otp !== 'string' || !otp.trim()) {
+      return res.status(400).json({ message: 'OTP is required' });
+    }
+
+    const result = await authService.verifyOTP(email.trim(), otp.trim());
 
     if (result.accessToken && result.refreshToken) {
       setAuthCookies(res, result.accessToken, result.refreshToken);
@@ -79,7 +100,13 @@ class AuthController {
 
   resendOTP = asyncHandler(async (req, res) => {
     const { email } = req.body;
-    const result = await authService.resendOTP(email);
+
+    // Defensive input validation
+    if (!email || typeof email !== 'string' || !email.trim()) {
+      return res.status(400).json({ message: 'Email is required' });
+    }
+
+    const result = await authService.resendOTP(email.trim());
     res.status(200).json(result);
   });
 
@@ -126,8 +153,16 @@ class AuthController {
   login = asyncHandler(async (req, res) => {
     const { email, password } = req.body;
 
+    // Defensive input validation
+    if (!email || typeof email !== 'string' || !email.trim()) {
+      return res.status(400).json({ message: 'Email is required' });
+    }
+    if (!password || typeof password !== 'string' || !password.trim()) {
+      return res.status(400).json({ message: 'Password is required' });
+    }
+
     try {
-      const result = await authService.login(email.toLowerCase(), password);
+      const result = await authService.login(email.trim().toLowerCase(), password);
 
       // Reset rate limit on successful login
       if (req.rateLimit) {
