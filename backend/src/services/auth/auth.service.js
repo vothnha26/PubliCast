@@ -35,6 +35,7 @@ class AuthService {
 
     const otp = await otpService.generateOTP();
     await otpService.saveOTP(normalizedEmail, otp);
+    console.log(`🔑 [OTP] Generated registration OTP for ${normalizedEmail}: ${otp}`);
 
     // Emit event for side-effects (Brand creation, Email sending)
     eventEmitter.emit(EVENTS.USER.REGISTERED, { user, otp });
@@ -95,8 +96,8 @@ class AuthService {
       throw error;
     }
 
-    if (user.isEmailVerified || !user.isActive) {
-      const error = new Error('Tài khoản đã được kích hoạt hoặc đang bị khóa');
+    if (user.isEmailVerified) {
+      const error = new Error('Tài khoản đã được kích hoạt');
       error.status = 400;
       throw error;
     }
@@ -258,6 +259,7 @@ class AuthService {
         otp
       );
       await redisClient.del(`${FORGOT_PASSWORD_ATTEMPTS_PREFIX}:${normalizedEmail}`);
+      console.log(`🔑 [OTP] Generated forgot password OTP for ${normalizedEmail}: ${otp}`);
       await emailService.sendForgotPasswordOTP(normalizedEmail, otp);
     }
 

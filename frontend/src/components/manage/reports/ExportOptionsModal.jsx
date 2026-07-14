@@ -123,6 +123,12 @@ export function AutomationSchedulingPanel({
   setEmailText,
   brandMembers = [],
   membersLoading,
+  dayOfMonth = 1,
+  setDayOfMonth,
+  format = "PDF",
+  setFormat,
+  platforms = ["Facebook", "YouTube"],
+  setPlatforms,
   onSendTestReport,
   onSaveSchedule
 }) {
@@ -160,6 +166,66 @@ export function AutomationSchedulingPanel({
 
         {receiveEmail && (
           <div className="space-y-3 pt-1 animate-in fade-in duration-200">
+            {/* Lựa chọn ngày gửi & định dạng báo cáo */}
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-[10px] font-bold text-gray-450 uppercase mb-1">
+                  Ngày gửi hàng tháng
+                </label>
+                <select
+                  value={dayOfMonth}
+                  onChange={(e) => setDayOfMonth(e.target.value === "last" ? "last" : parseInt(e.target.value))}
+                  className="w-full bg-gray-50 dark:bg-slate-950 border border-gray-200 dark:border-slate-850 rounded-xl px-3 py-2 text-xs font-semibold outline-none focus:border-gray-400 dark:text-gray-200 cursor-pointer"
+                >
+                  {Array.from({ length: 28 }, (_, i) => i + 1).map((day) => (
+                    <option key={day} value={day}>Ngày {day}</option>
+                  ))}
+                  <option value="last">Ngày cuối tháng</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-[10px] font-bold text-gray-450 uppercase mb-1">
+                  Định dạng đính kèm
+                </label>
+                <select
+                  value={format}
+                  onChange={(e) => setFormat(e.target.value)}
+                  className="w-full bg-gray-50 dark:bg-slate-950 border border-gray-200 dark:border-slate-850 rounded-xl px-3 py-2 text-xs font-semibold outline-none focus:border-gray-400 dark:text-gray-200 cursor-pointer"
+                >
+                  <option value="PDF">PDF Report</option>
+                  <option value="Excel">Excel Sheet</option>
+                </select>
+              </div>
+            </div>
+
+            {/* Lựa chọn nền tảng muốn báo cáo */}
+            <div>
+              <label className="block text-[10px] font-bold text-gray-450 uppercase mb-1.5">
+                Nền tảng muốn báo cáo
+              </label>
+              <div className="grid grid-cols-3 gap-2">
+                {["Facebook", "YouTube", "Instagram", "TikTok", "Telegram", "Discord"].map((plat) => {
+                  const isChecked = platforms.includes(plat);
+                  return (
+                    <label key={plat} className="flex items-center gap-1.5 cursor-pointer select-none bg-gray-50 dark:bg-slate-950 hover:bg-gray-100 dark:hover:bg-slate-850 border border-gray-200 dark:border-slate-850 rounded-lg p-1.5 transition-all">
+                      <input
+                        type="checkbox"
+                        checked={isChecked}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setPlatforms([...platforms, plat]);
+                          } else {
+                            setPlatforms(platforms.filter((p) => p !== plat));
+                          }
+                        }}
+                        className="w-3.5 h-3.5 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                      />
+                      <span className="text-[10px] font-semibold text-gray-700 dark:text-gray-300">{plat}</span>
+                    </label>
+                  );
+                })}
+              </div>
+            </div>
             {/* Member selector */}
             <div className="space-y-2">
               <div>

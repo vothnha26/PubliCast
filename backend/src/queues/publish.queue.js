@@ -1,8 +1,8 @@
 const { Queue } = require('bullmq');
 const { defaultConnection } = require('../config/bullmq');
 
-// Define the name of our publishing queue
-const PUBLISH_QUEUE_NAME = 'social-publish-queue';
+const { QUEUE_CONFIG } = require('../constants/video-publish.constants');
+const PUBLISH_QUEUE_NAME = QUEUE_CONFIG.PUBLISH.NAME;
 
 /**
  * Main Publishing Queue
@@ -52,7 +52,7 @@ const upsertPublishJob = async (postId, scheduledAt) => {
   // Remove existing job if any to reset the delay
   await publishQueue.remove(jobId);
   
-  await publishQueue.add('publish-post', { postId }, {
+  await publishQueue.add(QUEUE_CONFIG.PUBLISH.JOB_PUBLISH, { postId }, {
     jobId,
     delay
   });

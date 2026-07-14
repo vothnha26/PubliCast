@@ -73,15 +73,16 @@ jobs:
       - name: Start Backend Server
         working-directory: backend
         run: |
-          # Chạy background server, tin tưởng file .env đã tạo ở bước trên
-          npm run dev &
+          # Chạy background server và bypass GitHub Actions process killer, ghi log ra file
+          RUNNER_TRACKING_ID=to_prevent_killing npm start > backend.log 2>&1 &
 
       - name: Start Frontend App
         working-directory: frontend
         run: |
           npm install
-          echo "VITE_API_BASE_URL=http://localhost:3000/api" > .env
-          npm run dev &
+          echo "VITE_API_BASE_URL=/api" > .env
+          # Chạy background server và bypass GitHub Actions process killer, ghi log ra file
+          RUNNER_TRACKING_ID=to_prevent_killing npm run dev > frontend.log 2>&1 &
 
       - name: Install Chrome
         run: |
@@ -95,7 +96,7 @@ jobs:
 
       - name: Wait for Frontend and Backend to be Ready
         run: |
-          npx wait-on -t 60000 http://localhost:5173/login http://localhost:3000/health || echo "Services might not support health endpoint, continuing..."
+          npx wait-on -t 60000 http://localhost:5173/login http://localhost:3000/health
 
       - name: Setup Selenium Test .env
         working-directory: test_selenium
@@ -113,7 +114,7 @@ jobs:
         if: ${{ !startsWith(github.ref_name, 'bug/PC-53') && !startsWith(github.ref_name, 'bug/PC-54') && !startsWith(github.ref_name, 'bug/PC-55') && !startsWith(github.ref_name, 'bug/PC-56') && !startsWith(github.ref_name, 'bugfix/PC-56') }}
         working-directory: test_selenium
         run: |
-          npm run test:brand
+          npm run test:brand || (echo "=== BACKEND LOGS ===" && cat ../backend/backend.log && exit 1)
           npm run test:auth-suite
           npm run test:profile
           npm run test:post-creator
@@ -136,6 +137,14 @@ jobs:
         working-directory: test_selenium
         run: |
           npm run test:general-dashboard
+
+      - name: Print Server Logs on Failure
+        if: failure()
+        run: |
+          echo "=== BACKEND LOGS ==="
+          cat backend/backend.log || true
+          echo "=== FRONTEND LOGS ==="
+          cat frontend/frontend.log || true
 
       - name: Upload Test Screenshots
         if: failure()

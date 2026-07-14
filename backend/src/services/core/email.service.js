@@ -1,8 +1,27 @@
 const NodemailerStrategy = require('./email/nodemailer.strategy');
+const ResendStrategy = require('./email/resend.strategy');
+const ConsoleStrategy = require('./email/console.strategy');
+const appConfig = require('../../config/app.config');
 
 class EmailService {
-  constructor(strategy = new NodemailerStrategy()) {
-    this.strategy = strategy;
+  constructor() {
+    this.strategy = null;
+  }
+
+  getStrategy() {
+    if (!this.strategy) {
+      if (appConfig.sandbox.email) {
+        console.log('✉️  [EmailService] Active Sandbox mode: Redirecting outgoing emails to Terminal Console.');
+        this.strategy = new ConsoleStrategy();
+      } else if (process.env.RESEND_API_KEY) {
+        console.log('✉️  [EmailService] Using Resend HTTP API Strategy (Port 443)');
+        this.strategy = new ResendStrategy();
+      } else {
+        console.log('✉️  [EmailService] Using Nodemailer SMTP Strategy');
+        this.strategy = new NodemailerStrategy();
+      }
+    }
+    return this.strategy;
   }
 
   setStrategy(strategy) {
@@ -10,7 +29,8 @@ class EmailService {
   }
 
   async sendOTP(email, otp) {
-    await this.strategy.send(
+    const strategy = this.getStrategy();
+    await strategy.send(
       email,
       'Mã OTP kích hoạt tài khoản PubliCast',
       `Mã OTP của bạn là: ${otp}. Mã có hiệu lực trong 10 phút.`
@@ -18,7 +38,8 @@ class EmailService {
   }
 
   async sendForgotPasswordOTP(email, otp) {
-    await this.strategy.send(
+    const strategy = this.getStrategy();
+    await strategy.send(
       email,
       'Mã OTP đặt lại mật khẩu PubliCast',
       `Mã OTP đặt lại mật khẩu của bạn là: ${otp}. Mã có hiệu lực trong 5 phút.`
@@ -26,6 +47,7 @@ class EmailService {
   }
 
   async sendTeamInvitation(email, inviterName, brandName, inviteUrl, isResend = false) {
+    const strategy = this.getStrategy();
     const subject = isResend
       ? `[Nhắc lại] Lời mời gia nhập đội ngũ ${brandName} trên PubliCast`
       : `Lời mời gia nhập đội ngũ ${brandName} trên PubliCast`;
@@ -34,7 +56,7 @@ class EmailService {
 
     const html = this._buildInvitationHtml(inviterName, brandName, inviteUrl, isResend);
 
-    await this.strategy.send(email, subject, text, html);
+    await strategy.send(email, subject, text, html);
   }
 
   _buildInvitationHtml(inviterName, brandName, inviteUrl, isResend = false) {
@@ -93,13 +115,14 @@ class EmailService {
   }
 
   async sendReport(emails, subject, text, buffer, filename, contentType) {
+    const strategy = this.getStrategy();
     const attachments = [{
       filename,
       content: buffer,
       contentType
     }];
     for (const email of emails) {
-      await this.strategy.send(email, subject, text, null, attachments);
+      await strategy.send(email, subject, text, null, attachments);
     }
   }
 }

@@ -22,6 +22,26 @@ class SocketManager {
       pingInterval: 25000
     });
 
+    // Cấu hình Redis Adapter để đồng bộ hóa các sự kiện socket trên nhiều instances
+    if (process.env.USE_MEMORY_REDIS !== 'true' && process.env.NODE_ENV !== 'test') {
+      try {
+        const { createAdapter } = require('@socket.io/redis-adapter');
+        const redisClient = require('../../../config/redis');
+        
+        const pubClient = redisClient.duplicate();
+        const subClient = redisClient.duplicate();
+        
+        Promise.all([pubClient.connect(), subClient.connect()]).then(() => {
+          this.io.adapter(createAdapter(pubClient, subClient));
+          console.log('⚡ [SocketManager] Socket.io Redis Adapter configured successfully');
+        }).catch(err => {
+          console.error('❌ [SocketManager] Failed to connect duplicate clients for Redis Adapter:', err.message);
+        });
+      } catch (err) {
+        console.error('❌ [SocketManager] Failed to initialize Redis Adapter:', err.message);
+      }
+    }
+
     // Apply Authentication Middleware
     this.io.use(socketAuthMiddleware);
 

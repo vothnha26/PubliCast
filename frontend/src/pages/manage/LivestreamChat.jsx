@@ -317,6 +317,24 @@ export function LivestreamChat() {
     ? comments
     : comments.filter(c => c.platform === activeTab);
 
+  // Xác định stream thực tế hay mock
+  const currentStream = streams.find(s => s.id === selectedStreamId);
+  const platformStreamId = currentStream?.platformStreamId;
+  const isMockStream = !platformStreamId || platformStreamId.toLowerCase().includes('mock');
+  const hasRealStream = !!platformStreamId && !isMockStream;
+
+  // Lấy link nhúng thật dựa trên nền tảng
+  let embedUrl = '';
+  if (hasRealStream) {
+    const isYT = currentStream.platforms.some(p => p.toLowerCase() === 'youtube');
+    if (isYT) {
+      embedUrl = `https://www.youtube.com/embed/${platformStreamId}?autoplay=1&mute=1`;
+    } else {
+      // Nhúng Facebook Live Video Player
+      embedUrl = `https://www.facebook.com/plugins/video.php?href=https://www.facebook.com/facebook/videos/${platformStreamId}/&show_text=0&autoplay=true&mute=true`;
+    }
+  }
+
   return (
     <div className="flex flex-col h-full bg-[#070709] text-gray-100 p-6 overflow-hidden">
       
@@ -370,9 +388,75 @@ export function LivestreamChat() {
         </div>
       </div>
 
-      {/* Main Content: Chat Flow & Sidebar */}
-      <div className="flex-1 flex gap-6 overflow-hidden mt-6">
+      {/* Main Content: Video Live Player + Chat Feed + Sidebar */}
+      <div className="flex-1 flex flex-col lg:flex-row gap-6 overflow-hidden mt-6">
         
+        {/* Khung Live Video Player (Chung) */}
+        <div className="w-full lg:w-[48%] flex flex-col backdrop-blur-md bg-[#0F0F16]/70 border border-white/5 rounded-2xl overflow-hidden shadow-2xl p-4">
+          <div className="relative w-full aspect-video bg-black rounded-xl overflow-hidden border border-white/5 shadow-inner">
+            {hasRealStream ? (
+              <iframe
+                src={embedUrl}
+                className="w-full h-full border-0"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                allowFullScreen
+                title="Real Livestream Player"
+              />
+            ) : (
+              <div className="w-full h-full flex flex-col items-center justify-center bg-gradient-to-br from-[#12121A] to-[#0A0A0F] text-center p-6 select-none relative overflow-hidden">
+                {/* Hiệu ứng sóng radar nhấp nháy phía nền */}
+                <div className="absolute inset-0 flex items-center justify-center opacity-10 pointer-events-none">
+                  <div className="w-48 h-48 rounded-full border-2 border-indigo-500 animate-ping absolute" />
+                  <div className="w-32 h-32 rounded-full border border-indigo-400 animate-ping absolute" />
+                </div>
+                <div className="text-4xl filter drop-shadow-[0_0_12px_rgba(99,102,241,0.5)] mb-3 animate-pulse">📡</div>
+                <h4 className="text-sm font-black text-gray-200 tracking-wide uppercase">Đang chờ tín hiệu phát sóng</h4>
+                <p className="text-[10px] text-gray-500 max-w-[280px] mt-1.5 leading-relaxed">
+                  Hãy sao chép Stream Key và RTMP URL trong OBS Studio để bắt đầu truyền luồng video thực tế.
+                </p>
+                
+                {currentStream && (
+                  <div className="mt-4 bg-black/40 border border-white/5 rounded-lg px-2.5 py-1 text-[9px] text-indigo-400 font-mono flex items-center gap-1.5">
+                    <span className="w-1 h-1 rounded-full bg-indigo-400 animate-ping" />
+                    rtmp://live.publicast.com/app
+                  </div>
+                )}
+              </div>
+            )}
+            
+            {/* Lớp phủ HUD của Livestream */}
+            <div className="absolute inset-0 p-4 flex flex-col justify-between pointer-events-none bg-gradient-to-t from-black/60 via-transparent to-black/40">
+              <div className="flex justify-between items-center">
+                <span className="bg-red-600 text-white text-[10px] font-black uppercase px-2.5 py-1 rounded flex items-center gap-1.5 shadow-md shadow-red-600/30 animate-pulse pointer-events-auto">
+                  <span className="w-1.5 h-1.5 rounded-full bg-white animate-ping" />
+                  LIVE
+                </span>
+                <span className="text-[10px] font-bold text-gray-300 bg-black/60 backdrop-blur-sm px-2.5 py-1 rounded-md">
+                  {ytConnected && fbConnected ? 'Multistream' : ytConnected ? 'YouTube Live' : fbConnected ? 'Facebook Live' : 'Multistream'}
+                </span>
+              </div>
+              <div className="pointer-events-auto">
+                <h2 className="text-sm font-bold text-white drop-shadow-md truncate">
+                  {currentStream?.title || 'Đang chuẩn bị luồng trực tiếp...'}
+                </h2>
+                <p className="text-[10px] text-gray-300 mt-0.5 flex items-center gap-1.5">
+                  <span className={`inline-block w-1.5 h-1.5 rounded-full ${hasRealStream ? 'bg-green-500 animate-pulse' : 'bg-gray-500'}`} />
+                  {hasRealStream ? 'Tín hiệu ổn định' : 'Chưa có tín hiệu'}
+                </p>
+              </div>
+            </div>
+          </div>
+          {/* Tên stream & mô tả nhanh phía dưới player */}
+          <div className="mt-4 flex-1 overflow-y-auto pr-1">
+            <h3 className="text-md font-black text-white">
+              {streams.find(s => s.id === selectedStreamId)?.title || 'Không có Livestream hoạt động'}
+            </h3>
+            <p className="text-xs text-gray-400 mt-2 leading-relaxed">
+              {streams.find(s => s.id === selectedStreamId)?.description || 'Không có mô tả nào cho phiên livestream này. Hãy kết nối camera và micrô của bạn qua OBS hoặc Streamlabs để phát sóng trực tiếp lên các kênh liên kết của PubliCast.'}
+            </p>
+          </div>
+        </div>
+
         {/* Chat Feed (Glassmorphism Container) */}
         <div className="flex-1 flex flex-col backdrop-blur-md bg-[#0F0F16]/70 border border-white/5 rounded-2xl overflow-hidden shadow-2xl">
           

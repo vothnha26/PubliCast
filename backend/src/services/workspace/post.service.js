@@ -8,6 +8,7 @@ const { upsertPublishJob, removePublishJob } = require('../../queues/publish.que
 const authorizationFacade = require('../auth/authorization.facade');
 const approvalWorkflowService = require('./approval-workflow.service');
 const validationFacade = require('./post/validators/validation.facade');
+const { QUEUE_CONFIG } = require('../../constants/video-publish.constants');
 
 const QueryPipeline = require('../../core/query-pipeline/query.pipeline');
 const PostStatusFilter = require('./post/filters/status.filter');
@@ -312,6 +313,38 @@ class PostService {
 
   async publishToPlatforms(postId, postDataOptions = {}) {
     await this.publishPipeline.execute({ postId, postDataOptions });
+  }
+
+  async retryFailedPlatforms(postId, platforms, brandId, userId) {
+    const post = await postRepository.findById(postId);
+    if (!post) {
+      const error = new Error('Post not found');
+      error.statusCode = 404;
+      throw error;
+    }
+    if (post.brandId !== brandId) {
+      const error = new Error('Access denied: Unauthorized brand');
+      error.statusCode = 403;
+      throw error;
+    }
+
+    console.log(`[Post Service] Queueing retry job for Post ${postId} on platforms: ${platforms.join(', ')}`);
+    const { publishQueue } = require('../../queues/publish.queue');
+    const jobId = `publish-post-${postId}`;
+    
+    // Remove existing job if any to avoid collision
+    await publishQueue.remove(jobId);
+    
+    // Add job to publishQueue with delay = 0
+    await publishQueue.add(QUEUE_CONFIG.PUBLISH.JOB_PUBLISH, { 
+      postId, 
+      retryPlatforms: platforms 
+    }, { 
+      jobId,
+      delay: 0
+    });
+
+    return { postId, platforms };
   }
 
   async bulkApprove(ids, brandId) {

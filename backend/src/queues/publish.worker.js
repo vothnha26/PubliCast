@@ -1,35 +1,20 @@
 const { Worker } = require('bullmq');
 const { defaultConnection } = require('../config/bullmq');
 const { PUBLISH_QUEUE_NAME } = require('./publish.queue');
-const postService = require('../services/workspace/post.service');
-const postRepository = require('../repositories/workspace/post.repository');
-const { POST_STATUS } = require('../utils/constants');
+const publishPostHandler = require('./handlers/publish-post.handler');
+const { QUEUE_CONFIG } = require('../constants/video-publish.constants');
 
 /**
  * Worker Engine
  * Listens to the social-publish-queue and executes post publication
+ * Routes jobs using Strategy Pattern based on Job Name
  */
 const publishWorker = new Worker(PUBLISH_QUEUE_NAME, async (job) => {
-  const { postId } = job.data;
-  
-  console.log(`[BullMQ Worker] 📝 Processing job ${job.id} for Post: ${postId}`);
-  
-  try {
-    // 1. Double check post status in DB (Safety check)
-    const post = await postRepository.findById(postId);
-    if (!post || (post.status !== POST_STATUS.SCHEDULED && post.status !== POST_STATUS.DRAFT)) {
-      console.log(`[BullMQ Worker] ⏩ Post ${postId} is not in a valid state for publishing. Skipping.`);
-      return;
-    }
-
-    // 2. Execute the publish pipeline
-    await postService.publishToPlatforms(postId);
-    
-    console.log(`[BullMQ Worker] ✅ Successfully processed Post: ${postId}`);
-  } catch (err) {
-    console.error(`[BullMQ Worker] ❌ Error processing job ${job.id}:`, err.message);
-    throw err; // Allow BullMQ to handle retries based on queue config
+  if (job.name === QUEUE_CONFIG.PUBLISH.JOB_PUBLISH) {
+    return await publishPostHandler.handle(job);
   }
+  
+  throw new Error(`Unhandled job type: ${job.name} in Publish Worker`);
 }, {
   ...defaultConnection,
   concurrency: 5, // Process up to 5 posts simultaneously

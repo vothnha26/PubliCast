@@ -134,5 +134,32 @@ describe('Video Editor Services & SOLID Patterns Tests', () => {
       // linear interpolation slope: (0.2 - 0.5) / 5 = -0.06
       expect(executedCommand).toContain('-0.0600');
     });
+
+    it('should include drawtext filters for textOverlays and subtitles', async () => {
+      fs.existsSync.mockReturnValue(true);
+      exec.mockImplementation((cmd, callback) => callback(null, 'stdout', ''));
+      videoProcessorFacade._resolveFile = jest.fn().mockResolvedValue();
+
+      await videoProcessorFacade.processVideo({
+        videoUrl: '/uploads/media/video.mp4',
+        startTime: 1,
+        endTime: 9,
+        aspectRatio: 'original',
+        textOverlays: [
+          { text: 'Hello World', x: 50, y: 40, color: '#FF0000', size: 30 }
+        ],
+        subtitles: [
+          { text: 'A Subtitle', start: 2, end: 5 }
+        ],
+        brandId: 'brand_123'
+      });
+
+      expect(exec).toHaveBeenCalled();
+      const executedCommand = exec.mock.calls[0][0];
+      // Kiểm tra filter drawtext của text overlay tĩnh
+      expect(executedCommand).toContain('drawtext=text=\'Hello World\':x=(w*50/100-tw/2):y=(h*40/100-th/2):fontcolor=#FF0000:fontsize=30');
+      // Kiểm tra filter drawtext của subtitle động (start 2 - 1 = 1, end 5 - 1 = 4)
+      expect(executedCommand).toContain('drawtext=text=\'A Subtitle\':x=(w-tw)/2:y=h-80:fontcolor=white:fontsize=22:box=1:boxcolor=black@0.6:boxborderw=6:enable=\'between(t,1.000,4.000)\'');
+    });
   });
 });

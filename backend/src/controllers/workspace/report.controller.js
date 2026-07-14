@@ -137,11 +137,14 @@ class ReportController {
     if (!brandId) {
       return res.status(400).json({ message: 'brandId là bắt buộc.' });
     }
-    const { receiveEmail, emailsList, emailText } = req.body;
+    const { receiveEmail, emailsList, emailText, dayOfMonth, format, platforms } = req.body;
     await reportService.saveScheduleConfig(brandId, {
       receiveEmail: !!receiveEmail,
       emailsList: Array.isArray(emailsList) ? emailsList : [],
-      emailText: emailText || 'Monthly report for you.'
+      emailText: emailText || 'Monthly report for you.',
+      dayOfMonth: dayOfMonth || 1,
+      format: format || 'PDF',
+      platforms: Array.isArray(platforms) ? platforms : ['Facebook', 'YouTube']
     });
     res.json({ message: 'Lưu cấu hình gửi báo cáo định kỳ thành công.' });
   });

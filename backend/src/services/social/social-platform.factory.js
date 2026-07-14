@@ -6,7 +6,9 @@ const linkedinService = require('./linkedin');
 const telegramService = require('./telegram');
 const { discordService } = require('./discord');
 const threadsService = require('./threads');
+const MockSocialService = require('./mock-social.service');
 const createSyncCacheProxy = require('./sync-cache.proxy');
+const appConfig = require('../../config/app.config');
 const { PLATFORMS } = require('../../utils/constants');
 
 class SocialPlatformFactory {
@@ -20,7 +22,6 @@ class SocialPlatformFactory {
       [PLATFORMS.TELEGRAM]: createSyncCacheProxy(telegramService),
       [PLATFORMS.DISCORD]: createSyncCacheProxy(discordService),
       [PLATFORMS.THREADS]: createSyncCacheProxy(threadsService),
-      // Khi tích hợp các nền tảng mới sau này, chỉ cần khai báo tại đây:
     };
   }
 
@@ -33,7 +34,15 @@ class SocialPlatformFactory {
     if (!platform) {
       throw new Error('Platform is required');
     }
-    const service = this.services[platform.toUpperCase()];
+    const platformKey = platform.toUpperCase();
+
+    // Nếu chế độ sandbox được kích hoạt cho việc đăng bài, trả về Mock service
+    if (appConfig.sandbox.publish) {
+      console.log(`🔌 [SocialPlatformFactory] Active Sandbox mode: Using MockSocialService for platform: ${platformKey}`);
+      return new MockSocialService(platformKey);
+    }
+
+    const service = this.services[platformKey];
     if (!service) {
       throw new Error(`Platform '${platform}' is not supported yet`);
     }
