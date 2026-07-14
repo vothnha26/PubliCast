@@ -323,6 +323,19 @@ async function main() {
 
   console.log(`✅ Admin user ensured: ${adminEmail}`);
 
+  // Also create a UserAccount with provider LOCAL, mirroring what real
+  // registration does (user.repository.js createUser() nests this create).
+  // Without it, accounts.some(acc => acc.provider === 'LOCAL') is false on
+  // the frontend (Settings.jsx), which hides the current-password input
+  // entirely — breaking TC_PROFILE_07 through TC_PROFILE_10, which all wait
+  // for [data-testid="profile-current-password-input"] to appear.
+  await prisma.userAccount.upsert({
+    where: { userId_provider: { userId: adminUser.id, provider: 'LOCAL' } },
+    update: { passwordHash: adminHash },
+    create: { userId: adminUser.id, provider: 'LOCAL', passwordHash: adminHash }
+  });
+  console.log(`✅ Admin LOCAL account ensured: ${adminEmail}`);
+
   // Pre-create a brand for the admin user on the STARTER plan (maxBrands: 3).
   // Without this, the backend's lazy auto-brand-creation (profile.service.js)
   // creates one brand on FREE plan (maxBrands: 1) on first login. Since the DB
@@ -369,6 +382,11 @@ async function main() {
         isEmailVerified: true,
         role: 'STAFF'
       }
+    });
+    await prisma.userAccount.upsert({
+      where: { userId_provider: { userId: memberUser.id, provider: 'LOCAL' } },
+      update: { passwordHash: memberHash },
+      create: { userId: memberUser.id, provider: 'LOCAL', passwordHash: memberHash }
     });
     console.log(`✅ Member user ensured: ${memberEmail}`);
   }
