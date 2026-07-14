@@ -7,6 +7,7 @@ import { FacebookCompetitorsTab }  from "./FacebookCompetitorsTab";
 
 export function FacebookDashboard({
   metrics,
+  loading,
   dateRange,
   setDateRange,
   realData,
@@ -61,6 +62,7 @@ export function FacebookDashboard({
         <FacebookStoriesTab
           realData={realData}
           isLoading={isPublishedLoading}
+          loading={loading}
         />
       )}
 

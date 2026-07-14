@@ -1,4 +1,5 @@
 const facebookService = require('../../services/social/facebook');
+const brandRepository = require('../../repositories/workspace/brand.repository');
 const asyncHandler = require('../../utils/async-handler');
 
 class FacebookController {
@@ -51,6 +52,46 @@ class FacebookController {
 
     await facebookService.deleteCompetitor(id);
     res.json({ message: 'Competitor deleted successfully' });
+  });
+
+  // ── Post Detail — Insights ─────────────────────────────────────────────────
+  getFacebookPostInsights = asyncHandler(async (req, res) => {
+    const { brandId, postId, socialAccountId } = req.query;
+    if (!brandId) return res.status(400).json({ message: 'brandId is required' });
+    if (!postId) return res.status(400).json({ message: 'postId is required' });
+
+    const canAccess = await brandRepository.userCanAccessBrand(req.user.id, brandId);
+    if (!canAccess) return res.status(403).json({ message: 'You do not have access to this brand' });
+
+    try {
+      const details = await facebookService.getPostDetails(brandId, postId, socialAccountId || null);
+      res.json({ data: details });
+    } catch (err) {
+      console.error(`[FacebookController] getFacebookPostInsights failed for post ${postId}:`, err.message);
+      res.status(err.status && err.status >= 400 && err.status < 500 ? err.status : 500).json({
+        message: err.message || 'Failed to fetch Facebook post insights'
+      });
+    }
+  });
+
+  // ── Post Detail — Analytics (Timeseries growth) ────────────────────────────
+  getFacebookPostAnalytics = asyncHandler(async (req, res) => {
+    const { brandId, postId, socialAccountId, startDate, endDate } = req.query;
+    if (!brandId) return res.status(400).json({ message: 'brandId is required' });
+    if (!postId) return res.status(400).json({ message: 'postId is required' });
+
+    const canAccess = await brandRepository.userCanAccessBrand(req.user.id, brandId);
+    if (!canAccess) return res.status(403).json({ message: 'You do not have access to this brand' });
+
+    try {
+      const analytics = await facebookService.getPostAnalytics(brandId, postId, startDate || null, endDate || null, socialAccountId || null);
+      res.json({ data: analytics });
+    } catch (err) {
+      console.error(`[FacebookController] getFacebookPostAnalytics failed for post ${postId}:`, err.message);
+      res.status(err.status && err.status >= 400 && err.status < 500 ? err.status : 500).json({
+        message: err.message || 'Failed to fetch Facebook post analytics'
+      });
+    }
   });
 }
 

@@ -116,6 +116,21 @@ class SocialService {
     return response.data;
   }
 
+  async getFacebookPostInsights(brandId, postId, socialAccountId = null) {
+    const url = `/social/facebook/post-insights?brandId=${brandId}&postId=${postId}${socialAccountId ? `&socialAccountId=${socialAccountId}` : ''}`;
+    const response = await apiService.get(url);
+    return response.data;
+  }
+
+  async getFacebookPostAnalytics(brandId, postId, startDate = null, endDate = null, socialAccountId = null) {
+    let url = `/social/facebook/post-analytics?brandId=${brandId}&postId=${postId}`;
+    if (startDate) url += `&startDate=${startDate}`;
+    if (endDate) url += `&endDate=${endDate}`;
+    if (socialAccountId) url += `&socialAccountId=${socialAccountId}`;
+    const response = await apiService.get(url);
+    return response.data;
+  }
+
 
   async getTikTokAuthUrl(brandId) {
     const response = await apiService.get(`/social/tiktok/url?brandId=${brandId}`);

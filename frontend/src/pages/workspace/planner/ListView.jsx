@@ -1,7 +1,8 @@
 import * as React from "react";
 import { useState, useEffect } from "react";
-import { 
-  Search, Filter, MoreHorizontal, Plus, 
+import { useNavigate } from "react-router-dom";
+import {
+  Search, Filter, MoreHorizontal, Plus,
   Trash2, CheckCircle, Clock, AlertCircle,
   ExternalLink, Eye, ChevronDown, Youtube, PlayCircle, Loader2, Facebook, Gem, RefreshCw,
   Users, UserCheck, Edit2, X as XIcon
@@ -17,10 +18,11 @@ import { format } from "date-fns";
 import { useConfirm } from "@/hooks/useConfirm";
 import { useBrandPermission } from "../../../hooks/useBrandPermission";
 import { AccessGuard } from "../../../components/shared/AccessGuard";
-import { PostAnalyticsDetailModal } from "../../../components/workspace/PostAnalyticsDetailModal";
 import { buildMediaUrl } from "@/utils/url";
 import { PostMediaThumbnail } from "@/components/shared/PostMediaThumbnail";
 import { useTranslation } from "react-i18next";
+import { mapToPostPreview } from "../../../utils/postPreview";
+import { buildPostDetailRoute } from "../../../constants/routes";
 
 const STATUS_STYLE = {
   published: "bg-green-50 text-green-700 border-green-100",
@@ -84,7 +86,14 @@ export function ListView() {
   const [activeMenuId, setActiveMenuId] = useState(null);
   const [repostingIds, setRepostingIds] = useState([]);
   const [reviewerPanel, setReviewerPanel] = useState({ open: false, post: null, availableReviewers: [], selectedIds: [], policy: 'AT_LEAST_ONE', saving: false });
-  const [analyticsModal, setAnalyticsModal] = useState({ open: false, post: null });
+  const navigate = useNavigate();
+
+  const openPostAnalytics = (post) => {
+    const platform = (post.platforms?.[0] || "youtube").toLowerCase();
+    navigate(buildPostDetailRoute(platform, post.id), {
+      state: { post: mapToPostPreview(post, platform) }
+    });
+  };
 
   const { openPostCreator, isOpen } = usePostCreator();
   const { filters, updateFilters, clearFilters, searchParamsString } = useFilters({
@@ -509,7 +518,7 @@ export function ListView() {
                        </td>
                        <td className="px-4 py-5 cursor-pointer" onClick={() => {
                          if (post.status?.toLowerCase() === 'published') {
-                           setAnalyticsModal({ open: true, post });
+                           openPostAnalytics(post);
                          } else {
                            openPostCreator({ post });
                          }
@@ -706,7 +715,7 @@ export function ListView() {
 
                                          e.stopPropagation();
 
-                                         setAnalyticsModal({ open: true, post });
+                                         openPostAnalytics(post);
 
                                          setActiveMenuId(null);
 
@@ -878,12 +887,6 @@ export function ListView() {
         </div>
       </div>
     )}
-    <PostAnalyticsDetailModal
-      isOpen={analyticsModal.open}
-      onClose={() => setAnalyticsModal({ open: false, post: null })}
-      post={analyticsModal.post}
-      brandId={activeBrand?.id}
-    />
     </>
   );
 }

@@ -113,8 +113,9 @@ function StoriesSkeleton() {
 }
 
 // ─── Main Component ──────────────────────────────────────────────────────────
-export function FacebookStoriesTab({ realData = {}, isLoading = false }) {
+export function FacebookStoriesTab({ realData = {}, isLoading = false, loading = false }) {
   const stories = realData.stories || [];
+  const showSkeleton = isLoading || loading;
 
   return (
     <div className="space-y-6">
@@ -130,7 +131,7 @@ export function FacebookStoriesTab({ realData = {}, isLoading = false }) {
 
       {/* Table card */}
       <div className="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden">
-        {isLoading ? (
+        {showSkeleton ? (
           <div className="p-6">
             <StoriesSkeleton />
           </div>
@@ -262,7 +263,7 @@ export function FacebookStoriesTab({ realData = {}, isLoading = false }) {
       </div>
 
       {/* Summary cards */}
-      {!isLoading && stories.length > 0 && (
+      {!showSkeleton && stories.length > 0 && (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           {[
             {

@@ -1,5 +1,6 @@
 import * as React from "react";
 import { useState, useEffect, useMemo } from "react";
+import { useNavigate } from "react-router-dom";
 import { Loader2 } from "lucide-react";
 import { usePostCreator } from "../../../context/PostCreatorContext";
 import apiService from "../../../services/api";
@@ -8,6 +9,8 @@ import { useGoogleDriveImport } from "../../../hooks/useGoogleDriveImport";
 import { toast } from "sonner";
 import postService from "../../../services/post.service";
 import { useTranslation } from "react-i18next";
+import { mapToPostPreview } from "../../../utils/postPreview";
+import { buildPostDetailRoute } from "../../../constants/routes";
 
 // Import SOLID Subcomponents
 import { UpgradeBanner } from "./components/UpgradeBanner";
@@ -18,7 +21,6 @@ import { ImportOverlay } from "./components/ImportOverlay";
 import { MonthlyGrid } from "./components/MonthlyGrid";
 
 import { useBrandPermission } from "../../../hooks/useBrandPermission";
-import { PostAnalyticsDetailModal } from "../../../components/workspace/PostAnalyticsDetailModal";
 
 export function WeeklyCalendarView() {
   const { t } = useTranslation("planner");
@@ -27,11 +29,14 @@ export function WeeklyCalendarView() {
 
   const [searchTerm, setSearchTerm] = useState("");
   const { openPostCreator, isOpen } = usePostCreator();
-  const [analyticsModal, setAnalyticsModal] = useState({ open: false, post: null });
+  const navigate = useNavigate();
 
   const handlePostClick = (post) => {
     if (post.status?.toLowerCase() === "published") {
-      setAnalyticsModal({ open: true, post });
+      const platform = (post.platforms?.[0] || "youtube").toLowerCase();
+      navigate(buildPostDetailRoute(platform, post.id), {
+        state: { post: mapToPostPreview(post, platform) }
+      });
     } else {
       openPostCreator({ post });
     }
@@ -339,13 +344,6 @@ export function WeeklyCalendarView() {
 
       {/* Google Drive Import Backdrop Overlay */}
       <ImportOverlay isOpen={isImporting} />
-
-      <PostAnalyticsDetailModal
-        isOpen={analyticsModal.open}
-        onClose={() => setAnalyticsModal({ open: false, post: null })}
-        post={analyticsModal.post}
-        brandId={activeBrand?.id}
-      />
     </div>
   );
 }
