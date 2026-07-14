@@ -3,7 +3,7 @@ import {
   BarChart2, Loader2, PlayCircle, ChevronUp, ChevronDown, 
   ChevronsUpDown, Star, MoreVertical, Film, Image as ImageIcon, 
   Layers, Check, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight,
-  Sparkles
+  Sparkles, X, ExternalLink
 } from "lucide-react";
 import { Button } from "../../../components/ui/button";
 
@@ -23,8 +23,8 @@ export function GenericPostsListTab({
   onRowClick = null
 }) {
   const [searchQuery, setSearchQuery] = useState("");
-  // Mặc định sắp xếp giảm dần theo lượt xem (Views ↓) y hệt như hình ảnh thiết kế
   const [sortConfig, setSortConfig] = useState({ key: "views", dir: "desc" });
+  const [selectedPost, setSelectedPost] = useState(null); // Trạng thái cho Modal Chi tiết Bài đăng
 
   // Quản lý việc tích chọn các hàng (Checkboxes)
   const [selectedIds, setSelectedIds] = useState(new Set());
@@ -106,6 +106,21 @@ export function GenericPostsListTab({
     if (isVideo) return "video";
     if (isCarousel) return "carousel";
     return "image";
+  };
+
+  // Helper để lấy link gốc của bài đăng
+  const getPostUrl = (post) => {
+    if (post.postUrl) return post.postUrl;
+    if (post.shareUrl) return post.shareUrl;
+    
+    const idStr = post.id ? String(post.id) : "";
+    if (post.platform === 'YOUTUBE' || post.platform === 'youtube' || idStr.length === 11) {
+      return `https://www.youtube.com/watch?v=${idStr}`;
+    }
+    if (post.platform === 'TIKTOK' || post.platform === 'tiktok' || (!isNaN(idStr) && idStr.length > 15)) {
+      return `https://www.tiktok.com/@user/video/${idStr}`;
+    }
+    return "#";
   };
 
   // Sắp xếp
@@ -339,7 +354,10 @@ export function GenericPostsListTab({
                     <tr
                       key={post.id || idx}
                       className={`hover:bg-[#F8F8F7]/50 transition-colors group cursor-pointer border-b border-gray-50`}
-                      onClick={() => onRowClick && onRowClick(post)}
+                      onClick={() => {
+                        setSelectedPost(post);
+                        if (onRowClick) onRowClick(post);
+                      }}
                     >
                       {/* Checkbox Cell */}
                       <td className="pl-6 py-4" onClick={(e) => e.stopPropagation()}>
@@ -372,6 +390,18 @@ export function GenericPostsListTab({
                               <span className="text-xs font-semibold text-[#0A0A0A] line-clamp-2 leading-relaxed max-w-[260px]">
                                 {postText}
                               </span>
+                              {getPostUrl(post) !== "#" && (
+                                <a
+                                  href={getPostUrl(post)}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  onClick={(e) => e.stopPropagation()}
+                                  className="inline-flex items-center gap-1 mt-1 text-[10px] font-bold text-blue-500 hover:text-blue-700 hover:underline w-fit transition-colors"
+                                >
+                                  <ExternalLink size={10} />
+                                  <span>Xem bài đăng</span>
+                                </a>
+                              )}
                             </div>
                           </div>
 
@@ -388,7 +418,11 @@ export function GenericPostsListTab({
 
                             {/* Analytics details button */}
                             <button
-                              onClick={() => onRowClick && onRowClick(post)}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setSelectedPost(post);
+                                if (onRowClick) onRowClick(post);
+                              }}
                               className="p-1 hover:bg-gray-100 rounded-lg text-gray-400 hover:text-[#2D1D35] transition-colors border-none bg-transparent cursor-pointer"
                               title="Xem phân tích chi tiết"
                             >
@@ -400,6 +434,18 @@ export function GenericPostsListTab({
                               <div className="w-1 h-1 rounded-full bg-[#4D7C0F] animate-pulse" />
                               <span>Live</span>
                             </div>
+
+                            {/* External Link button */}
+                            <a
+                              href={getPostUrl(post)}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              onClick={(e) => e.stopPropagation()}
+                              className="p-1 hover:bg-gray-100 rounded-lg text-gray-400 hover:text-blue-500 transition-colors border-none bg-transparent cursor-pointer"
+                              title="Xem trực tiếp trên nền tảng"
+                            >
+                              <ExternalLink size={13} />
+                            </a>
 
                             {/* More button */}
                             <button
@@ -521,6 +567,88 @@ export function GenericPostsListTab({
           </div>
         )}
       </div>
+
+      {/* Modal Chi tiết Bài đăng */}
+      {selectedPost && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl w-full max-w-md overflow-hidden shadow-2xl relative animate-in fade-in zoom-in duration-200">
+            {/* Header */}
+            <div className="flex items-center justify-between p-4 border-b border-gray-100 bg-gray-50/50">
+              <h3 className="font-bold text-gray-800 text-sm">Post Details</h3>
+              <button 
+                onClick={() => setSelectedPost(null)}
+                className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer"
+              >
+                <X size={16} />
+              </button>
+            </div>
+            
+            {/* Body */}
+            <div className="p-5 space-y-6">
+              <div className="flex gap-4">
+                {/* Thumbnail */}
+                <div className="w-24 h-24 rounded-xl bg-gray-100 overflow-hidden shrink-0 border border-gray-200 shadow-sm relative">
+                  {getPostThumbnail(selectedPost) ? (
+                    <img src={getPostThumbnail(selectedPost)} className="w-full h-full object-cover" alt="thumbnail" />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center text-gray-400">
+                      {getPostType(selectedPost) === "video" ? <Film size={24} /> : <ImageIcon size={24} />}
+                    </div>
+                  )}
+                  {getPostType(selectedPost) === "video" && (
+                    <div className="absolute inset-0 flex items-center justify-center bg-black/20">
+                      <PlayCircle size={20} className="text-white drop-shadow-md" />
+                    </div>
+                  )}
+                </div>
+                
+                {/* Info */}
+                <div className="flex flex-col flex-1 min-w-0 justify-center">
+                  <p className="text-sm font-semibold text-gray-900 leading-snug line-clamp-3">
+                    {selectedPost.text}
+                  </p>
+                  <p className="text-xs text-gray-500 mt-2 font-medium">
+                    Published: {new Date(selectedPost.publishedAt || selectedPost.date || new Date()).toLocaleString("en-US", { month: "short", day: "numeric", year: "numeric", hour: "2-digit", minute: "2-digit" })}
+                  </p>
+                </div>
+              </div>
+
+              {/* Stats Grid */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <div className="bg-blue-50/50 p-3 rounded-xl border border-blue-100/50 flex flex-col items-center justify-center">
+                  <span className="text-xs font-bold text-blue-900/40 uppercase tracking-widest mb-1">Views</span>
+                  <span className="text-lg font-black text-blue-600">{formatMetricNumber(selectedPost.views)}</span>
+                </div>
+                <div className="bg-pink-50/50 p-3 rounded-xl border border-pink-100/50 flex flex-col items-center justify-center">
+                  <span className="text-xs font-bold text-pink-900/40 uppercase tracking-widest mb-1">Likes</span>
+                  <span className="text-lg font-black text-pink-600">{formatMetricNumber(selectedPost.likes)}</span>
+                </div>
+                <div className="bg-amber-50/50 p-3 rounded-xl border border-amber-100/50 flex flex-col items-center justify-center">
+                  <span className="text-xs font-bold text-amber-900/40 uppercase tracking-widest mb-1">Comments</span>
+                  <span className="text-lg font-black text-amber-600">{formatMetricNumber(selectedPost.comments)}</span>
+                </div>
+                <div className="bg-purple-50/50 p-3 rounded-xl border border-purple-100/50 flex flex-col items-center justify-center">
+                  <span className="text-xs font-bold text-purple-900/40 uppercase tracking-widest mb-1">Shares</span>
+                  <span className="text-lg font-black text-purple-600">{formatMetricNumber(selectedPost.shares)}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="p-4 border-t border-gray-100 bg-gray-50 flex justify-end">
+              <a 
+                href={getPostUrl(selectedPost)} 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 px-4 py-2 bg-[#2D1D35] hover:bg-black text-white text-xs font-bold rounded-lg transition-colors shadow-sm"
+              >
+                <span>View on Platform</span>
+                <ExternalLink size={14} />
+              </a>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

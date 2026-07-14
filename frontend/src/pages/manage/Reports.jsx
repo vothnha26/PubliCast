@@ -36,10 +36,11 @@ import { useBrand } from "../../context/BrandContext";
 import apiService from "../../services/api";
 import { createPortal } from "react-dom";
 import { GenericDashboardTab } from "../workspace/dashboard/GenericDashboardTab";
+import { GenericPostsListTab } from "../workspace/dashboard/GenericPostsListTab";
 import { FacebookOverviewTab } from "../workspace/dashboard/FacebookOverviewTab";
 import { FacebookInteractionsTab } from "../workspace/dashboard/FacebookInteractionsTab";
+import { FacebookPostsTab } from "../workspace/dashboard/FacebookPostsTab";
 import { TikTokCommunityTab } from "../workspace/dashboard/TikTokCommunityTab";
-import { TikTokPostsTab } from "../workspace/dashboard/TikTokPostsTab";
 import { InstagramAccountTab } from "../workspace/dashboard/InstagramAccountTab";
 import { DiscordDashboard } from "../workspace/dashboard/DiscordDashboard";
 import { renderWidgetThumbnail } from "./reportWidgetThumbnails.jsx";
@@ -1319,6 +1320,11 @@ export function ReportsPage() {
         summary: ad.summary || {}
       };
 
+      // Lọc posts của Facebook từ publishedVideos
+      const fbPublishedPosts = (ad.publishedVideos || []).filter(v =>
+        v.platform === 'FACEBOOK' || v.platform === 'facebook'
+      ).map(v => ({ ...v, platform: 'FACEBOOK' }));
+
       return (
         <div className="space-y-8 p-4 bg-white rounded-3xl border border-gray-100">
           <div className="border-b pb-4 mb-4 flex items-center justify-between">
@@ -1333,6 +1339,18 @@ export function ReportsPage() {
           {(selectedWidgets.fbViews || selectedWidgets.fbInteractions) && (
             <FacebookInteractionsTab realData={fbRealData} />
           )}
+          <div>
+            <h5 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">Danh sách bài đăng Facebook</h5>
+            <GenericPostsListTab
+              posts={fbPublishedPosts}
+              isLoading={false}
+              pageSize={5}
+              searchPlaceholder="Search Facebook posts..."
+              searchKeys={["message", "caption", "text"]}
+              emptyStateTitle="No Facebook posts found."
+              footerMessage="Showing latest Facebook posts"
+            />
+          </div>
         </div>
       );
     }
@@ -1404,13 +1422,24 @@ export function ReportsPage() {
         { label: t("sections.engagementRate"), value: `${channelData.engagementRate || 0}%` }
       ];
       return (
-        <GenericDashboardTab
-          title={t("dashboard.ytGrowth")}
-          description={t("dashboard.ytGrowthDesc")}
-          data={ytGrowthData}
-          metricConfig={ytMetricConfig}
-          summaryGrid={ytSummaryGrid}
-        />
+        <div className="space-y-6">
+          <GenericDashboardTab
+            title={t("dashboard.ytGrowth")}
+            description={t("dashboard.ytGrowthDesc")}
+            data={ytGrowthData}
+            metricConfig={ytMetricConfig}
+            summaryGrid={ytSummaryGrid}
+          />
+          <GenericPostsListTab
+            posts={(ad.publishedVideos || []).filter(v => v.platform === 'YOUTUBE' || v.platform === 'youtube' || (v.id && String(v.id).length === 11)).map(v => ({ ...v, platform: 'YOUTUBE' }))}
+            isLoading={false}
+            pageSize={5}
+            searchPlaceholder="Search YouTube videos..."
+            searchKeys={["title", "description", "text"]}
+            emptyStateTitle="No YouTube videos found."
+            footerMessage="Showing latest YouTube videos"
+          />
+        </div>
       );
     }
 
@@ -1431,6 +1460,9 @@ export function ReportsPage() {
         }))
       };
 
+      // Lọc và tag platform cho TikTok posts
+      const ttPublishedPosts = (ad.publishedVideos || []).map(v => ({ ...v, platform: 'TIKTOK' }));
+
       return (
         <div className="space-y-8 p-4 bg-white rounded-3xl border border-gray-100">
           <div className="border-b pb-4 mb-4">
@@ -1448,11 +1480,14 @@ export function ReportsPage() {
           {selectedWidgets.ttViews && (
             <div>
               <h5 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">{t("dashboard.ttPostsPerformance")}</h5>
-              <TikTokPostsTab
-                realData={ttRealData}
-                dateRange={period}
-                publishedVideos={ad.publishedVideos || []}
-                isPublishedLoading={false}
+              <GenericPostsListTab
+                posts={ttPublishedPosts}
+                isLoading={false}
+                pageSize={5}
+                searchPlaceholder="Search TikTok videos..."
+                searchKeys={["title", "caption", "text"]}
+                emptyStateTitle="No TikTok videos found."
+                footerMessage="Showing latest TikTok videos"
               />
             </div>
           )}

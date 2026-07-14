@@ -150,7 +150,9 @@ class YouTubeVideoService {
       likes: v.statistics.likeCount,
       comments: v.statistics.commentCount,
       duration: v.contentDetails.duration,
-      status: POST_STATUS.PUBLISHED
+      status: POST_STATUS.PUBLISHED,
+      platform: 'YOUTUBE',
+      postUrl: `https://www.youtube.com/watch?v=${v.id}`
     }));
   }
 

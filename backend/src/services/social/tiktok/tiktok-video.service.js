@@ -95,7 +95,9 @@ class TikTokVideoService {
       shares: v.share_count || 0,
       duration: v.duration || 0,
       status: POST_STATUS.PUBLISHED,
-      shareUrl: v.share_url || `https://www.tiktok.com/embed/${v.id}`
+      platform: 'TIKTOK',
+      postUrl: v.share_url || `https://www.tiktok.com/video/${v.id}`,
+      shareUrl: v.share_url || `https://www.tiktok.com/video/${v.id}`
     }));
   }
 }

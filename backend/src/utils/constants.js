@@ -275,9 +275,9 @@ const SOCIAL_TECHNICAL = {
   },
   TIKTOK_SCOPES: [
     'user.info.basic',
-    'user.info.stats',
-    'video.list',
-    'video.publish'
+    'user.info.stats', // Đã xin cấp quyền
+    // 'video.list',      // Yêu cầu cấp quyền thêm trên TikTok Developer
+    'video.upload'     // Đổi từ video.publish sang video.upload theo cấu hình của người dùng
   ],
   INBOX_LABELS: {
     ME: 'me',
