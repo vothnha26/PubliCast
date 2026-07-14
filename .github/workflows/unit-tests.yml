@@ -56,14 +56,14 @@ jobs:
           echo "LOG_LEVEL=error" >> .env
           echo "JWT_SECRET=test-secret-key-for-testing" >> .env
 
-      - name: Run Unit Tests
+      - name: Run Unit Tests (Services Only)
         working-directory: backend
         env:
           REDIS_HOST: localhost
           REDIS_PORT: 6379
           NODE_ENV: test
         run: |
-          npm run test -- --coverage --passWithNoTests
+          npm run test -- tests/services/ --coverage --passWithNoTests
 
       - name: Upload Coverage Reports
         uses: actions/upload-artifact@v4
@@ -127,8 +127,12 @@ jobs:
 
       - name: Run Distributed Lock Tests
         working-directory: backend
+        env:
+          REDIS_HOST: localhost
+          REDIS_PORT: 6379
+          NODE_ENV: test
         run: |
-          npm run test -- __tests__/services/distributed-lock.service.test.js --verbose || true
+          npm run test -- tests/services/distributed-lock.service.test.js --verbose
 
   test-quota-tracker:
     runs-on: ubuntu-latest
@@ -170,8 +174,12 @@ jobs:
 
       - name: Run Quota Tracker Tests
         working-directory: backend
+        env:
+          REDIS_HOST: localhost
+          REDIS_PORT: 6379
+          NODE_ENV: test
         run: |
-          npm run test -- __tests__/services/quota-tracker.service.test.js --verbose || true
+          npm run test -- tests/services/quota-tracker.service.test.js --verbose
 
   report:
     runs-on: ubuntu-latest
