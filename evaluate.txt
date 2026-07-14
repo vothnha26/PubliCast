@@ -1,22 +1,13 @@
-✅ Điểm đã xử lý tốt
+Đã xử lý đúng
+1. Late cache write-back (mục 1) — quyết định không abort request ngầm, để nó tiếp tục chạy và tự ghi cache khi Google trả về muộn — đây chính là giải pháp đúng cho vấn đề "lãng phí quota kép" đã nêu. Logic hợp lý: quota đã bị tính dù thành hay bại, nên tận dụng triệt để kết quả nếu nó về muộn thay vì bỏ phí.
+2. Chấp nhận đánh đổi TTL 26h (mục 2) — không né tránh vấn đề, nêu rõ đánh đổi và chấp nhận nó có lý do (giải phóng Redis, tránh giữ dữ liệu rác vô thời hạn cho video không ai xem). Đây là quyết định kỹ thuật hợp lý, ưu tiên đơn giản hoá hệ thống hơn là tối ưu 100% mọi edge case hiếm gặp.
+Điểm cần lưu ý khi code (không phải lỗi thiết kế, nhưng dễ bug nếu bỏ qua)
+1. Late write-back sau khi Lock đã hết hạn (30s) — có thể ghi cache mà không giữ Lock hợp lệ
+Timeline giả định: Lock TTL = 30s, nhưng nếu Google trả lời ở giây thứ 35 (vượt cả lock TTL lẫn timeout 15s), lúc này lock đã tự động hết hạn từ lâu (Redis tự xoá key sau 30s). Nghĩa là có thể đã có một lock mới được request khác giành được (ví dụ user 3 bấm vào video này ở giây 32, thấy không có cache, không có lock cũ nữa → giành lock mới → bắt đầu fetch lần 2). Khi đó:
 
-Toàn bộ 5 nhóm case bổ sung (chữ ký webhook, idempotency, livestream không hợp lệ, response nhanh, chuẩn hóa schema) đều đã được đưa vào với mô tả rõ ràng, cụ thể hơn cả đề xuất ban đầu của mình.
-Chi tiết hóa case "Livestream không hợp lệ" tốt hơn dự kiến: bạn đã thêm đúng 1 chi tiết quan trọng mà mình chưa nói rõ — hệ thống phải trả về response thành công (không phải lỗi) khi livestream null/ended, vì nếu trả lỗi, Facebook sẽ hiểu là gửi thất bại và retry liên tục, gây nhiễu log/tải hệ thống không cần thiết. Đây là điểm tinh tế, cho thấy bạn hiểu đúng bản chất cơ chế retry của webhook chứ không chỉ chép lại yêu cầu.
-Schema chuẩn hóa cụ thể hóa đúng field (id, authorName, authorAvatarUrl, content, platform, timestamp) — rõ ràng hơn nhiều so với mô tả chung chung trước đó, dễ implement và dễ review khi code thật.
-Case race condition đã bổ sung chi tiết quan trọng: "khi response trả về sẽ không kích hoạt lượt poll tiếp theo" — đây chính xác là điểm dễ gây leak interval nhất trong thực tế (callback bất đồng bộ hoàn thành sau khi đã cleanup), bạn đã nắm đúng.
-Đổi từ Selenium sang Postman/curl cho manual test — đúng theo đề xuất, gọn nhẹ và phù hợp giai đoạn này hơn.
+Request cũ (User 1, đang chạy ngầm) hoàn thành ở giây 35 → ghi cache + releaseLock().
+Nhưng lock lúc này thuộc về User 3 (do đã tạo lock mới), User 1 gọi releaseLock() sẽ xoá nhầm lock của User 3 đang chạy → gây thêm 1 lớp thundering herd nhỏ (User 3's polling users tưởng lock đã giải phóng dù request của User 3 vẫn đang chạy).
 
-⚠️ Vài điểm rất nhỏ để cân nhắc thêm (không bắt buộc, chỉ là tinh chỉnh)
-1. Case "reject 401/403" nên làm rõ agent gọi là ai
-Test giả lập request "thiếu chữ ký hoặc chữ ký không khớp" — nên đảm bảo bộ test cũng cover luôn trường hợp request đến từ domain/IP lạ nhưng có chữ ký giả (không chỉ chữ ký rỗng), để chắc chắn hàm verify signature dùng đúng HMAC so sánh với App Secret, không phải chỉ check "có tồn tại header hay không".
-2. Case Quota Exceeded (403) nên phân biệt với Token hết hạn (401)
-Về mặt xử lý, 2 lỗi này nên có hành vi khác nhau:
-
-401 (token hết hạn) → dừng polling + báo streamer "cần đăng nhập lại".
-403 (quota exceeded) → dừng polling + báo "quota đã hết, thử lại sau X" — khác message, và có thể cần logic backoff dài hơn trước khi retry (vì quota thường reset theo ngày, không phải theo phút).
-
-Plan hiện gộp chung xử lý "dừng ngay + emit lỗi" cho cả 2 case — nên cân nhắc test riêng 2 message/behavior khác nhau nếu code thực tế cần phân biệt.
-3. Dedup ở YouTube polling — nên test luôn trường hợp tin nhắn mới xen giữa tin nhắn cũ
-Ngoài case "tin nhắn trùng do overlap pageToken", nên thêm 1 test: response trả về hỗn hợp (2 tin cũ đã gửi + 3 tin mới) → verify chỉ 3 tin mới được emit qua socket, không phải toàn bộ hoặc không có gì — đây là case thực tế hay xảy ra hơn là toàn bộ response trùng lặp.
-🎯 Kết luận
-Bản kế hoạch này đã đủ chín để bắt tay implement — không còn thiếu sót ở tầng "nền móng". 3 điểm mình nêu thêm ở trên chỉ là refinement, có thể vừa code vừa bổ sung test case thay vì chặn tiến độ.
+→ Đây là race-condition tinh vi giữa lock TTL và fetch time thực tế khi Google trả lời rất chậm (>30s). Cách xử lý chuẩn: releaseLock nên dùng token/value duy nhất theo từng lần acquire (không chỉ xoá theo key), kiểm tra value khớp mới xoá (theo đúng pattern Redlock khuyến nghị: SET key uniqueToken NX EX ttl, khi release thì dùng Lua script GET key == uniqueToken THEN DEL để tránh xoá nhầm lock của người khác). Thiết kế hiện tại mô tả acquireLock(key, ttlSec) / releaseLock(key) không có token — nên bổ sung trước khi code, đây là chi tiết quan trọng của Redis distributed lock chuẩn mà tài liệu chưa đề cập.
+2. Trường hợp Google trả lỗi thật (không phải timeout) ở luồng ngầm — chưa mô tả rõ
+Thiết kế mô tả rõ nhánh "hoàn thành trước 15s" và "quá 15s nhưng sau đó thành công", nhưng chưa nói nhánh "quá 15s và cuối cùng Google trả về lỗi thật" (network error, quota exceeded thật sự, v.v.). Lúc này luồng ngầm sẽ không có gì để ghi cache — cần đảm bảo nó vẫn releaseLock() (dùng token đúng như mục 1) để không giữ lock "chết" đến hết 30s một cách không cần thiết, và nên log lỗi để theo dõi.

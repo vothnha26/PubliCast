@@ -994,6 +994,20 @@ class SocialAccountRepository {
   }
 
 
+  async updateSyncStatus(id, syncStatus) {
+    return prisma.socialAccount.update({
+      where: { id },
+      data: { syncStatus }
+    });
+  }
+
+  async updateLastSyncAt(id) {
+    return prisma.socialAccount.update({
+      where: { id },
+      data: { lastSyncAt: new Date() }
+    });
+  }
+
   async deleteManyByBrandAndPlatform(brandId, platform) {
     return prisma.socialAccount.deleteMany({
       where: { brandId, platform }

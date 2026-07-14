@@ -409,6 +409,13 @@ model PendingPayment {
 // SOCIAL MEDIA PLATFORMS
 // ============================================
 
+enum SyncStatus {
+  PENDING
+  PARTIAL
+  SUCCESS
+  FAILED
+}
+
 model SocialAccount {
   id                String       @id @default(uuid())
   brandId           String
@@ -424,6 +431,7 @@ model SocialAccount {
   isConnected       Boolean      @default(true)
   connectedAt       DateTime
   lastSyncAt        DateTime?
+  syncStatus        SyncStatus   @default(PENDING)
   createdAt         DateTime     @default(now())
   updatedAt         DateTime     @updatedAt
 

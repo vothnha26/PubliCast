@@ -17,6 +17,10 @@ const QUEUE_CONFIG = Object.freeze({
   PUBLISH: {
     NAME: 'social-publish-queue',
     JOB_PUBLISH: 'publish-post'
+  },
+  SOCIAL: {
+    NAME: 'social-sync-queue',
+    JOB_SYNC: 'sync-channel-metrics'
   }
 });
 

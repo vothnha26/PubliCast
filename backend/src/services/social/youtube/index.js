@@ -38,6 +38,10 @@ class YouTubeService extends BaseSocialService {
     return youtubeAnalytics.getVideoAnalytics(brandId, videoId, startDate, endDate);
   }
 
+  async getVideoInsights(brandId, videoId) {
+    return youtubeAnalytics.getVideoInsights(brandId, videoId);
+  }
+
   // --- Videos & Tracking ---
   async getPublishedVideos(brandId, pageToken = null, limit = 10, socialAccountId = null) {
     return youtubeVideo.getPublishedVideos(brandId, pageToken, limit, socialAccountId);

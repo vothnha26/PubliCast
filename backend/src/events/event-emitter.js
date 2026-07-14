@@ -21,6 +21,10 @@ const EVENTS = {
     CREATED: 'autolist.created',
     UPDATED: 'autolist.updated',
     TOGGLED: 'autolist.toggled'
+  },
+  SOCIAL: {
+    CONNECTED: 'social.connected',
+    DISCONNECTED: 'social.disconnected'
   }
 };
 

@@ -82,6 +82,23 @@ export function GenericPostsListTab({
   // Helper định dạng độ dài video (ví dụ: 0:23)
   const formatDuration = (sec) => {
     if (sec === undefined || sec === null || sec === "") return "-";
+    
+    // Parse YouTube ISO 8601 duration format (e.g. PT2M15S)
+    if (typeof sec === "string" && sec.startsWith("PT")) {
+      const regex = /PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/;
+      const matches = sec.match(regex);
+      if (matches) {
+        const hours = parseInt(matches[1] || 0, 10);
+        const minutes = parseInt(matches[2] || 0, 10);
+        const seconds = parseInt(matches[3] || 0, 10);
+        
+        if (hours > 0) {
+          return `${hours}:${minutes.toString().padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`;
+        }
+        return `${minutes}:${seconds.toString().padStart(2, "0")}`;
+      }
+    }
+
     if (typeof sec === "string") {
       if (sec.includes(":")) return sec;
       sec = Number(sec);
@@ -215,22 +232,6 @@ export function GenericPostsListTab({
               className="pl-8 pr-4 py-1.5 text-xs bg-white border border-gray-200 rounded-full w-64 focus:outline-none focus:ring-2 focus:ring-[#2D1D35]/10 transition-all font-medium text-gray-700"
             />
             <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-4">
-          <div className="flex items-center gap-2">
-            <span className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">Số dòng hiển thị:</span>
-            <select
-              value={pageSize}
-              onChange={(e) => setPageSize(e.target.value)}
-              className="text-[10px] font-bold bg-white border border-gray-200 rounded-lg px-2.5 py-1 focus:outline-none cursor-pointer text-gray-700 shadow-sm"
-            >
-              <option value="5">5</option>
-              <option value="10">10</option>
-              <option value="15">15</option>
-              <option value="20">20</option>
-            </select>
           </div>
         </div>
       </div>
@@ -464,10 +465,25 @@ export function GenericPostsListTab({
       </div>
 
       {/* Bộ phân trang Premium Circle Design y hệt như hình 1 */}
-      <div className="px-6 py-4 bg-gray-50/30 flex items-center justify-between border-t border-gray-100 select-none">
-        <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
-          {footerMessage || `Hiển thị ${pagedPosts.length}/${filteredPosts.length} bài viết`}
-        </span>
+      <div className="px-6 py-4 bg-gray-50/30 flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-t border-gray-100 select-none">
+        <div className="flex items-center gap-6">
+          <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
+            {footerMessage || `Hiển thị ${pagedPosts.length}/${filteredPosts.length} bài viết`}
+          </span>
+          <div className="flex items-center gap-2 border-l border-gray-200 pl-6">
+            <span className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">Số dòng hiển thị:</span>
+            <select
+              value={pageSize}
+              onChange={(e) => setPageSize(e.target.value)}
+              className="text-[10px] font-bold bg-white border border-gray-200 rounded-lg px-2.5 py-1 focus:outline-none cursor-pointer text-gray-700 shadow-sm"
+            >
+              <option value="5">5</option>
+              <option value="10">10</option>
+              <option value="15">15</option>
+              <option value="20">20</option>
+            </select>
+          </div>
+        </div>
 
         {/* Các nút phân trang tròn */}
         {(!isServerPaged ? totalPages > 1 : (prevPageToken || nextPageToken)) && (

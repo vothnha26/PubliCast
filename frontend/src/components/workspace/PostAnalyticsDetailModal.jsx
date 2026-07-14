@@ -252,9 +252,27 @@ export function PostAnalyticsDetailModal({ isOpen, onClose, post, brandId }) {
         <div className="flex-1 overflow-y-auto bg-[#F8F8F7] p-6 space-y-6">
           
           {isLoading ? (
-            <div className="w-full h-64 flex items-center justify-center gap-3">
-              <RefreshCw className="animate-spin text-gray-300" size={20} />
-              <span className="text-xs text-gray-500 font-bold">Đang tải dữ liệu số liệu...</span>
+            <div className="space-y-6">
+              {/* Skeleton Grid Statistics */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 animate-pulse">
+                {[1, 2, 3, 4].map((n) => (
+                  <div key={n} className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm flex flex-col relative overflow-hidden min-h-[96px] justify-between">
+                    <div className="w-16 h-3 bg-gray-100 rounded" />
+                    <div className="w-24 h-6 bg-gray-100 rounded mt-2" />
+                  </div>
+                ))}
+              </div>
+              
+              {/* Skeleton Chart Box */}
+              <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm animate-pulse space-y-4">
+                <div className="w-1/3 h-4 bg-gray-100 rounded-lg" />
+                <div className="w-1/4 h-3 bg-gray-50 rounded" />
+                <div className="w-full h-[240px] bg-gray-50 rounded-2xl flex items-end p-4 gap-2">
+                  {[35, 45, 60, 50, 75, 90, 65, 80, 95, 70, 85, 55].map((h, i) => (
+                    <div key={i} className="flex-1 bg-gray-200/65 rounded-t-lg transition-all" style={{ height: `${h}%` }} />
+                  ))}
+                </div>
+              </div>
             </div>
           ) : !isSupported ? (
             /* Unsupported platform notice */

@@ -13,7 +13,23 @@ class YouTubeVideoService {
         (account.accessToken && account.accessToken.startsWith('mock-')) ||
         (account.platformAccountId && account.platformAccountId.startsWith('mock-'))
       )) {
-        return { videos: [], nextPageToken: null, prevPageToken: null };
+        return {
+          videos: [
+            {
+              id: "dQw4w9WgXcQ",
+              title: "Rick Astley - Never Gonna Give You Up (Official Music Video)",
+              thumbnailUrl: "https://img.youtube.com/vi/dQw4w9WgXcQ/0.jpg",
+              publishedAt: "1987-07-27T00:00:00Z",
+              views: "1400000000",
+              likes: "16000000",
+              comments: "3000000",
+              duration: "PT3M33S",
+              status: POST_STATUS.PUBLISHED
+            }
+          ],
+          nextPageToken: null,
+          prevPageToken: null
+        };
       }
       const uploadsId = await this._resolveUploadsPlaylistId(auth, account);
       

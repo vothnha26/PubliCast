@@ -78,6 +78,7 @@ router.post('/youtube/track', verifyAuth, youtubeController.trackYouTubeVideo);
 router.get('/youtube/tracked-videos', verifyAuth, youtubeController.getTrackedVideos);
 router.get('/youtube/published-videos', verifyAuth, youtubeController.getYouTubePublishedVideos);
 router.get('/youtube/video-analytics', verifyAuth, youtubeController.getYouTubeVideoAnalytics);
+router.get('/youtube/video-insights', verifyAuth, youtubeController.getYouTubeVideoInsights);
 router.get('/youtube/playlists', verifyAuth, youtubeController.getYouTubePlaylists);
 
 // YouTube Competitors

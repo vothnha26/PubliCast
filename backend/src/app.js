@@ -130,6 +130,8 @@ app.get('/ready', async (_req, res) => {
 require('./events/subscribers/post.subscriber')();
 require('./events/subscribers/user.subscriber')();
 require('./events/subscribers/autolist.subscriber')();
+const { initSocialSubscriber } = require('./events/subscribers/social.subscriber');
+initSocialSubscriber();
 
 // ── Static file serving ────────────────────────────────────────────────────
 app.use('/uploads', express.static('uploads', {
