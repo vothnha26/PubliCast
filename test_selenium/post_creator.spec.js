@@ -1,5 +1,6 @@
 const path = require('path');
 const fs = require('fs');
+const zlib = require('zlib');
 require('dotenv').config({ path: path.resolve(__dirname, '.env') });
 const BASE_URL = process.env.BASE_URL || 'http://localhost:5173';
 
@@ -7,6 +8,64 @@ const { expect } = require('chai');
 const { Builder, By, until, Key } = require('selenium-webdriver');
 const chrome = require('selenium-webdriver/chrome');
 const mysql = require('mysql2/promise');
+
+/**
+ * Generates a real, valid 1x1 red-pixel PNG at the given path using only
+ * Node's built-in zlib (no external image lib / no committed binary needed).
+ * Ensures test_assets/sample_image.png always exists before Selenium runs,
+ * so CI never depends on a binary fixture being present in the repo/checkout.
+ */
+function ensureSamplePng(filePath) {
+  if (fs.existsSync(filePath)) return;
+
+  fs.mkdirSync(path.dirname(filePath), { recursive: true });
+
+  const crcTable = [];
+  for (let n = 0; n < 256; n++) {
+    let c = n;
+    for (let k = 0; k < 8; k++) {
+      c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1;
+    }
+    crcTable[n] = c >>> 0;
+  }
+  function crc32(buf) {
+    let crc = 0xffffffff;
+    for (let i = 0; i < buf.length; i++) {
+      crc = crcTable[(crc ^ buf[i]) & 0xff] ^ (crc >>> 8);
+    }
+    return (crc ^ 0xffffffff) >>> 0;
+  }
+  function chunk(type, data) {
+    const typeBuf = Buffer.from(type, 'ascii');
+    const lenBuf = Buffer.alloc(4);
+    lenBuf.writeUInt32BE(data.length, 0);
+    const crcBuf = Buffer.alloc(4);
+    crcBuf.writeUInt32BE(crc32(Buffer.concat([typeBuf, data])), 0);
+    return Buffer.concat([lenBuf, typeBuf, data, crcBuf]);
+  }
+
+  const signature = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+
+  const ihdrData = Buffer.alloc(13);
+  ihdrData.writeUInt32BE(1, 0); // width
+  ihdrData.writeUInt32BE(1, 4); // height
+  ihdrData.writeUInt8(8, 8); // bit depth
+  ihdrData.writeUInt8(2, 9); // color type: RGB
+  ihdrData.writeUInt8(0, 10); // compression
+  ihdrData.writeUInt8(0, 11); // filter
+  ihdrData.writeUInt8(0, 12); // interlace
+  const ihdr = chunk('IHDR', ihdrData);
+
+  // One scanline: filter byte (0) + 1 red pixel (R,G,B)
+  const raw = Buffer.from([0, 0xff, 0x00, 0x00]);
+  const idatData = zlib.deflateSync(raw);
+  const idat = chunk('IDAT', idatData);
+
+  const iend = chunk('IEND', Buffer.alloc(0));
+
+  const png = Buffer.concat([signature, ihdr, idat, iend]);
+  fs.writeFileSync(filePath, png);
+}
 
 const mockPlatforms = [
   { platform: 'FACEBOOK', id: 'mock-fb-social-account-id', accountId: 'fb-123', name: 'Mock Facebook' },
@@ -257,6 +316,11 @@ describe('Post Creator Detailed E2E Suite', function () {
 
 
   before(async function () {
+    // Generate the image test fixture on the fly instead of relying on a
+    // committed binary — guarantees it exists on any fresh CI checkout
+    // without needing to remember to commit/track it.
+    ensureSamplePng(path.resolve(__dirname, './test_assets/sample_image.png'));
+
     const options = new chrome.Options();
     if (process.env.CI || process.env.HEADLESS) {
       options.addArguments('--headless=new');
