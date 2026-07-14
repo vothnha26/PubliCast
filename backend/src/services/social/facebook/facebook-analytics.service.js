@@ -158,6 +158,9 @@ class FacebookAnalyticsService {
 
       // Fetch Page Stories
       let stories = [];
+      if (pageAccessToken.startsWith('mock-')) {
+        stories = this._generateMockStories();
+      } else {
       try {
         const rawStories = await facebookGateway.getPageStories(pageId, pageAccessToken);
         for (const story of rawStories) {
@@ -206,6 +209,7 @@ class FacebookAnalyticsService {
         }
       } catch (err) {
         console.error('[Facebook Stories] Failed to fetch real stories:', err.message);
+      }
       }
 
       const sortedDates = Object.keys(dailyMap).sort().map(d => {
@@ -382,6 +386,32 @@ class FacebookAnalyticsService {
       }
     }
     return stats;
+  }
+
+  _generateMockStories() {
+    const now = Date.now();
+    return [1, 2].map((n) => {
+      const publishedAt = new Date(now - n * 4 * 60 * 60 * 1000);
+      const expiresAt = new Date(publishedAt.getTime() + 24 * 60 * 60 * 1000);
+      const reach = 800 * n;
+      const exits = 60 * n;
+      const impressions = 1000 * n;
+      return {
+        platformStoryId: `mock-story-${n}`,
+        publishedAt: publishedAt.toISOString(),
+        expiresAt: expiresAt.toISOString(),
+        mediaType: 'IMAGE',
+        mediaUrl: null,
+        thumbnailUrl: null,
+        reach,
+        impressions,
+        exits,
+        replies: 5 * n,
+        linkClicks: 3 * n,
+        completionRate: parseFloat(((reach - exits) / reach).toFixed(4)),
+        exitRate: parseFloat((exits / impressions).toFixed(4))
+      };
+    });
   }
 
   _generateMockFallback(dailyMap) {

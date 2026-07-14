@@ -2,6 +2,10 @@ const facebookGateway = require('./facebook.gateway');
 const socialAccountRepository = require('../../../repositories/social/social-account.repository');
 const { PLATFORMS, POST_STATUS, POST_TYPES, DEFAULT_CONFIG, SOCIAL_TECHNICAL } = require('../../../utils/constants');
 const FacebookPublishStrategyFactory = require('./publish-strategies/publish-strategy.factory');
+const redisClient = require('../../../config/redis');
+
+const POST_INSIGHTS_CACHE_TTL_SEC = 5 * 60; // 5 minutes
+const PAGE_DEMOGRAPHICS_CACHE_TTL_SEC = 60 * 60; // 1 hour
 
 // Memory Cache: Key -> brandId_limit, Value -> { data, expiry }
 const postCache = new Map();
@@ -162,6 +166,145 @@ class FacebookPostService {
     return await facebookGateway.deletePost(platformPostId, pageAccessToken);
   }
 
+  /**
+   * Lấy chi tiết phân tích 1 bài viết Facebook (Overview + Reactions breakdown + Demographics).
+   * Kiểm tra Redis Cache trước (fb:post-insights:${brandId}:${platformPostId}, TTL 5 phút).
+   */
+  async getPostDetails(brandId, platformPostId, socialAccountId = null) {
+    const cacheKey = `fb:post-insights:${brandId}:${platformPostId}`;
+    const cached = await redisClient.get(cacheKey).catch(() => null);
+    if (cached) {
+      try {
+        return JSON.parse(cached);
+      } catch (e) {
+        // fall through to refetch on corrupt cache entry
+      }
+    }
+
+    const { pageId, pageAccessToken } = await this._getAccountCredentials(brandId, socialAccountId);
+
+    let result;
+    if (pageAccessToken && pageAccessToken.startsWith('mock-')) {
+      result = this._buildMockPostDetails(platformPostId);
+    } else {
+      try {
+        const [post, insights, reactionsBreakdown] = await Promise.all([
+          facebookGateway.getPostDetails(platformPostId, pageAccessToken),
+          facebookGateway.getPostInsights(platformPostId, pageAccessToken),
+          facebookGateway.getPostReactionsBreakdown(platformPostId, pageAccessToken)
+        ]);
+
+        const metrics = this._parseInsightsMetrics(insights);
+        const counts = this._extractPostCounts(post);
+        const demographics = await this._getPageDemographicsCached(brandId, pageId, pageAccessToken);
+
+        result = {
+          id: post.id,
+          message: post.message || post.story || DEFAULT_CONFIG.NO_CONTENT,
+          type: this._determinePostType(post),
+          mediaUrl: post.full_picture || '',
+          permalinkUrl: post.permalink_url || null,
+          date: post.created_time,
+          platform: 'facebook',
+          reach: metrics.reach || 0,
+          views: metrics.views || 0,
+          clicks: metrics.clicks || 0,
+          linkClicks: metrics.linkClicks || 0,
+          comments: counts.comments,
+          shares: counts.shares,
+          reactions: {
+            total: counts.reactions,
+            breakdown: reactionsBreakdown
+          },
+          demographics: demographics.ageGender,
+          geography: demographics.geography
+        };
+      } catch (err) {
+        console.warn(`[FacebookPostService] getPostDetails failed for post ${platformPostId} (brand ${brandId}): ${err.message}`);
+        throw err;
+      }
+    }
+
+    await redisClient.setEx(cacheKey, POST_INSIGHTS_CACHE_TTL_SEC, JSON.stringify(result)).catch(() => {});
+    return result;
+  }
+
+  /**
+   * Lấy dữ liệu tăng trưởng theo thời gian (timeseries) cho 1 bài viết Facebook.
+   * Không cache — dữ liệu tăng trưởng cần luôn mới khi user mở lại biểu đồ.
+   */
+  async getPostAnalytics(brandId, platformPostId, startDate, endDate, socialAccountId = null) {
+    const { pageAccessToken } = await this._getAccountCredentials(brandId, socialAccountId);
+
+    if (pageAccessToken && pageAccessToken.startsWith('mock-')) {
+      return this._buildMockPostAnalytics(startDate, endDate);
+    }
+
+    const insights = await facebookGateway.getPostInsights(platformPostId, pageAccessToken);
+    const metrics = this._parseInsightsMetrics(insights);
+
+    // Facebook post-level insights are lifetime totals, not a real timeseries per day.
+    // Return a single-point series so the frontend growth chart can render it consistently
+    // with the timeseries shape used by other platforms.
+    return [{
+      date: new Date().toISOString().split('T')[0],
+      views: metrics.views || 0,
+      reach: metrics.reach || 0,
+      clicks: metrics.clicks || 0,
+      reactions: 0
+    }];
+  }
+
+  async _getPageDemographicsCached(brandId, pageId, pageAccessToken) {
+    const cacheKey = `fb:page-demographics:${brandId}`;
+    const cached = await redisClient.get(cacheKey).catch(() => null);
+    if (cached) {
+      try {
+        return JSON.parse(cached);
+      } catch (e) {
+        // fall through to refetch on corrupt cache entry
+      }
+    }
+
+    const demographics = await facebookGateway.getPageDemographics(pageId, pageAccessToken);
+    await redisClient.setEx(cacheKey, PAGE_DEMOGRAPHICS_CACHE_TTL_SEC, JSON.stringify(demographics)).catch(() => {});
+    return demographics;
+  }
+
+  _buildMockPostDetails(platformPostId) {
+    return {
+      id: platformPostId,
+      message: 'Bài viết mẫu Facebook (Mock)',
+      type: POST_TYPES.IMAGE,
+      mediaUrl: '',
+      permalinkUrl: null,
+      date: new Date().toISOString(),
+      platform: 'facebook',
+      reach: 1200,
+      views: 1800,
+      clicks: 45,
+      linkClicks: 20,
+      comments: 8,
+      shares: 3,
+      reactions: {
+        total: 56,
+        breakdown: { LIKE: 40, LOVE: 10, HAHA: 3, WOW: 2, SAD: 1, ANGRY: 0 }
+      },
+      demographics: { available: false, reason: 'deprecated_by_platform', data: null },
+      geography: { available: true, reason: null, data: { 'Vietnam': 820, 'United States': 210 } }
+    };
+  }
+
+  _buildMockPostAnalytics(startDate, endDate) {
+    return [{
+      date: new Date().toISOString().split('T')[0],
+      views: 1800,
+      reach: 1200,
+      clicks: 45,
+      reactions: 56
+    }];
+  }
+
   // ============= Private Helper Methods =============
 
   async _getAccountCredentials(brandId, socialAccountId = null) {
@@ -207,6 +350,7 @@ class FacebookPostService {
         id: post.id,
         message: post.message || post.story || DEFAULT_CONFIG.NO_CONTENT,
         type: postType,
+        platform: 'facebook',
         mediaUrl: post.full_picture || '',
         date: post.created_time,
         status: POST_STATUS.PUBLISHED,
@@ -269,6 +413,7 @@ class FacebookPostService {
       id: post.id,
       message: post.message || post.story || 'Facebook Post',
       type: postType,
+      platform: 'facebook',
       mediaUrl: post.full_picture || '',
       date: post.created_time,
       status: POST_STATUS.PUBLISHED,

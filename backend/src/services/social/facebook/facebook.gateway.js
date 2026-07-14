@@ -31,6 +31,16 @@ const fetchWithTimeout = async (url, options = {}) => {
 
 const fetch = fetchWithTimeout;
 
+class FacebookInsightsError extends Error {
+  constructor(message, { code = null, status = null, postId = null } = {}) {
+    super(message);
+    this.name = 'FacebookInsightsError';
+    this.code = code;
+    this.status = status;
+    this.postId = postId;
+  }
+}
+
 class FacebookGateway {
   constructor() {
     this.appId = process.env.FACEBOOK_APP_ID;
@@ -179,18 +189,85 @@ class FacebookGateway {
   }
 
   async getPostInsights(postId, pageAccessToken) {
-    const newMetrics = 'post_total_media_view_unique,post_media_view,post_clicks_by_type';
-    let url = `${this.graphBaseUrl}/${postId}/insights?metric=${newMetrics}&access_token=${pageAccessToken}`;
-    let res = await fetch(url);
+    const metrics = 'post_total_media_view_unique,post_media_view,post_clicks_by_type';
+    const url = `${this.graphBaseUrl}/${postId}/insights?metric=${metrics}&access_token=${pageAccessToken}`;
+    const res = await fetch(url);
     if (!res.ok) {
-      const legacyMetrics = 'post_impressions_unique,post_impressions,post_clicks_by_type';
-      url = `${this.graphBaseUrl}/${postId}/insights?metric=${legacyMetrics}&access_token=${pageAccessToken}`;
-      res = await fetch(url);
+      const errData = await res.json().catch(() => ({}));
+      throw new FacebookInsightsError(
+        errData.error?.message || `Failed to fetch Facebook post insights for ${postId}`,
+        { code: errData.error?.code ?? null, status: res.status, postId }
+      );
     }
-    if (!res.ok) return [];
 
     const data = await res.json();
     return data.data || [];
+  }
+
+  async getPostReactionsBreakdown(postId, pageAccessToken) {
+    const fields = 'reactions.type(LIKE).summary(total_count).limit(0).as(like)'
+      + ',reactions.type(LOVE).summary(total_count).limit(0).as(love)'
+      + ',reactions.type(HAHA).summary(total_count).limit(0).as(haha)'
+      + ',reactions.type(WOW).summary(total_count).limit(0).as(wow)'
+      + ',reactions.type(SAD).summary(total_count).limit(0).as(sad)'
+      + ',reactions.type(ANGRY).summary(total_count).limit(0).as(angry)';
+    const url = `${this.graphBaseUrl}/${postId}?fields=${fields}&access_token=${pageAccessToken}`;
+    const res = await fetch(url);
+    if (!res.ok) {
+      const errData = await res.json().catch(() => ({}));
+      throw new FacebookInsightsError(
+        errData.error?.message || `Failed to fetch Facebook post reactions breakdown for ${postId}`,
+        { code: errData.error?.code ?? null, status: res.status, postId }
+      );
+    }
+
+    const data = await res.json();
+    return {
+      LIKE: data.like?.summary?.total_count || 0,
+      LOVE: data.love?.summary?.total_count || 0,
+      HAHA: data.haha?.summary?.total_count || 0,
+      WOW: data.wow?.summary?.total_count || 0,
+      SAD: data.sad?.summary?.total_count || 0,
+      ANGRY: data.angry?.summary?.total_count || 0
+    };
+  }
+
+  async getPostDetails(postId, pageAccessToken) {
+    const fields = 'id,message,story,created_time,full_picture,permalink_url,attachments{media,type},shares,comments.summary(true),reactions.summary(true)';
+    const url = `${this.graphBaseUrl}/${postId}?fields=${fields}&access_token=${pageAccessToken}`;
+    const res = await fetch(url);
+    if (!res.ok) {
+      const errData = await res.json().catch(() => ({}));
+      throw new FacebookInsightsError(
+        errData.error?.message || `Failed to fetch Facebook post details for ${postId}`,
+        { code: errData.error?.code ?? null, status: res.status, postId }
+      );
+    }
+    return res.json();
+  }
+
+  /**
+   * Lấy dữ liệu nhân khẩu học cấp Page (Page-level Demographics).
+   * Age/Gender: Meta đã ngừng cung cấp qua Graph API — trả cứng available:false.
+   * Geography: dùng metric page_follows_country (khuyến nghị thay page_fans_country từ 11/2025).
+   * Xử lý ngưỡng k-anonymity: nếu Facebook trả object/array rỗng, coi là insufficient_data.
+   */
+  async getPageDemographics(pageId, pageAccessToken) {
+    const ageGender = { available: false, reason: 'deprecated_by_platform', data: null };
+
+    const url = `${this.graphBaseUrl}/${pageId}/insights?metric=page_follows_country&period=lifetime&access_token=${pageAccessToken}`;
+    const res = await fetch(url);
+    if (!res.ok) {
+      return { ageGender, geography: { available: false, reason: 'insufficient_data', data: null } };
+    }
+
+    const data = await res.json();
+    const insightData = data.data?.[0]?.values?.[0]?.value;
+    if (!insightData || Object.keys(insightData).length === 0) {
+      return { ageGender, geography: { available: false, reason: 'insufficient_data', data: null } };
+    }
+
+    return { ageGender, geography: { available: true, reason: null, data: insightData } };
   }
 
   async getPostComments(postId, pageAccessToken) {
@@ -690,3 +767,4 @@ class FacebookGateway {
 }
 
 module.exports = new FacebookGateway();
+module.exports.FacebookInsightsError = FacebookInsightsError;
