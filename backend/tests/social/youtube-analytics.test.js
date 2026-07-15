@@ -79,7 +79,10 @@ describe('YoutubeAnalyticsService', () => {
           access_token: 'new-access',
           refresh_token: 'new-refresh',
           expiry_date: 123456
-        }
+        },
+        // enqueueSync: false — syncChannelMetrics IS the sync job; it must not
+        // re-enqueue another one via the outbox or it loops forever.
+        { enqueueSync: false }
       );
       expect(result).toEqual({ id: 'sa-real-yt', updated: true });
 

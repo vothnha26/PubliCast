@@ -90,6 +90,9 @@ class InstagramService extends BaseSocialService {
 
     const igInfo = await instagramAnalytics.getChannelInfo({ pageId, pageAccessToken }, startDate, endDate, socialAccountId);
 
+    // enqueueSync: false — đây CHÍNH LÀ sync job đang chạy; xem ghi chú tương tự ở
+    // youtube-analytics.service.js syncChannelMetrics. platform giữ nguyên mặc định
+    // (PLATFORMS.INSTAGRAM) từ account đã lưu — không đổi nền tảng khi sync.
     return require('../../../repositories/social/social-account.repository').upsertInstagramAccount(account.brandId, {
       igAccountId: account.platformAccountId,
       username: account.username,
@@ -104,7 +107,7 @@ class InstagramService extends BaseSocialService {
     }, {
       access_token: pageAccessToken,
       refresh_token: account.refreshToken
-    });
+    }, account.platform, { enqueueSync: false });
   }
 
   // --- Posts & Feed ---

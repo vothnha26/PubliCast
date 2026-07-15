@@ -119,7 +119,10 @@ describe('TikTok Integration Service Tests', () => {
         expect.objectContaining({
           access_token: 'mock_access_token',
           refresh_token: 'mock_refresh_token'
-        })
+        }),
+        // enqueueSync: false — syncChannelMetrics IS the sync job; it must not
+        // re-enqueue another one via the outbox or it loops forever.
+        { enqueueSync: false }
       );
       expect(result.id).toBe('sa_tiktok_1');
     });
