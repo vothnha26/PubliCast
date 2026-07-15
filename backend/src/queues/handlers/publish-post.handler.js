@@ -5,20 +5,23 @@ const { POST_STATUS } = require('../../utils/constants');
 class PublishPostHandler {
   async handle(job) {
     // KHÔNG dùng property 'this.xxx' của class. Mọi biến đều khai báo cục bộ!
-    const { postId, retryPlatforms } = job.data;
-    
+    const { postId, retryPlatforms, partialRetryCount } = job.data;
+
     console.log(`[PublishPostHandler] 📝 Processing job ${job.id} for Post: ${postId}`);
-    
+
     try {
-      // 1. Double check post status in DB (Safety check)
+      // 1. Double check post status in DB (Safety check). RETRYING included —
+      //    a post left RETRYING by a previous failed attempt is exactly what a
+      //    retry job is meant to process.
       const post = await postRepository.findById(postId);
-      if (!post || (post.status !== POST_STATUS.SCHEDULED && post.status !== POST_STATUS.DRAFT)) {
+      const validStatuses = [POST_STATUS.SCHEDULED, POST_STATUS.DRAFT, POST_STATUS.RETRYING];
+      if (!post || !validStatuses.includes(post.status)) {
         console.log(`[PublishPostHandler] ⏩ Post ${postId} is not in a valid state for publishing. Skipping.`);
         return;
       }
 
-      // 2. Execute the publish pipeline (truyền thêm retryPlatforms nếu có)
-      await postService.publishToPlatforms(postId, { retryPlatforms });
+      // 2. Execute the publish pipeline (truyền thêm retryPlatforms/partialRetryCount nếu có)
+      await postService.publishToPlatforms(postId, { retryPlatforms, partialRetryCount });
       
       console.log(`[PublishPostHandler] ✅ Successfully processed Post: ${postId}`);
     } catch (err) {
