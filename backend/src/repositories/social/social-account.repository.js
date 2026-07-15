@@ -24,8 +24,14 @@ class SocialAccountRepository {
    * job sync social account, đảm bảo không mất event nếu Redis/process lỗi ngay sau
    * khi social account đã được lưu vào DB. Payload outbox CHỈ chứa socialAccountId
    * (không chứa token) — handler tự findById lại khi xử lý.
+   *
+   * options.enqueueSync (default true): CHỈ đặt false khi hàm này được gọi TỪ BÊN
+   * TRONG chính sync job (syncChannelMetrics) để lưu kết quả sync mới nhất — nếu
+   * không, mỗi lần sync sẽ tự ghi thêm 1 outbox row mới, tạo vòng lặp sync vô hạn
+   * (sync → ghi outbox → dispatcher enqueue job mới → sync → ...).
    */
-  async upsertFacebookAccount(brandId, pageData, tokens) {
+  async upsertFacebookAccount(brandId, pageData, tokens, options = {}) {
+    const { enqueueSync = true } = options;
     const { pageId, username, displayName, profilePictureUrl, category, likesCount, followersCount, about, website } = pageData;
 
     const finalUsername = username || displayName || 'facebook_page';
@@ -104,19 +110,23 @@ class SocialAccountRepository {
         await this.saveFacebookAnalytics(brandId, account.id, pageData.analytics, startDate, endDate, tx);
       }
 
-      await outboxEventRepository.create(
-        OUTBOX_EVENT_TYPES.SOCIAL_SYNC_ENQUEUE,
-        account.id,
-        { socialAccountId: account.id, platform: PLATFORMS.FACEBOOK, brandId },
-        {},
-        tx
-      );
+      if (enqueueSync) {
+        await outboxEventRepository.create(
+          OUTBOX_EVENT_TYPES.SOCIAL_SYNC_ENQUEUE,
+          account.id,
+          { socialAccountId: account.id, platform: PLATFORMS.FACEBOOK, brandId },
+          {},
+          tx
+        );
+      }
 
       return this.findById(account.id, tx);
     });
   }
 
-  async upsertTikTokAccount(brandId, accountData, tokens) {
+  /** Xem ghi chú options.enqueueSync ở upsertFacebookAccount phía trên. */
+  async upsertTikTokAccount(brandId, accountData, tokens, options = {}) {
+    const { enqueueSync = true } = options;
     const { pageId, username, displayName, profilePictureUrl, followersCount = 0, followingCount = 0, likesCount = 0, videoCount = 0 } = accountData;
 
     const finalUsername = username || displayName || 'tiktok_user';
@@ -190,13 +200,15 @@ class SocialAccountRepository {
         await this.saveTikTokAnalytics(brandId, account.id, accountData.analytics, startDate, endDate, tx);
       }
 
-      await outboxEventRepository.create(
-        OUTBOX_EVENT_TYPES.SOCIAL_SYNC_ENQUEUE,
-        account.id,
-        { socialAccountId: account.id, platform: PLATFORMS.TIKTOK, brandId },
-        {},
-        tx
-      );
+      if (enqueueSync) {
+        await outboxEventRepository.create(
+          OUTBOX_EVENT_TYPES.SOCIAL_SYNC_ENQUEUE,
+          account.id,
+          { socialAccountId: account.id, platform: PLATFORMS.TIKTOK, brandId },
+          {},
+          tx
+        );
+      }
 
       return this.findById(account.id, tx);
     });
@@ -299,7 +311,9 @@ class SocialAccountRepository {
     });
   }
 
-  async upsertYouTubeAccount(brandId, channelData, tokens) {
+  /** Xem ghi chú options.enqueueSync ở upsertFacebookAccount phía trên. */
+  async upsertYouTubeAccount(brandId, channelData, tokens, options = {}) {
+    const { enqueueSync = true } = options;
     const { channelId, username, displayName, profilePictureUrl, statistics, snippet, analytics } = channelData;
 
     const finalUsername = username || displayName || 'youtube_channel';
@@ -372,13 +386,15 @@ class SocialAccountRepository {
         await this.saveYouTubeAnalytics(brandId, account.id, analytics, startDate, endDate, tx);
       }
 
-      await outboxEventRepository.create(
-        OUTBOX_EVENT_TYPES.SOCIAL_SYNC_ENQUEUE,
-        account.id,
-        { socialAccountId: account.id, platform: PLATFORMS.YOUTUBE, brandId },
-        {},
-        tx
-      );
+      if (enqueueSync) {
+        await outboxEventRepository.create(
+          OUTBOX_EVENT_TYPES.SOCIAL_SYNC_ENQUEUE,
+          account.id,
+          { socialAccountId: account.id, platform: PLATFORMS.YOUTUBE, brandId },
+          {},
+          tx
+        );
+      }
 
       return this.findById(account.id, tx);
     });
@@ -443,7 +459,9 @@ class SocialAccountRepository {
     });
   }
 
-  async upsertInstagramAccount(brandId, accountData, tokens, platform = PLATFORMS.INSTAGRAM) {
+  /** Xem ghi chú options.enqueueSync ở upsertFacebookAccount phía trên. */
+  async upsertInstagramAccount(brandId, accountData, tokens, platform = PLATFORMS.INSTAGRAM, options = {}) {
+    const { enqueueSync = true } = options;
     const { igAccountId, username, displayName, profilePictureUrl, followersCount = 0, followingCount = 0, mediaCount = 0, biography = '', website = '', accountType = 'BUSINESS', businessCategoryName = '' } = accountData;
 
     const finalUsername = username || displayName || 'instagram_user';
@@ -534,13 +552,15 @@ class SocialAccountRepository {
         await this.saveInstagramAnalytics(brandId, account.id, accountData.analytics, startDate, endDate, tx);
       }
 
-      await outboxEventRepository.create(
-        OUTBOX_EVENT_TYPES.SOCIAL_SYNC_ENQUEUE,
-        account.id,
-        { socialAccountId: account.id, platform, brandId },
-        {},
-        tx
-      );
+      if (enqueueSync) {
+        await outboxEventRepository.create(
+          OUTBOX_EVENT_TYPES.SOCIAL_SYNC_ENQUEUE,
+          account.id,
+          { socialAccountId: account.id, platform, brandId },
+          {},
+          tx
+        );
+      }
 
       return this.findById(account.id, tx);
     });
@@ -594,7 +614,9 @@ class SocialAccountRepository {
     });
   }
 
-  async upsertLinkedInAccount(brandId, accountData, tokens) {
+  /** Xem ghi chú options.enqueueSync ở upsertFacebookAccount phía trên. */
+  async upsertLinkedInAccount(brandId, accountData, tokens, options = {}) {
+    const { enqueueSync = true } = options;
     const { pageId, username, displayName, profilePictureUrl, accountType = 'personal', connectionsCount = 0, followersCount = 0, industry = 'Other' } = accountData;
 
     const finalUsername = username || displayName || 'linkedin_user';
@@ -668,13 +690,15 @@ class SocialAccountRepository {
         await this.saveLinkedInAnalytics(brandId, account.id, accountData.analytics, startDate, endDate, tx);
       }
 
-      await outboxEventRepository.create(
-        OUTBOX_EVENT_TYPES.SOCIAL_SYNC_ENQUEUE,
-        account.id,
-        { socialAccountId: account.id, platform: PLATFORMS.LINKEDIN, brandId },
-        {},
-        tx
-      );
+      if (enqueueSync) {
+        await outboxEventRepository.create(
+          OUTBOX_EVENT_TYPES.SOCIAL_SYNC_ENQUEUE,
+          account.id,
+          { socialAccountId: account.id, platform: PLATFORMS.LINKEDIN, brandId },
+          {},
+          tx
+        );
+      }
 
       return this.findById(account.id, tx);
     });

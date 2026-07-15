@@ -295,6 +295,8 @@ class ThreadsService extends BaseSocialService {
       pageAccessToken: account.accessToken
     }, startDate, endDate);
 
+    // enqueueSync: false — đây CHÍNH LÀ sync job đang chạy; xem ghi chú tương tự ở
+    // youtube-analytics.service.js syncChannelMetrics.
     return require('../../../repositories/social/social-account.repository').upsertInstagramAccount(account.brandId, {
       igAccountId: account.platformAccountId,
       username: profile.username,
@@ -309,7 +311,7 @@ class ThreadsService extends BaseSocialService {
     }, {
       access_token: account.accessToken,
       refresh_token: account.refreshToken
-    }, PLATFORMS.THREADS);
+    }, PLATFORMS.THREADS, { enqueueSync: false });
   }
 
   async getPublishedVideos(brandId, pageToken = null, limit = 10) {

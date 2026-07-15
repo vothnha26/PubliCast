@@ -291,7 +291,10 @@ describe('LinkedIn Integration Service & Gateway Tests', () => {
             displayName: 'LinkedIn Test User',
             analytics: expect.any(Object)
           }),
-          expect.any(Object)
+          expect.any(Object),
+          // enqueueSync: false — syncChannelMetrics IS the sync job; it must not
+          // re-enqueue another one via the outbox or it loops forever.
+          { enqueueSync: false }
         );
         expect(result.id).toBe('sa_linkedin_1');
 

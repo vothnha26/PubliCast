@@ -588,6 +588,8 @@ class FacebookAnalyticsService {
 
     const pageInfo = await this.getChannelInfo({ pageId, pageAccessToken }, startDate, endDate, socialAccountId);
 
+    // enqueueSync: false — đây CHÍNH LÀ sync job đang chạy; xem ghi chú tương tự ở
+    // youtube-analytics.service.js syncChannelMetrics.
     return socialAccountRepository.upsertFacebookAccount(account.brandId, {
       pageId,
       username: account.username,
@@ -602,7 +604,7 @@ class FacebookAnalyticsService {
     }, {
       access_token: pageAccessToken,
       refresh_token: account.refreshToken
-    });
+    }, { enqueueSync: false });
   }
 }
 

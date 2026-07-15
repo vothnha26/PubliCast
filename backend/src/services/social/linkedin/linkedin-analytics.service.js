@@ -102,10 +102,12 @@ class LinkedInAnalyticsService {
         ...channelInfo,
         analytics: analyticsData
       };
+      // enqueueSync: false — đây CHÍNH LÀ sync job đang chạy; xem ghi chú tương tự ở
+      // youtube-analytics.service.js syncChannelMetrics.
       return socialAccountRepository.upsertLinkedInAccount(account.brandId, accountData, {
         access_token: account.accessToken,
         refresh_token: account.refreshToken
-      });
+      }, { enqueueSync: false });
     }
 
     const memberInfo = await linkedinGateway.getMemberProfile(account.accessToken);
@@ -122,10 +124,12 @@ class LinkedInAnalyticsService {
       analytics: analyticsData
     };
 
+    // enqueueSync: false — đây CHÍNH LÀ sync job đang chạy; xem ghi chú tương tự ở
+    // youtube-analytics.service.js syncChannelMetrics.
     return socialAccountRepository.upsertLinkedInAccount(account.brandId, accountData, {
       access_token: account.accessToken,
       refresh_token: account.refreshToken
-    });
+    }, { enqueueSync: false });
   }
 
   async getAnalyticsReport(auth, startDate, endDate, currentFollowers) {

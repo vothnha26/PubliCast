@@ -338,11 +338,13 @@ class YouTubeAnalyticsService {
 
     const channelData = await this.getChannelInfo(client, startDate, endDate, account);
     
+    // enqueueSync: false — đây CHÍNH LÀ sync job đang chạy; ghi outbox ở đây sẽ tự
+    // enqueue thêm 1 sync job mới, tạo vòng lặp sync vô hạn (đã xảy ra thật trong dev).
     return socialAccountRepository.upsertYouTubeAccount(account.brandId, channelData, {
       access_token: client.credentials.access_token,
       refresh_token: client.credentials.refresh_token,
       expiry_date: client.credentials.expiry_date
-    });
+    }, { enqueueSync: false });
   }
 
   async addCompetitor(brandId, channelId) {
