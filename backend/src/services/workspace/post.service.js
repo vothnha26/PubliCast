@@ -2,7 +2,7 @@ require('../../utils/polyfill');
 const postRepository = require('../../repositories/workspace/post.repository');
 const brandRepository = require('../../repositories/workspace/brand.repository');
 const socialPlatformFactory = require('../social/social-platform.factory');
-const { POST_STATUS, POST_TYPES, SEPARATORS, WORKSPACE_DEFAULTS, PLATFORMS, splitMediaUrls } = require('../../utils/constants');
+const { POST_STATUS, POST_TYPES, SEPARATORS, WORKSPACE_DEFAULTS, PLATFORMS, PERMISSION_KEYS, splitMediaUrls } = require('../../utils/constants');
 const { EVENTS } = require('../../events/event-emitter');
 const { OUTBOX_EVENT_TYPES } = require('../../constants/outbox.constants');
 const outboxEventRepository = require('../../repositories/core/outbox-event.repository');
@@ -127,7 +127,7 @@ class PostService {
     const isDirectPublishing = [POST_STATUS.SCHEDULED, POST_STATUS.APPROVED, POST_STATUS.PUBLISHED].includes(data.status);
     
     if (isDirectPublishing) {
-      const hasApprovePermission = await authorizationFacade.hasPermission(userId, brandId, 'APPROVE_POSTS');
+      const hasApprovePermission = await authorizationFacade.hasPermission(userId, brandId, PERMISSION_KEYS.APPROVE_POSTS);
       if (!hasApprovePermission) {
         // Force status to PENDING_APPROVAL
         data.status = POST_STATUS.PENDING_APPROVAL;
@@ -295,7 +295,7 @@ class PostService {
     const isDirectPublishing = data.status && [POST_STATUS.SCHEDULED, POST_STATUS.APPROVED, POST_STATUS.PUBLISHED].includes(data.status);
 
     if (isDirectPublishing) {
-      const hasApprovePermission = await authorizationFacade.hasPermission(userId, brandId, 'APPROVE_POSTS');
+      const hasApprovePermission = await authorizationFacade.hasPermission(userId, brandId, PERMISSION_KEYS.APPROVE_POSTS);
       if (!hasApprovePermission) {
         // Force status to PENDING_APPROVAL
         data.status = POST_STATUS.PENDING_APPROVAL;
