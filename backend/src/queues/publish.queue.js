@@ -14,7 +14,7 @@ if (process.env.NODE_ENV !== 'test') {
   publishQueue = new Queue(PUBLISH_QUEUE_NAME, {
     ...defaultConnection,
     defaultJobOptions: {
-      attempts: 3, // Retry 3 times if failed
+      attempts: QUEUE_CONFIG.PUBLISH.MAX_PUBLISH_ATTEMPTS, // Retry if failed
       backoff: {
         type: 'exponential',
         delay: 5000, // Wait 5s before first retry, then 10s, 20s...

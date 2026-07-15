@@ -4,9 +4,21 @@ const autoListRepository = require('../../../../repositories/workspace/auto-list
 const notificationService = require('../../../core/notification.service');
 const { POST_STATUS, NOTIFICATION_TYPES } = require('../../../../utils/constants');
 
+/** Ném ra khi TOÀN BỘ platform publish thất bại (0/N thành công), để
+ * publish-post.handler.js re-throw và BullMQ's defaultJobOptions.attempts tự
+ * retry an toàn — chưa platform nào thành công nên không có rủi ro đăng trùng. */
+class PublishFailedError extends Error {
+  constructor(message, { postId, failedPlatforms }) {
+    super(message);
+    this.name = 'PublishFailedError';
+    this.postId = postId;
+    this.failedPlatforms = failedPlatforms;
+  }
+}
+
 class UpdatePostStatusStep extends BaseStep {
   async execute(context) {
-    const { post, results } = context;
+    const { post, results, options } = context;
 
     if (!results || results.length === 0) {
       return;
@@ -63,28 +75,97 @@ class UpdatePostStatusStep extends BaseStep {
 
       // Handle Failure
       if (shouldLoop) {
+        // AutoList loop mode has its own "retry" philosophy: it accepts this
+        // cycle's failure, snapshots it to history (status FAILED), and puts the
+        // original post back at the end of the queue for its next natural cycle
+        // (which can be hours/days later, per the list's schedule). Mixing that
+        // with BullMQ's near-immediate exponential-backoff retry would race two
+        // different retry mechanisms against the same post — so loop mode never
+        // throws/enqueues a partial retry, it keeps its existing behavior as-is.
         await this._handleLoopCycle(post, {
           status: POST_STATUS.FAILED,
           failureReason,
           platformPostId: platformPostIdStr
         });
+        await this._notifyPublishFailure(post, failureReason);
       } else {
+        // RETRYING, not FAILED — this post still has a real chance to succeed
+        // (either BullMQ's own attempts for allFailed, or a scoped partial-retry
+        // job below). FAILED is reserved for when there's truly no more retry
+        // left (see publish.worker.js's on('failed') handler and
+        // _enqueuePartialRetry's MAX_PUBLISH_ATTEMPTS guard).
         await postRepository.update(post.id, {
-          status: POST_STATUS.FAILED,
+          status: POST_STATUS.RETRYING,
           failureReason,
           platformPostId: platformPostIdStr
         });
-      }
+        await this._notifyPublishFailure(post, failureReason);
 
-      await this._notifyPublishFailure(post, failureReason);
+        // Post-Publish: Trigger stats update and rescheduling for AutoLists —
+        // kept before the throw/enqueue decision so this side-effect never gets
+        // skipped regardless of which branch runs next.
+        if (post.autoListId) {
+          const autoListService = require('../../auto-list.service');
+          await autoListService.updateLastPostedAt(post.autoListId, new Date());
+          await autoListService.recalculateQueueSchedules(post.autoListId);
+        }
+
+        const successCount = results.filter(r => r.success).length;
+        const allFailed = successCount === 0;
+        const failedPlatforms = results.filter(r => !r.success).map(r => r.platform);
+
+        if (allFailed) {
+          // 0/N succeeded — safe to let BullMQ retry the whole job.
+          throw new PublishFailedError(
+            `Post ${post.id} failed to publish on all ${results.length} platform(s): ${failureReason}`,
+            { postId: post.id, failedPlatforms }
+          );
+        } else {
+          // Partial — do NOT throw (BullMQ would re-run the whole job and
+          // re-publish the platforms that already succeeded). Self-enqueue a
+          // scoped retry job targeting only the failed platforms instead.
+          await this._enqueuePartialRetry(post.id, failedPlatforms, options?.partialRetryCount || 0);
+        }
+        return;
+      }
     }
 
     // Post-Publish: Trigger stats update and rescheduling for AutoLists
+    // (allSuccessful branch, and the shouldLoop failure branch already handled
+    // its own loop-cycle bookkeeping above).
     if (post.autoListId) {
       const autoListService = require('../../auto-list.service');
       await autoListService.updateLastPostedAt(post.autoListId, new Date());
       await autoListService.recalculateQueueSchedules(post.autoListId);
     }
+  }
+
+  /**
+   * Enqueues a new BullMQ job scoped to only the platforms that failed this
+   * round, reusing the exact pattern already used by
+   * postService.retryFailedPlatforms — remove the existing job, add a new one
+   * with retryPlatforms set. Capped by MAX_PUBLISH_ATTEMPTS (same constant
+   * BullMQ's own attempts uses) to avoid an unbounded retry loop.
+   */
+  async _enqueuePartialRetry(postId, failedPlatforms, partialRetryCount = 0) {
+    const { publishQueue } = require('../../../../queues/publish.queue');
+    const { QUEUE_CONFIG } = require('../../../../constants/video-publish.constants');
+    const maxAttempts = QUEUE_CONFIG.PUBLISH.MAX_PUBLISH_ATTEMPTS;
+
+    if (partialRetryCount >= maxAttempts) {
+      // Out of chances — this is now truly final.
+      await postRepository.update(postId, { status: POST_STATUS.FAILED });
+      console.warn(`[UpdatePostStatusStep] Post ${postId} exceeded max partial-retry attempts (${maxAttempts}) for platforms ${failedPlatforms.join(', ')}.`);
+      return;
+    }
+
+    const jobId = `publish-post-${postId}`;
+    await publishQueue.remove(jobId);
+    await publishQueue.add(QUEUE_CONFIG.PUBLISH.JOB_PUBLISH, {
+      postId,
+      retryPlatforms: failedPlatforms,
+      partialRetryCount: partialRetryCount + 1
+    }, { jobId, delay: 5000 });
   }
 
   /**
@@ -168,3 +249,4 @@ class UpdatePostStatusStep extends BaseStep {
 }
 
 module.exports = UpdatePostStatusStep;
+module.exports.PublishFailedError = PublishFailedError;

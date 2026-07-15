@@ -39,6 +39,32 @@ class OutboxEventRepository {
     return tx.outboxEvent.findMany({ where: { id: { in: ids } } });
   }
 
+  /**
+   * Nhặt lại các row kẹt ở PROCESSING quá lâu (dispatcher crash giữa lúc claim và
+   * lúc xử lý xong — claimBatch chỉ query PENDING nên không bao giờ tự nhặt lại
+   * PROCESSING). Dùng FOR UPDATE SKIP LOCKED giống claimBatch để an toàn với nhiều
+   * dispatcher instance chạy song song. KHÔNG đổi status ở đây — trả rows để caller
+   * đưa qua đúng retry-policy (markFailedRetry/markDeadLetter), giữ dispatcher chỉ
+   * có 1 nguồn quyết định retry/dead-letter duy nhất.
+   */
+  async claimStaleProcessing(thresholdMs, limit, tx) {
+    const cutoff = new Date(Date.now() - thresholdMs);
+    const rows = await tx.$queryRaw`
+      SELECT id FROM outbox_events
+      WHERE status = ${OUTBOX_EVENT_STATUS.PROCESSING}
+        AND processedAt IS NULL
+        AND updatedAt < ${cutoff}
+      ORDER BY updatedAt ASC
+      LIMIT ${limit}
+      FOR UPDATE SKIP LOCKED
+    `;
+
+    const ids = rows.map(r => r.id);
+    if (ids.length === 0) return [];
+
+    return tx.outboxEvent.findMany({ where: { id: { in: ids } } });
+  }
+
   async markCompleted(id, tx = prisma) {
     return tx.outboxEvent.update({
       where: { id },

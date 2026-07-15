@@ -15,6 +15,7 @@ const { OUTBOX_EVENT_TYPES } = require('../../src/constants/outbox.constants');
 jest.mock('../../src/repositories/workspace/post.repository', () => ({
   findById: jest.fn(),
   update: jest.fn(),
+  lockAndAssertFresh: jest.fn(),
   findManyByIdsAndBrand: jest.fn(),
   updateMany: jest.fn(),
   create: jest.fn(),

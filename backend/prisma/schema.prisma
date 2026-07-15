@@ -1569,6 +1569,7 @@ enum PostStatus {
   PENDING_APPROVAL
   APPROVED
   PUBLISHED
+  RETRYING
   FAILED
   REJECTED
   PAUSED
@@ -1723,6 +1724,7 @@ model OutboxEvent {
   updatedAt   DateTime          @updatedAt
 
   @@index([status, nextRunAt])
+  @@index([status, updatedAt])
   @@index([aggregateId])
   @@index([eventType])
   @@map("outbox_events")

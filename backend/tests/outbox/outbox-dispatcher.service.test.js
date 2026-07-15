@@ -1,5 +1,6 @@
 jest.mock('../../src/repositories/core/outbox-event.repository', () => ({
   claimBatch: jest.fn(),
+  claimStaleProcessing: jest.fn(),
   markCompleted: jest.fn(),
   markFailedRetry: jest.fn(),
   markDeadLetter: jest.fn()
@@ -9,6 +10,10 @@ jest.mock('../../src/services/core/outbox-handlers', () => ({
   OUTBOX_HANDLERS: {
     KNOWN_TYPE: jest.fn()
   }
+}));
+
+jest.mock('../../src/config/prisma', () => ({
+  $transaction: jest.fn((cb) => cb({}))
 }));
 
 const outboxEventRepository = require('../../src/repositories/core/outbox-event.repository');
@@ -66,5 +71,62 @@ describe('OutboxDispatcherService._processRow', () => {
 
     expect(outboxEventRepository.markFailedRetry).toHaveBeenCalledTimes(1);
     expect(outboxEventRepository.markCompleted).not.toHaveBeenCalled();
+  });
+});
+
+describe('OutboxDispatcherService.reclaimStale', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it('does nothing when no row is stuck in PROCESSING', async () => {
+    outboxEventRepository.claimStaleProcessing.mockResolvedValue([]);
+
+    const result = await outboxDispatcherService.reclaimStale();
+
+    expect(result).toEqual({ reclaimed: 0 });
+    expect(outboxEventRepository.markFailedRetry).not.toHaveBeenCalled();
+    expect(outboxEventRepository.markDeadLetter).not.toHaveBeenCalled();
+  });
+
+  it('routes a stale row with attempts remaining back to PENDING via markFailedRetry', async () => {
+    const row = { id: 'stale-1', eventType: 'KNOWN_TYPE', payload: '{}', attempts: 1, maxAttempts: 5 };
+    outboxEventRepository.claimStaleProcessing.mockResolvedValue([row]);
+
+    const result = await outboxDispatcherService.reclaimStale();
+
+    expect(result).toEqual({ reclaimed: 1 });
+    expect(outboxEventRepository.markFailedRetry).toHaveBeenCalledTimes(1);
+    const [id, nextRunAt, attempts] = outboxEventRepository.markFailedRetry.mock.calls[0];
+    expect(id).toBe('stale-1');
+    expect(attempts).toBe(2);
+    expect(nextRunAt.getTime()).toBeGreaterThan(Date.now());
+    expect(outboxEventRepository.markDeadLetter).not.toHaveBeenCalled();
+  });
+
+  it('moves a stale row to dead-letter once maxAttempts is exhausted', async () => {
+    const row = { id: 'stale-2', eventType: 'KNOWN_TYPE', payload: '{}', attempts: 4, maxAttempts: 5 };
+    outboxEventRepository.claimStaleProcessing.mockResolvedValue([row]);
+
+    await outboxDispatcherService.reclaimStale();
+
+    expect(outboxEventRepository.markDeadLetter).toHaveBeenCalledWith('stale-2', 5, expect.any(String));
+    expect(outboxEventRepository.markFailedRetry).not.toHaveBeenCalled();
+  });
+
+  it('runOnce calls reclaimStale before claimBatch', async () => {
+    const callOrder = [];
+    outboxEventRepository.claimStaleProcessing.mockImplementation(async () => {
+      callOrder.push('reclaim');
+      return [];
+    });
+    outboxEventRepository.claimBatch.mockImplementation(async () => {
+      callOrder.push('claim');
+      return [];
+    });
+
+    await outboxDispatcherService.runOnce();
+
+    expect(callOrder).toEqual(['reclaim', 'claim']);
   });
 });

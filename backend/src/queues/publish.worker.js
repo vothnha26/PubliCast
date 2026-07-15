@@ -3,6 +3,8 @@ const { defaultConnection } = require('../config/bullmq');
 const { PUBLISH_QUEUE_NAME } = require('./publish.queue');
 const publishPostHandler = require('./handlers/publish-post.handler');
 const { QUEUE_CONFIG } = require('../constants/video-publish.constants');
+const postRepository = require('../repositories/workspace/post.repository');
+const { POST_STATUS } = require('../utils/constants');
 
 /**
  * Worker Engine
@@ -25,8 +27,23 @@ publishWorker.on('completed', (job) => {
   console.log(`[BullMQ Worker] Job ${job.id} completed!`);
 });
 
-publishWorker.on('failed', (job, err) => {
-  console.error(`[BullMQ Worker] Job ${job.id} failed with error: ${err.message}`);
+// job.attemptsMade/job.opts.attempts are BullMQ-specific — this is the only
+// layer allowed to know about them (the pipeline stays unaware of BullMQ).
+// Only here do we know for certain a post has truly exhausted every retry.
+publishWorker.on('failed', async (job, err) => {
+  const attemptsMade = job?.attemptsMade ?? 0;
+  const maxAttempts = job?.opts?.attempts ?? 1;
+
+  if (attemptsMade >= maxAttempts) {
+    console.error(`[BullMQ Worker] Job ${job.id} (post ${job.data?.postId}) exhausted all ${maxAttempts} attempts.`);
+    try {
+      await postRepository.update(job.data.postId, { status: POST_STATUS.FAILED });
+    } catch (updateErr) {
+      console.error(`[BullMQ Worker] Failed to mark post ${job.data?.postId} as FAILED after exhausting retries:`, updateErr.message);
+    }
+  } else {
+    console.warn(`[BullMQ Worker] Job ${job.id} (post ${job.data?.postId}) failed attempt ${attemptsMade}/${maxAttempts}: ${err.message}. BullMQ will retry automatically.`);
+  }
 });
 
 module.exports = publishWorker;

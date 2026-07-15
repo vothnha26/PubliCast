@@ -2,7 +2,7 @@ require('../../utils/polyfill');
 const postRepository = require('../../repositories/workspace/post.repository');
 const brandRepository = require('../../repositories/workspace/brand.repository');
 const socialPlatformFactory = require('../social/social-platform.factory');
-const { POST_STATUS, POST_TYPES, SEPARATORS, WORKSPACE_DEFAULTS, PLATFORMS, splitMediaUrls } = require('../../utils/constants');
+const { POST_STATUS, POST_TYPES, SEPARATORS, WORKSPACE_DEFAULTS, PLATFORMS, PERMISSION_KEYS, splitMediaUrls } = require('../../utils/constants');
 const { EVENTS } = require('../../events/event-emitter');
 const { OUTBOX_EVENT_TYPES } = require('../../constants/outbox.constants');
 const outboxEventRepository = require('../../repositories/core/outbox-event.repository');
@@ -127,7 +127,7 @@ class PostService {
     const isDirectPublishing = [POST_STATUS.SCHEDULED, POST_STATUS.APPROVED, POST_STATUS.PUBLISHED].includes(data.status);
     
     if (isDirectPublishing) {
-      const hasApprovePermission = await authorizationFacade.hasPermission(userId, brandId, 'APPROVE_POSTS');
+      const hasApprovePermission = await authorizationFacade.hasPermission(userId, brandId, PERMISSION_KEYS.APPROVE_POSTS);
       if (!hasApprovePermission) {
         // Force status to PENDING_APPROVAL
         data.status = POST_STATUS.PENDING_APPROVAL;
@@ -295,7 +295,7 @@ class PostService {
     const isDirectPublishing = data.status && [POST_STATUS.SCHEDULED, POST_STATUS.APPROVED, POST_STATUS.PUBLISHED].includes(data.status);
 
     if (isDirectPublishing) {
-      const hasApprovePermission = await authorizationFacade.hasPermission(userId, brandId, 'APPROVE_POSTS');
+      const hasApprovePermission = await authorizationFacade.hasPermission(userId, brandId, PERMISSION_KEYS.APPROVE_POSTS);
       if (!hasApprovePermission) {
         // Force status to PENDING_APPROVAL
         data.status = POST_STATUS.PENDING_APPROVAL;
@@ -305,6 +305,13 @@ class PostService {
     const statusChangedToPublished = post.status !== POST_STATUS.PUBLISHED && postData.status?.toUpperCase() === POST_STATUS.PUBLISHED;
 
     const updatedPost = await prisma.$transaction(async (tx) => {
+      // Lock row + xác nhận chưa bị request khác sửa từ lúc đọc snapshot ở đầu hàm
+      // (so sánh updatedAt) — post đọc ở dòng 195 chỉ dùng để quyết định business
+      // logic (merge/validate/gọi social API bên trên), không phải nguồn sự thật
+      // cuối để ghi đè. Network I/O (Facebook/Discord) đã chạy xong ở trên, KHÔNG
+      // nằm trong transaction này — chỉ thao tác DB thuần trong lock ngắn.
+      await postRepository.lockAndAssertFresh(id, post.updatedAt, tx);
+
       const updated = await postRepository.update(id, data, tx);
 
       // Job publish + domain event ghi vào outbox trong CÙNG transaction với việc

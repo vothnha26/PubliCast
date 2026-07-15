@@ -14,6 +14,7 @@ jest.mock('../../src/repositories/workspace/post.repository', () => ({
   findById: jest.fn(),
   update: jest.fn(),
   updateStatus: jest.fn(),
+  lockAndAssertFresh: jest.fn(),
   findManyByIdsAndBrand: jest.fn(),
   updateMany: jest.fn(),
   deleteMany: jest.fn().mockResolvedValue({ count: 3 }),
@@ -254,6 +255,44 @@ describe('PostService Unit Tests', () => {
       expect(postRepository.update).toHaveBeenCalledWith('post-123', expect.objectContaining({
         title: 'Updated Title'
       }), expect.anything());
+    });
+
+    it('should lock the row and check staleness before writing (inside the transaction, before update)', async () => {
+      const snapshotUpdatedAt = new Date('2026-01-01T00:00:00Z');
+      postRepository.findById.mockResolvedValue({
+        id: 'post-123',
+        brandId: 'brand-abc',
+        status: 'DRAFT',
+        updatedAt: snapshotUpdatedAt
+      });
+      postRepository.update.mockResolvedValue({ ...mockPostData, title: 'Updated Title' });
+
+      const callOrder = [];
+      postRepository.lockAndAssertFresh.mockImplementation(async () => { callOrder.push('lock'); });
+      postRepository.update.mockImplementation(async () => { callOrder.push('update'); return { ...mockPostData, title: 'Updated Title' }; });
+
+      await postService.updatePost('post-123', { title: 'Updated Title' }, 'brand-abc', 'user-111');
+
+      expect(postRepository.lockAndAssertFresh).toHaveBeenCalledWith('post-123', snapshotUpdatedAt, expect.anything());
+      expect(callOrder).toEqual(['lock', 'update']);
+    });
+
+    it('should reject with a 409 conflict when another request modified the post in between (lockAndAssertFresh throws)', async () => {
+      postRepository.findById.mockResolvedValue({
+        id: 'post-123',
+        brandId: 'brand-abc',
+        status: 'DRAFT',
+        updatedAt: new Date('2026-01-01T00:00:00Z')
+      });
+      const conflictError = new Error('Post was modified by another request during update. Please reload and try again.');
+      conflictError.statusCode = 409;
+      postRepository.lockAndAssertFresh.mockRejectedValue(conflictError);
+
+      await expect(
+        postService.updatePost('post-123', { title: 'Updated Title' }, 'brand-abc', 'user-111')
+      ).rejects.toMatchObject({ message: expect.stringContaining('modified by another request'), statusCode: 409 });
+
+      expect(postRepository.update).not.toHaveBeenCalled();
     });
   });
 

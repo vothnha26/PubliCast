@@ -22,7 +22,12 @@ const OUTBOX_DISPATCHER_CONFIG = {
   DEFAULT_MAX_ATTEMPTS: 5,
   BACKOFF_BASE_MS: 5000,        // cùng độ lớn với publish.queue.js hiện có (5000ms)
   BACKOFF_FACTOR: 2,            // exponential: 5s,10s,20s,40s,80s
-  BACKOFF_MAX_MS: 5 * 60 * 1000 // trần 5 phút tránh backoff tăng vô hạn
+  BACKOFF_MAX_MS: 5 * 60 * 1000, // trần 5 phút tránh backoff tăng vô hạn
+  // Row kẹt ở PROCESSING lâu hơn ngưỡng này (dispatcher crash giữa claim và xử lý
+  // xong) bị coi là "stale" và được reclaim lại qua đúng retry-policy hiện có.
+  // Ngưỡng phải rộng hơn nhiều lần POLL_INTERVAL_MS để không reclaim nhầm row
+  // đang được xử lý bình thường.
+  STALE_PROCESSING_MS: 2 * 60 * 1000
 };
 
 module.exports = { OUTBOX_EVENT_STATUS, OUTBOX_EVENT_TYPES, OUTBOX_DISPATCHER_CONFIG };

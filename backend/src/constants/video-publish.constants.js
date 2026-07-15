@@ -16,7 +16,11 @@ const QUEUE_CONFIG = Object.freeze({
   },
   PUBLISH: {
     NAME: 'social-publish-queue',
-    JOB_PUBLISH: 'publish-post'
+    JOB_PUBLISH: 'publish-post',
+    // Nguồn sự thật duy nhất cho "số lần thử tối đa" — dùng cho cả BullMQ
+    // defaultJobOptions.attempts (publish.queue.js) lẫn giới hạn partial-retry
+    // (update-db.step.js), tránh 2 con số độc lập dễ lệch nhau khi sửa.
+    MAX_PUBLISH_ATTEMPTS: 3
   },
   SOCIAL: {
     NAME: 'social-sync-queue',
