@@ -46,6 +46,7 @@ jest.mock('../../src/config/prisma', () => {
     findFirst: jest.fn(),
     create: jest.fn(),
     update: jest.fn(),
+    updateMany: jest.fn(),
     delete: jest.fn()
   };
   const mockUser = {
@@ -374,7 +375,7 @@ describe('Team Management APIs', () => {
 
       prisma.team.findUnique.mockResolvedValue(mockTeam);
       prisma.user.update.mockResolvedValue({});
-      prisma.team.update.mockResolvedValue({});
+      prisma.team.updateMany.mockResolvedValue({ count: 1 });
       prisma.user.findUnique.mockResolvedValue({ id: 'new-user-id', role: 'USER' });
 
       const res = await request(app)
@@ -383,6 +384,30 @@ describe('Team Management APIs', () => {
 
       expect(res.status).toBe(200);
       expect(res.body.accessToken).toBeDefined();
+    });
+
+    it('rejects a double-submitted accept (race condition) without a second password write', async () => {
+      const tokenPayload = { teamId: 'team-invite-id', email: 'invitee@gmail.com', brandId: 'brand-1' };
+      const token = jwt.sign(tokenPayload, process.env.ACCESS_TOKEN_SECRET || 'secret123456789012345678901234567890');
+
+      const mockTeam = {
+        id: 'team-invite-id',
+        status: 'PENDING',
+        user: { id: 'new-user-id', email: 'invitee@gmail.com' }
+      };
+
+      // findUnique still sees PENDING (stale read from before the winning
+      // request committed), but the atomic updateMany's WHERE status: 'PENDING'
+      // no longer matches — simulating the loser of a race.
+      prisma.team.findUnique.mockResolvedValue(mockTeam);
+      prisma.team.updateMany.mockResolvedValue({ count: 0 });
+
+      const res = await request(app)
+        .post('/api/team/invitations/accept')
+        .send({ token, name: 'Invitee Name', password: 'password123' });
+
+      expect(res.status).toBe(400);
+      expect(prisma.user.update).not.toHaveBeenCalled();
     });
   });
 

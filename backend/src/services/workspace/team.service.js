@@ -432,13 +432,24 @@ class TeamService {
     const user = team.user;
     const isNewUser = !user.passwordHash;
 
-    if (isNewUser) {
-      if (!name || !password) {
-        const error = new Error('Vui lòng điền đầy đủ họ tên và mật khẩu.');
-        error.status = 400;
-        throw error;
-      }
+    if (isNewUser && (!name || !password)) {
+      const error = new Error('Vui lòng điền đầy đủ họ tên và mật khẩu.');
+      error.status = 400;
+      throw error;
+    }
 
+    // Atomic accept: the WHERE status: 'PENDING' guard means a double-submit
+    // (e.g. two tabs, double-click) only lets ONE request through — the loser
+    // gets count: 0 here and stops before touching the user's password, instead
+    // of both requests racing to hash/write two different passwords.
+    const { count } = await teamRepository.activateIfPending(team.id);
+    if (count === 0) {
+      const error = new Error('Lời mời không tồn tại hoặc đã được xử lý.');
+      error.status = 400;
+      throw error;
+    }
+
+    if (isNewUser) {
       const bcrypt = require('bcryptjs');
       const passwordHash = await bcrypt.hash(password, 10);
 
@@ -468,15 +479,6 @@ class TeamService {
         }
       });
     }
-
-    // Accept team invitation
-    await prisma.team.update({
-      where: { id: team.id },
-      data: {
-        status: 'ACTIVE',
-        acceptedAt: new Date()
-      }
-    });
 
     // Generate tokens for immediate login
     const tokenService = require('../auth/token.service');

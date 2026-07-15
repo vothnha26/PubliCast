@@ -97,6 +97,20 @@ class TeamRepository {
       where: { brandId }
     });
   }
+
+  /**
+   * Atomically activates a PENDING invitation. The WHERE clause requires
+   * status: 'PENDING', so if two acceptInvitation requests race (e.g. a
+   * double-submit), only the first UPDATE actually matches a row — the
+   * second gets count: 0 instead of silently re-activating an already-active
+   * invite or overwriting fields a moment later.
+   */
+  async activateIfPending(id) {
+    return prisma.team.updateMany({
+      where: { id, status: 'PENDING' },
+      data: { status: 'ACTIVE', acceptedAt: new Date() }
+    });
+  }
 }
 
 module.exports = new TeamRepository();
