@@ -1,3 +1,4 @@
+const prisma = require('../../config/prisma');
 const autoListRepository = require('../../repositories/workspace/auto-list.repository');
 const postRepository = require('../../repositories/workspace/post.repository');
 const { ScheduleStrategyFactory } = require('../../utils/scheduler-strategies');
@@ -35,15 +36,24 @@ class AutoListService {
   }
 
   async deleteAutoList(id, operatorId) {
-    const list = await this._assertCanManage(id, operatorId, PERMISSION_KEYS.DELETE_POSTS);
+    await this._assertCanManage(id, operatorId, PERMISSION_KEYS.DELETE_POSTS);
 
-    console.log(`[deleteAutoList] Found list ${id} with ${list.posts ? list.posts.length : 0} posts`);
-    const pendingPosts = (list.posts || []).filter(p => p.status === POST_STATUS.SCHEDULED);
-    console.log(`[deleteAutoList] Found ${pendingPosts.length} pending scheduled posts`);
-    for (const p of pendingPosts) {
-      await removePublishJob(p.id);
-    }
-    return autoListRepository.delete(id);
+    return prisma.$transaction(async (tx) => {
+      // Lock first to serialize against a concurrent recalculateQueueSchedules
+      // call on the same AutoList (e.g. a post publishing right as this delete runs).
+      await autoListRepository.lockForUpdate(id, tx);
+
+      const fresh = await autoListRepository.findById(id, tx);
+      if (!fresh) return; // Already deleted by another request — idempotent.
+
+      console.log(`[deleteAutoList] Found list ${id} with ${fresh.posts ? fresh.posts.length : 0} posts`);
+      const pendingPosts = (fresh.posts || []).filter(p => p.status === POST_STATUS.SCHEDULED);
+      console.log(`[deleteAutoList] Found ${pendingPosts.length} pending scheduled posts`);
+      for (const p of pendingPosts) {
+        await removePublishJob(p.id);
+      }
+      return autoListRepository.delete(id, tx);
+    });
   }
 
   async updateLastPostedAt(id, lastPostedAt) {
@@ -81,62 +91,70 @@ class AutoListService {
   }
 
   async recalculateQueueSchedules(autoListId) {
-    const autoList = await autoListRepository.findById(autoListId);
-    if (!autoList) return;
+    return prisma.$transaction(async (tx) => {
+      // Lock first — multiple posts in the same AutoList can each trigger this
+      // after publishing near-simultaneously (BullMQ concurrency: 5), and
+      // without serializing them here they'd read the same stale queue state
+      // and write conflicting schedules/loop-revive duplicates.
+      await autoListRepository.lockForUpdate(autoListId, tx);
 
-    await this._updateAutoListStats(autoList);
-    
-    let unpublishedPosts = (autoList.posts || []).filter(p => p.status !== POST_STATUS.PUBLISHED && p.status !== POST_STATUS.FAILED && p.status !== POST_STATUS.REJECTED);
-    
-    // Logic: If Loop is enabled but everything is published or failed, duplicate posts as new DRAFTs to preserve history
-    if (unpublishedPosts.length === 0 && autoList.loopEnabled && (autoList.posts || []).length > 0) {
-      console.log(`[AutoList] 🔄 Queue ${autoListId} dry but Loop enabled. Reviving all posts by duplicating...`);
-      
-      const postsToRevive = (autoList.posts || []).filter(p => 
-        (p.status === POST_STATUS.PUBLISHED || p.status === POST_STATUS.FAILED || p.status === POST_STATUS.REJECTED) && !p.isDeleted
-      );
-      
-      const baseTime = new Date();
-      for (let idx = 0; idx < postsToRevive.length; idx++) {
-        const p = postsToRevive[idx];
-        // 1. Detach original post from this Autolist (so it becomes a static history record)
-        await postRepository.update(p.id, { autoListId: null });
+      const autoList = await autoListRepository.findById(autoListId, tx);
+      if (!autoList) return;
 
-        // 2. Create the revived draft in the queue (use incremented createdAt to preserve ordering)
-        const duplicateData = {
-          brandId: p.brandId,
-          createdByUserId: p.createdByUserId,
-          title: p.title,
-          caption: p.caption,
-          type: p.type,
-          status: POST_STATUS.DRAFT,
-          targetPlatforms: p.targetPlatforms,
-          mediaUrls: p.mediaUrls,
-          mediaThumbnailUrls: p.mediaThumbnailUrls,
-          hashtags: p.hashtags,
-          mentions: p.mentions,
-          firstComment: p.firstComment,
-          locationId: p.locationId,
-          locationName: p.locationName,
-          linkUrl: p.linkUrl,
-          altText: p.altText,
-          metadata: p.metadata,
-          isCollaboration: p.isCollaboration,
-          collaboratorHandle: p.collaboratorHandle,
-          autoListId: autoListId,
-          createdAt: new Date(baseTime.getTime() + idx * 1000)
-        };
-        await postRepository.create(duplicateData);
+      await this._updateAutoListStats(autoList, tx);
+
+      let unpublishedPosts = (autoList.posts || []).filter(p => p.status !== POST_STATUS.PUBLISHED && p.status !== POST_STATUS.FAILED && p.status !== POST_STATUS.REJECTED);
+
+      // Logic: If Loop is enabled but everything is published or failed, duplicate posts as new DRAFTs to preserve history
+      if (unpublishedPosts.length === 0 && autoList.loopEnabled && (autoList.posts || []).length > 0) {
+        console.log(`[AutoList] 🔄 Queue ${autoListId} dry but Loop enabled. Reviving all posts by duplicating...`);
+
+        const postsToRevive = (autoList.posts || []).filter(p =>
+          (p.status === POST_STATUS.PUBLISHED || p.status === POST_STATUS.FAILED || p.status === POST_STATUS.REJECTED) && !p.isDeleted
+        );
+
+        const baseTime = new Date();
+        for (let idx = 0; idx < postsToRevive.length; idx++) {
+          const p = postsToRevive[idx];
+          // 1. Detach original post from this Autolist (so it becomes a static history record)
+          await postRepository.update(p.id, { autoListId: null }, tx);
+
+          // 2. Create the revived draft in the queue (use incremented createdAt to preserve ordering)
+          const duplicateData = {
+            brandId: p.brandId,
+            createdByUserId: p.createdByUserId,
+            title: p.title,
+            caption: p.caption,
+            type: p.type,
+            status: POST_STATUS.DRAFT,
+            targetPlatforms: p.targetPlatforms,
+            mediaUrls: p.mediaUrls,
+            mediaThumbnailUrls: p.mediaThumbnailUrls,
+            hashtags: p.hashtags,
+            mentions: p.mentions,
+            firstComment: p.firstComment,
+            locationId: p.locationId,
+            locationName: p.locationName,
+            linkUrl: p.linkUrl,
+            altText: p.altText,
+            metadata: p.metadata,
+            isCollaboration: p.isCollaboration,
+            collaboratorHandle: p.collaboratorHandle,
+            autoListId: autoListId,
+            createdAt: new Date(baseTime.getTime() + idx * 1000)
+          };
+          await postRepository.create(duplicateData, tx);
+        }
+
+        // Re-fetch (still inside the transaction, still holding the lock) to get the revived posts
+        const refreshedList = await autoListRepository.findById(autoListId, tx);
+        unpublishedPosts = (refreshedList.posts || []).filter(p => p.status === POST_STATUS.DRAFT);
       }
-      
-      // Re-fetch to get the revived posts
-      const refreshedList = await autoListRepository.findById(autoListId);
-      unpublishedPosts = (refreshedList.posts || []).filter(p => p.status === POST_STATUS.DRAFT);
-    }
 
-    if (unpublishedPosts.length === 0) return;
+      if (unpublishedPosts.length === 0) return;
 
-    await this._updatePostSchedules(autoList, unpublishedPosts);
+      await this._updatePostSchedules(autoList, unpublishedPosts, tx);
+    });
   }
 
   /**
@@ -217,15 +235,15 @@ class AutoListService {
     return prepared;
   }
 
-  async _updateAutoListStats(autoList) {
+  async _updateAutoListStats(autoList, tx) {
     const allPosts = autoList.posts || [];
     await autoListRepository.updateStats(autoList.id, {
         totalPostsCount: allPosts.length,
         publishedPostsCount: allPosts.filter(p => p.status === POST_STATUS.PUBLISHED).length
-    });
+    }, tx);
   }
 
-  async _updatePostSchedules(autoList, unpublishedPosts) {
+  async _updatePostSchedules(autoList, unpublishedPosts, tx) {
     const strategy = ScheduleStrategyFactory.getStrategy(autoList.scheduleType);
     
     // Find last published post to set as fromDate
@@ -257,9 +275,14 @@ class AutoListService {
       await postRepository.update(postId, {
           scheduledAt,
           status: newStatus
-      });
+      }, tx);
 
-      // Update BullMQ queue based on current active state
+      // Update BullMQ queue based on current active state — deliberately NOT
+      // passed tx: this is a Redis/BullMQ write, not a Prisma one, so it isn't
+      // rolled back if the transaction fails. Pre-existing behavior; making
+      // this atomic with the transaction is a larger change (would need the
+      // Outbox Pattern already used by post.service.js, not yet wired for
+      // AutoList) and out of scope here.
       if (autoList.isActive) {
         await upsertPublishJob(postId, scheduledAt);
       } else {

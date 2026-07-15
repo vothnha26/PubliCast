@@ -13,8 +13,8 @@ class AutoListRepository {
     });
   }
 
-  async findById(id) {
-    return prisma.autoList.findUnique({
+  async findById(id, client = prisma) {
+    return client.autoList.findUnique({
       where: { id },
       include: {
         posts: {
@@ -25,32 +25,42 @@ class AutoListRepository {
     });
   }
 
-  async create(data) {
-    return prisma.autoList.create({ 
+  async create(data, client = prisma) {
+    return client.autoList.create({
       data,
       include: { posts: true }
     });
   }
 
-  async update(id, data) {
-    return prisma.autoList.update({
+  async update(id, data, client = prisma) {
+    return client.autoList.update({
       where: { id },
       data,
       include: { posts: true }
     });
   }
 
-  async updateStats(id, stats) {
-    return prisma.autoList.update({
+  async updateStats(id, stats, client = prisma) {
+    return client.autoList.update({
       where: { id },
       data: stats
     });
   }
 
-  async delete(id) {
-    return prisma.autoList.delete({
+  async delete(id, client = prisma) {
+    return client.autoList.delete({
       where: { id }
     });
+  }
+
+  /**
+   * Locks the AutoList row (SELECT ... FOR UPDATE) inside an open transaction,
+   * preventing concurrent recalculateQueueSchedules/deleteAutoList calls on the
+   * same AutoList from racing (e.g. multiple posts in the same queue publishing
+   * near-simultaneously under BullMQ's concurrency: 5).
+   */
+  async lockForUpdate(id, tx) {
+    await tx.$queryRaw`SELECT id FROM auto_lists WHERE id = ${id} FOR UPDATE`;
   }
 }
 

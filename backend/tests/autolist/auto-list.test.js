@@ -10,7 +10,8 @@ jest.mock('../../src/repositories/workspace/auto-list.repository', () => ({
   updateStats: jest.fn(),
   create: jest.fn(),
   update: jest.fn(),
-  delete: jest.fn()
+  delete: jest.fn(),
+  lockForUpdate: jest.fn()
 }));
 
 jest.mock('../../src/repositories/workspace/post.repository', () => ({
@@ -28,7 +29,12 @@ jest.mock('../../src/services/auth/authorization.facade', () => ({
   checkPermission: jest.fn()
 }));
 
+// recalculateQueueSchedules/deleteAutoList now run inside prisma.$transaction —
+// the mock just invokes the callback with a fake tx object, letting the
+// existing autoListRepository/postRepository mocks (called with `tx` as an
+// extra arg) keep working unchanged, since they ignore what `client`/`tx` is.
 jest.mock('../../src/config/prisma', () => ({
+  $transaction: jest.fn((callback) => callback({})),
   autoList: {
     update: jest.fn()
   },
@@ -156,10 +162,14 @@ describe('AutoList Queue Scheduler Suite', () => {
           title: 'Post 1',
           status: 'DRAFT',
           autoListId: 'list-123'
-        })
+        }),
+        expect.anything()
       );
       // Ensure the old post is detached from autolist to preserve history
-      expect(postRepository.update).toHaveBeenCalledWith('post-1', { autoListId: null });
+      expect(postRepository.update).toHaveBeenCalledWith('post-1', { autoListId: null }, expect.anything());
+      // Whole recalculate ran inside a single transaction, locked before any read/write
+      expect(prisma.$transaction).toHaveBeenCalledTimes(1);
+      expect(autoListRepository.lockForUpdate).toHaveBeenCalledWith('list-123', expect.anything());
     });
   });
 
@@ -238,6 +248,8 @@ describe('AutoList Queue Scheduler Suite', () => {
       expect(postRepository.update).toHaveBeenCalled();
       const updateCall = postRepository.update.mock.calls.find(c => c[0] === 'post-2');
       expect(updateCall).toBeDefined();
+      // 3rd arg is the transaction client threaded through by recalculateQueueSchedules
+      expect(updateCall[2]).toBeDefined();
       
       const updatedData = updateCall[1];
       expect(updatedData.status).toBe('SCHEDULED');
@@ -315,6 +327,70 @@ describe('AutoList Queue Scheduler Suite', () => {
       await autoListService.getAutoListDetails('list-123', 'user-1');
 
       expect(authorizationFacade.checkPermission).toHaveBeenCalledWith('user-1', 'brand-1', 'CREATE_POSTS');
+    });
+  });
+
+  // AUTOLIST_010: recalculateQueueSchedules/deleteAutoList concurrency safety (A1+A3)
+  describe('AUTOLIST_010: transaction + row lock around recalculateQueueSchedules/deleteAutoList', () => {
+    it('locks before reading, inside a single transaction, when the queue is not empty', async () => {
+      const mockAutoList = {
+        id: 'list-123',
+        scheduleType: 'INTERVAL',
+        intervalMinutes: 60,
+        activeDays: 'Mo,Tu,We,Th,Fr,Sa,Su',
+        isActive: true,
+        loopEnabled: false,
+        posts: [{ id: 'post-1', status: 'DRAFT' }]
+      };
+      const callOrder = [];
+      autoListRepository.lockForUpdate.mockImplementation(async () => { callOrder.push('lock'); });
+      autoListRepository.findById.mockImplementation(async () => { callOrder.push('findById'); return mockAutoList; });
+      autoListRepository.updateStats.mockResolvedValue({});
+      postRepository.update.mockResolvedValue({});
+
+      await autoListService.recalculateQueueSchedules('list-123');
+
+      expect(callOrder[0]).toBe('lock');
+      expect(prisma.$transaction).toHaveBeenCalledTimes(1);
+    });
+
+    it('exits early without touching posts when the AutoList no longer exists', async () => {
+      autoListRepository.lockForUpdate.mockResolvedValue(undefined);
+      autoListRepository.findById.mockResolvedValue(null);
+
+      await expect(autoListService.recalculateQueueSchedules('list-gone')).resolves.toBeUndefined();
+
+      expect(autoListRepository.updateStats).not.toHaveBeenCalled();
+      expect(postRepository.update).not.toHaveBeenCalled();
+    });
+
+    it('deleteAutoList locks the row and is idempotent if already deleted by a concurrent request', async () => {
+      autoListRepository.findById
+        .mockResolvedValueOnce({ id: 'list-123', brandId: 'brand-1', posts: [] }) // _assertCanManage
+        .mockResolvedValueOnce(null); // fresh re-read inside the transaction — already gone
+      authorizationFacade.checkPermission.mockResolvedValue(true);
+
+      await expect(autoListService.deleteAutoList('list-123', 'user-1')).resolves.toBeUndefined();
+
+      expect(autoListRepository.lockForUpdate).toHaveBeenCalledWith('list-123', expect.anything());
+      expect(autoListRepository.delete).not.toHaveBeenCalled();
+    });
+
+    it('deleteAutoList removes pending publish jobs and deletes within the same transaction', async () => {
+      const mockAutoList = {
+        id: 'list-123',
+        brandId: 'brand-1',
+        posts: [{ id: 'post-1', status: 'SCHEDULED' }]
+      };
+      autoListRepository.findById.mockResolvedValue(mockAutoList);
+      authorizationFacade.checkPermission.mockResolvedValue(true);
+      const { removePublishJob } = require('../../src/queues/publish.queue');
+
+      await autoListService.deleteAutoList('list-123', 'user-1');
+
+      expect(removePublishJob).toHaveBeenCalledWith('post-1');
+      expect(autoListRepository.delete).toHaveBeenCalledWith('list-123', expect.anything());
+      expect(prisma.$transaction).toHaveBeenCalledTimes(1);
     });
   });
 
