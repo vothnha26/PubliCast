@@ -1,6 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 const { API_VERSIONS, TIKTOK_API } = require('../../../utils/constants');
+const { isRemoteUrl } = require('../../../utils/url.utils');
 
 class TikTokGateway {
   constructor() {
@@ -144,11 +145,10 @@ class TikTokGateway {
    * Automatically handles FILE_UPLOAD (recommended for local files/non-verified domains)
    */
   async publishVideo(accessToken, filePath, title) {
-    const localPath = this._resolveLocalPath(filePath);
-    const stats = fs.statSync(localPath);
-    const videoSize = stats.size;
+    const videoBuffer = await this._getVideoBuffer(filePath);
+    const videoSize = videoBuffer.length;
 
-    console.log(`[TikTok Gateway] Initializing FILE_UPLOAD for ${path.basename(localPath)} (${videoSize} bytes)`);
+    console.log(`[TikTok Gateway] Initializing FILE_UPLOAD for video (${videoSize} bytes)`);
 
     // Optional: Check creator info for debugging
     const creatorInfo = await this.getCreatorInfo(accessToken);
@@ -211,7 +211,6 @@ class TikTokGateway {
 
     // Step 2: Upload Video Binary
     console.log(`[TikTok Gateway] Uploading binary to ${upload_url}`);
-    const videoBuffer = fs.readFileSync(localPath);
     const uploadRes = await fetch(upload_url, {
       method: 'PUT',
       headers: {
@@ -269,6 +268,22 @@ class TikTokGateway {
   }
 
   // ============= Private Helper Methods =============
+
+  /**
+   * Lấy Buffer video từ mediaUrl — hỗ trợ cả local path lẫn remote URL (Cloudinary...).
+   * TikTok's FILE_UPLOAD protocol cần biết video_size CHÍNH XÁC trước khi gọi init
+   * request, nên không thể dùng streaming kiểu YouTube ở đây — phải buffer trước.
+   */
+  async _getVideoBuffer(mediaUrl) {
+    if (isRemoteUrl(mediaUrl)) {
+      const res = await fetch(mediaUrl);
+      if (!res.ok) throw new Error(`Failed to download video from URL: ${mediaUrl} (status ${res.status})`);
+      const arrayBuffer = await res.arrayBuffer();
+      return Buffer.from(arrayBuffer);
+    }
+    const localPath = this._resolveLocalPath(mediaUrl);
+    return fs.readFileSync(localPath);
+  }
 
   _resolveLocalPath(mediaUrl) {
     if (!mediaUrl) throw new Error('Media URL is required');

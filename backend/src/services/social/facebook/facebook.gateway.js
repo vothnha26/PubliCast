@@ -2,6 +2,7 @@ const fs = require('fs');
 const path = require('path');
 const { PLATFORMS, SEPARATORS, API_VERSIONS, MEDIA_EXTENSIONS, FACEBOOK_API } = require('../../../utils/constants');
 const logger = require('../../../utils/logger');
+const { isRemoteUrl } = require('../../../utils/url.utils');
 
 // Custom fetch wrapper with timeout and logging
 const fetchWithTimeout = async (url, options = {}) => {
@@ -664,7 +665,7 @@ class FacebookGateway {
    */
   _resolveLocalPath(mediaUrl) {
     // Nếu là URL (Cloudinary, S3, ...) thì không xử lý như local path
-    if (mediaUrl.startsWith('http://') || mediaUrl.startsWith('https://')) {
+    if (isRemoteUrl(mediaUrl)) {
       throw new Error(`_resolveLocalPath: mediaUrl là remote URL, hãy dùng _getMediaBuffer(). URL: ${mediaUrl}`);
     }
 
@@ -681,8 +682,7 @@ class FacebookGateway {
    * @returns {Promise<{ buffer: Buffer, filename: string }>}
    */
   async _getMediaBuffer(mediaUrl) {
-    const isRemote = mediaUrl.startsWith('http://') || mediaUrl.startsWith('https://');
-    if (isRemote) {
+    if (isRemoteUrl(mediaUrl)) {
       const res = await fetch(mediaUrl);
       if (!res.ok) {
         throw new Error(`Failed to download media from URL: ${mediaUrl} (status ${res.status})`);
