@@ -49,6 +49,10 @@ class FacebookService extends BaseSocialService {
     return facebookPost.getPostAnalytics(brandId, platformPostId, startDate, endDate, socialAccountId);
   }
 
+  async checkReelCopyrightStatus(brandId, videoId, socialAccountId = null) {
+    return facebookPost.checkReelCopyrightStatus(brandId, videoId, socialAccountId);
+  }
+
   // --- Unsupported or Stub methods for LSP Compliance ---
   async trackVideo(brandId, videoUrl) {
     return null;

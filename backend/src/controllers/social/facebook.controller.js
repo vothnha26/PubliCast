@@ -93,6 +93,35 @@ class FacebookController {
       });
     }
   });
+
+  // ── Reels — Copyright Check ────────────────────────────────────────────────
+  checkFacebookReelCopyright = asyncHandler(async (req, res) => {
+    const { videoId } = req.params;
+    const { brandId, socialAccountId } = req.query;
+
+    if (!videoId) return res.status(400).json({ message: 'videoId is required' });
+    if (!brandId) return res.status(400).json({ message: 'brandId is required' });
+
+    const canAccess = await brandRepository.userCanAccessBrand(req.user.id, brandId);
+    if (!canAccess) return res.status(403).json({ message: 'You do not have access to this brand' });
+
+    try {
+      const status = await facebookService.checkReelCopyrightStatus(brandId, videoId, socialAccountId || null);
+      res.json({ data: status });
+    } catch (err) {
+      console.error(`[FacebookController] checkFacebookReelCopyright failed for video ${videoId}:`, err.message);
+      if (err.name === 'FacebookRateLimitError') {
+        res.setHeader('Retry-After', err.retryAfterSeconds.toString());
+        return res.status(429).json({
+          message: err.message,
+          retryAfterSeconds: err.retryAfterSeconds
+        });
+      }
+      res.status(err.status && err.status >= 400 && err.status < 500 ? err.status : 500).json({
+        message: err.message || 'Failed to check Facebook Reels copyright status'
+      });
+    }
+  });
 }
 
 module.exports = new FacebookController();

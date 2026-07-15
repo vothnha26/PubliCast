@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { STORAGE_KEYS } from '../constants/storageKeys';
+import { toast } from 'sonner';
 
 const baseURL = import.meta.env.VITE_API_BASE_URL;
 
@@ -93,6 +94,12 @@ class ApiService {
         }
 
         // Xử lý lỗi thông thường (Gộp từ nhánh develop)
+        if (error.response?.status === 429) {
+          const retryAfter = error.response?.data?.retryAfterSeconds || error.response?.headers?.['retry-after'];
+          const retryMsg = retryAfter ? ` Vui lòng thử lại sau ${retryAfter} giây.` : '';
+          toast.error(`Yêu cầu quá nhanh (Rate Limit).${retryMsg}`);
+        }
+
         const message = data?.message || (data?.errors && data.errors[0] ? data.errors[0].msg : null) || error.message;
         const customError = new Error(message);
         customError.status = error.response?.status;
