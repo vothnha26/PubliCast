@@ -3,12 +3,35 @@ import {
   Eye, Heart, MessageCircle, Share2, Info, Users, 
   BarChart2, RefreshCw, AlertCircle 
 } from "lucide-react";
-import { 
-  ResponsiveContainer, BarChart as ReChartsBarChart, Bar, 
-  XAxis, YAxis, CartesianGrid, Tooltip 
+import {
+  ResponsiveContainer, BarChart as ReChartsBarChart, Bar,
+  AreaChart, Area,
+  XAxis, YAxis, CartesianGrid, Tooltip
 } from "recharts";
 import socialService from "../../services/social.service";
 import { POST_ANALYTICS_TAB } from "../../constants/postAnalyticsTabs";
+
+const COLD_START_MAX_RETRIES = 2;
+const COLD_START_DEFAULT_RETRY_AFTER_SEC = 5;
+
+/**
+ * Cold-start contract: while the backend is seeding the first snapshot for a
+ * post, getFacebookPostAnalytics may respond with { retryAfter } instead of
+ * { series, historicalDataAvailableFrom }. Auto-retry up to COLD_START_MAX_RETRIES
+ * times before surfacing a hard error.
+ */
+async function fetchAnalyticsWithColdStartRetry(brandId, postId, formattedFrom, formattedTo) {
+  for (let attempt = 0; attempt <= COLD_START_MAX_RETRIES; attempt++) {
+    const res = await socialService.getFacebookPostAnalytics(brandId, postId, formattedFrom, formattedTo);
+    const payload = res?.data || res;
+    if (payload?.retryAfter && attempt < COLD_START_MAX_RETRIES) {
+      await new Promise(resolve => setTimeout(resolve, (payload.retryAfter || COLD_START_DEFAULT_RETRY_AFTER_SEC) * 1000));
+      continue;
+    }
+    return payload;
+  }
+  return { series: [], historicalDataAvailableFrom: null };
+}
 
 export const facebookStrategy = {
   supportedTabs: [
@@ -47,12 +70,16 @@ export const facebookStrategy = {
       result.insights = { status: "error", error };
     }
 
-    // 2. Fetch Facebook Analytics (Timeseries)
+    // 2. Fetch Facebook Analytics (Timeseries), auto-retrying on cold-start
     try {
       const formattedFrom = dateRange?.from ? dateRange.from.toISOString().split('T')[0] : null;
       const formattedTo = dateRange?.to ? dateRange.to.toISOString().split('T')[0] : null;
-      const analyticsData = await socialService.getFacebookPostAnalytics(brandId, postId, formattedFrom, formattedTo);
-      result.analytics = { status: "success", data: analyticsData?.data || analyticsData || [] };
+      const payload = await fetchAnalyticsWithColdStartRetry(brandId, postId, formattedFrom, formattedTo);
+      result.analytics = {
+        status: "success",
+        data: payload?.series || [],
+        historicalDataAvailableFrom: payload?.historicalDataAvailableFrom || null
+      };
     } catch (error) {
       console.error("Failed to fetch Facebook analytics:", error);
       result.analytics = { status: "error", error };
@@ -63,11 +90,18 @@ export const facebookStrategy = {
 
   renderHeaderStats(data) {
     const insights = data?.insights?.data;
-    
+    // Meta's reach metric (post_total_media_view_unique) only applies to posts
+    // with media — for other post types it returns empty, which is a real
+    // "not available" state, not a genuine 0 reach. Show "—" instead of "0"
+    // whenever views prove the post did have activity but reach came back empty.
+    const reachDisplay = !insights
+      ? "—"
+      : (insights.reach > 0 ? insights.reach.toLocaleString() : (insights.views > 0 ? "—" : "0"));
+
     const stats = [
       {
         label: "Reach",
-        value: insights ? (insights.reach || 0).toLocaleString() : "—",
+        value: reachDisplay,
         icon: <Eye size={20} className="text-blue-500" />,
         bg: "bg-blue-50/50"
       },
@@ -126,29 +160,66 @@ export const facebookStrategy = {
             </div>
 
             {data?.analytics?.status === "error" ? (
-              <div className="h-40 flex flex-col items-center justify-center gap-2 text-center">
+              <div className="h-[240px] flex flex-col items-center justify-center gap-2 text-center">
                 <AlertCircle size={20} className="text-red-400" />
                 <p className="text-xs text-red-500 font-medium">Không thể tải dữ liệu biểu đồ phân tích.</p>
               </div>
             ) : data?.analytics?.status === "loading" ? (
-              <div className="h-40 flex items-center justify-center text-xs text-gray-400">
+              <div className="h-[240px] flex items-center justify-center text-xs text-gray-400">
                 Đang tải dữ liệu tăng trưởng...
               </div>
             ) : analytics && analytics.length > 0 ? (
-              <div className="grid grid-cols-3 gap-4">
-                {[
-                  { label: "Lượt xem", value: analytics[0].views },
-                  { label: "Reach", value: analytics[0].reach },
-                  { label: "Lượt click", value: analytics[0].clicks }
-                ].map((stat) => (
-                  <div key={stat.label} className="bg-gray-50 rounded-2xl p-4 text-center">
-                    <div className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">{stat.label}</div>
-                    <div className="text-xl font-black text-black mt-1">{(stat.value || 0).toLocaleString()}</div>
-                  </div>
-                ))}
-              </div>
+              <>
+                {(() => {
+                  const latest = analytics[analytics.length - 1];
+                  // Same "—" fallback as renderHeaderStats: reach only applies to
+                  // media posts, so an empty reach alongside real views isn't a genuine 0.
+                  const reachDisplay = latest.reach > 0
+                    ? latest.reach.toLocaleString()
+                    : (latest.views > 0 ? "—" : "0");
+                  const summaryStats = [
+                    { label: "Lượt xem", value: (latest.views || 0).toLocaleString() },
+                    { label: "Reach", value: reachDisplay },
+                    { label: "Lượt click", value: (latest.clicks || 0).toLocaleString() }
+                  ];
+                  return (
+                    <div className="grid grid-cols-3 gap-4 mb-6">
+                      {summaryStats.map((stat) => (
+                        <div key={stat.label} className="bg-gray-50 rounded-2xl p-4 text-center">
+                          <div className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">{stat.label}</div>
+                          <div className="text-xl font-black text-black mt-1">{stat.value}</div>
+                        </div>
+                      ))}
+                    </div>
+                  );
+                })()}
+
+                <div className="h-[240px] w-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart data={analytics}>
+                      <defs>
+                        <linearGradient id="colorFbViews" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="#8E9BEE" stopOpacity={0.2} />
+                          <stop offset="95%" stopColor="#8E9BEE" stopOpacity={0} />
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid strokeDasharray="0" vertical={false} stroke="#F3F4F6" />
+                      <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: "#9CA3AF" }} />
+                      <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: "#9CA3AF" }} />
+                      <Tooltip contentStyle={{ borderRadius: 12, border: "none", boxShadow: "0 4px 12px rgba(0,0,0,0.05)" }} />
+                      <Area type="monotone" dataKey="views" stroke="#8E9BEE" strokeWidth={3} fillOpacity={1} fill="url(#colorFbViews)" />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                </div>
+
+                {data?.analytics?.historicalDataAvailableFrom && (
+                  <p className="text-[10px] text-gray-400 mt-3">
+                    Dữ liệu trước ngày {data.analytics.historicalDataAvailableFrom} chưa khả dụng.
+                  </p>
+                )}
+              </>
             ) : (
-              <div className="h-40 flex items-center justify-center text-xs text-gray-400">
+              <div className="h-[240px] flex items-center justify-center text-xs text-gray-400">
                 Chưa có đủ dữ liệu để hiển thị biểu đồ.
               </div>
             )}

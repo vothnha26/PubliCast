@@ -1,10 +1,23 @@
 const prisma = require('../../config/prisma');
 const tiktokGateway = require('./tiktok/tiktok.gateway');
 const tiktokAnalytics = require('./tiktok/tiktok-analytics.service');
+const facebookPostService = require('./facebook/facebook-post.service');
+const youtubeAnalyticsService = require('./youtube/youtube-analytics.service');
 const logger = require('../../utils/logger');
 const { PLATFORMS } = require('../../utils/constants');
+const { upsertDailySnapshot } = require('./post-analytics-snapshot-writer');
 
 class PostMetricSyncService {
+  /**
+   * Re-exported for backward compatibility with existing call sites; the
+   * canonical implementation lives in post-analytics-snapshot-writer.js
+   * (kept dependency-free so cold-start code doesn't have to pull in this
+   * whole service, including the heavy YouTube/TikTok gateway chain).
+   */
+  async upsertDailySnapshot(params) {
+    return upsertDailySnapshot(params);
+  }
+
   /**
    * Đồng bộ số liệu tương tác cho các bài viết đã xuất bản
    */
@@ -57,10 +70,64 @@ class PostMetricSyncService {
       return;
     }
 
-    // Xử lý TikTok
     const tiktokVideoId = platformIdMap.TIKTOK || platformIdMap.tiktok;
     if (tiktokVideoId) {
       await this._syncTikTokVideo(post, tiktokVideoId);
+    }
+
+    const facebookPostId = platformIdMap.FACEBOOK || platformIdMap.facebook;
+    if (facebookPostId) {
+      await this._syncFacebookPost(post, facebookPostId);
+    }
+
+    const youtubeVideoId = platformIdMap.YOUTUBE || platformIdMap.youtube;
+    if (youtubeVideoId) {
+      await this._syncYouTubeVideo(post, youtubeVideoId);
+    }
+  }
+
+  async _syncFacebookPost(post, platformPostId) {
+    try {
+      const details = await facebookPostService.getPostDetails(post.brandId, platformPostId);
+      await this.upsertDailySnapshot({
+        postId: post.id,
+        platformPostId,
+        brandId: post.brandId,
+        platform: PLATFORMS.FACEBOOK,
+        date: new Date(),
+        metrics: {
+          views: details.views,
+          reach: details.reach,
+          clicks: details.clicks,
+          reactions: details.reactions?.total || 0
+        },
+        isEstimated: true
+      });
+      logger.info(`[PostMetricSync] Recorded snapshot for Facebook post ${platformPostId}`);
+    } catch (err) {
+      logger.error(`[PostMetricSync] Failed to sync Facebook post ${platformPostId}:`, err.message);
+    }
+  }
+
+  async _syncYouTubeVideo(post, videoId) {
+    try {
+      const rows = await youtubeAnalyticsService.getVideoAnalytics(post.brandId, videoId);
+      const totals = rows.reduce((acc, row) => ({
+        views: acc.views + (row.views || 0)
+      }), { views: 0 });
+
+      await this.upsertDailySnapshot({
+        postId: post.id,
+        platformPostId: videoId,
+        brandId: post.brandId,
+        platform: PLATFORMS.YOUTUBE,
+        date: new Date(),
+        metrics: { views: totals.views, reach: 0, clicks: 0, reactions: 0 },
+        isEstimated: false
+      });
+      logger.info(`[PostMetricSync] Recorded snapshot for YouTube video ${videoId}`);
+    } catch (err) {
+      logger.error(`[PostMetricSync] Failed to sync YouTube video ${videoId}:`, err.message);
     }
   }
 
@@ -91,7 +158,7 @@ class PostMetricSyncService {
     account = await tiktokAnalytics.getOrRefreshAccount(account);
 
     logger.info(`[PostMetricSync] Fetching stats for TikTok video ${tiktokVideoId} using real API...`);
-    
+
     // Gọi API lấy danh sách video để lọc ra video cần sync
     let cursor = 0;
     let hasMore = true;
@@ -118,19 +185,19 @@ class PostMetricSyncService {
     const comments = targetVideo.comment_count || 0;
     const shares = targetVideo.share_count || 0;
 
-    // Lưu snapshot tương tác vào database
-    await prisma.postMetricHistory.create({
-      data: {
-        brandId: post.brandId,
-        postId: post.id,
-        platform: 'TIKTOK',
-        platformPostId: tiktokVideoId,
+    await this.upsertDailySnapshot({
+      postId: post.id,
+      platformPostId: tiktokVideoId,
+      brandId: post.brandId,
+      platform: PLATFORMS.TIKTOK,
+      date: new Date(),
+      metrics: {
         views,
-        likes,
-        comments,
-        shares,
-        saves: 0 // API TikTok Display không trả về lượt lưu
-      }
+        reach: 0,
+        clicks: 0,
+        reactions: likes + comments + shares
+      },
+      isEstimated: true
     });
 
     logger.info(`[PostMetricSync] Successfully recorded snapshot for TikTok video ${tiktokVideoId} (Views: ${views}, Likes: ${likes})`);

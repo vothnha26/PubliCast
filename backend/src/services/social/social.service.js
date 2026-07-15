@@ -99,6 +99,12 @@ class SocialService {
   async disconnectAccount(brandId, platform) {
     const result = await socialAccountRepository.deleteManyByBrandAndPlatform(brandId, platform);
     await this._notifyPlatformDisconnected(brandId, platform);
+
+    const syncPostAnalyticsService = require('./sync-post-analytics.service');
+    await syncPostAnalyticsService.cleanupOrphanSnapshotsForBrandPlatform(brandId, platform).catch(err => {
+      console.error(`[SocialService] Failed to cleanup orphan snapshots for ${platform}:`, err.message);
+    });
+
     return result;
   }
 
