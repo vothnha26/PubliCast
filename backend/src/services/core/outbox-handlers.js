@@ -7,6 +7,8 @@
  */
 const { OUTBOX_EVENT_TYPES } = require('../../constants/outbox.constants');
 const { upsertPublishJob, removePublishJob } = require('../../queues/publish.queue');
+const { socialQueue } = require('../../queues/social.queue');
+const { QUEUE_CONFIG } = require('../../constants/video-publish.constants');
 const initPostSubscribers = require('../../events/subscribers/post.subscriber');
 const { POST_DOMAIN_EVENT_HANDLERS } = initPostSubscribers;
 
@@ -24,8 +26,19 @@ const OUTBOX_HANDLERS = {
     const handler = POST_DOMAIN_EVENT_HANDLERS[payload.eventName];
     if (!handler) throw new Error(`No POST_DOMAIN_EVENT handler registered for eventName=${payload.eventName}`);
     await handler(payload.eventArgs);
+  },
+  [OUTBOX_EVENT_TYPES.SOCIAL_SYNC_ENQUEUE]: async (payload) => {
+    // jobId cố định theo socialAccountId — idempotent, khác với social.subscriber.js
+    // cũ (đã bỏ) từng để BullMQ tự sinh ID ngẫu nhiên mỗi lần. remove trước khi add
+    // (giống upsertPublishJob) để reconnect nhanh liên tiếp không bị lỗi "job đã tồn tại".
+    const jobId = `social-sync-${payload.socialAccountId}`;
+    await socialQueue.remove(jobId);
+    await socialQueue.add(
+      QUEUE_CONFIG.SOCIAL.JOB_SYNC,
+      { socialAccountId: payload.socialAccountId, platform: payload.platform, brandId: payload.brandId },
+      { jobId }
+    );
   }
-  // SOCIAL_SYNC_ENQUEUE thêm ở Đợt 3
 };
 
 module.exports = { OUTBOX_HANDLERS };
