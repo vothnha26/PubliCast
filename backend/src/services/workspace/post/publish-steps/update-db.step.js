@@ -105,9 +105,7 @@ class UpdatePostStatusStep extends BaseStep {
         // kept before the throw/enqueue decision so this side-effect never gets
         // skipped regardless of which branch runs next.
         if (post.autoListId) {
-          const autoListService = require('../../auto-list.service');
-          await autoListService.updateLastPostedAt(post.autoListId, new Date());
-          await autoListService.recalculateQueueSchedules(post.autoListId);
+          await this._syncAutoListAfterPublish(post.autoListId);
         }
 
         const successCount = results.filter(r => r.success).length;
@@ -134,9 +132,23 @@ class UpdatePostStatusStep extends BaseStep {
     // (allSuccessful branch, and the shouldLoop failure branch already handled
     // its own loop-cycle bookkeeping above).
     if (post.autoListId) {
+      await this._syncAutoListAfterPublish(post.autoListId);
+    }
+  }
+
+  /**
+   * Updates AutoList bookkeeping after a publish attempt. Deliberately swallows
+   * errors — the AutoList may have been deleted mid-publish (race with
+   * deleteAutoList), and that must never break the post's own status update,
+   * which already succeeded by the time this runs.
+   */
+  async _syncAutoListAfterPublish(autoListId) {
+    try {
       const autoListService = require('../../auto-list.service');
-      await autoListService.updateLastPostedAt(post.autoListId, new Date());
-      await autoListService.recalculateQueueSchedules(post.autoListId);
+      await autoListService.updateLastPostedAt(autoListId, new Date());
+      await autoListService.recalculateQueueSchedules(autoListId);
+    } catch (err) {
+      console.error(`[UpdatePostStatusStep] Failed to update AutoList ${autoListId} after publish:`, err.message);
     }
   }
 
