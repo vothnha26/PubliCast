@@ -77,8 +77,8 @@ class PostRepository {
     return { posts, total };
   }
 
-  async findById(id) {
-    return prisma.post.findUnique({
+  async findById(id, client = prisma) {
+    return client.post.findUnique({
       where: { id },
       include: {
         creator: {
@@ -90,6 +90,35 @@ class PostRepository {
         }
       }
     });
+  }
+
+  /** Khóa dòng post (SELECT ... FOR UPDATE) trong 1 transaction đang mở, ngăn race
+   * condition khi 2 request cùng sửa 1 post đồng thời. */
+  async lockForUpdate(id, tx) {
+    await tx.$queryRaw`SELECT id FROM posts WHERE id = ${id} FOR UPDATE`;
+  }
+
+  /**
+   * Lock row rồi xác nhận nó chưa bị request khác sửa từ lúc đọc snapshot ban đầu
+   * (so sánh updatedAt). Dùng chung cho mọi update-flow cần chống race condition
+   * trên Post — tránh mỗi hàm tự viết lại raw SQL + so sánh timestamp.
+   * Throw lỗi 409 nếu phát hiện đã bị sửa; không throw thì coi như đã lock xong,
+   * an toàn để caller update ngay trong cùng transaction.
+   */
+  async lockAndAssertFresh(id, expectedUpdatedAt, tx) {
+    await this.lockForUpdate(id, tx);
+    const fresh = await this.findById(id, tx);
+    if (!fresh) {
+      const error = new Error('Post not found or unauthorized');
+      error.statusCode = 404;
+      throw error;
+    }
+    if (fresh.updatedAt.getTime() !== expectedUpdatedAt.getTime()) {
+      const error = new Error('Post was modified by another request during update. Please reload and try again.');
+      error.statusCode = 409;
+      throw error;
+    }
+    return fresh;
   }
 
   async create(data, client = prisma) {

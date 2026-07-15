@@ -305,6 +305,13 @@ class PostService {
     const statusChangedToPublished = post.status !== POST_STATUS.PUBLISHED && postData.status?.toUpperCase() === POST_STATUS.PUBLISHED;
 
     const updatedPost = await prisma.$transaction(async (tx) => {
+      // Lock row + xác nhận chưa bị request khác sửa từ lúc đọc snapshot ở đầu hàm
+      // (so sánh updatedAt) — post đọc ở dòng 195 chỉ dùng để quyết định business
+      // logic (merge/validate/gọi social API bên trên), không phải nguồn sự thật
+      // cuối để ghi đè. Network I/O (Facebook/Discord) đã chạy xong ở trên, KHÔNG
+      // nằm trong transaction này — chỉ thao tác DB thuần trong lock ngắn.
+      await postRepository.lockAndAssertFresh(id, post.updatedAt, tx);
+
       const updated = await postRepository.update(id, data, tx);
 
       // Job publish + domain event ghi vào outbox trong CÙNG transaction với việc
