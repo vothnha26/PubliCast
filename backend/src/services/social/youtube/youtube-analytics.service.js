@@ -3,6 +3,7 @@ const googleOAuthService = require('../google-oauth.service');
 const socialAccountRepository = require('../../../repositories/social/social-account.repository');
 const competitorRepository = require('../../../repositories/social/competitor.repository');
 const { PLATFORMS, SEPARATORS, ANALYTICS, SOCIAL_TECHNICAL, YT_VIDEO_INSIGHTS, REDIS_TTL } = require('../../../utils/constants');
+const { YOUTUBE_QUOTA_THRESHOLD } = require('../../../constants/analytics-snapshot.constants');
 
 let redisClient = null;
 try {
@@ -10,6 +11,10 @@ try {
 } catch (_) {
   // Redis không có — video-insights vẫn hoạt động nhưng không cache
 }
+
+const QuotaTrackerService = require('../quota-tracker.service');
+const YOUTUBE_QUOTA_SERVICE_NAME = 'youtube-analytics';
+const quotaService = redisClient ? new QuotaTrackerService(redisClient) : null;
 
 class YouTubeAnalyticsService {
   _createAuthenticatedClient(account) {
@@ -450,13 +455,19 @@ class YouTubeAnalyticsService {
 
   async getVideoAnalytics(brandId, videoId, startDate, endDate) {
     const { start, end } = this._resolveDates(startDate, endDate);
+
+    if (await this._isQuotaBudgetExceeded()) {
+      console.warn(`[YouTube Analytics] Quota budget below threshold, returning quotaExceeded fallback for video ${videoId}.`);
+      return this._getMockVideoAnalytics(start, end, true);
+    }
+
     try {
       const socialAccount = await socialAccountRepository.findByBrandAndPlatform(brandId, PLATFORMS.YOUTUBE);
       if (!socialAccount || socialAccount.length === 0) {
         return this._getMockVideoAnalytics(start, end);
       }
 
-      const activeAccount = socialAccount.find(acc => 
+      const activeAccount = socialAccount.find(acc =>
         !(acc.accessToken && acc.accessToken.startsWith('mock-')) &&
         !(acc.platformAccountId && acc.platformAccountId.startsWith('mock-'))
       ) || socialAccount[0];
@@ -471,11 +482,16 @@ class YouTubeAnalyticsService {
         filters: `${ANALYTICS.DIMENSIONS.YOUTUBE.VIDEO}==${videoId}`,
         sort: ANALYTICS.SORT.YOUTUBE.DAY_ASC
       });
+      await this._recordQuotaUsage();
 
       let rows = response.data.rows;
       if (!rows || rows.length === 0) {
         return this._getMockVideoAnalytics(start, end);
       }
+
+      this._enqueueBackfillIfNoSnapshotsYet(brandId, videoId).catch(err => {
+        console.error('[YouTube Analytics] Failed to enqueue backfill:', err.message);
+      });
 
       return rows.map(row => ({
         date: row[0],
@@ -486,11 +502,58 @@ class YouTubeAnalyticsService {
       }));
     } catch (err) {
       console.error("Error in getVideoAnalytics, returning mock fallback:", err.message);
-      return this._getMockVideoAnalytics(start, end);
+      return this._getMockVideoAnalytics(start, end, true);
     }
   }
 
-  _getMockVideoAnalytics(start, end) {
+  async _isQuotaBudgetExceeded() {
+    if (!quotaService) return false;
+    try {
+      const usage = await quotaService.getCurrentUsage(YOUTUBE_QUOTA_SERVICE_NAME);
+      return usage >= YOUTUBE_QUOTA_THRESHOLD * 10; // threshold is a "remaining" budget floor, not a raw usage cap
+    } catch (err) {
+      console.error('[YouTube Analytics] Quota check failed, proceeding without guard:', err.message);
+      return false;
+    }
+  }
+
+  async _recordQuotaUsage() {
+    if (!quotaService) return;
+    try {
+      await quotaService.incrementAndGet(YOUTUBE_QUOTA_SERVICE_NAME, 1);
+    } catch (err) {
+      console.error('[YouTube Analytics] Failed to record quota usage:', err.message);
+    }
+  }
+
+  /**
+   * Cold-start symmetry with Facebook's coldStartLock branch: the first time a
+   * video is viewed with zero persisted snapshot rows, enqueue a background
+   * backfill so the daily history lands in PostAnalyticsDailySnapshot instead
+   * of re-querying the live API on every future view.
+   */
+  async _enqueueBackfillIfNoSnapshotsYet(brandId, videoId) {
+    const prisma = require('../../../config/prisma');
+    const existingCount = await prisma.postAnalyticsDailySnapshot.count({ where: { platformPostId: videoId } });
+    if (existingCount > 0) return;
+
+    const { socialQueue } = require('../../../queues/social.queue');
+    const { QUEUE_CONFIG } = require('../../../constants/video-publish.constants');
+    await socialQueue.add(QUEUE_CONFIG.SOCIAL.JOB_BACKFILL_POST_ANALYTICS, {
+      postId: null,
+      platformPostId: videoId,
+      brandId,
+      publishedAt: null
+    });
+  }
+
+  /**
+   * @param {boolean} isFallback - true when this represents a failed/quota-blocked API
+   * call being masked as zeros, NOT a video that genuinely has 0 views. Callers that
+   * persist these rows (e.g. sync-post-analytics.service.js) must check this flag and
+   * skip persisting isEstimated=false rows built from a fallback response.
+   */
+  _getMockVideoAnalytics(start, end, isFallback = false) {
     const rows = [];
     const sDate = new Date(start);
     const eDate = new Date(end);
@@ -502,7 +565,8 @@ class YouTubeAnalyticsService {
         views: 0,
         likes: 0,
         comments: 0,
-        avgWatchTime: 0
+        avgWatchTime: 0,
+        isFallback
       });
     }
     return rows;
