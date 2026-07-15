@@ -22,8 +22,8 @@ class OutboxEventRepository {
   async claimBatch(limit, tx) {
     const rows = await tx.$queryRaw`
       SELECT id FROM outbox_events
-      WHERE status = ${OUTBOX_EVENT_STATUS.PENDING} AND next_run_at <= NOW()
-      ORDER BY next_run_at ASC
+      WHERE status = ${OUTBOX_EVENT_STATUS.PENDING} AND nextRunAt <= NOW()
+      ORDER BY nextRunAt ASC
       LIMIT ${limit}
       FOR UPDATE SKIP LOCKED
     `;
