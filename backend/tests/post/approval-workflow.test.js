@@ -97,13 +97,17 @@ jest.mock('../../src/config/prisma', () => {
     deleteMany: jest.fn()
   };
 
-  return {
+  const mockPrisma = {
     post: mockPost,
     approvalWorkflow: mockApprovalWorkflow,
     brand: mockBrand,
     team: mockTeam,
-    workflowReviewer: mockWorkflowReviewer
+    workflowReviewer: mockWorkflowReviewer,
+    $queryRaw: jest.fn().mockResolvedValue([]),
+    $transaction: jest.fn().mockImplementation((callback) => callback(mockPrisma))
   };
+
+  return mockPrisma;
 });
 
 // Mock BullMQ Queue calls
@@ -111,6 +115,12 @@ jest.mock('../../src/queues/publish.queue', () => ({
   publishQueue: { client: { on: jest.fn() } },
   upsertPublishJob: jest.fn().mockResolvedValue(true),
   removePublishJob: jest.fn().mockResolvedValue(true)
+}));
+
+// Mock Outbox Event Repository — approval-workflow.service.js ghi outbox trong transaction
+// thay vì gọi upsertPublishJob/eventEmitter.emit trực tiếp.
+jest.mock('../../src/repositories/core/outbox-event.repository', () => ({
+  create: jest.fn().mockResolvedValue({})
 }));
 
 // Mock Queue Dashboard
@@ -161,8 +171,7 @@ describe('Post Content Approval Workflow APIs', () => {
         postId: 'post-1',
         brandId: 'brand-123',
         requesterId: 'operator-id',
-        status: 'PENDING',
-        selectedReviewers: JSON.stringify(['reviewer-id'])
+        status: 'PENDING'
       });
 
       const res = await request(app)
@@ -180,7 +189,7 @@ describe('Post Content Approval Workflow APIs', () => {
         data: expect.objectContaining({
           postId: 'post-1',
           status: 'PENDING',
-          selectedReviewers: JSON.stringify(['reviewer-id'])
+          reviewers: { create: [{ reviewerId: 'reviewer-id', status: 'PENDING' }] }
         })
       }));
     });
@@ -213,8 +222,7 @@ describe('Post Content Approval Workflow APIs', () => {
         postId: 'post-2',
         brandId: 'brand-123',
         requesterId: 'operator-id',
-        status: 'PENDING',
-        selectedReviewers: JSON.stringify(['reviewer-id'])
+        status: 'PENDING'
       });
 
       const res = await request(app)
@@ -228,7 +236,7 @@ describe('Post Content Approval Workflow APIs', () => {
         data: expect.objectContaining({
           postId: 'post-2',
           status: 'PENDING',
-          selectedReviewers: JSON.stringify(['reviewer-id'])
+          reviewers: { create: [{ reviewerId: 'reviewer-id', status: 'PENDING' }] }
         })
       }));
     });
@@ -244,7 +252,7 @@ describe('Post Content Approval Workflow APIs', () => {
         brandId: 'brand-123',
         requesterId: 'operator-id',
         status: 'PENDING',
-        selectedReviewers: JSON.stringify(['reviewer-id']),
+        approvalPolicy: 'AT_LEAST_ONE',
         post: {
           id: 'post-1',
           status: 'PENDING_APPROVAL',
@@ -257,6 +265,10 @@ describe('Post Content Approval Workflow APIs', () => {
         ...mockWorkflow,
         status: 'APPROVED'
       });
+      prisma.workflowReviewer.findFirst.mockResolvedValue(null);
+      prisma.workflowReviewer.findMany.mockResolvedValue([
+        { reviewerId: 'reviewer-id', status: 'APPROVED' }
+      ]);
       prisma.post.update.mockResolvedValue({
         id: 'post-1',
         status: 'SCHEDULED'
@@ -283,8 +295,7 @@ describe('Post Content Approval Workflow APIs', () => {
         postId: 'post-1',
         brandId: 'brand-123',
         requesterId: 'operator-id',
-        status: 'PENDING',
-        selectedReviewers: JSON.stringify(['reviewer-id'])
+        status: 'PENDING'
       };
 
       prisma.approvalWorkflow.findUnique.mockResolvedValue(mockWorkflow);
@@ -306,7 +317,6 @@ describe('Post Content Approval Workflow APIs', () => {
         brandId: 'brand-123',
         requesterId: 'operator-id',
         status: 'PENDING',
-        selectedReviewers: JSON.stringify(['revoked-reviewer-id']),
         post: {
           id: 'post-1',
           status: 'PENDING_APPROVAL'
@@ -338,7 +348,7 @@ describe('Post Content Approval Workflow APIs', () => {
         brandId: 'brand-123',
         requesterId: 'operator-id',
         status: 'PENDING',
-        selectedReviewers: JSON.stringify(['some-other-reviewer-id']),
+        approvalPolicy: 'AT_LEAST_ONE',
         post: {
           id: 'post-1',
           status: 'PENDING_APPROVAL',
@@ -351,6 +361,10 @@ describe('Post Content Approval Workflow APIs', () => {
         ...mockWorkflow,
         status: 'APPROVED'
       });
+      prisma.workflowReviewer.findFirst.mockResolvedValue(null);
+      prisma.workflowReviewer.findMany.mockResolvedValue([
+        { reviewerId: 'reviewer-id', status: 'APPROVED' }
+      ]);
       prisma.post.update.mockResolvedValue({
         id: 'post-1',
         status: 'SCHEDULED'
@@ -378,7 +392,6 @@ describe('Post Content Approval Workflow APIs', () => {
         brandId: 'brand-123',
         requesterId: 'operator-id',
         status: 'PENDING',
-        selectedReviewers: JSON.stringify(['reviewer-id']),
         post: {
           id: 'post-1',
           status: 'PENDING_APPROVAL'
@@ -417,7 +430,6 @@ describe('Post Content Approval Workflow APIs', () => {
         requesterId: 'operator-id',
         status: 'PENDING',
         approvalPolicy: 'ALL',
-        selectedReviewers: JSON.stringify(['reviewer-1-id', 'reviewer-2-id']),
         post: {
           id: 'post-1',
           status: 'PENDING_APPROVAL',
@@ -433,7 +445,8 @@ describe('Post Content Approval Workflow APIs', () => {
       prisma.workflowReviewer.findFirst.mockResolvedValue(null);
       // reviewer-1 approved, but reviewer-2 is still pending
       prisma.workflowReviewer.findMany.mockResolvedValue([
-        { reviewerId: 'reviewer-1-id', status: 'APPROVED' }
+        { reviewerId: 'reviewer-1-id', status: 'APPROVED' },
+        { reviewerId: 'reviewer-2-id', status: 'PENDING' }
       ]);
       prisma.post.update.mockResolvedValue({
         id: 'post-1',
@@ -463,7 +476,6 @@ describe('Post Content Approval Workflow APIs', () => {
         requesterId: 'operator-id',
         status: 'PENDING',
         approvalPolicy: 'ALL',
-        selectedReviewers: JSON.stringify(['reviewer-1-id', 'reviewer-2-id']),
         post: {
           id: 'post-1',
           status: 'PENDING_APPROVAL',
@@ -498,6 +510,68 @@ describe('Post Content Approval Workflow APIs', () => {
         where: { id: 'post-1' },
         data: { status: 'SCHEDULED' }
       });
+    });
+  });
+
+  describe('PUT /api/brands/:brandId/workflows/:id/reassign', () => {
+    it('should reject with 400 when reviewerIds is empty', async () => {
+      mockUser = { id: 'operator-id', email: 'operator@publicast.com' };
+
+      const res = await request(app)
+        .put('/api/brands/brand-123/workflows/wf-1/reassign')
+        .send({ reviewerIds: [] })
+        .expect(400);
+
+      expect(res.body.message).toContain('Cần chọn ít nhất một người duyệt');
+      expect(prisma.approvalWorkflow.findUnique).not.toHaveBeenCalled();
+    });
+
+    it('should reject with 400 when policy is not a valid WORKFLOW_POLICY value', async () => {
+      mockUser = { id: 'operator-id', email: 'operator@publicast.com' };
+
+      const res = await request(app)
+        .put('/api/brands/brand-123/workflows/wf-1/reassign')
+        .send({ reviewerIds: ['reviewer-id'], policy: 'INVALID_POLICY' })
+        .expect(400);
+
+      expect(res.body.message).toContain('Chính sách phê duyệt không hợp lệ');
+      expect(prisma.approvalWorkflow.findUnique).not.toHaveBeenCalled();
+    });
+
+    it('should dedupe duplicate reviewerIds before persisting', async () => {
+      mockUser = { id: 'operator-id', email: 'operator@publicast.com' };
+
+      const mockWorkflow = {
+        id: 'wf-1',
+        postId: 'post-1',
+        brandId: 'brand-123',
+        requesterId: 'operator-id',
+        status: 'PENDING'
+      };
+
+      prisma.approvalWorkflow.findUnique.mockResolvedValue(mockWorkflow);
+      prisma.approvalWorkflow.update.mockResolvedValue(mockWorkflow);
+
+      const res = await request(app)
+        .put('/api/brands/brand-123/workflows/wf-1/reassign')
+        .send({ reviewerIds: ['reviewer-id', 'reviewer-id', 'reviewer-2-id'] })
+        .expect(200);
+
+      expect(res.body.status).toBe('success');
+      expect(prisma.workflowReviewer.deleteMany).toHaveBeenCalledWith({ where: { workflowId: 'wf-1' } });
+      expect(prisma.approvalWorkflow.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: 'wf-1' },
+          data: expect.objectContaining({
+            reviewers: {
+              create: [
+                { reviewerId: 'reviewer-id', status: 'PENDING' },
+                { reviewerId: 'reviewer-2-id', status: 'PENDING' }
+              ]
+            }
+          })
+        })
+      );
     });
   });
 

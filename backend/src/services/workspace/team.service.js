@@ -3,6 +3,8 @@ const prisma = require('../../config/prisma');
 const teamRepository = require('../../repositories/workspace/team.repository');
 const brandRepository = require('../../repositories/workspace/brand.repository');
 const userRepository = require('../../repositories/auth/user.repository');
+const approvalWorkflowRepository = require('../../repositories/workspace/approval-workflow.repository');
+const approvalWorkflowService = require('./approval-workflow.service');
 const authorizationFacade = require('../auth/authorization.facade');
 const roleResolver = require('./role-resolver');
 const { TEAM_STATUS, PERMISSION_KEYS, NOTIFICATION_TYPES, WORKFLOW_STATUS } = require('../../utils/constants');
@@ -627,9 +629,12 @@ class TeamService {
   /**
    * Xử lý khi một user bị xoá khỏi team hoặc mất quyền APPROVE_POSTS.
    * - Tìm tất cả workflow PENDING trong brand mà user đang là reviewer.
-   * - Xóa WorkflowReviewer record của user đó.
-   * - Cập nhật selectedReviewers JSON.
-   * - Nếu workflow không còn reviewer nào, notify requester để bổ sung.
+   * - Với mỗi workflow: khóa dòng (FOR UPDATE), xóa WorkflowReviewer record của
+   *   user, rồi ủy quyền cho ApprovalWorkflowService.reevaluateAfterReviewerRemoved
+   *   quyết định có tự động APPROVED hay không — TeamService không tự tính toán
+   *   quy tắc policy (single source of truth nằm ở ApprovalWorkflowService).
+   * - Nếu workflow không còn reviewer nào (và không tự động approve), notify
+   *   requester để bổ sung người duyệt mới.
    * @param {string} userId - User bị kick/đổi role
    * @param {string} brandId
    * @param {'member_removed'|'role_changed'} reason
@@ -667,28 +672,31 @@ class TeamService {
         const workflow = wr.workflow;
         if (!workflow) continue;
 
-        // 1. Xóa WorkflowReviewer record của user
-        await prisma.workflowReviewer.delete({ where: { id: wr.id } });
+        const { autoApproved, remainingReviewers } = await prisma.$transaction(async (tx) => {
+          await approvalWorkflowRepository.lockForUpdate(workflow.id, tx);
+          await tx.workflowReviewer.delete({ where: { id: wr.id } });
 
-        // 2. Cập nhật selectedReviewers JSON
-        const currentSelected = JSON.parse(workflow.selectedReviewers || '[]');
-        const updatedSelected = currentSelected.filter(id => id !== userId);
-        await prisma.approvalWorkflow.update({
-          where: { id: workflow.id },
-          data: { selectedReviewers: JSON.stringify(updatedSelected) }
+          // reevaluateAfterReviewerRemoved tự ghi outbox (job publish + domain event)
+          // NGAY BÊN TRONG tx này nếu autoApproved — không cần bước side-effect nào
+          // sau khi transaction commit, outbox tự đảm bảo retry.
+          const evalResult = await approvalWorkflowService.reevaluateAfterReviewerRemoved(workflow.id, tx);
+          const remaining = await tx.workflowReviewer.count({ where: { workflowId: workflow.id } });
+
+          return {
+            autoApproved: evalResult.autoApproved,
+            remainingReviewers: remaining
+          };
         });
 
-        // 3. Kiểm tra còn reviewer nào không
-        const remainingReviewers = await prisma.workflowReviewer.count({
-          where: { workflowId: workflow.id }
-        });
-
-        // 4. Notify requester
+        // Notify requester
         const postTitle = workflow.post?.title || 'Bài viết không rõ tiêu đề';
         const removedName = removedUser?.name || 'Thành viên';
 
         let notifTitle, notifMessage;
-        if (remainingReviewers === 0) {
+        if (autoApproved) {
+          notifTitle = '✅ Bài viết đã được tự động duyệt';
+          notifMessage = `"${removedName}" ${reasonText}. Các reviewer còn lại của bài viết "${postTitle}" đã duyệt đủ, bài viết được tự động chuyển sang duyệt xong.`;
+        } else if (remainingReviewers === 0) {
           notifTitle = '⚠️ Không còn người duyệt bài viết';
           notifMessage = `"${removedName}" ${reasonText}. Bài viết "${postTitle}" hiện không còn người duyệt. Vui lòng chỉ định người duyệt mới.`;
         } else {
@@ -707,7 +715,7 @@ class TeamService {
           }).catch(err => console.error('[TeamService] Failed to notify requester:', err.message));
         }
 
-        console.log(`[TeamService] Removed reviewer ${userId} from workflow ${workflow.id}. Remaining: ${remainingReviewers}`);
+        console.log(`[TeamService] Removed reviewer ${userId} from workflow ${workflow.id}. Remaining: ${remainingReviewers}. AutoApproved: ${autoApproved}`);
       }
     } catch (err) {
       // Không để lỗi này chặn flow chính (kick member / đổi role)

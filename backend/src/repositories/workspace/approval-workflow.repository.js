@@ -38,9 +38,8 @@ class ApprovalWorkflowRepository {
   }
 
   async findPendingByReviewer(userId) {
-    // We will fetch workflows where status is PENDING
-    // and the reviewer is listed inside selectedReviewers JSON array
-    // (We will parse/filter it in service, or fetch all pending for the brand if the user has role check)
+    // TODO: query toàn bộ PENDING rồi filter ở service — nên lọc trực tiếp qua
+    // quan hệ workflow_reviewers (reviewerId = userId) ở tầng DB. Xem backlog Low.
     return prisma.approvalWorkflow.findMany({
       where: {
         status: 'PENDING'
@@ -152,8 +151,13 @@ class ApprovalWorkflowRepository {
     });
   }
 
-  async update(id, data) {
-    return prisma.approvalWorkflow.update({
+  /** Khóa dòng workflow (SELECT ... FOR UPDATE) trong 1 transaction đang mở, ngăn race condition. */
+  async lockForUpdate(id, tx) {
+    await tx.$queryRaw`SELECT id FROM approval_workflows WHERE id = ${id} FOR UPDATE`;
+  }
+
+  async update(id, data, client = prisma) {
+    return client.approvalWorkflow.update({
       where: { id },
       data,
       include: {

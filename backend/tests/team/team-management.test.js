@@ -1,6 +1,13 @@
 const request = require('supertest');
-const app = require('../../src/app');
 const jwt = require('jsonwebtoken');
+
+// Mock otplib to prevent ESModule parsing errors on @scure/base in Jest
+jest.mock('otplib', () => ({
+  authenticator: {
+    generate: jest.fn(),
+    verify: jest.fn()
+  }
+}));
 
 // Mock Auth Middleware
 jest.mock('../../src/middlewares/auth.middleware', () => ({
@@ -58,18 +65,34 @@ jest.mock('../../src/config/prisma', () => {
     delete: jest.fn().mockResolvedValue({}),
     count: jest.fn().mockResolvedValue(0)
   };
+  const mockApprovalWorkflow = {
+    findUnique: jest.fn(),
+    update: jest.fn()
+  };
 
-  return {
+  const mockPrisma = {
     brand: mockBrand,
     team: mockTeam,
     user: mockUser,
     userAccount: mockUserAccount,
     customRole: mockCustomRole,
-    workflowReviewer: mockWorkflowReviewer
+    workflowReviewer: mockWorkflowReviewer,
+    approvalWorkflow: mockApprovalWorkflow,
+    post: { update: jest.fn(), findUnique: jest.fn() },
+    $queryRaw: jest.fn().mockResolvedValue([]),
+    $transaction: jest.fn().mockImplementation((callback) => callback(mockPrisma))
   };
+
+  return mockPrisma;
 });
 
 const prisma = require('../../src/config/prisma');
+
+// Mock Outbox Event Repository — approval-workflow.service.js ghi outbox trong
+// transaction thay vì gọi upsertPublishJob/eventEmitter.emit trực tiếp.
+jest.mock('../../src/repositories/core/outbox-event.repository', () => ({
+  create: jest.fn().mockResolvedValue({})
+}));
 
 // Mock Token Service
 jest.mock('../../src/services/auth/token.service', () => ({
@@ -89,7 +112,15 @@ jest.mock('../../src/services/core/notification.service', () => ({
   create: jest.fn().mockResolvedValue({ id: 'notif-mock-id' })
 }));
 
+// Mock BullMQ Queue calls (chạm tới khi _handleReviewerRemoved auto-approve 1 workflow có scheduledAt)
+jest.mock('../../src/queues/publish.queue', () => ({
+  publishQueue: { client: { on: jest.fn() } },
+  upsertPublishJob: jest.fn().mockResolvedValue(true),
+  removePublishJob: jest.fn().mockResolvedValue(true)
+}));
+
 const notificationService = require('../../src/services/core/notification.service');
+const app = require('../../src/app');
 
 describe('Team Management APIs', () => {
   afterEach(() => {
@@ -432,6 +463,105 @@ describe('Team Management APIs', () => {
 
       expect(res.status).toBe(200);
       expect(res.body.message).toBe('Đã xóa thành viên khỏi thương hiệu thành công');
+    });
+
+    it('should auto-approve the workflow when policy is ALL and remaining reviewers have all approved', async () => {
+      const mockTeam = {
+        id: 'team-1',
+        brandId: 'brand-1',
+        userId: 'user-1',
+        brand: { ownerId: 'operator-id' }
+      };
+      const mockWorkflowReviewerRecord = {
+        id: 'wr-1',
+        workflowId: 'wf-1',
+        reviewerId: 'user-1',
+        status: 'PENDING',
+        workflow: {
+          id: 'wf-1',
+          brandId: 'brand-1',
+          postId: 'post-1',
+          status: 'PENDING',
+          approvalPolicy: 'ALL',
+          post: { id: 'post-1', title: 'Bài viết cần duyệt' },
+          requester: { id: 'requester-id', name: 'Requester User' }
+        }
+      };
+
+      prisma.team.findUnique.mockResolvedValue(mockTeam);
+      prisma.brand.findUnique.mockResolvedValue({ id: 'brand-1', ownerId: 'operator-id' });
+      prisma.team.delete.mockResolvedValue({});
+      prisma.workflowReviewer.findMany.mockResolvedValueOnce([mockWorkflowReviewerRecord]); // affectedReviewers lookup
+      prisma.user.findUnique.mockResolvedValue({ id: 'user-1', name: 'Removed User' });
+
+      // Bên trong transaction: reevaluateAfterReviewerRemoved đọc lại workflow + decisions còn lại (đều APPROVED)
+      prisma.approvalWorkflow.findUnique.mockResolvedValue({
+        id: 'wf-1',
+        postId: 'post-1',
+        status: 'PENDING',
+        approvalPolicy: 'ALL',
+        post: { id: 'post-1' } // không có scheduledAt -> APPROVED thay vì SCHEDULED
+      });
+      prisma.workflowReviewer.findMany.mockResolvedValueOnce([
+        { reviewerId: 'other-reviewer-id', status: 'APPROVED' }
+      ]); // decisions còn lại sau khi xóa user-1, tất cả đã APPROVED
+      prisma.approvalWorkflow.update.mockResolvedValue({ id: 'wf-1', status: 'APPROVED' });
+      prisma.workflowReviewer.count.mockResolvedValue(1);
+      prisma.post.findUnique.mockResolvedValue({ id: 'post-1', status: 'APPROVED' });
+
+      const res = await request(app).delete('/api/team/team-1');
+
+      expect(res.status).toBe(200);
+      expect(prisma.approvalWorkflow.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: 'wf-1' },
+          data: expect.objectContaining({ status: 'APPROVED' })
+        })
+      );
+      expect(prisma.post.update).toHaveBeenCalledWith({ where: { id: 'post-1' }, data: { status: 'APPROVED' } });
+    });
+
+    it('should lock the workflow row (FOR UPDATE) before removing the reviewer', async () => {
+      const mockTeam = {
+        id: 'team-1',
+        brandId: 'brand-1',
+        userId: 'user-1',
+        brand: { ownerId: 'operator-id' }
+      };
+      const mockWorkflowReviewerRecord = {
+        id: 'wr-1',
+        workflowId: 'wf-1',
+        reviewerId: 'user-1',
+        status: 'PENDING',
+        workflow: {
+          id: 'wf-1',
+          brandId: 'brand-1',
+          postId: 'post-1',
+          status: 'PENDING',
+          approvalPolicy: 'AT_LEAST_ONE',
+          post: { id: 'post-1', title: 'Bài viết cần duyệt' },
+          requester: { id: 'requester-id', name: 'Requester User' }
+        }
+      };
+
+      prisma.team.findUnique.mockResolvedValue(mockTeam);
+      prisma.brand.findUnique.mockResolvedValue({ id: 'brand-1', ownerId: 'operator-id' });
+      prisma.team.delete.mockResolvedValue({});
+      prisma.workflowReviewer.findMany.mockResolvedValueOnce([mockWorkflowReviewerRecord]);
+      prisma.user.findUnique.mockResolvedValue({ id: 'user-1', name: 'Removed User' });
+      prisma.approvalWorkflow.findUnique.mockResolvedValue({
+        id: 'wf-1',
+        postId: 'post-1',
+        status: 'PENDING',
+        approvalPolicy: 'AT_LEAST_ONE',
+        post: { id: 'post-1' }
+      });
+      prisma.workflowReviewer.findMany.mockResolvedValueOnce([]); // không còn ai duyệt -> chưa thỏa AT_LEAST_ONE
+      prisma.workflowReviewer.count.mockResolvedValue(0);
+
+      await request(app).delete('/api/team/team-1');
+
+      expect(prisma.$queryRaw).toHaveBeenCalled();
     });
   });
 });

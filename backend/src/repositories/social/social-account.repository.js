@@ -1,6 +1,8 @@
 const prisma = require('../../config/prisma');
 const { PLATFORMS, ANALYTICS } = require('../../utils/constants');
 const { encrypt, decrypt } = require('../../utils/encryption');
+const { OUTBOX_EVENT_TYPES } = require('../../constants/outbox.constants');
+const outboxEventRepository = require('../core/outbox-event.repository');
 
 class SocialAccountRepository {
   _decryptAccount(account) {
@@ -16,32 +18,72 @@ class SocialAccountRepository {
     if (!accounts) return [];
     return accounts.map(acc => this._decryptAccount(acc));
   }
+  /**
+   * Ghi Prisma socialAccount.upsert (+ facebookPage + analytics nếu có) và outbox row
+   * SOCIAL_SYNC_ENQUEUE trong CÙNG 1 transaction — outbox là nguồn ghi duy nhất cho
+   * job sync social account, đảm bảo không mất event nếu Redis/process lỗi ngay sau
+   * khi social account đã được lưu vào DB. Payload outbox CHỈ chứa socialAccountId
+   * (không chứa token) — handler tự findById lại khi xử lý.
+   */
   async upsertFacebookAccount(brandId, pageData, tokens) {
     const { pageId, username, displayName, profilePictureUrl, category, likesCount, followersCount, about, website } = pageData;
-    
+
     const finalUsername = username || displayName || 'facebook_page';
 
-    const account = await prisma.socialAccount.upsert({
-      where: {
-        brandId_platform_platformAccountId: {
+    return prisma.$transaction(async (tx) => {
+      const account = await tx.socialAccount.upsert({
+        where: {
+          brandId_platform_platformAccountId: {
+            brandId,
+            platform: PLATFORMS.FACEBOOK,
+            platformAccountId: pageId
+          }
+        },
+        update: {
+          username: finalUsername,
+          displayName,
+          profilePictureUrl,
+          accessToken: encrypt(tokens.access_token),
+          refreshToken: tokens.refresh_token ? encrypt(tokens.refresh_token) : undefined,
+          tokenExpiresAt: tokens.expiry_date ? new Date(tokens.expiry_date) : undefined,
+          scopes: tokens.scope,
+          isConnected: true,
+          lastSyncAt: new Date(),
+          updatedAt: new Date(),
+          facebookPage: {
+            upsert: {
+              create: {
+                pageId,
+                category,
+                likesCount: parseInt(likesCount) || 0,
+                followersCount: parseInt(followersCount) || 0,
+                about,
+                website,
+              },
+              update: {
+                likesCount: parseInt(likesCount) || 0,
+                followersCount: parseInt(followersCount) || 0,
+                category,
+                about,
+                website,
+              }
+            }
+          }
+        },
+        create: {
           brandId,
           platform: PLATFORMS.FACEBOOK,
-          platformAccountId: pageId
-        }
-      },
-      update: {
-        username: finalUsername,
-        displayName,
-        profilePictureUrl,
-        accessToken: encrypt(tokens.access_token),
-        refreshToken: tokens.refresh_token ? encrypt(tokens.refresh_token) : undefined,
-        tokenExpiresAt: tokens.expiry_date ? new Date(tokens.expiry_date) : undefined,
-        scopes: tokens.scope,
-        isConnected: true,
-        lastSyncAt: new Date(),
-        updatedAt: new Date(),
-        facebookPage: {
-          upsert: {
+          platformAccountId: pageId,
+          username: finalUsername,
+          displayName,
+          profilePictureUrl,
+          accessToken: encrypt(tokens.access_token),
+          refreshToken: tokens.refresh_token ? encrypt(tokens.refresh_token) : '',
+          tokenExpiresAt: tokens.expiry_date ? new Date(tokens.expiry_date) : undefined,
+          scopes: tokens.scope || '',
+          lastSyncAt: new Date(),
+          connectedAt: new Date(),
+          facebookPage: {
             create: {
               pageId,
               category,
@@ -49,52 +91,29 @@ class SocialAccountRepository {
               followersCount: parseInt(followersCount) || 0,
               about,
               website,
-            },
-            update: {
-              likesCount: parseInt(likesCount) || 0,
-              followersCount: parseInt(followersCount) || 0,
-              category,
-              about,
-              website,
             }
           }
+        },
+        include: {
+          facebookPage: true
         }
-      },
-      create: {
-        brandId,
-        platform: PLATFORMS.FACEBOOK,
-        platformAccountId: pageId,
-        username: finalUsername,
-        displayName,
-        profilePictureUrl,
-        accessToken: encrypt(tokens.access_token),
-        refreshToken: tokens.refresh_token ? encrypt(tokens.refresh_token) : '',
-        tokenExpiresAt: tokens.expiry_date ? new Date(tokens.expiry_date) : undefined,
-        scopes: tokens.scope || '',
-        lastSyncAt: new Date(),
-        connectedAt: new Date(),
-        facebookPage: {
-          create: {
-            pageId,
-            category,
-            likesCount: parseInt(likesCount) || 0,
-            followersCount: parseInt(followersCount) || 0,
-            about,
-            website,
-          }
-        }
-      },
-      include: {
-        facebookPage: true
+      });
+
+      if (pageData.analytics) {
+        const { startDate, endDate } = pageData.analytics;
+        await this.saveFacebookAnalytics(brandId, account.id, pageData.analytics, startDate, endDate, tx);
       }
+
+      await outboxEventRepository.create(
+        OUTBOX_EVENT_TYPES.SOCIAL_SYNC_ENQUEUE,
+        account.id,
+        { socialAccountId: account.id, platform: PLATFORMS.FACEBOOK, brandId },
+        {},
+        tx
+      );
+
+      return this.findById(account.id, tx);
     });
-
-    if (pageData.analytics) {
-      const { startDate, endDate } = pageData.analytics;
-      await this.saveFacebookAnalytics(brandId, account.id, pageData.analytics, startDate, endDate);
-    }
-
-    return this.findById(account.id);
   }
 
   async upsertTikTokAccount(brandId, accountData, tokens) {
@@ -102,80 +121,90 @@ class SocialAccountRepository {
 
     const finalUsername = username || displayName || 'tiktok_user';
 
-    const account = await prisma.socialAccount.upsert({
-      where: {
-        brandId_platform_platformAccountId: {
+    return prisma.$transaction(async (tx) => {
+      const account = await tx.socialAccount.upsert({
+        where: {
+          brandId_platform_platformAccountId: {
+            brandId,
+            platform: PLATFORMS.TIKTOK,
+            platformAccountId: pageId
+          }
+        },
+        update: {
+          username: finalUsername,
+          displayName,
+          profilePictureUrl,
+          accessToken: encrypt(tokens.access_token),
+          refreshToken: tokens.refresh_token ? encrypt(tokens.refresh_token) : undefined,
+          tokenExpiresAt: tokens.expiry_date ? new Date(tokens.expiry_date) : undefined,
+          scopes: tokens.scope,
+          isConnected: true,
+          lastSyncAt: new Date(),
+          updatedAt: new Date(),
+          tikTokAccount: {
+            upsert: {
+              create: {
+                followersCount,
+                followingCount,
+                likesCount,
+                videoCount
+              },
+              update: {
+                followersCount,
+                followingCount,
+                likesCount,
+                videoCount
+              }
+            }
+          }
+        },
+        create: {
           brandId,
           platform: PLATFORMS.TIKTOK,
-          platformAccountId: pageId
-        }
-      },
-      update: {
-        username: finalUsername,
-        displayName,
-        profilePictureUrl,
-        accessToken: encrypt(tokens.access_token),
-        refreshToken: tokens.refresh_token ? encrypt(tokens.refresh_token) : undefined,
-        tokenExpiresAt: tokens.expiry_date ? new Date(tokens.expiry_date) : undefined,
-        scopes: tokens.scope,
-        isConnected: true,
-        lastSyncAt: new Date(),
-        updatedAt: new Date(),
-        tikTokAccount: {
-          upsert: {
+          platformAccountId: pageId,
+          username: finalUsername,
+          displayName,
+          profilePictureUrl,
+          accessToken: encrypt(tokens.access_token),
+          refreshToken: tokens.refresh_token ? encrypt(tokens.refresh_token) : '',
+          tokenExpiresAt: tokens.expiry_date ? new Date(tokens.expiry_date) : undefined,
+          scopes: tokens.scope || '',
+          lastSyncAt: new Date(),
+          connectedAt: new Date(),
+          tikTokAccount: {
             create: {
-              followersCount,
-              followingCount,
-              likesCount,
-              videoCount
-            },
-            update: {
               followersCount,
               followingCount,
               likesCount,
               videoCount
             }
           }
+        },
+        include: {
+          tikTokAccount: true
         }
-      },
-      create: {
-        brandId,
-        platform: PLATFORMS.TIKTOK,
-        platformAccountId: pageId,
-        username: finalUsername,
-        displayName,
-        profilePictureUrl,
-        accessToken: encrypt(tokens.access_token),
-        refreshToken: tokens.refresh_token ? encrypt(tokens.refresh_token) : '',
-        tokenExpiresAt: tokens.expiry_date ? new Date(tokens.expiry_date) : undefined,
-        scopes: tokens.scope || '',
-        lastSyncAt: new Date(),
-        connectedAt: new Date(),
-        tikTokAccount: {
-          create: {
-            followersCount,
-            followingCount,
-            likesCount,
-            videoCount
-          }
-        }
-      },
-      include: {
-        tikTokAccount: true
+      });
+
+      if (accountData.analytics) {
+        const { startDate, endDate } = accountData.analytics;
+        await this.saveTikTokAnalytics(brandId, account.id, accountData.analytics, startDate, endDate, tx);
       }
+
+      await outboxEventRepository.create(
+        OUTBOX_EVENT_TYPES.SOCIAL_SYNC_ENQUEUE,
+        account.id,
+        { socialAccountId: account.id, platform: PLATFORMS.TIKTOK, brandId },
+        {},
+        tx
+      );
+
+      return this.findById(account.id, tx);
     });
-
-    if (accountData.analytics) {
-      const { startDate, endDate } = accountData.analytics;
-      await this.saveTikTokAnalytics(brandId, account.id, accountData.analytics, startDate, endDate);
-    }
-
-    return this.findById(account.id);
   }
 
-  async saveTikTokAnalytics(brandId, socialAccountId, analyticsData, startDate, endDate) {
+  async saveTikTokAnalytics(brandId, socialAccountId, analyticsData, startDate, endDate, client = prisma) {
     const now = new Date();
-    
+
     const followersTotal = analyticsData.summary?.followers || 0;
     const followersGain = analyticsData.balance?.reduce((sum, item) => sum + (item.acquired || 0), 0) || 0;
     const followersLost = analyticsData.balance?.reduce((sum, item) => sum + (item.lost || 0), 0) || 0;
@@ -185,11 +214,11 @@ class SocialAccountRepository {
     const comments = analyticsData.interactions?.comments || 0;
     const shares = analyticsData.interactions?.shares || 0;
     const clicks = analyticsData.interactions?.clicks || 0;
-    
+
     const engagements = likes + comments + shares;
     const engagementRate = reach ? parseFloat(((engagements / reach) * 100).toFixed(2)) : 0;
 
-    const analyticsEntry = await prisma.analytics.create({
+    const analyticsEntry = await client.analytics.create({
       data: {
         brandId,
         socialAccountId,
@@ -201,7 +230,7 @@ class SocialAccountRepository {
       }
     });
 
-    await prisma.socialAnalytics.create({
+    await client.socialAnalytics.create({
       data: {
         analyticsId: analyticsEntry.id,
         followersTotal,
@@ -221,9 +250,9 @@ class SocialAccountRepository {
     });
   }
 
-  async saveFacebookAnalytics(brandId, socialAccountId, analyticsData, startDate, endDate) {
+  async saveFacebookAnalytics(brandId, socialAccountId, analyticsData, startDate, endDate, client = prisma) {
     const now = new Date();
-    
+
     // Extract totals from analyticsData structure
     const followersTotal = analyticsData.summary?.followers || 0;
     const followersGain = analyticsData.balance?.reduce((sum, item) => sum + (item.acquired || 0), 0) || 0;
@@ -234,11 +263,11 @@ class SocialAccountRepository {
     const comments = analyticsData.interactions?.comments || 0;
     const shares = analyticsData.interactions?.shares || 0;
     const clicks = analyticsData.interactions?.clicks || 0;
-    
+
     const engagements = likes + comments + shares;
     const engagementRate = reach ? parseFloat(((engagements / reach) * 100).toFixed(2)) : 0;
 
-    const analyticsEntry = await prisma.analytics.create({
+    const analyticsEntry = await client.analytics.create({
       data: {
         brandId,
         socialAccountId,
@@ -250,7 +279,7 @@ class SocialAccountRepository {
       }
     });
 
-    await prisma.socialAnalytics.create({
+    await client.socialAnalytics.create({
       data: {
         analyticsId: analyticsEntry.id,
         followersTotal,
@@ -272,82 +301,92 @@ class SocialAccountRepository {
 
   async upsertYouTubeAccount(brandId, channelData, tokens) {
     const { channelId, username, displayName, profilePictureUrl, statistics, snippet, analytics } = channelData;
-    
+
     const finalUsername = username || displayName || 'youtube_channel';
 
-    const account = await prisma.socialAccount.upsert({
-      where: {
-        brandId_platform_platformAccountId: {
+    return prisma.$transaction(async (tx) => {
+      const account = await tx.socialAccount.upsert({
+        where: {
+          brandId_platform_platformAccountId: {
+            brandId,
+            platform: PLATFORMS.YOUTUBE,
+            platformAccountId: channelId
+          }
+        },
+        update: {
+          username: finalUsername,
+          displayName,
+          profilePictureUrl,
+          accessToken: encrypt(tokens.access_token),
+          refreshToken: (tokens.refreshToken || tokens.refresh_token) ? encrypt(tokens.refreshToken || tokens.refresh_token) : undefined,
+          tokenExpiresAt: tokens.expiry_date ? new Date(tokens.expiry_date) : undefined,
+          scopes: tokens.scope,
+          isConnected: true,
+          lastSyncAt: new Date(),
+          updatedAt: new Date(),
+          youtubeChannel: {
+            update: {
+              subscribersCount: parseInt(statistics.subscriberCount) || 0,
+              totalVideosCount: parseInt(statistics.videoCount) || 0,
+              totalViewsCount: parseInt(statistics.viewCount) || 0,
+              customUrl: snippet.customUrl,
+              uploadsPlaylistId: channelData.uploadsPlaylistId,
+              country: snippet.country,
+              defaultLanguage: snippet.defaultLanguage,
+            }
+          }
+        },
+        create: {
           brandId,
           platform: PLATFORMS.YOUTUBE,
-          platformAccountId: channelId
-        }
-      },
-      update: {
-        username: finalUsername,
-        displayName,
-        profilePictureUrl,
-        accessToken: encrypt(tokens.access_token),
-        refreshToken: (tokens.refreshToken || tokens.refresh_token) ? encrypt(tokens.refreshToken || tokens.refresh_token) : undefined,
-        tokenExpiresAt: tokens.expiry_date ? new Date(tokens.expiry_date) : undefined,
-        scopes: tokens.scope,
-        isConnected: true,
-        lastSyncAt: new Date(),
-        updatedAt: new Date(),
-        youtubeChannel: {
-          update: {
-            subscribersCount: parseInt(statistics.subscriberCount) || 0,
-            totalVideosCount: parseInt(statistics.videoCount) || 0,
-            totalViewsCount: parseInt(statistics.viewCount) || 0,
-            customUrl: snippet.customUrl,
-            uploadsPlaylistId: channelData.uploadsPlaylistId,
-            country: snippet.country,
-            defaultLanguage: snippet.defaultLanguage,
+          platformAccountId: channelId,
+          username: finalUsername,
+          displayName,
+          profilePictureUrl,
+          accessToken: encrypt(tokens.access_token),
+          refreshToken: (tokens.refreshToken || tokens.refresh_token) ? encrypt(tokens.refreshToken || tokens.refresh_token) : '',
+          tokenExpiresAt: tokens.expiry_date ? new Date(tokens.expiry_date) : undefined,
+          scopes: tokens.scope || '',
+          lastSyncAt: new Date(),
+          connectedAt: new Date(),
+          youtubeChannel: {
+            create: {
+              channelId,
+              customUrl: snippet.customUrl,
+              uploadsPlaylistId: channelData.uploadsPlaylistId,
+              subscribersCount: parseInt(statistics.subscriberCount) || 0,
+              totalVideosCount: parseInt(statistics.videoCount) || 0,
+              totalViewsCount: parseInt(statistics.viewCount) || 0,
+              country: snippet.country,
+              defaultLanguage: snippet.defaultLanguage,
+            }
           }
+        },
+        include: {
+          youtubeChannel: true
         }
-      },
-      create: {
-        brandId,
-        platform: PLATFORMS.YOUTUBE,
-        platformAccountId: channelId,
-        username: finalUsername,
-        displayName,
-        profilePictureUrl,
-        accessToken: encrypt(tokens.access_token),
-        refreshToken: (tokens.refreshToken || tokens.refresh_token) ? encrypt(tokens.refreshToken || tokens.refresh_token) : '',
-        tokenExpiresAt: tokens.expiry_date ? new Date(tokens.expiry_date) : undefined,
-        scopes: tokens.scope || '',
-        lastSyncAt: new Date(),
-        connectedAt: new Date(),
-        youtubeChannel: {
-          create: {
-            channelId,
-            customUrl: snippet.customUrl,
-            uploadsPlaylistId: channelData.uploadsPlaylistId,
-            subscribersCount: parseInt(statistics.subscriberCount) || 0,
-            totalVideosCount: parseInt(statistics.videoCount) || 0,
-            totalViewsCount: parseInt(statistics.viewCount) || 0,
-            country: snippet.country,
-            defaultLanguage: snippet.defaultLanguage,
-          }
-        }
-      },
-      include: {
-        youtubeChannel: true
+      });
+
+      if (analytics) {
+        const { startDate, endDate } = analytics;
+        await this.saveYouTubeAnalytics(brandId, account.id, analytics, startDate, endDate, tx);
       }
+
+      await outboxEventRepository.create(
+        OUTBOX_EVENT_TYPES.SOCIAL_SYNC_ENQUEUE,
+        account.id,
+        { socialAccountId: account.id, platform: PLATFORMS.YOUTUBE, brandId },
+        {},
+        tx
+      );
+
+      return this.findById(account.id, tx);
     });
-
-    if (analytics) {
-      const { startDate, endDate } = analytics;
-      await this.saveYouTubeAnalytics(brandId, account.id, analytics, startDate, endDate);
-    }
-
-    return this.findById(account.id);
   }
 
-  async saveYouTubeAnalytics(brandId, socialAccountId, analyticsData, startDate, endDate) {
+  async saveYouTubeAnalytics(brandId, socialAccountId, analyticsData, startDate, endDate, client = prisma) {
     const now = new Date();
-    const analyticsEntry = await prisma.analytics.create({
+    const analyticsEntry = await client.analytics.create({
       data: {
         brandId,
         socialAccountId,
@@ -359,7 +398,7 @@ class SocialAccountRepository {
       }
     });
 
-    await prisma.socialAnalytics.create({
+    await client.socialAnalytics.create({
       data: {
         analyticsId: analyticsEntry.id,
         followersTotal: 0,
@@ -409,27 +448,67 @@ class SocialAccountRepository {
 
     const finalUsername = username || displayName || 'instagram_user';
 
-    const account = await prisma.socialAccount.upsert({
-      where: {
-        brandId_platform_platformAccountId: {
+    return prisma.$transaction(async (tx) => {
+      const account = await tx.socialAccount.upsert({
+        where: {
+          brandId_platform_platformAccountId: {
+            brandId,
+            platform: platform,
+            platformAccountId: igAccountId
+          }
+        },
+        update: {
+          username: finalUsername,
+          displayName,
+          profilePictureUrl,
+          accessToken: encrypt(tokens.access_token),
+          refreshToken: tokens.refresh_token ? encrypt(tokens.refresh_token) : undefined,
+          tokenExpiresAt: tokens.expiry_date ? new Date(tokens.expiry_date) : undefined,
+          scopes: tokens.scope,
+          isConnected: true,
+          lastSyncAt: new Date(),
+          updatedAt: new Date(),
+          instagramAccount: {
+            upsert: {
+              create: {
+                accountType,
+                businessCategoryName,
+                followersCount: parseInt(followersCount) || 0,
+                followingCount: parseInt(followingCount) || 0,
+                mediaCount: parseInt(mediaCount) || 0,
+                biography,
+                website,
+                supportsStories: true,
+                supportsReels: true,
+                supportsCarousels: true,
+                supportsCollaboration: true
+              },
+              update: {
+                accountType,
+                businessCategoryName,
+                followersCount: parseInt(followersCount) || 0,
+                followingCount: parseInt(followingCount) || 0,
+                mediaCount: parseInt(mediaCount) || 0,
+                biography,
+                website
+              }
+            }
+          }
+        },
+        create: {
           brandId,
           platform: platform,
-          platformAccountId: igAccountId
-        }
-      },
-      update: {
-        username: finalUsername,
-        displayName,
-        profilePictureUrl,
-        accessToken: encrypt(tokens.access_token),
-        refreshToken: tokens.refresh_token ? encrypt(tokens.refresh_token) : undefined,
-        tokenExpiresAt: tokens.expiry_date ? new Date(tokens.expiry_date) : undefined,
-        scopes: tokens.scope,
-        isConnected: true,
-        lastSyncAt: new Date(),
-        updatedAt: new Date(),
-        instagramAccount: {
-          upsert: {
+          platformAccountId: igAccountId,
+          username: finalUsername,
+          displayName,
+          profilePictureUrl,
+          accessToken: encrypt(tokens.access_token),
+          refreshToken: tokens.refresh_token ? encrypt(tokens.refresh_token) : '',
+          tokenExpiresAt: tokens.expiry_date ? new Date(tokens.expiry_date) : undefined,
+          scopes: tokens.scope || '',
+          lastSyncAt: new Date(),
+          connectedAt: new Date(),
+          instagramAccount: {
             create: {
               accountType,
               businessCategoryName,
@@ -442,64 +521,34 @@ class SocialAccountRepository {
               supportsReels: true,
               supportsCarousels: true,
               supportsCollaboration: true
-            },
-            update: {
-              accountType,
-              businessCategoryName,
-              followersCount: parseInt(followersCount) || 0,
-              followingCount: parseInt(followingCount) || 0,
-              mediaCount: parseInt(mediaCount) || 0,
-              biography,
-              website
             }
           }
+        },
+        include: {
+          instagramAccount: true
         }
-      },
-      create: {
-        brandId,
-        platform: platform,
-        platformAccountId: igAccountId,
-        username: finalUsername,
-        displayName,
-        profilePictureUrl,
-        accessToken: encrypt(tokens.access_token),
-        refreshToken: tokens.refresh_token ? encrypt(tokens.refresh_token) : '',
-        tokenExpiresAt: tokens.expiry_date ? new Date(tokens.expiry_date) : undefined,
-        scopes: tokens.scope || '',
-        lastSyncAt: new Date(),
-        connectedAt: new Date(),
-        instagramAccount: {
-          create: {
-            accountType,
-            businessCategoryName,
-            followersCount: parseInt(followersCount) || 0,
-            followingCount: parseInt(followingCount) || 0,
-            mediaCount: parseInt(mediaCount) || 0,
-            biography,
-            website,
-            supportsStories: true,
-            supportsReels: true,
-            supportsCarousels: true,
-            supportsCollaboration: true
-          }
-        }
-      },
-      include: {
-        instagramAccount: true
+      });
+
+      if (accountData.analytics) {
+        const { startDate, endDate } = accountData.analytics;
+        await this.saveInstagramAnalytics(brandId, account.id, accountData.analytics, startDate, endDate, tx);
       }
+
+      await outboxEventRepository.create(
+        OUTBOX_EVENT_TYPES.SOCIAL_SYNC_ENQUEUE,
+        account.id,
+        { socialAccountId: account.id, platform, brandId },
+        {},
+        tx
+      );
+
+      return this.findById(account.id, tx);
     });
-
-    if (accountData.analytics) {
-      const { startDate, endDate } = accountData.analytics;
-      await this.saveInstagramAnalytics(brandId, account.id, accountData.analytics, startDate, endDate);
-    }
-
-    return this.findById(account.id);
   }
 
-  async saveInstagramAnalytics(brandId, socialAccountId, analyticsData, startDate, endDate) {
+  async saveInstagramAnalytics(brandId, socialAccountId, analyticsData, startDate, endDate, client = prisma) {
     const now = new Date();
-    
+
     const followersTotal = analyticsData.summary?.followers || 0;
     const followersGain = analyticsData.balance?.reduce((sum, item) => sum + (item.acquired || 0), 0) || 0;
     const followersLost = analyticsData.balance?.reduce((sum, item) => sum + (item.lost || 0), 0) || 0;
@@ -509,11 +558,11 @@ class SocialAccountRepository {
     const comments = analyticsData.interactions?.comments || 0;
     const shares = analyticsData.interactions?.shares || 0;
     const clicks = analyticsData.interactions?.clicks || 0;
-    
+
     const engagements = likes + comments + shares;
     const engagementRate = reach ? parseFloat(((engagements / reach) * 100).toFixed(2)) : 0;
 
-    const analyticsEntry = await prisma.analytics.create({
+    const analyticsEntry = await client.analytics.create({
       data: {
         brandId,
         socialAccountId,
@@ -525,7 +574,7 @@ class SocialAccountRepository {
       }
     });
 
-    await prisma.socialAnalytics.create({
+    await client.socialAnalytics.create({
       data: {
         analyticsId: analyticsEntry.id,
         followersTotal,
@@ -550,80 +599,90 @@ class SocialAccountRepository {
 
     const finalUsername = username || displayName || 'linkedin_user';
 
-    const account = await prisma.socialAccount.upsert({
-      where: {
-        brandId_platform_platformAccountId: {
+    return prisma.$transaction(async (tx) => {
+      const account = await tx.socialAccount.upsert({
+        where: {
+          brandId_platform_platformAccountId: {
+            brandId,
+            platform: PLATFORMS.LINKEDIN,
+            platformAccountId: pageId
+          }
+        },
+        update: {
+          username: finalUsername,
+          displayName,
+          profilePictureUrl,
+          accessToken: encrypt(tokens.access_token),
+          refreshToken: tokens.refresh_token ? encrypt(tokens.refresh_token) : undefined,
+          tokenExpiresAt: tokens.expiry_date ? new Date(tokens.expiry_date) : undefined,
+          scopes: tokens.scope,
+          isConnected: true,
+          lastSyncAt: new Date(),
+          updatedAt: new Date(),
+          linkedInAccount: {
+            upsert: {
+              create: {
+                accountType,
+                connectionsCount,
+                followersCount,
+                industry
+              },
+              update: {
+                accountType,
+                connectionsCount,
+                followersCount,
+                industry
+              }
+            }
+          }
+        },
+        create: {
           brandId,
           platform: PLATFORMS.LINKEDIN,
-          platformAccountId: pageId
-        }
-      },
-      update: {
-        username: finalUsername,
-        displayName,
-        profilePictureUrl,
-        accessToken: encrypt(tokens.access_token),
-        refreshToken: tokens.refresh_token ? encrypt(tokens.refresh_token) : undefined,
-        tokenExpiresAt: tokens.expiry_date ? new Date(tokens.expiry_date) : undefined,
-        scopes: tokens.scope,
-        isConnected: true,
-        lastSyncAt: new Date(),
-        updatedAt: new Date(),
-        linkedInAccount: {
-          upsert: {
+          platformAccountId: pageId,
+          username: finalUsername,
+          displayName,
+          profilePictureUrl,
+          accessToken: encrypt(tokens.access_token),
+          refreshToken: tokens.refresh_token ? encrypt(tokens.refresh_token) : '',
+          tokenExpiresAt: tokens.expiry_date ? new Date(tokens.expiry_date) : undefined,
+          scopes: tokens.scope || '',
+          lastSyncAt: new Date(),
+          connectedAt: new Date(),
+          linkedInAccount: {
             create: {
-              accountType,
-              connectionsCount,
-              followersCount,
-              industry
-            },
-            update: {
               accountType,
               connectionsCount,
               followersCount,
               industry
             }
           }
+        },
+        include: {
+          linkedInAccount: true
         }
-      },
-      create: {
-        brandId,
-        platform: PLATFORMS.LINKEDIN,
-        platformAccountId: pageId,
-        username: finalUsername,
-        displayName,
-        profilePictureUrl,
-        accessToken: encrypt(tokens.access_token),
-        refreshToken: tokens.refresh_token ? encrypt(tokens.refresh_token) : '',
-        tokenExpiresAt: tokens.expiry_date ? new Date(tokens.expiry_date) : undefined,
-        scopes: tokens.scope || '',
-        lastSyncAt: new Date(),
-        connectedAt: new Date(),
-        linkedInAccount: {
-          create: {
-            accountType,
-            connectionsCount,
-            followersCount,
-            industry
-          }
-        }
-      },
-      include: {
-        linkedInAccount: true
+      });
+
+      if (accountData.analytics) {
+        const { startDate, endDate } = accountData.analytics;
+        await this.saveLinkedInAnalytics(brandId, account.id, accountData.analytics, startDate, endDate, tx);
       }
+
+      await outboxEventRepository.create(
+        OUTBOX_EVENT_TYPES.SOCIAL_SYNC_ENQUEUE,
+        account.id,
+        { socialAccountId: account.id, platform: PLATFORMS.LINKEDIN, brandId },
+        {},
+        tx
+      );
+
+      return this.findById(account.id, tx);
     });
-
-    if (accountData.analytics) {
-      const { startDate, endDate } = accountData.analytics;
-      await this.saveLinkedInAnalytics(brandId, account.id, accountData.analytics, startDate, endDate);
-    }
-
-    return this.findById(account.id);
   }
 
-  async saveLinkedInAnalytics(brandId, socialAccountId, analyticsData, startDate, endDate) {
+  async saveLinkedInAnalytics(brandId, socialAccountId, analyticsData, startDate, endDate, client = prisma) {
     const now = new Date();
-    
+
     const followersTotal = analyticsData.summary?.followers || 0;
     const followersGain = analyticsData.balance?.reduce((sum, item) => sum + (item.acquired || 0), 0) || 0;
     const followersLost = analyticsData.balance?.reduce((sum, item) => sum + (item.lost || 0), 0) || 0;
@@ -633,11 +692,11 @@ class SocialAccountRepository {
     const comments = analyticsData.interactions?.comments || 0;
     const shares = analyticsData.interactions?.shares || 0;
     const clicks = analyticsData.interactions?.clicks || 0;
-    
+
     const engagements = likes + comments + shares;
     const engagementRate = reach ? parseFloat(((engagements / reach) * 100).toFixed(2)) : 0;
 
-    const analyticsEntry = await prisma.analytics.create({
+    const analyticsEntry = await client.analytics.create({
       data: {
         brandId,
         socialAccountId,
@@ -649,7 +708,7 @@ class SocialAccountRepository {
       }
     });
 
-    await prisma.socialAnalytics.create({
+    await client.socialAnalytics.create({
       data: {
         analyticsId: analyticsEntry.id,
         followersTotal,
@@ -914,8 +973,8 @@ class SocialAccountRepository {
     });
   }
 
-  async findById(id) {
-    const account = await prisma.socialAccount.findUnique({
+  async findById(id, client = prisma) {
+    const account = await client.socialAccount.findUnique({
       where: { id },
       include: {
         youtubeChannel: true,

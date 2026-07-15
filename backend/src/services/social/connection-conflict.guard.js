@@ -16,70 +16,33 @@ class ConnectionConflictError extends Error {
 class ConnectionConflictGuard {
   /**
    * Check if a social account connection conflicts with an existing one.
-   * 
+   *
+   * Multi-brand connections are allowed by design (same as Metricool): the same
+   * channel/page can be connected to any number of brands/workspaces, including
+   * brands owned by different accounts. Each brand keeps its own socialAccount row
+   * (own tokens, own @@unique([brandId, platform, platformAccountId]) — see
+   * schema.prisma), so publishing/syncing per brand is already isolated (each brand
+   * reads its own token via socialAccountRepository.findByBrandAndPlatform(brandId, ...),
+   * not by platformAccountId — see youtube-analytics.service.js _getAuthContext).
+   *
+   * Known accepted trade-off: Google (and other platforms) cap the number of live
+   * refresh tokens per (OAuth client, end-user) pair. If a channel is connected to
+   * many brands, the platform may silently revoke the oldest token once that cap is
+   * hit, which would surface as a token-refresh failure for the affected brand later
+   * — not something this guard can prevent.
+   *
    * @param {string} targetBrandId - The brand ID the user wants to connect the channel to.
    * @param {string} platform - The platform name (e.g., 'YOUTUBE', 'FACEBOOK', 'TIKTOK').
    * @param {string} platformAccountId - The unique ID of the channel/page from the platform.
    * @returns {Promise<{conflict: boolean, type?: 'DIFFERENT_OWNER'|'SAME_OWNER', existingAccount?: object}>}
    */
   async validateConflict(targetBrandId, platform, platformAccountId) {
-    logger.debug('[ConflictGuard] Validating social connection', { targetBrandId, platform, platformAccountId });
-
-    // 1. Fetch the target brand to identify its owner
-    const targetBrand = await prisma.brand.findFirst({
-      where: { id: targetBrandId, deletedAt: null }
+    logger.debug('[ConflictGuard] Multi-brand connections allowed — skipping conflict check', {
+      targetBrandId,
+      platform,
+      platformAccountId
     });
-
-    if (!targetBrand) {
-      throw new Error('Target brand not found or has been deleted');
-    }
-
-    // 2. Query for any existing active social accounts for the same platform and account ID
-    const existingAccount = await prisma.socialAccount.findFirst({
-      where: {
-        platform,
-        platformAccountId,
-        isConnected: true
-      },
-      include: {
-        brand: true
-      }
-    });
-
-    if (!existingAccount) {
-      logger.debug('[ConflictGuard] No conflict detected.');
-      return { conflict: false };
-    }
-
-    // If it's already connected to the target brand itself, it's a simple reconnect/update token (No Conflict)
-    if (existingAccount.brandId === targetBrandId) {
-      logger.debug('[ConflictGuard] Channel already belongs to target brand. Reconnecting/updating token.');
-      return { conflict: false };
-    }
-
-    const isSameOwner = existingAccount.brand.ownerId === targetBrand.ownerId;
-
-    if (isSameOwner) {
-      logger.warn('[ConflictGuard] Conflict detected: Channel belongs to another brand of the SAME owner', {
-        existingBrandId: existingAccount.brandId,
-        targetBrandId
-      });
-      return {
-        conflict: true,
-        type: 'SAME_OWNER',
-        existingAccount
-      };
-    } else {
-      logger.warn('[ConflictGuard] Conflict detected: Channel belongs to a different owner/workspace', {
-        existingBrandOwnerId: existingAccount.brand.ownerId,
-        targetBrandOwnerId: targetBrand.ownerId
-      });
-      return {
-        conflict: true,
-        type: 'DIFFERENT_OWNER',
-        existingAccount
-      };
-    }
+    return { conflict: false };
   }
 
   /**

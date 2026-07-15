@@ -1,0 +1,54 @@
+# Checklist danh sách nhiệm vụ & Các vấn đề kỹ thuật
+
+Bảng checklist dưới đây dùng để theo dõi tiến độ giải quyết các vấn đề được phát hiện trong đợt kiểm toán hệ thống **Approval Workflow & Team Collaboration**.
+
+---
+
+## 1. Nhiệm vụ hiện tại: Loại bỏ selectedReviewers JSON, đồng bộ SOLID & bảo vệ _handleReviewerRemoved (Đợt 1)
+
+Nhiệm vụ này đã được phê duyệt kế hoạch triển khai tại `implementation_plan.md`.
+
+- `[x]` **Phần 1: Cập nhật Schema Database (Prisma)**
+  - `[x]` Chỉnh sửa `schema.prisma` để cột `selectedReviewers` của model `ApprovalWorkflow` thành nullable (optional).
+  - `[x]` Chạy prisma migration phát triển cục bộ: `npx prisma migrate dev --name make_selected_reviewers_optional`.
+- `[x]` **Phần 2: Cập nhật Backend Code (Services)**
+  - `[x]` Refactor `ApprovalWorkflowService` trong `approval-workflow.service.js` để tích hợp đầy đủ kiến trúc SOLID từ Vòng 9-10 (hằng số, `POLICY_EVALUATORS`, tách side-effects hậu transaction). Thực tế đi xa hơn kế hoạch: `_computeNextState` bị loại bỏ hoàn toàn thay vì giữ lại — logic policy được chuyển hẳn vào `ApprovedActionStrategy.execute(workflow, currentDecisions)` trong `review-action-strategies.js`, nên service chỉ còn gọi thẳng `strategy.execute(...)`, không còn if/else chain nào (đúng tinh thần Strategy Pattern hơn bản kế hoạch gốc).
+  - `[x]` Cập nhật logic đánh giá `POLICY_EVALUATORS.ALL` và các chỗ khác để loại bỏ hoàn toàn việc đọc/ghi trường `selectedReviewers` (đã xoá khỏi `createWorkflowRequest`/`reassignWorkflow`; cột DB vẫn còn tồn tại nhưng optional, đúng chiến lược Expand-Contract — chưa drop).
+  - `[x]` Bọc transaction cho `TeamService._handleReviewerRemoved` trong `team.service.js` với row locking `FOR UPDATE` trên `approval_workflows` (qua `approvalWorkflowRepository.lockForUpdate`).
+  - `[x]` Thực hiện tự động duyệt bài trong `TeamService._handleReviewerRemoved` nếu chính sách là `ALL` và tất cả reviewers còn lại đã duyệt, chạy side-effects hậu transaction (qua `ApprovalWorkflowService.reevaluateAfterReviewerRemoved` + `runPostApprovalSideEffects`, ủy quyền toàn bộ nghiệp vụ thay vì TeamService tự tính).
+- `[x]` **Phần 3: Cập nhật Frontend Code**
+  - `[x]` Refactor hàm `canApproveWorkflow` trong `frontend/src/pages/manage/MyTasks.jsx` để kiểm tra quyền duyệt dựa trực tiếp trên `w.reviewers`/permission thật thay vì `w.selectedReviewers` JSON.
+- `[x]` **Phần 4: Viết Kiểm thử tự động (Automated Tests)**
+  - `[x]` Cập nhật mock dữ liệu trong `backend/tests/post/approval-workflow.test.js` để loại bỏ selectedReviewers.
+  - `[x]` Viết bổ sung các test cases cho kịch bản reviewer bị xóa giữa chừng ảnh hưởng đến chính sách `ALL` và concurrency/locking (`team-management.test.js`: auto-approve khi ALL đã đủ, và assertion `$queryRaw` được gọi cho row-lock). Thêm cả `policy-evaluators.test.js` (unit test thuần cho Strategy Pattern) ngoài phạm vi liệt kê ban đầu.
+  - `[x]` Chạy và kiểm tra bộ test Jest thành công: `npm test backend/tests/post/approval-workflow.test.js` (13/13), cộng `policy-evaluators.test.js` (6/6) và `team-management.test.js` (12/12) — tổng 31/31 pass, full suite không regression so với baseline.
+
+---
+
+## 2. Danh sách các vấn đề kỹ thuật tồn đọng (Backlog)
+
+Dưới đây là checklist theo dõi các lỗi và nợ kỹ thuật khác đã được phát hiện trong cuộc kiểm toán (ghi nhận từ `evaluate.txt`).
+
+### 🔴 Critical (Đã xử lý ở Đợt trước)
+- `[x]` Bọc `prisma.$transaction` cho phương thức `reassignWorkflow` trong `approval-workflow.service.js` để tránh mâu thuẫn trạng thái khi một phần lệnh xóa/tạo mới reviewer thất bại.
+- `[x]` Khắc phục lỗi Race Condition trong chính sách duyệt `ALL` khi nhiều reviewer thao tác song song (áp dụng Row Locking `SELECT FOR UPDATE` hoặc kiểm tra `affectedRows` nguyên tử).
+
+### 🟠 High (Đang xử lý ở Đợt này)
+- `[x]` Loại bỏ hoàn toàn trường dữ liệu trùng lặp `selectedReviewers` JSON trong bảng `ApprovalWorkflow`, chuyển hoàn toàn sang sử dụng bảng quan hệ `workflow_reviewers` làm Single Source of Truth. (Bước 1 Expand-Contract hoàn tất: code không còn đọc/ghi field này. Cột DB vẫn còn — optional — chờ Đợt sau drop hẳn khi rollback risk đã hết.)
+- `[x]` Bọc `prisma.$transaction` cho phương thức `createWorkflowRequest` và `reviewWorkflowRequest` để đảm bảo tính nhất quán dữ liệu giữa bảng `ApprovalWorkflow` và trạng thái `Post`.
+- `[x]` Viết bổ sung kiểm thử tự động cho phương thức dọn dẹp reviewer tự động (`_handleReviewerRemoved` trong `team.service.js`) khi thành viên bị xóa khỏi thương hiệu hoặc đổi vai trò. (`team-management.test.js`: auto-approve scenario + row-lock assertion.)
+- `[ ]` Hợp nhất logic kiểm tra quyền duyệt bài của `TeamService._roleHasApprovePermission` để gọi trực tiếp qua `AuthorizationFacade/CustomRoleStrategy` thay vì duy trì một logic check song song riêng. (Chưa nằm trong `implementation_plan.md` đã thực thi — vẫn còn logic song song ở `team.service.js:614`.)
+
+### 🟡 Medium (Ưu tiên trung bình)
+- `[ ]` Xác nhận môi trường production chạy Node.js phiên bản ≥ 20 để tránh crash lỗi `.toWellFormed()` khi lưu bài đăng có ký tự Unicode đặc biệt.
+- `[ ]` Viết bổ sung invariant test kiểm chứng điều kiện bất biến: *"Không thể tồn tại record Team nào có cả dbRole=ADMIN và customRoleId khác null"* ở tầng `roleResolver`.
+
+### 🟢 Low (Cải tiến chất lượng code)
+- `[ ]` Thêm comment cảnh báo về thứ tự chạy ngầm định (implicit ordering) trong phương thức `reviewWorkflowRequest` (phải ghi nhận kết quả duyệt của reviewer trước khi truy vấn trạng thái chung).
+- `[ ]` Hoàn thiện TODO tối ưu hóa truy vấn cơ sở dữ liệu ở tầng DB đối với hàm `findPendingByReviewer` thay vì query toàn bộ rồi filter bằng code ở service.
+
+---
+
+## 3. Tickets Theo dõi Dài hạn (Tech Debt Tickets)
+- `[ ]` **Outbox Pattern:** Thiết lập bảng `outbox_jobs` và background worker chạy định kỳ (cron/polling) để đảm bảo độ bền vững (durability) và khả năng retry tự động khi các pha post-commit side-effects (đẩy job đăng bài lên BullMQ / gửi API social networks) bị lỗi đột xuất sau khi DB đã commit.
+- `[ ]` **Reviewer Validation at Write-time:** Thực hiện xác thực danh sách `newReviewerIds` ngay tại thời điểm ghi dữ liệu (creation-time / write-time) để đảm bảo toàn bộ reviewer thực sự tồn tại và thuộc brand liên quan, thay vì chờ đến khi tiến hành phê duyệt mới phát hiện lỗi.

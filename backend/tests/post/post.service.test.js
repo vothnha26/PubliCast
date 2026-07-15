@@ -4,6 +4,8 @@ const brandRepository = require('../../src/repositories/workspace/brand.reposito
 const authorizationFacade = require('../../src/services/auth/authorization.facade');
 const approvalWorkflowService = require('../../src/services/workspace/approval-workflow.service');
 const { upsertPublishJob, removePublishJob } = require('../../src/queues/publish.queue');
+const outboxEventRepository = require('../../src/repositories/core/outbox-event.repository');
+const { OUTBOX_EVENT_TYPES } = require('../../src/constants/outbox.constants');
 const { POST_STATUS } = require('../../src/utils/constants');
 
 jest.mock('../../src/repositories/workspace/post.repository', () => ({
@@ -35,13 +37,18 @@ jest.mock('../../src/queues/publish.queue', () => ({
   removePublishJob: jest.fn()
 }));
 
+jest.mock('../../src/repositories/core/outbox-event.repository', () => ({
+  create: jest.fn()
+}));
+
 jest.mock('../../src/config/prisma', () => ({
   postAnalyticsDailySnapshot: {
     findMany: jest.fn()
   },
   platformLimit: {
     findMany: jest.fn().mockResolvedValue([])
-  }
+  },
+  $transaction: jest.fn().mockImplementation((cb) => cb({}))
 }));
 
 jest.mock('../../src/services/social/social-platform.factory', () => {
@@ -132,9 +139,27 @@ describe('PostService Unit Tests', () => {
         title: 'New Draft Post',
         status: 'DRAFT',
         targetPlatforms: 'FACEBOOK'
-      }));
+      }), expect.anything());
       expect(authorizationFacade.hasPermission).not.toHaveBeenCalled();
       expect(approvalWorkflowService.createWorkflowRequest).not.toHaveBeenCalled();
+    });
+
+    it('should not write any outbox row if postRepository.create fails inside the transaction', async () => {
+      const scheduleTime = new Date(Date.now() + 3600000);
+      postRepository.create.mockRejectedValue(new Error('DB write failed'));
+
+      await expect(
+        postService.createPost(
+          { title: 'Will fail', status: 'SCHEDULED', scheduledAt: scheduleTime.toISOString() },
+          'user-111',
+          'brand-abc'
+        )
+      ).rejects.toThrow('DB write failed');
+
+      // Cả outbox lẫn create đều nằm trong cùng prisma.$transaction callback — nếu
+      // create throw, callback dừng ngay và không có outbox row nào được ghi (đúng
+      // atomic: rollback đồng thời cả post lẫn outbox).
+      expect(outboxEventRepository.create).not.toHaveBeenCalled();
     });
   });
 
@@ -167,7 +192,13 @@ describe('PostService Unit Tests', () => {
         'AT_LEAST_ONE',
         'Phê duyệt gấp bài viết'
       );
-      expect(upsertPublishJob).not.toHaveBeenCalled();
+      expect(outboxEventRepository.create).not.toHaveBeenCalledWith(
+        OUTBOX_EVENT_TYPES.POST_PUBLISH_UPSERT,
+        expect.anything(),
+        expect.anything(),
+        expect.anything(),
+        expect.anything()
+      );
     });
   });
 
@@ -193,7 +224,13 @@ describe('PostService Unit Tests', () => {
 
       expect(result.status).toBe('scheduled');
       expect(authorizationFacade.hasPermission).toHaveBeenCalledWith('user-111', 'brand-abc', 'APPROVE_POSTS');
-      expect(upsertPublishJob).toHaveBeenCalledWith('post-999', scheduleTime);
+      expect(outboxEventRepository.create).toHaveBeenCalledWith(
+        OUTBOX_EVENT_TYPES.POST_PUBLISH_UPSERT,
+        'post-999',
+        { postId: 'post-999', scheduledAt: scheduleTime },
+        {},
+        expect.anything()
+      );
       expect(approvalWorkflowService.createWorkflowRequest).not.toHaveBeenCalled();
     });
   });
@@ -216,7 +253,7 @@ describe('PostService Unit Tests', () => {
       expect(result.title).toBe('Updated Title');
       expect(postRepository.update).toHaveBeenCalledWith('post-123', expect.objectContaining({
         title: 'Updated Title'
-      }));
+      }), expect.anything());
     });
   });
 
@@ -262,7 +299,8 @@ describe('PostService Unit Tests', () => {
 
       expect(count).toBe(3);
       expect(postRepository.deleteMany).toHaveBeenCalledWith(
-        { id: { in: ['post-1', 'post-2', 'post-3'] }, brandId: 'brand-abc' }
+        { id: { in: ['post-1', 'post-2', 'post-3'] }, brandId: 'brand-abc' },
+        expect.anything()
       );
     });
   });
@@ -322,12 +360,9 @@ describe('PostService Unit Tests', () => {
   describe('YouTube Native Scheduling integration', () => {
     const socialPlatformFactory = require('../../src/services/social/social-platform.factory');
     const initPostSubscribers = require('../../src/events/subscribers/post.subscriber');
+    const { POST_DOMAIN_EVENT_HANDLERS } = initPostSubscribers;
 
-    beforeAll(() => {
-      initPostSubscribers();
-    });
-
-    it('should trigger early YouTube native scheduling when creating a scheduled YouTube post', async () => {
+    it('should queue the publish job and a POST_DOMAIN_EVENT outbox row when creating a scheduled post', async () => {
       const scheduleTime = new Date(Date.now() + 3600000);
       const schedulePostInput = {
         title: 'YouTube Native Title',
@@ -339,7 +374,7 @@ describe('PostService Unit Tests', () => {
       };
 
       authorizationFacade.hasPermission.mockResolvedValue(true);
-      postRepository.create.mockResolvedValue({
+      const createdPost = {
         ...mockPostData,
         id: 'post-yt-native',
         brandId: 'brand-abc',
@@ -348,21 +383,54 @@ describe('PostService Unit Tests', () => {
         scheduledAt: scheduleTime,
         targetPlatforms: 'YOUTUBE',
         mediaUrls: 'http://example.com/video.mp4'
-      });
+      };
+      postRepository.create.mockResolvedValue(createdPost);
 
+      await postService.createPost(schedulePostInput, 'user-111', 'brand-abc');
+
+      // post.service.js không còn gọi upsertPublishJob/eventEmitter.emit trực tiếp —
+      // cả job publish lẫn domain event (Native Scheduling) đi qua outbox trong cùng
+      // transaction với việc tạo post.
+      expect(outboxEventRepository.create).toHaveBeenCalledWith(
+        OUTBOX_EVENT_TYPES.POST_PUBLISH_UPSERT,
+        'post-yt-native',
+        { postId: 'post-yt-native', scheduledAt: scheduleTime },
+        {},
+        expect.anything()
+      );
+      expect(outboxEventRepository.create).toHaveBeenCalledWith(
+        OUTBOX_EVENT_TYPES.POST_DOMAIN_EVENT,
+        'post-yt-native',
+        expect.objectContaining({ eventName: 'post.created' }),
+        {},
+        expect.anything()
+      );
+      expect(upsertPublishJob).not.toHaveBeenCalled();
+    });
+
+    it('should trigger YouTube native scheduling when the outbox dispatcher invokes the POST.CREATED domain handler', async () => {
+      const scheduleTime = new Date(Date.now() + 3600000);
+      const post = {
+        id: 'post-yt-native',
+        brandId: 'brand-abc',
+        title: 'YouTube Native Title',
+        status: 'SCHEDULED',
+        scheduledAt: scheduleTime,
+        targetPlatforms: 'YOUTUBE',
+        mediaUrls: 'http://example.com/video.mp4',
+        platformPostId: null
+      };
       const mockYtServiceInstance = socialPlatformFactory.getService('YOUTUBE');
+      postRepository.update.mockResolvedValue({ ...post, platformPostId: JSON.stringify({ YOUTUBE: 'ytVideoIdMock' }) });
 
-      const result = await postService.createPost(schedulePostInput, 'user-111', 'brand-abc');
-
-      // Chờ cho event listener bất đồng bộ chạy xong
-      await new Promise(resolve => setTimeout(resolve, 50));
+      // Simula dispatcher gọi trực tiếp handler đã ghi trong outbox row POST_DOMAIN_EVENT.
+      await POST_DOMAIN_EVENT_HANDLERS['post.created']({ post, options: { privacyStatus: 'public' } });
 
       expect(mockYtServiceInstance.publishPost).toHaveBeenCalledWith('brand-abc', expect.objectContaining({
         title: 'YouTube Native Title',
         scheduledAt: scheduleTime
       }));
       expect(postRepository.update).toHaveBeenCalledWith('post-yt-native', { platformPostId: JSON.stringify({ YOUTUBE: 'ytVideoIdMock' }) });
-      expect(upsertPublishJob).toHaveBeenCalledWith('post-yt-native', scheduleTime);
     });
   });
 

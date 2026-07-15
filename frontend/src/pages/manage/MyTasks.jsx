@@ -132,16 +132,6 @@ export function MyTasksPage() {
     const hasApprovePerm = wfBrand.userPermissions?.find(p => p.key === 'APPROVE_POSTS')?.isAllowed === true;
     if (hasApprovePerm) return true;
 
-    // Check if explicitly listed as reviewer
-    if (w.selectedReviewers) {
-      try {
-        const reviewers = JSON.parse(w.selectedReviewers);
-        return reviewers.includes(user?.id);
-      } catch (e) {
-        return false;
-      }
-    }
-
     return false;
   };
 
