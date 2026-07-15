@@ -2,8 +2,9 @@ const autoListRepository = require('../../repositories/workspace/auto-list.repos
 const postRepository = require('../../repositories/workspace/post.repository');
 const { ScheduleStrategyFactory } = require('../../utils/scheduler-strategies');
 const { eventEmitter, EVENTS } = require('../../events/event-emitter');
-const { AUTOLIST_TYPES, POST_STATUS } = require('../../utils/constants');
+const { AUTOLIST_TYPES, POST_STATUS, PERMISSION_KEYS } = require('../../utils/constants');
 const { upsertPublishJob, removePublishJob } = require('../../queues/publish.queue');
+const authorizationFacade = require('../auth/authorization.facade');
 
 class AutoListService {
   async getAutoLists(brandId) {
@@ -11,8 +12,8 @@ class AutoListService {
     return lists.map(list => this._formatAutoListResponse(list));
   }
 
-  async getAutoListDetails(id) {
-    return autoListRepository.findById(id);
+  async getAutoListDetails(id, operatorId) {
+    return this._assertCanManage(id, operatorId, PERMISSION_KEYS.CREATE_POSTS);
   }
 
   async createAutoList(brandId, data) {
@@ -23,35 +24,46 @@ class AutoListService {
     return this.getAutoListDetails(created.id);
   }
 
-  async updateAutoList(id, data) {
+  async updateAutoList(id, data, operatorId) {
+    await this._assertCanManage(id, operatorId, PERMISSION_KEYS.CREATE_POSTS);
+
     const preparedData = this._prepareAutoListData(data);
     await autoListRepository.update(id, preparedData);
 
     eventEmitter.emit(EVENTS.AUTOLIST.UPDATED, { autoListId: id });
-    return this.getAutoListDetails(id);
+    return autoListRepository.findById(id);
   }
 
-  async deleteAutoList(id) {
-    const list = await autoListRepository.findById(id);
-    if (list) {
-      console.log(`[deleteAutoList] Found list ${id} with ${list.posts ? list.posts.length : 0} posts`);
-      const pendingPosts = (list.posts || []).filter(p => p.status === POST_STATUS.SCHEDULED);
-      console.log(`[deleteAutoList] Found ${pendingPosts.length} pending scheduled posts`);
-      for (const p of pendingPosts) {
-        await removePublishJob(p.id);
-      }
-      return autoListRepository.delete(id);
+  async deleteAutoList(id, operatorId) {
+    const list = await this._assertCanManage(id, operatorId, PERMISSION_KEYS.DELETE_POSTS);
+
+    console.log(`[deleteAutoList] Found list ${id} with ${list.posts ? list.posts.length : 0} posts`);
+    const pendingPosts = (list.posts || []).filter(p => p.status === POST_STATUS.SCHEDULED);
+    console.log(`[deleteAutoList] Found ${pendingPosts.length} pending scheduled posts`);
+    for (const p of pendingPosts) {
+      await removePublishJob(p.id);
     }
+    return autoListRepository.delete(id);
   }
 
   async updateLastPostedAt(id, lastPostedAt) {
-    await autoListRepository.update(id, { lastPostedAt });
+    try {
+      await autoListRepository.update(id, { lastPostedAt });
+    } catch (err) {
+      // The AutoList can be deleted while one of its posts is mid-publish (race
+      // with deleteAutoList) — don't let that break the post's own publish-status
+      // update, which is the caller's primary concern.
+      if (err.code === 'P2025') {
+        console.warn(`[AutoListService] updateLastPostedAt skipped — AutoList ${id} no longer exists.`);
+        return;
+      }
+      throw err;
+    }
   }
 
-  async toggleStatus(id) {
-    const list = await autoListRepository.findById(id);
-    if (!list) throw new Error('AutoList not found');
-    
+  async toggleStatus(id, operatorId) {
+    const list = await this._assertCanManage(id, operatorId, PERMISSION_KEYS.CREATE_POSTS);
+
     const newActiveState = !list.isActive;
     await autoListRepository.update(id, { isActive: newActiveState });
 
@@ -64,8 +76,8 @@ class AutoListService {
     }
 
     eventEmitter.emit(EVENTS.AUTOLIST.TOGGLED, { autoListId: id });
-    
-    return this.getAutoListDetails(id);
+
+    return autoListRepository.findById(id);
   }
 
   async recalculateQueueSchedules(autoListId) {
@@ -130,9 +142,11 @@ class AutoListService {
   /**
    * Persist custom drag-and-drop order by updating createdAt timestamps sequentially
    */
-  async reorderPosts(autoListId, orderedPostIds) {
+  async reorderPosts(autoListId, orderedPostIds, operatorId) {
+    await this._assertCanManage(autoListId, operatorId, PERMISSION_KEYS.CREATE_POSTS);
+
     if (!orderedPostIds || !Array.isArray(orderedPostIds)) return;
-    
+
     const baseTime = new Date();
     // Update sequentially to guarantee incremental timestamps
     for (let i = 0; i < orderedPostIds.length; i++) {
@@ -144,10 +158,35 @@ class AutoListService {
 
     // Trigger recalculation using the new database sorting order
     await this.recalculateQueueSchedules(autoListId);
-    return this.getAutoListDetails(autoListId);
+    return autoListRepository.findById(autoListId);
   }
 
   // ============= Private Helper Methods =============
+
+  /**
+   * Resolves the AutoList's brandId and checks the operator's permission there —
+   * :id-based routes (see auto-list.routes.js) have no brandId in the request, so
+   * this check can't run as route middleware like checkPermission does elsewhere.
+   * AutoList reuses the Post permission keys (CREATE_POSTS/DELETE_POSTS) since it's
+   * fundamentally a queue of posts, not a separate permission domain.
+   */
+  async _assertCanManage(id, operatorId, permissionKey) {
+    const autoList = await autoListRepository.findById(id);
+    if (!autoList) {
+      const error = new Error('AutoList not found');
+      error.statusCode = 404;
+      throw error;
+    }
+
+    const isAuthorized = await authorizationFacade.checkPermission(operatorId, autoList.brandId, permissionKey);
+    if (!isAuthorized) {
+      const error = new Error('Bạn không có quyền quản lý hàng đợi tự động của thương hiệu này.');
+      error.statusCode = 403;
+      throw error;
+    }
+
+    return autoList;
+  }
 
   _formatAutoListResponse(list) {
     return {

@@ -2,6 +2,7 @@ const { IntervalScheduleStrategy, SpecificTimesScheduleStrategy } = require('../
 const autoListService = require('../../src/services/workspace/auto-list.service');
 const autoListRepository = require('../../src/repositories/workspace/auto-list.repository');
 const postRepository = require('../../src/repositories/workspace/post.repository');
+const authorizationFacade = require('../../src/services/auth/authorization.facade');
 const prisma = require('../../src/config/prisma');
 
 jest.mock('../../src/repositories/workspace/auto-list.repository', () => ({
@@ -23,6 +24,10 @@ jest.mock('../../src/queues/publish.queue', () => ({
   removePublishJob: jest.fn()
 }));
 
+jest.mock('../../src/services/auth/authorization.facade', () => ({
+  checkPermission: jest.fn()
+}));
+
 jest.mock('../../src/config/prisma', () => ({
   autoList: {
     update: jest.fn()
@@ -36,6 +41,7 @@ jest.mock('../../src/config/prisma', () => ({
 describe('AutoList Queue Scheduler Suite', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    authorizationFacade.checkPermission.mockResolvedValue(true);
   });
 
   // AUTOLIST_001: Tạo mới và cấu hình Autolist (Validate đầu vào)
@@ -166,7 +172,7 @@ describe('AutoList Queue Scheduler Suite', () => {
 
       const recalculateSpy = jest.spyOn(autoListService, 'recalculateQueueSchedules').mockResolvedValue({});
 
-      await autoListService.reorderPosts('list-123', ['post-c', 'post-a', 'post-b']);
+      await autoListService.reorderPosts('list-123', ['post-c', 'post-a', 'post-b'], 'user-1');
 
       // Should update createdAt sequentially for all 3 posts
       expect(postRepository.update).toHaveBeenCalledTimes(3);
@@ -196,7 +202,7 @@ describe('AutoList Queue Scheduler Suite', () => {
       
       const { removePublishJob } = require('../../src/queues/publish.queue');
 
-      await autoListService.toggleStatus('list-123');
+      await autoListService.toggleStatus('list-123', 'user-1');
 
       // Updates active state
       expect(autoListRepository.update).toHaveBeenCalledWith('list-123', { isActive: false });
@@ -242,6 +248,88 @@ describe('AutoList Queue Scheduler Suite', () => {
       const minutesDiff = Math.round(diffFromPrevPost / (1000 * 60));
       
       expect(minutesDiff).toBe(60);
+    });
+  });
+
+  // AUTOLIST_008: Permission enforcement for :id-based actions
+  describe('AUTOLIST_008: _assertCanManage permission guard', () => {
+    const mockAutoList = { id: 'list-123', brandId: 'brand-1', posts: [] };
+
+    it('throws 404 when the AutoList does not exist', async () => {
+      autoListRepository.findById.mockResolvedValue(null);
+
+      await expect(
+        autoListService.getAutoListDetails('missing-list', 'user-1')
+      ).rejects.toMatchObject({ statusCode: 404 });
+
+      expect(authorizationFacade.checkPermission).not.toHaveBeenCalled();
+    });
+
+    it('throws 403 and does not mutate when the operator lacks permission', async () => {
+      autoListRepository.findById.mockResolvedValue(mockAutoList);
+      authorizationFacade.checkPermission.mockResolvedValue(false);
+
+      await expect(
+        autoListService.updateAutoList('list-123', { name: 'Hacked' }, 'user-2')
+      ).rejects.toMatchObject({ statusCode: 403 });
+
+      expect(autoListRepository.update).not.toHaveBeenCalled();
+    });
+
+    it('rejects deleteAutoList without calling repository.delete when unauthorized', async () => {
+      autoListRepository.findById.mockResolvedValue(mockAutoList);
+      authorizationFacade.checkPermission.mockResolvedValue(false);
+
+      await expect(
+        autoListService.deleteAutoList('list-123', 'user-2')
+      ).rejects.toMatchObject({ statusCode: 403 });
+
+      expect(autoListRepository.delete).not.toHaveBeenCalled();
+    });
+
+    it('rejects toggleStatus without calling repository.update when unauthorized', async () => {
+      autoListRepository.findById.mockResolvedValue({ ...mockAutoList, isActive: true });
+      authorizationFacade.checkPermission.mockResolvedValue(false);
+
+      await expect(
+        autoListService.toggleStatus('list-123', 'user-2')
+      ).rejects.toMatchObject({ statusCode: 403 });
+
+      expect(autoListRepository.update).not.toHaveBeenCalled();
+    });
+
+    it('rejects reorderPosts without touching postRepository when unauthorized', async () => {
+      autoListRepository.findById.mockResolvedValue(mockAutoList);
+      authorizationFacade.checkPermission.mockResolvedValue(false);
+
+      await expect(
+        autoListService.reorderPosts('list-123', ['post-a'], 'user-2')
+      ).rejects.toMatchObject({ statusCode: 403 });
+
+      expect(postRepository.update).not.toHaveBeenCalled();
+    });
+
+    it('checks permission against the AutoList brandId, not a caller-supplied one', async () => {
+      autoListRepository.findById.mockResolvedValue(mockAutoList);
+
+      await autoListService.getAutoListDetails('list-123', 'user-1');
+
+      expect(authorizationFacade.checkPermission).toHaveBeenCalledWith('user-1', 'brand-1', 'CREATE_POSTS');
+    });
+  });
+
+  // AUTOLIST_009: updateLastPostedAt guards against a deleted AutoList
+  describe('AUTOLIST_009: updateLastPostedAt deleted-AutoList guard', () => {
+    it('resolves silently when the AutoList no longer exists (P2025)', async () => {
+      autoListRepository.update.mockRejectedValue(Object.assign(new Error('Record not found'), { code: 'P2025' }));
+
+      await expect(autoListService.updateLastPostedAt('list-gone', new Date())).resolves.toBeUndefined();
+    });
+
+    it('rethrows non-P2025 errors', async () => {
+      autoListRepository.update.mockRejectedValue(new Error('Connection lost'));
+
+      await expect(autoListService.updateLastPostedAt('list-123', new Date())).rejects.toThrow('Connection lost');
     });
   });
 });

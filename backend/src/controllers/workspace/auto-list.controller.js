@@ -11,7 +11,7 @@ class AutoListController {
 
   getAutoListDetails = asyncHandler(async (req, res) => {
     const { id } = req.params;
-    const data = await autoListService.getAutoListDetails(id);
+    const data = await autoListService.getAutoListDetails(id, req.user.id);
     res.json({ data });
   });
 
@@ -25,19 +25,19 @@ class AutoListController {
   updateAutoList = asyncHandler(async (req, res) => {
     const { id } = req.params;
     console.log(`[updateAutoList] id=${id} | body:`, JSON.stringify(req.body, null, 2));
-    const data = await autoListService.updateAutoList(id, req.body);
+    const data = await autoListService.updateAutoList(id, req.body, req.user.id);
     res.json({ data });
   });
 
   deleteAutoList = asyncHandler(async (req, res) => {
     const { id } = req.params;
-    await autoListService.deleteAutoList(id);
+    await autoListService.deleteAutoList(id, req.user.id);
     res.json({ message: 'AutoList deleted' });
   });
 
   toggleStatus = asyncHandler(async (req, res) => {
     const { id } = req.params;
-    const data = await autoListService.toggleStatus(id);
+    const data = await autoListService.toggleStatus(id, req.user.id);
     res.json({ data });
   });
 
@@ -47,7 +47,7 @@ class AutoListController {
     if (!orderedPostIds || !Array.isArray(orderedPostIds)) {
       return res.status(400).json({ message: 'orderedPostIds array is required' });
     }
-    const data = await autoListService.reorderPosts(id, orderedPostIds);
+    const data = await autoListService.reorderPosts(id, orderedPostIds, req.user.id);
     res.json({ data });
   });
 }
