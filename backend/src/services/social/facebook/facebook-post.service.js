@@ -1,11 +1,59 @@
 const facebookGateway = require('./facebook.gateway');
+const facebookReelGateway = require('./facebook-reel.gateway');
+
+const INSIGHTS_STRATEGIES = {
+  REEL: async (platformPostId, pageAccessToken) => {
+    try {
+      const insights = await facebookReelGateway.getReelVideoInsights(platformPostId, pageAccessToken);
+      const metrics = { reach: 0, views: 0, clicks: 0, linkClicks: 0 };
+      if (insights && insights.data) {
+        for (const item of insights.data) {
+          if (item.name === 'blue_reels_play_count') {
+            metrics.views = item.values?.[0]?.value || 0;
+            metrics.reach = metrics.views;
+          }
+        }
+      }
+      return metrics;
+    } catch (err) {
+      console.warn(`[FacebookPostService] Failed to fetch Reel insights for ${platformPostId}:`, err.message);
+      return { reach: 0, views: 0, clicks: 0, linkClicks: 0 };
+    }
+  },
+  STANDARD: async (platformPostId, pageAccessToken) => {
+    const insights = await facebookGateway.getPostInsights(platformPostId, pageAccessToken);
+    const result = { reach: 0, views: 0, clicks: 0, linkClicks: 0 };
+    for (const item of insights) {
+      if (item.name === 'post_total_media_view_unique' || item.name === 'post_impressions_unique') {
+        result.reach = item.values?.[0]?.value || 0;
+      } else if (item.name === 'post_media_view' || item.name === 'post_impressions') {
+        result.views = item.values?.[0]?.value || 0;
+      } else if (item.name === 'post_clicks_by_type') {
+        const types = item.values?.[0]?.value || {};
+        result.clicks = Object.values(types).reduce((sum, val) => sum + val, 0);
+        result.linkClicks = types['link clicks'] || 0;
+      }
+    }
+    return result;
+  }
+};
 const socialAccountRepository = require('../../../repositories/social/social-account.repository');
 const { PLATFORMS, POST_STATUS, POST_TYPES, DEFAULT_CONFIG, SOCIAL_TECHNICAL } = require('../../../utils/constants');
 const FacebookPublishStrategyFactory = require('./publish-strategies/publish-strategy.factory');
 const redisClient = require('../../../config/redis');
+const prisma = require('../../../config/prisma');
+const DistributedLockService = require('../distributed-lock.service');
+const { upsertDailySnapshot } = require('../post-analytics-snapshot-writer');
+const { REDIS_KEY_BUILDERS, LOCK_TTL, PLATFORM, PLATFORM_CAPABILITIES } = require('../../../constants/analytics-snapshot.constants');
 
 const POST_INSIGHTS_CACHE_TTL_SEC = 5 * 60; // 5 minutes
 const PAGE_DEMOGRAPHICS_CACHE_TTL_SEC = 60 * 60; // 1 hour
+
+const COLD_START_POLL_INTERVAL_MS = 200;
+const COLD_START_POLL_TIMEOUT_MS = 2000;
+const COLD_START_RETRY_AFTER_SEC = 5;
+
+const lockService = new DistributedLockService(redisClient);
 
 // Memory Cache: Key -> brandId_limit, Value -> { data, expiry }
 const postCache = new Map();
@@ -166,6 +214,21 @@ class FacebookPostService {
     return await facebookGateway.deletePost(platformPostId, pageAccessToken);
   }
 
+  async checkReelCopyrightStatus(brandId, videoId, socialAccountId = null) {
+    const { pageAccessToken } = await this._getAccountCredentials(brandId, socialAccountId);
+    if (pageAccessToken && (pageAccessToken.startsWith('mock-') || pageAccessToken.includes('mock'))) {
+      return {
+        copyright_check_information: {
+          status: {
+            status: 'complete',
+            matches_found: false
+          }
+        }
+      };
+    }
+    return facebookReelGateway.checkReelCopyrightStatus(videoId, pageAccessToken);
+  }
+
   /**
    * Lấy chi tiết phân tích 1 bài viết Facebook (Overview + Reactions breakdown + Demographics).
    * Kiểm tra Redis Cache trước (fb:post-insights:${brandId}:${platformPostId}, TTL 5 phút).
@@ -188,38 +251,58 @@ class FacebookPostService {
       result = this._buildMockPostDetails(platformPostId);
     } else {
       try {
-        const [post, insights, reactionsBreakdown] = await Promise.all([
+        const dbPost = await prisma.post.findFirst({
+          where: { platformPostId: platformPostId }
+        }).catch(() => null);
+
+        const isReel = dbPost?.type === 'REEL' || dbPost?.options?.facebookType === 'reel';
+        const strategy = isReel ? INSIGHTS_STRATEGIES.REEL : INSIGHTS_STRATEGIES.STANDARD;
+
+        const results = await Promise.allSettled([
           facebookGateway.getPostDetails(platformPostId, pageAccessToken),
-          facebookGateway.getPostInsights(platformPostId, pageAccessToken),
+          strategy(platformPostId, pageAccessToken),
           facebookGateway.getPostReactionsBreakdown(platformPostId, pageAccessToken)
         ]);
 
-        const metrics = this._parseInsightsMetrics(insights);
-        const counts = this._extractPostCounts(post);
-        const demographics = await this._getPageDemographicsCached(brandId, pageId, pageAccessToken);
+        const postResult = results[0].status === 'fulfilled' ? results[0].value : null;
+        const insightsResult = results[1].status === 'fulfilled' ? results[1].value : { reach: 0, views: 0, clicks: 0, linkClicks: 0 };
+        const reactionsResult = results[2].status === 'fulfilled' ? results[2].value : { total: 0, breakdown: {} };
+
+        const postDetails = postResult ? {
+          id: postResult.id,
+          message: postResult.message || postResult.story || DEFAULT_CONFIG.NO_CONTENT,
+          type: isReel ? POST_TYPES.REEL : this._determinePostType(postResult),
+          mediaUrl: postResult.full_picture || '',
+          permalinkUrl: postResult.permalink_url || null,
+          date: postResult.created_time,
+          platform: 'facebook'
+        } : {
+          id: platformPostId,
+          message: dbPost?.caption || DEFAULT_CONFIG.NO_CONTENT,
+          type: isReel ? POST_TYPES.REEL : POST_TYPES.IMAGE,
+          mediaUrl: dbPost?.mediaUrls?.[0] || '',
+          permalinkUrl: `https://www.facebook.com/${platformPostId}`,
+          date: dbPost?.createdAt || new Date(),
+          platform: 'facebook'
+        };
+
+        const counts = postResult ? this._extractPostCounts(postResult) : { comments: 0, reactions: 0, shares: 0 };
+        const demographics = await this._getPageDemographicsCached(brandId, pageId, pageAccessToken).catch(() => ({ ageGender: null, geography: null }));
 
         result = {
-          postDetails: {
-            id: post.id,
-            message: post.message || post.story || DEFAULT_CONFIG.NO_CONTENT,
-            type: this._determinePostType(post),
-            mediaUrl: post.full_picture || '',
-            permalinkUrl: post.permalink_url || null,
-            date: post.created_time,
-            platform: 'facebook'
-          },
-          reach: metrics.reach || 0,
-          views: metrics.views || 0,
-          clicks: metrics.clicks || 0,
-          linkClicks: metrics.linkClicks || 0,
+          postDetails,
+          reach: insightsResult.reach || 0,
+          views: insightsResult.views || 0,
+          clicks: insightsResult.clicks || 0,
+          linkClicks: insightsResult.linkClicks || 0,
           comments: counts.comments,
           shares: counts.shares,
           reactions: {
-            total: counts.reactions,
-            breakdown: reactionsBreakdown
+            total: counts.reactions || reactionsResult.total || 0,
+            breakdown: reactionsResult.breakdown || reactionsResult
           },
-          demographics: demographics.ageGender,
-          geography: demographics.geography
+          demographics: demographics?.ageGender || null,
+          geography: demographics?.geography || null
         };
       } catch (err) {
         console.warn(`[FacebookPostService] getPostDetails failed for post ${platformPostId} (brand ${brandId}): ${err.message}`);
@@ -232,8 +315,12 @@ class FacebookPostService {
   }
 
   /**
-   * Lấy dữ liệu tăng trưởng theo thời gian (timeseries) cho 1 bài viết Facebook.
-   * Không cache — dữ liệu tăng trưởng cần luôn mới khi user mở lại biểu đồ.
+   * Lấy dữ liệu tăng trưởng theo thời gian (timeseries) cho 1 bài viết Facebook,
+   * đọc từ PostAnalyticsDailySnapshot (nguồn dữ liệu daily duy nhất — xem
+   * post-metric-sync.service.js#upsertDailySnapshot).
+   *
+   * Cold-start (chưa có snapshot nào): giành khóa Redis để tạo baseline record,
+   * request khác poll DB chờ record xuất hiện thay vì gọi trùng API ngoài.
    */
   async getPostAnalytics(brandId, platformPostId, startDate, endDate, socialAccountId = null) {
     const { pageAccessToken } = await this._getAccountCredentials(brandId, socialAccountId);
@@ -242,19 +329,137 @@ class FacebookPostService {
       return this._buildMockPostAnalytics(startDate, endDate);
     }
 
-    const insights = await facebookGateway.getPostInsights(platformPostId, pageAccessToken);
-    const metrics = this._parseInsightsMetrics(insights);
+    const existingCount = await prisma.postAnalyticsDailySnapshot.count({ where: { platformPostId } });
 
-    // Facebook post-level insights are lifetime totals, not a real timeseries per day.
-    // Return a single-point series so the frontend growth chart can render it consistently
-    // with the timeseries shape used by other platforms.
-    return [{
-      date: new Date().toISOString().split('T')[0],
-      views: metrics.views || 0,
-      reach: metrics.reach || 0,
-      clicks: metrics.clicks || 0,
-      reactions: 0
-    }];
+    if (existingCount === 0) {
+      const coldStartResult = await this._handleColdStart(brandId, platformPostId, socialAccountId);
+      if (coldStartResult?.retryAfter) {
+        return coldStartResult;
+      }
+    }
+
+    return this._readSnapshotSeries(platformPostId, startDate, endDate);
+  }
+
+  /**
+   * @returns {Promise<{retryAfter: number}|void>} retryAfter contract if the caller
+   * should back off and retry; resolves with no return value once a baseline row exists.
+   */
+  async _handleColdStart(brandId, platformPostId, socialAccountId) {
+    const lockKey = REDIS_KEY_BUILDERS.coldStartLock(platformPostId);
+    const token = await lockService.acquireLock(lockKey, LOCK_TTL.COLD_START);
+
+    if (token) {
+      try {
+        await this._seedBaselineSnapshot(brandId, platformPostId, socialAccountId);
+      } finally {
+        await lockService.releaseLock(lockKey, token);
+      }
+      return;
+    }
+
+    const foundDuringPoll = await this._pollForSnapshot(platformPostId, COLD_START_POLL_TIMEOUT_MS);
+    if (foundDuringPoll) return;
+
+    // Poll window elapsed with no row yet — try once more to grab the lock ourselves.
+    const retryToken = await lockService.acquireLock(lockKey, LOCK_TTL.COLD_START);
+    if (retryToken) {
+      try {
+        await this._seedBaselineSnapshot(brandId, platformPostId, socialAccountId);
+      } finally {
+        await lockService.releaseLock(lockKey, retryToken);
+      }
+      return;
+    }
+
+    return { retryAfter: COLD_START_RETRY_AFTER_SEC };
+  }
+
+  async _pollForSnapshot(platformPostId, timeoutMs) {
+    const deadline = Date.now() + timeoutMs;
+    while (Date.now() < deadline) {
+      const count = await prisma.postAnalyticsDailySnapshot.count({ where: { platformPostId } });
+      if (count > 0) return true;
+      await new Promise(resolve => setTimeout(resolve, COLD_START_POLL_INTERVAL_MS));
+    }
+    return false;
+  }
+
+  async _seedBaselineSnapshot(brandId, platformPostId, socialAccountId) {
+    const details = await this.getPostDetails(brandId, platformPostId, socialAccountId);
+    await upsertDailySnapshot({
+      postId: null,
+      platformPostId,
+      brandId,
+      platform: PLATFORM.FACEBOOK,
+      date: new Date(),
+      metrics: {
+        views: details.views,
+        reach: details.reach,
+        clicks: details.clicks,
+        reactions: details.reactions?.total || 0
+      },
+      isEstimated: true
+    });
+  }
+
+  /**
+   * Reads the daily snapshot series for a post and fills gap days by carrying
+   * forward the last known cumulative values, marking filled days isEstimated=true
+   * (per PLATFORM_CAPABILITIES.supportsHistoricalBackfill === false for Facebook).
+   */
+  async _readSnapshotSeries(platformPostId, startDate, endDate) {
+    const end = endDate ? new Date(endDate) : new Date();
+    const start = startDate ? new Date(startDate) : new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+    end.setUTCHours(0, 0, 0, 0);
+    start.setUTCHours(0, 0, 0, 0);
+
+    const rows = await prisma.postAnalyticsDailySnapshot.findMany({
+      where: { platformPostId, date: { gte: start, lte: end } },
+      orderBy: { date: 'asc' }
+    });
+
+    const earliestRow = await prisma.postAnalyticsDailySnapshot.findFirst({
+      where: { platformPostId },
+      orderBy: { date: 'asc' }
+    });
+
+    const byDate = new Map(rows.map(row => [row.date.toISOString().split('T')[0], row]));
+    const series = [];
+    let lastKnown = null;
+
+    for (let t = start.getTime(); t <= end.getTime(); t += 24 * 60 * 60 * 1000) {
+      const dateStr = new Date(t).toISOString().split('T')[0];
+      const row = byDate.get(dateStr);
+
+      if (row) {
+        lastKnown = row;
+        series.push({
+          date: dateStr,
+          views: row.viewsCumulative,
+          reach: row.reachCumulative,
+          clicks: row.clicksCumulative,
+          reactions: row.reactionsCumulative,
+          isEstimated: row.isEstimated
+        });
+      } else if (lastKnown) {
+        // Carry-forward: Facebook has no historical per-day API, so gap days
+        // repeat the last known cumulative totals and are flagged as estimated.
+        series.push({
+          date: dateStr,
+          views: lastKnown.viewsCumulative,
+          reach: lastKnown.reachCumulative,
+          clicks: lastKnown.clicksCumulative,
+          reactions: lastKnown.reactionsCumulative,
+          isEstimated: true
+        });
+      }
+    }
+
+    return {
+      series,
+      historicalDataAvailableFrom: earliestRow ? earliestRow.date.toISOString().split('T')[0] : null
+    };
   }
 
   async _getPageDemographicsCached(brandId, pageId, pageAccessToken) {
@@ -300,13 +505,18 @@ class FacebookPostService {
   }
 
   _buildMockPostAnalytics(startDate, endDate) {
-    return [{
-      date: new Date().toISOString().split('T')[0],
-      views: 1800,
-      reach: 1200,
-      clicks: 45,
-      reactions: 56
-    }];
+    const today = new Date().toISOString().split('T')[0];
+    return {
+      series: [{
+        date: today,
+        views: 1800,
+        reach: 1200,
+        clicks: 45,
+        reactions: 56,
+        isEstimated: false
+      }],
+      historicalDataAvailableFrom: today
+    };
   }
 
   // ============= Private Helper Methods =============
@@ -335,19 +545,31 @@ class FacebookPostService {
 
   async _enrichPostWithInsights(post, pageAccessToken) {
     try {
-      const insights = await this._withTimeout(
-        facebookGateway.getPostInsights(post.id, pageAccessToken),
+      const dbPost = await prisma.post.findFirst({
+        where: { platformPostId: post.id }
+      }).catch(() => null);
+
+      const isReel = dbPost?.type === 'REEL' || dbPost?.options?.facebookType === 'reel';
+      const strategy = isReel ? INSIGHTS_STRATEGIES.REEL : INSIGHTS_STRATEGIES.STANDARD;
+
+      const insightsResult = await this._withTimeout(
+        strategy(post.id, pageAccessToken),
         1500,
-        []
+        { reach: 0, views: 0, clicks: 0, linkClicks: 0 }
       );
-      const metrics = this._parseInsightsMetrics(insights);
+
+      const reactionsBreakdownResult = await this._withTimeout(
+        facebookGateway.getPostReactionsBreakdown(post.id, pageAccessToken),
+        1500,
+        { total: 0, breakdown: {} }
+      );
+
       const counts = this._extractPostCounts(post);
+      const postType = isReel ? 'REEL' : this._determinePostType(post);
 
-      const reach = metrics.reach || 0;
-      const views = metrics.views || 0;
-      const clicks = metrics.clicks || 0;
-
-      const postType = this._determinePostType(post);
+      const reach = insightsResult.reach || 0;
+      const views = insightsResult.views || 0;
+      const clicks = insightsResult.clicks || 0;
       const engagement = reach ? parseFloat((((counts.reactions + counts.comments + counts.shares + clicks) / reach) * 100).toFixed(2)) : 0;
 
       return {
@@ -360,13 +582,13 @@ class FacebookPostService {
         status: POST_STATUS.PUBLISHED,
         reach,
         views,
-        reactions: counts.reactions,
+        reactions: counts.reactions || reactionsBreakdownResult.total || 0,
         comments: counts.comments,
         shares: counts.shares,
         clicks,
-        linkClicks: metrics.linkClicks || 0,
-        videoViews: postType === POST_TYPES.VIDEO ? Math.round(views * 0.4) : 0,
-        videoTimeWatched: postType === POST_TYPES.VIDEO ? '0:45' : '0:00',
+        linkClicks: insightsResult.linkClicks || 0,
+        videoViews: (postType === POST_TYPES.VIDEO || postType === 'REEL') ? Math.round(views * 0.4) : 0,
+        videoTimeWatched: (postType === POST_TYPES.VIDEO || postType === 'REEL') ? '0:45' : '0:00',
         engagement,
         spent: 0
       };

@@ -35,8 +35,8 @@ export const PLATFORM_CONFIGS = {
           message: () => "Facebook Reel must be a video file."
         },
         {
-          check: ({ videoDuration }) => videoDuration > 0 && (videoDuration < 3 || videoDuration > 900),
-          message: ({ videoDuration }) => `Facebook Reels must be between 3 seconds and 15 minutes. (Current: ${videoDuration.toFixed(1)}s)`
+          check: ({ videoDuration }) => videoDuration > 0 && (videoDuration < 3 || videoDuration > 90),
+          message: ({ videoDuration }) => `Facebook Reels must be between 3 and 90 seconds. (Current: ${videoDuration.toFixed(1)}s)`
         },
         {
           check: ({ videoWidth, videoHeight }) => videoWidth > 0 && videoHeight > 0 && videoWidth >= videoHeight,

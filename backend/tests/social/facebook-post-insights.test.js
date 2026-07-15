@@ -4,10 +4,28 @@ jest.mock('../../src/config/redis', () => ({
 }));
 jest.mock('../../src/services/social/facebook/facebook.gateway');
 jest.mock('../../src/repositories/social/social-account.repository');
+jest.mock('../../src/config/prisma', () => ({
+  postAnalyticsDailySnapshot: {
+    count: jest.fn(),
+    findMany: jest.fn(),
+    findFirst: jest.fn(),
+    upsert: jest.fn()
+  },
+  post: {
+    findFirst: jest.fn()
+  }
+}));
+jest.mock('../../src/services/social/distributed-lock.service', () => {
+  return jest.fn().mockImplementation(() => ({
+    acquireLock: jest.fn(),
+    releaseLock: jest.fn()
+  }));
+});
 
 const redisMock = require('../../src/config/redis');
 const facebookGateway = require('../../src/services/social/facebook/facebook.gateway');
 const socialAccountRepository = require('../../src/repositories/social/social-account.repository');
+const prismaMock = require('../../src/config/prisma');
 const facebookPostService = require('../../src/services/social/facebook/facebook-post.service');
 
 const BRAND_ID = 'brand_1';
@@ -42,6 +60,7 @@ describe('FacebookPostService — Post Insights & Analytics', () => {
     jest.clearAllMocks();
     redisMock.get.mockResolvedValue(null);
     redisMock.setEx.mockResolvedValue('OK');
+    prismaMock.post.findFirst.mockResolvedValue(null);
   });
 
   describe('getPostDetails — mock token branch', () => {
@@ -149,7 +168,7 @@ describe('FacebookPostService — Post Insights & Analytics', () => {
   });
 
   describe('getPostDetails — gateway failure (FacebookInsightsError)', () => {
-    it('propagates the error instead of silently swallowing it', async () => {
+    it('does not fail the whole request when only insights fails — returns zeroed insights instead', async () => {
       socialAccountRepository.findByBrandAndPlatform.mockResolvedValue([REAL_ACCOUNT]);
       const gatewayError = new Error('Token expired');
       gatewayError.code = 190;
@@ -159,8 +178,12 @@ describe('FacebookPostService — Post Insights & Analytics', () => {
       facebookGateway.getPostDetails.mockResolvedValue({ id: POST_ID, created_time: '2026-05-24T12:00:00+0000' });
       facebookGateway.getPostReactionsBreakdown.mockResolvedValue({ LIKE: 0, LOVE: 0, HAHA: 0, WOW: 0, SAD: 0, ANGRY: 0 });
 
-      await expect(facebookPostService.getPostDetails(BRAND_ID, POST_ID)).rejects.toThrow('Token expired');
-      expect(redisMock.setEx).not.toHaveBeenCalled();
+      const result = await facebookPostService.getPostDetails(BRAND_ID, POST_ID);
+
+      expect(result.postDetails.id).toBe(POST_ID);
+      expect(result.reach).toBe(0);
+      expect(result.views).toBe(0);
+      expect(result.clicks).toBe(0);
     });
   });
 
@@ -171,24 +194,139 @@ describe('FacebookPostService — Post Insights & Analytics', () => {
       const result = await facebookPostService.getPostAnalytics(BRAND_ID, POST_ID, null, null);
 
       expect(facebookGateway.getPostInsights).not.toHaveBeenCalled();
-      expect(Array.isArray(result)).toBe(true);
-      expect(result[0]).toEqual(
+      expect(Array.isArray(result.series)).toBe(true);
+      expect(result.series[0]).toEqual(
         expect.objectContaining({ date: expect.any(String), views: expect.any(Number), reach: expect.any(Number) })
       );
+      expect(result.historicalDataAvailableFrom).toEqual(expect.any(String));
     });
 
-    it('real token: derives a timeseries point from post insights', async () => {
+    it('real token, snapshots already exist: reads the series from PostAnalyticsDailySnapshot instead of calling the gateway', async () => {
       socialAccountRepository.findByBrandAndPlatform.mockResolvedValue([REAL_ACCOUNT]);
+      prismaMock.postAnalyticsDailySnapshot.count.mockResolvedValue(1);
+      const today = new Date();
+      today.setUTCHours(0, 0, 0, 0);
+      prismaMock.postAnalyticsDailySnapshot.findMany.mockResolvedValue([
+        { date: today, viewsCumulative: 400, reachCumulative: 250, clicksCumulative: 10, reactionsCumulative: 5, isEstimated: false }
+      ]);
+      prismaMock.postAnalyticsDailySnapshot.findFirst.mockResolvedValue({ date: today });
+
+      const result = await facebookPostService.getPostAnalytics(
+        BRAND_ID, POST_ID, today.toISOString().split('T')[0], today.toISOString().split('T')[0]
+      );
+
+      expect(facebookGateway.getPostInsights).not.toHaveBeenCalled();
+      expect(result.series[0].reach).toBe(250);
+      expect(result.series[0].views).toBe(400);
+      expect(result.series[0].isEstimated).toBe(false);
+    });
+
+    it('carries forward the last known cumulative totals into gap days and flags them isEstimated=true', async () => {
+      socialAccountRepository.findByBrandAndPlatform.mockResolvedValue([REAL_ACCOUNT]);
+      prismaMock.postAnalyticsDailySnapshot.count.mockResolvedValue(1);
+
+      const day0 = new Date(); day0.setUTCHours(0, 0, 0, 0);
+      day0.setUTCDate(day0.getUTCDate() - 2); // range start
+      const day2 = new Date(day0); day2.setUTCDate(day0.getUTCDate() + 2); // range end
+      // Only day0 has a real row — day1 and day2 are gaps that must carry-forward.
+      prismaMock.postAnalyticsDailySnapshot.findMany.mockResolvedValue([
+        { date: day0, viewsCumulative: 100, reachCumulative: 60, clicksCumulative: 5, reactionsCumulative: 3, isEstimated: false }
+      ]);
+      prismaMock.postAnalyticsDailySnapshot.findFirst.mockResolvedValue({ date: day0 });
+
+      const result = await facebookPostService.getPostAnalytics(
+        BRAND_ID, POST_ID, day0.toISOString().split('T')[0], day2.toISOString().split('T')[0]
+      );
+
+      expect(result.series).toHaveLength(3);
+      expect(result.series[0].isEstimated).toBe(false); // real row
+      expect(result.series[1].isEstimated).toBe(true);  // gap day, carried forward
+      expect(result.series[1].views).toBe(100);          // same cumulative as last known
+      expect(result.series[1].reach).toBe(60);
+      expect(result.series[2].isEstimated).toBe(true);
+      expect(result.series[2].views).toBe(100);
+      expect(result.historicalDataAvailableFrom).toBe(day0.toISOString().split('T')[0]);
+    });
+  });
+
+  describe('getPostAnalytics — cold start (no snapshot rows yet)', () => {
+    const DistributedLockService = require('../../src/services/social/distributed-lock.service');
+    // facebook-post.service.js constructs its lock service ONCE at module load time
+    // (`const lockService = new DistributedLockService(redisClient)`), so there is
+    // exactly one constructor call for the lifetime of this test file — capture it
+    // once here rather than re-reading .mock.results (which jest.clearAllMocks()
+    // wipes in the outer beforeEach).
+    const lockInstance = DistributedLockService.mock.results[0].value;
+
+    beforeEach(() => {
+      prismaMock.postAnalyticsDailySnapshot.count.mockResolvedValue(0);
+      prismaMock.postAnalyticsDailySnapshot.findMany.mockResolvedValue([]);
+      prismaMock.postAnalyticsDailySnapshot.findFirst.mockResolvedValue(null);
+      prismaMock.postAnalyticsDailySnapshot.upsert.mockResolvedValue({});
+      lockInstance.acquireLock.mockReset();
+      lockInstance.releaseLock.mockReset();
+    });
+
+    it('acquires the cold-start lock, seeds a baseline snapshot, then reads the series', async () => {
+      socialAccountRepository.findByBrandAndPlatform.mockResolvedValue([REAL_ACCOUNT]);
+      facebookGateway.getPostDetails.mockResolvedValue({ id: POST_ID, created_time: '2026-05-24T12:00:00+0000' });
       facebookGateway.getPostInsights.mockResolvedValue([
         { name: 'post_total_media_view_unique', values: [{ value: 250 }] },
         { name: 'post_media_view', values: [{ value: 400 }] }
       ]);
+      facebookGateway.getPostReactionsBreakdown.mockResolvedValue({ LIKE: 0, LOVE: 0, HAHA: 0, WOW: 0, SAD: 0, ANGRY: 0 });
+      facebookGateway.getPageDemographics.mockResolvedValue({
+        ageGender: { available: false, reason: 'deprecated_by_platform', data: null },
+        geography: { available: false, reason: 'insufficient_data', data: null }
+      });
+
+      lockInstance.acquireLock.mockResolvedValue('token-abc');
+      lockInstance.releaseLock.mockResolvedValue(1);
+
+      await facebookPostService.getPostAnalytics(BRAND_ID, POST_ID, null, null);
+
+      expect(lockInstance.acquireLock).toHaveBeenCalledWith(`lock:cold-start:${POST_ID}`, 30);
+      expect(prismaMock.postAnalyticsDailySnapshot.upsert).toHaveBeenCalledWith(
+        expect.objectContaining({
+          create: expect.objectContaining({ platformPostId: POST_ID, isEstimated: true, viewsCumulative: 400, reachCumulative: 250 })
+        })
+      );
+      expect(lockInstance.releaseLock).toHaveBeenCalledWith(`lock:cold-start:${POST_ID}`, 'token-abc');
+    });
+
+    it('lock not acquired, another request seeds the row during the poll window: returns the series once it appears', async () => {
+      socialAccountRepository.findByBrandAndPlatform.mockResolvedValue([REAL_ACCOUNT]);
+      lockInstance.acquireLock.mockResolvedValue(null);
+
+      const today = new Date();
+      today.setUTCHours(0, 0, 0, 0);
+      prismaMock.postAnalyticsDailySnapshot.count
+        .mockResolvedValueOnce(0) // initial existingCount check
+        .mockResolvedValueOnce(0) // 1st poll: still empty
+        .mockResolvedValueOnce(1); // 2nd poll: row appeared
+      prismaMock.postAnalyticsDailySnapshot.findMany.mockResolvedValue([
+        { date: today, viewsCumulative: 10, reachCumulative: 5, clicksCumulative: 0, reactionsCumulative: 0, isEstimated: true }
+      ]);
+      prismaMock.postAnalyticsDailySnapshot.findFirst.mockResolvedValue({ date: today });
 
       const result = await facebookPostService.getPostAnalytics(BRAND_ID, POST_ID, null, null);
 
-      expect(result[0].reach).toBe(250);
-      expect(result[0].views).toBe(400);
+      expect(facebookGateway.getPostInsights).not.toHaveBeenCalled();
+      expect(result.series).toBeDefined();
+      expect(result.retryAfter).toBeUndefined();
     });
+
+    it('poll window times out and the retry-lock-acquire also fails: returns {retryAfter: 5}', async () => {
+      socialAccountRepository.findByBrandAndPlatform.mockResolvedValue([REAL_ACCOUNT]);
+      lockInstance.acquireLock.mockResolvedValue(null); // never acquired, on first try or retry
+
+      // count() never flips to >0 during polling or afterward
+      prismaMock.postAnalyticsDailySnapshot.count.mockResolvedValue(0);
+
+      const result = await facebookPostService.getPostAnalytics(BRAND_ID, POST_ID, null, null);
+
+      expect(result).toEqual({ retryAfter: 5 });
+    }, 10000);
   });
 
   describe('Mock vs Real response shape consistency', () => {

@@ -95,6 +95,9 @@ export function usePostCreatorForm() {
   const [facebookType, setFacebookType] = useState(FACEBOOK_TYPE.POST);
   const [showFacebookTypeMenu, setShowFacebookTypeMenu] = useState(false);
   const [facebookTitle, setFacebookTitle] = useState("");
+  const [facebookReelCollaboratorId, setFacebookReelCollaboratorId] = useState("");
+  const [facebookReelPlaceId, setFacebookReelPlaceId] = useState("");
+  const [facebookReelThumbnail, setFacebookReelThumbnail] = useState("");
 
   // YouTube Presets States
   const [youtubeTitle, setYoutubeTitle] = useState("");
@@ -155,6 +158,9 @@ export function usePostCreatorForm() {
       setYoutubeType(backup.youtubeType ?? YOUTUBE_TYPE.VIDEO);
       setFacebookType(backup.facebookType ?? FACEBOOK_TYPE.POST);
       setFacebookTitle(backup.facebookTitle ?? "");
+      setFacebookReelCollaboratorId(backup.facebookReelCollaboratorId ?? "");
+      setFacebookReelPlaceId(backup.facebookReelPlaceId ?? "");
+      setFacebookReelThumbnail(backup.facebookReelThumbnail ?? "");
       setYoutubeTitle(backup.youtubeTitle ?? "");
       setYoutubeMadeForKids(backup.youtubeMadeForKids ?? false);
       setYoutubePrivacy(backup.youtubePrivacy ?? "public");
@@ -233,6 +239,9 @@ export function usePostCreatorForm() {
       youtubeType,
       facebookType,
       facebookTitle,
+      facebookReelCollaboratorId,
+      facebookReelPlaceId,
+      facebookReelThumbnail,
       youtubeTitle,
       youtubeMadeForKids,
       youtubePrivacy,
@@ -540,6 +549,9 @@ export function usePostCreatorForm() {
         // Setup Facebook
         setFacebookType(opts.facebookType || "post");
         setFacebookTitle(opts.facebookTitle || "");
+        setFacebookReelCollaboratorId(opts.facebookReelCollaboratorId || "");
+        setFacebookReelPlaceId(opts.facebookReelPlaceId || "");
+        setFacebookReelThumbnail(opts.facebookReelThumbnail || "");
 
         // Setup Instagram
         setInstagramType(opts.instagramType || "post");
@@ -673,6 +685,9 @@ export function usePostCreatorForm() {
         // Reset Facebook
         setFacebookType(FACEBOOK_TYPE.POST);
         setFacebookTitle("");
+        setFacebookReelCollaboratorId("");
+        setFacebookReelPlaceId("");
+        setFacebookReelThumbnail("");
         setAltText("");
         setAlbumMedia([]);
         setVideoSettings(null);
@@ -819,6 +834,9 @@ export function usePostCreatorForm() {
           youtubeThumbnail,
           facebookType,
           facebookTitle,
+          facebookReelCollaboratorId,
+          facebookReelPlaceId,
+          facebookReelThumbnail,
           instagramType,
           instagramCollaborators,
           instagramAudio,
@@ -860,6 +878,9 @@ export function usePostCreatorForm() {
         setYoutubeThumbnail("");
         setFacebookTitle("");
         setFacebookType(FACEBOOK_TYPE.POST);
+        setFacebookReelCollaboratorId("");
+        setFacebookReelPlaceId("");
+        setFacebookReelThumbnail("");
         setInstagramType(INSTAGRAM_TYPE.POST);
         setInstagramCollaborators([]);
         setInstagramAudio(null);
@@ -978,6 +999,12 @@ export function usePostCreatorForm() {
     setShowFacebookTypeMenu,
     facebookTitle,
     setFacebookTitle,
+    facebookReelCollaboratorId,
+    setFacebookReelCollaboratorId,
+    facebookReelPlaceId,
+    setFacebookReelPlaceId,
+    facebookReelThumbnail,
+    setFacebookReelThumbnail,
     // Instagram States
     instagramOpen,
     setInstagramOpen,

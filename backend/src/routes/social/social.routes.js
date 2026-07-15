@@ -53,6 +53,7 @@ router.post('/facebook/disconnect', verifyAuth, socialConnectionController.disco
 // Facebook Post Detail Analytics
 router.get('/facebook/post-insights', verifyAuth, facebookController.getFacebookPostInsights);
 router.get('/facebook/post-analytics', verifyAuth, facebookController.getFacebookPostAnalytics);
+router.get('/facebook/reels/:videoId/copyright-check', verifyAuth, facebookController.checkFacebookReelCopyright);
 
 // Facebook Competitors
 router.get('/facebook/search-pages', verifyAuth, facebookController.searchFacebookPages);

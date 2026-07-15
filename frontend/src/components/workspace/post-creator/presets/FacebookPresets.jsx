@@ -1,13 +1,21 @@
 import React from "react";
 import { ChevronDown } from "lucide-react";
 import { usePostCreatorFormContext } from "../../../../context/PostCreatorFormContext";
+import { FACEBOOK_TYPE } from "../../../../constants/postTypes";
 
 export function FacebookPresets() {
   const {
     facebookOpen,
     setFacebookOpen,
+    facebookType,
     facebookTitle,
-    setFacebookTitle
+    setFacebookTitle,
+    facebookReelCollaboratorId,
+    setFacebookReelCollaboratorId,
+    facebookReelPlaceId,
+    setFacebookReelPlaceId,
+    facebookReelThumbnail,
+    setFacebookReelThumbnail
   } = usePostCreatorFormContext();
 
   return (
@@ -25,7 +33,7 @@ export function FacebookPresets() {
         <ChevronDown size={16} className={`text-gray-400 transition-transform duration-300 ${facebookOpen ? 'rotate-180 text-black' : ''}`} />
       </div>
 
-      <div className={`transition-all duration-300 ease-in-out overflow-hidden ${facebookOpen ? 'max-h-[300px] border-t border-gray-50 p-6' : 'max-h-0'}`}>
+      <div className={`transition-all duration-300 ease-in-out overflow-hidden ${facebookOpen ? 'max-h-[600px] border-t border-gray-50 p-6' : 'max-h-0'}`}>
         <div className="space-y-4 text-left">
           <div>
             <label className="block text-[11px] font-bold text-gray-500 uppercase mb-2 font-sans">Title</label>
@@ -37,6 +45,46 @@ export function FacebookPresets() {
               className="w-full px-4 py-3 bg-white border border-gray-200 rounded-2xl text-xs font-semibold focus:border-black outline-none font-sans"
             />
           </div>
+
+          {facebookType === FACEBOOK_TYPE.REEL && (
+            <>
+              {/* Custom Thumbnail URL */}
+              <div>
+                <label className="block text-[11px] font-bold text-gray-500 uppercase mb-2 font-sans">Custom Thumbnail URL</label>
+                <input 
+                  type="text"
+                  value={facebookReelThumbnail}
+                  onChange={(e) => setFacebookReelThumbnail(e.target.value)}
+                  placeholder="https://example.com/thumbnail.jpg"
+                  className="w-full px-4 py-3 bg-white border border-gray-200 rounded-2xl text-xs font-semibold focus:border-black outline-none font-sans"
+                />
+              </div>
+
+              {/* Collaborator Page ID */}
+              <div>
+                <label className="block text-[11px] font-bold text-gray-500 uppercase mb-2 font-sans">Collaborator Page ID</label>
+                <input 
+                  type="text"
+                  value={facebookReelCollaboratorId}
+                  onChange={(e) => setFacebookReelCollaboratorId(e.target.value)}
+                  placeholder="e.g., 1029384756"
+                  className="w-full px-4 py-3 bg-white border border-gray-200 rounded-2xl text-xs font-semibold focus:border-black outline-none font-sans"
+                />
+              </div>
+
+              {/* Place ID */}
+              <div>
+                <label className="block text-[11px] font-bold text-gray-500 uppercase mb-2 font-sans">Place ID (Location Tag)</label>
+                <input 
+                  type="text"
+                  value={facebookReelPlaceId}
+                  onChange={(e) => setFacebookReelPlaceId(e.target.value)}
+                  placeholder="e.g., 987654321"
+                  className="w-full px-4 py-3 bg-white border border-gray-200 rounded-2xl text-xs font-semibold focus:border-black outline-none font-sans"
+                />
+              </div>
+            </>
+          )}
         </div>
       </div>
     </div>
