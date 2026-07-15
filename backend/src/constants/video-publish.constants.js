@@ -20,7 +20,12 @@ const QUEUE_CONFIG = Object.freeze({
     // Nguồn sự thật duy nhất cho "số lần thử tối đa" — dùng cho cả BullMQ
     // defaultJobOptions.attempts (publish.queue.js) lẫn giới hạn partial-retry
     // (update-db.step.js), tránh 2 con số độc lập dễ lệch nhau khi sửa.
-    MAX_PUBLISH_ATTEMPTS: 3
+    MAX_PUBLISH_ATTEMPTS: 3,
+    // Đủ lớn để bao trùm timeout dài nhất của bất kỳ platform gateway nào
+    // (Facebook hiện là 45s cho request có body) cộng buffer an toàn cho video
+    // nặng — tránh BullMQ coi job publish còn đang chạy hợp lệ là "stalled" và
+    // giao lại cho worker khác trong khi job cũ vẫn publish dở (rủi ro đăng trùng).
+    LOCK_DURATION_MS: 120000
   },
   SOCIAL: {
     NAME: 'social-sync-queue',

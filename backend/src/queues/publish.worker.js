@@ -20,6 +20,8 @@ const publishWorker = new Worker(PUBLISH_QUEUE_NAME, async (job) => {
 }, {
   ...defaultConnection,
   concurrency: 5, // Process up to 5 posts simultaneously
+  lockDuration: QUEUE_CONFIG.PUBLISH.LOCK_DURATION_MS,
+  maxStalledCount: 1,
 });
 
 // Event Listeners for logging/monitoring
