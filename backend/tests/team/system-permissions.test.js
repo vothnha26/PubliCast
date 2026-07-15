@@ -1,10 +1,25 @@
 const request = require('supertest');
+
+// Mock otplib to prevent ESModule parsing errors on @scure/base in Jest
+jest.mock('otplib', () => ({
+  authenticator: {
+    generate: jest.fn(),
+    verify: jest.fn()
+  }
+}));
+
 const app = require('../../src/app');
 
-// Mock Auth Middleware
+// Mock Auth Middleware. SystemPermission write endpoints require a system-level
+// ADMIN role (see authorizeAdmin in permission.routes.js) — tests opt into a
+// non-admin caller via the x-test-role header to exercise the 403 path.
 jest.mock('../../src/middlewares/auth.middleware', () => ({
   verifyAuth: (req, res, next) => {
-    req.user = { id: 'admin-user-id', email: 'admin@publicast.com' };
+    req.user = {
+      id: 'admin-user-id',
+      email: 'admin@publicast.com',
+      role: req.headers['x-test-role'] || 'ADMIN'
+    };
     next();
   }
 }));
@@ -86,6 +101,17 @@ describe('System Permissions API', () => {
       });
     });
 
+    it('should return 403 if caller is not a system admin', async () => {
+      const res = await request(app)
+        .post('/api/permissions')
+        .set('x-test-role', 'USER')
+        .send({ key: 'NEW_COOL_ACTION', label: 'Action cực ngầu' })
+        .expect(403);
+
+      expect(res.body.message).toContain('Access denied');
+      expect(prisma.systemPermission.create).not.toHaveBeenCalled();
+    });
+
     it('should return 400 if permission key already exists', async () => {
       prisma.systemPermission.findUnique.mockResolvedValue({ key: 'CREATE_POSTS' });
 
@@ -99,6 +125,16 @@ describe('System Permissions API', () => {
   });
 
   describe('DELETE /api/permissions/:key', () => {
+    it('should return 403 if caller is not a system admin', async () => {
+      const res = await request(app)
+        .delete('/api/permissions/CREATE_POSTS')
+        .set('x-test-role', 'USER')
+        .expect(403);
+
+      expect(res.body.message).toContain('Access denied');
+      expect(prisma.systemPermission.delete).not.toHaveBeenCalled();
+    });
+
     it('should delete permission and cleanup role assignments', async () => {
       prisma.systemPermission.findUnique.mockResolvedValue({ key: 'CREATE_POSTS' });
 
