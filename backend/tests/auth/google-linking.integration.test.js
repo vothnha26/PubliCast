@@ -111,7 +111,7 @@ describe('Google Account Linking Integration Tests', () => {
     expect(googleAcc.providerId).toBe(googleAccountData.providerId);
   });
 
-  it('should create a new user when signing in with Google with a new email address', async () => {
+  it('should reject signing in with Google using an email that has no existing account', async () => {
     const newEmail = 'newgoogle@example.com';
     const newGoogleUserData = {
       email: newEmail,
@@ -124,22 +124,16 @@ describe('Google Account Linking Integration Tests', () => {
       providerId: 'google-oauth2-987654321'
     };
 
-    // Act: Upsert social user (simulate Google Sign-In redirect callback for a new email)
-    const result = await userRepository.upsertSocialUser(newGoogleUserData, newGoogleAccountData);
+    // Act: Upsert social user (simulate Google Sign-In redirect callback for a new email).
+    // Google login must never auto-create an account — the user has to register
+    // via email/password + OTP first.
+    await expect(
+      userRepository.upsertSocialUser(newGoogleUserData, newGoogleAccountData)
+    ).rejects.toMatchObject({ code: 'GOOGLE_ACCOUNT_NOT_LINKED' });
 
-    // Assert: New user created
-    expect(result.isNew).toBe(true);
-    expect(result.user.email).toBe(newEmail);
-    expect(result.user.name).toBe(newGoogleUserData.name);
-
-    // Check account count
-    const userFromDb = await prisma.user.findUnique({
-      where: { id: result.user.id },
-      include: { accounts: true }
-    });
-    expect(userFromDb.accounts).toHaveLength(1);
-    expect(userFromDb.accounts[0].provider).toBe('GOOGLE');
-    expect(userFromDb.accounts[0].providerId).toBe(newGoogleAccountData.providerId);
+    // Assert: No user was created for this email
+    const userFromDb = await prisma.user.findUnique({ where: { email: newEmail } });
+    expect(userFromDb).toBeNull();
   });
 
   it('should allow unlinking Google account if user has more than one account', async () => {

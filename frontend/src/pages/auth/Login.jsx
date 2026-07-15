@@ -5,6 +5,7 @@ import { useAuth } from "../../context/AuthContext";
 import authService from "../../services/auth.service";
 import { toast } from "sonner";
 import { STORAGE_KEYS } from "../../constants/storageKeys";
+import { GOOGLE_OAUTH_ERROR_CODES } from "../../constants/authErrors";
 import { useTranslation } from "react-i18next";
 
 function LeftPanel({ tagline, features, trustedText }) {
@@ -95,6 +96,16 @@ export function LoginPage({ initialScreen = "login" }) {
     }
     setScreen(initialScreen);
   }, [initialScreen, location.state, navigate]);
+
+  // Surface OAuth callback errors redirected back from the backend (e.g. Google
+  // login attempted with an email that has no account yet).
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    if (params.get("error") === GOOGLE_OAUTH_ERROR_CODES.ACCOUNT_NOT_LINKED) {
+      toast.error(t("errors.googleAccountNotLinked"));
+      navigate(location.pathname, { replace: true });
+    }
+  }, [location, navigate, t]);
 
   useEffect(() => {
     let interval;

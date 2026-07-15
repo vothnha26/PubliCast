@@ -143,7 +143,15 @@ const ERROR_MESSAGES = {
   RESET_LINK_SENT: 'Đường dẫn đặt lại mật khẩu đã được gửi đến email của bạn.',
 
   INVALID_APPROVAL_POLICY: 'Chính sách phê duyệt không hợp lệ.',
-  EMPTY_REVIEWERS: 'Cần chọn ít nhất một người duyệt.'
+  EMPTY_REVIEWERS: 'Cần chọn ít nhất một người duyệt.',
+
+  GOOGLE_ACCOUNT_NOT_LINKED: 'Tài khoản Google này chưa được liên kết. Vui lòng đăng ký bằng email/mật khẩu trước.'
+};
+
+// Machine-readable error codes (set on Error.code), distinct from ERROR_MESSAGES
+// (human-readable text). Consumers branch on these instead of matching message text.
+const ERROR_CODES = {
+  GOOGLE_ACCOUNT_NOT_LINKED: 'GOOGLE_ACCOUNT_NOT_LINKED'
 };
 
 const AUTOLIST_TYPES = {
@@ -617,6 +625,7 @@ module.exports = {
   TEAM_STATUS,
   PERMISSION_KEYS,
   ERROR_MESSAGES,
+  ERROR_CODES,
   AUTOLIST_TYPES,
   SEPARATORS,
   BILLING_CYCLES,

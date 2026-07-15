@@ -2,7 +2,13 @@ const authService = require('../../services/auth/auth.service');
 const jwtUtils = require('../../utils/jwt.utils');
 const loginRateLimiter = require('../../middlewares/login-rate-limit.middleware');
 const { setAuthCookies } = require('../../utils/cookie.utils');
-const { ERROR_MESSAGES, USER_ROLES } = require('../../utils/constants');
+const { ERROR_MESSAGES, ERROR_CODES, USER_ROLES } = require('../../utils/constants');
+
+// Maps internal Error.code -> the ?error= slug the frontend route matches on
+// (see frontend/src/constants/authErrors.js:GOOGLE_OAUTH_ERROR_CODES).
+const OAUTH_CALLBACK_ERROR_REDIRECTS = {
+  [ERROR_CODES.GOOGLE_ACCOUNT_NOT_LINKED]: 'google_account_not_linked'
+};
 const asyncHandler = require('../../utils/async-handler');
 
 class AuthController {
@@ -44,7 +50,17 @@ class AuthController {
       }
     }
 
-    const result = await authService.handleGoogleCallback(code, redirectUri, currentUserId);
+    let result;
+    try {
+      result = await authService.handleGoogleCallback(code, redirectUri, currentUserId);
+    } catch (err) {
+      const redirectSlug = OAUTH_CALLBACK_ERROR_REDIRECTS[err.code];
+      if (redirectSlug) {
+        return res.redirect(`${frontendUrl}/login?error=${redirectSlug}`);
+      }
+      throw err;
+    }
+
     setAuthCookies(res, result.accessToken, result.refreshToken);
 
     if (state === 'settings') {
