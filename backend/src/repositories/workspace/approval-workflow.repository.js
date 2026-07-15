@@ -124,8 +124,8 @@ class ApprovalWorkflowRepository {
     });
   }
 
-  async create(data) {
-    return prisma.approvalWorkflow.create({
+  async create(data, client = prisma) {
+    return client.approvalWorkflow.create({
       data,
       include: {
         post: true,

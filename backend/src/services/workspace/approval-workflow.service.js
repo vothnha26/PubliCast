@@ -132,24 +132,28 @@ class ApprovalWorkflowService {
       throw error;
     }
 
-    const workflow = await approvalWorkflowRepository.create({
-      postId,
-      brandId,
-      requesterId,
-      approvalPolicy:    policy,
-      requesterNote,
-      status:            WORKFLOW_STATUS.PENDING,
-      reviewers: {
-        create: reviewerList.map(rId => ({
-          reviewerId: rId,
-          status: WORKFLOW_STATUS.PENDING
-        }))
-      }
+    // Bọc transaction để tránh trạng thái không nhất quán nếu 1 trong 2 bước lỗi
+    // giữa chừng: workflow tồn tại mà Post vẫn DRAFT, hoặc ngược lại.
+    return prisma.$transaction(async (tx) => {
+      const workflow = await approvalWorkflowRepository.create({
+        postId,
+        brandId,
+        requesterId,
+        approvalPolicy:    policy,
+        requesterNote,
+        status:            WORKFLOW_STATUS.PENDING,
+        reviewers: {
+          create: reviewerList.map(rId => ({
+            reviewerId: rId,
+            status: WORKFLOW_STATUS.PENDING
+          }))
+        }
+      }, tx);
+
+      await postRepository.updateStatus(postId, POST_STATUS.PENDING_APPROVAL, tx);
+
+      return workflow;
     });
-
-    await postRepository.updateStatus(postId, POST_STATUS.PENDING_APPROVAL);
-
-    return workflow;
   }
 
   /**

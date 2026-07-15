@@ -192,6 +192,9 @@ describe('Post Content Approval Workflow APIs', () => {
           reviewers: { create: [{ reviewerId: 'reviewer-id', status: 'PENDING' }] }
         })
       }));
+      // createWorkflowRequest bọc việc tạo workflow + update Post status trong
+      // 1 transaction, tránh trạng thái nửa vời nếu 1 trong 2 bước lỗi giữa chừng.
+      expect(prisma.$transaction).toHaveBeenCalled();
     });
 
     it('should allow directly creating a post with PENDING_APPROVAL status and create a workflow request', async () => {
