@@ -1,4 +1,13 @@
 const request = require('supertest');
+
+// Mock otplib to prevent ESModule parsing errors on @scure/base in Jest
+jest.mock('otplib', () => ({
+  authenticator: {
+    generate: jest.fn(),
+    verify: jest.fn()
+  }
+}));
+
 const app = require('../../src/app');
 
 // Mock Auth Middleware
@@ -120,6 +129,27 @@ describe('Custom Roles APIs', () => {
       expect(res.body.data.name).toBe('Manager');
     });
 
+    it('should reject an unrecognized permissionKey instead of writing it to the DB', async () => {
+      const mockBrand = {
+        id: 'brand-1',
+        ownerId: 'operator-id',
+        subscription: { plan: { planLimit: { allowCustomRoles: true } } }
+      };
+      prisma.brand.findFirst.mockResolvedValue(mockBrand);
+
+      const res = await request(app)
+        .post('/api/brands/brand-1/roles')
+        .send({
+          name: 'Manager',
+          colorHex: '#33FF57',
+          permissions: [{ permissionKey: 'HACK_EVERYTHING', isAllowed: true }]
+        });
+
+      expect(res.status).toBe(400);
+      expect(res.body.message).toContain('HACK_EVERYTHING');
+      expect(prisma.customRole.create).not.toHaveBeenCalled();
+    });
+
     it('should throw error if plan does not permit custom roles', async () => {
       const mockBrand = {
         id: 'brand-1',
@@ -185,6 +215,24 @@ describe('Custom Roles APIs', () => {
 
       expect(res.status).toBe(200);
       expect(res.body.data.name).toBe('New Editor');
+    });
+
+    it('should reject an unrecognized permissionKey instead of writing it to the DB', async () => {
+      const mockBrand = { id: 'brand-1', ownerId: 'operator-id' };
+      prisma.brand.findFirst.mockResolvedValue(mockBrand);
+      prisma.customRole.findUnique.mockResolvedValue({ id: 'role-1', brandId: 'brand-1', name: 'Old Editor' });
+
+      const res = await request(app)
+        .put('/api/brands/brand-1/roles/role-1')
+        .send({
+          name: 'New Editor',
+          colorHex: '#FF5733',
+          permissions: [{ permissionKey: 'HACK_EVERYTHING', isAllowed: true }]
+        });
+
+      expect(res.status).toBe(400);
+      expect(res.body.message).toContain('HACK_EVERYTHING');
+      expect(prisma.customRole.update).not.toHaveBeenCalled();
     });
   });
 
