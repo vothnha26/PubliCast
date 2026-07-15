@@ -334,17 +334,21 @@ class ApprovalWorkflowService {
     );
   }
 
-  /** Ném lỗi 403 nếu reviewer không có quyền xử lý workflow này. */
+  /**
+   * Ném lỗi 403 nếu reviewer không có quyền APPROVE_POSTS hiện tại trên brand.
+   * Lưu ý: workflow.selectedReviewers chỉ mang tính chất hiển thị/thông tin
+   * (metadata chỉ định ban đầu), KHÔNG còn giữ vai trò phân quyền (authorization).
+   * Quyền duyệt luôn được xác thực lại theo trạng thái quyền thực tế tại thời điểm review,
+   * để tránh bypass khi reviewer bị thu hồi quyền/xóa khỏi nhóm sau khi được chỉ định.
+   */
   async _assertReviewerIsAuthorized(reviewerId, workflow) {
-    const reviewers = JSON.parse(workflow.selectedReviewers || '[]');
-    const isListedReviewer = reviewers.includes(reviewerId);
     const hasApprovePermission = await authorizationFacade.hasPermission(
       reviewerId,
       workflow.brandId,
       PERMISSION_KEYS.APPROVE_POSTS
     );
 
-    if (!isListedReviewer && !hasApprovePermission) {
+    if (!hasApprovePermission) {
       const error = new Error('Bạn không có quyền phê duyệt yêu cầu này.');
       error.status = 403;
       throw error;

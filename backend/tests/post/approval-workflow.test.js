@@ -1,5 +1,13 @@
 const request = require('supertest');
 
+// Mock otplib to prevent ESModule parsing errors on @scure/base in Jest
+jest.mock('otplib', () => ({
+  authenticator: {
+    generate: jest.fn(),
+    verify: jest.fn()
+  }
+}));
+
 let mockUser = { id: 'operator-id', email: 'operator@publicast.com' };
 
 // Mock Auth Middleware
@@ -14,7 +22,13 @@ jest.mock('../../src/middlewares/auth.middleware', () => ({
 jest.mock('../../src/services/auth/authorization.facade', () => {
   const hasPerm = jest.fn().mockImplementation((userId, brandId, permission) => {
     if (permission === 'APPROVE_POSTS') {
-      return Promise.resolve(userId === 'reviewer-id');
+      const allowedReviewerIds = [
+        'reviewer-id',
+        'reviewer-1-id',
+        'reviewer-2-id',
+        'some-other-reviewer-id'
+      ];
+      return Promise.resolve(allowedReviewerIds.includes(userId));
     }
     return Promise.resolve(true);
   });
@@ -281,6 +295,78 @@ describe('Post Content Approval Workflow APIs', () => {
         .expect(403);
 
       expect(res.body.message).toContain('không có quyền phê duyệt');
+    });
+
+    it('should reject review action if user is listed as reviewer but no longer has APPROVE_POSTS permission', async () => {
+      mockUser = { id: 'revoked-reviewer-id', email: 'revoked@publicast.com' };
+
+      const mockWorkflow = {
+        id: 'wf-1',
+        postId: 'post-1',
+        brandId: 'brand-123',
+        requesterId: 'operator-id',
+        status: 'PENDING',
+        selectedReviewers: JSON.stringify(['revoked-reviewer-id']),
+        post: {
+          id: 'post-1',
+          status: 'PENDING_APPROVAL'
+        }
+      };
+
+      prisma.approvalWorkflow.findUnique.mockResolvedValue(mockWorkflow);
+
+      const res = await request(app)
+        .post('/api/brands/brand-123/workflows/wf-1/review')
+        .send({ action: 'APPROVED', comment: 'Trying to approve after being revoked' })
+        .expect(403);
+
+      expect(res.body.message).toContain('không có quyền phê duyệt');
+      expect(authorizationFacade.hasPermission).toHaveBeenCalledWith(
+        'revoked-reviewer-id',
+        'brand-123',
+        'APPROVE_POSTS'
+      );
+      expect(prisma.approvalWorkflow.update).not.toHaveBeenCalled();
+    });
+
+    it('should allow user with APPROVE_POSTS permission to approve even when not listed as a selected reviewer', async () => {
+      mockUser = { id: 'reviewer-id', email: 'reviewer@publicast.com' };
+
+      const mockWorkflow = {
+        id: 'wf-1',
+        postId: 'post-1',
+        brandId: 'brand-123',
+        requesterId: 'operator-id',
+        status: 'PENDING',
+        selectedReviewers: JSON.stringify(['some-other-reviewer-id']),
+        post: {
+          id: 'post-1',
+          status: 'PENDING_APPROVAL',
+          scheduledAt: new Date(Date.now() + 86400000)
+        }
+      };
+
+      prisma.approvalWorkflow.findUnique.mockResolvedValue(mockWorkflow);
+      prisma.approvalWorkflow.update.mockResolvedValue({
+        ...mockWorkflow,
+        status: 'APPROVED'
+      });
+      prisma.post.update.mockResolvedValue({
+        id: 'post-1',
+        status: 'SCHEDULED'
+      });
+
+      const res = await request(app)
+        .post('/api/brands/brand-123/workflows/wf-1/review')
+        .send({ action: 'APPROVED', comment: 'Admin override approval' })
+        .expect(200);
+
+      expect(res.body.status).toBe('success');
+      expect(res.body.data.status).toBe('APPROVED');
+      expect(prisma.post.update).toHaveBeenCalledWith({
+        where: { id: 'post-1' },
+        data: { status: 'SCHEDULED' }
+      });
     });
 
     it('should move post back to DRAFT when review action is REVISION_NEEDED', async () => {
