@@ -36,7 +36,7 @@ jest.mock('../../src/queues/publish.queue', () => ({
 }));
 
 jest.mock('../../src/config/prisma', () => ({
-  postMetricHistory: {
+  postAnalyticsDailySnapshot: {
     findMany: jest.fn()
   },
   platformLimit: {
@@ -374,18 +374,18 @@ describe('PostService Unit Tests', () => {
       });
 
       const mockHistory = [
-        { id: 1, views: 100, likes: 10 }
+        { id: 1, viewsCumulative: 100, reactionsCumulative: 10 }
       ];
 
       const prismaMock = require('../../src/config/prisma');
-      prismaMock.postMetricHistory.findMany.mockResolvedValue(mockHistory);
+      prismaMock.postAnalyticsDailySnapshot.findMany.mockResolvedValue(mockHistory);
 
       const result = await postService.getPostAnalytics('post-123', 'brand-abc');
 
       expect(result).toEqual(mockHistory);
-      expect(prismaMock.postMetricHistory.findMany).toHaveBeenCalledWith({
+      expect(prismaMock.postAnalyticsDailySnapshot.findMany).toHaveBeenCalledWith({
         where: { postId: 'post-123', brandId: 'brand-abc' },
-        orderBy: { timestamp: 'asc' }
+        orderBy: { date: 'asc' }
       });
     });
 

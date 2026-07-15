@@ -53,13 +53,20 @@ const server = app.listen(PORT, async () => {
   setInterval(() => discordStatsService.snapshotAllGuilds().catch(() => {}), 24 * 60 * 60 * 1000);
   logger.info('Discord daily snapshot scheduler started (every 24h)');
 
-  // Start Post interaction metrics snapshot (runs every 1h)
-  const postMetricSyncService = require('./services/social/post-metric-sync.service');
+  // Start Post analytics daily snapshot sync + seeding watchdog (runs every 1h)
+  const syncPostAnalyticsService = require('./services/social/sync-post-analytics.service');
   // Run once at startup (with delay to let DB settle)
-  setTimeout(() => postMetricSyncService.syncPostMetrics().catch(() => {}), 45_000);
+  setTimeout(() => syncPostAnalyticsService.runHourlyCycle().catch(() => {}), 45_000);
   // Then every 1 hour
-  setInterval(() => postMetricSyncService.syncPostMetrics().catch(() => {}), 1 * 60 * 60 * 1000);
-  logger.info('Post metrics sync scheduler started (every 1h)');
+  setInterval(() => syncPostAnalyticsService.runHourlyCycle().catch(() => {}), 1 * 60 * 60 * 1000);
+  logger.info('Post analytics sync scheduler started (every 1h)');
+
+  // Weekly sweep for orphaned/stale snapshot rows (unlinked channels)
+  setInterval(
+    () => syncPostAnalyticsService.cleanupStaleUnlinkedSnapshots().catch(() => {}),
+    7 * 24 * 60 * 60 * 1000
+  );
+  logger.info('Post analytics stale-snapshot sweep scheduled (every 7d)');
 
   // Start Token Auto-Refresh Service scheduler
   const tokenRefreshService = require('./services/social/token-refresh/token-refresh.service');

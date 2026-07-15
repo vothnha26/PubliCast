@@ -725,13 +725,13 @@ class PostService {
     }
 
     const prisma = require('../../config/prisma');
-    const history = await prisma.postMetricHistory.findMany({
+    const history = await prisma.postAnalyticsDailySnapshot.findMany({
       where: {
         postId: postId,
         brandId: brandId
       },
       orderBy: {
-        timestamp: 'asc'
+        date: 'asc'
       }
     });
 
@@ -757,9 +757,9 @@ class PostService {
       select: {
         publishedAt: true,
         scheduledAt: true,
-        postMetricHistories: {
+        postAnalyticsSnapshots: {
           take: 1,
-          orderBy: { timestamp: 'desc' }
+          orderBy: { date: 'desc' }
         }
       }
     });
@@ -782,19 +782,11 @@ class PostService {
       const day = dateObj.getDay(); // 0 (Chủ nhật) -> 6 (Thứ bảy)
       const hour = dateObj.getHours(); // 0 -> 23
 
-      // Lấy tương tác (nếu có postMetricHistories)
+      // Lấy tương tác (nếu có postAnalyticsSnapshots)
       let engagement = 0;
-      if (post.postMetricHistories && post.postMetricHistories.length > 0) {
-        const met = post.postMetricHistories[0];
-        // JSON structure tuỳ nền tảng (likes, comments, views, retweets...)
-        let parsed = {};
-        try {
-          parsed = typeof met.value === 'string' ? JSON.parse(met.value) : met.value;
-        } catch (e) {}
-        const likes = parseInt(parsed.likes || parsed.like_count || 0, 10);
-        const comments = parseInt(parsed.comments || parsed.comment_count || 0, 10);
-        const views = parseInt(parsed.views || parsed.view_count || 0, 10);
-        engagement = likes + comments * 2 + Math.round(views * 0.1);
+      if (post.postAnalyticsSnapshots && post.postAnalyticsSnapshots.length > 0) {
+        const snap = post.postAnalyticsSnapshots[0];
+        engagement = snap.clicksCumulative + snap.reactionsCumulative * 2 + Math.round(snap.viewsCumulative * 0.1);
       }
 
       const key = `${day}-${hour}`;

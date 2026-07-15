@@ -85,6 +85,7 @@ export function PostAnalyticsDetailPage() {
   }
 
   const metadata = data.metadata?.data;
+  const historicalDataAvailableFrom = data.analytics?.historicalDataAvailableFrom || null;
 
   return (
     <div className="flex-1 overflow-y-auto bg-[#F8F8F7]">
@@ -156,6 +157,15 @@ export function PostAnalyticsDetailPage() {
           <DateRangeFilter date={dateRange} setDate={setDateRange} />
         )}
       </div>
+
+      {historicalDataAvailableFrom && dateRange.from < new Date(historicalDataAvailableFrom) && (
+        <div className="mx-6 mt-4 flex items-start gap-2.5 p-3.5 bg-amber-50 rounded-2xl border border-amber-100">
+          <AlertTriangle size={14} className="text-amber-500 shrink-0 mt-0.5" />
+          <p className="text-[11px] text-amber-800 leading-normal">
+            Dữ liệu trước ngày {format(new Date(historicalDataAvailableFrom), "dd/MM/yyyy")} chưa khả dụng.
+          </p>
+        </div>
+      )}
 
       {/* Body Content */}
       <div className="p-6 space-y-6">
