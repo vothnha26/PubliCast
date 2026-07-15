@@ -672,24 +672,21 @@ class TeamService {
         const workflow = wr.workflow;
         if (!workflow) continue;
 
-        const { autoApproved, postId, postStatus, remainingReviewers } = await prisma.$transaction(async (tx) => {
+        const { autoApproved, remainingReviewers } = await prisma.$transaction(async (tx) => {
           await approvalWorkflowRepository.lockForUpdate(workflow.id, tx);
           await tx.workflowReviewer.delete({ where: { id: wr.id } });
 
+          // reevaluateAfterReviewerRemoved tự ghi outbox (job publish + domain event)
+          // NGAY BÊN TRONG tx này nếu autoApproved — không cần bước side-effect nào
+          // sau khi transaction commit, outbox tự đảm bảo retry.
           const evalResult = await approvalWorkflowService.reevaluateAfterReviewerRemoved(workflow.id, tx);
           const remaining = await tx.workflowReviewer.count({ where: { workflowId: workflow.id } });
 
           return {
             autoApproved: evalResult.autoApproved,
-            postId:       evalResult.postId,
-            postStatus:   evalResult.postStatus,
             remainingReviewers: remaining
           };
         });
-
-        if (autoApproved) {
-          await approvalWorkflowService.runPostApprovalSideEffects(postId, postStatus);
-        }
 
         // Notify requester
         const postTitle = workflow.post?.title || 'Bài viết không rõ tiêu đề';

@@ -3,114 +3,82 @@ const postService = require('../../services/workspace/post.service');
 const autoListService = require('../../services/workspace/auto-list.service');
 const { POST_STATUS } = require('../../utils/constants');
 
-const createErrorNotification = async (post, title, message) => {
-  try {
-    const notificationService = require('../../services/core/notification.service');
-    const { NOTIFICATION_TYPES } = require('../../utils/constants');
-    await notificationService.create({
-      brandId: post.brandId,
-      userId: post.createdByUserId || null,
-      title: title,
-      message: message,
-      type: NOTIFICATION_TYPES.CONTENT
-    });
-  } catch (notifErr) {
-    console.error('[Event Error] Failed to create error notification:', notifErr.message);
+/**
+ * Handle AutoList recalculation. Dùng chung cho mọi domain event post ảnh hưởng lịch
+ * AutoList. Lỗi được nuốt nội bộ (autolist recalculation là best-effort, không phải
+ * side-effect bắt buộc phải retry qua outbox — khác với publish job).
+ */
+const handleAutoListUpdate = async ({ post, autoListId }) => {
+  const targetId = autoListId || post?.autoListId;
+  if (targetId) {
+    try {
+      console.log(`[Event] Recalculating AutoList ${targetId}`);
+      await autoListService.recalculateQueueSchedules(targetId);
+    } catch (err) {
+      console.error(`[Event Error] AutoList recalculation failed for ${targetId}:`, err.message);
+    }
   }
 };
 
 /**
- * Initialize Post Event Subscribers
+ * Xử lý phần "phi-publish" của POST.CREATED — chỉ còn Native Scheduling.
+ * Được gọi TRỰC TIẾP (await) từ OUTBOX_HANDLERS[POST_DOMAIN_EVENT], KHÔNG qua
+ * eventEmitter.emit — vì EventEmitter.emit không đợi listener async và không
+ * propagate lỗi ngược lại, nên throw ở đây sẽ không tới được outbox dispatcher để
+ * retry nếu gọi qua emit (xem outbox-handlers.js). Lỗi ở đây được để throw tự nhiên,
+ * dispatcher sẽ retry theo backoff và tạo notification khi dead-letter.
+ */
+async function handlePostCreatedDomainEvent({ post, options }) {
+  if (post.status === POST_STATUS.SCHEDULED) {
+    console.log(`[Event] Checking Native Scheduling for post ${post.id}`);
+    await postService._handleNativeScheduling(post, options);
+  }
+  await handleAutoListUpdate({ post });
+}
+
+async function handlePostUpdatedDomainEvent({ post, options, statusChangedToPublished }) {
+  if (!statusChangedToPublished && post.status === POST_STATUS.SCHEDULED) {
+    console.log(`[Event] Checking Native Scheduling for updated post ${post.id}`);
+    await postService._handleNativeScheduling(post, options);
+  }
+  await handleAutoListUpdate({ post });
+}
+
+async function handlePostBulkDeletedDomainEvent({ autolistIds }) {
+  for (const id of autolistIds) {
+    await handleAutoListUpdate({ autoListId: id });
+  }
+}
+
+async function handlePostBulkRestoredDomainEvent({ autolistIds }) {
+  for (const id of autolistIds) {
+    await handleAutoListUpdate({ autoListId: id });
+  }
+}
+
+/**
+ * Map eventName → handler, dùng bởi OUTBOX_HANDLERS[POST_DOMAIN_EVENT] để gọi trực
+ * tiếp (await) thay vì qua eventEmitter.emit — đảm bảo lỗi propagate đúng cho outbox
+ * dispatcher retry.
+ */
+const POST_DOMAIN_EVENT_HANDLERS = {
+  [EVENTS.POST.CREATED]: handlePostCreatedDomainEvent,
+  [EVENTS.POST.UPDATED]: handlePostUpdatedDomainEvent,
+  [EVENTS.POST.BULK_DELETED]: handlePostBulkDeletedDomainEvent,
+  [EVENTS.POST.BULK_RESTORED]: handlePostBulkRestoredDomainEvent
+};
+
+/**
+ * Khởi tạo subscriber cho các event POST.* CHƯA đi qua outbox (DELETED/RESTORED —
+ * hiện chưa có nơi nào emit các event này, giữ lại để tương thích khi có nơi emit
+ * trong tương lai). POST.CREATED/UPDATED/BULK_DELETED/BULK_RESTORED không còn đăng ký
+ * qua eventEmitter.on ở đây — chúng được outbox dispatcher gọi trực tiếp qua
+ * POST_DOMAIN_EVENT_HANDLERS.
  */
 const initPostSubscribers = () => {
-  // Handle Auto-publishing
-  eventEmitter.on(EVENTS.POST.CREATED, async ({ post, options }) => {
-    if (post.status === POST_STATUS.PUBLISHED) {
-      try {
-        console.log(`[Event] Queueing auto-publishing for post ${post.id}`);
-        const { upsertPublishJob } = require('../../queues/publish.queue');
-        await upsertPublishJob(post.id, new Date());
-      } catch (err) {
-        console.error(`[Event Error] Auto-publishing queueing failed for post ${post.id}:`, err.message);
-        await createErrorNotification(
-          post,
-          'Đăng bài thất bại',
-          `Bài viết "${post.title?.substring(0, 30) || ''}" xếp hàng đăng thất bại. Lỗi: ${err.message}`
-        );
-      }
-    } else if (post.status === POST_STATUS.SCHEDULED) {
-      try {
-        console.log(`[Event] Checking Native Scheduling for post ${post.id}`);
-        await postService._handleNativeScheduling(post, options);
-      } catch (err) {
-        console.error(`[Event Error] Native Scheduling failed for post ${post.id}:`, err.message);
-        await createErrorNotification(
-          post,
-          'Đặt lịch gốc thất bại',
-          `Bài viết "${post.title?.substring(0, 30) || ''}" đặt lịch gốc thất bại. Lỗi: ${err.message}`
-        );
-      }
-    }
-  });
-
-  eventEmitter.on(EVENTS.POST.UPDATED, async ({ post, options, statusChangedToPublished }) => {
-    if (statusChangedToPublished) {
-      try {
-        console.log(`[Event] Queueing updated post ${post.id} for publishing`);
-        const { upsertPublishJob } = require('../../queues/publish.queue');
-        await upsertPublishJob(post.id, new Date());
-      } catch (err) {
-        console.error(`[Event Error] Publishing queueing failed for updated post ${post.id}:`, err.message);
-        await createErrorNotification(
-          post,
-          'Đăng bài thất bại',
-          `Bài viết "${post.title?.substring(0, 30) || ''}" cập nhật & xếp hàng đăng thất bại. Lỗi: ${err.message}`
-        );
-      }
-    } else if (post.status === POST_STATUS.SCHEDULED) {
-      try {
-        console.log(`[Event] Checking Native Scheduling for updated post ${post.id}`);
-        await postService._handleNativeScheduling(post, options);
-      } catch (err) {
-        console.error(`[Event Error] Native Scheduling failed for updated post ${post.id}:`, err.message);
-        await createErrorNotification(
-          post,
-          'Đặt lịch gốc thất bại',
-          `Bài viết "${post.title?.substring(0, 30) || ''}" đặt lịch gốc thất bại sau khi cập nhật. Lỗi: ${err.message}`
-        );
-      }
-    }
-  });
-
-  // Handle AutoList recalculation
-  const handleAutoListUpdate = async ({ post, autoListId }) => {
-    const targetId = autoListId || post?.autoListId;
-    if (targetId) {
-      try {
-        console.log(`[Event] Recalculating AutoList ${targetId}`);
-        await autoListService.recalculateQueueSchedules(targetId);
-      } catch (err) {
-        console.error(`[Event Error] AutoList recalculation failed for ${targetId}:`, err.message);
-      }
-    }
-  };
-
-  eventEmitter.on(EVENTS.POST.CREATED, handleAutoListUpdate);
-  eventEmitter.on(EVENTS.POST.UPDATED, handleAutoListUpdate);
   eventEmitter.on(EVENTS.POST.DELETED, handleAutoListUpdate);
   eventEmitter.on(EVENTS.POST.RESTORED, handleAutoListUpdate);
-
-  eventEmitter.on(EVENTS.POST.BULK_DELETED, async ({ autolistIds }) => {
-    for (const id of autolistIds) {
-      await handleAutoListUpdate({ autoListId: id });
-    }
-  });
-
-  eventEmitter.on(EVENTS.POST.BULK_RESTORED, async ({ autolistIds }) => {
-    for (const id of autolistIds) {
-      await handleAutoListUpdate({ autoListId: id });
-    }
-  });
 };
 
 module.exports = initPostSubscribers;
+module.exports.POST_DOMAIN_EVENT_HANDLERS = POST_DOMAIN_EVENT_HANDLERS;

@@ -1696,3 +1696,34 @@ model LivestreamHighlight {
 
   @@map("livestream_highlights")
 }
+
+// ============================================
+// OUTBOX PATTERN (transactional side-effect delivery)
+// ============================================
+
+enum OutboxEventStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+model OutboxEvent {
+  id          String            @id @default(uuid())
+  eventType   String // vd 'POST_PUBLISH_UPSERT', xem OUTBOX_EVENT_TYPES
+  aggregateId String // vd postId - dùng để dedupe/trace, KHÔNG dùng làm khóa unique cưỡng bức
+  payload     String            @db.Text // JSON.stringify
+  status      OutboxEventStatus @default(PENDING)
+  attempts    Int               @default(0)
+  maxAttempts Int               @default(5)
+  nextRunAt   DateTime          @default(now()) // dispatcher chỉ pick WHERE nextRunAt <= now()
+  lastError   String?           @db.Text
+  processedAt DateTime?
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+
+  @@index([status, nextRunAt])
+  @@index([aggregateId])
+  @@index([eventType])
+  @@map("outbox_events")
+}

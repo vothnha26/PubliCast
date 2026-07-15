@@ -75,6 +75,11 @@ const server = app.listen(PORT, async () => {
   // Start Automated Reports Scheduler
   const reportSchedulerService = require('./services/reports/report-scheduler.service');
   reportSchedulerService.start();
+
+  // Start Outbox Dispatcher (polls outbox_events, delivers side-effects with retry)
+  const outboxDispatcherService = require('./services/core/outbox-dispatcher.service');
+  outboxDispatcherService.start();
+  logger.info('Outbox dispatcher started (poll every 5s)');
 });
 
 // ── Graceful Shutdown ───────────────────────────────────────────────────────
@@ -87,6 +92,14 @@ async function shutdown(signal) {
     tokenRefreshService.stopScheduler();
   } catch (err) {
     logger.error('Error stopping token refresh scheduler', err);
+  }
+
+  // Stop outbox dispatcher (before closing BullMQ/Redis/DB it depends on)
+  try {
+    const outboxDispatcherService = require('./services/core/outbox-dispatcher.service');
+    outboxDispatcherService.stop();
+  } catch (err) {
+    logger.error('Error stopping outbox dispatcher', err);
   }
 
   server.close(async () => {

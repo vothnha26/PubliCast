@@ -3,8 +3,10 @@ const postRepository = require('../../repositories/workspace/post.repository');
 const brandRepository = require('../../repositories/workspace/brand.repository');
 const socialPlatformFactory = require('../social/social-platform.factory');
 const { POST_STATUS, POST_TYPES, SEPARATORS, WORKSPACE_DEFAULTS, PLATFORMS, splitMediaUrls } = require('../../utils/constants');
-const { eventEmitter, EVENTS } = require('../../events/event-emitter');
-const { upsertPublishJob, removePublishJob } = require('../../queues/publish.queue');
+const { EVENTS } = require('../../events/event-emitter');
+const { OUTBOX_EVENT_TYPES } = require('../../constants/outbox.constants');
+const outboxEventRepository = require('../../repositories/core/outbox-event.repository');
+const prisma = require('../../config/prisma');
 const authorizationFacade = require('../auth/authorization.facade');
 const approvalWorkflowService = require('./approval-workflow.service');
 const validationFacade = require('./post/validators/validation.facade');
@@ -133,10 +135,45 @@ class PostService {
     }
 
     console.log('[PostService] Final payload to database:', data);
-    const post = await postRepository.create(data);
-    console.log('[PostService] Post successfully created in DB with ID:', post.id);
 
-    // If the post status is PENDING_APPROVAL, initiate the approval workflow request
+    const post = await prisma.$transaction(async (tx) => {
+      const created = await postRepository.create(data, tx);
+      console.log('[PostService] Post successfully created in DB with ID:', created.id);
+
+      // Job publish + domain event chỉ được ghi vào outbox trong CÙNG transaction với
+      // việc tạo post — outbox là nguồn ghi duy nhất cho job publish-post-${postId},
+      // tránh double-write với post.subscriber.js (xem outbox-handlers.js).
+      if (!created.autoListId && created.status === POST_STATUS.PUBLISHED) {
+        await outboxEventRepository.create(
+          OUTBOX_EVENT_TYPES.POST_PUBLISH_UPSERT,
+          created.id,
+          { postId: created.id, scheduledAt: new Date() },
+          {},
+          tx
+        );
+      } else if (!created.autoListId && created.status === POST_STATUS.SCHEDULED && created.scheduledAt) {
+        await outboxEventRepository.create(
+          OUTBOX_EVENT_TYPES.POST_PUBLISH_UPSERT,
+          created.id,
+          { postId: created.id, scheduledAt: created.scheduledAt },
+          {},
+          tx
+        );
+      }
+
+      await outboxEventRepository.create(
+        OUTBOX_EVENT_TYPES.POST_DOMAIN_EVENT,
+        created.id,
+        { eventName: EVENTS.POST.CREATED, eventArgs: { post: created, options: postData.options } },
+        {},
+        tx
+      );
+
+      return created;
+    });
+
+    // approvalWorkflowService.createWorkflowRequest có transaction/lockForUpdate riêng
+    // của nó, cố tình nằm ngoài transaction phía trên (xem Đợt 2 kế hoạch outbox).
     if (post.status === POST_STATUS.PENDING_APPROVAL) {
       await approvalWorkflowService.createWorkflowRequest(
         post.id,
@@ -146,15 +183,8 @@ class PostService {
         postData.approvalPolicy || 'AT_LEAST_ONE',
         postData.requesterNote || 'Vui lòng phê duyệt bài viết này.'
       );
-    } else {
-      // If one-off post is scheduled, add to BullMQ
-      if (!post.autoListId && post.status === POST_STATUS.SCHEDULED && post.scheduledAt) {
-        // Native Scheduling sẽ được gọi bất đồng bộ ở background qua event subscriber (post.subscriber.js)
-        await upsertPublishJob(post.id, post.scheduledAt);
-      }
     }
 
-    eventEmitter.emit(EVENTS.POST.CREATED, { post, options: postData.options });
     return this._formatPostResponse(post);
   }
 
@@ -272,19 +302,69 @@ class PostService {
       }
     }
 
-    const updatedPost = await postRepository.update(id, data);
+    const statusChangedToPublished = post.status !== POST_STATUS.PUBLISHED && postData.status?.toUpperCase() === POST_STATUS.PUBLISHED;
+
+    const updatedPost = await prisma.$transaction(async (tx) => {
+      const updated = await postRepository.update(id, data, tx);
+
+      // Job publish + domain event ghi vào outbox trong CÙNG transaction với việc
+      // cập nhật post — outbox là nguồn ghi duy nhất cho job publish-post-${postId}.
+      if (updated.status === POST_STATUS.PENDING_APPROVAL) {
+        await outboxEventRepository.create(
+          OUTBOX_EVENT_TYPES.POST_PUBLISH_REMOVE,
+          updated.id,
+          { postId: updated.id },
+          {},
+          tx
+        );
+      } else if (statusChangedToPublished) {
+        // Đổi trạng thái thành PUBLISHED ngay lập tức (không qua SCHEDULED trước đó).
+        await outboxEventRepository.create(
+          OUTBOX_EVENT_TYPES.POST_PUBLISH_UPSERT,
+          updated.id,
+          { postId: updated.id, scheduledAt: new Date() },
+          {},
+          tx
+        );
+      } else if (!updated.autoListId) {
+        if (updated.status === POST_STATUS.SCHEDULED && updated.scheduledAt) {
+          await outboxEventRepository.create(
+            OUTBOX_EVENT_TYPES.POST_PUBLISH_UPSERT,
+            updated.id,
+            { postId: updated.id, scheduledAt: updated.scheduledAt },
+            {},
+            tx
+          );
+        } else {
+          await outboxEventRepository.create(
+            OUTBOX_EVENT_TYPES.POST_PUBLISH_REMOVE,
+            updated.id,
+            { postId: updated.id },
+            {},
+            tx
+          );
+        }
+      }
+
+      await outboxEventRepository.create(
+        OUTBOX_EVENT_TYPES.POST_DOMAIN_EVENT,
+        updated.id,
+        { eventName: EVENTS.POST.UPDATED, eventArgs: { post: updated, options: postData.options, statusChangedToPublished } },
+        {},
+        tx
+      );
+
+      return updated;
+    });
 
     // Hủy Native Scheduling nếu trạng thái đổi từ SCHEDULED sang trạng thái khác (ví dụ DRAFT, PENDING_APPROVAL)
     if (post.status === POST_STATUS.SCHEDULED && updatedPost.status !== POST_STATUS.SCHEDULED && post.platformPostId) {
       await this._cleanupNativeScheduledPost(post);
     }
 
-    // Sync BullMQ/Approval Workflow
+    // approvalWorkflowService.createWorkflowRequest có transaction/lockForUpdate riêng
+    // của nó, cố tình nằm ngoài transaction phía trên (xem Đợt 2 kế hoạch outbox).
     if (updatedPost.status === POST_STATUS.PENDING_APPROVAL) {
-      // Clean up any existing scheduled jobs
-      await removePublishJob(updatedPost.id);
-
-      // Create new workflow request
       await approvalWorkflowService.createWorkflowRequest(
         updatedPost.id,
         userId,
@@ -293,20 +373,7 @@ class PostService {
         postData.approvalPolicy || 'AT_LEAST_ONE',
         postData.requesterNote || 'Vui lòng phê duyệt bài viết sau khi cập nhật.'
       );
-    } else {
-      // Sync BullMQ for one-off posts
-      if (!updatedPost.autoListId) {
-        if (updatedPost.status === POST_STATUS.SCHEDULED && updatedPost.scheduledAt) {
-          // Native Scheduling sẽ được gọi bất đồng bộ ở background qua event subscriber (post.subscriber.js)
-          await upsertPublishJob(updatedPost.id, updatedPost.scheduledAt);
-        } else {
-          await removePublishJob(updatedPost.id);
-        }
-      }
     }
-
-    const statusChangedToPublished = post.status !== POST_STATUS.PUBLISHED && postData.status?.toUpperCase() === POST_STATUS.PUBLISHED;
-    eventEmitter.emit(EVENTS.POST.UPDATED, { post: updatedPost, options: postData.options, statusChangedToPublished });
 
     return this._formatPostResponse(updatedPost);
   }
@@ -362,17 +429,6 @@ class PostService {
   async bulkDelete(ids, brandId, deleteFromSocials = false) {
     const posts = await postRepository.findManyByIdsAndBrand(ids, brandId);
 
-    const { removePublishJob } = require('../../queues/publish.queue');
-    for (const post of posts) {
-      if (post.status === POST_STATUS.SCHEDULED) {
-        try {
-          await removePublishJob(post.id);
-        } catch (e) {
-          console.error(`[Post Service] Failed to remove publish job for deleted post ${post.id}:`, e.message);
-        }
-      }
-    }
-
     if (deleteFromSocials) {
       const socialPlatformFactory = require('../social/social-platform.factory');
       for (const post of posts) {
@@ -403,9 +459,19 @@ class PostService {
     }
 
     const autolistIds = [...new Set(posts.map(p => p.autoListId).filter(Boolean))];
+    const scheduledPostIds = posts.filter(p => p.status === POST_STATUS.SCHEDULED).map(p => p.id);
 
-    const result = await postRepository.deleteMany({ id: { in: ids }, brandId });
-    eventEmitter.emit(EVENTS.POST.BULK_DELETED, { autolistIds });
+    const result = await prisma.$transaction(async (tx) => {
+      const deleted = await postRepository.deleteMany({ id: { in: ids }, brandId }, tx);
+
+      for (const postId of scheduledPostIds) {
+        await outboxEventRepository.create(OUTBOX_EVENT_TYPES.POST_PUBLISH_REMOVE, postId, { postId }, {}, tx);
+      }
+      await outboxEventRepository.create(OUTBOX_EVENT_TYPES.POST_DOMAIN_EVENT, brandId, { eventName: EVENTS.POST.BULK_DELETED, eventArgs: { autolistIds } }, {}, tx);
+
+      return deleted;
+    });
+
     return result.count;
   }
 
@@ -413,8 +479,12 @@ class PostService {
     const posts = await postRepository.findManyByIdsAndBrand(ids, brandId);
     const autolistIds = [...new Set(posts.map(p => p.autoListId).filter(Boolean))];
 
-    const result = await postRepository.updateMany({ id: { in: ids }, brandId }, { isDeleted: false, deletedAt: null });
-    eventEmitter.emit(EVENTS.POST.BULK_RESTORED, { autolistIds });
+    const result = await prisma.$transaction(async (tx) => {
+      const restored = await postRepository.updateMany({ id: { in: ids }, brandId }, { isDeleted: false, deletedAt: null }, tx);
+      await outboxEventRepository.create(OUTBOX_EVENT_TYPES.POST_DOMAIN_EVENT, brandId, { eventName: EVENTS.POST.BULK_RESTORED, eventArgs: { autolistIds } }, {}, tx);
+      return restored;
+    });
+
     return result.count;
   }
 

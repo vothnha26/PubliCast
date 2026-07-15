@@ -92,10 +92,10 @@ class PostRepository {
     });
   }
 
-  async create(data) {
+  async create(data, client = prisma) {
     const cleanData = normalizeWindowsPaths(data);
     try {
-      return await prisma.post.create({
+      return await client.post.create({
         data: cleanData,
         include: {
           creator: {
@@ -113,10 +113,10 @@ class PostRepository {
     }
   }
 
-  async update(id, data) {
+  async update(id, data, client = prisma) {
     const cleanData = normalizeWindowsPaths(data);
     try {
-      return await prisma.post.update({
+      return await client.post.update({
         where: { id },
         data: cleanData,
         include: {
@@ -151,13 +151,13 @@ class PostRepository {
     });
   }
 
-  async deleteMany(where) {
-    return prisma.post.deleteMany({ where });
+  async deleteMany(where, client = prisma) {
+    return client.post.deleteMany({ where });
   }
 
-  async updateMany(where, data) {
+  async updateMany(where, data, client = prisma) {
     const cleanData = normalizeWindowsPaths(data);
-    return prisma.post.updateMany({
+    return client.post.updateMany({
       where,
       data: cleanData
     });

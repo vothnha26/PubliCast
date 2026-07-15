@@ -117,6 +117,12 @@ jest.mock('../../src/queues/publish.queue', () => ({
   removePublishJob: jest.fn().mockResolvedValue(true)
 }));
 
+// Mock Outbox Event Repository — approval-workflow.service.js ghi outbox trong transaction
+// thay vì gọi upsertPublishJob/eventEmitter.emit trực tiếp.
+jest.mock('../../src/repositories/core/outbox-event.repository', () => ({
+  create: jest.fn().mockResolvedValue({})
+}));
+
 // Mock Queue Dashboard
 jest.mock('../../src/queues/dashboard', () => ({
   getRouter: () => (req, res, next) => next()

@@ -13,8 +13,9 @@ const {
 } = require('../../utils/constants');
 const { REVIEW_ACTION_STRATEGY_MAP } = require('./review-action-strategies');
 const prisma = require('../../config/prisma');
-const { eventEmitter, EVENTS } = require('../../events/event-emitter');
-const { upsertPublishJob } = require('../../queues/publish.queue');
+const { EVENTS } = require('../../events/event-emitter');
+const { OUTBOX_EVENT_TYPES } = require('../../constants/outbox.constants');
+const outboxEventRepository = require('../../repositories/core/outbox-event.repository');
 
 class ApprovalWorkflowService {
   /**
@@ -185,7 +186,9 @@ class ApprovalWorkflowService {
     // Toàn bộ đọc-ghi quyết định trạng thái nằm trong 1 transaction với row lock (FOR UPDATE)
     // trên bản ghi workflow, để tránh race condition khi 2 reviewer duyệt gần như đồng thời
     // dưới policy ALL (cả hai đều đọc "chưa đủ APPROVED" trước khi bên kia commit).
-    const { finalPostStatus, updatedWorkflow } = await prisma.$transaction(async (tx) => {
+    // Job publish + domain event được ghi vào outbox trong CÙNG transaction này — outbox
+    // là nguồn ghi duy nhất, tránh side-effect bị mất nếu Redis/process lỗi sau khi commit.
+    const updatedWorkflow = await prisma.$transaction(async (tx) => {
       await approvalWorkflowRepository.lockForUpdate(workflowId, tx);
 
       const existingReviewerRecord = await tx.workflowReviewer.findFirst({
@@ -223,13 +226,12 @@ class ApprovalWorkflowService {
         reviewerComment:   comment
       }, tx);
 
-      await postRepository.updateStatus(workflow.postId, postStatus, tx);
+      const updatedPost = await postRepository.updateStatus(workflow.postId, postStatus, tx);
 
-      return { finalPostStatus: postStatus, updatedWorkflow: updated };
+      await this._recordPostApprovalOutbox(workflow.postId, postStatus, updatedPost, tx);
+
+      return updated;
     });
-
-    // Side-effect (event emit + queue job) tách khỏi transaction — chỉ chạy sau khi DB đã commit thành công.
-    await this.runPostApprovalSideEffects(workflow.postId, finalPostStatus);
 
     return updatedWorkflow;
   }
@@ -306,15 +308,16 @@ class ApprovalWorkflowService {
    * reviewWorkflowRequest (qua POLICY_EVALUATORS bên trong strategy đó), tránh
    * lặp lại quy tắc "đã đủ điều kiện approve chưa" ở TeamService.
    *
-   * Side-effect (event emit) KHÔNG chạy trong hàm này — gọi runPostApprovalSideEffects(postId, postStatus)
-   * sau khi transaction bên ngoài đã commit thành công.
+   * Side-effect (job publish + domain event) được ghi vào outbox NGAY BÊN TRONG `tx`
+   * đã truyền vào — không cần bước side-effect nào sau khi transaction bên ngoài
+   * commit, outbox tự đảm bảo retry nếu Redis/process lỗi tạm thời.
    *
-   * @returns {{ autoApproved: boolean, workflow: object, postId: string|null, postStatus: string|null }}
+   * @returns {{ autoApproved: boolean, workflow: object }}
    */
   async reevaluateAfterReviewerRemoved(workflowId, tx) {
     const workflow = await tx.approvalWorkflow.findUnique({ where: { id: workflowId } });
     if (!workflow || workflow.status !== WORKFLOW_STATUS.PENDING) {
-      return { autoApproved: false, workflow, postId: null, postStatus: null };
+      return { autoApproved: false, workflow };
     }
 
     const currentDecisions = await tx.workflowReviewer.findMany({ where: { workflowId } });
@@ -322,7 +325,7 @@ class ApprovalWorkflowService {
     const { workflowStatus, postStatus } = await strategy.execute(workflow, currentDecisions);
 
     if (workflowStatus === WORKFLOW_STATUS.PENDING) {
-      return { autoApproved: false, workflow, postId: null, postStatus: null };
+      return { autoApproved: false, workflow };
     }
 
     const updatedWorkflow = await approvalWorkflowRepository.update(workflowId, {
@@ -330,39 +333,46 @@ class ApprovalWorkflowService {
       reviewedAt: new Date()
     }, tx);
 
-    await postRepository.updateStatus(workflow.postId, postStatus, tx);
+    const updatedPost = await postRepository.updateStatus(workflow.postId, postStatus, tx);
 
-    return { autoApproved: true, workflow: updatedWorkflow, postId: workflow.postId, postStatus };
-  }
+    await this._recordPostApprovalOutbox(workflow.postId, postStatus, updatedPost, tx);
 
-  /**
-   * Side-effect hậu-transaction dùng chung: phát event POST.UPDATED và đẩy job lên BullMQ
-   * sau khi trạng thái post đã được commit vào DB. Gọi từ reviewWorkflowRequest và từ TeamService
-   * sau khi reevaluateAfterReviewerRemoved xác nhận autoApproved.
-   */
-  async runPostApprovalSideEffects(postId, postStatus) {
-    const post = await postRepository.findById(postId);
-    if (post && postStatus === POST_STATUS.SCHEDULED && post.scheduledAt) {
-      await upsertPublishJob(post.id, post.scheduledAt);
-    }
-    await this._emitPostUpdated(postId, postStatus);
+    return { autoApproved: true, workflow: updatedWorkflow };
   }
 
   // ---------------------------------------------------------------------------
   // Private helpers
   // ---------------------------------------------------------------------------
 
-  /** Phát event POST.UPDATED với metadata đã parse — dùng chung cho mọi luồng đổi trạng thái post do workflow. */
-  async _emitPostUpdated(postId, postStatus) {
-    const updatedPost = await postRepository.findById(postId);
-    if (!updatedPost) return;
+  /**
+   * Ghi outbox row cho job publish (nếu postStatus === SCHEDULED) và luôn ghi domain
+   * event POST.UPDATED — dùng chung cho reviewWorkflowRequest và
+   * reevaluateAfterReviewerRemoved. Phải được gọi bên trong transaction `tx` đang mở,
+   * cùng transaction với việc cập nhật status post/workflow, để đảm bảo atomic.
+   */
+  async _recordPostApprovalOutbox(postId, postStatus, updatedPost, tx) {
+    if (postStatus === POST_STATUS.SCHEDULED && updatedPost?.scheduledAt) {
+      await outboxEventRepository.create(
+        OUTBOX_EVENT_TYPES.POST_PUBLISH_UPSERT,
+        postId,
+        { postId, scheduledAt: updatedPost.scheduledAt },
+        {},
+        tx
+      );
+    }
 
     let options = {};
-    if (updatedPost.metadata) {
+    if (updatedPost?.metadata) {
       try { options = JSON.parse(updatedPost.metadata); } catch (e) { /* metadata không hợp lệ, bỏ qua */ }
     }
     const statusChangedToPublished = postStatus === POST_STATUS.PUBLISHED;
-    eventEmitter.emit(EVENTS.POST.UPDATED, { post: updatedPost, options, statusChangedToPublished });
+    await outboxEventRepository.create(
+      OUTBOX_EVENT_TYPES.POST_DOMAIN_EVENT,
+      postId,
+      { eventName: EVENTS.POST.UPDATED, eventArgs: { post: updatedPost, options, statusChangedToPublished } },
+      {},
+      tx
+    );
   }
 
   /** Map REVIEW_ACTION → trạng thái WorkflowReviewer tương ứng. */

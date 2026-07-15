@@ -8,7 +8,8 @@ const postRepository = require('../../src/repositories/workspace/post.repository
 const brandRepository = require('../../src/repositories/workspace/brand.repository');
 const authorizationFacade = require('../../src/services/auth/authorization.facade');
 const { PLATFORMS, POST_STATUS } = require('../../src/utils/constants');
-const { eventEmitter, EVENTS } = require('../../src/events/event-emitter');
+const outboxEventRepository = require('../../src/repositories/core/outbox-event.repository');
+const { OUTBOX_EVENT_TYPES } = require('../../src/constants/outbox.constants');
 
 // --- Mock all external dependencies ---
 jest.mock('../../src/repositories/workspace/post.repository', () => ({
@@ -38,6 +39,17 @@ jest.mock('../../src/services/workspace/approval-workflow.service', () => ({
 jest.mock('../../src/queues/publish.queue', () => ({
   upsertPublishJob: jest.fn(),
   removePublishJob: jest.fn()
+}));
+
+jest.mock('../../src/repositories/core/outbox-event.repository', () => ({
+  create: jest.fn()
+}));
+
+jest.mock('../../src/config/prisma', () => ({
+  platformLimit: {
+    findMany: jest.fn().mockResolvedValue([])
+  },
+  $transaction: jest.fn().mockImplementation((cb) => cb({}))
 }));
 
 // Mock the social platform factory
@@ -149,7 +161,7 @@ describe('POST_SOCIAL - updatePost trên nền tảng đã xuất bản (PUBLISH
       expect(postRepository.update).toHaveBeenCalled();
     });
 
-    it('should emit POST.UPDATED with statusChangedToPublished = false if post was already PUBLISHED', async () => {
+    it('should record a POST_DOMAIN_EVENT outbox row with statusChangedToPublished = false if post was already PUBLISHED', async () => {
       postRepository.findById.mockResolvedValue(publishedFacebookPost);
       socialPlatformFactory.getService.mockReturnValue(mockFacebookService);
       mockFacebookService.updatePublishedPost.mockResolvedValue({ success: true });
@@ -159,8 +171,6 @@ describe('POST_SOCIAL - updatePost trên nền tảng đã xuất bản (PUBLISH
         caption: 'Nội dung đã cập nhật'
       });
 
-      const emitSpy = jest.spyOn(eventEmitter, 'emit');
-
       await postService.updatePost(
         POST_ID,
         { caption: 'Nội dung đã cập nhật', status: 'PUBLISHED' },
@@ -168,14 +178,16 @@ describe('POST_SOCIAL - updatePost trên nền tảng đã xuất bản (PUBLISH
         USER_ID
       );
 
-      expect(emitSpy).toHaveBeenCalledWith(
-        EVENTS.POST.UPDATED,
+      expect(outboxEventRepository.create).toHaveBeenCalledWith(
+        OUTBOX_EVENT_TYPES.POST_DOMAIN_EVENT,
+        POST_ID,
         expect.objectContaining({
-          statusChangedToPublished: false
-        })
+          eventName: 'post.updated',
+          eventArgs: expect.objectContaining({ statusChangedToPublished: false })
+        }),
+        {},
+        expect.anything()
       );
-
-      emitSpy.mockRestore();
     });
 
     it('should throw error if attempting to add media to a published text-only Facebook post', async () => {
@@ -298,7 +310,7 @@ describe('POST_SOCIAL - bulkDelete với deleteFromSocials = true', () => {
       expect(postRepository.deleteMany).toHaveBeenCalledWith({
         id: { in: ['post-1', 'post-2'] },
         brandId: BRAND_ID
-      });
+      }, expect.anything());
     });
   });
 
@@ -357,7 +369,7 @@ describe('POST_SOCIAL - bulkDelete với deleteFromSocials = true', () => {
       expect(postRepository.deleteMany).toHaveBeenCalledWith({
         id: { in: ['post-discord-1'] },
         brandId: BRAND_ID
-      });
+      }, expect.anything());
     });
   });
 
@@ -400,7 +412,7 @@ describe('POST_SOCIAL - bulkDelete với deleteFromSocials = true', () => {
 
   // -------------------------------------------------------------------------
   describe('POST_SOCIAL_009 - bulkDelete cho bài SCHEDULED', () => {
-    it('should call facebookService.deletePost and removePublishJob for scheduled Facebook post', async () => {
+    it('should call facebookService.deletePost and record a POST_PUBLISH_REMOVE outbox row for scheduled Facebook post', async () => {
       const posts = [
         { id: 'post-sched-1', status: POST_STATUS.SCHEDULED, targetPlatforms: PLATFORMS.FACEBOOK, platformPostId: 'fb_sched_111', autoListId: null }
       ];
@@ -409,11 +421,15 @@ describe('POST_SOCIAL - bulkDelete với deleteFromSocials = true', () => {
       mockFacebookService.deletePost.mockResolvedValue({ success: true });
       postRepository.deleteMany.mockResolvedValue({ count: 1 });
 
-      const { removePublishJob } = require('../../src/queues/publish.queue');
-
       await postService.bulkDelete(['post-sched-1'], BRAND_ID, true);
 
-      expect(removePublishJob).toHaveBeenCalledWith('post-sched-1');
+      expect(outboxEventRepository.create).toHaveBeenCalledWith(
+        OUTBOX_EVENT_TYPES.POST_PUBLISH_REMOVE,
+        'post-sched-1',
+        { postId: 'post-sched-1' },
+        {},
+        expect.anything()
+      );
       expect(mockFacebookService.deletePost).toHaveBeenCalledWith(BRAND_ID, 'fb_sched_111');
       expect(postRepository.deleteMany).toHaveBeenCalled();
     });

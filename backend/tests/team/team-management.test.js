@@ -88,6 +88,12 @@ jest.mock('../../src/config/prisma', () => {
 
 const prisma = require('../../src/config/prisma');
 
+// Mock Outbox Event Repository — approval-workflow.service.js ghi outbox trong
+// transaction thay vì gọi upsertPublishJob/eventEmitter.emit trực tiếp.
+jest.mock('../../src/repositories/core/outbox-event.repository', () => ({
+  create: jest.fn().mockResolvedValue({})
+}));
+
 // Mock Token Service
 jest.mock('../../src/services/auth/token.service', () => ({
   generateAndSaveTokens: jest.fn().mockResolvedValue({
