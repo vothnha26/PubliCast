@@ -152,22 +152,16 @@ export function useMediaLibrary() {
   const deleteFile = async (id) => {
     if (!activeBrand) return;
     try {
-      // Optimistic UI update: Remove from local state immediately
-      setMediaData(prev => ({
-        ...prev,
-        data: prev.data.filter(item => item.id !== id),
-        meta: { ...prev.meta, total: prev.meta.total - 1 }
-      }));
-      
       await apiService.delete(`/media/${id}`, { data: { brandId: activeBrand.id } });
       toast.success("File deleted successfully");
       if (detail?.id === id) setDetail(null);
-      
-      // Sync with server
       await fetchMedia();
     } catch (error) {
+      // Real backend errors surface here — e.g. 409 when the file is still
+      // referenced by a Post, or 500 if Cloudinary deletion actually failed.
+      // No optimistic pre-delete/rollback: the list only changes once we know
+      // the delete truly succeeded.
       toast.error(error.message || "Delete failed");
-      fetchMedia(); // Rollback/Refetch on error
     }
   };
 
@@ -175,26 +169,26 @@ export function useMediaLibrary() {
     if (!activeBrand || selected.size === 0) return;
     const toastId = toast.loading(`Deleting ${selected.size} file(s)...`);
     const idsToDelete = Array.from(selected);
-    
-    try {
-      // Optimistic UI update
-      setMediaData(prev => ({
-        ...prev,
-        data: prev.data.filter(item => !selected.has(item.id)),
-        meta: { ...prev.meta, total: prev.meta.total - selected.size }
-      }));
-      
-      for (const id of idsToDelete) {
+    const failures = [];
+
+    for (const id of idsToDelete) {
+      try {
         await apiService.delete(`/media/${id}`, { data: { brandId: activeBrand.id } });
+      } catch (error) {
+        failures.push({ id, message: error.message });
       }
-      
-      toast.success("Selected files deleted", { id: toastId });
-      setSelected(new Set());
-      await fetchMedia();
-    } catch (error) {
-      toast.error("Failed to delete some files", { id: toastId });
-      fetchMedia();
     }
+
+    if (failures.length === 0) {
+      toast.success("Selected files deleted", { id: toastId });
+    } else if (failures.length === idsToDelete.length) {
+      toast.error(failures[0].message || "Failed to delete files", { id: toastId });
+    } else {
+      toast.error(`${failures.length}/${idsToDelete.length} files could not be deleted (still in use)`, { id: toastId });
+    }
+
+    setSelected(new Set());
+    await fetchMedia();
   };
 
   const renameFile = async (id, newName) => {
