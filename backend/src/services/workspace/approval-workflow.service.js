@@ -135,7 +135,6 @@ class ApprovalWorkflowService {
       brandId,
       requesterId,
       approvalPolicy:    policy,
-      selectedReviewers: JSON.stringify(reviewerList),
       requesterNote,
       status:            WORKFLOW_STATUS.PENDING,
       reviewers: {
@@ -180,20 +179,13 @@ class ApprovalWorkflowService {
       throw error;
     }
 
-    let reviewerStatus = WORKFLOW_STATUS.PENDING;
-    if (action === REVIEW_ACTION.APPROVED) {
-      reviewerStatus = WORKFLOW_STATUS.APPROVED;
-    } else if (action === REVIEW_ACTION.REJECTED) {
-      reviewerStatus = WORKFLOW_STATUS.REJECTED;
-    } else if (action === REVIEW_ACTION.REVISION_NEEDED) {
-      reviewerStatus = WORKFLOW_STATUS.REVISION_NEEDED;
-    }
+    const reviewerStatus = this._reviewerStatusForAction(action);
 
     // Toàn bộ đọc-ghi quyết định trạng thái nằm trong 1 transaction với row lock (FOR UPDATE)
     // trên bản ghi workflow, để tránh race condition khi 2 reviewer duyệt gần như đồng thời
     // dưới policy ALL (cả hai đều đọc "chưa đủ APPROVED" trước khi bên kia commit).
-    const { finalWorkflowStatus, finalPostStatus, updatedWorkflow } = await prisma.$transaction(async (tx) => {
-      await tx.$queryRaw`SELECT id FROM approval_workflows WHERE id = ${workflowId} FOR UPDATE`;
+    const { finalPostStatus, updatedWorkflow } = await prisma.$transaction(async (tx) => {
+      await approvalWorkflowRepository.lockForUpdate(workflowId, tx);
 
       const existingReviewerRecord = await tx.workflowReviewer.findFirst({
         where: { workflowId, reviewerId }
@@ -220,42 +212,8 @@ class ApprovalWorkflowService {
         });
       }
 
-      let workflowStatus = WORKFLOW_STATUS.PENDING;
-      let postStatus = POST_STATUS.PENDING_APPROVAL;
-
-      if (action === REVIEW_ACTION.REJECTED) {
-        workflowStatus = WORKFLOW_STATUS.REJECTED;
-        postStatus = POST_STATUS.REJECTED;
-      } else if (action === REVIEW_ACTION.REVISION_NEEDED) {
-        workflowStatus = WORKFLOW_STATUS.REVISION_NEEDED;
-        postStatus = POST_STATUS.DRAFT;
-      } else if (action === REVIEW_ACTION.APPROVED) {
-        const policy = workflow.approvalPolicy || WORKFLOW_POLICY.AT_LEAST_ONE;
-        if (policy === WORKFLOW_POLICY.AT_LEAST_ONE) {
-          const result = await strategy.execute(workflow);
-          workflowStatus = result.workflowStatus;
-          postStatus = result.postStatus;
-        } else if (policy === WORKFLOW_POLICY.ALL) {
-          const reviewersList = this._dedupeReviewerIds(JSON.parse(workflow.selectedReviewers || '[]'));
-          const currentDecisions = await tx.workflowReviewer.findMany({
-            where: { workflowId }
-          });
-
-          const allApproved = reviewersList.every(rId => {
-            const decision = currentDecisions.find(d => d.reviewerId === rId);
-            return decision && decision.status === WORKFLOW_STATUS.APPROVED;
-          });
-
-          if (allApproved) {
-            const result = await strategy.execute(workflow);
-            workflowStatus = result.workflowStatus;
-            postStatus = result.postStatus;
-          } else {
-            workflowStatus = WORKFLOW_STATUS.PENDING;
-            postStatus = POST_STATUS.PENDING_APPROVAL;
-          }
-        }
-      }
+      const currentDecisions = await tx.workflowReviewer.findMany({ where: { workflowId } });
+      const { workflowStatus, postStatus } = await strategy.execute(workflow, currentDecisions);
 
       const updated = await approvalWorkflowRepository.update(workflowId, {
         status:            workflowStatus,
@@ -266,19 +224,11 @@ class ApprovalWorkflowService {
 
       await postRepository.updateStatus(workflow.postId, postStatus, tx);
 
-      return { finalWorkflowStatus: workflowStatus, finalPostStatus: postStatus, updatedWorkflow: updated };
+      return { finalPostStatus: postStatus, updatedWorkflow: updated };
     });
 
     // Side-effect (event emit) tách khỏi transaction — chỉ chạy sau khi DB đã commit thành công.
-    const updatedPost = await postRepository.findById(workflow.postId);
-    if (updatedPost) {
-      let options = {};
-      if (updatedPost.metadata) {
-        try { options = JSON.parse(updatedPost.metadata); } catch(e) {}
-      }
-      const statusChangedToPublished = finalPostStatus === POST_STATUS.PUBLISHED;
-      eventEmitter.emit(EVENTS.POST.UPDATED, { post: updatedPost, options, statusChangedToPublished });
-    }
+    await this._emitPostUpdated(workflow.postId, finalPostStatus);
 
     return updatedWorkflow;
   }
@@ -322,12 +272,11 @@ class ApprovalWorkflowService {
     // Xóa reviewer cũ + tạo lại trong cùng 1 transaction với row lock, tránh trạng thái
     // "workflow trống hoàn toàn người duyệt" nếu bước tạo mới lỗi giữa chừng.
     const updatedWorkflow = await prisma.$transaction(async (tx) => {
-      await tx.$queryRaw`SELECT id FROM approval_workflows WHERE id = ${workflowId} FOR UPDATE`;
+      await approvalWorkflowRepository.lockForUpdate(workflowId, tx);
 
       await tx.workflowReviewer.deleteMany({ where: { workflowId } });
 
       const updateData = {
-        selectedReviewers: JSON.stringify(reviewerList),
         reviewers: {
           create: reviewerList.map(rId => ({
             reviewerId: rId,
@@ -343,9 +292,83 @@ class ApprovalWorkflowService {
     return updatedWorkflow;
   }
 
+  /**
+   * Đánh giá lại workflow sau khi một reviewer bị xóa khỏi workflow_reviewers
+   * (do bị kick khỏi team hoặc mất quyền APPROVE_POSTS). Được gọi bởi
+   * TeamService._handleReviewerRemoved bên trong 1 transaction đã mở sẵn và đã
+   * khóa dòng workflow (approvalWorkflowRepository.lockForUpdate) — hàm này
+   * KHÔNG tự mở transaction hay tự khóa dòng.
+   *
+   * Nếu chính sách hiện tại đã thỏa mãn với các reviewer còn lại (vd. ALL và
+   * tất cả người còn lại đã APPROVED), tự động chuyển workflow sang APPROVED
+   * và cập nhật post tương ứng — dùng chung ApprovedActionStrategy.execute với
+   * reviewWorkflowRequest (qua POLICY_EVALUATORS bên trong strategy đó), tránh
+   * lặp lại quy tắc "đã đủ điều kiện approve chưa" ở TeamService.
+   *
+   * Side-effect (event emit) KHÔNG chạy trong hàm này — gọi runPostApprovalSideEffects(postId, postStatus)
+   * sau khi transaction bên ngoài đã commit thành công.
+   *
+   * @returns {{ autoApproved: boolean, workflow: object, postId: string|null, postStatus: string|null }}
+   */
+  async reevaluateAfterReviewerRemoved(workflowId, tx) {
+    const workflow = await tx.approvalWorkflow.findUnique({ where: { id: workflowId } });
+    if (!workflow || workflow.status !== WORKFLOW_STATUS.PENDING) {
+      return { autoApproved: false, workflow, postId: null, postStatus: null };
+    }
+
+    const currentDecisions = await tx.workflowReviewer.findMany({ where: { workflowId } });
+    const strategy = REVIEW_ACTION_STRATEGY_MAP[REVIEW_ACTION.APPROVED];
+    const { workflowStatus, postStatus } = await strategy.execute(workflow, currentDecisions);
+
+    if (workflowStatus === WORKFLOW_STATUS.PENDING) {
+      return { autoApproved: false, workflow, postId: null, postStatus: null };
+    }
+
+    const updatedWorkflow = await approvalWorkflowRepository.update(workflowId, {
+      status:     workflowStatus,
+      reviewedAt: new Date()
+    }, tx);
+
+    await postRepository.updateStatus(workflow.postId, postStatus, tx);
+
+    return { autoApproved: true, workflow: updatedWorkflow, postId: workflow.postId, postStatus };
+  }
+
+  /**
+   * Side-effect hậu-transaction dùng chung: phát event POST.UPDATED sau khi trạng thái
+   * post đã được commit vào DB. Gọi từ reviewWorkflowRequest và từ TeamService sau khi
+   * reevaluateAfterReviewerRemoved xác nhận autoApproved.
+   */
+  async runPostApprovalSideEffects(postId, postStatus) {
+    await this._emitPostUpdated(postId, postStatus);
+  }
+
   // ---------------------------------------------------------------------------
   // Private helpers
   // ---------------------------------------------------------------------------
+
+  /** Phát event POST.UPDATED với metadata đã parse — dùng chung cho mọi luồng đổi trạng thái post do workflow. */
+  async _emitPostUpdated(postId, postStatus) {
+    const updatedPost = await postRepository.findById(postId);
+    if (!updatedPost) return;
+
+    let options = {};
+    if (updatedPost.metadata) {
+      try { options = JSON.parse(updatedPost.metadata); } catch (e) { /* metadata không hợp lệ, bỏ qua */ }
+    }
+    const statusChangedToPublished = postStatus === POST_STATUS.PUBLISHED;
+    eventEmitter.emit(EVENTS.POST.UPDATED, { post: updatedPost, options, statusChangedToPublished });
+  }
+
+  /** Map REVIEW_ACTION → trạng thái WorkflowReviewer tương ứng. */
+  _reviewerStatusForAction(action) {
+    const map = {
+      [REVIEW_ACTION.APPROVED]:        WORKFLOW_STATUS.APPROVED,
+      [REVIEW_ACTION.REJECTED]:        WORKFLOW_STATUS.REJECTED,
+      [REVIEW_ACTION.REVISION_NEEDED]: WORKFLOW_STATUS.REVISION_NEEDED
+    };
+    return map[action] || WORKFLOW_STATUS.PENDING;
+  }
 
   /** Kiểm tra member có quyền APPROVE_POSTS không (ADMIN hoặc custom role). */
   _memberHasApprovePermission(member) {

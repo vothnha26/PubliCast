@@ -152,6 +152,11 @@ class ApprovalWorkflowRepository {
     });
   }
 
+  /** Khóa dòng workflow (SELECT ... FOR UPDATE) trong 1 transaction đang mở, ngăn race condition. */
+  async lockForUpdate(id, tx) {
+    await tx.$queryRaw`SELECT id FROM approval_workflows WHERE id = ${id} FOR UPDATE`;
+  }
+
   async update(id, data, client = prisma) {
     return client.approvalWorkflow.update({
       where: { id },

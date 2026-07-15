@@ -782,7 +782,7 @@ model ApprovalWorkflow {
   brandId           String
   requesterId       String
   approvalPolicy    ApprovalPolicy
-  selectedReviewers String         @db.Text
+  selectedReviewers String?        @db.Text
   reviewedByUserId  String?
   status            WorkflowStatus @default(PENDING)
   requesterNote     String?        @db.Text
