@@ -509,7 +509,7 @@ class TeamService {
       throw error;
     }
 
-    const isAuthorized = await this._checkBrandAccess(team.brandId, operatorUserId);
+    const isAuthorized = await authorizationFacade.checkPermission(operatorUserId, team.brandId, PERMISSION_KEYS.MANAGE_TEAM);
     if (!isAuthorized) {
       const error = new Error('Bạn không có quyền quản lý thành viên của thương hiệu này.');
       error.status = 403;
@@ -572,7 +572,7 @@ class TeamService {
       throw error;
     }
 
-    const isAuthorized = await this._checkBrandAccess(team.brandId, operatorUserId);
+    const isAuthorized = await authorizationFacade.checkPermission(operatorUserId, team.brandId, PERMISSION_KEYS.MANAGE_TEAM);
     if (!isAuthorized) {
       const error = new Error('Bạn không có quyền xóa thành viên của thương hiệu này.');
       error.status = 403;
@@ -594,19 +594,6 @@ class TeamService {
   }
 
   // ============= Private Helper Methods =============
-
-  async _checkBrandAccess(brandId, userId) {
-    const brand = await prisma.brand.findUnique({
-      where: { id: brandId }
-    });
-    if (!brand) return false;
-    if (brand.ownerId === userId) return true;
-
-    const teamMember = await prisma.team.findFirst({
-      where: { brandId, userId, status: 'ACTIVE', role: 'ADMIN' }
-    });
-    return !!teamMember;
-  }
 
   /**
    * Kiểm tra xem dbRole/customRoleId có quyền APPROVE_POSTS không.

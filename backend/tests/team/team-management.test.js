@@ -60,6 +60,9 @@ jest.mock('../../src/config/prisma', () => {
     findFirst: jest.fn(),
     findUnique: jest.fn()
   };
+  const mockCustomRolePermission = {
+    findUnique: jest.fn()
+  };
   const mockWorkflowReviewer = {
     findMany: jest.fn().mockResolvedValue([]),
     delete: jest.fn().mockResolvedValue({}),
@@ -76,6 +79,7 @@ jest.mock('../../src/config/prisma', () => {
     user: mockUser,
     userAccount: mockUserAccount,
     customRole: mockCustomRole,
+    customRolePermission: mockCustomRolePermission,
     workflowReviewer: mockWorkflowReviewer,
     approvalWorkflow: mockApprovalWorkflow,
     post: { update: jest.fn(), findUnique: jest.fn() },
@@ -394,7 +398,8 @@ describe('Team Management APIs', () => {
       };
       
       prisma.team.findUnique.mockResolvedValue(mockTeam);
-      prisma.brand.findUnique.mockResolvedValue({ id: 'brand-1', ownerId: 'operator-id' });
+      // authorizationFacade.OwnerStrategy checks brand.ownerId via findFirst, not findUnique.
+      prisma.brand.findFirst.mockResolvedValue({ id: 'brand-1', ownerId: 'operator-id' });
       prisma.team.update.mockResolvedValue({
         ...mockTeam,
         role: 'ADMIN',
@@ -421,7 +426,8 @@ describe('Team Management APIs', () => {
       };
 
       prisma.team.findUnique.mockResolvedValue(mockTeam);
-      prisma.brand.findUnique.mockResolvedValue({ id: 'brand-1', ownerId: 'operator-id' });
+      // authorizationFacade.OwnerStrategy checks brand.ownerId via findFirst, not findUnique.
+      prisma.brand.findFirst.mockResolvedValue({ id: 'brand-1', ownerId: 'operator-id' });
       prisma.customRole.findFirst.mockResolvedValue(null);
       prisma.team.update.mockResolvedValue({
         ...mockTeam,
@@ -444,6 +450,45 @@ describe('Team Management APIs', () => {
         })
       );
     });
+
+    it('should reject a non-owner ADMIN whose CustomRole has revoked MANAGE_TEAM (regression: previously bypassed via legacy role field)', async () => {
+      const mockTeam = {
+        id: 'team-1',
+        brandId: 'brand-1',
+        userId: 'user-1',
+        role: 'USER',
+        status: 'ACTIVE',
+        brand: { ownerId: 'someone-else-id' }
+      };
+
+      prisma.team.findUnique.mockResolvedValue(mockTeam);
+      // Operator is NOT the brand owner (OwnerStrategy queries via findFirst)...
+      prisma.brand.findFirst.mockResolvedValue(null);
+      // ...but is a legacy 'ADMIN' team member with a CustomRole assigned...
+      prisma.team.findFirst.mockResolvedValue(null); // not matched by DefaultRoleStrategy's old ADMIN-only lookup
+      prisma.team.findUnique.mockImplementation((args) => {
+        if (args?.where?.brandId_userId) {
+          // authorizationFacade membership lookup for the operator
+          return Promise.resolve({
+            brandId: 'brand-1',
+            userId: 'operator-id',
+            status: 'ACTIVE',
+            role: 'ADMIN',
+            customRoleId: 'custom-role-revoked'
+          });
+        }
+        return Promise.resolve(mockTeam); // teamRepository.findById(id) lookup for the target
+      });
+      // ...and that CustomRole has explicitly revoked MANAGE_TEAM.
+      prisma.customRolePermission.findUnique.mockResolvedValue({ isAllowed: false });
+
+      const res = await request(app)
+        .put('/api/team/team-1/role')
+        .send({ role: 'Analyst' });
+
+      expect(res.status).toBe(403);
+      expect(prisma.team.update).not.toHaveBeenCalled();
+    });
   });
 
   describe('DELETE /api/team/:id', () => {
@@ -456,7 +501,7 @@ describe('Team Management APIs', () => {
       };
 
       prisma.team.findUnique.mockResolvedValue(mockTeam);
-      prisma.brand.findUnique.mockResolvedValue({ id: 'brand-1', ownerId: 'operator-id' });
+      prisma.brand.findFirst.mockResolvedValue({ id: 'brand-1', ownerId: 'operator-id' });
       prisma.team.delete.mockResolvedValue({});
 
       const res = await request(app).delete('/api/team/team-1');
@@ -489,7 +534,7 @@ describe('Team Management APIs', () => {
       };
 
       prisma.team.findUnique.mockResolvedValue(mockTeam);
-      prisma.brand.findUnique.mockResolvedValue({ id: 'brand-1', ownerId: 'operator-id' });
+      prisma.brand.findFirst.mockResolvedValue({ id: 'brand-1', ownerId: 'operator-id' });
       prisma.team.delete.mockResolvedValue({});
       prisma.workflowReviewer.findMany.mockResolvedValueOnce([mockWorkflowReviewerRecord]); // affectedReviewers lookup
       prisma.user.findUnique.mockResolvedValue({ id: 'user-1', name: 'Removed User' });
@@ -545,7 +590,7 @@ describe('Team Management APIs', () => {
       };
 
       prisma.team.findUnique.mockResolvedValue(mockTeam);
-      prisma.brand.findUnique.mockResolvedValue({ id: 'brand-1', ownerId: 'operator-id' });
+      prisma.brand.findFirst.mockResolvedValue({ id: 'brand-1', ownerId: 'operator-id' });
       prisma.team.delete.mockResolvedValue({});
       prisma.workflowReviewer.findMany.mockResolvedValueOnce([mockWorkflowReviewerRecord]);
       prisma.user.findUnique.mockResolvedValue({ id: 'user-1', name: 'Removed User' });

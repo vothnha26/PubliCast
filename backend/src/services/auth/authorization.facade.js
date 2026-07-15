@@ -1,4 +1,5 @@
 const prisma = require('../../config/prisma');
+const { PERMISSION_KEYS } = require('../../utils/constants');
 
 class OwnerStrategy {
   async canAccess(userId, brandId) {
@@ -13,28 +14,43 @@ class DefaultRoleStrategy {
   constructor() {
     this.matrix = {
       ADMIN: {
-        VIEW_ANALYTICS: true,
-        CREATE_POSTS: true,
-        APPROVE_POSTS: true,
-        MANAGE_CONNECTIONS: true,
-        MANAGE_TEAM: true,
-        MANAGE_ROLES: true,
+        [PERMISSION_KEYS.VIEW_ANALYTICS]: true,
+        [PERMISSION_KEYS.CREATE_POSTS]: true,
+        [PERMISSION_KEYS.PUBLISH_POSTS]: true,
+        [PERMISSION_KEYS.APPROVE_POSTS]: true,
+        [PERMISSION_KEYS.DELETE_POSTS]: true,
+        [PERMISSION_KEYS.MANAGE_CONNECTIONS]: true,
+        [PERMISSION_KEYS.MANAGE_TEAM]: true,
+        [PERMISSION_KEYS.MANAGE_ROLES]: true,
+        [PERMISSION_KEYS.INVITE_MEMBERS]: true,
+        [PERMISSION_KEYS.MANAGE_MEDIA]: true,
+        [PERMISSION_KEYS.CREATE_LIVESTREAM]: true,
       },
       USER: { // USER represents Member
-        VIEW_ANALYTICS: true,
-        CREATE_POSTS: true,
-        APPROVE_POSTS: false,
-        MANAGE_CONNECTIONS: false,
-        MANAGE_TEAM: false,
-        MANAGE_ROLES: false,
+        [PERMISSION_KEYS.VIEW_ANALYTICS]: true,
+        [PERMISSION_KEYS.CREATE_POSTS]: true,
+        [PERMISSION_KEYS.PUBLISH_POSTS]: false,
+        [PERMISSION_KEYS.APPROVE_POSTS]: false,
+        [PERMISSION_KEYS.DELETE_POSTS]: false,
+        [PERMISSION_KEYS.MANAGE_CONNECTIONS]: false,
+        [PERMISSION_KEYS.MANAGE_TEAM]: false,
+        [PERMISSION_KEYS.MANAGE_ROLES]: false,
+        [PERMISSION_KEYS.INVITE_MEMBERS]: false,
+        [PERMISSION_KEYS.MANAGE_MEDIA]: true,
+        [PERMISSION_KEYS.CREATE_LIVESTREAM]: false,
       },
       ANALYST: {
-        VIEW_ANALYTICS: true,
-        CREATE_POSTS: false,
-        APPROVE_POSTS: false,
-        MANAGE_CONNECTIONS: false,
-        MANAGE_TEAM: false,
-        MANAGE_ROLES: false,
+        [PERMISSION_KEYS.VIEW_ANALYTICS]: true,
+        [PERMISSION_KEYS.CREATE_POSTS]: false,
+        [PERMISSION_KEYS.PUBLISH_POSTS]: false,
+        [PERMISSION_KEYS.APPROVE_POSTS]: false,
+        [PERMISSION_KEYS.DELETE_POSTS]: false,
+        [PERMISSION_KEYS.MANAGE_CONNECTIONS]: false,
+        [PERMISSION_KEYS.MANAGE_TEAM]: false,
+        [PERMISSION_KEYS.MANAGE_ROLES]: false,
+        [PERMISSION_KEYS.INVITE_MEMBERS]: false,
+        [PERMISSION_KEYS.MANAGE_MEDIA]: false,
+        [PERMISSION_KEYS.CREATE_LIVESTREAM]: false,
       }
     };
   }

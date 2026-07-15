@@ -1,6 +1,27 @@
 const prisma = require('../../config/prisma');
 const roleRepository = require('../../repositories/workspace/role.repository');
 const authorizationFacade = require('../auth/authorization.facade');
+const { PERMISSION_KEYS } = require('../../utils/constants');
+
+const VALID_PERMISSION_KEYS = new Set(Object.values(PERMISSION_KEYS));
+
+/**
+ * Throws a 400 if any permissionKey in `permissions` isn't a recognized
+ * PERMISSION_KEYS value. PERMISSION_KEYS is the source of truth authorizationFacade
+ * actually checks against at runtime, so this is what a CustomRole write must be
+ * validated against (not the SystemPermission table, which is only a UI catalog).
+ */
+function assertValidPermissionKeys(permissions) {
+  if (!permissions || permissions.length === 0) return;
+  const invalidKeys = permissions
+    .map((p) => p.permissionKey)
+    .filter((key) => !VALID_PERMISSION_KEYS.has(key));
+  if (invalidKeys.length > 0) {
+    const error = new Error(`Permission key không hợp lệ: ${invalidKeys.join(', ')}`);
+    error.status = 400;
+    throw error;
+  }
+}
 
 class RoleService {
   /**
@@ -15,14 +36,17 @@ class RoleService {
    */
   async createRole(brandId, { name, description, colorHex, permissions }, operatorId) {
     // 1. Verify operator has MANAGE_ROLES permission
-    const isAuthorized = await authorizationFacade.checkPermission(operatorId, brandId, 'MANAGE_ROLES');
+    const isAuthorized = await authorizationFacade.checkPermission(operatorId, brandId, PERMISSION_KEYS.MANAGE_ROLES);
     if (!isAuthorized) {
       const error = new Error('Bạn không có quyền quản lý vai trò trong thương hiệu này.');
       error.status = 403;
       throw error;
     }
 
-    // 2. Verify subscription limit (allowCustomRoles)
+    // 2. Reject unknown permission keys before they reach the DB
+    assertValidPermissionKeys(permissions);
+
+    // 3. Verify subscription limit (allowCustomRoles)
     const brand = await prisma.brand.findUnique({
       where: { id: brandId },
       include: {
@@ -49,7 +73,7 @@ class RoleService {
       error.status = 403;
       throw error;
     }
-    // 3. Validate name, color, and name length
+    // 4. Validate name, color, and name length
     if (!name || !name.trim()) {
       const error = new Error('Tên vai trò không được để trống.');
       error.status = 400;
@@ -67,7 +91,7 @@ class RoleService {
       error.status = 400;
       throw error;
     }
-    // 4. Check for duplicate role name in the same brand
+    // 5. Check for duplicate role name in the same brand
     const existingRole = await roleRepository.findByName(brandId, name.trim());
     if (existingRole) {
       const error = new Error('Vai trò với tên này đã tồn tại trong thương hiệu.');
@@ -75,7 +99,7 @@ class RoleService {
       throw error;
     }
 
-    // 5. Create role
+    // 6. Create role
     return roleRepository.create({
       brandId,
       name: name.trim(),
@@ -90,7 +114,7 @@ class RoleService {
    */
   async updateRole(brandId, roleId, { name, description, colorHex, permissions }, operatorId) {
     // 1. Verify operator has MANAGE_ROLES permission
-    const isAuthorized = await authorizationFacade.checkPermission(operatorId, brandId, 'MANAGE_ROLES');
+    const isAuthorized = await authorizationFacade.checkPermission(operatorId, brandId, PERMISSION_KEYS.MANAGE_ROLES);
     if (!isAuthorized) {
       const error = new Error('Bạn không có quyền quản lý vai trò trong thương hiệu này.');
       error.status = 403;
@@ -105,7 +129,10 @@ class RoleService {
       throw error;
     }
 
-    // 3. Validate name, name length and color
+    // 3. Reject unknown permission keys before they reach the DB
+    assertValidPermissionKeys(permissions);
+
+    // 4. Validate name, name length and color
     if (!name || !name.trim()) {
       const error = new Error('Tên vai trò không được để trống.');
       error.status = 400;
@@ -124,7 +151,7 @@ class RoleService {
       throw error;
     }
 
-    // 4. Check for duplicate name (excluding itself)
+    // 5. Check for duplicate name (excluding itself)
     const existingRole = await roleRepository.findByName(brandId, name.trim());
     if (existingRole && existingRole.id !== roleId) {
       const error = new Error('Tên vai trò này đã được sử dụng bởi vai trò khác.');
@@ -132,7 +159,7 @@ class RoleService {
       throw error;
     }
 
-    // 5. Update role
+    // 6. Update role
     return roleRepository.update(roleId, {
       name: name.trim(),
       description,
@@ -146,7 +173,7 @@ class RoleService {
    */
   async deleteRole(brandId, roleId, operatorId) {
     // 1. Verify operator has MANAGE_ROLES permission
-    const isAuthorized = await authorizationFacade.checkPermission(operatorId, brandId, 'MANAGE_ROLES');
+    const isAuthorized = await authorizationFacade.checkPermission(operatorId, brandId, PERMISSION_KEYS.MANAGE_ROLES);
     if (!isAuthorized) {
       const error = new Error('Bạn không có quyền quản lý vai trò trong thương hiệu này.');
       error.status = 403;
