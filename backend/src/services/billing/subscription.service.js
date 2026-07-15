@@ -5,7 +5,8 @@ const subscriptionRepository  = require('../../repositories/billing/subscription
 const addonRepository         = require('../../repositories/billing/addon.repository');
 const logger                  = require('../../utils/logger');
 const notificationService     = require('../core/notification.service');
-const { NOTIFICATION_TYPES }  = require('../../utils/constants');
+const { NOTIFICATION_TYPES, PERMISSION_KEYS } = require('../../utils/constants');
+const authorizationFacade     = require('../auth/authorization.facade');
 
 /**
  * SubscriptionService (Orchestrator)
@@ -140,9 +141,14 @@ class SubscriptionService {
   /**
    * Step 2: Frontend polls this to know if payment succeeded
    */
-  async checkPaymentStatus(transactionCode) {
+  async checkPaymentStatus(transactionCode, userId) {
     const pending = await paymentRepository.findPendingByCode(transactionCode);
     if (!pending) throw Object.assign(new Error('Giao dịch không tồn tại'), { status: 404 });
+
+    const hasAccess = await authorizationFacade.checkBrandAccess(userId, pending.brandId);
+    if (!hasAccess) {
+      throw Object.assign(new Error('Bạn không có quyền truy cập giao dịch này'), { status: 403 });
+    }
 
     // Check if QR has expired but status is still PENDING
     if (pending.status === 'PENDING' && new Date() > pending.expiredAt) {
@@ -272,14 +278,20 @@ class SubscriptionService {
     return subscriptionRepository.findAllActivePlans();
   }
 
-  async cancelPendingPayment(transactionCode) {
+  async cancelPendingPayment(transactionCode, userId) {
     const pending = await paymentRepository.findPendingByCode(transactionCode);
     if (!pending) {
-      throw new Error('Không tìm thấy giao dịch thanh toán');
+      throw Object.assign(new Error('Không tìm thấy giao dịch thanh toán'), { status: 404 });
     }
     if (pending.status !== 'PENDING') {
-      throw new Error('Giao dịch không ở trạng thái chờ thanh toán');
+      throw Object.assign(new Error('Giao dịch không ở trạng thái chờ thanh toán'), { status: 400 });
     }
+
+    const isAuthorized = await authorizationFacade.checkPermission(userId, pending.brandId, PERMISSION_KEYS.MANAGE_BILLING);
+    if (!isAuthorized) {
+      throw Object.assign(new Error('Bạn không có quyền hủy giao dịch này'), { status: 403 });
+    }
+
     return paymentRepository.updatePendingStatus(transactionCode, 'CANCELLED');
   }
 }

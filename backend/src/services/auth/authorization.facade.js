@@ -25,6 +25,7 @@ class DefaultRoleStrategy {
         [PERMISSION_KEYS.INVITE_MEMBERS]: true,
         [PERMISSION_KEYS.MANAGE_MEDIA]: true,
         [PERMISSION_KEYS.CREATE_LIVESTREAM]: true,
+        [PERMISSION_KEYS.MANAGE_BILLING]: true,
       },
       USER: { // USER represents Member
         [PERMISSION_KEYS.VIEW_ANALYTICS]: true,
@@ -38,6 +39,7 @@ class DefaultRoleStrategy {
         [PERMISSION_KEYS.INVITE_MEMBERS]: false,
         [PERMISSION_KEYS.MANAGE_MEDIA]: true,
         [PERMISSION_KEYS.CREATE_LIVESTREAM]: false,
+        [PERMISSION_KEYS.MANAGE_BILLING]: false,
       },
       ANALYST: {
         [PERMISSION_KEYS.VIEW_ANALYTICS]: true,
@@ -51,6 +53,7 @@ class DefaultRoleStrategy {
         [PERMISSION_KEYS.INVITE_MEMBERS]: false,
         [PERMISSION_KEYS.MANAGE_MEDIA]: false,
         [PERMISSION_KEYS.CREATE_LIVESTREAM]: false,
+        [PERMISSION_KEYS.MANAGE_BILLING]: false,
       }
     };
   }

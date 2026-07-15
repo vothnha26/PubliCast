@@ -35,7 +35,7 @@ class SubscriptionController {
   checkPaymentStatus = asyncHandler(async (req, res) => {
     const { transactionCode } = req.params;
 
-    const result = await subscriptionService.checkPaymentStatus(transactionCode);
+    const result = await subscriptionService.checkPaymentStatus(transactionCode, req.user.id);
 
     res.status(200).json({ data: result });
   });
@@ -118,7 +118,7 @@ class SubscriptionController {
     const { transactionCode } = req.body;
     if (!transactionCode) return res.status(400).json({ message: 'transactionCode là bắt buộc' });
 
-    await subscriptionService.cancelPendingPayment(transactionCode);
+    await subscriptionService.cancelPendingPayment(transactionCode, req.user.id);
     res.status(200).json({ message: 'Hủy yêu cầu thanh toán thành công' });
   });
 
