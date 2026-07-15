@@ -144,8 +144,8 @@ class PostRepository {
     });
   }
 
-  async updateStatus(id, status) {
-    return prisma.post.update({
+  async updateStatus(id, status, client = prisma) {
+    return client.post.update({
       where: { id },
       data: { status }
     });

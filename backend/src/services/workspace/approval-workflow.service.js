@@ -8,7 +8,8 @@ const {
   REVIEW_ACTION,
   TEAM_STATUS,
   PERMISSION_KEYS,
-  USER_ROLES
+  USER_ROLES,
+  ERROR_MESSAGES
 } = require('../../utils/constants');
 const { REVIEW_ACTION_STRATEGY_MAP } = require('./review-action-strategies');
 const prisma = require('../../config/prisma');
@@ -112,6 +113,9 @@ class ApprovalWorkflowService {
     policy = WORKFLOW_POLICY.AT_LEAST_ONE,
     requesterNote = ''
   ) {
+    this._assertValidPolicy(policy, false);
+    const reviewerList = this._dedupeReviewerIds(reviewerIds);
+
     const post = await postRepository.findById(postId);
     if (!post || post.brandId !== brandId) {
       const error = new Error('Không tìm thấy bài viết hoặc bài viết không thuộc thương hiệu này.');
@@ -125,8 +129,6 @@ class ApprovalWorkflowService {
       error.status = 400;
       throw error;
     }
-
-    const reviewerList = Array.isArray(reviewerIds) ? reviewerIds : [reviewerIds].filter(Boolean);
 
     const workflow = await approvalWorkflowRepository.create({
       postId,
@@ -178,7 +180,6 @@ class ApprovalWorkflowService {
       throw error;
     }
 
-    // Update individual reviewer status first
     let reviewerStatus = WORKFLOW_STATUS.PENDING;
     if (action === REVIEW_ACTION.APPROVED) {
       reviewerStatus = WORKFLOW_STATUS.APPROVED;
@@ -188,78 +189,87 @@ class ApprovalWorkflowService {
       reviewerStatus = WORKFLOW_STATUS.REVISION_NEEDED;
     }
 
-    const existingReviewerRecord = await prisma.workflowReviewer.findFirst({
-      where: { workflowId, reviewerId }
-    });
+    // Toàn bộ đọc-ghi quyết định trạng thái nằm trong 1 transaction với row lock (FOR UPDATE)
+    // trên bản ghi workflow, để tránh race condition khi 2 reviewer duyệt gần như đồng thời
+    // dưới policy ALL (cả hai đều đọc "chưa đủ APPROVED" trước khi bên kia commit).
+    const { finalWorkflowStatus, finalPostStatus, updatedWorkflow } = await prisma.$transaction(async (tx) => {
+      await tx.$queryRaw`SELECT id FROM approval_workflows WHERE id = ${workflowId} FOR UPDATE`;
 
-    if (existingReviewerRecord) {
-      await prisma.workflowReviewer.update({
-        where: { id: existingReviewerRecord.id },
-        data: {
-          status: reviewerStatus,
-          comment,
-          reviewedAt: new Date()
-        }
+      const existingReviewerRecord = await tx.workflowReviewer.findFirst({
+        where: { workflowId, reviewerId }
       });
-    } else {
-      await prisma.workflowReviewer.create({
-        data: {
-          workflowId,
-          reviewerId,
-          status: reviewerStatus,
-          comment,
-          reviewedAt: new Date()
-        }
-      });
-    }
 
-    // Decide final workflow & post status based on policy
-    let finalWorkflowStatus = WORKFLOW_STATUS.PENDING;
-    let finalPostStatus = POST_STATUS.PENDING_APPROVAL;
-
-    if (action === REVIEW_ACTION.REJECTED) {
-      finalWorkflowStatus = WORKFLOW_STATUS.REJECTED;
-      finalPostStatus = POST_STATUS.REJECTED;
-    } else if (action === REVIEW_ACTION.REVISION_NEEDED) {
-      finalWorkflowStatus = WORKFLOW_STATUS.REVISION_NEEDED;
-      finalPostStatus = POST_STATUS.DRAFT;
-    } else if (action === REVIEW_ACTION.APPROVED) {
-      const policy = workflow.approvalPolicy || WORKFLOW_POLICY.AT_LEAST_ONE;
-      if (policy === WORKFLOW_POLICY.AT_LEAST_ONE) {
-        const { workflowStatus, postStatus } = await strategy.execute(workflow);
-        finalWorkflowStatus = workflowStatus;
-        finalPostStatus = postStatus;
-      } else if (policy === WORKFLOW_POLICY.ALL) {
-        const reviewersList = JSON.parse(workflow.selectedReviewers || '[]');
-        const currentDecisions = await prisma.workflowReviewer.findMany({
-          where: { workflowId }
+      if (existingReviewerRecord) {
+        await tx.workflowReviewer.update({
+          where: { id: existingReviewerRecord.id },
+          data: {
+            status: reviewerStatus,
+            comment,
+            reviewedAt: new Date()
+          }
         });
-
-        const allApproved = reviewersList.every(rId => {
-          const decision = currentDecisions.find(d => d.reviewerId === rId);
-          return decision && decision.status === WORKFLOW_STATUS.APPROVED;
+      } else {
+        await tx.workflowReviewer.create({
+          data: {
+            workflowId,
+            reviewerId,
+            status: reviewerStatus,
+            comment,
+            reviewedAt: new Date()
+          }
         });
+      }
 
-        if (allApproved) {
-          const { workflowStatus, postStatus } = await strategy.execute(workflow);
-          finalWorkflowStatus = workflowStatus;
-          finalPostStatus = postStatus;
-        } else {
-          finalWorkflowStatus = WORKFLOW_STATUS.PENDING;
-          finalPostStatus = POST_STATUS.PENDING_APPROVAL;
+      let workflowStatus = WORKFLOW_STATUS.PENDING;
+      let postStatus = POST_STATUS.PENDING_APPROVAL;
+
+      if (action === REVIEW_ACTION.REJECTED) {
+        workflowStatus = WORKFLOW_STATUS.REJECTED;
+        postStatus = POST_STATUS.REJECTED;
+      } else if (action === REVIEW_ACTION.REVISION_NEEDED) {
+        workflowStatus = WORKFLOW_STATUS.REVISION_NEEDED;
+        postStatus = POST_STATUS.DRAFT;
+      } else if (action === REVIEW_ACTION.APPROVED) {
+        const policy = workflow.approvalPolicy || WORKFLOW_POLICY.AT_LEAST_ONE;
+        if (policy === WORKFLOW_POLICY.AT_LEAST_ONE) {
+          const result = await strategy.execute(workflow);
+          workflowStatus = result.workflowStatus;
+          postStatus = result.postStatus;
+        } else if (policy === WORKFLOW_POLICY.ALL) {
+          const reviewersList = this._dedupeReviewerIds(JSON.parse(workflow.selectedReviewers || '[]'));
+          const currentDecisions = await tx.workflowReviewer.findMany({
+            where: { workflowId }
+          });
+
+          const allApproved = reviewersList.every(rId => {
+            const decision = currentDecisions.find(d => d.reviewerId === rId);
+            return decision && decision.status === WORKFLOW_STATUS.APPROVED;
+          });
+
+          if (allApproved) {
+            const result = await strategy.execute(workflow);
+            workflowStatus = result.workflowStatus;
+            postStatus = result.postStatus;
+          } else {
+            workflowStatus = WORKFLOW_STATUS.PENDING;
+            postStatus = POST_STATUS.PENDING_APPROVAL;
+          }
         }
       }
-    }
 
-    const updatedWorkflow = await approvalWorkflowRepository.update(workflowId, {
-      status:            finalWorkflowStatus,
-      reviewedByUserId:  reviewerId,
-      reviewedAt:        new Date(),
-      reviewerComment:   comment
+      const updated = await approvalWorkflowRepository.update(workflowId, {
+        status:            workflowStatus,
+        reviewedByUserId:  reviewerId,
+        reviewedAt:        new Date(),
+        reviewerComment:   comment
+      }, tx);
+
+      await postRepository.updateStatus(workflow.postId, postStatus, tx);
+
+      return { finalWorkflowStatus: workflowStatus, finalPostStatus: postStatus, updatedWorkflow: updated };
     });
 
-    await postRepository.updateStatus(workflow.postId, finalPostStatus);
-
+    // Side-effect (event emit) tách khỏi transaction — chỉ chạy sau khi DB đã commit thành công.
     const updatedPost = await postRepository.findById(workflow.postId);
     if (updatedPost) {
       let options = {};
@@ -278,6 +288,15 @@ class ApprovalWorkflowService {
    * Chỉ requester hoặc owner/admin có thể thực hiện.
    */
   async reassignWorkflow(workflowId, brandId, requesterId, newReviewerIds = [], newPolicy = null) {
+    // Fail-fast: validate input thuần túy trước khi chạm DB, nhất quán với createWorkflowRequest.
+    this._assertValidPolicy(newPolicy, true);
+    const reviewerList = this._dedupeReviewerIds(newReviewerIds);
+    if (reviewerList.length === 0) {
+      const error = new Error(ERROR_MESSAGES.EMPTY_REVIEWERS);
+      error.status = 400;
+      throw error;
+    }
+
     const workflow = await approvalWorkflowRepository.findById(workflowId);
     if (!workflow || workflow.brandId !== brandId) {
       const error = new Error('Không tìm thấy yêu cầu phê duyệt.');
@@ -300,24 +319,27 @@ class ApprovalWorkflowService {
       throw error;
     }
 
-    const reviewerList = Array.isArray(newReviewerIds) ? newReviewerIds.filter(Boolean) : [];
+    // Xóa reviewer cũ + tạo lại trong cùng 1 transaction với row lock, tránh trạng thái
+    // "workflow trống hoàn toàn người duyệt" nếu bước tạo mới lỗi giữa chừng.
+    const updatedWorkflow = await prisma.$transaction(async (tx) => {
+      await tx.$queryRaw`SELECT id FROM approval_workflows WHERE id = ${workflowId} FOR UPDATE`;
 
-    // Xóa tất cả reviewer cũ rồi tạo lại
-    await prisma.workflowReviewer.deleteMany({ where: { workflowId } });
+      await tx.workflowReviewer.deleteMany({ where: { workflowId } });
 
-    // Cập nhật workflow với reviewer mới
-    const updateData = {
-      selectedReviewers: JSON.stringify(reviewerList),
-      reviewers: {
-        create: reviewerList.map(rId => ({
-          reviewerId: rId,
-          status: WORKFLOW_STATUS.PENDING
-        }))
-      }
-    };
-    if (newPolicy) updateData.approvalPolicy = newPolicy;
+      const updateData = {
+        selectedReviewers: JSON.stringify(reviewerList),
+        reviewers: {
+          create: reviewerList.map(rId => ({
+            reviewerId: rId,
+            status: WORKFLOW_STATUS.PENDING
+          }))
+        }
+      };
+      if (newPolicy) updateData.approvalPolicy = newPolicy;
 
-    const updatedWorkflow = await approvalWorkflowRepository.update(workflowId, updateData);
+      return approvalWorkflowRepository.update(workflowId, updateData, tx);
+    });
+
     return updatedWorkflow;
   }
 
@@ -353,6 +375,29 @@ class ApprovalWorkflowService {
       error.status = 403;
       throw error;
     }
+  }
+
+  /**
+   * Ném lỗi 400 nếu policy không thuộc whitelist WORKFLOW_POLICY.
+   * isOptional=true: cho phép policy falsy (null/undefined) đi qua — dùng ở reassignWorkflow
+   * nơi không đổi policy là hợp lệ. isOptional=false: bắt buộc phải có giá trị hợp lệ — dùng ở
+   * creation-time để tránh workflow được tạo với policy rỗng/không xác định.
+   */
+  _assertValidPolicy(policy, isOptional = false) {
+    if (isOptional && !policy) return;
+
+    const validPolicies = Object.values(WORKFLOW_POLICY);
+    if (!validPolicies.includes(policy)) {
+      const error = new Error(ERROR_MESSAGES.INVALID_APPROVAL_POLICY);
+      error.status = 400;
+      throw error;
+    }
+  }
+
+  /** Chuẩn hoá danh sách reviewerId: loại falsy và trùng lặp, giữ nguyên thứ tự xuất hiện đầu tiên. */
+  _dedupeReviewerIds(reviewerIds) {
+    const list = Array.isArray(reviewerIds) ? reviewerIds : [reviewerIds].filter(Boolean);
+    return [...new Set(list.filter(Boolean))];
   }
 
   /** Lấy tất cả brandId mà user có quyền truy cập (owned + active member). */

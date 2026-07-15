@@ -140,7 +140,10 @@ const ERROR_MESSAGES = {
   USER_NOT_FOUND: 'User not found',
   INVALID_RESET_TOKEN: 'Mã khôi phục mật khẩu không hợp lệ hoặc đã được sử dụng.',
   RESET_TOKEN_EXPIRED: 'Đường dẫn khôi phục mật khẩu đã hết hạn.',
-  RESET_LINK_SENT: 'Đường dẫn đặt lại mật khẩu đã được gửi đến email của bạn.'
+  RESET_LINK_SENT: 'Đường dẫn đặt lại mật khẩu đã được gửi đến email của bạn.',
+
+  INVALID_APPROVAL_POLICY: 'Chính sách phê duyệt không hợp lệ.',
+  EMPTY_REVIEWERS: 'Cần chọn ít nhất một người duyệt.'
 };
 
 const AUTOLIST_TYPES = {

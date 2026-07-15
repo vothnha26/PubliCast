@@ -152,8 +152,8 @@ class ApprovalWorkflowRepository {
     });
   }
 
-  async update(id, data) {
-    return prisma.approvalWorkflow.update({
+  async update(id, data, client = prisma) {
+    return client.approvalWorkflow.update({
       where: { id },
       data,
       include: {
