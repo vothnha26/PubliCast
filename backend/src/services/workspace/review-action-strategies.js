@@ -13,7 +13,6 @@
  */
 
 const { WORKFLOW_STATUS, WORKFLOW_POLICY, REVIEW_ACTION, POST_STATUS } = require('../../utils/constants');
-const { upsertPublishJob } = require('../../queues/publish.queue');
 const { POLICY_EVALUATORS } = require('./policy-evaluators');
 
 // ---------------------------------------------------------------------------
@@ -25,7 +24,7 @@ const { POLICY_EVALUATORS } = require('./policy-evaluators');
  * sách phê duyệt đã thỏa mãn với các quyết định hiện tại (vd. AT_LEAST_ONE cần
  * 1 APPROVED, ALL cần mọi reviewer còn lại đều APPROVED). Chưa thỏa mãn thì
  * giữ nguyên PENDING — không có nhánh nào khác cần biết về policy.
- * Khi thỏa mãn: có lịch đăng → SCHEDULED + đăng ký BullMQ job; không có → APPROVED ngay.
+ * Khi thỏa mãn: có lịch đăng → SCHEDULED; không có → APPROVED ngay.
  */
 class ApprovedActionStrategy {
   async execute(workflow, currentDecisions = []) {
@@ -42,7 +41,6 @@ class ApprovedActionStrategy {
 
     const hasSchedule = workflow.post && workflow.post.scheduledAt;
     if (hasSchedule) {
-      await upsertPublishJob(workflow.post.id, workflow.post.scheduledAt);
       return {
         workflowStatus: WORKFLOW_STATUS.APPROVED,
         postStatus:     POST_STATUS.SCHEDULED

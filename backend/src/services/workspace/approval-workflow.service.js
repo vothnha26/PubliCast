@@ -14,6 +14,7 @@ const {
 const { REVIEW_ACTION_STRATEGY_MAP } = require('./review-action-strategies');
 const prisma = require('../../config/prisma');
 const { eventEmitter, EVENTS } = require('../../events/event-emitter');
+const { upsertPublishJob } = require('../../queues/publish.queue');
 
 class ApprovalWorkflowService {
   /**
@@ -227,8 +228,8 @@ class ApprovalWorkflowService {
       return { finalPostStatus: postStatus, updatedWorkflow: updated };
     });
 
-    // Side-effect (event emit) tách khỏi transaction — chỉ chạy sau khi DB đã commit thành công.
-    await this._emitPostUpdated(workflow.postId, finalPostStatus);
+    // Side-effect (event emit + queue job) tách khỏi transaction — chỉ chạy sau khi DB đã commit thành công.
+    await this.runPostApprovalSideEffects(workflow.postId, finalPostStatus);
 
     return updatedWorkflow;
   }
@@ -335,11 +336,15 @@ class ApprovalWorkflowService {
   }
 
   /**
-   * Side-effect hậu-transaction dùng chung: phát event POST.UPDATED sau khi trạng thái
-   * post đã được commit vào DB. Gọi từ reviewWorkflowRequest và từ TeamService sau khi
-   * reevaluateAfterReviewerRemoved xác nhận autoApproved.
+   * Side-effect hậu-transaction dùng chung: phát event POST.UPDATED và đẩy job lên BullMQ
+   * sau khi trạng thái post đã được commit vào DB. Gọi từ reviewWorkflowRequest và từ TeamService
+   * sau khi reevaluateAfterReviewerRemoved xác nhận autoApproved.
    */
   async runPostApprovalSideEffects(postId, postStatus) {
+    const post = await postRepository.findById(postId);
+    if (post && postStatus === POST_STATUS.SCHEDULED && post.scheduledAt) {
+      await upsertPublishJob(post.id, post.scheduledAt);
+    }
     await this._emitPostUpdated(postId, postStatus);
   }
 
@@ -381,10 +386,9 @@ class ApprovalWorkflowService {
 
   /**
    * Ném lỗi 403 nếu reviewer không có quyền APPROVE_POSTS hiện tại trên brand.
-   * Lưu ý: workflow.selectedReviewers chỉ mang tính chất hiển thị/thông tin
-   * (metadata chỉ định ban đầu), KHÔNG còn giữ vai trò phân quyền (authorization).
-   * Quyền duyệt luôn được xác thực lại theo trạng thái quyền thực tế tại thời điểm review,
-   * để tránh bypass khi reviewer bị thu hồi quyền/xóa khỏi nhóm sau khi được chỉ định.
+   * Quyền duyệt luôn được xác thực lại theo trạng thái quyền thực tế tại thời điểm review
+   * (không dựa vào bất kỳ danh sách reviewer được chỉ định tĩnh nào), để tránh bypass khi
+   * reviewer bị thu hồi quyền/xóa khỏi nhóm sau khi được chỉ định ban đầu.
    */
   async _assertReviewerIsAuthorized(reviewerId, workflow) {
     const hasApprovePermission = await authorizationFacade.hasPermission(
