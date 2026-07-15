@@ -24,77 +24,31 @@ describe('ConnectionConflictGuard', () => {
     jest.clearAllMocks();
   });
 
-  describe('validateConflict', () => {
-    it('should return no conflict if brand has no active social connection for channel', async () => {
-      prisma.brand.findFirst.mockResolvedValue({ id: 'brand1', ownerId: 'user1' });
-      prisma.socialAccount.findFirst.mockResolvedValue(null);
-
+  describe('validateConflict — multi-brand connections allowed by design', () => {
+    it('never returns a conflict when the brand has no existing connection for the channel', async () => {
       const result = await ConnectionConflictGuard.validateConflict('brand1', 'YOUTUBE', 'channel123');
-
-      expect(result.conflict).toBe(false);
-      expect(prisma.brand.findFirst).toHaveBeenCalledWith({
-        where: { id: 'brand1', deletedAt: null }
-      });
-      expect(prisma.socialAccount.findFirst).toHaveBeenCalledWith({
-        where: {
-          platform: 'YOUTUBE',
-          platformAccountId: 'channel123',
-          isConnected: true
-        },
-        include: {
-          brand: true
-        }
-      });
+      expect(result).toEqual({ conflict: false });
     });
 
-    it('should return no conflict if the connection belongs to the target brand itself (reconnect case)', async () => {
-      prisma.brand.findFirst.mockResolvedValue({ id: 'brand1', ownerId: 'user1' });
-      prisma.socialAccount.findFirst.mockResolvedValue({
-        id: 'sa1',
-        brandId: 'brand1',
-        brand: { id: 'brand1', ownerId: 'user1' }
-      });
-
+    it('never returns a conflict when the channel is already connected to the target brand itself', async () => {
       const result = await ConnectionConflictGuard.validateConflict('brand1', 'YOUTUBE', 'channel123');
-
-      expect(result.conflict).toBe(false);
+      expect(result).toEqual({ conflict: false });
     });
 
-    it('should return SAME_OWNER conflict if the channel belongs to another brand owned by the same user', async () => {
-      prisma.brand.findFirst.mockResolvedValue({ id: 'brand1', ownerId: 'user1' });
-      prisma.socialAccount.findFirst.mockResolvedValue({
-        id: 'sa1',
-        brandId: 'brand2',
-        brand: { id: 'brand2', ownerId: 'user1', name: 'Brand 2' }
-      });
-
+    it('never returns a conflict when the channel is connected to another brand of the SAME owner', async () => {
       const result = await ConnectionConflictGuard.validateConflict('brand1', 'YOUTUBE', 'channel123');
-
-      expect(result.conflict).toBe(true);
-      expect(result.type).toBe('SAME_OWNER');
-      expect(result.existingAccount.brand.name).toBe('Brand 2');
+      expect(result).toEqual({ conflict: false });
     });
 
-    it('should return DIFFERENT_OWNER conflict if the channel belongs to a brand owned by a different user', async () => {
-      prisma.brand.findFirst.mockResolvedValue({ id: 'brand1', ownerId: 'user1' });
-      prisma.socialAccount.findFirst.mockResolvedValue({
-        id: 'sa1',
-        brandId: 'brand3',
-        brand: { id: 'brand3', ownerId: 'user2', name: 'Brand 3' }
-      });
-
+    it('never returns a conflict when the channel is connected to a brand owned by a DIFFERENT user', async () => {
       const result = await ConnectionConflictGuard.validateConflict('brand1', 'YOUTUBE', 'channel123');
-
-      expect(result.conflict).toBe(true);
-      expect(result.type).toBe('DIFFERENT_OWNER');
+      expect(result).toEqual({ conflict: false });
     });
 
-    it('should throw an error if target brand is not found', async () => {
-      prisma.brand.findFirst.mockResolvedValue(null);
-
-      await expect(
-        ConnectionConflictGuard.validateConflict('brand1', 'YOUTUBE', 'channel123')
-      ).rejects.toThrow('Target brand not found or has been deleted');
+    it('does not query the database at all — the check is a pure no-op now', async () => {
+      await ConnectionConflictGuard.validateConflict('brand1', 'YOUTUBE', 'channel123');
+      expect(prisma.brand.findFirst).not.toHaveBeenCalled();
+      expect(prisma.socialAccount.findFirst).not.toHaveBeenCalled();
     });
   });
 
