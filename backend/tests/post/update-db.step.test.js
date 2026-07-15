@@ -23,6 +23,7 @@ jest.mock('../../src/queues/publish.queue', () => ({
 
 const postRepository = require('../../src/repositories/workspace/post.repository');
 const autoListRepository = require('../../src/repositories/workspace/auto-list.repository');
+const autoListService = require('../../src/services/workspace/auto-list.service');
 const { publishQueue } = require('../../src/queues/publish.queue');
 
 describe('UpdatePostStatusStep', () => {
@@ -126,5 +127,40 @@ describe('UpdatePostStatusStep', () => {
     // Original post recycled back to DRAFT, not left at RETRYING/FAILED.
     expect(postRepository.update).toHaveBeenCalledWith('post-1', expect.objectContaining({ status: 'DRAFT' }));
     expect(publishQueue.add).not.toHaveBeenCalled();
+  });
+
+  it('does not let AutoList sync failure (e.g. deleted mid-publish) break the post status update', async () => {
+    const autoListPost = { ...post, autoListId: 'list-1' };
+    autoListService.updateLastPostedAt.mockRejectedValue(Object.assign(new Error('Record not found'), { code: 'P2025' }));
+
+    const context = {
+      post: autoListPost,
+      results: [
+        { platform: 'FACEBOOK', success: true, result: { id: 'fb-1', publishedAt: new Date() } }
+      ],
+      options: {}
+    };
+
+    await expect(step.execute(context)).resolves.toBeUndefined();
+
+    expect(postRepository.update).toHaveBeenCalledWith('post-1', expect.objectContaining({ status: 'PUBLISHED' }));
+  });
+
+  it('swallows AutoList sync failure on the RETRYING branch too, still enqueuing the partial retry', async () => {
+    const autoListPost = { ...post, autoListId: 'list-1' };
+    autoListService.recalculateQueueSchedules.mockRejectedValue(new Error('DB unavailable'));
+
+    const context = {
+      post: autoListPost,
+      results: [
+        { platform: 'FACEBOOK', success: true, result: { id: 'fb-1' } },
+        { platform: 'INSTAGRAM', success: false, error: 'Rate limited' }
+      ],
+      options: {}
+    };
+
+    await expect(step.execute(context)).resolves.toBeUndefined();
+
+    expect(publishQueue.add).toHaveBeenCalled();
   });
 });

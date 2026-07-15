@@ -1,7 +1,9 @@
 const fs = require('fs');
 const path = require('path');
+const { Readable } = require('stream');
 const { PLATFORMS, SEPARATORS, API_VERSIONS, MEDIA_EXTENSIONS, FACEBOOK_API } = require('../../../utils/constants');
 const logger = require('../../../utils/logger');
+const { isRemoteUrl } = require('../../../utils/url.utils');
 
 // Custom fetch wrapper with timeout and logging
 const fetchWithTimeout = async (url, options = {}) => {
@@ -525,29 +527,59 @@ class FacebookGateway {
     }
   }
 
+  /**
+   * Publishes a video using Facebook's resumable upload protocol
+   * (upload_phase=start/transfer/finish) instead of a single multipart POST.
+   * Node's FormData/Blob don't support streaming a ReadableStream (verified
+   * directly: Blob([stream]) just stringifies the stream object instead of
+   * reading it), so the old multipart approach had to buffer the entire video
+   * into RAM first. The transfer step here sends the raw body as a stream
+   * instead, following the same start/upload_url/finish flow publishReel
+   * already uses for /video_reels — /videos supports the same protocol.
+   */
   async publishVideo(pageId, pageAccessToken, mediaUrl, title, description, scheduledAt = null) {
-    const { buffer, filename } = await this._getMediaBuffer(mediaUrl);
+    const startUrl = `${FACEBOOK_API.VIDEO_BASE_URL}/${API_VERSIONS.FACEBOOK}/${pageId}/videos?upload_phase=start&access_token=${pageAccessToken}`;
+    const startRes = await fetch(startUrl, { method: 'POST' });
+    if (!startRes.ok) {
+      const errData = await startRes.json().catch(() => ({}));
+      throw new Error(errData.error?.message || 'Failed to start Facebook video upload session');
+    }
+    const { video_id, upload_url } = await startRes.json();
 
-    const formData = new FormData();
-    const blob = new Blob([buffer]);
-    formData.append('source', blob, filename);
-    if (title) formData.append('title', title);
-    if (description) formData.append('description', description);
-    formData.append('access_token', pageAccessToken);
+    const { stream, contentLength } = await this._getMediaStream(mediaUrl);
+    const uploadRes = await fetch(upload_url, {
+      method: 'POST',
+      headers: {
+        'Authorization': `OAuth ${pageAccessToken}`,
+        'offset': '0',
+        'file_size': contentLength.toString()
+      },
+      body: stream,
+      duplex: 'half'
+    });
+    if (!uploadRes.ok) {
+      const errData = await uploadRes.json().catch(() => ({}));
+      throw new Error(errData.error?.message || 'Failed to upload video binary to Facebook');
+    }
+
+    const finishParams = new URLSearchParams({
+      upload_phase: 'finish',
+      video_id,
+      access_token: pageAccessToken
+    });
+    if (title) finishParams.set('title', title);
+    if (description) finishParams.set('description', description);
     if (scheduledAt) {
-      const timestamp = Math.floor(new Date(scheduledAt).getTime() / 1000);
-      formData.append('published', 'false');
-      formData.append('scheduled_publish_time', timestamp.toString());
+      finishParams.set('published', 'false');
+      finishParams.set('scheduled_publish_time', Math.floor(new Date(scheduledAt).getTime() / 1000).toString());
     }
-
-    const url = `${FACEBOOK_API.VIDEO_BASE_URL}/${API_VERSIONS.FACEBOOK}/${pageId}/videos`;
-    const res = await fetch(url, { method: 'POST', body: formData });
-
-    if (!res.ok) {
-      const errData = await res.json().catch(() => ({}));
-      throw new Error(errData.error?.message || 'Failed to publish video to Facebook');
+    const finishUrl = `${FACEBOOK_API.VIDEO_BASE_URL}/${API_VERSIONS.FACEBOOK}/${pageId}/videos?${finishParams.toString()}`;
+    const finishRes = await fetch(finishUrl, { method: 'POST' });
+    if (!finishRes.ok) {
+      const errData = await finishRes.json().catch(() => ({}));
+      throw new Error(errData.error?.message || 'Failed to finalize Facebook video publishing');
     }
-    return res.json();
+    return finishRes.json();
   }
 
   async publishReel(pageId, pageAccessToken, mediaUrl, caption) {
@@ -664,7 +696,7 @@ class FacebookGateway {
    */
   _resolveLocalPath(mediaUrl) {
     // Nếu là URL (Cloudinary, S3, ...) thì không xử lý như local path
-    if (mediaUrl.startsWith('http://') || mediaUrl.startsWith('https://')) {
+    if (isRemoteUrl(mediaUrl)) {
       throw new Error(`_resolveLocalPath: mediaUrl là remote URL, hãy dùng _getMediaBuffer(). URL: ${mediaUrl}`);
     }
 
@@ -681,8 +713,7 @@ class FacebookGateway {
    * @returns {Promise<{ buffer: Buffer, filename: string }>}
    */
   async _getMediaBuffer(mediaUrl) {
-    const isRemote = mediaUrl.startsWith('http://') || mediaUrl.startsWith('https://');
-    if (isRemote) {
+    if (isRemoteUrl(mediaUrl)) {
       const res = await fetch(mediaUrl);
       if (!res.ok) {
         throw new Error(`Failed to download media from URL: ${mediaUrl} (status ${res.status})`);
@@ -700,6 +731,39 @@ class FacebookGateway {
       }
       return { buffer: fs.readFileSync(localPath), filename: path.basename(localPath) };
     }
+  }
+
+  /**
+   * Lấy stream + content-length cho upload video dạng resumable (raw binary
+   * body, KHÔNG qua FormData/Blob — xem ghi chú ở publishVideo). Facebook's
+   * resumable upload yêu cầu header 'file_size' chính xác TRƯỚC khi stream,
+   * nên với URL remote phải HEAD trước khi GET — không thể biết size từ 1
+   * request GET đang stream dở.
+   * @param {string} mediaUrl
+   * @returns {Promise<{ stream: ReadableStream, contentLength: number }>}
+   */
+  async _getMediaStream(mediaUrl) {
+    if (isRemoteUrl(mediaUrl)) {
+      const headRes = await fetch(mediaUrl, { method: 'HEAD' });
+      const contentLength = parseInt(headRes.headers.get('content-length'), 10);
+      if (!contentLength) {
+        throw new Error(`Cannot determine content-length for ${mediaUrl}`);
+      }
+
+      const res = await fetch(mediaUrl);
+      if (!res.ok) {
+        throw new Error(`Failed to fetch video from URL: ${mediaUrl} (status ${res.status})`);
+      }
+      return { stream: res.body, contentLength };
+    }
+
+    const localPath = path.join(process.cwd(), mediaUrl.startsWith('/') ? mediaUrl.substring(1) : mediaUrl);
+    if (!fs.existsSync(localPath)) {
+      throw new Error(`Media file not found at ${localPath}`);
+    }
+    const stats = fs.statSync(localPath);
+    const nodeStream = fs.createReadStream(localPath);
+    return { stream: Readable.toWeb(nodeStream), contentLength: stats.size };
   }
 
   async searchFacebookPages(appAccessToken, query) {

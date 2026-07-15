@@ -15,16 +15,33 @@ jest.mock('../../src/queues/publish.queue', () => ({ PUBLISH_QUEUE_NAME: 'social
 jest.mock('../../src/queues/handlers/publish-post.handler', () => ({ handle: jest.fn() }));
 jest.mock('../../src/repositories/workspace/post.repository', () => ({ update: jest.fn() }));
 
-const postRepository = require('../../src/repositories/workspace/post.repository');
-
 describe('publish.worker on(\'failed\')', () => {
+  let postRepository;
+  let Worker;
+
   beforeEach(() => {
     jest.clearAllMocks();
+    // Re-require AFTER clearAllMocks/resetModules so this test's references to
+    // postRepository/Worker point at the SAME mock instances the freshly
+    // required publish.worker module closes over — otherwise eventHandlers.failed
+    // (captured once, below) would invoke a stale postRepository.update from a
+    // previous module load, and assertions against a newly required one would
+    // never see the call.
+    postRepository = require('../../src/repositories/workspace/post.repository');
+    ({ Worker } = require('bullmq'));
     require('../../src/queues/publish.worker');
   });
 
   afterEach(() => {
     jest.resetModules();
+  });
+
+  it('configures the Worker with a lockDuration long enough to cover slow gateway publishes', () => {
+    const { QUEUE_CONFIG } = require('../../src/constants/video-publish.constants');
+    const options = Worker.mock.calls[0][2];
+
+    expect(options.lockDuration).toBe(QUEUE_CONFIG.PUBLISH.LOCK_DURATION_MS);
+    expect(options.maxStalledCount).toBe(1);
   });
 
   it('marks the post FAILED once attemptsMade reaches the configured max', async () => {
