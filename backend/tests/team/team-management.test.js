@@ -633,5 +633,78 @@ describe('Team Management APIs', () => {
 
       expect(prisma.$queryRaw).toHaveBeenCalled();
     });
+
+    it('locks the Team row before deleting it (protects against a concurrent updateMemberRole on the same member)', async () => {
+      const mockTeam = {
+        id: 'team-1',
+        brandId: 'brand-1',
+        userId: 'user-1',
+        brand: { ownerId: 'operator-id' }
+      };
+      prisma.team.findUnique.mockResolvedValue(mockTeam);
+      prisma.brand.findFirst.mockResolvedValue({ id: 'brand-1', ownerId: 'operator-id' });
+      prisma.team.delete.mockResolvedValue({});
+      prisma.workflowReviewer.findMany.mockResolvedValue([]);
+
+      const queryRawCallsBefore = prisma.$queryRaw.mock.calls.length;
+      const res = await request(app).delete('/api/team/team-1');
+
+      expect(res.status).toBe(200);
+      // lockForUpdate runs before teamRepository.delete — the transaction's tx
+      // param is threaded through both, so this asserts the lock happened at
+      // all as part of the delete flow (not just the approval-workflow's own
+      // separate lock, already covered by the previous test).
+      expect(prisma.$queryRaw.mock.calls.length).toBeGreaterThan(queryRawCallsBefore);
+    });
+
+    it('is idempotent if the member was already removed by a concurrent request', async () => {
+      const mockTeam = {
+        id: 'team-1',
+        brandId: 'brand-1',
+        userId: 'user-1',
+        brand: { ownerId: 'operator-id' }
+      };
+      // First findById (before the transaction) still sees the row; the
+      // re-read INSIDE the transaction (after lockForUpdate) simulates it
+      // having been deleted by a racing removeMember call in between.
+      prisma.team.findUnique
+        .mockResolvedValueOnce(mockTeam)
+        .mockResolvedValueOnce(null);
+      prisma.brand.findFirst.mockResolvedValue({ id: 'brand-1', ownerId: 'operator-id' });
+
+      const res = await request(app).delete('/api/team/team-1');
+
+      expect(res.status).toBe(200);
+      expect(prisma.team.delete).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('PUT /api/team/:id/role — concurrency', () => {
+    it('locks the Team row before writing the new role', async () => {
+      const mockTeam = {
+        id: 'team-1',
+        brandId: 'brand-1',
+        userId: 'user-1',
+        role: 'USER',
+        status: 'ACTIVE',
+        brand: { ownerId: 'operator-id' }
+      };
+      prisma.team.findUnique.mockResolvedValue(mockTeam);
+      prisma.brand.findFirst.mockResolvedValue({ id: 'brand-1', ownerId: 'operator-id' });
+      prisma.team.update.mockResolvedValue({
+        ...mockTeam,
+        role: 'ADMIN',
+        user: { name: 'User One', email: 'user1@gmail.com', avatarUrl: null },
+        invitedBy: { name: 'Owner' }
+      });
+
+      const queryRawCallsBefore = prisma.$queryRaw.mock.calls.length;
+      const res = await request(app)
+        .put('/api/team/team-1/role')
+        .send({ role: 'Admin' });
+
+      expect(res.status).toBe(200);
+      expect(prisma.$queryRaw.mock.calls.length).toBeGreaterThan(queryRawCallsBefore);
+    });
   });
 });

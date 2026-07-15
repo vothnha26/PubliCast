@@ -536,7 +536,13 @@ class TeamService {
       else dbRole = 'USER';
     }
 
-    const updated = await teamRepository.update(id, { role: dbRole, customRoleId });
+    // Lock the row before writing — prevents a concurrent removeMember on the
+    // same member from deleting the record between our read above and this
+    // write (and vice versa: see removeMember's own lock for that direction).
+    const updated = await prisma.$transaction(async (tx) => {
+      await teamRepository.lockForUpdate(id, tx);
+      return teamRepository.update(id, { role: dbRole, customRoleId }, tx);
+    });
 
     // Tạo notification cho thành viên bị đổi vai trò
     try {
@@ -587,7 +593,21 @@ class TeamService {
       throw error;
     }
 
-    await teamRepository.delete(id);
+    // Lock + re-read before deleting — prevents racing a concurrent
+    // updateMemberRole on the same member (see that method's own lock for the
+    // other direction), and makes this idempotent if another removeMember
+    // call already deleted the row between our read above and this write.
+    const deleted = await prisma.$transaction(async (tx) => {
+      await teamRepository.lockForUpdate(id, tx);
+      const fresh = await teamRepository.findById(id, tx);
+      if (!fresh) return false;
+      await teamRepository.delete(id, tx);
+      return true;
+    });
+
+    if (!deleted) {
+      return { message: 'Đã xóa thành viên khỏi thương hiệu thành công' };
+    }
 
     // Remove kicked member from any pending approval workflows & notify requesters
     await this._handleReviewerRemoved(team.userId, team.brandId, 'member_removed');

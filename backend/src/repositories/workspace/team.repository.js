@@ -36,8 +36,8 @@ class TeamRepository {
     return { members, total };
   }
 
-  async findById(id) {
-    return prisma.team.findUnique({
+  async findById(id, client = prisma) {
+    return client.team.findUnique({
       where: { id },
       include: {
         user: true,
@@ -74,8 +74,8 @@ class TeamRepository {
     });
   }
 
-  async update(id, data) {
-    return prisma.team.update({
+  async update(id, data, client = prisma) {
+    return client.team.update({
       where: { id },
       data,
       include: {
@@ -86,10 +86,19 @@ class TeamRepository {
     });
   }
 
-  async delete(id) {
-    return prisma.team.delete({
+  async delete(id, client = prisma) {
+    return client.team.delete({
       where: { id }
     });
+  }
+
+  /**
+   * Locks the Team row (SELECT ... FOR UPDATE) inside an open transaction,
+   * preventing concurrent removeMember/updateMemberRole calls on the same
+   * member from racing (e.g. two admins acting on the same member at once).
+   */
+  async lockForUpdate(id, tx) {
+    await tx.$queryRaw`SELECT id FROM teams WHERE id = ${id} FOR UPDATE`;
   }
 
   async countMembersByBrand(brandId) {
