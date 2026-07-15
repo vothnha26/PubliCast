@@ -1,5 +1,5 @@
 const prisma = require('../../config/prisma');
-const { USER_ROLES, AUTH_PROVIDERS, USER_STATUS } = require('../../utils/constants');
+const { USER_ROLES, AUTH_PROVIDERS, USER_STATUS, ERROR_MESSAGES, ERROR_CODES } = require('../../utils/constants');
 
 class UserRepository {
   async findByEmail(email) {
@@ -184,29 +184,14 @@ class UserRepository {
       return { user, isNew: false };
     }
 
-    // Create new user if not exists
-    const newUser = await prisma.user.create({
-      data: {
-        email: email.toLowerCase(),
-        name: name,
-        avatarUrl: avatarUrl,
-        passwordHash: 'SOCIAL_AUTH_NO_PASSWORD',
-        role: USER_ROLES.OWNER,
-        isActive: true,
-        isEmailVerified: true,
-        lastLoginAt: new Date(),
-        accounts: {
-          create: {
-            provider,
-            providerId,
-            lastLoginAt: new Date()
-          }
-        }
-      },
-      include: { accounts: true, customRole: true }
-    });
-
-    return { user: newUser, isNew: true };
+    // No existing user matched by currentUserId (Settings "Connect Google" flow)
+    // nor by email (Login flow). Never auto-create an account just because
+    // someone authenticated with a Google identity we've never seen — require
+    // registering via email/password + OTP first.
+    const error = new Error(ERROR_MESSAGES.GOOGLE_ACCOUNT_NOT_LINKED);
+    error.status = 404;
+    error.code = ERROR_CODES.GOOGLE_ACCOUNT_NOT_LINKED;
+    throw error;
   }
 
   async createShellUser(email) {
