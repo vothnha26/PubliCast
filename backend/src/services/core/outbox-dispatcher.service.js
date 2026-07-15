@@ -43,6 +43,8 @@ class OutboxDispatcherService {
 
   /** Xử lý 1 batch outbox event đến hạn. Public để test/verify tay dễ dàng. */
   async runOnce() {
+    const reclaim = await this.reclaimStale();
+
     const rows = await prisma.$transaction((tx) =>
       outboxEventRepository.claimBatch(OUTBOX_DISPATCHER_CONFIG.BATCH_SIZE, tx)
     );
@@ -51,7 +53,37 @@ class OutboxDispatcherService {
       await this._processRow(row);
     }
 
-    return { processed: rows.length };
+    return { processed: rows.length, reclaimed: reclaim.reclaimed };
+  }
+
+  /**
+   * Nhặt lại row kẹt PROCESSING quá lâu (dispatcher crash giữa claim và xử lý xong),
+   * đưa qua đúng retry-policy hiện có (markFailedRetry/markDeadLetter) thay vì set
+   * thẳng PENDING — tận dụng backoff/dead-letter sẵn có, tránh vòng lặp
+   * PROCESSING→PENDING vô hạn nếu row luôn gây crash.
+   */
+  async reclaimStale() {
+    const rows = await prisma.$transaction((tx) =>
+      outboxEventRepository.claimStaleProcessing(
+        OUTBOX_DISPATCHER_CONFIG.STALE_PROCESSING_MS,
+        OUTBOX_DISPATCHER_CONFIG.BATCH_SIZE,
+        tx
+      )
+    );
+
+    for (const row of rows) {
+      const err = new Error('Reclaimed: row stuck in PROCESSING past staleness threshold (dispatcher likely crashed mid-processing)');
+      const { outcome, attempts, nextRunAt, lastError } = decideRetryOutcome(row, err);
+      if (outcome === 'DEAD_LETTER') {
+        await outboxEventRepository.markDeadLetter(row.id, attempts, lastError);
+        logger.error(`[OutboxDispatcher] Stale row ${row.id} (${row.eventType}) moved to FAILED after ${attempts} attempts`);
+      } else {
+        await outboxEventRepository.markFailedRetry(row.id, nextRunAt, attempts, lastError);
+        logger.warn(`[OutboxDispatcher] Reclaimed stale PROCESSING row ${row.id} (${row.eventType}), back to PENDING (attempt ${attempts})`);
+      }
+    }
+
+    return { reclaimed: rows.length };
   }
 
   /** Xử lý 1 row — bọc try/catch riêng để 1 row lỗi không làm hỏng cả batch. */
