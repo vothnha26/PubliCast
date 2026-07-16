@@ -494,12 +494,14 @@ const REPORT_FREQUENCIES = {
 const REDIS_NAMESPACES = {
   WEBHOOK_DEDUP: 'wh:mid',
   RATE_LIMIT: 'rl',
-  SYNC_CACHE: 'sync'
+  SYNC_CACHE: 'sync',
+  SMART_LINK_VISITOR: 'sl:visitor'
 };
 
 const REDIS_TTL = {
   WEBHOOK_DEDUP_SEC: 600,
-  VIDEO_INSIGHTS_SEC: 7200 // 2 giờ
+  VIDEO_INSIGHTS_SEC: 7200, // 2 giờ
+  SMART_LINK_VISITOR_SEC: 86400 // 24 giờ — 1 IP tính là 1 unique visitor/ngày cho 1 SmartLink
 };
 
 /**
