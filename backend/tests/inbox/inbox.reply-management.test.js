@@ -162,7 +162,7 @@ describe('InboxService - updateReply', () => {
 
       await expect(
         inboxService.updateReply('brand-abc', 'non-existing-reply', 'new text', 'user-1')
-      ).rejects.toThrow('Reply not found');
+      ).rejects.toMatchObject({ status: 404, message: 'Reply not found' });
 
       expect(mockFbGateway.updateComment).not.toHaveBeenCalled();
       expect(inboxRepository.updateInboxItem).not.toHaveBeenCalled();
@@ -235,7 +235,7 @@ describe('InboxService - deleteReply', () => {
 
       await expect(
         inboxService.deleteReply('brand-abc', 'ghost-reply-id', 'user-1')
-      ).rejects.toThrow('Reply not found');
+      ).rejects.toMatchObject({ status: 404, message: 'Reply not found' });
 
       expect(mockFbGateway.deleteComment).not.toHaveBeenCalled();
       expect(inboxRepository.deleteInboxItem).not.toHaveBeenCalled();

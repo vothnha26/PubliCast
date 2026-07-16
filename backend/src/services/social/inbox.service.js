@@ -68,9 +68,7 @@ class InboxService {
   }
 
   async getConversationThread(itemId, userId) {
-    const item = await inboxRepository.findById(itemId);
-    if (!item) throw { status: 404, message: 'Item not found' };
-    await this._assertBrandAccess(userId, item.inbox.brandId);
+    const item = await this._getAuthorizedItem(itemId, userId);
 
     const myAccountId = await this._getMyPlatformAccountId(item);
     const videoContext = await this._getVideoContext(item);
@@ -193,11 +191,7 @@ class InboxService {
   }
 
   async replyToItem(brandId, itemId, text, userId) {
-    await this._assertBrandAccess(userId, brandId);
-
-    const item = await inboxRepository.findById(itemId);
-    if (!item) throw new Error('Item not found');
-    this._assertItemBelongsToBrand(item, brandId);
+    const item = await this._getAuthorizedItem(itemId, userId, brandId);
 
     const strategy = this.strategies.find(s => s.supportsReply(item));
     if (!strategy) {
@@ -217,11 +211,7 @@ class InboxService {
   }
 
   async updateReply(brandId, replyId, text, userId) {
-    await this._assertBrandAccess(userId, brandId);
-
-    const reply = await inboxRepository.findById(replyId);
-    if (!reply) throw new Error('Reply not found');
-    this._assertItemBelongsToBrand(reply, brandId);
+    const reply = await this._getAuthorizedItem(replyId, userId, brandId, 'Reply not found');
 
     const strategy = this.strategies.find(s => s.supportsReply(reply));
     if (!strategy) {
@@ -233,11 +223,7 @@ class InboxService {
   }
 
   async deleteReply(brandId, replyId, userId) {
-    await this._assertBrandAccess(userId, brandId);
-
-    const reply = await inboxRepository.findById(replyId);
-    if (!reply) throw new Error('Reply not found');
-    this._assertItemBelongsToBrand(reply, brandId);
+    const reply = await this._getAuthorizedItem(replyId, userId, brandId, 'Reply not found');
 
     const strategy = this.strategies.find(s => s.supportsReply(reply));
     if (!strategy) {
@@ -249,16 +235,12 @@ class InboxService {
   }
 
   async updateItemStatus(itemId, status, userId) {
-    const item = await inboxRepository.findById(itemId);
-    if (!item) throw new Error('Item not found');
-    await this._assertBrandAccess(userId, item.inbox.brandId);
+    await this._getAuthorizedItem(itemId, userId);
     return await inboxRepository.updateStatus(itemId, status.toUpperCase());
   }
 
   async updateItemMetadata(itemId, { tags, internalNotes }, userId) {
-    const item = await inboxRepository.findById(itemId);
-    if (!item) throw new Error('Item not found');
-    await this._assertBrandAccess(userId, item.inbox.brandId);
+    await this._getAuthorizedItem(itemId, userId);
 
     const updateData = {};
     if (tags !== undefined) updateData.tags = tags;
@@ -269,17 +251,25 @@ class InboxService {
 
   // ============= Private Helper Methods =============
 
-  async _assertBrandAccess(userId, brandId) {
-    const hasAccess = await authorizationFacade.checkBrandAccess(userId, brandId);
+  /**
+   * Fetch an inbox item/reply by ID and enforce brand authorization in one place.
+   * If claimedBrandId is provided, it must match the item's real brand (guards against
+   * a caller sending a brandId it's authorized for to act on another brand's item).
+   */
+  async _getAuthorizedItem(itemId, userId, claimedBrandId, notFoundMessage = 'Item not found') {
+    const item = await inboxRepository.findById(itemId);
+    if (!item) throw { status: 404, message: notFoundMessage };
+
+    if (claimedBrandId && item.inbox.brandId !== claimedBrandId) {
+      throw { status: 404, message: notFoundMessage };
+    }
+
+    const hasAccess = await authorizationFacade.checkBrandAccess(userId, item.inbox.brandId);
     if (!hasAccess) {
       throw { status: 403, message: 'Bạn không có quyền truy cập vào thương hiệu này.' };
     }
-  }
 
-  _assertItemBelongsToBrand(item, brandId) {
-    if (item.inbox.brandId !== brandId) {
-      throw { status: 404, message: 'Item not found' };
-    }
+    return item;
   }
 
   _getPagination(page, limit) {

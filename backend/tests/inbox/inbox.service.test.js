@@ -194,12 +194,12 @@ describe('InboxService Unit Tests', () => {
     });
 
     it('should reject replying when caller has no access to brandId', async () => {
+      inboxRepository.findById.mockResolvedValue(mockInboxItem);
       authorizationFacade.checkBrandAccess.mockResolvedValue(false);
 
       await expect(
         inboxService.replyToItem('brand-abc', 'item-111', 'Xin chào bạn', 'stranger-user')
       ).rejects.toMatchObject({ status: 403 });
-      expect(inboxRepository.findById).not.toHaveBeenCalled();
     });
 
     it('should reject replying when item belongs to a different brand than claimed', async () => {
@@ -277,12 +277,17 @@ describe('InboxService Unit Tests', () => {
     });
 
     it('should reject updating reply when caller has no access to brandId', async () => {
+      inboxRepository.findById.mockResolvedValue({
+        id: 'reply-123',
+        platform: 'FACEBOOK',
+        platformItemId: 'fb_comment_456',
+        inbox: { brandId: 'brand-abc' }
+      });
       authorizationFacade.checkBrandAccess.mockResolvedValue(false);
 
       await expect(
         inboxService.updateReply('brand-abc', 'reply-123', 'Updated Content', 'stranger-user')
       ).rejects.toMatchObject({ status: 403 });
-      expect(inboxRepository.findById).not.toHaveBeenCalled();
     });
 
     it('should delete reply successfully through correct strategy', async () => {
@@ -307,12 +312,17 @@ describe('InboxService Unit Tests', () => {
     });
 
     it('should reject deleting reply when caller has no access to brandId', async () => {
+      inboxRepository.findById.mockResolvedValue({
+        id: 'reply-123',
+        platform: 'FACEBOOK',
+        platformItemId: 'fb_comment_456',
+        inbox: { brandId: 'brand-abc' }
+      });
       authorizationFacade.checkBrandAccess.mockResolvedValue(false);
 
       await expect(
         inboxService.deleteReply('brand-abc', 'reply-123', 'stranger-user')
       ).rejects.toMatchObject({ status: 403 });
-      expect(inboxRepository.findById).not.toHaveBeenCalled();
     });
   });
 });
