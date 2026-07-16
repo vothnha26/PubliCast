@@ -21,13 +21,21 @@ async function fetchChartImage(chartConfig) {
   }
 }
 
+const DEFAULT_BRAND_COLOR = '#3B82F6';
+const HEX_COLOR_PATTERN = /^#?[0-9A-Fa-f]{6}$/;
+
 class CsvReportStrategy extends ReportGeneratorStrategy {
   async generate(title, brand, data, options = {}) {
     const brandName = brand?.name || 'PubliCast Brand';
     const includedSections = options.includedSections || ['Overview', 'Channels', 'TopPosts'];
-    const brandColorHex = options.brandColorHex || '#3B82F6';
+    // Validate before use anywhere — this value both drives ExcelJS cell
+    // fills and is forwarded as-is to quickchart.io (an external service) for
+    // chart rendering, so an unvalidated string shouldn't reach either.
+    const brandColorHex = HEX_COLOR_PATTERN.test(options.brandColorHex || '')
+      ? options.brandColorHex
+      : DEFAULT_BRAND_COLOR;
     const cleanColor = brandColorHex.replace('#', '');
-    const argbColor = cleanColor.length === 6 ? `FF${cleanColor}` : 'FF3B82F6'; // Default to Blue
+    const argbColor = `FF${cleanColor}`;
 
     const workbook = new ExcelJS.Workbook();
     workbook.creator = 'PubliCast';

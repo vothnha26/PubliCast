@@ -613,6 +613,13 @@ const LOCK_CONFIG = {
     POLL_INTERVAL_MS: 200,    // Check cache every 200ms while waiting
     POLL_TIMEOUT_MS: 5000,    // Wait max 5s for background fetch
     API_TIMEOUT_MS: 15000     // Google API call timeout 15s
+  },
+  REPORT_SCHEDULER: {
+    KEY: 'lock:report-scheduler:daily-scan',
+    // Covers one full scanAndSendReports() pass across every brand's config —
+    // generous ceiling so a slow run (many brands, slow email delivery)
+    // doesn't get treated as crashed and re-triggered by another instance.
+    TTL_SEC: 20 * 60
   }
 };
 

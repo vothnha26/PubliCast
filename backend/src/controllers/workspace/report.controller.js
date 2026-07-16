@@ -51,6 +51,26 @@ class ReportController {
   });
 
   /**
+   * Download a report's physical file, streamed through the backend after
+   * verifying the caller's brand owns it — report files are not safe to
+   * serve directly from /uploads (see report.routes.js for why).
+   */
+  downloadReport = asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    const { brandId } = req.query;
+
+    if (!brandId) {
+      return res.status(400).json({ message: 'brandId là bắt buộc.' });
+    }
+
+    const { filePath, contentType, title } = await reportService.getReportFileForDownload(id, brandId);
+
+    res.setHeader('Content-Type', contentType);
+    res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(title)}"`);
+    res.sendFile(filePath);
+  });
+
+  /**
    * Delete a report
    */
   deleteReport = asyncHandler(async (req, res) => {

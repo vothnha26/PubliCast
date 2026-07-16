@@ -2,6 +2,12 @@ const PdfReportStrategy = require('../../src/services/reports/strategies/pdf-rep
 const CsvReportStrategy = require('../../src/services/reports/strategies/csv-report.strategy');
 const ExcelJS = require('exceljs');
 const axios = require('axios');
+const pdfParse = require('pdf-parse');
+
+async function extractPdfText(buffer) {
+  const result = await pdfParse(buffer);
+  return result.text;
+}
 
 jest.mock('axios');
 
@@ -57,7 +63,7 @@ describe('Report Strategies Unit Tests', () => {
   });
 
   describe('PdfReportStrategy', () => {
-    it('should generate a PDF buffer with correct metadata and ASCII content', async () => {
+    it('should generate a valid PDF with Vietnamese diacritics rendered correctly', async () => {
       const pdfStrategy = new PdfReportStrategy();
       const result = await pdfStrategy.generate('Báo cáo tuần', mockBrand, mockData, {
         isWhiteLabel: false,
@@ -67,17 +73,17 @@ describe('Report Strategies Unit Tests', () => {
       expect(result.contentType).toBe('application/pdf');
       expect(result.extension).toBe('pdf');
       expect(result.buffer).toBeInstanceOf(Buffer);
+      expect(result.buffer.toString('latin1')).toMatch(/^%PDF-1/);
 
-      const pdfString = result.buffer.toString('utf-8');
-      expect(pdfString).toContain('%%PDF-1.4');
-      
-      // The Vietnamese tones should be stripped to plain ASCII
-      // "Thương Hiệu Việt" -> "Thuong Hieu Viet"
-      expect(pdfString).toContain('Thuong Hieu Viet');
-      expect(pdfString).toContain('Total Reach: 15,000');
-      expect(pdfString).toContain('Total Impressions: 25,000');
-      expect(pdfString).toContain('Theme Color: #FF5733');
-      expect(pdfString).toContain('Powered by PubliCast');
+      // Extract the real text layer instead of string-matching the raw
+      // buffer — pdfkit encodes glyphs via a CID font, so the diacritics
+      // only round-trip correctly through an actual PDF text extractor.
+      const text = await extractPdfText(result.buffer);
+      expect(text).toContain('Thương Hiệu Việt');
+      expect(text).toContain('Total Reach: 15,000');
+      expect(text).toContain('Total Impressions: 25,000');
+      expect(text).toContain('Theme Color: #FF5733');
+      expect(text).toContain('Powered by PubliCast');
     });
 
     it('should handle white-label option and custom logo in PDF', async () => {
@@ -87,9 +93,9 @@ describe('Report Strategies Unit Tests', () => {
         brandLogoUrl: 'https://logo.com/custom.png'
       });
 
-      const pdfString = result.buffer.toString('utf-8');
-      expect(pdfString).toContain('White-label \\(Logo: https://logo.com/custom.png\\)');
-      expect(pdfString).not.toContain('Powered by PubliCast');
+      const text = await extractPdfText(result.buffer);
+      expect(text).toContain('White-label (Logo: https://logo.com/custom.png)');
+      expect(text).not.toContain('Powered by PubliCast');
     });
   });
 
@@ -125,6 +131,23 @@ describe('Report Strategies Unit Tests', () => {
       
       const engagementRateRow = overviewSheet.getRow(13);
       expect(engagementRateRow.getCell(2).value).toBe('4.80%');
+    });
+
+    it('should fall back to the default color when brandColorHex is not a valid hex string', async () => {
+      const csvStrategy = new CsvReportStrategy();
+      // Neither a real color nor something that should ever reach quickchart.io as-is
+      const result = await csvStrategy.generate('Báo cáo Excel', mockBrand, mockData, {
+        includedSections: ['Overview'],
+        brandColorHex: '<script>alert(1)</script>'
+      });
+
+      const workbook = new ExcelJS.Workbook();
+      await workbook.xlsx.load(result.buffer);
+      const overviewSheet = workbook.getWorksheet('Tổng Quan Hiệu Suất');
+
+      // Title cell fill uses argbColor derived from brandColorHex — should be
+      // the default blue (FF3B82F6), not derived from the malicious input.
+      expect(overviewSheet.getCell('A1').fill.fgColor.argb).toBe('FF3B82F6');
     });
 
     it('should fetch and embed QuickChart images into dynamic widget sheets', async () => {

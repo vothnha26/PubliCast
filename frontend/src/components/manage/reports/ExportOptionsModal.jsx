@@ -10,7 +10,6 @@ import {
   Plus,
   Loader2
 } from "lucide-react";
-import { toast } from "sonner";
 
 /**
  * ExportOptionsModal
@@ -388,11 +387,10 @@ export function PdfHistoryPanel({
         ) : (
           reports.map(rep => {
             const isPdf = rep.format === 'PDF';
-            const backendBase = (import.meta.env.VITE_API_BASE_URL || "http://localhost:3000/api").replace('/api', '');
             const fileUrl = rep.fileUrl || rep.pdfUrl; // Fallback
             const isXlsx = fileUrl && fileUrl.endsWith('.xlsx');
             const formatLabel = isPdf ? "PDF" : (isXlsx ? "EXCEL" : "CSV");
-            
+
             return (
               <div key={rep.id} className="flex justify-between items-center bg-gray-50 dark:bg-slate-950 p-2.5 rounded-xl border border-gray-150 dark:border-slate-850">
                 <div className="flex items-center gap-2 truncate">
@@ -407,29 +405,24 @@ export function PdfHistoryPanel({
                   </div>
                 </div>
                 {isPdf ? (
-                  <button 
+                  <button
                     onClick={() => {
-                      if (fileUrl) {
-                        window.open(`${backendBase}${fileUrl}`, "_blank");
-                      } else {
-                        toast.error("Không tìm thấy đường dẫn file báo cáo.");
-                      }
+                      const downloadFileName = rep.title
+                        ? (rep.title.toLowerCase().endsWith('.pdf') ? rep.title : `${rep.title}.pdf`)
+                        : "report.pdf";
+                      onDownload(rep.id, downloadFileName);
                     }}
                     className="text-blue-600 dark:text-blue-400 hover:underline text-[10px] font-bold cursor-pointer"
                   >
                     VIEW
                   </button>
                 ) : (
-                  <button 
+                  <button
                     onClick={() => {
-                      if (fileUrl) {
-                        const downloadFileName = rep.title
-                          ? (isXlsx && !rep.title.toLowerCase().endsWith('.xlsx') ? `${rep.title}.xlsx` : rep.title)
-                          : (isXlsx ? "report.xlsx" : "report.csv");
-                        onDownload(fileUrl, downloadFileName);
-                      } else {
-                        toast.error("Không tìm thấy đường dẫn file báo cáo.");
-                      }
+                      const downloadFileName = rep.title
+                        ? (isXlsx && !rep.title.toLowerCase().endsWith('.xlsx') ? `${rep.title}.xlsx` : rep.title)
+                        : (isXlsx ? "report.xlsx" : "report.csv");
+                      onDownload(rep.id, downloadFileName);
                     }}
                     className="text-emerald-600 dark:text-emerald-400 hover:underline text-[10px] font-bold cursor-pointer"
                   >

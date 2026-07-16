@@ -1887,25 +1887,24 @@ export function ReportsPage() {
     }
   };
 
-  const handleDownload = async (fileUrl, title) => {
-    if (!fileUrl) return;
+  const handleDownload = async (reportId, title) => {
+    if (!reportId || !activeBrand) return;
     const toastId = toast.loading(`Đang tải xuống file: ${title}...`);
     try {
-      const backendBase = (import.meta.env.VITE_API_BASE_URL || "http://localhost:3000/api").replace('/api', '');
-      const fullUrl = `${backendBase}${fileUrl}`;
-      
-      const response = await window.fetch(fullUrl);
-      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-      
-      const blob = await response.blob();
-      const downloadUrl = window.URL.createObjectURL(blob);
-      
+      // Goes through the backend (auth + brand-ownership check), not the raw
+      // fileUrl — report files aren't publicly readable from /uploads anymore.
+      const response = await apiService.get(`/reports/${reportId}/download?brandId=${activeBrand.id}`, {
+        responseType: 'blob'
+      });
+
+      const downloadUrl = window.URL.createObjectURL(response.data);
+
       const link = document.createElement("a");
       link.href = downloadUrl;
       link.setAttribute("download", title);
       document.body.appendChild(link);
       link.click();
-      
+
       // Cleanup
       document.body.removeChild(link);
       window.URL.revokeObjectURL(downloadUrl);
