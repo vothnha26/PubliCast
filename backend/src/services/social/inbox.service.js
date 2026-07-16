@@ -1,5 +1,6 @@
 const inboxRepository = require('../../repositories/social/inbox.repository');
 const socialAccountRepository = require('../../repositories/social/social-account.repository');
+const authorizationFacade = require('../auth/authorization.facade');
 const { PLATFORMS, INBOX_STATUS, INBOX_TYPES, SOCIAL_TECHNICAL } = require('../../utils/constants');
 const inboxFormatter = require('./inbox/inbox-formatter');
 const socialPlatformFactory = require('./social-platform.factory');
@@ -66,9 +67,10 @@ class InboxService {
     };
   }
 
-  async getConversationThread(itemId) {
+  async getConversationThread(itemId, userId) {
     const item = await inboxRepository.findById(itemId);
     if (!item) throw { status: 404, message: 'Item not found' };
+    await this._assertBrandAccess(userId, item.inbox.brandId);
 
     const myAccountId = await this._getMyPlatformAccountId(item);
     const videoContext = await this._getVideoContext(item);
@@ -190,9 +192,12 @@ class InboxService {
     return seededItems;
   }
 
-  async replyToItem(brandId, itemId, text) {
+  async replyToItem(brandId, itemId, text, userId) {
+    await this._assertBrandAccess(userId, brandId);
+
     const item = await inboxRepository.findById(itemId);
     if (!item) throw new Error('Item not found');
+    this._assertItemBelongsToBrand(item, brandId);
 
     const strategy = this.strategies.find(s => s.supportsReply(item));
     if (!strategy) {
@@ -211,9 +216,12 @@ class InboxService {
     return reply;
   }
 
-  async updateReply(brandId, replyId, text) {
+  async updateReply(brandId, replyId, text, userId) {
+    await this._assertBrandAccess(userId, brandId);
+
     const reply = await inboxRepository.findById(replyId);
     if (!reply) throw new Error('Reply not found');
+    this._assertItemBelongsToBrand(reply, brandId);
 
     const strategy = this.strategies.find(s => s.supportsReply(reply));
     if (!strategy) {
@@ -224,9 +232,12 @@ class InboxService {
     return await inboxRepository.updateInboxItem(replyId, { content: text });
   }
 
-  async deleteReply(brandId, replyId) {
+  async deleteReply(brandId, replyId, userId) {
+    await this._assertBrandAccess(userId, brandId);
+
     const reply = await inboxRepository.findById(replyId);
     if (!reply) throw new Error('Reply not found');
+    this._assertItemBelongsToBrand(reply, brandId);
 
     const strategy = this.strategies.find(s => s.supportsReply(reply));
     if (!strategy) {
@@ -237,15 +248,17 @@ class InboxService {
     return await inboxRepository.deleteInboxItem(replyId);
   }
 
-  async updateItemStatus(itemId, status) {
+  async updateItemStatus(itemId, status, userId) {
     const item = await inboxRepository.findById(itemId);
     if (!item) throw new Error('Item not found');
+    await this._assertBrandAccess(userId, item.inbox.brandId);
     return await inboxRepository.updateStatus(itemId, status.toUpperCase());
   }
 
-  async updateItemMetadata(itemId, { tags, internalNotes }) {
+  async updateItemMetadata(itemId, { tags, internalNotes }, userId) {
     const item = await inboxRepository.findById(itemId);
     if (!item) throw new Error('Item not found');
+    await this._assertBrandAccess(userId, item.inbox.brandId);
 
     const updateData = {};
     if (tags !== undefined) updateData.tags = tags;
@@ -255,6 +268,19 @@ class InboxService {
   }
 
   // ============= Private Helper Methods =============
+
+  async _assertBrandAccess(userId, brandId) {
+    const hasAccess = await authorizationFacade.checkBrandAccess(userId, brandId);
+    if (!hasAccess) {
+      throw { status: 403, message: 'Bạn không có quyền truy cập vào thương hiệu này.' };
+    }
+  }
+
+  _assertItemBelongsToBrand(item, brandId) {
+    if (item.inbox.brandId !== brandId) {
+      throw { status: 404, message: 'Item not found' };
+    }
+  }
 
   _getPagination(page, limit) {
     const safePage = Math.max(1, parseInt(page) || 1);

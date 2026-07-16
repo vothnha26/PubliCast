@@ -68,7 +68,7 @@ export const ConversationItem = ({ conv, activeConv, onSelect, onUpdateStatus })
           </div>
           <div className="flex items-start gap-1.5 mt-1">
             <MessageSquare size={13} className="text-gray-300 mt-0.5 shrink-0" />
-            <p className="text-[11px] text-gray-500 line-clamp-2 leading-normal flex-1" dangerouslySetInnerHTML={{ __html: conv.preview }} />
+            <p className="text-[11px] text-gray-500 line-clamp-2 leading-normal flex-1">{conv.preview}</p>
           </div>
         </div>
 
