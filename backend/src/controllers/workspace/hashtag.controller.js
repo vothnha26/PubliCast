@@ -1,6 +1,37 @@
 const prisma = require('../../config/prisma');
 const logger = require('../../utils/logger');
 const trendingHashtagService = require('../../services/workspace/hashtag/trending/TrendingHashtagService');
+const tokApiHashtagProvider = require('../../services/workspace/hashtag/tokapi-hashtag.provider');
+
+/**
+ * Fetches real hashtag stats from TokApi (TikTok only — no equivalent data
+ * source is wired up for other platforms yet). Returns null fields rather
+ * than fabricated numbers when the platform isn't supported or the lookup
+ * fails/hits quota, so the UI can show "not available" instead of fake data.
+ */
+async function fetchRealHashtagStats(platform, hashtagName, previousTotalPosts) {
+  if (platform !== 'TIKTOK') {
+    return { totalPosts: null, totalReach: null, platformHashtagId: null, trendDirection: 'STABLE' };
+  }
+
+  const result = await tokApiHashtagProvider.searchHashtag(hashtagName);
+  if (!result) {
+    return { totalPosts: null, totalReach: null, platformHashtagId: null, trendDirection: 'STABLE' };
+  }
+
+  let trendDirection = 'STABLE';
+  if (previousTotalPosts != null && result.totalPosts != null) {
+    if (result.totalPosts > previousTotalPosts) trendDirection = 'UP';
+    else if (result.totalPosts < previousTotalPosts) trendDirection = 'DOWN';
+  }
+
+  return {
+    totalPosts: result.totalPosts,
+    totalReach: result.totalReach,
+    platformHashtagId: result.platformHashtagId,
+    trendDirection
+  };
+}
 
 /**
  * Get all hashtag sets and tracked hashtags for a brand
@@ -153,25 +184,75 @@ exports.trackHashtag = async (req, res, next) => {
       return res.status(409).json({ message: 'Hashtag is already being tracked on this platform' });
     }
 
-    // Create a new tracker with randomized/mock initial analytics
+    const stats = await fetchRealHashtagStats(platform, cleanTag, null);
+
     const newTracker = await prisma.hashtagTracker.create({
       data: {
         brandId,
         hashtag: cleanTag,
         platform,
-        totalPosts: Math.floor(Math.random() * 500000 + 10000),
-        postsLast24h: Math.floor(Math.random() * 1200 + 50),
-        totalReach: Math.floor(Math.random() * 80000 + 2000),
-        avgEngagementRate: parseFloat((Math.random() * 8 + 1).toFixed(2)),
-        trendDirection: 'UP',
+        platformHashtagId: stats.platformHashtagId,
+        totalPosts: stats.totalPosts,
+        postsLast24h: null,
+        totalReach: stats.totalReach,
+        avgEngagementRate: null,
+        trendDirection: stats.trendDirection,
         addedAt: new Date(),
-        lastFetchedAt: new Date()
+        lastFetchedAt: stats.totalPosts != null ? new Date() : null
       }
     });
 
     return res.status(201).json({ message: 'Hashtag added to tracking successfully', data: newTracker });
   } catch (error) {
     logger.error('Error in trackHashtag:', error);
+    next(error);
+  }
+};
+
+/**
+ * Manually refresh a tracked hashtag's stats from the platform.
+ * Deliberately not automated (no cron) — TokApi's quota is too tight to
+ * refresh every tracked hashtag on a schedule, so the brand owner decides
+ * when it's worth spending a lookup.
+ */
+exports.refreshHashtag = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+
+    const existing = await prisma.hashtagTracker.findUnique({ where: { id } });
+    if (!existing) {
+      return res.status(404).json({ message: 'Tracked hashtag not found' });
+    }
+
+    const authorizationFacade = require('../../services/auth/authorization.facade');
+    const hasAccess = await authorizationFacade.checkBrandAccess(req.user.id, existing.brandId);
+    if (!hasAccess) {
+      return res.status(403).json({ message: 'Bạn không có quyền truy cập vào tài nguyên này.' });
+    }
+
+    const stats = await fetchRealHashtagStats(existing.platform, existing.hashtag, existing.totalPosts);
+
+    if (stats.totalPosts == null) {
+      return res.status(200).json({
+        message: 'Không thể lấy dữ liệu mới lúc này (hết quota hoặc nền tảng chưa được hỗ trợ). Số liệu cũ được giữ nguyên.',
+        data: existing
+      });
+    }
+
+    const updatedTracker = await prisma.hashtagTracker.update({
+      where: { id },
+      data: {
+        platformHashtagId: stats.platformHashtagId,
+        totalPosts: stats.totalPosts,
+        totalReach: stats.totalReach,
+        trendDirection: stats.trendDirection,
+        lastFetchedAt: new Date()
+      }
+    });
+
+    return res.status(200).json({ message: 'Hashtag refreshed successfully', data: updatedTracker });
+  } catch (error) {
+    logger.error('Error in refreshHashtag:', error);
     next(error);
   }
 };

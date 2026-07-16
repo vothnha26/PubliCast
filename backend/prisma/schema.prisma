@@ -1301,6 +1301,7 @@ model HashtagTracker {
   brandId           String
   hashtag           String
   platform          PlatformType
+  platformHashtagId String?
   totalPosts        Int?
   postsLast24h      Int?
   totalReach        Int?

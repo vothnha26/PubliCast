@@ -187,6 +187,21 @@ export function HashtagManager() {
     }
   };
 
+  // Manually refresh a tracked tag's stats (no auto-refresh — provider quota is tight)
+  const [refreshingTagId, setRefreshingTagId] = useState(null);
+  const handleRefreshTag = async (trackerId) => {
+    setRefreshingTagId(trackerId);
+    try {
+      const res = await apiService.post(`/hashtags/track/${trackerId}/refresh`);
+      toast.success(res.data.message);
+      loadData(true);
+    } catch (error) {
+      toast.error(t("toasts.refreshError"));
+    } finally {
+      setRefreshingTagId(null);
+    }
+  };
+
   // Track new tag from search/discover panel
   const handleTrackNewTag = async (tagText) => {
     if (!activeBrand?.id) return;
@@ -429,13 +444,26 @@ export function HashtagManager() {
                           {trackedHashtags.map((row) => (
                             <tr key={row.id} className="hover:bg-slate-50/50 transition-colors">
                               <td className="px-6 py-4 text-xs font-bold text-gray-900">{row.hashtag}</td>
-                              <td className="px-6 py-4 text-xs text-gray-400 font-semibold">{row.postsLast24h} {t("stats.postsPerDay")}</td>
-                              <td className="px-6 py-4 text-xs font-bold text-gray-900">{(row.totalReach / 1000).toFixed(1)}{t("stats.reachSuffix")}</td>
-                              <td className="px-6 py-4">
-                                <span className="px-2.5 py-0.5 rounded bg-pink-50 text-[#E1306C] text-[9px] font-bold uppercase tracking-tight">Instagram</span>
+                              <td className="px-6 py-4 text-xs text-gray-400 font-semibold">
+                                {row.postsLast24h != null ? `${row.postsLast24h} ${t("stats.postsPerDay")}` : t("stats.noData")}
                               </td>
-                              <td className="px-6 py-4 text-right">
-                                 <button 
+                              <td className="px-6 py-4 text-xs font-bold text-gray-900">
+                                {row.totalReach != null ? `${(row.totalReach / 1000).toFixed(1)}${t("stats.reachSuffix")}` : t("stats.noData")}
+                              </td>
+                              <td className="px-6 py-4">
+                                <span className="px-2.5 py-0.5 rounded bg-pink-50 text-[#E1306C] text-[9px] font-bold uppercase tracking-tight">
+                                  {row.platform === "TIKTOK" ? "TikTok" : row.platform === "INSTAGRAM" ? "Instagram" : row.platform}
+                                </span>
+                              </td>
+                              <td className="px-6 py-4 text-right whitespace-nowrap">
+                                 <button
+                                   onClick={() => handleRefreshTag(row.id)}
+                                   disabled={refreshingTagId === row.id}
+                                   className="text-gray-500 text-[10px] font-bold hover:underline cursor-pointer mr-3 disabled:opacity-50"
+                                 >
+                                   {refreshingTagId === row.id ? t("stats.refreshing") : t("stats.refreshBtn")}
+                                 </button>
+                                 <button
                                    onClick={() => handleUntrackTag(row.id)}
                                    className="text-red-500 text-[10px] font-bold hover:underline cursor-pointer"
                                  >

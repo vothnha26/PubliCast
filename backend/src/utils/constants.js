@@ -603,6 +603,12 @@ const QUOTA_TTL_STRATEGY = {
       { usagePct: 0.5, ttlSec: 6 * 3600 }    // 50%+ usage → Cache 6 hours
     ],
     DEFAULT_TTL_SEC: 2 * 3600                 // Default → Cache 2 hours
+  },
+  // TokApi (RapidAPI) hashtag lookup has a very tight monthly quota on the
+  // BASIC plan — cap daily calls hard rather than risk exhausting the whole
+  // month's budget from a burst of tracking/refresh requests.
+  TOKAPI_HASHTAG: {
+    DAILY_LIMIT: 20
   }
 };
 

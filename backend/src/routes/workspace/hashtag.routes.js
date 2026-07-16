@@ -50,4 +50,10 @@ router.post('/track', checkBrandAccess, hashtagController.trackHashtag);
  */
 router.delete('/track/:id', hashtagController.untrackHashtag);
 
+/**
+ * POST /api/hashtags/track/:id/refresh
+ * Manually refresh a tracked hashtag's stats from the platform
+ */
+router.post('/track/:id/refresh', hashtagController.refreshHashtag);
+
 module.exports = router;
