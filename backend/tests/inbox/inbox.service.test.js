@@ -2,6 +2,7 @@ const inboxService = require('../../src/services/social/inbox.service');
 const inboxRepository = require('../../src/repositories/social/inbox.repository');
 const socialAccountRepository = require('../../src/repositories/social/social-account.repository');
 const authorizationFacade = require('../../src/services/auth/authorization.facade');
+const autoReplyService = require('../../src/services/social/inbox/strategies/auto-reply/auto-reply.service');
 const { INBOX_STATUS, INBOX_TYPES } = require('../../src/utils/constants');
 
 jest.mock('../../src/repositories/social/inbox.repository', () => ({
@@ -22,6 +23,11 @@ jest.mock('../../src/repositories/social/social-account.repository', () => ({
 
 jest.mock('../../src/services/auth/authorization.facade', () => ({
   checkBrandAccess: jest.fn()
+}));
+
+jest.mock('../../src/services/social/inbox/strategies/auto-reply/auto-reply.service', () => ({
+  getSettings: jest.fn(),
+  saveSettings: jest.fn()
 }));
 
 // Mock các strategy đồng bộ inbox để tránh gọi DB/repo thật
@@ -323,6 +329,59 @@ describe('InboxService Unit Tests', () => {
       await expect(
         inboxService.deleteReply('brand-abc', 'reply-123', 'stranger-user')
       ).rejects.toMatchObject({ status: 403 });
+    });
+  });
+
+  describe('INBOX_007 - getAutoReplySettings & saveAutoReplySettings', () => {
+    const mockSocialAccount = { id: 'sa-1', brandId: 'brand-abc' };
+
+    it('should return settings when caller has access to the account brand', async () => {
+      socialAccountRepository.findById.mockResolvedValue(mockSocialAccount);
+      autoReplyService.getSettings.mockResolvedValue({ isActive: true, mode: 'KEYWORD' });
+
+      const result = await inboxService.getAutoReplySettings('sa-1', 'user-1');
+
+      expect(authorizationFacade.checkBrandAccess).toHaveBeenCalledWith('user-1', 'brand-abc');
+      expect(result).toEqual({ isActive: true, mode: 'KEYWORD' });
+    });
+
+    it('should reject reading settings when caller has no access to the account brand', async () => {
+      socialAccountRepository.findById.mockResolvedValue(mockSocialAccount);
+      authorizationFacade.checkBrandAccess.mockResolvedValue(false);
+
+      await expect(
+        inboxService.getAutoReplySettings('sa-1', 'stranger-user')
+      ).rejects.toMatchObject({ status: 403 });
+      expect(autoReplyService.getSettings).not.toHaveBeenCalled();
+    });
+
+    it('should throw 404 when the social account does not exist', async () => {
+      socialAccountRepository.findById.mockResolvedValue(null);
+
+      await expect(
+        inboxService.getAutoReplySettings('missing-sa', 'user-1')
+      ).rejects.toMatchObject({ status: 404 });
+    });
+
+    it('should save settings when caller has access to the account brand', async () => {
+      socialAccountRepository.findById.mockResolvedValue(mockSocialAccount);
+      autoReplyService.saveSettings.mockResolvedValue({ isActive: true, mode: 'AI' });
+
+      const result = await inboxService.saveAutoReplySettings('sa-1', { isActive: true, mode: 'AI' }, 'user-1');
+
+      expect(authorizationFacade.checkBrandAccess).toHaveBeenCalledWith('user-1', 'brand-abc');
+      expect(autoReplyService.saveSettings).toHaveBeenCalledWith('sa-1', { isActive: true, mode: 'AI' });
+      expect(result).toEqual({ isActive: true, mode: 'AI' });
+    });
+
+    it('should reject saving settings when caller has no access to the account brand', async () => {
+      socialAccountRepository.findById.mockResolvedValue(mockSocialAccount);
+      authorizationFacade.checkBrandAccess.mockResolvedValue(false);
+
+      await expect(
+        inboxService.saveAutoReplySettings('sa-1', { isActive: true }, 'stranger-user')
+      ).rejects.toMatchObject({ status: 403 });
+      expect(autoReplyService.saveSettings).not.toHaveBeenCalled();
     });
   });
 });

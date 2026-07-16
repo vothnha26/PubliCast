@@ -6,7 +6,9 @@ class InboxController {
    * GET /api/inbox
    */
   getInboxItems = asyncHandler(async (req, res) => {
-    const brandId = req.query.brandId || 'default-brand';
+    const { brandId } = req.query;
+    if (!brandId) return res.status(400).json({ message: 'brandId is required' });
+
     const result = await inboxService.getInboxItems(req.query, brandId);
 
     res.status(200).json({
@@ -115,7 +117,7 @@ class InboxController {
       return res.status(400).json({ message: 'socialAccountId is required' });
     }
 
-    const settings = await inboxService.getAutoReplySettings(socialAccountId);
+    const settings = await inboxService.getAutoReplySettings(socialAccountId, req.user.id);
     res.status(200).json({
       message: 'Auto-reply settings retrieved successfully',
       data: settings
@@ -131,7 +133,7 @@ class InboxController {
       return res.status(400).json({ message: 'socialAccountId is required' });
     }
 
-    const settings = await inboxService.saveAutoReplySettings(socialAccountId, req.body);
+    const settings = await inboxService.saveAutoReplySettings(socialAccountId, req.body, req.user.id);
     res.status(200).json({
       message: 'Auto-reply settings updated successfully',
       data: settings

@@ -297,12 +297,32 @@ class InboxService {
     }
   }
 
-  async getAutoReplySettings(socialAccountId) {
+  async getAutoReplySettings(socialAccountId, userId) {
+    await this._getAuthorizedSocialAccount(socialAccountId, userId);
     return await autoReplyService.getSettings(socialAccountId);
   }
 
-  async saveAutoReplySettings(socialAccountId, data) {
+  async saveAutoReplySettings(socialAccountId, data, userId) {
+    await this._getAuthorizedSocialAccount(socialAccountId, userId);
     return await autoReplyService.saveSettings(socialAccountId, data);
+  }
+
+  /**
+   * Fetch a SocialAccount by ID and enforce brand authorization — mirrors
+   * _getAuthorizedItem but for routes keyed by socialAccountId instead of an
+   * inbox item ID (auto-reply settings live on the SocialAccount, not on any
+   * inbox item, so there's no item to fetch brandId from).
+   */
+  async _getAuthorizedSocialAccount(socialAccountId, userId) {
+    const account = await socialAccountRepository.findById(socialAccountId);
+    if (!account) throw { status: 404, message: 'Social account not found' };
+
+    const hasAccess = await authorizationFacade.checkBrandAccess(userId, account.brandId);
+    if (!hasAccess) {
+      throw { status: 403, message: 'Bạn không có quyền truy cập vào thương hiệu này.' };
+    }
+
+    return account;
   }
 }
 
