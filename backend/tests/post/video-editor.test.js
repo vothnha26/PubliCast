@@ -1,11 +1,11 @@
 const videoProcessorFacade = require('../../src/services/workspace/video/video-processor.facade');
 const TranscriptionStrategyFactory = require('../../src/services/workspace/ai/transcription/transcription-strategy.factory');
 const { GeminiTranscriptionStrategy, MockTranscriptionStrategy } = require('../../src/services/workspace/ai/transcription/transcription.strategy');
-const { exec } = require('child_process');
+const { execFile } = require('child_process');
 const fs = require('fs');
 
 jest.mock('child_process', () => ({
-  exec: jest.fn()
+  execFile: jest.fn()
 }));
 
 // Mock cloudinary before importing video processor
@@ -28,6 +28,7 @@ jest.mock('fs', () => {
     mkdirSync: jest.fn(),
     unlinkSync: jest.fn(),
     copyFileSync: jest.fn(),
+    writeFileSync: jest.fn(),
     statSync: jest.fn(() => ({ size: 1024 })),
     createReadStream: jest.fn(() => {
       const s = new Readable();
@@ -92,11 +93,11 @@ describe('Video Editor Services & SOLID Patterns Tests', () => {
   describe('VideoProcessorFacade', () => {
     it('should process video and trigger correct ffmpeg command', async () => {
       fs.existsSync.mockReturnValue(true);
-      exec.mockImplementation((cmd, callback) => callback(null, 'stdout', ''));
+      execFile.mockImplementation((cmd, args, callback) => callback(null, 'stdout', ''));
 
       // Stub private _resolveFile to avoid real file network requests
       videoProcessorFacade._resolveFile = jest.fn().mockResolvedValue();
-      
+
       const result = await videoProcessorFacade.processVideo({
         videoUrl: '/uploads/media/video.mp4',
         startTime: 2,
@@ -104,16 +105,19 @@ describe('Video Editor Services & SOLID Patterns Tests', () => {
         brandId: 'brand_123'
       });
 
-      expect(exec).toHaveBeenCalled();
-      const executedCommand = exec.mock.calls[0][0];
-      expect(executedCommand).toContain('-ss 2');
-      expect(executedCommand).toContain('-t 5'); // 7 - 2 = 5 seconds duration
+      expect(execFile).toHaveBeenCalled();
+      const [cmd, args] = execFile.mock.calls[0];
+      expect(cmd).toBe('ffmpeg');
+      expect(args).toContain('-ss');
+      expect(args).toContain('2');
+      expect(args).toContain('-t');
+      expect(args).toContain('5'); // 7 - 2 = 5 seconds duration
       expect(result).toContain('brand_123');
     });
 
     it('should generate correct crop filter command for 9:16 aspect ratio with dynamic keyframes', async () => {
       fs.existsSync.mockReturnValue(true);
-      exec.mockImplementation((cmd, callback) => callback(null, 'stdout', ''));
+      execFile.mockImplementation((cmd, args, callback) => callback(null, 'stdout', ''));
       videoProcessorFacade._resolveFile = jest.fn().mockResolvedValue();
 
       await videoProcessorFacade.processVideo({
@@ -128,16 +132,17 @@ describe('Video Editor Services & SOLID Patterns Tests', () => {
         brandId: 'brand_123'
       });
 
-      expect(exec).toHaveBeenCalled();
-      const executedCommand = exec.mock.calls[0][0];
-      expect(executedCommand).toContain('crop=min(iw\\,ih*9/16)');
+      expect(execFile).toHaveBeenCalled();
+      const [, args] = execFile.mock.calls[0];
+      const filterComplexValue = args[args.indexOf('-filter_complex') + 1];
+      expect(filterComplexValue).toContain('crop=min(iw\\,ih*9/16)');
       // linear interpolation slope: (0.2 - 0.5) / 5 = -0.06
-      expect(executedCommand).toContain('-0.0600');
+      expect(filterComplexValue).toContain('-0.0600');
     });
 
-    it('should include drawtext filters for textOverlays and subtitles', async () => {
+    it('should include drawtext filters for textOverlays and subtitles, rendered via textfile= instead of raw text=', async () => {
       fs.existsSync.mockReturnValue(true);
-      exec.mockImplementation((cmd, callback) => callback(null, 'stdout', ''));
+      execFile.mockImplementation((cmd, args, callback) => callback(null, 'stdout', ''));
       videoProcessorFacade._resolveFile = jest.fn().mockResolvedValue();
 
       await videoProcessorFacade.processVideo({
@@ -154,12 +159,22 @@ describe('Video Editor Services & SOLID Patterns Tests', () => {
         brandId: 'brand_123'
       });
 
-      expect(exec).toHaveBeenCalled();
-      const executedCommand = exec.mock.calls[0][0];
+      expect(execFile).toHaveBeenCalled();
+      const [, args] = execFile.mock.calls[0];
+      const filterComplexValue = args[args.indexOf('-filter_complex') + 1];
+
+      // Text content is written to server-generated temp files, not
+      // interpolated directly into the filter string.
+      expect(fs.writeFileSync).toHaveBeenCalledWith(expect.stringContaining('overlay-0.txt'), 'Hello World', 'utf8');
+      expect(fs.writeFileSync).toHaveBeenCalledWith(expect.stringContaining('subtitle-0.txt'), 'A Subtitle', 'utf8');
+
       // Kiểm tra filter drawtext của text overlay tĩnh
-      expect(executedCommand).toContain('drawtext=text=\'Hello World\':x=(w*50/100-tw/2):y=(h*40/100-th/2):fontcolor=#FF0000:fontsize=30');
+      expect(filterComplexValue).toContain('drawtext=textfile=');
+      expect(filterComplexValue).toContain('overlay-0.txt');
+      expect(filterComplexValue).toContain('x=(w*50/100-tw/2):y=(h*40/100-th/2):fontcolor=#FF0000:fontsize=30');
       // Kiểm tra filter drawtext của subtitle động (start 2 - 1 = 1, end 5 - 1 = 4)
-      expect(executedCommand).toContain('drawtext=text=\'A Subtitle\':x=(w-tw)/2:y=h-80:fontcolor=white:fontsize=22:box=1:boxcolor=black@0.6:boxborderw=6:enable=\'between(t,1.000,4.000)\'');
+      expect(filterComplexValue).toContain('subtitle-0.txt');
+      expect(filterComplexValue).toContain('x=(w-tw)/2:y=h-80:fontcolor=white:fontsize=22:box=1:boxcolor=black@0.6:boxborderw=6:enable=\'between(t,1.000,4.000)\'');
     });
   });
 });
