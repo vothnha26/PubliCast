@@ -1,11 +1,11 @@
 const fs = require('fs');
 const path = require('path');
-const { exec } = require('child_process');
+const { execFile } = require('child_process');
 const axios = require('axios');
 
 // Mock dependencies
 jest.mock('child_process', () => ({
-  exec: jest.fn()
+  execFile: jest.fn()
 }));
 
 jest.mock('axios');
@@ -132,8 +132,8 @@ describe('VideoProcessorFacade Unit Tests', () => {
   });
 
   describe('_executeFfmpeg()', () => {
-    it('should construct correct command and execute it via child_process.exec', async () => {
-      exec.mockImplementation((cmd, cb) => {
+    it('should construct correct argv and execute it via child_process.execFile (no shell)', async () => {
+      execFile.mockImplementation((cmd, args, cb) => {
         cb(null, 'stdout', 'stderr');
       });
 
@@ -145,22 +145,27 @@ describe('VideoProcessorFacade Unit Tests', () => {
         aspectRatio: '1:1',
         keyframes: [{ time: 0, cropX: 0.5 }],
         audioPath: null,
-        audioVolume: 50
+        audioVolume: 50,
+        tempDir: 'tmp',
+        uniqueId: 'test-id',
+        textFilePaths: []
       };
 
       await videoProcessorFacade._executeFfmpeg(params);
 
-      expect(exec).toHaveBeenCalledTimes(1);
-      const callArgs = exec.mock.calls[0];
-      const cmd = callArgs[0];
-      expect(cmd).toContain('ffmpeg');
-      expect(cmd).toContain('-ss 0');
-      expect(cmd).toContain('-t 10');
-      expect(cmd).toContain('crop=');
+      expect(execFile).toHaveBeenCalledTimes(1);
+      const [cmd, args] = execFile.mock.calls[0];
+      expect(cmd).toBe('ffmpeg');
+      expect(Array.isArray(args)).toBe(true);
+      expect(args).toContain('-ss');
+      expect(args).toContain('0');
+      expect(args).toContain('-t');
+      expect(args).toContain('10');
+      expect(args.some(a => typeof a === 'string' && a.includes('crop='))).toBe(true);
     });
 
     it('should reject if FFmpeg fails', async () => {
-      exec.mockImplementation((cmd, cb) => {
+      execFile.mockImplementation((cmd, args, cb) => {
         cb(new Error('Ffmpeg crashed'), '', 'Ffmpeg failed');
       });
 
@@ -172,11 +177,114 @@ describe('VideoProcessorFacade Unit Tests', () => {
         aspectRatio: 'original',
         keyframes: [],
         audioPath: null,
-        audioVolume: 50
+        audioVolume: 50,
+        tempDir: 'tmp',
+        uniqueId: 'test-id',
+        textFilePaths: []
       };
 
       await expect(videoProcessorFacade._executeFfmpeg(params))
         .rejects.toThrow('FFmpeg failed to process video');
+    });
+
+    it('should never pass raw user text as a single interpolated string (RCE regression)', async () => {
+      // Before the fix, textOverlays[].text was interpolated directly into a
+      // -filter_complex string run via exec() (a shell). A value like
+      // `'; touch /tmp/pwned; echo '` would close the quoted filter argument
+      // and run as a separate shell command. execFile() takes an argv array
+      // with no shell involved, so this same payload can only ever end up as
+      // literal file content via the textfile= mechanism, never as a command.
+      const maliciousText = "'; touch /tmp/pwned; echo '";
+      let capturedWriteContent = null;
+      const writeSpy = jest.spyOn(fs, 'writeFileSync').mockImplementation((filePath, content) => {
+        capturedWriteContent = content;
+      });
+      execFile.mockImplementation((cmd, args, cb) => cb(null, '', ''));
+
+      await videoProcessorFacade._executeFfmpeg({
+        inputPath: 'in.mp4',
+        outputPath: 'out.mp4',
+        startTime: 0,
+        endTime: 5,
+        aspectRatio: 'original',
+        keyframes: [],
+        audioPath: null,
+        audioVolume: 50,
+        textOverlays: [{ text: maliciousText, color: 'white', size: 24, x: 50, y: 50 }],
+        subtitles: [],
+        tempDir: 'tmp',
+        uniqueId: 'test-id',
+        textFilePaths: []
+      });
+
+      // The malicious text must be written verbatim to a text file...
+      expect(capturedWriteContent).toBe(maliciousText);
+
+      // ...and the -filter_complex argv element must reference that file via
+      // textfile=, never contain the raw payload itself.
+      const [, args] = execFile.mock.calls[0];
+      const filterComplexIndex = args.indexOf('-filter_complex');
+      const filterValue = args[filterComplexIndex + 1];
+      expect(filterValue).not.toContain(maliciousText);
+      expect(filterValue).toContain('textfile=');
+      expect(filterValue).toContain('test-id-overlay-0.txt');
+
+      writeSpy.mockRestore();
+    });
+  });
+
+  describe('_buildVideoFilters() — textfile mechanism', () => {
+    it('writes overlay text to a temp file and references it via textfile=, tracking it for cleanup', () => {
+      const writeSpy = jest.spyOn(fs, 'writeFileSync').mockImplementation(() => {});
+      const textFilePaths = [];
+
+      const result = videoProcessorFacade._buildVideoFilters({
+        aspectRatio: 'original',
+        keyframes: [],
+        textOverlays: [{ text: "It's a \"test\": part 1, part 2", color: 'white', size: 24, x: 50, y: 50 }],
+        subtitles: [],
+        startTime: 0,
+        tempDir: 'tmp',
+        uniqueId: 'test-id',
+        textFilePaths
+      });
+
+      expect(writeSpy).toHaveBeenCalledWith(
+        path.join('tmp', 'test-id-overlay-0.txt'),
+        "It's a \"test\": part 1, part 2",
+        'utf8'
+      );
+      expect(result).toContain('textfile=');
+      expect(textFilePaths).toHaveLength(1);
+      expect(textFilePaths[0]).toBe(path.join('tmp', 'test-id-overlay-0.txt'));
+
+      writeSpy.mockRestore();
+    });
+
+    it('escapes drive-letter colons in the textfile path so ffmpeg does not mis-parse it as a filter option', () => {
+      const writeSpy = jest.spyOn(fs, 'writeFileSync').mockImplementation(() => {});
+      const cwdSpy = jest.spyOn(process, 'cwd').mockReturnValue('C:\\app');
+      const textFilePaths = [];
+
+      const result = videoProcessorFacade._buildVideoFilters({
+        aspectRatio: 'original',
+        keyframes: [],
+        textOverlays: [{ text: 'hello', color: 'white', size: 24, x: 50, y: 50 }],
+        subtitles: [],
+        startTime: 0,
+        tempDir: 'C:\\app\\uploads\\temp',
+        uniqueId: 'test-id',
+        textFilePaths
+      });
+
+      // The literal file-system path (as tracked for cleanup) keeps its real colon...
+      expect(textFilePaths[0]).toContain('C:');
+      // ...but the filtergraph argument must have it escaped so ffmpeg doesn't
+      // treat "C" as the textfile value and ":\\app\\..." as a bogus option.
+      expect(result).toContain('textfile=\'C\\:');
+
+      writeSpy.mockRestore();
+      cwdSpy.mockRestore();
     });
   });
 

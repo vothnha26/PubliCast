@@ -1,6 +1,6 @@
 const fs = require('fs');
 const path = require('path');
-const { exec } = require('child_process');
+const { execFile } = require('child_process');
 const axios = require('axios');
 const { cloudinary } = require('../../../config/cloudinary');
 
@@ -20,7 +20,7 @@ class VideoProcessorFacade {
    */
   async processVideo({ videoUrl, startTime, endTime, aspectRatio, keyframes, audioUrl, audioVolume = 50, textOverlays = [], subtitles = [], brandId = 'unassigned' }) {
     console.log(`[VideoProcessorFacade] Starting process: videoUrl=${videoUrl}, trim=${startTime}s-${endTime}s, aspectRatio=${aspectRatio}, keyframesCount=${keyframes?.length || 0}, textOverlaysCount=${textOverlays?.length || 0}`);
-    
+
     const tempDir = path.join(process.cwd(), 'uploads', 'temp');
     if (!fs.existsSync(tempDir)) {
       fs.mkdirSync(tempDir, { recursive: true });
@@ -30,6 +30,7 @@ class VideoProcessorFacade {
     const localInputPath = path.join(tempDir, `${uniqueId}-input.mp4`);
     const localOutputPath = path.join(tempDir, `${uniqueId}-output.mp4`);
     const localAudioPath = audioUrl ? path.join(tempDir, `${uniqueId}-audio.mp3`) : null;
+    const textFilePaths = [];
 
     try {
       // 1. Resolve source video path (Download if it is a remote URL)
@@ -51,7 +52,10 @@ class VideoProcessorFacade {
         audioPath: localAudioPath,
         audioVolume,
         textOverlays,
-        subtitles
+        subtitles,
+        tempDir,
+        uniqueId,
+        textFilePaths
       });
 
       // 4. Handle output persistence
@@ -70,7 +74,7 @@ class VideoProcessorFacade {
       }
     } finally {
       // Cleanup temp files
-      this._cleanupFiles([localInputPath, localOutputPath, localAudioPath]);
+      this._cleanupFiles([localInputPath, localOutputPath, localAudioPath, ...textFilePaths]);
     }
   }
 
@@ -141,7 +145,7 @@ class VideoProcessorFacade {
     }
   }
 
-  _buildVideoFilters({ aspectRatio, keyframes, textOverlays, subtitles, startTime }) {
+  _buildVideoFilters({ aspectRatio, keyframes, textOverlays, subtitles, startTime, tempDir, uniqueId, textFilePaths }) {
     const filters = [];
 
     // 1. Crop & Scale Filter
@@ -162,53 +166,127 @@ class VideoProcessorFacade {
 
     // 2. Text Overlays (Tĩnh)
     if (Array.isArray(textOverlays)) {
-      textOverlays.forEach(overlay => {
-        const cleanText = (overlay.text || '').replace(/'/g, "'\\''").replace(/:/g, '\\:');
-        if (!cleanText) return;
-        const color = overlay.color || 'white';
-        const size = overlay.size || 24;
-        const x = overlay.x !== undefined ? overlay.x : 50;
-        const y = overlay.y !== undefined ? overlay.y : 50;
-        
+      textOverlays.forEach((overlay, index) => {
+        const text = String(overlay.text || '');
+        if (!text) return;
+        const color = this._sanitizeFfmpegColor(overlay.color);
+        const size = this._sanitizeFfmpegNumber(overlay.size, 24);
+        const x = this._sanitizeFfmpegNumber(overlay.x, 50);
+        const y = this._sanitizeFfmpegNumber(overlay.y, 50);
+        const textFilePath = this._writeDrawtextFile(tempDir, `${uniqueId}-overlay-${index}`, text);
+        textFilePaths.push(textFilePath);
+        const escapedPath = this._escapeFfmpegOptionValue(textFilePath);
+
         // Căn giữa tương đối theo phần trăm toạ độ
-        filters.push(`drawtext=text='${cleanText}':x=(w*${x}/100-tw/2):y=(h*${y}/100-th/2):fontcolor=${color}:fontsize=${size}`);
+        filters.push(`drawtext=textfile='${escapedPath}':x=(w*${x}/100-tw/2):y=(h*${y}/100-th/2):fontcolor=${color}:fontsize=${size}`);
       });
     }
 
     // 3. Subtitles (Động theo thời gian)
     if (Array.isArray(subtitles)) {
-      subtitles.forEach(sub => {
-        const cleanText = (sub.text || '').replace(/'/g, "'\\''").replace(/:/g, '\\:');
-        if (!cleanText) return;
-        
+      subtitles.forEach((sub, index) => {
+        const text = String(sub.text || '');
+        if (!text) return;
+
         // Thời gian hiển thị tương đối so với start time đã cắt (-ss ở input)
         const start = Math.max(0, sub.start - startTime);
         const end = Math.max(0, sub.end - startTime);
-        
-        filters.push(`drawtext=text='${cleanText}':x=(w-tw)/2:y=h-80:fontcolor=white:fontsize=22:box=1:boxcolor=black@0.6:boxborderw=6:enable='between(t,${start.toFixed(3)},${end.toFixed(3)})'`);
+        const textFilePath = this._writeDrawtextFile(tempDir, `${uniqueId}-subtitle-${index}`, text);
+        textFilePaths.push(textFilePath);
+        const escapedPath = this._escapeFfmpegOptionValue(textFilePath);
+
+        filters.push(`drawtext=textfile='${escapedPath}':x=(w-tw)/2:y=h-80:fontcolor=white:fontsize=22:box=1:boxcolor=black@0.6:boxborderw=6:enable='between(t,${start.toFixed(3)},${end.toFixed(3)})'`);
       });
     }
 
     return filters.join(',');
   }
 
-  _executeFfmpeg({ inputPath, outputPath, startTime, endTime, aspectRatio, keyframes, audioPath, audioVolume, textOverlays, subtitles }) {
+  /**
+   * Writes overlay/subtitle text to a server-generated temp file and points
+   * drawtext at it via textfile= instead of interpolating the text directly
+   * into the filter string via text=. This sidesteps ffmpeg's three-layer
+   * filtergraph escaping (option value / filter description / shell) for
+   * arbitrary user text entirely — the only thing that still needs escaping
+   * is the file path itself, which is server-generated (uniqueId-based) and
+   * never contains the characters that make that escaping hard.
+   * See: https://ffmpeg.org/ffmpeg-filters.html#drawtext
+   */
+  _writeDrawtextFile(tempDir, name, text) {
+    const filePath = path.join(tempDir, `${name}.txt`);
+    fs.writeFileSync(filePath, text, 'utf8');
+    return filePath;
+  }
+
+  /**
+   * Escapes a filter option value per ffmpeg's filtergraph syntax. The
+   * textfile= path is server-generated so it can never contain a single
+   * quote, but on Windows it does contain a drive-letter colon (e.g.
+   * "D:/...") — colon is the filter-option separator, so without escaping
+   * it ffmpeg's parser stops reading the path at the first ':' and treats
+   * the remainder as a bogus option name.
+   * See: https://ffmpeg.org/ffmpeg-filters.html#Notes-on-filtergraph-escaping
+   */
+  _escapeFfmpegOptionValue(value) {
+    return String(value).replace(/\\/g, '/').replace(/:/g, '\\:');
+  }
+
+  /**
+   * fontcolor accepts an ffmpeg color name/spec, not free text — restrict to
+   * a safe charset so it can't be used to break out of the filter option.
+   */
+  _sanitizeFfmpegColor(color) {
+    if (typeof color !== 'string' || !/^[a-zA-Z0-9#@.]+$/.test(color)) return 'white';
+    return color;
+  }
+
+  /**
+   * Numeric filter options (fontsize, x%, y%) — reject anything that isn't
+   * actually a finite number rather than interpolating arbitrary input.
+   */
+  _sanitizeFfmpegNumber(value, fallback) {
+    const num = Number(value);
+    return Number.isFinite(num) ? num : fallback;
+  }
+
+  _executeFfmpeg({ inputPath, outputPath, startTime, endTime, aspectRatio, keyframes, audioPath, audioVolume, textOverlays, subtitles, tempDir, uniqueId, textFilePaths }) {
     return new Promise((resolve, reject) => {
       const duration = endTime - startTime;
       const volCoef = (audioVolume / 100).toFixed(2);
 
-      const videoFilterString = this._buildVideoFilters({ aspectRatio, keyframes, textOverlays, subtitles, startTime });
+      const videoFilterString = this._buildVideoFilters({ aspectRatio, keyframes, textOverlays, subtitles, startTime, tempDir, uniqueId, textFilePaths });
       const videoChain = videoFilterString ? `[0:v]${videoFilterString}[v]` : `[0:v]null[v]`;
 
-      let cmd = '';
+      // Built as an argv array and run via execFile (no shell) instead of a
+      // single interpolated string run via exec — user-controlled text
+      // (textOverlays[].text, subtitles[].text) flows into videoChain, and a
+      // shell would let a value like `"; rm -rf /; echo "` escape the
+      // -filter_complex argument and execute as a separate command. With
+      // execFile, each array element is passed to ffmpeg directly as one
+      // argument; there's no shell to escape out of.
+      let args;
       if (audioPath) {
-        cmd = `ffmpeg -y -ss ${startTime} -t ${duration} -i "${inputPath}" -i "${audioPath}" -filter_complex "${videoChain};[1:a]volume=${volCoef}[a1];[0:a][a1]amix=inputs=2:duration=first[a]" -map "[v]" -map "[a]" -c:v libx264 -c:a aac -preset superfast -crf 20 -strict experimental "${outputPath}"`;
+        args = [
+          '-y', '-ss', String(startTime), '-t', String(duration),
+          '-i', inputPath, '-i', audioPath,
+          '-filter_complex', `${videoChain};[1:a]volume=${volCoef}[a1];[0:a][a1]amix=inputs=2:duration=first[a]`,
+          '-map', '[v]', '-map', '[a]',
+          '-c:v', 'libx264', '-c:a', 'aac', '-preset', 'superfast', '-crf', '20', '-strict', 'experimental',
+          outputPath
+        ];
       } else {
-        cmd = `ffmpeg -y -ss ${startTime} -t ${duration} -i "${inputPath}" -filter_complex "${videoChain}" -map "[v]" -map 0:a? -c:v libx264 -c:a aac -preset superfast -crf 20 -strict experimental "${outputPath}"`;
+        args = [
+          '-y', '-ss', String(startTime), '-t', String(duration),
+          '-i', inputPath,
+          '-filter_complex', videoChain,
+          '-map', '[v]', '-map', '0:a?',
+          '-c:v', 'libx264', '-c:a', 'aac', '-preset', 'superfast', '-crf', '20', '-strict', 'experimental',
+          outputPath
+        ];
       }
 
-      console.log(`[VideoProcessorFacade] Executing command: ${cmd}`);
-      exec(cmd, (error, stdout, stderr) => {
+      console.log(`[VideoProcessorFacade] Executing: ffmpeg ${args.join(' ')}`);
+      execFile('ffmpeg', args, (error, stdout, stderr) => {
         if (error) {
           console.error(`[VideoProcessorFacade] FFmpeg execution error:`, stderr);
           reject(new Error(`FFmpeg failed to process video: ${error.message}`));
