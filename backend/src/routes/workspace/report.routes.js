@@ -45,6 +45,16 @@ router.post('/schedule-config', checkPermission('VIEW_ANALYTICS'), reportControl
 router.post('/', checkPermission('VIEW_ANALYTICS'), reportController.generateReport);
 
 /**
+ * GET /api/reports/:id/download?brandId=...
+ * Download a report's file. Report files are also present under
+ * /uploads/reports (see app.js static serving), but that path has no auth —
+ * anyone who guesses/observes a fileUrl could download another brand's
+ * report. This route is the access-controlled way to fetch the same file;
+ * the frontend should always use this instead of the raw fileUrl.
+ */
+router.get('/:id/download', checkPermission('VIEW_ANALYTICS'), reportController.downloadReport);
+
+/**
  * DELETE /api/reports/:id?brandId=...
  * Delete a report
  */

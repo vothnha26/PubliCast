@@ -1,5 +1,12 @@
 const fs = require('fs');
 const path = require('path');
+
+const mockRedis = {
+  set: jest.fn(),
+  eval: jest.fn()
+};
+jest.mock('../../src/config/redis', () => mockRedis);
+
 const reportSchedulerService = require('../../src/services/reports/report-scheduler.service');
 const reportService = require('../../src/services/reports/report.service');
 const prisma = require('../../src/config/prisma');
@@ -107,5 +114,53 @@ describe('ReportSchedulerService Tests', () => {
 
     // Verify sendReportImmediately was NOT triggered
     expect(reportService.sendReportImmediately).not.toHaveBeenCalled();
+  });
+
+  describe('runScanWithLock', () => {
+    it('should run the scan when the lock is acquired, then release it', async () => {
+      mockRedis.set.mockResolvedValue('OK'); // acquireLock succeeds
+      mockRedis.eval.mockResolvedValue(1); // releaseLock succeeds
+
+      const today = new Date();
+      const mockConfig = {
+        receiveEmail: true,
+        emailsList: ['recipient@example.com'],
+        dayOfMonth: today.getDate(),
+        format: 'PDF',
+        platforms: ['Facebook']
+      };
+      fs.writeFileSync(tempConfigFile, JSON.stringify(mockConfig, null, 2), 'utf8');
+      prisma.brand.findUnique.mockResolvedValue({ id: 'test-brand-id', name: 'Test Brand' });
+      reportService.sendReportImmediately.mockResolvedValue(true);
+
+      await reportSchedulerService.runScanWithLock();
+
+      expect(mockRedis.set).toHaveBeenCalledWith(
+        'lock:report-scheduler:daily-scan',
+        expect.any(String),
+        expect.objectContaining({ NX: true })
+      );
+      expect(reportService.sendReportImmediately).toHaveBeenCalled();
+      expect(mockRedis.eval).toHaveBeenCalled(); // lock released
+    });
+
+    it('should skip the scan entirely when another instance already holds the lock', async () => {
+      mockRedis.set.mockResolvedValue(null); // acquireLock fails — already locked
+
+      const today = new Date();
+      const mockConfig = {
+        receiveEmail: true,
+        emailsList: ['recipient@example.com'],
+        dayOfMonth: today.getDate(),
+        format: 'PDF',
+        platforms: ['Facebook']
+      };
+      fs.writeFileSync(tempConfigFile, JSON.stringify(mockConfig, null, 2), 'utf8');
+
+      await reportSchedulerService.runScanWithLock();
+
+      expect(reportService.sendReportImmediately).not.toHaveBeenCalled();
+      expect(mockRedis.eval).not.toHaveBeenCalled(); // never acquired, nothing to release
+    });
   });
 });

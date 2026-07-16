@@ -224,6 +224,67 @@ describe('Reports API and Strategy Patterns Tests', () => {
     });
   });
 
+  describe('GET /api/reports/:id/download', () => {
+    it('should stream the file when the report belongs to the requesting brand', async () => {
+      const mockReport = {
+        id: 'report-dl-1',
+        brandId: 'brand-123',
+        format: 'PDF',
+        title: 'My Report',
+        fileUrl: '/uploads/reports/dl_test_report.pdf'
+      };
+      prisma.report.findUnique.mockResolvedValue(mockReport);
+
+      const reportsDir = path.join(__dirname, '../../uploads/reports');
+      if (!fs.existsSync(reportsDir)) {
+        fs.mkdirSync(reportsDir, { recursive: true });
+      }
+      const filePath = path.join(reportsDir, 'dl_test_report.pdf');
+      fs.writeFileSync(filePath, '%PDF-1.4 dummy content');
+
+      const res = await request(app)
+        .get('/api/reports/report-dl-1/download?brandId=brand-123')
+        .expect(200);
+
+      expect(res.headers['content-type']).toContain('application/pdf');
+      expect(res.text).toContain('dummy content');
+
+      fs.unlinkSync(filePath);
+    });
+
+    it('should return 403 when the report belongs to a different brand', async () => {
+      prisma.report.findUnique.mockResolvedValue({
+        id: 'report-dl-2',
+        brandId: 'brand-owner',
+        format: 'PDF',
+        title: 'Other Brand Report',
+        fileUrl: '/uploads/reports/other_brand.pdf'
+      });
+
+      const res = await request(app)
+        .get('/api/reports/report-dl-2/download?brandId=brand-attacker')
+        .expect(403);
+
+      expect(res.body.message).toContain('không có quyền');
+    });
+
+    it('should return 404 when the report does not exist', async () => {
+      prisma.report.findUnique.mockResolvedValue(null);
+
+      await request(app)
+        .get('/api/reports/missing-report/download?brandId=brand-123')
+        .expect(404);
+    });
+
+    it('should return 400 if brandId is missing', async () => {
+      const res = await request(app)
+        .get('/api/reports/report-dl-1/download')
+        .expect(400);
+
+      expect(res.body.message).toContain('brandId là bắt buộc');
+    });
+  });
+
   describe('GET /api/reports/preview-data', () => {
     it('should return aggregated preview analytics data', async () => {
       const mockBrand = { id: 'brand-123', name: 'Cool Brand', logoUrl: 'logo.png' };

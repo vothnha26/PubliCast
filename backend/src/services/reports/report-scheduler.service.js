@@ -3,6 +3,11 @@ const fs = require('fs');
 const path = require('path');
 const reportService = require('./report.service');
 const prisma = require('../../config/prisma');
+const redisClient = require('../../config/redis');
+const DistributedLockService = require('../social/distributed-lock.service');
+const { LOCK_CONFIG } = require('../../utils/constants');
+
+const lockService = new DistributedLockService(redisClient);
 
 class ReportSchedulerService {
   constructor() {
@@ -17,13 +22,34 @@ class ReportSchedulerService {
     this.job = cron.schedule('0 8 * * *', async () => {
       console.log('⏰ [ReportScheduler] Starting daily report schedule scan...');
       try {
-        await this.scanAndSendReports();
+        await this.runScanWithLock();
       } catch (error) {
         console.error('❌ [ReportScheduler] Error running scheduled task:', error);
       }
     });
 
     console.log('✅ [ReportScheduler] Cron service initialized successfully (Running daily at 08:00 AM).');
+  }
+
+  /**
+   * Guards scanAndSendReports with a distributed lock so that running
+   * multiple backend instances (horizontal scaling) doesn't result in every
+   * instance's cron firing at 08:00 and sending duplicate report emails to
+   * every brand scheduled for that day.
+   */
+  async runScanWithLock() {
+    const { KEY, TTL_SEC } = LOCK_CONFIG.REPORT_SCHEDULER;
+    const token = await lockService.acquireLock(KEY, TTL_SEC);
+    if (!token) {
+      console.log('ℹ️ [ReportScheduler] Another instance is already running the daily scan, skipping.');
+      return;
+    }
+
+    try {
+      await this.scanAndSendReports();
+    } finally {
+      await lockService.releaseLock(KEY, token);
+    }
   }
 
   /**
@@ -53,6 +79,11 @@ class ReportSchedulerService {
     const isLastDayOfMonth = tomorrow.getDate() === 1;
 
     console.log(`🔍 [ReportScheduler] Scanning ${configFiles.length} config file(s). Today is Day ${currentDay} of the month. (Last day: ${isLastDayOfMonth})`);
+
+    // Collected and awaited (not fire-and-forget) so the distributed lock in
+    // runScanWithLock() stays held for the full duration of email delivery,
+    // not just for building the list of brands to email.
+    const pendingSends = [];
 
     for (const file of configFiles) {
       try {
@@ -90,8 +121,7 @@ class ReportSchedulerService {
 
           const title = `Báo cáo phân tích tự động định kỳ - Thương hiệu ${brandName}`;
 
-          // Trigger email report asynchronously to avoid blocking the main loop
-          reportService.sendReportImmediately(brandId, null, {
+          const sendPromise = reportService.sendReportImmediately(brandId, null, {
             title,
             format: config.format || 'PDF',
             dateRange: 'Tháng trước', // Always report on previous month for monthly report
@@ -104,11 +134,15 @@ class ReportSchedulerService {
           }).catch(err => {
             console.error(`❌ [ReportScheduler] Failed to send scheduled report for brand ${brandName}:`, err.message);
           });
+
+          pendingSends.push(sendPromise);
         }
       } catch (fileErr) {
         console.error(`❌ [ReportScheduler] Error processing config file ${file}:`, fileErr.message);
       }
     }
+
+    await Promise.all(pendingSends);
   }
 }
 

@@ -134,6 +134,14 @@ const { initSocialSubscriber } = require('./events/subscribers/social.subscriber
 initSocialSubscriber();
 
 // ── Static file serving ────────────────────────────────────────────────────
+// Reports contain a brand's private analytics — they're only fetchable
+// through GET /api/reports/:id/download (checkPermission + brand-ownership
+// check), never as a raw static path. Block it before express.static ever
+// sees the request, rather than relying on nothing existing at that path.
+app.use('/uploads/reports', (req, res) => {
+  res.status(403).json({ message: 'Direct access to report files is not allowed. Use /api/reports/:id/download.' });
+});
+
 app.use('/uploads', express.static('uploads', {
   setHeaders: (res) => {
     res.set('Access-Control-Allow-Origin', '*');

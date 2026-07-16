@@ -202,9 +202,54 @@ class ReportService {
   }
 
   /**
+   * Resolve the physical file path + content type for a report download,
+   * enforcing brand ownership first. Report files live under uploads/reports
+   * (served publicly by express.static), so this check is the only thing
+   * standing between "brand owns this report" and anyone with the URL.
+   * @param {string} id
+   * @param {string} brandId
+   */
+  async getReportFileForDownload(id, brandId) {
+    const report = await reportRepository.findById(id);
+    if (!report) {
+      const error = new Error('Báo cáo không tồn tại.');
+      error.statusCode = 404;
+      throw error;
+    }
+
+    if (report.brandId !== brandId) {
+      const error = new Error('Bạn không có quyền tải báo cáo này.');
+      error.statusCode = 403;
+      throw error;
+    }
+
+    if (!report.fileUrl) {
+      const error = new Error('Báo cáo không có tệp đính kèm.');
+      error.statusCode = 404;
+      throw error;
+    }
+
+    const reportsDir = path.join(__dirname, '../../../uploads/reports');
+    const fileName = path.basename(report.fileUrl);
+    const filePath = path.join(reportsDir, fileName);
+
+    if (!fs.existsSync(filePath)) {
+      const error = new Error('Tệp báo cáo không còn tồn tại trên máy chủ.');
+      error.statusCode = 404;
+      throw error;
+    }
+
+    const contentType = report.format === REPORT_FORMATS.CSV
+      ? 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+      : 'application/pdf';
+
+    return { filePath, fileName, contentType, title: report.title };
+  }
+
+  /**
    * Delete a report
-   * @param {string} id 
-   * @param {string} brandId 
+   * @param {string} id
+   * @param {string} brandId
    */
   async deleteReport(id, brandId) {
     const report = await reportRepository.findById(id);
