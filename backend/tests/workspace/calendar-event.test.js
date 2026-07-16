@@ -71,4 +71,74 @@ describe('CalendarEventService Export tests', () => {
       expect(icsResult).toContain('END:VCALENDAR');
     });
   });
+
+  describe('createEvent — isSystem escalation fix', () => {
+    it('should always create the event as isSystem:false regardless of what the caller sends', async () => {
+      prisma.calendarEvent.create.mockResolvedValue({ id: 'ev-1', isSystem: false, brandId: 'brand-abc' });
+
+      // Attacker-style payload trying to create a platform-wide event
+      await calendarEventService.createEvent(
+        { title: 'FAKE HOLIDAY', description: 'x', eventDate: '2026-01-01', isSystem: true },
+        'brand-abc'
+      );
+
+      expect(prisma.calendarEvent.create).toHaveBeenCalledWith({
+        data: expect.objectContaining({
+          brandId: 'brand-abc',
+          isSystem: false
+        })
+      });
+    });
+
+    it('should never null out brandId based on the isSystem flag in the payload', async () => {
+      prisma.calendarEvent.create.mockResolvedValue({ id: 'ev-2' });
+
+      await calendarEventService.createEvent(
+        { title: 'Another fake holiday', eventDate: '2026-02-01', isSystem: 'true' },
+        'brand-abc'
+      );
+
+      const call = prisma.calendarEvent.create.mock.calls[0][0];
+      expect(call.data.brandId).toBe('brand-abc');
+    });
+  });
+
+  describe('deleteEvent — system event protection', () => {
+    it('should reject deleting a system event even when brandId matches nothing in particular', async () => {
+      prisma.calendarEvent.findUnique.mockResolvedValue({ id: 'sys-1', isSystem: true, brandId: null });
+
+      await expect(
+        calendarEventService.deleteEvent('sys-1', 'brand-abc')
+      ).rejects.toMatchObject({ statusCode: 403 });
+
+      expect(prisma.calendarEvent.delete).not.toHaveBeenCalled();
+    });
+
+    it('should reject deleting an event belonging to a different brand', async () => {
+      prisma.calendarEvent.findUnique.mockResolvedValue({ id: 'ev-3', isSystem: false, brandId: 'brand-victim' });
+
+      await expect(
+        calendarEventService.deleteEvent('ev-3', 'brand-attacker')
+      ).rejects.toMatchObject({ statusCode: 403 });
+
+      expect(prisma.calendarEvent.delete).not.toHaveBeenCalled();
+    });
+
+    it('should allow deleting a non-system event owned by the caller\'s brand', async () => {
+      prisma.calendarEvent.findUnique.mockResolvedValue({ id: 'ev-4', isSystem: false, brandId: 'brand-abc' });
+      prisma.calendarEvent.delete.mockResolvedValue({ id: 'ev-4' });
+
+      await calendarEventService.deleteEvent('ev-4', 'brand-abc');
+
+      expect(prisma.calendarEvent.delete).toHaveBeenCalledWith({ where: { id: 'ev-4' } });
+    });
+
+    it('should throw 404 when the event does not exist', async () => {
+      prisma.calendarEvent.findUnique.mockResolvedValue(null);
+
+      await expect(
+        calendarEventService.deleteEvent('missing', 'brand-abc')
+      ).rejects.toMatchObject({ statusCode: 404 });
+    });
+  });
 });

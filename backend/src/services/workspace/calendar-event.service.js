@@ -129,22 +129,28 @@ class CalendarEventService {
   }
 
   /**
-   * Create a custom system or brand event
+   * Create a brand event. isSystem is always false here — there is no admin
+   * surface yet for managing shared/system calendar events, so this method
+   * never accepts an isSystem flag from the caller (it previously did,
+   * letting any authenticated user with CREATE_POSTS create a "holiday"
+   * visible to every brand on the platform).
    */
   async createEvent(data, brandId) {
     return prisma.calendarEvent.create({
       data: {
-        brandId: data.isSystem ? null : brandId,
+        brandId,
         title: data.title,
         description: data.description || '',
         eventDate: new Date(data.eventDate),
-        isSystem: data.isSystem === true || data.isSystem === 'true'
+        isSystem: false
       }
     });
   }
 
   /**
-   * Delete an event
+   * Delete a brand-owned event. System events can't be deleted through this
+   * path at all — there's no admin surface for managing them yet, and a
+   * brand-scoped delete should never be able to remove a platform-wide entry.
    */
   async deleteEvent(eventId, brandId) {
     const event = await prisma.calendarEvent.findUnique({
@@ -157,8 +163,7 @@ class CalendarEventService {
       throw err;
     }
 
-    // Chỉ xoá được nếu là event hệ thống (admin) hoặc đúng brandId sở hữu
-    if (!event.isSystem && event.brandId !== brandId) {
+    if (event.isSystem || event.brandId !== brandId) {
       const err = new Error('Unauthorized to delete this event');
       err.statusCode = 403;
       throw err;

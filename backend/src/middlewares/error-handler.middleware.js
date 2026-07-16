@@ -7,8 +7,14 @@ const logger = require('../utils/logger');
  */
 const errorHandler = (err, req, res, _next) => {
   console.error("💥 GLOBAL ERROR CATCHED:", err);
-  const statusCode = err.status || err.statusCode || 500;
+  let statusCode = err.status || err.statusCode || 500;
   let message = err.message || 'Internal Server Error';
+
+  // ── Multer upload errors ────────────────────────────────────────────────
+  if (err.name === 'MulterError') {
+    statusCode = err.code === 'LIMIT_FILE_SIZE' ? 413 : 400;
+    return res.status(statusCode).json({ message: err.message, status: statusCode });
+  }
 
   // ── Prisma-specific error mapping ──────────────────────────────────────
   if (err.code === 'P2002') {
