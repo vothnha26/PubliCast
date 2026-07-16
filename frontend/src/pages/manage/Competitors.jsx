@@ -396,12 +396,13 @@ export function CompetitorsPage() {
 
   // Delete Competitor
   const handleDeleteCompetitor = async (c) => {
+    if (!activeBrand) return;
     if (window.confirm(t("toasts.deleteConfirm", { name: c.name }))) {
       try {
         if (c.platform === "facebook") {
-          await socialService.deleteFacebookCompetitor(c.id);
+          await socialService.deleteFacebookCompetitor(c.id, activeBrand.id);
         } else {
-          await socialService.deleteCompetitor(c.id);
+          await socialService.deleteCompetitor(c.id, activeBrand.id);
         }
         toast.success(t("toasts.deleteSuccess", { name: c.name }));
         await fetchAllCompetitors();

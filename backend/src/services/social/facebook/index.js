@@ -74,8 +74,8 @@ class FacebookService extends BaseSocialService {
     return facebookCompetitor.getCompetitors(brandId);
   }
 
-  async deleteCompetitor(id) {
-    return facebookCompetitor.deleteCompetitor(id);
+  async deleteCompetitor(id, brandId, userId) {
+    return facebookCompetitor.deleteCompetitor(id, brandId, userId);
   }
 
   async fetchChannelComments(brandId) {

@@ -58,8 +58,8 @@ class SocialService {
     return response.data;
   }
 
-  async deleteCompetitor(id) {
-    const response = await apiService.delete(`/social/youtube/competitors/${id}`);
+  async deleteCompetitor(id, brandId) {
+    const response = await apiService.delete(`/social/youtube/competitors/${id}?brandId=${brandId}`);
     return response.data;
   }
 
@@ -111,8 +111,8 @@ class SocialService {
     return response.data;
   }
 
-  async deleteFacebookCompetitor(id) {
-    const response = await apiService.delete(`/social/facebook/competitors/${id}`);
+  async deleteFacebookCompetitor(id, brandId) {
+    const response = await apiService.delete(`/social/facebook/competitors/${id}?brandId=${brandId}`);
     return response.data;
   }
 

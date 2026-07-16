@@ -3,7 +3,9 @@ const discordService = require('../../services/social/discord/discord.service');
 const asyncHandler = require('../../utils/async-handler');
 const logger = require('../../utils/logger');
 const socialAccountRepository = require('../../repositories/social/social-account.repository');
+const authorizationFacade = require('../../services/auth/authorization.facade');
 const prisma = require('../../config/prisma');
+const { PLATFORMS } = require('../../utils/constants');
 
 class DiscordOAuthController {
   _getRedirectBaseUrl(req) {
@@ -89,6 +91,20 @@ class DiscordOAuthController {
   getGuildChannels = asyncHandler(async (req, res) => {
     const { guildId } = req.query;
     if (!guildId) return res.status(400).json({ message: 'guildId is required' });
+
+    // discordCallback always writes a SocialAccount row for a guild before
+    // redirecting the user here to pick a channel, so by the time this is
+    // called the guild is already tied to a brand — check that the caller
+    // actually belongs to it instead of letting any authenticated user list
+    // channels for an arbitrary guildId via this app's bot token.
+    const account = await socialAccountRepository.findByPlatformAccountIdAndPlatform(guildId, PLATFORMS.DISCORD);
+    if (!account) {
+      return res.status(404).json({ message: 'Discord server not found or not connected to any brand yet' });
+    }
+    const hasAccess = await authorizationFacade.checkBrandAccess(req.user.id, account.brandId);
+    if (!hasAccess) {
+      return res.status(403).json({ message: 'Bạn không có quyền truy cập thương hiệu này.' });
+    }
 
     try {
       const channels = await discordGateway.getGuildChannels(guildId);
