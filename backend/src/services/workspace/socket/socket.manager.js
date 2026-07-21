@@ -3,6 +3,9 @@ const { SOCKET_EVENTS, ROOM_PREFIXES } = require('../../../utils/socket-constant
 const socketAuthMiddleware = require('./socket.auth');
 const messageProcessorFactory = require('./message-strategies/message-processor.factory');
 const prisma = require('../../../config/prisma');
+const authorizationFacade = require('../../auth/authorization.facade');
+
+const STAFF_ROLES = ['STAFF', 'ADMIN'];
 
 class SocketManager {
   constructor() {
@@ -106,22 +109,51 @@ class SocketManager {
   }
 
   /**
-   * Handle joining ticket or brand rooms
+   * Handle joining ticket or brand rooms.
+   * Previously this joined any requested room with no access check — any
+   * authenticated socket could pass a victim's brandId/ticketId and receive
+   * every realtime event (notifications, analytics pushes, chat) broadcast
+   * to that room (#73). Verify membership before joining either room.
    */
-  _handleJoinRoom(socket, payload) {
+  async _handleJoinRoom(socket, payload) {
     const { ticketId, brandId } = payload;
-    
+
     if (ticketId) {
-      const room = `${ROOM_PREFIXES.TICKET}${ticketId}`;
-      socket.join(room);
-      socket.emit(SOCKET_EVENTS.JOINED_ROOM, { room, ticketId });
-      console.log(`👥 [SocketManager] ${socket.user.name} joined room ${room}`);
+      try {
+        const ticket = await prisma.supportTicket.findUnique({ where: { id: ticketId } });
+        if (!ticket) {
+          throw new Error('Support Ticket not found');
+        }
+        const isParticipant = socket.user.id === ticket.userId || socket.user.id === ticket.assignedAgentId;
+        const isStaff = STAFF_ROLES.includes(socket.user.role);
+        if (!isParticipant && !isStaff) {
+          throw new Error('Bạn không có quyền tham gia ticket này.');
+        }
+
+        const room = `${ROOM_PREFIXES.TICKET}${ticketId}`;
+        socket.join(room);
+        socket.emit(SOCKET_EVENTS.JOINED_ROOM, { room, ticketId });
+        console.log(`👥 [SocketManager] ${socket.user.name} joined room ${room}`);
+      } catch (err) {
+        console.error('❌ [SocketManager] Join ticket room error:', err.message);
+        socket.emit(SOCKET_EVENTS.ERROR, { message: err.message });
+      }
     }
 
     if (brandId) {
-      const room = `${ROOM_PREFIXES.BRAND}${brandId}`;
-      socket.join(room);
-      socket.emit(SOCKET_EVENTS.JOINED_ROOM, { room, brandId });
+      try {
+        const hasAccess = await authorizationFacade.checkBrandAccess(socket.user.id, brandId);
+        if (!hasAccess) {
+          throw new Error('Bạn không có quyền truy cập thương hiệu này.');
+        }
+
+        const room = `${ROOM_PREFIXES.BRAND}${brandId}`;
+        socket.join(room);
+        socket.emit(SOCKET_EVENTS.JOINED_ROOM, { room, brandId });
+      } catch (err) {
+        console.error('❌ [SocketManager] Join brand room error:', err.message);
+        socket.emit(SOCKET_EVENTS.ERROR, { message: err.message });
+      }
     }
   }
 
@@ -161,6 +193,14 @@ class SocketManager {
 
       if (!livestream) {
         throw new Error('Livestream not found');
+      }
+
+      // Previously only existence was checked — any authenticated socket
+      // could join another brand's livestream room and, worse, trigger
+      // YouTube live-chat polling for a brand they have no relation to (#73).
+      const hasAccess = await authorizationFacade.checkBrandAccess(socket.user.id, livestream.brandId);
+      if (!hasAccess) {
+        throw new Error('Bạn không có quyền truy cập livestream này.');
       }
 
       const room = `${ROOM_PREFIXES.LIVESTREAM}${livestreamId}`;
@@ -235,6 +275,17 @@ class SocketManager {
 
       if (!ticket) {
         throw new Error('Support Ticket not found');
+      }
+
+      // Previously this only checked the ticket existed, not that the caller
+      // was party to it — any authenticated socket could emit send_message
+      // with a victim's ticketId and have it saved/broadcast as themselves
+      // (#72). Only the ticket's own customer, the assigned support agent,
+      // or STAFF/ADMIN (who handle support across brands) may post.
+      const isParticipant = socket.user.id === ticket.userId || socket.user.id === ticket.assignedAgentId;
+      const isStaff = STAFF_ROLES.includes(socket.user.role);
+      if (!isParticipant && !isStaff) {
+        throw new Error('Bạn không có quyền gửi tin nhắn trong ticket này.');
       }
 
       // Apply strategy to process incoming data
