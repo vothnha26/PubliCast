@@ -26,6 +26,10 @@ jest.mock('../../src/repositories/social/social-account.repository', () => ({
   findByBrandAndPlatform: jest.fn()
 }));
 
+jest.mock('../../src/services/auth/authorization.facade', () => ({
+  checkBrandAccess: jest.fn()
+}));
+
 // Mock Facebook Gateway
 const mockFbGateway = {
   updateComment: jest.fn(),
@@ -70,9 +74,15 @@ const mockYtAccount = [{
 
 // Load inboxService after all mocks are set up
 let inboxService;
+let authorizationFacade;
 
 beforeAll(() => {
   inboxService = require('../../src/services/social/inbox.service');
+  authorizationFacade = require('../../src/services/auth/authorization.facade');
+});
+
+beforeEach(() => {
+  authorizationFacade.checkBrandAccess.mockResolvedValue(true);
 });
 
 afterEach(() => {
@@ -97,7 +107,7 @@ describe('InboxService - updateReply', () => {
       mockFbGateway.updateComment.mockResolvedValue({ success: true });
       inboxRepository.updateInboxItem.mockResolvedValue({ ...fbReply, content: 'Nội dung đã cập nhật' });
 
-      const result = await inboxService.updateReply('brand-abc', 'reply-fb-001', 'Nội dung đã cập nhật');
+      const result = await inboxService.updateReply('brand-abc', 'reply-fb-001', 'Nội dung đã cập nhật', 'user-1');
 
       expect(inboxRepository.findById).toHaveBeenCalledWith('reply-fb-001');
       expect(mockFbGateway.updateComment).toHaveBeenCalledWith(
@@ -129,7 +139,7 @@ describe('InboxService - updateReply', () => {
       mockYtGateway.updateComment.mockResolvedValue({ success: true });
       inboxRepository.updateInboxItem.mockResolvedValue({ ...ytReply, content: 'YouTube updated reply' });
 
-      const result = await inboxService.updateReply('brand-abc', 'reply-yt-001', 'YouTube updated reply');
+      const result = await inboxService.updateReply('brand-abc', 'reply-yt-001', 'YouTube updated reply', 'user-1');
 
       expect(inboxRepository.findById).toHaveBeenCalledWith('reply-yt-001');
       expect(mockYtGateway.updateComment).toHaveBeenCalledWith(
@@ -151,8 +161,8 @@ describe('InboxService - updateReply', () => {
       inboxRepository.findById.mockResolvedValue(null);
 
       await expect(
-        inboxService.updateReply('brand-abc', 'non-existing-reply', 'new text')
-      ).rejects.toThrow('Reply not found');
+        inboxService.updateReply('brand-abc', 'non-existing-reply', 'new text', 'user-1')
+      ).rejects.toMatchObject({ status: 404, message: 'Reply not found' });
 
       expect(mockFbGateway.updateComment).not.toHaveBeenCalled();
       expect(inboxRepository.updateInboxItem).not.toHaveBeenCalled();
@@ -178,7 +188,7 @@ describe('InboxService - deleteReply', () => {
       mockFbGateway.deleteComment.mockResolvedValue({ success: true });
       inboxRepository.deleteInboxItem.mockResolvedValue(true);
 
-      const result = await inboxService.deleteReply('brand-abc', 'reply-fb-del-001');
+      const result = await inboxService.deleteReply('brand-abc', 'reply-fb-del-001', 'user-1');
 
       expect(inboxRepository.findById).toHaveBeenCalledWith('reply-fb-del-001');
       expect(mockFbGateway.deleteComment).toHaveBeenCalledWith(
@@ -206,7 +216,7 @@ describe('InboxService - deleteReply', () => {
       mockYtGateway.deleteComment.mockResolvedValue({ success: true });
       inboxRepository.deleteInboxItem.mockResolvedValue(true);
 
-      const result = await inboxService.deleteReply('brand-abc', 'reply-yt-del-001');
+      const result = await inboxService.deleteReply('brand-abc', 'reply-yt-del-001', 'user-1');
 
       expect(inboxRepository.findById).toHaveBeenCalledWith('reply-yt-del-001');
       expect(mockYtGateway.deleteComment).toHaveBeenCalledWith(
@@ -224,8 +234,8 @@ describe('InboxService - deleteReply', () => {
       inboxRepository.findById.mockResolvedValue(null);
 
       await expect(
-        inboxService.deleteReply('brand-abc', 'ghost-reply-id')
-      ).rejects.toThrow('Reply not found');
+        inboxService.deleteReply('brand-abc', 'ghost-reply-id', 'user-1')
+      ).rejects.toMatchObject({ status: 404, message: 'Reply not found' });
 
       expect(mockFbGateway.deleteComment).not.toHaveBeenCalled();
       expect(inboxRepository.deleteInboxItem).not.toHaveBeenCalled();
@@ -246,7 +256,7 @@ describe('InboxService - deleteReply', () => {
       inboxRepository.findById.mockResolvedValue(unsupportedReply);
 
       await expect(
-        inboxService.deleteReply('brand-abc', 'reply-unsupported-001')
+        inboxService.deleteReply('brand-abc', 'reply-unsupported-001', 'user-1')
       ).rejects.toThrow('No strategy found to delete reply for platform');
 
       expect(inboxRepository.deleteInboxItem).not.toHaveBeenCalled();

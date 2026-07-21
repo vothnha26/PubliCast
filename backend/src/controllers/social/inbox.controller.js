@@ -6,7 +6,9 @@ class InboxController {
    * GET /api/inbox
    */
   getInboxItems = asyncHandler(async (req, res) => {
-    const brandId = req.query.brandId || 'default-brand';
+    const { brandId } = req.query;
+    if (!brandId) return res.status(400).json({ message: 'brandId is required' });
+
     const result = await inboxService.getInboxItems(req.query, brandId);
 
     res.status(200).json({
@@ -20,7 +22,7 @@ class InboxController {
    */
   getConversationThread = asyncHandler(async (req, res) => {
     const { id } = req.params;
-    const result = await inboxService.getConversationThread(id);
+    const result = await inboxService.getConversationThread(id, req.user.id);
 
     res.status(200).json({
       message: 'Thread retrieved successfully',
@@ -49,7 +51,7 @@ class InboxController {
       return res.status(400).json({ message: 'brandId, itemId, and text are required' });
     }
 
-    const result = await inboxService.replyToItem(brandId, itemId, text);
+    const result = await inboxService.replyToItem(brandId, itemId, text, req.user.id);
     res.json({ message: 'Reply sent', data: result });
   });
 
@@ -63,7 +65,7 @@ class InboxController {
     
     if (!status) return res.status(400).json({ message: 'status is required' });
 
-    const result = await inboxService.updateItemStatus(id, status);
+    const result = await inboxService.updateItemStatus(id, status, req.user.id);
     res.json({ message: 'Status updated', data: result });
   });
 
@@ -74,7 +76,7 @@ class InboxController {
     const { id } = req.params;
     const { tags, internalNotes } = req.body;
 
-    const result = await inboxService.updateItemMetadata(id, { tags, internalNotes });
+    const result = await inboxService.updateItemMetadata(id, { tags, internalNotes }, req.user.id);
     res.json({ message: 'Metadata updated successfully', data: result });
   });
 
@@ -88,7 +90,7 @@ class InboxController {
       return res.status(400).json({ message: 'brandId and text are required' });
     }
 
-    const result = await inboxService.updateReply(brandId, replyId, text);
+    const result = await inboxService.updateReply(brandId, replyId, text, req.user.id);
     res.json({ message: 'Reply updated successfully', data: result });
   });
 
@@ -102,7 +104,7 @@ class InboxController {
       return res.status(400).json({ message: 'brandId is required' });
     }
 
-    await inboxService.deleteReply(brandId, replyId);
+    await inboxService.deleteReply(brandId, replyId, req.user.id);
     res.json({ message: 'Reply deleted successfully' });
   });
 
@@ -115,7 +117,7 @@ class InboxController {
       return res.status(400).json({ message: 'socialAccountId is required' });
     }
 
-    const settings = await inboxService.getAutoReplySettings(socialAccountId);
+    const settings = await inboxService.getAutoReplySettings(socialAccountId, req.user.id);
     res.status(200).json({
       message: 'Auto-reply settings retrieved successfully',
       data: settings
@@ -131,7 +133,7 @@ class InboxController {
       return res.status(400).json({ message: 'socialAccountId is required' });
     }
 
-    const settings = await inboxService.saveAutoReplySettings(socialAccountId, req.body);
+    const settings = await inboxService.saveAutoReplySettings(socialAccountId, req.body, req.user.id);
     res.status(200).json({
       message: 'Auto-reply settings updated successfully',
       data: settings
