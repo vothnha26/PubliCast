@@ -1,4 +1,5 @@
 const axios = require('axios');
+const crypto = require('crypto');
 const BasePaymentGateway = require('./base-gateway');
 const logger = require('../../../utils/logger');
 
@@ -63,13 +64,42 @@ class VietQRGateway extends BasePaymentGateway {
   }
 
   /**
-   * Verify SePay webhook by checking the Authorization header
+   * Verify SePay webhook by checking the Authorization header.
    * SePay sends: Authorization: Apikey <your_api_key>
+   *
+   * Security notes:
+   * - Fail-closed: if SEPAY_API_KEY is unset/empty the webhook is rejected.
+   *   (Env validation also requires it at startup, but this guards defence-in-depth
+   *   against an empty-string key matching an empty presented token — see #116.)
+   * - Constant-time comparison via crypto.timingSafeEqual to avoid leaking the
+   *   key through response-timing.
    */
   verifyWebhook(headers) {
+    const expected = this.sepayApiKey;
+
+    // No key configured → never accept a webhook (fail-closed).
+    if (!expected) {
+      logger.error('[VietQRGateway] SEPAY_API_KEY is not configured - rejecting webhook');
+      return false;
+    }
+
     const authHeader = headers['authorization'] || headers['Authorization'] || '';
     const token = authHeader.replace('Apikey ', '').trim();
-    const isValid = token === this.sepayApiKey;
+
+    // Empty presented token can never be valid (also short-circuits before
+    // timingSafeEqual, which throws on length mismatch of zero-length buffers).
+    if (!token) {
+      logger.warn('[VietQRGateway] Webhook verification failed - missing API key');
+      return false;
+    }
+
+    const tokenBuf = Buffer.from(token, 'utf8');
+    const expectedBuf = Buffer.from(expected, 'utf8');
+
+    // timingSafeEqual requires equal-length buffers; unequal length ⇒ invalid.
+    const isValid =
+      tokenBuf.length === expectedBuf.length &&
+      crypto.timingSafeEqual(tokenBuf, expectedBuf);
 
     if (!isValid) {
       logger.warn('[VietQRGateway] Webhook verification failed - invalid API key');
