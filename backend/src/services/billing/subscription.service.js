@@ -215,45 +215,70 @@ class SubscriptionService {
 
     // === ALL CHECKS PASSED ===
 
-    // Get brand's current subscription
-    const subscription = await subscriptionRepository.findActivePlanByBrandId(pending.brandId);
-    if (!subscription) {
-      logger.error('[SubscriptionService] No subscription found for brand', { brandId: pending.brandId });
-      return { success: false, reason: 'SUBSCRIPTION_NOT_FOUND' };
+    // Atomically claim this payment (PENDING -> PROCESSING). SePay retries
+    // webhooks, so two deliveries can both pass the `status !== 'PENDING'`
+    // guard above before either finishes. The claim is a compare-and-swap in
+    // the DB: only the winner (claimed === true) proceeds; a concurrent retry
+    // loses the claim and returns as an idempotent duplicate. Closes #101.
+    const claimed = await paymentRepository.claimPendingForProcessing(pending.transactionCode);
+    if (!claimed) {
+      logger.info('[SubscriptionService] Concurrent webhook lost the claim, treating as duplicate', { transactionCode });
+      return { success: true, reason: 'ALREADY_PROCESSED' };
     }
 
-    if (pending.planId) {
-      // Activate the new plan
-      await planActivationService.activate(
-        subscription.id,
-        pending.planId,
-        pending.plan?.billingCycle || 'MONTHLY'
-      );
-      logger.info('[SubscriptionService] Plan activated', { brandId: pending.brandId, planId: pending.planId });
-    } else if (pending.addonId) {
-      // Calculate quantity based on total amount paid vs addon unit price
-      const unitPrice = parseFloat(pending.addon.priceAmount);
-      const quantity = Math.floor(parseFloat(pending.amount) / unitPrice) || 1;
-      
-      await addonRepository.addSubscriptionAddon(
-        subscription.id,
-        pending.addonId,
-        quantity,
-        pending.brandId
-      );
-      logger.info('[SubscriptionService] Addon activated', { brandId: pending.brandId, addonId: pending.addonId });
+    try {
+      // Get brand's current subscription
+      const subscription = await subscriptionRepository.findActivePlanByBrandId(pending.brandId);
+      if (!subscription) {
+        logger.error('[SubscriptionService] No subscription found for brand', { brandId: pending.brandId });
+        // Release the claim so this can be retried once the subscription exists.
+        await paymentRepository.releasePendingClaim(pending.transactionCode);
+        return { success: false, reason: 'SUBSCRIPTION_NOT_FOUND' };
+      }
+
+      if (pending.planId) {
+        // Activate the new plan
+        await planActivationService.activate(
+          subscription.id,
+          pending.planId,
+          pending.plan?.billingCycle || 'MONTHLY'
+        );
+        logger.info('[SubscriptionService] Plan activated', { brandId: pending.brandId, planId: pending.planId });
+      } else if (pending.addonId) {
+        // Calculate quantity based on total amount paid vs addon unit price
+        const unitPrice = parseFloat(pending.addon.priceAmount);
+        const quantity = Math.floor(parseFloat(pending.amount) / unitPrice) || 1;
+
+        await addonRepository.addSubscriptionAddon(
+          subscription.id,
+          pending.addonId,
+          quantity,
+          pending.brandId
+        );
+        logger.info('[SubscriptionService] Addon activated', { brandId: pending.brandId, addonId: pending.addonId });
+      }
+
+      // Create invoice record
+      await paymentRepository.createInvoice({
+        subscriptionId: subscription.id,
+        amount:         parseFloat(pending.amount),
+        currency:       pending.currency,
+        transactionCode: pending.transactionCode
+      });
+
+      // Mark PendingPayment as PAID
+      await paymentRepository.updatePendingStatus(pending.transactionCode, 'PAID');
+    } catch (activationError) {
+      // Activation failed after we claimed the payment. Release the claim back
+      // to PENDING so a later webhook retry can reprocess it instead of leaving
+      // it stuck in PROCESSING forever.
+      logger.error('[SubscriptionService] Activation failed after claim, releasing for retry', {
+        transactionCode,
+        error: activationError.message
+      });
+      await paymentRepository.releasePendingClaim(pending.transactionCode).catch(() => {});
+      throw activationError;
     }
-
-    // Create invoice record
-    await paymentRepository.createInvoice({
-      subscriptionId: subscription.id,
-      amount:         parseFloat(pending.amount),
-      currency:       pending.currency,
-      transactionCode: pending.transactionCode
-    });
-
-    // Mark PendingPayment as PAID
-    await paymentRepository.updatePendingStatus(pending.transactionCode, 'PAID');
 
     // Notification: thanh toán thành công
     try {
