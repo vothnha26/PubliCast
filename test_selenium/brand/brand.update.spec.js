@@ -90,13 +90,25 @@ describe('Brand Update', function () {
     const nameInput = await driver.findElement(By.css('[data-testid="brand-name-input"]'));
     const currentName = await nameInput.getAttribute('value');
 
-    // Clear then re-type same name  
+    // Clear then re-type same name
     await nameInput.sendKeys(Key.CONTROL, 'a');
     await nameInput.sendKeys(Key.BACK_SPACE);
     await nameInput.sendKeys(currentName);
 
-    // Save button should be disabled (name same as activeBrand name)
+    // The input is a controlled React component: sendKeys fires one onChange
+    // per keystroke, and disabled is derived from state
+    // (selectedBrand.name === activeBrand.name) in a later re-render. Reading
+    // the attribute immediately after the last keystroke races React's
+    // render — sendKeys resolving only means the DOM event was dispatched,
+    // not that React has re-rendered yet. Poll until it settles instead of
+    // asserting on the very next tick.
     const saveBtn = await driver.findElement(By.css('[data-testid="save-brand-btn"]'));
+    await driver.wait(
+      async () => (await saveBtn.getAttribute('disabled')) !== null,
+      5000,
+      'Save button was not disabled after re-typing the unchanged name'
+    );
+
     const isDisabled = await saveBtn.getAttribute('disabled');
     expect(isDisabled).to.not.be.null; // button is disabled when name unchanged
   });
