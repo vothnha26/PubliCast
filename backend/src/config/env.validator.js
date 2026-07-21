@@ -65,6 +65,22 @@ function validateEnv() {
   if (encryptionKey && encryptionKey.length < 32) {
     throw new Error('[EnvValidator] ❌ ENCRYPTION_KEY must be at least 32 characters long.');
   }
+
+  // SePay webhook secret. An empty key makes webhook verification fail-open
+  // (empty presented token would match an empty key), so it must be a
+  // non-empty value in production. In dev/test it's only warned (billing
+  // webhooks are typically not exercised there). See issue #116.
+  const sepayKey = process.env.SEPAY_API_KEY;
+  if (process.env.NODE_ENV === 'production' && !sepayKey) {
+    throw new Error(
+      '[EnvValidator] ❌ SEPAY_API_KEY is required in production (webhook auth fails open without it).'
+    );
+  }
+  if (!sepayKey) {
+    console.warn(
+      '[EnvValidator] ⚠️ SEPAY_API_KEY not set — SePay payment webhooks will be rejected.'
+    );
+  }
 }
 
 module.exports = { validateEnv };
