@@ -1,6 +1,7 @@
 const notificationService = require('../../src/services/core/notification.service');
 const notificationRepository = require('../../src/repositories/core/notification.repository');
 const brandRepository = require('../../src/repositories/workspace/brand.repository');
+const authorizationFacade = require('../../src/services/auth/authorization.facade');
 
 jest.mock('../../src/repositories/core/notification.repository', () => ({
   create: jest.fn(),
@@ -12,6 +13,10 @@ jest.mock('../../src/repositories/core/notification.repository', () => ({
 
 jest.mock('../../src/repositories/workspace/brand.repository', () => ({
   userCanAccessBrand: jest.fn()
+}));
+
+jest.mock('../../src/services/auth/authorization.facade', () => ({
+  checkBrandAccess: jest.fn()
 }));
 
 describe('NotificationService', () => {
@@ -139,6 +144,61 @@ describe('NotificationService', () => {
       }, { userId: 'owner-1', role: 'OWNER' })).rejects.toThrow('Access denied for this brand');
 
       expect(notificationRepository.create).not.toHaveBeenCalled();
+    });
+
+    it('rejects a non-admin sending a notification to a target user outside their brand (#81)', async () => {
+      // OWNER has legitimate access to their own brand...
+      brandRepository.userCanAccessBrand.mockResolvedValue(true);
+      // ...but the target userId supplied in the body is a stranger who
+      // doesn't belong to that brand at all.
+      authorizationFacade.checkBrandAccess.mockResolvedValue(false);
+
+      await expect(notificationService.create({
+        brandId: 'brand-1',
+        userId: 'victim-outside-brand',
+        title: 'Bạn đã trúng thưởng!',
+        message: 'Nhấn vào đây để nhận quà',
+        actionUrl: 'https://evil.example.com/phish'
+      }, { userId: 'owner-1', role: 'OWNER' })).rejects.toThrow('Target user is not a member of this brand');
+
+      expect(authorizationFacade.checkBrandAccess).toHaveBeenCalledWith('victim-outside-brand', 'brand-1');
+      expect(notificationRepository.create).not.toHaveBeenCalled();
+    });
+
+    it('allows a non-admin to notify a target user who IS a member of their brand', async () => {
+      brandRepository.userCanAccessBrand.mockResolvedValue(true);
+      authorizationFacade.checkBrandAccess.mockResolvedValue(true);
+      notificationRepository.create.mockResolvedValue({
+        id: 'notif-2', userId: 'teammate-1', brandId: 'brand-1',
+        title: 'Task assigned', message: 'You have a new task', type: 'SYSTEM',
+        isRead: false, isGlobal: false, actionUrl: null, createdAt: new Date(), readReceipts: []
+      });
+
+      await notificationService.create({
+        brandId: 'brand-1',
+        userId: 'teammate-1',
+        title: 'Task assigned',
+        message: 'You have a new task'
+      }, { userId: 'owner-1', role: 'OWNER' });
+
+      expect(notificationRepository.create).toHaveBeenCalled();
+    });
+
+    it('admin can still notify any user regardless of brand membership', async () => {
+      notificationRepository.create.mockResolvedValue({
+        id: 'notif-3', userId: 'any-user', brandId: null,
+        title: 'System notice', message: 'Maintenance window', type: 'SYSTEM',
+        isRead: false, isGlobal: false, actionUrl: null, createdAt: new Date(), readReceipts: []
+      });
+
+      await notificationService.create({
+        userId: 'any-user',
+        title: 'System notice',
+        message: 'Maintenance window'
+      }, { userId: 'admin-1', role: 'ADMIN' });
+
+      expect(authorizationFacade.checkBrandAccess).not.toHaveBeenCalled();
+      expect(notificationRepository.create).toHaveBeenCalled();
     });
   });
 
