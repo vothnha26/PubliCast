@@ -5,6 +5,13 @@ const { PLATFORMS, API_VERSIONS } = require('../../utils/constants');
 const fs = require('fs');
 const path = require('path');
 
+// Real Google Drive file IDs are base64url-like (letters, digits, - and _).
+// fileId comes straight from the request body, so it has to be validated
+// before it's used to build a filesystem path — path.join happily resolves
+// "../.." segments, and only Google's own API rejecting a malformed ID
+// stands between that and writing outside uploads/.
+const DRIVE_FILE_ID_PATTERN = /^[a-zA-Z0-9_-]+$/;
+
 class GoogleDriveService {
   async getDriveClient(brandId) {
     const socialAccount = await socialAccountRepository.findByBrandAndPlatform(brandId, PLATFORMS.YOUTUBE);
@@ -39,6 +46,12 @@ class GoogleDriveService {
   }
 
   async downloadFile(brandId, fileId, fileName) {
+    if (!DRIVE_FILE_ID_PATTERN.test(fileId)) {
+      const error = new Error('Invalid Google Drive file ID');
+      error.statusCode = 400;
+      throw error;
+    }
+
     const drive = await this.getDriveClient(brandId);
     const { localFilePath, uploadUrlPath } = this._resolveStoragePaths(fileId, fileName);
 
@@ -58,9 +71,18 @@ class GoogleDriveService {
 
     const safeName = fileName.replace(/[^a-zA-Z0-9._-]/g, '_');
     const cleanFileName = `drive-${fileId}-${safeName}`;
-    
+    const localFilePath = path.join(uploadDir, cleanFileName);
+
+    // Belt-and-suspenders: even with fileId pre-validated, refuse to resolve
+    // outside uploadDir rather than trust the regex is the only guard.
+    if (!localFilePath.startsWith(uploadDir + path.sep)) {
+      const error = new Error('Resolved file path escapes the uploads directory');
+      error.statusCode = 400;
+      throw error;
+    }
+
     return {
-      localFilePath: path.join(uploadDir, cleanFileName),
+      localFilePath,
       uploadUrlPath: `/uploads/${cleanFileName}`
     };
   }

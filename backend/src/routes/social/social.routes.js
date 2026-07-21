@@ -16,6 +16,7 @@ const threadsController = require('../../controllers/social/threads.controller')
 const { verifyAuth } = require('../../middlewares/auth.middleware');
 const { requireFeature } = require('../../middlewares/feature-gate.middleware');
 const checkPermission = require('../../middlewares/permission.middleware');
+const { requireBrandMember } = checkPermission;
 const { PRODUCT_IDS, PERMISSION_KEYS } = require('../../utils/constants');
 
 const requireManageConnections = checkPermission(PERMISSION_KEYS.MANAGE_CONNECTIONS);
@@ -98,8 +99,11 @@ router.get('/youtube/competitors', verifyAuth, youtubeController.getYouTubeCompe
 router.delete('/youtube/competitors/:id', verifyAuth, youtubeController.deleteYouTubeCompetitor);
 
 // Google Drive
-router.get('/google/drive/files', verifyAuth, requireFeature(PRODUCT_IDS.GOOGLE_DRIVE), googleDriveController.getGoogleDriveFiles);
-router.post('/google/drive/download', verifyAuth, requireFeature(PRODUCT_IDS.GOOGLE_DRIVE), googleDriveController.downloadGoogleDriveFile);
+// requireBrandMember closes an IDOR: without it, any authenticated user on a
+// plan with GOOGLE_DRIVE could list/download another brand's Drive files —
+// the server calls the Google API using that brand's stored OAuth token.
+router.get('/google/drive/files', verifyAuth, requireBrandMember, requireFeature(PRODUCT_IDS.GOOGLE_DRIVE), googleDriveController.getGoogleDriveFiles);
+router.post('/google/drive/download', verifyAuth, requireBrandMember, requireFeature(PRODUCT_IDS.GOOGLE_DRIVE), googleDriveController.downloadGoogleDriveFile);
 router.post('/google/disconnect', verifyAuth, requireManageConnections, socialConnectionController.disconnectGoogleAccount);
 
 module.exports = router;
