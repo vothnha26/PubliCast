@@ -1,4 +1,4 @@
-const { isPrivateIp, downloadImageSafely } = require('../../src/utils/network-security');
+const { isPrivateIp, downloadImageSafely, downloadBufferSafely } = require('../../src/utils/network-security');
 const axios = require('axios');
 const dns = require('dns');
 
@@ -27,6 +27,60 @@ describe('Network Security SSRF / DNS Rebinding Tests', () => {
       expect(isPrivateIp('::ffff:127.0.0.1')).toBe(true);
       expect(isPrivateIp('::ffff:10.2.3.4')).toBe(true);
       expect(isPrivateIp('::ffff:8.8.8.8')).toBe(false);
+    });
+
+    it('should treat a non-string address (e.g. dns.lookup with {all:true}) as unsafe instead of throwing', () => {
+      // dns.lookup normally calls back with a string, but with {all:true} it
+      // calls back with an array of {address, family} objects — a caller
+      // passing that straight through used to crash on ip.trim().
+      expect(isPrivateIp([{ address: '8.8.8.8', family: 4 }])).toBe(true);
+      expect(isPrivateIp(undefined)).toBe(true);
+      expect(isPrivateIp(null)).toBe(true);
+      expect(isPrivateIp(42)).toBe(true);
+    });
+  });
+
+  describe('downloadBufferSafely (#96)', () => {
+    beforeEach(() => {
+      jest.clearAllMocks();
+      dns.lookup.mockImplementation((hostname, options, callback) => {
+        const cb = typeof options === 'function' ? options : callback;
+        cb(null, '203.0.113.10', 4); // public IP (TEST-NET-3)
+      });
+    });
+
+    it('downloads and returns a Buffer for a public URL under the byte limit', async () => {
+      const mockStream = { on: jest.fn(), destroy: jest.fn() };
+      axios.mockResolvedValueOnce({ headers: { 'content-length': '4' }, data: mockStream });
+
+      const promise = downloadBufferSafely('http://example.com/video.mp4', 100 * 1024 * 1024);
+      await Promise.resolve();
+      await Promise.resolve();
+
+      const dataCb = mockStream.on.mock.calls.find(c => c[0] === 'data')[1];
+      const endCb = mockStream.on.mock.calls.find(c => c[0] === 'end')[1];
+      dataCb(Buffer.from([1, 2, 3, 4]));
+      endCb();
+
+      const buffer = await promise;
+      expect(Buffer.isBuffer(buffer)).toBe(true);
+      expect(buffer.length).toBe(4);
+    });
+
+    it('rejects a non-http(s) protocol', async () => {
+      await expect(downloadBufferSafely('file:///etc/passwd', 1024)).rejects.toThrow('SSRF Blocked');
+    });
+
+    it('enforces the caller-supplied maxBytes limit, not the 5MB image default', async () => {
+      axios.mockResolvedValueOnce({
+        headers: { 'content-length': (2 * 1024 * 1024).toString() }, // 2MB
+        data: { destroy: jest.fn(), on: jest.fn() }
+      });
+
+      // 1MB limit should reject a 2MB Content-Length even though it's well
+      // under the 5MB image limit used elsewhere.
+      await expect(downloadBufferSafely('http://example.com/video.mp4', 1 * 1024 * 1024))
+        .rejects.toThrow('limit');
     });
   });
 

@@ -14,6 +14,10 @@ const { URL } = require('url');
  */
 function isPrivateIp(ip) {
   if (!ip) return true;
+  // dns.lookup() normally calls back with a string, but callers that pass
+  // { all: true } get an array of { address, family } objects instead —
+  // treat anything that isn't a plain string as unsafe rather than crashing.
+  if (typeof ip !== 'string') return true;
   let normalized = ip.trim().toLowerCase();
 
   // Unwrap IPv4-mapped IPv6: ::ffff:127.0.0.1 hoặc ::ffff:a.b.c.d
@@ -137,10 +141,63 @@ async function downloadImageSafely(url) {
   });
 }
 
+/**
+ * downloadBufferSafely
+ * Generic SSRF-safe download that returns a Buffer, with a caller-supplied
+ * max size (images and videos have very different acceptable sizes — see
+ * downloadImageSafely for the 5MB image-specific wrapper).
+ *
+ * @param {string} url
+ * @param {number} maxBytes
+ * @returns {Promise<Buffer>}
+ */
+async function downloadBufferSafely(url, maxBytes) {
+  if (!url) throw new Error('URL is required.');
+  const parsedUrl = new URL(url);
+  if (parsedUrl.protocol !== 'http:' && parsedUrl.protocol !== 'https:') {
+    throw new Error('SSRF Blocked: Invalid URL protocol. Only HTTP and HTTPS are allowed.');
+  }
+
+  const response = await axios({
+    method: 'get',
+    url,
+    responseType: 'stream',
+    httpAgent: safeHttpAgent,
+    httpsAgent: safeHttpsAgent,
+    timeout: 30000,
+    maxRedirects: 3
+  });
+
+  const contentLength = parseInt(response.headers['content-length'], 10);
+  if (!isNaN(contentLength) && contentLength > maxBytes) {
+    response.data.destroy();
+    throw new Error(`File size limit exceeded: Content-Length is larger than ${maxBytes} bytes.`);
+  }
+
+  return new Promise((resolve, reject) => {
+    const chunks = [];
+    let totalBytes = 0;
+
+    response.data.on('data', (chunk) => {
+      totalBytes += chunk.length;
+      if (totalBytes > maxBytes) {
+        response.data.destroy();
+        reject(new Error(`File size limit exceeded: Downloaded stream exceeded ${maxBytes} bytes.`));
+        return;
+      }
+      chunks.push(chunk);
+    });
+
+    response.data.on('end', () => resolve(Buffer.concat(chunks)));
+    response.data.on('error', (err) => reject(err));
+  });
+}
+
 module.exports = {
   isPrivateIp,
   safeLookup,
   safeHttpAgent,
   safeHttpsAgent,
-  downloadImageSafely
+  downloadImageSafely,
+  downloadBufferSafely
 };

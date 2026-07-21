@@ -2,6 +2,10 @@ const fs = require('fs');
 const path = require('path');
 const { API_VERSIONS, TIKTOK_API } = require('../../../utils/constants');
 const { isRemoteUrl } = require('../../../utils/url.utils');
+const { downloadBufferSafely } = require('../../../utils/network-security');
+
+// Matches the 100MB upload limit enforced elsewhere (upload.middleware.js).
+const MAX_VIDEO_BYTES = 100 * 1024 * 1024;
 
 class TikTokGateway {
   constructor() {
@@ -276,10 +280,15 @@ class TikTokGateway {
    */
   async _getVideoBuffer(mediaUrl) {
     if (isRemoteUrl(mediaUrl)) {
-      const res = await fetch(mediaUrl);
-      if (!res.ok) throw new Error(`Failed to download video from URL: ${mediaUrl} (status ${res.status})`);
-      const arrayBuffer = await res.arrayBuffer();
-      return Buffer.from(arrayBuffer);
+      // mediaUrl is user-supplied (post content), and this fetch runs
+      // server-side with no host allow-list — a bare fetch() let an
+      // attacker point it at internal/link-local addresses (e.g. the cloud
+      // metadata endpoint 169.254.169.254 or localhost services) and have
+      // the response uploaded to TikTok as if it were a video, exfiltrating
+      // whatever was there (#96). downloadBufferSafely rejects private/
+      // loopback/link-local IPs (including at the DNS-rebinding level) and
+      // caps the size the same way image downloads already do elsewhere.
+      return downloadBufferSafely(mediaUrl, MAX_VIDEO_BYTES);
     }
     const localPath = this._resolveLocalPath(mediaUrl);
     return fs.readFileSync(localPath);
