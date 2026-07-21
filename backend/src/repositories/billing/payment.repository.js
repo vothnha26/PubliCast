@@ -41,8 +41,13 @@ class PaymentRepository {
     }) || null;
   }
 
-  async updatePendingStatus(transactionCode, status) {
-    return prisma.pendingPayment.update({
+  /**
+   * @param {import('@prisma/client').Prisma.TransactionClient} [client] - pass a
+   *   transaction client (`tx`) to run this write as part of a larger atomic
+   *   operation; defaults to the global prisma client otherwise.
+   */
+  async updatePendingStatus(transactionCode, status, client = prisma) {
+    return client.pendingPayment.update({
       where: { transactionCode },
       data: { status, resolvedAt: new Date() }
     });
@@ -92,8 +97,12 @@ class PaymentRepository {
     });
   }
 
-  async createInvoice({ subscriptionId, amount, currency, transactionCode }) {
-    return prisma.invoice.create({
+  /**
+   * @param {import('@prisma/client').Prisma.TransactionClient} [client] - see
+   *   updatePendingStatus.
+   */
+  async createInvoice({ subscriptionId, amount, currency, transactionCode }, client = prisma) {
+    return client.invoice.create({
       data: {
         subscriptionId,
         amount,

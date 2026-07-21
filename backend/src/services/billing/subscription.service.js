@@ -1,4 +1,5 @@
 const PaymentGatewayFactory  = require('./payment-gateway/payment-gateway.factory');
+const prisma                  = require('../../config/prisma');
 const planActivationService   = require('./plan-activation.service');
 const paymentRepository       = require('../../repositories/billing/payment.repository');
 const subscriptionRepository  = require('../../repositories/billing/subscription.repository');
@@ -236,38 +237,49 @@ class SubscriptionService {
         return { success: false, reason: 'SUBSCRIPTION_NOT_FOUND' };
       }
 
-      if (pending.planId) {
-        // Activate the new plan
-        await planActivationService.activate(
-          subscription.id,
-          pending.planId,
-          pending.plan?.billingCycle || 'MONTHLY'
-        );
-        logger.info('[SubscriptionService] Plan activated', { brandId: pending.brandId, planId: pending.planId });
-      } else if (pending.addonId) {
-        // Calculate quantity based on total amount paid vs addon unit price
-        const unitPrice = parseFloat(pending.addon.priceAmount);
-        const quantity = Math.floor(parseFloat(pending.amount) / unitPrice) || 1;
+      // Activate plan/addon, create the invoice, and mark PAID inside a single
+      // DB transaction. Previously these were separate awaits: a crash between
+      // e.g. plan activation and invoice creation left the brand upgraded with
+      // no invoice and the payment stuck in PROCESSING. Wrapping them in
+      // prisma.$transaction makes the whole group all-or-nothing — Prisma
+      // rolls back everything if any step throws or the connection drops
+      // mid-transaction. Closes #52.
+      await prisma.$transaction(async (tx) => {
+        if (pending.planId) {
+          // Activate the new plan
+          await planActivationService.activate(
+            subscription.id,
+            pending.planId,
+            pending.plan?.billingCycle || 'MONTHLY',
+            tx
+          );
+          logger.info('[SubscriptionService] Plan activated', { brandId: pending.brandId, planId: pending.planId });
+        } else if (pending.addonId) {
+          // Calculate quantity based on total amount paid vs addon unit price
+          const unitPrice = parseFloat(pending.addon.priceAmount);
+          const quantity = Math.floor(parseFloat(pending.amount) / unitPrice) || 1;
 
-        await addonRepository.addSubscriptionAddon(
-          subscription.id,
-          pending.addonId,
-          quantity,
-          pending.brandId
-        );
-        logger.info('[SubscriptionService] Addon activated', { brandId: pending.brandId, addonId: pending.addonId });
-      }
+          await addonRepository.addSubscriptionAddon(
+            subscription.id,
+            pending.addonId,
+            quantity,
+            pending.brandId,
+            tx
+          );
+          logger.info('[SubscriptionService] Addon activated', { brandId: pending.brandId, addonId: pending.addonId });
+        }
 
-      // Create invoice record
-      await paymentRepository.createInvoice({
-        subscriptionId: subscription.id,
-        amount:         parseFloat(pending.amount),
-        currency:       pending.currency,
-        transactionCode: pending.transactionCode
+        // Create invoice record
+        await paymentRepository.createInvoice({
+          subscriptionId: subscription.id,
+          amount:         parseFloat(pending.amount),
+          currency:       pending.currency,
+          transactionCode: pending.transactionCode
+        }, tx);
+
+        // Mark PendingPayment as PAID
+        await paymentRepository.updatePendingStatus(pending.transactionCode, 'PAID', tx);
       });
-
-      // Mark PendingPayment as PAID
-      await paymentRepository.updatePendingStatus(pending.transactionCode, 'PAID');
     } catch (activationError) {
       // Activation failed after we claimed the payment. Release the claim back
       // to PENDING so a later webhook retry can reprocess it instead of leaving

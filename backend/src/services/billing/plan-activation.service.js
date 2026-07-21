@@ -12,8 +12,11 @@ class PlanActivationService {
    * @param {string} subscriptionId - Brand's current subscription ID
    * @param {string} planId - The plan to activate
    * @param {string} billingCycle - 'MONTHLY' | 'ANNUAL'
+   * @param {import('@prisma/client').Prisma.TransactionClient} [client] - pass
+   *   a transaction client (`tx`) to run this write as part of a larger
+   *   atomic operation; defaults to the global prisma client otherwise.
    */
-  async activate(subscriptionId, planId, billingCycle = 'MONTHLY') {
+  async activate(subscriptionId, planId, billingCycle = 'MONTHLY', client) {
     const now = new Date();
     const periodEnd = billingCycle === 'ANNUAL'
       ? new Date(now.getTime() + 365 * 24 * 60 * 60 * 1000)
@@ -23,7 +26,7 @@ class PlanActivationService {
       planId,
       periodStart: now,
       periodEnd
-    });
+    }, client);
 
     logger.info('[PlanActivationService] Plan activated', {
       subscriptionId,

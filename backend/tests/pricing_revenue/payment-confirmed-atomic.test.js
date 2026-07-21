@@ -1,8 +1,19 @@
 /**
- * Regression tests for issue #101: handlePaymentConfirmed must use an atomic
- * claim (PENDING -> PROCESSING) so concurrent SePay webhook retries cannot
- * double-activate a plan / create duplicate invoices.
+ * Regression tests for:
+ * - #101: handlePaymentConfirmed must use an atomic claim (PENDING ->
+ *   PROCESSING) so concurrent SePay webhook retries cannot double-activate
+ *   a plan / create duplicate invoices.
+ * - #52: the activate/invoice/mark-PAID sequence must run inside a single
+ *   DB transaction so a mid-sequence failure rolls back everything instead
+ *   of leaving a half-applied state (e.g. plan activated but no invoice).
+ *
+ * prisma.$transaction is mocked to invoke its callback with a fake `tx`
+ * object (so we never touch a real DB) while still letting us assert the
+ * transaction wrapper is actually used and rolls back on error.
  */
+jest.mock('../../src/config/prisma', () => ({
+  $transaction: jest.fn(async (fn) => fn({ __tx: true }))
+}));
 jest.mock('../../src/repositories/billing/payment.repository', () => ({
   findPendingByCode: jest.fn(),
   findPendingByWebhookContent: jest.fn(),
@@ -35,6 +46,7 @@ const subscriptionService = require('../../src/services/billing/subscription.ser
 const paymentRepository = require('../../src/repositories/billing/payment.repository');
 const subscriptionRepository = require('../../src/repositories/billing/subscription.repository');
 const planActivationService = require('../../src/services/billing/plan-activation.service');
+const prisma = require('../../src/config/prisma');
 
 function pendingPlanPayment() {
   return {
@@ -59,16 +71,43 @@ describe('handlePaymentConfirmed atomic claim (#101)', () => {
     paymentRepository.updatePendingStatus.mockResolvedValue(undefined);
   });
 
-  test('winner of the claim activates exactly once', async () => {
+  test('winner of the claim activates exactly once, inside a transaction', async () => {
     paymentRepository.findPendingByCode.mockResolvedValue(pendingPlanPayment());
     paymentRepository.claimPendingForProcessing.mockResolvedValue(true);
 
     const res = await subscriptionService.handlePaymentConfirmed('TX-1', 199000);
 
     expect(res).toEqual({ success: true, reason: 'ACTIVATED' });
+    expect(prisma.$transaction).toHaveBeenCalledTimes(1);
     expect(planActivationService.activate).toHaveBeenCalledTimes(1);
+    // Fourth arg is the `tx` client the fake $transaction injected — proves
+    // activation runs inside the transaction, not against the global client.
+    expect(planActivationService.activate).toHaveBeenCalledWith(
+      'sub-1', 'plan-pro', 'MONTHLY', { __tx: true }
+    );
     expect(paymentRepository.createInvoice).toHaveBeenCalledTimes(1);
-    expect(paymentRepository.updatePendingStatus).toHaveBeenCalledWith('TX-1', 'PAID');
+    expect(paymentRepository.createInvoice).toHaveBeenCalledWith(
+      expect.objectContaining({ subscriptionId: 'sub-1' }), { __tx: true }
+    );
+    expect(paymentRepository.updatePendingStatus).toHaveBeenCalledWith('TX-1', 'PAID', { __tx: true });
+  });
+
+  test('a mid-transaction failure rolls back and never marks PAID or invoices (#52)', async () => {
+    // createInvoice throws AFTER plan activation succeeded (inside the same
+    // $transaction callback). Because our fake $transaction just awaits the
+    // callback, a real Prisma transaction would roll back everything the
+    // callback did with `tx` up to the throw — so updatePendingStatus('PAID')
+    // must never be reached, and the outer catch releases the claim.
+    paymentRepository.findPendingByCode.mockResolvedValue(pendingPlanPayment());
+    paymentRepository.claimPendingForProcessing.mockResolvedValue(true);
+    paymentRepository.releasePendingClaim.mockResolvedValue(undefined);
+    paymentRepository.createInvoice.mockRejectedValue(new Error('DB connection lost'));
+
+    await expect(subscriptionService.handlePaymentConfirmed('TX-1', 199000)).rejects.toThrow('DB connection lost');
+
+    expect(planActivationService.activate).toHaveBeenCalledTimes(1);
+    expect(paymentRepository.updatePendingStatus).not.toHaveBeenCalledWith('TX-1', 'PAID', expect.anything());
+    expect(paymentRepository.releasePendingClaim).toHaveBeenCalledWith('TX-1');
   });
 
   test('loser of the claim does NOT activate or create an invoice', async () => {

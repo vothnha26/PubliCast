@@ -22,13 +22,16 @@ class AddonRepository {
 
   /**
    * Add addon to a brand's subscription
+   * @param {import('@prisma/client').Prisma.TransactionClient} [client] - pass
+   *   a transaction client (`tx`) to run these writes as part of a larger
+   *   atomic operation; defaults to the global prisma client otherwise.
    */
-  async addSubscriptionAddon(subscriptionId, addonId, quantity, brandId) {
+  async addSubscriptionAddon(subscriptionId, addonId, quantity, brandId, client = prisma) {
     const now = new Date();
     const periodEnd = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000); // Addon lasts for 30 days
 
     // Check if the addon already exists for this subscription
-    const existing = await prisma.subscriptionAddon.findUnique({
+    const existing = await client.subscriptionAddon.findUnique({
       where: {
         subscriptionId_addonId: {
           subscriptionId,
@@ -39,7 +42,7 @@ class AddonRepository {
 
     if (existing) {
       // Increment quantity
-      return prisma.subscriptionAddon.update({
+      return client.subscriptionAddon.update({
         where: { id: existing.id },
         data: {
           quantity: existing.quantity + quantity,
@@ -50,7 +53,7 @@ class AddonRepository {
     }
 
     // Create new addon
-    return prisma.subscriptionAddon.create({
+    return client.subscriptionAddon.create({
       data: {
         subscriptionId,
         addonId,
