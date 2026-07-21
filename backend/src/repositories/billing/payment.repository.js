@@ -48,6 +48,32 @@ class PaymentRepository {
     });
   }
 
+  /**
+   * Atomically claim a PENDING payment for processing (compare-and-swap).
+   * Only the caller that flips PENDING -> PROCESSING (count === 1) may proceed;
+   * concurrent SePay webhook retries see count === 0 and must bail out. This
+   * closes the check-then-act race that allowed double activation (#101).
+   * @returns {Promise<boolean>} true if this caller won the claim.
+   */
+  async claimPendingForProcessing(transactionCode) {
+    const result = await prisma.pendingPayment.updateMany({
+      where: { transactionCode, status: 'PENDING' },
+      data: { status: 'PROCESSING' }
+    });
+    return result.count === 1;
+  }
+
+  /**
+   * Release a claimed payment back to PENDING so a later webhook retry can
+   * reprocess it (used when activation fails after the claim was taken).
+   */
+  async releasePendingClaim(transactionCode) {
+    return prisma.pendingPayment.updateMany({
+      where: { transactionCode, status: 'PROCESSING' },
+      data: { status: 'PENDING' }
+    });
+  }
+
   async expireStalePayments() {
     return prisma.pendingPayment.updateMany({
       where: { status: 'PENDING', expiredAt: { lt: new Date() } },
