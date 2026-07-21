@@ -48,9 +48,11 @@ class FacebookController {
   // ── Competitors — Delete ───────────────────────────────────────────────────
   deleteFacebookCompetitor = asyncHandler(async (req, res) => {
     const { id } = req.params;
+    const { brandId } = req.query;
     if (!id) return res.status(400).json({ message: 'id is required' });
+    if (!brandId) return res.status(400).json({ message: 'brandId is required' });
 
-    await facebookService.deleteCompetitor(id);
+    await facebookService.deleteCompetitor(id, brandId, req.user.id);
     res.json({ message: 'Competitor deleted successfully' });
   });
 

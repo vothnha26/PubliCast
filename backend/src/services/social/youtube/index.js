@@ -30,8 +30,8 @@ class YouTubeService extends BaseSocialService {
     return youtubeAnalytics.getCompetitors(brandId);
   }
 
-  async deleteCompetitor(id) {
-    return youtubeAnalytics.deleteCompetitor(id);
+  async deleteCompetitor(id, brandId, userId) {
+    return youtubeAnalytics.deleteCompetitor(id, brandId, userId);
   }
 
   async getVideoAnalytics(brandId, videoId, startDate, endDate) {

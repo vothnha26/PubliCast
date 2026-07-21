@@ -61,6 +61,15 @@ class CompetitorRepository {
     });
   }
 
+  // Not brand-scoped — callers (youtube-analytics.service.js, facebook-competitor.service.js
+  // deleteCompetitor) are responsible for verifying the returned row's brandId
+  // before acting on it. Don't reuse this without re-adding that check.
+  async findById(id) {
+    return prisma.competitorAnalysis.findUnique({
+      where: { id }
+    });
+  }
+
   async deleteCompetitor(id) {
     return prisma.competitorAnalysis.delete({
       where: { id }

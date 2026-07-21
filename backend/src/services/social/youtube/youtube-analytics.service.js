@@ -840,7 +840,31 @@ class YouTubeAnalyticsService {
     return YT_VIDEO_INSIGHTS.COUNTRY_NAMES[code] || code;
   }
 
-  async deleteCompetitor(id) {
+  async deleteCompetitor(id, brandId, userId) {
+    const competitor = await competitorRepository.findById(id);
+    if (!competitor) {
+      const error = new Error('Competitor not found');
+      error.statusCode = 404;
+      throw error;
+    }
+
+    // brandId here comes from the caller's request, not yet verified —
+    // cross-check it against the competitor's real brand before trusting it,
+    // then verify the caller actually belongs to that brand.
+    if (competitor.brandId !== brandId) {
+      const error = new Error('Competitor not found');
+      error.statusCode = 404;
+      throw error;
+    }
+
+    const authorizationFacade = require('../../auth/authorization.facade');
+    const hasAccess = await authorizationFacade.checkBrandAccess(userId, brandId);
+    if (!hasAccess) {
+      const error = new Error('Bạn không có quyền truy cập thương hiệu này.');
+      error.statusCode = 403;
+      throw error;
+    }
+
     return competitorRepository.deleteCompetitor(id);
   }
 }

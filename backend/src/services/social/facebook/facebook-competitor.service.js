@@ -153,10 +153,35 @@ class FacebookCompetitorService {
   }
 
   /**
-   * Xoá competitor theo id.
+   * Xoá competitor theo id — verifies the competitor actually belongs to the
+   * caller's brand first (id alone was previously enough to delete any
+   * brand's competitor row).
    * @param {string} id
+   * @param {string} brandId
+   * @param {string} userId
    */
-  async deleteCompetitor(id) {
+  async deleteCompetitor(id, brandId, userId) {
+    const competitor = await competitorRepository.findById(id);
+    if (!competitor) {
+      const error = new Error('Competitor not found');
+      error.statusCode = 404;
+      throw error;
+    }
+
+    if (competitor.brandId !== brandId) {
+      const error = new Error('Competitor not found');
+      error.statusCode = 404;
+      throw error;
+    }
+
+    const authorizationFacade = require('../../auth/authorization.facade');
+    const hasAccess = await authorizationFacade.checkBrandAccess(userId, brandId);
+    if (!hasAccess) {
+      const error = new Error('Bạn không có quyền truy cập thương hiệu này.');
+      error.statusCode = 403;
+      throw error;
+    }
+
     return competitorRepository.deleteCompetitor(id);
   }
 }

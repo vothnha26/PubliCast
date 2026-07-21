@@ -393,8 +393,9 @@ export function usePlatformDashboard(platform) {
   };
 
   const handleDeleteCompetitor = async (id) => {
+    if (!activeBrand) return;
     try {
-      await socialService.deleteCompetitor(id);
+      await socialService.deleteCompetitor(id, activeBrand.id);
       toast.success("Competitor deleted successfully");
       fetchCompetitors();
     } catch (e) {
