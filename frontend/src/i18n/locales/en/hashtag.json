@@ -32,7 +32,10 @@
     },
     "postsPerDay": "posts/24h",
     "reachSuffix": "K reach",
+    "noData": "No data yet",
     "untrackBtn": "Stop Tracking",
+    "refreshBtn": "Refresh",
+    "refreshing": "Refreshing…",
     "empty": {
       "title": "No tracked hashtags yet",
       "desc": "Go to the Discover tab and click \"+ Track Tag\" to start tracking real reach and post counts."
@@ -61,6 +64,7 @@
     "deleteError": "Delete failed.",
     "untrackSuccess": "Stopped tracking hashtag.",
     "untrackError": "Unable to stop tracking.",
+    "refreshError": "Unable to refresh hashtag data.",
     "trackSuccess": "Now tracking: {{tag}}",
     "trackError": "Unable to track this tag.",
     "validationEmpty": "Please enter a set name and add at least one tag.",

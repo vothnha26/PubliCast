@@ -32,7 +32,10 @@
     },
     "postsPerDay": "bài/24h",
     "reachSuffix": "K reach",
+    "noData": "Chưa có dữ liệu",
     "untrackBtn": "Ngừng theo dõi",
+    "refreshBtn": "Làm mới",
+    "refreshing": "Đang làm mới…",
     "empty": {
       "title": "Chưa theo dõi thẻ phân tích nào",
       "desc": "Vào tab Khám phá và chọn bấm \"+ Theo dõi Tag\" để thêm thẻ hashtag phân tích reach và số bài đăng thực tế."
@@ -61,6 +64,7 @@
     "deleteError": "Xóa thất bại.",
     "untrackSuccess": "Đã ngưng theo dõi hashtag.",
     "untrackError": "Không thể ngưng theo dõi tag.",
+    "refreshError": "Không thể làm mới dữ liệu hashtag.",
     "trackSuccess": "Đang theo dõi tag: {{tag}}",
     "trackError": "Không thể theo dõi tag này.",
     "validationEmpty": "Vui lòng điền tên bộ hashtag và thêm ít nhất một thẻ tag.",
