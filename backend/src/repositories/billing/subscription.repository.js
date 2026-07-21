@@ -80,8 +80,13 @@ class SubscriptionRepository {
    * Upgrade brand's subscription to a new plan
    * Reuses existing subscription record (update in place)
    */
-  async upgradePlan(subscriptionId, { planId, periodStart, periodEnd }) {
-    return prisma.subscription.update({
+  /**
+   * @param {import('@prisma/client').Prisma.TransactionClient} [client] - pass
+   *   a transaction client (`tx`) to run this write as part of a larger
+   *   atomic operation; defaults to the global prisma client otherwise.
+   */
+  async upgradePlan(subscriptionId, { planId, periodStart, periodEnd }, client = prisma) {
+    return client.subscription.update({
       where: { id: subscriptionId },
       data: {
         planId,
