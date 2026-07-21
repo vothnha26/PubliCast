@@ -35,7 +35,7 @@ class TicketController {
     try {
       const { id } = req.params;
       const { status } = req.body;
-      const ticket = await ticketService.updateTicketStatus(id, status);
+      const ticket = await ticketService.updateTicketStatus(id, status, req.user.id);
       res.status(200).json({ status: 'success', data: ticket });
     } catch (err) {
       next(err);

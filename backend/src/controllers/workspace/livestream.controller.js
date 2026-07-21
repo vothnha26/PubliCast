@@ -21,7 +21,7 @@ class LivestreamController {
    * Fetch single stream details
    */
   getStreamById = asyncHandler(async (req, res) => {
-    const stream = await livestreamService.getStreamById(req.params.id);
+    const stream = await livestreamService.getStreamById(req.params.id, req.user.id);
     if (!stream) {
       return res.status(404).json({ message: 'Livestream not found' });
     }

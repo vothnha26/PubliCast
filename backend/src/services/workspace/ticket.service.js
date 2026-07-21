@@ -1,6 +1,30 @@
 const ticketRepository = require('../../repositories/workspace/ticket.repository');
+const authorizationFacade = require('../auth/authorization.facade');
 
 class TicketService {
+  /**
+   * Load a ticket by id and enforce the caller belongs to its brand.
+   * Centralizes the check for the id-only routes (getTicketDetails,
+   * updateTicketStatus, assignTicket) which have no brandId in the request
+   * to check at the route level (see issue #47).
+   */
+  async _getAuthorizedTicket(ticketId, userId) {
+    const ticket = await ticketRepository.findTicketById(ticketId);
+    if (!ticket) {
+      const error = new Error('Ticket not found');
+      error.status = 404;
+      throw error;
+    }
+
+    const hasAccess = await authorizationFacade.checkBrandAccess(userId, ticket.brandId);
+    if (!hasAccess) {
+      const error = new Error('Bạn không có quyền truy cập ticket này.');
+      error.status = 403;
+      throw error;
+    }
+
+    return ticket;
+  }
   async getTickets(brandId, queryParams, user) {
     const isStaffOrAdmin = user && (user.role === 'STAFF' || user.role === 'ADMIN');
     if (!brandId && !isStaffOrAdmin) {
@@ -12,13 +36,7 @@ class TicketService {
   }
 
   async getTicketDetails(ticketId, userId) {
-    const ticket = await ticketRepository.findTicketById(ticketId);
-    if (!ticket) {
-      const error = new Error('Ticket not found');
-      error.status = 404;
-      throw error;
-    }
-    return ticket;
+    return this._getAuthorizedTicket(ticketId, userId);
   }
 
   async createTicket(brandId, userId, data) {
@@ -30,7 +48,8 @@ class TicketService {
     return await ticketRepository.createTicket(brandId, userId, data);
   }
 
-  async updateTicketStatus(ticketId, status) {
+  async updateTicketStatus(ticketId, status, userId) {
+    await this._getAuthorizedTicket(ticketId, userId);
     const updated = await ticketRepository.updateTicketStatus(ticketId, status);
     
     // Broadcast status update via SocketManager to real-time notification
@@ -49,6 +68,7 @@ class TicketService {
   }
 
   async assignTicket(ticketId, agentId) {
+    await this._getAuthorizedTicket(ticketId, agentId);
     const updated = await ticketRepository.assignTicket(ticketId, agentId);
 
     // Broadcast ticket assigned event via Socket

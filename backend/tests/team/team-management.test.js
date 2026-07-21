@@ -134,6 +134,12 @@ describe('Team Management APIs', () => {
 
   describe('GET /api/team', () => {
     it('should return team members with brandId', async () => {
+      // GET /api/team now requires brand membership (issue #46) — mock the
+      // OwnerStrategy's prisma.brand.findFirst lookup so requireBrandMember
+      // grants access as the brand owner.
+      const prisma = require('../../src/config/prisma');
+      prisma.brand.findFirst.mockResolvedValue({ id: 'brand-1', ownerId: 'operator-id', deletedAt: null });
+
       const mockMembers = [
         {
           id: 'team-1',
