@@ -1,6 +1,7 @@
 const prisma = require('../../config/prisma');
 const redisClient = require('../../config/redis');
 const youtubePublishService = require('../social/youtube/youtube-publish.service');
+const authorizationFacade = require('../auth/authorization.facade');
 
 /**
  * Creates a new Highlight Task in the database and pushes it to Redis
@@ -28,14 +29,25 @@ const createHighlightTask = async (youtubeUrl, brandId) => {
 
 /**
  * Gets the current status of a Highlight task (including progress from Redis)
+ * @param {string} id
+ * @param {string} userId - required to verify the caller belongs to the
+ *   highlight's own brand (see issue #51); the route only carries the
+ *   highlight id, so ownership must be checked here.
  */
-const getHighlightStatus = async (id) => {
+const getHighlightStatus = async (id, userId) => {
   const highlight = await prisma.livestreamHighlight.findUnique({
     where: { id }
   });
-  
+
   if (!highlight) {
     throw new Error('Highlight task not found');
+  }
+
+  const hasAccess = await authorizationFacade.checkBrandAccess(userId, highlight.brandId);
+  if (!hasAccess) {
+    const error = new Error('Bạn không có quyền truy cập highlight này.');
+    error.status = 403;
+    throw error;
   }
 
   if (highlight.status === 'pending' || highlight.status === 'processing') {
@@ -84,14 +96,32 @@ const updateHighlightStatus = async (id, data) => {
  * @param {string} brandId
  * @param {string} title
  * @param {string} description
+ * @param {string} userId - required to verify the caller belongs to brandId
+ *   AND that brandId actually matches the highlight's own brand (see issue
+ *   #51) — otherwise a caller could pass their own (authorized) brandId
+ *   alongside another brand's highlightId and publish it under the wrong
+ *   YouTube account.
  */
-const publishToYouTube = async (highlightId, brandId, title, description) => {
+const publishToYouTube = async (highlightId, brandId, title, description, userId) => {
   const highlight = await prisma.livestreamHighlight.findUnique({
     where: { id: highlightId }
   });
 
   if (!highlight) throw new Error('Highlight không tồn tại');
   if (!highlight.videoUrl) throw new Error('Video chưa sẵn sàng để đăng');
+
+  if (highlight.brandId !== brandId) {
+    const error = new Error('Highlight không thuộc thương hiệu này.');
+    error.status = 403;
+    throw error;
+  }
+
+  const hasAccess = await authorizationFacade.checkBrandAccess(userId, brandId);
+  if (!hasAccess) {
+    const error = new Error('Bạn không có quyền truy cập thương hiệu này.');
+    error.status = 403;
+    throw error;
+  }
 
   const result = await youtubePublishService.publishPost(brandId, {
     title: title || 'Highlight',

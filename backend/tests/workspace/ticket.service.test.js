@@ -12,14 +12,21 @@ jest.mock('../../src/services/workspace/socket/socket.manager', () => ({
   emitToRoom: jest.fn()
 }));
 
+jest.mock('../../src/services/auth/authorization.facade', () => ({
+  checkBrandAccess: jest.fn()
+}));
+
 const ticketService = require('../../src/services/workspace/ticket.service');
 const ticketRepository = require('../../src/repositories/workspace/ticket.repository');
 const socketManager = require('../../src/services/workspace/socket/socket.manager');
+const authorizationFacade = require('../../src/services/auth/authorization.facade');
 const { SOCKET_EVENTS, ROOM_PREFIXES } = require('../../src/utils/socket-constants');
 
 describe('TicketService Unit Tests', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    // Default: caller has access to the ticket's brand (issue #47 fix).
+    authorizationFacade.checkBrandAccess.mockResolvedValue(true);
   });
 
   describe('getTickets()', () => {
@@ -53,15 +60,16 @@ describe('TicketService Unit Tests', () => {
   });
 
   describe('getTicketDetails()', () => {
-    it('should return ticket if it exists', async () => {
+    it('should return ticket if it exists and caller belongs to its brand', async () => {
       const ticketId = 'ticket-1';
-      const mockTicket = { id: ticketId, subject: 'Issue' };
+      const mockTicket = { id: ticketId, subject: 'Issue', brandId: 'brand-1' };
       ticketRepository.findTicketById.mockResolvedValue(mockTicket);
 
       const result = await ticketService.getTicketDetails(ticketId, 'user-1');
 
       expect(result).toEqual(mockTicket);
       expect(ticketRepository.findTicketById).toHaveBeenCalledWith(ticketId);
+      expect(authorizationFacade.checkBrandAccess).toHaveBeenCalledWith('user-1', 'brand-1');
     });
 
     it('should throw 404 error if ticket is not found', async () => {
@@ -69,6 +77,15 @@ describe('TicketService Unit Tests', () => {
 
       await expect(ticketService.getTicketDetails('invalid-id', 'user-1'))
         .rejects.toThrow('Ticket not found');
+    });
+
+    it('should throw 403 if caller does not belong to the ticket brand (#47)', async () => {
+      const mockTicket = { id: 'ticket-1', brandId: 'brand-victim' };
+      ticketRepository.findTicketById.mockResolvedValue(mockTicket);
+      authorizationFacade.checkBrandAccess.mockResolvedValue(false);
+
+      await expect(ticketService.getTicketDetails('ticket-1', 'attacker'))
+        .rejects.toThrow('Bạn không có quyền truy cập ticket này.');
     });
   });
 
@@ -96,6 +113,11 @@ describe('TicketService Unit Tests', () => {
   });
 
   describe('updateTicketStatus()', () => {
+    beforeEach(() => {
+      // updateTicketStatus now loads the ticket first to verify brand ownership (#47).
+      ticketRepository.findTicketById.mockResolvedValue({ id: 'ticket-1', brandId: 'brand-1' });
+    });
+
     it('should update status and emit real-time event to socket room', async () => {
       const ticketId = 'ticket-1';
       const status = 'RESOLVED';
@@ -103,11 +125,11 @@ describe('TicketService Unit Tests', () => {
 
       ticketRepository.updateTicketStatus.mockResolvedValue(mockResult);
 
-      const result = await ticketService.updateTicketStatus(ticketId, status);
+      const result = await ticketService.updateTicketStatus(ticketId, status, 'user-1');
 
       expect(result).toEqual(mockResult);
       expect(ticketRepository.updateTicketStatus).toHaveBeenCalledWith(ticketId, status);
-      
+
       // Verify real-time broadcast
       expect(socketManager.emitToRoom).toHaveBeenCalledWith(
         `${ROOM_PREFIXES.TICKET}${ticketId}`,
@@ -120,7 +142,7 @@ describe('TicketService Unit Tests', () => {
       const ticketId = 'ticket-1';
       const status = 'OPEN';
       ticketRepository.updateTicketStatus.mockResolvedValue({ id: ticketId, status });
-      
+
       // Simulate socket crash
       socketManager.emitToRoom.mockImplementationOnce(() => {
         throw new Error('Socket disconnected');
@@ -129,15 +151,29 @@ describe('TicketService Unit Tests', () => {
       const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
 
       // Should succeed even if socket broadcast fails
-      const result = await ticketService.updateTicketStatus(ticketId, status);
+      const result = await ticketService.updateTicketStatus(ticketId, status, 'user-1');
       expect(result).toBeDefined();
       expect(consoleErrorSpy).toHaveBeenCalled();
 
       consoleErrorSpy.mockRestore();
     });
+
+    it('should throw 403 if caller does not belong to the ticket brand (#47)', async () => {
+      authorizationFacade.checkBrandAccess.mockResolvedValue(false);
+
+      await expect(ticketService.updateTicketStatus('ticket-1', 'RESOLVED', 'attacker'))
+        .rejects.toThrow('Bạn không có quyền truy cập ticket này.');
+      expect(ticketRepository.updateTicketStatus).not.toHaveBeenCalled();
+    });
   });
 
   describe('assignTicket()', () => {
+    beforeEach(() => {
+      // assignTicket now loads the ticket first to verify the agent's brand
+      // membership (#47).
+      ticketRepository.findTicketById.mockResolvedValue({ id: 'ticket-1', brandId: 'brand-1' });
+    });
+
     it('should assign ticket and emit real-time event', async () => {
       const ticketId = 'ticket-1';
       const agentId = 'agent-99';
@@ -149,13 +185,21 @@ describe('TicketService Unit Tests', () => {
 
       expect(result).toEqual(mockResult);
       expect(ticketRepository.assignTicket).toHaveBeenCalledWith(ticketId, agentId);
-      
+
       // Verify real-time broadcast
       expect(socketManager.emitToRoom).toHaveBeenCalledWith(
         `${ROOM_PREFIXES.TICKET}${ticketId}`,
         SOCKET_EVENTS.TICKET_ASSIGNED,
         { ticketId, assignedAgent: mockResult.assignedAgent }
       );
+    });
+
+    it('should throw 403 if the assigning agent does not belong to the ticket brand (#47)', async () => {
+      authorizationFacade.checkBrandAccess.mockResolvedValue(false);
+
+      await expect(ticketService.assignTicket('ticket-1', 'outside-agent'))
+        .rejects.toThrow('Bạn không có quyền truy cập ticket này.');
+      expect(ticketRepository.assignTicket).not.toHaveBeenCalled();
     });
   });
 

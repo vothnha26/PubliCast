@@ -1,4 +1,5 @@
 const livestreamRepository = require('../../repositories/workspace/livestream.repository');
+const authorizationFacade = require('../auth/authorization.facade');
 const QueryPipeline = require('../../core/query-pipeline/query.pipeline');
 const LivestreamSearchFilter = require('./livestream/filters/search.filter');
 const LivestreamPlatformFilter = require('./livestream/filters/platform.filter');
@@ -20,11 +21,23 @@ class LivestreamService {
   }
 
   /**
-   * Get stream details by ID
+   * Get stream details by ID.
+   * @param {string} id
+   * @param {string} userId - required to verify the caller belongs to the
+   *   stream's own brand (see issue #50); the route only carries the stream
+   *   id, so ownership must be checked here rather than at the route level.
    */
-  async getStreamById(id) {
+  async getStreamById(id, userId) {
     const stream = await livestreamRepository.findById(id);
     if (!stream) return null;
+
+    const hasAccess = await authorizationFacade.checkBrandAccess(userId, stream.brandId);
+    if (!hasAccess) {
+      const error = new Error('Bạn không có quyền truy cập livestream này.');
+      error.status = 403;
+      throw error;
+    }
+
     return this._formatStreamResponse(stream);
   }
 

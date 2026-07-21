@@ -12,7 +12,7 @@ const createHighlight = asyncHandler(async (req, res) => {
 
 const getHighlight = asyncHandler(async (req, res) => {
   const { id } = req.params;
-  const highlight = await highlightService.getHighlightStatus(id);
+  const highlight = await highlightService.getHighlightStatus(id, req.user.id);
   res.status(200).json({
     status: 'success',
     data: { highlight }
@@ -33,7 +33,7 @@ const updateHighlightCallback = asyncHandler(async (req, res) => {
 const publishHighlightToYouTube = asyncHandler(async (req, res) => {
   const { id } = req.params;
   const { title, description, brandId } = req.body;
-  const result = await highlightService.publishToYouTube(id, brandId, title, description);
+  const result = await highlightService.publishToYouTube(id, brandId, title, description, req.user.id);
   res.status(200).json({
     status: 'success',
     data: result
