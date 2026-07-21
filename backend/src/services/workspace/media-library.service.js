@@ -1,4 +1,5 @@
 const mediaLibraryRepository = require('../../repositories/workspace/media-library.repository');
+const postRepository = require('../../repositories/workspace/post.repository');
 const QueryPipeline = require('../../core/query-pipeline/query.pipeline');
 const MediaLibrarySearchFilter = require('./media-library/filters/search.filter');
 const MediaLibraryTypeFilter = require('./media-library/filters/type.filter');
@@ -61,7 +62,13 @@ class MediaLibraryService {
   }
 
   /**
-   * Delete media file and physical file
+   * Delete media file and physical file.
+   *
+   * Order matters: the physical file (Cloudinary/local) is deleted FIRST, the
+   * DB record only after that succeeds. If storage deletion fails, we throw
+   * instead of swallowing the error — the alternative (delete DB row first)
+   * silently orphans the storage file forever, since mediaId only lives on
+   * the DB row we'd have already deleted.
    */
   async deleteMedia(id, brandId) {
     const media = await mediaLibraryRepository.findById(id);
@@ -69,8 +76,18 @@ class MediaLibraryService {
       throw new Error('Media file not found');
     }
 
-    // Delete from DB
-    await mediaLibraryRepository.delete(id);
+    const referencingPosts = await postRepository.findMany(
+      { brandId, mediaUrls: { contains: media.storageUrl } },
+      { take: 5 }
+    );
+    if (referencingPosts.length > 0) {
+      const error = new Error(
+        `Không thể xóa: tệp này đang được dùng trong ${referencingPosts.length} bài viết. Vui lòng gỡ khỏi bài viết trước khi xóa.`
+      );
+      error.status = 409;
+      error.referencingPosts = referencingPosts.map(p => ({ id: p.id, title: p.title, status: p.status }));
+      throw error;
+    }
 
     if (this._isLocalUploadUrl(media.storageUrl)) {
       try {
@@ -78,18 +95,33 @@ class MediaLibraryService {
         await fs.unlink(localPath);
       } catch (err) {
         if (err.code !== 'ENOENT') {
-          console.error(`Local media deletion failed for ${media.storageUrl}:`, err.message);
+          const error = new Error(`Không thể xóa tệp vật lý: ${err.message}`);
+          error.status = 500;
+          throw error;
         }
+        // ENOENT: the physical file is already gone — treat as already deleted.
       }
     } else {
+      const resourceType = this._getResourceType(media.mimeType);
+      let result;
       try {
-        const resourceType = this._getResourceType(media.mimeType);
-        await cloudinary.uploader.destroy(media.mediaId, { resource_type: resourceType });
+        result = await cloudinary.uploader.destroy(media.mediaId, { resource_type: resourceType });
       } catch (err) {
-        console.error(`Cloudinary deletion failed for ${media.mediaId}:`, err.message);
+        const error = new Error(`Không thể xóa tệp trên Cloudinary: ${err.message}`);
+        error.status = 500;
+        throw error;
+      }
+      // Cloudinary resolves with { result: 'not found' } instead of rejecting
+      // when the resource doesn't exist — treat that the same as ENOENT above
+      // (already gone), only a genuine failure result blocks the DB delete.
+      if (result.result !== 'ok' && result.result !== 'not found') {
+        const error = new Error(`Cloudinary từ chối xóa tệp: ${result.result}`);
+        error.status = 500;
+        throw error;
       }
     }
 
+    await mediaLibraryRepository.delete(id);
     return { success: true };
   }
 

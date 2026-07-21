@@ -432,13 +432,24 @@ class TeamService {
     const user = team.user;
     const isNewUser = !user.passwordHash;
 
-    if (isNewUser) {
-      if (!name || !password) {
-        const error = new Error('Vui lòng điền đầy đủ họ tên và mật khẩu.');
-        error.status = 400;
-        throw error;
-      }
+    if (isNewUser && (!name || !password)) {
+      const error = new Error('Vui lòng điền đầy đủ họ tên và mật khẩu.');
+      error.status = 400;
+      throw error;
+    }
 
+    // Atomic accept: the WHERE status: 'PENDING' guard means a double-submit
+    // (e.g. two tabs, double-click) only lets ONE request through — the loser
+    // gets count: 0 here and stops before touching the user's password, instead
+    // of both requests racing to hash/write two different passwords.
+    const { count } = await teamRepository.activateIfPending(team.id);
+    if (count === 0) {
+      const error = new Error('Lời mời không tồn tại hoặc đã được xử lý.');
+      error.status = 400;
+      throw error;
+    }
+
+    if (isNewUser) {
       const bcrypt = require('bcryptjs');
       const passwordHash = await bcrypt.hash(password, 10);
 
@@ -468,15 +479,6 @@ class TeamService {
         }
       });
     }
-
-    // Accept team invitation
-    await prisma.team.update({
-      where: { id: team.id },
-      data: {
-        status: 'ACTIVE',
-        acceptedAt: new Date()
-      }
-    });
 
     // Generate tokens for immediate login
     const tokenService = require('../auth/token.service');
@@ -534,7 +536,13 @@ class TeamService {
       else dbRole = 'USER';
     }
 
-    const updated = await teamRepository.update(id, { role: dbRole, customRoleId });
+    // Lock the row before writing — prevents a concurrent removeMember on the
+    // same member from deleting the record between our read above and this
+    // write (and vice versa: see removeMember's own lock for that direction).
+    const updated = await prisma.$transaction(async (tx) => {
+      await teamRepository.lockForUpdate(id, tx);
+      return teamRepository.update(id, { role: dbRole, customRoleId }, tx);
+    });
 
     // Tạo notification cho thành viên bị đổi vai trò
     try {
@@ -585,7 +593,21 @@ class TeamService {
       throw error;
     }
 
-    await teamRepository.delete(id);
+    // Lock + re-read before deleting — prevents racing a concurrent
+    // updateMemberRole on the same member (see that method's own lock for the
+    // other direction), and makes this idempotent if another removeMember
+    // call already deleted the row between our read above and this write.
+    const deleted = await prisma.$transaction(async (tx) => {
+      await teamRepository.lockForUpdate(id, tx);
+      const fresh = await teamRepository.findById(id, tx);
+      if (!fresh) return false;
+      await teamRepository.delete(id, tx);
+      return true;
+    });
+
+    if (!deleted) {
+      return { message: 'Đã xóa thành viên khỏi thương hiệu thành công' };
+    }
 
     // Remove kicked member from any pending approval workflows & notify requesters
     await this._handleReviewerRemoved(team.userId, team.brandId, 'member_removed');

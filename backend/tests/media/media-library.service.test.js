@@ -1,5 +1,6 @@
 const mediaLibraryService = require('../../src/services/workspace/media-library.service');
 const mediaLibraryRepository = require('../../src/repositories/workspace/media-library.repository');
+const postRepository = require('../../src/repositories/workspace/post.repository');
 const { cloudinary } = require('../../src/config/cloudinary');
 
 jest.mock('../../src/repositories/workspace/media-library.repository', () => ({
@@ -7,6 +8,10 @@ jest.mock('../../src/repositories/workspace/media-library.repository', () => ({
   findById: jest.fn(),
   delete: jest.fn(),
   create: jest.fn()
+}));
+
+jest.mock('../../src/repositories/workspace/post.repository', () => ({
+  findMany: jest.fn()
 }));
 
 jest.mock('../../src/config/cloudinary', () => ({
@@ -18,6 +23,10 @@ jest.mock('../../src/config/cloudinary', () => ({
 }));
 
 describe('MediaLibraryService Unit Tests', () => {
+  beforeEach(() => {
+    postRepository.findMany.mockResolvedValue([]);
+  });
+
   afterEach(() => {
     jest.clearAllMocks();
   });
@@ -198,17 +207,39 @@ describe('MediaLibraryService Unit Tests', () => {
   });
 
   describe('MEDIA_006 - deleteMedia (Success)', () => {
-    it('should delete from database and call Cloudinary uploader destroy', async () => {
+    it('should call Cloudinary uploader destroy BEFORE deleting from database', async () => {
       const targetFile = mockFiles[0];
       mediaLibraryRepository.findById.mockResolvedValue(targetFile);
       mediaLibraryRepository.delete.mockResolvedValue(targetFile);
+
+      const callOrder = [];
+      cloudinary.uploader.destroy.mockImplementation(async () => {
+        callOrder.push('cloudinary.destroy');
+        return { result: 'ok' };
+      });
+      mediaLibraryRepository.delete.mockImplementation(async () => {
+        callOrder.push('db.delete');
+        return targetFile;
+      });
 
       const result = await mediaLibraryService.deleteMedia('file-1', 'brand-1');
 
       expect(result.success).toBe(true);
       expect(mediaLibraryRepository.findById).toHaveBeenCalledWith('file-1');
-      expect(mediaLibraryRepository.delete).toHaveBeenCalledWith('file-1');
       expect(cloudinary.uploader.destroy).toHaveBeenCalledWith('publicast/images/cat', { resource_type: 'image' });
+      expect(mediaLibraryRepository.delete).toHaveBeenCalledWith('file-1');
+      expect(callOrder).toEqual(['cloudinary.destroy', 'db.delete']);
+    });
+
+    it('treats Cloudinary "not found" as already-deleted and still deletes the DB record', async () => {
+      const targetFile = mockFiles[0];
+      mediaLibraryRepository.findById.mockResolvedValue(targetFile);
+      cloudinary.uploader.destroy.mockResolvedValue({ result: 'not found' });
+
+      const result = await mediaLibraryService.deleteMedia('file-1', 'brand-1');
+
+      expect(result.success).toBe(true);
+      expect(mediaLibraryRepository.delete).toHaveBeenCalledWith('file-1');
     });
   });
 
@@ -225,6 +256,54 @@ describe('MediaLibraryService Unit Tests', () => {
       mediaLibraryRepository.findById.mockResolvedValue(mockFiles[0]); // brand-1
 
       await expect(mediaLibraryService.deleteMedia('file-1', 'another-brand')).rejects.toThrow('Media file not found');
+    });
+  });
+
+  describe('MEDIA_010 - deleteMedia (In use by a Post)', () => {
+    it('rejects with 409 and skips both Cloudinary destroy and DB delete when a Post references the file', async () => {
+      const targetFile = mockFiles[0];
+      mediaLibraryRepository.findById.mockResolvedValue(targetFile);
+      postRepository.findMany.mockResolvedValue([
+        { id: 'post-1', title: 'Campaign Post', status: 'PUBLISHED' }
+      ]);
+
+      await expect(mediaLibraryService.deleteMedia('file-1', 'brand-1')).rejects.toMatchObject({
+        status: 409,
+        message: expect.stringContaining('đang được dùng')
+      });
+
+      expect(postRepository.findMany).toHaveBeenCalledWith(
+        { brandId: 'brand-1', mediaUrls: { contains: targetFile.storageUrl } },
+        { take: 5 }
+      );
+      expect(cloudinary.uploader.destroy).not.toHaveBeenCalled();
+      expect(mediaLibraryRepository.delete).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('MEDIA_011 - deleteMedia (Cloudinary failure)', () => {
+    it('rejects with 500 and does NOT delete the DB record when Cloudinary destroy fails', async () => {
+      const targetFile = mockFiles[0];
+      mediaLibraryRepository.findById.mockResolvedValue(targetFile);
+      cloudinary.uploader.destroy.mockRejectedValue(new Error('Network timeout'));
+
+      await expect(mediaLibraryService.deleteMedia('file-1', 'brand-1')).rejects.toMatchObject({
+        status: 500
+      });
+
+      expect(mediaLibraryRepository.delete).not.toHaveBeenCalled();
+    });
+
+    it('rejects with 500 when Cloudinary returns a non-ok, non-"not found" result', async () => {
+      const targetFile = mockFiles[0];
+      mediaLibraryRepository.findById.mockResolvedValue(targetFile);
+      cloudinary.uploader.destroy.mockResolvedValue({ result: 'rate_limited' });
+
+      await expect(mediaLibraryService.deleteMedia('file-1', 'brand-1')).rejects.toMatchObject({
+        status: 500
+      });
+
+      expect(mediaLibraryRepository.delete).not.toHaveBeenCalled();
     });
   });
 
