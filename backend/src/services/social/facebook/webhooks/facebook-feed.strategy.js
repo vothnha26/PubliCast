@@ -25,8 +25,14 @@ class FacebookFeedStrategy extends BaseWebhookStrategy {
 
     if (verb === 'add' || verb === 'edited') {
       if (await this.isDuplicateEvent(commentId)) return;
-      const authorId = value.sender_id || 'unknown';
-      const authorName = value.sender_name || 'Facebook User';
+      // Facebook feed comment webhooks carry the author in `value.from`
+      // ({ id, name }), NOT `value.sender_id` (that field only exists on
+      // Messenger message webhooks). Reading the wrong field made `authorId`
+      // always 'unknown', so `isFromMe` was never true — meaning the page's
+      // OWN auto-reply comments triggered another auto-reply, an infinite
+      // loop (#98). Mirror the Instagram strategy which already reads `from`.
+      const authorId = value.from?.id || value.sender_id || 'unknown';
+      const authorName = value.from?.name || value.sender_name || 'Facebook User';
       const authorAvatar = FACEBOOK_API.avatarUrl(API_VERSIONS.FACEBOOK, authorId);
       const isFromMe = authorId === pageId;
       const postPlatformId = value.post_id || value.parent_id;
