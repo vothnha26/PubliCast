@@ -54,6 +54,8 @@ const webhookRoutes = require('./routes/billing/webhook.routes');
 
 // BullMQ Dashboard
 const queueDashboard = require('./queues/dashboard');
+const { verifyAuth } = require('./middlewares/auth.middleware');
+const { authorizeAdmin } = require('./middlewares/authorization.middleware');
 
 const app = express();
 
@@ -192,10 +194,11 @@ app.use('/api/billing/subscriptions', subscriptionRoutes);
 app.use('/api/webhooks', webhookRoutes);  // SePay POSTs to /api/webhooks/sepay
 app.use('/api/payments', webhookRoutes);  // Alias for backward compatibility with user's SePay config
 
-// ── BullMQ Dashboard — protected in production ─────────────────────────────
-// WARNING: In production, add authentication middleware before this route.
-// Example: app.use('/admin/queues', verifyAuth, authorize('ADMIN'), queueDashboard.getRouter())
-app.use('/admin/queues', queueDashboard.getRouter());
+// ── BullMQ Dashboard — admin-only ──────────────────────────────────────────
+// Job payloads can contain tokens, brand data, and post content, and the
+// dashboard allows retry/remove/promote. Gate it behind auth + ADMIN role so
+// it is never reachable unauthenticated (see issue #117).
+app.use('/admin/queues', verifyAuth, authorizeAdmin, queueDashboard.getRouter());
 
 app.get('/', (_req, res) => {
   res.json({ name: 'PubliCast API', status: 'running', version: '1.0.0' });
