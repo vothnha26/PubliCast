@@ -3,6 +3,7 @@ const QueryPipeline = require('../../core/query-pipeline/query.pipeline');
 const NotificationCategoryFilter = require('./notification/filters/category.filter');
 const NotificationDateRangeFilter = require('./notification/filters/date-range.filter');
 const brandRepository = require('../../repositories/workspace/brand.repository');
+const authorizationFacade = require('../auth/authorization.facade');
 const { NOTIFICATION_TYPES, NOTIFICATION_LABELS, USER_ROLES } = require('../../utils/constants');
 const notificationRealtime = require('./notification.realtime');
 
@@ -178,6 +179,23 @@ class NotificationService {
     }
 
     await this._assertBrandAccess(actor.userId, data.brandId, role);
+
+    // _assertBrandAccess above only verifies the ACTOR belongs to brandId —
+    // it never checked whether the TARGET user (data.userId, which
+    // _buildCreateData copies straight from the request body) is even a
+    // member of that brand. A non-admin OWNER could POST { brandId: <their
+    // own brand>, userId: <any other user's id>, actionUrl: <phishing link> }
+    // and have it delivered (+ pushed over socket) to a total stranger
+    // (#81). Require the target — if one is supplied — to actually belong
+    // to the same brand.
+    if (data?.userId) {
+      const targetHasAccess = await authorizationFacade.checkBrandAccess(data.userId, data.brandId);
+      if (!targetHasAccess) {
+        const error = new Error('Target user is not a member of this brand');
+        error.status = 403;
+        throw error;
+      }
+    }
   }
 
   _buildVisibilityWhere(userId, brandId) {
