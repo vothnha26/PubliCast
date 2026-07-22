@@ -23,6 +23,17 @@ class SubscriptionRepository {
   }
 
   /**
+   * Locks the brand's Subscription row (SELECT ... FOR UPDATE) inside an open
+   * transaction, serializing concurrent count-then-act checks against the
+   * same brand's usage limits (e.g. posts/month, team seats — see #60) so two
+   * simultaneous requests can't both read a count under the limit and both
+   * write, together exceeding it.
+   */
+  async lockSubscriptionForUpdate(brandId, tx) {
+    await tx.$queryRaw`SELECT s.id FROM subscriptions s INNER JOIN brands b ON b.subscriptionId = s.id WHERE b.id = ${brandId} FOR UPDATE`;
+  }
+
+  /**
    * Find plan by ID
    */
   async findPlanById(planId) {

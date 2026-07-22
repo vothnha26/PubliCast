@@ -63,8 +63,8 @@ class TeamRepository {
     });
   }
 
-  async create(data) {
-    return prisma.team.create({
+  async create(data, client = prisma) {
+    return client.team.create({
       data,
       include: {
         user: true,
@@ -101,8 +101,8 @@ class TeamRepository {
     await tx.$queryRaw`SELECT id FROM teams WHERE id = ${id} FOR UPDATE`;
   }
 
-  async countMembersByBrand(brandId) {
-    return prisma.team.count({
+  async countMembersByBrand(brandId, client = prisma) {
+    return client.team.count({
       where: { brandId }
     });
   }

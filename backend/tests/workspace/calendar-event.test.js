@@ -5,6 +5,7 @@ jest.mock('../../src/config/prisma', () => ({
   calendarEvent: {
     findMany: jest.fn(),
     create: jest.fn(),
+    createMany: jest.fn(),
     delete: jest.fn(),
     findUnique: jest.fn()
   },
@@ -69,6 +70,52 @@ describe('CalendarEventService Export tests', () => {
       expect(icsResult).toContain('SUMMARY:[⏰ Đã đặt lịch] Bài viết Giáng Sinh');
       expect(icsResult).toContain('FACEBOOK\\, INSTAGRAM');
       expect(icsResult).toContain('END:VCALENDAR');
+    });
+  });
+
+  describe('importIcs — DoS/batch-insert fix (#63)', () => {
+    function vevent(n) {
+      return `BEGIN:VEVENT\nSUMMARY:Event ${n}\nDTSTART:2026122${n % 9}T000000Z\nEND:VEVENT\n`;
+    }
+
+    it('rejects a file with more events than MAX_IMPORT_EVENTS before writing anything', async () => {
+      const manyEvents = Array.from({ length: 1001 }, (_, i) => vevent(i)).join('');
+      const ics = `BEGIN:VCALENDAR\n${manyEvents}END:VCALENDAR`;
+
+      await expect(calendarEventService.importIcs('brand-abc', ics)).rejects.toMatchObject({ statusCode: 400 });
+      expect(prisma.calendarEvent.createMany).not.toHaveBeenCalled();
+    });
+
+    it('uses createMany (batch insert) instead of looping single creates', async () => {
+      const ics = [
+        'BEGIN:VCALENDAR',
+        'BEGIN:VEVENT', 'SUMMARY:Event A', 'DTSTART:20261224T000000Z', 'END:VEVENT',
+        'BEGIN:VEVENT', 'SUMMARY:Event B', 'DTSTART:20261225T000000Z', 'END:VEVENT',
+        'END:VCALENDAR'
+      ].join('\n');
+
+      prisma.calendarEvent.createMany.mockResolvedValue({ count: 2 });
+      prisma.calendarEvent.findMany.mockResolvedValue([
+        { id: 'ev-a', title: 'Event A' },
+        { id: 'ev-b', title: 'Event B' }
+      ]);
+
+      const result = await calendarEventService.importIcs('brand-abc', ics);
+
+      expect(prisma.calendarEvent.createMany).toHaveBeenCalledTimes(1);
+      expect(prisma.calendarEvent.createMany).toHaveBeenCalledWith({
+        data: expect.arrayContaining([
+          expect.objectContaining({ brandId: 'brand-abc', title: 'Event A', isSystem: false }),
+          expect.objectContaining({ brandId: 'brand-abc', title: 'Event B', isSystem: false })
+        ])
+      });
+      expect(prisma.calendarEvent.create).not.toHaveBeenCalled();
+      expect(result).toHaveLength(2);
+    });
+
+    it('throws when the ICS file has no valid VEVENT blocks', async () => {
+      await expect(calendarEventService.importIcs('brand-abc', 'BEGIN:VCALENDAR\nEND:VCALENDAR'))
+        .rejects.toThrow('No valid events found');
     });
   });
 

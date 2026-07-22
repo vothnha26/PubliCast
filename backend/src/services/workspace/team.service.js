@@ -2,6 +2,7 @@ const jwt = require('jsonwebtoken');
 const prisma = require('../../config/prisma');
 const teamRepository = require('../../repositories/workspace/team.repository');
 const brandRepository = require('../../repositories/workspace/brand.repository');
+const subscriptionRepository = require('../../repositories/billing/subscription.repository');
 const userRepository = require('../../repositories/auth/user.repository');
 const approvalWorkflowRepository = require('../../repositories/workspace/approval-workflow.repository');
 const approvalWorkflowService = require('./approval-workflow.service');
@@ -73,14 +74,7 @@ class TeamService {
       throw error;
     }
 
-    // Check plan limits
-    const currentSeatCount = await teamRepository.countMembersByBrand(brandId);
     const maxSeats = brand.subscription?.plan?.planLimit?.maxTeamSeats || 5;
-    if (currentSeatCount >= maxSeats) {
-      const error = new Error(`Thương hiệu đã đạt giới hạn thành viên tối đa cho phép (${maxSeats} người). Vui lòng nâng cấp gói.`);
-      error.status = 402;
-      throw error;
-    }
 
     // Map role using RoleResolver
     const { dbRole, customRoleId } = await roleResolver.resolve(role, brandId);
@@ -103,26 +97,37 @@ class TeamService {
       }
     }
 
-    // Create or update team record
-    let team;
-    if (existingTeam) {
-      team = await teamRepository.update(existingTeam.id, {
-        role: dbRole,
-        customRoleId,
-        invitedByUserId,
-        invitedAt: new Date(),
-        status: TEAM_STATUS.PENDING
-      });
-    } else {
-      team = await teamRepository.create({
+    // Re-check the seat limit + create/update the team record inside a single
+    // transaction, behind a row lock on the brand's Subscription — closes the
+    // check-then-act race (#60) where two concurrent invites could each read
+    // a count under maxSeats and both write, exceeding the seat limit.
+    const team = await prisma.$transaction(async (tx) => {
+      await subscriptionRepository.lockSubscriptionForUpdate(brandId, tx);
+      const lockedSeatCount = await teamRepository.countMembersByBrand(brandId, tx);
+      if (lockedSeatCount >= maxSeats) {
+        const error = new Error(`Thương hiệu đã đạt giới hạn thành viên tối đa cho phép (${maxSeats} người). Vui lòng nâng cấp gói.`);
+        error.status = 402;
+        throw error;
+      }
+
+      if (existingTeam) {
+        return teamRepository.update(existingTeam.id, {
+          role: dbRole,
+          customRoleId,
+          invitedByUserId,
+          invitedAt: new Date(),
+          status: TEAM_STATUS.PENDING
+        }, tx);
+      }
+      return teamRepository.create({
         brandId,
         userId: user.id,
         role: dbRole,
         customRoleId,
         invitedByUserId,
         status: TEAM_STATUS.PENDING
-      });
-    }
+      }, tx);
+    });
 
     // Generate JWT Token (expires in 7 days)
     const token = jwt.sign(
@@ -303,26 +308,37 @@ class TeamService {
           throw new Error('Người dùng này đã là thành viên của thương hiệu.');
         }
 
-        // Create or update team record
-        let team;
-        if (existingTeam) {
-          team = await teamRepository.update(existingTeam.id, {
-            role: dbRole,
-            customRoleId,
-            invitedByUserId,
-            invitedAt: new Date(),
-            status: TEAM_STATUS.PENDING
-          });
-        } else {
-          team = await teamRepository.create({
+        // Re-check the seat limit + create/update the team record inside a
+        // single transaction, behind a row lock on the brand's Subscription —
+        // closes the check-then-act race (#60). The pre-flight remainingSeats
+        // check above is only a fast-fail; this per-invite re-check inside
+        // the lock is what actually prevents exceeding maxSeats when this
+        // loop races against another concurrent inviteMember(s) call.
+        const team = await prisma.$transaction(async (tx) => {
+          await subscriptionRepository.lockSubscriptionForUpdate(brandId, tx);
+          const lockedSeatCount = await teamRepository.countMembersByBrand(brandId, tx);
+          if (lockedSeatCount >= maxSeats) {
+            throw new Error(`Thương hiệu đã đạt giới hạn thành viên tối đa cho phép (${maxSeats} người). Vui lòng nâng cấp gói.`);
+          }
+
+          if (existingTeam) {
+            return teamRepository.update(existingTeam.id, {
+              role: dbRole,
+              customRoleId,
+              invitedByUserId,
+              invitedAt: new Date(),
+              status: TEAM_STATUS.PENDING
+            }, tx);
+          }
+          return teamRepository.create({
             brandId,
             userId: user.id,
             role: dbRole,
             customRoleId,
             invitedByUserId,
             status: TEAM_STATUS.PENDING
-          });
-        }
+          }, tx);
+        });
 
         // Generate JWT Token (expires in 7 days)
         const token = jwt.sign(
