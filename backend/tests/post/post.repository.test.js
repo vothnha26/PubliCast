@@ -1,5 +1,5 @@
 jest.mock('../../src/config/prisma', () => ({
-  post: { findUnique: jest.fn(), updateMany: jest.fn() }
+  post: { findUnique: jest.fn(), updateMany: jest.fn(), findMany: jest.fn() }
 }));
 
 const postRepository = require('../../src/repositories/workspace/post.repository');
@@ -80,5 +80,26 @@ describe('PostRepository.claimForPublishing (#54)', () => {
     const claimed = await postRepository.claimForPublishing('post-1', ['SCHEDULED', 'DRAFT', 'RETRYING']);
 
     expect(claimed).toBe(false);
+  });
+});
+
+describe('PostRepository.findStaleRetrying (#107 I7)', () => {
+  const prisma = require('../../src/config/prisma');
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it('queries RETRYING posts older than the threshold, oldest first, capped at limit', async () => {
+    prisma.post.findMany.mockResolvedValue([{ id: 'post-1' }]);
+
+    const result = await postRepository.findStaleRetrying(10 * 60 * 1000, 50);
+
+    expect(result).toEqual([{ id: 'post-1' }]);
+    const call = prisma.post.findMany.mock.calls[0][0];
+    expect(call.where.status).toBe('RETRYING');
+    expect(call.where.updatedAt.lt).toBeInstanceOf(Date);
+    expect(call.orderBy).toEqual({ updatedAt: 'asc' });
+    expect(call.take).toBe(50);
   });
 });

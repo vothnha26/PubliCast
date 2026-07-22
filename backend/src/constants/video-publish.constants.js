@@ -27,6 +27,15 @@ const QUEUE_CONFIG = Object.freeze({
     // giao lại cho worker khác trong khi job cũ vẫn publish dở (rủi ro đăng trùng).
     LOCK_DURATION_MS: 120000
   },
+  // Sweeps posts stuck at RETRYING whose self-enqueued partial-retry job got
+  // lost (Redis restart, or a #106 active-job dedup skip) — #107 I7.
+  RECONCILER: {
+    // Must be well past LOCK_DURATION_MS + backoff, so a post that's still
+    // legitimately mid-retry never gets swept as "stuck".
+    STALE_RETRYING_MS: 10 * 60 * 1000,
+    POLL_INTERVAL_MS: 5 * 60 * 1000,
+    BATCH_SIZE: 50
+  },
   SOCIAL: {
     NAME: 'social-sync-queue',
     JOB_SYNC: 'sync-channel-metrics',
