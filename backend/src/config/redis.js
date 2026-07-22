@@ -85,12 +85,18 @@ if (process.env.USE_MEMORY_REDIS === 'true') {
 } else {
   const redisUrl = process.env.REDIS_URL || `redis://${process.env.REDIS_HOST || '127.0.0.1'}:${process.env.REDIS_PORT || 6379}`;
   const isTls = redisUrl.startsWith('rediss:');
+  // rejectUnauthorized defaults to true (verify the server cert) — disabling
+  // it unconditionally on every rediss:// connection allowed a MITM to
+  // intercept traffic to a Redis instance that holds login-attempt counters
+  // and cache data (#118 M3). REDIS_TLS_ALLOW_SELF_SIGNED is an explicit,
+  // documented opt-out for providers using a self-signed cert, not a default.
+  const allowSelfSigned = process.env.REDIS_TLS_ALLOW_SELF_SIGNED === 'true';
   const redisClient = createClient({
     url: redisUrl,
     socket: {
       ...(isTls ? {
         tls: true,
-        rejectUnauthorized: false
+        rejectUnauthorized: !allowSelfSigned
       } : {}),
       reconnectStrategy: (retries) => {
         if (retries > 10) {

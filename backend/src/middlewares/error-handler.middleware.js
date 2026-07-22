@@ -43,10 +43,18 @@ const errorHandler = (err, req, res, _next) => {
     logger.warn('Client error', { method: req.method, url: req.url, statusCode, message });
   }
 
-  const response = { message, status: statusCode };
+  const isDev = process.env.NODE_ENV === 'development' || process.env.JEST_WORKER_ID;
+
+  // A 5xx here is always an unhandled/unexpected error — its raw message
+  // frequently embeds Prisma/driver internals (table/column/constraint
+  // names, file paths), which is fine to see in dev but must never reach a
+  // production client (#118 M5). 4xx messages are intentionally
+  // user-facing (validation errors, "not found", etc.) and stay as-is.
+  const responseMessage = (statusCode >= 500 && !isDev) ? 'Internal Server Error' : message;
+  const response = { message: responseMessage, status: statusCode };
 
   // Include stack trace only in development or test environment
-  if (process.env.NODE_ENV === 'development' || process.env.JEST_WORKER_ID) {
+  if (isDev) {
     response.stack = err.stack;
   }
 
