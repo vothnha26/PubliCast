@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useFilters } from "./useFilters";
 import { useDebounce } from "./useDebounce";
+import { useLatestRequestId } from "./useLatestRequestId";
 import apiService from "../services/api";
 import { toast } from "sonner";
 
@@ -15,6 +16,7 @@ export function useStreamHistory() {
   });
 
   const view = filters.view || "grid";
+  const streamRequest = useLatestRequestId();
   const [selected, setSelected] = useState(null);
   const [detailTab, setDetailTab] = useState("Overview");
   const [streamData, setStreamData] = useState({ data: [], meta: { total: 0, page: 1, limit: 10, totalPages: 1 } });
@@ -39,14 +41,17 @@ export function useStreamHistory() {
   // Fetch real data from Backend API
   useEffect(() => {
     const fetchStreams = async () => {
+      const requestId = streamRequest.start();
       setLoading(true);
       try {
         const response = await apiService.get(`/livestreams/history?${searchParamsString}`);
+        if (!streamRequest.isLatest(requestId)) return;
         setStreamData(response.data);
       } catch (error) {
+        if (!streamRequest.isLatest(requestId)) return;
         toast.error(error.message || "Failed to load stream history");
       } finally {
-        setLoading(false);
+        if (streamRequest.isLatest(requestId)) setLoading(false);
       }
     };
 
