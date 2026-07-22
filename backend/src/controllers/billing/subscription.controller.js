@@ -89,7 +89,8 @@ class SubscriptionController {
     if (!addonId) return res.status(400).json({ message: 'addonId là bắt buộc' });
     if (!brandId) return res.status(400).json({ message: 'brandId là bắt buộc' });
 
-    const result = await subscriptionService.initiateAddonPayment(brandId, addonId, quantity || 1);
+    const parsedQuantity = quantity === undefined ? 1 : Number(quantity);
+    const result = await subscriptionService.initiateAddonPayment(brandId, addonId, parsedQuantity);
 
     res.status(201).json({
       message: 'Tạo mã QR thanh toán Add-on thành công',

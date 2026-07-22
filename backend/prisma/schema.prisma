@@ -365,16 +365,17 @@ model SubscriptionAddon {
 }
 
 model Invoice {
-  id             String    @id @default(uuid())
-  subscriptionId String
-  amount         Decimal
-  currency       String
-  pdfUrl         String
-  status         String
-  issuedAt       DateTime
-  paidAt         DateTime?
-  dueAt          DateTime?
-  createdAt      DateTime  @default(now())
+  id              String    @id @default(uuid())
+  subscriptionId  String
+  amount          Decimal
+  currency        String
+  pdfUrl          String
+  status          String
+  transactionCode String?
+  issuedAt        DateTime
+  paidAt          DateTime?
+  dueAt           DateTime?
+  createdAt       DateTime  @default(now())
 
   subscription Subscription @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
 
@@ -388,6 +389,7 @@ model PendingPayment {
   transactionCode String    @unique // e.g. PUBLICAST-PRO-ABC12345-1719350400000
   planId          String?
   addonId         String?
+  addonQuantity   Int?
   brandId         String
   amount          Decimal
   currency        String    @default("VND")
