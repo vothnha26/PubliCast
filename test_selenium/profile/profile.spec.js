@@ -218,15 +218,16 @@ describe('Profile & Settings Detailed Suite', function () {
       await currentPwdInput.sendKeys('nhacc123@');
 
       const newPwdInput = await driver.findElement(By.css('[data-testid="profile-new-password-input"]'));
-      await newPwdInput.sendKeys('123'); // < 6 characters
+      await newPwdInput.sendKeys('1234567'); // 7 characters — below the 8-char minimum (issue #83)
 
       const updateBtn = await driver.findElement(By.css('[data-testid="profile-update-password-btn"]'));
       await updateBtn.click();
       await driver.sleep(1000);
 
-      // Verify error toast
+      // Verify error toast — minimum length was raised from 6 to 8 to match
+      // resetPasswordValidation's policy (see issue #83).
       const pageSource = await driver.getPageSource();
-      expect(pageSource).to.include('6 ký tự');
+      expect(pageSource).to.include('8 ký tự');
     });
 
     it('TC_PROFILE_10 – Verify successful password change and restore original', async function () {
