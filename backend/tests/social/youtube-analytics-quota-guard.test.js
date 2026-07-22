@@ -38,7 +38,7 @@ jest.mock('../../src/queues/social.queue', () => ({
 const QuotaTrackerService = require('../../src/services/social/quota-tracker.service');
 const socialAccountRepository = require('../../src/repositories/social/social-account.repository');
 const youtubeGateway = require('../../src/services/social/youtube/youtube.gateway');
-const { YOUTUBE_QUOTA_THRESHOLD } = require('../../src/constants/analytics-snapshot.constants');
+const { YOUTUBE_QUOTA_THRESHOLD, YOUTUBE_DAILY_QUOTA_LIMIT } = require('../../src/constants/analytics-snapshot.constants');
 const youtubeAnalytics = require('../../src/services/social/youtube/youtube-analytics.service');
 
 const BRAND_ID = 'brand_1';
@@ -56,15 +56,27 @@ describe('YouTubeAnalyticsService — quota guard on getVideoAnalytics', () => {
   });
 
   it('returns isFallback:true rows without calling the gateway when quota usage is over budget', async () => {
-    // Threshold is a "remaining budget floor"; the guard treats current usage
-    // at/above (threshold * 10) as over-budget (see youtube-analytics.service.js _isQuotaBudgetExceeded).
-    quotaInstance.getCurrentUsage.mockResolvedValue(YOUTUBE_QUOTA_THRESHOLD * 10);
+    // Threshold (1500) is a remaining-budget floor out of the real 10000-unit
+    // daily cap — the guard fires once usage climbs within that floor of the
+    // limit (see youtube-analytics.service.js _isQuotaBudgetExceeded). #67:
+    // previously compared against threshold*10 (15000), above the real daily
+    // cap, so this guard never fired before Google's own 403 hit first.
+    quotaInstance.getCurrentUsage.mockResolvedValue(YOUTUBE_DAILY_QUOTA_LIMIT - YOUTUBE_QUOTA_THRESHOLD);
 
     const rows = await youtubeAnalytics.getVideoAnalytics(BRAND_ID, VIDEO_ID, '2026-06-01', '2026-06-03');
 
     expect(youtubeGateway.getAnalyticsReportQuery).not.toHaveBeenCalled();
     expect(rows.every(r => r.isFallback === true)).toBe(true);
     expect(rows.every(r => r.views === 0)).toBe(true);
+  });
+
+  it('does not fire the guard just below the remaining-budget floor (#67 boundary)', async () => {
+    quotaInstance.getCurrentUsage.mockResolvedValue(YOUTUBE_DAILY_QUOTA_LIMIT - YOUTUBE_QUOTA_THRESHOLD - 1);
+    youtubeGateway.getAnalyticsReportQuery.mockResolvedValue({ data: { rows: [] } });
+
+    await youtubeAnalytics.getVideoAnalytics(BRAND_ID, VIDEO_ID, '2026-06-01', '2026-06-01');
+
+    expect(youtubeGateway.getAnalyticsReportQuery).toHaveBeenCalled();
   });
 
   it('calls the gateway and records quota usage when under budget', async () => {
