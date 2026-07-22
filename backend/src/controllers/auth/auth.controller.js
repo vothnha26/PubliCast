@@ -30,7 +30,6 @@ class AuthController {
    */
   googleCallback = asyncHandler(async (req, res) => {
     const { code, state } = req.query;
-    console.log(`[BACKEND DEBUG googleCallback] query state: "${state}", cookies:`, req.cookies);
     const baseUrl = process.env.BACKEND_BASE_URL || `${req.protocol}://${req.get('host')}`;
     const redirectUri = `${baseUrl}/api/auth/google/callback`;
     const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
@@ -38,14 +37,14 @@ class AuthController {
     let currentUserId = null;
     if (state === 'settings') {
       const token = req.cookies?.accessToken;
-      console.log(`[BACKEND DEBUG googleCallback] Found token in cookies: "${token ? 'YES' : 'NO'}"`);
       if (token) {
         try {
           const decoded = jwtUtils.verifyAccessToken(token);
           currentUserId = decoded.id;
-          console.log(`[BACKEND DEBUG googleCallback] Token verified successfully, userId: "${currentUserId}"`);
         } catch (err) {
-          console.error(`[BACKEND DEBUG googleCallback] Token verification failed:`, err.message);
+          // Invalid/expired token while linking from Settings — proceed
+          // without a currentUserId; handleGoogleCallback treats this as a
+          // fresh login rather than an account-linking flow.
         }
       }
     }
