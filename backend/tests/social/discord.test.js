@@ -241,4 +241,56 @@ describe('Discord Integration Suite', () => {
       expect(discordGateway.sendMessage).toHaveBeenCalledTimes(2);
     });
   });
+
+  // Regression tests for #66: deletePost/updatePublishedPost previously
+  // always returned { success: true } even when every connected account
+  // failed — callers had no way to tell the operation actually happened.
+  describe('deletePost', () => {
+    it('throws when every connected channel fails to delete', async () => {
+      socialAccountRepository.findByBrandAndPlatform.mockResolvedValue([
+        { id: 'sa_discord_1', isConnected: true, accessToken: 'token-1', displayName: 'Channel 1' }
+      ]);
+      discordGateway.deleteWebhookMessage.mockRejectedValue(new Error('Message not found'));
+
+      await expect(discordService.deletePost('brand_1', 'msg_123'))
+        .rejects.toThrow('Failed to delete post from any connected Discord channel');
+    });
+
+    it('succeeds and reports counts when at least one channel deletes successfully', async () => {
+      socialAccountRepository.findByBrandAndPlatform.mockResolvedValue([
+        { id: 'sa_discord_1', isConnected: true, accessToken: 'token-1', displayName: 'Channel 1' },
+        { id: 'sa_discord_2', isConnected: true, accessToken: 'token-2', displayName: 'Channel 2' }
+      ]);
+      discordGateway.deleteWebhookMessage
+        .mockResolvedValueOnce(undefined)
+        .mockRejectedValueOnce(new Error('Channel 2 failed'));
+
+      const result = await discordService.deletePost('brand_1', 'msg_123');
+
+      expect(result).toEqual({ success: true, deletedCount: 1, totalCount: 2 });
+    });
+  });
+
+  describe('updatePublishedPost', () => {
+    it('throws when every connected channel fails to update', async () => {
+      socialAccountRepository.findByBrandAndPlatform.mockResolvedValue([
+        { id: 'sa_discord_1', isConnected: true, accessToken: 'token-1', displayName: 'Channel 1' }
+      ]);
+      discordGateway.updateWebhookMessage.mockRejectedValue(new Error('Message not found'));
+
+      await expect(discordService.updatePublishedPost('brand_1', 'msg_123', { caption: 'Updated' }))
+        .rejects.toThrow('Failed to update post in any connected Discord channel');
+    });
+
+    it('succeeds and reports counts when at least one channel updates successfully', async () => {
+      socialAccountRepository.findByBrandAndPlatform.mockResolvedValue([
+        { id: 'sa_discord_1', isConnected: true, accessToken: 'token-1', displayName: 'Channel 1' }
+      ]);
+      discordGateway.updateWebhookMessage.mockResolvedValue(undefined);
+
+      const result = await discordService.updatePublishedPost('brand_1', 'msg_123', { caption: 'Updated' });
+
+      expect(result).toEqual({ success: true, updatedCount: 1, totalCount: 1 });
+    });
+  });
 });

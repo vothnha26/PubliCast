@@ -293,14 +293,21 @@ class DiscordService extends BaseSocialService {
     if (connectedAccounts.length === 0) throw new Error('No connected Discord channels found');
 
     const { caption } = postData;
+    let successCount = 0;
     for (const account of connectedAccounts) {
       try {
         await discordGateway.updateWebhookMessage(account.accessToken, platformPostId, caption || '');
+        successCount++;
       } catch (err) {
         console.error(`Failed to update post in Discord channel ${account.displayName}:`, err.message);
       }
     }
-    return { success: true };
+    // Previously always returned success:true even when every account
+    // failed — callers had no way to tell an update actually happened (#66).
+    if (successCount === 0) {
+      throw new Error('Failed to update post in any connected Discord channel');
+    }
+    return { success: true, updatedCount: successCount, totalCount: connectedAccounts.length };
   }
 
   async deletePost(brandId, platformPostId) {
@@ -308,14 +315,21 @@ class DiscordService extends BaseSocialService {
     const connectedAccounts = accounts.filter(acc => acc.isConnected);
     if (connectedAccounts.length === 0) throw new Error('No connected Discord channels found');
 
+    let successCount = 0;
     for (const account of connectedAccounts) {
       try {
         await discordGateway.deleteWebhookMessage(account.accessToken, platformPostId);
+        successCount++;
       } catch (err) {
         console.error(`Failed to delete post from Discord channel ${account.displayName}:`, err.message);
       }
     }
-    return { success: true };
+    // Previously always returned success:true even when every account
+    // failed — callers had no way to tell a delete actually happened (#66).
+    if (successCount === 0) {
+      throw new Error('Failed to delete post from any connected Discord channel');
+    }
+    return { success: true, deletedCount: successCount, totalCount: connectedAccounts.length };
   }
 }
 

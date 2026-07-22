@@ -3,7 +3,7 @@ const googleOAuthService = require('../google-oauth.service');
 const socialAccountRepository = require('../../../repositories/social/social-account.repository');
 const competitorRepository = require('../../../repositories/social/competitor.repository');
 const { PLATFORMS, SEPARATORS, ANALYTICS, SOCIAL_TECHNICAL, YT_VIDEO_INSIGHTS, REDIS_TTL } = require('../../../utils/constants');
-const { YOUTUBE_QUOTA_THRESHOLD } = require('../../../constants/analytics-snapshot.constants');
+const { YOUTUBE_QUOTA_THRESHOLD, YOUTUBE_DAILY_QUOTA_LIMIT } = require('../../../constants/analytics-snapshot.constants');
 
 let redisClient = null;
 try {
@@ -512,7 +512,12 @@ class YouTubeAnalyticsService {
     if (!quotaService) return false;
     try {
       const usage = await quotaService.getCurrentUsage(YOUTUBE_QUOTA_SERVICE_NAME);
-      return usage >= YOUTUBE_QUOTA_THRESHOLD * 10; // threshold is a "remaining" budget floor, not a raw usage cap
+      // YOUTUBE_QUOTA_THRESHOLD (1500) is a remaining-budget floor out of the
+      // real 10000-unit daily cap — fire once usage climbs within that floor
+      // of the limit. The previous `* 10` compared usage against 15000, a
+      // threshold above the real daily cap, so Google's own 403 quotaExceeded
+      // always hit first and this guard never fired (#67).
+      return usage >= YOUTUBE_DAILY_QUOTA_LIMIT - YOUTUBE_QUOTA_THRESHOLD;
     } catch (err) {
       console.error('[YouTube Analytics] Quota check failed, proceeding without guard:', err.message);
       return false;

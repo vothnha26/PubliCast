@@ -269,12 +269,12 @@ class YouTubeAnalyticsEnhancedService {
    * @private
    */
   async _fetchInsightsSummary(auth, videoId) {
-    return youtubeGateway.getAnalyticsReportQuery(auth, { ids: `contentOwner==MINE`, metrics: 'views,estimatedMinutesWatched', filters: `video==${videoId}` });
+    return youtubeGateway.getAnalyticsReportQuery(auth, { ids: `channel==MINE`, metrics: 'views,estimatedMinutesWatched', filters: `video==${videoId}` });
   }
 
   async _fetchInsightsTrafficSource(auth, videoId) {
     return youtubeGateway.getAnalyticsReportQuery(auth, {
-      ids: 'contentOwner==MINE',
+      ids: 'channel==MINE',
       metrics: 'views,estimatedMinutesWatched',
       dimensions: 'insightTrafficSourceType',
       filters: `video==${videoId}`
@@ -283,7 +283,7 @@ class YouTubeAnalyticsEnhancedService {
 
   async _fetchInsightsDeviceType(auth, videoId) {
     return youtubeGateway.getAnalyticsReportQuery(auth, {
-      ids: 'contentOwner==MINE',
+      ids: 'channel==MINE',
       metrics: 'views,estimatedMinutesWatched',
       dimensions: 'deviceType',
       filters: `video==${videoId}`
@@ -292,7 +292,7 @@ class YouTubeAnalyticsEnhancedService {
 
   async _fetchInsightsDemographics(auth, videoId) {
     return youtubeGateway.getAnalyticsReportQuery(auth, {
-      ids: 'contentOwner==MINE',
+      ids: 'channel==MINE',
       metrics: 'viewPercentage',
       dimensions: 'ageGroup,gender',
       filters: `video==${videoId}`
@@ -301,7 +301,7 @@ class YouTubeAnalyticsEnhancedService {
 
   async _fetchInsightsGeography(auth, videoId) {
     return youtubeGateway.getAnalyticsReportQuery(auth, {
-      ids: 'contentOwner==MINE',
+      ids: 'channel==MINE',
       metrics: 'views',
       dimensions: 'country',
       filters: `video==${videoId}`,
@@ -311,7 +311,7 @@ class YouTubeAnalyticsEnhancedService {
 
   async _fetchInsightsSearchTerms(auth, videoId) {
     return youtubeGateway.getAnalyticsReportQuery(auth, {
-      ids: 'contentOwner==MINE',
+      ids: 'channel==MINE',
       metrics: 'views,clicks',
       dimensions: 'insightSearchTerm',
       filters: `video==${videoId}`,

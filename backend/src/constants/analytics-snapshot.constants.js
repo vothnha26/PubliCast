@@ -33,6 +33,11 @@ const LOCK_TTL = Object.freeze({
 });
 
 const YOUTUBE_QUOTA_THRESHOLD = 1500;
+// YouTube Data/Analytics API's default daily quota cap (units/day). Named
+// here so the raw-usage guard in youtube-analytics.service.js and the
+// percentage-based guards in social.worker.js/sync-post-analytics.service.js
+// stay derived from the same number instead of each hardcoding 10000 (#67).
+const YOUTUBE_DAILY_QUOTA_LIMIT = 10000;
 
 /**
  * Matches the existing Prisma `PlatformType` enum values (uppercase),
@@ -60,6 +65,7 @@ module.exports = {
   REDIS_KEY_BUILDERS,
   LOCK_TTL,
   YOUTUBE_QUOTA_THRESHOLD,
+  YOUTUBE_DAILY_QUOTA_LIMIT,
   PLATFORM,
   PLATFORM_CAPABILITIES
 };
