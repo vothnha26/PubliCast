@@ -4,6 +4,7 @@ const VideoPublishStrategy = require('./video.strategy');
 const PhotoPublishStrategy = require('./photo.strategy');
 const CarouselPublishStrategy = require('./carousel.strategy');
 const { POST_TYPES, MEDIA_EXTENSIONS } = require('../../../../utils/constants');
+const { matchesExtension } = require('../../../../utils/media-type.utils');
 
 class InstagramPublishStrategyFactory {
   static getStrategy(type, mediaUrls = []) {
@@ -16,10 +17,11 @@ class InstagramPublishStrategyFactory {
     if (type === POST_TYPES.CAROUSEL || mediaUrls.length > 1) {
       return new CarouselPublishStrategy();
     }
-    
+
     if (mediaUrls.length > 0) {
       const mediaUrl = mediaUrls[0];
-      const isVideo = MEDIA_EXTENSIONS.VIDEO.some(ext => mediaUrl.toLowerCase().endsWith(ext));
+      // Strip any query string before matching the extension (#65).
+      const isVideo = matchesExtension(mediaUrl, MEDIA_EXTENSIONS.VIDEO);
       if (isVideo) {
         return new VideoPublishStrategy();
       } else {

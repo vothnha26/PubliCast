@@ -5,6 +5,7 @@ const PhotoPublishStrategy = require('./photo.strategy');
 const AlbumPublishStrategy = require('./album.strategy');
 const TextPublishStrategy = require('./text.strategy');
 const { POST_TYPES, MEDIA_EXTENSIONS } = require('../../../../utils/constants');
+const { matchesExtension } = require('../../../../utils/media-type.utils');
 
 class FacebookPublishStrategyFactory {
   static getStrategy(type, mediaUrl) {
@@ -18,7 +19,10 @@ class FacebookPublishStrategyFactory {
       return new AlbumPublishStrategy();
     }
     if (mediaUrl) {
-      const isVideo = MEDIA_EXTENSIONS.VIDEO.some(ext => mediaUrl.toLowerCase().endsWith(ext));
+      // Strip any query string before matching the extension — a bare
+      // endsWith() fails on signed CDN URLs like `clip.mp4?token=...` and
+      // silently routes a video to the photo strategy (#65).
+      const isVideo = matchesExtension(mediaUrl, MEDIA_EXTENSIONS.VIDEO);
       if (isVideo) {
         return new VideoPublishStrategy();
       } else {
