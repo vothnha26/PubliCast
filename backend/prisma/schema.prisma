@@ -1214,6 +1214,7 @@ model Report {
   scheduledDeliveryEmails String?      @db.Text
   nextScheduledAt         DateTime?
   generatedAt             DateTime?
+  downloads               Int          @default(0)
   createdAt               DateTime     @default(now())
 
   brand   Brand @relation(fields: [brandId], references: [id], onDelete: Cascade)
