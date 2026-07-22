@@ -36,8 +36,20 @@ class UpdatePostStatusStep extends BaseStep {
       }
     }
 
-    // Build platformIdMap for successful publications
-    const platformIdMap = {};
+    // Build platformIdMap for successful publications, merged with any IDs
+    // already persisted on the post. A partial-retry's `results` only covers
+    // the platforms retried this round (see fetch-post.step.js narrowing
+    // context.platforms to retryPlatforms), so writing platformIdMap alone
+    // would erase IDs from platforms that succeeded in an earlier round (#61).
+    let existingPlatformIdMap = {};
+    if (post.platformPostId) {
+      try {
+        existingPlatformIdMap = JSON.parse(post.platformPostId);
+      } catch {
+        existingPlatformIdMap = {};
+      }
+    }
+    const platformIdMap = { ...existingPlatformIdMap };
     results.forEach(r => {
       if (r.success && r.result) {
         platformIdMap[r.platform] = r.result.platformVideoId || r.result.id;

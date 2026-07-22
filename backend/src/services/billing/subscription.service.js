@@ -9,6 +9,8 @@ const notificationService     = require('../core/notification.service');
 const { NOTIFICATION_TYPES, PERMISSION_KEYS } = require('../../utils/constants');
 const authorizationFacade     = require('../auth/authorization.facade');
 
+const MAX_ADDON_QUANTITY = 100;
+
 /**
  * SubscriptionService (Orchestrator)
  * SRP: Orchestrates the payment flow - does NOT handle QR generation or DB writes itself.
@@ -95,6 +97,15 @@ class SubscriptionService {
    * Creates a PendingPayment for an Addon purchase
    */
   async initiateAddonPayment(brandId, addonId, quantity = 1) {
+    // Reject non-positive-integer / fractional quantities (e.g. -1, 0, 0.5)
+    // before any charge is computed (#103).
+    if (!Number.isInteger(quantity) || quantity < 1 || quantity > MAX_ADDON_QUANTITY) {
+      throw Object.assign(
+        new Error(`quantity phải là số nguyên từ 1 đến ${MAX_ADDON_QUANTITY}`),
+        { status: 400 }
+      );
+    }
+
     const addon = await addonRepository.findById(addonId);
     if (!addon) throw Object.assign(new Error('Addon không tồn tại'), { status: 404 });
     if (!addon.isActive) throw Object.assign(new Error('Addon này hiện không khả dụng'), { status: 400 });
@@ -110,6 +121,10 @@ class SubscriptionService {
       transactionCode,
       planId: null,
       addonId,
+      // Snapshot the quantity paid for at initiate time, so confirm reads
+      // this instead of recomputing amount/livePrice (which drifts if an
+      // admin changes addon.priceAmount between initiate and confirm — #102).
+      addonQuantity: quantity,
       brandId,
       amount:    totalAmount,
       currency:  addon.currency,
@@ -151,21 +166,26 @@ class SubscriptionService {
       throw Object.assign(new Error('Bạn không có quyền truy cập giao dịch này'), { status: 403 });
     }
 
-    // Check if QR has expired but status is still PENDING
+    // Check if QR has expired but status is still PENDING. The frontend polls
+    // this endpoint every ~3s, so without a compare-and-swap guard every poll
+    // after expiry would re-run updatePendingStatus and re-send the "expired"
+    // notification (#103) — expireIfPending only returns true for the single
+    // poll that actually performs the PENDING -> EXPIRED transition.
     if (pending.status === 'PENDING' && new Date() > pending.expiredAt) {
-      await paymentRepository.updatePendingStatus(transactionCode, 'EXPIRED');
+      const didTransition = await paymentRepository.expireIfPending(transactionCode);
 
-      // Notification: QR hết hạn
-      try {
-        await notificationService.create({
-          brandId: pending.brandId,
-          type: NOTIFICATION_TYPES.SYSTEM,
-          title: 'Giao dịch đã hết hạn',
-          message: 'Mã QR thanh toán đã hết hạn. Vui lòng thực hiện lại giao dịch.',
-          actionUrl: '/settings/billing'
-        });
-      } catch (notifErr) {
-        logger.warn('[SubscriptionService] Failed to create expired QR notification', { error: notifErr.message });
+      if (didTransition) {
+        try {
+          await notificationService.create({
+            brandId: pending.brandId,
+            type: NOTIFICATION_TYPES.SYSTEM,
+            title: 'Giao dịch đã hết hạn',
+            message: 'Mã QR thanh toán đã hết hạn. Vui lòng thực hiện lại giao dịch.',
+            actionUrl: '/settings/billing'
+          });
+        } catch (notifErr) {
+          logger.warn('[SubscriptionService] Failed to create expired QR notification', { error: notifErr.message });
+        }
       }
 
       return { status: 'EXPIRED' };
@@ -214,6 +234,20 @@ class SubscriptionService {
       return { success: false, reason: 'INSUFFICIENT_AMOUNT' };
     }
 
+    // Guard: currency mismatch — the SePay/VietQR webhook only ever reports
+    // VND bank transfers (see VietQRGateway#extractWebhookData, no currency
+    // field at all), so receivedAmount is only a valid comparison against
+    // pending.amount when the pending payment was itself quoted in VND.
+    // Without this, a non-VND pending payment (if one ever existed) would
+    // have its numeric amount compared directly against a VND transfer (#102).
+    if (pending.currency !== 'VND') {
+      logger.warn('[SubscriptionService] Pending payment currency is not VND, cannot confirm via VND bank webhook', {
+        transactionCode,
+        currency: pending.currency
+      });
+      return { success: false, reason: 'CURRENCY_MISMATCH' };
+    }
+
     // === ALL CHECKS PASSED ===
 
     // Atomically claim this payment (PENDING -> PROCESSING). SePay retries
@@ -246,6 +280,14 @@ class SubscriptionService {
       // mid-transaction. Closes #52.
       await prisma.$transaction(async (tx) => {
         if (pending.planId) {
+          // Re-check the plan is still active — an admin could have retired
+          // it between initiate and confirm; activating a retired plan would
+          // put the brand on a plan that's no longer meant to be sellable (#103).
+          const currentPlan = await tx.plan.findUnique({ where: { id: pending.planId } });
+          if (!currentPlan || !currentPlan.isActive) {
+            throw Object.assign(new Error('Gói đã ngừng bán, không thể kích hoạt'), { code: 'PLAN_NO_LONGER_ACTIVE' });
+          }
+
           // Activate the new plan
           await planActivationService.activate(
             subscription.id,
@@ -255,9 +297,11 @@ class SubscriptionService {
           );
           logger.info('[SubscriptionService] Plan activated', { brandId: pending.brandId, planId: pending.planId });
         } else if (pending.addonId) {
-          // Calculate quantity based on total amount paid vs addon unit price
-          const unitPrice = parseFloat(pending.addon.priceAmount);
-          const quantity = Math.floor(parseFloat(pending.amount) / unitPrice) || 1;
+          // Use the quantity snapshotted at initiate time, not a recompute
+          // from the addon's current live price — an admin changing
+          // addon.priceAmount between initiate and confirm must not change
+          // how many units this already-paid amount buys (#102).
+          const quantity = pending.addonQuantity || 1;
 
           await addonRepository.addSubscriptionAddon(
             subscription.id,

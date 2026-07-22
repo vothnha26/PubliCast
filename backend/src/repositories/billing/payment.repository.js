@@ -79,6 +79,21 @@ class PaymentRepository {
     });
   }
 
+  /**
+   * Atomically transition PENDING -> EXPIRED (compare-and-swap), mirroring
+   * claimPendingForProcessing. Used by checkPaymentStatus, which the frontend
+   * polls every ~3s — without this, every poll after expiry re-ran the
+   * update and re-sent the "expired" notification (#103).
+   * @returns {Promise<boolean>} true if this call performed the transition.
+   */
+  async expireIfPending(transactionCode) {
+    const result = await prisma.pendingPayment.updateMany({
+      where: { transactionCode, status: 'PENDING' },
+      data: { status: 'EXPIRED', resolvedAt: new Date() }
+    });
+    return result.count === 1;
+  }
+
   async expireStalePayments() {
     return prisma.pendingPayment.updateMany({
       where: { status: 'PENDING', expiredAt: { lt: new Date() } },
@@ -109,11 +124,10 @@ class PaymentRepository {
         currency,
         status: 'PAID',
         pdfUrl: '',
+        transactionCode,
         issuedAt: new Date(),
         paidAt: new Date(),
-        dueAt: new Date(),
-        // Store transaction reference in pdfUrl field temporarily
-        // or add a referenceCode field via migration
+        dueAt: new Date()
       }
     });
   }

@@ -90,6 +90,27 @@ describe('UpdatePostStatusStep', () => {
     );
   });
 
+  it('merges platformPostId across retry rounds instead of overwriting it (#61)', async () => {
+    // Simulates round 2 of a partial-retry: only IG is in this round's
+    // results (fetch-post.step.js narrows context.platforms to
+    // retryPlatforms), but the post already carries FB's id from round 1.
+    const postWithPriorId = { ...post, platformPostId: JSON.stringify({ FACEBOOK: 'fb-1' }) };
+    const context = {
+      post: postWithPriorId,
+      results: [
+        { platform: 'INSTAGRAM', success: true, result: { id: 'ig-1', publishedAt: new Date() } }
+      ],
+      options: { partialRetryCount: 1 }
+    };
+
+    await expect(step.execute(context)).resolves.toBeUndefined();
+
+    expect(postRepository.update).toHaveBeenCalledWith('post-1', expect.objectContaining({
+      status: 'PUBLISHED',
+      platformPostId: JSON.stringify({ FACEBOOK: 'fb-1', INSTAGRAM: 'ig-1' })
+    }));
+  });
+
   it('marks FAILED (not RETRYING) and does not enqueue once partialRetryCount reaches the max', async () => {
     const context = {
       post,
