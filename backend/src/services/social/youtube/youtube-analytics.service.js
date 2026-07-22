@@ -541,12 +541,17 @@ class YouTubeAnalyticsService {
 
     const { socialQueue } = require('../../../queues/social.queue');
     const { QUEUE_CONFIG } = require('../../../constants/video-publish.constants');
+    // jobId dedupes concurrent enqueues for the same video — the count===0
+    // check above is a TOCTOU (N simultaneous views of a fresh video can all
+    // pass it before any of them finishes the backfill), and BullMQ's own
+    // acquireLock-based dedup only kicks in after a job is already dequeued,
+    // not before it's added (#107 / I4).
     await socialQueue.add(QUEUE_CONFIG.SOCIAL.JOB_BACKFILL_POST_ANALYTICS, {
       postId: null,
       platformPostId: videoId,
       brandId,
       publishedAt: null
-    });
+    }, { jobId: `backfill-${videoId}` });
   }
 
   /**

@@ -183,6 +183,13 @@ class UpdatePostStatusStep extends BaseStep {
       return;
     }
 
+    // Unlike post.service.js#retryFailedPlatforms (an external caller, which
+    // must use safeUpsertPublishJob to avoid racing a possibly-active job),
+    // this method runs INSIDE the currently-executing job's own handler —
+    // this job's own jobId is itself the "active" one right now, so
+    // safeUpsertPublishJob's active-job check would always (wrongly) skip
+    // here. removeOnComplete cleans this job up once the handler returns, so
+    // a plain remove+add is the correct handoff to the newly self-enqueued job.
     const jobId = `publish-post-${postId}`;
     await publishQueue.remove(jobId);
     await publishQueue.add(QUEUE_CONFIG.PUBLISH.JOB_PUBLISH, {

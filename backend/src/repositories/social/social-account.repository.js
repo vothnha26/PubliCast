@@ -1033,6 +1033,21 @@ class SocialAccountRepository {
     return this._decryptAccount(account);
   }
 
+  /**
+   * Marks an account as needing the user to reconnect it — used when a
+   * refresh_token comes back invalid_grant (already used/revoked, e.g.
+   * TikTok's single-use rotating refresh tokens, see #62). Reuses the same
+   * isConnected:false signal token-refresh.service.js already sets on
+   * refresh failure, so the UI's existing "reconnect" prompt picks this up
+   * without needing a new field.
+   */
+  async markNeedsReauth(id) {
+    return prisma.socialAccount.update({
+      where: { id },
+      data: { isConnected: false }
+    });
+  }
+
   async findByBrandAndPlatform(brandId, platform) {
     const where = { brandId };
     if (platform) where.platform = platform;

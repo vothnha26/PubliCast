@@ -421,20 +421,24 @@ class PostService {
     }
 
     console.log(`[Post Service] Queueing retry job for Post ${postId} on platforms: ${platforms.join(', ')}`);
-    const { publishQueue } = require('../../queues/publish.queue');
+    const { safeUpsertPublishJob } = require('../../queues/publish.queue');
     const jobId = `publish-post-${postId}`;
-    
-    // Remove existing job if any to avoid collision
-    await publishQueue.remove(jobId);
-    
-    // Add job to publishQueue with delay = 0
-    await publishQueue.add(QUEUE_CONFIG.PUBLISH.JOB_PUBLISH, { 
-      postId, 
-      retryPlatforms: platforms 
-    }, { 
-      jobId,
-      delay: 0
-    });
+
+    // safeUpsertPublishJob skips the upsert if a job for this post is
+    // currently active — a plain remove-then-add here would race the running
+    // worker (#106): remove() can't touch an active job, so the stale job
+    // keeps running while this add() either gets deduped away (retry lost)
+    // or coexists once the active job completes (double publish).
+    const { applied } = await safeUpsertPublishJob(jobId, QUEUE_CONFIG.PUBLISH.JOB_PUBLISH, {
+      postId,
+      retryPlatforms: platforms
+    }, { delay: 0 });
+
+    if (!applied) {
+      const error = new Error('Post đang được xử lý bởi một job khác, vui lòng thử lại sau ít phút.');
+      error.statusCode = 409;
+      throw error;
+    }
 
     return { postId, platforms };
   }

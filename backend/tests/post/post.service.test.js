@@ -7,6 +7,7 @@ const { upsertPublishJob, removePublishJob } = require('../../src/queues/publish
 const outboxEventRepository = require('../../src/repositories/core/outbox-event.repository');
 const { OUTBOX_EVENT_TYPES } = require('../../src/constants/outbox.constants');
 const { POST_STATUS } = require('../../src/utils/constants');
+const { QUEUE_CONFIG } = require('../../src/constants/video-publish.constants');
 
 jest.mock('../../src/repositories/workspace/post.repository', () => ({
   findManyAndCount: jest.fn(),
@@ -39,7 +40,8 @@ jest.mock('../../src/services/workspace/approval-workflow.service', () => ({
 
 jest.mock('../../src/queues/publish.queue', () => ({
   upsertPublishJob: jest.fn(),
-  removePublishJob: jest.fn()
+  removePublishJob: jest.fn(),
+  safeUpsertPublishJob: jest.fn()
 }));
 
 jest.mock('../../src/repositories/core/outbox-event.repository', () => ({
@@ -558,6 +560,36 @@ describe('PostService Unit Tests', () => {
       
       const parsedMetadata = JSON.parse(result.metadata);
       expect(parsedMetadata.badText.toWellFormed()).toBe(parsedMetadata.badText);
+    });
+  });
+
+  describe('retryFailedPlatforms — safe upsert against an active job (#106)', () => {
+    const { safeUpsertPublishJob } = require('../../src/queues/publish.queue');
+
+    beforeEach(() => {
+      postRepository.findById.mockResolvedValue({ id: 'post-1', brandId: 'brand-abc' });
+    });
+
+    it('queues the retry job when no job is currently active for this post', async () => {
+      safeUpsertPublishJob.mockResolvedValue({ applied: true });
+
+      const result = await postService.retryFailedPlatforms('post-1', ['INSTAGRAM'], 'brand-abc', 'user-1');
+
+      expect(result).toEqual({ postId: 'post-1', platforms: ['INSTAGRAM'] });
+      expect(safeUpsertPublishJob).toHaveBeenCalledWith(
+        'publish-post-post-1',
+        QUEUE_CONFIG.PUBLISH.JOB_PUBLISH,
+        { postId: 'post-1', retryPlatforms: ['INSTAGRAM'] },
+        { delay: 0 }
+      );
+    });
+
+    it('rejects with 409 when a job for this post is currently active, instead of silently losing the retry', async () => {
+      safeUpsertPublishJob.mockResolvedValue({ applied: false });
+
+      await expect(
+        postService.retryFailedPlatforms('post-1', ['INSTAGRAM'], 'brand-abc', 'user-1')
+      ).rejects.toMatchObject({ statusCode: 409 });
     });
   });
 });

@@ -35,29 +35,55 @@ if (process.env.NODE_ENV !== 'test') {
   publishQueue = {
     add: mockFn({ id: 'mock-job-id' }),
     remove: mockFn(true),
+    getJob: mockFn(null),
     close: mockFn(true),
     client: { on: () => {} }
   };
 }
 
 /**
+ * Upsert a publish job for postId, but only if no job for this postId is
+ * currently `active` (i.e. a worker is executing it right now). remove() is a
+ * no-op against an active job (BullMQ can't remove a job mid-execution), so a
+ * plain remove-then-add would silently keep the stale active job running
+ * while ALSO enqueuing a brand new one under the same jobId — the next add()
+ * either gets deduped away (losing the reschedule/retry) or, once the active
+ * job completes and is cleaned up, coexists as a genuine duplicate (double
+ * publish). Closes #106.
+ *
+ * @returns {Promise<{applied: boolean}>} applied=false means a job for this
+ *   postId is currently active; the caller's remove/add was skipped. The
+ *   currently-executing worker owns finishing (or self-scheduling its own
+ *   partial-retry) — see _enqueuePartialRetry / publish-post.handler.js.
+ */
+const safeUpsertPublishJob = async (jobId, jobName, jobData, jobOpts) => {
+  const existing = await publishQueue.getJob(jobId);
+  if (existing) {
+    const state = await existing.getState();
+    if (state === 'active') {
+      console.warn(`[BullMQ Queue] ⏸️ Skipping upsert for ${jobId} — a job is currently active.`);
+      return { applied: false };
+    }
+  }
+
+  await publishQueue.remove(jobId);
+  await publishQueue.add(jobName, jobData, { ...jobOpts, jobId });
+  return { applied: true };
+};
+
+/**
  * Upsert a publishing job
- * @param {string} postId 
- * @param {Date} scheduledAt 
+ * @param {string} postId
+ * @param {Date} scheduledAt
  */
 const upsertPublishJob = async (postId, scheduledAt) => {
   const delay = Math.max(0, new Date(scheduledAt).getTime() - Date.now());
   const jobId = `publish-post-${postId}`;
-  
-  // Remove existing job if any to reset the delay
-  await publishQueue.remove(jobId);
-  
-  await publishQueue.add(QUEUE_CONFIG.PUBLISH.JOB_PUBLISH, { postId }, {
-    jobId,
-    delay
-  });
 
-  console.log(`[BullMQ Queue] 📅 Scheduled post ${postId} in ${Math.round(delay / 1000)}s`);
+  const { applied } = await safeUpsertPublishJob(jobId, QUEUE_CONFIG.PUBLISH.JOB_PUBLISH, { postId }, { delay });
+  if (applied) {
+    console.log(`[BullMQ Queue] 📅 Scheduled post ${postId} in ${Math.round(delay / 1000)}s`);
+  }
 };
 
 /**
@@ -74,5 +100,6 @@ module.exports = {
   publishQueue,
   PUBLISH_QUEUE_NAME,
   upsertPublishJob,
-  removePublishJob
+  removePublishJob,
+  safeUpsertPublishJob
 };
