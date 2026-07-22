@@ -15,7 +15,8 @@ const mockUpsert = jest.fn().mockResolvedValue({ id: 'db-item-1' });
 jest.mock('../../src/repositories/social/inbox.repository', () => ({
   upsertInboxItem: mockUpsert,
   findInboxItemByPlatformId: jest.fn().mockResolvedValue(null),
-  deleteInboxItem: jest.fn().mockResolvedValue(undefined)
+  deleteInboxItem: jest.fn().mockResolvedValue(undefined),
+  reconcilePendingChildren: jest.fn().mockResolvedValue({ count: 0 })
 }));
 
 // Silence prisma livestream lookup (no active livestream).

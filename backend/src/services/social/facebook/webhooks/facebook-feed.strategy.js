@@ -76,12 +76,19 @@ class FacebookFeedStrategy extends BaseWebhookStrategy {
       }
 
       // 2. Standard comment processing (not livestream) -> Save to Unified Inbox
-      // Determine parent ID if this is a reply to another comment
+      // Determine parent ID if this is a reply to another comment. If the
+      // parent hasn't been ingested yet (webhooks can arrive out of order),
+      // remember the raw platform parent id so it can be reconciled once the
+      // parent's own webhook lands (#100), instead of silently dropping the
+      // thread link.
       let parentDbId = null;
+      let pendingParentPlatformId = null;
       if (value.parent_id && value.parent_id !== value.post_id) {
         const parentComment = await inboxRepository.findInboxItemByPlatformId(value.parent_id);
         if (parentComment) {
           parentDbId = parentComment.id;
+        } else {
+          pendingParentPlatformId = value.parent_id;
         }
       }
 
@@ -103,6 +110,8 @@ class FacebookFeedStrategy extends BaseWebhookStrategy {
 
       if (parentDbId) {
         inboxItemData.parentItemId = parentDbId;
+      } else if (pendingParentPlatformId) {
+        inboxItemData.pendingParentPlatformId = pendingParentPlatformId;
       }
 
       const savedItem = await inboxRepository.upsertInboxItem(
@@ -118,6 +127,12 @@ class FacebookFeedStrategy extends BaseWebhookStrategy {
       );
 
       logger.info(`[FacebookFeedStrategy] Comment ${commentId} upserted successfully.`);
+
+      // This comment may itself be the parent some earlier, out-of-order
+      // webhook was waiting on — back-fill those children now (#100).
+      await inboxRepository.reconcilePendingChildren(commentId, savedItem.id).catch(err => {
+        logger.error(`[FacebookFeedStrategy] Error reconciling pending children for ${commentId}:`, err);
+      });
 
       // Notify Frontend
       const eventName = verb === 'add' ? 'new_inbox_item' : 'inbox_item_updated';

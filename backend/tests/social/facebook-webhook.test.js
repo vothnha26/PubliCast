@@ -71,6 +71,7 @@ describe('Facebook Webhook Processing tests', () => {
       socialAccountRepository.findByPlatformAccountIdAndPlatform.mockResolvedValue(mockAccount);
       inboxRepository.findOrCreateInbox.mockResolvedValue(mockInbox);
       inboxRepository.upsertInboxItem.mockResolvedValue({ id: 'inbox_item_123', content: 'This is a test comment from webhook' });
+      inboxRepository.reconcilePendingChildren.mockResolvedValue({ count: 0 });
 
       await facebookWebhookService.processEvent(mockPayload);
 

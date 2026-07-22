@@ -8,13 +8,13 @@ class InboxFormatter {
       platform: this.formatPlatformName(item.platform),
       user: this.formatDisplayName(participants),
       participants: participants.slice(0, 3),
-      avatar: item.authorAvatarUrl || item.authorName.charAt(0),
+      avatar: item.authorAvatarUrl || item.authorName?.charAt(0) || '?',
       preview: item.content,
       time: this.formatTimeAgo(item.platformCreatedAt),
       unread: item.status === INBOX_STATUS.UNREAD,
       assigned: item.assignedUser?.name || null,
-      status: item.status.toLowerCase(),
-      type: item.type.toLowerCase()
+      status: item.status?.toLowerCase() || '',
+      type: item.type?.toLowerCase() || ''
     };
   }
 
