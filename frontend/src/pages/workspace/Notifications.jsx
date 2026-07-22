@@ -359,12 +359,18 @@ export function NotificationsPage() {
                       <button
                         className="px-3.5 py-1.5 rounded-xl border border-[var(--border)] text-xs font-bold text-[var(--foreground)] bg-[var(--card)] hover:bg-[var(--muted)] cursor-pointer transition-all shadow-sm flex items-center gap-1.5"
                         onClick={() => {
-                          if (notif.actionUrl) {
-                            if (notif.actionUrl.startsWith("/")) {
-                              navigate(notif.actionUrl);
-                            } else {
-                              window.location.href = notif.actionUrl;
-                            }
+                          // actionUrl is always meant to be an internal app
+                          // route (every value set anywhere in the backend
+                          // starts with "/"). Previously anything not
+                          // starting with "/" fell through to
+                          // window.location.href, so a crafted notification
+                          // with actionUrl="https://evil.example.com" (or a
+                          // "javascript:" URL in some browsers) would
+                          // redirect the user off-site — an open-redirect /
+                          // phishing vector (#110). Only ever client-side
+                          // navigate to a same-origin relative path.
+                          if (notif.actionUrl && notif.actionUrl.startsWith("/")) {
+                            navigate(notif.actionUrl);
                           }
                           markAsRead(notif.id);
                         }}
