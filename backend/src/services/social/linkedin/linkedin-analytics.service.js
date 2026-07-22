@@ -1,6 +1,7 @@
 const linkedinGateway = require('./linkedin.gateway');
 const socialAccountRepository = require('../../../repositories/social/social-account.repository');
 const { PLATFORMS, DEFAULT_CONFIG } = require('../../../utils/constants');
+const logger = require('../../../utils/logger');
 
 class LinkedInAnalyticsService {
   _getEmptyChannelInfo(accessToken, account = null) {
@@ -133,7 +134,18 @@ class LinkedInAnalyticsService {
   }
 
   async getAnalyticsReport(auth, startDate, endDate, currentFollowers) {
-    return this._getMockAnalyticsReport(startDate, endDate, currentFollowers);
+    // LinkedIn's real analytics (Organic Follower Statistics / Share
+    // Statistics) require Marketing Developer Platform partner access, which
+    // this integration does not have — there is no real data source to
+    // switch to yet. Previously this returned the same all-zero mock report
+    // unconditionally, even for real (non-mock-token) accounts, with no
+    // signal that the numbers weren't real (#69). isMock now makes that
+    // explicit so callers/UI can render an "unavailable" state instead of
+    // presenting all-zero data as if it were measured.
+    if (!(auth?.accessToken && auth.accessToken.startsWith('mock-'))) {
+      logger.warn('[LinkedInAnalyticsService] getAnalyticsReport called for a real account — LinkedIn analytics API is not integrated, returning isMock:true placeholder data.');
+    }
+    return { ...this._getMockAnalyticsReport(startDate, endDate, currentFollowers), isMock: true };
   }
 
   _resolveDates(startDate, endDate) {
@@ -263,11 +275,10 @@ class LinkedInAnalyticsService {
         dailyComments,
         commentsPerPost,
         sharesPerDay,
-        sharesPerPost,
-        viewsBreakdown: {
-          organic: 90,
-          promoted: 10
-        }
+        sharesPerPost
+        // viewsBreakdown (organic/promoted split) removed — no real
+        // organic/sponsored breakdown source is fetched here, so the 90/10
+        // split was a fabricated constant presented as real data (#69).
       }
     };
   }

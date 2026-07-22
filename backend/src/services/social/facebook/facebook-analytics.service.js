@@ -514,11 +514,11 @@ class FacebookAnalyticsService {
         commentsPerPost,
         sharesPerDay,
         sharesPerPost,
-        typesBreakdown,
-        viewsBreakdown: {
-          organic: 70, 
-          promoted: 30
-        }
+        typesBreakdown
+        // viewsBreakdown (organic/promoted split) removed — this API never
+        // fetches Facebook's organic/paid impressions insight metrics, so
+        // the 70/30 split here was a fabricated constant presented as real
+        // data (#69). Add it back only once backed by a real API call.
       }
     };
   }
