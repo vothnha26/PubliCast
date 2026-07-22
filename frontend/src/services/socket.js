@@ -13,6 +13,12 @@ class SocketClient {
   constructor() {
     this.socket = null;
     this.listeners = new Map();
+    // Events emitted before the socket reports `connected` (e.g. a
+    // component's mount effect calling emit('join_room') before
+    // useAuthStore's connect() finishes its handshake) were silently
+    // dropped by the old guard in emit() below — queued here and flushed
+    // once 'connect' fires instead (#112 K6).
+    this.pendingEmits = [];
   }
 
   /**
@@ -47,6 +53,10 @@ class SocketClient {
 
     this.socket.on('connect', () => {
       console.log('⚡ [SocketClient] Connected to websocket server');
+      // Flush anything queued while we were disconnected/connecting.
+      const queued = this.pendingEmits;
+      this.pendingEmits = [];
+      queued.forEach(({ event, data }) => this.socket.emit(event, data));
     });
 
     this.socket.on('connect_error', (err) => {
@@ -66,14 +76,23 @@ class SocketClient {
       this.socket.disconnect();
       this.socket = null;
     }
+    this.pendingEmits = [];
   }
 
   /**
-   * Emit event to server
+   * Emit event to server. If the socket exists but hasn't finished
+   * connecting yet, the event is queued and flushed once 'connect' fires
+   * instead of being silently dropped (#112 K6) — this is what let a
+   * mount-time `emit('join_room')` race the initial handshake and lose the
+   * room join with no realtime delivery and no visible error.
    */
   emit(event, data) {
-    if (!this.socket?.connected) {
-      console.warn(`⚠️ [SocketClient] Cannot emit event "${event}". Socket not connected.`);
+    if (!this.socket) {
+      console.warn(`⚠️ [SocketClient] Cannot emit event "${event}". Socket not initialized (connect() not called yet).`);
+      return;
+    }
+    if (!this.socket.connected) {
+      this.pendingEmits.push({ event, data });
       return;
     }
     this.socket.emit(event, data);

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import socketClient from '../../services/socket';
+import { STORAGE_KEYS } from '../../constants/storageKeys';
 
 // SVG Icons chuẩn đồng bộ từ LivestreamChat
 const YouTubeIcon = () => (
@@ -23,7 +24,10 @@ export function ObsChatOverlay() {
   useEffect(() => {
     if (!livestreamId) return;
 
-    const token = localStorage.getItem('token') || 'dummy-token';
+    // Reading the literal 'token' key instead of STORAGE_KEYS.TOKEN meant a
+    // future key rename here would silently fall through to 'dummy-token'
+    // and connect unauthenticated with no error surfaced (#113 K12).
+    const token = localStorage.getItem(STORAGE_KEYS.TOKEN) || 'dummy-token';
     socketClient.connect(token);
 
     socketClient.emit('join_livestream', { livestreamId });

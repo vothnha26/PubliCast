@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { 
   Search, RefreshCw, Youtube, Facebook, Instagram, Filter, MoreHorizontal, 
   Loader2, MessageSquare, AlertCircle, EyeOff, CheckCircle, ExternalLink, Check,
@@ -54,6 +54,12 @@ export function InboxPage() {
   const [loading, setLoading] = useState(false);
   const [activeConv, setActiveConv] = useState(null);
   const [thread, setThread] = useState([]);
+  // Monotonically-increasing request ids so an in-flight fetchInbox/fetchThread
+  // call that resolves after a newer one (fast filter/brand switch, or a
+  // realtime socket event firing fetchInbox mid-flight) discards its stale
+  // response instead of overwriting fresher data (#112 K7).
+  const inboxRequestIdRef = useRef(0);
+  const threadRequestIdRef = useRef(0);
   const [videoContext, setVideoContext] = useState(null);
   const [threadLoading, setThreadLoading] = useState(false);
   const [replyText, setReplyText] = useState("");
@@ -92,6 +98,14 @@ export function InboxPage() {
     sa => sa.platform === selectedAutoReplyPlatform && sa.isConnected
   ) || [];
 
+  // Depend on a stable, derived key (sorted account ids joined) instead of
+  // the raw activeBrand.socialAccounts array — that array is a new
+  // reference every time fetchBrands() re-runs in the background (even
+  // when its contents are unchanged), which previously reset
+  // selectedSocialAccountId back to the first account on every background
+  // brand refresh, discarding whatever the user had manually selected (#112 K10).
+  const filteredAccountIdsKey = filteredAccountsForAutoReply.map(sa => sa.id).sort().join(',');
+
   useEffect(() => {
     if (filteredAccountsForAutoReply.length > 0) {
       const exists = filteredAccountsForAutoReply.some(sa => sa.id === selectedSocialAccountId);
@@ -101,7 +115,7 @@ export function InboxPage() {
     } else {
       setSelectedSocialAccountId("");
     }
-  }, [selectedAutoReplyPlatform, activeBrand?.socialAccounts]);
+  }, [selectedAutoReplyPlatform, filteredAccountIdsKey]);
 
   // Sync debounced search
   useEffect(() => {
@@ -117,14 +131,16 @@ export function InboxPage() {
   // Fetch conversations
   const fetchInbox = async () => {
     if (!activeBrand) return;
+    const requestId = ++inboxRequestIdRef.current;
     setLoading(true);
     try {
       const response = await apiService.get(`/inbox?brandId=${activeBrand.id}&${searchParamsString}`);
+      if (requestId !== inboxRequestIdRef.current) return; // a newer fetchInbox call already landed
       setInboxData(response.data);
     } catch (error) {
       console.error("Inbox load error:", error);
     } finally {
-      setLoading(false);
+      if (requestId === inboxRequestIdRef.current) setLoading(false);
     }
   };
 
@@ -178,10 +194,12 @@ export function InboxPage() {
   // Fetch thread for active conversation
   const fetchThread = async () => {
     if (!activeConv) return;
+    const requestId = ++threadRequestIdRef.current;
     setThreadLoading(true);
     setVideoContext(null);
     try {
       const response = await apiService.get(`/inbox/${activeConv.id}`);
+      if (requestId !== threadRequestIdRef.current) return; // a newer fetchThread call already landed
       setThread(response.data.thread);
       setVideoContext(response.data.videoContext);
 
@@ -191,7 +209,7 @@ export function InboxPage() {
     } catch (error) {
       toast.error(t("inbox.loadThreadFailed"));
     } finally {
-      setThreadLoading(false);
+      if (requestId === threadRequestIdRef.current) setThreadLoading(false);
     }
   };
 
