@@ -259,15 +259,19 @@ export function ListView() {
     }
   };
 
-  const handleRepost = async (postId) => {
+  const handleRepost = async (post) => {
     if (!activeBrand) return;
+    const postId = post.id;
     setRepostingIds(prev => [...prev, postId]);
     const toastId = toast.loading(t("listView.toasts.repostingLoading"));
     try {
-      await postService.updatePost(postId, {
-        brandId: activeBrand.id,
-        status: "published"
-      });
+      // Previously this just flipped status to "published" via the generic
+      // update endpoint — no platform was actually (re)published to, so the
+      // UI reported success while nothing was sent (#86). retry-failed
+      // enqueues a real publish job; gateways that already have a
+      // platformPostId for a given platform short-circuit instead of
+      // re-publishing, so retrying every target platform here is safe.
+      await postService.retryFailedPlatforms(postId, activeBrand.id, post.platforms || []);
       toast.success(t("listView.toasts.repostSuccess"), { id: toastId });
       fetchPosts();
     } catch (err) {
@@ -643,7 +647,7 @@ export function ListView() {
                               <button
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  handleRepost(post.id);
+                                  handleRepost(post);
                                 }}
                                 disabled={repostingIds.includes(post.id)}
                                 className="p-2 text-indigo-500 hover:text-indigo-700 hover:bg-indigo-50 disabled:bg-gray-50 disabled:text-gray-300 rounded-lg transition-all border border-transparent hover:border-indigo-100 cursor-pointer flex items-center justify-center shrink-0"
@@ -699,7 +703,7 @@ export function ListView() {
                                      <button 
                                        onClick={(e) => {
                                          e.stopPropagation();
-                                         handleRepost(post.id);
+                                         handleRepost(post);
                                          setActiveMenuId(null);
                                        }}
                                        disabled={repostingIds.includes(post.id)}
