@@ -7,7 +7,6 @@ const logger = require('../utils/logger');
  */
 const verifyAuth = (req, res, next) => {
   try {
-    console.log(`[BACKEND DEBUG verifyAuth] Path: ${req.url}, Cookies:`, req.cookies, `Authorization:`, req.headers.authorization);
     // Get token from cookie, Authorization header, or query parameters (for SSE/EventSource)
     const token = req.cookies?.accessToken || 
                   jwtUtils.extractToken(req.headers.authorization) || 

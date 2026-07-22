@@ -54,7 +54,6 @@ class AuthService {
 
     const otpContext = new VerificationContext(new OtpVerificationStrategy());
     const otp = await otpContext.generate(normalizedEmail);
-    console.log(`🔑 [OTP] Generated registration OTP for ${normalizedEmail}: ${otp}`);
 
     // Emit event for side-effects (Brand creation, Email sending)
     eventEmitter.emit(EVENTS.USER.REGISTERED, { user, otp });
@@ -290,7 +289,6 @@ class AuthService {
       const token = await tokenContext.generate(normalizedEmail);
       
       const resetLink = `${DEFAULT_CONFIG.FRONTEND_URL}/reset-password?token=${token}`;
-      console.log(`🔑 [Reset Link] Generated password reset link for ${normalizedEmail}: ${resetLink}`);
       await emailService.sendResetPasswordLink(normalizedEmail, resetLink);
     }
 
