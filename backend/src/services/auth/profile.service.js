@@ -1,6 +1,7 @@
 const userRepository = require('../../repositories/auth/user.repository');
 const brandService = require('../../services/workspace/brand.service');
 const brandRepository = require('../../repositories/workspace/brand.repository');
+const tokenService = require('./token.service');
 const { ERROR_MESSAGES } = require('../../utils/constants');
 
 class ProfileService {
@@ -213,6 +214,13 @@ class ProfileService {
         }
       });
     }
+
+    // Revoke existing refresh tokens so a change made because the account
+    // was suspected compromised actually locks the attacker out. Without
+    // this, an attacker's refresh token in Redis (refresh:${userId}) stayed
+    // valid for its full 7-day TTL even after the victim changed their
+    // password (#80) — resetPasswordWithToken already does this correctly.
+    await tokenService.clearTokens(userId);
 
     return { message: 'Thay đổi mật khẩu thành công' };
   }
