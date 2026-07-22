@@ -34,9 +34,17 @@ export const usePostCreatorStore = create((set) => ({
   restoreFormState: () => {
     const backupStr = sessionStorage.getItem('postCreatorFormBackup');
     if (backupStr) {
-      const backup = JSON.parse(backupStr);
-      set({ postCreatorFormBackup: backup });
-      return backup;
+      try {
+        const backup = JSON.parse(backupStr);
+        set({ postCreatorFormBackup: backup });
+        return backup;
+      } catch (err) {
+        // Corrupt/truncated sessionStorage value would otherwise throw here
+        // and fail PostCreator's mount entirely (#90 L4) — clear it and
+        // start fresh instead.
+        console.error('Failed to parse postCreatorFormBackup, clearing corrupt value:', err);
+        sessionStorage.removeItem('postCreatorFormBackup');
+      }
     }
     return null;
   },

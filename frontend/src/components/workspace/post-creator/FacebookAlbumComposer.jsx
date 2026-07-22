@@ -38,7 +38,16 @@ export function FacebookAlbumComposer({ brandId, albumMedia = [], setAlbumMedia,
   };
 
   const handleRemovePhoto = (id) => {
-    setAlbumMedia((prev) => prev.filter((item) => item.id !== id));
+    setAlbumMedia((prev) => {
+      const removed = prev.find((item) => item.id === id);
+      // previewUrl is a blob: URL created by MediaUploadModal for locally
+      // uploaded files — never revoked here previously, leaking one blob
+      // per removed photo for the rest of the tab's lifetime (#89).
+      if (removed?.previewUrl?.startsWith("blob:")) {
+        URL.revokeObjectURL(removed.previewUrl);
+      }
+      return prev.filter((item) => item.id !== id);
+    });
   };
 
   return (

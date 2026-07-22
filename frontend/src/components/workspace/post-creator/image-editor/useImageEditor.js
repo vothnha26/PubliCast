@@ -362,16 +362,18 @@ export function useImageEditor({ imageUrl, currentTransform, brandId, onSave, on
     const y = e.clientY - rect.top;
 
     setDrawLines(prev => {
-      const newLines = [...prev];
-      const currentLine = newLines[newLines.length - 1];
-      if (currentLine) {
-        if (currentLine.type === 'sharpie' || currentLine.type === 'path' || currentLine.type === 'eraser') {
-          currentLine.points.push({ x, y });
-        } else {
-          currentLine.points[1] = { x, y };
-        }
-      }
-      return newLines;
+      const currentLine = prev[prev.length - 1];
+      if (!currentLine) return prev;
+
+      // Spreading the array alone doesn't clone currentLine itself — pushing
+      // into currentLine.points mutated the SAME object still referenced by
+      // the previous state array, silently breaking undo/equality checks
+      // that assume state updates never mutate prior snapshots (#90 L2).
+      const updatedLine = currentLine.type === 'sharpie' || currentLine.type === 'path' || currentLine.type === 'eraser'
+        ? { ...currentLine, points: [...currentLine.points, { x, y }] }
+        : { ...currentLine, points: [currentLine.points[0], { x, y }] };
+
+      return [...prev.slice(0, -1), updatedLine];
     });
   };
 

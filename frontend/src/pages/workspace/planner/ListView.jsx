@@ -596,9 +596,9 @@ export function ListView() {
                        <td className="px-4 py-5">
                           <div className="flex items-center gap-2">
                              <div className="w-6 h-6 rounded-full bg-gray-100 border border-gray-200 shadow-sm flex items-center justify-center text-[10px] font-bold text-gray-500 overflow-hidden">
-                                {post.creatorAvatar ? <img src={post.creatorAvatar} className="w-full h-full object-cover" /> : post.creator.charAt(0)}
+                                {post.creatorAvatar ? <img src={post.creatorAvatar} className="w-full h-full object-cover" /> : (post.creator || "?").charAt(0)}
                              </div>
-                             <span className="text-[11px] font-medium text-gray-600">{post.creator}</span>
+                             <span className="text-[11px] font-medium text-gray-600">{post.creator || "—"}</span>
                           </div>
                        </td>
                        <td className="px-4 py-5">

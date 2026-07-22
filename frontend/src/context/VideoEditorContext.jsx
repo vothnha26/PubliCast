@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useRef, useState } from 'react';
+import React, { createContext, useContext, useRef, useState, useMemo } from 'react';
 import { ASPECT_RATIOS, VIDEO_EDITOR_TABS } from '../constants/video-editor';
 
 const VideoEditorContext = createContext(null);
@@ -24,23 +24,32 @@ export function VideoEditorProvider({ children }) {
   const [keyframes, setKeyframes] = useState([]);
   const [isPreviewMode, setIsPreviewMode] = useState(false);
 
+  // Without memoizing, every provider render (e.g. from currentTime-driven
+  // parent updates) created a new value object, forcing every consumer to
+  // re-render regardless of which slice of state it actually reads (#90 M11).
+  const value = useMemo(() => ({
+    videoRef,
+    videoUrl, setVideoUrl,
+    duration, setDuration,
+    aspectRatio, setAspectRatio,
+    trimRange, setTrimRange,
+    bgMusic, setBgMusic,
+    textOverlays, setTextOverlays,
+    activeOverlayId, setActiveOverlayId,
+    subtitles, setSubtitles,
+    activeTab, setActiveTab,
+    videoRatio, setVideoRatio,
+    cropX, setCropX,
+    keyframes, setKeyframes,
+    isPreviewMode, setIsPreviewMode
+  }), [
+    videoUrl, duration, aspectRatio, trimRange, bgMusic, textOverlays,
+    activeOverlayId, subtitles, activeTab, videoRatio, cropX, keyframes,
+    isPreviewMode
+  ]);
+
   return (
-    <VideoEditorContext.Provider value={{
-      videoRef,
-      videoUrl, setVideoUrl,
-      duration, setDuration,
-      aspectRatio, setAspectRatio,
-      trimRange, setTrimRange,
-      bgMusic, setBgMusic,
-      textOverlays, setTextOverlays,
-      activeOverlayId, setActiveOverlayId,
-      subtitles, setSubtitles,
-      activeTab, setActiveTab,
-      videoRatio, setVideoRatio,
-      cropX, setCropX,
-      keyframes, setKeyframes,
-      isPreviewMode, setIsPreviewMode
-    }}>
+    <VideoEditorContext.Provider value={value}>
       {children}
     </VideoEditorContext.Provider>
   );
