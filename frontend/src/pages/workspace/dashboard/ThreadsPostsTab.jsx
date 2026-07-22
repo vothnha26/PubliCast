@@ -91,15 +91,25 @@ function CustomTooltip({ active, payload }) {
 }
 
 function ViewsDonut({ viewsBreakdown }) {
+  // Backend no longer returns a fabricated organic/promoted split (#97) —
+  // only render when real data is present.
+  if (!viewsBreakdown) {
+    return (
+      <div className="w-full h-40 flex items-center justify-center text-sm text-gray-400">
+        Không có dữ liệu
+      </div>
+    );
+  }
+
   const data = [
     {
       name: "Organic",
-      value: viewsBreakdown?.organic ?? 90,
+      value: viewsBreakdown.organic ?? 0,
       color: VIEWS_COLORS.Organic,
     },
     {
       name: "Promoted",
-      value: viewsBreakdown?.promoted ?? 10,
+      value: viewsBreakdown.promoted ?? 0,
       color: VIEWS_COLORS.Promoted,
     },
   ].filter((d) => d.value > 0);

@@ -68,7 +68,16 @@ class ThreadsGateway {
     // Threads Insights API
     const url = `${this.graphBaseUrl}/${userId}/threads_insights?metric=views,likes,replies,reposts,followers_count&access_token=${accessToken}`;
     const res = await fetch(url);
-    if (!res.ok) return null;
+    if (!res.ok) {
+      // Unlike every other method here, this previously swallowed ANY
+      // failure (expired token, missing threads_insights permission, rate
+      // limit) as a silent null — the caller (threads/index.js) had no way
+      // to distinguish "no insights data yet" from "the API call actually
+      // failed," so real, recoverable errors fell straight into a fabricated
+      // likes*12 views estimate with no visible signal anything was wrong (#97).
+      const errData = await res.json().catch(() => ({}));
+      throw new Error(errData.error?.message || 'Failed to fetch Threads insights');
+    }
     return res.json();
   }
 
@@ -165,7 +174,11 @@ class ThreadsGateway {
     const publishUrl = `${this.graphBaseUrl}/${userId}/threads_publish?creation_id=${container.id}&access_token=${accessToken}`;
     const publishRes = await fetch(publishUrl, { method: 'POST' });
     if (!publishRes.ok) {
-      const errData = await res.json().catch(() => ({}));
+      // Bug: this read res.json() — the FIRST fetch's response, already
+      // consumed above — instead of publishRes.json(), so a publish-step
+      // failure reported a stale/wrong error (or threw "body already read")
+      // instead of the real Threads API error for this step (#97).
+      const errData = await publishRes.json().catch(() => ({}));
       throw new Error(errData.error?.message || 'Failed to publish Threads reply container');
     }
     return publishRes.json();
