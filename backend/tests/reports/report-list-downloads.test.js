@@ -52,4 +52,36 @@ describe('ReportService.getReportsByBrand downloads field (#74)', () => {
     expect(result[0].downloads).toBe(7);
     expect(result[1].downloads).toBe(0);
   });
+
+  // Regression tests for #76: size was previously computed via a blocking
+  // fs.existsSync + fs.statSync call per row inside .map — now read directly
+  // from the persisted sizeBytes column, with no filesystem access at all.
+  it('formats size from the persisted sizeBytes column without touching the filesystem (#76)', async () => {
+    reportRepository.findManyByBrand.mockResolvedValue([
+      {
+        id: 'report-1', title: 'Report', format: 'PDF', includedPlatforms: '["FACEBOOK"]',
+        downloads: 0, sizeBytes: 512 * 1024, fileUrl: '/uploads/reports/report_1.pdf',
+        createdAt: new Date('2026-01-01'), generatedAt: new Date('2026-01-02'), creator: { name: 'Admin' }
+      }
+    ]);
+
+    const result = await reportService.getReportsByBrand('brand-abc');
+
+    expect(result[0].size).toBe('512 KB');
+    expect(fs.existsSync).not.toHaveBeenCalled();
+  });
+
+  it('shows Unknown when sizeBytes was never persisted (e.g. a report row from before this column existed)', async () => {
+    reportRepository.findManyByBrand.mockResolvedValue([
+      {
+        id: 'report-1', title: 'Report', format: 'PDF', includedPlatforms: '["FACEBOOK"]',
+        downloads: 0, sizeBytes: null, fileUrl: '/uploads/reports/report_1.pdf',
+        createdAt: new Date('2026-01-01'), generatedAt: new Date('2026-01-02'), creator: { name: 'Admin' }
+      }
+    ]);
+
+    const result = await reportService.getReportsByBrand('brand-abc');
+
+    expect(result[0].size).toBe('Unknown');
+  });
 });

@@ -76,6 +76,33 @@ class ReportRepository {
       data: { downloads: { increment: 1 } }
     });
   }
+
+  // ─── Report schedule config (#75 — replaces uploads/reports/config_<brandId>.json) ───
+
+  async findScheduleConfigByBrand(brandId) {
+    return prisma.reportScheduleConfig.findUnique({ where: { brandId } });
+  }
+
+  /**
+   * Upsert is a single atomic DB write — no read-modify-write race and no
+   * partial-write risk, unlike the old fs.writeFileSync (a crash mid-write
+   * left an unparseable JSON file silently skipped by the next scan).
+   */
+  async upsertScheduleConfig(brandId, data) {
+    return prisma.reportScheduleConfig.upsert({
+      where: { brandId },
+      create: { brandId, ...data },
+      update: data
+    });
+  }
+
+  /** All brands with email delivery enabled — the scheduler scans this set daily. */
+  async findAllEnabledScheduleConfigs() {
+    return prisma.reportScheduleConfig.findMany({
+      where: { receiveEmail: true },
+      include: { brand: { select: { id: true, name: true } } }
+    });
+  }
 }
 
 const reportRepository = new ReportRepository();

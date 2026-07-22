@@ -1,8 +1,6 @@
 const cron = require('node-cron');
-const fs = require('fs');
-const path = require('path');
 const reportService = require('./report.service');
-const prisma = require('../../config/prisma');
+const reportRepository = require('../../repositories/workspace/report.repository');
 const redisClient = require('../../config/redis');
 const DistributedLockService = require('../social/distributed-lock.service');
 const { LOCK_CONFIG } = require('../../utils/constants');
@@ -56,52 +54,43 @@ class ReportSchedulerService {
    * Scan all brand schedule configurations and trigger email deliveries if it is the scheduled day of month
    */
   async scanAndSendReports() {
-    const reportsDir = path.join(__dirname, '../../../uploads/reports');
-    if (!fs.existsSync(reportsDir)) {
-      console.log('ℹ️ [ReportScheduler] Reports directory does not exist. Skipping scan.');
-      return;
-    }
+    // Reads DB rows instead of uploads/reports/config_*.json (#75) — see
+    // report.repository.js#findAllEnabledScheduleConfigs.
+    const configs = await reportRepository.findAllEnabledScheduleConfigs();
 
-    const files = fs.readdirSync(reportsDir);
-    const configFiles = files.filter(f => f.startsWith('config_') && f.endsWith('.json'));
-
-    if (configFiles.length === 0) {
+    if (configs.length === 0) {
       console.log('ℹ️ [ReportScheduler] No brand configurations found.');
       return;
     }
 
     const today = new Date();
     const currentDay = today.getDate();
-    
+
     // Check if today is the last day of the month
     const tomorrow = new Date(today);
     tomorrow.setDate(today.getDate() + 1);
     const isLastDayOfMonth = tomorrow.getDate() === 1;
 
-    console.log(`🔍 [ReportScheduler] Scanning ${configFiles.length} config file(s). Today is Day ${currentDay} of the month. (Last day: ${isLastDayOfMonth})`);
+    console.log(`🔍 [ReportScheduler] Scanning ${configs.length} brand configuration(s). Today is Day ${currentDay} of the month. (Last day: ${isLastDayOfMonth})`);
 
     // Collected and awaited (not fire-and-forget) so the distributed lock in
     // runScanWithLock() stays held for the full duration of email delivery,
     // not just for building the list of brands to email.
     const pendingSends = [];
 
-    for (const file of configFiles) {
+    for (const config of configs) {
       try {
-        const brandIdMatch = file.match(/^config_(.+)\.json$/);
-        if (!brandIdMatch) continue;
-        const brandId = brandIdMatch[1];
+        const brandId = config.brandId;
+        const emailsList = this._safeJsonParseArray(config.emailsList);
+        const platforms = this._safeJsonParseArray(config.platforms);
 
-        // Read config
-        const configPath = path.join(reportsDir, file);
-        const raw = fs.readFileSync(configPath, 'utf8');
-        const config = JSON.parse(raw);
-
-        // Skip if not enabled or no email recipients
-        if (!config.receiveEmail || !config.emailsList || config.emailsList.length === 0) {
+        // Skip if no email recipients (receiveEmail is already filtered by
+        // findAllEnabledScheduleConfigs's where clause).
+        if (emailsList.length === 0) {
           continue;
         }
 
-        const scheduledDay = config.dayOfMonth || 1;
+        const scheduledDay = config.dayOfMonth || '1';
         let isScheduledToday = false;
 
         if (scheduledDay === 'last') {
@@ -111,13 +100,8 @@ class ReportSchedulerService {
         }
 
         if (isScheduledToday) {
+          const brandName = config.brand?.name || brandId;
           console.log(`✉️ [ReportScheduler] Triggering scheduled report for brandId: ${brandId} (Scheduled Day: ${scheduledDay})`);
-          
-          // Get brand information to generate dynamic title
-          const brand = await prisma.brand.findUnique({
-            where: { id: brandId }
-          });
-          const brandName = brand ? brand.name : brandId;
 
           const title = `Báo cáo phân tích tự động định kỳ - Thương hiệu ${brandName}`;
 
@@ -125,9 +109,9 @@ class ReportSchedulerService {
             title,
             format: config.format || 'PDF',
             dateRange: 'Tháng trước', // Always report on previous month for monthly report
-            platforms: config.platforms || ['Facebook', 'YouTube'],
+            platforms: platforms.length > 0 ? platforms : ['Facebook', 'YouTube'],
             isWhiteLabel: false,
-            emails: config.emailsList,
+            emails: emailsList,
             message: config.emailText || `Xin chào,\n\nĐây là báo cáo phân tích tự động định kỳ tháng trước cho thương hiệu ${brandName}.\n\nTrân trọng.`
           }).then(() => {
             console.log(`✅ [ReportScheduler] Scheduled report sent successfully for brand: ${brandName}`);
@@ -137,12 +121,21 @@ class ReportSchedulerService {
 
           pendingSends.push(sendPromise);
         }
-      } catch (fileErr) {
-        console.error(`❌ [ReportScheduler] Error processing config file ${file}:`, fileErr.message);
+      } catch (configErr) {
+        console.error(`❌ [ReportScheduler] Error processing schedule config for brand ${config.brandId}:`, configErr.message);
       }
     }
 
     await Promise.all(pendingSends);
+  }
+
+  _safeJsonParseArray(str) {
+    try {
+      const parsed = JSON.parse(str);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch (e) {
+      return [];
+    }
   }
 }
 

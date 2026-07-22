@@ -128,10 +128,6 @@ class ReportService {
     const filePath = path.join(reportsDir, fileName);
     fs.writeFileSync(filePath, buffer);
 
-    // Calculate file size string
-    const sizeInKb = Math.round(buffer.length / 1024);
-    const sizeStr = sizeInKb > 1000 ? `${(sizeInKb / 1024).toFixed(1)} MB` : `${sizeInKb} KB`;
-
     // 7. Save Report Record to Database
     const dbFormat = format === 'Excel' ? REPORT_FORMATS.CSV : format;
 
@@ -149,14 +145,22 @@ class ReportService {
       brandColorHex: brandColorHex || null,
       format: dbFormat,
       fileUrl: `/uploads/reports/${fileName}`,
+      // Persisted at generation time (buffer.length is already known here)
+      // so getReportsByBrand never needs a blocking fs.statSync per row (#76).
+      sizeBytes: buffer.length,
       generatedAt: new Date()
     });
 
-    // Add virtual file size to record for UI convenience
     return {
       ...reportRecord,
-      size: sizeStr
+      size: this._formatSize(buffer.length)
     };
+  }
+
+  _formatSize(bytes) {
+    if (bytes == null) return 'Unknown';
+    const sizeInKb = Math.round(bytes / 1024);
+    return sizeInKb > 1000 ? `${(sizeInKb / 1024).toFixed(1)} MB` : `${sizeInKb} KB`;
   }
 
   /**
@@ -165,21 +169,15 @@ class ReportService {
    */
   async getReportsByBrand(brandId) {
     const reports = await reportRepository.findManyByBrand(brandId);
-    
-    // Enrich with file size and process formats
+
+    // Size now read from the sizeBytes column (persisted at generation time
+    // — see generateInstantReport) instead of a blocking fs.existsSync +
+    // fs.statSync per row, which serialized the event loop behind disk I/O
+    // on every list request (#76). Reports created before this column
+    // existed simply show 'Unknown', same as any other unset field.
     return reports.map(r => {
-      const reportsDir = path.join(__dirname, '../../../uploads/reports');
-      let sizeStr = 'Unknown';
-      if (r.fileUrl) {
-        const fileName = path.basename(r.fileUrl);
-        const filePath = path.join(reportsDir, fileName);
-        if (fs.existsSync(filePath)) {
-          const stats = fs.statSync(filePath);
-          const sizeInKb = Math.round(stats.size / 1024);
-          sizeStr = sizeInKb > 1000 ? `${(sizeInKb / 1024).toFixed(1)} MB` : `${sizeInKb} KB`;
-        }
-      }
-      
+      const sizeStr = this._formatSize(r.sizeBytes);
+
       let platforms = [];
       try {
         platforms = JSON.parse(r.includedPlatforms);
@@ -364,11 +362,14 @@ class ReportService {
   }
 
   /**
-   * Get scheduled report configuration for a brand
+   * Get scheduled report configuration for a brand.
+   * Previously read/wrote uploads/reports/config_<brandId>.json — lost on
+   * ephemeral/container redeploys, invisible to a second backend instance,
+   * and written non-atomically (a crash mid fs.writeFileSync left an
+   * unparseable file the daily scan silently skipped). Now a DB row (#75).
    */
   async getScheduleConfig(brandId) {
-    const configPath = path.join(__dirname, `../../../uploads/reports/config_${brandId}.json`);
-    let config = {
+    const defaults = {
       receiveEmail: false,
       emailsList: [],
       emailText: 'Monthly report for you.',
@@ -377,29 +378,42 @@ class ReportService {
       platforms: ['Facebook', 'YouTube']
     };
 
-    if (fs.existsSync(configPath)) {
-      try {
-        const raw = fs.readFileSync(configPath, 'utf8');
-        const parsed = JSON.parse(raw);
-        config = { ...config, ...parsed };
-      } catch (e) {
-        console.error(`[ReportService] Error reading schedule config for brand ${brandId}:`, e);
-      }
-    }
-    return config;
+    const row = await reportRepository.findScheduleConfigByBrand(brandId);
+    if (!row) return defaults;
+
+    return {
+      receiveEmail: row.receiveEmail,
+      emailsList: this._safeJsonParseArray(row.emailsList),
+      emailText: row.emailText,
+      dayOfMonth: row.dayOfMonth,
+      format: row.format,
+      platforms: this._safeJsonParseArray(row.platforms)
+    };
   }
 
   /**
-   * Save scheduled report configuration for a brand
+   * Save scheduled report configuration for a brand — a single atomic
+   * upsert instead of a read-then-write file (#75).
    */
   async saveScheduleConfig(brandId, configData) {
-    const reportsDir = path.join(__dirname, '../../../uploads/reports');
-    if (!fs.existsSync(reportsDir)) {
-      fs.mkdirSync(reportsDir, { recursive: true });
-    }
-    const configPath = path.join(reportsDir, `config_${brandId}.json`);
-    fs.writeFileSync(configPath, JSON.stringify(configData, null, 2), 'utf8');
+    await reportRepository.upsertScheduleConfig(brandId, {
+      receiveEmail: !!configData.receiveEmail,
+      emailsList: JSON.stringify(configData.emailsList || []),
+      emailText: configData.emailText || 'Monthly report for you.',
+      dayOfMonth: String(configData.dayOfMonth ?? 1),
+      format: configData.format || 'PDF',
+      platforms: JSON.stringify(configData.platforms || ['Facebook', 'YouTube'])
+    });
     return true;
+  }
+
+  _safeJsonParseArray(str) {
+    try {
+      const parsed = JSON.parse(str);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch (e) {
+      return [];
+    }
   }
 }
 

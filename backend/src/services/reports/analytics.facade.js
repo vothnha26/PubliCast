@@ -43,7 +43,60 @@ class AnalyticsFacade {
     // 3. Process channels details
     const channels = [];
     let totalFollowers = 0;
-    
+    const accountIds = activeAccounts.map(acc => acc.id);
+
+    // Batched replacement for the old per-account analytics.findFirst x2
+    // loop (#76) — one findMany for in-range records, one for the
+    // any-time fallback, both grouped in memory by socialAccountId instead
+    // of round-tripping the DB once per account.
+    const inRangeAnalytics = accountIds.length > 0 ? await prisma.analytics.findMany({
+      where: {
+        socialAccountId: { in: accountIds },
+        dateFrom: { gte: dateFrom },
+        dateTo: { lte: dateTo }
+      },
+      include: { socialAnalytics: true },
+      orderBy: { fetchedAt: 'desc' }
+    }) : [];
+    const anyTimeAnalytics = accountIds.length > 0 ? await prisma.analytics.findMany({
+      where: { socialAccountId: { in: accountIds } },
+      include: { socialAnalytics: true },
+      orderBy: { fetchedAt: 'desc' }
+    }) : [];
+
+    // findMany + orderBy already sorts newest-first across all matched
+    // accounts — keep only the first (newest) row seen per socialAccountId.
+    const latestInRangeByAccount = new Map();
+    for (const row of inRangeAnalytics) {
+      if (!latestInRangeByAccount.has(row.socialAccountId)) {
+        latestInRangeByAccount.set(row.socialAccountId, row);
+      }
+    }
+    const latestAnyTimeByAccount = new Map();
+    for (const row of anyTimeAnalytics) {
+      if (!latestAnyTimeByAccount.has(row.socialAccountId)) {
+        latestAnyTimeByAccount.set(row.socialAccountId, row);
+      }
+    }
+
+    // Batched replacement for the old per-account fallback post.count loop —
+    // groupBy gives per-platform counts in one query instead of N.
+    const postCountsByPlatform = await prisma.post.groupBy({
+      by: ['targetPlatforms'],
+      where: {
+        brandId,
+        status: 'PUBLISHED',
+        publishedAt: { gte: dateFrom, lte: dateTo }
+      },
+      _count: true
+    });
+    // targetPlatforms is a free-text comma-separated field (not a clean
+    // groupBy key), so tally matches per platform in memory from the
+    // grouped rows rather than issuing prisma.post.count() per account.
+    const countPostsForPlatform = (platform) => postCountsByPlatform
+      .filter(row => (row.targetPlatforms || '').includes(platform))
+      .reduce((sum, row) => sum + row._count, 0);
+
     for (const acc of activeAccounts) {
       let followers = 0;
       if (acc.platform === 'YOUTUBE' && acc.youtubeChannel) {
@@ -65,24 +118,7 @@ class AnalyticsFacade {
       // Get analytics record for this account:
       // 1. Ưu tiên record mới nhất trong khoảng dateFrom-dateTo của report
       // 2. Fallback: lấy record mới nhất bất kỳ (tránh trả về 0 khi sync chưa đúng kỳ)
-      let latestAnalytics = await prisma.analytics.findFirst({
-        where: {
-          socialAccountId: acc.id,
-          dateFrom: { gte: dateFrom },
-          dateTo: { lte: dateTo }
-        },
-        include: { socialAnalytics: true },
-        orderBy: { fetchedAt: 'desc' }
-      });
-
-      // Fallback: nếu không có record trong khoảng, lấy record mới nhất
-      if (!latestAnalytics) {
-        latestAnalytics = await prisma.analytics.findFirst({
-          where: { socialAccountId: acc.id },
-          include: { socialAnalytics: true },
-          orderBy: { fetchedAt: 'desc' }
-        });
-      }
+      const latestAnalytics = latestInRangeByAccount.get(acc.id) || latestAnyTimeByAccount.get(acc.id) || null;
 
       // Count posts published in this channel
       let postsCount = 0;
@@ -101,19 +137,7 @@ class AnalyticsFacade {
 
       // Fallback: đếm số lượng post trong DB
       if (postsCount === 0) {
-        postsCount = await prisma.post.count({
-          where: {
-            brandId,
-            status: 'PUBLISHED',
-            targetPlatforms: {
-              contains: acc.platform
-            },
-            publishedAt: {
-              gte: dateFrom,
-              lte: dateTo
-            }
-          }
-        });
+        postsCount = countPostsForPlatform(acc.platform);
       }
 
       let channelReach = 0;
@@ -246,21 +270,18 @@ class AnalyticsFacade {
       }
     });
 
+    // Pre-resolve (post, platform) -> platformPostId for every candidate
+    // pair up front, so the Facebook/YouTube metric lookups below can be
+    // batched by ID instead of one findFirst per post per platform (#76).
+    const postPlatformPairs = [];
     for (const post of dbPosts) {
       let platforms = ['FACEBOOK'];
       if (post.targetPlatforms) {
         platforms = post.targetPlatforms.split(',').map(p => p.trim().toUpperCase()).filter(Boolean);
       }
-
       for (const platformUpper of platforms) {
-        // Avoid duplicates if already fetched via API
         const isDuplicate = allPlatformPosts.some(ap => ap.platform === platformUpper && (ap.id === post.platformPostId || ap.id === post.id));
         if (isDuplicate) continue;
-
-        let likes = 0;
-        let comments = 0;
-        let shares = 0;
-        let reachOrViews = 0;
 
         let currentPlatformPostId = post.platformPostId;
         if (post.platformPostId && post.platformPostId.startsWith('{')) {
@@ -271,48 +292,62 @@ class AnalyticsFacade {
             // ignore
           }
         }
-
-        if (platformUpper === 'FACEBOOK' && currentPlatformPostId) {
-          const fbMetric = await prisma.facebookPostMetric.findFirst({
-            where: {
-              platformPostId: currentPlatformPostId,
-              brandId
-            }
-          });
-          if (fbMetric) {
-            likes = fbMetric.likes || 0;
-            comments = fbMetric.comments || 0;
-            shares = fbMetric.shares || 0;
-            reachOrViews = fbMetric.reach || 0;
-          }
-        } else if (platformUpper === 'YOUTUBE' && currentPlatformPostId) {
-          const ytMetric = await prisma.trackedVideo.findFirst({
-            where: {
-              videoId: currentPlatformPostId,
-              brandId
-            }
-          });
-          if (ytMetric) {
-            likes = ytMetric.lastLikes || 0;
-            comments = ytMetric.lastComments || 0;
-            reachOrViews = ytMetric.lastViews || 0;
-          }
-        }
-
-        const denominator = reachOrViews > 0 ? reachOrViews : (totalFollowers || 1000);
-        const engagementRate = parseFloat((((likes + comments + shares) / denominator) * 100).toFixed(2));
-
-        allPlatformPosts.push({
-          id: post.id,
-          title: post.title,
-          caption: post.caption,
-          platform: platformUpper,
-          likes,
-          comments,
-          shares,
-          engagementRate
-        });
+        postPlatformPairs.push({ post, platformUpper, currentPlatformPostId });
       }
+    }
+
+    const fbPostIds = postPlatformPairs
+      .filter(p => p.platformUpper === 'FACEBOOK' && p.currentPlatformPostId)
+      .map(p => p.currentPlatformPostId);
+    const ytVideoIds = postPlatformPairs
+      .filter(p => p.platformUpper === 'YOUTUBE' && p.currentPlatformPostId)
+      .map(p => p.currentPlatformPostId);
+
+    const fbMetrics = fbPostIds.length > 0 ? await prisma.facebookPostMetric.findMany({
+      where: { platformPostId: { in: fbPostIds }, brandId }
+    }) : [];
+    const ytMetrics = ytVideoIds.length > 0 ? await prisma.trackedVideo.findMany({
+      where: { videoId: { in: ytVideoIds }, brandId }
+    }) : [];
+    const fbMetricByPostId = new Map(fbMetrics.map(m => [m.platformPostId, m]));
+    const ytMetricByVideoId = new Map(ytMetrics.map(m => [m.videoId, m]));
+
+    for (const { post, platformUpper, currentPlatformPostId } of postPlatformPairs) {
+      let likes = 0;
+      let comments = 0;
+      let shares = 0;
+      let reachOrViews = 0;
+
+      if (platformUpper === 'FACEBOOK' && currentPlatformPostId) {
+        const fbMetric = fbMetricByPostId.get(currentPlatformPostId);
+        if (fbMetric) {
+          likes = fbMetric.likes || 0;
+          comments = fbMetric.comments || 0;
+          shares = fbMetric.shares || 0;
+          reachOrViews = fbMetric.reach || 0;
+        }
+      } else if (platformUpper === 'YOUTUBE' && currentPlatformPostId) {
+        const ytMetric = ytMetricByVideoId.get(currentPlatformPostId);
+        if (ytMetric) {
+          likes = ytMetric.lastLikes || 0;
+          comments = ytMetric.lastComments || 0;
+          reachOrViews = ytMetric.lastViews || 0;
+        }
+      }
+
+      const denominator = reachOrViews > 0 ? reachOrViews : (totalFollowers || 1000);
+      const engagementRate = parseFloat((((likes + comments + shares) / denominator) * 100).toFixed(2));
+
+      allPlatformPosts.push({
+        id: post.id,
+        title: post.title,
+        caption: post.caption,
+        platform: platformUpper,
+        likes,
+        comments,
+        shares,
+        engagementRate
+      });
     }
 
     // Sort by engagement rate descending and get top 5

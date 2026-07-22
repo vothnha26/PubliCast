@@ -124,6 +124,7 @@ model Brand {
   hashtagTrackers         HashtagTracker[]
   hashtagSets             HashtagSet[]
   aiAssistant             AIAssistant?
+  reportScheduleConfig    ReportScheduleConfig?
   mediaLibrary            MediaLibrary[]
   mediaFolders            MediaFolder[]
   auditLogs               AuditLog[]
@@ -1210,9 +1211,7 @@ model Report {
   brandColorHex           String?
   format                  ReportFormat
   fileUrl                 String?
-  scheduledFrequency      String?
-  scheduledDeliveryEmails String?      @db.Text
-  nextScheduledAt         DateTime?
+  sizeBytes               Int?
   generatedAt             DateTime?
   downloads               Int          @default(0)
   createdAt               DateTime     @default(now())
@@ -1222,6 +1221,29 @@ model Report {
 
   @@index([brandId])
   @@map("reports")
+}
+
+// Per-brand recurring report schedule (which day of month, format, email
+// recipients). Previously stored as uploads/reports/config_<brandId>.json —
+// lost on ephemeral/container redeploys, not readable from a second backend
+// instance, and written non-atomically (a crash mid-write left an
+// unparseable file silently skipped by the scan). One row per brand (#75).
+model ReportScheduleConfig {
+  id            String   @id @default(uuid())
+  brandId       String   @unique
+  receiveEmail  Boolean  @default(false)
+  emailsList    String   @db.Text // JSON-encoded string[]
+  emailText     String   @db.Text
+  // Day of month (1-31) as a string, or the literal "last" for end-of-month.
+  dayOfMonth    String   @default("1")
+  format        ReportFormat @default(PDF)
+  platforms     String   @db.Text // JSON-encoded string[]
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  brand Brand @relation(fields: [brandId], references: [id], onDelete: Cascade)
+
+  @@map("report_schedule_configs")
 }
 
 model SmartLink {
