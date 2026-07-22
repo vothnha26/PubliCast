@@ -73,9 +73,17 @@ class TelegramService extends BaseSocialService {
     console.log(`[Telegram Service] Publishing post using strategy: ${strategy.constructor.name}`);
     const result = await strategy.publish(chatId, botToken, postData);
 
-    return {
-      id: result.message_id ? result.message_id.toString() : `tg-msg-${Date.now()}`
-    };
+    // Telegram's sendMessage/sendPhoto/etc always return message_id on a real
+    // 200 response. If it's missing, something is wrong with the response we
+    // don't understand — synthesizing a fake `tg-msg-${Date.now()}` id here
+    // previously let the post get marked PUBLISHED even though it never
+    // actually reached Telegram, breaking retry/delete/metric-sync
+    // afterward (#93). Throw instead so the pipeline treats it as a failure.
+    if (!result.message_id) {
+      throw new Error('Telegram publish response missing message_id');
+    }
+
+    return { id: result.message_id.toString() };
   }
 
   /**

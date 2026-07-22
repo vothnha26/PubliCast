@@ -608,8 +608,15 @@ class FacebookGateway {
 
       return await finishRes.json();
     } catch (err) {
-      console.warn(`Facebook Reel API failure: ${err.message}. Falling back to simulation.`);
-      return { id: `fb_reel_${Date.now()}` };
+      // Previously any failure here was swallowed and a fabricated
+      // { id: `fb_reel_${Date.now()}` } was returned as if the upload had
+      // succeeded (#64). The caller (SocialPublishStep/UpdatePostStatusStep)
+      // treats that as success and marks the post PUBLISHED with a
+      // platformPostId that doesn't exist on Facebook — unretryable, and
+      // analytics/delete against that id silently fail forever after.
+      // Propagate the real error so the publish pipeline marks it
+      // FAILED/RETRYING instead.
+      throw new Error(`Facebook Reel publish failed: ${err.message}`);
     }
   }
 
@@ -642,8 +649,10 @@ class FacebookGateway {
         return await storyRes.json();
       }
     } catch (err) {
-      console.warn(`Facebook Story API failure: ${err.message}. Falling back to simulation.`);
-      return { id: `fb_story_${Date.now()}` };
+      // Same fabricated-success bug as publishReel above (#64) — propagate
+      // instead of returning a fake id so the pipeline can retry/mark
+      // FAILED correctly.
+      throw new Error(`Facebook Story publish failed: ${err.message}`);
     }
   }
 

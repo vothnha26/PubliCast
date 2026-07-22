@@ -91,5 +91,25 @@ describe('Telegram Integration Suite', () => {
         expect.any(Object)
       );
     });
+
+    // Regression test for #93: a response missing message_id previously
+    // fell back to a synthesized `tg-msg-${Date.now()}` id, marking the
+    // post PUBLISHED even though it never actually reached Telegram.
+    it('throws instead of fabricating an id when message_id is missing (#93)', async () => {
+      const mockAccount = {
+        id: 'sa_tele_1',
+        isConnected: true,
+        accessToken: 'mock-token',
+        platformAccountId: '-1001234'
+      };
+
+      socialAccountRepository.findByBrandAndPlatformFirst.mockResolvedValue(mockAccount);
+      telegramGateway.sendMessage.mockResolvedValue({}); // no message_id
+
+      await expect(telegramService.publishPost('brand_1', {
+        caption: 'Hello Telegram!',
+        mediaUrl: null
+      })).rejects.toThrow('Telegram publish response missing message_id');
+    });
   });
 });
