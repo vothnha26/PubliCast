@@ -194,7 +194,7 @@ class ReportService {
         size: sizeStr,
         date: r.generatedAt ? new Date(r.generatedAt).toLocaleDateString('vi-VN') : new Date(r.createdAt).toLocaleDateString('vi-VN'),
         creator: r.creator?.name || 'Hệ thống',
-        downloads: 0,
+        downloads: r.downloads || 0,
         platforms,
         fileUrl: r.fileUrl
       };
@@ -242,6 +242,12 @@ class ReportService {
     const contentType = report.format === REPORT_FORMATS.CSV
       ? 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
       : 'application/pdf';
+
+    // Fire-and-forget: a failed counter increment must never block the
+    // actual download the user is waiting on.
+    reportRepository.incrementDownloads(id).catch(err => {
+      console.error(`[ReportService] Failed to increment download count for report ${id}:`, err.message);
+    });
 
     return { filePath, fileName, contentType, title: report.title };
   }

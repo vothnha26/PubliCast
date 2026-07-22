@@ -68,6 +68,14 @@ class ReportRepository {
       where: { id }
     });
   }
+
+  /** Atomically bumps the real download counter — closes #74's `downloads: 0` hardcode. */
+  async incrementDownloads(id) {
+    return prisma.report.update({
+      where: { id },
+      data: { downloads: { increment: 1 } }
+    });
+  }
 }
 
 const reportRepository = new ReportRepository();
