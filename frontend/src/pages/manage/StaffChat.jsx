@@ -20,6 +20,15 @@ export function StaffChatPage() {
   const [loading, setLoading] = useState(false);
   const fileInputRef = useRef(null);
   const messagesEndRef = useRef(null);
+  // Read inside socket listeners instead of the closed-over `activeChat`
+  // value from whichever render registered the listener — without this, a
+  // message socket event landing in the gap between setActiveChat(newChat)
+  // and this component's next render (when the listener effect re-runs and
+  // re-subscribes) checks the OLD activeChat.id and drops it (#112 K5).
+  const activeChatIdRef = useRef(null);
+  useEffect(() => {
+    activeChatIdRef.current = activeChat?.id ?? null;
+  }, [activeChat?.id]);
 
   // Fetch all tickets for current brand
   const fetchTickets = async () => {
@@ -95,7 +104,7 @@ export function StaffChatPage() {
 
       // Listen for incoming messages
       const handleNewMessage = (msg) => {
-        if (msg.ticketId === activeChat.id) {
+        if (msg.ticketId === activeChatIdRef.current) {
           // Avoid duplicate messages if optimistically added
           setMessages(prev => {
             if (prev.some(p => p.id === msg.id)) return prev;
@@ -133,7 +142,7 @@ export function StaffChatPage() {
 
       // Listen for ticket assignment updates
       const handleTicketAssigned = (payload) => {
-        if (payload.ticketId === activeChat.id) {
+        if (payload.ticketId === activeChatIdRef.current) {
           setActiveChat(prev => prev && prev.id === payload.ticketId ? {
             ...prev,
             assignedAgentId: payload.assignedAgent.id,
@@ -198,35 +207,47 @@ export function StaffChatPage() {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  const handleSend = (text = input, attachmentUrl = null) => {
-    if (!text.trim() && !attachmentUrl && !input.trim()) return;
+  // Split into a shared sender plus two call sites (text vs attachment) —
+  // the old single handleSend(text = input, attachmentUrl) signature meant
+  // sending a file (handleSend(file.name, url)) reused the `text` param slot
+  // for the filename AND unconditionally cleared the live `input` box the
+  // user might have been mid-typing a caption into, even though that text
+  // was never part of the sent message (#112 K9).
+  const sendMessage = ({ text, attachmentUrl = null }) => {
+    if (!text.trim() && !attachmentUrl) return;
     if (!activeChat) return;
-
-    const originalText = text || input;
 
     // Optimistically add staff message locally
     setMessages(prev => [...prev, {
       id: 'temp-' + Date.now(),
-      text: originalText,
+      text,
       time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       sender: 'staff',
       attachment: attachmentUrl ? {
-        name: originalText,
+        name: text,
         isImage: true,
         url: attachmentUrl
       } : null
     }]);
 
-    const payload = {
+    socketClient.emit('send_message', {
       ticketId: activeChat.id,
       messageType: attachmentUrl ? 'IMAGE' : 'TEXT',
-      content: originalText,
+      content: text,
       attachmentUrl
-    };
+    });
+  };
 
-    // Emit via WebSocket to Server
-    socketClient.emit('send_message', payload);
+  const handleSend = () => {
+    if (!input.trim()) return;
+    sendMessage({ text: input });
     setInput("");
+  };
+
+  const handleSendAttachment = (fileName, attachmentUrl) => {
+    sendMessage({ text: fileName, attachmentUrl });
+    // Attachment sends never touch the input box — whatever caption the
+    // user was typing stays exactly as they left it.
   };
 
   const handleFileChange = async (e) => {
@@ -245,7 +266,7 @@ export function StaffChatPage() {
       });
       const url = res.data.data?.url;
       if (url) {
-        handleSend(file.name, url);
+        handleSendAttachment(file.name, url);
         toast.success("Đã gửi tệp đính kèm!");
       }
     } catch (err) {

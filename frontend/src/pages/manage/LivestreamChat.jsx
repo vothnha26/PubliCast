@@ -3,6 +3,7 @@ import socketClient from '../../services/socket';
 import apiService from '../../services/api';
 import { useAuthStore } from '../../store/useAuthStore';
 import { useBrandStore } from '../../store/useBrandStore';
+import { STORAGE_KEYS } from '../../constants/storageKeys';
 import { toast } from 'sonner';
 
 // Hằng số định cấu hình tránh magic string
@@ -121,16 +122,25 @@ export function LivestreamChat() {
       setViewerHistory([initViewers]);
     }
 
-    const token = localStorage.getItem('token') || 'dummy-token';
+    // Reading the literal 'token' key instead of STORAGE_KEYS.TOKEN meant a
+    // future key rename here would silently fall through to 'dummy-token'
+    // and connect unauthenticated with no error surfaced (#113 K12).
+    const token = localStorage.getItem(STORAGE_KEYS.TOKEN) || 'dummy-token';
     socketClient.connect(token);
-    
+
     // Join room
     socketClient.emit('join_livestream', { livestreamId: selectedStreamId });
     setIsConnected(true);
 
     const handleNewComment = (comment) => {
-      setComments((prev) => [...prev, comment]);
-      
+      // Without dedup by id, a socket reconnect/replay could re-append the
+      // same comment, producing a duplicate list entry (and a React key
+      // collision if `comment.id` is used as the list key) (#112 K8).
+      setComments((prev) => {
+        if (comment.id != null && prev.some(c => c.id === comment.id)) return prev;
+        return [...prev, comment];
+      });
+
       // Thêm timestamp để tính Comment Velocity (rolling window)
       commentTimestamps.current.push(Date.now());
     };
@@ -151,7 +161,15 @@ export function LivestreamChat() {
       socketClient.off('livestream_stats_update', handleStatsUpdate);
       setIsConnected(false);
     };
-  }, [selectedStreamId, streams]);
+    // `streams` deliberately excluded from deps — it's a new array
+    // reference on every fetchStreams() call, which previously tore down
+    // and rejoined the room (plus wiped `comments` via the effect's own
+    // setComments([]) reset) on every background refresh, not just an
+    // actual stream switch (#112 K8). `streamInfo` is only read once above
+    // to seed initial state, so this effect only needs to react to the
+    // stream selection actually changing.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedStreamId]);
 
   // Auto-scroll comments to bottom
   useEffect(() => {
@@ -161,18 +179,24 @@ export function LivestreamChat() {
   // Bộ đếm thời gian phát sóng và cập nhật mock chỉ số sống
   useEffect(() => {
     if (!selectedStreamId) return;
-    
+
     setDurationSeconds(0);
     const durationTimer = setInterval(() => {
       setDurationSeconds(prev => prev + 1);
     }, 1000);
 
-    // Mock biến động người xem nhẹ nhàng nếu là live stream thật
+    // Mock biến động người xem nhẹ nhàng nếu là live stream thật.
+    // peakViewers is read via the functional setPeakViewers form (state
+    // callback), not the render-scope value — so it no longer needs to be
+    // an effect dependency. Previously having it in the deps array meant
+    // every new peak recreated this whole effect, tearing down and
+    // restarting durationTimer too, which reset durationSeconds to 0 on
+    // every new peak (#113 K13).
     const statsTimer = setInterval(() => {
       setCurrentViewers(prev => {
         const delta = Math.floor(Math.random() * 9) - 4; // -4 đến +4
         const nextValue = Math.max(10, prev + delta);
-        if (nextValue > peakViewers) setPeakViewers(nextValue);
+        setPeakViewers(peak => Math.max(peak, nextValue));
         return nextValue;
       });
     }, UPDATE_INTERVALS.MOCK_STATS_MS);
@@ -181,7 +205,7 @@ export function LivestreamChat() {
       clearInterval(durationTimer);
       clearInterval(statsTimer);
     };
-  }, [selectedStreamId, peakViewers]);
+  }, [selectedStreamId]);
 
   // Tính toán Comment Velocity qua cửa sổ trượt (Rolling Window) 60 giây
   useEffect(() => {

@@ -163,19 +163,24 @@ export function SupportChat() {
   }, [messages]);
 
   // Initialize new ticket session on first message
-  const handleSend = async (text = input, attachmentUrl = null) => {
-    if (!text.trim() && !attachmentUrl && !input.trim()) return;
+  // Split into a shared sender plus two call sites (text vs attachment) —
+  // the old single handleSend(text = input, attachmentUrl) signature meant
+  // sending a file (handleSend(file.name, url)) reused the `text` param slot
+  // for the filename AND unconditionally cleared the live `input` box the
+  // user might have been mid-typing a caption into, even though that text
+  // was never part of the sent message (#112 K9).
+  const sendMessage = async (text, attachmentUrl = null) => {
+    if (!text.trim() && !attachmentUrl) return;
     if (!activeBrand) return;
 
     let currentTicket = ticket;
-    const originalText = text || input;
 
     try {
       // Create new support session if none exists
       if (!currentTicket) {
         const res = await apiService.post('/tickets', {
           brandId: activeBrand.id,
-          subject: originalText.substring(0, 40) || 'Hỗ trợ khách hàng'
+          subject: text.substring(0, 40) || 'Hỗ trợ khách hàng'
         });
         currentTicket = res.data.data;
         setTicket(currentTicket);
@@ -189,10 +194,10 @@ export function SupportChat() {
         const updated = [...prev, {
           id: 'temp-' + Date.now(),
           role: "user",
-          text: originalText,
+          text,
           time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
           attachment: attachmentUrl ? {
-            name: originalText,
+            name: text,
             isImage: true,
             url: attachmentUrl
           } : null
@@ -210,19 +215,28 @@ export function SupportChat() {
         return updated;
       });
 
-      const payload = {
+      socketClient.emit('send_message', {
         ticketId: currentTicket.id,
         messageType: attachmentUrl ? 'IMAGE' : 'TEXT',
-        content: originalText,
+        content: text,
         attachmentUrl
-      };
-
-      socketClient.emit('send_message', payload);
-      setInput("");
+      });
     } catch (err) {
       console.error("Failed to send support message:", err);
       toast.error("Không thể gửi tin nhắn hỗ trợ");
     }
+  };
+
+  const handleSend = async () => {
+    if (!input.trim()) return;
+    await sendMessage(input);
+    setInput("");
+  };
+
+  const handleSendAttachment = async (fileName, attachmentUrl) => {
+    await sendMessage(fileName, attachmentUrl);
+    // Attachment sends never touch the input box — whatever caption the
+    // user was typing stays exactly as they left it.
   };
 
   const handleFileChange = async (e) => {
@@ -240,7 +254,7 @@ export function SupportChat() {
       });
       const url = res.data.data?.url;
       if (url) {
-        handleSend(file.name, url);
+        handleSendAttachment(file.name, url);
         toast.success("Đã gửi tệp đính kèm!");
       }
     } catch (err) {
