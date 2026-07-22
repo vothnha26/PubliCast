@@ -258,6 +258,17 @@ describe('LinkedIn Integration Service & Gateway Tests', () => {
         expect(result.clicks).toBeDefined();
         expect(result.interactions.likes).toBeDefined();
       });
+
+      // Regression test for #69: getAnalyticsReport previously always
+      // returned mock data with zero signal it wasn't real, and
+      // interactions.viewsBreakdown was a fabricated organic/promoted split
+      // with no real data source backing it.
+      it('flags the response as isMock (no real LinkedIn analytics API integrated yet) and does not fabricate a viewsBreakdown split (#69)', async () => {
+        const result = await linkedinService.getAnalyticsReport({ accessToken: 'mock_token' }, '2026-05-01', '2026-05-15', 1250);
+
+        expect(result.isMock).toBe(true);
+        expect(result.interactions.viewsBreakdown).toBeUndefined();
+      });
     });
 
     describe('syncChannelMetrics', () => {

@@ -78,6 +78,14 @@ describe('Instagram Integration Service Tests', () => {
       expect(result.growth).toHaveLength(6); // 20, 21, 22, 23, 24, 25 (6 days)
       expect(result.interactions).toBeDefined();
     });
+
+    // Regression test for #69: interactions.viewsBreakdown was a fabricated
+    // organic/promoted split (hardcoded 85/15) with no backing API call.
+    it('does not include a fabricated viewsBreakdown split (#69)', async () => {
+      const result = await instagramAnalyticsService.getAnalyticsReport('ig_123', 'mock-token', '2026-05-20', '2026-05-25', 1500);
+
+      expect(result.interactions.viewsBreakdown).toBeUndefined();
+    });
   });
 
   describe('InstagramService Facade', () => {

@@ -108,6 +108,20 @@ describe('Facebook Integration Service Tests', () => {
       expect(result.growth).toBeDefined();
       expect(result.balance).toBeDefined();
     });
+
+    // Regression test for #69: interactions.viewsBreakdown was a fabricated
+    // organic/promoted split (hardcoded 70/30) with no backing API call.
+    it('does not include a fabricated viewsBreakdown split (#69)', async () => {
+      facebookGateway.getPageDetails.mockResolvedValue({
+        pageId: 'page_id_123', displayName: 'My Cool Page', followersCount: 500, likesCount: 480
+      });
+      facebookGateway.getPageInsights.mockResolvedValue([]);
+      facebookGateway.getPageFeed.mockResolvedValue({ data: [] });
+
+      const result = await facebookAnalyticsService.getAnalyticsReport('page_id_123', 'page_token_123', '2026-05-20', '2026-05-25', 500);
+
+      expect(result.interactions.viewsBreakdown).toBeUndefined();
+    });
   });
 
   describe('FacebookService Facade', () => {

@@ -48,10 +48,15 @@ export function FacebookInteractionsTab({ realData = {} }) {
     { name: "Image", value: interactions.typesBreakdown?.image || 100, color: "#F472B6" }
   ].filter(d => d.value > 0);
 
-  const viewsData = [
-    { name: "Organic", value: interactions.viewsBreakdown?.organic || 70, color: "#4ADE80" },
-    { name: "Promoted", value: interactions.viewsBreakdown?.promoted || 30, color: "#A855F7" }
-  ];
+  // Backend no longer returns a fabricated organic/promoted split (#69) —
+  // only render the donut when real data is present, instead of falling
+  // back to a fake-but-plausible ratio.
+  const viewsData = interactions.viewsBreakdown
+    ? [
+        { name: "Organic", value: interactions.viewsBreakdown.organic || 0, color: "#4ADE80" },
+        { name: "Promoted", value: interactions.viewsBreakdown.promoted || 0, color: "#A855F7" }
+      ]
+    : null;
 
   return (
     <div className="space-y-8">
@@ -102,34 +107,40 @@ export function FacebookInteractionsTab({ realData = {} }) {
         {/* Views breakdown */}
         <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm flex flex-col items-center">
           <h4 className="text-sm font-bold text-[#0A0A0A] mb-4 self-start">Views</h4>
-          <div className="w-full h-48 flex items-center justify-around">
-            <ResponsiveContainer width="50%" height="100%">
-              <PieChart>
-                <Pie
-                  data={viewsData}
-                  cx="50%"
-                  cy="50%"
-                  innerRadius={60}
-                  outerRadius={80}
-                  paddingAngle={5}
-                  dataKey="value"
-                >
-                  {viewsData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.color} />
-                  ))}
-                </Pie>
-                <Tooltip />
-              </PieChart>
-            </ResponsiveContainer>
-            <div className="flex flex-col gap-2">
-              {viewsData.map((v, idx) => (
-                <div key={idx} className="flex items-center gap-2">
-                  <div className="w-3 h-3 rounded-full" style={{ backgroundColor: v.color }} />
-                  <span className="text-xs font-bold text-gray-700">{v.name}: {v.value}%</span>
-                </div>
-              ))}
+          {viewsData ? (
+            <div className="w-full h-48 flex items-center justify-around">
+              <ResponsiveContainer width="50%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={viewsData}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={60}
+                    outerRadius={80}
+                    paddingAngle={5}
+                    dataKey="value"
+                  >
+                    {viewsData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.color} />
+                    ))}
+                  </Pie>
+                  <Tooltip />
+                </PieChart>
+              </ResponsiveContainer>
+              <div className="flex flex-col gap-2">
+                {viewsData.map((v, idx) => (
+                  <div key={idx} className="flex items-center gap-2">
+                    <div className="w-3 h-3 rounded-full" style={{ backgroundColor: v.color }} />
+                    <span className="text-xs font-bold text-gray-700">{v.name}: {v.value}%</span>
+                  </div>
+                ))}
+              </div>
             </div>
-          </div>
+          ) : (
+            <div className="w-full h-48 flex items-center justify-center text-sm text-gray-400">
+              Không có dữ liệu
+            </div>
+          )}
         </div>
       </div>
     </div>
