@@ -9,6 +9,7 @@ const {
 const {
   editProfileValidation,
 } = require('../../middlewares/validation.middleware');
+const { resetPasswordRateLimiter } = require('../../middlewares/password-reset-rate-limit.middleware');
 
 const multer = require('multer');
 const path = require('path');
@@ -70,9 +71,13 @@ router.delete(
 );
 
 // Change password - requires authentication
+// resetPasswordRateLimiter caps request volume: without it, an attacker
+// holding a hijacked access token could brute-force the currentPassword
+// check with no throttle (#83).
 router.put(
   '/profile/change-password',
   verifyAuth,
+  resetPasswordRateLimiter,
   profileController.changePassword
 );
 

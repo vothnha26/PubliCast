@@ -118,8 +118,8 @@ class ProfileController {
     const userId = req.user.id;
     const { currentPassword, newPassword } = req.body;
 
-    if (!newPassword || newPassword.length < 6) {
-      return res.status(400).json({ message: 'Mật khẩu mới phải có ít nhất 6 ký tự.' });
+    if (!newPassword || newPassword.length < 8) {
+      return res.status(400).json({ message: 'Mật khẩu mới phải có ít nhất 8 ký tự.' });
     }
 
     const result = await profileService.changePassword(userId, currentPassword, newPassword);
