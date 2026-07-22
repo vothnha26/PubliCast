@@ -24,18 +24,25 @@ class ThreadsService extends BaseSocialService {
       };
     } catch (error) {
       console.error('Threads getChannelInfo error:', error);
-      // Fallback khi chạy thử nghiệm
+      // Previously this replaced ANY failure — expired token, revoked
+      // permission, network error, rate limit — with a fabricated account
+      // (followersCount:1500, followingCount:300, mediaCount:10) presented
+      // indistinguishably from real profile data, only visible via a
+      // console.error the user never sees (#97). degraded:true now signals
+      // this is not real data instead of silently faking it.
       return {
-        igAccountId: auth.platformAccountId || 'threads_fallback_id',
-        username: auth.username || 'threads_user_fallback',
+        igAccountId: auth.platformAccountId || null,
+        username: auth.username || null,
         displayName: auth.displayName || 'Threads Account',
         profilePictureUrl: auth.profilePictureUrl || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=150&q=80',
-        followersCount: 1500,
-        followingCount: 300,
-        mediaCount: 10,
+        followersCount: null,
+        followingCount: null,
+        mediaCount: null,
         biography: '',
         website: '',
-        analytics: []
+        analytics: [],
+        degraded: true,
+        error: error.message
       };
     }
   }
@@ -51,7 +58,11 @@ class ThreadsService extends BaseSocialService {
       try {
         insights = await threadsGateway.getInsights(pageId, pageAccessToken);
       } catch (e) {
-        console.warn('Threads Insights API failed, falling back to mock graph data:', e.message);
+        // getInsights now throws instead of silently returning null (#97) —
+        // this is a real, surfaced error (expired token, missing scope, rate
+        // limit, etc). Logged and degraded to feed-derived/zero data below,
+        // rather than crashing the whole analytics report over one metric call.
+        console.warn('Threads Insights API failed, degrading to feed-derived data:', e.message);
       }
     }
 
@@ -122,13 +133,17 @@ class ThreadsService extends BaseSocialService {
         const dateStr = post.timestamp.split('T')[0];
         if (dailyMap[dateStr]) {
           dailyMap[dateStr].totalContent += 1;
-          
+
           // Only aggregate if this date didn't have data from insights
           const reactions = post.like_count || 0;
           dailyMap[dateStr].likes += reactions;
-          
-          // Estimate views from likes for display purposes
-          dailyMap[dateStr].views += reactions * 12;
+
+          // Views intentionally NOT estimated from likes here — the Threads
+          // feed endpoint doesn't return a real per-post view count, and
+          // reactions*12 was an arbitrary made-up multiplier presented as
+          // real view data (#97). views stays whatever getInsights (the
+          // real API for this metric) already populated above, or 0 if
+          // that call failed/returned no data for this date.
         }
       }
     }
@@ -230,11 +245,12 @@ class ThreadsService extends BaseSocialService {
         interactions: {
           comments: summary.replies,
           shares: summary.reposts,
-          typesBreakdown: typesBreakdown,
-          viewsBreakdown: {
-            organic: Math.floor(summary.views * 0.9),
-            promoted: Math.floor(summary.views * 0.1)
-          }
+          typesBreakdown: typesBreakdown
+          // viewsBreakdown removed — it derived a 90/10 organic/promoted
+          // split from summary.views using a fixed ratio, with no real
+          // organic/sponsored breakdown source fetched anywhere here (#97,
+          // same fabrication pattern already removed for Facebook/Instagram/
+          // LinkedIn in #69).
         }
       })
     };
@@ -339,9 +355,14 @@ class ThreadsService extends BaseSocialService {
         const comments = 0; // Threads API v1.0 chưa trả về comments_count trực tiếp dễ dàng
         const shares = 0;
         const clicks = 0;
-        const views = reactions * 12;
-        const reach = reactions * 8;
-        const engagement = reach ? parseFloat((((reactions) / reach) * 100).toFixed(2)) : 0;
+        // The Threads feed endpoint (getThreadsMediaFeed) doesn't return a
+        // real per-post views/reach count — these were previously
+        // reactions*12 / reactions*8, arbitrary made-up multipliers
+        // presented as measured data (#97). Left null (unavailable) rather
+        // than fabricated; engagement can't be computed without a real reach.
+        const views = null;
+        const reach = null;
+        const engagement = null;
 
         return {
           id: post.id,
