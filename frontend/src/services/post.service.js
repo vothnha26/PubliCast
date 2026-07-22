@@ -17,6 +17,11 @@ class PostService {
     return response.data;
   }
 
+  async retryFailedPlatforms(id, brandId, platforms) {
+    const response = await apiService.post(`/posts/${id}/retry-failed`, { brandId, platforms });
+    return response.data;
+  }
+
   async deletePosts(brandId, ids, deleteFromSocials = false) {
     const response = await apiService.delete('/posts/bulk', {
       data: { brandId, ids, deleteFromSocials }
