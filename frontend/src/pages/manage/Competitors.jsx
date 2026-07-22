@@ -16,16 +16,6 @@ import {
   AlertCircle,
   ExternalLink
 } from "lucide-react";
-import { 
-  ResponsiveContainer, 
-  AreaChart, 
-  Area, 
-  XAxis, 
-  YAxis, 
-  Tooltip, 
-  Legend, 
-  CartesianGrid 
-} from "recharts";
 import { useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
@@ -123,7 +113,9 @@ export function CompetitorsPage() {
             likesCount: v.likes || 0,
             commentsCount: v.comments || 0,
             sharesCount: 0,
-            engagementRate: 3.2
+            // No real per-video engagement rate is returned by the API —
+            // leave unset rather than fabricate a plausible-looking number (#79).
+            engagementRate: null
           }));
         }
 
@@ -132,9 +124,11 @@ export function CompetitorsPage() {
           name: c.competitorDisplayName || c.competitorHandle,
           handle: c.competitorHandle,
           followers: c.followersCount || 0,
-          postsPerWeek: c.postsPerWeek || (postsArray ? Math.round(postsArray.length / 2) || 2 : 0),
-          engagementRate: c.avgEngagementRate || 3.1,
-          growth: c.followersGrowth || 4.2,
+          // Only use the API's own postsPerWeek — no fabricated fallback
+          // derived from post count or a hardcoded constant (#79).
+          postsPerWeek: c.postsPerWeek ?? null,
+          engagementRate: c.avgEngagementRate ?? null,
+          growth: c.followersGrowth ?? null,
           platform: c.platform.toLowerCase(), // 'facebook' or 'youtube'
           avatarUrl: c.competitorAvatarUrl,
           profileUrl: c.competitorProfileUrl,
@@ -160,9 +154,11 @@ export function CompetitorsPage() {
         name: activeBrand.name || t("matrix.youBadge"),
         handle: "@your_brand",
         followers: 0, // Sẽ được tính động trong displayCompetitors
-        postsPerWeek: 4,
-        engagementRate: 3.5,
-        growth: 5.2,
+        // No real postsPerWeek/engagementRate/growth source for the self
+        // brand is fetched here — left null rather than fabricated (#79).
+        postsPerWeek: null,
+        engagementRate: null,
+        growth: null,
         platform: "brand",
         isSelf: true
       };
@@ -195,10 +191,13 @@ export function CompetitorsPage() {
 
     return competitors.map(c => {
       if (c.isSelf) {
+        // No fabricated fallback (previously 12500/6800/5700) when the
+        // brand has no connected/followed account for this tab — 0 means
+        // genuinely no data, not a placeholder number (#79).
         let followers = 0;
-        if (activeViewTab === "all") followers = (myFbFollowers + myYtSubscribers) || 12500;
-        else if (activeViewTab === "facebook") followers = myFbFollowers || 6800;
-        else if (activeViewTab === "youtube") followers = myYtSubscribers || 5700;
+        if (activeViewTab === "all") followers = myFbFollowers + myYtSubscribers;
+        else if (activeViewTab === "facebook") followers = myFbFollowers;
+        else if (activeViewTab === "youtube") followers = myYtSubscribers;
         return { ...c, followers };
       }
       return c;
@@ -209,22 +208,12 @@ export function CompetitorsPage() {
     });
   }, [competitors, activeViewTab, activeBrand]);
 
-  // Generate dynamic chart data based on displayCompetitors
-  const growthChartData = useMemo(() => {
-    const months = ["Jan", "Feb", "Mar", "Apr", "May"];
-    return months.map((month, idx) => {
-      const row = { month };
-      displayCompetitors.forEach(c => {
-        // Simulate growth trends backward in time
-        // Formula: prev = current / (1 + growth/100 * (4-idx)/4)
-        const growthPercentage = c.growth || 4.5;
-        const factor = 1 + (growthPercentage / 100) * ((idx - 4) / 4);
-        const val = Math.round(c.followers * factor);
-        row[c.name] = val > 0 ? val : 0;
-      });
-      return row;
-    });
-  }, [displayCompetitors]);
+  // No real historical follower time-series is fetched anywhere for
+  // competitors — the chart previously extrapolated a fake growth curve
+  // backward from a single current-follower snapshot using an arbitrary
+  // formula. Removed entirely rather than render fabricated history as
+  // real data (#79); see growthChartData's render site below, which now
+  // always shows the "no data" empty state.
 
   // Dynamic Top Posts
   const displayTopPosts = useMemo(() => {
@@ -254,7 +243,9 @@ export function CompetitorsPage() {
             likes: p.likesCount || p.likes || 0,
             comments: p.commentsCount || p.comments || 0,
             shares: p.sharesCount || p.shares || p.retweets || 0,
-            reachRate: p.engagementRate || c.engagementRate || 2.5,
+            // No fabricated fallback (previously 2.5%) when neither the
+            // post nor the competitor has a real engagement rate (#79).
+            reachRate: p.engagementRate ?? c.engagementRate ?? null,
             date: p.publishedAt ? new Date(p.publishedAt).toLocaleDateString("vi-VN") : "Gần đây",
             media: p.mediaUrl || p.thumbnailUrl || null,
             postUrl: p.postUrl || (c.platform === "youtube" ? `https://www.youtube.com/watch?v=${p.id}` : `https://www.facebook.com/${p.id}`)
@@ -561,24 +552,32 @@ export function CompetitorsPage() {
 
                           {/* Posts Per Week */}
                           <td className="py-4 px-6">
-                            <div className="text-sm font-semibold text-[#1A1F36]">{c.postsPerWeek}</div>
+                            <div className="text-sm font-semibold text-[#1A1F36]">{c.postsPerWeek ?? "N/A"}</div>
                             <div className="text-xs text-[#8792A2]">{t("matrix.postsPerWeek")}</div>
                           </td>
 
                           {/* Engagement Rate */}
                           <td className="py-4 px-6">
-                            <span className={`text-sm font-bold ${
-                              c.engagementRate >= 4.0 ? "text-emerald-600" : "text-[#1A1F36]"
-                            }`}>
-                              {c.engagementRate}%
-                            </span>
+                            {c.engagementRate == null ? (
+                              <span className="text-sm text-[#8792A2]">N/A</span>
+                            ) : (
+                              <span className={`text-sm font-bold ${
+                                c.engagementRate >= 4.0 ? "text-emerald-600" : "text-[#1A1F36]"
+                              }`}>
+                                {c.engagementRate}%
+                              </span>
+                            )}
                           </td>
 
                           {/* Growth Rate */}
                           <td className="py-4 px-6">
-                            <span className="text-sm font-semibold text-[#16A34A] flex items-center gap-0.5">
-                              <TrendingUp size={12} /> +{c.growth}%
-                            </span>
+                            {c.growth == null ? (
+                              <span className="text-sm text-[#8792A2]">N/A</span>
+                            ) : (
+                              <span className="text-sm font-semibold text-[#16A34A] flex items-center gap-0.5">
+                                <TrendingUp size={12} /> +{c.growth}%
+                              </span>
+                            )}
                           </td>
 
                           {/* Actions */}
@@ -611,51 +610,14 @@ export function CompetitorsPage() {
                 <p className="text-xs text-[#8792A2] mt-0.5">{t("chart.subtitle")}</p>
               </div>
 
-              {displayCompetitors.length <= 1 ? (
-                <div className="h-60 flex flex-col items-center justify-center text-gray-400 text-xs">
-                  {t("chart.noData")}
-                </div>
-              ) : (
-                <div className="h-60 mt-6">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart data={growthChartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                      <defs>
-                        <linearGradient id="selfGrad" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%" stopColor="#10B981" stopOpacity={0.2} />
-                          <stop offset="95%" stopColor="#10B981" stopOpacity={0} />
-                        </linearGradient>
-                      </defs>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#F3F4F6" />
-                      <XAxis dataKey="month" tick={{ fontSize: 10, fill: "#8792A2" }} />
-                      <YAxis tick={{ fontSize: 10, fill: "#8792A2" }} />
-                      <Tooltip contentStyle={{ fontSize: 11, borderRadius: 12 }} />
-                      <Legend wrapperStyle={{ fontSize: 10 }} />
-                      {displayCompetitors.map((c, idx) => {
-                        const colors = [
-                          "#10B981", // Brand (Bạn)
-                          "#3B82F6", // Blue
-                          "#F59E0B", // Yellow
-                          "#EF4444", // Red
-                          "#8B5CF6", // Purple
-                          "#EC4899", // Pink
-                        ];
-                        const color = c.isSelf ? "#10B981" : colors[(idx % (colors.length - 1)) + 1];
-                        return (
-                          <Area 
-                            key={c.id}
-                            type="monotone" 
-                            dataKey={c.name} 
-                            stroke={color} 
-                            strokeWidth={c.isSelf ? 2.5 : 1.5} 
-                            fill={c.isSelf ? "url(#selfGrad)" : "none"} 
-                            name={c.isSelf ? t("chart.youLabel") : c.name} 
-                          />
-                        );
-                      })}
-                    </AreaChart>
-                  </ResponsiveContainer>
-                </div>
-              )}
+              {/* No real historical follower data source exists for this
+                  chart — it previously extrapolated a fabricated growth
+                  curve backward from a single current-follower snapshot
+                  using an arbitrary formula. Always show the empty state
+                  instead of fake history presented as real data (#79). */}
+              <div className="h-60 flex flex-col items-center justify-center text-gray-400 text-xs">
+                {t("chart.noData")}
+              </div>
             </div>
 
           </div>
@@ -748,7 +710,7 @@ export function CompetitorsPage() {
                         </div>
 
                         <span className="text-[10px] font-bold bg-[#FAFAFA] border border-[#E5E7EB] text-[#1A1F36] px-2 py-0.5 rounded-md">
-                          {post.reachRate}% {t("topPosts.engagementLabel")}
+                          {post.reachRate == null ? "N/A" : `${post.reachRate}%`} {t("topPosts.engagementLabel")}
                         </span>
                       </div>
                     </div>
