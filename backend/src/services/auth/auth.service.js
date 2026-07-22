@@ -1,5 +1,8 @@
 const bcrypt = require('bcryptjs');
+const prisma = require('../../config/prisma');
 const userRepository = require('../../repositories/auth/user.repository');
+const outboxEventRepository = require('../../repositories/core/outbox-event.repository');
+const { OUTBOX_EVENT_TYPES } = require('../../constants/outbox.constants');
 const otpService = require('./otp.service');
 const emailService = require('../core/email.service');
 const tokenService = require('./token.service');
@@ -45,18 +48,41 @@ class AuthService {
     }
 
     const passwordHash = await bcrypt.hash(password, 10);
-    
-    // Create user with isEmailVerified = false (pending verification)
-    const user = await userRepository.createUser(
-      { name, email: normalizedEmail, isActive: false, isEmailVerified: false },
-      { provider: AUTH_PROVIDERS.LOCAL, passwordHash }
-    );
-
     const otpContext = new VerificationContext(new OtpVerificationStrategy());
     const otp = await otpContext.generate(normalizedEmail);
 
-    // Emit event for side-effects (Brand creation, Email sending)
-    eventEmitter.emit(EVENTS.USER.REGISTERED, { user, otp });
+    // Create the user and enqueue its side-effects (default brand creation,
+    // welcome OTP email) as outbox events in the SAME transaction. The
+    // previous eventEmitter.emit() fired listeners that awaited nothing —
+    // a transient failure inside either listener (e.g. SMTP hiccup) was
+    // logged and silently dropped with no retry, unlike every other
+    // domain-event side-effect in this codebase, which already goes through
+    // the outbox dispatcher's retry/backoff/dead-letter handling (#108 I10).
+    const user = await prisma.$transaction(async (tx) => {
+      const createdUser = await userRepository.createUser(
+        { name, email: normalizedEmail, isActive: false, isEmailVerified: false },
+        { provider: AUTH_PROVIDERS.LOCAL, passwordHash },
+        tx
+      );
+
+      await outboxEventRepository.create(
+        OUTBOX_EVENT_TYPES.USER_DEFAULT_BRAND_CREATE,
+        createdUser.id,
+        { userId: createdUser.id },
+        {},
+        tx
+      );
+
+      await outboxEventRepository.create(
+        OUTBOX_EVENT_TYPES.USER_SEND_WELCOME_OTP,
+        createdUser.id,
+        { email: createdUser.email, otp },
+        {},
+        tx
+      );
+
+      return createdUser;
+    });
 
     return user;
   }

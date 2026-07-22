@@ -48,33 +48,12 @@ class TrimVideoHandler {
       return { videoUrl: trimmedUrl };
     } catch (err) {
       console.error(`[TrimVideoHandler] ❌ Error processing job ${taskId}:`, err.message);
-
-      const maxAttempts = job.opts?.attempts || 1;
-      const attemptsMade = job.attemptsMade + 1; // Số lần chạy thực tế (1-indexed)
-      
-      if (attemptsMade >= maxAttempts) {
-        console.log(`[TrimVideoHandler] 🚨 Max attempts (${maxAttempts}) reached for job ${taskId}. Setting status to FAILED.`);
-        
-        const taskKey = `${REDIS_PREFIXES.TASK_VIDEO_TRIM}${taskId}`;
-
-        // 1. Cập nhật trạng thái thất bại vào Redis (TTL 24 giờ)
-        await redisClient.set(taskKey, JSON.stringify({
-          status: TASK_STATUS.FAILED,
-          userId,
-          error: err.message,
-          completedAt: Date.now()
-        }), { EX: 86400 });
-
-        // 2. Broadcast tin nhắn socket thất bại
-        socketManager.emitToUser(userId, SOCKET_EVENTS.VIDEO_FAILED, {
-          taskId,
-          originalVideoUrl: videoUrl,
-          error: err.message
-        });
-      } else {
-        console.log(`[TrimVideoHandler] 🔄 Attempt ${attemptsMade}/${maxAttempts} failed. BullMQ will retry in the background.`);
-      }
-
+      // Terminal-attempt handling (marking the task FAILED in Redis + notifying
+      // the user) moved to video.worker.js's 'failed' listener — job.attemptsMade
+      // read here runs BEFORE BullMQ finalizes the attempt count for this job,
+      // making the in-handler check racy vs. the worker's own bookkeeping. Only
+      // the Worker's 'failed' event is guaranteed to fire once per attempt with
+      // the final, authoritative count. Matches the publish.worker.js convention.
       throw err; // Ném lỗi để BullMQ kích hoạt cơ chế retry/backoff
     }
   }

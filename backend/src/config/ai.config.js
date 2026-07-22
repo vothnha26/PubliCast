@@ -54,7 +54,10 @@ const OPENAI_CONFIG = {
 
 const GEMINI_CONFIG = {
   MODEL: process.env.GEMINI_MODEL || 'gemini-1.5-flash',
-  API_URL_TEMPLATE: process.env.GEMINI_API_URL_TEMPLATE || 'https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={apiKey}'
+  // No {apiKey} placeholder — the key travels via the x-goog-api-key header
+  // instead of the URL query string, where it would otherwise get logged by
+  // proxies/APM/error trackers (#108 I11).
+  API_URL_TEMPLATE: process.env.GEMINI_API_URL_TEMPLATE || 'https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent'
 };
 
 /**

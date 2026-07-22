@@ -1,5 +1,8 @@
 const authService = require('../../src/services/auth/auth.service');
 const userRepository = require('../../src/repositories/auth/user.repository');
+const outboxEventRepository = require('../../src/repositories/core/outbox-event.repository');
+const { OUTBOX_EVENT_TYPES } = require('../../src/constants/outbox.constants');
+const prisma = require('../../src/config/prisma');
 const emailService = require('../../src/services/core/email.service');
 const redisClient = require('../../src/config/redis');
 const bcrypt = require('bcryptjs');
@@ -29,6 +32,14 @@ jest.mock('../../src/events/event-emitter', () => ({
   }
 }));
 
+jest.mock('../../src/config/prisma', () => ({
+  $transaction: jest.fn((fn) => fn({}))
+}));
+
+jest.mock('../../src/repositories/core/outbox-event.repository', () => ({
+  create: jest.fn().mockResolvedValue({ id: 'outbox-1' })
+}));
+
 jest.mock('../../src/repositories/auth/user.repository');
 jest.mock('../../src/services/auth/otp.service', () => ({
   generateOTP: jest.fn().mockResolvedValue('123456'),
@@ -47,24 +58,38 @@ describe('AuthService', () => {
   });
 
   describe('register', () => {
-    it('should register a new user successfully and emit event with OTP Strategy', async () => {
+    it('should register a new user successfully and enqueue side-effects via outbox', async () => {
       const userData = { name: 'Test User', email: 'test@example.com', password: 'password123' };
-      
+
       userRepository.findByEmail.mockResolvedValue(null);
       bcrypt.hash.mockResolvedValue('hashedPassword');
-      userRepository.createUser.mockResolvedValue({ id: 'user-123', ...userData });
-      
+      userRepository.createUser.mockResolvedValue({ id: 'user-123', email: userData.email, ...userData });
+
       const result = await authService.register(userData.name, userData.email, userData.password);
-      
+
       expect(userRepository.findByEmail).toHaveBeenCalledWith(userData.email);
       expect(bcrypt.hash).toHaveBeenCalledWith(userData.password, 10);
       expect(userRepository.createUser).toHaveBeenCalled();
       expect(otpService.saveOTP).toHaveBeenCalledWith(userData.email, '123456');
-      
-      expect(eventEmitter.emit).toHaveBeenCalledWith(EVENTS.USER.REGISTERED, expect.objectContaining({
-        user: expect.any(Object),
-        otp: '123456'
-      }));
+
+      // Side-effects (default brand creation, welcome OTP email) now go
+      // through the outbox instead of a fire-and-forget eventEmitter.emit,
+      // so a transient failure gets retried with backoff instead of being
+      // silently dropped (#108 I10).
+      expect(outboxEventRepository.create).toHaveBeenCalledWith(
+        OUTBOX_EVENT_TYPES.USER_DEFAULT_BRAND_CREATE,
+        'user-123',
+        { userId: 'user-123' },
+        {},
+        expect.anything()
+      );
+      expect(outboxEventRepository.create).toHaveBeenCalledWith(
+        OUTBOX_EVENT_TYPES.USER_SEND_WELCOME_OTP,
+        'user-123',
+        { email: userData.email, otp: '123456' },
+        {},
+        expect.anything()
+      );
       expect(result.id).toBe('user-123');
     });
 

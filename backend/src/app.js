@@ -130,7 +130,6 @@ app.get('/ready', async (_req, res) => {
 
 // ── Initialize Event Subscribers ───────────────────────────────────────────
 require('./events/subscribers/post.subscriber')();
-require('./events/subscribers/user.subscriber')();
 require('./events/subscribers/autolist.subscriber')();
 const { initSocialSubscriber } = require('./events/subscribers/social.subscriber');
 initSocialSubscriber();

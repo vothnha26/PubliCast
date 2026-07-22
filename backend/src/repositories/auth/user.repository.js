@@ -16,8 +16,8 @@ class UserRepository {
     });
   }
 
-  async createUser(userData, accountData) {
-    return await prisma.user.create({
+  async createUser(userData, accountData, tx = prisma) {
+    return await tx.user.create({
       data: {
         email: userData.email.toLowerCase(),
         name: userData.name || userData.fullName,

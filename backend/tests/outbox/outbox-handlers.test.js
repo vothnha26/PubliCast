@@ -18,9 +18,19 @@ jest.mock('../../src/events/subscribers/post.subscriber', () => {
   return fn;
 });
 
+jest.mock('../../src/services/workspace/brand.service', () => ({
+  createDefaultBrand: jest.fn().mockResolvedValue({ id: 'brand-default' })
+}));
+
+jest.mock('../../src/services/core/email.service', () => ({
+  sendOTP: jest.fn().mockResolvedValue(true)
+}));
+
 const { upsertPublishJob, removePublishJob } = require('../../src/queues/publish.queue');
 const { socialQueue } = require('../../src/queues/social.queue');
 const initPostSubscribers = require('../../src/events/subscribers/post.subscriber');
+const brandService = require('../../src/services/workspace/brand.service');
+const emailService = require('../../src/services/core/email.service');
 const { OUTBOX_HANDLERS } = require('../../src/services/core/outbox-handlers');
 const { OUTBOX_EVENT_TYPES } = require('../../src/constants/outbox.constants');
 const { QUEUE_CONFIG } = require('../../src/constants/video-publish.constants');
@@ -51,6 +61,20 @@ describe('OUTBOX_HANDLERS', () => {
     await expect(
       OUTBOX_HANDLERS[OUTBOX_EVENT_TYPES.POST_DOMAIN_EVENT]({ eventName: 'unknown.event', eventArgs: {} })
     ).rejects.toThrow('No POST_DOMAIN_EVENT handler registered for eventName=unknown.event');
+  });
+
+  describe('USER_DEFAULT_BRAND_CREATE (#108 I10)', () => {
+    it('calls brandService.createDefaultBrand with the payload userId', async () => {
+      await OUTBOX_HANDLERS[OUTBOX_EVENT_TYPES.USER_DEFAULT_BRAND_CREATE]({ userId: 'user-1' });
+      expect(brandService.createDefaultBrand).toHaveBeenCalledWith('user-1');
+    });
+  });
+
+  describe('USER_SEND_WELCOME_OTP (#108 I10)', () => {
+    it('calls emailService.sendOTP with the payload email and otp', async () => {
+      await OUTBOX_HANDLERS[OUTBOX_EVENT_TYPES.USER_SEND_WELCOME_OTP]({ email: 'a@b.com', otp: '123456' });
+      expect(emailService.sendOTP).toHaveBeenCalledWith('a@b.com', '123456');
+    });
   });
 
   describe('SOCIAL_SYNC_ENQUEUE', () => {
