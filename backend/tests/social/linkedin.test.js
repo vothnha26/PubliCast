@@ -138,28 +138,35 @@ describe('LinkedIn Integration Service & Gateway Tests', () => {
         expect(result.id).toBe('urn:li:share:999');
       });
 
-      it('should attach digital media asset if mediaUrl is provided', async () => {
-        const mockHeaders = new Map();
-        mockHeaders.set('x-restli-id', 'urn:li:share:888');
-        global.fetch.mockResolvedValueOnce({
-          ok: true,
-          headers: mockHeaders,
-          json: async () => ({ id: 'urn:li:share:888' })
-        });
-
-        const result = await linkedinGateway.createPost('real-token-xyz', 'member_123', {
+      // Regression test for #94 (part B): media posting previously attached
+      // a hardcoded placeholder asset URN instead of actually registering/
+      // uploading the media. Real Assets API upload isn't implemented, so
+      // it must now fail loudly rather than silently post with a fake asset.
+      it('throws for mediaUrl posts instead of attaching the fake placeholder asset (#94)', async () => {
+        await expect(linkedinGateway.createPost('real-token-xyz', 'member_123', {
           caption: 'Look at this image!',
           mediaUrl: 'http://example.com/image.png',
           title: 'Gorgeous view'
+        })).rejects.toThrow('LinkedIn media posting is not yet implemented');
+
+        expect(global.fetch).not.toHaveBeenCalled();
+      });
+
+      // Regression test for #94 (part A): a 2xx response missing BOTH the
+      // x-restli-id header and body.id previously fell back to a
+      // synthesized `urn:li:share:${Date.now()}`, marking the post
+      // PUBLISHED with an id LinkedIn never issued.
+      it('throws when the response is missing both x-restli-id and body.id', async () => {
+        const mockHeaders = new Map(); // no x-restli-id
+        global.fetch.mockResolvedValueOnce({
+          ok: true,
+          headers: mockHeaders,
+          json: async () => ({}) // no id
         });
 
-        expect(global.fetch).toHaveBeenCalledWith(
-          'https://api.linkedin.com/v2/posts',
-          expect.objectContaining({
-            body: expect.stringContaining('"id":"urn:li:digitalmediaAsset:C5604AQFEV1249A"')
-          })
-        );
-        expect(result.id).toBe('urn:li:share:888');
+        await expect(linkedinGateway.createPost('real-token-xyz', 'member_123', {
+          caption: 'Text-only post'
+        })).rejects.toThrow('LinkedIn publish response missing share id');
       });
     });
   });

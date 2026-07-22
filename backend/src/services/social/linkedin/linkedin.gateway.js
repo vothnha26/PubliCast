@@ -123,14 +123,16 @@ class LinkedInGateway {
     };
 
     if (postData.mediaUrl) {
-      // Đối với môi trường thực tế sẽ cần đăng ký asset và upload binary
-      // Tuy nhiên trong phạm vi core/mock integration này, chúng ta map media
-      payload.content = {
-        media: {
-          title: postData.title || 'PubliCast Shared Media',
-          id: 'urn:li:digitalmediaAsset:C5604AQFEV1249A' // Mock/placeholder media asset
-        }
-      };
+      // Real media posting requires registering an upload (POST
+      // /assets?action=registerUpload) and PUTting the binary to the
+      // returned uploadUrl to get a real asset URN — that isn't implemented
+      // here. Attaching the hardcoded placeholder
+      // 'urn:li:digitalmediaAsset:C5604AQFEV1249A' silently attached an
+      // unrelated/invalid asset to the post (or got rejected by LinkedIn)
+      // while the caller's actual media was never uploaded (#94, part B).
+      // Fail loudly instead of posting with a fake asset — tracked
+      // separately as a feature to implement the real Assets API flow.
+      throw new Error('LinkedIn media posting is not yet implemented — cannot attach mediaUrl to a post.');
     }
 
     console.log(`[LinkedIn Gateway] Sending publish request...`);
@@ -150,9 +152,17 @@ class LinkedInGateway {
       throw new Error(data.message || 'Failed to publish post to LinkedIn');
     }
 
-    return {
-      id: res.headers.get('x-restli-id') || data.id || `urn:li:share:${Date.now()}`
-    };
+    // LinkedIn returns the created share's URN either in the x-restli-id
+    // response header or in the JSON body's `id` field on every genuine
+    // 2xx. If both are absent, synthesizing `urn:li:share:${Date.now()}`
+    // previously let the post be marked PUBLISHED with a URN LinkedIn never
+    // issued — breaking retry/delete/metric-sync afterward (#94, part A).
+    const shareId = res.headers.get('x-restli-id') || data.id;
+    if (!shareId) {
+      throw new Error('LinkedIn publish response missing share id (x-restli-id header and body id both absent)');
+    }
+
+    return { id: shareId };
   }
 }
 
