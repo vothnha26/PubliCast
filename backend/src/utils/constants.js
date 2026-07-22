@@ -502,8 +502,15 @@ const REDIS_NAMESPACES = {
 const REDIS_TTL = {
   WEBHOOK_DEDUP_SEC: 600,
   VIDEO_INSIGHTS_SEC: 7200, // 2 giờ
-  SMART_LINK_VISITOR_SEC: 86400 // 24 giờ — 1 IP tính là 1 unique visitor/ngày cho 1 SmartLink
+  SMART_LINK_VISITOR_SEC: 86400, // 24 giờ — 1 IP tính là 1 unique visitor/ngày cho 1 SmartLink
+  AUTO_REPLY_RATE_LIMIT_WINDOW_SEC: 60
 };
+
+// Max auto-replies (1 LLM call + 1 platform reply each) allowed per social
+// account per REDIS_TTL.AUTO_REPLY_RATE_LIMIT_WINDOW_SEC — a comment flood
+// with no cap meant unbounded LLM cost and risked Meta's anti-spam block on
+// the page (#100).
+const AUTO_REPLY_RATE_LIMIT_PER_WINDOW = 10;
 
 /**
  * Map YouTube Analytics API values → label tiếng Việt + màu hiển thị.
@@ -684,6 +691,7 @@ module.exports = {
   REPORT_FREQUENCIES,
   REDIS_NAMESPACES,
   REDIS_TTL,
+  AUTO_REPLY_RATE_LIMIT_PER_WINDOW,
   YT_VIDEO_INSIGHTS,
   TOKEN_REFRESH,
   VIDEO_EDITOR,

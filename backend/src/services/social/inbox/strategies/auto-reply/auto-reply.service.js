@@ -4,6 +4,8 @@ const AIAutoReplyStrategy = require('./ai-reply.strategy');
 const facebookComment = require('../../../facebook/facebook-comment.service');
 const instagramComment = require('../../../instagram/instagram-comment.service');
 const socketManager = require('../../../../workspace/socket/socket.manager');
+const redisClient = require('../../../../../config/redis');
+const { REDIS_NAMESPACES, REDIS_TTL, AUTO_REPLY_RATE_LIMIT_PER_WINDOW } = require('../../../../../utils/constants');
 const logger = require('../../../../../utils/logger');
 
 class AutoReplyService {
@@ -63,6 +65,20 @@ class AutoReplyService {
   }
 
   /**
+   * Fixed-window rate limit per social account: a comment flood with no cap
+   * meant unbounded LLM cost and risked Meta's anti-spam block on the page
+   * (#100). Returns true if the caller is still within budget.
+   */
+  async _checkRateLimit(socialAccountId) {
+    const key = `${REDIS_NAMESPACES.RATE_LIMIT}:auto-reply:${socialAccountId}`;
+    const count = await redisClient.incr(key);
+    if (count === 1) {
+      await redisClient.expire(key, REDIS_TTL.AUTO_REPLY_RATE_LIMIT_WINDOW_SEC);
+    }
+    return count <= AUTO_REPLY_RATE_LIMIT_PER_WINDOW;
+  }
+
+  /**
    * Thực hiện quy trình tự động phản hồi bình luận
    * @param {string} socialAccountId - ID tài khoản MXH (Facebook Page ID)
    * @param {string} commentText - Nội dung bình luận của người dùng
@@ -75,6 +91,12 @@ class AutoReplyService {
       
       if (!settings || !settings.isActive) {
         logger.info(`[AutoReplyService] Auto-reply is disabled or not configured for account: ${socialAccountId}`);
+        return null;
+      }
+
+      const withinBudget = await this._checkRateLimit(socialAccountId);
+      if (!withinBudget) {
+        logger.warn(`[AutoReplyService] Rate limit exceeded for account ${socialAccountId}, skipping auto-reply for comment: "${commentText}"`);
         return null;
       }
 

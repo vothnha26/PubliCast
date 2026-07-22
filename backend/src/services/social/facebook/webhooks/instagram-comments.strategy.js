@@ -12,7 +12,13 @@ class InstagramCommentsStrategy extends BaseWebhookStrategy {
     logger.info(`[InstagramCommentsStrategy] Handling comment change for IG account ${instagramAccountId}`);
 
     const commentId = value.id;
-    if (value.verb !== 'remove' && await this.isDuplicateEvent(commentId)) return;
+    // 'remove' events were bypassing dedup entirely (only non-remove verbs
+    // were checked), so a duplicated remove webhook re-ran the delete branch
+    // and re-broadcast `inbox_item_deleted` after the item was already gone
+    // (#100). Give remove events their own dedup key instead of skipping
+    // dedup for them.
+    const dedupeKey = value.verb === 'remove' ? `remove:${commentId}` : commentId;
+    if (await this.isDuplicateEvent(dedupeKey)) return;
     const text = value.text;
     const authorId = value.from?.id || 'unknown';
     const authorName = value.from?.username || 'Instagram User';
@@ -36,10 +42,15 @@ class InstagramCommentsStrategy extends BaseWebhookStrategy {
     }
 
     let parentDbId = null;
+    let pendingParentPlatformId = null;
     if (value.parent_id) {
       const parentComment = await inboxRepository.findInboxItemByPlatformId(value.parent_id);
       if (parentComment) {
         parentDbId = parentComment.id;
+      } else {
+        // Parent not ingested yet (out-of-order webhook) — remember it for
+        // reconciliation once the parent's own webhook lands (#100).
+        pendingParentPlatformId = value.parent_id;
       }
     }
 
@@ -52,7 +63,12 @@ class InstagramCommentsStrategy extends BaseWebhookStrategy {
       authorName,
       content: text || '',
       relatedPostId: mediaId,
-      platformCreatedAt: new Date(),
+      // Facebook's strategy uses the real `created_time` from the webhook;
+      // this used ingest time instead, which skews ordering/"x minutes ago"
+      // whenever delivery is delayed (#100). IG comment webhooks don't
+      // reliably include a numeric timestamp field, so fall back to now()
+      // only when the platform genuinely didn't send one.
+      platformCreatedAt: value.created_time ? new Date(value.created_time * 1000) : new Date(),
       syncedAt: new Date(),
       status: isFromMe ? INBOX_STATUS.READ : INBOX_STATUS.UNREAD,
       socialAccountId: account.id
@@ -60,6 +76,8 @@ class InstagramCommentsStrategy extends BaseWebhookStrategy {
 
     if (parentDbId) {
       inboxItemData.parentItemId = parentDbId;
+    } else if (pendingParentPlatformId) {
+      inboxItemData.pendingParentPlatformId = pendingParentPlatformId;
     }
 
     const savedItem = await inboxRepository.upsertInboxItem(
@@ -74,6 +92,12 @@ class InstagramCommentsStrategy extends BaseWebhookStrategy {
     );
 
     logger.info(`[InstagramCommentsStrategy] IG comment ${commentId} saved.`);
+
+    // This comment may itself be the parent some earlier, out-of-order
+    // webhook was waiting on — back-fill those children now (#100).
+    await inboxRepository.reconcilePendingChildren(commentId, savedItem.id).catch(err => {
+      logger.error(`[InstagramCommentsStrategy] Error reconciling pending children for ${commentId}:`, err);
+    });
 
     // Notify Frontend
     this.notifyClient(account.brandId, 'new_inbox_item', savedItem);

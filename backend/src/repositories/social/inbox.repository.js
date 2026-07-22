@@ -93,6 +93,18 @@ class InboxRepository {
     });
   }
 
+  /**
+   * Finds children whose parent comment hadn't arrived yet when they were
+   * ingested (out-of-order webhook delivery), and links them to the
+   * now-available parent (#100).
+   */
+  async reconcilePendingChildren(parentPlatformItemId, parentDbId) {
+    return prisma.inboxItem.updateMany({
+      where: { pendingParentPlatformId: parentPlatformItemId },
+      data: { parentItemId: parentDbId, pendingParentPlatformId: null }
+    });
+  }
+
   async createInboxItem(data) {
     if (data.authorAvatarUrl && data.authorAvatarUrl.length > 190) {
       data.authorAvatarUrl = data.authorAvatarUrl.substring(0, 190);

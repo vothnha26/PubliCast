@@ -4,6 +4,7 @@ const autoReplyService = require('../../src/services/social/inbox/strategies/aut
 const prisma = require('../../src/config/prisma');
 const facebookComment = require('../../src/services/social/facebook/facebook-comment.service');
 const AiProviderFactory = require('../../src/services/workspace/ai/providers/provider.factory');
+const redisClient = require('../../src/config/redis');
 
 // --- Mocking ---
 jest.mock('../../src/config/prisma', () => ({
@@ -23,6 +24,19 @@ jest.mock('../../src/services/social/facebook/facebook-comment.service', () => (
 
 jest.mock('../../src/services/workspace/ai/providers/provider.factory', () => ({
   getProvider: jest.fn()
+}));
+
+jest.mock('../../src/services/social/instagram/instagram-comment.service', () => ({
+  replyToComment: jest.fn()
+}));
+
+jest.mock('../../src/services/workspace/socket/socket.manager', () => ({
+  emitToRoom: jest.fn()
+}));
+
+jest.mock('../../src/config/redis', () => ({
+  incr: jest.fn().mockResolvedValue(1),
+  expire: jest.fn().mockResolvedValue(1)
 }));
 
 describe('Meta Comment Auto-Reply Unit Tests', () => {
@@ -138,6 +152,26 @@ describe('Meta Comment Auto-Reply Unit Tests', () => {
         commentPlatformId,
         'Sản phẩm 150k'
       );
+    });
+
+    it('should skip auto-reply when the per-account rate limit is exceeded', async () => {
+      prisma.autoReplySetting.findUnique.mockResolvedValue({
+        socialAccountId,
+        isActive: true,
+        mode: 'KEYWORD',
+        keywordsConfig: [{ keywords: ['giá'], reply: 'Sản phẩm 150k' }]
+      });
+      redisClient.incr.mockResolvedValue(11); // over the 10/window budget
+
+      const result = await autoReplyService.executeAutoReply(
+        socialAccountId,
+        'giá bao nhiêu',
+        commentPlatformId,
+        brandId
+      );
+
+      expect(result).toBeNull();
+      expect(facebookComment.replyToComment).not.toHaveBeenCalled();
     });
   });
 });

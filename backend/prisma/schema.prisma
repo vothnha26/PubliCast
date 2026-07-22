@@ -1131,6 +1131,10 @@ model InboxItem {
   mediaUrls         String?       @db.Text
   relatedPostId     String? // ID bài viết/video từ nền tảng gốc
   parentItemId      String?
+  // Raw platform parent id, set only when the parent comment hasn't been
+  // ingested yet (out-of-order webhook delivery). Reconciled to parentItemId
+  // once the parent's own webhook arrives and upserts a matching row (#100).
+  pendingParentPlatformId String?
   assignedUserId    String?
   tags              Json? // Mảng nhãn phân loại tùy chỉnh (VIP, Hỏi giá...)
   internalNotes     Json? // Lịch sử ghi chú nội bộ của các nhân viên hỗ trợ
@@ -1153,6 +1157,7 @@ model InboxItem {
 
   @@index([inboxId])
   @@index([relatedPostId])
+  @@index([pendingParentPlatformId])
   @@map("inbox_items")
 }
 
