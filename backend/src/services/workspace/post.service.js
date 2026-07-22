@@ -1,6 +1,7 @@
 require('../../utils/polyfill');
 const postRepository = require('../../repositories/workspace/post.repository');
 const brandRepository = require('../../repositories/workspace/brand.repository');
+const subscriptionRepository = require('../../repositories/billing/subscription.repository');
 const socialPlatformFactory = require('../social/social-platform.factory');
 const { POST_STATUS, POST_TYPES, SEPARATORS, WORKSPACE_DEFAULTS, PLATFORMS, PERMISSION_KEYS, splitMediaUrls } = require('../../utils/constants');
 const { EVENTS } = require('../../events/event-emitter');
@@ -83,13 +84,16 @@ class PostService {
    * Create a new post
    */
   async createPost(postData, userId, brandId) {
-    // Check monthly post limit
+    // Pre-check outside the transaction: fast-fail obviously-over-limit
+    // requests without taking a row lock. This alone is still a
+    // check-then-act race (see the re-check inside the transaction below,
+    // which is what actually closes #60).
     const brand = await brandRepository.findBrandWithSubscription(brandId);
-    if (brand && brand.subscription && brand.subscription.status === 'ACTIVE' && brand.subscription.plan?.planLimit) {
-      const maxPosts = brand.subscription.plan.planLimit.maxPostsPerMonth;
+    const planLimit = brand?.subscription?.status === 'ACTIVE' ? brand.subscription.plan?.planLimit : null;
+    if (planLimit) {
       const currentCount = await postRepository.countActivePostsThisMonth(brandId);
-      if (currentCount >= maxPosts) {
-        const error = new Error(`Monthly post limit of ${maxPosts} reached. Please upgrade your plan.`);
+      if (currentCount >= planLimit.maxPostsPerMonth) {
+        const error = new Error(`Monthly post limit of ${planLimit.maxPostsPerMonth} reached. Please upgrade your plan.`);
         error.statusCode = 403;
         throw error;
       }
@@ -137,6 +141,20 @@ class PostService {
     console.log('[PostService] Final payload to database:', data);
 
     const post = await prisma.$transaction(async (tx) => {
+      // Re-check the monthly post limit inside the transaction, behind a row
+      // lock on the brand's Subscription — closes the check-then-act race
+      // (#60): two concurrent createPost calls now serialize on this lock
+      // instead of both reading a count under the limit and both writing.
+      if (planLimit) {
+        await subscriptionRepository.lockSubscriptionForUpdate(brandId, tx);
+        const lockedCount = await postRepository.countActivePostsThisMonth(brandId, tx);
+        if (lockedCount >= planLimit.maxPostsPerMonth) {
+          const error = new Error(`Monthly post limit of ${planLimit.maxPostsPerMonth} reached. Please upgrade your plan.`);
+          error.statusCode = 403;
+          throw error;
+        }
+      }
+
       const created = await postRepository.create(data, tx);
       console.log('[PostService] Post successfully created in DB with ID:', created.id);
 

@@ -25,6 +25,10 @@ jest.mock('../../src/repositories/workspace/brand.repository', () => ({
   findBrandWithSubscription: jest.fn()
 }));
 
+jest.mock('../../src/repositories/billing/subscription.repository', () => ({
+  lockSubscriptionForUpdate: jest.fn().mockResolvedValue(undefined)
+}));
+
 jest.mock('../../src/services/auth/authorization.facade', () => ({
   hasPermission: jest.fn()
 }));

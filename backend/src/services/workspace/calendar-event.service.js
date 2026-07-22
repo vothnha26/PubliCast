@@ -1,5 +1,10 @@
 const prisma = require('../../config/prisma');
 
+// A 5MB .ics file (Multer's cap) of minimal VEVENT blocks can contain roughly
+// 100,000 events — importing that many one row-per-round-trip would hold a
+// request open for a very long time and flood the DB connection pool (#63).
+const MAX_IMPORT_EVENTS = 1000;
+
 class CalendarEventService {
   /**
    * Get events for a brand within a date range
@@ -76,11 +81,8 @@ class CalendarEventService {
             currentEvent.description = unescapeValue(value);
           } else if (key === 'DTSTART') {
             // Parse date format: 20261224T000000Z hoặc 20261224
-            let dateStr = value;
-            if (dateStr.includes('VALUE=DATE:')) {
-              dateStr = dateStr.split('VALUE=DATE:')[1];
-            }
-            
+            const dateStr = value;
+
             const y = dateStr.substring(0, 4);
             const m = dateStr.substring(4, 6);
             const d = dateStr.substring(6, 8);
@@ -109,23 +111,30 @@ class CalendarEventService {
     if (events.length === 0) {
       throw new Error('No valid events found in the uploaded ICS file.');
     }
-
-    // Lưu vào database
-    const createdEvents = [];
-    for (const ev of events) {
-      const eventRecord = await prisma.calendarEvent.create({
-        data: {
-          brandId,
-          title: ev.title,
-          description: ev.description || '',
-          eventDate: ev.date,
-          isSystem: false
-        }
-      });
-      createdEvents.push(eventRecord);
+    if (events.length > MAX_IMPORT_EVENTS) {
+      const error = new Error(`File ICS chứa quá nhiều sự kiện (${events.length}). Tối đa ${MAX_IMPORT_EVENTS} sự kiện mỗi lần import.`);
+      error.statusCode = 400;
+      throw error;
     }
 
-    return createdEvents;
+    // createMany thay vì loop create tuần tự — tránh N round-trip DB cho 1
+    // upload (#63). Không trả về id record đã tạo (giới hạn của createMany),
+    // nên đọc lại theo brandId + khoảng thời gian import để trả về cho caller.
+    const importStartedAt = new Date();
+    await prisma.calendarEvent.createMany({
+      data: events.map(ev => ({
+        brandId,
+        title: ev.title,
+        description: ev.description || '',
+        eventDate: ev.date,
+        isSystem: false
+      }))
+    });
+
+    return prisma.calendarEvent.findMany({
+      where: { brandId, isSystem: false, createdAt: { gte: importStartedAt } },
+      orderBy: { eventDate: 'asc' }
+    });
   }
 
   /**

@@ -199,12 +199,12 @@ class PostRepository {
     });
   }
 
-  async countActivePostsThisMonth(brandId) {
+  async countActivePostsThisMonth(brandId, client = prisma) {
     const startOfMonth = new Date();
     startOfMonth.setDate(1);
     startOfMonth.setHours(0, 0, 0, 0);
 
-    return prisma.post.count({
+    return client.post.count({
       where: {
         brandId,
         createdAt: { gte: startOfMonth },
