@@ -22,6 +22,7 @@ import { useTranslation } from "react-i18next";
 import { PlatformIcon } from "../../components/shared/PlatformIcon";
 import { useBrand } from "../../context/BrandContext";
 import socialService from "../../services/social.service";
+import { useLatestRequestId } from "../../hooks/useLatestRequestId";
 
 
 
@@ -40,6 +41,7 @@ export function CompetitorsPage() {
   // States
   const [competitors, setCompetitors] = useState([]);
   const [loading, setLoading] = useState(false);
+  const competitorsRequest = useLatestRequestId();
   
   const isPlatformConnected = (platformName) => {
     if (!activeBrand || !activeBrand.socialAccounts) return false;
@@ -82,6 +84,7 @@ export function CompetitorsPage() {
   // Fetch all competitors
   const fetchAllCompetitors = async () => {
     if (!activeBrand?.id) return;
+    const requestId = competitorsRequest.start();
     setLoading(true);
     try {
       // Fetch Facebook and YouTube competitors concurrently
@@ -163,12 +166,14 @@ export function CompetitorsPage() {
         isSelf: true
       };
 
+      if (!competitorsRequest.isLatest(requestId)) return;
       setCompetitors([myBrandRecord, ...dbCompetitors]);
     } catch (err) {
+      if (!competitorsRequest.isLatest(requestId)) return;
       toast.error(t("toasts.loadError"));
       console.error(err);
     } finally {
-      setLoading(false);
+      if (competitorsRequest.isLatest(requestId)) setLoading(false);
     }
   };
 

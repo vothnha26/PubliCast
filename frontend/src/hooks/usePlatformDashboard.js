@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { useBrand } from "../context/BrandContext";
 import socialService from "../services/social.service";
 import postService from "../services/post.service";
+import { useLatestRequestId } from "./useLatestRequestId";
 import { FALLBACK_DEMOGRAPHICS, EMPTY_ANALYTICS_DATA } from "@/mocks/dashboardFallback";
 import { mapToPostPreview } from "../utils/postPreview";
 import { buildPostDetailRoute } from "../constants/routes";
@@ -143,8 +144,14 @@ export function usePlatformDashboard(platform) {
   const [isCompetitorModalOpen, setIsCompetitorModalOpen] = useState(false);
 
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const metricsRequest = useLatestRequestId();
 
+  // loadMetrics is invoked independently by 3 effects (brand/platform change,
+  // the 5s sync-status poll, and dateRange change) plus manual refresh — a
+  // slow older call resolving after a newer one must not clobber fresher
+  // state (#78).
   const loadMetrics = async (brandId, force = false) => {
+    const requestId = metricsRequest.start();
     if (force) setIsRefreshing(true);
     try {
       // toISOString() converts to UTC first — for a UTC+ user, "today" in
@@ -158,18 +165,20 @@ export function usePlatformDashboard(platform) {
       });
       const platformType = platform.toUpperCase() === 'X' ? 'TWITTER_X' : platform.toUpperCase();
       const platformMetrics = metricsRes.data?.find(m => m.platform === platformType);
+      if (!metricsRequest.isLatest(requestId)) return;
       setMetrics(platformMetrics || null);
       if (force) {
         toast.success("Đồng bộ số liệu thành công!");
       }
     } catch (error) {
       console.error("Failed to load platform metrics:", error);
+      if (!metricsRequest.isLatest(requestId)) return;
       setMetrics(null);
       if (force) {
         toast.error("Đồng bộ số liệu thất bại");
       }
     } finally {
-      if (force) setIsRefreshing(false);
+      if (force && metricsRequest.isLatest(requestId)) setIsRefreshing(false);
     }
   };
 

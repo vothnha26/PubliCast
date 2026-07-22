@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useFilters } from "./useFilters";
 import { useDebounce } from "./useDebounce";
+import { useLatestRequestId } from "./useLatestRequestId";
 import apiService from "../services/api";
 import { toast } from "sonner";
 import CloudinaryResumableUploader from "../utils/cloudinaryUploader";
@@ -16,6 +17,7 @@ export function useMediaLibrary() {
   });
 
   const { activeBrand } = useBrand();
+  const mediaRequest = useLatestRequestId();
   const [mediaData, setMediaData] = useState({ data: [], meta: { total: 0, page: 1, limit: 20, totalPages: 1 } });
   const [folders, setFolders] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -32,7 +34,7 @@ export function useMediaLibrary() {
   const debouncedSearch = useDebounce(searchTerm, 300);
 
   useEffect(() => {
-    if (debouncedSearch !== undefined) {
+    if (debouncedSearch !== (filters.search || "")) {
       updateFilters({ search: debouncedSearch });
     }
   }, [debouncedSearch]);
@@ -70,14 +72,17 @@ export function useMediaLibrary() {
   // Fetch real data from Backend
   const fetchMedia = async () => {
     if (!activeBrand) return;
+    const requestId = mediaRequest.start();
     setLoading(true);
     try {
       const response = await apiService.get(`/media?brandId=${activeBrand.id}&${searchParamsString}`);
+      if (!mediaRequest.isLatest(requestId)) return;
       setMediaData(response.data);
     } catch (error) {
+      if (!mediaRequest.isLatest(requestId)) return;
       toast.error(error.message || "Failed to load media files");
     } finally {
-      setLoading(false);
+      if (mediaRequest.isLatest(requestId)) setLoading(false);
     }
   };
 

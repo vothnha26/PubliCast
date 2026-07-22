@@ -3,6 +3,7 @@ import { useSearchParams } from "react-router-dom";
 import { Search, UserPlus, MoreHorizontal, Check, X, Mail, Shield, User, Loader2, Plus, Edit2, Trash2, Settings, Lock, Calendar, FileText, SendHorizonal, RefreshCw } from "lucide-react";
 import { useFilters } from "../../hooks/useFilters";
 import { useDebounce } from "../../hooks/useDebounce";
+import { useLatestRequestId } from "../../hooks/useLatestRequestId";
 import { useBrand } from "../../context/BrandContext";
 import apiService from "../../services/api";
 import { toast } from "sonner";
@@ -16,6 +17,7 @@ export function TeamManagementPage() {
   const { t } = useTranslation(["manage", "common"]);
   const { activeBrand } = useBrand();
   const confirm = useConfirm();
+  const teamRequest = useLatestRequestId();
 
   const { filters, updateFilters, clearFilters, searchParamsString } = useFilters({
     search: "",
@@ -76,14 +78,17 @@ export function TeamManagementPage() {
   // Fetch Team Members
   const fetchTeam = async () => {
     if (!activeBrand?.id) return;
+    const requestId = teamRequest.start();
     setLoading(true);
     try {
       const response = await apiService.get(`/team?brandId=${activeBrand.id}&${searchParamsString}`);
+      if (!teamRequest.isLatest(requestId)) return;
       setTeamData(response.data);
     } catch (error) {
+      if (!teamRequest.isLatest(requestId)) return;
       toast.error(error.message || t("team.loadMembersFailed"));
     } finally {
-      setLoading(false);
+      if (teamRequest.isLatest(requestId)) setLoading(false);
     }
   };
 
