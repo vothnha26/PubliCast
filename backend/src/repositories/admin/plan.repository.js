@@ -99,6 +99,12 @@ class PlanRepository {
     });
   }
 
+  // Only these scalar Plan fields may be set via the admin update endpoint.
+  // Without this allow-list, `...rest` spread whatever the request body
+  // contained straight into prisma.plan.update — e.g. `id`, `createdAt`, or
+  // any other column present on the model — into the write (#104).
+  static UPDATABLE_FIELDS = ['name', 'priceAmount', 'currency', 'billingCycle', 'description', 'planLimitId', 'isActive'];
+
   /**
    * Update plan
    * @param {string} id - plan ID
@@ -106,13 +112,17 @@ class PlanRepository {
    * @returns {Promise<Object>} updated plan
    */
   async update(id, updateData) {
-    const { products, ...rest } = updateData;
-    const data = {
-      ...rest,
-      products: products && Array.isArray(products) 
-        ? { set: products.map(id => ({ id })) } 
-        : undefined
-    };
+    const { products } = updateData;
+    const data = {};
+    for (const field of PlanRepository.UPDATABLE_FIELDS) {
+      if (updateData[field] !== undefined) {
+        data[field] = updateData[field];
+      }
+    }
+    if (products && Array.isArray(products)) {
+      data.products = { set: products.map(id => ({ id })) };
+    }
+
     return prisma.plan.update({
       where: { id },
       data,
