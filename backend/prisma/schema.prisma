@@ -623,6 +623,12 @@ model Post {
   caption            String?    @db.Text
   type               PostType
   status             PostStatus @default(DRAFT)
+  // Persisted count of self-enqueued partial-retry rounds (mirrors the
+  // in-memory partialRetryCount that only lives in BullMQ job.data — if that
+  // job is ever lost (Redis restart, or the #106 active-job dedup skipping a
+  // re-enqueue), this is what the RETRYING reconciler sweeper reads to decide
+  // whether to re-enqueue again or give up as FAILED (#107 I7).
+  publishRetryCount  Int        @default(0)
   targetPlatforms    String     @db.Text
   mediaUrls          String?    @db.Text
   mediaThumbnailUrls String?    @db.Text

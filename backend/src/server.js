@@ -80,6 +80,12 @@ const server = app.listen(PORT, async () => {
   const outboxDispatcherService = require('./services/core/outbox-dispatcher.service');
   outboxDispatcherService.start();
   logger.info('Outbox dispatcher started (poll every 5s)');
+
+  // Start Publish Reconciler (sweeps posts stuck at RETRYING whose
+  // self-enqueued job got lost — #107 I7)
+  const publishReconcilerService = require('./services/workspace/post/publish-reconciler.service');
+  publishReconcilerService.start();
+  logger.info('Publish reconciler started (poll every 5min)');
 });
 
 // ── Graceful Shutdown ───────────────────────────────────────────────────────
@@ -100,6 +106,14 @@ async function shutdown(signal) {
     outboxDispatcherService.stop();
   } catch (err) {
     logger.error('Error stopping outbox dispatcher', err);
+  }
+
+  // Stop publish reconciler
+  try {
+    const publishReconcilerService = require('./services/workspace/post/publish-reconciler.service');
+    publishReconcilerService.stop();
+  } catch (err) {
+    logger.error('Error stopping publish reconciler', err);
   }
 
   server.close(async () => {

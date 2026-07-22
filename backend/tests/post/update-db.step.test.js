@@ -88,6 +88,21 @@ describe('UpdatePostStatusStep', () => {
       { postId: 'post-1', retryPlatforms: ['INSTAGRAM'], partialRetryCount: 1 },
       { jobId: 'publish-post-post-1', delay: 5000 }
     );
+    // Persisted to the DB (#107 I7) — the publish-reconciler sweeper reads
+    // this if the just-enqueued job above is ever lost.
+    expect(postRepository.update).toHaveBeenCalledWith('post-1', expect.objectContaining({ publishRetryCount: 1 }));
+  });
+
+  it('resets publishRetryCount to 0 when all platforms succeed (#107 I7)', async () => {
+    const context = {
+      post,
+      results: [{ platform: 'FACEBOOK', success: true, result: { id: 'fb-1', publishedAt: new Date() } }],
+      options: {}
+    };
+
+    await step.execute(context);
+
+    expect(postRepository.update).toHaveBeenCalledWith('post-1', expect.objectContaining({ publishRetryCount: 0 }));
   });
 
   it('merges platformPostId across retry rounds instead of overwriting it (#61)', async () => {

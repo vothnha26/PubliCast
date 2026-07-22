@@ -72,7 +72,8 @@ class UpdatePostStatusStep extends BaseStep {
         await postRepository.update(post.id, {
           status: POST_STATUS.PUBLISHED,
           platformPostId: platformPostIdStr,
-          publishedAt: primaryResult.publishedAt || new Date()
+          publishedAt: primaryResult.publishedAt || new Date(),
+          publishRetryCount: 0
         });
       }
 
@@ -175,6 +176,12 @@ class UpdatePostStatusStep extends BaseStep {
     const { publishQueue } = require('../../../../queues/publish.queue');
     const { QUEUE_CONFIG } = require('../../../../constants/video-publish.constants');
     const maxAttempts = QUEUE_CONFIG.PUBLISH.MAX_PUBLISH_ATTEMPTS;
+
+    // Persisted alongside the in-memory partialRetryCount passed through
+    // job.data — this is what the RETRYING reconciler sweeper reads if the
+    // self-enqueued job below is ever lost (Redis restart, or a #106
+    // active-job dedup skip), since job.data itself doesn't survive that (#107 I7).
+    await postRepository.update(postId, { publishRetryCount: partialRetryCount + 1 });
 
     if (partialRetryCount >= maxAttempts) {
       // Out of chances — this is now truly final.

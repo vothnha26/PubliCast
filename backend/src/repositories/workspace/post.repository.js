@@ -217,6 +217,24 @@ class PostRepository {
     return result.count === 1;
   }
 
+  /**
+   * Finds posts stuck at RETRYING whose updatedAt is older than thresholdMs —
+   * candidates for the publish-reconciler sweeper. A post reaches RETRYING
+   * only via UpdatePostStatusStep, which always immediately self-enqueues a
+   * partial-retry job (or throws so BullMQ retries the whole job) right
+   * after; a post still RETRYING well past that point means the job it was
+   * relying on got lost (Redis restart, or a #106 active-job dedup skip) with
+   * nothing left to move it forward (#107 I7).
+   */
+  async findStaleRetrying(thresholdMs, limit = 50, client = prisma) {
+    const cutoff = new Date(Date.now() - thresholdMs);
+    return client.post.findMany({
+      where: { status: 'RETRYING', updatedAt: { lt: cutoff } },
+      orderBy: { updatedAt: 'asc' },
+      take: limit
+    });
+  }
+
   async countActivePostsThisMonth(brandId, client = prisma) {
     const startOfMonth = new Date();
     startOfMonth.setDate(1);
