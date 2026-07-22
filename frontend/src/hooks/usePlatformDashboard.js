@@ -147,9 +147,13 @@ export function usePlatformDashboard(platform) {
   const loadMetrics = async (brandId, force = false) => {
     if (force) setIsRefreshing(true);
     try {
+      // toISOString() converts to UTC first — for a UTC+ user, "today" in
+      // local time can shift to yesterday's date, silently dropping the
+      // last day's metrics from the query range (#87). format() below uses
+      // the date's local calendar fields instead.
       const metricsRes = await socialService.getMetrics(brandId, {
-        startDate: dateRange.from?.toISOString().split('T')[0],
-        endDate: dateRange.to?.toISOString().split('T')[0],
+        startDate: dateRange.from ? format(dateRange.from, 'yyyy-MM-dd') : undefined,
+        endDate: dateRange.to ? format(dateRange.to, 'yyyy-MM-dd') : undefined,
         force: force
       });
       const platformType = platform.toUpperCase() === 'X' ? 'TWITTER_X' : platform.toUpperCase();

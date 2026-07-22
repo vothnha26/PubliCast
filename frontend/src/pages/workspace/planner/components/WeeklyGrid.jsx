@@ -167,7 +167,7 @@ export function WeeklyGrid({
       // 8:00am starts at 8 * rowHeight
       gridContainerRef.current.scrollTop = 8 * rowHeight;
     }
-  }, []);
+  }, [rowHeight]);
 
   return (
     <div className="w-full h-full bg-white border border-gray-100 rounded-3xl shadow-sm overflow-hidden flex flex-col">

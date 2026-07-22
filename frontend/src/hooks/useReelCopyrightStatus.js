@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import apiService from '../services/api.service';
+import apiService from '../services/api';
 
 const INITIAL_INTERVAL_MS = 5000;
 const MAX_INTERVAL_MS = 30000;

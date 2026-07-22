@@ -426,6 +426,14 @@ export function usePostCreatorForm() {
     const file = e.target.files[0];
     if (!file) return;
 
+    // Revoke the previous blob URL before creating a new one — picking video
+    // B right after video A (without removing A first) previously leaked A's
+    // URL for the rest of the tab's lifetime, since only handleRemoveVideo
+    // revoked (#89).
+    if (videoFileUrl && videoFileUrl.startsWith('blob:')) {
+      URL.revokeObjectURL(videoFileUrl);
+    }
+
     setVideoFile(file);
     const previewUrl = URL.createObjectURL(file);
     setVideoFileUrl(previewUrl);
