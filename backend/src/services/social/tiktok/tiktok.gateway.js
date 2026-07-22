@@ -83,7 +83,12 @@ class TikTokGateway {
     const data = await res.json().catch(() => ({}));
     if (!res.ok) {
       console.error('[TikTok OAuth] Token Refresh Failed:', JSON.stringify(data));
-      throw new Error(data.error_description || data.message || 'Failed to refresh TikTok access token');
+      const err = new Error(data.error_description || data.message || 'Failed to refresh TikTok access token');
+      // Preserved so callers can tell "the refresh_token itself was revoked/
+      // already used" (invalid_grant — TikTok rotates refresh tokens on every
+      // use, see #62) apart from a transient network/5xx failure.
+      err.code = data.error || null;
+      throw err;
     }
 
     return data;

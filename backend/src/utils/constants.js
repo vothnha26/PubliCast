@@ -68,6 +68,7 @@ const POST_STATUS = {
   PENDING_APPROVAL: 'PENDING_APPROVAL',
   APPROVED: 'APPROVED',
   PUBLISHED: 'PUBLISHED',
+  PUBLISHING: 'PUBLISHING',
   RETRYING: 'RETRYING',
   FAILED: 'FAILED',
   REJECTED: 'REJECTED',
@@ -628,6 +629,12 @@ const LOCK_CONFIG = {
     // generous ceiling so a slow run (many brands, slow email delivery)
     // doesn't get treated as crashed and re-triggered by another instance.
     TTL_SEC: 20 * 60
+  },
+  TIKTOK_REFRESH: {
+    PREFIX: 'lock:tiktok-refresh:',
+    TTL_SEC: 30,              // Long enough for one refreshAccessToken call + DB write
+    POLL_INTERVAL_MS: 200,    // While waiting for the lock winner to finish
+    POLL_TIMEOUT_MS: 5000
   }
 };
 

@@ -1,8 +1,24 @@
 const tiktokGateway = require('./tiktok.gateway');
 const socialAccountRepository = require('../../../repositories/social/social-account.repository');
-const { PLATFORMS, DEFAULT_CONFIG } = require('../../../utils/constants');
+const DistributedLockService = require('../distributed-lock.service');
+const { PLATFORMS, DEFAULT_CONFIG, LOCK_CONFIG } = require('../../../utils/constants');
+
+let redisClient = null;
+try {
+  redisClient = require('../../../config/redis');
+} catch (_) {
+  // Redis unavailable (e.g. some test environments) — lock is skipped below,
+  // refresh proceeds unlocked rather than hard-failing the whole sync.
+}
 
 class TikTokAnalyticsService {
+  constructor() {
+    this.lockService = redisClient ? new DistributedLockService(redisClient) : null;
+  }
+
+  _sleep(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+  }
   _getEmptyChannelInfo(accessToken, account = null) {
     return {
       pageId: account?.platformAccountId || 'mock-tiktok-page-id',
@@ -92,41 +108,90 @@ class TikTokAnalyticsService {
     });
   }
 
+  /**
+   * TikTok rotates refresh_token on every use — each refresh call invalidates
+   * the refresh_token that was used to make it. Two concurrent callers (e.g.
+   * a scheduled metric-sync and a manual sync) reading the same expired
+   * account both refresh with the same (still-valid) old refresh_token; both
+   * receive new tokens, and whichever updateTokens() writes last wins,
+   * leaving the DB holding a refresh_token TikTok already invalidated — the
+   * account is bricked until the user reconnects. This closes that race with
+   * a per-account lock, re-reading the latest token from DB after acquiring
+   * it (another caller may have already refreshed while we waited) (#62).
+   */
   async getOrRefreshAccount(account) {
     if (!account) return null;
 
-    let accessToken = account.accessToken;
-    let refreshToken = account.refreshToken;
-    let tokenExpiresAt = account.tokenExpiresAt;
-
-    // Check if token is expired (or close to expiring - within 5 minutes)
+    const tokenExpiresAt = account.tokenExpiresAt;
     const isExpired = tokenExpiresAt && (new Date(tokenExpiresAt).getTime() - 5 * 60 * 1000) < Date.now();
 
-    if (isExpired && refreshToken) {
-      try {
-        console.log(`[TikTok Token Refresh] Token for account ${account.id} is expired or expiring soon. Refreshing...`);
-        const refreshed = await tiktokGateway.refreshAccessToken(refreshToken);
-        
-        accessToken = refreshed.access_token;
-        refreshToken = refreshed.refresh_token || refreshToken;
-        const expiryDate = refreshed.expires_in ? Date.now() + (refreshed.expires_in * 1000) : null;
-
-        const updatedAccount = await socialAccountRepository.updateTokens(account.id, {
-          access_token: accessToken,
-          refresh_token: refreshToken,
-          expiry_date: expiryDate
-        });
-        
-        console.log(`[TikTok Token Refresh] Successfully refreshed token for account ${account.id}`);
-        return updatedAccount;
-      } catch (err) {
-        console.error(`[TikTok Token Refresh] Failed to refresh token for account ${account.id}:`, err.message);
-        // Fallback to returning original account
-        return account;
-      }
+    if (!isExpired || !account.refreshToken) {
+      return account;
     }
 
-    return account;
+    const lockKey = `${LOCK_CONFIG.TIKTOK_REFRESH.PREFIX}${account.id}`;
+    const token = this.lockService ? await this.lockService.acquireLock(lockKey, LOCK_CONFIG.TIKTOK_REFRESH.TTL_SEC) : 'no-lock';
+
+    if (!token) {
+      // Another request is already refreshing this account — wait briefly for
+      // it to finish and persist the new token, then read that instead of
+      // racing our own refresh call against theirs.
+      const deadline = Date.now() + LOCK_CONFIG.TIKTOK_REFRESH.POLL_TIMEOUT_MS;
+      while (Date.now() < deadline) {
+        await this._sleep(LOCK_CONFIG.TIKTOK_REFRESH.POLL_INTERVAL_MS);
+        if (!(await this.lockService.isLocked(lockKey))) {
+          const fresh = await socialAccountRepository.findById(account.id);
+          return fresh || account;
+        }
+      }
+      // Lock winner is taking unusually long — fall back to the stale
+      // account rather than blocking this request indefinitely.
+      return account;
+    }
+
+    try {
+      // Double-check: another caller may have refreshed (and released the
+      // lock) between our isExpired check and acquiring this lock.
+      const latest = await socialAccountRepository.findById(account.id);
+      const stillExpired = !latest?.tokenExpiresAt ||
+        (new Date(latest.tokenExpiresAt).getTime() - 5 * 60 * 1000) < Date.now();
+      if (!stillExpired) {
+        return latest;
+      }
+
+      console.log(`[TikTok Token Refresh] Token for account ${account.id} is expired or expiring soon. Refreshing...`);
+      const refreshed = await tiktokGateway.refreshAccessToken(latest.refreshToken);
+
+      const accessToken = refreshed.access_token;
+      const refreshToken = refreshed.refresh_token || latest.refreshToken;
+      const expiryDate = refreshed.expires_in ? Date.now() + (refreshed.expires_in * 1000) : null;
+
+      const updatedAccount = await socialAccountRepository.updateTokens(account.id, {
+        access_token: accessToken,
+        refresh_token: refreshToken,
+        expiry_date: expiryDate
+      });
+
+      console.log(`[TikTok Token Refresh] Successfully refreshed token for account ${account.id}`);
+      return updatedAccount;
+    } catch (err) {
+      console.error(`[TikTok Token Refresh] Failed to refresh token for account ${account.id}:`, err.message);
+
+      if (err.code === 'invalid_grant') {
+        // The refresh_token itself was rejected (already used/revoked) —
+        // this account cannot self-heal; mark it so the UI can prompt the
+        // user to reconnect instead of silently limping along on an
+        // already-expired access token.
+        await socialAccountRepository.markNeedsReauth(account.id).catch(() => {});
+      }
+
+      // Fallback to returning original account
+      return account;
+    } finally {
+      if (this.lockService) {
+        await this.lockService.releaseLock(lockKey, token).catch(() => {});
+      }
+    }
   }
   async syncChannelMetrics(socialAccountId, startDate, endDate) {
     let account = await socialAccountRepository.findById(socialAccountId);

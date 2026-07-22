@@ -1,5 +1,5 @@
 jest.mock('../../src/config/prisma', () => ({
-  post: { findUnique: jest.fn() }
+  post: { findUnique: jest.fn(), updateMany: jest.fn() }
 }));
 
 const postRepository = require('../../src/repositories/workspace/post.repository');
@@ -52,5 +52,33 @@ describe('PostRepository.lockAndAssertFresh', () => {
     const result = await postRepository.lockAndAssertFresh('post-1', updatedAt, tx);
 
     expect(result).toBe(fresh);
+  });
+});
+
+describe('PostRepository.claimForPublishing (#54)', () => {
+  const prisma = require('../../src/config/prisma');
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it('returns true and issues a conditional update when exactly one row matches', async () => {
+    prisma.post.updateMany.mockResolvedValue({ count: 1 });
+
+    const claimed = await postRepository.claimForPublishing('post-1', ['SCHEDULED', 'DRAFT', 'RETRYING']);
+
+    expect(claimed).toBe(true);
+    expect(prisma.post.updateMany).toHaveBeenCalledWith({
+      where: { id: 'post-1', status: { in: ['SCHEDULED', 'DRAFT', 'RETRYING'] } },
+      data: { status: 'PUBLISHING' }
+    });
+  });
+
+  it('returns false when no row matches (already claimed by a concurrent caller, or wrong status)', async () => {
+    prisma.post.updateMany.mockResolvedValue({ count: 0 });
+
+    const claimed = await postRepository.claimForPublishing('post-1', ['SCHEDULED', 'DRAFT', 'RETRYING']);
+
+    expect(claimed).toBe(false);
   });
 });

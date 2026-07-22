@@ -25,12 +25,24 @@ jest.mock('../../src/queues/video.queue', () => ({
 
 const mockPublishQueue = {
   add: jest.fn().mockResolvedValue({ id: 'mock-publish-job-id' }),
-  remove: jest.fn().mockResolvedValue()
+  remove: jest.fn().mockResolvedValue(),
+  getJob: jest.fn().mockResolvedValue(null)
 };
 jest.mock('../../src/queues/publish.queue', () => ({
   publishQueue: mockPublishQueue,
   upsertPublishJob: jest.fn(),
-  removePublishJob: jest.fn()
+  removePublishJob: jest.fn(),
+  // Mirrors the real safeUpsertPublishJob's active-job check against this
+  // mocked queue, so retryFailedPlatforms's #106 guard is still exercised.
+  safeUpsertPublishJob: jest.fn(async (jobId, jobName, jobData, jobOpts) => {
+    const existing = await mockPublishQueue.getJob(jobId);
+    if (existing && (await existing.getState()) === 'active') {
+      return { applied: false };
+    }
+    await mockPublishQueue.remove(jobId);
+    await mockPublishQueue.add(jobName, jobData, { ...jobOpts, jobId });
+    return { applied: true };
+  })
 }));
 
 // Mock workers to prevent connection attempts in tests

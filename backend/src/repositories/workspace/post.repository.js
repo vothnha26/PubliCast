@@ -199,6 +199,24 @@ class PostRepository {
     });
   }
 
+  /**
+   * Atomically claim a post for publishing (compare-and-swap): only
+   * transitions status -> PUBLISHING if it's currently one of fromStatuses.
+   * BullMQ's jobId dedup only blocks duplicate jobs still sitting in the
+   * queue — a manual retry that lands while a scheduled job is already
+   * mid-publish (removed can't touch an active job) previously fell through
+   * to a second concurrent publishToPlatforms call with no DB-level guard.
+   * This closes that gap (#54).
+   * @returns {Promise<boolean>} true if this caller won the claim.
+   */
+  async claimForPublishing(id, fromStatuses, client = prisma) {
+    const result = await client.post.updateMany({
+      where: { id, status: { in: fromStatuses } },
+      data: { status: 'PUBLISHING' }
+    });
+    return result.count === 1;
+  }
+
   async countActivePostsThisMonth(brandId, client = prisma) {
     const startOfMonth = new Date();
     startOfMonth.setDate(1);
