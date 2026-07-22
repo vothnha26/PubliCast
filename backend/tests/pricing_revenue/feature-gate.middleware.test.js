@@ -71,4 +71,19 @@ describe('Feature Gate Middleware Unit Tests', () => {
 
     expect(next).toHaveBeenCalled();
   });
+
+  // Regression test for #118 H5: previously an uncaught rejection here left
+  // the request hanging (Express 4 doesn't route an async throw to the
+  // global error handler on its own) instead of failing closed.
+  it('forwards a thrown error to next(err) instead of hanging, and does not grant access', async () => {
+    req.headers['x-brand-id'] = 'brand-1';
+    const dbErr = new Error('DB connection lost');
+    subscriptionGate.checkFeatureAccess.mockRejectedValue(dbErr);
+
+    const middleware = requireFeature(PRODUCT_IDS.AI_CONTENT_ENGINE);
+    await middleware(req, res, next);
+
+    expect(next).toHaveBeenCalledWith(dbErr);
+    expect(res.status).not.toHaveBeenCalledWith(200);
+  });
 });

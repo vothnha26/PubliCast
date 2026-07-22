@@ -21,8 +21,12 @@ const checkLimit = (limitField) => async (req, res, next) => {
 
     const limits = subscription.plan?.planLimit;
     if (!limits) {
-      logger.warn('[checkLimit] PlanLimit not found', { brandId, limitField });
-      return next(); // Fail open - don't block if config is missing
+      // Fail CLOSED: a brand with an active subscription but no planLimit row
+      // is a data-integrity gap, not proof the caller is entitled to
+      // unlimited usage — letting the request through here bypassed every
+      // maxBrands/maxPostsPerMonth/maxTeamSeats enforcement (#118 H5).
+      logger.error('[checkLimit] PlanLimit not found — denying request', { brandId, limitField });
+      return res.status(403).json({ message: 'Cấu hình gói đăng ký bị thiếu. Vui lòng liên hệ hỗ trợ.' });
     }
 
     const limitValue = limits[limitField];
@@ -58,8 +62,12 @@ const checkLimit = (limitField) => async (req, res, next) => {
 
     next();
   } catch (err) {
-    logger.error('[checkLimit] Error checking plan limit', { error: err.message, limitField });
-    next(); // Fail open - don't block the user on internal errors
+    // Fail CLOSED: a transient DB/repo error here previously still called
+    // next(), letting the request bypass whatever limit it was meant to
+    // enforce — a DB blip or thrown error became a free pass past billing
+    // limits (#118 H5). A 500 here is the correct signal; the client can retry.
+    logger.error('[checkLimit] Error checking plan limit — denying request', { error: err.message, limitField });
+    next(err);
   }
 };
 
