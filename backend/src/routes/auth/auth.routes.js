@@ -22,7 +22,10 @@ router.get('/google/callback', authController.googleCallback);
 router.post('/register', authRateLimiter, registerValidation, authController.register);
 
 // Email verification
-router.post('/verify-otp', verifyOTPValidation, authController.verifyOTP);
+// authRateLimiter caps request volume per IP; the actual brute-force guard
+// (capping wrong OTP guesses and burning the OTP once exceeded) lives in
+// OtpVerificationStrategy.verify — see issue #58.
+router.post('/verify-otp', authRateLimiter, verifyOTPValidation, authController.verifyOTP);
 router.post('/resend-otp', authRateLimiter, forgotPasswordValidation, authController.resendOTP);
 
 // Forgot password
@@ -45,6 +48,9 @@ router.post('/logout', verifyAuth, authController.logout);
 router.post('/2fa/setup', verifyAuth, authController.setup2FA);
 router.post('/2fa/verify', verifyAuth, authController.verify2FA);
 router.post('/2fa/disable', verifyAuth, authController.disable2FA);
-router.post('/2fa/login-verify', authController.loginVerify2FA);
+// authRateLimiter caps request volume per IP; the actual brute-force guard
+// (capping wrong TOTP guesses and invalidating preAuthToken once exceeded)
+// lives in AuthService.loginVerify2FA — see issue #59.
+router.post('/2fa/login-verify', authRateLimiter, authController.loginVerify2FA);
 
 module.exports = router;

@@ -9,6 +9,7 @@ const { eventEmitter, EVENTS } = require('../../events/event-emitter');
 const { USER_STATUS, AUTH_PROVIDERS, ERROR_MESSAGES, DEFAULT_CONFIG } = require('../../utils/constants');
 const redisClient = require('../../config/redis');
 const { OtpVerificationStrategy, LinkTokenVerificationStrategy, VerificationContext } = require('./verification.strategy');
+const verificationAttemptLimiter = require('../../middlewares/verification-attempt-limiter');
 const {
   UserExistenceValidator, EmailVerificationValidator, UserStatusValidator, PasswordValidator,
   ThrottleValidator, OtpUserExistenceValidator, OtpVerificationStatusValidator,
@@ -435,6 +436,20 @@ class AuthService {
       throw error;
     }
 
+    // Previously a wrong TOTP guess had no cost — preAuthToken stayed valid
+    // for its full 5-minute TTL, letting an attacker who already has the
+    // victim's password brute-force the 6-digit code with no limit,
+    // bypassing the 2FA layer entirely (#59). Cap wrong guesses and
+    // invalidate preAuthToken once the limit is hit, forcing a fresh login.
+    const PRE_AUTH_TTL_SECONDS = 300;
+    const { allowed } = await verificationAttemptLimiter.checkAllowed('2fa-login', preAuthToken, PRE_AUTH_TTL_SECONDS);
+    if (!allowed) {
+      await redisClient.del(preAuthKey);
+      const error = new Error('Quá nhiều lần thử sai. Vui lòng đăng nhập lại.');
+      error.status = 429;
+      throw error;
+    }
+
     const user = await userRepository.findById(userId);
     if (!user || !user.isTwoFactorEnabled) {
       const error = new Error('Tài khoản chưa được kích hoạt bảo mật 2 lớp.');
@@ -476,6 +491,7 @@ class AuthService {
     }
 
     if (!verified) {
+      await verificationAttemptLimiter.recordFailedAttempt('2fa-login', preAuthToken, PRE_AUTH_TTL_SECONDS);
       const error = new Error('Mã xác thực không chính xác.');
       error.status = 400;
       throw error;
@@ -483,6 +499,7 @@ class AuthService {
 
     // Đăng nhập thành công, xóa preAuthToken
     await redisClient.del(preAuthKey);
+    await verificationAttemptLimiter.reset('2fa-login', preAuthToken);
 
     // Cấp JWT tokens
     const { accessToken, refreshToken } = await tokenService.generateAndSaveTokens(user);

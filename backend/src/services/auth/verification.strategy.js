@@ -2,6 +2,9 @@ const crypto = require('crypto');
 const redisClient = require('../../config/redis');
 const otpService = require('./otp.service');
 const authenticator = require('otplib');
+const verificationAttemptLimiter = require('../../middlewares/verification-attempt-limiter');
+
+const OTP_TTL_SECONDS = 600; // matches otpService.saveOTP's default expiry
 
 /**
  * Strategy Interface for Verification Mechanisms
@@ -33,12 +36,28 @@ class OtpVerificationStrategy extends VerificationStrategy {
       error.status = 400;
       throw error;
     }
+
+    // Previously a wrong guess had no cost — the OTP stayed valid in Redis
+    // until its 10-minute TTL, letting an attacker brute-force all 900,000
+    // combinations in that window (#58). Cap wrong guesses and burn the OTP
+    // once the limit is hit so a fresh one has to be requested.
+    const { allowed } = await verificationAttemptLimiter.checkAllowed('otp', email, OTP_TTL_SECONDS);
+    if (!allowed) {
+      await otpService.deleteOTP(email);
+      const error = new Error('Too many incorrect attempts. Please request a new OTP.');
+      error.status = 429;
+      throw error;
+    }
+
     if (savedOTP !== otp) {
+      await verificationAttemptLimiter.recordFailedAttempt('otp', email, OTP_TTL_SECONDS);
       const error = new Error('Invalid OTP');
       error.status = 400;
       throw error;
     }
+
     await otpService.deleteOTP(email);
+    await verificationAttemptLimiter.reset('otp', email);
     return true;
   }
 }

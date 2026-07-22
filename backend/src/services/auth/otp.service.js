@@ -1,8 +1,11 @@
+const crypto = require('crypto');
 const redisClient = require('../../config/redis');
 
 class OTPService {
   async generateOTP() {
-    return Math.floor(100000 + Math.random() * 900000).toString();
+    // crypto.randomInt is a CSPRNG; Math.random() is not suitable for
+    // security-sensitive values like an account-activation code (#58).
+    return crypto.randomInt(100000, 1000000).toString();
   }
 
   async saveOTP(email, otp, expirySeconds = 600) {
