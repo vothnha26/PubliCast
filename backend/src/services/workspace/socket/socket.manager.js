@@ -33,7 +33,18 @@ class SocketManager {
         
         const pubClient = redisClient.duplicate();
         const subClient = redisClient.duplicate();
-        
+
+        // duplicate() clients emit their own 'error' events independently of
+        // the parent client's handler — without a listener here, a Redis
+        // drop mid-session (not just a failed initial connect) throws an
+        // unhandled 'error' event and can crash the whole process.
+        pubClient.on('error', (err) => {
+          console.error('❌ [SocketManager] Redis pubClient error:', err.message);
+        });
+        subClient.on('error', (err) => {
+          console.error('❌ [SocketManager] Redis subClient error:', err.message);
+        });
+
         Promise.all([pubClient.connect(), subClient.connect()]).then(() => {
           this.io.adapter(createAdapter(pubClient, subClient));
           console.log('⚡ [SocketManager] Socket.io Redis Adapter configured successfully');
