@@ -1,7 +1,6 @@
 import { useEffect } from 'react';
 import { useAuthStore } from '../store/useAuthStore';
 import { useBrandStore } from '../store/useBrandStore';
-import { STORAGE_KEYS } from '../constants/storageKeys';
 
 /**
  * AppInitializer - Khởi tạo trạng thái toàn cục khi app mount.
@@ -17,15 +16,9 @@ export function AppInitializer() {
 
   // Kiểm tra auth một lần khi app khởi động
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const token = params.get('token');
-    if (token) {
-      localStorage.setItem(STORAGE_KEYS.TOKEN, token);
-      const url = new URL(window.location.href);
-      url.searchParams.delete('token');
-      url.searchParams.delete('refreshToken');
-      window.history.replaceState({}, document.title, url.pathname + url.search);
-    }
+    // Auth is fully established via HttpOnly cookies (see api.js's
+    // withCredentials) — checkAuth() below authenticates via cookie alone,
+    // no ?token= query param is ever needed here.
     checkAuth();
   }, [checkAuth]);
 
