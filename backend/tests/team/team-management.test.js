@@ -99,6 +99,14 @@ jest.mock('../../src/repositories/core/outbox-event.repository', () => ({
   create: jest.fn().mockResolvedValue({})
 }));
 
+// Mock Integration Client Service — team.service.js#removeMember now builds
+// revocation-webhook outbox payloads via revocationWebhookService, which
+// queries prisma.integrationClient (not part of the mockPrisma shape above).
+// No active clients registered in this test, so no payloads are built.
+jest.mock('../../src/services/integrations/integration-client.service', () => ({
+  findAllActiveWithWebhook: jest.fn().mockResolvedValue([])
+}));
+
 // Mock Token Service
 jest.mock('../../src/services/auth/token.service', () => ({
   generateAndSaveTokens: jest.fn().mockResolvedValue({

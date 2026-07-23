@@ -1,5 +1,6 @@
 const brandService = require('../../src/services/workspace/brand.service');
 const brandRepository = require('../../src/repositories/workspace/brand.repository');
+const outboxEventRepository = require('../../src/repositories/core/outbox-event.repository');
 const { WORKSPACE_DEFAULTS } = require('../../src/utils/constants');
 
 jest.mock('../../src/repositories/workspace/brand.repository', () => ({
@@ -10,6 +11,25 @@ jest.mock('../../src/repositories/workspace/brand.repository', () => ({
   findById: jest.fn(),
   update: jest.fn(),
   delete: jest.fn()
+}));
+
+// deleteBrand now wraps the deletion + revocation-webhook outbox enqueue in
+// prisma.$transaction — mock it to just invoke the callback with a stub tx,
+// matching how brandRepository/outboxEventRepository are mocked below (both
+// receive whatever "tx" object $transaction hands them, so it doesn't need
+// to behave like a real Prisma transaction client for these unit tests).
+jest.mock('../../src/config/prisma', () => ({
+  $transaction: jest.fn((callback) => callback({}))
+}));
+
+// No active integration clients registered in these tests, so deleteBrand's
+// revocation-webhook fan-out enqueues nothing.
+jest.mock('../../src/services/integrations/integration-client.service', () => ({
+  findAllActiveWithWebhook: jest.fn().mockResolvedValue([])
+}));
+
+jest.mock('../../src/repositories/core/outbox-event.repository', () => ({
+  create: jest.fn().mockResolvedValue({})
 }));
 
 describe('BrandService Unit Tests', () => {
@@ -173,7 +193,7 @@ describe('BrandService Unit Tests', () => {
       expect(result.id).toBe(mockBrandId);
       expect(brandRepository.findById).toHaveBeenCalledWith(mockBrandId);
       expect(brandRepository.countActiveBrandsByOwnerId).toHaveBeenCalledWith(mockUserId);
-      expect(brandRepository.delete).toHaveBeenCalledWith(mockBrandId);
+      expect(brandRepository.delete).toHaveBeenCalledWith(mockBrandId, {});
     });
 
     it('should throw a 404 error if the brand to delete is not found', async () => {

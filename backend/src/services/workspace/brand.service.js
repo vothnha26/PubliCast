@@ -1,4 +1,8 @@
+const prisma = require('../../config/prisma');
 const brandRepository = require('../../repositories/workspace/brand.repository');
+const outboxEventRepository = require('../../repositories/core/outbox-event.repository');
+const revocationWebhookService = require('../integrations/revocation-webhook.service');
+const { OUTBOX_EVENT_TYPES } = require('../../constants/outbox.constants');
 const { WORKSPACE_DEFAULTS } = require('../../utils/constants');
 
 class BrandService {
@@ -76,7 +80,29 @@ class BrandService {
       throw error;
     }
 
-    return await brandRepository.delete(brandId);
+    return await prisma.$transaction(async (tx) => {
+      const deletedBrand = await brandRepository.delete(brandId, tx);
+
+      // Critical-event push to external integrations (plan.txt mục 6) — same
+      // reasoning as team.service.js#removeMember: a deactivated brand may
+      // have live real-time sessions tied to it that need to be cut
+      // immediately. Enqueued in the same transaction as the deactivation.
+      const outboxPayloads = await revocationWebhookService.buildOutboxPayloadsForAllClients(
+        'BRAND_DEACTIVATED',
+        { brandId }
+      );
+      for (const { clientId, payload } of outboxPayloads) {
+        await outboxEventRepository.create(
+          OUTBOX_EVENT_TYPES.INTEGRATION_REVOCATION_WEBHOOK,
+          `${brandId}:${clientId}`,
+          { clientId, eventPayload: payload },
+          {},
+          tx
+        );
+      }
+
+      return deletedBrand;
+    });
   }
 }
 

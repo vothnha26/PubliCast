@@ -215,8 +215,8 @@ class BrandRepository {
     });
   }
 
-  async delete(id) {
-    return await prisma.brand.update({
+  async delete(id, client = prisma) {
+    return await client.brand.update({
       where: { id },
       data: {
         deletedAt: new Date(),
