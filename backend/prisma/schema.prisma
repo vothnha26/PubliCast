@@ -228,6 +228,31 @@ model SystemPermission {
 }
 
 // ============================================
+// EXTERNAL INTEGRATIONS
+// ============================================
+
+// Client credentials for external projects (e.g. Convo) authenticating to
+// PubliCast via HMAC-signed requests. clientSecretEncrypted is stored
+// encrypted (not hashed) because HMAC verification requires recomputing
+// the signature from the plaintext secret — a one-way hash cannot be
+// reversed the way a password hash can be left one-way. See
+// src/utils/encryption.js (AES-256-GCM, same ENCRYPTION_KEY already used
+// for social account OAuth tokens).
+model IntegrationClient {
+  id                    String    @id @default(uuid())
+  name                  String
+  clientId              String    @unique
+  clientSecretEncrypted String
+  isActive              Boolean   @default(true)
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+  revokedAt             DateTime?
+
+  @@index([clientId])
+  @@map("integration_clients")
+}
+
+// ============================================
 // BILLING & SUBSCRIPTION
 // ============================================
 
