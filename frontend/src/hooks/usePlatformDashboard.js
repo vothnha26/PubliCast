@@ -146,11 +146,14 @@ export function usePlatformDashboard(platform) {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const metricsRequest = useLatestRequestId();
 
-  // loadMetrics is invoked independently by 3 effects (brand/platform change,
-  // the 5s sync-status poll, and dateRange change) plus manual refresh — a
-  // slow older call resolving after a newer one must not clobber fresher
-  // state (#78).
-  const loadMetrics = async (brandId, force = false) => {
+  // loadMetrics is invoked by the mount/brand/platform/dateRange effect, the
+  // 5s sync-status poll, and manual refresh — a slow older call resolving
+  // after a newer one must not clobber fresher state (#78). Memoized with
+  // useCallback (deps: platform, dateRange) so effects that depend on it
+  // don't need dateRange as a separate dependency, which previously required
+  // a second effect just to react to dateRange changes and caused a
+  // duplicate fetch alongside the brand/platform effect on mount (#91 M9).
+  const loadMetrics = useCallback(async (brandId, force = false) => {
     const requestId = metricsRequest.start();
     if (force) setIsRefreshing(true);
     try {
@@ -180,12 +183,12 @@ export function usePlatformDashboard(platform) {
     } finally {
       if (force && metricsRequest.isLatest(requestId)) setIsRefreshing(false);
     }
-  };
+  }, [platform, dateRange, metricsRequest]);
 
   const handleRefresh = useCallback(async () => {
     if (!activeBrand) return;
     await loadMetrics(activeBrand.id, true);
-  }, [activeBrand, dateRange]);
+  }, [activeBrand, loadMetrics]);
 
   const fetchTracked = async () => {
     if (!activeBrand) return;
@@ -275,6 +278,13 @@ export function usePlatformDashboard(platform) {
     });
   }, [navigate, platform]);
 
+  // Single effect covering brand/platform/lock changes AND dateRange changes
+  // — previously these were 2 separate effects that both fired on mount
+  // whenever activeBrand was already available, issuing two identical
+  // GET /social/metrics calls back-to-back (#91 M9). loadMetrics is now a
+  // stable useCallback keyed on [platform, dateRange], so this single effect
+  // re-fires correctly for either kind of change without needing dateRange
+  // as its own separate effect.
   useEffect(() => {
     setMetrics(null);
     if (activeBrand) {
@@ -283,7 +293,7 @@ export function usePlatformDashboard(platform) {
     } else {
       setLoading(false);
     }
-  }, [activeBrand, platform, isPlatformLocked]);
+  }, [activeBrand, platform, isPlatformLocked, dateRange, loadMetrics]);
 
   // Tự động thăm dò trạng thái đồng bộ (auto polling) mỗi 5s nếu đang PENDING hoặc PARTIAL
   useEffect(() => {
@@ -294,7 +304,7 @@ export function usePlatformDashboard(platform) {
       }, 5000);
       return () => clearInterval(intervalId);
     }
-  }, [activeBrand, metrics?.syncStatus, platform]);
+  }, [activeBrand, metrics?.syncStatus, platform, loadMetrics]);
 
   // Validate tab parameter and set default/redirect if empty or invalid
   useEffect(() => {
@@ -335,13 +345,6 @@ export function usePlatformDashboard(platform) {
       setSearchParams(nextParams, { replace: true });
     }
   }, [platform, searchParams, setSearchParams]);
-
-  // Reload metrics when dateRange changes or activeBrand changes
-  useEffect(() => {
-    if (activeBrand && !loading) {
-      loadMetrics(activeBrand.id);
-    }
-  }, [activeBrand, dateRange]);
 
   useEffect(() => {
     if (!activeBrand) return;
@@ -416,7 +419,10 @@ export function usePlatformDashboard(platform) {
     }
   };
 
-  const getAnalyticsData = () => {
+  // Memoized: parses/reshapes the raw analytics JSON, so without useMemo this
+  // ran on every render of any consumer (e.g. an unrelated UI toggle), even
+  // when metrics/platform/dateRange hadn't changed (#91 L15).
+  const realData = useMemo(() => {
     if (!metrics?.analytics?.[0]?.socialAnalytics?.audienceDemographicsJson) {
       if (platform === "instagram") {
         return {
@@ -564,35 +570,34 @@ export function usePlatformDashboard(platform) {
         summary: {}
       };
     }
-  };
+  }, [metrics, platform, dateRange]);
 
-  const getStats = () => {
+  // Memoized alongside realData (#91 L15) — depends on the same inputs plus
+  // realData itself, so it only recomputes when one of them actually changes.
+  const stats = useMemo(() => {
     if (!metrics) return { subscribers: 0, views: 0, videos: 0 };
     if (platform === "facebook") {
       if (!metrics.facebookPage) return { subscribers: 0, views: 0, videos: 0 };
-      const analytics = getAnalyticsData();
       return {
         subscribers: metrics.facebookPage.followersCount,
-        views: analytics.summary?.views || metrics.facebookPage.likesCount,
+        views: realData.summary?.views || metrics.facebookPage.likesCount,
         videos: 0
       };
     }
     if (platform === "instagram" || platform === "threads") {
       if (!metrics.instagramAccount) return { subscribers: 0, views: 0, videos: 0 };
-      const analytics = getAnalyticsData();
       return {
         subscribers: metrics.instagramAccount.followersCount,
-        views: analytics.summary?.views || 0,
-        likes: analytics.summary?.likes || 0,
+        views: realData.summary?.views || 0,
+        likes: realData.summary?.likes || 0,
         videos: metrics.instagramAccount.mediaCount || 0
       };
     }
     if (platform === "tiktok") {
       if (!metrics.tikTokAccount) return { subscribers: 0, views: 0, videos: 0 };
-      const analytics = getAnalyticsData();
       return {
         subscribers: metrics.tikTokAccount.followersCount,
-        views: analytics.summary?.views || metrics.tikTokAccount.likesCount,
+        views: realData.summary?.views || metrics.tikTokAccount.likesCount,
         videos: metrics.tikTokAccount.videoCount
       };
     }
@@ -602,10 +607,7 @@ export function usePlatformDashboard(platform) {
       views: metrics.youtubeChannel.totalViewsCount,
       videos: metrics.youtubeChannel.totalVideosCount
     };
-  };
-
-  const stats = getStats();
-  const realData = getAnalyticsData();
+  }, [metrics, platform, realData]);
 
   const totalPeriodViews = realData.growth?.reduce((a, b) => a + (b.value || 0), 0) || 0;
   const totalPeriodGained = realData.growth?.reduce((a, b) => a + (b.new || 0), 0) || 0;
