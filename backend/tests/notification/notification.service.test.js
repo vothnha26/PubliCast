@@ -1,6 +1,7 @@
 const notificationService = require('../../src/services/core/notification.service');
 const notificationRepository = require('../../src/repositories/core/notification.repository');
 const brandRepository = require('../../src/repositories/workspace/brand.repository');
+const userRepository = require('../../src/repositories/auth/user.repository');
 const authorizationFacade = require('../../src/services/auth/authorization.facade');
 
 jest.mock('../../src/repositories/core/notification.repository', () => ({
@@ -15,6 +16,10 @@ jest.mock('../../src/repositories/workspace/brand.repository', () => ({
   userCanAccessBrand: jest.fn()
 }));
 
+jest.mock('../../src/repositories/auth/user.repository', () => ({
+  findCreatedAt: jest.fn()
+}));
+
 jest.mock('../../src/services/auth/authorization.facade', () => ({
   checkBrandAccess: jest.fn()
 }));
@@ -22,6 +27,9 @@ jest.mock('../../src/services/auth/authorization.facade', () => ({
 describe('NotificationService', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    // Default: no lower bound on global notifications, matching this suite's
+    // pre-existing expectations of a bare { isGlobal: true } condition.
+    userRepository.findCreatedAt.mockResolvedValue(null);
   });
 
   describe('markAsRead', () => {
@@ -246,6 +254,22 @@ describe('NotificationService', () => {
       const result = await notificationService.getNotifications({}, 'user-1', null, 'USER');
 
       expect(result.data[0].isRead).toBe(true);
+    });
+
+    it('scopes global notifications to those created at or after the user signed up (bug: new users saw the entire system global-notification history)', async () => {
+      const signupDate = new Date('2026-07-23T00:00:00.000Z');
+      userRepository.findCreatedAt.mockResolvedValue(signupDate);
+      notificationRepository.findManyAndCount.mockResolvedValue({ notifications: [], total: 0 });
+      notificationRepository.count.mockResolvedValue(0);
+
+      await notificationService.getNotifications({}, 'new-user-1', null, 'USER');
+
+      expect(notificationRepository.findManyAndCount).toHaveBeenCalledWith({
+        OR: [
+          { userId: 'new-user-1' },
+          { isGlobal: true, createdAt: { gte: signupDate } }
+        ]
+      }, { skip: 0, take: 50 }, 'new-user-1');
     });
   });
 });

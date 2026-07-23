@@ -3,6 +3,7 @@ const QueryPipeline = require('../../core/query-pipeline/query.pipeline');
 const NotificationCategoryFilter = require('./notification/filters/category.filter');
 const NotificationDateRangeFilter = require('./notification/filters/date-range.filter');
 const brandRepository = require('../../repositories/workspace/brand.repository');
+const userRepository = require('../../repositories/auth/user.repository');
 const authorizationFacade = require('../auth/authorization.facade');
 const { NOTIFICATION_TYPES, NOTIFICATION_LABELS, USER_ROLES } = require('../../utils/constants');
 const notificationRealtime = require('./notification.realtime');
@@ -25,12 +26,13 @@ class NotificationService {
     const safeLimit = Math.min(100, Math.max(1, parseInt(limit) || 50));
     const skip = (Math.max(1, parseInt(page) || 1) - 1) * safeLimit;
 
-    const initialWhere = this._buildVisibilityWhere(userId, brandId);
+    const userCreatedAt = await userRepository.findCreatedAt(userId);
+    const initialWhere = this._buildVisibilityWhere(userId, brandId, userCreatedAt);
     let where = this.queryPipeline.apply(initialWhere, queryParams);
     where = this._applyReadFilter(where, queryParams.isRead, userId);
 
     const { notifications, total } = await notificationRepository.findManyAndCount(where, { skip, take: safeLimit }, userId);
-    const categoryCounts = await this.getCategoryCounts(userId, brandId);
+    const categoryCounts = await this.getCategoryCounts(userId, brandId, userCreatedAt);
 
     return {
       data: notifications.map(n => this._formatNotification(n)),
@@ -110,8 +112,9 @@ class NotificationService {
   async markAllAsRead(userId, brandId, role) {
     await this._assertBrandAccess(userId, brandId, role);
 
+    const userCreatedAt = await userRepository.findCreatedAt(userId);
     const where = {
-      ...this._applyReadFilter(this._buildVisibilityWhere(userId, brandId), 'false', userId)
+      ...this._applyReadFilter(this._buildVisibilityWhere(userId, brandId, userCreatedAt), 'false', userId)
     };
     const result = await notificationRepository.markAllAsRead(where, userId);
 
@@ -128,8 +131,9 @@ class NotificationService {
     return result;
   }
 
-  async getCategoryCounts(userId, brandId) {
-    const baseWhere = this._buildVisibilityWhere(userId, brandId);
+  async getCategoryCounts(userId, brandId, userCreatedAt = undefined) {
+    const resolvedCreatedAt = userCreatedAt !== undefined ? userCreatedAt : await userRepository.findCreatedAt(userId);
+    const baseWhere = this._buildVisibilityWhere(userId, brandId, resolvedCreatedAt);
     const categories = Object.values(NOTIFICATION_TYPES);
     const counts = { all: 0 };
 
@@ -198,12 +202,23 @@ class NotificationService {
     }
   }
 
-  _buildVisibilityWhere(userId, brandId) {
-    const conditions = [{ userId }, { isGlobal: true }];
+  // Global notifications (e.g. pricing plan changes) are broadcast to every
+  // user regardless of when they signed up — without a lower bound, a user
+  // who just registered would see the entire system's global notification
+  // history predating their own account, looking like stale/wrong-timestamp
+  // notifications for events they had nothing to do with. Scoped to only
+  // those created at or after the user's own signup.
+  _buildVisibilityWhere(userId, brandId, userCreatedAt) {
+    const conditions = [{ userId }];
 
     if (brandId) {
-      conditions.splice(1, 0, { brandId });
+      conditions.push({ brandId });
     }
+
+    conditions.push({
+      isGlobal: true,
+      ...(userCreatedAt ? { createdAt: { gte: userCreatedAt } } : {})
+    });
 
     return { OR: conditions };
   }
