@@ -146,9 +146,32 @@ class FacebookAnalyticsService {
         }
       }
 
-      // Always fetch feed for the full period to ensure post counts are accurate
-      const feedResult = await facebookGateway.getPageFeed(pageId, pageAccessToken, null, 100);
-      const feedStats = this._processFeed(feedResult.data || [], dailyMap);
+      // Always fetch feed for the full period to ensure post counts are
+      // accurate. A single page (even at limit=100) silently dropped older
+      // posts for pages with a longer feed within the requested date range,
+      // undercounting totalPostsInPeriod/reactions/comments/shares (#70).
+      // Paginate until either the feed runs out, a page comes back entirely
+      // older than the range's start date (feed is reverse-chronological,
+      // so nothing further back can still be in range), or a safety cap is
+      // hit to avoid an unbounded loop against a misbehaving cursor.
+      const MAX_FEED_PAGES = 20;
+      const rangeStartMs = new Date(start).getTime();
+      let allFeedPosts = [];
+      let pageToken = null;
+      for (let page = 0; page < MAX_FEED_PAGES; page++) {
+        const feedResult = await facebookGateway.getPageFeed(pageId, pageAccessToken, pageToken, 100);
+        const pagePosts = feedResult.data || [];
+        allFeedPosts = allFeedPosts.concat(pagePosts);
+
+        const oldestInPage = pagePosts[pagePosts.length - 1];
+        const pageIsFullyBeforeRange = oldestInPage && new Date(oldestInPage.created_time).getTime() < rangeStartMs;
+
+        if (!feedResult.nextPageToken || pagePosts.length === 0 || pageIsFullyBeforeRange) {
+          break;
+        }
+        pageToken = feedResult.nextPageToken;
+      }
+      const feedStats = this._processFeed(allFeedPosts, dailyMap);
 
       if (!hasInsightsData && !Object.values(dailyMap).some(d => d._fromDb)) {
         if (pageAccessToken.startsWith('mock-')) {
@@ -163,50 +186,13 @@ class FacebookAnalyticsService {
       } else {
       try {
         const rawStories = await facebookGateway.getPageStories(pageId, pageAccessToken);
-        for (const story of rawStories) {
-          const insights = await facebookGateway.getStoryInsights(story.id, pageAccessToken);
-          const mappedInsights = {};
-          insights.forEach(item => {
-            mappedInsights[item.name] = item.values?.[0]?.value || 0;
-          });
-
-          // Completion rate logic: (reach - exits) / reach
-          const reach = mappedInsights.reach || 0;
-          const exits = mappedInsights.exits || 0;
-          const completionRate = reach ? parseFloat(((reach - exits) / reach).toFixed(4)) : 0;
-          const exitRate = mappedInsights.impressions ? parseFloat((exits / mappedInsights.impressions).toFixed(4)) : 0;
-
-          let publishedAt = new Date();
-          if (story.creation_time) {
-            const num = Number(story.creation_time);
-            if (!isNaN(num)) {
-              const isSeconds = num < 9999999999;
-              publishedAt = new Date(isSeconds ? num * 1000 : num);
-            } else {
-              const parsed = Date.parse(story.creation_time);
-              if (!isNaN(parsed)) {
-                publishedAt = new Date(parsed);
-              }
-            }
-          }
-          const expiresAt = new Date(publishedAt.getTime() + 24 * 60 * 60 * 1000);
-
-          stories.push({
-            platformStoryId: story.id,
-            publishedAt: publishedAt.toISOString(),
-            expiresAt: expiresAt.toISOString(),
-            mediaType: story.media_type || 'IMAGE',
-            mediaUrl: story.media_url || null,
-            thumbnailUrl: story.media_url || null,
-            reach: reach,
-            impressions: mappedInsights.impressions || 0,
-            exits: exits,
-            replies: mappedInsights.replies || 0,
-            linkClicks: mappedInsights.link_clicks || 0,
-            completionRate: completionRate,
-            exitRate: exitRate
-          });
-        }
+        // Each story's insights call is independent — fetching them
+        // sequentially (N+1) made this scale linearly with story count for
+        // no reason; a page with many active stories could take several
+        // seconds longer than necessary (#70).
+        stories = await Promise.all(
+          rawStories.map((story) => this._mapStoryWithInsights(story, pageAccessToken))
+        );
       } catch (err) {
         console.error('[Facebook Stories] Failed to fetch real stories:', err.message);
       }
@@ -349,6 +335,51 @@ class FacebookAnalyticsService {
       }
     }
     return hasInsightsData;
+  }
+
+  async _mapStoryWithInsights(story, pageAccessToken) {
+    const insights = await facebookGateway.getStoryInsights(story.id, pageAccessToken);
+    const mappedInsights = {};
+    insights.forEach(item => {
+      mappedInsights[item.name] = item.values?.[0]?.value || 0;
+    });
+
+    // Completion rate logic: (reach - exits) / reach
+    const reach = mappedInsights.reach || 0;
+    const exits = mappedInsights.exits || 0;
+    const completionRate = reach ? parseFloat(((reach - exits) / reach).toFixed(4)) : 0;
+    const exitRate = mappedInsights.impressions ? parseFloat((exits / mappedInsights.impressions).toFixed(4)) : 0;
+
+    let publishedAt = new Date();
+    if (story.creation_time) {
+      const num = Number(story.creation_time);
+      if (!isNaN(num)) {
+        const isSeconds = num < 9999999999;
+        publishedAt = new Date(isSeconds ? num * 1000 : num);
+      } else {
+        const parsed = Date.parse(story.creation_time);
+        if (!isNaN(parsed)) {
+          publishedAt = new Date(parsed);
+        }
+      }
+    }
+    const expiresAt = new Date(publishedAt.getTime() + 24 * 60 * 60 * 1000);
+
+    return {
+      platformStoryId: story.id,
+      publishedAt: publishedAt.toISOString(),
+      expiresAt: expiresAt.toISOString(),
+      mediaType: story.media_type || 'IMAGE',
+      mediaUrl: story.media_url || null,
+      thumbnailUrl: story.media_url || null,
+      reach: reach,
+      impressions: mappedInsights.impressions || 0,
+      exits: exits,
+      replies: mappedInsights.replies || 0,
+      linkClicks: mappedInsights.link_clicks || 0,
+      completionRate: completionRate,
+      exitRate: exitRate
+    };
   }
 
   _processFeed(feed, dailyMap) {
