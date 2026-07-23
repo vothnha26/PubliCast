@@ -22,8 +22,15 @@ class SocketClient {
   }
 
   /**
-   * Connect to Socket.io Server
-   * @param {string} token - User JWT Token for authentication
+   * Connect to Socket.io Server. Authentication is cookie-based by default —
+   * withCredentials sends the HttpOnly accessToken cookie automatically,
+   * which the backend's socketAuthMiddleware reads from the handshake
+   * headers as its fallback when no explicit auth token is provided.
+   *
+   * @param {string} [token] - Only needed for browser contexts that don't
+   *   share the user's cookie jar, e.g. ObsChatOverlay.jsx running inside
+   *   OBS Studio's isolated CEF browser source — everywhere else should
+   *   call connect() with no argument.
    */
   connect(token) {
     if (this.socket?.connected) return;
@@ -34,7 +41,7 @@ class SocketClient {
     }
 
     this.socket = io(socketURL, {
-      auth: { token },
+      auth: token ? { token } : undefined,
       transports: ['websocket'],
       withCredentials: true,
       autoConnect: true,

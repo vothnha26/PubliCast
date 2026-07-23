@@ -54,11 +54,9 @@ export function InviteFlow() {
         password: inviteDetails?.isNewUser ? password : undefined
       });
 
-      const tokenVal = response.data.accessToken || response.data.token;
-      if (tokenVal) {
-        localStorage.setItem(STORAGE_KEYS.TOKEN, tokenVal);
-      }
-
+      // Auth is via the HttpOnly cookies the backend sets alongside this
+      // response — the subsequent full-page navigation to /dashboard below
+      // re-authenticates via that cookie, no token needs to be stored here.
       const brandId = response.data.brandId;
       if (brandId) {
         localStorage.setItem(STORAGE_KEYS.ACTIVE_BRAND_ID, brandId);
