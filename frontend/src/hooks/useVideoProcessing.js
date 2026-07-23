@@ -27,6 +27,14 @@ export function useVideoProcessing() {
         const { taskId } = res.data;
         setCurrentTaskId(taskId);
         toast.loading("Video đang được xử lý ở chế độ chạy ngầm...", { id: "video-edit-toast" });
+      } else {
+        // Phòng trường hợp backend trả về status khác 202 (không rơi vào nhánh
+        // catch vì không phải lỗi HTTP) — tránh isProcessing bị kẹt mãi ở true
+        // mà không có taskId để polling/socket theo dõi.
+        console.warn("[useVideoProcessing] Unexpected response status:", res.status, res.data);
+        setIsProcessing(false);
+        toast.error("Phản hồi không hợp lệ từ máy chủ khi xử lý video.", { id: "video-edit-toast" });
+        if (onError) onError(new Error(`Unexpected response status: ${res.status}`));
       }
     } catch (err) {
       console.error("[useVideoProcessing] ❌ Error triggering processing:", err.message);

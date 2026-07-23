@@ -24,15 +24,15 @@ class SocialService {
   }
 
   async getPublishedVideos(brandId, pageToken = null, limit = 10) {
-    const url = `/social/youtube/published-videos?brandId=${brandId}${pageToken ? `&pageToken=${pageToken}` : ''}${limit ? `&limit=${limit}` : ''}`;
+    const url = `/social/youtube/published-videos?brandId=${encodeURIComponent(brandId)}${pageToken ? `&pageToken=${encodeURIComponent(pageToken)}` : ''}${limit ? `&limit=${encodeURIComponent(limit)}` : ''}`;
     const response = await apiService.get(url);
     return response.data;
   }
 
   async getVideoAnalytics(brandId, videoId, startDate, endDate) {
-    let url = `/social/youtube/video-analytics?brandId=${brandId}&videoId=${videoId}`;
-    if (startDate) url += `&startDate=${startDate}`;
-    if (endDate) url += `&endDate=${endDate}`;
+    let url = `/social/youtube/video-analytics?brandId=${encodeURIComponent(brandId)}&videoId=${encodeURIComponent(videoId)}`;
+    if (startDate) url += `&startDate=${encodeURIComponent(startDate)}`;
+    if (endDate) url += `&endDate=${encodeURIComponent(endDate)}`;
     const response = await apiService.get(url);
     return response.data;
   }
@@ -44,7 +44,7 @@ class SocialService {
   }
 
   async searchChannels(brandId, query) {
-    const response = await apiService.get(`/social/youtube/search-channels?brandId=${brandId}&query=${query}`);
+    const response = await apiService.get(`/social/youtube/search-channels?brandId=${encodeURIComponent(brandId)}&query=${encodeURIComponent(query)}`);
     return response.data;
   }
 
