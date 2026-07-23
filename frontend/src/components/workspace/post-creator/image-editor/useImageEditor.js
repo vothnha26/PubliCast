@@ -524,7 +524,15 @@ export function useImageEditor({ imageUrl, currentTransform, brandId, onSave, on
 
           finalCanvas.toBlob(async (blob) => {
             if (!blob) {
-              throw new Error("Canvas to Blob failed");
+              // toBlob's callback runs asynchronously outside this function's
+              // call stack, so throwing here is an unhandled rejection that
+              // never reaches the outer try/catch — the Save modal and
+              // spinner would be stuck forever with isSaving never reset.
+              console.error("Canvas to Blob failed");
+              onSave(null, null, { rotation, flipH, flipV, filter: activeFilter });
+              setIsSaving(false);
+              onClose();
+              return;
             }
 
             const file = new File([blob], "edited_image.jpg", { type: "image/jpeg" });
