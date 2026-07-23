@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import authService from '../services/auth.service';
 import profileService from '../services/profile.service';
 import { toast } from 'sonner';
+import { STORAGE_KEYS } from '../constants/storageKeys';
 
 export const useAuthStore = create((set, get) => ({
   user: null,
@@ -13,12 +14,11 @@ export const useAuthStore = create((set, get) => ({
       const res = await profileService.getUserProfile();
       if (res && res.data) {
         set({ user: res.data, isAuthenticated: true });
-        // Auth is cookie-based — the socket handshake authenticates via the
-        // HttpOnly cookie fallback in the backend's socketAuthMiddleware,
-        // same as this profile request just did.
+        // Auto connect socket using a fallback or cookie flow
         try {
           const { socketClient } = await import('../services/socket');
-          socketClient.connect();
+          const token = localStorage.getItem(STORAGE_KEYS.TOKEN);
+          socketClient.connect(token || 'dummy-token-cookie-auth');
         } catch (sErr) {
           console.error('Socket connection error:', sErr);
         }

@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { STORAGE_KEYS } from '../constants/storageKeys';
 import { toast } from 'sonner';
 
 const baseURL = import.meta.env.VITE_API_BASE_URL;
@@ -28,11 +29,19 @@ class ApiService {
       withCredentials: true, // Sends HttpOnly cookies (accessToken + refreshToken) automatically
     });
 
+    // ── Request interceptor ──────────────────────────────────────────
+    this.api.interceptors.request.use(
+      (config) => {
+        const token = localStorage.getItem(STORAGE_KEYS.TOKEN);
+        if (token) {
+          config.headers.Authorization = `Bearer ${token}`;
+        }
+        return config;
+      },
+      (error) => Promise.reject(error)
+    );
+
     // ── Response interceptor: auto-refresh on 401 ───────────────────
-    // Auth is entirely cookie-based (withCredentials above sends the
-    // HttpOnly accessToken/refreshToken cookies automatically) — no request
-    // interceptor is needed to attach a token, since the backend never
-    // issues one to store client-side.
     this.api.interceptors.response.use(
       (response) => response,
       async (error) => {
