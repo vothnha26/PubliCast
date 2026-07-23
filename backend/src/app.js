@@ -52,6 +52,9 @@ const notificationRoutes = require('./routes/core/notification.routes');
 const subscriptionRoutes = require('./routes/billing/subscription.routes');
 const webhookRoutes = require('./routes/billing/webhook.routes');
 
+// Routes - External Integrations (e.g. Convo — HMAC-signed, no user session)
+const convoIntegrationRoutes = require('./routes/integrations/convo-integration.routes');
+
 // BullMQ Dashboard
 const queueDashboard = require('./queues/dashboard');
 const { verifyAuth } = require('./middlewares/auth.middleware');
@@ -192,6 +195,10 @@ app.use('/api/ad-accounts', adAccountRoutes);
 app.use('/api/billing/subscriptions', subscriptionRoutes);
 app.use('/api/webhooks', webhookRoutes);  // SePay POSTs to /api/webhooks/sepay
 app.use('/api/payments', webhookRoutes);  // Alias for backward compatibility with user's SePay config
+
+// ── External Integration Routes ─────────────────────────────────────────────
+// HMAC-signed, no user session — see src/middlewares/hmac-auth.middleware.js
+app.use('/api/integrations', convoIntegrationRoutes);
 
 // ── BullMQ Dashboard — admin-only ──────────────────────────────────────────
 // Job payloads can contain tokens, brand data, and post content, and the
