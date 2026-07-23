@@ -24,7 +24,7 @@ const AI_POST_FORMATS = {
   HOOK: { value: 'Hook', label: 'Tiêu đề giật tít', emoji: '🎯', description: 'Các câu tiêu đề gây tò mò, thu hút click' }
 };
 
-const DEFAULT_SUPPORTED_PLATFORMS = ['facebook', 'instagram', 'linkedin', 'tiktok'];
+const DEFAULT_SUPPORTED_PLATFORMS = ['facebook', 'instagram', 'tiktok'];
 
 /**
  * Dynamically constructs the response schema contract based on active target platforms.

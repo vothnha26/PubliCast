@@ -32,24 +32,6 @@ export function InboxPage() {
   const [searchTerm, setSearchTerm] = useState(filters.search || "");
   const debouncedSearch = useDebounce(searchTerm, 300);
 
-  // Discord Guilds & Channels extraction from Brand context
-  const discordAccounts = activeBrand?.socialAccounts?.filter(sa => sa.platform === "DISCORD" && sa.isConnected) || [];
-  const serversMap = {};
-  discordAccounts.forEach(sa => {
-    const da = sa.discordAccount;
-    if (da && da.guildId) {
-      serversMap[da.guildId] = da.guildName || "Discord Server";
-    }
-  });
-  const serversList = Object.entries(serversMap).map(([id, name]) => ({ id, name }));
-  const selectedServerId = filters.guildId || "";
-  const channelsList = discordAccounts
-    .filter(sa => sa.discordAccount?.guildId === selectedServerId)
-    .map(sa => ({
-      id: sa.id,
-      name: sa.discordAccount?.channelName || "general"
-    }));
-
   const [inboxData, setInboxData] = useState({ data: [], meta: {} });
   const [loading, setLoading] = useState(false);
   const [activeConv, setActiveConv] = useState(null);
@@ -404,16 +386,6 @@ export function InboxPage() {
               >
                 <Instagram className="text-[#E1306C]" size={20} />
               </button>
-              <button
-                onClick={() => updateFilters({ platform: "Discord", guildId: null, socialAccountId: null })}
-                className={`w-9 h-9 rounded-xl flex items-center justify-center transition-all ${
-                  platformFilter.toLowerCase() === "discord"
-                    ? "bg-indigo-50 border border-indigo-100 shadow-sm"
-                    : "opacity-40 hover:opacity-80"
-                }`}
-              >
-                <MessageSquare className="text-[#5865F2] fill-[#5865F2]" size={20} />
-              </button>
             </div>
            <div className="flex items-center gap-2">
              {(platformFilter.toLowerCase() === "facebook" || platformFilter.toLowerCase() === "instagram") && (
@@ -505,34 +477,6 @@ export function InboxPage() {
             </div>
         </div>
 
-        {/* Discord specific Server and Channel filters */}
-        {platformFilter.toLowerCase() === "discord" && (
-          <div className="px-4 pb-3 flex gap-2 animate-in fade-in slide-in-from-top-1 duration-200">
-            <select
-              value={selectedServerId}
-              onChange={(e) => updateFilters({ guildId: e.target.value || null, socialAccountId: null })}
-              className="flex-1 bg-gray-50 border border-gray-200 rounded-xl py-2 px-3 text-xs font-medium focus:outline-none cursor-pointer"
-            >
-              <option value="">{t("inbox.allServers")}</option>
-              {serversList.map(srv => (
-                <option key={srv.id} value={srv.id}>{srv.name}</option>
-              ))}
-            </select>
-
-            <select
-              value={filters.socialAccountId || ""}
-              onChange={(e) => updateFilters({ socialAccountId: e.target.value || null })}
-              disabled={!selectedServerId}
-              className="flex-1 bg-gray-50 border border-gray-200 rounded-xl py-2 px-3 text-xs font-medium focus:outline-none cursor-pointer disabled:opacity-50"
-            >
-              <option value="">{t("inbox.allChannels")}</option>
-              {channelsList.map(chan => (
-                <option key={chan.id} value={chan.id}>#{chan.name}</option>
-              ))}
-            </select>
-          </div>
-        )}
-
         <div className="flex px-2 border-b border-gray-50">
            {["Unresolved", "Unread", "All"].map(tVal => (
              <button key={tVal} onClick={() => updateFilters({ tab: tVal })} className={`flex-1 py-3 text-[11px] font-bold uppercase tracking-widest relative ${tabFilter === tVal ? "text-black" : "text-gray-400"}`}>
@@ -619,8 +563,6 @@ export function InboxPage() {
                             <Facebook className="text-[#1877F2] fill-[#1877F2]" size={8} />
                           ) : activeConv.platform?.toLowerCase() === "instagram" ? (
                             <Instagram className="text-[#E1306C]" size={8} />
-                          ) : activeConv.platform?.toLowerCase() === "discord" ? (
-                            <MessageSquare className="text-[#5865F2] fill-[#5865F2]" size={8} />
                           ) : (
                             <Youtube className="text-[#FF0000] fill-[#FF0000]" size={8} />
                           )}

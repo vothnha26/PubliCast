@@ -25,9 +25,7 @@ class AnalyticsFacade {
         facebookPage: true,
         instagramAccount: true,
         tikTokAccount: true,
-        linkedInAccount: true,
-        telegramAccount: true,
-        discordAccount: true
+        telegramAccount: true
       }
     });
 
@@ -107,12 +105,8 @@ class AnalyticsFacade {
         followers = acc.instagramAccount.followersCount;
       } else if (acc.platform === 'TIKTOK' && acc.tikTokAccount) {
         followers = acc.tikTokAccount.followersCount;
-      } else if (acc.platform === 'LINKEDIN' && acc.linkedInAccount) {
-        followers = acc.linkedInAccount.followersCount;
       } else if (acc.platform === 'TELEGRAM' && acc.telegramAccount) {
         followers = acc.telegramAccount.memberCount;
-      } else if (acc.platform === 'DISCORD' && acc.discordAccount) {
-        followers = acc.discordAccount.memberCount;
       }
 
       // Get analytics record for this account:
@@ -209,12 +203,8 @@ class AnalyticsFacade {
         followers = acc.instagramAccount.followersCount;
       } else if (acc.platform === 'TIKTOK' && acc.tikTokAccount) {
         followers = acc.tikTokAccount.followersCount;
-      } else if (acc.platform === 'LINKEDIN' && acc.linkedInAccount) {
-        followers = acc.linkedInAccount.followersCount;
       } else if (acc.platform === 'TELEGRAM' && acc.telegramAccount) {
         followers = acc.telegramAccount.memberCount;
-      } else if (acc.platform === 'DISCORD' && acc.discordAccount) {
-        followers = acc.discordAccount.memberCount;
       }
 
       try {

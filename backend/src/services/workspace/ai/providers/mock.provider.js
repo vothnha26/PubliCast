@@ -53,7 +53,6 @@ class MockAiProvider extends BaseAiProvider {
       platformSpecificAdjustments: {
         facebook: `${finalCaption}\n\n👉 Chi tiết truy cập link sinh học!`,
         instagram: `${finalCaption}\n\n📸 Link in bio!`,
-        linkedin: `${finalCaption}\n\nTrân trọng,\n#PubliCastTeam`,
         tiktok: `${selectedTone.intro} 🔥 ${selectedTone.body.slice(0, 100)}`
       }
     };

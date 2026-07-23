@@ -3,7 +3,7 @@ import { Youtube, Facebook, Instagram, MessageSquare, EyeOff, CheckCircle } from
 
 const PLATFORM_COLORS = {
   YouTube: "#FF0000", Facebook: "#1877F2", TikTok: "#010101",
-  Instagram: "#E1306C", Twitch: "#9146FF", LinkedIn: "#0A66C2", X: "#000000" };
+  Instagram: "#E1306C", Twitch: "#9146FF", X: "#000000" };
 
 export const SafeAvatar = ({ src, name, className }) => {
   const [error, setError] = React.useState(false);

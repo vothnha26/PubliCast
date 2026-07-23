@@ -224,12 +224,10 @@ const renderPlatformWidget = (widgetKey, color, previewData, preset) => {
   const instagram = getChannel(previewData, "instagram");
   const youtube = getChannel(previewData, "youtube");
   const tiktok = getChannel(previewData, "tiktok");
-  const discord = getChannel(previewData, "discord");
   const telegram = getChannel(previewData, "telegram");
   const igGrowthRows = instagram?.analyticsData?.growth || [];
   const ytGrowthRows = youtube?.analyticsData?.growth || [];
   const ttGrowthRows = tiktok?.analyticsData?.growth || [];
-  const dcGrowthRows = discord?.analyticsData?.growth || [];
   const tgGrowthRows = telegram?.analyticsData?.growth || [];
 
   if (widgetKey === "igGrowth") {
@@ -339,20 +337,6 @@ const renderPlatformWidget = (widgetKey, color, previewData, preset) => {
       <div className="space-y-1.5">
         <TinyHeader title="List of posts" subtitle="Top TikTok posts" color={color} />
         {WidgetThumbnailRenderer.renderRankingList(color, getRankingItems(ttGrowthRows, ["views", "likes"], "name"))}
-      </div>
-    );
-  }
-
-  if (widgetKey === "dcGrowth") {
-    return (
-      <div className="space-y-1.5">
-        <TinyHeader title="Discord Growth" subtitle="Members, online, messages" color={color} />
-        <div className="grid grid-cols-3 gap-1">
-          <MiniChip label="Members" value={`${discord?.followers || 0}`} color={color} />
-          <MiniChip label="Online" value={`${discord?.clicks || 0}`} color={color} />
-          <MiniChip label="Msgs" value={`${discord?.postsCount || 0}`} color={color} />
-        </div>
-        {WidgetThumbnailRenderer.renderGrowthChart(color, mapGrowthSeries(dcGrowthRows, ["followers", "messages", "totalContent"]))}
       </div>
     );
   }

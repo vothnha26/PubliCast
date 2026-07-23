@@ -56,10 +56,9 @@ export function usePlatformDashboard(platform) {
     const ytTabs = ["community", "demographics", "published", "viewed", "competitors"];
     const fbTabs = ["overview", "posts", "posts_list", "stories", "competitors"];
     const ttTabs = ["community", "posts"];
-    const discordTabs = ["community", "channels", "posts"];
     const igTabs = ["community", "account", "competitors"];
     const threadsTabs = ["community", "posts", "competitors"];
-    
+
     let isValid = false;
     if (platform === "facebook") {
       isValid = fbTabs.includes(tabParam);
@@ -69,12 +68,10 @@ export function usePlatformDashboard(platform) {
       isValid = threadsTabs.includes(tabParam);
     } else if (platform === "tiktok") {
       isValid = ttTabs.includes(tabParam);
-    } else if (platform === "discord") {
-      isValid = discordTabs.includes(tabParam);
     } else {
       isValid = ytTabs.includes(tabParam);
     }
-    
+
     return isValid ? tabParam : getTabDefault(platform);
   }, [platform, searchParams]);
 
@@ -317,10 +314,9 @@ export function usePlatformDashboard(platform) {
     const ytTabs = ["community", "demographics", "published", "viewed", "competitors"];
     const fbTabs = ["overview", "posts", "posts_list", "stories", "competitors"];
     const ttTabs = ["community", "posts"];
-    const discordTabs = ["community", "channels", "posts"];
     const igTabs = ["community", "account", "competitors"];
     const threadsTabs = ["community", "posts", "competitors"];
-    
+
     let isValid = false;
     if (tabParam) {
       if (platform === "facebook") {
@@ -331,8 +327,6 @@ export function usePlatformDashboard(platform) {
         isValid = threadsTabs.includes(tabParam);
       } else if (platform === "tiktok") {
         isValid = ttTabs.includes(tabParam);
-      } else if (platform === "discord") {
-        isValid = discordTabs.includes(tabParam);
       } else {
         isValid = ytTabs.includes(tabParam);
       }

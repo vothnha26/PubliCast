@@ -22,8 +22,6 @@ class ValidatorFactory {
         return new TikTokValidator(limitConfig);
       case PLATFORMS.YOUTUBE:
         return new YouTubeValidator(limitConfig);
-      case PLATFORMS.LINKEDIN:
-      case PLATFORMS.DISCORD:
       case PLATFORMS.TELEGRAM:
       default:
         return new GenericValidator(limitConfig);

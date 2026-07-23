@@ -203,7 +203,7 @@ export function AutomationSchedulingPanel({
                 Nền tảng muốn báo cáo
               </label>
               <div className="grid grid-cols-3 gap-2">
-                {["Facebook", "YouTube", "Instagram", "TikTok", "Telegram", "Discord"].map((plat) => {
+                {["Facebook", "YouTube", "Instagram", "TikTok", "Telegram"].map((plat) => {
                   const isChecked = platforms.includes(plat);
                   return (
                     <label key={plat} className="flex items-center gap-1.5 cursor-pointer select-none bg-gray-50 dark:bg-slate-950 hover:bg-gray-100 dark:hover:bg-slate-850 border border-gray-200 dark:border-slate-850 rounded-lg p-1.5 transition-all">

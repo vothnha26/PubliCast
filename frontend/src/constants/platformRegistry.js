@@ -160,25 +160,6 @@ export const PLATFORM_CONFIGS = {
       ]
     }
   },
-  [PLATFORMS.LINKEDIN]: {
-    id: PLATFORMS.LINKEDIN,
-    name: 'LinkedIn',
-    defaultType: 'post',
-    supportedTypes: [
-      { id: 'post', label: 'Post' }
-    ],
-    getPostType: (subType, hasMedia, isVideo) => {
-      return (hasMedia && isVideo) ? POST_TYPE.VIDEO : POST_TYPE.IMAGE;
-    },
-    validationRules: {
-      _always: [
-        {
-          check: ({ caption }) => caption && caption.length > 3000,
-          message: ({ caption }) => `LinkedIn post caption must be 3000 characters or less. (Current: ${caption.length})`
-        }
-      ]
-    }
-  },
   [PLATFORMS.TELEGRAM]: {
     id: PLATFORMS.TELEGRAM,
     name: 'Telegram',
@@ -200,25 +181,6 @@ export const PLATFORM_CONFIGS = {
             const limit = hasMedia ? 1024 : 4096;
             return `Telegram post caption with ${hasMedia ? 'media' : 'text only'} must be ${limit} characters or less. (Current: ${caption ? caption.length : 0})`;
           }
-        }
-      ]
-    }
-  },
-  [PLATFORMS.DISCORD]: {
-    id: PLATFORMS.DISCORD,
-    name: 'Discord',
-    defaultType: 'post',
-    supportedTypes: [
-      { id: 'post', label: 'Channel Message' }
-    ],
-    getPostType: (subType, hasMedia, isVideo) => {
-      return (hasMedia && isVideo) ? POST_TYPE.VIDEO : POST_TYPE.IMAGE;
-    },
-    validationRules: {
-      _always: [
-        {
-          check: ({ caption }) => caption && caption.length > 2000,
-          message: ({ caption }) => `Discord message must be 2000 characters or less. (Current: ${caption ? caption.length : 0})`
         }
       ]
     }

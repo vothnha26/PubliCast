@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import {
-  Youtube, Instagram, Facebook, PlayCircle, Linkedin,
-  Info, Download, Loader2, Diamond, X, BarChart2
+  Youtube, Instagram, Facebook, PlayCircle,
+  Info, Download, Loader2, Diamond, X
 } from "lucide-react";
 import { toast } from "sonner";
 import { PlatformIcon } from "../../components/shared/PlatformIcon";
@@ -20,7 +20,6 @@ import { CompetitorsTab } from "./dashboard/CompetitorsTab";
 import { TrackedVideosTab } from "./dashboard/TrackedVideosTab";
 import { FacebookDashboard } from "./dashboard/FacebookDashboard";
 import { TikTokDashboard } from "./dashboard/TikTokDashboard";
-import { DiscordDashboard } from "./dashboard/DiscordDashboard";
 import { InstagramAccountTab } from "./dashboard/InstagramAccountTab";
 import { ThreadsPostsTab } from "./dashboard/ThreadsPostsTab";
 import { usePlatformDashboard } from "../../hooks/usePlatformDashboard";
@@ -32,8 +31,6 @@ const PLATFORM_CONFIG = {
   instagram: { name: "Instagram", color: "#E1306C", icon: <Instagram size={20} /> },
   facebook: { name: "Facebook", color: "#1877F2", icon: <Facebook size={20} /> },
   tiktok: { name: "TikTok", color: "#000000", icon: <PlayCircle size={20} /> },
-  linkedin: { name: "LinkedIn", color: "#0A66C2", icon: <Linkedin size={20} /> },
-  discord: { name: "Discord", color: "#5865F2", icon: <BarChart2 size={20} /> },
   threads: { name: "Threads", color: "#000000", icon: <PlatformIcon platform="Threads" size={20} variant="flat" className="text-black" /> },
 };
 
@@ -55,11 +52,6 @@ const FB_TABS = [
 const TT_TABS = [
   { id: "community", label: "COMMUNITY" },
   { id: "posts", label: "POSTS" },
-];
-
-const DISCORD_TABS = [
-  { id: "community", label: "CỘNG ĐỒNG" },
-  { id: "channels", label: "KÊNH KẾT NỐI" },
 ];
 
 const IG_TABS = [
@@ -133,7 +125,7 @@ export function PlatformDashboardPage() {
   const navigate = useNavigate();
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
 
-  const tabs = platform === "instagram" ? IG_TABS : platform === "facebook" ? FB_TABS : platform === "tiktok" ? TT_TABS : platform === "discord" ? DISCORD_TABS : platform === "threads" ? THREADS_TABS : YT_TABS;
+  const tabs = platform === "instagram" ? IG_TABS : platform === "facebook" ? FB_TABS : platform === "tiktok" ? TT_TABS : platform === "threads" ? THREADS_TABS : YT_TABS;
 
 
   const handleExportCSV = () => {
@@ -402,8 +394,6 @@ export function PlatformDashboardPage() {
                     <Instagram size={10} className="text-white" />
                   ) : platform === "tiktok" ? (
                     <PlayCircle size={10} className="text-white fill-white" />
-                  ) : platform === "discord" ? (
-                    <BarChart2 size={10} className="text-white fill-white" />
                   ) : (
                     <Youtube size={10} className="text-white fill-white" />
                   )}
@@ -434,12 +424,7 @@ export function PlatformDashboardPage() {
           </div>
         )}
 
-        {platform === "discord" ? (
-          <DiscordDashboard
-            activeTab={activeTab}
-            setActiveTab={setActiveTab}
-          />
-        ) : !metrics ? (
+        {!metrics ? (
           <div className="h-96 flex flex-col items-center justify-center text-center bg-white border border-gray-100 rounded-3xl shadow-sm px-6">
              <div className="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center mb-6">
                 <div style={{ color: config.color }}>{config.icon}</div>

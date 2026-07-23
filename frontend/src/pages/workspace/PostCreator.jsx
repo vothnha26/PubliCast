@@ -6,7 +6,7 @@ import {
   Calendar, Youtube, PlayCircle, Smartphone, Monitor, Info, MessageSquare,
   Languages, Settings, LayoutGrid, Film, PlusCircle, AlertCircle, Check,
   MoreHorizontal, Edit, Type, Trash2, Diamond, Search, Lock, Sparkles, ArrowRight,
-  Linkedin, Send, Upload, HelpCircle
+  Send, Upload, HelpCircle
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
@@ -181,10 +181,6 @@ export function PostCreatorPage() {
     requesterNote,
     setRequesterNote,
     isLoadingReviewers,
-    selectedDiscordChannels,
-    setSelectedDiscordChannels,
-    discordOpen,
-    setDiscordOpen,
     albumMedia,
     setAlbumMedia,
     postMedia,
@@ -390,10 +386,6 @@ export function PostCreatorPage() {
     requesterNote,
     setRequesterNote,
     isLoadingReviewers,
-    selectedDiscordChannels,
-    setSelectedDiscordChannels,
-    discordOpen,
-    setDiscordOpen,
     albumMedia,
     setAlbumMedia,
     postMedia,

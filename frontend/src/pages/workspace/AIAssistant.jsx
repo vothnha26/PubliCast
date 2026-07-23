@@ -8,7 +8,7 @@ import { useSearchParams } from "react-router-dom";
 
 const quickPrompts = [
   { emoji: "✨", text: "Viết caption giới thiệu sản phẩm mới ra mắt thu hút khách hàng trẻ" },
-  { emoji: "🔁", text: "Chuyển thể kịch bản video ngắn thành bài viết LinkedIn chuyên nghiệp" },
+  { emoji: "🔁", text: "Chuyển thể kịch bản video ngắn thành bài viết Facebook chuyên nghiệp" },
   { emoji: "#", text: "Gợi ý bộ hashtag thịnh hành cho thương hiệu công nghệ & giáo dục" },
   { emoji: "🎯", text: "Tạo 5 tiêu đề (hook) gây tò mò cho video đăng trên TikTok" },
   { emoji: "💡", text: "Viết bài chia sẻ kiến thức bổ ích theo dạng cẩm nang học tập" },
@@ -23,7 +23,7 @@ function AiMessageBubble({ msg, activeBrand, autoLists, openPostCreator }) {
   const availablePlatforms = Object.keys(msg.adjustments || {});
   const displayPlatforms = availablePlatforms.length > 0 
     ? availablePlatforms.map(p => p.charAt(0).toUpperCase() + p.slice(1))
-    : ["Instagram", "Facebook", "TikTok", "LinkedIn"];
+    : ["Instagram", "Facebook", "TikTok"];
 
   const [activeTab, setActiveTab] = useState(
     displayPlatforms[0]?.toLowerCase() || "instagram"
@@ -214,7 +214,7 @@ export function AIAssistant() {
 
   const availableTextPlatforms = connectedTextPlatforms.length > 0
     ? Array.from(new Set(connectedTextPlatforms))
-    : ["facebook", "instagram", "linkedin", "tiktok"];
+    : ["facebook", "instagram", "tiktok"];
 
   // Tab View State: "chat" or "settings" Managed via URL Query Parameter
   const [searchParams, setSearchParams] = useSearchParams();
@@ -1177,7 +1177,7 @@ export function AIAssistant() {
                   type="text"
                   value={targetPlatforms}
                   onChange={(e) => setTargetPlatforms(e.target.value)}
-                  placeholder="Ví dụ: Facebook, Instagram, LinkedIn, TikTok..."
+                  placeholder="Ví dụ: Facebook, Instagram, TikTok..."
                   className="w-full rounded-xl px-4 py-2.5 text-xs border border-gray-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/10 outline-none text-gray-700 font-medium placeholder-gray-400"
                 />
               </div>

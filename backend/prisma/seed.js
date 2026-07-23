@@ -138,7 +138,6 @@ async function main() {
   await prisma.platform.create({ data: { id: 'FB', name: 'Facebook', color: '#1877F2' } });
   await prisma.platform.create({ data: { id: 'IG', name: 'Instagram', color: '#E1306C' } });
   await prisma.platform.create({ data: { id: 'TK', name: 'TikTok', color: '#000000' } });
-  await prisma.platform.create({ data: { id: 'LI', name: 'LinkedIn', color: '#0A66C2' } });
   await prisma.platform.create({ data: { id: 'X', name: 'X (Twitter)', color: '#000000' } });
 
   console.log('Seeding Modules...');
@@ -259,8 +258,6 @@ async function main() {
     { platform: 'INSTAGRAM', subType: 'POST', maxCaptionLength: 2200, maxFileSizeMb: 100, allowedMediaTypes: 'ALL', allowedFormats: 'mp4,mov,png,jpg,jpeg', minVideoDuration: 3, maxVideoDuration: 60, aspectRatios: '1:1,4:5' },
     { platform: 'INSTAGRAM', subType: 'REEL', maxCaptionLength: 2200, maxFileSizeMb: 100, allowedMediaTypes: 'VIDEO', allowedFormats: 'mp4,mov', minVideoDuration: 3, maxVideoDuration: 90, aspectRatios: '9:16' },
     { platform: 'INSTAGRAM', subType: 'STORY', maxCaptionLength: 2200, maxFileSizeMb: 50, allowedMediaTypes: 'ALL', allowedFormats: 'mp4,mov,png,jpg,jpeg', minVideoDuration: 1, maxVideoDuration: 15, aspectRatios: '9:16' },
-    { platform: 'LINKEDIN', subType: 'POST', maxCaptionLength: 3000, maxFileSizeMb: 100, allowedMediaTypes: 'ALL', allowedFormats: 'mp4,mov,png,jpg,jpeg', minVideoDuration: 3, maxVideoDuration: 600, aspectRatios: null },
-    { platform: 'DISCORD', subType: 'POST', maxCaptionLength: 2000, maxFileSizeMb: 25, allowedMediaTypes: 'ALL', allowedFormats: 'mp4,mov,png,jpg,jpeg', minVideoDuration: null, maxVideoDuration: null, aspectRatios: null },
     { platform: 'TELEGRAM', subType: 'POST', maxCaptionLength: 1024, maxFileSizeMb: 50, allowedMediaTypes: 'ALL', allowedFormats: 'mp4,mov,png,jpg,jpeg', minVideoDuration: null, maxVideoDuration: null, aspectRatios: null }
   ];
 

@@ -34,9 +34,7 @@ class BrandRepository {
             youtubeChannel: true,
             instagramAccount: true,
             facebookPage: true,
-            tikTokAccount: true,
-            linkedInAccount: true,
-            discordAccount: true
+            tikTokAccount: true
           }
         },
         teamMembers: {

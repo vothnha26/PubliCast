@@ -127,7 +127,7 @@ export function Navbar() {
                 style={{ border: "0.5px solid #E5E7EB", width: 180, boxShadow: "0 10px 15px -3px rgba(0,0,0,0.1)" }}
                 onMouseLeave={() => setPlatformsOpen(false)}
               >
-                {["YouTube", "Instagram", "TikTok", "Facebook", "Twitch", "LinkedIn", "X"].map((p) => (
+                {["YouTube", "Instagram", "TikTok", "Facebook", "Twitch", "X"].map((p) => (
                   <button key={p} onClick={() => { navigate("/manage/connections?tab=connections"); setPlatformsOpen(false); }} className="block w-full text-left px-2 py-1.5 rounded-md hover:bg-[#F8F8F7] transition-colors cursor-pointer" style={{ fontSize: 13, color: "#0A0A0A" }}>
                     {p}
                   </button>

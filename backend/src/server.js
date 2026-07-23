@@ -45,14 +45,6 @@ const server = app.listen(PORT, async () => {
   // Initialize BullMQ social sync worker
   require('./queues/social.worker');
 
-  // Start Discord daily member snapshot (runs every 24h)
-  const discordStatsService = require('./services/social/discord/discord-stats.service');
-  // Run once at startup (with small delay to let DB settle)
-  setTimeout(() => discordStatsService.snapshotAllGuilds().catch(() => {}), 30_000);
-  // Then every 24 hours
-  setInterval(() => discordStatsService.snapshotAllGuilds().catch(() => {}), 24 * 60 * 60 * 1000);
-  logger.info('Discord daily snapshot scheduler started (every 24h)');
-
   // Start Post analytics daily snapshot sync + seeding watchdog (runs every 1h)
   const syncPostAnalyticsService = require('./services/social/sync-post-analytics.service');
   // Run once at startup (with delay to let DB settle)

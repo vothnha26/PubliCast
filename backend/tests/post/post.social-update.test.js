@@ -58,10 +58,6 @@ const mockFacebookService = {
   updatePublishedPost: jest.fn(),
   deletePost: jest.fn()
 };
-const mockDiscordService = {
-  updatePublishedPost: jest.fn(),
-  deletePost: jest.fn()
-};
 const mockYoutubeService = {
   deletePost: jest.fn()
 };
@@ -84,17 +80,6 @@ const publishedFacebookPost = {
   platformPostId: 'fb_post_xyz_987',
   title: 'Post đã xuất bản trên Facebook',
   caption: 'Nội dung gốc',
-  creator: { name: 'Test User' }
-};
-
-const publishedDiscordPost = {
-  id: POST_ID,
-  brandId: BRAND_ID,
-  status: POST_STATUS.PUBLISHED,
-  targetPlatforms: `${PLATFORMS.DISCORD}`,
-  platformPostId: 'webhook_msg_id_456',
-  title: 'Post đã xuất bản trên Discord',
-  caption: 'Discord original message',
   creator: { name: 'Test User' }
 };
 
@@ -228,35 +213,6 @@ describe('POST_SOCIAL - updatePost trên nền tảng đã xuất bản (PUBLISH
   });
 
   // -------------------------------------------------------------------------
-  describe('POST_SOCIAL_002 - updatePost trên Discord (PUBLISHED)', () => {
-    it('should call discordService.updatePublishedPost and then update DB', async () => {
-      postRepository.findById.mockResolvedValue(publishedDiscordPost);
-      socialPlatformFactory.getService.mockReturnValue(mockDiscordService);
-      mockDiscordService.updatePublishedPost.mockResolvedValue({ success: true });
-      authorizationFacade.hasPermission.mockResolvedValue(true);
-      postRepository.update.mockResolvedValue({
-        ...publishedDiscordPost,
-        caption: 'Discord updated content'
-      });
-
-      await postService.updatePost(
-        POST_ID,
-        { caption: 'Discord updated content' },
-        BRAND_ID,
-        USER_ID
-      );
-
-      expect(socialPlatformFactory.getService).toHaveBeenCalledWith(PLATFORMS.DISCORD);
-      expect(mockDiscordService.updatePublishedPost).toHaveBeenCalledWith(
-        BRAND_ID,
-        'webhook_msg_id_456',
-        expect.objectContaining({ caption: 'Discord updated content' })
-      );
-      expect(postRepository.update).toHaveBeenCalled();
-    });
-  });
-
-  // -------------------------------------------------------------------------
   describe('POST_SOCIAL_003 - updatePost trên YouTube (PUBLISHED)', () => {
     it('should NOT throw error and update DB (database-only modifications for unsupported platforms)', async () => {
       const youtubePublishedPost = {
@@ -353,22 +309,22 @@ describe('POST_SOCIAL - bulkDelete với deleteFromSocials = true', () => {
 
   // -------------------------------------------------------------------------
   describe('POST_SOCIAL_007 - bulkDelete tiếp tục xóa DB nếu social API thất bại', () => {
-    it('should still delete DB records even when Discord API throws', async () => {
+    it('should still delete DB records even when Facebook API throws', async () => {
       const posts = [
-        { id: 'post-discord-1', status: POST_STATUS.PUBLISHED, targetPlatforms: PLATFORMS.DISCORD, platformPostId: 'discord_msg_789', autoListId: null }
+        { id: 'post-fb-1', status: POST_STATUS.PUBLISHED, targetPlatforms: PLATFORMS.FACEBOOK, platformPostId: 'fb_msg_789', autoListId: null }
       ];
       postRepository.findManyByIdsAndBrand.mockResolvedValue(posts);
-      socialPlatformFactory.getService.mockReturnValue(mockDiscordService);
-      // Discord API fails
-      mockDiscordService.deletePost.mockRejectedValue(new Error('Discord webhook error'));
+      socialPlatformFactory.getService.mockReturnValue(mockFacebookService);
+      // Facebook API fails
+      mockFacebookService.deletePost.mockRejectedValue(new Error('Facebook API error'));
       postRepository.deleteMany.mockResolvedValue({ count: 1 });
 
       // Should not throw - error is caught internally
-      const count = await postService.bulkDelete(['post-discord-1'], BRAND_ID, true);
+      const count = await postService.bulkDelete(['post-fb-1'], BRAND_ID, true);
 
       expect(count).toBe(1);
       expect(postRepository.deleteMany).toHaveBeenCalledWith({
-        id: { in: ['post-discord-1'] },
+        id: { in: ['post-fb-1'] },
         brandId: BRAND_ID
       }, expect.anything());
     });

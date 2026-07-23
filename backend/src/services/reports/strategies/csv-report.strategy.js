@@ -270,8 +270,6 @@ class CsvReportStrategy extends ReportGeneratorStrategy {
           platformWidgets = ['igGrowth', 'igRankingOfPosts'];
         } else if (platformUpper === 'YOUTUBE') {
           platformWidgets = ['ytGrowth', 'ytRankingOfVideos'];
-        } else if (platformUpper === 'DISCORD') {
-          platformWidgets = ['dcGrowth'];
         }
 
         hasActiveWidget = platformWidgets.some(w => widgets[w] === true);
@@ -360,8 +358,7 @@ class CsvReportStrategy extends ReportGeneratorStrategy {
         const showGrowth = (platformUpper === 'TIKTOK' && widgets.ttGrowth) ||
                             (platformUpper === 'FACEBOOK' && widgets.fbGrowth) ||
                             (platformUpper === 'INSTAGRAM' && widgets.igGrowth) ||
-                            (platformUpper === 'YOUTUBE' && widgets.ytGrowth) ||
-                            (platformUpper === 'DISCORD' && widgets.dcGrowth);
+                            (platformUpper === 'YOUTUBE' && widgets.ytGrowth);
 
         if (showGrowth && Array.isArray(analyticsData.growth) && analyticsData.growth.length > 0) {
           const headers = ['Ngày', 'Tổng Followers', 'Lượt xem (Views)', 'Lượt tương tác (Engagements)'];

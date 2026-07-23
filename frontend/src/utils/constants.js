@@ -4,7 +4,6 @@ export const PLATFORM_COLORS = {
   TikTok: "#010101",
   Instagram: "#E1306C",
   Twitch: "#9146FF",
-  LinkedIn: "#0A66C2",
   X: "#000000",
   Pinterest: "#E60023",
   Threads: "#000000"
@@ -15,7 +14,6 @@ export const ALL_PLATFORMS = [
   { id: "Facebook", name: "Facebook", icon: "FB", color: PLATFORM_COLORS.Facebook },
   { id: "Instagram", name: "Instagram", icon: "IG", color: PLATFORM_COLORS.Instagram },
   { id: "TikTok", name: "TikTok", icon: "TT", color: PLATFORM_COLORS.TikTok },
-  { id: "LinkedIn", name: "LinkedIn", icon: "LI", color: PLATFORM_COLORS.LinkedIn },
   { id: "X", name: "X", icon: "X", color: PLATFORM_COLORS.X },
   { id: "Pinterest", name: "Pinterest", icon: "PN", color: PLATFORM_COLORS.Pinterest },
 ];
