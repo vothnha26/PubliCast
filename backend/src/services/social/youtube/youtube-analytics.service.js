@@ -123,6 +123,23 @@ class YouTubeAnalyticsService {
       if (error.message === 'No YouTube channel found for this account') {
         throw error;
       }
+
+      // A genuine auth failure (refresh token revoked/expired by the user or
+      // Google) was previously swallowed into the same silent empty-data
+      // fallback as a transient timeout/network error, masking the real
+      // problem — the account looked like it just had "no data" instead of
+      // needing to be reconnected (#70). Only truly transient failures
+      // should fall back silently; auth failures must propagate so the
+      // caller (e.g. the sync scheduler) can mark the account disconnected.
+      const errMsg = error.message ? error.message.toLowerCase() : '';
+      const isAuthError = error.code === 'invalid_grant' || error.code === 401
+        || errMsg.includes('invalid_grant') || errMsg.includes('invalid credentials')
+        || errMsg.includes('unauthorized') || errMsg.includes('401');
+      if (isAuthError) {
+        console.error(`[YouTube Analytics] Authentication failure for account ${account?.id}: ${error.message}`);
+        throw error;
+      }
+
       console.warn(`[YouTube Analytics] API call failed or timed out (${error.message}). Falling back to empty data...`);
       return this._getEmptyChannelInfo(account);
     }

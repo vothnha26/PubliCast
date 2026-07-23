@@ -66,6 +66,26 @@ describe('YouTubeService', () => {
 
       await expect(youtubeService.getChannelInfo({})).rejects.toThrow('No YouTube channel found for this account');
     });
+
+    it('propagates an auth failure instead of silently falling back to empty data (#70)', async () => {
+      const authError = new Error('invalid_grant: Token has been expired or revoked.');
+      authError.code = 'invalid_grant';
+      google.youtube.mockReturnValue({
+        channels: { list: jest.fn().mockRejectedValue(authError) }
+      });
+
+      await expect(youtubeService.getChannelInfo({})).rejects.toThrow('invalid_grant');
+    });
+
+    it('still falls back to empty data for a transient/network failure, not an auth failure (#70)', async () => {
+      google.youtube.mockReturnValue({
+        channels: { list: jest.fn().mockRejectedValue(new Error('socket hang up')) }
+      });
+
+      const result = await youtubeService.getChannelInfo({});
+
+      expect(result.channelId).toBe('mock-youtube-channel-id');
+    });
   });
 
   describe('connectChannel', () => {

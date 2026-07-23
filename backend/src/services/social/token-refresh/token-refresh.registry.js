@@ -1,6 +1,7 @@
 const { PLATFORMS } = require('../../../utils/constants');
 const FacebookTokenRefreshStrategy = require('./strategies/facebook-token-refresh.strategy');
 const ThreadsTokenRefreshStrategy = require('./strategies/threads-token-refresh.strategy');
+const LinkedInTokenRefreshStrategy = require('./strategies/linkedin-token-refresh.strategy');
 
 class TokenRefreshRegistry {
   constructor() {
@@ -11,9 +12,11 @@ class TokenRefreshRegistry {
   _init() {
     const facebookStrategy = new FacebookTokenRefreshStrategy();
     const threadsStrategy = new ThreadsTokenRefreshStrategy();
+    const linkedinStrategy = new LinkedInTokenRefreshStrategy();
 
     this._register(facebookStrategy);
     this._register(threadsStrategy);
+    this._register(linkedinStrategy);
 
     // Instagram uses the same Facebook Page Access Token, so we map it to the Facebook strategy
     this._strategies.set(PLATFORMS.INSTAGRAM, facebookStrategy);
