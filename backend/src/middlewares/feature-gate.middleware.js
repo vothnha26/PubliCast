@@ -1,5 +1,6 @@
 const subscriptionGate = require('../services/subscription/subscription-gate.facade');
 const logger = require('../utils/logger');
+const { ERROR_CODES } = require('../utils/constants');
 
 /**
  * Middleware to check subscription permission for a specific feature
@@ -12,7 +13,7 @@ function requireFeature(productId) {
     if (!brandId) {
       return res.status(400).json({
         message: 'Missing brand configuration header (x-brand-id)',
-        code: 'MISSING_BRAND_ID'
+        code: ERROR_CODES.MISSING_BRAND_ID
       });
     }
 
@@ -21,7 +22,7 @@ function requireFeature(productId) {
       if (!hasAccess) {
         return res.status(403).json({
           message: 'Feature not included in your current subscription plan. Please upgrade.',
-          code: 'PLAN_UPGRADE_REQUIRED',
+          code: ERROR_CODES.PLAN_UPGRADE_REQUIRED,
           productId
         });
       }
