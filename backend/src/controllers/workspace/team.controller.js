@@ -64,13 +64,21 @@ class TeamController {
     }
 
     const result = await teamService.acceptInvitation({ token, name, password });
-    
+
     if (result.accessToken && result.refreshToken) {
       const { setAuthCookies } = require('../../utils/cookie.utils');
       setAuthCookies(res, result.accessToken, result.refreshToken);
     }
 
-    res.status(200).json(result);
+    // Auth is via the HttpOnly cookies set above — the raw tokens must not
+    // also be echoed in the JSON body (same reasoning as auth.controller's
+    // login/verifyOTP: a token in a response body is readable by any XSS
+    // that scrapes fetch/XHR responses, defeating the point of HttpOnly).
+    res.status(200).json({
+      message: result.message,
+      brandId: result.brandId,
+      user: result.user
+    });
   });
 
   updateMemberRole = asyncHandler(async (req, res) => {

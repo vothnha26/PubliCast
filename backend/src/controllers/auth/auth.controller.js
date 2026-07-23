@@ -65,7 +65,11 @@ class AuthController {
     if (state === 'settings') {
       res.redirect(`${frontendUrl}/settings?tab=access&success=google_linked`);
     } else {
-      res.redirect(`${frontendUrl}/dashboard?success=google_login&token=${result.accessToken}&refreshToken=${result.refreshToken}`);
+      // Auth is already established via the HttpOnly cookies set above —
+      // the frontend never needed the raw tokens from the URL, and putting
+      // them there leaked into browser history, server/proxy access logs,
+      // and the Referrer header of the landing page's first request.
+      res.redirect(`${frontendUrl}/dashboard?success=google_login`);
     }
   });
 

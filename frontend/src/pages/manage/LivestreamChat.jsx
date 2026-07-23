@@ -3,7 +3,6 @@ import socketClient from '../../services/socket';
 import apiService from '../../services/api';
 import { useAuthStore } from '../../store/useAuthStore';
 import { useBrandStore } from '../../store/useBrandStore';
-import { STORAGE_KEYS } from '../../constants/storageKeys';
 import { toast } from 'sonner';
 
 // Hằng số định cấu hình tránh magic string
@@ -122,11 +121,9 @@ export function LivestreamChat() {
       setViewerHistory([initViewers]);
     }
 
-    // Reading the literal 'token' key instead of STORAGE_KEYS.TOKEN meant a
-    // future key rename here would silently fall through to 'dummy-token'
-    // and connect unauthenticated with no error surfaced (#113 K12).
-    const token = localStorage.getItem(STORAGE_KEYS.TOKEN) || 'dummy-token';
-    socketClient.connect(token);
+    // Auth is cookie-based — see socket.js#connect and the backend's
+    // socketAuthMiddleware cookie fallback.
+    socketClient.connect();
 
     // Join room
     socketClient.emit('join_livestream', { livestreamId: selectedStreamId });

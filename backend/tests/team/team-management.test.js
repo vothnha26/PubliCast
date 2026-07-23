@@ -389,7 +389,11 @@ describe('Team Management APIs', () => {
         .send({ token, name: 'Invitee Name', password: 'password123' });
 
       expect(res.status).toBe(200);
-      expect(res.body.accessToken).toBeDefined();
+      // Auth is via the HttpOnly cookies set alongside this response, not a
+      // token in the JSON body (see team.controller.js#acceptInvitation).
+      expect(res.body.accessToken).toBeUndefined();
+      expect(res.body.refreshToken).toBeUndefined();
+      expect(res.headers['set-cookie']).toBeDefined();
     });
 
     it('rejects a double-submitted accept (race condition) without a second password write', async () => {
