@@ -27,11 +27,19 @@ class UserController {
     if (isActive === undefined) {
       return res.status(400).json({ message: 'Trạng thái hoạt động (isActive) là bắt buộc' });
     }
+    // Coerce explicitly instead of relying on JS truthiness — a client
+    // sending the string "false" (e.g. from an HTML form or a loosely typed
+    // API caller) would otherwise be treated as truthy and activate the
+    // account instead of banning it.
+    if (isActive !== true && isActive !== false && isActive !== 'true' && isActive !== 'false') {
+      return res.status(400).json({ message: 'Trạng thái hoạt động (isActive) phải là boolean' });
+    }
+    const isActiveBool = isActive === true || isActive === 'true';
 
-    const updatedUser = await userService.updateUserStatus(adminId, id, isActive);
+    const updatedUser = await userService.updateUserStatus(adminId, id, isActiveBool);
 
     res.status(200).json({
-      message: isActive ? 'Kích hoạt tài khoản thành công' : 'Vô hiệu hóa tài khoản thành công',
+      message: isActiveBool ? 'Kích hoạt tài khoản thành công' : 'Vô hiệu hóa tài khoản thành công',
       data: updatedUser
     });
   });
