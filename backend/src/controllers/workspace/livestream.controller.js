@@ -1,5 +1,6 @@
 const livestreamService = require('../../services/workspace/livestream.service');
 const asyncHandler = require('../../utils/async-handler');
+const jwtUtils = require('../../utils/jwt.utils');
 
 class LivestreamController {
   /**
@@ -28,6 +29,25 @@ class LivestreamController {
     res.status(200).json({
       message: 'Stream details retrieved successfully',
       data: stream
+    });
+  });
+
+  /**
+   * GET /api/livestreams/:id/overlay-token
+   * Mint a short-lived, single-livestream overlay token for embedding in
+   * the OBS Browser Source link (see #173). Reuses getStreamById's brand
+   * access check so only someone who can already view this stream can
+   * generate a link for it.
+   */
+  getOverlayToken = asyncHandler(async (req, res) => {
+    const stream = await livestreamService.getStreamById(req.params.id, req.user.id);
+    if (!stream) {
+      return res.status(404).json({ message: 'Livestream not found' });
+    }
+    const token = jwtUtils.generateOverlayToken({ livestreamId: req.params.id });
+    res.status(200).json({
+      message: 'Overlay token generated successfully',
+      data: { token }
     });
   });
 }
