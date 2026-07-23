@@ -246,7 +246,7 @@ async function main() {
       caption: 'Tìm hiểu cách xây dựng hệ thống quy mô lớn bằng Node.js và RabbitMQ.',
       type: 'TEXT',
       status: 'DRAFT',
-      targetPlatforms: 'FACEBOOK,LINKEDIN',
+      targetPlatforms: 'FACEBOOK,INSTAGRAM',
       createdAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000)
     }
   });
@@ -260,7 +260,7 @@ async function main() {
       caption: 'SOLID là gì? Làm thế nào áp dụng SOLID hiệu quả nhất trong lập trình JavaScript / ReactJS.',
       type: 'IMAGE',
       status: 'SCHEDULED',
-      targetPlatforms: 'FACEBOOK,LINKEDIN',
+      targetPlatforms: 'FACEBOOK,INSTAGRAM',
       scheduledAt: new Date(Date.now() + 1 * 24 * 60 * 60 * 1000),
       createdAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000)
     }

@@ -7,8 +7,8 @@ const integrationClientService = require('./integration-client.service');
  * Two events only: a user is fully removed from a brand, or a brand is
  * deactivated. Everything else (role tweaks, plan changes) is left to the
  * receiving side's own verify-on-action re-check; these two are pushed
- * immediately because a live real-time session (e.g. an open Discord/Slack
- * chat) has no other prompt to re-check access.
+ * immediately because a live real-time session (e.g. an open real-time chat)
+ * has no other prompt to re-check access.
  */
 
 /**

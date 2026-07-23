@@ -249,8 +249,7 @@ class ThreadsService extends BaseSocialService {
           // viewsBreakdown removed — it derived a 90/10 organic/promoted
           // split from summary.views using a fixed ratio, with no real
           // organic/sponsored breakdown source fetched anywhere here (#97,
-          // same fabrication pattern already removed for Facebook/Instagram/
-          // LinkedIn in #69).
+          // same fabrication pattern already removed for Facebook/Instagram in #69).
         }
       })
     };

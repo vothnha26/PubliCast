@@ -80,9 +80,7 @@ async function main() {
     'TIKTOK',
     'FACEBOOK,INSTAGRAM',
     'YOUTUBE,TIKTOK',
-    'FACEBOOK,INSTAGRAM,TIKTOK',
-    'FACEBOOK,LINKEDIN',
-    'LINKEDIN'
+    'FACEBOOK,INSTAGRAM,TIKTOK'
   ];
 
   const today = new Date();
