@@ -1,4 +1,5 @@
 import apiService from './api';
+import { STORAGE_KEYS } from '../constants/storageKeys';
 
 class AuthService {
   async getGoogleLoginUrl() {
@@ -7,10 +8,11 @@ class AuthService {
   }
 
   async login(payload) {
-    // Auth is established via the HttpOnly cookies the backend sets on this
-    // response (see api.js's withCredentials) — the backend never returns a
-    // raw token in the body here, so there was nothing to store client-side.
     const response = await apiService.post('/auth/login', payload);
+    const token = response.data.accessToken || response.data.token;
+    if (token) {
+      localStorage.setItem(STORAGE_KEYS.TOKEN, token);
+    }
     return response.data;
   }
 
@@ -21,6 +23,10 @@ class AuthService {
 
   async verifyOTP(payload) {
     const response = await apiService.post('/auth/verify-otp', payload);
+    const token = response.data.accessToken || response.data.token;
+    if (token) {
+      localStorage.setItem(STORAGE_KEYS.TOKEN, token);
+    }
     return response.data;
   }
 
@@ -61,6 +67,10 @@ class AuthService {
 
   async loginVerify2FA(payload) {
     const response = await apiService.post('/auth/2fa/login-verify', payload);
+    const token = response.data.accessToken || response.data.token;
+    if (token) {
+      localStorage.setItem(STORAGE_KEYS.TOKEN, token);
+    }
     return response.data;
   }
 
@@ -69,13 +79,16 @@ class AuthService {
       await apiService.post('/auth/logout');
     } catch (error) {
       console.warn('Backend logout failed:', error.message);
+    } finally {
+      localStorage.removeItem(STORAGE_KEYS.TOKEN);
     }
   }
 
   async refreshToken() {
-    // Backend sets a fresh accessToken cookie on this response; nothing to
-    // store client-side.
     const response = await apiService.post('/auth/refresh');
+    if (response.data.token) {
+      localStorage.setItem(STORAGE_KEYS.TOKEN, response.data.token);
+    }
     return response.data;
   }
 }
