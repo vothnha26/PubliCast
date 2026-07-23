@@ -12,6 +12,8 @@ import { toast } from "sonner";
 import { format } from "date-fns";
 import { useConfirm } from "@/hooks/useConfirm";
 import { useTranslation } from "react-i18next";
+import { useDebounce } from "../../../hooks/useDebounce";
+import { useLatestRequestId } from "../../../hooks/useLatestRequestId";
 
 export function HistoryView() {
   const { t } = useTranslation("planner");
@@ -21,27 +23,32 @@ export function HistoryView() {
   const [loading, setLoading] = useState(true);
   const { activeBrand } = useBrand();
   const [searchTerm, setSearchTerm] = useState("");
+  const debouncedSearch = useDebounce(searchTerm, 300);
+  const historyRequest = useLatestRequestId();
 
   const fetchDeletedPosts = async () => {
     if (!activeBrand) return;
+    const requestId = historyRequest.start();
     setLoading(true);
     try {
-      const res = await postService.getPosts(activeBrand.id, { 
+      const res = await postService.getPosts(activeBrand.id, {
         isDeleted: true,
-        search: searchTerm
+        search: debouncedSearch
       });
+      if (!historyRequest.isLatest(requestId)) return;
       setPosts(res.data || []);
       setSelected([]);
     } catch (e) {
-      toast.error(t("historyView.toasts.loadFail"));
+      if (historyRequest.isLatest(requestId)) toast.error(t("historyView.toasts.loadFail"));
     } finally {
-      setLoading(false);
+      if (historyRequest.isLatest(requestId)) setLoading(false);
     }
   };
 
   useEffect(() => {
     fetchDeletedPosts();
-  }, [activeBrand, searchTerm]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeBrand, debouncedSearch]);
 
   const toggleSelect = (id) => {
     setSelected(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);

@@ -11,6 +11,7 @@ import postService from "../../../services/post.service";
 import { useTranslation } from "react-i18next";
 import { mapToPostPreview } from "../../../utils/postPreview";
 import { buildPostDetailRoute } from "../../../constants/routes";
+import { useLatestRequestId } from "../../../hooks/useLatestRequestId";
 
 // Import SOLID Subcomponents
 import { UpgradeBanner } from "./components/UpgradeBanner";
@@ -85,6 +86,7 @@ export function WeeklyCalendarView() {
   
   const [monthlyPostCount, setMonthlyPostCount] = useState(0);
   const [bestTimesData, setBestTimesData] = useState([]);
+  const postsRequest = useLatestRequestId();
 
   // Fetch Best Times to Post metrics
   useEffect(() => {
@@ -122,7 +124,13 @@ export function WeeklyCalendarView() {
       }
     };
     fetchMonthlyCount();
-  }, [activeBrand, postData]);
+    // postData intentionally excluded: it changes every time fetchPosts
+    // resolves (week/day navigation), which previously re-triggered this
+    // redundant /posts?limit=1 call on every nav instead of only when the
+    // brand changes (#88 M3). Post creation/deletion should trigger its own
+    // refresh via whatever already calls fetchPosts, not via this effect.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeBrand]);
   
   // Update current time every minute
   useEffect(() => {
@@ -133,6 +141,7 @@ export function WeeklyCalendarView() {
   // Fetch Posts based on selectedDate and viewMode
   const fetchPosts = async () => {
     if (!activeBrand) return;
+    const requestId = postsRequest.start();
     setLoading(true);
 
     const toLocalDateStr = (d) => {
@@ -173,12 +182,15 @@ export function WeeklyCalendarView() {
         apiService.get(`/posts?brandId=${activeBrand.id}&startDate=${startDateStr}&endDate=${endDateStr}&limit=100`),
         apiService.get(`/calendar-events?brandId=${activeBrand.id}&startDate=${startDateStr}&endDate=${endDateStr}`)
       ]);
+      // A slower in-flight request resolving after a newer one (e.g. rapid
+      // Prev/Next clicks) must not overwrite the grid with stale week data (#88 M4).
+      if (!postsRequest.isLatest(requestId)) return;
       setPostData(postsRes.data.data || []);
       setEventsData(eventsRes.data.data || []);
     } catch (e) {
-      toast.error(t("weeklyCalendar.loadCalendarFail"));
+      if (postsRequest.isLatest(requestId)) toast.error(t("weeklyCalendar.loadCalendarFail"));
     } finally {
-      setLoading(false);
+      if (postsRequest.isLatest(requestId)) setLoading(false);
     }
   };
 
@@ -186,18 +198,29 @@ export function WeeklyCalendarView() {
     fetchPosts();
   }, [activeBrand, selectedDate, isOpen, calendarViewMode]);
 
+  // Search/status/type filtering shared between Week view (further grouped
+  // below into groupedPosts) and Month view — MonthlyGrid previously only
+  // received the raw postData plus its own internal platform filter, so
+  // searchTerm/filterStatus/filterType silently had no effect on the Month
+  // tab even though the toolbar controlling them is shared (#88 M10).
+  // Platform filtering is intentionally left to MonthlyGrid/groupedPosts
+  // themselves rather than duplicated here.
+  const searchStatusTypeFiltered = useMemo(() => {
+    return postData.filter(post => {
+      const matchesSearch = !searchTerm || post.title?.toLowerCase().includes(searchTerm.toLowerCase());
+      const matchesStatus = filterStatus === "ALL" || post.status?.toUpperCase() === filterStatus;
+      const matchesType = filterType === "ALL" || post.type?.toUpperCase() === filterType;
+      return matchesSearch && matchesStatus && matchesType;
+    });
+  }, [postData, searchTerm, filterStatus, filterType]);
+
   // Group and search-filter posts dynamically
   const groupedPosts = useMemo(() => {
     const grid = {};
-    const filtered = postData.filter(post => {
-      const matchesSearch = !searchTerm || post.title?.toLowerCase().includes(searchTerm.toLowerCase());
+    const filtered = searchStatusTypeFiltered.filter(post => {
       // Check if at least one platform on the post is visible
       const matchesPlatform = !post.platforms || post.platforms.length === 0 || post.platforms.some(p => visiblePlatforms[p.toUpperCase()] !== false);
-      // Filter by Status and Type
-      const matchesStatus = filterStatus === "ALL" || post.status?.toUpperCase() === filterStatus;
-      const matchesType = filterType === "ALL" || post.type?.toUpperCase() === filterType;
-
-      return matchesSearch && matchesPlatform && matchesStatus && matchesType;
+      return matchesPlatform;
     });
     filtered.forEach(post => {
       const date = new Date(post.scheduledAt || post.createdAt);
@@ -211,7 +234,7 @@ export function WeeklyCalendarView() {
       grid[key].push(post);
     });
     return grid;
-  }, [postData, searchTerm, visiblePlatforms, filterStatus, filterType]);
+  }, [searchStatusTypeFiltered, visiblePlatforms]);
 
   // Date handlers
   const handlePrevWeek = () => {
@@ -309,7 +332,7 @@ export function WeeklyCalendarView() {
           {calendarViewMode === 'MONTH' ? (
             <MonthlyGrid
               selectedDate={selectedDate}
-              postData={postData}
+              postData={searchStatusTypeFiltered}
               eventsData={eventsData}
               onCellClick={handleCellClick}
               onPostClick={handlePostClick}

@@ -255,7 +255,10 @@ export function WeeklyGrid({
             {/* Day columns for this hour */}
             {days.map((day, dIdx) => {
               const cellPosts = groupedPosts[`${day.full}-${hour.value}`] || [];
-              const percentage = getBestTimePercentage(dIdx, hour.value, bestTimesData, bestTimePlatform);
+              // Use the actual weekday of this column, not its render index —
+              // in DAY view `days` always has exactly 1 element so dIdx is
+              // always 0, making the heatmap ignore which day is selected (#88 M9).
+              const percentage = getBestTimePercentage(day.raw.getDay(), hour.value, bestTimesData, bestTimePlatform);
               const heatmapBg = getHeatmapBg(percentage);
 
               return (

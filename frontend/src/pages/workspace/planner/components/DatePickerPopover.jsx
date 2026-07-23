@@ -1,9 +1,20 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 
 export function DatePickerPopover({ isOpen, onClose, selectedDate, onSelectDate }) {
   // Local view month and year
   const [viewDate, setViewDate] = useState(new Date(selectedDate));
+
+  // The component never unmounts when closed (it just returns null below),
+  // so viewDate — initialized once at mount — would keep whatever month the
+  // user last navigated to on a previous open instead of resetting to
+  // selectedDate's month (#88 M7).
+  useEffect(() => {
+    if (isOpen) {
+      setViewDate(new Date(selectedDate));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
