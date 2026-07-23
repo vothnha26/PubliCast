@@ -16,14 +16,6 @@ class UserRepository {
     });
   }
 
-  async findCreatedAt(id) {
-    const user = await prisma.user.findUnique({
-      where: { id },
-      select: { createdAt: true }
-    });
-    return user?.createdAt || null;
-  }
-
   async createUser(userData, accountData, tx = prisma) {
     return await tx.user.create({
       data: {
