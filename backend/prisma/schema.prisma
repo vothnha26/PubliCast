@@ -243,6 +243,11 @@ model IntegrationClient {
   name                  String
   clientId              String    @unique
   clientSecretEncrypted String
+  // Where PubliCast POSTs HMAC-signed revocation events (user removed from
+  // brand / brand deactivated) — see revocation-webhook.service.js.
+  // Nullable: a client that only calls verify-token/user-permissions
+  // inbound has no reason to also receive outbound webhooks yet.
+  webhookUrl            String?
   isActive              Boolean   @default(true)
   createdAt             DateTime  @default(now())
   updatedAt             DateTime  @updatedAt

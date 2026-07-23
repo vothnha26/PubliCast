@@ -8,6 +8,9 @@ const approvalWorkflowRepository = require('../../repositories/workspace/approva
 const approvalWorkflowService = require('./approval-workflow.service');
 const authorizationFacade = require('../auth/authorization.facade');
 const roleResolver = require('./role-resolver');
+const outboxEventRepository = require('../../repositories/core/outbox-event.repository');
+const revocationWebhookService = require('../integrations/revocation-webhook.service');
+const { OUTBOX_EVENT_TYPES } = require('../../constants/outbox.constants');
 const { TEAM_STATUS, PERMISSION_KEYS, NOTIFICATION_TYPES, WORKFLOW_STATUS } = require('../../utils/constants');
 const QueryPipeline = require('../../core/query-pipeline/query.pipeline');
 const TeamSearchFilter = require('./team/filters/search.filter');
@@ -618,6 +621,27 @@ class TeamService {
       const fresh = await teamRepository.findById(id, tx);
       if (!fresh) return false;
       await teamRepository.delete(id, tx);
+
+      // Critical-event push to external integrations (plan.txt mục 6) — a
+      // user removed from a brand may have a live real-time session (e.g.
+      // an open Discord/Slack chat) that needs to be cut immediately, not
+      // just on their next API call. Enqueued in the SAME transaction as
+      // the deletion so the event can't be lost if the process crashes
+      // right after commit but before enqueueing separately.
+      const outboxPayloads = await revocationWebhookService.buildOutboxPayloadsForAllClients(
+        'USER_REMOVED_FROM_BRAND',
+        { brandId: team.brandId, userId: team.userId }
+      );
+      for (const { clientId, payload } of outboxPayloads) {
+        await outboxEventRepository.create(
+          OUTBOX_EVENT_TYPES.INTEGRATION_REVOCATION_WEBHOOK,
+          `${team.brandId}:${team.userId}:${clientId}`,
+          { clientId, eventPayload: payload },
+          {},
+          tx
+        );
+      }
+
       return true;
     });
 

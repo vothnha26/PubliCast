@@ -13,6 +13,7 @@ const initPostSubscribers = require('../../events/subscribers/post.subscriber');
 const { POST_DOMAIN_EVENT_HANDLERS } = initPostSubscribers;
 const brandService = require('../workspace/brand.service');
 const emailService = require('../core/email.service');
+const revocationWebhookService = require('../integrations/revocation-webhook.service');
 
 const OUTBOX_HANDLERS = {
   [OUTBOX_EVENT_TYPES.POST_PUBLISH_UPSERT]: async (payload) => {
@@ -46,6 +47,13 @@ const OUTBOX_HANDLERS = {
       { socialAccountId: payload.socialAccountId, platform: payload.platform, brandId: payload.brandId },
       { jobId }
     );
+  },
+  [OUTBOX_EVENT_TYPES.INTEGRATION_REVOCATION_WEBHOOK]: async (payload) => {
+    // One outbox event per client (see revocation-webhook.service.js's
+    // buildOutboxPayloadsForAllClients) — throwing here only retries
+    // delivery to payload.clientId, never re-sends to a client that
+    // already got a 2xx.
+    await revocationWebhookService.sendToClient(payload.clientId, payload.eventPayload);
   }
 };
 
