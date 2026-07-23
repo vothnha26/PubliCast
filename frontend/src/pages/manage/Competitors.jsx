@@ -23,11 +23,12 @@ import { PlatformIcon } from "../../components/shared/PlatformIcon";
 import { useBrand } from "../../context/BrandContext";
 import socialService from "../../services/social.service";
 import { useLatestRequestId } from "../../hooks/useLatestRequestId";
+import { useConfirm } from "../../hooks/useConfirm";
 
 
 
 export function CompetitorsPage() {
-  const { t } = useTranslation("competitors");
+  const { t } = useTranslation(["competitors", "common"]);
   const { activeBrand } = useBrand();
   
   // Search parameters for active tab
@@ -42,6 +43,7 @@ export function CompetitorsPage() {
   const [competitors, setCompetitors] = useState([]);
   const [loading, setLoading] = useState(false);
   const competitorsRequest = useLatestRequestId();
+  const confirm = useConfirm();
   
   const isPlatformConnected = (platformName) => {
     if (!activeBrand || !activeBrand.socialAccounts) return false;
@@ -393,7 +395,13 @@ export function CompetitorsPage() {
   // Delete Competitor
   const handleDeleteCompetitor = async (c) => {
     if (!activeBrand) return;
-    if (window.confirm(t("toasts.deleteConfirm", { name: c.name }))) {
+    const isConfirmed = await confirm({
+      title: t("toasts.deleteConfirm", { name: c.name }),
+      confirmText: t("common:delete"),
+      cancelText: t("common:cancel"),
+      variant: "destructive"
+    });
+    if (isConfirmed) {
       try {
         if (c.platform === "facebook") {
           await socialService.deleteFacebookCompetitor(c.id, activeBrand.id);
