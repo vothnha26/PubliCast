@@ -316,11 +316,20 @@ export function LivestreamChat() {
 
   }, [viewerHistory]);
 
-  const handleCopyObsLink = () => {
-    const origin = window.location.origin;
-    const obsLink = `${origin}/overlay/chat/${selectedStreamId}`;
-    navigator.clipboard.writeText(obsLink);
-    toast.success('Đã sao chép liên kết OBS Overlay!');
+  const handleCopyObsLink = async () => {
+    try {
+      // OBS Browser Source runs in an isolated CEF instance with no access
+      // to this browser's localStorage/cookies, so the link must carry its
+      // own short-lived, single-livestream token (#173).
+      const res = await apiService.get(`/livestreams/${selectedStreamId}/overlay-token`);
+      const token = res?.data?.data?.token;
+      const origin = window.location.origin;
+      const obsLink = `${origin}/overlay/chat/${selectedStreamId}?token=${encodeURIComponent(token)}`;
+      navigator.clipboard.writeText(obsLink);
+      toast.success('Đã sao chép liên kết OBS Overlay!');
+    } catch (err) {
+      toast.error('Không thể tạo liên kết OBS Overlay.');
+    }
   };
 
   const formatDuration = (sec) => {

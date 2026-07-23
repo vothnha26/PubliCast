@@ -12,6 +12,7 @@ router.use(verifyAuth);
  * Fetch stream history records
  */
 router.get('/history', livestreamController.getStreamHistory);
+router.get('/:id/overlay-token', livestreamController.getOverlayToken);
 router.get('/:id', livestreamController.getStreamById);
 
 module.exports = router;

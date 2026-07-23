@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useSearchParams } from 'react-router-dom';
 import socketClient from '../../services/socket';
-import { STORAGE_KEYS } from '../../constants/storageKeys';
 
 // SVG Icons chuẩn đồng bộ từ LivestreamChat
 const YouTubeIcon = () => (
@@ -19,15 +18,16 @@ const FacebookIcon = () => (
 
 export function ObsChatOverlay() {
   const { livestreamId } = useParams();
+  const [searchParams] = useSearchParams();
   const [comments, setComments] = useState([]);
 
   useEffect(() => {
     if (!livestreamId) return;
 
-    // Reading the literal 'token' key instead of STORAGE_KEYS.TOKEN meant a
-    // future key rename here would silently fall through to 'dummy-token'
-    // and connect unauthenticated with no error surfaced (#113 K12).
-    const token = localStorage.getItem(STORAGE_KEYS.TOKEN) || 'dummy-token';
+    // OBS Browser Source runs in an isolated CEF instance with no access to
+    // this app's localStorage/cookies, so the overlay link embeds its own
+    // short-lived, single-livestream token in the URL instead (#173).
+    const token = searchParams.get('token') || 'dummy-token';
     socketClient.connect(token);
 
     socketClient.emit('join_livestream', { livestreamId });

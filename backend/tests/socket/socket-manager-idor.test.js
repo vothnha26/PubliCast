@@ -43,6 +43,17 @@ function fakeSocket(user) {
   };
 }
 
+function fakeOverlaySocket(overlayLivestreamId) {
+  return {
+    overlayLivestreamId,
+    id: 'socket-overlay-1',
+    joinedRooms: [],
+    emittedEvents: [],
+    join(room) { this.joinedRooms.push(room); },
+    emit(event, data) { this.emittedEvents.push({ event, data }); }
+  };
+}
+
 describe('socket.manager _handleSendMessage (#72)', () => {
   beforeEach(() => jest.clearAllMocks());
 
@@ -146,6 +157,29 @@ describe('socket.manager _handleJoinLivestream (#73)', () => {
     const socket = fakeSocket({ id: 'attacker-1', name: 'Attacker', role: 'OWNER' });
 
     await socketManager._handleJoinLivestream(socket, { livestreamId: 'ls-victim' });
+
+    expect(socket.joinedRooms.length).toBe(0);
+    expect(socket.emittedEvents.some(e => e.event === SOCKET_EVENTS.ERROR)).toBe(true);
+  });
+});
+
+describe('socket.manager _handleJoinLivestream overlay tokens (#173)', () => {
+  beforeEach(() => jest.clearAllMocks());
+
+  test('an overlay-scoped socket joins its own livestream room without a brand check', async () => {
+    const socket = fakeOverlaySocket('ls-1');
+
+    await socketManager._handleJoinLivestream(socket, { livestreamId: 'ls-1' });
+
+    expect(socket.joinedRooms.length).toBe(1);
+    expect(authorizationFacade.checkBrandAccess).not.toHaveBeenCalled();
+    expect(socket.emittedEvents.some(e => e.event === SOCKET_EVENTS.ERROR)).toBe(false);
+  });
+
+  test('an overlay-scoped socket cannot join a different livestream room', async () => {
+    const socket = fakeOverlaySocket('ls-1');
+
+    await socketManager._handleJoinLivestream(socket, { livestreamId: 'ls-other' });
 
     expect(socket.joinedRooms.length).toBe(0);
     expect(socket.emittedEvents.some(e => e.event === SOCKET_EVENTS.ERROR)).toBe(true);

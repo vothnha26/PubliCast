@@ -84,6 +84,17 @@ class SocketManager {
    * Private handler for socket connection
    */
   _handleConnection(socket) {
+    // Overlay sockets (#173, OBS Browser Source) carry a narrow-scope token
+    // for a single livestream instead of a full user session — they have no
+    // socket.user and must only ever be allowed to join/leave that one room.
+    if (socket.overlayLivestreamId) {
+      console.log(`🔌 [SocketManager] Overlay client connected for livestream ${socket.overlayLivestreamId} | socketId: ${socket.id}`);
+      socket.on(SOCKET_EVENTS.JOIN_LIVESTREAM, (payload) => this._handleJoinLivestream(socket, payload));
+      socket.on(SOCKET_EVENTS.LEAVE_LIVESTREAM, (payload) => this._handleLeaveLivestream(socket, payload));
+      socket.on(SOCKET_EVENTS.DISCONNECT, () => this._handleDisconnect(socket));
+      return;
+    }
+
     const userId = socket.user.id;
     const socketId = socket.id;
 
@@ -186,6 +197,20 @@ class SocketManager {
         throw new Error('livestreamId is required to join livestream room');
       }
 
+      // Overlay sockets (#173) are pre-scoped to exactly one livestream by
+      // their token — skip the brand-membership check (they have no user)
+      // and refuse to join any other livestream's room.
+      if (socket.overlayLivestreamId) {
+        if (socket.overlayLivestreamId !== livestreamId) {
+          throw new Error('Overlay token không hợp lệ cho livestream này.');
+        }
+        const overlayRoom = `${ROOM_PREFIXES.LIVESTREAM}${livestreamId}`;
+        socket.join(overlayRoom);
+        socket.emit(SOCKET_EVENTS.JOINED_ROOM, { room: overlayRoom, livestreamId });
+        console.log(`👤 [SocketManager] Overlay client joined livestream room ${overlayRoom}`);
+        return;
+      }
+
       // Check if livestream exists
       const livestream = await prisma.livestream.findUnique({
         where: { id: livestreamId }
@@ -231,7 +256,8 @@ class SocketManager {
       const room = `${ROOM_PREFIXES.LIVESTREAM}${livestreamId}`;
       socket.leave(room);
       socket.emit(SOCKET_EVENTS.LEFT_ROOM, { room, livestreamId });
-      console.log(`👤 [SocketManager] User ${socket.user.name} left livestream room ${room}`);
+      const who = socket.overlayLivestreamId ? 'Overlay client' : `User ${socket.user.name}`;
+      console.log(`👤 [SocketManager] ${who} left livestream room ${room}`);
 
       // Check if room is empty to stop polling
       this._checkAndStopYoutubePolling(livestreamId);
@@ -364,21 +390,24 @@ class SocketManager {
    * Handle user disconnection
    */
   _handleDisconnect(socket) {
-    const userId = socket.user.id;
     const socketId = socket.id;
-    
+
     // Get rooms the socket was in before disconnect
     const rooms = Array.from(socket.rooms || []);
 
-    if (this.userSockets.has(userId)) {
-      const sockets = this.userSockets.get(userId);
-      sockets.delete(socketId);
-      if (sockets.size === 0) {
-        this.userSockets.delete(userId);
+    if (socket.overlayLivestreamId) {
+      console.log(`🔌 [SocketManager] Overlay client disconnected | socketId: ${socketId}`);
+    } else {
+      const userId = socket.user.id;
+      if (this.userSockets.has(userId)) {
+        const sockets = this.userSockets.get(userId);
+        sockets.delete(socketId);
+        if (sockets.size === 0) {
+          this.userSockets.delete(userId);
+        }
       }
+      console.log(`🔌 [SocketManager] Client disconnected: ${socket.user.name} | socketId: ${socketId}`);
     }
-
-    console.log(`🔌 [SocketManager] Client disconnected: ${socket.user.name} | socketId: ${socketId}`);
 
     // Check all livestream rooms the disconnected socket belonged to
     rooms.forEach(room => {
