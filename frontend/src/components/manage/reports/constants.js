@@ -28,8 +28,7 @@ export const PLATFORM_NAMES = {
   INSTAGRAM: "INSTAGRAM",
   YOUTUBE: "YOUTUBE",
   TIKTOK: "TIKTOK",
-  TELEGRAM: "TELEGRAM",
-  DISCORD: "DISCORD"
+  TELEGRAM: "TELEGRAM"
 };
 
 export const PERIOD_OPTIONS = {
@@ -85,10 +84,7 @@ export const DEFAULT_WIDGET_CONFIG = {
   ttBalance: true,
   ttViews: true,
   ttInteractions: true,
-  ttPosts: true,
-
-  // Discord
-  dcGrowth: true
+  ttPosts: true
 };
 
 export const INITIAL_TEMPLATES = [

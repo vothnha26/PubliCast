@@ -2,9 +2,7 @@ const youtubeService = require('./youtube');
 const facebookService = require('./facebook');
 const tiktokService = require('./tiktok');
 const instagramService = require('./instagram');
-const linkedinService = require('./linkedin');
 const telegramService = require('./telegram');
-const { discordService } = require('./discord');
 const threadsService = require('./threads');
 const MockSocialService = require('./mock-social.service');
 const createSyncCacheProxy = require('./sync-cache.proxy');
@@ -18,9 +16,7 @@ class SocialPlatformFactory {
       [PLATFORMS.FACEBOOK]: createSyncCacheProxy(facebookService),
       [PLATFORMS.TIKTOK]: createSyncCacheProxy(tiktokService),
       [PLATFORMS.INSTAGRAM]: createSyncCacheProxy(instagramService),
-      [PLATFORMS.LINKEDIN]: createSyncCacheProxy(linkedinService),
       [PLATFORMS.TELEGRAM]: createSyncCacheProxy(telegramService),
-      [PLATFORMS.DISCORD]: createSyncCacheProxy(discordService),
       [PLATFORMS.THREADS]: createSyncCacheProxy(threadsService),
     };
   }

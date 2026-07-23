@@ -29,8 +29,7 @@
       "facebook": "Facebook Performance",
       "instagram": "Instagram Performance",
       "youtube": "YouTube Performance",
-      "tiktok": "TikTok Performance",
-      "discord": "Discord Performance"
+      "tiktok": "TikTok Performance"
     }
   },
   "sections": {
@@ -60,7 +59,6 @@
     "totalViews": "Total Views",
     "totalLikes": "Total Likes",
     "weeklyViews": "Weekly Views",
-    "discordServer": "Discord Server Insights",
     "totalMembers": "Total Members",
     "activeUsers": "Active Users",
     "newMembers": "New Members",
@@ -101,7 +99,6 @@
     "ttPerformance": "TikTok Performance",
     "ttCommunityGrowth": "Community Growth",
     "ttPostsPerformance": "Posts Performance",
-    "dcInsights": "Discord Server Insights",
     "tgAnalytics": "Telegram Channel Analytics",
     "tgAnalyticsDesc": "Subscribers growth and average post views"
   }

@@ -22,8 +22,7 @@ const PLATFORM_COLORS = {
   TikTok: "#010101",
   Instagram: "#E1306C",
   Twitch: "#9146FF",
-  LinkedIn: "#0A66C2",
-  X: "#000000" 
+  X: "#000000"
 };
 
 // Cấu hình nhãn tiếng Việt, màu sắc, icon cho từng trạng thái bài viết (tránh magic strings)
@@ -60,8 +59,6 @@ const BRAND_PLATFORMS = [
   { name: "Facebook", apiKey: "FACEBOOK", label: "Facebook" },
   { name: "Instagram", apiKey: "INSTAGRAM", label: "Instagram" },
   { name: "TikTok", apiKey: "TIKTOK", label: "TikTok" },
-  { name: "LinkedIn", apiKey: "LINKEDIN", label: "LinkedIn" },
-  { name: "Discord", apiKey: "DISCORD", label: "Discord" },
   { name: "Threads", apiKey: "THREADS", label: "Threads" }
 ];
 
@@ -92,18 +89,8 @@ const PLATFORM_METRICS_STRATEGIES = {
     getViews: (m) => m.tikTokAccount?.likesCount || 0,
     getVideos: (m) => m.tikTokAccount?.videoCount || 0,
   },
-  LINKEDIN: {
-    getSubscribers: (m) => m.linkedInAccount?.followersCount || 0,
-    getViews: (m) => 0,
-    getVideos: (m) => 0,
-  },
   TELEGRAM: {
     getSubscribers: (m) => m.telegramAccount?.memberCount || 0,
-    getViews: (m) => 0,
-    getVideos: (m) => 0,
-  },
-  DISCORD: {
-    getSubscribers: (m) => m.discordAccount?.memberCount || 0,
     getViews: (m) => 0,
     getVideos: (m) => 0,
   }
@@ -175,8 +162,6 @@ export function DashboardPage() {
       { platform: "Facebook", key: "FACEBOOK" },
       { platform: "TikTok", key: "TIKTOK" },
       { platform: "Instagram", key: "INSTAGRAM" },
-      { platform: "LinkedIn", key: "LINKEDIN" },
-      { platform: "Discord", key: "DISCORD" },
     ];
 
     const maxSubscribers = Math.max(...metrics.map(m => {

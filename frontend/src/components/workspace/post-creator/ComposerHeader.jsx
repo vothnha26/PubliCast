@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { 
-  PlayCircle, Lock, Instagram, Youtube, MessageSquare, Plus, FileText,
+import {
+  PlayCircle, Lock, Instagram, Youtube, Plus, FileText,
   ChevronDown, Video, LayoutGrid, Film, PlusCircle, Check, Send
 } from "lucide-react";
 import { usePostCreatorFormContext } from "../../../context/PostCreatorFormContext";
@@ -38,7 +38,6 @@ export function ComposerHeader() {
   const hasTiktokAccess = true;
   const hasYoutubeAccess = true;
   const hasInstagramAccess = true;
-  const hasLinkedinAccess = true;
 
   const isPlatformConnected = (platformId) => {
     if (!activeBrand || !activeBrand.socialAccounts) return false;
@@ -47,9 +46,7 @@ export function ComposerHeader() {
       instagram: "INSTAGRAM",
       youtube: "YOUTUBE",
       tiktok: "TIKTOK",
-      linkedin: "LINKEDIN",
       telegram: "TELEGRAM",
-      discord: "DISCORD",
       threads: "THREADS"
     };
     const targetPlatform = mapping[platformId];
@@ -323,35 +320,6 @@ export function ComposerHeader() {
             </div>
           )}
 
-          {/* LinkedIn */}
-          {shouldShowPlatform("linkedin") && (
-            <div className="flex items-center gap-2 relative">
-              <button 
-                type="button"
-                title={getPlatformLockInfo("linkedin").isFullyLocked ? `LinkedIn hiện đang bị khóa: ${getPlatformLockInfo("linkedin").reason}` : "LinkedIn"}
-                data-testid="platform-select-linkedin" onClick={() => handlePlatformClick("linkedin", hasLinkedinAccess, PRODUCT_IDS.LINKEDIN_MANAGEMENT || 'linkedin_management')}
-                className={`w-9 h-9 rounded-full flex items-center justify-center transition-all cursor-pointer relative ${
-                  getPlatformLockInfo("linkedin").isFullyLocked
-                    ? 'bg-red-50 text-red-400 border border-red-200 opacity-60 cursor-not-allowed'
-                    : selectedPlatforms.includes('linkedin')
-                      ? activePlatform === 'linkedin'
-                        ? 'bg-[#0077B5] text-white shadow-md'
-                        : 'bg-[#0077B5]/10 text-[#0077B5] hover:bg-[#0077B5]/20'
-                      : 'text-gray-400 hover:text-gray-600 hover:bg-gray-50'
-                }`}
-              >
-                <svg className="w-4 h-4 fill-current" viewBox="0 0 24 24">
-                  <path d="M22.23 0H1.77C.8 0 0 .77 0 1.72v20.56C0 23.23.8 24 1.77 24h20.46c.98 0 1.77-.77 1.77-1.72V1.72C24 .77 23.2 0 22.23 0zM7.12 20.45H3.56V9H7.12v11.45zM5.34 7.43c-1.14 0-2.06-.92-2.06-2.06 0-1.14.92-2.06 2.06-2.06 1.14 0 2.06.92 2.06 2.06 0 1.14-.92 2.06-2.06 2.06zm15.11 13.02h-3.56v-5.6c0-1.34-.03-3.05-1.86-3.05-1.86 0-2.14 1.45-2.14 2.95v5.7h-3.56V9h3.42v1.56h.05c.48-.9 1.64-1.85 3.37-1.85 3.6 0 4.27 2.37 4.27 5.45v6.29z"/>
-                </svg>
-                {getPlatformLockInfo("linkedin").isFullyLocked && (
-                  <span className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full p-0.5 shadow-sm border border-white">
-                    <Lock size={7} strokeWidth={3} />
-                  </span>
-                )}
-              </button>
-            </div>
-          )}
-
           {/* Telegram */}
           {shouldShowPlatform("telegram") && (
             <div className="flex items-center gap-2 relative">
@@ -371,33 +339,6 @@ export function ComposerHeader() {
               >
                 <Send size={16} className={`rotate-45 translate-x-[-1px]`} />
                 {getPlatformLockInfo("telegram").isFullyLocked && (
-                  <span className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full p-0.5 shadow-sm border border-white">
-                    <Lock size={7} strokeWidth={3} />
-                  </span>
-                )}
-              </button>
-            </div>
-          )}
-
-          {/* Discord */}
-          {shouldShowPlatform("discord") && (
-            <div className="flex items-center gap-2 relative">
-              <button 
-                type="button"
-                title={getPlatformLockInfo("discord").isFullyLocked ? `Discord hiện đang bị khóa: ${getPlatformLockInfo("discord").reason}` : "Discord"}
-                data-testid="platform-select-discord" onClick={() => handlePlatformClick("discord", true)}
-                className={`w-9 h-9 rounded-full flex items-center justify-center transition-all cursor-pointer relative ${
-                  getPlatformLockInfo("discord").isFullyLocked
-                    ? 'bg-red-50 text-red-400 border border-red-200 opacity-60 cursor-not-allowed'
-                    : selectedPlatforms.includes('discord')
-                      ? activePlatform === 'discord'
-                        ? 'bg-[#5865F2] text-white shadow-md'
-                        : 'bg-[#5865F2]/10 text-[#5865F2] hover:bg-[#5865F2]/20'
-                      : 'text-gray-400 hover:text-gray-600 hover:bg-gray-50'
-                }`}
-              >
-                <MessageSquare size={16} />
-                {getPlatformLockInfo("discord").isFullyLocked && (
                   <span className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full p-0.5 shadow-sm border border-white">
                     <Lock size={7} strokeWidth={3} />
                   </span>

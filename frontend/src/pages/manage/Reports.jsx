@@ -42,7 +42,6 @@ import { FacebookInteractionsTab } from "../workspace/dashboard/FacebookInteract
 import { FacebookPostsTab } from "../workspace/dashboard/FacebookPostsTab";
 import { TikTokCommunityTab } from "../workspace/dashboard/TikTokCommunityTab";
 import { InstagramAccountTab } from "../workspace/dashboard/InstagramAccountTab";
-import { DiscordDashboard } from "../workspace/dashboard/DiscordDashboard";
 import { renderWidgetThumbnail } from "./reportWidgetThumbnails.jsx";
 
 // Import modular components and constants
@@ -69,19 +68,6 @@ const FALLBACK_PREVIEW_DATA = {
       { week: "W2", views: 0 },
       { week: "W3", views: 0 },
       { week: "W4", views: 0 }
-    ]
-  },
-  discord: {
-    members: 0,
-    activeUsers: 0,
-    newMembers: 0,
-    messagesCount: 0,
-    onlineNow: 0,
-    monthlyGrowth: [
-      { week: "W1", members: 0, messages: 0 },
-      { week: "W2", members: 0, messages: 0 },
-      { week: "W3", members: 0, messages: 0 },
-      { week: "W4", members: 0, messages: 0 }
     ]
   },
   telegram: {
@@ -208,10 +194,6 @@ export function ReportsPage() {
     ttViews: true,
     ttInteractions: true,
     ttPosts: true,
-
-    // Discord (map theo các tab thật: Community, Channels)
-    dcGrowth: true,
-
   });
 
   // Sorting configurations
@@ -338,7 +320,7 @@ export function ReportsPage() {
     if (!activeBrand) return;
     setPreviewLoading(true);
     try {
-      const platforms = ["Facebook", "YouTube", "Instagram", "TikTok", "Telegram", "Discord"];
+      const platforms = ["Facebook", "YouTube", "Instagram", "TikTok", "Telegram"];
       const res = await apiService.get(`/reports/preview-data`, {
         params: {
           brandId: activeBrand.id,
@@ -447,9 +429,6 @@ export function ReportsPage() {
     }
     if (isPlatformConnected("tiktok") && (selectedWidgets.ttGrowth || selectedWidgets.ttBalance || selectedWidgets.ttViews || selectedWidgets.ttInteractions || selectedWidgets.ttPosts)) {
       pages.push("tiktok");
-    }
-    if (isPlatformConnected("discord") && selectedWidgets.dcGrowth) {
-      pages.push("discord");
     }
     return pages;
   };
@@ -1054,124 +1033,6 @@ export function ReportsPage() {
       );
     }
 
-    if (pageType === "discord") {
-      const dcChannel = data.channels?.find(c => c.platform === "DISCORD") || { displayName: t("editor.widgetSections.discord"), followers: 0, postsCount: 0, engagementRate: 0, reach: 0, impressions: 0, engagements: 0, likes: 0, comments: 0, shares: 0, clicks: 0 };
-      const dcData = data.discord || FALLBACK_PREVIEW_DATA.discord;
-
-      return (
-        <div
-          className="w-full aspect-[1.414/1] relative flex flex-col justify-between overflow-hidden p-5 bg-white text-gray-800 border border-gray-150 rounded-xl"
-          style={bodyBackgroundUrl ? { backgroundImage: `url(${bodyBackgroundUrl})`, backgroundSize: "cover", backgroundPosition: "center" } : {}}
-        >
-          {renderHeader("DISCORD SERVER INSIGHTS")}
-
-          {/* KPI Strip */}
-          <div className="grid grid-cols-4 gap-2.5 mb-2.5">
-            {[
-              { label: t("sections.totalMembers"), value: dcChannel.followers >= 1000 ? `${(dcChannel.followers / 1000).toFixed(1)}K` : dcChannel.followers, accent: "#5865F2" },
-              { label: t("sections.activeUsers"), value: dcChannel.clicks >= 1000 ? `${(dcChannel.clicks / 1000).toFixed(1)}K` : dcChannel.clicks, accent: "#57F287" },
-              { label: t("sections.newMembers"), value: `+${dcChannel.likes}`, accent: color },
-              { label: t("sections.messages"), value: dcChannel.postsCount >= 1000 ? `${(dcChannel.postsCount / 1000).toFixed(1)}K` : dcChannel.postsCount, accent: "#FEE75C" }
-            ].map((kpi, i) => (
-              <div key={i} className="p-2 bg-gray-50 border border-gray-100 rounded-lg space-y-0.5" style={{ borderTop: `2px solid ${kpi.accent}` }}>
-                <span className="text-[6.5px] text-gray-450 font-bold uppercase tracking-wider block">{kpi.label}</span>
-                <div className="text-xs font-black font-mono" style={{ color: kpi.accent }}>{kpi.value}</div>
-              </div>
-            ))}
-          </div>
-
-          <div className="grid grid-cols-5 gap-2.5 items-stretch mb-1">
-            {/* Members Growth Chart */}
-            <div className="col-span-2 bg-gray-50 border border-gray-100 rounded-lg p-2 flex flex-col">
-              <span className="text-[7px] font-extrabold text-gray-500 uppercase tracking-wider mb-1">{t("sections.memberGrowth")}</span>
-              <svg viewBox="0 0 150 70" className="w-full flex-1">
-                <line x1="10" y1="10" x2="140" y2="10" stroke="#E2E8F0" strokeWidth="0.5" strokeDasharray="2 2" />
-                <line x1="10" y1="35" x2="140" y2="35" stroke="#E2E8F0" strokeWidth="0.5" strokeDasharray="2 2" />
-                <line x1="10" y1="60" x2="140" y2="60" stroke="#E2E8F0" strokeWidth="0.5" />
-                {(() => {
-                  const weeklyMembers = getWeeklyData(dcChannel.analyticsData?.growth, "followers");
-                  const maxM = Math.max(...weeklyMembers, 1);
-                  const minM = Math.min(...weeklyMembers, 0);
-                  const range = maxM - minM || 1;
-                  const coords = weeklyMembers.map((wVal, i) => {
-                    const x = 20 + i * 35;
-                    const y = 60 - ((wVal - minM) / range) * 45;
-                    return { x, y };
-                  });
-                  const pathD = `M ${coords.map(c => `${c.x},${c.y}`).join(" L ")}`;
-                  const fillD = `M ${coords[0].x},${coords[0].y} L ${coords.map(c => `${c.x},${c.y}`).join(" L ")} L ${coords[coords.length - 1].x},60 L ${coords[0].x},60 Z`;
-                  return (
-                    <>
-                      <defs>
-                        <linearGradient id="dcGrad" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="0%" stopColor="#5865F2" stopOpacity="0.3" />
-                          <stop offset="100%" stopColor="#5865F2" stopOpacity="0" />
-                        </linearGradient>
-                      </defs>
-                      <path d={fillD} fill="url(#dcGrad)" />
-                      <path d={pathD} fill="none" stroke="#5865F2" strokeWidth="1.5" />
-                      {coords.map((c, i) => (
-                        <circle key={i} cx={c.x} cy={c.y} r="1.5" fill="#5865F2" stroke="white" strokeWidth="0.5" />
-                      ))}
-                    </>
-                  );
-                })()}
-              </svg>
-            </div>
-
-            {/* Activity Overview */}
-            <div className="col-span-3 bg-gray-50 border border-gray-100 rounded-lg p-2.5 flex flex-col gap-2">
-              <span className="text-[7px] font-extrabold text-gray-500 uppercase tracking-wider">{t("sections.serverActivity")}</span>
-              
-              {/* Active ratio bar */}
-              <div>
-                <div className="flex justify-between text-[6.5px] text-gray-500 mb-1">
-                  <span>{t("sections.activeRatio")}</span>
-                  <span className="font-bold" style={{ color: "#57F287" }}>
-                    {dcChannel.followers > 0 ? ((dcChannel.clicks / dcChannel.followers) * 100).toFixed(1) : "0.0"}%
-                  </span>
-                </div>
-                <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
-                  <div className="h-full rounded-full transition-all" style={{ width: `${dcChannel.followers > 0 ? Math.min(100, (dcChannel.clicks / dcChannel.followers) * 100).toFixed(1) : 0}%`, backgroundColor: "#57F287" }} />
-                </div>
-              </div>
-
-              {/* Message activity per week */}
-              <div>
-                <span className="text-[6.5px] text-gray-500 font-bold uppercase tracking-wider block mb-1">{t("sections.weeklyMessages")}</span>
-                <svg viewBox="0 0 200 40" className="w-full h-8">
-                  {(() => {
-                    const weeklyMessages = getWeeklyData(dcChannel.analyticsData?.growth, "totalContent");
-                    const maxMsg = Math.max(...weeklyMessages, 1);
-                    return weeklyMessages.map((wVal, i) => {
-                      const barH = Math.max(3, (wVal / maxMsg) * 28);
-                      const x = 10 + i * 48;
-                      return (
-                        <g key={i}>
-                          <rect x={x} y={30 - barH} width={30} height={barH} rx="2" fill="#FEE75C" fillOpacity="0.8" />
-                          <text x={x + 15} y="38" textAnchor="middle" fontSize="5" fill="#9CA3AF" fontFamily="monospace">W{i+1}</text>
-                        </g>
-                      );
-                    });
-                  })()}
-                </svg>
-              </div>
-
-              {/* Online now indicator */}
-              <div className="flex items-center gap-2 mt-auto">
-                <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
-                <span className="text-[7px] text-gray-500 font-bold">
-                  <span className="text-green-500">{dcChannel.clicks}</span> {t("sections.onlineNow")}
-                </span>
-              </div>
-            </div>
-          </div>
-
-          {renderFooter()}
-        </div>
-      );
-    }
-
     if (pageType === "telegram") {
       const tgChannel = data.channels?.find(c => c.platform === "TELEGRAM") || { displayName: t("editor.widgetSections.telegram"), followers: 0, postsCount: 0, engagementRate: 0, reach: 0, impressions: 0, engagements: 0, likes: 0, comments: 0, shares: 0, clicks: 0 };
       const tgData = data.telegram || FALLBACK_PREVIEW_DATA.telegram;
@@ -1501,32 +1362,6 @@ export function ReportsPage() {
       );
     }
 
-    if (platform === "DISCORD" || platform === "discord") {
-      const mockMetrics = {
-        discordAccount: {
-          followersCount: channelData.followers || 0,
-          displayName: channelData.displayName
-        }
-      };
-      return (
-        <div className="space-y-8 p-4 bg-white rounded-3xl border border-gray-100">
-          <div className="border-b pb-4 mb-4">
-             <h4 className="text-base font-bold text-gray-800 uppercase tracking-tight flex items-center gap-2">
-               <PlatformIcon platform="Discord" size={18} />
-               {t("dashboard.dcInsights")}
-             </h4>
-          </div>
-          {selectedWidgets.dcGrowth && (
-            <DiscordDashboard
-              activeTab="community"
-              setActiveTab={() => {}}
-              overrideMetrics={mockMetrics}
-            />
-          )}
-        </div>
-      );
-    }
-
     if (platform === "TELEGRAM" || platform === "telegram") {
       const tgGrowthData = growthRows.map((r, i) => ({
         name: r.date ? r.date.slice(5) : `D${i+1}`,
@@ -1760,7 +1595,7 @@ export function ReportsPage() {
     }
     toast.loading("Đang tạo và gửi báo cáo qua Email...", { id: "test-report" });
     try {
-      const platforms = ["Facebook", "YouTube", "Instagram", "TikTok", "Telegram", "Discord"];
+      const platforms = ["Facebook", "YouTube", "Instagram", "TikTok", "Telegram"];
       await apiService.post(`/reports/send-test?brandId=${activeBrand.id}`, {
         title: templateName || "Social Media Insights",
         format: "Excel",
@@ -1787,7 +1622,7 @@ export function ReportsPage() {
     if (!previewData) {
       const toastId = toast.loading("Đang tự động tải dữ liệu thực tế trước khi xuất PDF...");
       try {
-        const platforms = ["Facebook", "YouTube", "Instagram", "TikTok", "Telegram", "Discord"];
+        const platforms = ["Facebook", "YouTube", "Instagram", "TikTok", "Telegram"];
         const res = await apiService.get(`/reports/preview-data`, {
           params: {
             brandId: activeBrand.id,
@@ -1828,7 +1663,6 @@ export function ReportsPage() {
     if (enabledPages.includes("instagram")) platforms.push("Instagram");
     if (enabledPages.includes("youtube")) platforms.push("YouTube");
     if (enabledPages.includes("tiktok")) platforms.push("TikTok");
-    if (enabledPages.includes("discord")) platforms.push("Discord");
     if (enabledPages.includes("telegram")) platforms.push("Telegram");
     if (platforms.length === 0) platforms.push("Facebook");
 
@@ -2143,15 +1977,6 @@ export function ReportsPage() {
                   >
                     <PlatformIcon platform="TikTok" size={14} />
                     TikTok
-                  </button>
-                  <button 
-                    onClick={() => setEditorTab("discord")}
-                    className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all ${
-                      editorTab === "discord" ? "bg-[#5865F2] text-white" : "hover:bg-gray-50 text-gray-600"
-                    }`}
-                  >
-                    <PlatformIcon platform="Discord" size={14} />
-                    Discord
                   </button>
                 </div>
 
@@ -2787,70 +2612,6 @@ export function ReportsPage() {
                     </div>
                   )}
 
-                  {/* TAB: Discord */}
-                  {editorTab === "discord" && (
-                    <div className="space-y-6">
-                      <div className="flex items-center justify-between pb-4 border-b border-gray-100">
-                        <span className="font-bold text-gray-800 text-sm">Discord Dashboard Widgets (Community + Channels)</span>
-                      </div>
-                      {renderSectionList([
-                        { key: "dcGrowth", title: "Community", description: "Members, online, messages" }
-                      ], "sm:grid-cols-1")}
-                      <div className="rounded-xl border border-gray-200 bg-white p-4 text-[10px] text-gray-500">
-                        Channels are managed in the dashboard's Channels tab.
-                      </div>
-                    </div>
-                  )}
-                  {false && (
-                    <div className="space-y-6">
-                      <div className="flex items-center justify-between pb-4 border-b border-gray-100">
-                        <span className="font-bold text-gray-800 text-sm">Discord Dashboard Widgets (Community + Channels)</span>
-                      </div>
-
-                      <div className="space-y-5">
-                        <div>
-                          <div className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-3">Community</div>
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                        {/* dcGrowth */}
-                        <div 
-                          onClick={() => setSelectedWidgets(prev => ({ ...prev, dcGrowth: !prev.dcGrowth }))}
-                          className={`relative bg-white rounded-xl border hover:shadow-md transition-all cursor-pointer overflow-hidden p-3.5 aspect-[1.414/1] flex flex-col justify-between select-none ${
-                            selectedWidgets.dcGrowth ? "border-black ring-1 ring-black shadow-sm" : "border-gray-200"
-                          }`}
-                        >
-                          <div className="absolute left-0 top-0 bottom-0 w-1" style={{ backgroundColor: selectedColor }} />
-                          <div className="absolute top-2.5 right-2.5 w-4.5 h-4.5 rounded-full flex items-center justify-center bg-gray-50 border border-gray-200">
-                            {selectedWidgets.dcGrowth && <div className="w-2.5 h-2.5 bg-black rounded-full" />}
-                          </div>
-                          <div className="pl-2 space-y-2">
-                            <div className="text-[10px] font-extrabold text-gray-800 tracking-tight">Growth</div>
-                            <div className="text-[7px] text-gray-400 font-semibold">Members, online, messages</div>
-                            {renderWidgetThumbnail("dcGrowth", selectedColor, previewData)}
-                          </div>
-                          <div className="flex justify-between items-center pl-2 pt-1 border-t border-gray-100 text-[6px] text-gray-400 font-mono">
-                            <span>publicast</span>
-                            <Maximize2 size={8} />
-                          </div>
-                        </div>
-                          </div>
-                        </div>
-                        <div>
-                          <div className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-3">Channels</div>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                            <div className="relative bg-white rounded-xl border border-gray-200 overflow-hidden p-3.5 aspect-[1.414/1] flex flex-col justify-between select-none">
-                              <div className="pl-2 space-y-2">
-                                <div className="text-[10px] font-extrabold text-gray-800 tracking-tight">Channels</div>
-                                <div className="text-[7px] text-gray-400 font-semibold">Configured channels and pending setup</div>
-                                <div className="rounded-lg border border-dashed border-gray-200 bg-gray-50 p-3 text-[10px] text-gray-400 font-semibold">
-                                  Use the Channels tab in the dashboard for actual channel management.
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  )}
 
                 </div>
 
@@ -3328,9 +3089,9 @@ export function ReportsPage() {
                     { key: "ytRankingOfVideos", label: "Ranking of Videos" }
                   ]
                 },
-                { 
-                  id: "tiktok", 
-                  label: "TikTok Performance", 
+                {
+                  id: "tiktok",
+                  label: "TikTok Performance",
                   color: "from-gray-900 to-black",
                   widgets: [
                     { key: "ttGrowth", label: "Followers Growth" },
@@ -3338,14 +3099,6 @@ export function ReportsPage() {
                     { key: "ttViews", label: "Views Stats" },
                     { key: "ttInteractions", label: "Interactions Detail" },
                     { key: "ttPosts", label: "Videos List" }
-                  ]
-                },
-                { 
-                  id: "discord", 
-                  label: "Discord Server stats", 
-                  color: "from-indigo-500 to-purple-600",
-                  widgets: [
-                    { key: "dcGrowth", label: "Server Members Growth" }
                   ]
                 }
               ].map((plat) => {

@@ -4,7 +4,6 @@ const platforms = [
   { name: "Instagram", abbr: "IG", color: "#E1306C" },
   { name: "TikTok", abbr: "TK", color: "#000000" },
   { name: "Twitch", abbr: "TW", color: "#9146FF" },
-  { name: "LinkedIn", abbr: "LI", color: "#0A66C2" },
   { name: "X / Twitter", abbr: "X", color: "#0A0A0A" },
   { name: "Pinterest", abbr: "PI", color: "#E60023" },
   { name: "Bluesky", abbr: "BS", color: "#0085FF" },

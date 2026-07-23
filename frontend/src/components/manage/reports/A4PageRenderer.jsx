@@ -5,7 +5,6 @@ import { FacebookOverviewWidget } from "./FacebookOverviewWidget";
 import { InstagramOverviewWidget } from "./InstagramOverviewWidget";
 import { YoutubeOverviewWidget } from "./YoutubeOverviewWidget";
 import { TiktokOverviewWidget } from "./TiktokOverviewWidget";
-import { DiscordOverviewWidget } from "./DiscordOverviewWidget";
 import { TelegramOverviewWidget } from "./TelegramOverviewWidget";
 
 export function A4PageRenderer({
@@ -154,17 +153,6 @@ export function A4PageRenderer({
           <TiktokOverviewWidget
             channel={ttChannel}
             posts={data.topPosts || []}
-            color={color}
-            previewLoading={previewLoading}
-            previewData={previewData}
-          />
-        );
-      }
-      case "discord": {
-        const dcChannel = channels.find(c => c.platform === "DISCORD");
-        return (
-          <DiscordOverviewWidget
-            channel={dcChannel}
             color={color}
             previewLoading={previewLoading}
             previewData={previewData}

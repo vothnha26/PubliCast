@@ -123,7 +123,7 @@ function DashboardMockup() {
               </div>
               <div className="bg-white rounded-xl p-3" style={{ border: "0.5px solid #E5E7EB" }}>
                 <div style={{ fontSize: 10, color: "#9CA3AF", marginBottom: 6 }}>Scheduled Posts</div>
-                {["Instagram · 2:00 PM", "Twitter · 4:30 PM", "LinkedIn · 9:00 AM"].map((p) => (
+                {["Instagram · 2:00 PM", "Twitter · 4:30 PM", "Facebook · 9:00 AM"].map((p) => (
                   <div key={p} style={{ fontSize: 10, color: "#6B7280", marginBottom: 2 }}>{p}</div>
                 ))}
               </div>

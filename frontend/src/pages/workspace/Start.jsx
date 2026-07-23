@@ -121,7 +121,6 @@ export function GettingStartedPage() {
                 { name: "Instagram", emoji: "📸" },
                 { name: "TikTok", emoji: "🎵" },
                 { name: "Twitch", emoji: "🎮" },
-                { name: "LinkedIn", emoji: "💼" },
               ].map((p) => (
                 <div key={p.name} style={{ display: "flex", alignItems: "center", gap: 12, padding: "14px 16px", borderRadius: 14, border: "1px solid #E5E7EB", background: "#FFF" }}>
                   <span style={{ fontSize: 24 }}>{p.emoji}</span>

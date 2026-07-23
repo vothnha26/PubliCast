@@ -9,9 +9,6 @@ const googleDriveController = require('../../controllers/social/google-drive.con
 const socialAnalyticsController = require('../../controllers/social/social-analytics.controller');
 const socialConnectionController = require('../../controllers/social/social-connection.controller');
 const telegramController = require('../../controllers/social/telegram.controller');
-const discordController = require('../../controllers/social/discord.controller');
-const discordOAuthController = require('../../controllers/social/discord-oauth.controller');
-const discordStatsController = require('../../controllers/social/discord-stats.controller');
 const threadsController = require('../../controllers/social/threads.controller');
 const { verifyAuth } = require('../../middlewares/auth.middleware');
 const { requireFeature } = require('../../middlewares/feature-gate.middleware');
@@ -36,18 +33,8 @@ router.get('/tiktok/url', verifyAuth, oauthController.getTikTokAuthUrl);
 router.get('/tiktok/callback', oauthController.tiktokCallback);
 router.get('/tiktok/webhook', oauthController.handleTikTokWebhook);
 router.post('/tiktok/webhook', oauthController.handleTikTokWebhook);
-router.get('/linkedin/url', verifyAuth, oauthController.getLinkedInAuthUrl);
-router.get('/linkedin/callback', oauthController.linkedinCallback);
 router.get('/threads/url', verifyAuth, oauthController.getThreadsAuthUrl);
 router.get('/threads/callback', oauthController.threadsCallback);
-router.get('/discord/url', verifyAuth, discordOAuthController.getDiscordAuthUrl);
-router.get('/discord/callback', discordOAuthController.discordCallback);
-router.get('/discord/channels', verifyAuth, discordOAuthController.getGuildChannels);
-router.post('/discord/connect-channel', verifyAuth, requireManageConnections, discordOAuthController.connectGuildChannel);
-router.post('/discord/connect-server', verifyAuth, requireManageConnections, discordOAuthController.connectGuildServer);
-router.post('/discord/disconnect-channel', verifyAuth, requireManageConnections, discordOAuthController.disconnectGuildChannel);
-router.get('/discord/stats', verifyAuth, requireBrandMember, discordStatsController.getStats);
-router.post('/discord/snapshot', verifyAuth, requireBrandMember, discordStatsController.triggerSnapshot);
 
 // Facebook Features
 router.get('/facebook/published-posts', verifyAuth, requireBrandMember, facebookController.getFacebookPublishedPosts);
@@ -69,12 +56,9 @@ router.delete('/facebook/competitors/:id', verifyAuth, facebookController.delete
 
 router.post('/instagram/disconnect', verifyAuth, requireManageConnections, socialConnectionController.disconnectInstagramAccount);
 router.post('/tiktok/disconnect', verifyAuth, requireManageConnections, socialConnectionController.disconnectTikTokAccount);
-router.post('/linkedin/disconnect', verifyAuth, requireManageConnections, socialConnectionController.disconnectLinkedInAccount);
 router.post('/threads/disconnect', verifyAuth, requireManageConnections, socialConnectionController.disconnectThreadsAccount);
 router.post('/telegram/connect', verifyAuth, requireManageConnections, telegramController.connectTelegram);
 router.post('/telegram/disconnect', verifyAuth, requireManageConnections, socialConnectionController.disconnectTelegramAccount);
-router.post('/discord/connect', verifyAuth, requireManageConnections, discordController.connectDiscord);
-router.post('/discord/disconnect', verifyAuth, requireManageConnections, socialConnectionController.disconnectDiscordAccount);
 // NOTE: /reassign checks MANAGE_CONNECTIONS on BOTH the source and target brand
 // inside the controller (authorizationFacade called twice), not via this
 // single-brandId middleware — see reassignSocialAccount in social-connection.controller.js.

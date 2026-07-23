@@ -267,7 +267,6 @@ class PostService {
     if (post.status === POST_STATUS.PUBLISHED) {
       const targetPlatforms = post.targetPlatforms ? post.targetPlatforms.split(',').map(p => p.trim().toUpperCase()) : [];
       const hasFacebook = targetPlatforms.includes(PLATFORMS.FACEBOOK);
-      const hasDiscord = targetPlatforms.includes(PLATFORMS.DISCORD);
 
       if (hasFacebook) {
         const originalUrls = post.mediaUrls ? post.mediaUrls.split(',').map(u => u.trim()).filter(Boolean) : [];
@@ -290,17 +289,6 @@ class PostService {
           }
         } catch (err) {
           console.error(`[Post Service] Failed to update post on Facebook:`, err.message);
-        }
-      }
-      if (hasDiscord && post.platformPostId) {
-        try {
-          const platformId = this._getPlatformPostId(post, PLATFORMS.DISCORD);
-          if (platformId) {
-            const socialPlatformFactory = require('../social/social-platform.factory');
-            await socialPlatformFactory.getService(PLATFORMS.DISCORD).updatePublishedPost(brandId, platformId, postData);
-          }
-        } catch (err) {
-          console.error(`[Post Service] Failed to update post on Discord:`, err.message);
         }
       }
       // Với các platform khác (Instagram, TikTok, YouTube...) không hỗ trợ edit,
@@ -1002,7 +990,6 @@ class PostService {
             }
             break;
             
-          case 'DISCORD':
           case 'TELEGRAM':
             // Các kênh chat hoạt động mạnh vào tối muộn (20h-22h) và nghỉ trưa (12h-13h)
             if (h >= 20 && h <= 22) {

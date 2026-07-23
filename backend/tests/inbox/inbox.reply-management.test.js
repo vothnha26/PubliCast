@@ -247,9 +247,9 @@ describe('InboxService - deleteReply', () => {
     it('should throw error when no strategy supports the platform/type combination', async () => {
       const unsupportedReply = {
         id: 'reply-unsupported-001',
-        platform: PLATFORMS.LINKEDIN,    // Platform không có strategy delete
+        platform: PLATFORMS.TELEGRAM,    // Platform không có strategy delete
         type: INBOX_TYPES.DIRECT_MESSAGE,
-        platformItemId: 'linkedin_msg_xyz',
+        platformItemId: 'telegram_msg_xyz',
         inbox: { brandId: 'brand-abc' }
       };
 

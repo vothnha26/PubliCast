@@ -10,16 +10,14 @@ describe('Inbox SOLID Strategy Integration Tests', () => {
   });
 
   describe('Strategy Registration', () => {
-    it('should register seven specific strategies in InboxService', () => {
-      expect(inboxService.strategies).toHaveLength(7);
-      
+    it('should register five specific strategies in InboxService', () => {
+      expect(inboxService.strategies).toHaveLength(5);
+
       const strategyNames = inboxService.strategies.map(s => s.constructor.name);
       expect(strategyNames).toContain('YoutubeCommentSyncStrategy');
       expect(strategyNames).toContain('FacebookCommentSyncStrategy');
       expect(strategyNames).toContain('FacebookDMSyncStrategy');
       expect(strategyNames).toContain('InstagramDMSyncStrategy');
-      expect(strategyNames).toContain('DiscordChannelMessageStrategy');
-      expect(strategyNames).toContain('DiscordDirectMessageStrategy');
       expect(strategyNames).toContain('TiktokCommentSyncStrategy');
     });
   });
@@ -42,13 +40,6 @@ describe('Inbox SOLID Strategy Integration Tests', () => {
       const instaStrategies = inboxService.strategies.filter(s => s.supports(PLATFORMS.INSTAGRAM));
       expect(instaStrategies).toHaveLength(1);
       expect(instaStrategies[0].constructor.name).toBe('InstagramDMSyncStrategy');
-
-      // Discord platform supports channel messages and DMs
-      const discordStrategies = inboxService.strategies.filter(s => s.supports(PLATFORMS.DISCORD));
-      expect(discordStrategies).toHaveLength(2);
-      const discordNames = discordStrategies.map(s => s.constructor.name);
-      expect(discordNames).toContain('DiscordChannelMessageStrategy');
-      expect(discordNames).toContain('DiscordDirectMessageStrategy');
     });
 
     it('should map reply support correctly according to platform and type', () => {
@@ -56,8 +47,6 @@ describe('Inbox SOLID Strategy Integration Tests', () => {
       const fbComment = { platform: PLATFORMS.FACEBOOK, type: INBOX_TYPES.COMMENT };
       const fbDM = { platform: PLATFORMS.FACEBOOK, type: INBOX_TYPES.DIRECT_MESSAGE };
       const instaDM = { platform: PLATFORMS.INSTAGRAM, type: INBOX_TYPES.DIRECT_MESSAGE };
-      const discordComment = { platform: PLATFORMS.DISCORD, type: INBOX_TYPES.COMMENT };
-      const discordDM = { platform: PLATFORMS.DISCORD, type: INBOX_TYPES.DIRECT_MESSAGE };
 
       const ytCommentStrategy = inboxService.strategies.find(s => s.supportsReply(ytComment));
       expect(ytCommentStrategy.constructor.name).toBe('YoutubeCommentSyncStrategy');
@@ -70,12 +59,6 @@ describe('Inbox SOLID Strategy Integration Tests', () => {
 
       const instaDMStrategy = inboxService.strategies.find(s => s.supportsReply(instaDM));
       expect(instaDMStrategy.constructor.name).toBe('InstagramDMSyncStrategy');
-
-      const discordCommentStrategy = inboxService.strategies.find(s => s.supportsReply(discordComment));
-      expect(discordCommentStrategy.constructor.name).toBe('DiscordChannelMessageStrategy');
-
-      const discordDMStrategy = inboxService.strategies.find(s => s.supportsReply(discordDM));
-      expect(discordDMStrategy.constructor.name).toBe('DiscordDirectMessageStrategy');
     });
   });
 

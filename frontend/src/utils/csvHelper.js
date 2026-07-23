@@ -83,8 +83,7 @@ export const mapMetricoolRow = (row, headers) => {
     instagram: 'INSTAGRAM',
     youtube: 'YOUTUBE',
     tiktok: 'TIKTOK',
-    threads: 'THREADS',
-    linkedin: 'LINKEDIN'
+    threads: 'THREADS'
   };
 
   const targetPlatforms = Object.entries(PLAT_MAP)

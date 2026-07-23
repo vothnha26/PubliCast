@@ -29,8 +29,7 @@
       "facebook": "Hiệu suất Facebook",
       "instagram": "Hiệu suất Instagram",
       "youtube": "Hiệu suất YouTube",
-      "tiktok": "Hiệu suất TikTok",
-      "discord": "Hiệu suất Discord"
+      "tiktok": "Hiệu suất TikTok"
     }
   },
   "sections": {
@@ -60,7 +59,6 @@
     "totalViews": "Tổng lượt xem",
     "totalLikes": "Tổng lượt thích",
     "weeklyViews": "Lượt xem theo tuần",
-    "discordServer": "Hiệu suất Discord Server",
     "totalMembers": "Tổng thành viên",
     "activeUsers": "Thành viên hoạt động",
     "newMembers": "Thành viên mới",
@@ -101,7 +99,6 @@
     "ttPerformance": "Hiệu suất TikTok",
     "ttCommunityGrowth": "Tăng trưởng Cộng đồng",
     "ttPostsPerformance": "Hiệu suất Bài đăng",
-    "dcInsights": "Hiệu suất Discord Server",
     "tgAnalytics": "Hiệu suất Kênh Telegram",
     "tgAnalyticsDesc": "Tăng trưởng subscribers và lượt xem bài đăng trung bình"
   }

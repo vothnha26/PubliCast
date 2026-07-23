@@ -475,10 +475,6 @@
         "tiktokSimulated": "Thiết lập video và thông tin TikTok đã được mô phỏng đầy đủ và sẽ đi kèm bài đăng của bạn",
         "instagramSimulated": "Ảnh Instagram, Reels, và Stories đã được mô phỏng đầy đủ và sẽ được đăng lên tài khoản của bạn",
         "facebookSimulated": "Bài đăng trạng thái Facebook, ảnh và video đã được hỗ trợ đầy đủ và sẽ được đăng lên bảng tin của bạn",
-        "discord": {
-          "bot": "BOT",
-          "reply": "Trả lời"
-        },
         "youtube": {
           "subscribers": "người đăng ký",
           "views": "lượt xem",

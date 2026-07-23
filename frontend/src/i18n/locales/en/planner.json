@@ -475,10 +475,6 @@
         "tiktokSimulated": "TikTok video presets and details are fully simulated and will be included in your post",
         "instagramSimulated": "Instagram photos, Reels, and Stories are fully simulated and will be published on your account",
         "facebookSimulated": "Facebook status updates, photos, and videos are fully supported and will be published on your feed",
-        "discord": {
-          "bot": "BOT",
-          "reply": "Reply"
-        },
         "youtube": {
           "subscribers": "subscribers",
           "views": "views",

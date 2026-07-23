@@ -8,8 +8,7 @@ export const PRODUCT_IDS = {
   ADS_MANAGER: 'ads_manager',
   UNIFIED_INBOX: 'unified_inbox',
   CUSTOM_LINKS: 'custom_links',
-  GOOGLE_DRIVE: 'google_drive',
-  LINKEDIN_MANAGEMENT: 'linkedin_management'
+  GOOGLE_DRIVE: 'google_drive'
 };
 
 export const FEATURE_GATE_REGISTRY = {

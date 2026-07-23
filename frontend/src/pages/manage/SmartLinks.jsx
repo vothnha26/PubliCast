@@ -27,7 +27,6 @@ import {
   Twitter,
   Youtube,
   Facebook,
-  Linkedin,
   Chrome
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
@@ -804,10 +803,8 @@ export function SmartLinksPage() {
                             {sIcon.platform === "instagram" && <Instagram  size={16} className="text-pink-600" />}
                             {sIcon.platform === "youtube"   && <Youtube   size={16} className="text-red-600" />}
                             {sIcon.platform === "facebook"  && <Facebook  size={16} className="text-blue-600" />}
-                            {sIcon.platform === "linkedin"  && <Linkedin  size={16} className="text-sky-700" />}
                             {sIcon.platform === "tiktok"    && <span className="text-[11px] font-black text-black">TT</span>}
                             {sIcon.platform === "threads"   && <span className="text-[11px] font-black text-gray-800">@</span>}
-                            {sIcon.platform === "discord"   && <span className="text-[11px] font-black text-indigo-600">DC</span>}
                           </div>
 
                           {/* Select type */}
@@ -824,9 +821,7 @@ export function SmartLinksPage() {
                             <option value="youtube">YouTube</option>
                             <option value="facebook">Facebook</option>
                             <option value="tiktok">TikTok</option>
-                            <option value="linkedin">LinkedIn</option>
                             <option value="threads">Threads</option>
-                            <option value="discord">Discord</option>
                           </select>
 
                           {/* URL Input */}

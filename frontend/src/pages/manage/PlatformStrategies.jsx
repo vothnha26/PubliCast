@@ -115,59 +115,6 @@ const InstagramStrategy = {
   }
 };
 
-const LinkedinStrategy = {
-  id: "linkedin",
-  name: "LinkedIn",
-  renderIcon: (size) => (
-    <span className="w-7 h-7 rounded-full bg-sky-50 flex items-center justify-center text-[#0A66C2]">
-      <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor">
-        <path d="M19 0h-14c-2.761 0-5 2.239-5 5v14c0 2.761 2.239 5 5 5h14c2.762 0 5-2.239 5-5v-14c0-2.761-2.238-5-5-5zm-11 19h-3v-11h3v11zm-1.5-12.268c-.966 0-1.75-.779-1.75-1.75s.784-1.75 1.75-1.75 1.75.779 1.75 1.75-.784 1.75-1.75 1.75zm13.5 12.268h-3v-5.604c0-3.368-4-3.113-4 0v5.604h-3v-11h3v1.765c1.396-2.586 7-2.777 7 2.476v6.759z"/>
-      </svg>
-    </span>
-  ),
-  renderPreview: (post, brand, postImage, scheduledTimeStr) => {
-    const brandName = brand?.name || "Brand Page";
-    const brandLogo = brand?.logoUrl || "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=100&auto=format&fit=crop&q=60";
-    const caption = post?.caption || "";
-
-    return (
-      <div className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden text-left font-sans max-w-full">
-        {/* Header */}
-        <div className="p-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <img src={brandLogo} alt="Logo" className="w-11 h-11 rounded-sm object-cover border border-gray-100" />
-            <div>
-              <div className="text-sm font-bold text-gray-900 hover:underline cursor-pointer">{brandName}</div>
-              <div className="text-[11px] text-gray-500 mt-0.5">10,240 followers</div>
-              <div className="text-[11px] text-gray-500 flex items-center gap-1 mt-0.5">
-                {scheduledTimeStr} · 🌐
-              </div>
-            </div>
-          </div>
-          <span className="text-gray-400 font-bold hover:text-gray-600 cursor-pointer">•••</span>
-        </div>
-
-        {/* Caption */}
-        <div className="px-4 pb-3 text-sm text-gray-900 leading-relaxed whitespace-pre-wrap">{caption}</div>
-
-        {/* Media */}
-        {postImage && (
-          <div className="bg-gray-50 border-y border-gray-100">
-            <img src={postImage} alt="Post Content" className="w-full object-cover max-h-[350px]" />
-          </div>
-        )}
-
-        {/* Action Row */}
-        <div className="px-4 py-2 border-t border-gray-100 flex justify-between text-xs text-gray-500 font-bold bg-[#FAFAFA]">
-          <span className="cursor-pointer hover:bg-gray-100 px-2 py-2 rounded-md transition-all">👍 Like</span>
-          <span className="cursor-pointer hover:bg-gray-100 px-2 py-2 rounded-md transition-all">💬 Comment</span>
-          <span className="cursor-pointer hover:bg-gray-100 px-2 py-2 rounded-md transition-all">🔁 Repost</span>
-          <span className="cursor-pointer hover:bg-gray-100 px-2 py-2 rounded-md transition-all">✉️ Send</span>
-        </div>
-      </div>
-    );
-  }
-};
 
 const YoutubeStrategy = {
   id: "youtube",
@@ -359,7 +306,6 @@ const FallbackStrategy = {
 const strategies = {
   facebook: FacebookStrategy,
   instagram: InstagramStrategy,
-  linkedin: LinkedinStrategy,
   youtube: YoutubeStrategy,
   tiktok: TiktokStrategy,
   x: XStrategy,
@@ -391,7 +337,6 @@ export const PlatformRegistry = {
     return [
       FacebookStrategy,
       InstagramStrategy,
-      LinkedinStrategy,
       TiktokStrategy,
       YoutubeStrategy,
       XStrategy

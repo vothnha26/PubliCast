@@ -219,8 +219,7 @@ export function ReportEditorModal({
                     { id: "facebook", label: "Facebook", color: "bg-blue-600", platform: "Facebook" },
                     { id: "instagram", label: "Instagram", color: "bg-gradient-to-tr from-yellow-500 via-pink-500 to-purple-600", platform: "Instagram" },
                     { id: "youtube", label: "YouTube", color: "bg-red-600", platform: "YouTube" },
-                    { id: "tiktok", label: "TikTok", color: "bg-slate-900", platform: "TikTok" },
-                    { id: "discord", label: "Discord", color: "bg-[#5865F2]", platform: "Discord" }
+                    { id: "tiktok", label: "TikTok", color: "bg-slate-900", platform: "TikTok" }
                   ].map(tab => (
                     <button 
                       key={tab.id}
@@ -407,20 +406,6 @@ export function ReportEditorModal({
                     </div>
                   )}
 
-                  {/* TAB: Discord */}
-                  {editorTab === "discord" && (
-                    <div className="space-y-6">
-                      <div className="flex items-center justify-between pb-4 border-b border-gray-100">
-                        <span className="font-bold text-gray-800 text-sm">Discord Dashboard Widgets (Community + Channels)</span>
-                      </div>
-                      {renderSectionList([
-                        { key: "dcGrowth", title: "Community", description: "Members, online, messages" }
-                      ], "sm:grid-cols-1")}
-                      <div className="rounded-xl border border-gray-200 bg-white p-4 text-[10px] text-gray-500 mt-2">
-                        Discord channels are managed in the main Channels tab.
-                      </div>
-                    </div>
-                  )}
                 </div>
 
               </div>

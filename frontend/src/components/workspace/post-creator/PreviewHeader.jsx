@@ -1,6 +1,6 @@
 import React from "react";
 import { useTranslation } from "react-i18next";
-import { Youtube, Instagram, Linkedin, Send, MessageSquare, AlertCircle, Smartphone, Monitor } from "lucide-react";
+import { Youtube, Instagram, Send, AlertCircle, Smartphone, Monitor } from "lucide-react";
 import { usePostCreatorFormContext } from "../../../context/PostCreatorFormContext";
 
 export function PreviewHeader() {
@@ -36,12 +36,8 @@ export function PreviewHeader() {
                 </svg>
               ) : platform === 'instagram' ? (
                 <Instagram size={18} className={isActive ? 'text-white' : 'text-[#DD2A7B]'} />
-              ) : platform === 'linkedin' ? (
-                <Linkedin size={18} className={isActive ? 'text-white' : 'text-[#0077B5] fill-[#0077B5]'} />
               ) : platform === 'telegram' ? (
                 <Send size={16} className={`rotate-45 ${isActive ? 'text-white' : 'text-[#0088cc] fill-[#0088cc]'}`} />
-              ) : platform === 'discord' ? (
-                <MessageSquare size={18} className={isActive ? 'text-white' : 'text-[#5865F2]'} />
               ) : platform === 'threads' ? (
                 <span className="text-[10px] font-black tracking-tight">Th</span>
               ) : (

@@ -614,144 +614,6 @@ class SocialAccountRepository {
     });
   }
 
-  /** Xem ghi chú options.enqueueSync ở upsertFacebookAccount phía trên. */
-  async upsertLinkedInAccount(brandId, accountData, tokens, options = {}) {
-    const { enqueueSync = true } = options;
-    const { pageId, username, displayName, profilePictureUrl, accountType = 'personal', connectionsCount = 0, followersCount = 0, industry = 'Other' } = accountData;
-
-    const finalUsername = username || displayName || 'linkedin_user';
-
-    return prisma.$transaction(async (tx) => {
-      const account = await tx.socialAccount.upsert({
-        where: {
-          brandId_platform_platformAccountId: {
-            brandId,
-            platform: PLATFORMS.LINKEDIN,
-            platformAccountId: pageId
-          }
-        },
-        update: {
-          username: finalUsername,
-          displayName,
-          profilePictureUrl,
-          accessToken: encrypt(tokens.access_token),
-          refreshToken: tokens.refresh_token ? encrypt(tokens.refresh_token) : undefined,
-          tokenExpiresAt: tokens.expiry_date ? new Date(tokens.expiry_date) : undefined,
-          scopes: tokens.scope,
-          isConnected: true,
-          lastSyncAt: new Date(),
-          updatedAt: new Date(),
-          linkedInAccount: {
-            upsert: {
-              create: {
-                accountType,
-                connectionsCount,
-                followersCount,
-                industry
-              },
-              update: {
-                accountType,
-                connectionsCount,
-                followersCount,
-                industry
-              }
-            }
-          }
-        },
-        create: {
-          brandId,
-          platform: PLATFORMS.LINKEDIN,
-          platformAccountId: pageId,
-          username: finalUsername,
-          displayName,
-          profilePictureUrl,
-          accessToken: encrypt(tokens.access_token),
-          refreshToken: tokens.refresh_token ? encrypt(tokens.refresh_token) : '',
-          tokenExpiresAt: tokens.expiry_date ? new Date(tokens.expiry_date) : undefined,
-          scopes: tokens.scope || '',
-          lastSyncAt: new Date(),
-          connectedAt: new Date(),
-          linkedInAccount: {
-            create: {
-              accountType,
-              connectionsCount,
-              followersCount,
-              industry
-            }
-          }
-        },
-        include: {
-          linkedInAccount: true
-        }
-      });
-
-      if (accountData.analytics) {
-        const { startDate, endDate } = accountData.analytics;
-        await this.saveLinkedInAnalytics(brandId, account.id, accountData.analytics, startDate, endDate, tx);
-      }
-
-      if (enqueueSync) {
-        await outboxEventRepository.create(
-          OUTBOX_EVENT_TYPES.SOCIAL_SYNC_ENQUEUE,
-          account.id,
-          { socialAccountId: account.id, platform: PLATFORMS.LINKEDIN, brandId },
-          {},
-          tx
-        );
-      }
-
-      return this.findById(account.id, tx);
-    });
-  }
-
-  async saveLinkedInAnalytics(brandId, socialAccountId, analyticsData, startDate, endDate, client = prisma) {
-    const now = new Date();
-
-    const followersTotal = analyticsData.summary?.followers || 0;
-    const followersGain = analyticsData.balance?.reduce((sum, item) => sum + (item.acquired || 0), 0) || 0;
-    const followersLost = analyticsData.balance?.reduce((sum, item) => sum + (item.lost || 0), 0) || 0;
-    const impressions = analyticsData.summary?.views || 0;
-    const reach = analyticsData.summary?.reach || 0;
-    const likes = analyticsData.interactions?.likes || 0;
-    const comments = analyticsData.interactions?.comments || 0;
-    const shares = analyticsData.interactions?.shares || 0;
-    const clicks = analyticsData.interactions?.clicks || 0;
-
-    const engagements = likes + comments + shares;
-    const engagementRate = reach ? parseFloat(((engagements / reach) * 100).toFixed(2)) : 0;
-
-    const analyticsEntry = await client.analytics.create({
-      data: {
-        brandId,
-        socialAccountId,
-        dateFrom: startDate ? new Date(startDate) : new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
-        dateTo: endDate ? new Date(endDate) : now,
-        granularity: ANALYTICS.GRANULARITY.DAILY,
-        fetchedAt: now,
-        analyticsType: ANALYTICS.TYPES.LINKEDIN_DETAILED
-      }
-    });
-
-    await client.socialAnalytics.create({
-      data: {
-        analyticsId: analyticsEntry.id,
-        followersTotal,
-        followersGain,
-        followersLost,
-        impressions,
-        reach,
-        engagements,
-        likes,
-        comments,
-        shares,
-        saves: 0,
-        clicks,
-        engagementRate,
-        audienceDemographicsJson: JSON.stringify(analyticsData)
-      }
-    });
-  }
-
   async upsertTelegramAccount(brandId, channelData, tokens) {
     const { pageId, username, displayName, profilePictureUrl, chatType = 'channel', memberCount = 0 } = channelData;
 
@@ -822,133 +684,6 @@ class SocialAccountRepository {
     return this.findById(account.id);
   }
 
-  async upsertDiscordAccount(brandId, channelData, tokens) {
-    const { pageId, username, displayName, profilePictureUrl, guildId, guildName = 'Discord Server', channelName = 'general' } = channelData;
-
-    const finalUsername = username || displayName || 'discord_channel';
-
-    const account = await prisma.socialAccount.upsert({
-      where: {
-        brandId_platform_platformAccountId: {
-          brandId,
-          platform: PLATFORMS.DISCORD,
-          platformAccountId: pageId
-        }
-      },
-      update: {
-        username: finalUsername,
-        displayName,
-        profilePictureUrl,
-        accessToken: encrypt(tokens.access_token),
-        refreshToken: tokens.refresh_token ? encrypt(tokens.refresh_token) : undefined,
-        tokenExpiresAt: tokens.expiry_date ? new Date(tokens.expiry_date) : undefined,
-        scopes: tokens.scope || '',
-        isConnected: true,
-        lastSyncAt: new Date(),
-        updatedAt: new Date(),
-        discordAccount: {
-          upsert: {
-            create: {
-              guildId,
-              guildName,
-              channelName,
-              webhookUrl: encrypt(tokens.access_token),
-              isPending: false
-            },
-            update: {
-              guildId,
-              guildName,
-              channelName,
-              webhookUrl: encrypt(tokens.access_token),
-              isPending: false
-            }
-          }
-        }
-      },
-      create: {
-        brandId,
-        platform: PLATFORMS.DISCORD,
-        platformAccountId: pageId,
-        username: finalUsername,
-        displayName,
-        profilePictureUrl,
-        accessToken: encrypt(tokens.access_token),
-        refreshToken: tokens.refresh_token ? encrypt(tokens.refresh_token) : '',
-        tokenExpiresAt: tokens.expiry_date ? new Date(tokens.expiry_date) : undefined,
-        scopes: tokens.scope || '',
-        lastSyncAt: new Date(),
-        connectedAt: new Date(),
-        discordAccount: {
-          create: {
-            guildId,
-            guildName,
-            channelName,
-            webhookUrl: encrypt(tokens.access_token),
-            isPending: false
-          }
-        }
-      },
-      include: {
-        discordAccount: true
-      }
-    });
-
-    if (channelData.analytics) {
-      const { startDate, endDate } = channelData.analytics;
-      await this.saveDiscordAnalytics(brandId, account.id, channelData.analytics, startDate, endDate);
-    }
-
-    return this.findById(account.id);
-  }
-
-  async saveDiscordAnalytics(brandId, socialAccountId, analyticsData, startDate, endDate) {
-    const now = new Date();
-    
-    const followersTotal = analyticsData.summary?.followers || 0;
-    const followersGain = analyticsData.balance?.reduce((sum, item) => sum + (item.acquired || 0), 0) || 0;
-    const followersLost = analyticsData.balance?.reduce((sum, item) => sum + (item.lost || 0), 0) || 0;
-    const impressions = analyticsData.summary?.views || 0;
-    const reach = analyticsData.summary?.reach || 0;
-    const likes = analyticsData.interactions?.likes || 0;
-    const comments = analyticsData.interactions?.comments || 0;
-    const shares = analyticsData.interactions?.shares || 0;
-    const clicks = analyticsData.interactions?.clicks || 0;
-    
-    const engagements = likes + comments + shares;
-    const engagementRate = reach ? parseFloat(((engagements / reach) * 100).toFixed(2)) : 0;
-
-    const analyticsEntry = await prisma.analytics.create({
-      data: {
-        brandId,
-        socialAccountId,
-        dateFrom: startDate ? new Date(startDate) : new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
-        dateTo: endDate ? new Date(endDate) : now,
-        granularity: ANALYTICS.GRANULARITY.DAILY,
-        fetchedAt: now,
-        analyticsType: ANALYTICS.TYPES.DISCORD_DETAILED
-      }
-    });
-
-    await prisma.socialAnalytics.create({
-      data: {
-        analyticsId: analyticsEntry.id,
-        followersTotal,
-        followersGain,
-        followersLost,
-        impressions,
-        reach,
-        engagements,
-        likes,
-        comments,
-        shares,
-        saves: 0,
-        clicks,
-        engagementRate,
-        audienceDemographicsJson: JSON.stringify(analyticsData)
-      }
-    });
-  }
-
   async saveTelegramAnalytics(brandId, socialAccountId, analyticsData, startDate, endDate) {
     const now = new Date();
     
@@ -1005,9 +740,7 @@ class SocialAccountRepository {
         facebookPage: true,
         tikTokAccount: true,
         instagramAccount: true,
-        linkedInAccount: true,
         telegramAccount: true,
-        discordAccount: true,
         analytics: {
           orderBy: { fetchedAt: 'desc' },
           take: 1,
@@ -1059,9 +792,7 @@ class SocialAccountRepository {
         instagramAccount: true,
         facebookPage: true,
         tikTokAccount: true,
-        linkedInAccount: true,
         telegramAccount: true,
-        discordAccount: true,
         analytics: {
           orderBy: { fetchedAt: 'desc' },
           take: 1,

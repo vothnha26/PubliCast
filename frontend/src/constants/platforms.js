@@ -7,9 +7,7 @@ export const PLATFORMS = {
   FACEBOOK: 'facebook',
   TIKTOK: 'tiktok',
   INSTAGRAM: 'instagram',
-  LINKEDIN: 'linkedin',
   TELEGRAM: 'telegram',
-  DISCORD: 'discord',
   THREADS: 'threads',
 };
 
@@ -19,9 +17,7 @@ export const PLATFORM_LABELS = {
   [PLATFORMS.FACEBOOK]: 'Facebook',
   [PLATFORMS.TIKTOK]: 'TikTok',
   [PLATFORMS.INSTAGRAM]: 'Instagram',
-  [PLATFORMS.LINKEDIN]: 'LinkedIn',
   [PLATFORMS.TELEGRAM]: 'Telegram',
-  [PLATFORMS.DISCORD]: 'Discord',
   [PLATFORMS.THREADS]: 'Threads',
 };
 
@@ -31,9 +27,7 @@ export const PLATFORM_DEFAULT_TAB = {
   [PLATFORMS.FACEBOOK]: 'overview',
   [PLATFORMS.TIKTOK]: 'community',
   [PLATFORMS.INSTAGRAM]: 'overview',
-  [PLATFORMS.LINKEDIN]: 'overview',
   [PLATFORMS.TELEGRAM]: 'overview',
-  [PLATFORMS.DISCORD]: 'overview',
   [PLATFORMS.THREADS]: 'community',
 };
 
@@ -43,9 +37,7 @@ export const PLATFORM_API_KEY = {
   [PLATFORMS.FACEBOOK]: 'FACEBOOK',
   [PLATFORMS.TIKTOK]: 'TIKTOK',
   [PLATFORMS.INSTAGRAM]: 'INSTAGRAM',
-  [PLATFORMS.LINKEDIN]: 'LINKEDIN',
   [PLATFORMS.TELEGRAM]: 'TELEGRAM',
-  [PLATFORMS.DISCORD]: 'DISCORD',
   [PLATFORMS.THREADS]: 'THREADS',
   X: 'TWITTER_X', // special case
 };

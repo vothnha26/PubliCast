@@ -4,7 +4,6 @@ import { YouTubePresets } from '../components/workspace/post-creator/presets/You
 import { FacebookPresets } from '../components/workspace/post-creator/presets/FacebookPresets';
 import { InstagramPresets } from '../components/workspace/post-creator/presets/InstagramPresets';
 import { TikTokPresets } from '../components/workspace/post-creator/presets/TikTokPresets';
-import { DiscordPresets } from '../components/workspace/post-creator/presets/DiscordPresets';
 import { ThreadsPresets } from '../components/workspace/post-creator/presets/ThreadsPresets';
 
 export const PRESET_REGISTRY = {
@@ -23,10 +22,6 @@ export const PRESET_REGISTRY = {
   [PLATFORMS.TIKTOK]: {
     Component: TikTokPresets,
     shouldRender: (selectedPlatforms) => selectedPlatforms.includes('tiktok')
-  },
-  [PLATFORMS.DISCORD]: {
-    Component: DiscordPresets,
-    shouldRender: (selectedPlatforms) => selectedPlatforms.includes('discord')
   },
   [PLATFORMS.THREADS]: {
     Component: ThreadsPresets,

@@ -1,6 +1,6 @@
-import { 
+import {
   Play, Pause, RefreshCw, ChevronRight, Layers, Calendar, Clock,
-  Youtube, PlayCircle, Instagram, Facebook, Linkedin, Trash2
+  Youtube, PlayCircle, Instagram, Facebook, Trash2
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
@@ -9,7 +9,6 @@ const PLATFORM_BADGES = {
   TIKTOK: { icon: <PlayCircle size={11} />, color: "bg-gray-50 text-gray-900 border-gray-200", label: "TikTok" },
   INSTAGRAM: { icon: <Instagram size={11} />, color: "bg-pink-50 text-pink-600 border-pink-100/80", label: "Instagram" },
   FACEBOOK: { icon: <Facebook size={11} />, color: "bg-blue-50 text-blue-600 border-blue-100/80", label: "Facebook" },
-  LINKEDIN: { icon: <Linkedin size={11} />, color: "bg-sky-50 text-sky-600 border-sky-100/80", label: "LinkedIn" },
 };
 
 const borderLeftColors = {
@@ -17,7 +16,6 @@ const borderLeftColors = {
   TIKTOK: "border-l-4 border-l-[#010101]",
   INSTAGRAM: "border-l-4 border-l-[#E1306C]",
   FACEBOOK: "border-l-4 border-l-[#1877F2]",
-  LINKEDIN: "border-l-4 border-l-[#0A66C2]",
   DEFAULT: "border-l-4 border-l-gray-300"
 };
 

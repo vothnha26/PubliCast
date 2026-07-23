@@ -39,28 +39,12 @@ class SocialConnectionController {
     res.json({ success: true, message: 'Instagram account disconnected successfully' });
   });
 
-  disconnectLinkedInAccount = asyncHandler(async (req, res) => {
-    const { brandId } = req.body;
-    if (!brandId) return res.status(400).json({ message: 'brandId is required' });
-
-    await socialService.disconnectAccount(brandId, PLATFORMS.LINKEDIN);
-    res.json({ success: true, message: 'LinkedIn account disconnected successfully' });
-  });
-
   disconnectTelegramAccount = asyncHandler(async (req, res) => {
     const { brandId } = req.body;
     if (!brandId) return res.status(400).json({ message: 'brandId is required' });
 
     await socialService.disconnectAccount(brandId, PLATFORMS.TELEGRAM);
     res.json({ success: true, message: 'Telegram account disconnected successfully' });
-  });
-
-  disconnectDiscordAccount = asyncHandler(async (req, res) => {
-    const { brandId } = req.body;
-    if (!brandId) return res.status(400).json({ message: 'brandId is required' });
-
-    await socialService.disconnectAccount(brandId, PLATFORMS.DISCORD);
-    res.json({ success: true, message: 'Discord account disconnected successfully' });
   });
 
   disconnectThreadsAccount = asyncHandler(async (req, res) => {

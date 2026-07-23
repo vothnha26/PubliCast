@@ -84,8 +84,6 @@ export function usePostCreatorForm() {
   const [tiktokAllowStitch, setTiktokAllowStitch] = useState(true);
   const [tiktokAiGenerated, setTiktokAiGenerated] = useState(false);
   const [tiktokCommercialContent, setTiktokCommercialContent] = useState(false);
-  const [selectedDiscordChannels, setSelectedDiscordChannels] = useState([]);
-  const [discordOpen, setDiscordOpen] = useState(false);
 
   // Selector Video/Short State
   const [youtubeType, setYoutubeType] = useState(YOUTUBE_TYPE.VIDEO);
@@ -153,8 +151,6 @@ export function usePostCreatorForm() {
       setTiktokAllowStitch(backup.tiktokAllowStitch ?? true);
       setTiktokAiGenerated(backup.tiktokAiGenerated ?? false);
       setTiktokCommercialContent(backup.tiktokCommercialContent ?? false);
-      setSelectedDiscordChannels(backup.selectedDiscordChannels ?? []);
-      setDiscordOpen(backup.discordOpen ?? false);
       setYoutubeType(backup.youtubeType ?? YOUTUBE_TYPE.VIDEO);
       setFacebookType(backup.facebookType ?? FACEBOOK_TYPE.POST);
       setFacebookTitle(backup.facebookTitle ?? "");
@@ -234,8 +230,6 @@ export function usePostCreatorForm() {
       tiktokAllowStitch,
       tiktokAiGenerated,
       tiktokCommercialContent,
-      selectedDiscordChannels,
-      discordOpen,
       youtubeType,
       facebookType,
       facebookTitle,
@@ -363,9 +357,7 @@ export function usePostCreatorForm() {
         INSTAGRAM: "instagram",
         YOUTUBE: "youtube",
         TIKTOK: "tiktok",
-        LINKEDIN: "linkedin",
         TELEGRAM: "telegram",
-        DISCORD: "discord",
         THREADS: "threads"
       };
       return mapping[sa.platform];
@@ -574,8 +566,7 @@ export function usePostCreatorForm() {
         setTiktokAllowStitch(opts.tiktokAllowStitch !== undefined ? opts.tiktokAllowStitch : true);
         setTiktokAiGenerated(opts.tiktokAiGenerated || false);
         setTiktokCommercialContent(opts.tiktokCommercialContent || false);
-        setSelectedDiscordChannels(opts.selectedDiscordChannels || []);
-        
+
         // Setup media
         if (opts.facebookType === 'album' && opts.albumMedia) {
           setAlbumMedia(opts.albumMedia);
@@ -636,8 +627,7 @@ export function usePostCreatorForm() {
         setTiktokAllowStitch(opts.tiktokAllowStitch !== undefined ? opts.tiktokAllowStitch : true);
         setTiktokAiGenerated(opts.tiktokAiGenerated || false);
         setTiktokCommercialContent(opts.tiktokCommercialContent || false);
-        setSelectedDiscordChannels(opts.selectedDiscordChannels || []);
-        
+
         // Setup media
         if (opts.facebookType === 'album' && opts.albumMedia) {
           setAlbumMedia(opts.albumMedia);
@@ -662,9 +652,7 @@ export function usePostCreatorForm() {
               INSTAGRAM: "instagram",
               YOUTUBE: "youtube",
               TIKTOK: "tiktok",
-              LINKEDIN: "linkedin",
               TELEGRAM: "telegram",
-              DISCORD: "discord",
               THREADS: "threads"
             };
             return mapping[sa.platform];
@@ -713,8 +701,6 @@ export function usePostCreatorForm() {
         setTiktokAllowStitch(true);
         setTiktokAiGenerated(false);
         setTiktokCommercialContent(false);
-        const discordAccs = activeBrand?.socialAccounts?.filter(sa => sa.platform === 'DISCORD' && sa.isConnected) || [];
-        setSelectedDiscordChannels(discordAccs.map(acc => acc.id));
       }
     }
   }, [isOpen, editingPost, templatePost, defaultScheduledAt, initialIsLibrary, activeBrand]);
@@ -855,7 +841,6 @@ export function usePostCreatorForm() {
           tiktokAllowStitch,
           tiktokAiGenerated,
           tiktokCommercialContent,
-          selectedDiscordChannels,
           albumMedia,
           mediaCaptions,
           threadsWhoCanReply,
@@ -1056,10 +1041,6 @@ export function usePostCreatorForm() {
     requesterNote,
     setRequesterNote,
     isLoadingReviewers,
-    selectedDiscordChannels,
-    setSelectedDiscordChannels,
-    discordOpen,
-    setDiscordOpen,
     albumMedia,
     setAlbumMedia,
     postMedia,

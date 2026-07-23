@@ -1,10 +1,10 @@
 import React, { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
-import { 
-  Info, AlertCircle, Youtube, MoreHorizontal, Edit, Type, Trash2, 
-  ImageIcon, Plus, Smile, Link2, Search, Languages, FileText, Send, 
-  Linkedin, Settings, ChevronDown, Instagram, MessageSquare, X,
+import {
+  Info, AlertCircle, Youtube, MoreHorizontal, Edit, Type, Trash2,
+  ImageIcon, Plus, Smile, Link2, Search, Languages, FileText, Send,
+  Settings, ChevronDown, Instagram, MessageSquare, X,
   Folder, MapPin, Sparkles
 } from "lucide-react";
 import { usePostCreatorFormContext } from "../../../context/PostCreatorFormContext";
@@ -149,12 +149,8 @@ export function ComposerBody() {
         );
       case 'youtube':
         return <Youtube size={14} className="text-[#FF0000] fill-[#FF0000] shrink-0" />;
-      case 'linkedin':
-        return <Linkedin size={14} className="text-[#0077B5] fill-[#0077B5] shrink-0" />;
       case 'telegram':
         return <Send size={12} className="text-[#0088cc] fill-[#0088cc] shrink-0 rotate-45" />;
-      case 'discord':
-        return <MessageSquare size={14} className="text-[#5865F2] shrink-0" />;
       default:
         return <AlertCircle size={14} className="text-red-500 shrink-0" />;
     }
@@ -509,9 +505,7 @@ export function ComposerBody() {
                         instagram: 2200,
                         tiktok: 2200,
                         youtube: 5000,
-                        linkedin: 3000,
                         telegram: 4096,
-                        discord: 2000,
                         threads: 500
                       };
                       return fallbacks[activePlatform.toLowerCase()] || 5000;
@@ -528,10 +522,8 @@ export function ComposerBody() {
               <div className={`w-6 h-6 rounded-full flex items-center justify-center shadow-sm text-white ${
                 activePlatform === 'youtube' ? 'bg-[#FF0000]' : 
                 activePlatform === 'tiktok' ? 'bg-black' : 
-                activePlatform === 'instagram' ? 'bg-gradient-to-tr from-[#F58529] via-[#DD2A7B] to-[#8134AF]' : 
-                activePlatform === 'linkedin' ? 'bg-[#0077B5]' : 
-                activePlatform === 'telegram' ? 'bg-[#0088cc]' : 
-                activePlatform === 'discord' ? 'bg-[#5865F2]' : 
+                activePlatform === 'instagram' ? 'bg-gradient-to-tr from-[#F58529] via-[#DD2A7B] to-[#8134AF]' :
+                activePlatform === 'telegram' ? 'bg-[#0088cc]' :
                 activePlatform === 'threads' ? 'bg-black' : 'bg-[#1877F2]'
               }`}>
                 {activePlatform === 'youtube' ? (
@@ -542,12 +534,8 @@ export function ComposerBody() {
                   </svg>
                 ) : activePlatform === 'instagram' ? (
                   <Instagram size={12} className="text-white" />
-                ) : activePlatform === 'linkedin' ? (
-                  <Linkedin size={12} className="text-white" />
                 ) : activePlatform === 'telegram' ? (
                   <Send size={11} className="text-white fill-white translate-x-[-0.5px]" />
-                ) : activePlatform === 'discord' ? (
-                  <MessageSquare size={11} className="text-white fill-white translate-y-[0.5px]" />
                 ) : activePlatform === 'threads' ? (
                   <PlatformIcon platform="Threads" size={12} variant="flat" className="text-white" />
                 ) : (
