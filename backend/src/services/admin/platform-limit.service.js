@@ -50,6 +50,15 @@ class PlatformLimitService {
       throw error;
     }
 
+    // Locked configs must go through toggleLock() to be unlocked first —
+    // otherwise an admin could silently bypass a lock (e.g. one applied for
+    // a compliance/incident reason) by editing the limit values directly.
+    if (existing.isLocked) {
+      const error = new Error('Cấu hình này đang bị khóa. Vui lòng mở khóa trước khi chỉnh sửa.');
+      error.statusCode = 409;
+      throw error;
+    }
+
     // Check if updating platform/subType causes unique conflict
     if ((data.platform && data.platform !== existing.platform) || (data.subType && data.subType !== existing.subType)) {
       const targetPlatform = data.platform || existing.platform;

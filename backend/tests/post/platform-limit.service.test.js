@@ -111,6 +111,16 @@ describe('PlatformLimitService Unit Tests', () => {
       const updateData = { platform: 'FACEBOOK', subType: 'STORY' };
       await expect(platformLimitService.updatePlatformLimit('limit-1', updateData)).rejects.toThrow('already exists');
     });
+
+    it('should reject edits to a locked config with 409 (#82)', async () => {
+      platformLimitRepository.findById.mockResolvedValue({ ...mockLimits[0], isLocked: true });
+
+      const updateData = { maxCharacters: 9999 };
+      const promise = platformLimitService.updatePlatformLimit('limit-1', updateData);
+      await expect(promise).rejects.toThrow('đang bị khóa');
+      await expect(promise.catch(e => e.statusCode)).resolves.toBe(409);
+      expect(platformLimitRepository.update).not.toHaveBeenCalled();
+    });
   });
 
   describe('toggleLock', () => {
