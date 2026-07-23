@@ -3,7 +3,7 @@ const postRepository = require('../../repositories/workspace/post.repository');
 const brandRepository = require('../../repositories/workspace/brand.repository');
 const subscriptionRepository = require('../../repositories/billing/subscription.repository');
 const socialPlatformFactory = require('../social/social-platform.factory');
-const { POST_STATUS, POST_TYPES, SEPARATORS, WORKSPACE_DEFAULTS, PLATFORMS, PERMISSION_KEYS, splitMediaUrls } = require('../../utils/constants');
+const { POST_STATUS, POST_TYPES, SEPARATORS, WORKSPACE_DEFAULTS, PLATFORMS, PERMISSION_KEYS, DEFAULT_CONFIG, splitMediaUrls } = require('../../utils/constants');
 const { EVENTS } = require('../../events/event-emitter');
 const { OUTBOX_EVENT_TYPES } = require('../../constants/outbox.constants');
 const outboxEventRepository = require('../../repositories/core/outbox-event.repository');
@@ -873,19 +873,33 @@ class PostService {
     }
 
     // 3. Phân tích dữ liệu thực từ các posts đã xuất bản
+    // Bucket theo timezone cố định của hệ thống thay vì giờ local của server
+    // (server chạy UTC trong khi audience mục tiêu ở múi giờ VN sẽ lệch hẳn
+    // ngày/giờ vàng thực tế) (#55).
+    const timeZone = DEFAULT_CONFIG.TIMEZONE;
+    const dayFormatter = new Intl.DateTimeFormat('en-US', { timeZone, weekday: 'short' });
+    const hourFormatter = new Intl.DateTimeFormat('en-US', { timeZone, hour: 'numeric', hour12: false });
+    const WEEKDAY_TO_INDEX = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 };
+
     posts.forEach(post => {
       const pubDate = post.publishedAt || post.scheduledAt;
       if (!pubDate) return;
 
       const dateObj = new Date(pubDate);
-      const day = dateObj.getDay(); // 0 (Chủ nhật) -> 6 (Thứ bảy)
-      const hour = dateObj.getHours(); // 0 -> 23
+      const day = WEEKDAY_TO_INDEX[dayFormatter.format(dateObj)];
+      // hour12: false formats midnight as "24", not "0"
+      const hour = parseInt(hourFormatter.format(dateObj), 10) % 24;
 
-      // Lấy tương tác (nếu có postAnalyticsSnapshots)
+      // Lấy tương tác (nếu có postAnalyticsSnapshots) — null-guard vì các
+      // cột cumulative có thể là null trên bản ghi cũ trước khi field tồn
+      // tại hoặc chưa từng được cập nhật, không chỉ default 0 khi tạo mới (#56).
       let engagement = 0;
       if (post.postAnalyticsSnapshots && post.postAnalyticsSnapshots.length > 0) {
         const snap = post.postAnalyticsSnapshots[0];
-        engagement = snap.clicksCumulative + snap.reactionsCumulative * 2 + Math.round(snap.viewsCumulative * 0.1);
+        const clicks = snap.clicksCumulative ?? 0;
+        const reactions = snap.reactionsCumulative ?? 0;
+        const views = snap.viewsCumulative ?? 0;
+        engagement = clicks + reactions * 2 + Math.round(views * 0.1);
       }
 
       const key = `${day}-${hour}`;
@@ -895,8 +909,23 @@ class PostService {
       }
     });
 
+    // Chuẩn hóa engagement thật về thang điểm 0-100 để có thể blend với
+    // heuristic bên dưới — trước đây heatmap được tính xong rồi bỏ hẳn,
+    // toàn bộ kết quả chỉ đến từ heuristic hardcode (#55). So sánh phải dựa
+    // trên engagement TRUNG BÌNH mỗi bài đăng trong từng ô, không phải tổng
+    // cộng dồn — nếu không, một ô có nhiều bài đăng (tổng cao) sẽ luôn thắng
+    // ô có ít bài nhưng tương tác/bài cao hơn, và maxEngagement (tổng) không
+    // cùng đơn vị với engagement/count ở bước tính điểm bên dưới.
+    const maxAvgEngagement = Math.max(
+      1,
+      ...Object.values(heatmap)
+        .filter(cell => cell.count > 0)
+        .map(cell => cell.engagement / cell.count)
+    );
+    const totalRealPosts = posts.length;
+
     const result = [];
-    
+
     // Thống kê giờ vàng hoạt động thực tế của từng mạng xã hội trên toàn nền tảng
     for (let d = 0; d < 7; d++) {
       for (let h = 0; h < 24; h++) {
@@ -1001,9 +1030,20 @@ class PostService {
             break;
         }
 
+        // Blend dữ liệu thật vào heuristic thay vì bỏ hẳn (#55): heuristic
+        // đóng vai trò prior khi số bài đăng thực tế ở khung giờ này còn ít
+        // (không đủ tin cậy thống kê), trọng số dữ liệu thật tăng dần khi
+        // brand đã có nhiều bài đăng hơn ở khung giờ đó. Với brand hoàn toàn
+        // chưa có dữ liệu (totalRealPosts === 0), kết quả giữ nguyên là
+        // heuristic thuần như hành vi cũ.
+        const cell = heatmap[`${d}-${h}`];
+        const realWeight = totalRealPosts > 0 ? Math.min(1, cell.count / 5) : 0;
+        const realScore = cell.count > 0 ? (cell.engagement / cell.count / maxAvgEngagement) * 100 : score;
+        const blendedScore = score * (1 - realWeight) + realScore * realWeight;
+
         // Tạo dao động ngẫu nhiên nhỏ sinh động (+- 5%) cho từng ô lưới
         const seedValue = (d * 3 + h * 7) % 11 - 5;
-        const finalPercentage = Math.max(15, Math.min(98, score + seedValue));
+        const finalPercentage = Math.max(15, Math.min(98, Math.round(blendedScore + seedValue)));
 
         result.push({
           day: d,
