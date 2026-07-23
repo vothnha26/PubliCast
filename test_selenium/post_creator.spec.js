@@ -773,11 +773,11 @@ describe('Post Creator Detailed E2E Suite', function () {
     await seedPlatforms(['FACEBOOK']);
     await navigateToPlannerAndPrepare();
 
-    // Lấy thông tin user và brand từ localStorage
+    // Lấy brandId từ localStorage — auth is cookie-based (see credentials:
+    // 'include' below), no Bearer token is stored client-side anymore.
     const authData = await driver.executeScript(() => {
       return {
-        brandId: localStorage.getItem('activeBrandId') || '',
-        token: localStorage.getItem('token') || ''
+        brandId: localStorage.getItem('activeBrandId') || ''
       };
     });
 
@@ -787,9 +787,9 @@ describe('Post Creator Detailed E2E Suite', function () {
     const createStatus = await driver.executeScript(async (brandId, caption) => {
       const res = await fetch('/api/posts', {
         method: 'POST',
+        credentials: 'include',
         headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
+          'Content-Type': 'application/json'
         },
         body: JSON.stringify({
           brandId,
