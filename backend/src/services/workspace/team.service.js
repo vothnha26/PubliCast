@@ -624,7 +624,7 @@ class TeamService {
 
       // Critical-event push to external integrations (plan.txt mục 6) — a
       // user removed from a brand may have a live real-time session (e.g.
-      // an open Discord/Slack chat) that needs to be cut immediately, not
+      // an open real-time chat) that needs to be cut immediately, not
       // just on their next API call. Enqueued in the SAME transaction as
       // the deletion so the event can't be lost if the process crashes
       // right after commit but before enqueueing separately.

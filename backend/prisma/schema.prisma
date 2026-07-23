@@ -132,7 +132,6 @@ model Brand {
   subscriptionAddons      SubscriptionAddon[]
   supportTickets          SupportTicket[]
   trackedVideos           TrackedVideo[]
-  discordGuildSnapshots   DiscordGuildSnapshot[]
   calendarEvents          CalendarEvent[]
   livestreamHighlights    LivestreamHighlight[]
   postAnalyticsSnapshots  PostAnalyticsDailySnapshot[] @relation("BrandAnalyticsSnapshots")
@@ -473,10 +472,8 @@ model SocialAccount {
   instagramAccount InstagramAccount?
   facebookPage     FacebookPage?
   tikTokAccount    TikTokAccount?
-  linkedInAccount  LinkedInAccount?
   youtubeChannel   YouTubeChannel?
   telegramAccount  TelegramAccount?
-  discordAccount   DiscordAccount?
   autoReplySetting AutoReplySetting?
 
   // Facebook dedicated metrics
@@ -563,21 +560,6 @@ model TikTokAccount {
   @@map("tiktok_accounts")
 }
 
-model LinkedInAccount {
-  id                String  @id @default(uuid())
-  socialAccountId   String  @unique
-  accountType       String
-  connectionsCount  Int?
-  followersCount    Int     @default(0)
-  industry          String?
-  isPremiumRequired Boolean @default(false)
-  supportsCarousels Boolean @default(false)
-
-  socialAccount SocialAccount @relation(fields: [socialAccountId], references: [id], onDelete: Cascade)
-
-  @@map("linkedin_accounts")
-}
-
 model TelegramAccount {
   id              String @id @default(uuid())
   socialAccountId String @unique
@@ -587,38 +569,6 @@ model TelegramAccount {
   socialAccount SocialAccount @relation(fields: [socialAccountId], references: [id], onDelete: Cascade)
 
   @@map("telegram_accounts")
-}
-
-model DiscordAccount {
-  id              String    @id @default(uuid())
-  socialAccountId String    @unique
-  guildId         String? // Discord Guild/Server ID (for tracking)
-  guildName       String    @default("Discord Server")
-  channelName     String    @default("general")
-  webhookUrl      String?   @db.Text // Nullable: pending server (channel not yet selected)
-  isPending       Boolean   @default(false) // true = server connected but no channel chosen yet
-  memberCount     Int       @default(0)
-  onlineCount     Int       @default(0)
-  lastSyncAt      DateTime?
-
-  socialAccount SocialAccount @relation(fields: [socialAccountId], references: [id], onDelete: Cascade)
-
-  @@map("discord_accounts")
-}
-
-model DiscordGuildSnapshot {
-  id          String   @id @default(uuid())
-  guildId     String // Discord Guild ID
-  brandId     String
-  memberCount Int      @default(0)
-  onlineCount Int      @default(0)
-  snapshotAt  DateTime @default(now())
-
-  brand Brand @relation(fields: [brandId], references: [id], onDelete: Cascade)
-
-  @@unique([guildId, brandId, snapshotAt])
-  @@index([brandId, guildId])
-  @@map("discord_guild_snapshots")
 }
 
 model AdAccount {
@@ -1580,7 +1530,6 @@ enum PlatformType {
   INSTAGRAM
   FACEBOOK
   TIKTOK
-  LINKEDIN
   TWITTER_X
   PINTEREST
   YOUTUBE
@@ -1589,7 +1538,6 @@ enum PlatformType {
   BLUESKY
   GOOGLE_BUSINESS
   TELEGRAM
-  DISCORD
 }
 
 enum AdPlatformType {
@@ -1700,7 +1648,7 @@ enum AuthProvider {
 
 model PlatformLimit {
   id                String       @id @default(uuid())
-  platform          PlatformType // e.g. YOUTUBE, FACEBOOK, INSTAGRAM, TIKTOK, LINKEDIN, DISCORD, TELEGRAM
+  platform          PlatformType // e.g. YOUTUBE, FACEBOOK, INSTAGRAM, TIKTOK, TELEGRAM
   subType           String // e.g. "POST", "REEL", "STORY", "VIDEO", "SHORTS"
   maxCaptionLength  Int          @default(2000)
   maxFileSizeMb     Int          @default(100) // 100MB

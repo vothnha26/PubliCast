@@ -314,7 +314,7 @@ class PostService {
       // Lock row + xác nhận chưa bị request khác sửa từ lúc đọc snapshot ở đầu hàm
       // (so sánh updatedAt) — post đọc ở dòng 195 chỉ dùng để quyết định business
       // logic (merge/validate/gọi social API bên trên), không phải nguồn sự thật
-      // cuối để ghi đè. Network I/O (Facebook/Discord) đã chạy xong ở trên, KHÔNG
+      // cuối để ghi đè. Network I/O (Social APIs) đã chạy xong ở trên, KHÔNG
       // nằm trong transaction này — chỉ thao tác DB thuần trong lock ngắn.
       await postRepository.lockAndAssertFresh(id, post.updatedAt, tx);
 
