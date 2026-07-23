@@ -3,8 +3,6 @@
  * Không dùng raw string 'token', 'activeBrandId' trực tiếp trong code.
  */
 export const STORAGE_KEYS = {
-  /** JWT token cho API authentication */
-  TOKEN: 'token',
   /** ID của brand đang active */
   ACTIVE_BRAND_ID: 'activeBrandId',
   /** Đánh dấu user đang ở bước xác thực OTP */
