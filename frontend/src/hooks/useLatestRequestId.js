@@ -1,4 +1,4 @@
-import { useRef, useCallback } from "react";
+import { useRef, useCallback, useMemo } from "react";
 
 /**
  * Shared request-id guard for fetch-race bugs: a slow, older request that
@@ -24,7 +24,13 @@ export function useLatestRequestId() {
 
   const isLatest = useCallback((requestId) => requestId === ref.current, []);
 
-  return { start, isLatest };
+  // start/isLatest are already stable refs, but without memoizing this
+  // wrapper object itself, every call site got a new object identity on
+  // every render. Consumers that put the returned object in a useCallback/
+  // useEffect dependency array (e.g. usePlatformDashboard's loadMetrics)
+  // would then recreate that callback every render, retriggering any effect
+  // depending on it — an infinite render-fetch-render loop.
+  return useMemo(() => ({ start, isLatest }), [start, isLatest]);
 }
 
 export default useLatestRequestId;

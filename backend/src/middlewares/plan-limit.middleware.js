@@ -1,5 +1,6 @@
 const subscriptionRepository = require('../repositories/billing/subscription.repository');
 const logger = require('../utils/logger');
+const { ERROR_CODES } = require('../utils/constants');
 
 /**
  * checkLimit middleware factory
@@ -35,7 +36,7 @@ const checkLimit = (limitField) => async (req, res, next) => {
     if (typeof limitValue === 'boolean') {
       if (!limitValue) {
         return res.status(403).json({
-          code: 'LIMIT_REACHED',
+          code: ERROR_CODES.LIMIT_REACHED,
           message: `Tính năng này không có trong gói ${subscription.plan.name}.`,
           upgradeRequired: true,
           currentPlan: subscription.plan.name
@@ -50,7 +51,7 @@ const checkLimit = (limitField) => async (req, res, next) => {
     if (currentCount >= limitValue) {
       logger.info('[checkLimit] Limit reached', { brandId, limitField, current: currentCount, max: limitValue });
       return res.status(403).json({
-        code: 'LIMIT_REACHED',
+        code: ERROR_CODES.LIMIT_REACHED,
         message: `Bạn đã đạt giới hạn (${currentCount}/${limitValue}) của gói ${subscription.plan.name}. Vui lòng nâng cấp!`,
         upgradeRequired: true,
         currentPlan:  subscription.plan.name,

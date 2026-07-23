@@ -157,7 +157,17 @@ const ERROR_MESSAGES = {
 // Machine-readable error codes (set on Error.code), distinct from ERROR_MESSAGES
 // (human-readable text). Consumers branch on these instead of matching message text.
 const ERROR_CODES = {
-  GOOGLE_ACCOUNT_NOT_LINKED: 'GOOGLE_ACCOUNT_NOT_LINKED'
+  GOOGLE_ACCOUNT_NOT_LINKED: 'GOOGLE_ACCOUNT_NOT_LINKED',
+  // 403/400 billing/subscription rejections, shared between
+  // feature-gate.middleware.js and plan-limit.middleware.js so both use one
+  // spelling instead of each hardcoding the string separately. The frontend
+  // gates SmartLinks/AI/Inbox/Ads UI client-side via FeatureGate + useFeatureGate
+  // (constants/products.js's PRODUCT_IDS + allowedProducts on the brand's
+  // plan), not by matching these codes — these only matter server-side and
+  // to any caller that inspects a 403 body directly.
+  MISSING_BRAND_ID: 'MISSING_BRAND_ID',
+  PLAN_UPGRADE_REQUIRED: 'PLAN_UPGRADE_REQUIRED',
+  LIMIT_REACHED: 'LIMIT_REACHED'
 };
 
 const AUTOLIST_TYPES = {
