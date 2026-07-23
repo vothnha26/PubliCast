@@ -28,11 +28,14 @@ class GeminiTranscriptionStrategy extends BaseTranscriptionStrategy {
       console.log(`[GeminiTranscriptionStrategy] Step 1: Initiating file upload for size=${fileSize}, mime=${mimeType}...`);
       
       // Step 1: Initialize resumable upload handshake
+      // API key travels via the x-goog-api-key header, not the URL query
+      // string, so it doesn't end up in proxy/APM/error-tracker logs (#108 I11).
       const initResponse = await axios.post(
-        `https://generativelanguage.googleapis.com/upload/v1beta/files?key=${apiKey}`,
+        'https://generativelanguage.googleapis.com/upload/v1beta/files',
         { file: { display_name: `transcribe-${Date.now()}` } },
         {
           headers: {
+            'x-goog-api-key': apiKey,
             'X-Goog-Upload-Protocol': 'resumable',
             'X-Goog-Upload-Command': 'start',
             'X-Goog-Upload-Header-Content-Length': fileSize,
@@ -76,7 +79,8 @@ class GeminiTranscriptionStrategy extends BaseTranscriptionStrategy {
         console.log(`[GeminiTranscriptionStrategy] File is processing. Waiting...`);
         await new Promise(r => setTimeout(r, 2000));
         const statusResponse = await axios.get(
-          `https://generativelanguage.googleapis.com/v1beta/${fileResourceName}?key=${apiKey}`
+          `https://generativelanguage.googleapis.com/v1beta/${fileResourceName}`,
+          { headers: { 'x-goog-api-key': apiKey } }
         );
         fileState = statusResponse.data.state;
         checkAttempts++;
@@ -91,7 +95,7 @@ class GeminiTranscriptionStrategy extends BaseTranscriptionStrategy {
       // Step 3: Call generateContent with model gemini-1.5-flash
       const prompt = `Transcribe the speech in this video/audio. Output MUST be a valid JSON array of subtitle objects. Adhere strictly to this schema: [{"start": number, "end": number, "text": "string"}]. The start and end fields must represent timestamps in seconds as floating numbers (e.g. 1.25). Do not include any introductory or concluding text, only the raw JSON. Return empty array [] if no speech is detected.`;
       
-      const generateUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+      const generateUrl = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent';
       const response = await axios.post(generateUrl, {
         contents: [
           {
@@ -105,11 +109,26 @@ class GeminiTranscriptionStrategy extends BaseTranscriptionStrategy {
           responseMimeType: 'application/json',
           temperature: 0.2
         }
+      }, {
+        headers: { 'x-goog-api-key': apiKey }
       });
 
-      const responseText = response.data.candidates[0].content.parts[0].text;
+      // Same missing-content guard as gemini.provider.js: a blocked/safety
+      // finish reason returns a candidate with no `content.parts` (#108 I5).
+      const candidate = response.data?.candidates?.[0];
+      const responseText = candidate?.content?.parts?.[0]?.text;
+      if (typeof responseText !== 'string') {
+        const finishReason = candidate?.finishReason || 'UNKNOWN';
+        throw new Error(`Gemini returned no usable transcription content (finishReason: ${finishReason})`);
+      }
+
       console.log(`[GeminiTranscriptionStrategy] Transcription result received.`);
-      return JSON.parse(responseText);
+      try {
+        return JSON.parse(responseText);
+      } catch (parseError) {
+        console.error('[GeminiTranscriptionStrategy] Failed to parse JSON. Raw text:', responseText);
+        throw new Error(`Gemini generated invalid transcription JSON: ${parseError.message}`);
+      }
 
     } catch (error) {
       console.error(`[GeminiTranscriptionStrategy] Transcription failed:`, error.response?.data || error.message);
@@ -120,7 +139,8 @@ class GeminiTranscriptionStrategy extends BaseTranscriptionStrategy {
         console.log(`[GeminiTranscriptionStrategy] Step 4: Cleaning up remote file ${fileResourceName} on Gemini servers...`);
         try {
           await axios.delete(
-            `https://generativelanguage.googleapis.com/v1beta/${fileResourceName}?key=${apiKey}`
+            `https://generativelanguage.googleapis.com/v1beta/${fileResourceName}`,
+            { headers: { 'x-goog-api-key': apiKey } }
           );
           console.log(`[GeminiTranscriptionStrategy] Remote file cleanup complete.`);
         } catch (delError) {

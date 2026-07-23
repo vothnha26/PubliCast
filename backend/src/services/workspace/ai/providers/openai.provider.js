@@ -45,8 +45,21 @@ class OpenAiProvider extends BaseAiProvider {
         }
       });
 
-      const content = response.data.choices[0].message.content;
-      return JSON.parse(content);
+      // response.choices[0].message.content can be missing (e.g. a
+      // content-filter/refusal finish reason), and even when present may not
+      // be valid JSON — both threw an uncaught error before this guard (#108 I5).
+      const content = response.data?.choices?.[0]?.message?.content;
+      if (typeof content !== 'string') {
+        const finishReason = response.data?.choices?.[0]?.finish_reason || 'UNKNOWN';
+        throw new Error(`OpenAI returned no usable content (finish_reason: ${finishReason})`);
+      }
+
+      try {
+        return JSON.parse(content);
+      } catch (parseError) {
+        console.error('[OpenAiProvider] Failed to parse JSON. Raw content from OpenAI:', content);
+        throw new Error(`OpenAI generated invalid JSON: ${parseError.message}. This is an AI hallucination, please try generating again.`);
+      }
     } catch (error) {
       console.error('[OpenAiProvider] API call failed:', error.response?.data || error.message);
       throw new Error(`OpenAI API call failed: ${error.response?.data?.error?.message || error.message}`);

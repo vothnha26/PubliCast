@@ -35,9 +35,7 @@ class GeminiProvider extends BaseAiProvider {
     }
 
     try {
-      const url = GEMINI_CONFIG.API_URL_TEMPLATE
-        .replace('{model}', GEMINI_CONFIG.MODEL)
-        .replace('{apiKey}', apiKey);
+      const url = GEMINI_CONFIG.API_URL_TEMPLATE.replace('{model}', GEMINI_CONFIG.MODEL);
 
       const response = await axios.post(url, {
         contents,
@@ -49,11 +47,23 @@ class GeminiProvider extends BaseAiProvider {
           temperature: 0.7
         }
       }, {
+        headers: {
+          'x-goog-api-key': apiKey
+        },
         timeout: 45000  // 45s – cho Gemini API đủ thời gian sinh nội dung dài
       });
 
-      let text = response.data.candidates[0].content.parts[0].text;
-      
+      // Gemini can return a candidate with no `content.parts` at all (e.g.
+      // finishReason: 'SAFETY' blocking the response) — indexing straight
+      // into candidates[0].content.parts[0].text threw an uncaught TypeError
+      // instead of a clear, catchable error (#108 I5).
+      const candidate = response.data?.candidates?.[0];
+      let text = candidate?.content?.parts?.[0]?.text;
+      if (typeof text !== 'string') {
+        const finishReason = candidate?.finishReason || 'UNKNOWN';
+        throw new Error(`Gemini returned no usable content (finishReason: ${finishReason})`);
+      }
+
       try {
         // Remove markdown formatting if the model accidentally included it despite responseMimeType
         text = text.replace(/^```json\n?/i, '').replace(/```$/i, '').trim();

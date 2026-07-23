@@ -16,7 +16,6 @@ jest.mock('../../src/config/redis', () => ({
 }));
 
 jest.mock('../../src/events/subscribers/post.subscriber', () => jest.fn(() => jest.fn()));
-jest.mock('../../src/events/subscribers/user.subscriber', () => jest.fn(() => jest.fn()));
 jest.mock('../../src/events/subscribers/autolist.subscriber', () => jest.fn(() => jest.fn()));
 jest.mock('../../src/queues/dashboard', () => ({
   getRouter: jest.fn(() => (req, res) => res.status(200).end())

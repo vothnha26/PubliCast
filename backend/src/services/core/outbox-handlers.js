@@ -11,6 +11,8 @@ const { socialQueue } = require('../../queues/social.queue');
 const { QUEUE_CONFIG } = require('../../constants/video-publish.constants');
 const initPostSubscribers = require('../../events/subscribers/post.subscriber');
 const { POST_DOMAIN_EVENT_HANDLERS } = initPostSubscribers;
+const brandService = require('../workspace/brand.service');
+const emailService = require('../core/email.service');
 
 const OUTBOX_HANDLERS = {
   [OUTBOX_EVENT_TYPES.POST_PUBLISH_UPSERT]: async (payload) => {
@@ -26,6 +28,12 @@ const OUTBOX_HANDLERS = {
     const handler = POST_DOMAIN_EVENT_HANDLERS[payload.eventName];
     if (!handler) throw new Error(`No POST_DOMAIN_EVENT handler registered for eventName=${payload.eventName}`);
     await handler(payload.eventArgs);
+  },
+  [OUTBOX_EVENT_TYPES.USER_DEFAULT_BRAND_CREATE]: async (payload) => {
+    await brandService.createDefaultBrand(payload.userId);
+  },
+  [OUTBOX_EVENT_TYPES.USER_SEND_WELCOME_OTP]: async (payload) => {
+    await emailService.sendOTP(payload.email, payload.otp);
   },
   [OUTBOX_EVENT_TYPES.SOCIAL_SYNC_ENQUEUE]: async (payload) => {
     // jobId cố định theo socialAccountId — idempotent, khác với social.subscriber.js
