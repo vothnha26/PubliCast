@@ -1,5 +1,9 @@
 const logger = require('../utils/logger');
-const { findActiveClientById, getDecryptedSecret } = require('../services/integrations/integration-client.service');
+const {
+  findActiveClientById,
+  getDecryptedSecret,
+  getDecryptedPrevSecret
+} = require('../services/integrations/integration-client.service');
 const { verifySignature, isTimestampFresh, consumeNonceOnce } = require('../services/integrations/hmac-verify.service');
 
 // Both rejections below use the SAME message and status so a caller cannot
@@ -67,8 +71,15 @@ function verifyHmac(source = 'body') {
         return res.status(401).json({ message: INVALID_CREDENTIALS_MESSAGE });
       }
 
+      // During a secret rotation's grace period, compute both checks
+      // unconditionally (no short-circuit) so response timing doesn't leak
+      // which secret — current or previous — a caller's signature matched.
       const secret = await getDecryptedSecret(client);
-      if (!verifySignature(payload, signature, secret)) {
+      const prevSecret = await getDecryptedPrevSecret(client);
+      const matchesCurrent = verifySignature(payload, signature, secret);
+      const matchesPrev = prevSecret ? verifySignature(payload, signature, prevSecret) : false;
+
+      if (!matchesCurrent && !matchesPrev) {
         return res.status(401).json({ message: INVALID_CREDENTIALS_MESSAGE });
       }
 
