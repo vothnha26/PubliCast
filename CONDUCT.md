@@ -29,10 +29,9 @@ PubliCast/
 │       ├── services/           # API service layer
 │       └── constants/          # Hằng số toàn cục (không magic strings)
 │
-├── conductor/                  # Task tracking & planning
 ├── docs/                       # Tài liệu kỹ thuật
 ├── test_selenium/              # Selenium E2E tests
-├── e2e-tests/                  # Playwright E2E tests
+├── README.md                   # Giới thiệu dự án, hướng dẫn setup
 └── CONDUCT.md                  # File này — hướng dẫn phát triển
 ```
 
