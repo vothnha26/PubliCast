@@ -242,6 +242,14 @@ model IntegrationClient {
   name                  String
   clientId              String    @unique
   clientSecretEncrypted String
+  // Previous secret, kept encrypted during a rotation's grace period so
+  // verifyHmac() can accept requests signed with either secret while the
+  // caller (Convo) updates its own ENV — see hmac-auth.middleware.js and
+  // scripts/rotate-integration-secret.js. Null outside of an active
+  // rotation grace window.
+  clientSecretPrevEncrypted String?
+  secretRotatedAt           DateTime?
+  secretPrevExpiresAt       DateTime?
   // Where PubliCast POSTs HMAC-signed revocation events (user removed from
   // brand / brand deactivated) — see revocation-webhook.service.js.
   // Nullable: a client that only calls verify-token/user-permissions
@@ -254,6 +262,21 @@ model IntegrationClient {
 
   @@index([clientId])
   @@map("integration_clients")
+}
+
+// Audit trail for IntegrationClient secret rotations — SPEC.md §8. Kept as
+// its own append-only table rather than versioning IntegrationClient rows,
+// since a rotation is an event to record, not client state to query.
+model IntegrationSecretRotationLog {
+  id            String   @id @default(uuid())
+  clientId      String
+  reason        String   // 'SCHEDULED' | 'COMPROMISED'
+  gracePeriodMs Int
+  rotatedAt     DateTime @default(now())
+  rotatedBy     String   // hostname/user running the CLI script, for accountability
+
+  @@index([clientId])
+  @@map("integration_secret_rotation_logs")
 }
 
 // ============================================
