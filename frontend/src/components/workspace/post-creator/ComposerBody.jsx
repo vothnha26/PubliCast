@@ -82,8 +82,6 @@ export function ComposerBody() {
     setBlockedProductId,
     setIsDriveModalOpen,
     platformLimits,
-    showVideoEditor,
-    setShowVideoEditor,
     setShowUploadModal,
     setUploadModalTab,
     getBackupPayload,

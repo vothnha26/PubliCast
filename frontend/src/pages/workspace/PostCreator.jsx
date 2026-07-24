@@ -24,7 +24,6 @@ import { PreviewStrategies } from "../../components/workspace/post-creator/Previ
 import { GoogleDrivePickerModal } from "../../components/workspace/post-creator/GoogleDrivePickerModal";
 import { MediaUploadModal } from "../../components/workspace/post-creator/MediaUploadModal";
 import { ImageEditorModal } from "../../components/workspace/post-creator/ImageEditorModal";
-import { VideoEditorModal } from "../../components/workspace/post-creator/VideoEditorModal";
 import { AltTextModal } from "../../components/workspace/post-creator/AltTextModal";
 import { FacebookAlbumComposer } from "../../components/workspace/post-creator/FacebookAlbumComposer";
 import { HashtagPickerPopover } from "../../components/workspace/post-creator/HashtagPickerPopover";
@@ -237,7 +236,6 @@ export function PostCreatorPage() {
   const [uploadModalTab, setUploadModalTab] = useState("computer");
   const [showImageMenu, setShowImageMenu] = useState(false);
   const [showImageEditor, setShowImageEditor] = useState(false);
-  const [showVideoEditor, setShowVideoEditor] = useState(false);
   const [editingAlbumPhoto, setEditingAlbumPhoto] = useState(null);
   const [editingPostMediaIndex, setEditingPostMediaIndex] = useState(null);
   const [imageTransform, setImageTransform] = useState({ rotation: 0, flipH: false, flipV: false, filter: 'none' });
@@ -443,8 +441,6 @@ export function PostCreatorPage() {
     closePostCreator,
     closePostCreatorTemporarily,
     hasAccess,
-    showVideoEditor,
-    setShowVideoEditor,
     getBackupPayload,
     backupFormState
   };
