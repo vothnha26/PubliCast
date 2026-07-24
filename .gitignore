@@ -14,11 +14,10 @@ yarn-error.log*
 *.puml
 *.md
 !docs/**/*.puml
-
-metricool_attributes_reference_v5.html
-
-*.md
+!**/README.md
+!CONDUCT.md
 !test_cases/**/*.md
+
 test_cases/api/
 postman/
 backend/uploads/
