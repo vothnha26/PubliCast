@@ -12,6 +12,13 @@ router.post(
   convoIntegrationController.verifyToken
 );
 
+router.post(
+  '/oauth/exchange',
+  integrationRateLimiter.middleware(),
+  verifyHmac(),
+  convoIntegrationController.exchangeOAuthCode
+);
+
 router.get(
   '/brand/:brandId/user-permissions',
   verifyHmac('headers'),

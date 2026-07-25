@@ -156,6 +156,7 @@ app.use('/uploads', express.static('uploads', {
 
 // ── API Routes ─────────────────────────────────────────────────────────────
 app.use('/api/auth', authRoutes);
+app.use('/oauth', authRoutes);
 app.use('/api', profileRoutes);
 app.use('/api/admin/pricing', pricingRoutes);
 app.use('/api/admin/audit-logs', auditLogRoutes);
