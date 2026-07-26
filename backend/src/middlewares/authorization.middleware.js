@@ -30,9 +30,9 @@ const authorize = (...allowedRoles) => {
 };
 
 /**
- * Only ADMIN access
+ * Only ADMIN / OWNER access
  */
-const authorizeAdmin = authorize(USER_ROLES.ADMIN);
+const authorizeAdmin = authorize(USER_ROLES.ADMIN, USER_ROLES.OWNER);
 
 /**
  * Only MANAGER access

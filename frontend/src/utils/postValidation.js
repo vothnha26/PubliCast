@@ -84,12 +84,13 @@ export function validatePostForm({
 
     if (!limitConfig) {
       // Fallback sang cấu hình static registry nếu chưa load được DB limits
-      const config = PLATFORM_CONFIGS[platform];
+      const platKey = platform.toLowerCase();
+      const config = PLATFORM_CONFIGS[platKey];
       if (config) {
         let activeType = config.defaultType;
-        if (platform === 'facebook') activeType = facebookType;
-        else if (platform === 'youtube') activeType = youtubeType;
-        else if (platform === 'instagram') activeType = instagramType;
+        if (platKey === 'facebook') activeType = facebookType;
+        else if (platKey === 'youtube') activeType = youtubeType;
+        else if (platKey === 'instagram') activeType = instagramType;
 
         const checkContext = {
           hasMedia,

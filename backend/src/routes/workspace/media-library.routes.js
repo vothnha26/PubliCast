@@ -29,7 +29,10 @@ router.get('/', checkPermission(PERMISSION_KEYS.MANAGE_MEDIA), mediaLibraryContr
 router.post('/upload', (req, res, next) => {
   upload.single('file')(req, res, (err) => {
     if (err) {
-      console.error("[Multer Upload Error]", err);
+      if (err.message === 'Request aborted' || req.aborted) {
+        console.warn('[Multer Upload] Client aborted request during upload.');
+        return;
+      }
       return res.status(400).json({ message: err.message || 'File upload failed' });
     }
     next();

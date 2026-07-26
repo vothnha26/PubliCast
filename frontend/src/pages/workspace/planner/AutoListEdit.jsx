@@ -3,8 +3,9 @@ import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import {
   AlertTriangle, Youtube, PlayCircle, Instagram,
-  Facebook, Loader2, Calendar, Plus
+  Facebook, Loader2, Calendar, Plus, AlertCircle
 } from "lucide-react";
+import { validatePostForm } from "@/utils/postValidation";
 import { PlatformIcon } from "../../../components/shared/PlatformIcon";
 import { useBrand } from "../../../context/BrandContext";
 import socialService from "../../../services/social.service";
@@ -15,9 +16,7 @@ import { useConfirm } from "@/hooks/useConfirm";
 
 // Import Refactored Subcomponents
 import { AutoListHeader } from "./components/autolist/AutoListHeader";
-import { AutoListNameInput } from "./components/autolist/AutoListNameInput";
 import { AutoListTimingCard } from "./components/autolist/AutoListTimingCard";
-import { AutoListPlatformsCard } from "./components/autolist/AutoListPlatformsCard";
 import { AutoListToolbar } from "./components/autolist/AutoListToolbar";
 import { AutoListPostCard } from "./components/autolist/AutoListPostCard";
 import { AutoListConfigCard } from "./components/autolist/AutoListConfigCard";
@@ -28,6 +27,7 @@ const PLATFORM_ICONS = {
   INSTAGRAM: <Instagram size={18} className="text-[#E1306C]" />,
   FACEBOOK: <Facebook size={18} className="text-[#1877F2]" />,
   THREADS: <PlatformIcon platform="Threads" size={18} variant="flat" className="text-black" />,
+  BLUESKY: <PlatformIcon platform="Bluesky" size={18} variant="flat" className="text-[#0085FF]" />,
 };
 
 export function AutoListEdit() {
@@ -49,12 +49,35 @@ export function AutoListEdit() {
   // Preset Configuration states
   const [autoPublish, setAutoPublish] = useState(true);
   const [useUrlShortener, setUseUrlShortener] = useState(true);
+  const [globalFirstComment, setGlobalFirstComment] = useState('');
   const [facebookContentType, setFacebookContentType] = useState('post');
+  const [facebookTitle, setFacebookTitle] = useState('');
+  const [facebookReelCollaboratorId, setFacebookReelCollaboratorId] = useState('');
+  const [facebookReelPlaceId, setFacebookReelPlaceId] = useState('');
+  const [facebookReelThumbnail, setFacebookReelThumbnail] = useState('');
   const [instagramContentType, setInstagramContentType] = useState('post');
-  const [threadsContentType, setThreadsContentType] = useState('post');
+  const [instagramCollaborators, setInstagramCollaborators] = useState([]);
+  const [instagramAudio, setInstagramAudio] = useState(null);
+  const [instagramShowOnFeed, setInstagramShowOnFeed] = useState(true);
+  // Threads
+  const [threadsWhoCanReply, setThreadsWhoCanReply] = useState('everyone');
+  // YouTube
   const [youtubeVideoType, setYoutubeVideoType] = useState('video');
   const [youtubePrivacy, setYoutubePrivacy] = useState('public');
   const [youtubeMadeForKids, setYoutubeMadeForKids] = useState(false);
+  const [youtubeTitle, setYoutubeTitle] = useState('');
+  const [youtubeCategory, setYoutubeCategory] = useState('22');
+  const [youtubePlaylistId, setYoutubePlaylistId] = useState('');
+  const [youtubeTags, setYoutubeTags] = useState('');
+  const [youtubeThumbnail, setYoutubeThumbnail] = useState('');
+  const [youtubeFirstComment, setYoutubeFirstComment] = useState('');
+  // TikTok presets
+  const [tiktokPrivacy, setTiktokPrivacy] = useState('public');
+  const [tiktokAllowComments, setTiktokAllowComments] = useState(true);
+  const [tiktokAllowDuet, setTiktokAllowDuet] = useState(true);
+  const [tiktokAllowStitch, setTiktokAllowStitch] = useState(true);
+  const [tiktokAiGenerated, setTiktokAiGenerated] = useState(false);
+  const [tiktokCommercialContent, setTiktokCommercialContent] = useState(false);
   
   // Post states
   const [posts, setPosts] = useState([]);
@@ -115,12 +138,34 @@ export function AutoListEdit() {
               const parsed = JSON.parse(list.metadata);
               if (parsed.autoPublish !== undefined) setAutoPublish(parsed.autoPublish);
               if (parsed.useUrlShortener !== undefined) setUseUrlShortener(parsed.useUrlShortener);
+              if (parsed.globalFirstComment !== undefined) setGlobalFirstComment(parsed.globalFirstComment);
+              else if (parsed.firstComment !== undefined) setGlobalFirstComment(parsed.firstComment);
               if (parsed.facebookContentType !== undefined) setFacebookContentType(parsed.facebookContentType);
+              if (parsed.facebookTitle !== undefined) setFacebookTitle(parsed.facebookTitle);
+              if (parsed.facebookReelCollaboratorId !== undefined) setFacebookReelCollaboratorId(parsed.facebookReelCollaboratorId);
+              if (parsed.facebookReelPlaceId !== undefined) setFacebookReelPlaceId(parsed.facebookReelPlaceId);
+              if (parsed.facebookReelThumbnail !== undefined) setFacebookReelThumbnail(parsed.facebookReelThumbnail);
               if (parsed.instagramContentType !== undefined) setInstagramContentType(parsed.instagramContentType);
-              if (parsed.threadsContentType !== undefined) setThreadsContentType(parsed.threadsContentType);
+              if (parsed.instagramCollaborators !== undefined) setInstagramCollaborators(parsed.instagramCollaborators);
+              if (parsed.instagramAudio !== undefined) setInstagramAudio(parsed.instagramAudio);
+              if (parsed.instagramShowOnFeed !== undefined) setInstagramShowOnFeed(parsed.instagramShowOnFeed);
+              if (parsed.threadsWhoCanReply !== undefined) setThreadsWhoCanReply(parsed.threadsWhoCanReply);
+              else if (parsed.threadsContentType !== undefined) setThreadsWhoCanReply('everyone');
               if (parsed.youtubeVideoType !== undefined) setYoutubeVideoType(parsed.youtubeVideoType);
               if (parsed.youtubePrivacy !== undefined) setYoutubePrivacy(parsed.youtubePrivacy);
               if (parsed.youtubeMadeForKids !== undefined) setYoutubeMadeForKids(parsed.youtubeMadeForKids);
+              if (parsed.youtubeTitle !== undefined) setYoutubeTitle(parsed.youtubeTitle);
+              if (parsed.youtubeCategory !== undefined) setYoutubeCategory(parsed.youtubeCategory);
+              if (parsed.youtubePlaylistId !== undefined) setYoutubePlaylistId(parsed.youtubePlaylistId);
+              if (parsed.youtubeTags !== undefined) setYoutubeTags(parsed.youtubeTags);
+              if (parsed.youtubeThumbnail !== undefined) setYoutubeThumbnail(parsed.youtubeThumbnail);
+              if (parsed.youtubeFirstComment !== undefined) setYoutubeFirstComment(parsed.youtubeFirstComment);
+              if (parsed.tiktokPrivacy !== undefined) setTiktokPrivacy(parsed.tiktokPrivacy);
+              if (parsed.tiktokAllowComments !== undefined) setTiktokAllowComments(parsed.tiktokAllowComments);
+              if (parsed.tiktokAllowDuet !== undefined) setTiktokAllowDuet(parsed.tiktokAllowDuet);
+              if (parsed.tiktokAllowStitch !== undefined) setTiktokAllowStitch(parsed.tiktokAllowStitch);
+              if (parsed.tiktokAiGenerated !== undefined) setTiktokAiGenerated(parsed.tiktokAiGenerated);
+              if (parsed.tiktokCommercialContent !== undefined) setTiktokCommercialContent(parsed.tiktokCommercialContent);
             } catch (err) {
               console.error("Failed to parse metadata", err);
             }
@@ -183,12 +228,32 @@ export function AutoListEdit() {
       const configMetadata = {
         autoPublish,
         useUrlShortener,
+        globalFirstComment,
         facebookContentType,
+        facebookTitle,
+        facebookReelCollaboratorId,
+        facebookReelPlaceId,
+        facebookReelThumbnail,
         instagramContentType,
-        threadsContentType,
+        instagramCollaborators,
+        instagramAudio,
+        instagramShowOnFeed,
+        threadsWhoCanReply,
         youtubeVideoType,
         youtubePrivacy,
-        youtubeMadeForKids
+        youtubeMadeForKids,
+        youtubeTitle,
+        youtubeCategory,
+        youtubePlaylistId,
+        youtubeTags,
+        youtubeThumbnail,
+        youtubeFirstComment,
+        tiktokPrivacy,
+        tiktokAllowComments,
+        tiktokAllowDuet,
+        tiktokAllowStitch,
+        tiktokAiGenerated,
+        tiktokCommercialContent
       };
 
       const payload = {
@@ -229,7 +294,7 @@ export function AutoListEdit() {
   const handleDeleteList = async () => {
     const isConfirmed = await confirm({
       title: "Delete Autolist?",
-      description: "Are you sure you want to delete this autolist? All queued posts will be orphaned.",
+      description: "Are you sure you want to delete this autolist? All queued posts in this list will be permanently deleted.",
       confirmText: "Delete",
       cancelText: "Cancel",
       variant: "destructive"
@@ -291,7 +356,7 @@ export function AutoListEdit() {
           useUrlShortener,
           facebookContentType,
           instagramContentType,
-          threadsContentType,
+          threadsWhoCanReply,
           youtubeVideoType,
           youtubePrivacy,
           youtubeMadeForKids
@@ -506,18 +571,58 @@ export function AutoListEdit() {
               setRepeat={setRepeat}
               useUrlShortener={useUrlShortener}
               setUseUrlShortener={setUseUrlShortener}
+              globalFirstComment={globalFirstComment}
+              setGlobalFirstComment={setGlobalFirstComment}
               facebookContentType={facebookContentType}
               setFacebookContentType={setFacebookContentType}
+              facebookTitle={facebookTitle}
+              setFacebookTitle={setFacebookTitle}
+              facebookReelCollaboratorId={facebookReelCollaboratorId}
+              setFacebookReelCollaboratorId={setFacebookReelCollaboratorId}
+              facebookReelPlaceId={facebookReelPlaceId}
+              setFacebookReelPlaceId={setFacebookReelPlaceId}
+              facebookReelThumbnail={facebookReelThumbnail}
+              setFacebookReelThumbnail={setFacebookReelThumbnail}
               instagramContentType={instagramContentType}
               setInstagramContentType={setInstagramContentType}
-              threadsContentType={threadsContentType}
-              setThreadsContentType={setThreadsContentType}
+              instagramCollaborators={instagramCollaborators}
+              setInstagramCollaborators={setInstagramCollaborators}
+              instagramAudio={instagramAudio}
+              setInstagramAudio={setInstagramAudio}
+              instagramShowOnFeed={instagramShowOnFeed}
+              setInstagramShowOnFeed={setInstagramShowOnFeed}
+              threadsWhoCanReply={threadsWhoCanReply}
+              setThreadsWhoCanReply={setThreadsWhoCanReply}
               youtubeVideoType={youtubeVideoType}
               setYoutubeVideoType={setYoutubeVideoType}
               youtubePrivacy={youtubePrivacy}
               setYoutubePrivacy={setYoutubePrivacy}
               youtubeMadeForKids={youtubeMadeForKids}
               setYoutubeMadeForKids={setYoutubeMadeForKids}
+              youtubeTitle={youtubeTitle}
+              setYoutubeTitle={setYoutubeTitle}
+              youtubeCategory={youtubeCategory}
+              setYoutubeCategory={setYoutubeCategory}
+              youtubePlaylistId={youtubePlaylistId}
+              setYoutubePlaylistId={setYoutubePlaylistId}
+              youtubeTags={youtubeTags}
+              setYoutubeTags={setYoutubeTags}
+              youtubeThumbnail={youtubeThumbnail}
+              setYoutubeThumbnail={setYoutubeThumbnail}
+              youtubeFirstComment={youtubeFirstComment}
+              setYoutubeFirstComment={setYoutubeFirstComment}
+              tiktokPrivacy={tiktokPrivacy}
+              setTiktokPrivacy={setTiktokPrivacy}
+              tiktokAllowComments={tiktokAllowComments}
+              setTiktokAllowComments={setTiktokAllowComments}
+              tiktokAllowDuet={tiktokAllowDuet}
+              setTiktokAllowDuet={setTiktokAllowDuet}
+              tiktokAllowStitch={tiktokAllowStitch}
+              setTiktokAllowStitch={setTiktokAllowStitch}
+              tiktokAiGenerated={tiktokAiGenerated}
+              setTiktokAiGenerated={setTiktokAiGenerated}
+              tiktokCommercialContent={tiktokCommercialContent}
+              setTiktokCommercialContent={setTiktokCommercialContent}
             />
           </div>
 
@@ -571,6 +676,46 @@ export function AutoListEdit() {
             </div>
           ) : (
             <div className="space-y-4 max-w-4xl mx-auto w-full">
+              {/* Overall Validation Warning Banner */}
+              {(() => {
+                const invalidCount = posts.filter(p => {
+                  const mediaUrls = !p.mediaUrls ? [] : (Array.isArray(p.mediaUrls) ? p.mediaUrls : p.mediaUrls.split(',').filter(Boolean));
+                  const firstMedia = mediaUrls[0];
+                  const errs = validatePostForm({
+                    isLibrary: false,
+                    selectedPublishId: 'schedule',
+                    scheduledDate: p.scheduledAt || new Date(),
+                    selectedPlatforms: selectedPlatforms || [],
+                    facebookType: p.options?.facebookType || facebookContentType || 'post',
+                    youtubeType: p.options?.youtubeType || youtubeVideoType || 'video',
+                    instagramType: p.options?.instagramType || instagramContentType || 'post',
+                    videoFileUrl: firstMedia,
+                    uploadedVideoPath: firstMedia,
+                    mediaCount: mediaUrls.length,
+                    postMedia: mediaUrls.map(url => ({ path: url }))
+                  });
+                  return errs.length > 0;
+                }).length;
+
+                if (invalidCount === 0) return null;
+
+                return (
+                  <div className="p-4 bg-red-50 border border-red-200 rounded-2xl flex items-center justify-between shadow-sm animate-in fade-in duration-200">
+                    <div className="flex items-center gap-3">
+                      <AlertTriangle className="text-red-500 shrink-0" size={20} />
+                      <div className="text-left">
+                        <h5 className="text-xs font-bold text-red-800 font-sans">
+                          {invalidCount} {invalidCount === 1 ? 'post has' : 'posts have'} platform requirement issues
+                        </h5>
+                        <p className="text-[11px] text-red-600 font-medium font-sans">
+                          Please review the red warnings on the post cards below (e.g. YouTube requires video instead of image).
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
+
               <div className="space-y-4">
                 {posts.map((post, idx) => (
                   <AutoListPostCard 

@@ -112,8 +112,34 @@ class YouTubePublishService {
 
   _prepareMetadata(postData, options) {
     const { title, caption, scheduledAt } = postData;
-    let finalTitle = options.youtubeTitle || title || 'New YouTube Post';
+    let finalTitle = options.youtubeTitle;
     let finalDescription = caption || '';
+
+    // Logic trích xuất Title từ câu/đoạn đầu tiên của Content nếu không nhập Title riêng
+    if (!finalTitle && (!title || title === 'Untitled Post' || title === 'New YouTube Post' || title.trim() === '') && caption?.trim()) {
+      const trimmedCaption = caption.trim();
+      const paragraphs = trimmedCaption.split(/\n+/);
+      const firstParagraph = paragraphs[0]?.trim() || '';
+      
+      const sentenceMatch = firstParagraph.match(/^(.*?[.!?])(?:\s|$)/);
+      let extractedTitle = sentenceMatch ? sentenceMatch[1].trim() : firstParagraph;
+      
+      if (extractedTitle.length > 100) {
+        extractedTitle = extractedTitle.substring(0, 97) + '...';
+      }
+      
+      finalTitle = extractedTitle;
+      
+      // Phần còn lại của Caption biến thành Description
+      const remainingCaption = trimmedCaption.substring(firstParagraph.length).trim();
+      if (remainingCaption) {
+        finalDescription = remainingCaption;
+      }
+    }
+
+    if (!finalTitle) {
+      finalTitle = title || 'New YouTube Post';
+    }
 
     // Shorts Auto-Hashtag Logic
     if (options.youtubeType === POST_TYPES.SHORT.toLowerCase()) {
@@ -124,10 +150,14 @@ class YouTubePublishService {
       }
     }
 
-    let privacyStatus = options.privacyStatus || YOUTUBE_PRIVACY.PRIVATE;
+    let privacyStatus = options.privacyStatus || options.youtubePrivacy || YOUTUBE_PRIVACY.PUBLIC;
     let publishAt = null;
 
-    if (scheduledAt) {
+    // Chỉ dùng chế độ Native Future Schedule của YouTube nếu scheduledAt còn cách xa trong tương lai (> 2 phút).
+    // Nếu xuất bản ngay hoặc công việc BullMQ đã tới giờ hẹn, sử dụng đúng privacyStatus (public/unlisted/private) người dùng chọn.
+    const isFutureSchedule = scheduledAt && new Date(scheduledAt).getTime() > Date.now() + 2 * 60 * 1000;
+
+    if (isFutureSchedule) {
       privacyStatus = YOUTUBE_PRIVACY.PRIVATE;
       publishAt = new Date(scheduledAt).toISOString();
     }

@@ -9,10 +9,9 @@ class ValidationFacade {
    * @returns {Promise<Object>} { isValid: boolean, errors: string[] }
    */
   shouldBypassValidation(postData) {
-    // Bỏ qua validate nếu bài viết là Nháp (DRAFT) hoặc thuộc một AutoList
+    // Bỏ qua validate chỉ khi bài viết là Nháp (DRAFT)
     const status = postData.status;
-    const isAutoListPost = !!postData.autoListId;
-    return status === 'DRAFT' || isAutoListPost;
+    return status === 'DRAFT';
   }
 
   async validatePost(postData, mediaInfo = {}) {

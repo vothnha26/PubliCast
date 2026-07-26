@@ -3,13 +3,17 @@ import {
   Youtube, PlayCircle, Instagram, Facebook, Trash2
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { PlatformIcon } from "../../../../../components/shared/PlatformIcon";
 
 const PLATFORM_BADGES = {
   YOUTUBE: { icon: <Youtube size={11} />, color: "bg-red-50 text-red-600 border-red-100/80", label: "YouTube" },
   TIKTOK: { icon: <PlayCircle size={11} />, color: "bg-gray-50 text-gray-900 border-gray-200", label: "TikTok" },
   INSTAGRAM: { icon: <Instagram size={11} />, color: "bg-pink-50 text-pink-600 border-pink-100/80", label: "Instagram" },
   FACEBOOK: { icon: <Facebook size={11} />, color: "bg-blue-50 text-blue-600 border-blue-100/80", label: "Facebook" },
+  THREADS: { icon: <PlatformIcon platform="Threads" size={11} variant="flat" />, color: "bg-gray-50 text-gray-800 border-gray-200", label: "Threads" },
+  BLUESKY: { icon: <PlatformIcon platform="Bluesky" size={11} variant="flat" />, color: "bg-sky-50 text-sky-600 border-sky-100/80", label: "Bluesky" },
 };
+
 
 const borderLeftColors = {
   YOUTUBE: "border-l-4 border-l-[#FF0000]",
