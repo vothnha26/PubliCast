@@ -138,6 +138,21 @@ class PostService {
       }
     }
 
+    // "Publish now" requests arrive as status=PUBLISHED, but writing that
+    // straight to the DB marks the post as live before any platform API
+    // call has actually happened. claimForPublishing() only claims posts
+    // out of SCHEDULED/DRAFT/RETRYING (see publish-post.handler.js), so a
+    // post created as PUBLISHED has its publish job silently skipped —
+    // the post shows as "published" in the UI while nothing was ever sent
+    // to YouTube/Instagram/Facebook/etc. Route it through SCHEDULED (now)
+    // instead, so the same claim + publish pipeline that handles scheduled
+    // posts runs immediately and only flips the row to PUBLISHED once the
+    // platform calls actually succeed (see update-db.step.js).
+    if (data.status === POST_STATUS.PUBLISHED) {
+      data.status = POST_STATUS.SCHEDULED;
+      data.scheduledAt = new Date();
+    }
+
     console.log('[PostService] Final payload to database:', data);
 
     const post = await prisma.$transaction(async (tx) => {
@@ -592,17 +607,22 @@ class PostService {
       return;
     }
 
+    // Re-fetch platformPostId mới nhất từ DB — post truyền vào có thể là snapshot cũ
+    // từ outbox payload (retry sau lỗi), không phản ánh các platform đã publish thành công trước đó.
+    const latestPost = await postRepository.findById(post.id);
+    const currentPlatformPostId = latestPost?.platformPostId || post.platformPostId;
+
     // Parse platformPostId hiện tại (nếu có) thành JSON map
     let platformIdMap = {};
-    if (post.platformPostId) {
+    if (currentPlatformPostId) {
       try {
-        platformIdMap = JSON.parse(post.platformPostId);
+        platformIdMap = JSON.parse(currentPlatformPostId);
         if (typeof platformIdMap !== 'object' || platformIdMap === null) {
           // Trường hợp là chuỗi đơn (tương thích ngược)
-          platformIdMap = { [PLATFORMS.YOUTUBE]: post.platformPostId };
+          platformIdMap = { [PLATFORMS.YOUTUBE]: currentPlatformPostId };
         }
       } catch (e) {
-        platformIdMap = { [PLATFORMS.YOUTUBE]: post.platformPostId };
+        platformIdMap = { [PLATFORMS.YOUTUBE]: currentPlatformPostId };
       }
     }
 
