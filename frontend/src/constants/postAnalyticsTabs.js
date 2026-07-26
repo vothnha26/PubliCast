@@ -6,6 +6,16 @@ export const POST_ANALYTICS_TAB = {
   DEVICES: 'devices',
   GEOGRAPHY: 'geography',
   SEARCH: 'search',
+  // Instagram
+  POSTS: 'posts',
+  REELS: 'reels',
+  STORIES: 'stories',
+  // Telegram
+  MESSAGES: 'messages',
+  SUBSCRIBERS: 'subscribers',
+  // Twitch
+  STREAMS: 'streams',
+  CLIPS: 'clips',
 };
 
 export const POST_ANALYTICS_TAB_LABEL = {

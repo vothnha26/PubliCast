@@ -19,6 +19,10 @@ export default function HighlightStudio() {
   const [ytDesc, setYtDesc] = useState("#Shorts #Highlights");
   const [ytPublishing, setYtPublishing] = useState(false);
   const [ytResult, setYtResult] = useState(null);
+  const [twitchBroadcasterId, setTwitchBroadcasterId] = useState("");
+  const [isCreatingTwitchClip, setIsCreatingTwitchClip] = useState(false);
+  const [twitchClipResult, setTwitchClipResult] = useState(null);
+  const [twitchClipError, setTwitchClipError] = useState("");
   const videoRef = useRef(null);
   const pollRef = useRef(null);
 
@@ -129,6 +133,26 @@ export default function HighlightStudio() {
     }
   };
 
+  const handleCreateTwitchClip = async () => {
+    if (!twitchBroadcasterId.trim()) return;
+    setIsCreatingTwitchClip(true);
+    setTwitchClipError("");
+    setTwitchClipResult(null);
+
+    try {
+      const res = await apiService.post("/social/twitch/clips/create", {
+        broadcasterId: twitchBroadcasterId.trim(),
+        maxAttempts: 10
+      });
+      setTwitchClipResult(res.data?.data);
+    } catch (err) {
+      console.error("Twitch clip creation failed:", err);
+      setTwitchClipError(err.response?.data?.message || "Không thể tạo clip Twitch.");
+    } finally {
+      setIsCreatingTwitchClip(false);
+    }
+  };
+
   const progressSteps = [
     { label: "Tải video", pct: 20 },
     { label: "Tách âm thanh", pct: 40 },
@@ -210,11 +234,73 @@ export default function HighlightStudio() {
               ))}
             </div>
 
-            <div className="mt-5 text-xs text-[var(--muted-foreground)] bg-[var(--muted)] rounded-xl px-4 py-3 border border-[var(--sidebar-border)]">
-              ⚠️ <strong>Lưu ý:</strong> Tính năng này yêu cầu <strong>Google Colab Worker đang chạy</strong>. Mở file{" "}
-              <code className="bg-[var(--background)] px-1 py-0.5 rounded text-xs">python-worker/Google_Colab_Worker.md</code>{" "}
-              và bật Worker trên Colab trước khi import.
+            {/* ── Twitch Live Clip Creation Card ── */}
+            <div className="mt-8 pt-6 border-t border-[var(--sidebar-border)]">
+              <div className="flex items-center gap-2 mb-2">
+                <span className="text-xl">🟣</span>
+                <h3 className="text-md font-bold text-purple-400">Twitch Instant Clip Studio</h3>
+              </div>
+              <p className="text-xs text-[var(--muted-foreground)] mb-4">
+                Tạo clip highlight ngay lập tức từ Twitch Stream đang trực tiếp (Yêu cầu channel đang LIVE).
+              </p>
+
+              <div className="flex gap-3">
+                <input
+                  type="text"
+                  placeholder="Nhập Twitch Broadcaster ID (vd: 12345678)..."
+                  value={twitchBroadcasterId}
+                  onChange={(e) => setTwitchBroadcasterId(e.target.value)}
+                  className="flex-1 px-4 py-2.5 rounded-xl bg-[var(--muted)] border border-[var(--sidebar-border)] text-sm outline-none focus:ring-2 focus:ring-purple-500/40"
+                />
+                <button
+                  onClick={handleCreateTwitchClip}
+                  disabled={!twitchBroadcasterId.trim() || isCreatingTwitchClip}
+                  className="flex items-center gap-2 px-5 py-2.5 rounded-xl font-semibold text-sm bg-purple-600 hover:bg-purple-500 text-white transition-all disabled:opacity-40"
+                >
+                  {isCreatingTwitchClip ? (
+                    <>
+                      <Loader2 size={16} className="animate-spin" /> Đang Polling (3s)...
+                    </>
+                  ) : (
+                    <>
+                      <Scissors size={16} /> Tạo Twitch Clip
+                    </>
+                  )}
+                </button>
+              </div>
+
+              {twitchClipError && (
+                <div className="mt-3 flex items-center gap-2 text-red-400 bg-red-500/10 border border-red-500/20 rounded-xl px-4 py-2.5 text-xs">
+                  <AlertCircle size={15} />
+                  {twitchClipError}
+                </div>
+              )}
+
+              {twitchClipResult && (
+                <div className="mt-4 p-4 bg-purple-950/20 border border-purple-500/30 rounded-xl space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-purple-300">✅ Clip Twitch Đã Sẵn Sàng!</span>
+                    <a
+                      href={twitchClipResult.url}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-xs text-purple-400 underline font-medium hover:text-purple-300"
+                    >
+                      Xem trên Twitch ↗
+                    </a>
+                  </div>
+                  <p className="text-sm font-semibold text-white">{twitchClipResult.title}</p>
+                  {twitchClipResult.thumbnailUrl && (
+                    <img
+                      src={twitchClipResult.thumbnailUrl}
+                      alt={twitchClipResult.title}
+                      className="w-full max-w-sm rounded-lg border border-purple-500/30 object-cover"
+                    />
+                  )}
+                </div>
+              )}
             </div>
+
           </div>
         )}
 

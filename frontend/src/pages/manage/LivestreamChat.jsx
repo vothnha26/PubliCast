@@ -9,7 +9,8 @@ import { toast } from 'sonner';
 const PLATFORMS = {
   ALL: 'all',
   YOUTUBE: 'youtube',
-  FACEBOOK: 'facebook'
+  FACEBOOK: 'facebook',
+  TWITCH: 'twitch'
 };
 
 const UPDATE_INTERVALS = {
@@ -21,7 +22,7 @@ const UPDATE_INTERVALS = {
 const ROLLING_WINDOW_SEC = 60;
 const MAX_SPARKLINE_POINTS = 30;
 
-// SVG Icons chuẩn cho YouTube và Facebook
+// SVG Icons chuẩn cho YouTube, Facebook, và Twitch
 const YouTubeIcon = () => (
   <svg className="w-5 h-5 mr-2" viewBox="0 0 24 24" fill="currentColor">
     <path d="M23.498 6.163a3.003 3.003 0 0 0-2.11-2.11C19.518 3.545 12 3.545 12 3.545s-7.518 0-9.388.508a3.003 3.003 0 0 0-2.11 2.11C0 8.033 0 12 0 12s0 3.967.502 5.837a3.003 3.003 0 0 0 2.11 2.11c1.87.508 9.388.508 9.388.508s7.518 0 9.388-.508a3.003 3.003 0 0 0 2.11-2.11C24 15.967 24 12 24 12s0-3.967-.502-5.837z" fill="#FF0000"/>
@@ -32,6 +33,12 @@ const YouTubeIcon = () => (
 const FacebookIcon = () => (
   <svg className="w-5 h-5 mr-2" viewBox="0 0 24 24" fill="currentColor">
     <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" fill="#1877F2"/>
+  </svg>
+);
+
+const TwitchIcon = () => (
+  <svg className="w-5 h-5 mr-2" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M11.571 4.714h1.715v5.143h-1.715zm4.715 0h1.714v5.143h-1.714zM2.143 0L.429 4.286v15.428h5.143V24l4.286-4.286h3.428L21.429 11.429V0zm17.571 10.714l-2.571 2.572h-3.429L11.143 16h-2.571v-2.714H5.143V1.714h14.571z" fill="#9146FF"/>
   </svg>
 );
 
@@ -142,6 +149,23 @@ export function LivestreamChat() {
       commentTimestamps.current.push(Date.now());
     };
 
+    const handleTwitchChatMessage = (payload) => {
+      const formatted = {
+        id: payload.messageId || `twitch-${Date.now()}-${Math.random()}`,
+        platform: PLATFORMS.TWITCH,
+        authorName: payload.user?.name || 'Twitch User',
+        authorColor: payload.user?.color || '#9146FF',
+        content: payload.text || '',
+        badges: payload.badges || [],
+        timestamp: new Date().toISOString()
+      };
+      setComments((prev) => {
+        if (prev.some(c => c.id === formatted.id)) return prev;
+        return [...prev, formatted];
+      });
+      commentTimestamps.current.push(Date.now());
+    };
+
     const handleStatsUpdate = (stats) => {
       if (stats.currentViewers) {
         setCurrentViewers(stats.currentViewers);
@@ -150,11 +174,15 @@ export function LivestreamChat() {
     };
 
     socketClient.on('new_livestream_comment', handleNewComment);
+    socketClient.on('twitch:chat_message', handleTwitchChatMessage);
+    socketClient.on('chat:message', handleTwitchChatMessage);
     socketClient.on('livestream_stats_update', handleStatsUpdate);
 
     return () => {
       socketClient.emit('leave_livestream', { livestreamId: selectedStreamId });
       socketClient.off('new_livestream_comment', handleNewComment);
+      socketClient.off('twitch:chat_message', handleTwitchChatMessage);
+      socketClient.off('chat:message', handleTwitchChatMessage);
       socketClient.off('livestream_stats_update', handleStatsUpdate);
       setIsConnected(false);
     };
@@ -514,6 +542,13 @@ export function LivestreamChat() {
                 <span className="w-1.5 h-1.5 rounded-full bg-blue-500 mr-1.5" />
                 Facebook
               </button>
+              <button
+                onClick={() => setActiveTab(PLATFORMS.TWITCH)}
+                className={`flex items-center text-xs font-bold px-3 py-1.5 rounded-lg transition-all ${activeTab === PLATFORMS.TWITCH ? 'bg-purple-950/40 text-purple-400 shadow-md border border-purple-900/30' : 'text-gray-400 hover:text-purple-400'}`}
+              >
+                <span className="w-1.5 h-1.5 rounded-full bg-purple-500 mr-1.5" />
+                Twitch
+              </button>
             </div>
             
             <span className="text-[10px] font-bold uppercase tracking-wider text-gray-500 bg-[#1A1A26] px-2.5 py-1 rounded-md">
@@ -535,8 +570,8 @@ export function LivestreamChat() {
                 />
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center mb-1">
-                    {comment.platform === PLATFORMS.YOUTUBE ? <YouTubeIcon /> : <FacebookIcon />}
-                    <span className="font-bold text-gray-200 text-sm truncate mr-2">{comment.authorName}</span>
+                    {comment.platform === PLATFORMS.YOUTUBE ? <YouTubeIcon /> : comment.platform === PLATFORMS.TWITCH ? <TwitchIcon /> : <FacebookIcon />}
+                    <span className="font-bold text-gray-200 text-sm truncate mr-2" style={{ color: comment.authorColor || undefined }}>{comment.authorName}</span>
                     <span className="text-[10px] text-gray-500 group-hover:text-gray-400 transition-colors">
                       {new Date(comment.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
                     </span>

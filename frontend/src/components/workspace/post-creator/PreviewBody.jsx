@@ -58,6 +58,12 @@ export function PreviewBody() {
           ? t("planner:postCreator.preview.body.tiktokSimulated")
           : activePlatform === 'instagram'
           ? t("planner:postCreator.preview.body.instagramSimulated")
+          : activePlatform === 'bluesky'
+          ? "Bluesky AT Protocol Simulated View"
+          : activePlatform === 'reddit'
+          ? "Reddit Post Simulated View"
+          : activePlatform === 'twitch'
+          ? "Twitch Broadcast & Chat Simulated View"
           : t("planner:postCreator.preview.body.facebookSimulated")}
       </p>
     </div>

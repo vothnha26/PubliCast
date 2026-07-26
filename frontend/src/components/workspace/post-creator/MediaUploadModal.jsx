@@ -13,6 +13,7 @@ export function MediaUploadModal({ isOpen, onClose, onAccept, brandId, initialTa
   const [fileUrlInput, setFileUrlInput] = useState("");
   const [fileUrlsInput, setFileUrlsInput] = useState("");
   const [isUploading, setIsUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
   
   // Library management using our custom hook
   const {
@@ -44,6 +45,7 @@ export function MediaUploadModal({ isOpen, onClose, onAccept, brandId, initialTa
       setSelectedLibraryFiles([]);
       setFileUrlInput("");
       setFileUrlsInput("");
+      setUploadProgress(0);
     }
   }, [isOpen]);
 
@@ -107,19 +109,30 @@ export function MediaUploadModal({ isOpen, onClose, onAccept, brandId, initialTa
           return;
         }
         setIsUploading(true);
+        setUploadProgress(0);
         const uploadedItems = [];
         const toastId = toast.loading(`Uploading ${selectedFiles.length} file(s)...`);
 
+        const totalBytes = selectedFiles.reduce((sum, f) => sum + f.size, 0);
+        const sentPerFile = selectedFiles.map(() => 0);
+
         try {
-          for (const file of selectedFiles) {
+          for (let i = 0; i < selectedFiles.length; i++) {
+            const file = selectedFiles[i];
             const formData = new FormData();
             formData.append("video", file);
             const res = await apiService.post(`/posts/upload?brandId=${brandId}`, formData, {
               headers: {
                 "Content-Type": "multipart/form-data"
               },
-              timeout: 120000 // 120 seconds timeout for media uploads
+              timeout: 120000, // 120 seconds timeout for media uploads
+              onUploadProgress: (e) => {
+                sentPerFile[i] = e.loaded;
+                const totalSent = sentPerFile.reduce((sum, v) => sum + v, 0);
+                setUploadProgress(totalBytes > 0 ? Math.round((totalSent / totalBytes) * 100) : 0);
+              }
             });
+            sentPerFile[i] = file.size;
             uploadedItems.push({
               file,
               path: res.data.videoUrl,
@@ -135,6 +148,7 @@ export function MediaUploadModal({ isOpen, onClose, onAccept, brandId, initialTa
           console.error(err);
         } finally {
           setIsUploading(false);
+          setUploadProgress(0);
         }
       } else {
         if (!selectedFile) {
@@ -143,6 +157,7 @@ export function MediaUploadModal({ isOpen, onClose, onAccept, brandId, initialTa
         }
         
         setIsUploading(true);
+        setUploadProgress(0);
         const formData = new FormData();
         formData.append("video", selectedFile); // Key matches backend expectation for post upload
 
@@ -151,10 +166,15 @@ export function MediaUploadModal({ isOpen, onClose, onAccept, brandId, initialTa
             headers: {
               "Content-Type": "multipart/form-data"
             },
-            timeout: 120000 // 120 seconds timeout for media uploads
+            timeout: 120000, // 120 seconds timeout for media uploads
+            onUploadProgress: (e) => {
+              if (e.total) {
+                setUploadProgress(Math.round((e.loaded / e.total) * 100));
+              }
+            }
           });
           const path = res.data.videoUrl;
-          
+
           onAccept(selectedFile, path);
           toast.success("File uploaded successfully");
           onClose();
@@ -164,6 +184,7 @@ export function MediaUploadModal({ isOpen, onClose, onAccept, brandId, initialTa
           console.error(err);
         } finally {
           setIsUploading(false);
+          setUploadProgress(0);
         }
       }
     } else if (activeTab === "library") {
@@ -505,6 +526,22 @@ export function MediaUploadModal({ isOpen, onClose, onAccept, brandId, initialTa
 
         </div>
 
+        {/* Upload Progress Bar */}
+        {isUploading && (
+          <div className="px-6 pb-3 -mt-2">
+            <div className="flex items-center justify-between mb-1.5">
+              <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Uploading...</span>
+              <span className="text-[10px] font-black text-gray-600">{uploadProgress}%</span>
+            </div>
+            <div className="w-full h-1.5 bg-gray-100 rounded-full overflow-hidden">
+              <div
+                className="h-full bg-[#2D1D35] rounded-full transition-[width] duration-200 ease-out"
+                style={{ width: `${uploadProgress}%` }}
+              />
+            </div>
+          </div>
+        )}
+
         {/* Modal Footer */}
         <div className="px-6 py-4 bg-gray-50 flex items-center justify-between border-t border-gray-100">
           <button
@@ -515,20 +552,14 @@ export function MediaUploadModal({ isOpen, onClose, onAccept, brandId, initialTa
           >
             Cancel
           </button>
-          
+
           <button
             type="button"
             onClick={handleAccept}
             disabled={isUploading}
             className="px-6 py-2.5 text-xs font-bold bg-[#2D1D35] hover:bg-black text-yellow-300 rounded-xl transition-all cursor-pointer disabled:opacity-50 flex items-center gap-2"
           >
-            {isUploading && (
-              <svg className="animate-spin h-3.5 w-3.5 text-yellow-300" fill="none" viewBox="0 0 24 24">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-              </svg>
-            )}
-            {isUploading ? "Uploading..." : "Accept"}
+            {isUploading ? `Uploading ${uploadProgress}%` : "Accept"}
           </button>
         </div>
 

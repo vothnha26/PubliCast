@@ -10,6 +10,9 @@ const socialAnalyticsController = require('../../controllers/social/social-analy
 const socialConnectionController = require('../../controllers/social/social-connection.controller');
 const telegramController = require('../../controllers/social/telegram.controller');
 const threadsController = require('../../controllers/social/threads.controller');
+const blueskyController = require('../../controllers/social/bluesky.controller');
+const redditController = require('../../controllers/social/reddit.controller');
+const twitchController = require('../../controllers/social/twitch.controller');
 const { verifyAuth } = require('../../middlewares/auth.middleware');
 const { requireFeature } = require('../../middlewares/feature-gate.middleware');
 const checkPermission = require('../../middlewares/permission.middleware');
@@ -35,6 +38,20 @@ router.get('/tiktok/webhook', oauthController.handleTikTokWebhook);
 router.post('/tiktok/webhook', oauthController.handleTikTokWebhook);
 router.get('/threads/url', verifyAuth, oauthController.getThreadsAuthUrl);
 router.get('/threads/callback', oauthController.threadsCallback);
+router.get('/reddit/url', verifyAuth, redditController.getAuthUrl);
+router.get('/reddit/callback', redditController.callback);
+router.get('/reddit/subreddits', verifyAuth, requireBrandMember, redditController.getUserSubreddits);
+router.get('/reddit/subreddits/search', verifyAuth, requireBrandMember, redditController.searchSubreddits);
+router.get('/reddit/subreddits/:subreddit/flairs', verifyAuth, requireBrandMember, redditController.getSubredditFlairs);
+router.post('/reddit/disconnect', verifyAuth, requireManageConnections, redditController.disconnect);
+
+// Twitch
+router.get('/twitch/url', verifyAuth, twitchController.getTwitchAuthUrl);
+router.get('/twitch/callback', twitchController.twitchCallback);
+router.post('/twitch/disconnect', verifyAuth, requireManageConnections, twitchController.disconnectTwitchAccount);
+router.post('/twitch/clips/create', verifyAuth, requireBrandMember, twitchController.createClip);
+router.get('/twitch/stream-status', verifyAuth, requireBrandMember, twitchController.getStreamStatus);
+router.post('/reddit/submit', verifyAuth, requireBrandMember, redditController.submitPost);
 
 // Facebook Features
 router.get('/facebook/published-posts', verifyAuth, requireBrandMember, facebookController.getFacebookPublishedPosts);
@@ -57,6 +74,8 @@ router.delete('/facebook/competitors/:id', verifyAuth, facebookController.delete
 router.post('/instagram/disconnect', verifyAuth, requireManageConnections, socialConnectionController.disconnectInstagramAccount);
 router.post('/tiktok/disconnect', verifyAuth, requireManageConnections, socialConnectionController.disconnectTikTokAccount);
 router.post('/threads/disconnect', verifyAuth, requireManageConnections, socialConnectionController.disconnectThreadsAccount);
+router.post('/bluesky/connect', verifyAuth, requireManageConnections, blueskyController.connectBluesky);
+router.post('/bluesky/disconnect', verifyAuth, requireManageConnections, socialConnectionController.disconnectBlueskyAccount);
 router.post('/telegram/connect', verifyAuth, requireManageConnections, telegramController.connectTelegram);
 router.post('/telegram/disconnect', verifyAuth, requireManageConnections, socialConnectionController.disconnectTelegramAccount);
 // NOTE: /reassign checks MANAGE_CONNECTIONS on BOTH the source and target brand

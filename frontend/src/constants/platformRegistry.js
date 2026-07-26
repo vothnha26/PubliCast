@@ -1,6 +1,10 @@
 import { PLATFORMS } from './platforms';
 import { POST_TYPE } from './postTypes';
 
+const graphemeSegmenter = typeof Intl !== 'undefined' && Intl.Segmenter
+  ? new Intl.Segmenter('en', { granularity: 'grapheme' })
+  : null;
+
 export const PLATFORM_CONFIGS = {
   [PLATFORMS.FACEBOOK]: {
     id: PLATFORMS.FACEBOOK,
@@ -200,6 +204,88 @@ export const PLATFORM_CONFIGS = {
         {
           check: ({ caption }) => caption && caption.length > 500,
           message: ({ caption }) => `Bài đăng Threads phải có độ dài dưới 500 ký tự. (Hiện tại: ${caption ? caption.length : 0})`
+        }
+      ]
+    }
+  },
+  [PLATFORMS.BLUESKY]: {
+    id: PLATFORMS.BLUESKY,
+    name: 'Bluesky',
+    defaultType: 'post',
+    supportedTypes: [
+      { id: 'post', label: 'Post' }
+    ],
+    getPostType: (subType, hasMedia, isVideo) => {
+      return (hasMedia && isVideo) ? POST_TYPE.VIDEO : POST_TYPE.IMAGE;
+    },
+    validationRules: {
+      _always: [
+        {
+          check: ({ caption }) => {
+            if (!caption) return false;
+            const count = graphemeSegmenter ? [...graphemeSegmenter.segment(caption)].length : Array.from(caption).length;
+            return count > 300;
+          },
+          message: ({ caption }) => {
+            const count = caption ? (graphemeSegmenter ? [...graphemeSegmenter.segment(caption)].length : Array.from(caption).length) : 0;
+            return `Bluesky post exceeds 300 graphemes. (Current: ${count})`;
+          }
+        },
+        {
+          check: ({ mediaCount }) => mediaCount > 4,
+          message: ({ mediaCount }) => `Bluesky posts allow a maximum of 4 images. (Current: ${mediaCount})`
+        }
+      ]
+    }
+  },
+  [PLATFORMS.REDDIT]: {
+    id: PLATFORMS.REDDIT,
+    name: 'Reddit',
+    defaultType: 'post',
+    supportedTypes: [
+      { id: 'post', label: 'Subreddit Post' }
+    ],
+    getPostType: (subType, hasMedia, isVideo) => {
+      return (hasMedia && isVideo) ? POST_TYPE.VIDEO : POST_TYPE.IMAGE;
+    },
+    validationRules: {
+      _always: [
+        {
+          check: ({ title, caption }) => !title && !caption,
+          message: () => "Reddit post requires a title (max 300 characters)."
+        },
+        {
+          check: ({ title }) => title && title.length > 300,
+          message: ({ title }) => `Reddit post title cannot exceed 300 characters. (Current: ${title ? title.length : 0})`
+        },
+        {
+          check: ({ caption }) => caption && caption.length > 40000,
+          message: ({ caption }) => `Reddit body text cannot exceed 40,000 characters. (Current: ${caption ? caption.length : 0})`
+        }
+      ]
+    }
+  },
+  [PLATFORMS.TWITCH]: {
+    id: PLATFORMS.TWITCH,
+    name: 'Twitch',
+    defaultType: 'live',
+    supportedTypes: [
+      { id: 'live', label: 'Livestream Chat' }
+    ],
+    getPostType: () => POST_TYPE.VIDEO,
+    validationRules: {
+      _always: [
+        {
+          check: ({ hasMedia }) => !!hasMedia,
+          message: () => "Twitch does not support media attachments for scheduled posts. Use Livestream Chat or Stream Title instead."
+        },
+        {
+          check: ({ title }) => title && title.length > 140,
+          message: ({ title }) => `Stream title must be 140 characters or less. (Current: ${title ? title.length : 0})`
+        },
+        {
+          check: ({ caption }) => caption && caption.length > 500,
+          message: ({ caption }) => `Chat message must be 500 characters or less. (Current: ${caption ? caption.length : 0})`
         }
       ]
     }
