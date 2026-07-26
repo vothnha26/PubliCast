@@ -314,7 +314,7 @@ class PostController {
    * POST /api/posts/transcribe
    */
   transcribeVideo = asyncHandler(async (req, res) => {
-    const { videoUrl, brandId } = req.body;
+    const { videoUrl } = req.body;
     if (!videoUrl) return res.status(400).json({ message: 'videoUrl is required' });
 
     // Download video to temp folder to perform transcribe locally

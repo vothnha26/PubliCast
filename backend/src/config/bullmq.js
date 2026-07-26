@@ -1,4 +1,3 @@
-const { Queue, Worker, QueueEvents } = require('bullmq');
 const { URL } = require('url');
 
 let redisConfig = {
