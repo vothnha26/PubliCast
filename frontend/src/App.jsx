@@ -28,7 +28,6 @@ import { SettingsPage } from "./pages/workspace/Settings";
 import { PricingPage } from "./pages/workspace/Pricing";
 import { AIAssistant } from "./pages/workspace/AIAssistant";
 import { HashtagManager } from "./pages/workspace/HashtagManager";
-import { AutoLists } from "./pages/workspace/AutoLists";
 import { ErrorPages } from "./pages/workspace/ErrorPages";
 import { NotificationsPage } from "./pages/workspace/Notifications";
 import { VideoEditorPage } from "./pages/workspace/VideoEditorPage";
@@ -169,7 +168,6 @@ export default function App() {
               <Route path="/smartlinks" element={<ProtectedRoute allowedRoles={CLIENT_ROLES}><FeatureGate productId={PRODUCT_IDS.CUSTOM_LINKS}><SmartLinksPage /></FeatureGate></ProtectedRoute>} />
               <Route path="/ai" element={<ProtectedRoute allowedRoles={CLIENT_ROLES}><FeatureGate productId={PRODUCT_IDS.AI_CONTENT_ENGINE}><AIAssistant /></FeatureGate></ProtectedRoute>} />
               <Route path="/hashtags" element={<ProtectedRoute allowedRoles={CLIENT_ROLES}><HashtagManager /></ProtectedRoute>} />
-              <Route path="/autolists" element={<ProtectedRoute allowedRoles={CLIENT_ROLES}><AutoLists /></ProtectedRoute>} />
               <Route path="/errors" element={<ProtectedRoute allowedRoles={CLIENT_ROLES}><ErrorPages /></ProtectedRoute>} />
               <Route path="/notifications" element={<ProtectedRoute allowedRoles={CLIENT_ROLES}><NotificationsPage /></ProtectedRoute>} />
               <Route path="/workspace/video-editor" element={<ProtectedRoute allowedRoles={CLIENT_ROLES}><VideoEditorPage /></ProtectedRoute>} />

@@ -6,6 +6,7 @@ const { eventEmitter, EVENTS } = require('../../events/event-emitter');
 const { AUTOLIST_TYPES, POST_STATUS, PERMISSION_KEYS } = require('../../utils/constants');
 const { upsertPublishJob, removePublishJob } = require('../../queues/publish.queue');
 const authorizationFacade = require('../auth/authorization.facade');
+const validationFacade = require('./post/validators/validation.facade');
 
 class AutoListService {
   async getAutoLists(brandId) {
@@ -268,22 +269,59 @@ class AutoListService {
     const slots = strategy.calculateNextSlots(autoList, unpublishedPosts.length, fromDate, new Date());
 
     for (let i = 0; i < unpublishedPosts.length; i++) {
-      const postId = unpublishedPosts[i].id;
+      const post = unpublishedPosts[i];
+      const postId = post.id;
       const scheduledAt = slots[i] || new Date();
-      const newStatus = autoList.isActive ? POST_STATUS.SCHEDULED : POST_STATUS.DRAFT;
+      let newStatus = autoList.isActive ? POST_STATUS.SCHEDULED : POST_STATUS.DRAFT;
+
+      // Vấn đề #3: Trước khi chuyển sang SCHEDULED để enqueue publish, cần validate qua validationFacade
+      if (newStatus === POST_STATUS.SCHEDULED) {
+        const mediaUrlsStr = post.mediaUrls || '';
+        const validMediaUrls = mediaUrlsStr.split(',').map(u => u.trim()).filter(Boolean);
+        const hasMedia = validMediaUrls.length > 0;
+        const firstMediaUrl = hasMedia ? validMediaUrls[0] : null;
+        const ext = firstMediaUrl ? firstMediaUrl.split('.').pop()?.toLowerCase() : null;
+        const isVideo = ext ? ['mp4', 'mov', 'avi', 'mkv', 'webm'].includes(ext) : false;
+
+        let options = {};
+        if (post.metadata) {
+          try {
+            options = typeof post.metadata === 'string' ? JSON.parse(post.metadata) : post.metadata;
+          } catch (e) {}
+        }
+
+        const mediaInfo = {
+          hasMedia,
+          isVideo,
+          format: isVideo ? ext : (ext || 'jpg'),
+          duration: options?.videoDuration || null,
+          sizeMb: options?.videoSizeMb || null
+        };
+
+        const targetPlatforms = post.targetPlatforms ? post.targetPlatforms.split(',').map(p => p.trim()).filter(Boolean) : [];
+        const postDataToValidate = {
+          title: post.title,
+          caption: post.caption,
+          type: post.type,
+          targetPlatforms,
+          options,
+          status: POST_STATUS.SCHEDULED
+        };
+
+        const validationResult = await validationFacade.validatePost(postDataToValidate, mediaInfo);
+        if (!validationResult.isValid) {
+          console.warn(`[AutoListService] ⚠️ Post ${postId} failed validation for scheduling: ${validationResult.errors.join('; ')}. Keeping as DRAFT.`);
+          newStatus = POST_STATUS.DRAFT;
+        }
+      }
 
       await postRepository.update(postId, {
           scheduledAt,
           status: newStatus
       }, tx);
 
-      // Update BullMQ queue based on current active state — deliberately NOT
-      // passed tx: this is a Redis/BullMQ write, not a Prisma one, so it isn't
-      // rolled back if the transaction fails. Pre-existing behavior; making
-      // this atomic with the transaction is a larger change (would need the
-      // Outbox Pattern already used by post.service.js, not yet wired for
-      // AutoList) and out of scope here.
-      if (autoList.isActive) {
+      // Update BullMQ queue dựa trên trạng thái mới đã được validate
+      if (newStatus === POST_STATUS.SCHEDULED) {
         await upsertPublishJob(postId, scheduledAt);
       } else {
         await removePublishJob(postId);

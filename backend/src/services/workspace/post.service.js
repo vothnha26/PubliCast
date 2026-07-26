@@ -6,11 +6,13 @@ const socialPlatformFactory = require('../social/social-platform.factory');
 const { POST_STATUS, POST_TYPES, SEPARATORS, WORKSPACE_DEFAULTS, PLATFORMS, PERMISSION_KEYS, DEFAULT_CONFIG, splitMediaUrls } = require('../../utils/constants');
 const { EVENTS } = require('../../events/event-emitter');
 const { OUTBOX_EVENT_TYPES } = require('../../constants/outbox.constants');
+const autoListRepository = require('../../repositories/workspace/auto-list.repository');
 const outboxEventRepository = require('../../repositories/core/outbox-event.repository');
 const prisma = require('../../config/prisma');
 const authorizationFacade = require('../auth/authorization.facade');
 const approvalWorkflowService = require('./approval-workflow.service');
 const validationFacade = require('./post/validators/validation.facade');
+const presetStrategyFactory = require('./post/presets/preset-strategy.factory');
 const { QUEUE_CONFIG } = require('../../constants/video-publish.constants');
 
 const QueryPipeline = require('../../core/query-pipeline/query.pipeline');
@@ -84,6 +86,9 @@ class PostService {
    * Create a new post
    */
   async createPost(postData, userId, brandId) {
+    // Merge preset options and target platforms from AutoList if autoListId is present
+    await this._applyAutoListPresets(postData);
+
     // Pre-check outside the transaction: fast-fail obviously-over-limit
     // requests without taking a row lock. This alone is still a
     // check-then-act race (see the re-check inside the transaction below,
@@ -230,9 +235,11 @@ class PostService {
 
     // Platform limits validation
     const mergedPostData = {
+      type: postData.type !== undefined ? postData.type : post.type,
       caption: postData.caption !== undefined ? postData.caption : post.caption,
       title: postData.title !== undefined ? postData.title : post.title,
       targetPlatforms: postData.targetPlatforms !== undefined ? postData.targetPlatforms : (post.targetPlatforms ? post.targetPlatforms.split(',') : []),
+      brandId,
       options: {}
     };
 
@@ -240,7 +247,22 @@ class PostService {
     if (post.metadata) {
       try { postOptions = JSON.parse(post.metadata); } catch(e) {}
     }
+    
+    // Inherit AutoList preset options if post belongs to an AutoList
+    const effectiveAutoListId = postData.autoListId !== undefined ? postData.autoListId : post.autoListId;
+    let autoListPresets = {};
+    if (effectiveAutoListId) {
+      try {
+        const autoList = await autoListRepository.findById(effectiveAutoListId);
+        if (autoList && autoList.metadata) {
+          const meta = typeof autoList.metadata === 'string' ? JSON.parse(autoList.metadata) : autoList.metadata;
+          autoListPresets = this._mapAutoListPresets(meta);
+        }
+      } catch (e) {}
+    }
+
     mergedPostData.options = {
+      ...autoListPresets,
       ...postOptions,
       ...postData.options
     };
@@ -753,6 +775,46 @@ class PostService {
       return result;
     }
     return val;
+  }
+
+  /**
+   * Delegate việc map AutoList metadata -> post options cho presetStrategyFactory
+   * (Tuân thủ nguyên tắc SOLID: OCP, SRP, DIP).
+   */
+  _mapAutoListPresets(meta) {
+    return presetStrategyFactory.mapAllPresets(meta);
+  }
+
+  /**
+   * Apply preset options and target platforms from AutoList metadata if post belongs to an AutoList
+   */
+  async _applyAutoListPresets(postData) {
+    if (!postData || !postData.autoListId) return postData;
+
+    try {
+      const autoList = await autoListRepository.findById(postData.autoListId);
+      if (!autoList) return postData;
+
+      // Default targetPlatforms from AutoList if not explicitly provided
+      if ((!postData.targetPlatforms || postData.targetPlatforms.length === 0) && autoList.targetPlatforms) {
+        postData.targetPlatforms = autoList.targetPlatforms.split(',').filter(Boolean);
+      }
+
+      // Merge preset options from AutoList metadata
+      if (autoList.metadata) {
+        const meta = typeof autoList.metadata === 'string' ? JSON.parse(autoList.metadata) : autoList.metadata;
+        const presetOptions = this._mapAutoListPresets(meta);
+
+        postData.options = {
+          ...presetOptions,
+          ...(postData.options || {})
+        };
+      }
+    } catch (err) {
+      console.warn(`[_applyAutoListPresets] Failed to apply AutoList presets for ${postData.autoListId}:`, err.message);
+    }
+
+    return postData;
   }
 
   _preparePostData(postData, userId, brandId) {

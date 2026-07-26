@@ -25,6 +25,7 @@ export const FACEBOOK_TYPE = {
   POST: 'post',
   REEL: 'reel',
   STORY: 'story',
+  ALBUM: 'album',
 };
 
 /**

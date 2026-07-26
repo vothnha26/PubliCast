@@ -66,6 +66,19 @@ export default defineConfig({
           });
         },
       },
+      '/admin/queues': {
+        target: 'http://127.0.0.1:3000',
+        changeOrigin: true,
+        configure: (proxy, _options) => {
+          proxy.on('error', (err, _req, res) => {
+            console.warn('Vite proxy error caught:', err.message);
+            if (res && !res.headersSent && typeof res.writeHead === 'function') {
+              res.writeHead(502, { 'Content-Type': 'application/json' });
+              res.end(JSON.stringify({ message: 'Backend service unavailable' }));
+            }
+          });
+        },
+      },
     },
   },
 })
