@@ -16,6 +16,7 @@
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {
+    "@atproto/api": "^0.20.34",
     "@bull-board/api": "^7.1.5",
     "@bull-board/express": "^7.1.5",
     "@prisma/client": "^6.19.3",
@@ -35,6 +36,7 @@
     "express": "^5.2.1",
     "express-rate-limit": "^8.5.1",
     "express-validator": "^7.3.2",
+    "form-data": "^4.0.6",
     "google-auth-library": "^10.6.2",
     "googleapis": "^172.0.0",
     "jsonwebtoken": "^9.0.3",
