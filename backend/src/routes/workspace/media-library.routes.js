@@ -37,9 +37,22 @@ router.post('/upload', (req, res, next) => {
 }, checkPermission(PERMISSION_KEYS.MANAGE_MEDIA), mediaLibraryController.uploadMedia);
 
 /**
+ * Middleware dynamically selecting permission check for /save-direct:
+ * If saveToLibrary === false, requires CREATE_POSTS permission.
+ * Otherwise (default/true), requires MANAGE_MEDIA permission.
+ */
+const checkSaveDirectPermission = (req, res, next) => {
+  const saveToLibrary = req.body?.saveToLibrary;
+  const permissionKey = (saveToLibrary === false || saveToLibrary === 'false')
+    ? PERMISSION_KEYS.CREATE_POSTS
+    : PERMISSION_KEYS.MANAGE_MEDIA;
+  return checkPermission(permissionKey)(req, res, next);
+};
+
+/**
  * POST /api/media/save-direct
  */
-router.post('/save-direct', checkPermission(PERMISSION_KEYS.MANAGE_MEDIA), mediaLibraryController.saveDirectMedia);
+router.post('/save-direct', checkSaveDirectPermission, mediaLibraryController.saveDirectMedia);
 
 /**
  * DELETE /api/media/:id

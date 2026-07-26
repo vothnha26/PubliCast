@@ -54,17 +54,18 @@ class MediaLibraryController {
    * POST /api/media/save-direct
    */
   saveDirectMedia = asyncHandler(async (req, res) => {
-    const { brandId, fileInfo, folderId } = req.body;
+    const { brandId, fileInfo, folderId, saveToLibrary } = req.body;
     const userId = req.user.id;
     
     if (!brandId || !fileInfo) {
       return res.status(400).json({ message: 'brandId and fileInfo are required' });
     }
 
-    const media = await mediaLibraryService.saveDirectMedia(fileInfo, brandId, userId, folderId);
+    const shouldSave = saveToLibrary !== false && saveToLibrary !== 'false';
+    const media = await mediaLibraryService.saveDirectMedia(fileInfo, brandId, userId, folderId, shouldSave);
 
     res.status(201).json({
-      message: 'Media info saved successfully',
+      message: shouldSave ? 'Media info saved successfully' : 'Media uploaded successfully',
       data: media
     });
   });

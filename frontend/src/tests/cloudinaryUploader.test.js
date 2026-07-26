@@ -1,4 +1,4 @@
-/* eslint-disable no-undef */
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import CloudinaryResumableUploader from '../utils/cloudinaryUploader';
 
 describe('CloudinaryResumableUploader resumable session (#111)', () => {
@@ -6,12 +6,18 @@ describe('CloudinaryResumableUploader resumable session (#111)', () => {
   const fileKey = `cld-resumable-${file.name}-${file.size}`;
 
   beforeEach(() => {
-    localStorage.clear();
-    global.fetch = jest.fn();
+    const storage = {};
+    global.localStorage = {
+      getItem: (key) => storage[key] || null,
+      setItem: (key, value) => { storage[key] = String(value); },
+      removeItem: (key) => { delete storage[key]; },
+      clear: () => { Object.keys(storage).forEach(k => delete storage[k]); }
+    };
+    global.fetch = vi.fn();
   });
 
   afterEach(() => {
-    jest.restoreAllMocks();
+    vi.restoreAllMocks();
   });
 
   it('persists the signature/timestamp used to start the session', async () => {

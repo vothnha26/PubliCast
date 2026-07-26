@@ -128,7 +128,11 @@ class MediaLibraryService {
   /**
    * Save media info after direct upload to Cloudinary
    */
-  async saveDirectMedia(fileInfo, brandId, userId, folderId = null) {
+  async saveDirectMedia(fileInfo, brandId, userId, folderId = null, saveToLibrary = true) {
+    if (saveToLibrary === false || saveToLibrary === 'false') {
+      return this._formatUnsavedDirectMedia(fileInfo);
+    }
+
     const media = await mediaLibraryRepository.create({
       brandId,
       uploadedByUserId: userId,
@@ -145,6 +149,34 @@ class MediaLibraryService {
     });
 
     return this._formatMediaFile(media);
+  }
+
+  _formatUnsavedDirectMedia(fileInfo) {
+    const mimeType = fileInfo.mimetype || `${fileInfo.resource_type}/${fileInfo.format}`;
+    let thumbnail = fileInfo.secure_url;
+
+    if (fileInfo.secure_url && fileInfo.secure_url.includes('cloudinary.com')) {
+      if (mimeType.startsWith('image/')) {
+        thumbnail = fileInfo.secure_url.replace('/upload/', '/upload/c_thumb,w_200,g_face/');
+      } else if (mimeType.startsWith('video/')) {
+        thumbnail = fileInfo.secure_url.replace(/\.[^/.]+$/, ".jpg").replace('/upload/', '/upload/c_thumb,w_200,g_face,so_auto/');
+      }
+    }
+
+    return {
+      id: fileInfo.public_id || null,
+      name: fileInfo.original_filename || fileInfo.filename || 'Direct Upload',
+      type: this._getShortType(mimeType),
+      size: this._formatBytes(fileInfo.bytes || 0),
+      dim: fileInfo.width && fileInfo.height ? `${fileInfo.width}×${fileInfo.height}` : '—',
+      date: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+      used: false,
+      url: fileInfo.secure_url,
+      thumbnail: thumbnail,
+      aspect: fileInfo.width && fileInfo.height ? `${fileInfo.width}/${fileInfo.height}` : '1/1',
+      emoji: this._getEmoji(mimeType),
+      duration: fileInfo.duration ? this._formatDuration(fileInfo.duration) : null
+    };
   }
 
   /**
