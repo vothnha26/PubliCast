@@ -171,24 +171,32 @@ class SmartLinkRepository {
   }
 
   async upsertDailyPageView(id, date, isUnique) {
-    return await prisma.smartLinkDailyMetric.upsert({
-      where: {
-        smartLinkId_date: {
-          smartLinkId: id,
-          date
-        }
-      },
-      update: {
-        pageViews: { increment: 1 },
-        uniqueVisitors: isUnique ? { increment: 1 } : undefined
-      },
-      create: {
-        smartLinkId: id,
-        date,
-        pageViews: 1,
-        uniqueVisitors: isUnique ? 1 : 0
-      }
-    });
+    // Dùng raw SQL để đảm bảo atomic INSERT ... ON CONFLICT DO UPDATE,
+    // tránh race condition khi nhiều request đồng thời.
+    const dateStr = date instanceof Date
+      ? date.toISOString().slice(0, 10)
+      : String(date).slice(0, 10);
+
+    if (isUnique) {
+      return await prisma.$executeRaw`
+        INSERT INTO smart_link_daily_metrics ("id", "smartLinkId", "date", "pageViews", "uniqueVisitors", "createdAt", "updatedAt")
+        VALUES (gen_random_uuid(), ${id}, ${dateStr}::date, 1, 1, now(), now())
+        ON CONFLICT ("smartLinkId", "date")
+        DO UPDATE SET
+          "pageViews"      = smart_link_daily_metrics."pageViews" + 1,
+          "uniqueVisitors" = smart_link_daily_metrics."uniqueVisitors" + 1,
+          "updatedAt"      = now()
+      `;
+    } else {
+      return await prisma.$executeRaw`
+        INSERT INTO smart_link_daily_metrics ("id", "smartLinkId", "date", "pageViews", "uniqueVisitors", "createdAt", "updatedAt")
+        VALUES (gen_random_uuid(), ${id}, ${dateStr}::date, 1, 0, now(), now())
+        ON CONFLICT ("smartLinkId", "date")
+        DO UPDATE SET
+          "pageViews" = smart_link_daily_metrics."pageViews" + 1,
+          "updatedAt" = now()
+      `;
+    }
   }
 
   async findDailyMetrics(id, startDate, endDate) {
