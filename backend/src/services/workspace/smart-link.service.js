@@ -48,6 +48,16 @@ class SmartLinkService {
       throw error;
     }
 
+    // Validate slug uniqueness if updating slug
+    if (data.slug && data.slug !== existing.slug) {
+      const slugTaken = await smartLinkRepository.findBySlug(data.slug);
+      if (slugTaken && slugTaken.id !== id) {
+        const error = new Error('Slug is already in use');
+        error.statusCode = 400;
+        throw error;
+      }
+    }
+
     // 1. Validate background using Strategy Pattern
     if (data.backgroundType && data.backgroundValue) {
       const validator = backgroundValidatorFactory.getValidator(data.backgroundType);

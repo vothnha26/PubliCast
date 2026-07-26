@@ -97,8 +97,19 @@ class SmartLinkController {
       req.headers['user-agent']
     );
 
-    const targetUrl = linkItem.url.startsWith('http') ? linkItem.url : `https://${linkItem.url}`;
-    return res.redirect(302, targetUrl);
+    const rawUrl = linkItem.url.startsWith('http://') || linkItem.url.startsWith('https://')
+      ? linkItem.url
+      : `https://${linkItem.url}`;
+
+    try {
+      const parsedUrl = new URL(rawUrl);
+      if (!['http:', 'https:'].includes(parsedUrl.protocol)) {
+        return res.status(400).json({ message: 'Invalid redirect protocol' });
+      }
+      return res.redirect(302, parsedUrl.toString());
+    } catch (err) {
+      return res.status(400).json({ message: 'Invalid target URL format' });
+    }
   });
 }
 

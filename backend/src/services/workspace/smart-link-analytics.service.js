@@ -1,4 +1,5 @@
 const crypto = require('crypto');
+const prisma = require('../../config/prisma');
 const smartLinkRepository = require('../../repositories/workspace/smart-link.repository');
 const linkItemRepository = require('../../repositories/workspace/link-item.repository');
 const redisClient = require('../../config/redis');
@@ -51,20 +52,29 @@ class SmartLinkAnalyticsService {
       return existingLink;
     }
 
-
-    const updatedLink = await linkItemRepository.incrementClicks(linkItemId);
     const today = this._today();
 
-    try {
-      await Promise.all([
-        smartLinkRepository.incrementTotalClicks(existingLink.smartLinkId),
-        linkItemRepository.upsertDailyClick(updatedLink.id, existingLink.smartLinkId, today)
-      ]);
-    } catch (err) {
-      console.error('Error tracking link click metrics:', err.message);
-    }
+    return await prisma.$transaction(async (tx) => {
+      const updatedLink = await tx.linkItem.update({
+        where: { id: linkItemId },
+        data: { clicks: { increment: 1 } }
+      });
 
-    return updatedLink;
+      await tx.smartLink.update({
+        where: { id: existingLink.smartLinkId },
+        data: { totalClicks: { increment: 1 } }
+      });
+
+      const dateStr = today.toISOString().slice(0, 10);
+      await tx.$executeRaw`
+        INSERT INTO link_item_daily_metrics ("id", "linkItemId", "smartLinkId", "date", "clicks", "createdAt", "updatedAt")
+        VALUES (gen_random_uuid(), ${linkItemId}, ${existingLink.smartLinkId}, ${dateStr}::date, 1, now(), now())
+        ON CONFLICT ("linkItemId", "date")
+        DO UPDATE SET "clicks" = link_item_daily_metrics."clicks" + 1, "updatedAt" = now()
+      `;
+
+      return updatedLink;
+    });
   }
 
   _today() {
