@@ -741,6 +741,9 @@ class SocialAccountRepository {
         tikTokAccount: true,
         instagramAccount: true,
         telegramAccount: true,
+        redditAccount: true,
+        blueskyAccount: true,
+        twitchAccount: true,
         analytics: {
           orderBy: { fetchedAt: 'desc' },
           take: 1,
@@ -751,6 +754,86 @@ class SocialAccountRepository {
       }
     });
     return this._decryptAccount(account);
+  }
+
+  async upsertTwitchAccount(brandId, channelData, tokens, options = {}) {
+    const { enqueueSync = true } = options;
+    const { broadcasterId, username, displayName, profilePictureUrl, broadcasterType = '', followersCount = 0 } = channelData;
+
+    const finalUsername = username || displayName || 'twitch_user';
+
+    return prisma.$transaction(async (tx) => {
+      const account = await tx.socialAccount.upsert({
+        where: {
+          brandId_platform_platformAccountId: {
+            brandId,
+            platform: PLATFORMS.TWITCH,
+            platformAccountId: broadcasterId
+          }
+        },
+        update: {
+          username: finalUsername,
+          displayName: displayName || finalUsername,
+          profilePictureUrl,
+          accessToken: encrypt(tokens.accessToken || tokens.access_token),
+          refreshToken: (tokens.refreshToken || tokens.refresh_token) ? encrypt(tokens.refreshToken || tokens.refresh_token) : undefined,
+          tokenExpiresAt: tokens.expiresIn ? new Date(Date.now() + tokens.expiresIn * 1000) : (tokens.expiry_date ? new Date(tokens.expiry_date) : undefined),
+          scopes: tokens.scope || '',
+          isConnected: true,
+          lastSyncAt: new Date(),
+          updatedAt: new Date(),
+          twitchAccount: {
+            upsert: {
+              create: {
+                broadcasterId,
+                broadcasterType,
+                followersCount: parseInt(followersCount) || 0
+              },
+              update: {
+                broadcasterType,
+                followersCount: parseInt(followersCount) || 0
+              }
+            }
+          }
+        },
+        create: {
+          brandId,
+          platform: PLATFORMS.TWITCH,
+          platformAccountId: broadcasterId,
+          username: finalUsername,
+          displayName: displayName || finalUsername,
+          profilePictureUrl,
+          accessToken: encrypt(tokens.accessToken || tokens.access_token),
+          refreshToken: (tokens.refreshToken || tokens.refresh_token) ? encrypt(tokens.refreshToken || tokens.refresh_token) : '',
+          tokenExpiresAt: tokens.expiresIn ? new Date(Date.now() + tokens.expiresIn * 1000) : (tokens.expiry_date ? new Date(tokens.expiry_date) : undefined),
+          scopes: tokens.scope || '',
+          lastSyncAt: new Date(),
+          connectedAt: new Date(),
+          twitchAccount: {
+            create: {
+              broadcasterId,
+              broadcasterType,
+              followersCount: parseInt(followersCount) || 0
+            }
+          }
+        },
+        include: {
+          twitchAccount: true
+        }
+      });
+
+      if (enqueueSync) {
+        await outboxEventRepository.create(
+          OUTBOX_EVENT_TYPES.SOCIAL_SYNC_ENQUEUE,
+          account.id,
+          { socialAccountId: account.id, platform: PLATFORMS.TWITCH, brandId },
+          {},
+          tx
+        );
+      }
+
+      return this.findById(account.id, tx);
+    });
   }
 
   async updateTokens(id, tokens) {
@@ -793,6 +876,9 @@ class SocialAccountRepository {
         facebookPage: true,
         tikTokAccount: true,
         telegramAccount: true,
+        blueskyAccount: true,
+        redditAccount: true,
+        twitchAccount: true,
         analytics: {
           orderBy: { fetchedAt: 'desc' },
           take: 1,
@@ -803,6 +889,181 @@ class SocialAccountRepository {
       }
     });
     return this._decryptAccounts(accounts);
+  }
+
+  async upsertRedditAccount(brandId, accountData, tokens, options = {}) {
+    const { enqueueSync = true } = options;
+    const { platformAccountId, username, displayName, profilePictureUrl, linkKarma = 0, commentKarma = 0 } = accountData;
+
+    const finalUsername = username || displayName || 'reddit_user';
+
+    return prisma.$transaction(async (tx) => {
+      const account = await tx.socialAccount.upsert({
+        where: {
+          brandId_platform_platformAccountId: {
+            brandId,
+            platform: PLATFORMS.REDDIT,
+            platformAccountId
+          }
+        },
+        update: {
+          username: finalUsername,
+          displayName: displayName || finalUsername,
+          profilePictureUrl,
+          accessToken: encrypt(tokens.accessToken || tokens.access_token),
+          refreshToken: (tokens.refreshToken || tokens.refresh_token) ? encrypt(tokens.refreshToken || tokens.refresh_token) : undefined,
+          tokenExpiresAt: tokens.expiresIn ? new Date(Date.now() + tokens.expiresIn * 1000) : undefined,
+          scopes: tokens.scope || '',
+          isConnected: true,
+          lastSyncAt: new Date(),
+          updatedAt: new Date(),
+          redditAccount: {
+            upsert: {
+              create: {
+                username: finalUsername,
+                linkKarma: parseInt(linkKarma) || 0,
+                commentKarma: parseInt(commentKarma) || 0
+              },
+              update: {
+                username: finalUsername,
+                linkKarma: parseInt(linkKarma) || 0,
+                commentKarma: parseInt(commentKarma) || 0
+              }
+            }
+          }
+        },
+        create: {
+          brandId,
+          platform: PLATFORMS.REDDIT,
+          platformAccountId,
+          username: finalUsername,
+          displayName: displayName || finalUsername,
+          profilePictureUrl,
+          accessToken: encrypt(tokens.accessToken || tokens.access_token),
+          refreshToken: (tokens.refreshToken || tokens.refresh_token) ? encrypt(tokens.refreshToken || tokens.refresh_token) : '',
+          tokenExpiresAt: tokens.expiresIn ? new Date(Date.now() + tokens.expiresIn * 1000) : undefined,
+          scopes: tokens.scope || '',
+          lastSyncAt: new Date(),
+          connectedAt: new Date(),
+          redditAccount: {
+            create: {
+              username: finalUsername,
+              linkKarma: parseInt(linkKarma) || 0,
+              commentKarma: parseInt(commentKarma) || 0
+            }
+          }
+        },
+        include: {
+          redditAccount: true
+        }
+      });
+
+      if (enqueueSync) {
+        await outboxEventRepository.create(
+          OUTBOX_EVENT_TYPES.SOCIAL_SYNC_ENQUEUE,
+          account.id,
+          { socialAccountId: account.id, platform: PLATFORMS.REDDIT, brandId },
+          {},
+          tx
+        );
+      }
+
+      return this.findById(account.id, tx);
+    });
+  }
+
+  async upsertBlueskyAccount(brandId, accountData, options = {}) {
+    const { enqueueSync = true } = options;
+    const { did, handle, displayName, avatarUrl, accessToken, refreshToken, pdsUrl = 'https://bsky.social', followersCount = 0, followsCount = 0, postsCount = 0 } = accountData;
+
+    return prisma.$transaction(async (tx) => {
+      const account = await tx.socialAccount.upsert({
+        where: {
+          brandId_platform_platformAccountId: {
+            brandId,
+            platform: PLATFORMS.BLUESKY,
+            platformAccountId: did
+          }
+        },
+        update: {
+          username: handle,
+          displayName: displayName || handle,
+          profilePictureUrl: avatarUrl,
+          accessToken: encrypt(accessToken),
+          refreshToken: refreshToken ? encrypt(refreshToken) : undefined,
+          isConnected: true,
+          lastSyncAt: new Date(),
+          updatedAt: new Date(),
+          blueskyAccount: {
+            upsert: {
+              create: {
+                did,
+                handle,
+                pdsUrl,
+                followersCount: parseInt(followersCount) || 0,
+                followsCount: parseInt(followsCount) || 0,
+                postsCount: parseInt(postsCount) || 0
+              },
+              update: {
+                handle,
+                pdsUrl,
+                followersCount: parseInt(followersCount) || 0,
+                followsCount: parseInt(followsCount) || 0,
+                postsCount: parseInt(postsCount) || 0
+              }
+            }
+          }
+        },
+        create: {
+          brandId,
+          platform: PLATFORMS.BLUESKY,
+          platformAccountId: did,
+          username: handle,
+          displayName: displayName || handle,
+          profilePictureUrl: avatarUrl,
+          accessToken: encrypt(accessToken),
+          refreshToken: refreshToken ? encrypt(refreshToken) : '',
+          lastSyncAt: new Date(),
+          connectedAt: new Date(),
+          blueskyAccount: {
+            create: {
+              did,
+              handle,
+              pdsUrl,
+              followersCount: parseInt(followersCount) || 0,
+              followsCount: parseInt(followsCount) || 0,
+              postsCount: parseInt(postsCount) || 0
+            }
+          }
+        },
+        include: {
+          blueskyAccount: true
+        }
+      });
+
+      if (enqueueSync) {
+        await outboxEventRepository.create(
+          OUTBOX_EVENT_TYPES.SOCIAL_SYNC_ENQUEUE,
+          { socialAccountId: account.id, platform: PLATFORMS.BLUESKY },
+          {},
+          tx
+        );
+      }
+
+      return this._decryptAccount(account);
+    });
+  }
+
+  async updateBlueskyMetrics(socialAccountId, metricsData) {
+    const { followersCount = 0, followsCount = 0, postsCount = 0 } = metricsData;
+    return prisma.blueskyAccount.update({
+      where: { socialAccountId },
+      data: {
+        followersCount: parseInt(followersCount) || 0,
+        followsCount: parseInt(followsCount) || 0,
+        postsCount: parseInt(postsCount) || 0
+      }
+    });
   }
 
   async findByBrandAndPlatformFirst(brandId, platform) {

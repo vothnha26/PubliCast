@@ -4,6 +4,9 @@ const tiktokService = require('./tiktok');
 const instagramService = require('./instagram');
 const telegramService = require('./telegram');
 const threadsService = require('./threads');
+const { blueskyService } = require('./bluesky');
+const redditService = require('./reddit/reddit.service');
+const { twitchService } = require('./twitch');
 const MockSocialService = require('./mock-social.service');
 const createSyncCacheProxy = require('./sync-cache.proxy');
 const appConfig = require('../../config/app.config');
@@ -18,6 +21,9 @@ class SocialPlatformFactory {
       [PLATFORMS.INSTAGRAM]: createSyncCacheProxy(instagramService),
       [PLATFORMS.TELEGRAM]: createSyncCacheProxy(telegramService),
       [PLATFORMS.THREADS]: createSyncCacheProxy(threadsService),
+      [PLATFORMS.BLUESKY]: createSyncCacheProxy(blueskyService),
+      [PLATFORMS.REDDIT]: createSyncCacheProxy(redditService),
+      [PLATFORMS.TWITCH]: createSyncCacheProxy(twitchService),
     };
   }
 

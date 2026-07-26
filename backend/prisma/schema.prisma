@@ -497,6 +497,9 @@ model SocialAccount {
   tikTokAccount    TikTokAccount?
   youtubeChannel   YouTubeChannel?
   telegramAccount  TelegramAccount?
+  blueskyAccount   BlueskyAccount?
+  redditAccount    RedditAccount?
+  twitchAccount    TwitchAccount?
   autoReplySetting AutoReplySetting?
 
   // Facebook dedicated metrics
@@ -592,6 +595,45 @@ model TelegramAccount {
   socialAccount SocialAccount @relation(fields: [socialAccountId], references: [id], onDelete: Cascade)
 
   @@map("telegram_accounts")
+}
+
+model BlueskyAccount {
+  id              String @id @default(uuid())
+  socialAccountId String @unique
+  did             String @unique
+  handle          String
+  pdsUrl          String @default("https://bsky.social")
+  followersCount  Int    @default(0)
+  followsCount    Int    @default(0)
+  postsCount      Int    @default(0)
+
+  socialAccount SocialAccount @relation(fields: [socialAccountId], references: [id], onDelete: Cascade)
+
+  @@map("bluesky_accounts")
+}
+
+model RedditAccount {
+  id              String @id @default(uuid())
+  socialAccountId String @unique
+  username        String
+  linkKarma       Int    @default(0)
+  commentKarma    Int    @default(0)
+
+  socialAccount SocialAccount @relation(fields: [socialAccountId], references: [id], onDelete: Cascade)
+
+  @@map("reddit_accounts")
+}
+
+model TwitchAccount {
+  id              String @id @default(uuid())
+  socialAccountId String @unique
+  broadcasterId   String @unique
+  broadcasterType String @default("") // "partner", "affiliate", ""
+  followersCount  Int    @default(0)
+
+  socialAccount SocialAccount @relation(fields: [socialAccountId], references: [id], onDelete: Cascade)
+
+  @@map("twitch_accounts")
 }
 
 model AdAccount {
@@ -1407,6 +1449,11 @@ model MediaLibrary {
   altText          String?
   folderId         String?
   tags             String?  @db.Text
+  source           String   @default("UPLOAD") // UPLOAD, UNSPLASH, PEXELS
+  externalId       String?
+  photographerName String?
+  photographerUrl  String?
+  attributionHtml  String?  @db.Text
   uploadedByUserId String
   uploadedAt       DateTime
   createdAt        DateTime @default(now())
@@ -1416,6 +1463,7 @@ model MediaLibrary {
   folder   MediaFolder? @relation("MediaInFolder", fields: [folderId], references: [id], onDelete: SetNull)
 
   @@index([brandId])
+  @@index([source])
   @@map("media_library")
 }
 
@@ -1559,6 +1607,7 @@ enum PlatformType {
   TWITCH
   THREADS
   BLUESKY
+  REDDIT
   GOOGLE_BUSINESS
   TELEGRAM
 }

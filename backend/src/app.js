@@ -168,6 +168,8 @@ const ticketRoutes = require('./routes/workspace/ticket.routes');
 
 app.use('/api/posts', postRoutes);
 app.use('/api/calendar-events', calendarEventRoutes);
+const stockRoutes = require('./routes/workspace/stock.routes');
+app.use('/api/stock', stockRoutes);
 app.use('/api/media', mediaLibraryRoutes);
 app.use('/api/media-folders', mediaFolderRoutes);
 app.use('/api/team', teamRoutes);

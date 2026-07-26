@@ -55,6 +55,22 @@ class SocialConnectionController {
     res.json({ success: true, message: 'Threads account disconnected successfully' });
   });
 
+  disconnectBlueskyAccount = asyncHandler(async (req, res) => {
+    const { brandId } = req.body;
+    if (!brandId) return res.status(400).json({ message: 'brandId is required' });
+
+    await socialService.disconnectAccount(brandId, PLATFORMS.BLUESKY);
+    res.json({ success: true, message: 'Bluesky account disconnected successfully' });
+  });
+
+  disconnectTwitchAccount = asyncHandler(async (req, res) => {
+    const { brandId } = req.body;
+    if (!brandId) return res.status(400).json({ message: 'brandId is required' });
+
+    await socialService.disconnectAccount(brandId, PLATFORMS.TWITCH);
+    res.json({ success: true, message: 'Twitch account disconnected successfully' });
+  });
+
   reassignSocialAccount = asyncHandler(async (req, res) => {
     const { platform, platformAccountId, targetBrandId } = req.body;
     if (!platform || !platformAccountId || !targetBrandId) {
