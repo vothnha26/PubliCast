@@ -22,7 +22,7 @@ class SmartLinkAnalyticsService {
         smartLinkRepository.upsertDailyPageView(smartLinkId, today, isUnique)
       ]);
     } catch (err) {
-      console.error('Error tracking page view:', err.message);
+      logger.error(`[SmartLinkAnalyticsService] Error tracking page view: ${err.message}`, err);
     }
   }
 
@@ -51,7 +51,6 @@ class SmartLinkAnalyticsService {
       return existingLink;
     }
 
-
     const updatedLink = await linkItemRepository.incrementClicks(linkItemId);
     const today = this._today();
 
@@ -61,7 +60,7 @@ class SmartLinkAnalyticsService {
         linkItemRepository.upsertDailyClick(updatedLink.id, existingLink.smartLinkId, today)
       ]);
     } catch (err) {
-      console.error('Error tracking link click metrics:', err.message);
+      logger.error(`Error tracking link click metrics: ${err.message}`, err);
     }
 
     return updatedLink;

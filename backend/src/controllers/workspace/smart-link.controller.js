@@ -1,6 +1,7 @@
 const smartLinkService = require('../../services/workspace/smart-link.service');
 const smartLinkAnalyticsService = require('../../services/workspace/smart-link-analytics.service');
 const asyncHandler = require('../../utils/async-handler');
+const logger = require('../../utils/logger');
 
 class SmartLinkController {
   getSmartLink = asyncHandler(async (req, res) => {
@@ -63,7 +64,7 @@ class SmartLinkController {
       smartLink.id,
       req.ip,
       req.headers['user-agent']
-    ).catch(err => console.error('Failed to log page view async', err));
+    ).catch(err => logger.error('[SmartLinkController] Failed to log page view async', err));
 
     res.status(200).json({
       message: 'Public SmartLink retrieved successfully',
@@ -97,8 +98,19 @@ class SmartLinkController {
       req.headers['user-agent']
     );
 
-    const targetUrl = linkItem.url.startsWith('http') ? linkItem.url : `https://${linkItem.url}`;
-    return res.redirect(302, targetUrl);
+    const rawUrl = linkItem.url.startsWith('http://') || linkItem.url.startsWith('https://')
+      ? linkItem.url
+      : `https://${linkItem.url}`;
+
+    try {
+      const parsedUrl = new URL(rawUrl);
+      if (!['http:', 'https:'].includes(parsedUrl.protocol)) {
+        return res.status(400).json({ message: 'Invalid redirect protocol' });
+      }
+      return res.redirect(302, parsedUrl.toString());
+    } catch (err) {
+      return res.status(400).json({ message: 'Invalid target URL format' });
+    }
   });
 }
 

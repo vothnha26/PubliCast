@@ -28,6 +28,13 @@ class SmartLinkRepository {
     });
   }
 
+  async existsBySlug(slug) {
+    return await prisma.smartLink.findFirst({
+      where: { slug },
+      select: { id: true }
+    });
+  }
+
   async findById(id) {
     return await prisma.smartLink.findUnique({
       where: { id },
