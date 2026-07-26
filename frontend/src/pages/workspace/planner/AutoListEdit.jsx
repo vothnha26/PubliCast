@@ -356,7 +356,7 @@ export function AutoListEdit() {
           useUrlShortener,
           facebookContentType,
           instagramContentType,
-          threadsContentType,
+          threadsWhoCanReply,
           youtubeVideoType,
           youtubePrivacy,
           youtubeMadeForKids
