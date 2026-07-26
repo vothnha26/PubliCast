@@ -14,6 +14,12 @@ const { verifyAuth } = require('../../middlewares/auth.middleware');
 
 const router = express.Router();
 
+const oauthProviderController = require('../../controllers/auth/oauth-provider.controller');
+
+// OAuth Provider Routes
+router.get('/oauth/authorize', oauthProviderController.renderAuthorizePage);
+router.post('/oauth/authorize', oauthProviderController.handleAuthorizeConsent);
+
 // Google Auth
 router.get('/google', authController.googleLogin);
 router.get('/google/callback', authController.googleCallback);
