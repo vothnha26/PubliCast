@@ -50,7 +50,7 @@ class SmartLinkService {
 
     // Validate slug uniqueness if updating slug
     if (data.slug && data.slug !== existing.slug) {
-      const slugTaken = await smartLinkRepository.findBySlug(data.slug);
+      const slugTaken = await smartLinkRepository.existsBySlug(data.slug);
       if (slugTaken && slugTaken.id !== id) {
         const error = new Error('Slug is already in use');
         error.statusCode = 400;
@@ -89,7 +89,7 @@ class SmartLinkService {
 
     // Validate slug uniqueness
     if (data.slug) {
-      const existingSlug = await smartLinkRepository.findBySlug(data.slug);
+      const existingSlug = await smartLinkRepository.existsBySlug(data.slug);
       if (existingSlug) {
         const error = new Error('Slug is already in use');
         error.statusCode = 400;
