@@ -44,11 +44,15 @@ export default defineConfig({
   server: {
     proxy: {
       '/api': {
-        target: 'http://localhost:3000',
+        target: 'http://127.0.0.1:3000',
         changeOrigin: true,
         configure: (proxy, _options) => {
-          proxy.on('error', (err, _req, _res) => {
+          proxy.on('error', (err, _req, res) => {
             console.warn('Vite proxy error caught:', err.message);
+            if (res && !res.headersSent && typeof res.writeHead === 'function') {
+              res.writeHead(502, { 'Content-Type': 'application/json' });
+              res.end(JSON.stringify({ message: 'Backend service unavailable' }));
+            }
           });
           proxy.on('proxyReq', (proxyReq, req, _res) => {
             req.on('error', (err) => {

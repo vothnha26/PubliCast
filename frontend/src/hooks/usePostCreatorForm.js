@@ -358,7 +358,9 @@ export function usePostCreatorForm() {
         YOUTUBE: "youtube",
         TIKTOK: "tiktok",
         TELEGRAM: "telegram",
-        THREADS: "threads"
+        THREADS: "threads",
+        BLUESKY: "bluesky",
+        REDDIT: "reddit"
       };
       return mapping[sa.platform];
     })

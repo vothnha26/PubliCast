@@ -6,6 +6,10 @@ const socialAccountRepository = require('../../src/repositories/social/social-ac
 
 jest.mock('../../src/services/social/bluesky/bluesky.gateway');
 jest.mock('../../src/repositories/social/social-account.repository');
+jest.mock('../../src/utils/encryption', () => ({
+  decrypt: jest.fn(val => val || 'decrypted_token'),
+  encrypt: jest.fn(val => val)
+}));
 
 describe('Bluesky Integration Suite', () => {
   afterEach(() => {
@@ -57,6 +61,8 @@ describe('Bluesky Integration Suite', () => {
         blueskyAccount: { pdsUrl: 'https://bsky.social', did: 'did:plc:123' }
       };
 
+      blueskyGateway.createAgent.mockReturnValue({});
+      blueskyGateway.resumeSession.mockResolvedValue(true);
       socialAccountRepository.findByBrandAndPlatformFirst.mockResolvedValue(mockAccount);
       blueskyGateway.publishPost.mockResolvedValue({ id: 'at://did:plc:123/app.bsky.feed.post/456' });
 

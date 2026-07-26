@@ -9,6 +9,12 @@ import { useLatestRequestId } from "./useLatestRequestId";
 import { FALLBACK_DEMOGRAPHICS, EMPTY_ANALYTICS_DATA } from "@/mocks/dashboardFallback";
 import { mapToPostPreview } from "../utils/postPreview";
 import { buildPostDetailRoute } from "../constants/routes";
+import { PLATFORM_DEFAULT_TAB } from "../constants/platforms";
+
+const getPlatformTabDefault = (plat) => {
+  const norm = plat?.toLowerCase();
+  return PLATFORM_DEFAULT_TAB[norm] || (norm === "facebook" ? "overview" : "community");
+};
 
 export function usePlatformDashboard(platform) {
   const navigate = useNavigate();
@@ -46,18 +52,14 @@ export function usePlatformDashboard(platform) {
   
   const activeTab = useMemo(() => {
     const tabParam = searchParams.get("tab");
-    const getTabDefault = (plat) => {
-      if (plat === "facebook") return "overview";
-      return "community";
-    };
-    
-    if (!tabParam) return getTabDefault(platform);
+    if (!tabParam) return getPlatformTabDefault(platform);
     
     const ytTabs = ["community", "demographics", "published", "viewed", "competitors"];
     const fbTabs = ["overview", "posts", "posts_list", "stories", "competitors"];
     const ttTabs = ["community", "posts"];
     const igTabs = ["community", "account", "competitors"];
     const threadsTabs = ["community", "posts", "competitors"];
+    const bskyTabs = ["community", "posts", "competitors"];
 
     let isValid = false;
     if (platform === "facebook") {
@@ -68,11 +70,13 @@ export function usePlatformDashboard(platform) {
       isValid = threadsTabs.includes(tabParam);
     } else if (platform === "tiktok") {
       isValid = ttTabs.includes(tabParam);
+    } else if (platform === "bluesky") {
+      isValid = bskyTabs.includes(tabParam);
     } else {
       isValid = ytTabs.includes(tabParam);
     }
 
-    return isValid ? tabParam : getTabDefault(platform);
+    return isValid ? tabParam : getPlatformTabDefault(platform);
   }, [platform, searchParams]);
 
   const setActiveTab = useCallback((tab) => {
@@ -164,7 +168,7 @@ export function usePlatformDashboard(platform) {
         force: force
       });
       const platformType = platform.toUpperCase() === 'X' ? 'TWITTER_X' : platform.toUpperCase();
-      const platformMetrics = metricsRes.data?.find(m => m.platform === platformType);
+      const platformMetrics = metricsRes.data?.find(m => m?.platform === platformType);
       if (!metricsRequest.isLatest(requestId)) return;
       setMetrics(platformMetrics || null);
       if (force) {
@@ -242,6 +246,22 @@ export function usePlatformDashboard(platform) {
         setPublishedVideos(res.data || []);
         setNextPageToken(res.nextPageToken || null);
         setPrevPageToken(res.prevPageToken || null);
+      } else if (platform === "bluesky") {
+        const res = await postService.getPosts(activeBrand.id, { platform: 'BLUESKY', status: 'PUBLISHED', limit });
+        const postsList = Array.isArray(res) ? res : (res.data || res.posts || []);
+        const mapped = postsList.map(p => ({
+          id: p.id,
+          message: p.caption || p.title || '',
+          date: p.publishedAt || p.createdAt,
+          mediaUrl: p.mediaUrls && p.mediaUrls.length > 0 ? p.mediaUrls[0] : null,
+          reach: 0,
+          views: 0,
+          likes: 0,
+          comments: 0
+        }));
+        setPublishedVideos(mapped);
+        setNextPageToken(null);
+        setPrevPageToken(null);
       } else {
         const res = await socialService.getPublishedVideos(activeBrand.id, pageToken, limit);
         setPublishedVideos(res.videos || []);
@@ -306,16 +326,13 @@ export function usePlatformDashboard(platform) {
   // Validate tab parameter and set default/redirect if empty or invalid
   useEffect(() => {
     const tabParam = searchParams.get("tab");
-    const getTabDefault = (plat) => {
-      if (plat === "facebook") return "overview";
-      return "community";
-    };
     
     const ytTabs = ["community", "demographics", "published", "viewed", "competitors"];
     const fbTabs = ["overview", "posts", "posts_list", "stories", "competitors"];
     const ttTabs = ["community", "posts"];
     const igTabs = ["community", "account", "competitors"];
     const threadsTabs = ["community", "posts", "competitors"];
+    const bskyTabs = ["community", "posts", "competitors"];
 
     let isValid = false;
     if (tabParam) {
@@ -327,13 +344,15 @@ export function usePlatformDashboard(platform) {
         isValid = threadsTabs.includes(tabParam);
       } else if (platform === "tiktok") {
         isValid = ttTabs.includes(tabParam);
+      } else if (platform === "bluesky") {
+        isValid = bskyTabs.includes(tabParam);
       } else {
         isValid = ytTabs.includes(tabParam);
       }
     }
     
     if (!tabParam || !isValid) {
-      const def = getTabDefault(platform);
+      const def = getPlatformTabDefault(platform);
       const nextParams = new URLSearchParams(searchParams);
       nextParams.set("tab", def);
       setSearchParams(nextParams, { replace: true });

@@ -33,7 +33,7 @@ const storage = new CloudinaryStorage({
     return {
       folder: folder,
       resource_type: resource_type,
-      allowed_formats: ['jpg', 'png', 'gif', 'webp', 'mp4', 'mov', 'mkv', 'avi', 'webm', 'pdf'],
+      allowed_formats: ['jpg', 'jpeg', 'png', 'gif', 'bmp', 'tiff', 'webp', 'mp4', 'mov', 'mkv', 'avi', 'webm', 'pdf'],
       public_id: Date.now() + '-' + Math.round(Math.random() * 1E9),
     };
   },

@@ -1,4 +1,5 @@
 import React from "react";
+import { useTranslation } from "react-i18next";
 import { GenericPostsListTab } from "./GenericPostsListTab";
 
 export function ThreadsPostsListTab({
@@ -11,6 +12,8 @@ export function ThreadsPostsListTab({
   nextPageToken = null,
   onRowClick = null,
 }) {
+  const { t } = useTranslation("dashboard");
+
   // Columns configuration for Threads Posts list
   const columns = [
     {
@@ -87,9 +90,9 @@ export function ThreadsPostsListTab({
       prevPageToken={prevPageToken}
       nextPageToken={nextPageToken}
       columns={columns}
-      searchPlaceholder="Tìm kiếm bài viết..."
+      searchPlaceholder={t("growth.searchPlaceholder", "Search posts...")}
       searchKeys={["message"]}
-      footerMessage="Hiển thị bài đăng Threads mới nhất"
+      footerMessage={t("growth.footerMessage", "Displaying latest published posts")}
       onRowClick={onRowClick}
     />
   );

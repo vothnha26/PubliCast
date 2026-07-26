@@ -75,6 +75,19 @@ class ValidationFacade {
         continue;
       }
 
+      // Check Bluesky Email verification for Video posts
+      if (platUpper === 'BLUESKY' && (mediaInfo.isVideo || (postData.mediaUrls && postData.mediaUrls.some(u => typeof u === 'string' && u.match(/\.(mp4|mov|webm|mkv)$/i))))) {
+        try {
+          const socialAccountRepo = require('../../../../repositories/social/social-account.repository');
+          const account = await socialAccountRepo.findByBrandAndPlatformFirst(postData.brandId, 'BLUESKY');
+          if (account && account.blueskyAccount && !account.blueskyAccount.emailConfirmed) {
+            allErrors.push(`[BLUESKY] Tài khoản Bluesky chưa xác thực Email. Bluesky yêu cầu xác thực Email tại bsky.app > Settings > Confirm Email trước khi cho phép tải Video.`);
+          }
+        } catch (e) {
+          // ignore lookup error and fallback to runtime
+        }
+      }
+
       const validator = validatorFactory.getValidator(platUpper, limitConfig);
       const errors = validator.validate(postData, mediaInfo);
 

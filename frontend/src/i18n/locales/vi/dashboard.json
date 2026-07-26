@@ -45,5 +45,37 @@
   },
   "toast": {
     "googleSuccess": "Đăng nhập bằng Google thành công!"
+  },
+  "tabs": {
+    "community": "CỘNG ĐỒNG",
+    "overview": "TỔNG QUAN",
+    "posts": "BÀI VIẾT",
+    "stories": "STORIES",
+    "account": "TÀI KHOẢN",
+    "demographics": "DÂN SỐ HỌC",
+    "published": "VIDEO ĐÃ ĐĂNG",
+    "viewed": "VIDEO ĐÃ XEM",
+    "competitors": "ĐỐI THỦ CẠNH TRANH"
+  },
+  "growth": {
+    "blueskyTitle": "Bluesky Growth",
+    "blueskyDesc": "Chỉ số tăng trưởng Followers, Views và Likes trên Bluesky",
+    "balanceTitle": "Balance of Followers",
+    "balanceDesc": "Biến động số lượng người theo dõi mới và hủy theo dõi",
+    "summaryTitle": "Tóm tắt (Summary)",
+    "summaryDesc": "Sự tương quan giữa số lượng bài đăng và lượng tương tác mang lại",
+    "interactionsTitle": "Tương tác (Interactions)",
+    "interactionsDesc": "Lượng tương tác bao gồm thích, phản hồi, đăng lại và số lượt clicks",
+    "typesViewsTitle": "Phân loại & Lượt xem (Types & Views)",
+    "typesTitle": "Phân loại (Types)",
+    "viewsTitle": "Lượt xem (Views)",
+    "listOfPostsTitle": "Danh sách bài đăng (List of posts)",
+    "postType": "Loại bài viết",
+    "quantity": "Số lượng",
+    "noData": "Chưa có dữ liệu",
+    "viewChart": "Xem biểu đồ",
+    "viewTable": "Xem bảng",
+    "searchPlaceholder": "Tìm kiếm bài viết...",
+    "footerMessage": "Hiển thị bài đăng mới nhất"
   }
 }

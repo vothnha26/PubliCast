@@ -4,6 +4,7 @@ import { X, Upload, Link2, File, Image as ImageIcon, Video, CheckCircle2, Loader
 import { toast } from "sonner";
 import apiService from "../../../services/api";
 import { useMediaLibrary } from "../../../hooks/useMediaLibrary";
+import CloudinaryResumableUploader from "../../../utils/cloudinaryUploader";
 
 export function MediaUploadModal({ isOpen, onClose, onAccept, brandId, initialTab = "computer", multiple = false }) {
   const [activeTab, setActiveTab] = useState(initialTab); // 'computer' | 'url' | 'library'
@@ -111,31 +112,53 @@ export function MediaUploadModal({ isOpen, onClose, onAccept, brandId, initialTa
         setIsUploading(true);
         setUploadProgress(0);
         const uploadedItems = [];
-        const toastId = toast.loading(`Uploading ${selectedFiles.length} file(s)...`);
+        const toastId = toast.loading(`Preparing ${selectedFiles.length} file(s)...`);
 
         const totalBytes = selectedFiles.reduce((sum, f) => sum + f.size, 0);
-        const sentPerFile = selectedFiles.map(() => 0);
+        const uploadedBytesPerFile = selectedFiles.map(() => 0);
 
         try {
           for (let i = 0; i < selectedFiles.length; i++) {
             const file = selectedFiles[i];
-            const formData = new FormData();
-            formData.append("video", file);
-            const res = await apiService.post(`/posts/upload?brandId=${brandId}`, formData, {
-              headers: {
-                "Content-Type": "multipart/form-data"
-              },
-              timeout: 120000, // 120 seconds timeout for media uploads
-              onUploadProgress: (e) => {
-                sentPerFile[i] = e.loaded;
-                const totalSent = sentPerFile.reduce((sum, v) => sum + v, 0);
-                setUploadProgress(totalBytes > 0 ? Math.round((totalSent / totalBytes) * 100) : 0);
+            const isVideo = file.type.startsWith('video/');
+            const folder = isVideo ? 'publicast/videos' : 'publicast/images';
+            
+            // 1. Get signature from backend
+            const sigRes = await apiService.get(`/media/signature?folder=${folder}`);
+            const { signature, timestamp, apiKey, cloudName } = sigRes.data.data;
+
+            toast.loading(`Uploading ${file.name}... 0%`, { id: toastId });
+
+            // 2. Resumable Direct Upload to Cloudinary
+            const uploader = new CloudinaryResumableUploader(
+              cloudName,
+              apiKey,
+              folder,
+              (percent) => {
+                uploadedBytesPerFile[i] = Math.round((percent / 100) * file.size);
+                const currentTotalUploaded = uploadedBytesPerFile.reduce((sum, v) => sum + v, 0);
+                const totalPercent = totalBytes > 0 ? Math.round((currentTotalUploaded / totalBytes) * 100) : 0;
+                setUploadProgress(totalPercent);
+                toast.loading(`Uploading ${file.name}... ${percent}%`, { id: toastId });
               }
+            );
+
+            const uploadData = await uploader.upload(file, signature, timestamp);
+
+            // 3. Save info to backend
+            const saveRes = await apiService.post("/media/save-direct", {
+              brandId,
+              fileInfo: uploadData,
+              saveToLibrary: false
             });
-            sentPerFile[i] = file.size;
+
+            const savedMedia = saveRes.data?.data || saveRes.data;
+            const finalUrl = savedMedia?.url || uploadData.secure_url;
+
+            uploadedBytesPerFile[i] = file.size;
             uploadedItems.push({
               file,
-              path: res.data.videoUrl,
+              path: finalUrl,
               previewUrl: URL.createObjectURL(file)
             });
           }
@@ -144,7 +167,8 @@ export function MediaUploadModal({ isOpen, onClose, onAccept, brandId, initialTa
           onClose();
           setSelectedFiles([]);
         } catch (err) {
-          toast.error("Failed to upload one or more files", { id: toastId });
+          const errorMessage = err.response?.data?.message || err.message || "Failed to upload one or more files";
+          toast.error(errorMessage, { id: toastId });
           console.error(err);
         } finally {
           setIsUploading(false);
@@ -158,29 +182,48 @@ export function MediaUploadModal({ isOpen, onClose, onAccept, brandId, initialTa
         
         setIsUploading(true);
         setUploadProgress(0);
-        const formData = new FormData();
-        formData.append("video", selectedFile); // Key matches backend expectation for post upload
+        const toastId = toast.loading(`Preparing ${selectedFile.name}...`);
 
         try {
-          const res = await apiService.post(`/posts/upload?brandId=${brandId}`, formData, {
-            headers: {
-              "Content-Type": "multipart/form-data"
-            },
-            timeout: 120000, // 120 seconds timeout for media uploads
-            onUploadProgress: (e) => {
-              if (e.total) {
-                setUploadProgress(Math.round((e.loaded / e.total) * 100));
-              }
-            }
-          });
-          const path = res.data.videoUrl;
+          const isVideo = selectedFile.type.startsWith('video/');
+          const folder = isVideo ? 'publicast/videos' : 'publicast/images';
+          
+          // 1. Get signature from backend
+          const sigRes = await apiService.get(`/media/signature?folder=${folder}`);
+          const { signature, timestamp, apiKey, cloudName } = sigRes.data.data;
 
-          onAccept(selectedFile, path);
-          toast.success("File uploaded successfully");
+          toast.loading(`Uploading ${selectedFile.name}... 0%`, { id: toastId });
+
+          // 2. Resumable Direct Upload to Cloudinary
+          const uploader = new CloudinaryResumableUploader(
+            cloudName,
+            apiKey,
+            folder,
+            (percent) => {
+              setUploadProgress(percent);
+              toast.loading(`Uploading ${selectedFile.name}... ${percent}%`, { id: toastId });
+            }
+          );
+
+          const uploadData = await uploader.upload(selectedFile, signature, timestamp);
+
+          // 3. Save info to backend
+          const saveRes = await apiService.post("/media/save-direct", {
+            brandId,
+            fileInfo: uploadData,
+            saveToLibrary: false
+          });
+
+          const savedMedia = saveRes.data?.data || saveRes.data;
+          const finalUrl = savedMedia?.url || uploadData.secure_url;
+
+          onAccept(selectedFile, finalUrl);
+          toast.success("File uploaded successfully", { id: toastId });
           onClose();
           setSelectedFile(null);
         } catch (err) {
-          toast.error("Failed to upload file");
+          const errorMessage = err.response?.data?.message || err.message || "Failed to upload file";
+          toast.error(errorMessage, { id: toastId });
           console.error(err);
         } finally {
           setIsUploading(false);

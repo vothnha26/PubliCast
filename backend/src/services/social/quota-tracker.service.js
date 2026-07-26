@@ -41,7 +41,7 @@ class QuotaTrackerService {
    *   // Next day PT:
    *   incrementAndGet('youtube-analytics', 1) → 1 (reset to new key)
    */
-  async incrementAndGet(serviceName, increment = 1) {
+  async incrementAndGet(serviceName, increment = 1, customTtlSec = null) {
     try {
       const key = this.getQuotaKey(serviceName);
 
@@ -56,7 +56,7 @@ class QuotaTrackerService {
       // Set TTL if key was just created
       const ttl = await this.redisClient.ttl(key);
       if (ttl <= 0) {
-        const ttlSec = this.calculateTTLToPT();
+        const ttlSec = customTtlSec || this.calculateTTLToPT();
         await this.redisClient.expire(key, ttlSec);
         logger.debug(`[QUOTA] New quota key created with TTL: ${ttlSec}s`, { serviceName });
       }
@@ -72,6 +72,47 @@ class QuotaTrackerService {
         serviceName,
         error: err.message
       });
+      throw err;
+    }
+  }
+
+  /**
+   * Helper key format for Hourly rate limit tracking (Pacific Time zone accurate)
+   */
+  getHourlyQuotaKey(serviceName, now = new Date()) {
+    const parts = new Intl.DateTimeFormat('en-US', {
+      timeZone: 'America/Los_Angeles',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      hour12: false
+    }).formatToParts(now).reduce((acc, p) => ({ ...acc, [p.type]: p.value }), {});
+
+    const hour = parts.hour === '24' ? '00' : parts.hour;
+    return `quota:hourly:${serviceName}:${parts.year}-${parts.month}-${parts.day}_${hour}`;
+  }
+
+  /**
+   * Increment and get hourly quota (resets every 1 hour, TTL = 3600s)
+   */
+  async incrementAndGetHourly(serviceName, increment = 1, ttlSec = 3600) {
+    try {
+      const key = this.getHourlyQuotaKey(serviceName);
+      let newValue;
+      if (increment !== 0) {
+        newValue = await this.redisClient.incrBy(key, increment);
+      } else {
+        newValue = parseInt(await this.redisClient.get(key)) || 0;
+      }
+
+      const ttl = await this.redisClient.ttl(key);
+      if (ttl <= 0) {
+        await this.redisClient.expire(key, ttlSec);
+      }
+      return newValue;
+    } catch (err) {
+      logger.error('[QUOTA] Error incrementing hourly quota:', { serviceName, error: err.message });
       throw err;
     }
   }

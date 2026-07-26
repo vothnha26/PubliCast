@@ -82,13 +82,15 @@ const mockPost = {
   brandId: 'brand_123',
   createdByUserId: 'mock-user-id',
   targetPlatforms: 'YOUTUBE,FACEBOOK',
-  platformPostId: null
+  platformPostId: null,
+  status: 'FAILED'
 };
 jest.mock('../../src/repositories/workspace/post.repository', () => ({
   findById: jest.fn().mockImplementation((id) => {
     if (id === 'post_123') return Promise.resolve(mockPost);
     return Promise.resolve(null);
-  })
+  }),
+  updateStatus: jest.fn().mockResolvedValue(undefined)
 }));
 
 const postRoutes = require('../../src/routes/workspace/post.routes');

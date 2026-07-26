@@ -351,6 +351,28 @@ describe('MediaLibraryService Unit Tests', () => {
         })
       );
     });
+
+    it('should format unsaved direct media without creating a database record when saveToLibrary is false', async () => {
+      const mockCloudinaryInfo = {
+        filename: 'temp_post_media.mp4',
+        resource_type: 'video',
+        format: 'mp4',
+        bytes: 2000000,
+        secure_url: 'https://res.cloudinary.com/demo/video/upload/temp_post_media.mp4',
+        public_id: 'publicast/videos/temp_post_media',
+        width: 1280,
+        height: 720,
+        duration: 30
+      };
+
+      const result = await mediaLibraryService.saveDirectMedia(mockCloudinaryInfo, 'brand-1', 'user-1', null, false);
+
+      expect(mediaLibraryRepository.create).not.toHaveBeenCalled();
+      expect(result.id).toBe('publicast/videos/temp_post_media');
+      expect(result.url).toBe(mockCloudinaryInfo.secure_url);
+      expect(result.type).toBe('video');
+      expect(result.duration).toBe('0:30');
+    });
   });
 
   describe('MEDIA_009 - directUpload (Thumbnail Auto-generation)', () => {

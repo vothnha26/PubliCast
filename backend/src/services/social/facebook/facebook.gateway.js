@@ -538,16 +538,45 @@ class FacebookGateway {
    * already uses for /video_reels — /videos supports the same protocol.
    */
   async publishVideo(pageId, pageAccessToken, mediaUrl, title, description, scheduledAt = null) {
-    const startUrl = `${FACEBOOK_API.VIDEO_BASE_URL}/${API_VERSIONS.FACEBOOK}/${pageId}/videos?upload_phase=start&access_token=${pageAccessToken}`;
+    // 1. Direct URL Ingestion via file_url parameter (For Cloudinary & HTTP/HTTPS URLs)
+    if (typeof mediaUrl === 'string' && (mediaUrl.startsWith('http://') || mediaUrl.startsWith('https://'))) {
+      const postParams = new URLSearchParams({
+        file_url: mediaUrl,
+        access_token: pageAccessToken
+      });
+      if (title) postParams.set('title', title);
+      if (description) postParams.set('description', description);
+      if (scheduledAt) {
+        postParams.set('published', 'false');
+        postParams.set('scheduled_publish_time', Math.floor(new Date(scheduledAt).getTime() / 1000).toString());
+      }
+      const directUrl = `${FACEBOOK_API.VIDEO_BASE_URL}/${API_VERSIONS.FACEBOOK}/${pageId}/videos`;
+      const directRes = await fetch(directUrl, { method: 'POST', body: postParams });
+      
+      if (directRes.ok) {
+        const data = await directRes.json();
+        console.log(`[FacebookGateway] ✅ Video published successfully via file_url! Video ID: ${data.id || data.video_id}`);
+        return data;
+      }
+
+      const errText = typeof directRes.text === 'function' ? await directRes.text().catch(() => '') : '';
+      console.warn(`[FacebookGateway] Direct file_url upload returned non-200 status (${directRes.status}): ${errText}. Falling back to resumable stream upload.`);
+    }
+
+    // 2. Resumable Upload Fallback (For local files or if direct file_url ingestion failed)
+    const { stream, contentLength } = await this._getMediaStream(mediaUrl);
+
+    const startUrl = `${FACEBOOK_API.VIDEO_BASE_URL}/${API_VERSIONS.FACEBOOK}/${pageId}/videos?upload_phase=start&file_size=${contentLength}&access_token=${pageAccessToken}`;
     const startRes = await fetch(startUrl, { method: 'POST' });
     if (!startRes.ok) {
       const errData = await startRes.json().catch(() => ({}));
       throw new Error(errData.error?.message || 'Failed to start Facebook video upload session');
     }
-    const { video_id, upload_url } = await startRes.json();
+    const startData = await startRes.json();
+    const videoId = startData.video_id;
+    const uploadUrl = startData.upload_url || `${FACEBOOK_API.VIDEO_BASE_URL}/${API_VERSIONS.FACEBOOK}/${pageId}/videos`;
 
-    const { stream, contentLength } = await this._getMediaStream(mediaUrl);
-    const uploadRes = await fetch(upload_url, {
+    const uploadRes = await fetch(uploadUrl, {
       method: 'POST',
       headers: {
         'Authorization': `OAuth ${pageAccessToken}`,
@@ -564,7 +593,7 @@ class FacebookGateway {
 
     const finishParams = new URLSearchParams({
       upload_phase: 'finish',
-      video_id,
+      video_id: videoId,
       access_token: pageAccessToken
     });
     if (title) finishParams.set('title', title);

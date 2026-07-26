@@ -570,7 +570,7 @@ describe('PostService Unit Tests', () => {
     const { safeUpsertPublishJob } = require('../../src/queues/publish.queue');
 
     beforeEach(() => {
-      postRepository.findById.mockResolvedValue({ id: 'post-1', brandId: 'brand-abc' });
+      postRepository.findById.mockResolvedValue({ id: 'post-1', brandId: 'brand-abc', status: POST_STATUS.FAILED });
     });
 
     it('queues the retry job when no job is currently active for this post', async () => {
@@ -647,6 +647,34 @@ describe('PostService Unit Tests', () => {
 
       expect(result).toHaveLength(7 * 24);
       expect(result.every(cell => Number.isFinite(cell.percentage) && cell.percentage >= 15 && cell.percentage <= 98)).toBe(true);
+    });
+  });
+
+  describe('_handleNativeScheduling (Double-Publish Prevention)', () => {
+    it('re-fetches platformPostId from DB to skip platforms already scheduled in previous runs', async () => {
+      const socialPlatformFactory = require('../../src/services/social/social-platform.factory');
+      const mockYouTube = { publishPost: jest.fn() };
+      socialPlatformFactory.getService.mockReturnValue(mockYouTube);
+
+      // Post snapshot passed in has no platformPostId (old outbox payload snapshot)
+      const snapshotPost = {
+        id: 'post-outbox-1',
+        brandId: 'brand-1',
+        targetPlatforms: 'YOUTUBE',
+        platformPostId: null
+      };
+
+      // DB has latest post state showing YOUTUBE was already scheduled in attempt 1
+      postRepository.findById.mockResolvedValue({
+        id: 'post-outbox-1',
+        platformPostId: JSON.stringify({ YOUTUBE: 'yt-already-scheduled-id' })
+      });
+
+      await postService._handleNativeScheduling(snapshotPost);
+
+      // Should re-fetch from DB and hit guard (skip calling publishPost)
+      expect(postRepository.findById).toHaveBeenCalledWith('post-outbox-1');
+      expect(mockYouTube.publishPost).not.toHaveBeenCalled();
     });
   });
 });

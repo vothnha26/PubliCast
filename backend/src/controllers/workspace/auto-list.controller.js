@@ -18,7 +18,7 @@ class AutoListController {
   createAutoList = asyncHandler(async (req, res) => {
     const { brandId } = req.body;
     if (!brandId) return res.status(400).json({ message: 'brandId is required' });
-    const data = await autoListService.createAutoList(brandId, req.body);
+    const data = await autoListService.createAutoList(brandId, req.body, req.user.id);
     res.status(201).json({ data });
   });
 

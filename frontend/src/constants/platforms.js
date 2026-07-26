@@ -32,10 +32,10 @@ export const PLATFORM_DEFAULT_TAB = {
   [PLATFORMS.YOUTUBE]: 'community',
   [PLATFORMS.FACEBOOK]: 'overview',
   [PLATFORMS.TIKTOK]: 'community',
-  [PLATFORMS.INSTAGRAM]: 'overview',
+  [PLATFORMS.INSTAGRAM]: 'community',
   [PLATFORMS.TELEGRAM]: 'overview',
   [PLATFORMS.THREADS]: 'community',
-  [PLATFORMS.BLUESKY]: 'overview',
+  [PLATFORMS.BLUESKY]: 'community',
   [PLATFORMS.REDDIT]: 'overview',
   [PLATFORMS.TWITCH]: 'overview',
 };
