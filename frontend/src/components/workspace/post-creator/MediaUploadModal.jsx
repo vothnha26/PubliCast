@@ -117,9 +117,6 @@ export function MediaUploadModal({ isOpen, onClose, onAccept, brandId, initialTa
         const totalBytes = selectedFiles.reduce((sum, f) => sum + f.size, 0);
         const uploadedBytesPerFile = selectedFiles.map(() => 0);
 
-        const totalBytes = selectedFiles.reduce((sum, f) => sum + f.size, 0);
-        const sentPerFile = selectedFiles.map(() => 0);
-
         try {
           for (let i = 0; i < selectedFiles.length; i++) {
             const file = selectedFiles[i];
