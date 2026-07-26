@@ -23,6 +23,8 @@ const PLATFORM_COLORS = {
   Facebook: "#1877F2",
   TikTok: "#010101",
   Instagram: "#E1306C",
+  Threads: "#000000",
+  Bluesky: "#0085FF",
   Twitch: "#9146FF",
   X: "#000000"
 };
@@ -61,7 +63,8 @@ const BRAND_PLATFORMS = [
   { name: "Facebook", apiKey: "FACEBOOK", label: "Facebook" },
   { name: "Instagram", apiKey: "INSTAGRAM", label: "Instagram" },
   { name: "TikTok", apiKey: "TIKTOK", label: "TikTok" },
-  { name: "Threads", apiKey: "THREADS", label: "Threads" }
+  { name: "Threads", apiKey: "THREADS", label: "Threads" },
+  { name: "Bluesky", apiKey: "BLUESKY", label: "Bluesky" }
 ];
 
 // Strategy pattern for extracting metrics per platform to ensure SOLID OCP Compliance

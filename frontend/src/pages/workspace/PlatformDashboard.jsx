@@ -5,6 +5,7 @@ import {
   Info, Download, Loader2, Diamond, X
 } from "lucide-react";
 import { toast } from "sonner";
+import { useTranslation } from "react-i18next";
 import { PlatformIcon } from "../../components/shared/PlatformIcon";
 import {
   Dialog,
@@ -22,6 +23,7 @@ import { FacebookDashboard } from "./dashboard/FacebookDashboard";
 import { TikTokDashboard } from "./dashboard/TikTokDashboard";
 import { InstagramAccountTab } from "./dashboard/InstagramAccountTab";
 import { ThreadsPostsTab } from "./dashboard/ThreadsPostsTab";
+import { BlueskyDashboardTab } from "./dashboard/BlueskyDashboardTab";
 import { usePlatformDashboard } from "../../hooks/usePlatformDashboard";
 import { DateRangeFilter } from "../../components/app/DateRangeFilter";
 import { useConnections } from "../../context/ConnectionsContext";
@@ -32,6 +34,7 @@ const PLATFORM_CONFIG = {
   facebook: { name: "Facebook", color: "#1877F2", icon: <Facebook size={20} /> },
   tiktok: { name: "TikTok", color: "#000000", icon: <PlayCircle size={20} /> },
   threads: { name: "Threads", color: "#000000", icon: <PlatformIcon platform="Threads" size={20} variant="flat" className="text-black" /> },
+  bluesky: { name: "Bluesky", color: "#0085FF", icon: <PlatformIcon platform="Bluesky" size={20} variant="flat" /> },
 };
 
 const YT_TABS = [
@@ -66,7 +69,14 @@ const THREADS_TABS = [
   { id: "competitors", label: "COMPETITORS" },
 ];
 
+const BSKY_TABS = [
+  { id: "community", label: "COMMUNITY" },
+  { id: "posts", label: "POSTS" },
+  { id: "competitors", label: "COMPETITORS" },
+];
+
 export function PlatformDashboardPage() {
+  const { t } = useTranslation("dashboard");
   const { platform } = useParams();
   const config = PLATFORM_CONFIG[platform] || PLATFORM_CONFIG.youtube;
   
@@ -125,7 +135,7 @@ export function PlatformDashboardPage() {
   const navigate = useNavigate();
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
 
-  const tabs = platform === "instagram" ? IG_TABS : platform === "facebook" ? FB_TABS : platform === "tiktok" ? TT_TABS : platform === "threads" ? THREADS_TABS : YT_TABS;
+  const tabs = platform === "instagram" ? IG_TABS : platform === "facebook" ? FB_TABS : platform === "tiktok" ? TT_TABS : platform === "threads" ? THREADS_TABS : platform === "bluesky" ? BSKY_TABS : YT_TABS;
 
 
   const handleExportCSV = () => {
@@ -237,7 +247,7 @@ export function PlatformDashboardPage() {
                 borderBottom: activeTab === tab.id ? "2px solid #D9F99D" : "none" 
               }}
             >
-              {tab.label}
+              {t(`tabs.${tab.id}`, tab.label)}
             </button>
           ))}
         </div>
@@ -613,6 +623,111 @@ export function PlatformDashboardPage() {
                         data={communityGrowthData}
                         metricConfig={threadsBalanceConfig}
                         watermark="threads"
+                      />
+                    </>
+                  );
+                })()}
+              </div>
+            )}
+
+            {activeTab === "posts" && (
+              <ThreadsPostsTab
+                realData={realData}
+                publishedVideos={publishedVideos}
+                isPublishedLoading={isPublishedLoading}
+                pageSize={pageSize}
+                setPageSize={setPageSize}
+                fetchPublishedVideos={fetchPublishedVideos}
+                prevPageToken={prevPageToken}
+                nextPageToken={nextPageToken}
+                onVideoClick={handleVideoClick}
+              />
+            )}
+
+            {activeTab === "competitors" && (
+              <CompetitorsTab
+                competitors={competitors}
+                isLoading={isCompetitorLoading}
+                onAddCompetitor={handleAddCompetitor}
+                onDeleteCompetitor={handleDeleteCompetitor}
+                searchQuery={competitorQuery}
+                setSearchQuery={setCompetitorQuery}
+                searchResults={searchResults}
+                isSearching={isSearching}
+                isModalOpen={isCompetitorModalOpen}
+                setIsModalOpen={setIsCompetitorModalOpen}
+                isPlatformLocked={isPlatformLocked}
+              />
+            )}
+          </>
+        ) : platform === "bluesky" ? (
+          <>
+            {activeTab === "community" && (
+              <div className="space-y-6">
+                {(() => {
+                  const bskyGrowthConfig = [
+                    {
+                      key: "followers",
+                      label: "Followers",
+                      color: "bg-[#8E9BEE] text-white",
+                      chartColor: "#8E9BEE",
+                      type: "area",
+                      value: metrics?.followersCount || metrics?.blueskyAccount?.followersCount || 0
+                    },
+                    {
+                      key: "views",
+                      label: "Views",
+                      color: "bg-[#A7F3D0] text-gray-900",
+                      chartColor: "#A7F3D0",
+                      type: "line",
+                      value: stats?.views || 0
+                    },
+                    {
+                      key: "likes",
+                      label: "Likes",
+                      color: "bg-[#E6A34A] text-white",
+                      chartColor: "#E6A34A",
+                      type: "bar",
+                      value: stats?.likes || 0
+                    }
+                  ];
+
+                  const bskyBalanceConfig = [
+                    {
+                      key: "gained",
+                      dataKey: "new",
+                      label: "Gained",
+                      color: "bg-[#8E9BEE] text-white",
+                      chartColor: "#8E9BEE",
+                      type: "area",
+                      value: totalPeriodGained || 0
+                    },
+                    {
+                      key: "lost",
+                      label: "Lost",
+                      color: "bg-[#F7A6E0] text-white",
+                      chartColor: "#F7A6E0",
+                      type: "area",
+                      value: 0
+                    }
+                  ];
+
+                  return (
+                    <>
+                      <GenericDashboardTab
+                        title={t("growth.blueskyTitle", "Bluesky Growth")}
+                        description={t("growth.blueskyDesc", "Growth metrics for Followers, Views, and Likes")}
+                        data={communityGrowthData}
+                        metricConfig={bskyGrowthConfig}
+                        watermark="bluesky"
+                      />
+                      <div className="h-6" />
+                      <GenericDashboardTab
+                        title={t("growth.balanceTitle", "Balance of Followers")}
+                        description={t("growth.balanceDesc", "Biến động số lượng người theo dõi mới và hủy theo dõi")}
+                        data={communityGrowthData}
+                        metricConfig={bskyBalanceConfig}
+                        watermark="bluesky"
                       />
                     </>
                   );

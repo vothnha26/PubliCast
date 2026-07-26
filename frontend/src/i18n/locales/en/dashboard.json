@@ -45,5 +45,37 @@
   },
   "toast": {
     "googleSuccess": "Successfully logged in with Google!"
+  },
+  "tabs": {
+    "community": "COMMUNITY",
+    "overview": "OVERVIEW",
+    "posts": "POSTS",
+    "stories": "STORIES",
+    "account": "ACCOUNT",
+    "demographics": "DEMOGRAPHICS",
+    "published": "PUBLISHED VIDEOS",
+    "viewed": "VIEWED VIDEOS",
+    "competitors": "COMPETITORS"
+  },
+  "growth": {
+    "blueskyTitle": "Bluesky Growth",
+    "blueskyDesc": "Growth metrics for Followers, Views, and Likes on Bluesky",
+    "balanceTitle": "Balance of Followers",
+    "balanceDesc": "Fluctuation of new followers and unfollowers over time",
+    "summaryTitle": "Summary",
+    "summaryDesc": "Correlation between number of posts and engagement generated",
+    "interactionsTitle": "Interactions",
+    "interactionsDesc": "Engagements including Likes, Replies, Reposts, and Clicks",
+    "typesViewsTitle": "Types & Views",
+    "typesTitle": "Types",
+    "viewsTitle": "Views",
+    "listOfPostsTitle": "List of posts",
+    "postType": "Post Type",
+    "quantity": "Quantity",
+    "noData": "No data available",
+    "viewChart": "View chart",
+    "viewTable": "View table",
+    "searchPlaceholder": "Search posts...",
+    "footerMessage": "Displaying latest published posts"
   }
 }

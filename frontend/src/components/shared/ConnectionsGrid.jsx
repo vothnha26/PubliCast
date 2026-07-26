@@ -367,7 +367,7 @@ export function ConnectionsGrid({ className = "", brand, onDisconnect }) {
       btnText: "Connect a Twitch channel", btnBg: "bg-[#9146FF]", ...getStatus("twitch")
     },
     {
-      id: "bluesky", name: "Bluesky", icon: <Globe size={16} className="text-blue-400" />,
+      id: "bluesky", name: "Bluesky", icon: <PlatformIcon platform="bluesky" variant="flat" size={16} />,
       btnText: "Connect a Bluesky account", btnBg: "bg-[#0085FF]", ...getStatus("bluesky")
     },
     {
@@ -507,8 +507,8 @@ export function ConnectionsGrid({ className = "", brand, onDisconnect }) {
           <div className="bg-white dark:bg-[#1a1a1a] rounded-[24px] p-6 max-w-md w-full shadow-2xl border border-gray-100 dark:border-gray-800 animate-in zoom-in-95 duration-200 text-left">
             <div className="flex items-center justify-between mb-6">
               <div className="flex items-center gap-2.5">
-                <div className="w-9 h-9 rounded-xl bg-[#0085FF] flex items-center justify-center text-white">
-                  <Globe size={18} />
+                <div className="w-9 h-9 rounded-xl flex items-center justify-center">
+                  <PlatformIcon platform="bluesky" size={32} />
                 </div>
                 <h3 className="text-lg font-bold text-gray-900 dark:text-white">Connect Bluesky Account</h3>
               </div>

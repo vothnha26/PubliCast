@@ -50,7 +50,7 @@ export function PostAnalyticsDetailPage() {
     };
   }, [strategy, activeBrand?.id, postId, dateRange.from, dateRange.to]);
 
-  const backPath = platform ? `/dashboard/${platform}` : "/dashboard";
+  const backPath = platform ? `/dashboard/${platform}?tab=posts` : "/dashboard";
 
   if (!strategy) {
     return (

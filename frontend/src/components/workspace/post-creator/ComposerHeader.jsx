@@ -396,7 +396,7 @@ export function ComposerHeader() {
                       : 'text-gray-400 hover:text-gray-600 hover:bg-gray-50'
                 }`}
               >
-                <Globe size={16} />
+                <PlatformIcon platform="bluesky" variant="flat" size={16} className={selectedPlatforms.includes('bluesky') && activePlatform === 'bluesky' ? 'text-white' : ''} />
                 {getPlatformLockInfo("bluesky").isFullyLocked && (
                   <span className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full p-0.5 shadow-sm border border-white">
                     <Lock size={7} strokeWidth={3} />

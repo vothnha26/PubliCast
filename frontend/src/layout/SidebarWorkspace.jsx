@@ -21,6 +21,7 @@ const PLATFORMS = [
   { name: "Instagram", icon: <Instagram size={18} />, path: "/dashboard/instagram", color: "#E1306C", brand: "T" },
   { name: "TikTok", icon: <PlayCircle size={18} />, path: "/dashboard/tiktok", color: "#000000", brand: "T" },
   { name: "Threads", icon: <PlatformIcon platform="Threads" size={18} variant="flat" />, path: "/dashboard/threads", color: "#000000", brand: "T" },
+  { name: "Bluesky", icon: <PlatformIcon platform="Bluesky" size={18} variant="flat" />, path: "/dashboard/bluesky", color: "#0085FF", brand: "T" },
   { name: "More connection", nameKey: "sidebar.moreConnection", icon: <Plus size={18} />, isAction: true, color: "#3B82F6" },
 ];
 

@@ -1,4 +1,5 @@
 import React from "react";
+import { useTranslation } from "react-i18next";
 import { GenericDashboardTab } from "./GenericDashboardTab";
 import { Clock } from "lucide-react";
 import { ThreadsPostsListTab } from "./ThreadsPostsListTab";
@@ -23,7 +24,7 @@ function ViewChartBtn({ children }) {
   );
 }
 
-function TypesTable({ typesBreakdown }) {
+function TypesTable({ typesBreakdown, t }) {
   const rows = Object.entries(typesBreakdown || {})
     .map(([key, count]) => ({
       group: key,
@@ -38,10 +39,10 @@ function TypesTable({ typesBreakdown }) {
         <thead className="bg-gray-50/60">
           <tr>
             <th className="px-4 py-3 text-left font-bold text-gray-400 text-[10px] uppercase tracking-wider">
-              Loại bài viết
+              {t?.("growth.postType", "Loại bài viết") || "Loại bài viết"}
             </th>
             <th className="px-4 py-3 text-right font-bold text-gray-400 text-[10px] uppercase tracking-wider">
-              Số lượng
+              {t?.("growth.quantity", "Số lượng") || "Số lượng"}
             </th>
           </tr>
         </thead>
@@ -49,7 +50,7 @@ function TypesTable({ typesBreakdown }) {
           {rows.length === 0 ? (
             <tr>
               <td colSpan={2} className="px-4 py-6 text-center text-gray-300 text-xs">
-                Chưa có dữ liệu
+                {t?.("growth.noData", "Chưa có dữ liệu") || "Chưa có dữ liệu"}
               </td>
             </tr>
           ) : (
@@ -190,6 +191,7 @@ export function ThreadsPostsTab({
   nextPageToken = null,
   onVideoClick = null,
 }) {
+  const { t } = useTranslation("dashboard");
   const postsData = realData.growth || [];
   const summary = realData.summary || {};
   const interactions = realData.interactions || {};
@@ -311,10 +313,10 @@ export function ThreadsPostsTab({
   return (
     <div className="space-y-10">
       <div>
-        <SectionLabel>Tóm tắt (Summary)</SectionLabel>
+        <SectionLabel>{t("growth.summaryTitle", "Tóm tắt (Summary)")}</SectionLabel>
         <GenericDashboardTab
-          title="Tóm tắt (Summary)"
-          description="Sự tương quan giữa số lượng bài đăng Threads và lượng tương tác mang lại"
+          title={t("growth.summaryTitle", "Tóm tắt (Summary)")}
+          description={t("growth.summaryDesc", "Sự tương quan giữa số lượng bài đăng và lượng tương tác mang lại")}
           data={postsOverviewData}
           metricConfig={overviewConfig}
           summaryGrid={overviewSummary}
@@ -322,10 +324,10 @@ export function ThreadsPostsTab({
       </div>
 
       <div>
-        <SectionLabel>Tương tác (Interactions)</SectionLabel>
+        <SectionLabel>{t("growth.interactionsTitle", "Tương tác (Interactions)")}</SectionLabel>
         <GenericDashboardTab
-          title="Tương tác (Interactions)"
-          description="Lượng tương tác bao gồm thích (Likes), phản hồi (Replies), đăng lại (Reposts) và số lượt clicks"
+          title={t("growth.interactionsTitle", "Tương tác (Interactions)")}
+          description={t("growth.interactionsDesc", "Lượng tương tác bao gồm thích, phản hồi, đăng lại và số lượt clicks")}
           data={interactionsChartData}
           metricConfig={interactionsConfig}
           summaryGrid={interactionsSummary}
@@ -333,20 +335,20 @@ export function ThreadsPostsTab({
       </div>
 
       <div>
-        <SectionLabel>Phân loại &amp; Lượt xem (Types &amp; Views)</SectionLabel>
+        <SectionLabel>{t("growth.typesViewsTitle", "Phân loại & Lượt xem (Types & Views)")}</SectionLabel>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm">
             <div className="flex items-center justify-between mb-4">
-              <h4 className="text-sm font-bold text-[#0A0A0A]">Phân loại (Types)</h4>
-              <ViewChartBtn>Xem biểu đồ</ViewChartBtn>
+              <h4 className="text-sm font-bold text-[#0A0A0A]">{t("growth.typesTitle", "Phân loại (Types)")}</h4>
+              <ViewChartBtn>{t("growth.viewChart", "Xem biểu đồ")}</ViewChartBtn>
             </div>
-            <TypesTable typesBreakdown={interactions.typesBreakdown} />
+            <TypesTable typesBreakdown={interactions.typesBreakdown} t={t} />
           </div>
 
           <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm">
             <div className="flex items-center justify-between mb-4">
-              <h4 className="text-sm font-bold text-[#0A0A0A]">Lượt xem (Views)</h4>
-              <ViewChartBtn>Xem bảng</ViewChartBtn>
+              <h4 className="text-sm font-bold text-[#0A0A0A]">{t("growth.viewsTitle", "Lượt xem (Views)")}</h4>
+              <ViewChartBtn>{t("growth.viewTable", "Xem bảng")}</ViewChartBtn>
             </div>
             <ViewsDonut viewsBreakdown={interactions.viewsBreakdown} />
           </div>
@@ -354,7 +356,7 @@ export function ThreadsPostsTab({
       </div>
 
       <div>
-        <SectionLabel>Danh sách bài đăng (List of posts)</SectionLabel>
+        <SectionLabel>{t("growth.listOfPostsTitle", "Danh sách bài đăng (List of posts)")}</SectionLabel>
         <ThreadsPostsListTab
           publishedVideos={publishedVideos}
           isPublishedLoading={isPublishedLoading}
