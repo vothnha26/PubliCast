@@ -82,6 +82,24 @@ class SmartLinkController {
       message: 'Link click tracked successfully'
     });
   });
+
+  redirectLinkClick = asyncHandler(async (req, res) => {
+    const { linkItemId } = req.params;
+
+    // HEAD requests thường là bot/crawler kiểm tra link — không track click.
+    if (req.method === 'HEAD') {
+      return res.sendStatus(200);
+    }
+
+    const linkItem = await smartLinkAnalyticsService.trackLinkClick(
+      linkItemId,
+      req.ip,
+      req.headers['user-agent']
+    );
+
+    const targetUrl = linkItem.url.startsWith('http') ? linkItem.url : `https://${linkItem.url}`;
+    return res.redirect(302, targetUrl);
+  });
 }
 
 module.exports = new SmartLinkController();
