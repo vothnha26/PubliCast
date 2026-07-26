@@ -7,13 +7,13 @@ describe('CloudinaryResumableUploader resumable session (#111)', () => {
 
   beforeEach(() => {
     const storage = {};
-    global.localStorage = {
+    globalThis.localStorage = {
       getItem: (key) => storage[key] || null,
       setItem: (key, value) => { storage[key] = String(value); },
       removeItem: (key) => { delete storage[key]; },
       clear: () => { Object.keys(storage).forEach(k => delete storage[k]); }
     };
-    global.fetch = vi.fn();
+    globalThis.fetch = vi.fn();
   });
 
   afterEach(() => {
@@ -21,7 +21,7 @@ describe('CloudinaryResumableUploader resumable session (#111)', () => {
   });
 
   it('persists the signature/timestamp used to start the session', async () => {
-    global.fetch.mockResolvedValue({
+    globalThis.fetch.mockResolvedValue({
       ok: true,
       json: async () => ({ secure_url: 'https://example.com/video.mp4' })
     });
@@ -42,7 +42,7 @@ describe('CloudinaryResumableUploader resumable session (#111)', () => {
     localStorage.setItem(`${fileKey}-signature`, 'sig-original');
     localStorage.setItem(`${fileKey}-timestamp`, '1000');
 
-    global.fetch.mockResolvedValue({
+    globalThis.fetch.mockResolvedValue({
       ok: true,
       json: async () => ({ secure_url: 'https://example.com/video.mp4' })
     });
@@ -53,7 +53,7 @@ describe('CloudinaryResumableUploader resumable session (#111)', () => {
     // originally-persisted ones instead.
     await uploader.upload(file, 'sig-fresh-after-reload', 9999);
 
-    const [, options] = global.fetch.mock.calls[0];
+    const [, options] = globalThis.fetch.mock.calls[0];
     const body = options.body;
     expect(body.get('signature')).toBe('sig-original');
     expect(body.get('timestamp')).toBe('1000');
