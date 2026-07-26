@@ -1,6 +1,24 @@
 import apiService from './api';
 
 class SocialService {
+  async searchStockMedia({ provider, query, page = 1, perPage = 20, mediaType = 'PHOTO', orientation }) {
+    const params = new URLSearchParams({
+      provider,
+      query,
+      page,
+      perPage,
+      mediaType,
+      ...(orientation ? { orientation } : {})
+    }).toString();
+    const response = await apiService.get(`/stock/search?${params}`);
+    return response.data;
+  }
+
+  async importStockMedia(payload) {
+    const response = await apiService.post('/stock/import', payload);
+    return response.data;
+  }
+
   async getGoogleAuthUrl(brandId) {
     const response = await apiService.get(`/social/google/url?brandId=${brandId}`);
     return response.data;
@@ -198,6 +216,22 @@ class SocialService {
 
   async reassignSocialAccount(platform, platformAccountId, targetBrandId) {
     const response = await apiService.post('/social/reassign', { platform, platformAccountId, targetBrandId });
+    return response.data;
+  }
+
+  // --- Reddit ---
+  async getRedditUserSubreddits(brandId) {
+    const response = await apiService.get(`/social/reddit/subreddits?brandId=${brandId}`);
+    return response.data;
+  }
+
+  async searchRedditSubreddits(brandId, q) {
+    const response = await apiService.get(`/social/reddit/subreddits/search?brandId=${brandId}&q=${encodeURIComponent(q)}`);
+    return response.data;
+  }
+
+  async getSubredditFlairs(brandId, subreddit) {
+    const response = await apiService.get(`/social/reddit/subreddits/${subreddit}/flairs?brandId=${brandId}`);
     return response.data;
   }
 }
