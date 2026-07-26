@@ -65,7 +65,35 @@ describe('FacebookGateway resumable video upload streaming (B3)', () => {
   });
 
   describe('publishVideo', () => {
-    it('runs start -> transfer -> finish in order, sending the stream as a raw body (not FormData)', async () => {
+    it('uses direct file_url ingestion when mediaUrl is an HTTP/HTTPS URL (Cloudinary)', async () => {
+      global.fetch.mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve({ id: 'fb_video_direct_123' })
+      });
+
+      const result = await facebookGateway.publishVideo(
+        'page-1',
+        'page-token',
+        'https://res.cloudinary.com/demo/video/upload/v1/sample.mp4',
+        'My Title',
+        'My Description'
+      );
+
+      expect(result).toEqual({ id: 'fb_video_direct_123' });
+      expect(global.fetch).toHaveBeenCalledWith(
+        'https://graph-video.facebook.com/v25.0/page-1/videos',
+        expect.objectContaining({
+          method: 'POST',
+          body: expect.any(URLSearchParams)
+        })
+      );
+      const sentParams = global.fetch.mock.calls[0][1].body;
+      expect(sentParams.get('file_url')).toBe('https://res.cloudinary.com/demo/video/upload/v1/sample.mp4');
+      expect(sentParams.get('title')).toBe('My Title');
+      expect(sentParams.get('description')).toBe('My Description');
+    });
+
+    it('runs start -> transfer -> finish in order for local files (resumable stream upload)', async () => {
       const calls = [];
       global.fetch.mockImplementation((url, options = {}) => {
         calls.push({ url, options });
@@ -92,7 +120,7 @@ describe('FacebookGateway resumable video upload streaming (B3)', () => {
       const result = await facebookGateway.publishVideo(
         'page-1',
         'page-token',
-        'https://res.cloudinary.com/demo/video/upload/v1/sample.mp4',
+        '/uploads/video.mp4',
         'My Title',
         'My Description'
       );
@@ -110,7 +138,11 @@ describe('FacebookGateway resumable video upload streaming (B3)', () => {
     });
 
     it('throws a descriptive error if the start phase fails', async () => {
-      global.fetch.mockResolvedValue({ ok: false, json: () => Promise.resolve({ error: { message: 'boom' } }) });
+      jest.spyOn(facebookGateway, '_getMediaStream').mockResolvedValue({
+        stream: 'fake-stream',
+        contentLength: 1024
+      });
+      global.fetch.mockResolvedValue({ ok: false, json: () => Promise.resolve({ error: { message: 'boom' } }), text: () => Promise.resolve('boom') });
 
       await expect(
         facebookGateway.publishVideo('page-1', 'page-token', '/uploads/video.mp4', 'T', 'D')
