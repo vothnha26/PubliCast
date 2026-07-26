@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
-  PlayCircle, Lock, Instagram, Youtube, Plus, FileText,
+  Lock, Instagram, Youtube, Plus, FileText,
   ChevronDown, Video, LayoutGrid, Film, PlusCircle, Check, Send
 } from "lucide-react";
 import { usePostCreatorFormContext } from "../../../context/PostCreatorFormContext";
@@ -47,7 +47,12 @@ export function ComposerHeader() {
       youtube: "YOUTUBE",
       tiktok: "TIKTOK",
       telegram: "TELEGRAM",
-      threads: "THREADS"
+      threads: "THREADS",
+      bluesky: "BLUESKY",
+      reddit: "REDDIT"
+      // Twitch intentionally excluded: it has no post-publishing API (stream-only
+      // platform), so it must never appear as a selectable Post Creator target —
+      // see twitch.service.js publishPost().
     };
     const targetPlatform = mapping[platformId];
     if (!targetPlatform) return false;
@@ -366,6 +371,60 @@ export function ComposerHeader() {
               >
                 <PlatformIcon platform="Threads" size={16} variant="flat" />
                 {getPlatformLockInfo("threads").isFullyLocked && (
+                  <span className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full p-0.5 shadow-sm border border-white">
+                    <Lock size={7} strokeWidth={3} />
+                  </span>
+                )}
+              </button>
+            </div>
+          )}
+
+          {/* Bluesky */}
+          {shouldShowPlatform("bluesky") && (
+            <div className="flex items-center gap-2 relative">
+              <button 
+                type="button"
+                title={getPlatformLockInfo("bluesky").isFullyLocked ? `Bluesky hiện đang bị khóa: ${getPlatformLockInfo("bluesky").reason}` : "Bluesky"}
+                data-testid="platform-select-bluesky" onClick={() => handlePlatformClick("bluesky", true)}
+                className={`w-9 h-9 rounded-full flex items-center justify-center transition-all cursor-pointer relative ${
+                  getPlatformLockInfo("bluesky").isFullyLocked
+                    ? 'bg-red-50 text-red-400 border border-red-200 opacity-60 cursor-not-allowed'
+                    : selectedPlatforms.includes('bluesky')
+                      ? activePlatform === 'bluesky'
+                        ? 'bg-[#0085FF] text-white shadow-md'
+                        : 'bg-[#0085FF]/20 text-[#0085FF] hover:bg-[#0085FF]/30'
+                      : 'text-gray-400 hover:text-gray-600 hover:bg-gray-50'
+                }`}
+              >
+                <Globe size={16} />
+                {getPlatformLockInfo("bluesky").isFullyLocked && (
+                  <span className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full p-0.5 shadow-sm border border-white">
+                    <Lock size={7} strokeWidth={3} />
+                  </span>
+                )}
+              </button>
+            </div>
+          )}
+
+          {/* Reddit */}
+          {shouldShowPlatform("reddit") && (
+            <div className="flex items-center gap-2 relative">
+              <button 
+                type="button"
+                title={getPlatformLockInfo("reddit").isFullyLocked ? `Reddit hiện đang bị khóa: ${getPlatformLockInfo("reddit").reason}` : "Reddit"}
+                data-testid="platform-select-reddit" onClick={() => handlePlatformClick("reddit", true)}
+                className={`w-9 h-9 rounded-full flex items-center justify-center transition-all cursor-pointer relative ${
+                  getPlatformLockInfo("reddit").isFullyLocked
+                    ? 'bg-red-50 text-red-400 border border-red-200 opacity-60 cursor-not-allowed'
+                    : selectedPlatforms.includes('reddit')
+                      ? activePlatform === 'reddit'
+                        ? 'bg-[#FF4500] text-white shadow-md'
+                        : 'bg-[#FF4500]/20 text-[#FF4500] hover:bg-[#FF4500]/30'
+                      : 'text-gray-400 hover:text-gray-600 hover:bg-gray-50'
+                }`}
+              >
+                <Globe size={16} />
+                {getPlatformLockInfo("reddit").isFullyLocked && (
                   <span className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full p-0.5 shadow-sm border border-white">
                     <Lock size={7} strokeWidth={3} />
                   </span>

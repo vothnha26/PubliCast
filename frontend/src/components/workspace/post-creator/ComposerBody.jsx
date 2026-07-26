@@ -507,7 +507,10 @@ export function ComposerBody() {
                         tiktok: 2200,
                         youtube: 5000,
                         telegram: 4096,
-                        threads: 500
+                        threads: 500,
+                        bluesky: 300,
+                        twitch: 500,
+                        reddit: 40000
                       };
                       return fallbacks[activePlatform.toLowerCase()] || 5000;
                     }
