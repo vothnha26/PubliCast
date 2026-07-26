@@ -423,9 +423,21 @@ class PostService {
       throw error;
     }
 
+    // Chỉ cho phép retry khi post ở trạng thái thất bại — tránh double publish
+    const RETRYABLE_STATUSES = [POST_STATUS.FAILED, POST_STATUS.RETRYING];
+    if (!RETRYABLE_STATUSES.includes(post.status)) {
+      const error = new Error(`Không thể retry bài viết ở trạng thái "${post.status}". Chỉ retry được bài có trạng thái: ${RETRYABLE_STATUSES.join(', ')}.`);
+      error.statusCode = 422;
+      throw error;
+    }
+
     console.log(`[Post Service] Queueing retry job for Post ${postId} on platforms: ${platforms.join(', ')}`);
     const { safeUpsertPublishJob } = require('../../queues/publish.queue');
     const jobId = `publish-post-${postId}`;
+
+    // Đặt trạng thái RETRYING trước khi enqueue — PublishPostHandler.claimForPublishing
+    // chỉ chấp nhận SCHEDULED/DRAFT/RETRYING, bài FAILED sẽ bị skip nếu không set trước.
+    await postRepository.updateStatus(postId, POST_STATUS.RETRYING);
 
     // safeUpsertPublishJob skips the upsert if a job for this post is
     // currently active — a plain remove-then-add here would race the running
@@ -438,6 +450,8 @@ class PostService {
     }, { delay: 0 });
 
     if (!applied) {
+      // Rollback status nếu không enqueue được
+      await postRepository.updateStatus(postId, post.status);
       const error = new Error('Post đang được xử lý bởi một job khác, vui lòng thử lại sau ít phút.');
       error.statusCode = 409;
       throw error;

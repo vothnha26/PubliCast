@@ -17,12 +17,12 @@ class AutoListService {
     return this._assertCanManage(id, operatorId, PERMISSION_KEYS.CREATE_POSTS);
   }
 
-  async createAutoList(brandId, data) {
+  async createAutoList(brandId, data, operatorId) {
     const preparedData = this._prepareAutoListData(data, brandId);
     const created = await autoListRepository.create(preparedData);
     
     eventEmitter.emit(EVENTS.AUTOLIST.CREATED, { autoListId: created.id });
-    return this.getAutoListDetails(created.id);
+    return this.getAutoListDetails(created.id, operatorId);
   }
 
   async updateAutoList(id, data, operatorId) {

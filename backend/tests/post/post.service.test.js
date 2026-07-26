@@ -570,7 +570,7 @@ describe('PostService Unit Tests', () => {
     const { safeUpsertPublishJob } = require('../../src/queues/publish.queue');
 
     beforeEach(() => {
-      postRepository.findById.mockResolvedValue({ id: 'post-1', brandId: 'brand-abc' });
+      postRepository.findById.mockResolvedValue({ id: 'post-1', brandId: 'brand-abc', status: POST_STATUS.FAILED });
     });
 
     it('queues the retry job when no job is currently active for this post', async () => {
