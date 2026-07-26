@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
-  Lock, Instagram, Youtube, Plus, FileText,
+  Lock, Instagram, Youtube, Plus, FileText, Globe,
   ChevronDown, Video, LayoutGrid, Film, PlusCircle, Check, Send
 } from "lucide-react";
 import { usePostCreatorFormContext } from "../../../context/PostCreatorFormContext";
