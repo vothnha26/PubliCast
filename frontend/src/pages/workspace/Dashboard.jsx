@@ -13,8 +13,10 @@ import { useBrand } from "../../context/BrandContext";
 import socialService from "../../services/social.service";
 import postService from "../../services/post.service";
 import { POST_STATUS } from "../../constants/postStatus";
+import { DEFAULT_BRAND_NAME } from "../../constants/workspace";
 import { useTranslation } from "react-i18next";
 import { usePostCreator } from "../../context/PostCreatorContext";
+import { OnboardingModal } from "../../components/shared/OnboardingModal";
 
 const PLATFORM_COLORS = {
   YouTube: "#FF0000",
@@ -105,6 +107,7 @@ export function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const { activeBrand } = useBrand();
   const { openPostCreator } = usePostCreator();
+  const [showOnboarding, setShowOnboarding] = useState(false);
 
   useEffect(() => {
     const params = new URLSearchParams(location.search);
@@ -113,6 +116,17 @@ export function DashboardPage() {
       navigate(location.pathname, { replace: true });
     }
   }, [location, navigate, t]);
+
+  // Onboarding used to be a dedicated full-page route (/start) reached only
+  // right after signup — replaced with a modal here so a user landing on
+  // the dashboard for the first time (their default brand still has its
+  // signup-time placeholder name) can complete setup without leaving the
+  // real app shell.
+  useEffect(() => {
+    if (activeBrand && activeBrand.name === DEFAULT_BRAND_NAME) {
+      setShowOnboarding(true);
+    }
+  }, [activeBrand]);
 
   useEffect(() => {
     const loadData = async () => {
@@ -519,6 +533,8 @@ export function DashboardPage() {
           </div>
         </div>
       </div>
+
+      <OnboardingModal isOpen={showOnboarding} onClose={() => setShowOnboarding(false)} />
     </div>
   );
 }
