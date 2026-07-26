@@ -1,15 +1,17 @@
-import React from "react";
-import { Search, Upload, LayoutGrid, List, Folder } from "lucide-react";
+import React, { useState } from "react";
+import { Search, Upload, LayoutGrid, List, Folder, Image as ImageIcon } from "lucide-react";
 import { useMediaLibrary } from "../../hooks/useMediaLibrary";
 import { MediaGrid } from "./media-library/MediaGrid";
 import { MediaListTable } from "./media-library/MediaListTable";
 import { MediaDetailPanel } from "./media-library/MediaDetailPanel";
 import { BulkActionsBar } from "./media-library/BulkActionsBar";
 import { useTranslation } from "react-i18next";
+import StockMediaPicker from "../../components/shared/StockMediaPicker";
 
 export function MediaLibraryPage() {
   const { t } = useTranslation("medialibrary");
   const fileInputRef = React.useRef(null);
+  const [showStockPicker, setShowStockPicker] = useState(false);
   const {
     filters,
     updateFilters,
@@ -171,6 +173,14 @@ export function MediaLibraryPage() {
           </button>
           
           <button
+            onClick={() => setShowStockPicker(true)}
+            className="flex items-center gap-2 cursor-pointer px-4 py-2 bg-blue-50 border border-blue-200 rounded-xl text-xs font-bold text-blue-700 hover:bg-blue-100 transition-all"
+          >
+            <ImageIcon size={14} className="text-blue-600" />
+            Stock Media
+          </button>
+
+          <button
             onClick={() => fileInputRef.current?.click()}
             disabled={uploading}
             className="flex items-center gap-2 cursor-pointer rounded-xl disabled:opacity-50 transition-all bg-[#0A0A0A] text-white hover:bg-black shadow-lg shadow-black/5"
@@ -258,6 +268,17 @@ export function MediaLibraryPage() {
 
       {/* Bulk Actions */}
       <BulkActionsBar selected={selected} clearSelection={clearSelection} onDelete={deleteSelected} />
+
+      {/* Stock Media Picker Modal */}
+      {showStockPicker && (
+        <StockMediaPicker
+          brandId={filters.brandId || useMediaLibrary().brandId || "default"}
+          onSelectMedia={() => {
+            clearFilters();
+          }}
+          onClose={() => setShowStockPicker(false)}
+        />
+      )}
     </div>
   );
 }

@@ -14,6 +14,7 @@ import { EmojiPickerPopover } from "./EmojiPickerPopover";
 import { UTMGeneratorPopover } from "./UTMGeneratorPopover";
 import { HashtagPickerPopover } from "./HashtagPickerPopover";
 import { FacebookAlbumComposer } from "./FacebookAlbumComposer";
+import StockMediaPicker from "../../shared/StockMediaPicker";
 import { toast } from "sonner";
 import { PRODUCT_IDS } from "../../../constants/products";
 import { AICopilotPopover } from "./AICopilotPopover";
@@ -27,6 +28,7 @@ export function ComposerBody() {
   const { t } = useTranslation(["planner", "common"]);
   const navigate = useNavigate();
   const [showAICopilot, setShowAICopilot] = useState(false);
+  const [showStockPicker, setShowStockPicker] = useState(false);
   const {
     hasCreatePermission,
     hasApprovePermission,
@@ -378,6 +380,7 @@ export function ComposerBody() {
                     onSelectImage={() => { setUploadModalTab("computer"); setShowUploadModal(true); setActivePopover(null); }} 
                     onSelectVideo={() => { setUploadModalTab("computer"); setShowUploadModal(true); setActivePopover(null); }} 
                     onSelectLibrary={() => { setUploadModalTab("library"); setShowUploadModal(true); setActivePopover(null); }}
+                    onSelectStock={() => { setShowStockPicker(true); setActivePopover(null); }}
                     onSelectDrive={() => {
                       setActivePopover(null);
                       if (!hasAccess(PRODUCT_IDS.GOOGLE_DRIVE)) {
@@ -626,6 +629,19 @@ export function ComposerBody() {
         )}
 
 
+
+        {showStockPicker && (
+          <StockMediaPicker
+            brandId={activeBrand?.id || "default"}
+            onSelectMedia={(importedMedia) => {
+              if (importedMedia.storageUrl) {
+                setPostMedia((prev) => [...(prev || []), importedMedia.storageUrl]);
+              }
+              setShowStockPicker(false);
+            }}
+            onClose={() => setShowStockPicker(false)}
+          />
+        )}
 
       </div>
     </div>
