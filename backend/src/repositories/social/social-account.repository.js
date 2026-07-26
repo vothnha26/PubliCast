@@ -991,6 +991,7 @@ class SocialAccountRepository {
           profilePictureUrl: avatarUrl,
           accessToken: encrypt(accessToken),
           refreshToken: refreshToken ? encrypt(refreshToken) : undefined,
+          scopes: 'atproto',
           isConnected: true,
           lastSyncAt: new Date(),
           updatedAt: new Date(),
@@ -1023,6 +1024,7 @@ class SocialAccountRepository {
           profilePictureUrl: avatarUrl,
           accessToken: encrypt(accessToken),
           refreshToken: refreshToken ? encrypt(refreshToken) : '',
+          scopes: 'atproto',
           lastSyncAt: new Date(),
           connectedAt: new Date(),
           blueskyAccount: {
@@ -1044,7 +1046,8 @@ class SocialAccountRepository {
       if (enqueueSync) {
         await outboxEventRepository.create(
           OUTBOX_EVENT_TYPES.SOCIAL_SYNC_ENQUEUE,
-          { socialAccountId: account.id, platform: PLATFORMS.BLUESKY },
+          account.id,
+          { socialAccountId: account.id, platform: PLATFORMS.BLUESKY, brandId },
           {},
           tx
         );

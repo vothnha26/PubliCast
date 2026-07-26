@@ -219,7 +219,39 @@ class SocialService {
     return response.data;
   }
 
+  // --- Twitch ---
+  async getTwitchAuthUrl(brandId) {
+    const response = await apiService.get(`/social/twitch/url?brandId=${brandId}`);
+    return response.data;
+  }
+
+  async disconnectTwitchAccount(brandId) {
+    const response = await apiService.post('/social/twitch/disconnect', { brandId });
+    return response.data;
+  }
+
+  // --- Bluesky ---
+  async connectBlueskyAccount(brandId, handle, appPassword) {
+    const response = await apiService.post('/social/bluesky/connect', { brandId, handle, appPassword });
+    return response.data;
+  }
+
+  async disconnectBlueskyAccount(brandId) {
+    const response = await apiService.post('/social/bluesky/disconnect', { brandId });
+    return response.data;
+  }
+
   // --- Reddit ---
+  async getRedditAuthUrl(brandId) {
+    const response = await apiService.get(`/social/reddit/url?brandId=${brandId}`);
+    return response.data;
+  }
+
+  async disconnectRedditAccount(brandId) {
+    const response = await apiService.post('/social/reddit/disconnect', { brandId });
+    return response.data;
+  }
+
   async getRedditUserSubreddits(brandId) {
     const response = await apiService.get(`/social/reddit/subreddits?brandId=${brandId}`);
     return response.data;
