@@ -1,3 +1,5 @@
+// @twurple/* is globally mocked in jest.setup.cjs (ESM-only builds Jest
+// can't load).
 const twitchGateway = require('../../src/services/social/twitch/twitch.gateway');
 const twitchService = require('../../src/services/social/twitch/twitch.service');
 const twitchChatService = require('../../src/services/social/twitch/twitch-chat.service');

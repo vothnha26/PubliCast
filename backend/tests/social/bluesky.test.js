@@ -1,3 +1,5 @@
+// @atproto/api is globally mocked in jest.setup.cjs (its dependency tree
+// ships ESM-only packages Jest can't load).
 const blueskyGateway = require('../../src/services/social/bluesky/bluesky.gateway');
 const blueskyService = require('../../src/services/social/bluesky/bluesky.service');
 const socialAccountRepository = require('../../src/repositories/social/social-account.repository');
