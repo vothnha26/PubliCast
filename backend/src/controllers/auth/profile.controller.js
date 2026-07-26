@@ -1,6 +1,5 @@
 const userRepository = require('../../repositories/auth/user.repository');
 const profileService = require('../../services/auth/profile.service');
-const brandService = require('../../services/workspace/brand.service');
 const asyncHandler = require('../../utils/async-handler');
 
 class ProfileController {
@@ -90,7 +89,7 @@ class ProfileController {
     }
 
     // Update user avatarUrl
-    const updatedUser = await profileService.editProfile(req.user.id, { avatarUrl });
+    await profileService.editProfile(req.user.id, { avatarUrl });
 
     res.status(200).json({
       message: 'Avatar uploaded successfully',
