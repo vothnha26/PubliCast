@@ -630,6 +630,12 @@ const QUOTA_TTL_STRATEGY = {
   // month's budget from a burst of tracking/refresh requests.
   TOKAPI_HASHTAG: {
     DAILY_LIMIT: 20
+  },
+  BLUESKY: {
+    DAILY_LIMIT: 35000,
+    HOURLY_LIMIT: 5000,
+    POINTS: { CREATE: 3, UPDATE: 2, DELETE: 1 },
+    DEFAULT_TTL_SEC: 2 * 3600
   }
 };
 

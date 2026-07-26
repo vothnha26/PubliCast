@@ -598,14 +598,15 @@ model TelegramAccount {
 }
 
 model BlueskyAccount {
-  id              String @id @default(uuid())
-  socialAccountId String @unique
-  did             String @unique
+  id              String  @id @default(uuid())
+  socialAccountId String  @unique
+  did             String  @unique
   handle          String
-  pdsUrl          String @default("https://bsky.social")
-  followersCount  Int    @default(0)
-  followsCount    Int    @default(0)
-  postsCount      Int    @default(0)
+  pdsUrl          String  @default("https://bsky.social")
+  emailConfirmed  Boolean @default(false)
+  followersCount  Int     @default(0)
+  followsCount    Int     @default(0)
+  postsCount      Int     @default(0)
 
   socialAccount SocialAccount @relation(fields: [socialAccountId], references: [id], onDelete: Cascade)
 

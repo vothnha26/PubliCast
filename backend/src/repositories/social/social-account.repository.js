@@ -974,7 +974,7 @@ class SocialAccountRepository {
 
   async upsertBlueskyAccount(brandId, accountData, options = {}) {
     const { enqueueSync = true } = options;
-    const { did, handle, displayName, avatarUrl, accessToken, refreshToken, pdsUrl = 'https://bsky.social', followersCount = 0, followsCount = 0, postsCount = 0 } = accountData;
+    const { did, handle, displayName, avatarUrl, accessToken, refreshToken, pdsUrl = 'https://bsky.social', emailConfirmed = false, followersCount = 0, followsCount = 0, postsCount = 0 } = accountData;
 
     return prisma.$transaction(async (tx) => {
       const account = await tx.socialAccount.upsert({
@@ -1001,6 +1001,7 @@ class SocialAccountRepository {
                 did,
                 handle,
                 pdsUrl,
+                emailConfirmed: Boolean(emailConfirmed),
                 followersCount: parseInt(followersCount) || 0,
                 followsCount: parseInt(followsCount) || 0,
                 postsCount: parseInt(postsCount) || 0
@@ -1008,6 +1009,7 @@ class SocialAccountRepository {
               update: {
                 handle,
                 pdsUrl,
+                emailConfirmed: Boolean(emailConfirmed),
                 followersCount: parseInt(followersCount) || 0,
                 followsCount: parseInt(followsCount) || 0,
                 postsCount: parseInt(postsCount) || 0
@@ -1032,6 +1034,7 @@ class SocialAccountRepository {
               did,
               handle,
               pdsUrl,
+              emailConfirmed: Boolean(emailConfirmed),
               followersCount: parseInt(followersCount) || 0,
               followsCount: parseInt(followsCount) || 0,
               postsCount: parseInt(postsCount) || 0
@@ -1058,23 +1061,32 @@ class SocialAccountRepository {
   }
 
   async updateBlueskyMetrics(socialAccountId, metricsData) {
-    const { followersCount = 0, followsCount = 0, postsCount = 0 } = metricsData;
+    const { followersCount = 0, followsCount = 0, postsCount = 0, emailConfirmed } = metricsData;
+    const data = {
+      followersCount: parseInt(followersCount) || 0,
+      followsCount: parseInt(followsCount) || 0,
+      postsCount: parseInt(postsCount) || 0
+    };
+    if (emailConfirmed !== undefined) {
+      data.emailConfirmed = emailConfirmed;
+    }
     return prisma.blueskyAccount.update({
       where: { socialAccountId },
-      data: {
-        followersCount: parseInt(followersCount) || 0,
-        followsCount: parseInt(followsCount) || 0,
-        postsCount: parseInt(postsCount) || 0
-      }
+      data
     });
   }
 
   async findByBrandAndPlatformFirst(brandId, platform) {
     const where = { brandId };
     if (platform) where.platform = platform;
-    
+
     const account = await prisma.socialAccount.findFirst({
-      where
+      where,
+      include: {
+        blueskyAccount: true,
+        redditAccount: true,
+        twitchAccount: true
+      }
     });
     return this._decryptAccount(account);
   }
