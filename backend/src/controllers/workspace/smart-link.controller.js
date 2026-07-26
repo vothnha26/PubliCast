@@ -1,6 +1,7 @@
 const smartLinkService = require('../../services/workspace/smart-link.service');
 const smartLinkAnalyticsService = require('../../services/workspace/smart-link-analytics.service');
 const asyncHandler = require('../../utils/async-handler');
+const logger = require('../../utils/logger');
 
 class SmartLinkController {
   getSmartLink = asyncHandler(async (req, res) => {
@@ -63,7 +64,7 @@ class SmartLinkController {
       smartLink.id,
       req.ip,
       req.headers['user-agent']
-    ).catch(err => console.error('Failed to log page view async', err));
+    ).catch(err => logger.error('[SmartLinkController] Failed to log page view async', err));
 
     res.status(200).json({
       message: 'Public SmartLink retrieved successfully',
