@@ -48,6 +48,48 @@ class ConvoIntegrationController {
   });
 
   /**
+   * POST /api/integrations/oauth/exchange
+   * Exchanges a single-use OAuth authorization code for authenticated user & brand identity.
+   * HMAC signature on payload has already been validated by verifyHmac() middleware.
+   */
+  exchangeOAuthCode = asyncHandler(async (req, res) => {
+    const { code } = req.body;
+    if (!code) {
+      return res.status(400).json({ valid: false, message: 'OAuth code is required' });
+    }
+
+    const oauthCodeStore = require('../../utils/oauth-code-store');
+    const authCodeData = oauthCodeStore.consumeCode(code);
+
+    if (!authCodeData) {
+      return res.status(400).json({ valid: false, message: 'Invalid or expired OAuth code' });
+    }
+
+    const { brandId, userId } = authCodeData;
+
+    const brand = await prisma.brand.findFirst({
+      where: { id: brandId, deletedAt: null },
+      include: { subscription: { include: { plan: true } } }
+    });
+
+    const user = await prisma.user.findFirst({
+      where: { id: userId, deletedAt: null }
+    });
+
+    if (!brand || !user) {
+      return res.status(200).json({ valid: false });
+    }
+
+    return res.status(200).json({
+      valid: true,
+      brandId: brand.id,
+      brandName: brand.name,
+      publicastUserId: user.id,
+      planName: brand.subscription?.plan?.name ?? null
+    });
+  });
+
+  /**
    * GET /api/integrations/brand/:brandId/user-permissions
    * Query: publicastUserId (per SPEC.md §5.2). Always a live query — never
    * cache permissions beyond the single request, since role/permission
