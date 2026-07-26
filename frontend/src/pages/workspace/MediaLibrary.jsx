@@ -272,7 +272,7 @@ export function MediaLibraryPage() {
       {/* Stock Media Picker Modal */}
       {showStockPicker && (
         <StockMediaPicker
-          brandId={filters.brandId || useMediaLibrary().brandId || "default"}
+          brandId={filters.brandId || "default"}
           onSelectMedia={() => {
             clearFilters();
           }}
