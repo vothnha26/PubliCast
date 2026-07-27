@@ -151,4 +151,24 @@ describe('YoutubeCommentSyncStrategy Pagination Unit Tests', () => {
     expect(result).toHaveLength(10);
     expect(youtubeGateway.getCommentThreads).toHaveBeenCalledTimes(10);
   });
+
+  it('should filter out mock accounts and select the real account if present', async () => {
+    const mockAccounts = [
+      { id: 'acc-mock', platformAccountId: 'mock-channel', accessToken: 'mock-token' },
+      { id: 'acc-real', platformAccountId: 'real-channel', accessToken: 'real-token' }
+    ];
+    socialAccountRepository.findByBrandAndPlatform.mockResolvedValue(mockAccounts);
+    
+    youtubeGateway.getCommentThreads.mockResolvedValue({ data: { items: [] } });
+
+    await strategy.sync(mockBrandId, mockInbox);
+
+    // Verify that the getCommentThreads was called with real channel ID
+    expect(youtubeGateway.getCommentThreads).toHaveBeenCalledWith(
+      expect.any(Object),
+      'real-channel',
+      100,
+      null
+    );
+  });
 });
