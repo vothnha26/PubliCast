@@ -3,7 +3,9 @@ const googleOAuthService = require('../google-oauth.service');
 const socialAccountRepository = require('../../../repositories/social/social-account.repository');
 const { Readable } = require('stream');
 
-const { PLATFORMS, POST_STATUS, YOUTUBE_PRIVACY, YOUTUBE_CATEGORIES, SEPARATORS, POST_TYPES, YOUTUBE_API, splitMediaUrls } = require('../../../utils/constants');
+const { PLATFORMS, POST_STATUS, YOUTUBE_PRIVACY, YOUTUBE_CATEGORIES, SEPARATORS, POST_TYPES, splitMediaUrls } = require('../../../utils/constants');
+const { YOUTUBE_API, YOUTUBE_CONSTRAINTS } = require('./youtube.constants');
+const { validateImageConstraints } = require('./youtube-media-validator.util');
 const fs = require('fs');
 const path = require('path');
 
@@ -124,8 +126,8 @@ class YouTubePublishService {
       const sentenceMatch = firstParagraph.match(/^(.*?[.!?])(?:\s|$)/);
       let extractedTitle = sentenceMatch ? sentenceMatch[1].trim() : firstParagraph;
       
-      if (extractedTitle.length > 100) {
-        extractedTitle = extractedTitle.substring(0, 97) + '...';
+      if (extractedTitle.length > YOUTUBE_CONSTRAINTS.TITLE_MAX_LENGTH) {
+        extractedTitle = extractedTitle.substring(0, YOUTUBE_CONSTRAINTS.TITLE_MAX_LENGTH - 3) + '...';
       }
       
       finalTitle = extractedTitle;
@@ -150,6 +152,33 @@ class YouTubePublishService {
       }
     }
 
+    // --- Enforce YouTube Data API v3 metadata constraints ---
+    // ref: guide/youtube/reference_api/videos.md — snippet field limits
+    if (finalTitle.length > YOUTUBE_CONSTRAINTS.TITLE_MAX_LENGTH) {
+      console.warn(`[YouTube Metadata] Title truncated from ${finalTitle.length} to ${YOUTUBE_CONSTRAINTS.TITLE_MAX_LENGTH} chars (YouTube API limit).`);
+      finalTitle = finalTitle.substring(0, YOUTUBE_CONSTRAINTS.TITLE_MAX_LENGTH);
+    }
+
+    if (finalDescription.length > YOUTUBE_CONSTRAINTS.DESCRIPTION_MAX_LENGTH) {
+      console.warn(`[YouTube Metadata] Description truncated from ${finalDescription.length} to ${YOUTUBE_CONSTRAINTS.DESCRIPTION_MAX_LENGTH} chars (YouTube API limit).`);
+      finalDescription = finalDescription.substring(0, YOUTUBE_CONSTRAINTS.DESCRIPTION_MAX_LENGTH);
+    }
+
+    // Build & sanitize tags array: total combined length <= 500 chars
+    let tags = options.tags ? options.tags.split(SEPARATORS.COMMA).map(t => t.trim()).filter(Boolean) : [];
+    let totalTagsLength = tags.join('').length;
+    if (totalTagsLength > YOUTUBE_CONSTRAINTS.TAGS_MAX_TOTAL_LENGTH) {
+      console.warn(`[YouTube Metadata] Tags total length (${totalTagsLength}) exceeds ${YOUTUBE_CONSTRAINTS.TAGS_MAX_TOTAL_LENGTH} chars limit. Trimming tags array.`);
+      const sanitizedTags = [];
+      let accumulated = 0;
+      for (const tag of tags) {
+        if (accumulated + tag.length > YOUTUBE_CONSTRAINTS.TAGS_MAX_TOTAL_LENGTH) break;
+        sanitizedTags.push(tag);
+        accumulated += tag.length;
+      }
+      tags = sanitizedTags;
+    }
+
     let privacyStatus = options.privacyStatus || options.youtubePrivacy || YOUTUBE_PRIVACY.PUBLIC;
     let publishAt = null;
 
@@ -168,7 +197,7 @@ class YouTubePublishService {
       privacyStatus,
       categoryId: options.categoryId || YOUTUBE_CATEGORIES.PEOPLE_BLOGS,
       selfDeclaredMadeForKids: options.madeForKids === true || options.madeForKids === 'true',
-      tags: options.tags ? options.tags.split(SEPARATORS.COMMA).map(t => t.trim()).filter(Boolean) : [],
+      tags,
       publishAt
     };
   }
@@ -195,10 +224,18 @@ class YouTubePublishService {
     // Set Custom Thumbnail
     if (options.youtubeThumbnail) {
       try {
+        // Pre-validate thumbnail size before streaming to Google API
+        // ref: guide/youtube/reference_api/thumbnails.md — max 2MB
+        const { ok, error, mimeType } = await validateImageConstraints(options.youtubeThumbnail, {
+          maxSizeBytes: YOUTUBE_CONSTRAINTS.THUMBNAIL_MAX_SIZE_BYTES,
+          allowedMimeTypes: YOUTUBE_CONSTRAINTS.IMAGE_MIME_TYPES,
+          resourceLabel: 'Thumbnail'
+        });
+        if (!ok) {
+          throw new Error(error);
+        }
         const imageStream = await this._prepareImageStream(options.youtubeThumbnail);
-        const ext = path.extname(options.youtubeThumbnail).toLowerCase();
-        const mimeType = ext === '.png' ? 'image/png' : 'image/jpeg';
-        await youtubeGateway.setCustomThumbnail(auth, videoId, imageStream, mimeType);
+        await youtubeGateway.setCustomThumbnail(auth, videoId, imageStream, mimeType || 'image/jpeg');
         console.log(`[YouTube Post-Upload] Successfully set custom thumbnail for video ${videoId}`);
       } catch (err) {
         console.error(`[YouTube Post-Upload] Setting custom thumbnail failed: ${err.message}`);
@@ -230,6 +267,8 @@ class YouTubePublishService {
     if (!fs.existsSync(localPath)) throw new Error(`Local file not found: ${localPath}`);
     return fs.createReadStream(localPath);
   }
+
+
 
   async deletePost(brandId, platformPostId) {
     const { auth } = await this._getAuthContext(brandId);

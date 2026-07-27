@@ -64,6 +64,10 @@ const server = app.listen(PORT, async () => {
   const tokenRefreshService = require('./services/social/token-refresh/token-refresh.service');
   tokenRefreshService.startScheduler();
 
+  // Start YouTube PubSubHubbub auto-renewal scheduler
+  const youtubePubSubRenewalService = require('./services/social/youtube/youtube-pubsub-renewal.service');
+  youtubePubSubRenewalService.startScheduler();
+
   // Start Automated Reports Scheduler
   const reportSchedulerService = require('./services/reports/report-scheduler.service');
   reportSchedulerService.start();
@@ -90,6 +94,14 @@ async function shutdown(signal) {
     tokenRefreshService.stopScheduler();
   } catch (err) {
     logger.error('Error stopping token refresh scheduler', err);
+  }
+
+  // Stop YouTube PubSubHubbub auto-renewal scheduler
+  try {
+    const youtubePubSubRenewalService = require('./services/social/youtube/youtube-pubsub-renewal.service');
+    youtubePubSubRenewalService.stopScheduler();
+  } catch (err) {
+    logger.error('Error stopping YouTube PubSubHubbub auto-renewal scheduler', err);
   }
 
   // Stop outbox dispatcher (before closing BullMQ/Redis/DB it depends on)

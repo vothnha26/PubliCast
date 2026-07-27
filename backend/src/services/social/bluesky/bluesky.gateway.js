@@ -142,6 +142,7 @@ class BlueskyGateway {
       text: rt.text,
       facets: rt.facets,
       embed,
+      langs: BLUESKY_CONSTANTS.DEFAULT_LANGS,
       reply: replyTo ? { root: replyTo.root, parent: replyTo.parent } : undefined,
       createdAt: new Date().toISOString()
     };

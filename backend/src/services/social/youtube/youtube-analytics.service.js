@@ -337,7 +337,26 @@ class YouTubeAnalyticsService {
       );
     }
     
-    return socialAccountRepository.upsertYouTubeAccount(brandId, channelData, tokens);
+    const account = await socialAccountRepository.upsertYouTubeAccount(brandId, channelData, tokens);
+
+    // Tự động kích hoạt PubSubHubbub Push Notifications (Event-driven Architecture)
+    // Tự bắt lỗi trong try-catch để nếu môi trường Dev/Local chưa có Public Webhook Domain thì flow connect chính vẫn thành công 100%
+    try {
+      const callbackUrl = process.env.PUBLIC_WEBHOOK_URL 
+        ? `${process.env.PUBLIC_WEBHOOK_URL}/api/v1/social/youtube/pubsub/callback`
+        : null;
+
+      if (callbackUrl) {
+        const youtubePubSubService = require('./youtube-pubsub.service');
+        await youtubePubSubService.requestHubSubscription(channelData.channelId, callbackUrl);
+      } else {
+        console.log('[YouTube Connect] PUBLIC_WEBHOOK_URL not configured. PubSubHubbub auto-subscription skipped.');
+      }
+    } catch (pubSubErr) {
+      console.warn('[YouTube Connect] Failed to auto-subscribe to PubSubHubbub Hub:', pubSubErr.message);
+    }
+
+    return account;
   }
 
   async syncChannelMetrics(socialAccountId, startDate, endDate) {

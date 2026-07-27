@@ -530,9 +530,32 @@ model YouTubeChannel {
   madeForKids           Boolean @default(false)
   hiddenSubscriberCount Boolean @default(false)
 
+  youtubeSubscription   YouTubeSubscription?
+
   socialAccount SocialAccount @relation(fields: [socialAccountId], references: [id], onDelete: Cascade)
 
   @@map("youtube_channels")
+}
+
+model YouTubeSubscription {
+  id               String           @id @default(uuid())
+  youtubeChannelId String           @unique @map("youtube_channel_id")
+  channelId        String           @map("channel_id")
+  topicUrl         String           @map("topic_url")
+  hubSecret        String           @map("hub_secret")
+  status           String           @default("PENDING") // PENDING, SUBSCRIBED, EXPIRED, FAILED
+  leaseSeconds     Int              @default(864000)    @map("lease_seconds")
+  subscribedAt     DateTime?        @map("subscribed_at")
+  expiresAt        DateTime?        @map("expires_at")
+  lastEventAt      DateTime?        @map("last_event_at")
+  createdAt        DateTime         @default(now())     @map("created_at")
+  updatedAt        DateTime         @updatedAt          @map("updated_at")
+
+  youtubeChannel   YouTubeChannel   @relation(fields: [youtubeChannelId], references: [id], onDelete: Cascade)
+
+  @@index([channelId])
+  @@index([status, expiresAt])
+  @@map("youtube_subscriptions")
 }
 
 model InstagramAccount {
