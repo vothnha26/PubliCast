@@ -61,7 +61,7 @@ class YouTubeGateway {
       maxResults: parseInt(limit) || 10,
       pageToken
     });
-    await this._trackQuota('youtube', YOUTUBE_QUOTA_COSTS.PLAYLISTS_LIST);
+    await this._trackQuota('youtube', YOUTUBE_QUOTA_COSTS.PLAYLIST_ITEMS_LIST);
     return response;
   }
 
@@ -233,13 +233,17 @@ class YouTubeGateway {
   /**
    * Lấy danh sách Playlist của kênh
    */
-  async getPlaylists(auth, limit = 50) {
+  async getPlaylists(auth, limit = 50, pageToken = null) {
     const youtube = google.youtube({ version: API_VERSIONS.YOUTUBE, auth });
-    const response = await youtube.playlists.list({
+    const params = {
       part: YOUTUBE_API_PARTS.PLAYLISTS_LIST,
       mine: true,
       maxResults: limit
-    });
+    };
+    if (pageToken) {
+      params.pageToken = pageToken;
+    }
+    const response = await youtube.playlists.list(params);
     await this._trackQuota('youtube', YOUTUBE_QUOTA_COSTS.PLAYLISTS_LIST);
     return response;
   }

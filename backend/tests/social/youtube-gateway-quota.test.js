@@ -76,8 +76,8 @@ describe('YouTubeGateway Quota Tracking Unit Tests', () => {
     it('should track quota on getPlaylistItems', async () => {
       mockYoutubeInstance.playlistItems.list.mockResolvedValue({ data: {} });
       await youtubeGateway.getPlaylistItems('fake-auth', 'playlist-123');
-      expect(spyTrackQuota).toHaveBeenCalledWith('youtube', YOUTUBE_QUOTA_COSTS.PLAYLISTS_LIST);
-      expect(mockQuotaService.incrementAndGet).toHaveBeenCalledWith('youtube', YOUTUBE_QUOTA_COSTS.PLAYLISTS_LIST);
+      expect(spyTrackQuota).toHaveBeenCalledWith('youtube', YOUTUBE_QUOTA_COSTS.PLAYLIST_ITEMS_LIST);
+      expect(mockQuotaService.incrementAndGet).toHaveBeenCalledWith('youtube', YOUTUBE_QUOTA_COSTS.PLAYLIST_ITEMS_LIST);
     });
 
     it('should track quota on getVideosList', async () => {
@@ -176,6 +176,18 @@ describe('YouTubeGateway Quota Tracking Unit Tests', () => {
       await youtubeGateway.getPlaylists('fake-auth');
       expect(spyTrackQuota).toHaveBeenCalledWith('youtube', YOUTUBE_QUOTA_COSTS.PLAYLISTS_LIST);
       expect(mockQuotaService.incrementAndGet).toHaveBeenCalledWith('youtube', YOUTUBE_QUOTA_COSTS.PLAYLISTS_LIST);
+    });
+
+    it('should pass pageToken and limit to Google API in getPlaylists', async () => {
+      mockYoutubeInstance.playlists.list.mockResolvedValue({ data: {} });
+      await youtubeGateway.getPlaylists('fake-auth', 20, 'playlist-page-123');
+      expect(mockYoutubeInstance.playlists.list).toHaveBeenCalledWith(
+        expect.objectContaining({
+          mine: true,
+          maxResults: 20,
+          pageToken: 'playlist-page-123'
+        })
+      );
     });
 
     it('should track quota on addVideoToPlaylist', async () => {
