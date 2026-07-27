@@ -25,7 +25,7 @@ export function PostAnalyticsDetailPage() {
   });
   const [notFound, setNotFound] = useState(false);
   const [dateRange, setDateRange] = useState({
-    from: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
+    from: new Date(Date.now() - 90 * 24 * 60 * 60 * 1000),
     to: new Date()
   });
 

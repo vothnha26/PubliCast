@@ -207,7 +207,7 @@ export const facebookStrategy = {
                       <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: "#9CA3AF" }} />
                       <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: "#9CA3AF" }} />
                       <Tooltip contentStyle={{ borderRadius: 12, border: "none", boxShadow: "0 4px 12px rgba(0,0,0,0.05)" }} />
-                      <Area type="monotone" dataKey="views" stroke="#8E9BEE" strokeWidth={3} fillOpacity={1} fill="url(#colorFbViews)" />
+                      <Area type="monotone" dataKey={(d) => d.viewsDelta !== undefined ? d.viewsDelta : d.views} stroke="#8E9BEE" strokeWidth={3} fillOpacity={1} fill="url(#colorFbViews)" />
                     </AreaChart>
                   </ResponsiveContainer>
                 </div>

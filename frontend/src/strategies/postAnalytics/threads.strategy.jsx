@@ -80,7 +80,8 @@ export const threadsStrategy = {
 
   renderTabContent(tab, data) {
     const insightsStatus = data?.insights?.status;
-    const history = data?.insights?.data?.history || [];
+    const rawHistory = data?.insights?.data?.history;
+    const history = Array.isArray(rawHistory) ? rawHistory : (rawHistory?.snapshots || []);
     const latest = data?.insights?.data?.latest;
 
     if (insightsStatus === "error") {

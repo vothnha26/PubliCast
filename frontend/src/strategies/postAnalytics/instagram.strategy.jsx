@@ -88,7 +88,8 @@ export const instagramStrategy = {
 
   renderTabContent(tab, data) {
     const insightsStatus = data?.insights?.status;
-    const history = data?.insights?.data?.history || [];
+    const rawHistory = data?.insights?.data?.history;
+    const history = Array.isArray(rawHistory) ? rawHistory : (rawHistory?.snapshots || []);
 
     if (insightsStatus === "error") {
       return <div className="h-52 flex items-center justify-center text-xs text-red-500">Không thể tải dữ liệu Instagram.</div>;

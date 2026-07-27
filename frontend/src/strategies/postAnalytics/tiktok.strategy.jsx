@@ -93,7 +93,8 @@ export const tiktokStrategy = {
 
   renderTabContent(tab, data) {
     const insightsStatus = data?.insights?.status;
-    const history = data?.insights?.data?.history || [];
+    const rawHistory = data?.insights?.data?.history;
+    const history = Array.isArray(rawHistory) ? rawHistory : (rawHistory?.snapshots || []);
 
     if (insightsStatus === "error") {
       return (
