@@ -419,6 +419,7 @@ const API_VERSIONS = {
   FACEBOOK: 'v25.0',
   YOUTUBE: 'v3',
   YOUTUBE_ANALYTICS: 'v2',
+  GOOGLE_OAUTH: 'v2',
   TIKTOK: 'v2'
 };
 
