@@ -80,9 +80,34 @@ const YOUTUBE_CONSTRAINTS = Object.freeze({
   IMAGE_MIME_TYPES: Object.freeze(['image/jpeg', 'image/png', 'application/octet-stream'])
 });
 
+/**
+ * YouTube PubSubHubbub (WebSub) Protocol Constants
+ * @see {@link guide/youtube/youtube_api_specifications.md | PubSubHubbub Specification}
+ * @see {@link https://developers.google.com/youtube/v3/guides/push_notifications | Google Push Notifications Guide}
+ */
+const YOUTUBE_PUBSUB = Object.freeze({
+  HUB_URL: 'https://pubsubhubbub.appspot.com/subscribe',
+  topicUrl: (channelId) => `https://www.youtube.com/xml/feeds/videos.xml?channel_id=${channelId}`,
+  MODE: Object.freeze({
+    SUBSCRIBE: 'subscribe',
+    UNSUBSCRIBE: 'unsubscribe'
+  }),
+  STATUS: Object.freeze({
+    PENDING: 'PENDING',
+    SUBSCRIBED: 'SUBSCRIBED',
+    EXPIRED: 'EXPIRED',
+    FAILED: 'FAILED'
+  }),
+  /** Default Lease Time: 864,000 seconds (10 days) */
+  DEFAULT_LEASE_SECONDS: 864000,
+  /** Refresh subscription when remaining lease time is under 48 hours */
+  RENEWAL_THRESHOLD_MS: 48 * 60 * 60 * 1000
+});
+
 module.exports = {
   YOUTUBE_API,
   YOUTUBE_MODERATION_STATUS,
   YOUTUBE_SEARCH_TYPES,
-  YOUTUBE_CONSTRAINTS
+  YOUTUBE_CONSTRAINTS,
+  YOUTUBE_PUBSUB
 };
