@@ -58,11 +58,21 @@ class ValidationFacade {
         subType = 'VIDEO';
       }
 
+      const DEFAULT_PLATFORM_CAPTION_LIMITS = {
+        BLUESKY: 300,
+        THREADS: 500,
+        TELEGRAM: 1024,
+        TIKTOK: 2200,
+        INSTAGRAM: 2200,
+        YOUTUBE: 5000,
+        FACEBOOK: 63206
+      };
+
       // Find the specific limit from DB result
       const limitConfig = limits.find(l => l.platform === platUpper && l.subType === subType) || {
         platform: platUpper,
         subType,
-        maxCaptionLength: 2000,
+        maxCaptionLength: DEFAULT_PLATFORM_CAPTION_LIMITS[platUpper] || 2000,
         maxFileSizeMb: 100,
         allowedMediaTypes: 'ALL',
         allowedFormats: 'mp4,mov,png,jpg,jpeg'

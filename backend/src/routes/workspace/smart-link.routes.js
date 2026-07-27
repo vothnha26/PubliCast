@@ -23,5 +23,6 @@ router.put('/:id', verifyAuth, checkBrandAccess, requireFeature(PRODUCT_IDS.CUST
 // Public Endpoints
 router.get('/public/:slug', smartLinkPublicRateLimiter, smartLinkController.getPublicSmartLink);
 router.post('/click/:linkItemId', smartLinkPublicRateLimiter, smartLinkController.trackLinkClick);
+router.get('/r/:linkItemId', smartLinkPublicRateLimiter, smartLinkController.redirectLinkClick);
 
 module.exports = router;

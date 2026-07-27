@@ -387,12 +387,27 @@ class FacebookPostService {
 
   async _seedBaselineSnapshot(brandId, platformPostId, socialAccountId) {
     const details = await this.getPostDetails(brandId, platformPostId, socialAccountId);
+    const postRecord = await prisma.post.findFirst({
+      where: {
+        OR: [
+          { platformPostId: { contains: platformPostId } },
+          { id: platformPostId }
+        ]
+      },
+      select: { id: true, publishedAt: true, createdAt: true }
+    });
+
+    const defaultThreeMonthsAgo = new Date();
+    defaultThreeMonthsAgo.setDate(defaultThreeMonthsAgo.getDate() - 90);
+
+    const baselineDate = postRecord?.publishedAt || postRecord?.createdAt || (details.date ? new Date(details.date) : defaultThreeMonthsAgo);
+
     await upsertDailySnapshot({
-      postId: null,
+      postId: postRecord?.id || null,
       platformPostId,
       brandId,
       platform: PLATFORM.FACEBOOK,
-      date: new Date(),
+      date: baselineDate,
       metrics: {
         views: details.views,
         reach: details.reach,
@@ -410,7 +425,7 @@ class FacebookPostService {
    */
   async _readSnapshotSeries(platformPostId, startDate, endDate) {
     const end = endDate ? new Date(endDate) : new Date();
-    const start = startDate ? new Date(startDate) : new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+    const start = startDate ? new Date(startDate) : new Date(Date.now() - 90 * 24 * 60 * 60 * 1000);
     end.setUTCHours(0, 0, 0, 0);
     start.setUTCHours(0, 0, 0, 0);
 
@@ -432,28 +447,32 @@ class FacebookPostService {
       const dateStr = new Date(t).toISOString().split('T')[0];
       const row = byDate.get(dateStr);
 
+      const currentViews = row ? row.viewsCumulative : (lastKnown ? lastKnown.viewsCumulative : 0);
+      const currentReach = row ? row.reachCumulative : (lastKnown ? lastKnown.reachCumulative : 0);
+      const currentClicks = row ? row.clicksCumulative : (lastKnown ? lastKnown.clicksCumulative : 0);
+      const currentReactions = row ? row.reactionsCumulative : (lastKnown ? lastKnown.reactionsCumulative : 0);
+
+      const prevViews = lastKnown ? lastKnown.viewsCumulative : 0;
+      const prevReach = lastKnown ? lastKnown.reachCumulative : 0;
+      const prevClicks = lastKnown ? lastKnown.clicksCumulative : 0;
+      const prevReactions = lastKnown ? lastKnown.reactionsCumulative : 0;
+
       if (row) {
         lastKnown = row;
-        series.push({
-          date: dateStr,
-          views: row.viewsCumulative,
-          reach: row.reachCumulative,
-          clicks: row.clicksCumulative,
-          reactions: row.reactionsCumulative,
-          isEstimated: row.isEstimated
-        });
-      } else if (lastKnown) {
-        // Carry-forward: Facebook has no historical per-day API, so gap days
-        // repeat the last known cumulative totals and are flagged as estimated.
-        series.push({
-          date: dateStr,
-          views: lastKnown.viewsCumulative,
-          reach: lastKnown.reachCumulative,
-          clicks: lastKnown.clicksCumulative,
-          reactions: lastKnown.reactionsCumulative,
-          isEstimated: true
-        });
       }
+
+      series.push({
+        date: dateStr,
+        views: currentViews,
+        reach: currentReach,
+        clicks: currentClicks,
+        reactions: currentReactions,
+        viewsDelta: Math.max(0, currentViews - prevViews),
+        reachDelta: Math.max(0, currentReach - prevReach),
+        clicksDelta: Math.max(0, currentClicks - prevClicks),
+        reactionsDelta: Math.max(0, currentReactions - prevReactions),
+        isEstimated: !row && !!lastKnown
+      });
     }
 
     return {

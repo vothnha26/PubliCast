@@ -17,16 +17,17 @@ class FetchPostStep extends BaseStep {
     }
     context.platforms = platforms;
     
-    // Parse options from metadata
-    let options = context.postDataOptions || {};
-    if ((!options || Object.keys(options).length === 0) && post.metadata) {
+    // Parse options from metadata stored in DB
+    let parsedMetadata = {};
+    if (post.metadata) {
       try {
-        options = JSON.parse(post.metadata);
+        parsedMetadata = JSON.parse(post.metadata);
       } catch (e) {
         console.error('Failed to parse options in FetchPostStep:', e.message);
       }
     }
-    context.options = options;
+    // Merge: postDataOptions (như retryPlatforms) đè lên parsedMetadata
+    context.options = { ...parsedMetadata, ...(context.postDataOptions || {}) };
   }
 }
 
