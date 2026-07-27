@@ -119,15 +119,19 @@ class YouTubeGateway {
   /**
    * Lấy danh sách Comments từ Channel
    */
-  async getCommentThreads(auth, channelId, maxResults = 100) {
+  async getCommentThreads(auth, channelId, maxResults = 100, pageToken = null) {
     const youtube = google.youtube({ version: API_VERSIONS.YOUTUBE, auth });
-    const response = await youtube.commentThreads.list({
+    const params = {
       part: YOUTUBE_API_PARTS.COMMENT_THREADS_LIST,
       allThreadsRelatedToChannelId: channelId,
       maxResults,
       order: 'time',
       moderationStatus: YOUTUBE_MODERATION_STATUS.PUBLISHED
-    });
+    };
+    if (pageToken) {
+      params.pageToken = pageToken;
+    }
+    const response = await youtube.commentThreads.list(params);
     await this._trackQuota('youtube', YOUTUBE_QUOTA_COSTS.COMMENT_THREADS_LIST);
     return response;
   }

@@ -123,6 +123,18 @@ describe('YouTubeGateway Quota Tracking Unit Tests', () => {
       expect(mockQuotaService.incrementAndGet).toHaveBeenCalledWith('youtube', YOUTUBE_QUOTA_COSTS.COMMENT_THREADS_LIST);
     });
 
+    it('should pass pageToken and maxResults to Google API in getCommentThreads', async () => {
+      mockYoutubeInstance.commentThreads.list.mockResolvedValue({ data: {} });
+      await youtubeGateway.getCommentThreads('fake-auth', 'channel-123', 50, 'page-abc');
+      expect(mockYoutubeInstance.commentThreads.list).toHaveBeenCalledWith(
+        expect.objectContaining({
+          allThreadsRelatedToChannelId: 'channel-123',
+          maxResults: 50,
+          pageToken: 'page-abc'
+        })
+      );
+    });
+
     it('should track quota on insertCommentReply', async () => {
       mockYoutubeInstance.comments.insert.mockResolvedValue({ data: {} });
       await youtubeGateway.insertCommentReply('fake-auth', 'parent-123', 'text');

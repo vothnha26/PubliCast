@@ -1,6 +1,7 @@
 const BaseSyncStrategy = require('./base.strategy');
 const youtubeGateway = require('../../youtube/youtube.gateway');
 const googleOAuthService = require('../../google-oauth.service');
+const { YOUTUBE_COMMENT_SYNC } = require('../../youtube/youtube.constants');
 const socialAccountRepository = require('../../../../repositories/social/social-account.repository');
 const inboxRepository = require('../../../../repositories/social/inbox.repository');
 const { PLATFORMS, INBOX_STATUS, INBOX_TYPES } = require('../../../../utils/constants');
@@ -12,19 +13,26 @@ class YoutubeCommentSyncStrategy extends BaseSyncStrategy {
 
   async sync(brandId, inbox) {
     const { account, auth } = await this._getAccountAndAuth(brandId);
-    const response = await youtubeGateway.getCommentThreads(auth, account.platformAccountId);
-    if (!response.data.items) return [];
-
     const inboxItems = [];
-    for (const thread of response.data.items) {
-      const comment = thread.snippet.topLevelComment;
-      const item = await this._processComment(comment, account, inbox);
-      inboxItems.push(item);
+    let pageToken = null;
+    let pageCount = 0;
 
-      if (thread.replies && thread.replies.comments) {
-        await this._processReplies(thread.replies.comments, item.id, account, inbox);
+    do {
+      const response = await youtubeGateway.getCommentThreads(auth, account.platformAccountId, 100, pageToken);
+      if (response.data && response.data.items) {
+        for (const thread of response.data.items) {
+          const comment = thread.snippet.topLevelComment;
+          const item = await this._processComment(comment, account, inbox);
+          inboxItems.push(item);
+
+          if (thread.replies && thread.replies.comments) {
+            await this._processReplies(thread.replies.comments, item.id, account, inbox);
+          }
+        }
       }
-    }
+      pageToken = response.data?.nextPageToken || null;
+      pageCount++;
+    } while (pageToken && pageCount < YOUTUBE_COMMENT_SYNC.MAX_PAGES_PER_SYNC);
 
     return inboxItems;
   }
