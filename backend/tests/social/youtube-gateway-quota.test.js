@@ -1,6 +1,6 @@
 const youtubeGateway = require('../../src/services/social/youtube/youtube.gateway');
 const { google } = require('googleapis');
-const { YOUTUBE_QUOTA_COSTS } = require('../../src/services/social/youtube/youtube.constants');
+const { YOUTUBE_QUOTA_COSTS, YOUTUBE_API_PARTS } = require('../../src/services/social/youtube/youtube.constants');
 
 // Mock googleapis
 jest.mock('googleapis', () => {
@@ -76,8 +76,8 @@ describe('YouTubeGateway Quota Tracking Unit Tests', () => {
     it('should track quota on getPlaylistItems', async () => {
       mockYoutubeInstance.playlistItems.list.mockResolvedValue({ data: {} });
       await youtubeGateway.getPlaylistItems('fake-auth', 'playlist-123');
-      expect(spyTrackQuota).toHaveBeenCalledWith('youtube', YOUTUBE_QUOTA_COSTS.PLAYLISTS_LIST);
-      expect(mockQuotaService.incrementAndGet).toHaveBeenCalledWith('youtube', YOUTUBE_QUOTA_COSTS.PLAYLISTS_LIST);
+      expect(spyTrackQuota).toHaveBeenCalledWith('youtube', YOUTUBE_QUOTA_COSTS.PLAYLIST_ITEMS_LIST);
+      expect(mockQuotaService.incrementAndGet).toHaveBeenCalledWith('youtube', YOUTUBE_QUOTA_COSTS.PLAYLIST_ITEMS_LIST);
     });
 
     it('should track quota on getVideosList', async () => {
@@ -85,6 +85,21 @@ describe('YouTubeGateway Quota Tracking Unit Tests', () => {
       await youtubeGateway.getVideosList('fake-auth', ['v1', 'v2']);
       expect(spyTrackQuota).toHaveBeenCalledWith('youtube', YOUTUBE_QUOTA_COSTS.VIDEOS_LIST);
       expect(mockQuotaService.incrementAndGet).toHaveBeenCalledWith('youtube', YOUTUBE_QUOTA_COSTS.VIDEOS_LIST);
+    });
+
+    it('should request part including status field in getVideosList', async () => {
+      mockYoutubeInstance.videos.list.mockResolvedValue({ data: {} });
+      await youtubeGateway.getVideosList('fake-auth', ['v1']);
+      expect(mockYoutubeInstance.videos.list).toHaveBeenCalledWith(
+        expect.objectContaining({
+          part: expect.stringContaining('status')
+        })
+      );
+      expect(mockYoutubeInstance.videos.list).toHaveBeenCalledWith(
+        expect.objectContaining({
+          part: YOUTUBE_API_PARTS.VIDEOS_LIST
+        })
+      );
     });
 
     it('should track quota on searchChannels', async () => {
@@ -106,6 +121,18 @@ describe('YouTubeGateway Quota Tracking Unit Tests', () => {
       await youtubeGateway.getCommentThreads('fake-auth', 'channel-123');
       expect(spyTrackQuota).toHaveBeenCalledWith('youtube', YOUTUBE_QUOTA_COSTS.COMMENT_THREADS_LIST);
       expect(mockQuotaService.incrementAndGet).toHaveBeenCalledWith('youtube', YOUTUBE_QUOTA_COSTS.COMMENT_THREADS_LIST);
+    });
+
+    it('should pass pageToken and maxResults to Google API in getCommentThreads', async () => {
+      mockYoutubeInstance.commentThreads.list.mockResolvedValue({ data: {} });
+      await youtubeGateway.getCommentThreads('fake-auth', 'channel-123', 50, 'page-abc');
+      expect(mockYoutubeInstance.commentThreads.list).toHaveBeenCalledWith(
+        expect.objectContaining({
+          allThreadsRelatedToChannelId: 'channel-123',
+          maxResults: 50,
+          pageToken: 'page-abc'
+        })
+      );
     });
 
     it('should track quota on insertCommentReply', async () => {
@@ -149,6 +176,18 @@ describe('YouTubeGateway Quota Tracking Unit Tests', () => {
       await youtubeGateway.getPlaylists('fake-auth');
       expect(spyTrackQuota).toHaveBeenCalledWith('youtube', YOUTUBE_QUOTA_COSTS.PLAYLISTS_LIST);
       expect(mockQuotaService.incrementAndGet).toHaveBeenCalledWith('youtube', YOUTUBE_QUOTA_COSTS.PLAYLISTS_LIST);
+    });
+
+    it('should pass pageToken and limit to Google API in getPlaylists', async () => {
+      mockYoutubeInstance.playlists.list.mockResolvedValue({ data: {} });
+      await youtubeGateway.getPlaylists('fake-auth', 20, 'playlist-page-123');
+      expect(mockYoutubeInstance.playlists.list).toHaveBeenCalledWith(
+        expect.objectContaining({
+          mine: true,
+          maxResults: 20,
+          pageToken: 'playlist-page-123'
+        })
+      );
     });
 
     it('should track quota on addVideoToPlaylist', async () => {

@@ -1,7 +1,6 @@
 const BaseSocialService = require('../base-social.service');
 const youtubeAnalytics = require('./youtube-analytics.service');
 const youtubeVideo = require('./youtube-video.service');
-const youtubeComment = require('./youtube-comment.service');
 const youtubePublish = require('./youtube-publish.service');
 
 const youtubePubSub = require('./youtube-pubsub.service');
@@ -84,13 +83,6 @@ class YouTubeService extends BaseSocialService {
   }
 
   // --- Comments & Interactions ---
-  async fetchChannelComments(brandId) {
-    return youtubeComment.fetchChannelComments(brandId);
-  }
-
-  async replyToComment(brandId, parentCommentId, text) {
-    return youtubeComment.replyToComment(brandId, parentCommentId, text);
-  }
 
   // --- Publishing ---
   async publishPost(brandId, postData) {

@@ -105,15 +105,21 @@ class YouTubeVideoService {
     }
 
     const { auth } = await this._getAuthContext(brandId);
-    const res = await youtubeGateway.getPlaylists(auth);
-    if (!res.data.items) return [];
+    const playlists = [];
+    let pageToken = null;
 
-    const playlists = res.data.items.map(item => ({
-      id: item.id,
-      title: item.snippet.title,
-      description: item.snippet.description,
-      itemCount: item.contentDetails.itemCount
-    }));
+    do {
+      const res = await youtubeGateway.getPlaylists(auth, 50, pageToken);
+      if (res.data.items) {
+        playlists.push(...res.data.items.map(item => ({
+          id: item.id,
+          title: item.snippet.title,
+          description: item.snippet.description,
+          itemCount: item.contentDetails.itemCount
+        })));
+      }
+      pageToken = res.data.nextPageToken || null;
+    } while (pageToken);
 
     youtubePlaylistCache.set(brandId, playlists);
     return playlists;

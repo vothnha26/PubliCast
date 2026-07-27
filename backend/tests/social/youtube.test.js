@@ -174,7 +174,8 @@ describe('YouTubeService', () => {
           playlistId: 'playlistId123',
           tags: 'tag1, tag2',
           madeForKids: true,
-          firstComment: 'Top level comment!'
+          firstComment: 'Top level comment!',
+          privacyStatus: 'private'
         }
       };
 
@@ -292,7 +293,8 @@ describe('YouTubeService', () => {
         mediaUrls: 'http://example.com/video.mp4',
         options: {
           youtubeType: 'short',
-          youtubeTitle: 'My Short Video'
+          youtubeTitle: 'My Short Video',
+          privacyStatus: 'private'
         }
       };
 
@@ -337,11 +339,12 @@ describe('YouTubeService', () => {
     });
 
     it('should configure publishAt and force private status when scheduledAt is provided', async () => {
+      const futureScheduledAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
       const mockPostData = {
         title: 'Scheduled Title',
         caption: 'Scheduled Caption',
         mediaUrls: 'http://example.com/video.mp4',
-        scheduledAt: '2026-07-05T10:00:00.000Z',
+        scheduledAt: futureScheduledAt,
         options: {
           privacyStatus: 'public'
         }
@@ -379,7 +382,7 @@ describe('YouTubeService', () => {
         categoryId: '22',
         selfDeclaredMadeForKids: false,
         tags: [],
-        publishAt: '2026-07-05T10:00:00.000Z'
+        publishAt: futureScheduledAt
       });
 
       expect(result.platformVideoId).toBe('ytVideoId123');
