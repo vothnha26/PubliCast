@@ -22,8 +22,20 @@ export function PreviewBody() {
     facebookTitle,
     instagramType,
     imageTransform,
-    albumMedia
+    albumMedia,
+    useUrlShortener
   } = usePostCreatorFormContext();
+
+  // Mô phỏng rút gọn link thời gian thực khi sử dụng UrlShortener
+  const simulatedCaption = React.useMemo(() => {
+    if (!caption || !useUrlShortener) return caption;
+    const urlRegex = /(https?:\/\/[^\s<]+)/g;
+    let idx = 1;
+    return caption.replace(urlRegex, (url) => {
+      if (url.includes('/sl/')) return url;
+      return `https://publicast.link/link_${idx++}`;
+    });
+  }, [caption, useUrlShortener]);
 
   const PreviewComponent = PreviewStrategies[activePlatform];
 
@@ -32,7 +44,7 @@ export function PreviewBody() {
       <div className="w-full max-w-sm">
         {PreviewComponent && (
           <PreviewComponent 
-            caption={caption} 
+            caption={simulatedCaption} 
             videoFileUrl={videoFileUrl}
             videoFile={videoFile}
             youtubeType={youtubeType}

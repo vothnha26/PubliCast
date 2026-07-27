@@ -65,8 +65,9 @@ export function usePostCreatorForm() {
   const [scheduledDate, setScheduledDate] = useState(() => toLocalDatetimeString(new Date()));
   const [isLibrary, setIsLibrary] = useState(false);
 
-  // Presets Accordion States
+  // Global Presets States
   const [globalOpen, setGlobalOpen] = useState(false);
+  const [useUrlShortener, setUseUrlShortener] = useState(false);
   const [youtubeOpen, setYoutubeOpen] = useState(false);
   const [facebookOpen, setFacebookOpen] = useState(false);
   const [tiktokOpen, setTiktokOpen] = useState(false);
@@ -137,6 +138,7 @@ export function usePostCreatorForm() {
       setScheduledDate(backup.scheduledDate ?? "");
       setIsLibrary(backup.isLibrary ?? false);
       setGlobalOpen(backup.globalOpen ?? false);
+      setUseUrlShortener(backup.useUrlShortener ?? false);
       setYoutubeOpen(backup.youtubeOpen ?? false);
       setFacebookOpen(backup.facebookOpen ?? false);
       setTiktokOpen(backup.tiktokOpen ?? false);
@@ -386,7 +388,8 @@ export function usePostCreatorForm() {
       platformLimits,
       mediaCount: isAlbum ? albumMedia.length : (postMedia ? postMedia.length : 0),
       editingPost,
-      postMedia
+      postMedia,
+      captionText: caption
     });
   };
 
@@ -846,6 +849,7 @@ export function usePostCreatorForm() {
           albumMedia,
           mediaCaptions,
           threadsWhoCanReply,
+          useUrlShortener,
           notes,
           videoSettings
         }
@@ -937,6 +941,8 @@ export function usePostCreatorForm() {
     setIsLibrary,
     globalOpen,
     setGlobalOpen,
+    useUrlShortener,
+    setUseUrlShortener,
     youtubeOpen,
     setYoutubeOpen,
     youtubeType,

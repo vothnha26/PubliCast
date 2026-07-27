@@ -498,26 +498,32 @@ export function ComposerBody() {
             
             <div className="flex items-center gap-3">
               <div className="group relative cursor-help">
-                <span className="text-[11px] font-bold text-gray-400 group-hover:text-gray-600 transition-colors tracking-wide font-sans">
-                  {caption.length} / {(() => {
-                    if (!platformLimits || platformLimits.length === 0) {
-                      const fallbacks = {
-                        facebook: 63206,
-                        instagram: 2200,
-                        tiktok: 2200,
-                        youtube: 5000,
-                        telegram: 4096,
-                        threads: 500,
-                        bluesky: 300,
-                        twitch: 500,
-                        reddit: 40000
-                      };
-                      return fallbacks[activePlatform.toLowerCase()] || 5000;
-                    }
+                {(() => {
+                  const fallbacks = {
+                    facebook: 63206,
+                    instagram: 2200,
+                    tiktok: 2200,
+                    youtube: 5000,
+                    telegram: 1024,
+                    threads: 500,
+                    bluesky: 300,
+                    twitch: 500,
+                    reddit: 40000
+                  };
+                  let maxLimit = fallbacks[activePlatform.toLowerCase()] || 5000;
+                  if (platformLimits && platformLimits.length > 0) {
                     const limitObj = platformLimits.find(l => l.platform.toLowerCase() === activePlatform.toLowerCase());
-                    return limitObj ? limitObj.maxCharacters : 5000;
-                  })()}
-                </span>
+                    if (limitObj && (limitObj.maxCharacters || limitObj.maxCaptionLength)) {
+                      maxLimit = limitObj.maxCharacters || limitObj.maxCaptionLength;
+                    }
+                  }
+                  const isExceeded = caption.length > maxLimit;
+                  return (
+                    <span className={`text-[11px] font-bold transition-colors tracking-wide font-sans ${isExceeded ? 'text-red-500 font-extrabold animate-pulse' : 'text-gray-400 group-hover:text-gray-600'}`}>
+                      {caption.length} / {maxLimit}
+                    </span>
+                  );
+                })()}
                 <div className="absolute bottom-full right-0 mb-3 w-56 p-3 bg-white rounded-xl shadow-xl border border-gray-100 hidden group-hover:block animate-in fade-in slide-in-from-bottom-1 z-50">
                   <p className="text-[10px] text-gray-500 leading-normal font-sans">{t("planner:postCreator.composer.characterLimitDesc", { platform: activePlatform })}</p>
                 </div>

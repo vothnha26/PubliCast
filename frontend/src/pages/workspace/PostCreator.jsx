@@ -66,6 +66,8 @@ export function PostCreatorPage() {
     activePlatform,
     setActivePlatform,
     platformLimits,
+    useUrlShortener,
+    setUseUrlShortener,
     previewDevice,
     setPreviewDevice,
     showPublishMenu,
@@ -240,7 +242,6 @@ export function PostCreatorPage() {
   const [editingPostMediaIndex, setEditingPostMediaIndex] = useState(null);
   const [imageTransform, setImageTransform] = useState({ rotation: 0, flipH: false, flipV: false, filter: 'none' });
   const [showAltTextModal, setShowAltTextModal] = useState(false);
-  const [useUrlShortener, setUseUrlShortener] = useState(false);
   
   const [showTemplatePicker, setShowTemplatePicker] = useState(false);
   const [templates, setTemplates] = useState([]);

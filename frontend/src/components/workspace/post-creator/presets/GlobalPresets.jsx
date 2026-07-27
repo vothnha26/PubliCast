@@ -45,7 +45,7 @@ export function GlobalPresets() {
               </div>
               <div className="text-left">
                 <div className="text-xs font-bold text-gray-800 font-sans">SmartLinks (URL Shortener)</div>
-                <div className="text-[10px] text-gray-400 font-medium font-sans">Auto-shorten links in your post body and track analytics.</div>
+                <div className="text-[10px] text-gray-400 font-medium font-sans">Auto-shorten links in your post body & first comment, and track analytics.</div>
               </div>
             </div>
             <button

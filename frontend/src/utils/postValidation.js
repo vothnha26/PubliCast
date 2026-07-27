@@ -24,7 +24,8 @@ export function validatePostForm({
   platformLimits = [],
   mediaCount = 0,
   editingPost,
-  postMedia = []
+  postMedia = [],
+  captionText = ''
 }) {
   const errors = [];
   if (isLibrary || selectedPublishId === 'draft') {
@@ -152,6 +153,12 @@ export function validatePostForm({
           errors.push(`[${platUpper} - ${subType}] Video duration (${Math.round(videoDuration)}s) is longer than the maximum allowed ${limitConfig.maxVideoDuration}s.`);
         }
       }
+    }
+
+    // Validate độ dài caption theo từng nền tảng
+    const maxLen = limitConfig.maxCaptionLength || limitConfig.maxCharacters;
+    if (maxLen && captionText && captionText.length > maxLen) {
+      errors.push(`[${platUpper} - ${subType}] Caption length exceeds the maximum limit of ${maxLen} characters.`);
     }
 
     // Bắt buộc có media đối với Reels/Stories/Shorts/TikTok/YouTube

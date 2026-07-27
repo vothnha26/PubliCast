@@ -4,9 +4,16 @@ import {
   GripVertical, Trash2, Image, FileText, 
   Smile, Folder, Hash, Link2, Youtube, 
   Facebook, Instagram, PlaySquare, Film, X,
-  MessageSquare, Languages, AlertCircle, Pencil
+  MessageSquare, Languages, AlertCircle, Pencil,
+  MoreVertical, Copy, Sparkles, Building2, Crown
 } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { EmojiPickerPopover } from "@/components/workspace/post-creator/EmojiPickerPopover";
 import { UTMGeneratorPopover } from "@/components/workspace/post-creator/UTMGeneratorPopover";
 import { FirstCommentModal } from "@/components/workspace/post-creator/FirstCommentModal";
@@ -227,7 +234,7 @@ export function AutoListPostCard({
         onChange={handleFileChange}
       />
 
-      {/* Top Bar: Drag handle & Index pill & Validation Badge */}
+      {/* Top Bar: Drag handle & Index pill & Validation Badge & Action Menu */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <div className="text-gray-400 cursor-grab active:cursor-grabbing hover:text-gray-600">
@@ -238,12 +245,88 @@ export function AutoListPostCard({
           </div>
         </div>
 
-        {validationErrors.length > 0 && (
-          <div className="flex items-center gap-1.5 px-2.5 py-0.5 bg-red-100 border border-red-200 text-red-700 rounded-full text-[10px] font-extrabold font-sans">
-            <AlertCircle size={12} className="text-red-500 shrink-0" />
-            <span>{validationErrors.length} {validationErrors.length === 1 ? 'Error' : 'Errors'}</span>
-          </div>
-        )}
+        <div className="flex items-center gap-2">
+          {validationErrors.length > 0 && (
+            <div className="flex items-center gap-1.5 px-2.5 py-0.5 bg-red-100 border border-red-200 text-red-700 rounded-full text-[10px] font-extrabold font-sans">
+              <AlertCircle size={12} className="text-red-500 shrink-0" />
+              <span>{validationErrors.length} {validationErrors.length === 1 ? 'Error' : 'Errors'}</span>
+            </div>
+          )}
+
+          {/* Action Dropdown Menu matching image.png */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button 
+                type="button" 
+                className="p-1 rounded-lg hover:bg-gray-200/80 text-gray-500 hover:text-gray-800 transition-colors cursor-pointer outline-none"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <MoreVertical size={16} />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-72 p-1.5 bg-white rounded-xl shadow-xl border border-gray-100 font-sans z-50">
+              {/* Copy link */}
+              <DropdownMenuItem 
+                onClick={() => {
+                  navigator.clipboard.writeText(caption);
+                  toast.success("Post content copied to clipboard!");
+                }}
+                className="flex items-center gap-3 px-3 py-2 text-xs font-semibold text-gray-700 hover:bg-gray-50 rounded-lg cursor-pointer transition-colors"
+              >
+                <Link2 size={16} className="text-gray-600 shrink-0" />
+                <span>Copy link</span>
+              </DropdownMenuItem>
+
+              {/* Send to review (Highlighted / Premium style like screenshot) */}
+              <DropdownMenuItem 
+                onClick={() => toast.info("Sent to review")}
+                className="flex items-center gap-3 px-3 py-2 text-xs font-semibold text-gray-500 bg-amber-50/60 hover:bg-amber-50 rounded-lg cursor-pointer transition-colors"
+              >
+                <div className="w-5 h-5 rounded-full bg-amber-300/60 flex items-center justify-center shrink-0">
+                  <Crown size={12} className="text-amber-800" />
+                </div>
+                <span className="text-gray-400">Send to review</span>
+              </DropdownMenuItem>
+
+              {/* Duplicate in another brand */}
+              <DropdownMenuItem 
+                onClick={() => toast.info("Duplicate in another brand")}
+                className="flex flex-col items-start gap-0.5 px-3 py-2 text-xs text-gray-700 hover:bg-gray-50 rounded-lg cursor-pointer transition-colors"
+              >
+                <div className="flex items-center gap-3 font-semibold text-gray-800">
+                  <Building2 size={16} className="text-gray-600 shrink-0" />
+                  <span>Duplicate in another brand</span>
+                </div>
+                <p className="text-[10px] text-gray-400 pl-7 leading-tight">
+                  Copy to other brands with a simple day and time setup
+                </p>
+              </DropdownMenuItem>
+
+              {/* Duplicate in another brand (advanced) */}
+              <DropdownMenuItem 
+                onClick={() => toast.info("Duplicate in another brand (advanced)")}
+                className="flex flex-col items-start gap-0.5 px-3 py-2 text-xs text-gray-700 hover:bg-gray-50 rounded-lg cursor-pointer transition-colors"
+              >
+                <div className="flex items-center gap-3 font-semibold text-gray-800">
+                  <Sparkles size={16} className="text-gray-600 shrink-0" />
+                  <span>Duplicate in another brand (advanced)</span>
+                </div>
+                <p className="text-[10px] text-gray-400 pl-7 leading-tight">
+                  Copy to other brands and schedule cadency, duration, and best times
+                </p>
+              </DropdownMenuItem>
+
+              {/* Delete */}
+              <DropdownMenuItem 
+                onClick={() => onDelete(post.id)}
+                className="flex items-center gap-3 px-3 py-2 text-xs font-semibold text-red-600 hover:bg-red-50 rounded-lg cursor-pointer transition-colors mt-0.5 border-t border-gray-100"
+              >
+                <Trash2 size={16} className="text-red-500 shrink-0" />
+                <span>Delete</span>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
       </div>
 
       {/* Editor Box */}
