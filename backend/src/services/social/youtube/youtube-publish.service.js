@@ -5,6 +5,7 @@ const { Readable } = require('stream');
 
 const { PLATFORMS, POST_STATUS, YOUTUBE_PRIVACY, YOUTUBE_CATEGORIES, SEPARATORS, POST_TYPES, splitMediaUrls } = require('../../../utils/constants');
 const { YOUTUBE_API, YOUTUBE_CONSTRAINTS } = require('./youtube.constants');
+const { validateImageConstraints } = require('./youtube-media-validator.util');
 const fs = require('fs');
 const path = require('path');
 
@@ -225,11 +226,16 @@ class YouTubePublishService {
       try {
         // Pre-validate thumbnail size before streaming to Google API
         // ref: guide/youtube/reference_api/thumbnails.md — max 2MB
-        await this._validateImageSize(options.youtubeThumbnail, YOUTUBE_CONSTRAINTS.THUMBNAIL_MAX_SIZE_BYTES, 'Thumbnail');
+        const { ok, error, mimeType } = await validateImageConstraints(options.youtubeThumbnail, {
+          maxSizeBytes: YOUTUBE_CONSTRAINTS.THUMBNAIL_MAX_SIZE_BYTES,
+          allowedMimeTypes: YOUTUBE_CONSTRAINTS.IMAGE_MIME_TYPES,
+          resourceLabel: 'Thumbnail'
+        });
+        if (!ok) {
+          throw new Error(error);
+        }
         const imageStream = await this._prepareImageStream(options.youtubeThumbnail);
-        const ext = path.extname(Array.isArray(options.youtubeThumbnail) ? options.youtubeThumbnail[0] : options.youtubeThumbnail).toLowerCase();
-        const mimeType = ext === '.png' ? 'image/png' : 'image/jpeg';
-        await youtubeGateway.setCustomThumbnail(auth, videoId, imageStream, mimeType);
+        await youtubeGateway.setCustomThumbnail(auth, videoId, imageStream, mimeType || 'image/jpeg');
         console.log(`[YouTube Post-Upload] Successfully set custom thumbnail for video ${videoId}`);
       } catch (err) {
         console.error(`[YouTube Post-Upload] Setting custom thumbnail failed: ${err.message}`);
@@ -262,37 +268,7 @@ class YouTubePublishService {
     return fs.createReadStream(localPath);
   }
 
-  /**
-   * Kiểm tra kích thước file ảnh (từ URL hoặc local path) trước khi upload.
-   * Fail-fast để tránh nhận lỗi 400/413 từ Google API sau khi đã stream file lớn.
-   * ref: guide/youtube/reference_api/thumbnails.md — max 2MB
-   */
-  async _validateImageSize(imageUrl, maxSizeBytes, resourceLabel = 'Image') {
-    const resolvedUrl = Array.isArray(imageUrl) ? imageUrl[0] : imageUrl;
-    if (!resolvedUrl) return;
 
-    if (resolvedUrl.startsWith('http')) {
-      // HEAD request để lấy Content-Length mà không download toàn bộ file
-      const response = await fetch(resolvedUrl, { method: 'HEAD' });
-      const contentLength = parseInt(response.headers.get('content-length') || '0', 10);
-      if (contentLength > 0 && contentLength > maxSizeBytes) {
-        const sizeMB = (contentLength / (1024 * 1024)).toFixed(2);
-        const limitMB = (maxSizeBytes / (1024 * 1024)).toFixed(0);
-        throw new Error(`[YouTube] ${resourceLabel} size (${sizeMB}MB) exceeds YouTube API limit of ${limitMB}MB.`);
-      }
-      return;
-    }
-
-    const localPath = path.join(__dirname, '../../../../', resolvedUrl.replace(/^\//, ''));
-    if (fs.existsSync(localPath)) {
-      const { size } = fs.statSync(localPath);
-      if (size > maxSizeBytes) {
-        const sizeMB = (size / (1024 * 1024)).toFixed(2);
-        const limitMB = (maxSizeBytes / (1024 * 1024)).toFixed(0);
-        throw new Error(`[YouTube] ${resourceLabel} size (${sizeMB}MB) exceeds YouTube API limit of ${limitMB}MB.`);
-      }
-    }
-  }
 
   async deletePost(brandId, platformPostId) {
     const { auth } = await this._getAuthContext(brandId);

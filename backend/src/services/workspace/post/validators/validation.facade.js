@@ -98,7 +98,7 @@ class ValidationFacade {
       }
 
       const validator = validatorFactory.getValidator(platUpper, limitConfig);
-      const errors = validator.validate(postData, mediaInfo);
+      const errors = await validator.validate(postData, mediaInfo);
 
       if (errors.length > 0) {
         allErrors.push(...errors.map(err => `[${platUpper} - ${subType}] ${err}`));
