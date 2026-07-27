@@ -2,7 +2,7 @@ const youtubeGateway = require('./youtube.gateway');
 const googleOAuthService = require('../google-oauth.service');
 const socialAccountRepository = require('../../../repositories/social/social-account.repository');
 const trackedVideoRepository = require('../../../repositories/social/tracked-video.repository');
-const { PLATFORMS, POST_STATUS, SEPARATORS } = require('../../../utils/constants');
+const { PLATFORMS, POST_STATUS, SEPARATORS, YOUTUBE_API } = require('../../../utils/constants');
 
 class YouTubeVideoService {
   async getPublishedVideos(brandId, pageToken = null, limit = 10, socialAccountId = null) {
@@ -167,8 +167,8 @@ class YouTubeVideoService {
       comments: v.statistics.commentCount,
       duration: v.contentDetails.duration,
       status: POST_STATUS.PUBLISHED,
-      platform: 'YOUTUBE',
-      postUrl: `https://www.youtube.com/watch?v=${v.id}`
+      platform: PLATFORMS.YOUTUBE,
+      postUrl: YOUTUBE_API.videoUrl(v.id)
     }));
   }
 

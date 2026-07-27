@@ -1,5 +1,5 @@
 const { google } = require('googleapis');
-const { YOUTUBE_CATEGORIES, API_VERSIONS, YOUTUBE_PRIVACY } = require('../../../utils/constants');
+const { YOUTUBE_CATEGORIES, API_VERSIONS, YOUTUBE_PRIVACY, YOUTUBE_MODERATION_STATUS, YOUTUBE_SEARCH_TYPES } = require('../../../utils/constants');
 
 class YouTubeGateway {
   /**
@@ -54,7 +54,7 @@ class YouTubeGateway {
     return youtube.search.list({
       part: 'snippet',
       q: query,
-      type: 'channel',
+      type: YOUTUBE_SEARCH_TYPES.CHANNEL,
       maxResults
     });
   }
@@ -90,7 +90,7 @@ class YouTubeGateway {
       allThreadsRelatedToChannelId: channelId,
       maxResults,
       order: 'time',
-      moderationStatus: 'published'
+      moderationStatus: YOUTUBE_MODERATION_STATUS.PUBLISHED
     });
   }
 

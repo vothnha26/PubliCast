@@ -384,6 +384,21 @@ const YOUTUBE_API = {
   videoUrl: (videoId) => `https://www.youtube.com/watch?v=${videoId}`
 };
 
+// ref: guide/youtube/reference_api/commentThreads.md — moderationStatus parameter
+const YOUTUBE_MODERATION_STATUS = Object.freeze({
+  PUBLISHED: 'published',
+  HELD_FOR_REVIEW: 'heldForReview',
+  LIKELY_SPAM: 'likelySpam',
+  REJECTED: 'rejected'
+});
+
+// ref: guide/youtube/reference_api/search.md — type parameter
+const YOUTUBE_SEARCH_TYPES = Object.freeze({
+  VIDEO: 'video',
+  CHANNEL: 'channel',
+  PLAYLIST: 'playlist'
+});
+
 const GOOGLE_SCOPES = {
   YOUTUBE: 'https://www.googleapis.com/auth/youtube',
   YOUTUBE_READONLY: 'https://www.googleapis.com/auth/youtube.readonly',
@@ -688,6 +703,8 @@ module.exports = {
   SYSTEM_PLANS,
   YOUTUBE_PRIVACY,
   YOUTUBE_CATEGORIES,
+  YOUTUBE_MODERATION_STATUS,
+  YOUTUBE_SEARCH_TYPES,
   NOTIFICATION_TYPES,
   DEFAULT_CONFIG,
   FACEBOOK_API,
