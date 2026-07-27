@@ -93,10 +93,16 @@ class BlueskyGateway {
           'Authorization': `Bearer ${token}`
         }
       });
-      if (!statusRes.ok) {
-        throw new Error(`Video job status check failed: HTTP ${statusRes.status}`);
+      const statusData = await statusRes.json().catch(() => ({}));
+
+      if (statusData.jobStatus?.blob) {
+        return statusData.jobStatus.blob;
       }
-      const statusData = await statusRes.json();
+
+      if (!statusRes.ok) {
+        throw new Error(`Video job status check failed: HTTP ${statusRes.status}${statusData.jobStatus?.error ? ` (${statusData.jobStatus.error})` : ''}`);
+      }
+
       if (statusData.jobStatus?.state === 'JOB_STATE_COMPLETED') {
         return statusData.jobStatus.blob;
       }
