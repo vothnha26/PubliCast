@@ -1,6 +1,6 @@
 const youtubeGateway = require('../../src/services/social/youtube/youtube.gateway');
 const { google } = require('googleapis');
-const { YOUTUBE_QUOTA_COSTS } = require('../../src/services/social/youtube/youtube.constants');
+const { YOUTUBE_QUOTA_COSTS, YOUTUBE_API_PARTS } = require('../../src/services/social/youtube/youtube.constants');
 
 // Mock googleapis
 jest.mock('googleapis', () => {
@@ -85,6 +85,21 @@ describe('YouTubeGateway Quota Tracking Unit Tests', () => {
       await youtubeGateway.getVideosList('fake-auth', ['v1', 'v2']);
       expect(spyTrackQuota).toHaveBeenCalledWith('youtube', YOUTUBE_QUOTA_COSTS.VIDEOS_LIST);
       expect(mockQuotaService.incrementAndGet).toHaveBeenCalledWith('youtube', YOUTUBE_QUOTA_COSTS.VIDEOS_LIST);
+    });
+
+    it('should request part including status field in getVideosList', async () => {
+      mockYoutubeInstance.videos.list.mockResolvedValue({ data: {} });
+      await youtubeGateway.getVideosList('fake-auth', ['v1']);
+      expect(mockYoutubeInstance.videos.list).toHaveBeenCalledWith(
+        expect.objectContaining({
+          part: expect.stringContaining('status')
+        })
+      );
+      expect(mockYoutubeInstance.videos.list).toHaveBeenCalledWith(
+        expect.objectContaining({
+          part: YOUTUBE_API_PARTS.VIDEOS_LIST
+        })
+      );
     });
 
     it('should track quota on searchChannels', async () => {

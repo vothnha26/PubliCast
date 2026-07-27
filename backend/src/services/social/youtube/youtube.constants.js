@@ -108,6 +108,19 @@ const YOUTUBE_PUBSUB = Object.freeze({
   RENEWAL_STARTUP_DELAY_MS: 90 * 1000
 });
 
+const YOUTUBE_API_PARTS = Object.freeze({
+  CHANNELS_LIST: 'snippet,statistics,contentDetails',
+  PLAYLIST_ITEMS_LIST: 'snippet,contentDetails',
+  VIDEOS_LIST: 'statistics,contentDetails,snippet,status',
+  SEARCH: 'snippet',
+  COMMENT_THREADS_LIST: 'snippet,replies',
+  COMMENTS: 'snippet',
+  VIDEOS_INSERT: 'snippet,status',
+  PLAYLISTS_LIST: 'snippet,contentDetails',
+  PLAYLIST_ITEMS_INSERT: 'snippet',
+  COMMENT_THREADS_INSERT: 'snippet'
+});
+
 const YOUTUBE_QUOTA_COSTS = Object.freeze({
   VIDEOS_LIST: 1,
   VIDEOS_INSERT: 1,
@@ -131,5 +144,6 @@ module.exports = {
   YOUTUBE_SEARCH_TYPES,
   YOUTUBE_CONSTRAINTS,
   YOUTUBE_PUBSUB,
-  YOUTUBE_QUOTA_COSTS
+  YOUTUBE_QUOTA_COSTS,
+  YOUTUBE_API_PARTS
 };

@@ -1,6 +1,6 @@
 const { google } = require('googleapis');
 const { YOUTUBE_CATEGORIES, API_VERSIONS, YOUTUBE_PRIVACY } = require('../../../utils/constants');
-const { YOUTUBE_MODERATION_STATUS, YOUTUBE_SEARCH_TYPES, YOUTUBE_QUOTA_COSTS } = require('./youtube.constants');
+const { YOUTUBE_MODERATION_STATUS, YOUTUBE_SEARCH_TYPES, YOUTUBE_QUOTA_COSTS, YOUTUBE_API_PARTS } = require('./youtube.constants');
 const QuotaTrackerService = require('../quota-tracker.service');
 
 let redisClient = null;
@@ -34,7 +34,7 @@ class YouTubeGateway {
   async getChannelList(auth, mine = true, id = null) {
     const youtube = google.youtube({ version: API_VERSIONS.YOUTUBE, auth });
     const params = {
-      part: 'snippet,statistics,contentDetails'
+      part: YOUTUBE_API_PARTS.CHANNELS_LIST
     };
     if (mine) {
       params.mine = true;
@@ -56,7 +56,7 @@ class YouTubeGateway {
   async getPlaylistItems(auth, playlistId, limit, pageToken) {
     const youtube = google.youtube({ version: API_VERSIONS.YOUTUBE, auth });
     const response = await youtube.playlistItems.list({
-      part: 'snippet,contentDetails',
+      part: YOUTUBE_API_PARTS.PLAYLIST_ITEMS_LIST,
       playlistId,
       maxResults: parseInt(limit) || 10,
       pageToken
@@ -71,7 +71,7 @@ class YouTubeGateway {
   async getVideosList(auth, videoIds) {
     const youtube = google.youtube({ version: API_VERSIONS.YOUTUBE, auth });
     const response = await youtube.videos.list({
-      part: 'statistics,contentDetails,snippet',
+      part: YOUTUBE_API_PARTS.VIDEOS_LIST,
       id: videoIds
     });
     await this._trackQuota('youtube', YOUTUBE_QUOTA_COSTS.VIDEOS_LIST);
@@ -84,7 +84,7 @@ class YouTubeGateway {
   async searchChannels(auth, query, maxResults = 5) {
     const youtube = google.youtube({ version: API_VERSIONS.YOUTUBE, auth });
     const response = await youtube.search.list({
-      part: 'snippet',
+      part: YOUTUBE_API_PARTS.SEARCH,
       q: query,
       type: YOUTUBE_SEARCH_TYPES.CHANNEL,
       maxResults
@@ -101,7 +101,7 @@ class YouTubeGateway {
     const { q, type, maxResults = 50, publishedAfter, publishedBefore, forMine } = options;
     
     const params = {
-      part: 'snippet',
+      part: YOUTUBE_API_PARTS.SEARCH,
       maxResults,
       type
     };
@@ -122,7 +122,7 @@ class YouTubeGateway {
   async getCommentThreads(auth, channelId, maxResults = 100) {
     const youtube = google.youtube({ version: API_VERSIONS.YOUTUBE, auth });
     const response = await youtube.commentThreads.list({
-      part: 'snippet,replies',
+      part: YOUTUBE_API_PARTS.COMMENT_THREADS_LIST,
       allThreadsRelatedToChannelId: channelId,
       maxResults,
       order: 'time',
@@ -138,7 +138,7 @@ class YouTubeGateway {
   async insertCommentReply(auth, parentId, text) {
     const youtube = google.youtube({ version: API_VERSIONS.YOUTUBE, auth });
     const response = await youtube.comments.insert({
-      part: 'snippet',
+      part: YOUTUBE_API_PARTS.COMMENTS,
       requestBody: {
         snippet: {
           parentId,
@@ -153,7 +153,7 @@ class YouTubeGateway {
   async updateComment(auth, commentId, text) {
     const youtube = google.youtube({ version: API_VERSIONS.YOUTUBE, auth });
     const response = await youtube.comments.update({
-      part: 'snippet',
+      part: YOUTUBE_API_PARTS.COMMENTS,
       requestBody: {
         id: commentId,
         snippet: {
@@ -216,7 +216,7 @@ class YouTubeGateway {
     }
 
     const response = await youtube.videos.insert({
-      part: 'snippet,status',
+      part: YOUTUBE_API_PARTS.VIDEOS_INSERT,
       requestBody,
       media: {
         body: videoStream
@@ -232,7 +232,7 @@ class YouTubeGateway {
   async getPlaylists(auth, limit = 50) {
     const youtube = google.youtube({ version: API_VERSIONS.YOUTUBE, auth });
     const response = await youtube.playlists.list({
-      part: 'snippet,contentDetails',
+      part: YOUTUBE_API_PARTS.PLAYLISTS_LIST,
       mine: true,
       maxResults: limit
     });
@@ -246,7 +246,7 @@ class YouTubeGateway {
   async addVideoToPlaylist(auth, playlistId, videoId) {
     const youtube = google.youtube({ version: API_VERSIONS.YOUTUBE, auth });
     const response = await youtube.playlistItems.insert({
-      part: 'snippet',
+      part: YOUTUBE_API_PARTS.PLAYLIST_ITEMS_INSERT,
       requestBody: {
         snippet: {
           playlistId, resourceId: { kind: 'youtube#video', videoId }
@@ -263,7 +263,7 @@ class YouTubeGateway {
   async insertCommentThread(auth, videoId, text) {
     const youtube = google.youtube({ version: API_VERSIONS.YOUTUBE, auth });
     const response = await youtube.commentThreads.insert({
-      part: 'snippet',
+      part: YOUTUBE_API_PARTS.COMMENT_THREADS_INSERT,
       requestBody: {
         snippet: {
           videoId,
