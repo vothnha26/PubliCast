@@ -379,25 +379,12 @@ const TIKTOK_API = {
   AUTH_URL: 'https://www.tiktok.com/v2/auth/authorize'
 };
 
-const YOUTUBE_API = {
-  BASE_URL: 'https://www.youtube.com',
-  videoUrl: (videoId) => `https://www.youtube.com/watch?v=${videoId}`
-};
-
-// ref: guide/youtube/reference_api/commentThreads.md — moderationStatus parameter
-const YOUTUBE_MODERATION_STATUS = Object.freeze({
-  PUBLISHED: 'published',
-  HELD_FOR_REVIEW: 'heldForReview',
-  LIKELY_SPAM: 'likelySpam',
-  REJECTED: 'rejected'
-});
-
-// ref: guide/youtube/reference_api/search.md — type parameter
-const YOUTUBE_SEARCH_TYPES = Object.freeze({
-  VIDEO: 'video',
-  CHANNEL: 'channel',
-  PLAYLIST: 'playlist'
-});
+const {
+  YOUTUBE_API,
+  YOUTUBE_MODERATION_STATUS,
+  YOUTUBE_SEARCH_TYPES,
+  YOUTUBE_CONSTRAINTS
+} = require('../services/social/youtube/youtube.constants');
 
 const GOOGLE_SCOPES = {
   YOUTUBE: 'https://www.googleapis.com/auth/youtube',
@@ -705,6 +692,7 @@ module.exports = {
   YOUTUBE_CATEGORIES,
   YOUTUBE_MODERATION_STATUS,
   YOUTUBE_SEARCH_TYPES,
+  YOUTUBE_CONSTRAINTS,
   NOTIFICATION_TYPES,
   DEFAULT_CONFIG,
   FACEBOOK_API,

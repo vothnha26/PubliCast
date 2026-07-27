@@ -1,5 +1,6 @@
 const { google } = require('googleapis');
-const { YOUTUBE_CATEGORIES, API_VERSIONS, YOUTUBE_PRIVACY, YOUTUBE_MODERATION_STATUS, YOUTUBE_SEARCH_TYPES } = require('../../../utils/constants');
+const { YOUTUBE_CATEGORIES, API_VERSIONS, YOUTUBE_PRIVACY } = require('../../../utils/constants');
+const { YOUTUBE_MODERATION_STATUS, YOUTUBE_SEARCH_TYPES } = require('./youtube.constants');
 
 class YouTubeGateway {
   /**
