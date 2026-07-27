@@ -171,4 +171,83 @@ describe('YoutubeCommentSyncStrategy Pagination Unit Tests', () => {
       null
     );
   });
+
+  it('should handle commentsDisabled error gracefully on first page call', async () => {
+    const disabledError = new Error('Comments disabled');
+    disabledError.code = 403;
+    disabledError.response = {
+      status: 403,
+      data: {
+        error: {
+          errors: [{ reason: 'commentsDisabled' }]
+        }
+      }
+    };
+    youtubeGateway.getCommentThreads.mockRejectedValue(disabledError);
+
+    const result = await strategy.sync(mockBrandId, mockInbox);
+    expect(result).toEqual([]);
+    expect(youtubeGateway.getCommentThreads).toHaveBeenCalledTimes(1);
+  });
+
+  it('should return successfully synced comments if commentsDisabled is encountered on subsequent page call', async () => {
+    youtubeGateway.getCommentThreads
+      .mockResolvedValueOnce({
+        data: {
+          items: [
+            {
+              id: 'thread-1',
+              snippet: {
+                topLevelComment: {
+                  id: 'comment-1',
+                  snippet: {
+                    textDisplay: 'Hello 1',
+                    authorDisplayName: 'User A',
+                    authorProfileImageUrl: 'avatar-url',
+                    authorChannelId: { value: 'user-channel-1' },
+                    videoId: 'video-1',
+                    publishedAt: '2026-07-27T00:00:00Z'
+                  }
+                }
+              }
+            }
+          ],
+          nextPageToken: 'page-2'
+        }
+      });
+
+    const disabledError = new Error('Comments disabled');
+    disabledError.code = 403;
+    disabledError.response = {
+      status: 403,
+      data: {
+        error: {
+          errors: [{ reason: 'commentsDisabled' }]
+        }
+      }
+    };
+    youtubeGateway.getCommentThreads.mockRejectedValueOnce(disabledError);
+
+    const result = await strategy.sync(mockBrandId, mockInbox);
+    expect(result).toHaveLength(1);
+    expect(result[0].id).toBe('item-comment-1');
+    expect(youtubeGateway.getCommentThreads).toHaveBeenCalledTimes(2);
+  });
+
+  it('should propagate other types of errors (e.g. quotaExceeded)', async () => {
+    const quotaError = new Error('Quota exceeded');
+    quotaError.code = 403;
+    quotaError.response = {
+      status: 403,
+      data: {
+        error: {
+          errors: [{ reason: 'quotaExceeded' }]
+        }
+      }
+    };
+    youtubeGateway.getCommentThreads.mockRejectedValue(quotaError);
+
+    await expect(strategy.sync(mockBrandId, mockInbox)).rejects.toThrow('Quota exceeded');
+    expect(youtubeGateway.getCommentThreads).toHaveBeenCalledTimes(1);
+  });
 });
