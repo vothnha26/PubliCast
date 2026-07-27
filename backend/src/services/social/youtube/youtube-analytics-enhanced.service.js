@@ -269,12 +269,22 @@ class YouTubeAnalyticsEnhancedService {
    * @private
    */
   async _fetchInsightsSummary(auth, videoId) {
-    return youtubeGateway.getAnalyticsReportQuery(auth, { ids: `channel==MINE`, metrics: 'views,estimatedMinutesWatched', filters: `video==${videoId}` });
+    const { ANALYTICS } = require('../../../utils/constants');
+    return youtubeGateway.getAnalyticsReportQuery(auth, {
+      ids: 'channel==MINE',
+      startDate: ANALYTICS.LIFETIME_START_DATE,
+      endDate: new Date().toISOString().split('T')[0],
+      metrics: 'views,estimatedMinutesWatched',
+      filters: `video==${videoId}`
+    });
   }
 
   async _fetchInsightsTrafficSource(auth, videoId) {
+    const { ANALYTICS } = require('../../../utils/constants');
     return youtubeGateway.getAnalyticsReportQuery(auth, {
       ids: 'channel==MINE',
+      startDate: ANALYTICS.LIFETIME_START_DATE,
+      endDate: new Date().toISOString().split('T')[0],
       metrics: 'views,estimatedMinutesWatched',
       dimensions: 'insightTrafficSourceType',
       filters: `video==${videoId}`
@@ -282,8 +292,11 @@ class YouTubeAnalyticsEnhancedService {
   }
 
   async _fetchInsightsDeviceType(auth, videoId) {
+    const { ANALYTICS } = require('../../../utils/constants');
     return youtubeGateway.getAnalyticsReportQuery(auth, {
       ids: 'channel==MINE',
+      startDate: ANALYTICS.LIFETIME_START_DATE,
+      endDate: new Date().toISOString().split('T')[0],
       metrics: 'views,estimatedMinutesWatched',
       dimensions: 'deviceType',
       filters: `video==${videoId}`
@@ -291,17 +304,23 @@ class YouTubeAnalyticsEnhancedService {
   }
 
   async _fetchInsightsDemographics(auth, videoId) {
+    const { ANALYTICS } = require('../../../utils/constants');
     return youtubeGateway.getAnalyticsReportQuery(auth, {
       ids: 'channel==MINE',
-      metrics: 'viewPercentage',
+      startDate: ANALYTICS.LIFETIME_START_DATE,
+      endDate: new Date().toISOString().split('T')[0],
+      metrics: 'viewerPercentage',
       dimensions: 'ageGroup,gender',
       filters: `video==${videoId}`
     });
   }
 
   async _fetchInsightsGeography(auth, videoId) {
+    const { ANALYTICS } = require('../../../utils/constants');
     return youtubeGateway.getAnalyticsReportQuery(auth, {
       ids: 'channel==MINE',
+      startDate: ANALYTICS.LIFETIME_START_DATE,
+      endDate: new Date().toISOString().split('T')[0],
       metrics: 'views',
       dimensions: 'country',
       filters: `video==${videoId}`,
@@ -310,11 +329,15 @@ class YouTubeAnalyticsEnhancedService {
   }
 
   async _fetchInsightsSearchTerms(auth, videoId) {
+    const { ANALYTICS, YT_VIDEO_INSIGHTS } = require('../../../utils/constants');
     return youtubeGateway.getAnalyticsReportQuery(auth, {
       ids: 'channel==MINE',
-      metrics: 'views,clicks',
-      dimensions: 'insightSearchTerm',
-      filters: `video==${videoId}`,
+      startDate: ANALYTICS.LIFETIME_START_DATE,
+      endDate: new Date().toISOString().split('T')[0],
+      metrics: ANALYTICS.METRICS.YOUTUBE.VIEWS,
+      dimensions: ANALYTICS.DIMENSIONS.YOUTUBE.TRAFFIC_SOURCE_DETAIL,
+      filters: `${ANALYTICS.DIMENSIONS.YOUTUBE.VIDEO}==${videoId};${ANALYTICS.DIMENSIONS.YOUTUBE.TRAFFIC_SOURCE}==${YT_VIDEO_INSIGHTS.TRAFFIC_SOURCE_TYPES.YT_SEARCH}`,
+      sort: ANALYTICS.SORT.YOUTUBE.VIEWS_DESC,
       maxResults: 10
     });
   }
