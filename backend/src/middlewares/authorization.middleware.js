@@ -1,7 +1,8 @@
 const { USER_ROLES } = require('../utils/constants');
+const logger = require('../utils/logger');
 
 /**
- * Middleware factory to check user role
+ * Middleware factory to check user role.
  * @param {...string} allowedRoles - roles that have access
  * @returns {Function} express middleware
  */
@@ -12,11 +13,15 @@ const authorize = (...allowedRoles) => {
       return res.status(401).json({ message: 'Authentication required' });
     }
 
-    const userRole = req.user.role?.toUpperCase();
+    const roleData = req.user.role;
+    // Handle both string role (from new tokens) and object role (for backward compatibility if needed)
+    const userRole = (typeof roleData === 'string' ? roleData : roleData?.name)?.toUpperCase();
 
-    if (!allowedRoles.includes(userRole)) {
+    if (!userRole || !allowedRoles.includes(userRole)) {
+      const rolesList = allowedRoles.filter(Boolean).join(', ');
+      logger.warn('Access denied', { userId: req.user.id, userRole, requiredRoles: rolesList, url: req.url });
       return res.status(403).json({
-        message: `Access denied. Only ${allowedRoles.join(', ')} roles are allowed.`
+        message: `Access denied. Only ${rolesList} roles are allowed.`
       });
     }
 
@@ -25,9 +30,14 @@ const authorize = (...allowedRoles) => {
 };
 
 /**
- * Only ADMIN access
+ * Only ADMIN / OWNER access
  */
-const authorizeAdmin = authorize(USER_ROLES.ADMIN);
+const authorizeAdmin = authorize(USER_ROLES.ADMIN, USER_ROLES.OWNER);
+
+/**
+ * Only MANAGER access
+ */
+const authorizeManager = authorize(USER_ROLES.MANAGER);
 
 /**
  * Only USER access
@@ -35,13 +45,28 @@ const authorizeAdmin = authorize(USER_ROLES.ADMIN);
 const authorizeUser = authorize(USER_ROLES.USER);
 
 /**
- * ADMIN and USER access
+ * All authenticated roles can access
  */
-const authorizeAny = authorize(USER_ROLES.ADMIN, USER_ROLES.USER);
+const authorizeAny = authorize(
+  USER_ROLES.OWNER,
+  USER_ROLES.ADMIN, 
+  USER_ROLES.MANAGER, 
+  USER_ROLES.STAFF, 
+  USER_ROLES.USER,
+  USER_ROLES.EDITOR,
+  USER_ROLES.VIEWER,
+  USER_ROLES.ANALYST,
+  USER_ROLES.STREAM_MANAGER,
+  USER_ROLES.CONTENT_MANAGER,
+  USER_ROLES.CONTENT_CREATOR,
+  USER_ROLES.STREAM_OPERATOR,
+  USER_ROLES.CLIENT
+);
 
 module.exports = {
   authorize,
   authorizeAdmin,
+  authorizeManager,
   authorizeUser,
   authorizeAny
 };

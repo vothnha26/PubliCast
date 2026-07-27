@@ -1,5 +1,6 @@
 node_modules/
 .env
+.env.local
 .DS_Store
 dist/
 coverage/
@@ -10,6 +11,14 @@ yarn-error.log*
 .vscode/
 
 # Documentation and temporary files
-*.txt
 *.puml
+*.md
 !docs/**/*.puml
+!**/README.md
+!CONDUCT.md
+!test_cases/**/*.md
+
+test_cases/api/
+postman/
+backend/uploads/
+backend/scratch/

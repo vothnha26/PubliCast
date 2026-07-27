@@ -1,0 +1,76 @@
+{
+  "header": {
+    "title": "Hashtag Manager & Analytics",
+    "subtitle": "Store branded hashtag sets and check real reach analytics.",
+    "createBtn": "Create Set"
+  },
+  "tabs": {
+    "sets": "My Sets",
+    "discover": "Discover Trends",
+    "stats": "Performance"
+  },
+  "sets": {
+    "editBtn": "Edit Set",
+    "createCard": "Create New Set",
+    "emptyTags": "No tags yet"
+  },
+  "discover": {
+    "posts": "posts",
+    "trending": "TRENDING ↑ {{rate}}%",
+    "stable": "STABLE →",
+    "trackBtn": "+ Track Tag",
+    "noResults": "No trending hashtags found.",
+    "retryBtn": "Retry"
+  },
+  "stats": {
+    "chartTitle": "Reach Performance of Tracked Tags",
+    "tableHeaders": {
+      "hashtag": "Hashtag",
+      "frequency": "Usage Frequency",
+      "reach": "Avg Reach",
+      "platform": "Platform"
+    },
+    "postsPerDay": "posts/24h",
+    "reachSuffix": "K reach",
+    "noData": "No data yet",
+    "untrackBtn": "Stop Tracking",
+    "refreshBtn": "Refresh",
+    "refreshing": "Refreshing…",
+    "empty": {
+      "title": "No tracked hashtags yet",
+      "desc": "Go to the Discover tab and click \"+ Track Tag\" to start tracking real reach and post counts."
+    }
+  },
+  "editor": {
+    "editTitle": "Edit Set: {{name}}",
+    "createTitle": "Create New Hashtag Set",
+    "nameLabel": "Set Name",
+    "namePlaceholder": "e.g. Technology Trends",
+    "hashtagsLabel": "Hashtags",
+    "addPlaceholder": "Add new hashtag...",
+    "addBtn": "Add",
+    "cancelBtn": "Cancel",
+    "saveBtn": "Save Changes",
+    "createBtn": "Create Set"
+  },
+  "toasts": {
+    "loadError": "Unable to load hashtag data.",
+    "trendingError": "Unable to load trending hashtags.",
+    "createSuccess": "Hashtag set created successfully!",
+    "createError": "Failed to create hashtag set.",
+    "updateSuccess": "Hashtag set updated successfully!",
+    "updateError": "Update failed.",
+    "deleteSuccess": "Hashtag set deleted.",
+    "deleteError": "Delete failed.",
+    "untrackSuccess": "Stopped tracking hashtag.",
+    "untrackError": "Unable to stop tracking.",
+    "refreshError": "Unable to refresh hashtag data.",
+    "trackSuccess": "Now tracking: {{tag}}",
+    "trackError": "Unable to track this tag.",
+    "validationEmpty": "Please enter a set name and add at least one tag.",
+    "deleteConfirmTitle": "Delete Hashtag Set",
+    "deleteConfirmDesc": "Are you sure you want to delete this hashtag set?",
+    "deleteConfirmBtn": "Delete",
+    "cancelBtn": "Cancel"
+  }
+}

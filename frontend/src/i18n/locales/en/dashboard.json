@@ -1,0 +1,81 @@
+{
+  "title": "Workspace Dashboard",
+  "welcome": "Welcome back, {{name}}!",
+  "stats": {
+    "totalFollowers": "Total Followers",
+    "totalViews": "Total Views",
+    "totalVideos": "Total Videos",
+    "currentBrand": "Current Brand",
+    "realTime": "Real-time",
+    "selected": "Selected",
+    "uploaded": "Uploaded",
+    "youtubeNote": "YouTube Channel",
+    "uploadedNote": "Uploaded",
+    "selectedDelta": "Selected",
+    "unknownBrand": "Unknown"
+  },
+  "charts": {
+    "audienceTrend": "Audience Reach Trend",
+    "viewDetails": "View Detailed Report →"
+  },
+  "recentQueue": {
+    "title": "Recent Posts Queue",
+    "createPost": "Create Post",
+    "scheduleLink": "Post Schedule →",
+    "emptyTitle": "No posts scheduled",
+    "emptySubtitle": "Create your first post to schedule or publish immediately on social networks!",
+    "createNow": "Create Now",
+    "untitled": "Untitled Post",
+    "scheduledAt": "Scheduled: {{date}}",
+    "createdAt": "Created: {{date}}"
+  },
+  "connections": {
+    "title": "Social Connections",
+    "manage": "Manage",
+    "connected": "Connected",
+    "connect": "Connect",
+    "reachByNetwork": "Platform Reach"
+  },
+  "status": {
+    "draft": "Draft",
+    "published": "Published",
+    "scheduled": "Scheduled",
+    "pending_approval": "Pending Approval",
+    "failed": "Failed"
+  },
+  "toast": {
+    "googleSuccess": "Successfully logged in with Google!"
+  },
+  "tabs": {
+    "community": "COMMUNITY",
+    "overview": "OVERVIEW",
+    "posts": "POSTS",
+    "stories": "STORIES",
+    "account": "ACCOUNT",
+    "demographics": "DEMOGRAPHICS",
+    "published": "PUBLISHED VIDEOS",
+    "viewed": "VIEWED VIDEOS",
+    "competitors": "COMPETITORS"
+  },
+  "growth": {
+    "blueskyTitle": "Bluesky Growth",
+    "blueskyDesc": "Growth metrics for Followers, Views, and Likes on Bluesky",
+    "balanceTitle": "Balance of Followers",
+    "balanceDesc": "Fluctuation of new followers and unfollowers over time",
+    "summaryTitle": "Summary",
+    "summaryDesc": "Correlation between number of posts and engagement generated",
+    "interactionsTitle": "Interactions",
+    "interactionsDesc": "Engagements including Likes, Replies, Reposts, and Clicks",
+    "typesViewsTitle": "Types & Views",
+    "typesTitle": "Types",
+    "viewsTitle": "Views",
+    "listOfPostsTitle": "List of posts",
+    "postType": "Post Type",
+    "quantity": "Quantity",
+    "noData": "No data available",
+    "viewChart": "View chart",
+    "viewTable": "View table",
+    "searchPlaceholder": "Search posts...",
+    "footerMessage": "Displaying latest published posts"
+  }
+}

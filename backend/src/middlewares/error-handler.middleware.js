@@ -1,0 +1,65 @@
+const logger = require('../utils/logger');
+
+/**
+ * Global Error Handling Middleware
+ * Catches all errors passed via next(err) and returns standardized JSON.
+ * Never leaks stack traces or internal details in production.
+ */
+const errorHandler = (err, req, res, _next) => {
+  console.error("💥 GLOBAL ERROR CATCHED:", err);
+  let statusCode = err.status || err.statusCode || 500;
+  let message = err.message || 'Internal Server Error';
+
+  // ── Multer upload errors ────────────────────────────────────────────────
+  if (err.name === 'MulterError') {
+    statusCode = err.code === 'LIMIT_FILE_SIZE' ? 413 : 400;
+    return res.status(statusCode).json({ message: err.message, status: statusCode });
+  }
+
+  // ── Prisma-specific error mapping ──────────────────────────────────────
+  if (err.code === 'P2002') {
+    message = 'A record with these details already exists.';
+    return res.status(409).json({ message, status: 409 });
+  }
+  if (err.code === 'P2025') {
+    message = 'Record not found.';
+    return res.status(404).json({ message, status: 404 });
+  }
+  if (err.code === 'P2003') {
+    message = 'Related record not found (foreign key constraint).';
+    return res.status(400).json({ message, status: 400 });
+  }
+
+  // ── Log the error with context ─────────────────────────────────────────
+  if (statusCode >= 500) {
+    logger.error('Unhandled server error', {
+      method: req.method,
+      url: req.url,
+      statusCode,
+      error: err.message,
+      stack: err.stack
+    });
+  } else {
+    logger.warn('Client error', { method: req.method, url: req.url, statusCode, message });
+  }
+
+  const isDev = process.env.NODE_ENV === 'development' || process.env.JEST_WORKER_ID;
+
+  // A 5xx here is always an unhandled/unexpected error — its raw message
+  // frequently embeds Prisma/driver internals (table/column/constraint
+  // names, file paths), which is fine to see in dev but must never reach a
+  // production client (#118 M5). 4xx messages are intentionally
+  // user-facing (validation errors, "not found", etc.) and stay as-is.
+  const responseMessage = (statusCode >= 500 && !isDev) ? 'Internal Server Error' : message;
+  const response = { message: responseMessage, status: statusCode };
+
+  // Include stack trace only in development or test environment
+  if (isDev) {
+    response.stack = err.stack;
+  }
+
+  res.status(statusCode).json(response);
+};
+
+module.exports = errorHandler;
+

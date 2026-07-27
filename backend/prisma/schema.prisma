@@ -1,3 +1,4 @@
+// Generated Metricool Database Schema
 generator client {
   provider = "prisma-client-js"
 }
@@ -7,47 +8,1814 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// ============================================
+// CORE ENTITIES
+// ============================================
+
 model User {
-  id          String        @id @default(uuid())
-  email       String        @unique
-  fullName    String        @map("full_name")
-  avatarUrl   String?       @map("avatar_url")
-  role        Role          @default(USER)
-  status      Status        @default(INACTIVE)
-  verifiedAt  DateTime?     @map("verified_at")
-  createdAt   DateTime      @default(now()) @map("created_at")
-  updatedAt   DateTime      @updatedAt @map("updated_at")
-  accounts    UserAccount[]
+  id                   String    @id @default(uuid())
+  email                String    @unique
+  passwordHash         String
+  name                 String
+  avatarUrl            String?
+  phone                String?
+  address              String?
+  industry             String?
+  bio                  String?   @db.Text
+  role                 UserRole  @default(OWNER)
+  customRoleId         String?
+  isActive             Boolean   @default(true)
+  isEmailVerified      Boolean   @default(false)
+  twoFactorSecret      String?
+  isTwoFactorEnabled   Boolean   @default(false)
+  twoFactorBackupCodes String?   @db.Text
+  lastLoginAt          DateTime?
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+  deletedAt            DateTime?
+  defaultBrandId       String?
+
+  customRole               CustomRole?               @relation("UserCustomRole", fields: [customRoleId], references: [id])
+  settings                 UserSettings?
+  accounts                 UserAccount[]
+  brands                   Brand[]                   @relation("BrandOwner")
+  teamMembers              Team[]                    @relation("TeamMember")
+  teamInviter              Team[]                    @relation("TeamInviter")
+  createdPosts             Post[]                    @relation("PostCreator")
+  createdLivestreams       Livestream[]              @relation("LivestreamCreator")
+  createdReports           Report[]                  @relation("ReportCreator")
+  auditLogs                AuditLog[]                @relation("AuditLogUser")
+  notifications            SystemNotification[]
+  notificationReadReceipts NotificationReadReceipt[]
+  createdTickets           SupportTicket[]           @relation("TicketCreator")
+  assignedTickets          SupportTicket[]           @relation("TicketAssignedAgent")
+  ticketMessages           TicketMessage[]           @relation("TicketMessageSender")
+  assignedInboxItems       InboxItem[]               @relation("InboxItemAssignedUser")
+  repliedInboxItems        InboxItem[]               @relation("InboxItemRepliedBy")
+  uploadedMedia            MediaLibrary[]            @relation("MediaLibraryUploader")
+  approvalWorkflowRequests ApprovalWorkflow[]        @relation("ApprovalWorkflowRequester")
+  workflowReviews          WorkflowReviewer[]        @relation("WorkflowReviewerUser")
 
   @@map("users")
 }
 
+model UserSettings {
+  id       String @id @default(uuid())
+  userId   String @unique
+  language String @default("vi")
+  timezone String @default("Asia/Ho_Chi_Minh")
+  user     User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_settings")
+}
+
 model UserAccount {
-  id           String       @id @default(uuid())
-  userId       String       @map("user_id")
-  provider     AuthProvider
-  providerId   String?      @map("provider_id")
-  passwordHash String?      @map("password_hash")
-  createdAt    DateTime     @default(now()) @map("created_at")
-  updatedAt    DateTime     @updatedAt @map("updated_at")
+  id               String       @id @default(uuid())
+  userId           String
+  provider         AuthProvider
+  providerId       String?
+  passwordHash     String?
+  twoFactorEnabled Boolean      @default(false)
+  lastLoginAt      DateTime?
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
 
-  user         User         @relation(fields: [userId], references: [id])
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  @@unique([userId, provider])
   @@map("user_accounts")
 }
 
-enum Role {
-  USER
-  ADMIN
+model Brand {
+  id                     String    @id @default(uuid())
+  name                   String
+  logoUrl                String?
+  timezone               String
+  defaultLanguage        String
+  postsUsedThisMonth     Int       @default(0)
+  engagementRatioFormula String    @default("(likes + comments + shares) / reach * 100")
+  ownerId                String
+  subscriptionId         String    @unique
+  isActive               Boolean   @default(true)
+  createdAt              DateTime  @default(now())
+  updatedAt              DateTime  @updatedAt
+  deletedAt              DateTime?
+
+  owner                   User                         @relation("BrandOwner", fields: [ownerId], references: [id], onDelete: Restrict)
+  subscription            Subscription                 @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+  teamMembers             Team[]
+  customRoles             CustomRole[]                 @relation("CustomRoleBrand")
+  posts                   Post[]
+  livestreams             Livestream[]
+  contentCalendars        ContentCalendar[]
+  bestTimeSlots           BestTimeSlot[]
+  autoLists               AutoList[]
+  approvalWorkflows       ApprovalWorkflow[]
+  socialAccounts          SocialAccount[]
+  adAccounts              AdAccount[]
+  analytics               Analytics[]
+  competitorAnalysis      CompetitorAnalysis[]
+  facebookOverviewMetrics FacebookOverviewMetric[]
+  facebookPostMetrics     FacebookPostMetric[]
+  facebookStoryMetrics    FacebookStoryMetric[]
+  unifiedInbox            UnifiedInbox[]
+  reports                 Report[]
+  smartLinks              SmartLink[]
+  hashtagTrackers         HashtagTracker[]
+  hashtagSets             HashtagSet[]
+  aiAssistant             AIAssistant?
+  reportScheduleConfig    ReportScheduleConfig?
+  mediaLibrary            MediaLibrary[]
+  mediaFolders            MediaFolder[]
+  auditLogs               AuditLog[]
+  notifications           SystemNotification[]
+  subscriptionAddons      SubscriptionAddon[]
+  supportTickets          SupportTicket[]
+  trackedVideos           TrackedVideo[]
+  calendarEvents          CalendarEvent[]
+  livestreamHighlights    LivestreamHighlight[]
+  postAnalyticsSnapshots  PostAnalyticsDailySnapshot[] @relation("BrandAnalyticsSnapshots")
+
+  @@index([ownerId])
+  @@map("brands")
 }
 
-enum Status {
+model TrackedVideo {
+  id           String       @id @default(uuid())
+  brandId      String
+  platform     PlatformType @default(YOUTUBE)
+  videoId      String // YouTube Video ID
+  title        String?
+  thumbnailUrl String?
+  channelId    String?
+  channelName  String?
+  publishedAt  DateTime?
+  lastViews    Int          @default(0)
+  lastLikes    Int          @default(0)
+  lastComments Int          @default(0)
+  isTracking   Boolean      @default(true)
+  addedAt      DateTime     @default(now())
+  lastSyncedAt DateTime?
+
+  brand Brand @relation(fields: [brandId], references: [id], onDelete: Cascade)
+
+  @@unique([brandId, videoId])
+  @@index([brandId])
+  @@map("tracked_videos")
+}
+
+model Team {
+  id              String     @id @default(uuid())
+  brandId         String
+  userId          String
+  role            UserRole
+  customRoleId    String?
+  invitedByUserId String
+  invitedAt       DateTime   @default(now())
+  acceptedAt      DateTime?
+  status          TeamStatus @default(PENDING)
+  createdAt       DateTime   @default(now())
+
+  brand      Brand       @relation(fields: [brandId], references: [id], onDelete: Cascade)
+  user       User        @relation("TeamMember", fields: [userId], references: [id])
+  invitedBy  User        @relation("TeamInviter", fields: [invitedByUserId], references: [id], onDelete: Restrict)
+  customRole CustomRole? @relation(fields: [customRoleId], references: [id])
+
+  @@unique([brandId, userId])
+  @@index([brandId])
+  @@index([userId])
+  @@map("teams")
+}
+
+model CustomRole {
+  id          String   @id @default(uuid())
+  brandId     String
+  name        String
+  description String?
+  colorHex    String
+  createdAt   DateTime @default(now())
+
+  brand       Brand                  @relation("CustomRoleBrand", fields: [brandId], references: [id])
+  permissions CustomRolePermission[]
+  teamMembers Team[]
+  users       User[]                 @relation("UserCustomRole")
+
+  @@index([brandId])
+  @@map("custom_roles")
+}
+
+model CustomRolePermission {
+  id            String  @id @default(uuid())
+  roleId        String
+  permissionKey String
+  isAllowed     Boolean @default(true)
+
+  role CustomRole @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@unique([roleId, permissionKey])
+  @@map("custom_role_permissions")
+}
+
+model SystemPermission {
+  key         String   @id
+  label       String
+  description String?
+  category    String   @default("management")
+  createdAt   DateTime @default(now())
+
+  @@map("system_permissions")
+}
+
+// ============================================
+// EXTERNAL INTEGRATIONS
+// ============================================
+
+// Client credentials for external projects (e.g. Convo) authenticating to
+// PubliCast via HMAC-signed requests. clientSecretEncrypted is stored
+// encrypted (not hashed) because HMAC verification requires recomputing
+// the signature from the plaintext secret — a one-way hash cannot be
+// reversed the way a password hash can be left one-way. See
+// src/utils/encryption.js (AES-256-GCM, same ENCRYPTION_KEY already used
+// for social account OAuth tokens).
+model IntegrationClient {
+  id                    String    @id @default(uuid())
+  name                  String
+  clientId              String    @unique
+  clientSecretEncrypted String
+  // Previous secret, kept encrypted during a rotation's grace period so
+  // verifyHmac() can accept requests signed with either secret while the
+  // caller (Convo) updates its own ENV — see hmac-auth.middleware.js and
+  // scripts/rotate-integration-secret.js. Null outside of an active
+  // rotation grace window.
+  clientSecretPrevEncrypted String?
+  secretRotatedAt           DateTime?
+  secretPrevExpiresAt       DateTime?
+  // Where PubliCast POSTs HMAC-signed revocation events (user removed from
+  // brand / brand deactivated) — see revocation-webhook.service.js.
+  // Nullable: a client that only calls verify-token/user-permissions
+  // inbound has no reason to also receive outbound webhooks yet.
+  webhookUrl            String?
+  isActive              Boolean   @default(true)
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+  revokedAt             DateTime?
+
+  @@index([clientId])
+  @@map("integration_clients")
+}
+
+// Audit trail for IntegrationClient secret rotations — SPEC.md §8. Kept as
+// its own append-only table rather than versioning IntegrationClient rows,
+// since a rotation is an event to record, not client state to query.
+model IntegrationSecretRotationLog {
+  id            String   @id @default(uuid())
+  clientId      String
+  reason        String   // 'SCHEDULED' | 'COMPROMISED'
+  gracePeriodMs Int
+  rotatedAt     DateTime @default(now())
+  rotatedBy     String   // hostname/user running the CLI script, for accountability
+
+  @@index([clientId])
+  @@map("integration_secret_rotation_logs")
+}
+
+// ============================================
+// BILLING & SUBSCRIPTION
+// ============================================
+
+model Plan {
+  id              String           @id @default(uuid())
+  name            PlanName
+  priceAmount     Decimal
+  currency        String
+  billingCycle    BillingCycle
+  description     String?
+  planLimitId     String
+  isActive        Boolean          @default(true)
+  createdAt       DateTime         @default(now())
+  pendingPayments PendingPayment[]
+  planLimit       PlanLimit        @relation(fields: [planLimitId], references: [id], onDelete: Cascade)
+  subscriptions   Subscription[]
+  products        Product[]        @relation("PlanProducts")
+
+  @@unique([name, billingCycle])
+  @@map("plans")
+}
+
+model Platform {
+  id        String    @id // e.g. "YT", "FB", "TK"
+  name      String    @unique
+  color     String    @default("#000000")
+  image     String?   @db.LongText // Base64 or URL
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  products  Product[]
+
+  @@map("platforms")
+}
+
+model Module {
+  id          String    @id // e.g. "M1", "M2"
+  name        String    @unique
+  description String?   @db.Text
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  products    Product[]
+
+  @@map("modules")
+}
+
+model Product {
+  id         String   @id // Uses semantic slug (e.g. 'youtube_analytics' or 'yt_m1')
+  name       String   @unique
+  category   String // e.g. 'Platforms', 'AI Tools'
+  platformId String?
+  moduleId   String?
+  sku        String?  @unique
+  status     String   @default("ACTIVE") // ACTIVE | INACTIVE
+  createdAt  DateTime @default(now())
+
+  platform Platform? @relation(fields: [platformId], references: [id], onDelete: Cascade)
+  module   Module?   @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  plans    Plan[]    @relation("PlanProducts")
+
+  @@map("products")
+}
+
+model PlanLimit {
+  id                    String        @id @default(uuid())
+  maxBrands             Int
+  maxSocialProfiles     Int
+  maxPostsPerMonth      Int
+  maxLivePlatforms      Int
+  maxStreamQuality      StreamQuality
+  maxTeamSeats          Int
+  allowCustomRoles      Boolean
+  allowApprovalWorkflow Boolean
+  createdAt             DateTime      @default(now())
+
+  plans Plan[]
+
+  @@map("plan_limits")
+}
+
+model Subscription {
+  id                   String             @id @default(uuid())
+  planId               String
+  status               SubscriptionStatus @default(ACTIVE)
+  trialEndsAt          DateTime?
+  currentPeriodStart   DateTime
+  currentPeriodEnd     DateTime
+  cancelledAt          DateTime?
+  stripeCustomerId     String?
+  stripeSubscriptionId String?
+  createdAt            DateTime           @default(now())
+  updatedAt            DateTime           @updatedAt
+
+  plan     Plan                @relation(fields: [planId], references: [id], onDelete: Cascade)
+  brand    Brand?
+  addons   SubscriptionAddon[]
+  invoices Invoice[]
+
+  @@index([planId])
+  @@map("subscriptions")
+}
+
+model Addon {
+  id            String   @id @default(uuid())
+  name          String
+  type          String
+  priceAmount   Decimal
+  currency      String
+  value         Int
+  stripePriceId String?
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+
+  subscriptions   SubscriptionAddon[]
+  pendingPayments PendingPayment[]
+
+  @@map("addons")
+}
+
+model SubscriptionAddon {
+  id                       String   @id @default(uuid())
+  subscriptionId           String
+  addonId                  String
+  quantity                 Int
+  status                   String   @default("ACTIVE")
+  currentPeriodEnd         DateTime
+  stripeSubscriptionItemId String?
+  createdAt                DateTime @default(now())
+
+  subscription Subscription @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+  addon        Addon        @relation(fields: [addonId], references: [id], onDelete: Cascade)
+  brand        Brand?       @relation(fields: [brandId], references: [id], onDelete: Cascade)
+  brandId      String?
+
+  @@unique([subscriptionId, addonId])
+  @@map("subscription_addons")
+}
+
+model Invoice {
+  id              String    @id @default(uuid())
+  subscriptionId  String
+  amount          Decimal
+  currency        String
+  pdfUrl          String
+  status          String
+  transactionCode String?
+  issuedAt        DateTime
+  paidAt          DateTime?
+  dueAt           DateTime?
+  createdAt       DateTime  @default(now())
+
+  subscription Subscription @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+
+  @@index([subscriptionId])
+  @@map("invoices")
+}
+
+// Tracks VietQR payments before SePay confirms them via webhook
+model PendingPayment {
+  id              String    @id @default(uuid())
+  transactionCode String    @unique // e.g. PUBLICAST-PRO-ABC12345-1719350400000
+  planId          String?
+  addonId         String?
+  addonQuantity   Int?
+  brandId         String
+  amount          Decimal
+  currency        String    @default("VND")
+  status          String    @default("PENDING") // PENDING | PAID | EXPIRED | UNDERPAID
+  expiredAt       DateTime
+  resolvedAt      DateTime?
+  createdAt       DateTime  @default(now())
+
+  plan  Plan?  @relation(fields: [planId], references: [id])
+  addon Addon? @relation(fields: [addonId], references: [id])
+
+  @@index([brandId])
+  @@index([status])
+  @@map("pending_payments")
+}
+
+// ============================================
+// SOCIAL MEDIA PLATFORMS
+// ============================================
+
+enum SyncStatus {
+  PENDING
+  PARTIAL
+  SUCCESS
+  FAILED
+}
+
+model SocialAccount {
+  id                String       @id @default(uuid())
+  brandId           String
+  platform          PlatformType
+  platformAccountId String
+  username          String
+  displayName       String
+  profilePictureUrl String?      @db.Text
+  accessToken       String       @db.Text
+  refreshToken      String?      @db.Text
+  tokenExpiresAt    DateTime?
+  scopes            String       @db.Text
+  isConnected       Boolean      @default(true)
+  connectedAt       DateTime
+  lastSyncAt        DateTime?
+  syncStatus        SyncStatus   @default(PENDING)
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
+
+  brand            Brand             @relation(fields: [brandId], references: [id], onDelete: Cascade)
+  analytics        Analytics[]
+  inboxItems       InboxItem[]
+  instagramAccount InstagramAccount?
+  facebookPage     FacebookPage?
+  tikTokAccount    TikTokAccount?
+  youtubeChannel   YouTubeChannel?
+  telegramAccount  TelegramAccount?
+  blueskyAccount   BlueskyAccount?
+  redditAccount    RedditAccount?
+  twitchAccount    TwitchAccount?
+  autoReplySetting AutoReplySetting?
+
+  // Facebook dedicated metrics
+  facebookOverviewMetrics FacebookOverviewMetric[] @relation("FacebookOverviewMetricAccount")
+  facebookPostMetrics     FacebookPostMetric[]     @relation("FacebookPostMetricAccount")
+  facebookStoryMetrics    FacebookStoryMetric[]    @relation("FacebookStoryMetricAccount")
+
+  @@unique([brandId, platform, platformAccountId])
+  @@index([brandId])
+  @@map("social_accounts")
+}
+
+model YouTubeChannel {
+  id                    String  @id @default(uuid())
+  socialAccountId       String  @unique
+  channelId             String // ID gốc từ YouTube (UCxxxxxxxx)
+  customUrl             String? // @handle
+  uploadsPlaylistId     String? // ID của playlist chứa video tải lên
+  subscribersCount      Int     @default(0)
+  totalVideosCount      Int     @default(0)
+  totalViewsCount       Int     @default(0)
+  country               String?
+  defaultLanguage       String?
+  isVerified            Boolean @default(false)
+  isMonetized           Boolean @default(false)
+  supportsShorts        Boolean @default(true)
+  supportsLivestream    Boolean @default(false)
+  madeForKids           Boolean @default(false)
+  hiddenSubscriberCount Boolean @default(false)
+
+  socialAccount SocialAccount @relation(fields: [socialAccountId], references: [id], onDelete: Cascade)
+
+  @@map("youtube_channels")
+}
+
+model InstagramAccount {
+  id                    String  @id @default(uuid())
+  socialAccountId       String  @unique
+  accountType           String
+  businessCategoryName  String?
+  followersCount        Int     @default(0)
+  followingCount        Int     @default(0)
+  mediaCount            Int     @default(0)
+  biography             String?
+  website               String?
+  supportsStories       Boolean @default(false)
+  supportsReels         Boolean @default(false)
+  supportsCarousels     Boolean @default(false)
+  supportsCollaboration Boolean @default(false)
+
+  socialAccount SocialAccount @relation(fields: [socialAccountId], references: [id], onDelete: Cascade)
+
+  @@map("instagram_accounts")
+}
+
+model FacebookPage {
+  id              String  @id @default(uuid())
+  socialAccountId String  @unique
+  pageId          String
+  category        String?
+  likesCount      Int     @default(0)
+  followersCount  Int     @default(0)
+  about           String?
+  website         String?
+  isPublished     Boolean @default(true)
+
+  socialAccount SocialAccount @relation(fields: [socialAccountId], references: [id], onDelete: Cascade)
+
+  @@map("facebook_pages")
+}
+
+model TikTokAccount {
+  id                String  @id @default(uuid())
+  socialAccountId   String  @unique
+  followersCount    Int     @default(0)
+  followingCount    Int     @default(0)
+  likesCount        Int     @default(0)
+  videoCount        Int     @default(0)
+  isVerified        Boolean @default(false)
+  supportsCarousels Boolean @default(false)
+
+  socialAccount SocialAccount @relation(fields: [socialAccountId], references: [id], onDelete: Cascade)
+
+  @@map("tiktok_accounts")
+}
+
+model TelegramAccount {
+  id              String @id @default(uuid())
+  socialAccountId String @unique
+  chatType        String @default("channel") // "channel" or "group"
+  memberCount     Int    @default(0)
+
+  socialAccount SocialAccount @relation(fields: [socialAccountId], references: [id], onDelete: Cascade)
+
+  @@map("telegram_accounts")
+}
+
+model BlueskyAccount {
+  id              String  @id @default(uuid())
+  socialAccountId String  @unique
+  did             String  @unique
+  handle          String
+  pdsUrl          String  @default("https://bsky.social")
+  emailConfirmed  Boolean @default(false)
+  followersCount  Int     @default(0)
+  followsCount    Int     @default(0)
+  postsCount      Int     @default(0)
+
+  socialAccount SocialAccount @relation(fields: [socialAccountId], references: [id], onDelete: Cascade)
+
+  @@map("bluesky_accounts")
+}
+
+model RedditAccount {
+  id              String @id @default(uuid())
+  socialAccountId String @unique
+  username        String
+  linkKarma       Int    @default(0)
+  commentKarma    Int    @default(0)
+
+  socialAccount SocialAccount @relation(fields: [socialAccountId], references: [id], onDelete: Cascade)
+
+  @@map("reddit_accounts")
+}
+
+model TwitchAccount {
+  id              String @id @default(uuid())
+  socialAccountId String @unique
+  broadcasterId   String @unique
+  broadcasterType String @default("") // "partner", "affiliate", ""
+  followersCount  Int    @default(0)
+
+  socialAccount SocialAccount @relation(fields: [socialAccountId], references: [id], onDelete: Cascade)
+
+  @@map("twitch_accounts")
+}
+
+model AdAccount {
+  id                String         @id @default(uuid())
+  brandId           String
+  platform          AdPlatformType
+  platformAccountId String
+  accountName       String
+  currency          String
+  timezone          String
+  accessToken       String
+  isActive          Boolean        @default(true)
+  lastSyncAt        DateTime?
+  createdAt         DateTime       @default(now())
+
+  brand     Brand       @relation(fields: [brandId], references: [id], onDelete: Cascade)
+  analytics Analytics[]
+
+  @@unique([brandId, platform, platformAccountId])
+  @@index([brandId])
+  @@map("ad_accounts")
+}
+
+// ============================================
+// CONTENT MANAGEMENT
+// ============================================
+
+model Post {
+  id                 String     @id @default(uuid())
+  brandId            String
+  createdByUserId    String
+  title              String
+  caption            String?    @db.Text
+  type               PostType
+  status             PostStatus @default(DRAFT)
+  // Persisted count of self-enqueued partial-retry rounds (mirrors the
+  // in-memory partialRetryCount that only lives in BullMQ job.data — if that
+  // job is ever lost (Redis restart, or the #106 active-job dedup skipping a
+  // re-enqueue), this is what the RETRYING reconciler sweeper reads to decide
+  // whether to re-enqueue again or give up as FAILED (#107 I7).
+  publishRetryCount  Int        @default(0)
+  targetPlatforms    String     @db.Text
+  mediaUrls          String?    @db.Text
+  mediaThumbnailUrls String?    @db.Text
+  hashtags           String?    @db.Text
+  mentions           String?    @db.Text
+  firstComment       String?    @db.Text
+  locationId         String?
+  locationName       String?
+  linkUrl            String?
+  altText            String?
+  metadata           String?    @db.Text
+  isCollaboration    Boolean    @default(false)
+  collaboratorHandle String?
+  scheduledAt        DateTime?
+  publishedAt        DateTime?
+  failureReason      String?    @db.Text
+  autoListId         String?
+  platformPostId     String?
+  isLibrary          Boolean    @default(false)
+  isDeleted          Boolean    @default(false)
+  deletedAt          DateTime?
+  createdAt          DateTime   @default(now())
+  updatedAt          DateTime   @updatedAt
+
+  brand             Brand              @relation(fields: [brandId], references: [id], onDelete: Cascade)
+  creator           User               @relation("PostCreator", fields: [createdByUserId], references: [id], onDelete: Restrict)
+  autoList          AutoList?          @relation(fields: [autoListId], references: [id], onDelete: Cascade)
+  approvalWorkflows ApprovalWorkflow[]
+
+  postAnalyticsSnapshots PostAnalyticsDailySnapshot[] @relation("PostAnalyticsSnapshots")
+
+  @@index([brandId])
+  @@index([createdByUserId])
+  @@map("posts")
+}
+
+model PostAnalyticsDailySnapshot {
+  id             String       @id @default(uuid())
+  postId         String?
+  platformPostId String
+  brandId        String
+  platform       PlatformType
+  date           DateTime     @db.Date // UTC-normalized day
+
+  viewsCumulative     Int @default(0)
+  reachCumulative     Int @default(0)
+  clicksCumulative    Int @default(0)
+  reactionsCumulative Int @default(0)
+
+  isEstimated Boolean  @default(false) // true for carry-forward/baseline-seeded rows
+  createdAt   DateTime @default(now())
+
+  post  Post? @relation("PostAnalyticsSnapshots", fields: [postId], references: [id], onDelete: Cascade)
+  brand Brand @relation("BrandAnalyticsSnapshots", fields: [brandId], references: [id], onDelete: Cascade)
+
+  @@unique([platformPostId, date])
+  @@index([brandId, date])
+  @@index([postId])
+  @@map("post_analytics_daily_snapshot")
+}
+
+model Livestream {
+  id               String   @id @default(uuid())
+  brandId          String
+  createdByUserId  String
+  title            String
+  description      String?
+  thumbnailUrl     String?
+  scheduledAt      DateTime
+  durationMinutes  Int
+  status           String   @default("DRAFT")
+  platformStreamId String?  @db.VarChar(255)
+  metadata         String?  @db.Text
+  streamKey        String
+  rtmpUrl          String
+  targetPlatforms  String   @db.Text
+  streamQuality    String   @db.Text
+  requireApproval  Boolean  @default(false)
+  peakViewers      Int      @default(0)
+  totalViews       Int      @default(0)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  brand             Brand              @relation(fields: [brandId], references: [id], onDelete: Cascade)
+  creator           User               @relation("LivestreamCreator", fields: [createdByUserId], references: [id], onDelete: Restrict)
+  approvalWorkflows ApprovalWorkflow[]
+
+  @@index([brandId])
+  @@index([scheduledAt])
+  @@map("livestreams")
+}
+
+model ContentCalendar {
+  id               String       @id @default(uuid())
+  brandId          String       @unique
+  defaultView      CalendarView @default(MONTH)
+  countryCalendars String?      @db.Text
+  showBestTimes    Boolean      @default(true)
+  filterPlatforms  String?      @db.Text
+  filterStatuses   String?      @db.Text
+  createdAt        DateTime     @default(now())
+
+  brand Brand @relation(fields: [brandId], references: [id], onDelete: Cascade)
+
+  @@map("content_calendars")
+}
+
+model BestTimeSlot {
+  id              String       @id @default(uuid())
+  brandId         String
+  platform        PlatformType
+  dayOfWeek       Int
+  hour            Int
+  engagementScore Float
+  confidenceLevel String
+  calculatedAt    DateTime
+
+  brand Brand @relation(fields: [brandId], references: [id], onDelete: Cascade)
+
+  @@unique([brandId, platform, dayOfWeek, hour])
+  @@index([brandId])
+  @@map("best_time_slots")
+}
+
+model AutoList {
+  id                  String         @id @default(uuid())
+  brandId             String
+  name                String
+  sourceType          ListSourceType
+  rssUrl              String?
+  csvLastUploadedAt   DateTime?
+  targetPlatforms     String         @db.Text
+  scheduleType        String
+  intervalMinutes     Int?
+  specificTimes       String?        @db.Text
+  activeDays          String         @db.Text
+  lastPostedAt        DateTime?
+  useAITimes          Boolean        @default(false)
+  lowQueueAlert       Boolean        @default(true)
+  queueThreshold      Int            @default(5)
+  isActive            Boolean        @default(true)
+  loopEnabled         Boolean        @default(false)
+  totalPostsCount     Int            @default(0)
+  publishedPostsCount Int            @default(0)
+  metadata            String?        @db.Text
+  createdAt           DateTime       @default(now())
+
+  brand Brand  @relation(fields: [brandId], references: [id], onDelete: Cascade)
+  posts Post[]
+
+  @@index([brandId])
+  @@map("auto_lists")
+}
+
+model ApprovalWorkflow {
+  id                String         @id @default(uuid())
+  postId            String?
+  livestreamId      String?
+  brandId           String
+  requesterId       String
+  approvalPolicy    ApprovalPolicy
+  selectedReviewers String?        @db.Text
+  reviewedByUserId  String?
+  status            WorkflowStatus @default(PENDING)
+  requesterNote     String?        @db.Text
+  reviewerComment   String?        @db.Text
+  revisionNote      String?        @db.Text
+  requestedAt       DateTime       @default(now())
+  reviewedAt        DateTime?
+  version           Int            @default(1)
+
+  post       Post?              @relation(fields: [postId], references: [id], onDelete: Cascade)
+  livestream Livestream?        @relation(fields: [livestreamId], references: [id], onDelete: Cascade)
+  brand      Brand              @relation(fields: [brandId], references: [id], onDelete: Cascade)
+  requester  User               @relation("ApprovalWorkflowRequester", fields: [requesterId], references: [id], onDelete: Restrict)
+  reviewers  WorkflowReviewer[]
+
+  @@index([brandId])
+  @@map("approval_workflows")
+}
+
+model WorkflowReviewer {
+  id         String         @id @default(uuid())
+  workflowId String
+  reviewerId String
+  status     WorkflowStatus @default(PENDING) // PENDING, APPROVED, REJECTED, REVISION_NEEDED
+  comment    String?        @db.Text
+  reviewedAt DateTime?
+  createdAt  DateTime       @default(now())
+  updatedAt  DateTime       @updatedAt
+
+  workflow ApprovalWorkflow @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+  reviewer User             @relation("WorkflowReviewerUser", fields: [reviewerId], references: [id], onDelete: Restrict)
+
+  @@unique([workflowId, reviewerId])
+  @@index([workflowId])
+  @@index([reviewerId])
+  @@map("workflow_reviewers")
+}
+
+// ============================================
+// ANALYTICS
+// ============================================
+
+model Analytics {
+  id              String   @id @default(uuid())
+  brandId         String
+  socialAccountId String?
+  adAccountId     String?
+  dateFrom        DateTime
+  dateTo          DateTime
+  granularity     String
+  fetchedAt       DateTime
+  analyticsType   String
+
+  brand           Brand            @relation(fields: [brandId], references: [id], onDelete: Cascade)
+  socialAccount   SocialAccount?   @relation(fields: [socialAccountId], references: [id], onDelete: Cascade)
+  adAccount       AdAccount?       @relation(fields: [adAccountId], references: [id], onDelete: Cascade)
+  socialAnalytics SocialAnalytics?
+  adAnalytics     AdAnalytics?
+
+  @@index([brandId])
+  @@map("analytics")
+}
+
+model SocialAnalytics {
+  id                       String   @id @default(uuid())
+  analyticsId              String   @unique
+  followersTotal           Int
+  followersGain            Int
+  followersLost            Int
+  impressions              Int
+  reach                    Int
+  engagements              Int
+  likes                    Int
+  comments                 Int
+  shares                   Int
+  saves                    Int
+  clicks                   Int
+  engagementRate           Float
+  videoViews               Int?
+  avgVideoWatchTime        Float?
+  profileVisits            Int?
+  websiteClicks            Int?
+  topPostIds               String?  @db.LongText
+  audienceDemographicsJson String?  @db.LongText
+  hourlyEngagementJson     String?  @db.LongText
+  createdAt                DateTime @default(now())
+
+  analytics Analytics @relation(fields: [analyticsId], references: [id], onDelete: Cascade)
+
+  @@map("social_analytics")
+}
+
+model AdAnalytics {
+  id                    String   @id @default(uuid())
+  analyticsId           String   @unique
+  campaignId            String?
+  campaignName          String?
+  adSetId               String?
+  totalSpend            Decimal
+  impressions           Int
+  clicks                Int
+  ctr                   Float
+  cpc                   Decimal
+  cpm                   Decimal
+  conversions           Int
+  conversionValue       Decimal
+  cpa                   Decimal
+  roas                  Float
+  reach                 Int
+  frequency             Float
+  videoViews            Int?
+  videoWatchRate        Float?
+  campaignBreakdownJson String?  @db.Text
+  createdAt             DateTime @default(now())
+
+  analytics Analytics @relation(fields: [analyticsId], references: [id], onDelete: Cascade)
+
+  @@map("ad_analytics")
+}
+
+model CompetitorAnalysis {
+  id                    String       @id @default(uuid())
+  brandId               String
+  platform              PlatformType
+  competitorHandle      String
+  competitorDisplayName String?
+  competitorAvatarUrl   String?
+  competitorProfileUrl  String? // URL trang profile
+  followersCount        Int?
+  followersGrowth       Float? // % tăng trưởng followers trong kỳ
+  avgEngagementRate     Float?
+  avgReach              Float? // Reach trung bình mỗi post
+  avgLikes              Float? // Likes trung bình mỗi post
+  avgComments           Float? // Comments trung bình mỗi post
+  avgShares             Float? // Shares trung bình mỗi post
+  postsPerWeek          Float?
+  topPostType           String? // Loại post phổ biến nhất (IMAGE/VIDEO/REEL...)
+  recentPostsJson       String?      @db.LongText // JSON: snapshot các post gần nhất
+  topContentJson        String?      @db.LongText // JSON: top performing content
+  audienceOverlapPct    Float? // % trùng lặp audience với brand
+  lastFetchedAt         DateTime?
+  addedAt               DateTime
+
+  brand Brand @relation(fields: [brandId], references: [id], onDelete: Cascade)
+
+  @@unique([brandId, platform, competitorHandle])
+  @@index([brandId])
+  @@map("competitor_analysis")
+}
+
+// ============================================
+// FACEBOOK ANALYTICS (Dedicated)
+// ============================================
+
+/// Số liệu tổng quan Facebook theo khoảng thời gian.
+/// Tab Overview: followers, clicks, reach, impressions (organic vs promoted).
+model FacebookOverviewMetric {
+  id              String   @id @default(uuid())
+  brandId         String
+  socialAccountId String
+  dateFrom        DateTime
+  dateTo          DateTime
+  granularity     String   @default("DAY") // DAY | WEEK | MONTH
+
+  // Followers
+  followersTotal     Int @default(0)
+  followersGain      Int @default(0)
+  followersLost      Int @default(0)
+  followersNetChange Int @default(0)
+
+  // Reach & Impressions (chia organic/promoted)
+  reach              Int @default(0)
+  impressions        Int @default(0)
+  organicReach       Int @default(0)
+  paidReach          Int @default(0)
+  organicImpressions Int @default(0)
+  paidImpressions    Int @default(0)
+
+  // Clicks
+  pageClicks  Int @default(0) // Tổng click trên page
+  linkClicks  Int @default(0) // Click vào link trong post
+  otherClicks Int @default(0) // Click profile, phone, direction...
+
+  // Engagement
+  engagements Int @default(0)
+  likes       Int @default(0)
+  comments    Int @default(0)
+  shares      Int @default(0)
+  reactions   Int @default(0) // Tổng reactions (all types)
+
+  // Page Views
+  pageViews       Int @default(0)
+  uniquePageViews Int @default(0)
+
+  // Video
+  videoViews        Int @default(0)
+  organicVideoViews Int @default(0)
+  paidVideoViews    Int @default(0)
+
+  // Dữ liệu breakdown theo ngày (JSON array)
+  dailyBreakdownJson String? @db.LongText
+
+  fetchedAt DateTime @default(now())
+  createdAt DateTime @default(now())
+
+  brand         Brand         @relation(fields: [brandId], references: [id], onDelete: Cascade)
+  socialAccount SocialAccount @relation("FacebookOverviewMetricAccount", fields: [socialAccountId], references: [id], onDelete: Cascade)
+
+  @@index([brandId])
+  @@index([socialAccountId])
+  @@map("facebook_overview_metrics")
+}
+
+/// Analytics từng bài post Facebook.
+/// Tab Posts: Types panel (Group/Count + Views donut chart), List of Posts.
+model FacebookPostMetric {
+  id              String           @id @default(uuid())
+  brandId         String
+  socialAccountId String
+  platformPostId  String // Facebook post ID
+  postType        FacebookPostType // Group trong Types panel
+  publishedAt     DateTime?
+
+  // Reach & Impressions (Organic vs Promoted - cho donut chart)
+  reach               Int @default(0)
+  organicReach        Int @default(0)
+  promotedReach       Int @default(0)
+  impressions         Int @default(0)
+  organicImpressions  Int @default(0)
+  promotedImpressions Int @default(0)
+
+  // Views (dành cho Video/Reel)
+  videoViews          Int    @default(0)
+  organicVideoViews   Int    @default(0)
+  promotedVideoViews  Int    @default(0)
+  avgWatchTimeSeconds Float? // Thời gian xem trung bình
+  watchRate           Float? // % người xem đến cuối video
+
+  // Interactions
+  likes           Int @default(0)
+  comments        Int @default(0)
+  shares          Int @default(0)
+  saves           Int @default(0)
+  reactions       Int @default(0) // Tổng all reaction types
+  linkClicks      Int @default(0)
+  otherClicks     Int @default(0)
+  negativeActions Int @default(0) // Ẩn bài, hủy theo dõi, báo spam
+
+  // Engagement Rate tổng hợp
+  engagementRate Float @default(0)
+
+  // Snapshot để hiển thị danh sách
+  captionSnippet String? @db.Text
+  thumbnailUrl   String?
+
+  fetchedAt DateTime @default(now())
+  createdAt DateTime @default(now())
+
+  brand         Brand         @relation(fields: [brandId], references: [id], onDelete: Cascade)
+  socialAccount SocialAccount @relation("FacebookPostMetricAccount", fields: [socialAccountId], references: [id], onDelete: Cascade)
+
+  @@unique([socialAccountId, platformPostId])
+  @@index([brandId])
+  @@index([socialAccountId])
+  @@map("facebook_post_metrics")
+}
+
+/// Analytics từng Facebook Story.
+/// Tab Stories: danh sách stories + metrics reach/exits/replies/completion.
+model FacebookStoryMetric {
+  id              String    @id @default(uuid())
+  brandId         String
+  socialAccountId String
+  platformStoryId String // Facebook story ID
+  publishedAt     DateTime?
+  expiresAt       DateTime?
+
+  // Media
+  mediaType    String  @default("IMAGE") // IMAGE | VIDEO
+  thumbnailUrl String?
+  mediaUrl     String?
+
+  // Reach & Impressions
+  reach       Int @default(0)
+  impressions Int @default(0)
+
+  // Story-specific metrics
+  exits          Int    @default(0) // Người dùng thoát khỏi story
+  replies        Int    @default(0) // Replies qua Direct Message
+  tapsForward    Int    @default(0) // Tap xem story tiếp theo
+  tapsBack       Int    @default(0) // Tap xem lại story trước
+  linkClicks     Int    @default(0) // Swipe-up / link sticker clicks
+  completionRate Float? // % người xem đến hết story
+  exitRate       Float? // % exits / impressions
+
+  fetchedAt DateTime @default(now())
+  createdAt DateTime @default(now())
+
+  brand         Brand         @relation(fields: [brandId], references: [id], onDelete: Cascade)
+  socialAccount SocialAccount @relation("FacebookStoryMetricAccount", fields: [socialAccountId], references: [id], onDelete: Cascade)
+
+  @@unique([socialAccountId, platformStoryId])
+  @@index([brandId])
+  @@index([socialAccountId])
+  @@map("facebook_story_metrics")
+}
+
+// ============================================
+// COMMUNICATION & SUPPORT
+// ============================================
+
+model UnifiedInbox {
+  id              String    @id @default(uuid())
+  brandId         String    @unique
+  totalUnread     Int       @default(0)
+  lastSyncAt      DateTime?
+  filterPlatforms String?   @db.Text
+  filterTypes     String?   @db.Text
+  createdAt       DateTime  @default(now())
+
+  brand Brand       @relation(fields: [brandId], references: [id], onDelete: Cascade)
+  items InboxItem[]
+
+  @@map("unified_inboxes")
+}
+
+model InboxItem {
+  id                String        @id @default(uuid())
+  inboxId           String
+  platform          PlatformType
+  type              InboxItemType
+  platformItemId    String        @unique
+  authorId          String
+  authorName        String
+  authorAvatarUrl   String?
+  content           String        @db.Text
+  mediaUrls         String?       @db.Text
+  relatedPostId     String? // ID bài viết/video từ nền tảng gốc
+  parentItemId      String?
+  // Raw platform parent id, set only when the parent comment hasn't been
+  // ingested yet (out-of-order webhook delivery). Reconciled to parentItemId
+  // once the parent's own webhook arrives and upserts a matching row (#100).
+  pendingParentPlatformId String?
+  assignedUserId    String?
+  tags              Json? // Mảng nhãn phân loại tùy chỉnh (VIP, Hỏi giá...)
+  internalNotes     Json? // Lịch sử ghi chú nội bộ của các nhân viên hỗ trợ
+  status            String        @default("UNREAD")
+  isHidden          Boolean       @default(false)
+  sentiment         String?
+  repliedByUserId   String?
+  repliedAt         DateTime?
+  platformCreatedAt DateTime
+  syncedAt          DateTime
+  createdAt         DateTime      @default(now())
+
+  inbox           UnifiedInbox   @relation(fields: [inboxId], references: [id], onDelete: Cascade)
+  parentItem      InboxItem?     @relation("InboxItemReplies", fields: [parentItemId], references: [id])
+  replies         InboxItem[]    @relation("InboxItemReplies")
+  assignedUser    User?          @relation("InboxItemAssignedUser", fields: [assignedUserId], references: [id])
+  repliedBy       User?          @relation("InboxItemRepliedBy", fields: [repliedByUserId], references: [id])
+  socialAccount   SocialAccount? @relation(fields: [socialAccountId], references: [id], onDelete: Cascade)
+  socialAccountId String?
+
+  @@index([inboxId])
+  @@index([relatedPostId])
+  @@index([pendingParentPlatformId])
+  @@map("inbox_items")
+}
+
+model SupportTicket {
+  id              String   @id @default(uuid())
+  brandId         String
+  userId          String
+  subject         String
+  status          String   @default("OPEN")
+  priority        String
+  assignedAgentId String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  brand         Brand           @relation(fields: [brandId], references: [id], onDelete: Cascade)
+  user          User            @relation("TicketCreator", fields: [userId], references: [id], onDelete: Restrict)
+  assignedAgent User?           @relation("TicketAssignedAgent", fields: [assignedAgentId], references: [id])
+  messages      TicketMessage[]
+
+  @@index([brandId])
+  @@map("support_tickets")
+}
+
+model TicketMessage {
+  id            String   @id @default(uuid())
+  ticketId      String
+  senderId      String
+  messageType   String
+  content       String   @db.Text
+  attachmentUrl String?
+  createdAt     DateTime @default(now())
+
+  ticket SupportTicket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  sender User          @relation("TicketMessageSender", fields: [senderId], references: [id], onDelete: Restrict)
+
+  @@index([ticketId])
+  @@map("ticket_messages")
+}
+
+// ============================================
+// TOOLS & UTILITIES
+// ============================================
+
+model Report {
+  id                      String       @id @default(uuid())
+  brandId                 String
+  createdByUserId         String
+  title                   String
+  description             String?      @db.Text
+  dateFrom                DateTime
+  dateTo                  DateTime
+  includedPlatforms       String       @db.Text
+  includedSections        String       @db.Text
+  isWhiteLabel            Boolean      @default(false)
+  brandLogoUrl            String?
+  brandColorHex           String?
+  format                  ReportFormat
+  fileUrl                 String?
+  sizeBytes               Int?
+  generatedAt             DateTime?
+  downloads               Int          @default(0)
+  createdAt               DateTime     @default(now())
+
+  brand   Brand @relation(fields: [brandId], references: [id], onDelete: Cascade)
+  creator User  @relation("ReportCreator", fields: [createdByUserId], references: [id], onDelete: Restrict)
+
+  @@index([brandId])
+  @@map("reports")
+}
+
+// Per-brand recurring report schedule (which day of month, format, email
+// recipients). Previously stored as uploads/reports/config_<brandId>.json —
+// lost on ephemeral/container redeploys, not readable from a second backend
+// instance, and written non-atomically (a crash mid-write left an
+// unparseable file silently skipped by the scan). One row per brand (#75).
+model ReportScheduleConfig {
+  id            String   @id @default(uuid())
+  brandId       String   @unique
+  receiveEmail  Boolean  @default(false)
+  emailsList    String   @db.Text // JSON-encoded string[]
+  emailText     String   @db.Text
+  // Day of month (1-31) as a string, or the literal "last" for end-of-month.
+  dayOfMonth    String   @default("1")
+  format        ReportFormat @default(PDF)
+  platforms     String   @db.Text // JSON-encoded string[]
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  brand Brand @relation(fields: [brandId], references: [id], onDelete: Cascade)
+
+  @@map("report_schedule_configs")
+}
+
+model SmartLink {
+  id              String   @id @default(uuid())
+  brandId         String
+  slug            String   @unique
+  customDomain    String?  @unique
+  pageTitle       String
+  profileImageUrl String?
+  bio             String?  @db.Text
+  backgroundType  String
+  backgroundValue String
+  buttonStyle     String
+  socialLinks     String?  @db.LongText
+  totalClicks     Int      @default(0)
+  uniqueVisitors  Int      @default(0)
+  isPublished     Boolean  @default(false)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  brand        Brand                  @relation(fields: [brandId], references: [id], onDelete: Cascade)
+  links        LinkItem[]
+  dailyMetrics SmartLinkDailyMetric[]
+
+  @@index([brandId])
+  @@map("smart_links")
+}
+
+model LinkItem {
+  id             String    @id @default(uuid())
+  smartLinkId    String
+  title          String
+  url            String
+  iconUrl        String?
+  linkStyle      String?   @db.Text
+  emoji          String?
+  position       Int
+  isActive       Boolean   @default(true)
+  clicks         Int       @default(0)
+  clicksLastWeek Int       @default(0)
+  scheduleFrom   DateTime?
+  scheduleTo     DateTime?
+  isAutoGenerated Boolean  @default(false)
+  createdAt      DateTime  @default(now())
+
+  smartLink    SmartLink             @relation(fields: [smartLinkId], references: [id], onDelete: Cascade)
+  dailyMetrics LinkItemDailyMetric[]
+
+  @@index([smartLinkId])
+  @@map("link_items")
+}
+
+model SmartLinkDailyMetric {
+  id             String   @id @default(uuid())
+  smartLinkId    String
+  date           DateTime @db.Date
+  pageViews      Int      @default(0)
+  uniqueVisitors Int      @default(0)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  smartLink SmartLink @relation(fields: [smartLinkId], references: [id], onDelete: Cascade)
+
+  @@unique([smartLinkId, date])
+  @@index([smartLinkId, date])
+  @@map("smart_link_daily_metrics")
+}
+
+model LinkItemDailyMetric {
+  id          String   @id @default(uuid())
+  linkItemId  String
+  smartLinkId String
+  date        DateTime @db.Date
+  clicks      Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  linkItem LinkItem @relation(fields: [linkItemId], references: [id], onDelete: Cascade)
+
+  @@unique([linkItemId, date])
+  @@index([smartLinkId, date])
+  @@map("link_item_daily_metrics")
+}
+
+model HashtagTracker {
+  id                String         @id @default(uuid())
+  brandId           String
+  hashtag           String
+  platform          PlatformType
+  platformHashtagId String?
+  totalPosts        Int?
+  postsLast24h      Int?
+  totalReach        Int?
+  avgEngagementRate Float?
+  trendDirection    TrendDirection
+  topPostsJson      String?        @db.Text
+  trendScoreJson    String?        @db.Text
+  lastFetchedAt     DateTime?
+  addedAt           DateTime
+
+  brand Brand @relation(fields: [brandId], references: [id], onDelete: Cascade)
+
+  @@unique([brandId, platform, hashtag])
+  @@index([brandId])
+  @@map("hashtag_trackers")
+}
+
+model HashtagSet {
+  id              String   @id @default(uuid())
+  brandId         String
+  name            String
+  hashtags        String   @db.Text
+  targetPlatforms String   @db.Text
+  createdAt       DateTime @default(now())
+
+  brand Brand @relation(fields: [brandId], references: [id], onDelete: Cascade)
+
+  @@index([brandId])
+  @@map("hashtag_sets")
+}
+
+model AIAssistant {
+  id                  String   @id @default(uuid())
+  brandId             String   @unique
+  defaultTone         String   @default("PROFESSIONAL")
+  defaultLanguage     String   @default("vi")
+  brandVoiceContext   String?  @db.Text
+  creditsLimit        Int      @default(1000)
+  creditsUsed         Int      @default(0)
+  targetAudience      String?  @db.Text
+  targetPlatforms     String?  @db.Text
+  usageCountThisMonth Int      @default(0)
+  createdAt           DateTime @default(now())
+
+  brand Brand @relation(fields: [brandId], references: [id], onDelete: Cascade)
+
+  @@map("ai_assistants")
+}
+
+model MediaLibrary {
+  id               String   @id @default(uuid())
+  brandId          String
+  mediaId          String
+  filename         String
+  mimeType         String
+  sizeBytes        Int
+  width            Int?
+  height           Int?
+  durationSeconds  Float?
+  storageUrl       String
+  thumbnailUrl     String?
+  aspectRatio      String?
+  isUsed           Boolean  @default(false)
+  altText          String?
+  folderId         String?
+  tags             String?  @db.Text
+  source           String   @default("UPLOAD") // UPLOAD, UNSPLASH, PEXELS
+  externalId       String?
+  photographerName String?
+  photographerUrl  String?
+  attributionHtml  String?  @db.Text
+  uploadedByUserId String
+  uploadedAt       DateTime
+  createdAt        DateTime @default(now())
+
+  brand    Brand        @relation(fields: [brandId], references: [id], onDelete: Cascade)
+  uploader User         @relation("MediaLibraryUploader", fields: [uploadedByUserId], references: [id], onDelete: Restrict)
+  folder   MediaFolder? @relation("MediaInFolder", fields: [folderId], references: [id], onDelete: SetNull)
+
+  @@index([brandId])
+  @@index([source])
+  @@map("media_library")
+}
+
+model MediaFolder {
+  id        String   @id @default(uuid())
+  brandId   String
+  name      String
+  parentId  String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  brand    Brand          @relation(fields: [brandId], references: [id], onDelete: Cascade)
+  parent   MediaFolder?   @relation("FolderToFolder", fields: [parentId], references: [id], onDelete: Cascade)
+  children MediaFolder[]  @relation("FolderToFolder")
+  media    MediaLibrary[] @relation("MediaInFolder")
+
+  @@index([brandId])
+  @@map("media_folders")
+}
+
+// ============================================
+// AUDIT & NOTIFICATIONS
+// ============================================
+
+model AuditLog {
+  id         String   @id @default(uuid())
+  brandId    String
+  userId     String
+  action     String
+  targetType String
+  targetId   String?
+  details    String?  @db.Text
+  ipAddress  String?
+  userAgent  String?
+  createdAt  DateTime @default(now())
+
+  brand Brand @relation(fields: [brandId], references: [id], onDelete: Cascade)
+  user  User  @relation("AuditLogUser", fields: [userId], references: [id], onDelete: Restrict)
+
+  @@index([brandId])
+  @@index([userId])
+  @@index([targetType])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
+
+model SystemNotification {
+  id        String   @id @default(uuid())
+  brandId   String?
+  userId    String?
+  title     String
+  message   String   @db.Text
+  type      String
+  isRead    Boolean  @default(false)
+  isGlobal  Boolean  @default(false)
+  actionUrl String?  @db.Text
+  createdAt DateTime @default(now())
+
+  brand        Brand?                    @relation(fields: [brandId], references: [id], onDelete: Cascade)
+  user         User?                     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  readReceipts NotificationReadReceipt[]
+
+  @@index([brandId])
+  @@index([userId])
+  @@index([type])
+  @@index([isRead])
+  @@index([createdAt])
+  @@map("system_notifications")
+}
+
+model NotificationReadReceipt {
+  id             String   @id @default(uuid())
+  notificationId String
+  userId         String
+  readAt         DateTime @default(now())
+
+  notification SystemNotification @relation(fields: [notificationId], references: [id], onDelete: Cascade)
+  user         User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([notificationId, userId])
+  @@index([userId])
+  @@index([readAt])
+  @@map("notification_read_receipts")
+}
+
+// ============================================
+// ENUMS
+// ============================================
+
+enum UserRole {
+  OWNER
+  ADMIN
+  MANAGER
+  STAFF
+  USER
+  EDITOR
+  VIEWER
+  ANALYST
+  STREAM_MANAGER
+  CONTENT_MANAGER
+  CONTENT_CREATOR
+  STREAM_OPERATOR
+  CLIENT
+}
+
+enum TeamStatus {
+  PENDING
   ACTIVE
-  INACTIVE
-  BANNED
+  REMOVED
+}
+
+enum PlanName {
+  FREE
+  STARTER
+  PRO
+  AGENCY
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  TRIALING
+  PAST_DUE
+  CANCELLED
+  UNPAID
+}
+
+enum StreamQuality {
+  SD
+  HD_720P
+  FHD_1080P
+  UHD_4K
+}
+
+enum PlatformType {
+  INSTAGRAM
+  FACEBOOK
+  TIKTOK
+  TWITTER_X
+  PINTEREST
+  YOUTUBE
+  TWITCH
+  THREADS
+  BLUESKY
+  REDDIT
+  GOOGLE_BUSINESS
+  TELEGRAM
+}
+
+enum AdPlatformType {
+  META_ADS
+  GOOGLE_ADS
+  TIKTOK_ADS
+}
+
+enum PostType {
+  IMAGE
+  VIDEO
+  CAROUSEL
+  REEL
+  STORY
+  SHORT
+  THREAD
+  PIN
+  TIKTOK_CAROUSEL
+  // Facebook-specific post types
+  LINK // Bài đăng chỉ có link preview (không có media)
+  TEXT // Bài đăng thuần text, không media
+  LIVE_VIDEO // Video phát trực tiếp (đã kết thúc, lưu lại)
+  ALBUM // Album ảnh nhiều trang (legacy Facebook)
+}
+
+/// Phân loại nội dung Facebook dùng riêng cho analytics.
+/// Map 1-1 với cột "Group" trong Types panel (ảnh tham chiếu).
+/// Khác với PostType (dùng để tạo bài) — đây là để phân tích sau khi publish.
+enum FacebookPostType {
+  IMAGE // Ảnh đơn
+  VIDEO // Video thường
+  REEL // Facebook Reel (short-form video)
+  LINK // Post có link/URL preview
+  TEXT // Post thuần text, không media
+  CAROUSEL // Nhiều ảnh/video dạng slideshow
+  ALBUM // Album ảnh truyền thống
+  LIVE_VIDEO // Video Live đã được lưu lại
+  STORY // Facebook Story (khi thống kê cùng batch với posts)
+}
+
+enum PostStatus {
+  DRAFT
+  SCHEDULED
+  PENDING_APPROVAL
+  APPROVED
+  PUBLISHED
+  PUBLISHING
+  RETRYING
+  FAILED
+  REJECTED
+  PAUSED
+}
+
+enum CalendarView {
+  DAY
+  WEEK
+  MONTH
+}
+
+enum ListSourceType {
+  MANUAL
+  CSV_UPLOAD
+  RSS_FEED
+}
+
+enum WorkflowStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  REVISION_NEEDED
+}
+
+enum InboxItemType {
+  DIRECT_MESSAGE
+  COMMENT
+  MENTION
+  REVIEW
+}
+
+enum ReportFormat {
+  PDF
+  CSV
+  LOOKER_STUDIO
+}
+
+enum BillingCycle {
+  MONTHLY
+  ANNUAL
+}
+
+enum TrendDirection {
+  UP
+  DOWN
+  STABLE
+}
+
+enum ApprovalPolicy {
+  AT_LEAST_ONE
+  ALL
 }
 
 enum AuthProvider {
   LOCAL
   GOOGLE
+  FACEBOOK
+  INSTAGRAM
+}
+
+model PlatformLimit {
+  id                String       @id @default(uuid())
+  platform          PlatformType // e.g. YOUTUBE, FACEBOOK, INSTAGRAM, TIKTOK, TELEGRAM
+  subType           String // e.g. "POST", "REEL", "STORY", "VIDEO", "SHORTS"
+  maxCaptionLength  Int          @default(2000)
+  maxFileSizeMb     Int          @default(100) // 100MB
+  allowedMediaTypes String       @default("ALL") // "ALL", "IMAGE", "VIDEO", "NONE"
+  allowedFormats    String       @default("mp4,mov,png,jpg,jpeg")
+  minVideoDuration  Int? // in seconds
+  maxVideoDuration  Int? // in seconds
+  aspectRatios      String? // e.g. "9:16,16:9"
+  isLocked          Boolean      @default(false) // Admin co the tam khoa nen tang
+  lockReason        String? // Ly do khoa hien thi cho nguoi dung
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
+
+  @@unique([platform, subType])
+}
+
+model AutoReplySetting {
+  id              String   @id @default(uuid())
+  socialAccountId String   @unique
+  isActive        Boolean  @default(false)
+  mode            String   @default("KEYWORD") // "KEYWORD" or "AI"
+  keywordsConfig  Json? // e.g. [{"keywords": ["giá", "inbox"], "reply": "Dạ..."}]
+  aiPrompt        String?  @db.Text
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  socialAccount SocialAccount @relation(fields: [socialAccountId], references: [id], onDelete: Cascade)
+
+  @@map("auto_reply_settings")
+}
+
+model CalendarEvent {
+  id          String   @id @default(uuid())
+  brandId     String? // Nullable if global system events (holidays)
+  title       String
+  description String?  @db.Text
+  eventDate   DateTime // Date of the event
+  isSystem    Boolean  @default(false) // If true, it is a global holiday
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  brand Brand? @relation(fields: [brandId], references: [id], onDelete: Cascade)
+
+  @@index([brandId])
+  @@map("calendar_events")
+}
+
+model LivestreamHighlight {
+  id             String   @id @default(uuid())
+  brandId        String
+  youtubeUrl     String
+  status         String   @default("pending")
+  progress       Int      @default(0)
+  progressMsg    String?
+  videoUrl       String?  @db.Text
+  subtitleUrl    String?  @db.Text
+  duration       Float?
+  youtubeVideoId String? // ID video sau khi đăng lên YouTube Shorts
+  createdAt      DateTime @default(now())
+
+  brand Brand @relation(fields: [brandId], references: [id], onDelete: Cascade)
+
+  @@map("livestream_highlights")
+}
+
+// ============================================
+// OUTBOX PATTERN (transactional side-effect delivery)
+// ============================================
+
+enum OutboxEventStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+model OutboxEvent {
+  id          String            @id @default(uuid())
+  eventType   String // vd 'POST_PUBLISH_UPSERT', xem OUTBOX_EVENT_TYPES
+  aggregateId String // vd postId - dùng để dedupe/trace, KHÔNG dùng làm khóa unique cưỡng bức
+  payload     String            @db.Text // JSON.stringify
+  status      OutboxEventStatus @default(PENDING)
+  attempts    Int               @default(0)
+  maxAttempts Int               @default(5)
+  nextRunAt   DateTime          @default(now()) // dispatcher chỉ pick WHERE nextRunAt <= now()
+  lastError   String?           @db.Text
+  processedAt DateTime?
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+
+  @@index([status, nextRunAt])
+  @@index([status, updatedAt])
+  @@index([aggregateId])
+  @@index([eventType])
+  @@map("outbox_events")
 }

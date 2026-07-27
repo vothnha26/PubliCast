@@ -1,4 +1,5 @@
 const redisClient = require('../config/redis');
+const logger = require('../utils/logger');
 
 const RATE_LIMIT_WINDOW = 15 * 60; // 15 minutes in seconds
 const MAX_FAILED_ATTEMPTS = 5;
@@ -87,7 +88,8 @@ class LoginRateLimiter {
     return async (req, res, next) => {
       try {
         const email = req.body.email?.toLowerCase();
-        const ip = req.ip || req.connection.remoteAddress;
+        // Fixed: req.connection is deprecated — use req.socket
+        const ip = req.ip || req.socket?.remoteAddress || 'unknown';
 
         if (!email) {
           return res.status(400).json({ message: 'Email is required' });
@@ -106,11 +108,13 @@ class LoginRateLimiter {
         req.rateLimit = { email, ip };
         next();
       } catch (error) {
-        console.error('Rate limit middleware error:', error);
-        next();
+        // Log the error but do NOT silently pass — return 500 so the issue is visible
+        logger.error('Rate limit middleware error', error);
+        next(error);
       }
     };
   }
 }
 
 module.exports = new LoginRateLimiter();
+

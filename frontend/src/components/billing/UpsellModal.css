@@ -1,0 +1,153 @@
+.upsell-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.75);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 999;
+  backdrop-filter: blur(4px);
+}
+
+.upsell-modal {
+  background: white;
+  border-radius: 12px;
+  padding: 30px;
+  width: 90%;
+  max-width: 550px;
+  position: relative;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+  color: #333;
+}
+
+.upsell-header {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  margin-bottom: 10px;
+}
+
+.upsell-header .icon {
+  font-size: 2rem;
+}
+
+.upsell-header h2 {
+  margin: 0;
+  color: #d32f2f;
+  font-size: 1.5rem;
+}
+
+.upsell-message {
+  font-size: 1.1rem;
+  color: #555;
+  margin-bottom: 25px;
+  line-height: 1.5;
+}
+
+.upsell-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.primary-action {
+  background: #fdf2f2;
+  border: 1px solid #f8d7da;
+  padding: 20px;
+  border-radius: 8px;
+  text-align: center;
+}
+
+.primary-action h3 {
+  margin: 0 0 15px 0;
+  color: #b71c1c;
+}
+
+.btn-upgrade {
+  background: #d32f2f;
+  color: white;
+  border: none;
+  padding: 12px 24px;
+  border-radius: 6px;
+  font-size: 1.1rem;
+  font-weight: bold;
+  cursor: pointer;
+  transition: background 0.2s;
+  width: 100%;
+}
+
+.btn-upgrade:hover {
+  background: #b71c1c;
+}
+
+.secondary-action {
+  background: #f8f9fa;
+  border: 1px solid #e9ecef;
+  padding: 20px;
+  border-radius: 8px;
+}
+
+.secondary-action h3 {
+  margin: 0 0 15px 0;
+  color: #333;
+  font-size: 1.1rem;
+}
+
+.addon-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.addon-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: white;
+  padding: 12px 15px;
+  border: 1px solid #dee2e6;
+  border-radius: 6px;
+}
+
+.addon-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.addon-info strong {
+  font-size: 1rem;
+  color: #333;
+}
+
+.addon-info span {
+  font-size: 0.9rem;
+  color: #666;
+}
+
+.btn-buy-addon {
+  background: #e9ecef;
+  color: #495057;
+  border: 1px solid #ced4da;
+  padding: 8px 16px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: all 0.2s;
+}
+
+.btn-buy-addon:hover {
+  background: #0066cc;
+  color: white;
+  border-color: #0066cc;
+}
+
+.free-plan-notice {
+  text-align: center;
+  color: #666;
+  font-size: 0.9rem;
+  font-style: italic;
+  margin-top: 10px;
+}

@@ -1,0 +1,49 @@
+@media print {
+  /* Hide sidebars, topbars, buttons, non-print elements */
+  aside, nav, header, footer, .no-print, button, .sticky, [role="dialog"], .dialog, select {
+    display: none !important;
+  }
+
+  /* Reset main layouts, background, padding and sizes */
+  body, html, #root {
+    background: #ffffff !important;
+    color: #000000 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    font-size: 12pt !important;
+  }
+
+  /* Remove scrollbars and borders */
+  .overflow-y-auto, .overflow-auto {
+    overflow: visible !important;
+    height: auto !important;
+  }
+
+  /* Fix spacing of content */
+  .p-6, .pb-12, .space-y-6 {
+    padding: 0 !important;
+    margin: 0 !important;
+    gap: 0 !important;
+  }
+
+  /* Target main wrapper */
+  .flex-1 {
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    flex: none !important;
+  }
+
+  /* Keep charts and tables visible and clean */
+  .bg-white {
+    border: none !important;
+    box-shadow: none !important;
+    background: transparent !important;
+  }
+
+  /* Break pages elegantly */
+  .page-break {
+    page-break-before: always;
+  }
+}

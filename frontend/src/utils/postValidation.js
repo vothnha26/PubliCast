@@ -1,0 +1,181 @@
+import { isVideoPath } from './url';
+import { PLATFORM_CONFIGS } from '../constants/platformRegistry';
+
+/**
+ * validatePostForm
+ * Hàm validate bài viết dựa trên platform và định dạng file, sử dụng cấu hình registry động kết hợp DB PlatformLimits.
+ *
+ * @returns {string[]} Mảng chứa các thông báo lỗi (rỗng nếu không có lỗi)
+ */
+export function validatePostForm({
+  isLibrary,
+  selectedPublishId,
+  scheduledDate,
+  selectedPlatforms = [],
+  facebookType,
+  youtubeType,
+  instagramType,
+  videoFileUrl,
+  videoFile,
+  videoDuration,
+  videoWidth,
+  videoHeight,
+  uploadedVideoPath,
+  platformLimits = [],
+  mediaCount = 0,
+  editingPost,
+  postMedia = [],
+  captionText = ''
+}) {
+  const errors = [];
+  if (isLibrary || selectedPublishId === 'draft') {
+    return errors;
+  }
+
+  // 1. Validate ngày lên lịch
+  if (['schedule', 'review'].includes(selectedPublishId)) {
+    const isPastDate = new Date(scheduledDate).getTime() < Date.now() - 15 * 60 * 1000; // Cho phép trễ tối đa 15 phút
+    if (isPastDate) {
+      errors.push("Publish date can't be a past date.");
+    }
+  }
+
+  const hasMedia = !!(uploadedVideoPath || videoFile || mediaCount > 0);
+  const isVid = isVideoPath(videoFileUrl, videoFile);
+
+  // 2. Validate từng platform được tích chọn
+  for (const platform of selectedPlatforms) {
+    const platUpper = platform.toUpperCase();
+    
+    // Xác định subType
+    let subType = 'POST';
+    if (platform === 'facebook') subType = facebookType.toUpperCase();
+    else if (platform === 'youtube') subType = youtubeType.toUpperCase();
+    else if (platform === 'instagram') subType = instagramType.toUpperCase();
+    else if (platform === 'tiktok') subType = 'VIDEO';
+
+    // Validation không cho phép thay đổi/thêm/bớt media trên bài viết Facebook đã xuất bản (PUBLISHED)
+    if (platUpper === 'FACEBOOK' && editingPost && editingPost.status?.toUpperCase() === 'PUBLISHED') {
+      let originalUrls = [];
+      if (Array.isArray(editingPost.mediaUrls)) {
+        originalUrls = editingPost.mediaUrls.filter(Boolean);
+      } else if (typeof editingPost.mediaUrls === 'string') {
+        originalUrls = editingPost.mediaUrls.split(',').map(u => u.trim()).filter(Boolean);
+      }
+
+      const currentUrls = (postMedia || []).map(item => item.path).filter(Boolean);
+      const hasNewFiles = (postMedia || []).some(item => item.file);
+
+      const isChanged = hasNewFiles || 
+                        currentUrls.length !== originalUrls.length || 
+                        !currentUrls.every(url => originalUrls.includes(url));
+
+      if (isChanged) {
+        errors.push(`[FACEBOOK] Facebook does not support updating/modifying media on an already published post.`);
+      }
+    }
+
+    // Tìm cấu hình limit động từ DB
+    const limitConfig = platformLimits.find(l => l.platform === platUpper && l.subType === subType);
+
+    if (limitConfig && limitConfig.isLocked) {
+      errors.push(`[${platUpper} - ${subType}] Nền tảng này hiện đang bị khóa: ${limitConfig.lockReason || 'Tạm thời bảo trì'}`);
+      continue;
+    }
+
+    if (!limitConfig) {
+      // Fallback sang cấu hình static registry nếu chưa load được DB limits
+      const platKey = platform.toLowerCase();
+      const config = PLATFORM_CONFIGS[platKey];
+      if (config) {
+        let activeType = config.defaultType;
+        if (platKey === 'facebook') activeType = facebookType;
+        else if (platKey === 'youtube') activeType = youtubeType;
+        else if (platKey === 'instagram') activeType = instagramType;
+
+        const checkContext = {
+          hasMedia,
+          isVideo: isVid,
+          videoDuration: videoDuration || 0,
+          videoWidth: videoWidth || 0,
+          videoHeight: videoHeight || 0,
+          mediaCount
+        };
+
+        const alwaysRules = config.validationRules?._always || [];
+        for (const rule of alwaysRules) {
+          if (rule.check(checkContext)) {
+            errors.push(`[${platUpper}] ${rule.message(checkContext)}`);
+          }
+        }
+
+        const typeRules = config.validationRules?.[activeType] || [];
+        for (const rule of typeRules) {
+          if (rule.check(checkContext)) {
+            errors.push(`[${platUpper} - ${activeType.toUpperCase()}] ${rule.message(checkContext)}`);
+          }
+        }
+      }
+      continue;
+    }
+
+    // Thực hiện validation dựa trên DB limits
+    
+    // Check Allowed Media Types
+    if (limitConfig.allowedMediaTypes === 'NONE' && hasMedia) {
+      errors.push(`[${platUpper} - ${subType}] Media uploads are not allowed.`);
+    }
+    if (limitConfig.allowedMediaTypes === 'VIDEO' && hasMedia && !isVid) {
+      errors.push(`[${platUpper} - ${subType}] Only video files are allowed.`);
+    }
+    if (limitConfig.allowedMediaTypes === 'IMAGE' && hasMedia && isVid) {
+      errors.push(`[${platUpper} - ${subType}] Only image files are allowed.`);
+    }
+
+    if (hasMedia) {
+      // Validate format
+      if (limitConfig.allowedFormats) {
+        const allowed = limitConfig.allowedFormats.split(',').map(f => f.trim().toLowerCase());
+        const fileName = videoFile ? videoFile.name : (uploadedVideoPath || videoFileUrl || '');
+        const format = fileName.split('.').pop().split('?')[0].toLowerCase();
+        
+        if (format && !allowed.includes(format)) {
+          errors.push(`[${platUpper} - ${subType}] Format "${format}" is not supported. Supported formats: ${limitConfig.allowedFormats}`);
+        }
+      }
+
+      // Validate duration (chỉ cho video)
+      if (isVid && videoDuration) {
+        if (limitConfig.minVideoDuration && videoDuration < limitConfig.minVideoDuration) {
+          errors.push(`[${platUpper} - ${subType}] Video duration (${Math.round(videoDuration)}s) is shorter than the minimum required ${limitConfig.minVideoDuration}s.`);
+        }
+        if (limitConfig.maxVideoDuration && videoDuration > limitConfig.maxVideoDuration) {
+          errors.push(`[${platUpper} - ${subType}] Video duration (${Math.round(videoDuration)}s) is longer than the maximum allowed ${limitConfig.maxVideoDuration}s.`);
+        }
+      }
+    }
+
+    // Validate độ dài caption theo từng nền tảng
+    const maxLen = limitConfig.maxCaptionLength || limitConfig.maxCharacters;
+    if (maxLen && captionText && captionText.length > maxLen) {
+      errors.push(`[${platUpper} - ${subType}] Caption length exceeds the maximum limit of ${maxLen} characters.`);
+    }
+
+    // Bắt buộc có media đối với Reels/Stories/Shorts/TikTok/YouTube
+    if (platUpper === 'TIKTOK' && !hasMedia) {
+      errors.push(`[${platUpper} - ${subType}] TikTok posts require a video file.`);
+    }
+    if (platUpper === 'YOUTUBE' && !hasMedia) {
+      errors.push(`[${platUpper} - ${subType}] YouTube uploads require a video file.`);
+    }
+    if (platUpper === 'INSTAGRAM' && !hasMedia) {
+      errors.push(`[${platUpper} - ${subType}] Instagram requires at least one photo or video to publish a post.`);
+    }
+    if (platUpper === 'FACEBOOK' && ['REEL', 'STORY'].includes(subType) && !hasMedia) {
+      errors.push(`[${platUpper} - ${subType}] Facebook ${subType.toLowerCase()} requires a media file.`);
+    }
+  }
+
+  return errors;
+}
+

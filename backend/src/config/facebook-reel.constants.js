@@ -1,0 +1,23 @@
+/**
+   * Cấu hình và Hằng số cho Facebook Reels
+   */
+  module.exports = {
+    LIMITS: {
+      MAX_REELS_PER_24H: 30,
+      MAX_COLLABORATOR_INVITES_PER_24H: 10,
+      MIN_DURATION_SECONDS: 3,
+      MAX_DURATION_SECONDS: 90,
+      MIN_RESOLUTION_WIDTH: 540,
+      MIN_RESOLUTION_HEIGHT: 960,
+      ALLOWED_ASPECT_RATIO: '9:16',
+      MAX_THUMBNAIL_SIZE_BYTES: 10 * 1024 * 1024, // 10MB
+    },
+    ERROR_CODES: {
+      RATE_LIMIT: [4, 17, 32], // 4: User request limit, 17: Api limit, 32: Page request limit
+      INVALID_ASPECT_RATIO: 1363040,
+      INVALID_RESOLUTION: 1363127,
+      INVALID_DURATION: 1363128,
+      INVALID_FRAME_RATE: 1363129,
+    },
+    DEFAULT_RETRY_AFTER_SECONDS: 60,
+  };

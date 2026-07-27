@@ -1,4 +1,5 @@
 const { createClient } = require('redis');
+const logger = require('../utils/logger');
 
 const createMemoryRedisClient = () => {
   const store = new Map();
@@ -22,6 +23,12 @@ const createMemoryRedisClient = () => {
       return record ? record.value : null;
     },
     set: async (key, value, options = {}) => {
+      if (options.NX) {
+        const record = getRecord(key);
+        if (record) {
+          return null;
+        }
+      }
       const ttl = options.EX ? options.EX * 1000 : null;
       store.set(key, {
         value: String(value),
@@ -73,32 +80,53 @@ const createMemoryRedisClient = () => {
 };
 
 if (process.env.USE_MEMORY_REDIS === 'true') {
-  console.warn('Using in-memory Redis fallback. Do not use this in production.');
+  logger.warn('Using in-memory Redis fallback. Do not use this in production.');
   module.exports = createMemoryRedisClient();
-  return;
-}
-
-const redisClient = createClient({
-  url: `redis://${process.env.REDIS_HOST || '127.0.0.1'}:${process.env.REDIS_PORT || 6379}`
-});
-
-redisClient.on('error', (err) => {
-  if (process.env.NODE_ENV !== 'test') {
-    console.error('Redis Client Error', err);
-  }
-});
-
-const connectRedis = async () => {
-  if (process.env.NODE_ENV !== 'test' && !redisClient.isOpen) {
-    try {
-      await redisClient.connect();
-      console.log('Connected to Redis');
-    } catch (err) {
-      console.error('Could not connect to Redis', err);
+} else {
+  const redisUrl = process.env.REDIS_URL || `redis://${process.env.REDIS_HOST || '127.0.0.1'}:${process.env.REDIS_PORT || 6379}`;
+  const isTls = redisUrl.startsWith('rediss:');
+  // rejectUnauthorized defaults to true (verify the server cert) — disabling
+  // it unconditionally on every rediss:// connection allowed a MITM to
+  // intercept traffic to a Redis instance that holds login-attempt counters
+  // and cache data (#118 M3). REDIS_TLS_ALLOW_SELF_SIGNED is an explicit,
+  // documented opt-out for providers using a self-signed cert, not a default.
+  const allowSelfSigned = process.env.REDIS_TLS_ALLOW_SELF_SIGNED === 'true';
+  const redisClient = createClient({
+    url: redisUrl,
+    socket: {
+      ...(isTls ? {
+        tls: true,
+        rejectUnauthorized: !allowSelfSigned
+      } : {}),
+      reconnectStrategy: (retries) => {
+        if (retries > 10) {
+          console.error('Redis max reconnection retries reached');
+          return new Error('Redis max reconnection retries reached');
+        }
+        return Math.min(retries * 50, 1000);
+      },
+      connectTimeout: 20000
     }
-  }
-};
+  });
 
-connectRedis();
+  redisClient.on('error', (err) => {
+    if (process.env.NODE_ENV !== 'test') {
+      logger.error('Redis Client Error', { error: err.message });
+    }
+  });
 
-module.exports = redisClient;
+  const connectRedis = async () => {
+    if (process.env.NODE_ENV !== 'test' && !redisClient.isOpen) {
+      try {
+        await redisClient.connect();
+        logger.info('Connected to Redis');
+      } catch (err) {
+        logger.error('Could not connect to Redis', err);
+      }
+    }
+  };
+
+  connectRedis();
+
+  module.exports = redisClient;
+}

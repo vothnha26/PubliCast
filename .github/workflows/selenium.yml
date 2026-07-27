@@ -1,0 +1,180 @@
+name: Selenium UI Automation Tests
+
+on:
+  push:
+    branches: [ main, master, develop, "feature/**", "feat/**", "bugfix/**", "bug/**", "bug/*" ]
+  pull_request:
+    branches: [ main, master, develop ]
+
+jobs:
+  selenium-tests:
+    runs-on: ubuntu-latest
+
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: root_password
+          MYSQL_DATABASE: publicast
+        ports:
+          - 3307:3306
+        options: --health-cmd="mysqladmin ping" --health-interval=10s --health-timeout=5s --health-retries=3
+
+      redis:
+        image: redis:latest
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+          cache-dependency-path: |
+            backend/package.json
+            frontend/package.json
+
+      - name: Create .env file
+        working-directory: backend
+        env:
+          ENV_CONTENT: ${{ secrets.ENV_FILE }}
+        run: |
+          # Ghi nội dung từ secret vào file .env
+          echo "$ENV_CONTENT" > .env
+
+          # Đã có sẵn trong secret
+          sed -i '/DATABASE_URL/d' .env
+          sed -i '/REDIS_HOST/d' .env
+          sed -i '/REDIS_PORT/d' .env
+          sed -i '/PORT/d' .env
+          sed -i '/ADMIN_EMAIL/d' .env
+          sed -i '/ADMIN_PASSWORD/d' .env
+          sed -i '/MEMBER_EMAIL/d' .env
+          sed -i '/MEMBER_PASSWORD/d' .env
+
+          # Ghi đè cấu hình cho môi trường CI
+          echo "DATABASE_URL=mysql://root:root_password@localhost:3307/publicast" >> .env
+          echo "REDIS_HOST=localhost" >> .env
+          echo "REDIS_PORT=6379" >> .env
+          echo "PORT=3000" >> .env
+
+          # Ensure seed creates test users matching Selenium credentials
+          echo "ADMIN_EMAIL=${{ secrets.TEST_ADMIN_EMAIL }}" >> .env
+          echo "ADMIN_PASSWORD=${{ secrets.TEST_ADMIN_PASSWORD }}" >> .env
+          echo "MEMBER_EMAIL=${{ secrets.TEST_ADMIN_EMAIL }}" >> .env
+          echo "MEMBER_PASSWORD=${{ secrets.TEST_ADMIN_PASSWORD }}" >> .env
+
+      - name: Setup Backend Database
+        working-directory: backend
+        run: |
+          npm install
+
+          # Wait for MySQL to be ready
+          echo "Waiting for MySQL service to accept connections..."
+          for i in {1..30}; do
+            if mysqladmin ping -h 127.0.0.1 -P 3307 -u root -proot_password --silent 2>/dev/null; then
+              echo "✅ MySQL is ready"
+              break
+            fi
+            echo "⏳ MySQL not ready yet, retrying... ($i/30)"
+            sleep 2
+          done
+
+          npx prisma db push
+          node prisma/seed.js
+
+      - name: Start Backend Server
+        working-directory: backend
+        run: |
+          # Chạy background server và bypass GitHub Actions process killer, ghi log ra file
+          RUNNER_TRACKING_ID=to_prevent_killing npm start > backend.log 2>&1 &
+
+      - name: Start Frontend App
+        working-directory: frontend
+        run: |
+          npm install
+          echo "VITE_API_BASE_URL=/api" > .env
+          # Chạy background server và bypass GitHub Actions process killer, ghi log ra file
+          RUNNER_TRACKING_ID=to_prevent_killing npm run dev > frontend.log 2>&1 &
+
+      - name: Install Chrome
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y google-chrome-stable
+
+      - name: Install Selenium Test Dependencies
+        working-directory: test_selenium
+        run: |
+          npm install
+
+      - name: Wait for Frontend and Backend to be Ready
+        run: |
+          npx wait-on -t 60000 http://localhost:5173/login http://localhost:3000/health
+
+      - name: Setup Selenium Test .env
+        working-directory: test_selenium
+        run: |
+          echo "ADMIN_EMAIL=${{ secrets.TEST_ADMIN_EMAIL }}" > .env
+          echo "ADMIN_PASSWORD=${{ secrets.TEST_ADMIN_PASSWORD }}" >> .env
+          echo "MEMBER_EMAIL=${{ secrets.TEST_ADMIN_EMAIL }}" >> .env
+          echo "MEMBER_PASSWORD=${{ secrets.TEST_ADMIN_PASSWORD }}" >> .env
+          echo "BASE_URL=http://localhost:5173" >> .env
+          echo "API_URL=http://localhost:3000" >> .env
+          echo "MYSQL_URL=mysql://root:root_password@localhost:3307/publicast" >> .env
+          echo "REDIS_URL=redis://localhost:6379" >> .env
+
+      - name: Run Full Selenium Test Suite
+        if: ${{ !startsWith(github.ref_name, 'bug/PC-53') && !startsWith(github.ref_name, 'bug/PC-54') && !startsWith(github.ref_name, 'bug/PC-55') && !startsWith(github.ref_name, 'bug/PC-56') && !startsWith(github.ref_name, 'bugfix/PC-56') }}
+        working-directory: test_selenium
+        run: |
+          npm run test:brand || (echo "=== BACKEND LOGS ===" && cat ../backend/backend.log && exit 1)
+          npm run test:auth-suite
+          npm run test:profile
+          npm run test:post-creator
+          npm run test:livestream-chat
+
+      - name: Run YouTube Dashboard Tests (PC-53 branch only)
+        if: ${{ startsWith(github.ref_name, 'bug/PC-53') }}
+        working-directory: test_selenium
+        run: |
+          npm run test:youtube-dashboard
+
+      - name: Run Team Management Tests (PC-54 and PC-55 branches)
+        if: ${{ startsWith(github.ref_name, 'bug/PC-54') || startsWith(github.ref_name, 'bug/PC-55') }}
+        working-directory: test_selenium
+        run: |
+          npm run test:team-management
+
+      - name: Run General Dashboard Tests (PC-56 branch only)
+        if: ${{ startsWith(github.ref_name, 'bug/PC-56') || startsWith(github.ref_name, 'bugfix/PC-56') }}
+        working-directory: test_selenium
+        run: |
+          npm run test:general-dashboard
+
+      - name: Print Server Logs on Failure
+        if: failure()
+        run: |
+          echo "=== BACKEND LOGS ==="
+          cat backend/backend.log || true
+          echo "=== FRONTEND LOGS ==="
+          cat frontend/frontend.log || true
+
+      - name: Upload Test Screenshots
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: selenium-screenshots
+          path: |
+            test_cases/auth/screenshots/
+            test_selenium/dashboard/error_*.png
+            test_selenium/team/error_*.png
+            test_selenium/error_*.png

@@ -1,0 +1,32 @@
+{
+  "title": "Notifications",
+  "subtitle": "Showing {{count}} of {{total}} notifications",
+  "fromDate": "From date",
+  "toDate": "To date",
+  "unread": "Unread",
+  "clearFilters": "Clear filters",
+  "markAllRead": "Mark all as read",
+  "loadErrorTitle": "Failed to load notifications",
+  "tryAgain": "Try again",
+  "emptyTitle": "Inbox is empty",
+  "emptyDesc": "You have no notifications in this category.",
+  "markAsRead": "Mark as read",
+  "pageInfo": "Page {{current}} / {{total}}",
+  "previous": "Previous",
+  "next": "Next",
+  "categories": {
+    "all": "All notifications",
+    "content": "Content Approval",
+    "team": "Team Activity",
+    "platform": "Platform Connection",
+    "system": "System & Billing"
+  },
+  "toasts": {
+    "dateOrderError": "Start date must be before or equal to End date",
+    "selectStartDateFirst": "Please select Start Date first",
+    "loadFailed": "Failed to load notifications",
+    "markReadFailed": "Failed to mark as read",
+    "markAllReadSuccess": "All notifications marked as read",
+    "markAllReadFailed": "Failed to mark all as read"
+  }
+}

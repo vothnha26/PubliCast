@@ -1,0 +1,76 @@
+{
+  "header": {
+    "title": "Hashtag Manager & Phân Tích",
+    "subtitle": "Lưu trữ bộ hashtag thương hiệu và kiểm tra phân tích reach thực tế.",
+    "createBtn": "Tạo bộ mới"
+  },
+  "tabs": {
+    "sets": "Bộ Hashtag",
+    "discover": "Khám phá xu hướng",
+    "stats": "Hiệu suất"
+  },
+  "sets": {
+    "editBtn": "Sửa Set",
+    "createCard": "Tạo bộ mới",
+    "emptyTags": "Chưa có tag nào"
+  },
+  "discover": {
+    "posts": "bài đăng",
+    "trending": "TRENDING ↑ {{rate}}%",
+    "stable": "ỔN ĐỊNH →",
+    "trackBtn": "+ Theo dõi Tag",
+    "noResults": "Không tìm thấy hashtag nào thịnh hành.",
+    "retryBtn": "Tải lại"
+  },
+  "stats": {
+    "chartTitle": "Hiệu suất Reach của các Tag đang theo dõi",
+    "tableHeaders": {
+      "hashtag": "Hashtag",
+      "frequency": "Tần suất sử dụng",
+      "reach": "Reach TB",
+      "platform": "Nền tảng"
+    },
+    "postsPerDay": "bài/24h",
+    "reachSuffix": "K reach",
+    "noData": "Chưa có dữ liệu",
+    "untrackBtn": "Ngừng theo dõi",
+    "refreshBtn": "Làm mới",
+    "refreshing": "Đang làm mới…",
+    "empty": {
+      "title": "Chưa theo dõi thẻ phân tích nào",
+      "desc": "Vào tab Khám phá và chọn bấm \"+ Theo dõi Tag\" để thêm thẻ hashtag phân tích reach và số bài đăng thực tế."
+    }
+  },
+  "editor": {
+    "editTitle": "Sửa bộ: {{name}}",
+    "createTitle": "Tạo bộ Hashtag mới",
+    "nameLabel": "Tên bộ",
+    "namePlaceholder": "VD: Xu hướng Công nghệ",
+    "hashtagsLabel": "Hashtags",
+    "addPlaceholder": "Thêm hashtag mới...",
+    "addBtn": "Thêm",
+    "cancelBtn": "Hủy",
+    "saveBtn": "Lưu thay đổi",
+    "createBtn": "Tạo bộ"
+  },
+  "toasts": {
+    "loadError": "Không thể tải dữ liệu Hashtags.",
+    "trendingError": "Không thể tải danh sách hashtag đang thịnh hành.",
+    "createSuccess": "Đã tạo bộ hashtag thành công!",
+    "createError": "Tạo bộ hashtag thất bại.",
+    "updateSuccess": "Cập nhật bộ hashtag thành công!",
+    "updateError": "Cập nhật thất bại.",
+    "deleteSuccess": "Đã xóa bộ hashtag thành công.",
+    "deleteError": "Xóa thất bại.",
+    "untrackSuccess": "Đã ngưng theo dõi hashtag.",
+    "untrackError": "Không thể ngưng theo dõi tag.",
+    "refreshError": "Không thể làm mới dữ liệu hashtag.",
+    "trackSuccess": "Đang theo dõi tag: {{tag}}",
+    "trackError": "Không thể theo dõi tag này.",
+    "validationEmpty": "Vui lòng điền tên bộ hashtag và thêm ít nhất một thẻ tag.",
+    "deleteConfirmTitle": "Xóa bộ Hashtag",
+    "deleteConfirmDesc": "Bạn có chắc chắn muốn xóa bộ hashtag này?",
+    "deleteConfirmBtn": "Xóa",
+    "cancelBtn": "Hủy"
+  }
+}

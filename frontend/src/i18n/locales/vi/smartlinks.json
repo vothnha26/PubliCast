@@ -1,0 +1,93 @@
+{
+  "header": {
+    "title": "SmartLinks",
+    "subtitle": "Xây dựng và tùy chỉnh trang bio-link để tăng lưu lượng truy cập.",
+    "newBtn": "Mới",
+    "cloneBtn": "Nhân bản",
+    "deleteBtn": "Xóa",
+    "resetBtn": "Khôi phục",
+    "saveBtn": "Lưu"
+  },
+  "tabs": {
+    "settings": "Cài đặt",
+    "analytics": "Phân tích"
+  },
+  "subtabs": {
+    "buttons": "Nút bấm",
+    "media": "Media",
+    "appearance": "Giao diện"
+  },
+  "general": {
+    "sectionTitle": "Thông tin chung",
+    "nameLabel": "Tên",
+    "urlLabel": "URL",
+    "copyBtn": "Sao chép"
+  },
+  "buttons": {
+    "addButton": "Thêm nút",
+    "addSection": "Thêm section",
+    "addIconTitle": "Thêm icon",
+    "textLabel": "Văn bản",
+    "urlLabel": "URL",
+    "textColorLabel": "Màu chữ",
+    "bgColorLabel": "Nền",
+    "borderColorLabel": "Viền",
+    "disableLabel": "Vô hiệu",
+    "cloneBtn": "Nhân bản",
+    "iconBtn": "Icon"
+  },
+  "media": {
+    "sectionTitle": "Media",
+    "avatarLabel": "Ảnh đại diện",
+    "uploadAvatarBtn": "Tải ảnh lên",
+    "bioLabel": "Bio",
+    "bioPlaceholder": "Mô tả thương hiệu của bạn...",
+    "noMedia": "Chưa có media nào.",
+    "addMediaBtn": "Thêm media"
+  },
+  "appearance": {
+    "sectionTitle": "Giao diện",
+    "chooseTheme": "Chọn giao diện"
+  },
+  "icons": {
+    "platformLabel": "Nền tảng",
+    "platformPlaceholder": "VD: instagram",
+    "urlPlaceholder": "URL trang cá nhân",
+    "addBtn": "Thêm icon",
+    "noIcons": "Chưa có icon mạng xã hội nào. Thêm icon đầu tiên của bạn."
+  },
+  "addLink": {
+    "title": "Thêm nút mới",
+    "titleLabel": "Tiêu đề nút",
+    "titlePlaceholder": "VD: Ghé thăm trang web của tôi",
+    "urlLabel": "URL",
+    "urlPlaceholder": "https://...",
+    "addBtn": "Thêm",
+    "cancelBtn": "Hủy"
+  },
+  "toasts": {
+    "loadError": "Không thể tải cấu hình SmartLink",
+    "initSuccess": "Đã khởi tạo trang SmartLink mặc định!",
+    "initError": "Không thể tự động khởi tạo SmartLink",
+    "saveSuccess": "Đã lưu cấu hình SmartLinks thành công!",
+    "saveError": "Không thể lưu cấu hình",
+    "copySuccess": "Đã sao chép liên kết Bio-Link!",
+    "avatarUploadSuccess": "Đã tải ảnh đại diện lên",
+    "avatarUploadError": "Không thể tải ảnh đại diện lên",
+    "iconUploadSuccess": "Đã tải ảnh/icon cho link",
+    "iconUploadError": "Không thể tải ảnh/icon cho link",
+    "addLinkError": "Vui lòng điền tiêu đề và liên kết URL",
+    "addLinkSuccess": "Đã thêm liên kết mới!",
+    "cloneSuccess": "Đã sao chép cấu hình SmartLink!",
+    "cloneLink": "Đã nhân bản liên kết!",
+    "deleteLink": "Đã xóa liên kết tạm thời.",
+    "deleteMain": "Vui lòng liên hệ quản trị viên để xóa liên kết chính.",
+    "resetSuccess": "Đã khôi phục lại dữ liệu chưa lưu.",
+    "sectionComingSoon": "Tính năng Section sẽ được phát triển ở phiên bản kế tiếp.",
+    "restoreSuccess": "Đã khôi phục lại dữ liệu chưa lưu.",
+    "driveComingSoon": "Tính năng Tải ảnh lên sẽ khả dụng sau khi kết nối tài khoản Drive.",
+    "videoComingSoon": "Tính năng Nhúng Video từ Youtube/Vimeo đang được hoàn thiện.",
+    "igComingSoon": "Kết nối tài khoản Instagram Business để kéo danh mục ảnh tự động.",
+    "themeSelected": "Đã chọn theme: {{name}}"
+  }
+}
