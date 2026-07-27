@@ -2,7 +2,7 @@ const youtubeGateway = require('./youtube.gateway');
 const googleOAuthService = require('../google-oauth.service');
 const socialAccountRepository = require('../../../repositories/social/social-account.repository');
 const trackedVideoRepository = require('../../../repositories/social/tracked-video.repository');
-const { PLATFORMS, POST_STATUS, SEPARATORS } = require('../../../utils/constants');
+const { PLATFORMS, POST_STATUS, SEPARATORS, YOUTUBE_API } = require('../../../utils/constants');
 
 class YouTubeVideoService {
   async getPublishedVideos(brandId, pageToken = null, limit = 10, socialAccountId = null) {
@@ -105,15 +105,21 @@ class YouTubeVideoService {
     }
 
     const { auth } = await this._getAuthContext(brandId);
-    const res = await youtubeGateway.getPlaylists(auth);
-    if (!res.data.items) return [];
+    const playlists = [];
+    let pageToken = null;
 
-    const playlists = res.data.items.map(item => ({
-      id: item.id,
-      title: item.snippet.title,
-      description: item.snippet.description,
-      itemCount: item.contentDetails.itemCount
-    }));
+    do {
+      const res = await youtubeGateway.getPlaylists(auth, 50, pageToken);
+      if (res.data.items) {
+        playlists.push(...res.data.items.map(item => ({
+          id: item.id,
+          title: item.snippet.title,
+          description: item.snippet.description,
+          itemCount: item.contentDetails.itemCount
+        })));
+      }
+      pageToken = res.data.nextPageToken || null;
+    } while (pageToken);
 
     youtubePlaylistCache.set(brandId, playlists);
     return playlists;
@@ -167,8 +173,8 @@ class YouTubeVideoService {
       comments: v.statistics.commentCount,
       duration: v.contentDetails.duration,
       status: POST_STATUS.PUBLISHED,
-      platform: 'YOUTUBE',
-      postUrl: `https://www.youtube.com/watch?v=${v.id}`
+      platform: PLATFORMS.YOUTUBE,
+      postUrl: YOUTUBE_API.videoUrl(v.id)
     }));
   }
 

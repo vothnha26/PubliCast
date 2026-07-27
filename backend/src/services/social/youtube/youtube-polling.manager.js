@@ -5,6 +5,7 @@ const socialAccountRepository = require('../../../repositories/social/social-acc
 const { PLATFORMS, INBOX_TYPES, INBOX_STATUS } = require('../../../utils/constants');
 const { SOCKET_EVENTS, ROOM_PREFIXES } = require('../../../utils/socket-constants');
 const inboxRepository = require('../../../repositories/social/inbox.repository');
+const { parseGoogleApiError } = require('./youtube-error.util');
 
 class YoutubePollingManager {
   constructor() {
@@ -166,9 +167,10 @@ class YoutubePollingManager {
     } catch (err) {
       console.error(`[YoutubePollingManager] Polling error for stream ${livestreamId}:`, err.message);
       
+      const { status, reason } = parseGoogleApiError(err);
       const errMsg = err.message ? err.message.toLowerCase() : '';
-      const isAuthError = errMsg.includes('auth') || errMsg.includes('token') || err.code === 401;
-      const isQuotaError = errMsg.includes('quota') || err.code === 403;
+      const isAuthError = errMsg.includes('auth') || errMsg.includes('token') || status === 401;
+      const isQuotaError = reason === 'quotaExceeded' || reason === 'dailyLimitExceeded' || errMsg.includes('quota');
 
       if (isAuthError) {
         console.error(`[YoutubePollingManager] Authentication failure. Stopping polling.`);

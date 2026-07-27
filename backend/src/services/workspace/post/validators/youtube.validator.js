@@ -1,9 +1,9 @@
 const BaseValidator = require('./base.validator');
-const path = require('path');
-const fs = require('fs');
+const { YOUTUBE_CONSTRAINTS } = require('../../../social/youtube/youtube.constants');
+const { validateImageConstraints } = require('../../../social/youtube/youtube-media-validator.util');
 
 class YouTubeValidator extends BaseValidator {
-  validate(postData, mediaInfo = {}) {
+  async validate(postData, mediaInfo = {}) {
     const errors = [];
     
     // YouTube requires a non-empty title
@@ -23,21 +23,20 @@ class YouTubeValidator extends BaseValidator {
       errors.push('YouTube uploads require a video file.');
     }
 
-    // YouTube custom thumbnail validation: size must be < 2MB
+    // YouTube custom thumbnail validation: size must be < 2MB, formats allowed are JPG/PNG
     const thumbnail = postData.options?.youtubeThumbnail;
     if (thumbnail) {
       try {
-        if (!thumbnail.startsWith('http')) {
-          const localPath = path.join(process.cwd(), thumbnail.replace(/^\//, ''));
-          if (fs.existsSync(localPath)) {
-            const stats = fs.statSync(localPath);
-            if (stats.size > 2 * 1024 * 1024) {
-              errors.push('YouTube custom thumbnail size must be less than 2MB.');
-            }
-          }
+        const { ok, error } = await validateImageConstraints(thumbnail, {
+          maxSizeBytes: YOUTUBE_CONSTRAINTS.THUMBNAIL_MAX_SIZE_BYTES,
+          allowedMimeTypes: YOUTUBE_CONSTRAINTS.IMAGE_MIME_TYPES,
+          resourceLabel: 'Custom thumbnail'
+        });
+        if (!ok) {
+          errors.push(error);
         }
       } catch (err) {
-        console.warn('[YouTubeValidator] Failed to check custom thumbnail size:', err.message);
+        console.warn('[YouTubeValidator] Failed to check custom thumbnail constraints:', err.message);
       }
     }
 

@@ -379,10 +379,13 @@ const TIKTOK_API = {
   AUTH_URL: 'https://www.tiktok.com/v2/auth/authorize'
 };
 
-const YOUTUBE_API = {
-  BASE_URL: 'https://www.youtube.com',
-  videoUrl: (videoId) => `https://www.youtube.com/watch?v=${videoId}`
-};
+const {
+  YOUTUBE_API,
+  YOUTUBE_MODERATION_STATUS,
+  YOUTUBE_SEARCH_TYPES,
+  YOUTUBE_CONSTRAINTS,
+  YOUTUBE_PUBSUB
+} = require('../services/social/youtube/youtube.constants');
 
 const GOOGLE_SCOPES = {
   YOUTUBE: 'https://www.googleapis.com/auth/youtube',
@@ -688,6 +691,10 @@ module.exports = {
   SYSTEM_PLANS,
   YOUTUBE_PRIVACY,
   YOUTUBE_CATEGORIES,
+  YOUTUBE_MODERATION_STATUS,
+  YOUTUBE_SEARCH_TYPES,
+  YOUTUBE_CONSTRAINTS,
+  YOUTUBE_PUBSUB,
   NOTIFICATION_TYPES,
   DEFAULT_CONFIG,
   FACEBOOK_API,

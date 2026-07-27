@@ -2,6 +2,7 @@ const FacebookValidator = require('./facebook.validator');
 const InstagramValidator = require('./instagram.validator');
 const TikTokValidator = require('./tiktok.validator');
 const YouTubeValidator = require('./youtube.validator');
+const BlueskyValidator = require('./bluesky.validator');
 const GenericValidator = require('./generic.validator');
 const { PLATFORMS } = require('../../../../utils/constants');
 
@@ -22,6 +23,8 @@ class ValidatorFactory {
         return new TikTokValidator(limitConfig);
       case PLATFORMS.YOUTUBE:
         return new YouTubeValidator(limitConfig);
+      case PLATFORMS.BLUESKY:
+        return new BlueskyValidator(limitConfig);
       case PLATFORMS.TELEGRAM:
       default:
         return new GenericValidator(limitConfig);

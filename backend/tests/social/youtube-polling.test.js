@@ -189,8 +189,20 @@ describe('YoutubePollingManager Unit Tests', () => {
       });
 
       // Simulate 403 quota error
-      const quotaError = new Error('The request cannot be completed because you have exceeded your quota.');
+      const quotaError = new Error('API Error');
       quotaError.code = 403;
+      quotaError.response = {
+        status: 403,
+        data: {
+          error: {
+            errors: [
+              {
+                reason: 'quotaExceeded'
+              }
+            ]
+          }
+        }
+      };
       mockYoutubeService.liveChatMessages.list.mockRejectedValue(quotaError);
 
       await youtubePollingManager.startPolling(livestreamId, 'brand_1', socketManager);
@@ -205,6 +217,60 @@ describe('YoutubePollingManager Unit Tests', () => {
         SOCKET_EVENTS.ERROR,
         { message: 'YouTube API quota exceeded. Please try again later.' }
       );
+    });
+
+    it('should handle fallback match when quota message is present but no structured reason', async () => {
+      const livestreamId = 'stream_error_quota_fallback';
+      prisma.livestream.findUnique.mockResolvedValue({
+        id: livestreamId,
+        platformStreamId: 'chat_error',
+        brandId: 'brand_1'
+      });
+
+      // Simulate unstructured quota error
+      const quotaError = new Error('The request cannot be completed because you have exceeded your quota.');
+      quotaError.code = 403;
+      mockYoutubeService.liveChatMessages.list.mockRejectedValue(quotaError);
+
+      await youtubePollingManager.startPolling(livestreamId, 'brand_1', socketManager);
+      await flushPromises();
+
+      expect(youtubePollingManager.activePolls.has(livestreamId)).toBe(false);
+    });
+
+    it('should NOT stop polling on 403 errors with non-quota reasons (e.g. commentsDisabled)', async () => {
+      const livestreamId = 'stream_error_non_quota_403';
+      prisma.livestream.findUnique.mockResolvedValue({
+        id: livestreamId,
+        platformStreamId: 'chat_error',
+        brandId: 'brand_1'
+      });
+
+      // Simulate 403 commentsDisabled error
+      const commentsDisabledError = new Error('Comments are disabled.');
+      commentsDisabledError.code = 403;
+      commentsDisabledError.response = {
+        status: 403,
+        data: {
+          error: {
+            errors: [
+              {
+                reason: 'commentsDisabled'
+              }
+            ]
+          }
+        }
+      };
+      mockYoutubeService.liveChatMessages.list.mockRejectedValue(commentsDisabledError);
+
+      await youtubePollingManager.startPolling(livestreamId, 'brand_1', socketManager);
+      await flushPromises();
+
+      // Verify polling NOT stopped (it retries next time)
+      expect(youtubePollingManager.activePolls.has(livestreamId)).toBe(true);
+
+      // Clean up active poll
+      youtubePollingManager.stopPolling(livestreamId);
     });
   });
 

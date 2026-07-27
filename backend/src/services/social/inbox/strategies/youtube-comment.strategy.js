@@ -1,6 +1,8 @@
 const BaseSyncStrategy = require('./base.strategy');
 const youtubeGateway = require('../../youtube/youtube.gateway');
 const googleOAuthService = require('../../google-oauth.service');
+const { YOUTUBE_COMMENT_SYNC } = require('../../youtube/youtube.constants');
+const { parseGoogleApiError } = require('../../youtube/youtube-error.util');
 const socialAccountRepository = require('../../../../repositories/social/social-account.repository');
 const inboxRepository = require('../../../../repositories/social/inbox.repository');
 const { PLATFORMS, INBOX_STATUS, INBOX_TYPES } = require('../../../../utils/constants');
@@ -12,18 +14,33 @@ class YoutubeCommentSyncStrategy extends BaseSyncStrategy {
 
   async sync(brandId, inbox) {
     const { account, auth } = await this._getAccountAndAuth(brandId);
-    const response = await youtubeGateway.getCommentThreads(auth, account.platformAccountId);
-    if (!response.data.items) return [];
-
     const inboxItems = [];
-    for (const thread of response.data.items) {
-      const comment = thread.snippet.topLevelComment;
-      const item = await this._processComment(comment, account, inbox);
-      inboxItems.push(item);
+    let pageToken = null;
+    let pageCount = 0;
 
-      if (thread.replies && thread.replies.comments) {
-        await this._processReplies(thread.replies.comments, item.id, account, inbox);
+    try {
+      do {
+        const response = await youtubeGateway.getCommentThreads(auth, account.platformAccountId, 100, pageToken);
+        if (response.data && response.data.items) {
+          for (const thread of response.data.items) {
+            const comment = thread.snippet.topLevelComment;
+            const item = await this._processComment(comment, account, inbox);
+            inboxItems.push(item);
+
+            if (thread.replies && thread.replies.comments) {
+              await this._processReplies(thread.replies.comments, item.id, account, inbox);
+            }
+          }
+        }
+        pageToken = response.data?.nextPageToken || null;
+        pageCount++;
+      } while (pageToken && pageCount < YOUTUBE_COMMENT_SYNC.MAX_PAGES_PER_SYNC);
+    } catch (err) {
+      const { reason } = parseGoogleApiError(err);
+      if (reason === 'commentsDisabled') {
+        return inboxItems;
       }
+      throw err;
     }
 
     return inboxItems;
@@ -63,7 +80,11 @@ class YoutubeCommentSyncStrategy extends BaseSyncStrategy {
     const socialAccount = await socialAccountRepository.findByBrandAndPlatform(brandId, PLATFORMS.YOUTUBE);
     if (!socialAccount || socialAccount.length === 0) throw new Error('YouTube account not connected');
 
-    const account = socialAccount[0];
+    const account = socialAccount.find(acc => 
+      !(acc.accessToken && acc.accessToken.startsWith('mock-')) &&
+      !(acc.platformAccountId && acc.platformAccountId.startsWith('mock-'))
+    ) || socialAccount[0];
+
     const auth = googleOAuthService.createClient();
     auth.setCredentials({ access_token: account.accessToken });
     
