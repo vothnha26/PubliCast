@@ -101,7 +101,11 @@ const YOUTUBE_PUBSUB = Object.freeze({
   /** Default Lease Time: 864,000 seconds (10 days) */
   DEFAULT_LEASE_SECONDS: 864000,
   /** Refresh subscription when remaining lease time is under 48 hours */
-  RENEWAL_THRESHOLD_MS: 48 * 60 * 60 * 1000
+  RENEWAL_THRESHOLD_MS: 48 * 60 * 60 * 1000,
+  /** Renewal check scheduler interval (6 hours) */
+  RENEWAL_CHECK_INTERVAL_MS: 6 * 60 * 60 * 1000,
+  /** Renewal check scheduler startup delay (90 seconds) */
+  RENEWAL_STARTUP_DELAY_MS: 90 * 1000
 });
 
 module.exports = {
