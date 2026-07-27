@@ -34,7 +34,7 @@ class GoogleOAuthService {
   async getUserInfo(tokens) {
     const client = this.createClient();
     client.setCredentials(tokens);
-    const oauth2 = google.oauth2({ version: 'v2', auth: client });
+    const oauth2 = google.oauth2({ version: API_VERSIONS.GOOGLE_OAUTH, auth: client });
     const { data } = await oauth2.userinfo.get();
     return data;
   }
