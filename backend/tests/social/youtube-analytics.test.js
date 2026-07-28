@@ -90,4 +90,29 @@ describe('YoutubeAnalyticsService', () => {
       spyGetChannelInfo.mockRestore();
     });
   });
+
+  describe('getChannelInfo - Structured Error Parsing', () => {
+    it('should propagate auth error when error object has status = 401 without specific text', async () => {
+      const mockAuth = { credentials: { access_token: 'ya29.expired-token' } };
+      const structured401Error = new Error('API Request Failed');
+      structured401Error.response = {
+        status: 401,
+        data: {
+          error: {
+            code: 401,
+            errors: [{ reason: 'authError', message: 'Invalid Credentials' }]
+          }
+        }
+      };
+
+      const youtubeGateway = require('../../src/services/social/youtube/youtube.gateway');
+      jest.spyOn(youtubeGateway, 'getChannelList').mockRejectedValue(structured401Error);
+
+      await expect(
+        youtubeAnalytics.getChannelInfo(mockAuth, '2026-06-01', '2026-06-07', { id: 'sa-123' })
+      ).rejects.toThrow('API Request Failed');
+
+      youtubeGateway.getChannelList.mockRestore();
+    });
+  });
 });

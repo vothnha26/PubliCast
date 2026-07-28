@@ -76,4 +76,19 @@ describe('YouTubeVideoService Playlists Pagination Unit Tests', () => {
 
     expect(youtubePlaylistCache.set).toHaveBeenCalledWith(mockBrandId, result);
   });
+
+  describe('updateVideo', () => {
+    it('should delegate updateVideo to youtubeGateway after resolving auth context', async () => {
+      youtubeGateway.updateVideo.mockResolvedValue({ data: { id: 'vid-123' } });
+
+      const result = await youtubeVideoService.updateVideo(mockBrandId, 'vid-123', { title: 'New Title' });
+
+      expect(youtubeGateway.updateVideo).toHaveBeenCalledWith(
+        expect.any(Object),
+        'vid-123',
+        { title: 'New Title' }
+      );
+      expect(result).toEqual({ data: { id: 'vid-123' } });
+    });
+  });
 });

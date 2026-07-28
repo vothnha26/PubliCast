@@ -78,6 +78,15 @@ class YouTubeController {
       res.status(500).json({ message: error.message });
     }
   });
+
+  updateYouTubeVideo = asyncHandler(async (req, res) => {
+    const { brandId, videoId, updates, socialAccountId } = req.body;
+    if (!brandId) return res.status(400).json({ message: 'brandId is required' });
+    if (!videoId) return res.status(400).json({ message: 'videoId is required' });
+
+    const updatedVideo = await youtubeService.updateVideo(brandId, videoId, updates || {}, socialAccountId);
+    res.json({ message: 'YouTube video updated successfully', data: updatedVideo });
+  });
 }
 
 module.exports = new YouTubeController();

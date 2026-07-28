@@ -97,6 +97,32 @@ class SocialService {
    * Disconnect a social account from a brand
    */
   async disconnectAccount(brandId, platform) {
+    if (platform && platform.toUpperCase() === PLATFORMS.YOUTUBE) {
+      try {
+        const youtubeAccount = await socialAccountRepository.findByBrandAndPlatformFirst(brandId, PLATFORMS.YOUTUBE);
+        const isMockAccount = youtubeAccount && (
+          (youtubeAccount.accessToken && youtubeAccount.accessToken.startsWith('mock-')) ||
+          (youtubeAccount.platformAccountId && youtubeAccount.platformAccountId.startsWith('mock-'))
+        );
+
+        if (youtubeAccount && youtubeAccount.platformAccountId && !isMockAccount) {
+          const channelId = youtubeAccount.platformAccountId;
+          const callbackUrl = process.env.PUBLIC_WEBHOOK_URL
+            ? `${process.env.PUBLIC_WEBHOOK_URL}/api/v1/social/youtube/pubsub/callback`
+            : null;
+          if (callbackUrl && channelId) {
+            const youtubePubSubService = require('./youtube/youtube-pubsub.service');
+            const { YOUTUBE_PUBSUB } = require('./youtube/youtube.constants');
+            await youtubePubSubService.requestHubSubscription(channelId, callbackUrl, YOUTUBE_PUBSUB.MODE.UNSUBSCRIBE).catch(err => {
+              console.error(`[SocialService] Failed to unsubscribe YouTube PubSub for channel ${channelId}:`, err.message);
+            });
+          }
+        }
+      } catch (err) {
+        console.error('[SocialService] Error during YouTube PubSub unsubscribe on disconnect:', err.message);
+      }
+    }
+
     const result = await socialAccountRepository.deleteManyByBrandAndPlatform(brandId, platform);
     await this._notifyPlatformDisconnected(brandId, platform);
 
