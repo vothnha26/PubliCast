@@ -311,4 +311,59 @@ describe('Facebook Webhook Processing tests', () => {
       expect(socketManager.emitToRoom).not.toHaveBeenCalled();
     });
   });
+
+  describe('FacebookWebhookController - handleWebhookEvent Signature Verification', () => {
+    const facebookWebhookController = require('../../src/controllers/social/facebook-webhook.controller');
+    const crypto = require('crypto');
+    const secret = 'my_facebook_app_secret';
+
+    let req, res;
+
+    beforeEach(() => {
+      delete process.env.FACEBOOK_APP_SECRET;
+      req = {
+        headers: {},
+        rawBody: '{"object":"page","entry":[]}',
+        body: { object: 'page', entry: [] }
+      };
+      res = {
+        status: jest.fn().mockReturnThis(),
+        send: jest.fn().mockReturnThis(),
+        sendStatus: jest.fn().mockReturnThis(),
+        headersSent: false
+      };
+    });
+
+    it('should return 500 when FACEBOOK_APP_SECRET is missing', () => {
+      req.headers['x-hub-signature-256'] = 'sha256=12345';
+      facebookWebhookController.handleWebhookEvent(req, res);
+      expect(res.sendStatus).toHaveBeenCalledWith(500);
+    });
+
+    it('should return 200 EVENT_RECEIVED when signature matches correctly', () => {
+      process.env.FACEBOOK_APP_SECRET = secret;
+      const expectedHash = crypto.createHmac('sha256', secret).update(req.rawBody).digest('hex');
+      req.headers['x-hub-signature-256'] = `sha256=${expectedHash}`;
+
+      facebookWebhookController.handleWebhookEvent(req, res);
+
+      expect(res.status).toHaveBeenCalledWith(200);
+      expect(res.send).toHaveBeenCalledWith('EVENT_RECEIVED');
+    });
+
+    it('should return 403 when signature is invalid or length mismatched without throwing', () => {
+      process.env.FACEBOOK_APP_SECRET = secret;
+      
+      // Test length mismatch (short signature)
+      req.headers['x-hub-signature-256'] = 'sha256=short_hash';
+      facebookWebhookController.handleWebhookEvent(req, res);
+      expect(res.sendStatus).toHaveBeenCalledWith(403);
+
+      // Test same length but invalid hash
+      const invalidHash = 'a'.repeat(64);
+      req.headers['x-hub-signature-256'] = `sha256=${invalidHash}`;
+      facebookWebhookController.handleWebhookEvent(req, res);
+      expect(res.sendStatus).toHaveBeenCalledWith(403);
+    });
+  });
 });
