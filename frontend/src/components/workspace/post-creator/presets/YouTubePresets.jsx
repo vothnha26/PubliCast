@@ -1,8 +1,16 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { Youtube, ChevronDown, RotateCw, Copy, Upload } from "lucide-react";
 import { usePostCreatorFormContext } from "../../../../context/PostCreatorFormContext";
 import { buildMediaUrl } from "../../../../utils/url";
 import { toast } from "sonner";
+
+const FALLBACK_CATEGORIES = [
+  { id: "22", title: "People & Blogs" },
+  { id: "20", title: "Gaming" },
+  { id: "27", title: "Education" },
+  { id: "24", title: "Entertainment" },
+  { id: "28", title: "Science & Technology" }
+];
 
 export function YouTubePresets() {
   const {
@@ -29,10 +37,22 @@ export function YouTubePresets() {
     playlists,
     isLoadingPlaylists,
     fetchPlaylists,
+    categories,
+    isLoadingCategories,
+    fetchCategories,
     setIsUploadingThumbnail,
     setUploadModalTab,
     setShowUploadModal
   } = usePostCreatorFormContext();
+
+  useEffect(() => {
+    if (youtubeOpen) {
+      fetchPlaylists();
+      fetchCategories();
+    }
+  }, [youtubeOpen]);
+
+  const displayCategories = categories && categories.length > 0 ? categories : FALLBACK_CATEGORIES;
 
   return (
     <div className="border border-gray-100 rounded-3xl overflow-hidden bg-white shadow-sm transition-all duration-300">
@@ -107,19 +127,26 @@ export function YouTubePresets() {
           {/* Category */}
           <div>
             <label className="block text-[11px] font-bold text-gray-500 uppercase mb-2 font-sans">Category</label>
-            <div className="relative">
-              <select 
-                value={youtubeCategory}
-                onChange={(e) => setYoutubeCategory(e.target.value)}
-                className="w-full px-4 py-3 bg-white border border-gray-200 rounded-2xl text-xs font-semibold focus:border-black outline-none appearance-none cursor-pointer font-sans"
+            <div className="flex gap-2">
+              <div className="relative flex-1">
+                <select 
+                  value={youtubeCategory}
+                  onChange={(e) => setYoutubeCategory(e.target.value)}
+                  className="w-full px-4 py-3 bg-white border border-gray-200 rounded-2xl text-xs font-semibold focus:border-black outline-none appearance-none cursor-pointer font-sans"
+                >
+                  {displayCategories.map(cat => (
+                    <option key={cat.id} value={cat.id}>{cat.title}</option>
+                  ))}
+                </select>
+                <ChevronDown size={14} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+              </div>
+              <button 
+                type="button"
+                onClick={() => fetchCategories(true)}
+                className="p-3 bg-gray-50 hover:bg-gray-100 rounded-2xl border border-gray-200 text-gray-500 hover:text-black transition-all flex items-center justify-center shrink-0 cursor-pointer"
               >
-                <option value="22">People & Blogs</option>
-                <option value="20">Gaming</option>
-                <option value="27">Education</option>
-                <option value="24">Entertainment</option>
-                <option value="28">Science & Technology</option>
-              </select>
-              <ChevronDown size={14} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+                <RotateCw size={14} className={isLoadingCategories ? "animate-spin" : ""} />
+              </button>
             </div>
           </div>
 

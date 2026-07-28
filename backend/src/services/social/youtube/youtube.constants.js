@@ -119,7 +119,8 @@ const YOUTUBE_API_PARTS = Object.freeze({
   VIDEOS_UPDATE: 'snippet,status',
   PLAYLISTS_LIST: 'snippet,contentDetails',
   PLAYLIST_ITEMS_INSERT: 'snippet',
-  COMMENT_THREADS_INSERT: 'snippet'
+  COMMENT_THREADS_INSERT: 'snippet',
+  VIDEO_CATEGORIES_LIST: 'snippet'
 });
 
 const YOUTUBE_QUOTA_COSTS = Object.freeze({
@@ -137,7 +138,8 @@ const YOUTUBE_QUOTA_COSTS = Object.freeze({
   PLAYLIST_ITEMS_LIST: 1,
   PLAYLISTS_LIST: 1,
   CHANNELS_LIST: 1,
-  SEARCH_LIST: 1
+  SEARCH_LIST: 1,
+  VIDEO_CATEGORIES_LIST: 1
 });
 
 const YOUTUBE_COMMENT_SYNC = Object.freeze({

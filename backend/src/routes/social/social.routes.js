@@ -104,6 +104,7 @@ router.put('/youtube/videos', verifyAuth, requireBrandMember, youtubeController.
 router.get('/youtube/video-analytics', verifyAuth, requireBrandMember, youtubeController.getYouTubeVideoAnalytics);
 router.get('/youtube/video-insights', verifyAuth, requireBrandMember, youtubeController.getYouTubeVideoInsights);
 router.get('/youtube/playlists', verifyAuth, requireBrandMember, youtubeController.getYouTubePlaylists);
+router.get('/youtube/video-categories', verifyAuth, requireBrandMember, youtubeController.getYouTubeVideoCategories);
 
 // YouTube Competitors
 // deleteYouTubeCompetitor verifies ownership itself (brandId comes from

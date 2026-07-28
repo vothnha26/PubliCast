@@ -79,6 +79,19 @@ class YouTubeController {
     }
   });
 
+  getYouTubeVideoCategories = asyncHandler(async (req, res) => {
+    const { brandId, sync } = req.query;
+    if (!brandId) return res.status(400).json({ message: 'brandId is required' });
+    const forceRefresh = sync === 'true' || sync === true;
+    try {
+      const categories = await youtubeService.getVideoCategories(brandId, forceRefresh);
+      res.json({ data: categories });
+    } catch (error) {
+      console.error("Error fetching YouTube video categories:", error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
   updateYouTubeVideo = asyncHandler(async (req, res) => {
     const { brandId, videoId, updates, socialAccountId } = req.body;
     if (!brandId) return res.status(400).json({ message: 'brandId is required' });
