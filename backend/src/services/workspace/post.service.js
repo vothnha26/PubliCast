@@ -208,6 +208,9 @@ class PostService {
         tx
       );
 
+      const mediaLibraryService = require('./media-library.service');
+      await mediaLibraryService.syncMediaUsage(brandId, validMediaUrls, [], tx);
+
       return created;
     });
 
@@ -405,6 +408,14 @@ class PostService {
         tx
       );
 
+      const oldMediaUrls = post.mediaUrls ? post.mediaUrls.split(',').map(u => u.trim()).filter(Boolean) : [];
+      const newMediaUrls = updated.mediaUrls ? updated.mediaUrls.split(',').map(u => u.trim()).filter(Boolean) : [];
+      const addedUrls = newMediaUrls.filter(u => !oldMediaUrls.includes(u));
+      const removedUrls = oldMediaUrls.filter(u => !newMediaUrls.includes(u));
+
+      const mediaLibraryService = require('./media-library.service');
+      await mediaLibraryService.syncMediaUsage(brandId, addedUrls, removedUrls, tx);
+
       return updated;
     });
 
@@ -537,6 +548,10 @@ class PostService {
         await outboxEventRepository.create(OUTBOX_EVENT_TYPES.POST_PUBLISH_REMOVE, postId, { postId }, {}, tx);
       }
       await outboxEventRepository.create(OUTBOX_EVENT_TYPES.POST_DOMAIN_EVENT, brandId, { eventName: EVENTS.POST.BULK_DELETED, eventArgs: { autolistIds } }, {}, tx);
+
+      const deletedMediaUrls = posts.flatMap(p => p.mediaUrls ? p.mediaUrls.split(',').map(u => u.trim()).filter(Boolean) : []);
+      const mediaLibraryService = require('./media-library.service');
+      await mediaLibraryService.syncMediaUsage(brandId, [], deletedMediaUrls, tx);
 
       return deleted;
     });

@@ -44,6 +44,17 @@ class MediaLibraryRepository {
       data
     });
   }
+
+  async updateUsageByUrls(brandId, storageUrls, isUsed, client = prisma) {
+    if (!storageUrls || storageUrls.length === 0) return { count: 0 };
+    return client.mediaLibrary.updateMany({
+      where: {
+        brandId,
+        storageUrl: { in: storageUrls }
+      },
+      data: { isUsed }
+    });
+  }
 }
 
 module.exports = new MediaLibraryRepository();
