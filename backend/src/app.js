@@ -23,6 +23,8 @@ const userRoutes = require('./routes/admin/user.routes');
 
 // Routes - Social Domain
 const socialRoutes = require('./routes/social/social.routes');
+const youtubeRoutesV2 = require('./routes/social/youtube.routes.v2');
+const tiktokRoutesV2 = require('./routes/social/tiktok.routes.v2');
 const inboxRoutes = require('./routes/social/inbox.routes');
 
 // Routes - Workspace Domain
@@ -182,6 +184,10 @@ app.use('/api/admin/products', productRoutes);
 app.use('/api/admin/platform-limits', platformLimitRoutes);
 app.use('/api/admin/users', userRoutes);
 app.use('/api/social', socialRoutes);
+
+// ── API v2 (response envelope {message, data} — parallel to v1, v1 unchanged) ──
+app.use('/api/v2/social/youtube', youtubeRoutesV2);
+app.use('/api/v2/social/tiktok', tiktokRoutesV2);
 app.use('/api/brands', brandRoutes);
 app.use('/api/brands/:brandId/roles', roleRoutes);
 app.use('/api/brands/:brandId/workflows', approvalWorkflowRoutes);
