@@ -117,6 +117,14 @@ describe('YouTubeService', () => {
         ok: true,
         body: 'videoStreamMock'
       });
+      jest.spyOn(youtubeGateway, 'getVideosList').mockResolvedValue({
+        data: {
+          items: [{
+            id: 'ytVideoId123',
+            processingDetails: { processingStatus: 'succeeded' }
+          }]
+        }
+      });
     });
 
     afterEach(() => {
