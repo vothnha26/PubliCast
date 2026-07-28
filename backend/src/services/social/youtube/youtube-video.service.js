@@ -179,7 +179,8 @@ class YouTubeVideoService {
       duration: v.contentDetails.duration,
       status: POST_STATUS.PUBLISHED,
       platform: PLATFORMS.YOUTUBE,
-      postUrl: YOUTUBE_API.videoUrl(v.id)
+      postUrl: YOUTUBE_API.videoUrl(v.id),
+      madeForKids: v.status?.madeForKids ?? v.status?.selfDeclaredMadeForKids ?? false
     }));
   }
 
@@ -194,7 +195,8 @@ class YouTubeVideoService {
       subscriberCount: channel?.statistics?.subscriberCount,
       viewCount: video.statistics.viewCount,
       likeCount: video.statistics.likeCount,
-      publishedAt: video.snippet.publishedAt
+      publishedAt: video.snippet.publishedAt,
+      madeForKids: video.status?.madeForKids ?? video.status?.selfDeclaredMadeForKids ?? false
     };
   }
 
