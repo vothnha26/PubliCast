@@ -22,6 +22,7 @@ describe('MediaFolderService Unit Tests', () => {
       const parentId = 'parent-folder-123';
       const mockResult = { id: 'folder-new', name, brandId, parentId };
 
+      mediaFolderRepository.findById.mockResolvedValue({ id: parentId, brandId });
       mediaFolderRepository.create.mockResolvedValue(mockResult);
 
       const result = await mediaFolderService.createFolder(name, brandId, parentId);
@@ -45,6 +46,20 @@ describe('MediaFolderService Unit Tests', () => {
         brandId,
         parentId: null
       });
+    });
+
+    it('should reject with 404 when parentId belongs to a different brand', async () => {
+      const name = 'New Folder';
+      const brandId = 'brand-abc';
+      const parentId = 'parent-folder-123';
+
+      mediaFolderRepository.findById.mockResolvedValue({ id: parentId, brandId: 'brand-other' });
+
+      await expect(mediaFolderService.createFolder(name, brandId, parentId)).rejects.toMatchObject({
+        message: 'Folder not found',
+        status: 404
+      });
+      expect(mediaFolderRepository.create).not.toHaveBeenCalled();
     });
   });
 

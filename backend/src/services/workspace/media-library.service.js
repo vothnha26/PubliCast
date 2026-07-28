@@ -43,6 +43,8 @@ class MediaLibraryService {
    * Upload and save media file info
    */
   async uploadFile(file, brandId, userId, folderId = null) {
+    await this._assertFolderBelongsToBrand(folderId, brandId);
+
     const isLocal = process.env.UPLOAD_STORAGE === 'local';
     const storageUrl = isLocal ? this._toPublicUploadUrl(file.path) : file.path;
 
@@ -133,6 +135,8 @@ class MediaLibraryService {
       return this._formatUnsavedDirectMedia(fileInfo);
     }
 
+    await this._assertFolderBelongsToBrand(folderId, brandId);
+
     const media = await mediaLibraryRepository.create({
       brandId,
       uploadedByUserId: userId,
@@ -191,7 +195,47 @@ class MediaLibraryService {
     return this._formatMediaFile(updated);
   }
 
+  /**
+   * Sync media usage status (isUsed) when post mediaUrls change or post is deleted.
+   */
+  async syncMediaUsage(brandId, addedUrls = [], removedUrls = [], client = undefined) {
+    const prisma = require('../../config/prisma');
+    const tx = client || prisma;
+
+    if (addedUrls.length > 0) {
+      const validAdded = addedUrls.filter(u => u && typeof u === 'string' && u.trim() !== '');
+      if (validAdded.length > 0) {
+        await mediaLibraryRepository.updateUsageByUrls(brandId, validAdded, true, tx);
+      }
+    }
+
+    if (removedUrls.length > 0) {
+      const postRepository = require('../../repositories/workspace/post.repository');
+      const validRemoved = removedUrls.filter(u => u && typeof u === 'string' && u.trim() !== '');
+      for (const url of validRemoved) {
+        const postsUsingUrl = await postRepository.findMany(
+          { brandId, mediaUrls: { contains: url } },
+          { take: 1 }
+        );
+        if (postsUsingUrl.length === 0) {
+          await mediaLibraryRepository.updateUsageByUrls(brandId, [url], false, tx);
+        }
+      }
+    }
+  }
+
   // ============= Private Helper Methods =============
+
+  async _assertFolderBelongsToBrand(folderId, brandId) {
+    if (!folderId) return;
+    const mediaFolderRepository = require('../../repositories/workspace/media-folder.repository');
+    const folder = await mediaFolderRepository.findById(folderId);
+    if (!folder || folder.brandId !== brandId) {
+      const error = new Error('Folder not found');
+      error.status = 404;
+      throw error;
+    }
+  }
 
   _getResourceType(mimeType) {
     if (mimeType.startsWith('image/')) return 'image';

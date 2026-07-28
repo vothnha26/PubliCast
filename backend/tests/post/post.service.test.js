@@ -11,6 +11,7 @@ const { QUEUE_CONFIG } = require('../../src/constants/video-publish.constants');
 
 jest.mock('../../src/repositories/workspace/post.repository', () => ({
   findManyAndCount: jest.fn(),
+  findMany: jest.fn().mockResolvedValue([]),
   create: jest.fn(),
   findById: jest.fn(),
   update: jest.fn(),
@@ -58,7 +59,12 @@ jest.mock('../../src/config/prisma', () => ({
   post: {
     findMany: jest.fn().mockResolvedValue([])
   },
-  $transaction: jest.fn().mockImplementation((cb) => cb({}))
+  mediaLibrary: {
+    updateMany: jest.fn().mockResolvedValue({ count: 0 })
+  },
+  $transaction: jest.fn().mockImplementation((cb) => cb({
+    mediaLibrary: { updateMany: jest.fn().mockResolvedValue({ count: 0 }) }
+  }))
 }));
 
 jest.mock('../../src/services/social/social-platform.factory', () => {

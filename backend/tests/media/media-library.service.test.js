@@ -1,6 +1,7 @@
 const mediaLibraryService = require('../../src/services/workspace/media-library.service');
 const mediaLibraryRepository = require('../../src/repositories/workspace/media-library.repository');
 const postRepository = require('../../src/repositories/workspace/post.repository');
+const mediaFolderRepository = require('../../src/repositories/workspace/media-folder.repository');
 const { cloudinary } = require('../../src/config/cloudinary');
 
 jest.mock('../../src/repositories/workspace/media-library.repository', () => ({
@@ -14,6 +15,10 @@ jest.mock('../../src/repositories/workspace/post.repository', () => ({
   findMany: jest.fn()
 }));
 
+jest.mock('../../src/repositories/workspace/media-folder.repository', () => ({
+  findById: jest.fn()
+}));
+
 jest.mock('../../src/config/cloudinary', () => ({
   cloudinary: {
     uploader: {
@@ -25,6 +30,9 @@ jest.mock('../../src/config/cloudinary', () => ({
 describe('MediaLibraryService Unit Tests', () => {
   beforeEach(() => {
     postRepository.findMany.mockResolvedValue([]);
+    mediaFolderRepository.findById.mockImplementation((folderId) =>
+      Promise.resolve(folderId ? { id: folderId, brandId: 'brand-1' } : null)
+    );
   });
 
   afterEach(() => {
