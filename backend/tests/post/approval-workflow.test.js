@@ -18,6 +18,17 @@ jest.mock('../../src/middlewares/auth.middleware', () => ({
   }
 }));
 
+// Mock CSRF — this suite tests permission/business logic via mocked auth,
+// not real cookies, so there's no real csrfToken for enforceCsrfGlobally to
+// check (CSRF middleware itself is unit-tested in csrf.middleware.test.js).
+jest.mock('../../src/middlewares/csrf.middleware', () => ({
+  issueCsrfToken: (req, res, next) => next(),
+  enforceCsrfGlobally: (req, res, next) => next(),
+  verifyCsrfToken: (req, res, next) => next(),
+  CSRF_COOKIE_NAME: 'csrfToken',
+  CSRF_HEADER_NAME: 'x-csrf-token'
+}));
+
 // Mock Authorization Facade
 jest.mock('../../src/services/auth/authorization.facade', () => {
   const hasPerm = jest.fn().mockImplementation((userId, brandId, permission) => {

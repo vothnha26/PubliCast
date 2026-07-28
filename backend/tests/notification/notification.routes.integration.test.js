@@ -138,6 +138,14 @@ jest.mock('../../src/services/core/notification.service', () => ({
 
 const notificationService = require('../../src/services/core/notification.service');
 const app = require('../../src/app');
+const { CSRF_HEADER_NAME } = require('../../src/middlewares/csrf.middleware');
+
+// This suite authenticates via a mocked Bearer token, not cookies, so there's
+// no real csrfToken cookie to echo back. enforceCsrfGlobally doesn't
+// distinguish auth mechanism though — it just checks the header against the
+// cookie — so requests need a cookie+header pair that match each other.
+const CSRF_TOKEN = 'test-csrf-token';
+const csrfCookieHeader = `csrfToken=${CSRF_TOKEN}`;
 
 describe('Notification Routes Integration', () => {
   beforeEach(() => {
@@ -186,6 +194,8 @@ describe('Notification Routes Integration', () => {
     const response = await request(app)
       .post('/api/notifications')
       .set('Authorization', 'Bearer token')
+      .set('Cookie', csrfCookieHeader)
+      .set(CSRF_HEADER_NAME, CSRF_TOKEN)
       .send({
         brandId: 'brand-1',
         title: 'Notice',
@@ -207,6 +217,8 @@ describe('Notification Routes Integration', () => {
     const response = await request(app)
       .post('/api/notifications')
       .set('Authorization', 'Bearer token')
+      .set('Cookie', csrfCookieHeader)
+      .set(CSRF_HEADER_NAME, CSRF_TOKEN)
       .send({
         title: 'Notice',
         message: 'Not allowed'
@@ -221,7 +233,9 @@ describe('Notification Routes Integration', () => {
 
     const response = await request(app)
       .post('/api/notifications/notif-1/read?brandId=brand-1')
-      .set('Authorization', 'Bearer token');
+      .set('Authorization', 'Bearer token')
+      .set('Cookie', csrfCookieHeader)
+      .set(CSRF_HEADER_NAME, CSRF_TOKEN);
 
     expect(response.status).toBe(200);
     expect(notificationService.markAsRead).toHaveBeenCalledWith('notif-1', 'user-1', 'brand-1', 'USER');
@@ -232,7 +246,9 @@ describe('Notification Routes Integration', () => {
 
     const response = await request(app)
       .post('/api/notifications/read-all?brandId=brand-1')
-      .set('Authorization', 'Bearer token');
+      .set('Authorization', 'Bearer token')
+      .set('Cookie', csrfCookieHeader)
+      .set(CSRF_HEADER_NAME, CSRF_TOKEN);
 
     expect(response.status).toBe(200);
     expect(notificationService.markAllAsRead).toHaveBeenCalledWith('user-1', 'brand-1', 'USER');

@@ -16,6 +16,17 @@ jest.mock('../../src/middlewares/auth.middleware', () => ({
   }
 }));
 
+// This suite tests permission enforcement, not CSRF — mock CSRF out the same
+// way auth is mocked above (CSRF middleware itself is unit-tested in
+// csrf.middleware.test.js).
+jest.mock('../../src/middlewares/csrf.middleware', () => ({
+  issueCsrfToken: (req, res, next) => next(),
+  enforceCsrfGlobally: (req, res, next) => next(),
+  verifyCsrfToken: (req, res, next) => next(),
+  CSRF_COOKIE_NAME: 'csrfToken',
+  CSRF_HEADER_NAME: 'x-csrf-token'
+}));
+
 jest.mock('../../src/services/auth/authorization.facade');
 jest.mock('../../src/services/workspace/media-library.service');
 jest.mock('../../src/config/cloudinary', () => ({

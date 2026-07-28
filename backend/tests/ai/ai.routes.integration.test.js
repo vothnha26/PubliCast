@@ -10,6 +10,18 @@ jest.mock('../../src/middlewares/auth.middleware', () => ({
   }
 }));
 
+// This suite mocks auth directly rather than going through real cookies, so
+// there's no real csrfToken cookie for enforceCsrfGlobally to check against.
+// Mock CSRF enforcement out the same way auth is mocked above — the CSRF
+// middleware itself is unit-tested separately in csrf.middleware.test.js.
+jest.mock('../../src/middlewares/csrf.middleware', () => ({
+  issueCsrfToken: (req, res, next) => next(),
+  enforceCsrfGlobally: (req, res, next) => next(),
+  verifyCsrfToken: (req, res, next) => next(),
+  CSRF_COOKIE_NAME: 'csrfToken',
+  CSRF_HEADER_NAME: 'x-csrf-token'
+}));
+
 // Mock Brand Repository for Subscription checks
 jest.mock('../../src/repositories/workspace/brand.repository', () => ({
   findBrandWithSubscription: jest.fn().mockResolvedValue({

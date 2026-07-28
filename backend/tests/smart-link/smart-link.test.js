@@ -7,6 +7,7 @@ const redisClient = require('../../src/config/redis');
 // Import Strategy Factories to test Strategy Pattern
 const backgroundValidatorFactory = require('../../src/services/workspace/smart-link/background-validators/background-validator.factory');
 const linkProcessorFactory = require('../../src/services/workspace/smart-link/link-processors/link-processor.factory');
+const { csrfHeaderFrom } = require('../helpers/csrf.helper');
 
 describe('SmartLink & Strategy Patterns Tests', () => {
   // Test Data
@@ -19,6 +20,7 @@ describe('SmartLink & Strategy Patterns Tests', () => {
   let userId;
   let brandId;
   let cookie;
+  let csrfRes;
   let createdSmartLinkId;
   let createdLinkItemId;
   let testSlug = 'brand-custom-slug-' + Date.now();
@@ -121,6 +123,7 @@ describe('SmartLink & Strategy Patterns Tests', () => {
         password: testUser.password
       });
     cookie = loginRes.headers['set-cookie'];
+    csrfRes = loginRes;
   });
 
   afterAll(async () => {
@@ -235,6 +238,7 @@ describe('SmartLink & Strategy Patterns Tests', () => {
       const res = await request(app)
         .post('/api/smart-links')
         .set('Cookie', cookie)
+        .set(csrfHeaderFrom(csrfRes))
         .send({
           brandId,
           slug: testSlug,
@@ -252,6 +256,7 @@ describe('SmartLink & Strategy Patterns Tests', () => {
       const res = await request(app)
         .post('/api/smart-links')
         .set('Cookie', cookie)
+        .set(csrfHeaderFrom(csrfRes))
         .send({
           brandId,
           slug: testSlug,
@@ -294,6 +299,7 @@ describe('SmartLink & Strategy Patterns Tests', () => {
       const res = await request(app)
         .put(`/api/smart-links/${createdSmartLinkId}`)
         .set('Cookie', cookie)
+        .set(csrfHeaderFrom(csrfRes))
         .send({
           brandId,
           pageTitle: 'Updated Page Title',

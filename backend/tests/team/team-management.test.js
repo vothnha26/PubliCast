@@ -17,6 +17,14 @@ jest.mock('../../src/middlewares/auth.middleware', () => ({
   }
 }));
 
+jest.mock('../../src/middlewares/csrf.middleware', () => ({
+  issueCsrfToken: (req, res, next) => next(),
+  enforceCsrfGlobally: (req, res, next) => next(),
+  verifyCsrfToken: (req, res, next) => next(),
+  CSRF_COOKIE_NAME: 'csrfToken',
+  CSRF_HEADER_NAME: 'x-csrf-token'
+}));
+
 // Mock Prisma
 jest.mock('../../src/config/prisma', () => {
   const mockBrand = {

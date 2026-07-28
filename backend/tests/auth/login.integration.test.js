@@ -7,6 +7,7 @@ const bcrypt = require('bcryptjs');
 const prisma = require('../../src/config/prisma');
 
 const { USER_STATUS, USER_ROLES } = require('../../src/utils/constants');
+const { csrfHeaderFrom } = require('../helpers/csrf.helper');
 
 // Mock user data
 const testUser = {
@@ -322,17 +323,34 @@ describe('Login Integration Tests', () => {
       // Then logout with auth
       const logoutRes = await request(app)
         .post('/api/auth/logout')
-        .set('Cookie', cookies);
+        .set('Cookie', cookies)
+        .set(csrfHeaderFrom(loginRes));
 
       expect(logoutRes.status).toBe(200);
       expect(logoutRes.body.message).toBe('Logout successful');
     });
 
-    it('should return 401 when not authenticated', async () => {
+    it('should return 401 when authenticated but no session (CSRF token present)', async () => {
+      // First hit any endpoint to receive a csrfToken cookie, then use it
+      // without an auth cookie — isolates the auth check from the CSRF
+      // check, which now runs first in the middleware chain (see
+      // csrf.middleware.js: enforceCsrfGlobally is mounted before verifyAuth
+      // on any given route, by design — rejecting a CSRF-invalid request
+      // shouldn't cost an auth lookup).
+      const primingRes = await request(app).get('/health');
+      const response = await request(app)
+        .post('/api/auth/logout')
+        .set('Cookie', primingRes.headers['set-cookie'])
+        .set(csrfHeaderFrom(primingRes));
+
+      expect(response.status).toBe(401);
+    });
+
+    it('should return 403 when neither authenticated nor carrying a CSRF token', async () => {
       const response = await request(app)
         .post('/api/auth/logout');
 
-      expect(response.status).toBe(401);
+      expect(response.status).toBe(403);
     });
   });
 

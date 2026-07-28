@@ -17,6 +17,7 @@ const prisma = require('../../src/config/prisma');
 const redisClient = require('../../src/config/redis');
 const bcrypt = require('bcryptjs');
 const { authenticator } = require('otplib');
+const { csrfHeaderFrom } = require('../helpers/csrf.helper');
 
 const testUser = {
   email: '2fa-test@example.com',
@@ -29,11 +30,15 @@ const testUser = {
 describe('Two-Factor Authentication (2FA) Integration Tests', () => {
   let userId;
   let cookies;
+  let csrfRes;
   let backupCodes = [];
   let userSecret = '';
 
   const cleanup = async () => {
     try {
+      if (redisClient.isOpen) {
+        await redisClient.flushDb();
+      }
       const user = await prisma.user.findFirst({
         where: { email: testUser.email }
       });
@@ -92,6 +97,7 @@ describe('Two-Factor Authentication (2FA) Integration Tests', () => {
         password: testUser.password
       });
     cookies = loginRes.headers['set-cookie'];
+    csrfRes = loginRes;
   });
 
   afterAll(async () => {
@@ -110,7 +116,8 @@ describe('Two-Factor Authentication (2FA) Integration Tests', () => {
     it('should return secret and qrCodeDataUrl when setup is requested', async () => {
       const response = await request(app)
         .post('/api/auth/2fa/setup')
-        .set('Cookie', cookies || []);
+        .set('Cookie', cookies || [])
+        .set(csrfHeaderFrom(csrfRes));
 
       expect(response.status).toBe(200);
       expect(response.body.secret).toBeDefined();
@@ -119,8 +126,22 @@ describe('Two-Factor Authentication (2FA) Integration Tests', () => {
     });
 
     it('should prevent setup for unauthenticated request', async () => {
+      // No CSRF token or auth cookie at all — CSRF is checked first in the
+      // middleware chain (see csrf.middleware.js), so this is 403, not 401.
       const response = await request(app)
         .post('/api/auth/2fa/setup');
+
+      expect(response.status).toBe(403);
+    });
+
+    it('should return 401 for a request with a CSRF token but no auth session', async () => {
+      // issueCsrfToken hands out a csrfToken cookie on every response,
+      // including unauthenticated ones — grab one without logging in.
+      const primingRes = await request(app).get('/health');
+      const response = await request(app)
+        .post('/api/auth/2fa/setup')
+        .set('Cookie', primingRes.headers['set-cookie'])
+        .set(csrfHeaderFrom(primingRes));
 
       expect(response.status).toBe(401);
     });
@@ -131,6 +152,7 @@ describe('Two-Factor Authentication (2FA) Integration Tests', () => {
       const response = await request(app)
         .post('/api/auth/2fa/verify')
         .set('Cookie', cookies || [])
+        .set(csrfHeaderFrom(csrfRes))
         .send({ code: '000000' });
 
       expect(response.status).toBe(400);
@@ -144,6 +166,7 @@ describe('Two-Factor Authentication (2FA) Integration Tests', () => {
       const response = await request(app)
         .post('/api/auth/2fa/verify')
         .set('Cookie', cookies || [])
+        .set(csrfHeaderFrom(csrfRes))
         .send({ code: validToken });
 
       // Gán backupCodes trước đề phòng assert fail thì các test case sau vẫn có data
@@ -189,6 +212,7 @@ describe('Two-Factor Authentication (2FA) Integration Tests', () => {
       expect(response.body.message).toContain('successful');
       expect(response.headers['set-cookie']).toBeDefined();
       cookies = response.headers['set-cookie'];
+      csrfRes = response;
     });
 
     it('should allow login using a valid backup code', async () => {
@@ -247,6 +271,7 @@ describe('Two-Factor Authentication (2FA) Integration Tests', () => {
       const response = await request(app)
         .post('/api/auth/2fa/disable')
         .set('Cookie', cookies || [])
+        .set(csrfHeaderFrom(csrfRes))
         .send({ code: validToken });
 
       expect(response.status).toBe(200);

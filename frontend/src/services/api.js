@@ -16,6 +16,18 @@ const addRefreshSubscriber = (cb) => {
   refreshSubscribers.push(cb);
 };
 
+// Not httpOnly — issued specifically so the frontend can read it and echo
+// it back in a header (double-submit pattern). An attacker page can't read
+// it (blocked by same-origin policy on document.cookie), so it can't forge
+// a matching header value even though the cookie itself rides along with
+// any cross-site request.
+const CSRF_COOKIE_NAME = 'csrfToken';
+
+function readCsrfTokenFromCookie() {
+  const match = document.cookie.match(new RegExp(`(?:^|; )${CSRF_COOKIE_NAME}=([^;]*)`));
+  return match ? decodeURIComponent(match[1]) : null;
+}
+
 class ApiService {
   constructor() {
     this.api = axios.create({
@@ -26,6 +38,21 @@ class ApiService {
         'ngrok-skip-browser-warning': 'true', // Giữ lại của nhánh develop
       },
       withCredentials: true, // Sends HttpOnly cookies (accessToken + refreshToken) automatically
+    });
+
+    // ── Request interceptor: attach CSRF token on side-effect requests ──
+    // Backend rejects POST/PUT/PATCH/DELETE without a matching X-CSRF-Token
+    // header (see backend/src/middlewares/csrf.middleware.js). GET requests
+    // don't need it — CSRF only matters for requests with a side effect.
+    this.api.interceptors.request.use((config) => {
+      const method = config.method?.toUpperCase();
+      if (method && method !== 'GET') {
+        const token = readCsrfTokenFromCookie();
+        if (token) {
+          config.headers['X-CSRF-Token'] = token;
+        }
+      }
+      return config;
     });
 
     // ── Response interceptor: auto-refresh on 401 ───────────────────

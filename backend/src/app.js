@@ -115,6 +115,16 @@ app.use(express.json({
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use(cookieParser());
 
+// ── CSRF protection — double-submit cookie. issueCsrfToken hands out the
+// cookie on every request that doesn't have one yet; enforceCsrfGlobally
+// rejects side-effect requests (POST/PUT/PATCH/DELETE) whose X-CSRF-Token
+// header doesn't match it, except for pre-session/signature-verified routes
+// (login, register, webhooks, ...) — see csrf.middleware.js for the full
+// exclusion list and rationale.
+const { issueCsrfToken, enforceCsrfGlobally } = require('./middlewares/csrf.middleware');
+app.use(issueCsrfToken);
+app.use(enforceCsrfGlobally);
+
 // ── Health check endpoints (required for load balancers, k8s probes) ───────
 app.get('/health', (_req, res) => {
   res.status(200).json({ status: 'ok', timestamp: new Date().toISOString() });
