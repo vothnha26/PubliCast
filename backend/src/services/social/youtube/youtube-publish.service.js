@@ -4,7 +4,7 @@ const socialAccountRepository = require('../../../repositories/social/social-acc
 const { Readable } = require('stream');
 
 const { PLATFORMS, POST_STATUS, YOUTUBE_PRIVACY, YOUTUBE_CATEGORIES, SEPARATORS, POST_TYPES, splitMediaUrls } = require('../../../utils/constants');
-const { YOUTUBE_API, YOUTUBE_CONSTRAINTS } = require('./youtube.constants');
+const { YOUTUBE_API, YOUTUBE_CONSTRAINTS, YOUTUBE_VIDEO_POLLING } = require('./youtube.constants');
 const { validateImageConstraints } = require('./youtube-media-validator.util');
 const fs = require('fs');
 const path = require('path');
@@ -50,6 +50,9 @@ class YouTubePublishService {
     const uploadRes = await youtubeGateway.uploadVideo(auth, videoStream, metadata);
     const videoId = uploadRes.data.id;
     console.log(`[YouTube Publish] ✅ Video uploaded successfully. ID: ${videoId}`);
+
+    // 4.5. Polling trạng thái xử lý video bất đồng bộ
+    await this._pollProcessingStatus(auth, videoId);
 
     // 5. Thực hiện các tác vụ sau khi upload (Playlist, First Comment)
     await this._executePostUploadTasks(auth, videoId, options);
@@ -269,6 +272,32 @@ class YouTubePublishService {
   }
 
 
+
+  async _pollProcessingStatus(auth, videoId) {
+    const pollInterval = YOUTUBE_VIDEO_POLLING.POLL_INTERVAL_MS;
+    const maxAttempts = YOUTUBE_VIDEO_POLLING.MAX_ATTEMPTS;
+
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      const res = await youtubeGateway.getVideosList(auth, videoId);
+      const videoItem = res.data?.items?.[0];
+      const processingDetails = videoItem?.processingDetails;
+
+      if (!processingDetails || processingDetails.processingStatus === 'succeeded' || processingDetails.processingStatus === 'terminated') {
+        console.log(`[YouTube Publish] Video processing completed for ID: ${videoId} (status: ${processingDetails?.processingStatus || 'none'})`);
+        return true;
+      }
+
+      if (processingDetails.processingStatus === 'failed') {
+        const reason = processingDetails.processingFailureReason || 'Unknown processing failure';
+        throw new Error(`YouTube video processing failed: ${reason}`);
+      }
+
+      console.log(`[YouTube Publish] Polling video processing status for ${videoId}: ${processingDetails.processingStatus} (attempt ${attempt}/${maxAttempts})`);
+      await new Promise(resolve => setTimeout(resolve, pollInterval));
+    }
+
+    throw new Error(`YouTube video processing status poll timed out for ID: ${videoId}`);
+  }
 
   async deletePost(brandId, platformPostId) {
     const { auth } = await this._getAuthContext(brandId);

@@ -111,7 +111,7 @@ const YOUTUBE_PUBSUB = Object.freeze({
 const YOUTUBE_API_PARTS = Object.freeze({
   CHANNELS_LIST: 'snippet,statistics,contentDetails',
   PLAYLIST_ITEMS_LIST: 'snippet,contentDetails',
-  VIDEOS_LIST: 'statistics,contentDetails,snippet,status',
+  VIDEOS_LIST: 'statistics,contentDetails,snippet,status,processingDetails',
   SEARCH: 'snippet',
   COMMENT_THREADS_LIST: 'snippet,replies',
   COMMENTS: 'snippet',
@@ -146,6 +146,11 @@ const YOUTUBE_COMMENT_SYNC = Object.freeze({
   MAX_PAGES_PER_SYNC: 10
 });
 
+const YOUTUBE_VIDEO_POLLING = Object.freeze({
+  POLL_INTERVAL_MS: 3000,
+  MAX_ATTEMPTS: 20
+});
+
 module.exports = {
   YOUTUBE_API,
   YOUTUBE_MODERATION_STATUS,
@@ -154,5 +159,6 @@ module.exports = {
   YOUTUBE_PUBSUB,
   YOUTUBE_QUOTA_COSTS,
   YOUTUBE_API_PARTS,
-  YOUTUBE_COMMENT_SYNC
+  YOUTUBE_COMMENT_SYNC,
+  YOUTUBE_VIDEO_POLLING
 };
