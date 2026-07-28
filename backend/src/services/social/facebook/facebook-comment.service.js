@@ -8,7 +8,8 @@ class FacebookCommentService {
     const { account, pageId, pageAccessToken } = await this._getAccountAndToken(brandId);
     const inbox = await inboxRepository.findOrCreateInbox(brandId);
 
-    const feed = await facebookGateway.getPageFeed(pageId, pageAccessToken, 10);
+    const feedResult = await facebookGateway.getPageFeed(pageId, pageAccessToken, null, 10);
+    const feed = feedResult.data || [];
     const inboxItems = [];
 
     for (const post of feed) {
