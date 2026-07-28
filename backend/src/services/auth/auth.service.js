@@ -404,7 +404,7 @@ class AuthService {
 
     const { TwoFactorVerificationStrategy } = require('./verification.strategy');
     const strategy = new TwoFactorVerificationStrategy();
-    await strategy.verify(user.twoFactorSecret, code);
+    await strategy.verify(user.twoFactorSecret, code, userId);
 
     // Tạo 10 mã dự phòng backup codes
     const crypto = require('crypto');
@@ -439,7 +439,7 @@ class AuthService {
 
     const { TwoFactorVerificationStrategy } = require('./verification.strategy');
     const strategy = new TwoFactorVerificationStrategy();
-    await strategy.verify(user.twoFactorSecret, code);
+    await strategy.verify(user.twoFactorSecret, code, userId);
 
     await userRepository.updateProfile(userId, {
       isTwoFactorEnabled: false,
