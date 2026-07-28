@@ -167,6 +167,8 @@ class FacebookReelGateway {
     });
     await this._handleResponse(finishRes, 'Finish publishing Reel');
 
+    await this.facebookGateway._pollVideoStatus(videoId, pageAccessToken);
+
     return { id: videoId, success: true };
   }
 

@@ -53,6 +53,30 @@ describe('Facebook Comment Sync & Service Unit Tests', () => {
       expect(items[0].platformItemId).toBe('c1');
     });
 
+    it('should successfully fetch feed using feedResult.data and sync comments across multiple posts without crash', async () => {
+      facebookGateway.getPageFeed.mockResolvedValue({
+        data: [{ id: 'post-1' }, { id: 'post-2' }],
+        nextPageToken: null,
+        prevPageToken: null
+      });
+
+      facebookGateway.getPostComments.mockImplementation((postId) => {
+        if (postId === 'post-1') {
+          return Promise.resolve([
+            { id: 'c1', message: 'Comment 1', created_time: '2026-07-28T00:00:00Z', from: { id: 'user-1', name: 'User 1' } }
+          ]);
+        }
+        return Promise.resolve([]);
+      });
+
+      const items = await facebookCommentService.fetchChannelComments(brandId);
+
+      expect(facebookGateway.getPageFeed).toHaveBeenCalledWith('page-id-real', 'EAAB123456789', null, 10);
+      expect(facebookGateway.getPostComments).toHaveBeenCalledTimes(2);
+      expect(items).toHaveLength(1);
+      expect(items[0].platformItemId).toBe('c1');
+    });
+
     it('should handle empty feedResult.data gracefully', async () => {
       facebookGateway.getPageFeed.mockResolvedValue({
         data: [],
@@ -101,7 +125,7 @@ describe('Facebook Comment Sync & Service Unit Tests', () => {
       expect(facebookGateway.getPageFeed).toHaveBeenCalledWith('page-id-real', 'EAAB123456789', null, 10);
       expect(facebookGateway.getPostComments).toHaveBeenCalledWith('post-1', 'EAAB123456789');
       expect(items).toHaveLength(1);
-      expect(inboxRepository.upsertInboxItem).toHaveBeenCalledTimes(2);
+      expect(inboxRepository.upsertInboxItem).toHaveBeenCalledTimes(2); // 1 comment + 1 reply
     });
   });
 });

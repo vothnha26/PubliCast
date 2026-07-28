@@ -8,7 +8,8 @@ describe('FacebookReelGateway Tests', () => {
   let gateway;
   let originalFetch;
   const mockFacebookGateway = {
-    graphBaseUrl: 'https://graph.facebook.com/v18.0'
+    graphBaseUrl: 'https://graph.facebook.com/v18.0',
+    _pollVideoStatus: jest.fn().mockResolvedValue(true)
   };
 
   beforeAll(() => {

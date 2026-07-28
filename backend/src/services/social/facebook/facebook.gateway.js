@@ -555,7 +555,11 @@ class FacebookGateway {
       
       if (directRes.ok) {
         const data = await directRes.json();
-        console.log(`[FacebookGateway] ✅ Video published successfully via file_url! Video ID: ${data.id || data.video_id}`);
+        const videoId = data.id || data.video_id;
+        if (videoId) {
+          await this._pollVideoStatus(videoId, pageAccessToken);
+        }
+        console.log(`[FacebookGateway] ✅ Video published successfully via file_url! Video ID: ${videoId || data.id}`);
         return data;
       }
 
@@ -608,7 +612,52 @@ class FacebookGateway {
       const errData = await finishRes.json().catch(() => ({}));
       throw new Error(errData.error?.message || 'Failed to finalize Facebook video publishing');
     }
-    return finishRes.json();
+    const finishData = await finishRes.json();
+    const videoIdToPoll = finishData.id || finishData.video_id || videoId;
+    if (videoIdToPoll) {
+      await this._pollVideoStatus(videoIdToPoll, pageAccessToken);
+    }
+    return finishData;
+  }
+
+  /**
+   * Polling kiểm tra trạng thái xử lý video bất đồng bộ của Facebook
+   * @param {string} videoId
+   * @param {string} pageAccessToken
+   */
+  async _pollVideoStatus(videoId, pageAccessToken) {
+    const { VIDEO_STATUS_POLL_INTERVAL_MS, VIDEO_STATUS_MAX_ATTEMPTS } = require('../../../config/facebook-reel.constants');
+    const intervalMs = VIDEO_STATUS_POLL_INTERVAL_MS || 3000;
+    const maxAttempts = VIDEO_STATUS_MAX_ATTEMPTS || 30;
+
+    let attempts = 0;
+    while (attempts < maxAttempts) {
+      attempts += 1;
+      await new Promise(resolve => setTimeout(resolve, intervalMs));
+
+      const url = `${this.graphBaseUrl}/${videoId}?fields=status&access_token=${pageAccessToken}`;
+      const res = await fetch(url);
+      if (!res.ok) {
+        continue;
+      }
+
+      const data = await res.json().catch(() => ({}));
+      const videoStatus = data.status?.video_status;
+      const processingErrorMsg = data.status?.processing_phase?.error?.message;
+
+      if (videoStatus === 'ready') {
+        logger.info(`[FacebookGateway] Video ${videoId} processing status: ready`);
+        return true;
+      }
+
+      if (videoStatus === 'error' || processingErrorMsg) {
+        const errorMsg = processingErrorMsg || `Facebook video processing failed with status '${videoStatus}'`;
+        logger.error(`[FacebookGateway] ❌ Video ${videoId} processing failed: ${errorMsg}`);
+        throw new Error(`Facebook video processing failed: ${errorMsg}`);
+      }
+    }
+
+    throw new Error(`Facebook video processing timed out after ${maxAttempts} attempts`);
   }
 
   async publishReel(pageId, pageAccessToken, mediaUrl, caption) {
