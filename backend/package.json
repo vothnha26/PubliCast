@@ -50,7 +50,9 @@
     "qrcode": "^1.5.4",
     "rate-limit-redis": "^6.0.0",
     "redis": "^5.12.1",
-    "socket.io": "^4.8.3"
+    "socket.io": "^4.8.3",
+    "swagger-jsdoc": "^6.3.0",
+    "swagger-ui-express": "^5.0.1"
   },
   "devDependencies": {
     "@babel/preset-env": "^7.29.7",

@@ -7,6 +7,8 @@ validateEnv();
 const express = require('express');
 const cors = require('cors');
 const cookieParser = require('cookie-parser');
+const swaggerUi = require('swagger-ui-express');
+const swaggerSpec = require('./config/swagger.config');
 const logger = require('./utils/logger');
 
 // Routes - Auth Domain
@@ -132,6 +134,11 @@ app.get('/ready', async (_req, res) => {
     res.status(503).json({ status: 'not ready', db: 'disconnected' });
   }
 });
+
+// ── API docs — non-production only, no route documents production secrets ──
+if (process.env.NODE_ENV !== 'production') {
+  app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+}
 
 // ── Initialize Event Subscribers ───────────────────────────────────────────
 require('./events/subscribers/post.subscriber')();

@@ -97,8 +97,88 @@ router.get('/threads/published-posts', verifyAuth, requireBrandMember, threadsCo
 router.get('/metrics', verifyAuth, checkPermission(PERMISSION_KEYS.VIEW_ANALYTICS), socialAnalyticsController.getMetrics);
 
 // YouTube Tracked Videos
+/**
+ * @swagger
+ * /social/youtube/track:
+ *   post:
+ *     summary: Track a YouTube video by URL
+ *     tags: [YouTube]
+ *     security:
+ *       - cookieAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [brandId, videoUrl]
+ *             properties:
+ *               brandId:
+ *                 type: string
+ *               videoUrl:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Video tracked successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: Video tracked successfully
+ *                 data:
+ *                   type: object
+ */
 router.post('/youtube/track', verifyAuth, requireBrandMember, youtubeController.trackYouTubeVideo);
 router.get('/youtube/tracked-videos', verifyAuth, requireBrandMember, youtubeController.getTrackedVideos);
+
+/**
+ * @swagger
+ * /social/youtube/published-videos:
+ *   get:
+ *     summary: List published YouTube videos for a brand
+ *     description: >
+ *       Response is NOT wrapped in an envelope on v1 — the raw service
+ *       result is returned as-is. See /api/v2/social/youtube/published-videos
+ *       for the {message, data}-wrapped equivalent.
+ *     tags: [YouTube]
+ *     security:
+ *       - cookieAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: brandId
+ *         required: true
+ *         schema:
+ *           type: string
+ *       - in: query
+ *         name: pageToken
+ *         schema:
+ *           type: string
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: Paginated list of published videos (unwrapped)
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 videos:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                 nextPageToken:
+ *                   type: string
+ *                   nullable: true
+ *                 prevPageToken:
+ *                   type: string
+ *                   nullable: true
+ */
 router.get('/youtube/published-videos', verifyAuth, requireBrandMember, youtubeController.getYouTubePublishedVideos);
 router.put('/youtube/videos', verifyAuth, requireBrandMember, youtubeController.updateYouTubeVideo);
 router.get('/youtube/video-analytics', verifyAuth, requireBrandMember, youtubeController.getYouTubeVideoAnalytics);
