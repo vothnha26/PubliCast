@@ -1,7 +1,8 @@
 const crypto = require('crypto');
 const redisClient = require('../../config/redis');
 const otpService = require('./otp.service');
-const authenticator = require('otplib');
+const otplib = require('otplib');
+const authenticator = otplib.authenticator || otplib;
 const verificationAttemptLimiter = require('../../middlewares/verification-attempt-limiter');
 
 const OTP_TTL_SECONDS = 600; // matches otpService.saveOTP's default expiry
@@ -126,13 +127,31 @@ class TwoFactorVerificationStrategy extends VerificationStrategy {
     return secret;
   }
 
-  async verify(secret, code) {
+  async verify(secret, code, userId = null) {
+    const MANAGE_2FA_TTL_SECONDS = 900;
+
+    if (userId) {
+      const { allowed } = await verificationAttemptLimiter.checkAllowed('2fa-manage', userId, MANAGE_2FA_TTL_SECONDS);
+      if (!allowed) {
+        const error = new Error('Quá nhiều lần thử sai. Vui lòng thử lại sau 15 phút.');
+        error.status = 429;
+        throw error;
+      }
+    }
+
     const result = await authenticator.verify({ token: code, secret });
     const isValid = typeof result === 'boolean' ? result : (result && result.valid === true);
     if (!isValid) {
+      if (userId) {
+        await verificationAttemptLimiter.recordFailedAttempt('2fa-manage', userId, MANAGE_2FA_TTL_SECONDS);
+      }
       const error = new Error('Mã xác thực 2 lớp không hợp lệ.');
       error.status = 400;
       throw error;
+    }
+
+    if (userId) {
+      await verificationAttemptLimiter.reset('2fa-manage', userId);
     }
     return true;
   }
