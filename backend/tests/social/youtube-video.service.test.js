@@ -91,4 +91,48 @@ describe('YouTubeVideoService Playlists Pagination Unit Tests', () => {
       expect(result).toEqual({ data: { id: 'vid-123' } });
     });
   });
+
+  describe('madeForKids Status Mapping', () => {
+    it('should include madeForKids status in getPublishedVideos output', async () => {
+      youtubeGateway.getChannelList.mockResolvedValue({
+        data: { items: [{ contentDetails: { relatedPlaylists: { uploads: 'uploads-id-123' } } }] }
+      });
+      youtubeGateway.getPlaylistItems.mockResolvedValue({
+        data: { items: [{ contentDetails: { videoId: 'v-1' } }] }
+      });
+      youtubeGateway.getVideosList.mockResolvedValue({
+        data: {
+          items: [{
+            id: 'v-1',
+            snippet: { title: 'Kid Video', thumbnails: { default: { url: 'http://thumb' } }, publishedAt: '2026-07-28' },
+            statistics: { viewCount: '10', likeCount: '5', commentCount: '0' },
+            contentDetails: { duration: 'PT1M' },
+            status: { madeForKids: true }
+          }]
+        }
+      });
+
+      const result = await youtubeVideoService.getPublishedVideos(mockBrandId);
+      expect(result.videos[0].madeForKids).toBe(true);
+    });
+
+    it('should include madeForKids status in getVideoDetails output', async () => {
+      youtubeGateway.getVideosList.mockResolvedValue({
+        data: {
+          items: [{
+            id: 'v-2',
+            snippet: { title: 'Adult Video', description: 'Desc', thumbnails: { default: { url: 'http://thumb' } }, channelId: 'c-1', channelTitle: 'Chan' },
+            statistics: { viewCount: '100', likeCount: '50' },
+            status: { selfDeclaredMadeForKids: false }
+          }]
+        }
+      });
+      youtubeGateway.getChannelList.mockResolvedValue({
+        data: { items: [{ statistics: { subscriberCount: '1000' } }] }
+      });
+
+      const details = await youtubeVideoService.getVideoDetails(mockBrandId, 'v-2');
+      expect(details.madeForKids).toBe(false);
+    });
+  });
 });
