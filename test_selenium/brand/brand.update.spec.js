@@ -82,6 +82,19 @@ describe('Brand Update', function () {
       const val = await driver.findElement(By.css('[data-testid="brand-name-input"]')).getAttribute('value');
       return val === newName;
     }, 10000, 'Brand name was not updated');
+
+    // The above only confirms the local input value, which is set by
+    // onChange and never changes again — it says nothing about whether the
+    // save request (and the subsequent activeBrand refetch that TC09's
+    // disabled-check depends on) has actually finished. Without this wait,
+    // TC08 can pass and TC09 can start while updateBrand()'s fetchBrands()
+    // is still in flight, so activeBrand.name is briefly stale and the
+    // save button's disabled condition doesn't yet match.
+    await driver.wait(
+      async () => (await saveBtn.getAttribute('disabled')) !== null,
+      10000,
+      'Save button did not settle back to disabled after the save completed'
+    );
   });
 
   // TC09 – Save button is disabled when name unchanged

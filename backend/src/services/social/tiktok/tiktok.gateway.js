@@ -159,16 +159,21 @@ class TikTokGateway {
 
     console.log(`[TikTok Gateway] Initializing FILE_UPLOAD for video (${videoSize} bytes)`);
 
-    // Optional: Check creator info for debugging
+    let privacyLevel = 'PUBLIC_TO_EVERYONE';
+
+    // Optional: Check creator info for allowed features
     const creatorInfo = await this.getCreatorInfo(accessToken);
     if (creatorInfo) {
-      console.log(`[TikTok Gateway] Creator Info: Max Video Duration: ${creatorInfo.max_video_post_duration_sec}s, Allowed Privacy: ${creatorInfo.privacy_level_options?.join(', ')}`);
+      const allowedPrivacy = creatorInfo.privacy_level_options || [];
+      console.log(`[TikTok Gateway] Creator Info: Max Video Duration: ${creatorInfo.max_video_post_duration_sec}s, Allowed Privacy: ${allowedPrivacy.join(', ')}`);
+      
+      if (!allowedPrivacy.includes('PUBLIC_TO_EVERYONE') && allowedPrivacy.includes('SELF_ONLY')) {
+        privacyLevel = 'SELF_ONLY';
+      }
     }
 
     // Step 1: Initialize upload
     const initUrl = `${this.apiBaseUrl}/v2/post/publish/video/init/`;
-    
-    let privacyLevel = 'PUBLIC_TO_EVERYONE';
     
     const makeInitRequest = async (currentPrivacy) => {
       return await fetch(initUrl, {

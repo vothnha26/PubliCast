@@ -103,5 +103,46 @@ describe('TikTokGateway video buffer resolution (B1, #96)', () => {
       expect(result).toEqual({ publish_id: 'pub-1', privacy_level: 'PUBLIC_TO_EVERYONE' });
       expect(fs.readFileSync).not.toHaveBeenCalled();
     });
+
+    it('selects SELF_ONLY directly when creatorInfo returns privacy_level_options containing only SELF_ONLY (Issue #250)', async () => {
+      networkSecurity.downloadBufferSafely.mockResolvedValue(Buffer.from([9, 9, 9]));
+
+      let initPrivacySent = null;
+
+      global.fetch.mockImplementation((url, opts) => {
+        if (url.includes('/creator_info/query/')) {
+          return Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve({
+              data: {
+                max_video_post_duration_sec: 60,
+                privacy_level_options: ['SELF_ONLY', 'MUTUAL_FOLLOW_FRIENDS']
+              }
+            })
+          });
+        }
+        if (url.includes('/video/init/')) {
+          const body = JSON.parse(opts.body);
+          initPrivacySent = body.post_info.privacy_level;
+          return Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve({ data: { publish_id: 'pub-self-only', upload_url: 'https://upload.tiktok.example/put' } })
+          });
+        }
+        if (url === 'https://upload.tiktok.example/put') {
+          return Promise.resolve({ ok: true });
+        }
+        return Promise.reject(new Error(`Unexpected fetch: ${url}`));
+      });
+
+      const result = await tiktokGateway.publishVideo(
+        'access-token',
+        'https://res.cloudinary.com/demo/video/upload/v1/sample.mp4',
+        'Self Only Video'
+      );
+
+      expect(initPrivacySent).toBe('SELF_ONLY');
+      expect(result).toEqual({ publish_id: 'pub-self-only', privacy_level: 'SELF_ONLY' });
+    });
   });
 });

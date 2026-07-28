@@ -332,7 +332,7 @@ export function BrandSettingsPage() {
               <button
                 type="button"
                 onClick={handleSaveBrand}
-                disabled={isUpdating || !selectedBrand.name.trim() || selectedBrand.name.trim() === activeBrand?.name}
+                disabled={isUpdating || !selectedBrand.name.trim() || selectedBrand.name.trim() === activeBrand?.name?.trim()}
                 className="px-6 py-3 bg-[#2D1D35] hover:bg-[#3D2D45] text-white rounded-xl text-xs font-bold transition-all cursor-pointer shadow-md disabled:opacity-50 flex items-center gap-1.5 save-brand-btn"
                 data-testid="save-brand-btn"
               >
