@@ -387,6 +387,13 @@ class YouTubeAnalyticsService {
   }
 
   async addCompetitor(brandId, channelId) {
+    if (!channelId) throw new Error('channelId is required');
+
+    const isValidChannelId = /^UC[\w-]{22}$/.test(channelId) || channelId.startsWith('@');
+    if (!isValidChannelId) {
+      throw new Error(`Invalid YouTube channel ID or handle format: ${channelId}`);
+    }
+
     const socialAccount = await socialAccountRepository.findByBrandAndPlatform(brandId, PLATFORMS.YOUTUBE);
     if (!socialAccount || socialAccount.length === 0) throw new Error('YouTube account not connected');
 
