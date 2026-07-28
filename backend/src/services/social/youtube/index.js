@@ -69,6 +69,10 @@ class YouTubeService extends BaseSocialService {
     return youtubeVideo.getPlaylists(brandId, forceRefresh);
   }
 
+  async updateVideo(brandId, videoId, updates, socialAccountId = null) {
+    return youtubeVideo.updateVideo(brandId, videoId, updates, socialAccountId);
+  }
+
   // --- PubSubHubbub Push Notifications ---
   async requestPubSubSubscription(channelId, callbackUrl, mode) {
     return youtubePubSub.requestHubSubscription(channelId, callbackUrl, mode);

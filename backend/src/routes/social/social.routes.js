@@ -100,6 +100,7 @@ router.get('/metrics', verifyAuth, checkPermission(PERMISSION_KEYS.VIEW_ANALYTIC
 router.post('/youtube/track', verifyAuth, requireBrandMember, youtubeController.trackYouTubeVideo);
 router.get('/youtube/tracked-videos', verifyAuth, requireBrandMember, youtubeController.getTrackedVideos);
 router.get('/youtube/published-videos', verifyAuth, requireBrandMember, youtubeController.getYouTubePublishedVideos);
+router.put('/youtube/videos', verifyAuth, requireBrandMember, youtubeController.updateYouTubeVideo);
 router.get('/youtube/video-analytics', verifyAuth, requireBrandMember, youtubeController.getYouTubeVideoAnalytics);
 router.get('/youtube/video-insights', verifyAuth, requireBrandMember, youtubeController.getYouTubeVideoInsights);
 router.get('/youtube/playlists', verifyAuth, requireBrandMember, youtubeController.getYouTubePlaylists);

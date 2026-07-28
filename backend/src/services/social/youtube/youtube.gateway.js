@@ -314,6 +314,55 @@ class YouTubeGateway {
     await this._trackQuota('youtube', YOUTUBE_QUOTA_COSTS.VIDEOS_DELETE);
     return response;
   }
+
+  /**
+   * Cập nhật thông tin video trên YouTube
+   * Lưu ý: YouTube API videos.update ghi đè toàn bộ snippet và status.
+   * Cần fetch thông tin hiện tại trước rồi merge updates vào để không bị mất thông tin cũ.
+   */
+  async updateVideo(auth, videoId, updates = {}) {
+    const youtube = google.youtube({ version: API_VERSIONS.YOUTUBE, auth });
+
+    const id = Array.isArray(videoId) ? videoId[0] : videoId;
+    const existingList = await this.getVideosList(auth, id);
+    const videoItem = existingList?.data?.items?.[0];
+    if (!videoItem) {
+      throw new Error(`YouTube video not found: ${id}`);
+    }
+
+    const currentSnippet = videoItem.snippet || {};
+    const currentStatus = videoItem.status || {};
+
+    const mergedSnippet = {
+      ...currentSnippet,
+      title: updates.title !== undefined ? updates.title : currentSnippet.title,
+      description: updates.description !== undefined ? updates.description : currentSnippet.description,
+      tags: updates.tags !== undefined ? updates.tags : currentSnippet.tags,
+      categoryId: updates.categoryId !== undefined ? updates.categoryId : currentSnippet.categoryId
+    };
+
+    const mergedStatus = {
+      ...currentStatus,
+      privacyStatus: updates.privacyStatus !== undefined ? updates.privacyStatus : currentStatus.privacyStatus,
+      selfDeclaredMadeForKids: updates.selfDeclaredMadeForKids !== undefined ? updates.selfDeclaredMadeForKids : currentStatus.selfDeclaredMadeForKids
+    };
+
+    if (updates.containsSyntheticMedia !== undefined) {
+      mergedStatus.containsSyntheticMedia = updates.containsSyntheticMedia;
+    }
+
+    const response = await youtube.videos.update({
+      part: YOUTUBE_API_PARTS.VIDEOS_UPDATE,
+      requestBody: {
+        id,
+        snippet: mergedSnippet,
+        status: mergedStatus
+      }
+    });
+
+    await this._trackQuota('youtube-videos-update', YOUTUBE_QUOTA_COSTS.VIDEOS_UPDATE);
+    return response;
+  }
 }
 
 module.exports = new YouTubeGateway();

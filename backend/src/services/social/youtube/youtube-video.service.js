@@ -125,6 +125,11 @@ class YouTubeVideoService {
     return playlists;
   }
 
+  async updateVideo(brandId, videoId, updates, socialAccountId = null) {
+    const { auth } = await this._getAuthContext(brandId, false, socialAccountId);
+    return await youtubeGateway.updateVideo(auth, videoId, updates);
+  }
+
   // ============= Private Helper Methods =============
 
   async _getAuthContext(brandId, optional = false, socialAccountId = null) {

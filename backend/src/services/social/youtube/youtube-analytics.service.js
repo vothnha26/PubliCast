@@ -131,8 +131,11 @@ class YouTubeAnalyticsService {
       // needing to be reconnected (#70). Only truly transient failures
       // should fall back silently; auth failures must propagate so the
       // caller (e.g. the sync scheduler) can mark the account disconnected.
+      const { parseGoogleApiError } = require('./youtube-error.util');
+      const { status, reason } = parseGoogleApiError(error);
       const errMsg = error.message ? error.message.toLowerCase() : '';
-      const isAuthError = error.code === 'invalid_grant' || error.code === 401
+      const isAuthError = status === 401 || reason === 'authError' || reason === 'unauthorized' || reason === 'invalid_grant'
+        || error.code === 'invalid_grant' || error.code === 401
         || errMsg.includes('invalid_grant') || errMsg.includes('invalid credentials')
         || errMsg.includes('unauthorized') || errMsg.includes('401');
       if (isAuthError) {

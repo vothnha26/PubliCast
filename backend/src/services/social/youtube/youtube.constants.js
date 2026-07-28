@@ -116,6 +116,7 @@ const YOUTUBE_API_PARTS = Object.freeze({
   COMMENT_THREADS_LIST: 'snippet,replies',
   COMMENTS: 'snippet',
   VIDEOS_INSERT: 'snippet,status',
+  VIDEOS_UPDATE: 'snippet,status',
   PLAYLISTS_LIST: 'snippet,contentDetails',
   PLAYLIST_ITEMS_INSERT: 'snippet',
   COMMENT_THREADS_INSERT: 'snippet'
