@@ -32,15 +32,24 @@ class FacebookWebhookController {
         return res.sendStatus(401);
       }
 
+      const appSecret = process.env.FACEBOOK_APP_SECRET;
+      if (!appSecret) {
+        logger.warn('[Facebook Webhook] Signature verification failed. Missing FACEBOOK_APP_SECRET.');
+        return res.sendStatus(500);
+      }
+
       const crypto = require('crypto');
       const parts = signature.split('=');
       const signatureHash = parts[1];
       const expectedHash = crypto
-        .createHmac('sha256', process.env.FACEBOOK_APP_SECRET || 'test_app_secret')
+        .createHmac('sha256', appSecret)
         .update(req.rawBody || '')
         .digest('hex');
 
-      if (signatureHash !== expectedHash) {
+      const providedBuf = Buffer.from(signatureHash || '', 'hex');
+      const expectedBuf = Buffer.from(expectedHash, 'hex');
+
+      if (providedBuf.length !== expectedBuf.length || !crypto.timingSafeEqual(providedBuf, expectedBuf)) {
         logger.warn('[Facebook Webhook] Signature verification failed. Hash mismatch.');
         return res.sendStatus(403);
       }
