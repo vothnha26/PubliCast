@@ -1,11 +1,23 @@
 const youtubeVideoService = require('../../src/services/social/youtube/youtube-video.service');
 const youtubeGateway = require('../../src/services/social/youtube/youtube.gateway');
 const socialAccountRepository = require('../../src/repositories/social/social-account.repository');
-const youtubePlaylistCache = require('../../src/services/social/youtube/youtube-playlist-cache');
+const prisma = require('../../src/config/prisma');
 
 jest.mock('../../src/services/social/youtube/youtube.gateway');
 jest.mock('../../src/repositories/social/social-account.repository');
-jest.mock('../../src/services/social/youtube/youtube-playlist-cache');
+jest.mock('../../src/config/prisma', () => ({
+  youTubePlaylistCache: {
+    findMany: jest.fn(),
+    deleteMany: jest.fn(),
+    createMany: jest.fn()
+  },
+  youTubeVideoCategory: {
+    findMany: jest.fn(),
+    deleteMany: jest.fn(),
+    createMany: jest.fn()
+  },
+  $transaction: jest.fn(ops => Promise.all(ops))
+}));
 jest.mock('../../src/services/social/google-oauth.service', () => ({
   createClient: jest.fn().mockReturnValue({
     setCredentials: jest.fn()
@@ -22,21 +34,23 @@ describe('YouTubeVideoService Playlists Pagination Unit Tests', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     socialAccountRepository.findByBrandAndPlatform.mockResolvedValue([mockAccount]);
+    prisma.$transaction.mockImplementation(ops => Promise.all(ops));
   });
 
-  it('should return cached playlists directly if forceRefresh is false and cache exists', async () => {
-    const cachedData = [{ id: 'p1', title: 'Cached Playlist', description: 'Desc', itemCount: 5 }];
-    youtubePlaylistCache.get.mockReturnValue(cachedData);
+  it('should return cached playlists from DB directly if forceRefresh is false and cache exists', async () => {
+    prisma.youTubePlaylistCache.findMany.mockResolvedValue([
+      { playlistId: 'p1', title: 'Cached Playlist', description: 'Desc', itemCount: 5 }
+    ]);
 
     const result = await youtubeVideoService.getPlaylists(mockBrandId, false);
 
-    expect(result).toEqual(cachedData);
-    expect(youtubePlaylistCache.get).toHaveBeenCalledWith(mockBrandId);
+    expect(result).toEqual([{ id: 'p1', title: 'Cached Playlist', description: 'Desc', itemCount: 5 }]);
+    expect(prisma.youTubePlaylistCache.findMany).toHaveBeenCalledWith({ where: { brandId: mockBrandId } });
     expect(youtubeGateway.getPlaylists).not.toHaveBeenCalled();
   });
 
-  it('should fetch from gateway, support pagination and update cache if cache miss or forceRefresh is true', async () => {
-    youtubePlaylistCache.get.mockReturnValue(null);
+  it('should fetch from gateway, support pagination and upsert DB cache if cache miss or forceRefresh is true', async () => {
+    prisma.youTubePlaylistCache.findMany.mockResolvedValue([]);
 
     // Mock 2 pages of playlists
     youtubeGateway.getPlaylists
@@ -74,7 +88,61 @@ describe('YouTubeVideoService Playlists Pagination Unit Tests', () => {
     expect(youtubeGateway.getPlaylists).toHaveBeenNthCalledWith(1, expect.any(Object), 50, null);
     expect(youtubeGateway.getPlaylists).toHaveBeenNthCalledWith(2, expect.any(Object), 50, 'page-token-2');
 
-    expect(youtubePlaylistCache.set).toHaveBeenCalledWith(mockBrandId, result);
+    expect(prisma.youTubePlaylistCache.deleteMany).toHaveBeenCalledWith({ where: { brandId: mockBrandId } });
+    expect(prisma.youTubePlaylistCache.createMany).toHaveBeenCalledWith({
+      data: [
+        { brandId: mockBrandId, playlistId: 'p1', title: 'Playlist 1', description: 'Desc 1', itemCount: 10 },
+        { brandId: mockBrandId, playlistId: 'p2', title: 'Playlist 2', description: 'Desc 2', itemCount: 20 }
+      ]
+    });
+  });
+
+  describe('getVideoCategories', () => {
+    it('should return cached categories from DB by regionCode if forceRefresh is false and cache exists', async () => {
+      socialAccountRepository.findByBrandAndPlatform.mockResolvedValue([
+        { ...mockAccount, youtubeChannel: { country: 'VN' } }
+      ]);
+      prisma.youTubeVideoCategory.findMany.mockResolvedValue([
+        { categoryId: '22', title: 'People & Blogs' }
+      ]);
+
+      const result = await youtubeVideoService.getVideoCategories(mockBrandId, false);
+
+      expect(result).toEqual([{ id: '22', title: 'People & Blogs' }]);
+      expect(prisma.youTubeVideoCategory.findMany).toHaveBeenCalledWith({ where: { regionCode: 'VN' } });
+      expect(youtubeGateway.getVideoCategories).not.toHaveBeenCalled();
+    });
+
+    it('should default regionCode to US when channel country is missing', async () => {
+      prisma.youTubeVideoCategory.findMany.mockResolvedValue([]);
+      youtubeGateway.getVideoCategories.mockResolvedValue({
+        data: { items: [{ id: '20', snippet: { title: 'Gaming', assignable: true } }] }
+      });
+
+      await youtubeVideoService.getVideoCategories(mockBrandId, false);
+
+      expect(youtubeGateway.getVideoCategories).toHaveBeenCalledWith(expect.any(Object), 'US');
+    });
+
+    it('should filter out non-assignable categories and upsert DB cache', async () => {
+      prisma.youTubeVideoCategory.findMany.mockResolvedValue([]);
+      youtubeGateway.getVideoCategories.mockResolvedValue({
+        data: {
+          items: [
+            { id: '20', snippet: { title: 'Gaming', assignable: true } },
+            { id: '29', snippet: { title: 'Nonprofits & Activism', assignable: false } }
+          ]
+        }
+      });
+
+      const result = await youtubeVideoService.getVideoCategories(mockBrandId, true);
+
+      expect(result).toEqual([{ id: '20', title: 'Gaming' }]);
+      expect(prisma.youTubeVideoCategory.deleteMany).toHaveBeenCalledWith({ where: { regionCode: 'US' } });
+      expect(prisma.youTubeVideoCategory.createMany).toHaveBeenCalledWith({
+        data: [{ regionCode: 'US', categoryId: '20', title: 'Gaming' }]
+      });
+    });
   });
 
   describe('updateVideo', () => {

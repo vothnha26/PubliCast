@@ -132,6 +132,7 @@ model Brand {
   subscriptionAddons      SubscriptionAddon[]
   supportTickets          SupportTicket[]
   trackedVideos           TrackedVideo[]
+  youtubePlaylistCache    YouTubePlaylistCache[]
   calendarEvents          CalendarEvent[]
   livestreamHighlights    LivestreamHighlight[]
   postAnalyticsSnapshots  PostAnalyticsDailySnapshot[] @relation("BrandAnalyticsSnapshots")
@@ -162,6 +163,34 @@ model TrackedVideo {
   @@unique([brandId, videoId])
   @@index([brandId])
   @@map("tracked_videos")
+}
+
+model YouTubeVideoCategory {
+  id         String   @id @default(uuid())
+  regionCode String
+  categoryId String // ID gốc từ YouTube (vd "22")
+  title      String
+  syncedAt   DateTime @default(now())
+
+  @@unique([regionCode, categoryId])
+  @@index([regionCode])
+  @@map("youtube_video_categories")
+}
+
+model YouTubePlaylistCache {
+  id          String   @id @default(uuid())
+  brandId     String
+  playlistId  String // ID gốc từ YouTube
+  title       String
+  description String?  @db.Text
+  itemCount   Int      @default(0)
+  syncedAt    DateTime @default(now())
+
+  brand Brand @relation(fields: [brandId], references: [id], onDelete: Cascade)
+
+  @@unique([brandId, playlistId])
+  @@index([brandId])
+  @@map("youtube_playlist_cache")
 }
 
 model Team {
@@ -238,10 +267,10 @@ model SystemPermission {
 // src/utils/encryption.js (AES-256-GCM, same ENCRYPTION_KEY already used
 // for social account OAuth tokens).
 model IntegrationClient {
-  id                    String    @id @default(uuid())
-  name                  String
-  clientId              String    @unique
-  clientSecretEncrypted String
+  id                        String    @id @default(uuid())
+  name                      String
+  clientId                  String    @unique
+  clientSecretEncrypted     String
   // Previous secret, kept encrypted during a rotation's grace period so
   // verifyHmac() can accept requests signed with either secret while the
   // caller (Convo) updates its own ENV — see hmac-auth.middleware.js and
@@ -254,11 +283,11 @@ model IntegrationClient {
   // brand / brand deactivated) — see revocation-webhook.service.js.
   // Nullable: a client that only calls verify-token/user-permissions
   // inbound has no reason to also receive outbound webhooks yet.
-  webhookUrl            String?
-  isActive              Boolean   @default(true)
-  createdAt             DateTime  @default(now())
-  updatedAt             DateTime  @updatedAt
-  revokedAt             DateTime?
+  webhookUrl                String?
+  isActive                  Boolean   @default(true)
+  createdAt                 DateTime  @default(now())
+  updatedAt                 DateTime  @updatedAt
+  revokedAt                 DateTime?
 
   @@index([clientId])
   @@map("integration_clients")
@@ -270,10 +299,10 @@ model IntegrationClient {
 model IntegrationSecretRotationLog {
   id            String   @id @default(uuid())
   clientId      String
-  reason        String   // 'SCHEDULED' | 'COMPROMISED'
+  reason        String // 'SCHEDULED' | 'COMPROMISED'
   gracePeriodMs Int
   rotatedAt     DateTime @default(now())
-  rotatedBy     String   // hostname/user running the CLI script, for accountability
+  rotatedBy     String // hostname/user running the CLI script, for accountability
 
   @@index([clientId])
   @@map("integration_secret_rotation_logs")
@@ -530,7 +559,7 @@ model YouTubeChannel {
   madeForKids           Boolean @default(false)
   hiddenSubscriberCount Boolean @default(false)
 
-  youtubeSubscription   YouTubeSubscription?
+  youtubeSubscription YouTubeSubscription?
 
   socialAccount SocialAccount @relation(fields: [socialAccountId], references: [id], onDelete: Cascade)
 
@@ -538,20 +567,20 @@ model YouTubeChannel {
 }
 
 model YouTubeSubscription {
-  id               String           @id @default(uuid())
-  youtubeChannelId String           @unique @map("youtube_channel_id")
-  channelId        String           @map("channel_id")
-  topicUrl         String           @map("topic_url")
-  hubSecret        String           @map("hub_secret")
-  status           String           @default("PENDING") // PENDING, SUBSCRIBED, EXPIRED, FAILED
-  leaseSeconds     Int              @default(864000)    @map("lease_seconds")
-  subscribedAt     DateTime?        @map("subscribed_at")
-  expiresAt        DateTime?        @map("expires_at")
-  lastEventAt      DateTime?        @map("last_event_at")
-  createdAt        DateTime         @default(now())     @map("created_at")
-  updatedAt        DateTime         @updatedAt          @map("updated_at")
+  id               String    @id @default(uuid())
+  youtubeChannelId String    @unique @map("youtube_channel_id")
+  channelId        String    @map("channel_id")
+  topicUrl         String    @map("topic_url")
+  hubSecret        String    @map("hub_secret")
+  status           String    @default("PENDING") // PENDING, SUBSCRIBED, EXPIRED, FAILED
+  leaseSeconds     Int       @default(864000) @map("lease_seconds")
+  subscribedAt     DateTime? @map("subscribed_at")
+  expiresAt        DateTime? @map("expires_at")
+  lastEventAt      DateTime? @map("last_event_at")
+  createdAt        DateTime  @default(now()) @map("created_at")
+  updatedAt        DateTime  @updatedAt @map("updated_at")
 
-  youtubeChannel   YouTubeChannel   @relation(fields: [youtubeChannelId], references: [id], onDelete: Cascade)
+  youtubeChannel YouTubeChannel @relation(fields: [youtubeChannelId], references: [id], onDelete: Cascade)
 
   @@index([channelId])
   @@index([status, expiresAt])
@@ -1188,33 +1217,33 @@ model UnifiedInbox {
 }
 
 model InboxItem {
-  id                String        @id @default(uuid())
-  inboxId           String
-  platform          PlatformType
-  type              InboxItemType
-  platformItemId    String        @unique
-  authorId          String
-  authorName        String
-  authorAvatarUrl   String?
-  content           String        @db.Text
-  mediaUrls         String?       @db.Text
-  relatedPostId     String? // ID bài viết/video từ nền tảng gốc
-  parentItemId      String?
+  id                      String        @id @default(uuid())
+  inboxId                 String
+  platform                PlatformType
+  type                    InboxItemType
+  platformItemId          String        @unique
+  authorId                String
+  authorName              String
+  authorAvatarUrl         String?
+  content                 String        @db.Text
+  mediaUrls               String?       @db.Text
+  relatedPostId           String? // ID bài viết/video từ nền tảng gốc
+  parentItemId            String?
   // Raw platform parent id, set only when the parent comment hasn't been
   // ingested yet (out-of-order webhook delivery). Reconciled to parentItemId
   // once the parent's own webhook arrives and upserts a matching row (#100).
   pendingParentPlatformId String?
-  assignedUserId    String?
-  tags              Json? // Mảng nhãn phân loại tùy chỉnh (VIP, Hỏi giá...)
-  internalNotes     Json? // Lịch sử ghi chú nội bộ của các nhân viên hỗ trợ
-  status            String        @default("UNREAD")
-  isHidden          Boolean       @default(false)
-  sentiment         String?
-  repliedByUserId   String?
-  repliedAt         DateTime?
-  platformCreatedAt DateTime
-  syncedAt          DateTime
-  createdAt         DateTime      @default(now())
+  assignedUserId          String?
+  tags                    Json? // Mảng nhãn phân loại tùy chỉnh (VIP, Hỏi giá...)
+  internalNotes           Json? // Lịch sử ghi chú nội bộ của các nhân viên hỗ trợ
+  status                  String        @default("UNREAD")
+  isHidden                Boolean       @default(false)
+  sentiment               String?
+  repliedByUserId         String?
+  repliedAt               DateTime?
+  platformCreatedAt       DateTime
+  syncedAt                DateTime
+  createdAt               DateTime      @default(now())
 
   inbox           UnifiedInbox   @relation(fields: [inboxId], references: [id], onDelete: Cascade)
   parentItem      InboxItem?     @relation("InboxItemReplies", fields: [parentItemId], references: [id])
@@ -1271,24 +1300,24 @@ model TicketMessage {
 // ============================================
 
 model Report {
-  id                      String       @id @default(uuid())
-  brandId                 String
-  createdByUserId         String
-  title                   String
-  description             String?      @db.Text
-  dateFrom                DateTime
-  dateTo                  DateTime
-  includedPlatforms       String       @db.Text
-  includedSections        String       @db.Text
-  isWhiteLabel            Boolean      @default(false)
-  brandLogoUrl            String?
-  brandColorHex           String?
-  format                  ReportFormat
-  fileUrl                 String?
-  sizeBytes               Int?
-  generatedAt             DateTime?
-  downloads               Int          @default(0)
-  createdAt               DateTime     @default(now())
+  id                String       @id @default(uuid())
+  brandId           String
+  createdByUserId   String
+  title             String
+  description       String?      @db.Text
+  dateFrom          DateTime
+  dateTo            DateTime
+  includedPlatforms String       @db.Text
+  includedSections  String       @db.Text
+  isWhiteLabel      Boolean      @default(false)
+  brandLogoUrl      String?
+  brandColorHex     String?
+  format            ReportFormat
+  fileUrl           String?
+  sizeBytes         Int?
+  generatedAt       DateTime?
+  downloads         Int          @default(0)
+  createdAt         DateTime     @default(now())
 
   brand   Brand @relation(fields: [brandId], references: [id], onDelete: Cascade)
   creator User  @relation("ReportCreator", fields: [createdByUserId], references: [id], onDelete: Restrict)
@@ -1303,17 +1332,17 @@ model Report {
 // instance, and written non-atomically (a crash mid-write left an
 // unparseable file silently skipped by the scan). One row per brand (#75).
 model ReportScheduleConfig {
-  id            String   @id @default(uuid())
-  brandId       String   @unique
-  receiveEmail  Boolean  @default(false)
-  emailsList    String   @db.Text // JSON-encoded string[]
-  emailText     String   @db.Text
+  id           String       @id @default(uuid())
+  brandId      String       @unique
+  receiveEmail Boolean      @default(false)
+  emailsList   String       @db.Text // JSON-encoded string[]
+  emailText    String       @db.Text
   // Day of month (1-31) as a string, or the literal "last" for end-of-month.
-  dayOfMonth    String   @default("1")
-  format        ReportFormat @default(PDF)
-  platforms     String   @db.Text // JSON-encoded string[]
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  dayOfMonth   String       @default("1")
+  format       ReportFormat @default(PDF)
+  platforms    String       @db.Text // JSON-encoded string[]
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
 
   brand Brand @relation(fields: [brandId], references: [id], onDelete: Cascade)
 
@@ -1347,21 +1376,21 @@ model SmartLink {
 }
 
 model LinkItem {
-  id             String    @id @default(uuid())
-  smartLinkId    String
-  title          String
-  url            String
-  iconUrl        String?
-  linkStyle      String?   @db.Text
-  emoji          String?
-  position       Int
-  isActive       Boolean   @default(true)
-  clicks         Int       @default(0)
-  clicksLastWeek Int       @default(0)
-  scheduleFrom   DateTime?
-  scheduleTo     DateTime?
-  isAutoGenerated Boolean  @default(false)
-  createdAt      DateTime  @default(now())
+  id              String    @id @default(uuid())
+  smartLinkId     String
+  title           String
+  url             String
+  iconUrl         String?
+  linkStyle       String?   @db.Text
+  emoji           String?
+  position        Int
+  isActive        Boolean   @default(true)
+  clicks          Int       @default(0)
+  clicksLastWeek  Int       @default(0)
+  scheduleFrom    DateTime?
+  scheduleTo      DateTime?
+  isAutoGenerated Boolean   @default(false)
+  createdAt       DateTime  @default(now())
 
   smartLink    SmartLink             @relation(fields: [smartLinkId], references: [id], onDelete: Cascade)
   dailyMetrics LinkItemDailyMetric[]

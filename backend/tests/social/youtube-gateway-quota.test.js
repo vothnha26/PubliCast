@@ -12,7 +12,8 @@ jest.mock('googleapis', () => {
     commentThreads: { list: jest.fn(), insert: jest.fn() },
     comments: { insert: jest.fn(), update: jest.fn(), delete: jest.fn() },
     thumbnails: { set: jest.fn() },
-    playlists: { list: jest.fn() }
+    playlists: { list: jest.fn() },
+    videoCategories: { list: jest.fn() }
   };
   const mockYoutubeAnalytics = {
     reports: { query: jest.fn() }
@@ -218,6 +219,17 @@ describe('YouTubeGateway Quota Tracking Unit Tests', () => {
       await youtubeGateway.deleteVideo('fake-auth', 'video-123');
       expect(spyTrackQuota).toHaveBeenCalledWith('youtube', YOUTUBE_QUOTA_COSTS.VIDEOS_DELETE);
       expect(mockQuotaService.incrementAndGet).toHaveBeenCalledWith('youtube', YOUTUBE_QUOTA_COSTS.VIDEOS_DELETE);
+    });
+
+    it('should track quota and pass regionCode on getVideoCategories', async () => {
+      mockYoutubeInstance.videoCategories.list.mockResolvedValue({ data: { items: [] } });
+      await youtubeGateway.getVideoCategories('fake-auth', 'VN');
+      expect(mockYoutubeInstance.videoCategories.list).toHaveBeenCalledWith({
+        part: YOUTUBE_API_PARTS.VIDEO_CATEGORIES_LIST,
+        regionCode: 'VN'
+      });
+      expect(spyTrackQuota).toHaveBeenCalledWith('youtube', YOUTUBE_QUOTA_COSTS.VIDEO_CATEGORIES_LIST);
+      expect(mockQuotaService.incrementAndGet).toHaveBeenCalledWith('youtube', YOUTUBE_QUOTA_COSTS.VIDEO_CATEGORIES_LIST);
     });
   });
 });

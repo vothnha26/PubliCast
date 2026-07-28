@@ -47,6 +47,18 @@ class SocialService {
     return response.data;
   }
 
+  async getYouTubePlaylists(brandId, forceRefresh = false) {
+    const url = `/social/youtube/playlists?brandId=${encodeURIComponent(brandId)}${forceRefresh ? '&sync=true' : ''}`;
+    const response = await apiService.get(url);
+    return response.data;
+  }
+
+  async getYouTubeVideoCategories(brandId, forceRefresh = false) {
+    const url = `/social/youtube/video-categories?brandId=${encodeURIComponent(brandId)}${forceRefresh ? '&sync=true' : ''}`;
+    const response = await apiService.get(url);
+    return response.data;
+  }
+
   async getVideoAnalytics(brandId, videoId, startDate, endDate) {
     let url = `/social/youtube/video-analytics?brandId=${encodeURIComponent(brandId)}&videoId=${encodeURIComponent(videoId)}`;
     if (startDate) url += `&startDate=${encodeURIComponent(startDate)}`;

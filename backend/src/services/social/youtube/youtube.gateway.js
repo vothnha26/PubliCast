@@ -231,6 +231,19 @@ class YouTubeGateway {
   }
 
   /**
+   * Lấy danh sách Video Categories theo quốc gia (regionCode)
+   */
+  async getVideoCategories(auth, regionCode = 'US') {
+    const youtube = google.youtube({ version: API_VERSIONS.YOUTUBE, auth });
+    const response = await youtube.videoCategories.list({
+      part: YOUTUBE_API_PARTS.VIDEO_CATEGORIES_LIST,
+      regionCode
+    });
+    await this._trackQuota('youtube', YOUTUBE_QUOTA_COSTS.VIDEO_CATEGORIES_LIST);
+    return response;
+  }
+
+  /**
    * Thêm video vào Playlist
    */
   async addVideoToPlaylist(auth, playlistId, videoId) {

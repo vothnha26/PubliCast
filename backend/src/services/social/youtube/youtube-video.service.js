@@ -2,6 +2,7 @@ const youtubeGateway = require('./youtube.gateway');
 const googleOAuthService = require('../google-oauth.service');
 const socialAccountRepository = require('../../../repositories/social/social-account.repository');
 const trackedVideoRepository = require('../../../repositories/social/tracked-video.repository');
+const prisma = require('../../../config/prisma');
 const { PLATFORMS, POST_STATUS, SEPARATORS, YOUTUBE_API } = require('../../../utils/constants');
 
 class YouTubeVideoService {
@@ -98,10 +99,9 @@ class YouTubeVideoService {
   }
 
   async getPlaylists(brandId, forceRefresh = false) {
-    const youtubePlaylistCache = require('./youtube-playlist-cache');
     if (!forceRefresh) {
-      const cached = youtubePlaylistCache.get(brandId);
-      if (cached) return cached;
+      const cached = await prisma.youTubePlaylistCache.findMany({ where: { brandId } });
+      if (cached.length > 0) return this._formatPlaylistRows(cached);
     }
 
     const { auth } = await this._getAuthContext(brandId);
@@ -121,8 +121,72 @@ class YouTubeVideoService {
       pageToken = res.data.nextPageToken || null;
     } while (pageToken);
 
-    youtubePlaylistCache.set(brandId, playlists);
+    await this._upsertPlaylistCache(brandId, playlists);
     return playlists;
+  }
+
+  async _upsertPlaylistCache(brandId, playlists) {
+    await prisma.$transaction([
+      prisma.youTubePlaylistCache.deleteMany({ where: { brandId } }),
+      prisma.youTubePlaylistCache.createMany({
+        data: playlists.map(p => ({
+          brandId,
+          playlistId: p.id,
+          title: p.title,
+          description: p.description,
+          itemCount: p.itemCount
+        }))
+      })
+    ]);
+  }
+
+  _formatPlaylistRows(rows) {
+    return rows.map(r => ({
+      id: r.playlistId,
+      title: r.title,
+      description: r.description,
+      itemCount: r.itemCount
+    }));
+  }
+
+  async getVideoCategories(brandId, forceRefresh = false) {
+    const { auth, account } = await this._getAuthContext(brandId);
+    const regionCode = account?.youtubeChannel?.country || 'US';
+
+    if (!forceRefresh) {
+      const cached = await prisma.youTubeVideoCategory.findMany({ where: { regionCode } });
+      if (cached.length > 0) return this._formatCategoryRows(cached);
+    }
+
+    const res = await youtubeGateway.getVideoCategories(auth, regionCode);
+    const items = res.data.items || [];
+
+    const categories = items
+      .filter(item => item.snippet && item.snippet.assignable === true)
+      .map(item => ({
+        id: item.id,
+        title: item.snippet.title
+      }));
+
+    await this._upsertCategoryCache(regionCode, categories);
+    return categories;
+  }
+
+  async _upsertCategoryCache(regionCode, categories) {
+    await prisma.$transaction([
+      prisma.youTubeVideoCategory.deleteMany({ where: { regionCode } }),
+      prisma.youTubeVideoCategory.createMany({
+        data: categories.map(c => ({
+          regionCode,
+          categoryId: c.id,
+          title: c.title
+        }))
+      })
+    ]);
+  }
+
+  _formatCategoryRows(rows) {
+    return rows.map(r => ({ id: r.categoryId, title: r.title }));
   }
 
   async updateVideo(brandId, videoId, updates, socialAccountId = null) {

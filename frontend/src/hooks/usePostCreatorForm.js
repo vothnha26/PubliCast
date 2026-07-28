@@ -397,6 +397,10 @@ export function usePostCreatorForm() {
   const [playlists, setPlaylists] = useState([]);
   const [isLoadingPlaylists, setIsLoadingPlaylists] = useState(false);
 
+  // Categories fetched data
+  const [categories, setCategories] = useState([]);
+  const [isLoadingCategories, setIsLoadingCategories] = useState(false);
+
   const [activePopover, setActivePopover] = useState(null); // 'media', 'emoji', 'utm'
   const [showFirstCommentModal, setShowFirstCommentModal] = useState(false);
   const [isDriveModalOpen, setIsDriveModalOpen] = useState(false);
@@ -513,6 +517,25 @@ export function usePostCreatorForm() {
       }
     } finally {
       setIsLoadingPlaylists(false);
+    }
+  };
+
+  const fetchCategories = async (forceRefresh = false) => {
+    if (!activeBrand) return;
+    setIsLoadingCategories(true);
+    try {
+      const res = await socialService.getYouTubeVideoCategories(activeBrand.id, forceRefresh);
+      setCategories(res.data || []);
+      if (forceRefresh) {
+        toast.success("YouTube Video Categories synchronized successfully");
+      }
+    } catch (err) {
+      logger.error("Failed to load video categories:", err);
+      if (forceRefresh) {
+        toast.error("Failed to synchronize video categories");
+      }
+    } finally {
+      setIsLoadingCategories(false);
     }
   };
 
@@ -989,6 +1012,9 @@ export function usePostCreatorForm() {
     handleVideoChange,
     handleRemoveVideo,
     fetchPlaylists,
+    categories,
+    isLoadingCategories,
+    fetchCategories,
     editingPost,
     handleCreatePost,
     // Facebook States
