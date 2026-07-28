@@ -5,6 +5,7 @@
 
 const BLUESKY_CONSTANTS = Object.freeze({
   DEFAULT_PDS_URL: 'https://bsky.social',
+  DEFAULT_LANGS: ['vi'],
   VIDEO_SERVICE_URL: 'https://video.bsky.app',
   VIDEO_UPLOAD_LXM: 'com.atproto.repo.uploadBlob',
   RECORD_TYPES: {
@@ -16,7 +17,7 @@ const BLUESKY_CONSTANTS = Object.freeze({
   LIMITS: {
     MAX_GRAPHEMES: 300,
     MAX_IMAGES: 4,
-    MAX_IMAGE_SIZE_BYTES: 1 * 1024 * 1024, // 1MB
+    MAX_IMAGE_SIZE_BYTES: 2 * 1024 * 1024, // 2MB
     MAX_VIDEO_SIZE_BYTES: 50 * 1024 * 1024, // 50MB
     VIDEO_JOB_POLL_INTERVAL_MS: 2000,
     VIDEO_JOB_MAX_ATTEMPTS: 30,

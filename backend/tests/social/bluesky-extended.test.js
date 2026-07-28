@@ -161,8 +161,13 @@ describe('BlueskyExtendedService (Video, Quota Rate-Limit, Social Actions)', () 
     });
   });
 
-  describe('Phần C — Social Actions', () => {
-    it('sẽ gọi likePost thông qua gateway và tính điểm UPDATE (2 điểm)', async () => {
+  describe('Phần C — Social Actions (Issue #246)', () => {
+    it('sẽ kiểm tra giá trị hằng số Issue #246 (DEFAULT_LANGS và MAX_IMAGE_SIZE_BYTES)', () => {
+      expect(BLUESKY_CONSTANTS.DEFAULT_LANGS).toEqual(['vi']);
+      expect(BLUESKY_CONSTANTS.LIMITS.MAX_IMAGE_SIZE_BYTES).toBe(2 * 1024 * 1024);
+    });
+
+    it('sẽ gọi likePost thông qua gateway và tính điểm CREATE (3 điểm)', async () => {
       const mockAgent = {};
       blueskyGateway.createAgent.mockReturnValue(mockAgent);
       blueskyGateway.likePost.mockResolvedValue({ uri: 'at://like/1' });
@@ -172,7 +177,22 @@ describe('BlueskyExtendedService (Video, Quota Rate-Limit, Social Actions)', () 
       expect(res).toEqual({ uri: 'at://like/1' });
       expect(blueskyService.quotaTracker.incrementAndGet).toHaveBeenCalledWith(
         `bluesky:${mockAccountId}`,
-        QUOTA_TTL_STRATEGY.BLUESKY.POINTS.UPDATE
+        QUOTA_TTL_STRATEGY.BLUESKY.POINTS.CREATE
+      );
+    });
+
+    it('sẽ gọi repost và followUser tính điểm CREATE (3 điểm)', async () => {
+      const mockAgent = {};
+      blueskyGateway.createAgent.mockReturnValue(mockAgent);
+      blueskyGateway.repost.mockResolvedValue({ uri: 'at://repost/1' });
+      blueskyGateway.followUser.mockResolvedValue({ uri: 'at://follow/1' });
+
+      await blueskyService.repost(mockBrandId, { uri: 'at://post/1', cid: 'bafk1' });
+      await blueskyService.followUser(mockBrandId, { did: 'did:plc:other' });
+
+      expect(blueskyService.quotaTracker.incrementAndGet).toHaveBeenCalledWith(
+        `bluesky:${mockAccountId}`,
+        QUOTA_TTL_STRATEGY.BLUESKY.POINTS.CREATE
       );
     });
 
