@@ -115,4 +115,36 @@ describe('YoutubeAnalyticsService', () => {
       youtubeGateway.getChannelList.mockRestore();
     });
   });
+
+  describe('addCompetitor - Format Validation', () => {
+    it('should throw error immediately for invalid channelId format', async () => {
+      await expect(
+        youtubeAnalytics.addCompetitor('brand-123', 'invalid_id_format')
+      ).rejects.toThrow('Invalid YouTube channel ID or handle format: invalid_id_format');
+    });
+
+    it('should allow valid channelId starting with UC or @handle', async () => {
+      socialAccountRepository.findByBrandAndPlatform.mockResolvedValue([
+        { id: 'sa-yt', platform: PLATFORMS.YOUTUBE, accessToken: 'mock-token' }
+      ]);
+      const youtubeGateway = require('../../src/services/social/youtube/youtube.gateway');
+      jest.spyOn(youtubeGateway, 'getChannelList').mockResolvedValue({
+        data: {
+          items: [{
+            id: 'UC1234567890123456789012',
+            snippet: { title: 'Test', thumbnails: { default: { url: '' } } },
+            statistics: { subscriberCount: '100' }
+          }]
+        }
+      });
+      const competitorRepository = require('../../src/repositories/social/competitor.repository');
+      jest.spyOn(competitorRepository, 'createCompetitor').mockResolvedValue({ id: 'comp-1' });
+
+      const result = await youtubeAnalytics.addCompetitor('brand-123', 'UC1234567890123456789012');
+      expect(result).toEqual({ id: 'comp-1' });
+
+      youtubeGateway.getChannelList.mockRestore();
+      competitorRepository.createCompetitor.mockRestore();
+    });
+  });
 });

@@ -94,29 +94,6 @@ class YouTubeGateway {
   }
 
   /**
-   * Tìm kiếm nội dung (video/channel/playlist)
-   */
-  async getSearchList(auth, options = {}) {
-    const youtube = google.youtube({ version: API_VERSIONS.YOUTUBE, auth });
-    const { q, type, maxResults = 50, publishedAfter, publishedBefore, forMine } = options;
-    
-    const params = {
-      part: YOUTUBE_API_PARTS.SEARCH,
-      maxResults,
-      type
-    };
-
-    if (q) params.q = q;
-    if (publishedAfter) params.publishedAfter = publishedAfter;
-    if (publishedBefore) params.publishedBefore = publishedBefore;
-    if (forMine) params.forMine = true;
-
-    const response = await youtube.search.list(params);
-    await this._trackQuota('youtube-search', YOUTUBE_QUOTA_COSTS.SEARCH_LIST);
-    return response;
-  }
-
-  /**
    * Lấy danh sách Comments từ Channel
    */
   async getCommentThreads(auth, channelId, maxResults = 100, pageToken = null) {
@@ -199,7 +176,8 @@ class YouTubeGateway {
       categoryId = YOUTUBE_CATEGORIES.PEOPLE_BLOGS,
       selfDeclaredMadeForKids = false,
       tags = [],
-      publishAt = null
+      publishAt = null,
+      containsSyntheticMedia
     } = metadata;
 
     const requestBody = {
@@ -217,6 +195,10 @@ class YouTubeGateway {
 
     if (publishAt) {
       requestBody.status.publishAt = publishAt;
+    }
+
+    if (containsSyntheticMedia !== undefined) {
+      requestBody.status.containsSyntheticMedia = containsSyntheticMedia;
     }
 
     const response = await youtube.videos.insert({

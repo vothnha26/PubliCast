@@ -109,13 +109,6 @@ describe('YouTubeGateway Quota Tracking Unit Tests', () => {
       expect(mockQuotaService.incrementAndGet).toHaveBeenCalledWith('youtube-search', YOUTUBE_QUOTA_COSTS.SEARCH_LIST);
     });
 
-    it('should track quota on getSearchList', async () => {
-      mockYoutubeInstance.search.list.mockResolvedValue({ data: {} });
-      await youtubeGateway.getSearchList('fake-auth', { q: 'query' });
-      expect(spyTrackQuota).toHaveBeenCalledWith('youtube-search', YOUTUBE_QUOTA_COSTS.SEARCH_LIST);
-      expect(mockQuotaService.incrementAndGet).toHaveBeenCalledWith('youtube-search', YOUTUBE_QUOTA_COSTS.SEARCH_LIST);
-    });
-
     it('should track quota on getCommentThreads', async () => {
       mockYoutubeInstance.commentThreads.list.mockResolvedValue({ data: {} });
       await youtubeGateway.getCommentThreads('fake-auth', 'channel-123');
@@ -164,11 +157,20 @@ describe('YouTubeGateway Quota Tracking Unit Tests', () => {
       expect(mockQuotaService.incrementAndGet).not.toHaveBeenCalled();
     });
 
-    it('should track quota on uploadVideo', async () => {
+    it('should track quota on uploadVideo and set containsSyntheticMedia if provided', async () => {
       mockYoutubeInstance.videos.insert.mockResolvedValue({ data: {} });
-      await youtubeGateway.uploadVideo('fake-auth', {}, { title: 'Video Title' });
+      await youtubeGateway.uploadVideo('fake-auth', {}, { title: 'test', containsSyntheticMedia: true });
       expect(spyTrackQuota).toHaveBeenCalledWith('youtube-videos-insert', YOUTUBE_QUOTA_COSTS.VIDEOS_INSERT);
       expect(mockQuotaService.incrementAndGet).toHaveBeenCalledWith('youtube-videos-insert', YOUTUBE_QUOTA_COSTS.VIDEOS_INSERT);
+      expect(mockYoutubeInstance.videos.insert).toHaveBeenCalledWith(
+        expect.objectContaining({
+          requestBody: expect.objectContaining({
+            status: expect.objectContaining({
+              containsSyntheticMedia: true
+            })
+          })
+        })
+      );
     });
 
     it('should track quota on getPlaylists', async () => {
