@@ -27,6 +27,11 @@ describe('Bluesky Integration Suite', () => {
       expect(result.id).toBe('at://did:plc:123/app.bsky.feed.post/456');
       expect(blueskyGateway.publishPost).toHaveBeenCalledWith(mockAgent, { text: 'Hello Bluesky!' });
     });
+
+    it('should export DEFAULT_LANGS as ["vi"]', () => {
+      const BLUESKY_CONSTANTS = require('../../src/services/social/bluesky/bluesky.constants');
+      expect(BLUESKY_CONSTANTS.DEFAULT_LANGS).toEqual(['vi']);
+    });
   });
 
   describe('Bluesky Service Facade', () => {

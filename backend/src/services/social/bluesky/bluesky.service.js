@@ -244,7 +244,7 @@ class BlueskyService extends BaseSocialService {
   async likePost(brandId, { uri, cid }) {
     const account = await socialAccountRepository.findByBrandAndPlatformFirst(brandId, PLATFORMS.BLUESKY);
     if (!account) throw new Error('Bluesky account not connected');
-    await this._checkAndIncrementQuota(account.id, 'UPDATE');
+    await this._checkAndIncrementQuota(account.id, 'CREATE');
 
     const agent = await this._getAuthenticatedAgent(account);
     return blueskyGateway.likePost(agent, uri, cid);
@@ -253,7 +253,7 @@ class BlueskyService extends BaseSocialService {
   async repost(brandId, { uri, cid }) {
     const account = await socialAccountRepository.findByBrandAndPlatformFirst(brandId, PLATFORMS.BLUESKY);
     if (!account) throw new Error('Bluesky account not connected');
-    await this._checkAndIncrementQuota(account.id, 'UPDATE');
+    await this._checkAndIncrementQuota(account.id, 'CREATE');
 
     const agent = await this._getAuthenticatedAgent(account);
     return blueskyGateway.repost(agent, uri, cid);
@@ -262,7 +262,7 @@ class BlueskyService extends BaseSocialService {
   async followUser(brandId, { did }) {
     const account = await socialAccountRepository.findByBrandAndPlatformFirst(brandId, PLATFORMS.BLUESKY);
     if (!account) throw new Error('Bluesky account not connected');
-    await this._checkAndIncrementQuota(account.id, 'UPDATE');
+    await this._checkAndIncrementQuota(account.id, 'CREATE');
 
     const agent = await this._getAuthenticatedAgent(account);
     return blueskyGateway.followUser(agent, did);
