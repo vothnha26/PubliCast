@@ -2,8 +2,8 @@ const BaseSyncStrategy = require('./base.strategy');
 const facebookGateway = require('../../facebook/facebook.gateway');
 const socialAccountRepository = require('../../../../repositories/social/social-account.repository');
 const inboxRepository = require('../../../../repositories/social/inbox.repository');
-const { PLATFORMS, INBOX_STATUS, INBOX_TYPES, API_VERSIONS, SYSTEM_LABELS, FACEBOOK_API } = require('../../../../utils/constants');
-
+const { PLATFORMS, INBOX_STATUS, INBOX_TYPES } = require('../../../../utils/constants');
+const { filterRealAccount, processComment, processReplies } = require('../../facebook/facebook-comment.util');
 
 class FacebookCommentSyncStrategy extends BaseSyncStrategy {
   supports(platform) {
@@ -12,17 +12,18 @@ class FacebookCommentSyncStrategy extends BaseSyncStrategy {
 
   async sync(brandId, inbox) {
     const { account, pageId, pageAccessToken } = await this._getAccountAndToken(brandId);
-    const feed = await facebookGateway.getPageFeed(pageId, pageAccessToken, 10);
+    const feedResult = await facebookGateway.getPageFeed(pageId, pageAccessToken, null, 10);
+    const feed = feedResult.data || [];
     const inboxItems = [];
 
     for (const post of feed) {
       const comments = await facebookGateway.getPostComments(post.id, pageAccessToken);
       for (const comment of comments) {
-        const item = await this._processComment(comment, post.id, account, inbox);
+        const item = await processComment(comment, post.id, account, inbox);
         inboxItems.push(item);
 
         if (comment.comments && comment.comments.data) {
-          await this._processReplies(comment.comments.data, item.id, post.id, account, inbox);
+          await processReplies(comment.comments.data, item.id, post.id, account, inbox);
         }
       }
     }
@@ -60,83 +61,15 @@ class FacebookCommentSyncStrategy extends BaseSyncStrategy {
   }
 
   async _getAccountAndToken(brandId) {
-    const socialAccount = await socialAccountRepository.findByBrandAndPlatform(brandId, PLATFORMS.FACEBOOK);
-    if (!socialAccount || socialAccount.length === 0) throw new Error('Facebook account not connected');
+    const socialAccounts = await socialAccountRepository.findByBrandAndPlatform(brandId, PLATFORMS.FACEBOOK);
+    const account = filterRealAccount(socialAccounts);
+    if (!account) throw new Error('Facebook account not connected');
     
-    const account = socialAccount[0];
     return {
       account,
       pageId: account.platformAccountId,
       pageAccessToken: account.accessToken
     };
-  }
-
-  async _processComment(comment, postId, account, inbox) {
-    const authorId = comment.from?.id || SYSTEM_LABELS.UNKNOWN.toLowerCase();
-    const authorName = comment.from?.name || 'Facebook User';
-    const authorAvatar = FACEBOOK_API.avatarUrl(API_VERSIONS.FACEBOOK, authorId);
-
-
-    return await inboxRepository.upsertInboxItem(
-      { platformItemId: comment.id },
-      {
-        content: comment.message,
-        authorName,
-        authorAvatarUrl: authorAvatar,
-        syncedAt: new Date(),
-        socialAccountId: account.id
-      },
-      {
-        inboxId: inbox.id,
-        platform: PLATFORMS.FACEBOOK,
-        type: INBOX_TYPES.COMMENT,
-        platformItemId: comment.id,
-        authorId,
-        authorName,
-        authorAvatarUrl: authorAvatar,
-        content: comment.message,
-        relatedPostId: postId,
-        platformCreatedAt: new Date(comment.created_time),
-        syncedAt: new Date(),
-        status: INBOX_STATUS.UNREAD,
-        socialAccountId: account.id
-      }
-    );
-  }
-
-  async _processReplies(replies, parentDbId, postId, account, inbox) {
-    for (const reply of replies) {
-      const replyAuthorId = reply.from?.id || SYSTEM_LABELS.UNKNOWN.toLowerCase();
-      const replyAuthorName = reply.from?.name || 'Facebook User';
-      const replyAuthorAvatar = FACEBOOK_API.avatarUrl(API_VERSIONS.FACEBOOK, replyAuthorId);
-
-
-      await inboxRepository.upsertInboxItem(
-        { platformItemId: reply.id },
-        {
-          content: reply.message,
-          authorName: replyAuthorName,
-          authorAvatarUrl: replyAuthorAvatar,
-          socialAccountId: account.id
-        },
-        {
-          inboxId: inbox.id,
-          platform: PLATFORMS.FACEBOOK,
-          type: INBOX_TYPES.COMMENT,
-          platformItemId: reply.id,
-          parentItemId: parentDbId,
-          authorId: replyAuthorId,
-          authorName: replyAuthorName,
-          authorAvatarUrl: replyAuthorAvatar,
-          content: reply.message,
-          relatedPostId: postId,
-          platformCreatedAt: new Date(reply.created_time),
-          syncedAt: new Date(),
-          status: INBOX_STATUS.READ,
-          socialAccountId: account.id
-        }
-      );
-    }
   }
 
   async updateReply(brandId, platformItemId, text) {

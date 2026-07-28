@@ -10,29 +10,45 @@ class FacebookRateLimitError extends Error {
   constructor(messageOrError, retryAfterSeconds = DEFAULT_RETRY_AFTER_SECONDS, metadata = {}) {
     if (messageOrError && typeof messageOrError === 'object') {
       const err = messageOrError;
-      const response = err.response || {};
-      const data = response.data || {};
-      const errorMsg = data.error?.message || err.message || 'Rate limit exceeded';
-      
+      let errorMsg = 'Rate limit exceeded';
+      let parsedRetry = retryAfterSeconds;
+      let appUsageRaw = null;
+
+      if (err.headers && typeof err.headers.get === 'function') {
+        // Fetch API Response object
+        errorMsg = metadata.message || metadata.error?.message || err.statusText || 'Rate limit exceeded';
+        
+        const retryHeader = err.headers.get('retry-after');
+        if (retryHeader) {
+          const parsed = parseInt(retryHeader, 10);
+          if (!isNaN(parsed)) parsedRetry = parsed;
+        }
+        
+        appUsageRaw = err.headers.get('x-app-usage') || err.headers.get('x-page-usage');
+      } else {
+        // Axios or generic error object
+        const response = err.response || {};
+        const data = response.data || {};
+        errorMsg = data.error?.message || err.message || 'Rate limit exceeded';
+        
+        const headers = response.headers || {};
+        const retryHeader = headers['retry-after'] || headers['Retry-After'];
+        if (retryHeader) {
+          const parsed = parseInt(retryHeader, 10);
+          if (!isNaN(parsed)) parsedRetry = parsed;
+        }
+        
+        appUsageRaw = headers['x-app-usage'] || headers['x-page-usage'];
+      }
+
       super(errorMsg);
       this.name = 'FacebookRateLimitError';
-      
-      let parsedRetry = DEFAULT_RETRY_AFTER_SECONDS;
-      const headers = response.headers || {};
-      const retryHeader = headers['retry-after'] || headers['Retry-After'];
-      if (retryHeader) {
-        const parsed = parseInt(retryHeader, 10);
-        if (!isNaN(parsed)) parsedRetry = parsed;
-      }
-      
       this.retryAfterSeconds = parsedRetry;
-      this.metadata = data.error || {};
+      this.metadata = metadata.error || metadata || {};
       
-      // Parse app usage
-      const appUsage = headers['x-app-usage'] || headers['x-page-usage'];
-      if (appUsage) {
+      if (appUsageRaw) {
         try {
-          this.rateLimitInfo = JSON.parse(appUsage);
+          this.rateLimitInfo = typeof appUsageRaw === 'string' ? JSON.parse(appUsageRaw) : appUsageRaw;
         } catch (e) {
           // ignore
         }
@@ -77,7 +93,7 @@ class FacebookReelGateway {
           const parsed = parseInt(retryAfterHeader, 10);
           if (!isNaN(parsed)) retryAfter = parsed;
         }
-        throw new FacebookRateLimitError(message, retryAfter, errData.error);
+        throw new FacebookRateLimitError(res, retryAfter, errData.error || { message });
       }
       throw new Error(message);
     }

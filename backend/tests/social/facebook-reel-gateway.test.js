@@ -98,7 +98,7 @@ describe('FacebookReelGateway Tests', () => {
       expect(global.fetch).toHaveBeenCalledTimes(3);
     });
 
-    it('should throw FacebookRateLimitError on 429 response during initialization', async () => {
+    it('should throw FacebookRateLimitError on 429 response during initialization and parse rateLimitInfo from header', async () => {
       const mockHeaders = new Map();
       mockHeaders.set('retry-after', '45');
       mockHeaders.set('x-app-usage', '{"call_count":100}');
@@ -115,12 +115,19 @@ describe('FacebookReelGateway Tests', () => {
         })
       });
 
-      await expect(gateway.publishReel(
-        'page_123',
-        'token_123',
-        'https://example.com/video.mp4',
-        'Rate Limited'
-      )).rejects.toThrow(FacebookRateLimitError);
+      try {
+        await gateway.publishReel(
+          'page_123',
+          'token_123',
+          'https://example.com/video.mp4',
+          'Rate Limited'
+        );
+        throw new Error('Expected to throw FacebookRateLimitError');
+      } catch (err) {
+        expect(err).toBeInstanceOf(FacebookRateLimitError);
+        expect(err.retryAfterSeconds).toBe(45);
+        expect(err.rateLimitInfo).toEqual({ call_count: 100 });
+      }
     });
   });
 
