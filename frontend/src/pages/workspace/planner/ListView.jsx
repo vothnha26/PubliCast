@@ -711,40 +711,36 @@ export function ListView() {
                                      >
                                         <span>🔄</span> {repostingIds.includes(post.id) ? t("listView.reposting") : t("listView.repostNow")}
                                      </button>
-                                   )}{post.status?.toLowerCase() === "published" && (
-
-                                     <button 
-
-                                       onClick={(e) => {
-
-                                         e.stopPropagation();
-
-                                         openPostAnalytics(post);
-
-                                         setActiveMenuId(null);
-
-                                       }}
-
-                                       className="w-full px-4 py-2 text-[11px] font-bold text-indigo-600 hover:bg-indigo-50/50 transition-all flex items-center gap-2 cursor-pointer border-b border-gray-50 text-left"
-
-                                     >
-
-                                        <span>📊</span> {t("listView.detailStats")}
-
-                                     </button>
-
                                    )}
-
+                                   {post.status?.toLowerCase() === "published" && (
+                                     <button 
+                                       onClick={(e) => {
+                                         e.stopPropagation();
+                                         openPostAnalytics(post);
+                                         setActiveMenuId(null);
+                                       }}
+                                       className="w-full px-4 py-2 text-[11px] font-bold text-indigo-600 hover:bg-indigo-50/50 transition-all flex items-center gap-2 cursor-pointer border-b border-gray-50 text-left"
+                                     >
+                                        <span>📊</span> {t("listView.detailStats")}
+                                     </button>
+                                   )}
                                    <button 
-                                     onClick={(e) => {
-                                       e.stopPropagation();
-                                       openPostCreator({ post });
-                                       setActiveMenuId(null);
-                                     }}
-                                     className="w-full px-4 py-2 text-[11px] font-bold text-gray-700 hover:bg-gray-50 transition-all flex items-center gap-2 cursor-pointer"
-                                   >
-                                      <span>✏️</span> {hasCreatePermission ? t("listView.editPost") : t("listView.viewPost")}
-                                   </button>
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        if (post.status?.toLowerCase() === "published") {
+                                          openPostAnalytics(post);
+                                        } else {
+                                          openPostCreator({ post });
+                                        }
+                                        setActiveMenuId(null);
+                                      }}
+                                      className="w-full px-4 py-2 text-[11px] font-bold text-gray-700 hover:bg-gray-50 transition-all flex items-center gap-2 cursor-pointer"
+                                    >
+                                       <span>{post.status?.toLowerCase() === "published" ? "👁️" : "✏️"}</span>
+                                       {post.status?.toLowerCase() === "published"
+                                         ? t("listView.viewPost")
+                                         : (hasCreatePermission ? t("listView.editPost") : t("listView.viewPost"))}
+                                    </button>
                                    {hasCreatePermission && (
                                      <button 
                                        onClick={(e) => {
