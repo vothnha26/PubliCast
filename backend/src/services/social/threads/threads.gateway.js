@@ -101,7 +101,7 @@ class ThreadsGateway {
     };
   }
 
-  async createMediaContainer(userId, accessToken, text, mediaUrl = null, mediaType = 'TEXT', whoCanReply = null) {
+  async createMediaContainer(userId, accessToken, text, mediaUrl = null, mediaType = 'TEXT', whoCanReply = null, replyToId = null) {
     let url = `${this.graphBaseUrl}/${userId}/threads?media_type=${mediaType}&text=${encodeURIComponent(text)}&access_token=${accessToken}`;
     if (mediaUrl) {
       if (mediaType === 'VIDEO') {
@@ -113,7 +113,10 @@ class ThreadsGateway {
     if (whoCanReply) {
       url += `&who_can_reply=${encodeURIComponent(whoCanReply)}`;
     }
-    
+    if (replyToId) {
+      url += `&reply_to_id=${encodeURIComponent(replyToId)}`;
+    }
+
     const res = await fetch(url, { method: 'POST' });
     if (!res.ok) {
       const errData = await res.json().catch(() => ({}));

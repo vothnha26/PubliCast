@@ -34,6 +34,7 @@ class VideoProcessorFacade {
     adjustments,
     filterPreset,
     resize,
+    keepAudio = true,
     audioUrl,
     audioVolume = FFMPEG_DEFAULTS.DEFAULT_AUDIO_VOLUME,
     textOverlays = [],
@@ -41,7 +42,7 @@ class VideoProcessorFacade {
     brandId = VIDEO_FILE_CONFIG.DEFAULT_BRAND_ID
   }) {
     console.log(
-      `[VideoProcessorFacade] Starting process: videoUrl=${videoUrl}, trim=${startTime}s-${endTime}s, aspectRatio=${aspectRatio}, filterPreset=${filterPreset}, keyframesCount=${keyframes?.length || 0}`
+      `[VideoProcessorFacade] Starting process: videoUrl=${videoUrl}, trim=${startTime}s-${endTime}s, aspectRatio=${aspectRatio}, filterPreset=${filterPreset}, keepAudio=${keepAudio}, keyframesCount=${keyframes?.length || 0}`
     );
 
     const tempDir = path.join(process.cwd(), 'uploads', VIDEO_FILE_CONFIG.TEMP_DIR);
@@ -75,6 +76,7 @@ class VideoProcessorFacade {
         adjustments,
         filterPreset,
         resize,
+        keepAudio,
         audioPath: localAudioPath,
         audioVolume,
         textOverlays,
@@ -113,7 +115,10 @@ class VideoProcessorFacade {
       const response = await axios({
         url: fileSource,
         method: 'GET',
-        responseType: 'stream'
+        responseType: 'stream',
+        // Some CDNs (e.g. mixkit.co) return 403 for requests without a
+        // browser-like User-Agent, treating axios's default UA as a bot.
+        headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36' }
       });
       response.data.pipe(writer);
       await new Promise((resolve, reject) => {
@@ -148,6 +153,7 @@ class VideoProcessorFacade {
     adjustments,
     filterPreset,
     resize,
+    keepAudio = true,
     audioPath,
     audioVolume,
     textOverlays,
@@ -178,6 +184,11 @@ class VideoProcessorFacade {
 
       let args;
       if (audioPath) {
+        // Nếu có nhạc nền bổ sung
+        const audioChain = keepAudio
+          ? `${videoChain};[1:a]volume=${volCoef}[a1];[0:a][a1]amix=inputs=2:duration=first[a]`
+          : `${videoChain};[1:a]volume=${volCoef}[a]`;
+
         args = [
           '-y',
           '-ss',
@@ -189,7 +200,7 @@ class VideoProcessorFacade {
           '-i',
           audioPath,
           '-filter_complex',
-          `${videoChain};[1:a]volume=${volCoef}[a1];[0:a][a1]amix=inputs=2:duration=first[a]`,
+          audioChain,
           '-map',
           '[v]',
           '-map',
@@ -206,7 +217,33 @@ class VideoProcessorFacade {
           FFMPEG_DEFAULTS.STRICT,
           outputPath
         ];
+      } else if (!keepAudio) {
+        // Nếu tắt giữ âm thanh gốc và không chọn nhạc nền thay thế -> Tắt toàn bộ âm thanh (-an)
+        args = [
+          '-y',
+          '-ss',
+          String(startTime),
+          '-t',
+          String(duration),
+          '-i',
+          inputPath,
+          '-filter_complex',
+          videoChain,
+          '-map',
+          '[v]',
+          '-an',
+          '-c:v',
+          FFMPEG_DEFAULTS.VIDEO_CODEC,
+          '-preset',
+          FFMPEG_DEFAULTS.PRESET,
+          '-crf',
+          FFMPEG_DEFAULTS.CRF,
+          '-strict',
+          FFMPEG_DEFAULTS.STRICT,
+          outputPath
+        ];
       } else {
+        // Mặc định giữ âm thanh gốc của video
         args = [
           '-y',
           '-ss',

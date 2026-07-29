@@ -165,7 +165,100 @@ class PostController {
   });
 
   /**
+   * Submits a single trim job to BullMQ, deduped/locked by a content hash of
+   * (userId, videoUrl, edit params). Shared by trimVideo (single clip) and
+   * the splitPoints branch (one call per resulting segment) so both paths
+   * get the same double-submit lock + FAILED-job cleanup + rollback semantics.
+   * Returns { taskId, status } where status is 'queued' | 'in_progress' |
+   * 'rate_limited' (the last one only when the caller must surface a 429).
+   */
+  async _submitTrimJob({ userId, videoUrl, startTime, endTime, aspectRatio, keyframes, adjustments, filterPreset, resize, keepAudio, audioUrl, audioVolume, textOverlays, subtitles, brandId }) {
+    const crypto = require('crypto');
+    const redisClient = require('../../config/redis');
+    const { videoQueue } = require('../../queues/video.queue');
+
+    const taskDataString = JSON.stringify({
+      userId, videoUrl, startTime, endTime, aspectRatio, keyframes,
+      adjustments, filterPreset, resize, keepAudio, audioUrl, audioVolume,
+      textOverlays, subtitles
+    });
+    const taskHash = crypto.createHash('sha256').update(taskDataString).digest('hex');
+    const taskId = `trim_${taskHash}`;
+
+    const lockKey = `${REDIS_PREFIXES.LOCK_VIDEO_TRIM}${taskId}`;
+    const acquireLock = await redisClient.set(lockKey, 'LOCKED', { NX: true, EX: 10 });
+    if (!acquireLock) {
+      return { taskId, status: 'rate_limited' };
+    }
+
+    try {
+      const taskKey = `${REDIS_PREFIXES.TASK_VIDEO_TRIM}${taskId}`;
+      const existingTaskData = await redisClient.get(taskKey);
+
+      if (existingTaskData) {
+        const task = JSON.parse(existingTaskData);
+        if (task.status === TASK_STATUS.PROCESSING || task.status === TASK_STATUS.SUCCESS) {
+          return { taskId, status: 'in_progress' };
+        }
+        if (task.status === TASK_STATUS.FAILED) {
+          console.log(`[Queue Cleanup] Removing failed old job ${taskId} from BullMQ queue...`);
+          const oldJob = await videoQueue.getJob(taskId);
+          if (oldJob) {
+            await oldJob.remove();
+            console.log(`[Queue Cleanup] Successfully removed failed old job ${taskId}`);
+          }
+        }
+      }
+
+      await redisClient.set(taskKey, JSON.stringify({
+        status: TASK_STATUS.PROCESSING,
+        userId,
+        startTime: Date.now()
+      }), { EX: 86400 });
+
+      try {
+        await videoQueue.add(QUEUE_CONFIG.VIDEO.JOB_TRIM, {
+          videoUrl,
+          startTime: parseFloat(startTime),
+          endTime: parseFloat(endTime),
+          aspectRatio,
+          keyframes: Array.isArray(keyframes) ? keyframes : [],
+          adjustments,
+          filterPreset,
+          resize,
+          keepAudio,
+          audioUrl,
+          audioVolume: audioVolume !== undefined ? parseInt(audioVolume) : 50,
+          textOverlays: Array.isArray(textOverlays) ? textOverlays : [],
+          subtitles: Array.isArray(subtitles) ? subtitles : [],
+          brandId,
+          userId
+        }, { jobId: taskId });
+      } catch (queueErr) {
+        console.error(`[Queue Error] Failed to add job ${taskId} to BullMQ. Rolling back Redis state.`, queueErr.message);
+        await redisClient.del(taskKey);
+        throw queueErr;
+      }
+
+      return { taskId, status: 'queued' };
+    } finally {
+      await redisClient.del(lockKey);
+    }
+  }
+
+  /**
    * POST /api/posts/trim
+   *
+   * splitPoints (optional): sorted array of in-range timestamps (seconds,
+   * strictly between startTime and endTime) marking where to cut the
+   * selected [startTime, endTime] range into separate output clips —
+   * e.g. startTime=0, endTime=30, splitPoints=[10, 20] produces 3 segments:
+   * [0,10], [10,20], [20,30]. Each segment is submitted as its own trim job
+   * (same aspectRatio/adjustments/filterPreset/resize/audio applied to all),
+   * and the response shape changes to `segments: [{taskId, status, startTime,
+   * endTime}]` instead of a single `taskId`, so the client polls each
+   * segment's status independently. Without splitPoints, behavior is
+   * unchanged (single taskId, as before).
    */
   trimVideo = asyncHandler(async (req, res) => {
     const {
@@ -177,10 +270,14 @@ class PostController {
       adjustments,
       filterPreset,
       resize,
+      saveAudio,
+      keepAudio,
+      muteAudio,
       audioUrl,
       audioVolume,
       textOverlays,
       subtitles,
+      splitPoints,
       brandId
     } = req.body;
     if (!videoUrl) return res.status(400).json({ message: 'videoUrl is required' });
@@ -188,105 +285,59 @@ class PostController {
       return res.status(400).json({ message: 'startTime and endTime are required' });
     }
 
-    const crypto = require('crypto');
-    const redisClient = require('../../config/redis');
-    const { videoQueue } = require('../../queues/video.queue');
+    const rangeStart = parseFloat(startTime);
+    const rangeEnd = parseFloat(endTime);
+
+    // Chuẩn hóa cờ giữ âm thanh gốc (Mặc định true ngoại trừ khi saveAudio/keepAudio === false hoặc muteAudio === true)
+    const isAudioKept = saveAudio !== undefined ? Boolean(saveAudio) : keepAudio !== undefined ? Boolean(keepAudio) : muteAudio !== undefined ? !muteAudio : true;
     const userId = req.user.id;
 
-    // 1. Tạo taskId duy nhất kết hợp userId để tránh rò rỉ dữ liệu chéo người dùng
-    const taskDataString = JSON.stringify({
-      userId,
-      videoUrl,
-      startTime,
-      endTime,
-      aspectRatio,
-      keyframes,
-      adjustments,
-      filterPreset,
-      resize,
-      audioUrl,
-      audioVolume,
-      textOverlays,
-      subtitles
-    });
-    const taskHash = crypto.createHash('sha256').update(taskDataString).digest('hex');
-    const taskId = `trim_${taskHash}`;
+    const sharedParams = {
+      userId, videoUrl, aspectRatio, keyframes, adjustments, filterPreset,
+      resize, keepAudio: isAudioKept, audioUrl, audioVolume, textOverlays,
+      subtitles, brandId
+    };
 
-    const lockKey = `${REDIS_PREFIXES.LOCK_VIDEO_TRIM}${taskId}`;
+    // Split mode: validate points are strictly inside the range and sorted,
+    // then submit one job per resulting segment.
+    if (Array.isArray(splitPoints) && splitPoints.length > 0) {
+      const points = splitPoints.map((p) => parseFloat(p)).filter((p) => Number.isFinite(p));
+      const invalid = points.some((p) => p <= rangeStart || p >= rangeEnd);
+      if (invalid || points.length !== splitPoints.length) {
+        return res.status(400).json({ message: 'splitPoints must be finite numbers strictly between startTime and endTime.' });
+      }
+      const sortedPoints = [...new Set(points)].sort((a, b) => a - b);
+      const boundaries = [rangeStart, ...sortedPoints, rangeEnd];
 
-    // 2. Chống Race Condition khi double-click đồng thời bằng Lock Key tạm thời
-    const acquireLock = await redisClient.set(lockKey, 'LOCKED', { NX: true, EX: 10 });
-    if (!acquireLock) {
-      res.set('Retry-After', '1'); // Khuyến nghị client đợi 1 giây trước khi thử lại
-      return res.status(429).json({ message: 'Yêu cầu đang được xử lý, vui lòng không gửi dồn dập.' });
-    }
-
-    try {
-      // 3. Kiểm tra trạng thái hiện tại của task
-      const taskKey = `${REDIS_PREFIXES.TASK_VIDEO_TRIM}${taskId}`;
-      const existingTaskData = await redisClient.get(taskKey);
-
-      if (existingTaskData) {
-        const task = JSON.parse(existingTaskData);
-        // Chỉ tái sử dụng và trả về 202 nếu đang PROCESSING hoặc đã SUCCESS
-        if (task.status === TASK_STATUS.PROCESSING || task.status === TASK_STATUS.SUCCESS) {
-          return res.status(202).json({
-            message: 'Video processing already in progress or completed',
-            taskId
-          });
+      const segments = [];
+      for (let i = 0; i < boundaries.length - 1; i++) {
+        const segStart = boundaries[i];
+        const segEnd = boundaries[i + 1];
+        const result = await this._submitTrimJob({ ...sharedParams, startTime: segStart, endTime: segEnd });
+        if (result.status === 'rate_limited') {
+          res.set('Retry-After', '1');
+          return res.status(429).json({ message: 'Yêu cầu đang được xử lý, vui lòng không gửi dồn dập.', taskId: result.taskId });
         }
-        
-        // Nếu trạng thái cũ là FAILED, dọn dẹp job cũ trong BullMQ để tránh trùng lặp jobId
-        if (task.status === TASK_STATUS.FAILED) {
-          console.log(`[Queue Cleanup] Removing failed old job ${taskId} from BullMQ queue...`);
-          const oldJob = await videoQueue.getJob(taskId);
-          if (oldJob) {
-            await oldJob.remove();
-            console.log(`[Queue Cleanup] Successfully removed failed old job ${taskId}`);
-          }
-        }
+        segments.push({ taskId: result.taskId, status: result.status, startTime: segStart, endTime: segEnd });
       }
 
-      // 4. Thiết lập trạng thái PROCESSING lên Redis (Ghi đè nếu trước đó là FAILED)
-      await redisClient.set(taskKey, JSON.stringify({
-        status: TASK_STATUS.PROCESSING,
-        userId,
-        startTime: Date.now()
-      }), { EX: 86400 });
-
-      // 5. Thêm job xử lý vào BullMQ với cơ chế Rollback toàn phần
-      try {
-        await videoQueue.add(QUEUE_CONFIG.VIDEO.JOB_TRIM, {
-          videoUrl,
-          startTime: parseFloat(startTime),
-          endTime: parseFloat(endTime),
-          aspectRatio,
-          keyframes: Array.isArray(keyframes) ? keyframes : [],
-          adjustments,
-          filterPreset,
-          resize,
-          audioUrl,
-          audioVolume: audioVolume !== undefined ? parseInt(audioVolume) : 50,
-          textOverlays: Array.isArray(textOverlays) ? textOverlays : [],
-          subtitles: Array.isArray(subtitles) ? subtitles : [],
-          brandId,
-          userId
-        }, { jobId: taskId });
-      } catch (queueErr) {
-        // Rollback trạng thái Redis nếu không đẩy được job vào queue thành công
-        console.error(`[Queue Error] Failed to add job ${taskId} to BullMQ. Rolling back Redis state.`, queueErr.message);
-        await redisClient.del(taskKey);
-        throw queueErr; // Ném lỗi để Express Handler trả về lỗi 500
-      }
-
-      res.status(202).json({
-        message: 'Video processing started in background',
-        taskId
+      return res.status(202).json({
+        message: 'Video split processing started in background',
+        segments
       });
-    } finally {
-      // 6. Giải phóng lock key
-      await redisClient.del(lockKey);
     }
+
+    // Single-clip mode (unchanged behavior)
+    const result = await this._submitTrimJob({ ...sharedParams, startTime: rangeStart, endTime: rangeEnd });
+    if (result.status === 'rate_limited') {
+      res.set('Retry-After', '1');
+      return res.status(429).json({ message: 'Yêu cầu đang được xử lý, vui lòng không gửi dồn dập.', taskId: result.taskId });
+    }
+
+    res.status(202).json({
+      message: result.status === 'in_progress' ? 'Video processing already in progress or completed' : 'Video processing started in background',
+      taskId: result.taskId
+    });
   });
 
   /**

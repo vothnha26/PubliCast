@@ -37,6 +37,17 @@ class SocialPublishStep extends BaseStep {
           ? splitMediaUrls(override.mediaUrls)
           : splitMediaUrls(post.mediaUrls);
 
+        let effectiveThreadPosts = undefined;
+        if (useOverride && override.threadPosts) {
+          try {
+            effectiveThreadPosts = typeof override.threadPosts === 'string'
+              ? JSON.parse(override.threadPosts)
+              : override.threadPosts;
+          } catch (e) {
+            effectiveThreadPosts = override.threadPosts;
+          }
+        }
+
         console.log(`[SocialPublishStep] 🚀 Publishing post ${post.id} to platform ${platform}...`);
 
         const result = await service.publishPost(brandId, {
@@ -45,7 +56,10 @@ class SocialPublishStep extends BaseStep {
           mediaUrls: effectiveMediaUrls,
           type: post.type,
           platformPostId: platformPostId,
-          options: options
+          options: {
+            ...options,
+            ...(effectiveThreadPosts ? { threadPosts: effectiveThreadPosts } : {}),
+          }
         });
         
         console.log(`[SocialPublishStep] ✅ Successfully published post ${post.id} to platform ${platform}! Result:`, JSON.stringify(result));
