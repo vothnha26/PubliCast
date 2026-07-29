@@ -168,7 +168,21 @@ class PostController {
    * POST /api/posts/trim
    */
   trimVideo = asyncHandler(async (req, res) => {
-    const { videoUrl, startTime, endTime, aspectRatio, keyframes, audioUrl, audioVolume, textOverlays, subtitles, brandId } = req.body;
+    const {
+      videoUrl,
+      startTime,
+      endTime,
+      aspectRatio,
+      keyframes,
+      adjustments,
+      filterPreset,
+      resize,
+      audioUrl,
+      audioVolume,
+      textOverlays,
+      subtitles,
+      brandId
+    } = req.body;
     if (!videoUrl) return res.status(400).json({ message: 'videoUrl is required' });
     if (startTime === undefined || endTime === undefined) {
       return res.status(400).json({ message: 'startTime and endTime are required' });
@@ -180,7 +194,21 @@ class PostController {
     const userId = req.user.id;
 
     // 1. Tạo taskId duy nhất kết hợp userId để tránh rò rỉ dữ liệu chéo người dùng
-    const taskDataString = JSON.stringify({ userId, videoUrl, startTime, endTime, aspectRatio, audioUrl, audioVolume, textOverlays, subtitles });
+    const taskDataString = JSON.stringify({
+      userId,
+      videoUrl,
+      startTime,
+      endTime,
+      aspectRatio,
+      keyframes,
+      adjustments,
+      filterPreset,
+      resize,
+      audioUrl,
+      audioVolume,
+      textOverlays,
+      subtitles
+    });
     const taskHash = crypto.createHash('sha256').update(taskDataString).digest('hex');
     const taskId = `trim_${taskHash}`;
 
@@ -209,7 +237,6 @@ class PostController {
         }
         
         // Nếu trạng thái cũ là FAILED, dọn dẹp job cũ trong BullMQ để tránh trùng lặp jobId
-        // Không nuốt lỗi tại đây, cho phép propagate ra ngoài để kích hoạt rollback và báo lỗi 500
         if (task.status === TASK_STATUS.FAILED) {
           console.log(`[Queue Cleanup] Removing failed old job ${taskId} from BullMQ queue...`);
           const oldJob = await videoQueue.getJob(taskId);
@@ -235,6 +262,9 @@ class PostController {
           endTime: parseFloat(endTime),
           aspectRatio,
           keyframes: Array.isArray(keyframes) ? keyframes : [],
+          adjustments,
+          filterPreset,
+          resize,
           audioUrl,
           audioVolume: audioVolume !== undefined ? parseInt(audioVolume) : 50,
           textOverlays: Array.isArray(textOverlays) ? textOverlays : [],

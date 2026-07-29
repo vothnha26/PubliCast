@@ -137,6 +137,10 @@ describe('Video Editor & Social Publishing Pipeline Integration Tests', () => {
           videoUrl: '/uploads/media/original.mp4',
           startTime: 2,
           endTime: 7,
+          aspectRatio: '1:1',
+          adjustments: { brightness: 10, contrast: 15, saturation: 5 },
+          filterPreset: 'grayscale',
+          resize: { width: 720, height: 720 },
           brandId: 'brand_123'
         });
 
@@ -144,7 +148,16 @@ describe('Video Editor & Social Publishing Pipeline Integration Tests', () => {
       expect(res.body).toHaveProperty('taskId');
       expect(res.body).toHaveProperty('message', 'Video processing started in background');
       expect(mockRedis.set).toHaveBeenCalled();
-      expect(mockVideoQueue.add).toHaveBeenCalled();
+      expect(mockVideoQueue.add).toHaveBeenCalledWith(
+        'process-video',
+        expect.objectContaining({
+          aspectRatio: '1:1',
+          adjustments: { brightness: 10, contrast: 15, saturation: 5 },
+          filterPreset: 'grayscale',
+          resize: { width: 720, height: 720 }
+        }),
+        expect.any(Object)
+      );
     });
 
     it('GET /api/posts/trim/:taskId/status should return status & progress (Happy Path)', async () => {
