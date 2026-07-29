@@ -1044,10 +1044,14 @@ export function usePostCreatorForm() {
       const networkOverrides = buildNetworkOverrides();
 
       if (editingPost) {
-        if (networkOverrides.length > 0) {
-          toast.warning("Cài đặt riêng theo nền tảng chưa được lưu khi cập nhật bài viết đã tồn tại");
-        }
-        await apiService.put(`/posts/${editingPost.id}`, payload, { timeout: 60000 });
+        // Gửi networkOverrides trong PUT payload — backend đã được vá để xử lý
+        // (upsertNetworkOverrides trong updatePost, chỉ khi bài chưa PUBLISHED).
+        // Nếu không có override nào (networkOverrides rỗng), payload giống y như trước
+        // (backward-compatible 100% — backend bỏ qua khi postData.networkOverrides falsy).
+        const updatePayload = networkOverrides.length > 0
+          ? { ...payload, networkOverrides }
+          : payload;
+        await apiService.put(`/posts/${editingPost.id}`, updatePayload, { timeout: 60000 });
         toast.success("Post updated successfully");
         // Đóng form ngay sau khi cập nhật thành công để tránh user vô tình tạo thêm bài mới
         closePostCreator();

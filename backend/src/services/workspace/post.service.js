@@ -492,6 +492,20 @@ class PostService {
 
       const updated = await postRepository.update(id, data, tx);
 
+      // Ghi lại networkOverrides khi bài CHƯA publish — bài đã PUBLISHED có luồng
+      // xử lý riêng ở nhánh phía trên (dòng 439-468) và không hỗ trợ sửa override.
+      // Dùng post.status (snapshot CŨ trước update) để quyết định: nếu bài chưa
+      // từng published tại thời điểm request này, override phải được lưu, kể cả khi
+      // cùng request đó đổi status sang SCHEDULED/DRAFT trong payload mới.
+      // targetPlatforms lấy từ updated (đã qua _prepareUpdateData) — luôn là string
+      // chuẩn hoá, split SEPARATORS.COMMA là đủ, không cần xử lý mảng/string 2 nhánh.
+      if (postData.networkOverrides && post.status !== POST_STATUS.PUBLISHED) {
+        const targetPlatformsArr = updated.targetPlatforms
+          ? updated.targetPlatforms.split(SEPARATORS.COMMA).filter(Boolean)
+          : [];
+        await this.upsertNetworkOverrides(updated.id, postData.networkOverrides, targetPlatformsArr, tx);
+      }
+
       // Job publish + domain event ghi vào outbox trong CÙNG transaction với việc
       // cập nhật post — outbox là nguồn ghi duy nhất cho job publish-post-${postId}.
       if (updated.status === POST_STATUS.PENDING_APPROVAL) {
@@ -775,7 +789,14 @@ class PostService {
       isLibrary: p.isLibrary,
       options,
       approvalInfo,
-      platformPostId
+      platformPostId,
+      networkOverrides: (p.networkOverrides || []).map((o) => ({
+        platform: o.platform,
+        useTemplate: o.useTemplate,
+        caption: o.caption,
+        mediaUrls: o.mediaUrls ? splitMediaUrls(o.mediaUrls) : [],
+        threadPosts: o.threadPosts ? JSON.parse(o.threadPosts) : null,
+      }))
     };
   }
 

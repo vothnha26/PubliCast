@@ -68,7 +68,8 @@ class PostRepository {
                 }
               }
             }
-          }
+          },
+          networkOverrides: true
         }
       }),
       prisma.post.count({ where })
