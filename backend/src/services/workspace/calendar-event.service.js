@@ -31,9 +31,14 @@ class CalendarEventService {
   }
 
   /**
-   * Parse ICS content and import events
+   * Parse ICS content and import events as Posts (DRAFT). exportIcs emits
+   * VEVENTs sourced from Post rows (see exportIcs below) with the platform
+   * list embedded in DESCRIPTION as "Nền tảng: X, Y" — importIcs mirrors
+   * that back into Post.targetPlatforms so an export→import round-trip
+   * restores real posts on the Planner calendar, not orphan CalendarEvent
+   * notes nothing on the Planner reads.
    */
-  async importIcs(brandId, icsContent) {
+  async importIcs(brandId, icsContent, createdByUserId) {
     // Parser dùng regex phân tích file .ics chuẩn và hỗ trợ ghép dòng bị gập (folding)
     const rawLines = icsContent.split(/\r?\n/);
     const lines = [];
@@ -76,9 +81,21 @@ class CalendarEventService {
           const value = match[3];
 
           if (key === 'SUMMARY') {
-            currentEvent.title = unescapeValue(value);
+            // exportIcs prefixes real posts with a status label, e.g.
+            // "[⏰ Đã đặt lịch] Product Launch Announcement" — strip it back
+            // off so the imported Post.title matches the original.
+            currentEvent.title = unescapeValue(value).replace(/^\[[^\]]*\]\s*/, '');
           } else if (key === 'DESCRIPTION') {
-            currentEvent.description = unescapeValue(value);
+            const desc = unescapeValue(value);
+            currentEvent.description = desc;
+            const platformMatch = desc.match(/Nền tảng:\s*([^\n]+)/);
+            if (platformMatch) {
+              currentEvent.targetPlatforms = platformMatch[1]
+                .split(',')
+                .map((p) => p.trim())
+                .filter(Boolean)
+                .join(',');
+            }
           } else if (key === 'DTSTART') {
             // Parse date format: 20261224T000000Z hoặc 20261224
             const dateStr = value;
@@ -120,20 +137,25 @@ class CalendarEventService {
     // createMany thay vì loop create tuần tự — tránh N round-trip DB cho 1
     // upload (#63). Không trả về id record đã tạo (giới hạn của createMany),
     // nên đọc lại theo brandId + khoảng thời gian import để trả về cho caller.
+    // type luôn IMAGE — file .ics không mang media gốc, người dùng chỉnh lại
+    // loại bài viết thật (video/ảnh/...) sau khi import.
     const importStartedAt = new Date();
-    await prisma.calendarEvent.createMany({
+    await prisma.post.createMany({
       data: events.map(ev => ({
         brandId,
+        createdByUserId,
         title: ev.title,
-        description: ev.description || '',
-        eventDate: ev.date,
-        isSystem: false
+        caption: ev.title,
+        type: 'IMAGE',
+        status: 'DRAFT',
+        targetPlatforms: ev.targetPlatforms || '',
+        scheduledAt: ev.date
       }))
     });
 
-    return prisma.calendarEvent.findMany({
-      where: { brandId, isSystem: false, createdAt: { gte: importStartedAt } },
-      orderBy: { eventDate: 'asc' }
+    return prisma.post.findMany({
+      where: { brandId, isDeleted: false, createdAt: { gte: importStartedAt } },
+      orderBy: { scheduledAt: 'asc' }
     });
   }
 
