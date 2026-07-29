@@ -12,6 +12,11 @@ class PostService {
     return response.data;
   }
 
+  async createPostV2(postData) {
+    const response = await apiService.post('/v2/posts', postData);
+    return response.data;
+  }
+
   async updatePost(id, postData) {
     const response = await apiService.put(`/posts/${id}`, postData);
     return response.data;

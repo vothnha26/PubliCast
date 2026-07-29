@@ -5,7 +5,7 @@ import {
   Info, AlertCircle, Youtube, MoreHorizontal, Edit, Type, Trash2,
   ImageIcon, Plus, Smile, Link2, Search, Languages, FileText, Send,
   Settings, ChevronDown, Instagram, MessageSquare, X,
-  Folder, MapPin, Sparkles
+  Folder, MapPin, Sparkles, Lock
 } from "lucide-react";
 import { usePostCreatorFormContext } from "../../../context/PostCreatorFormContext";
 import { PlatformIcon } from "../../shared/PlatformIcon";
@@ -19,6 +19,8 @@ import { toast } from "sonner";
 import { PRODUCT_IDS } from "../../../constants/products";
 import { AICopilotPopover } from "./AICopilotPopover";
 import { isVideoPath } from "../../../utils/url";
+import { NetworkTabSwitcher } from "./NetworkTabSwitcher";
+import { NETWORK_TAB_TEMPLATE } from "../../../constants/postComposerNetwork";
 
 // Presets Imports
 import { GlobalPresets } from "./presets/GlobalPresets";
@@ -88,8 +90,44 @@ export function ComposerBody() {
     setUploadModalTab,
     getBackupPayload,
     backupFormState,
-    closePostCreatorTemporarily
+    closePostCreatorTemporarily,
+    isEditByNetwork,
+    activeNetworkTab,
+    networkCustom,
+    toggleUseTemplate,
+    updateNetworkCaption,
+    updateThreadPostText,
   } = usePostCreatorFormContext();
+
+  // === Network Tab derived vars ===
+  const isThreadsTab = isEditByNetwork && activeNetworkTab === 'threads';
+  const isCustomTab =
+    isEditByNetwork &&
+    activeNetworkTab !== NETWORK_TAB_TEMPLATE &&
+    activeNetworkTab !== 'threads' &&
+    networkCustom[activeNetworkTab]?.useTemplate === false;
+
+  const activeCaptionValue = isCustomTab
+    ? (networkCustom[activeNetworkTab]?.caption || '')
+    : isThreadsTab
+      ? (networkCustom['threads']?.threadPosts?.[networkCustom['threads']?.activeThreadIndex || 0] || '')
+      : caption;
+
+  const handleCaptionChange = (val) => {
+    if (isCustomTab) {
+      updateNetworkCaption(activeNetworkTab, val);
+    } else if (isThreadsTab) {
+      const threadIndex = networkCustom['threads']?.activeThreadIndex || 0;
+      updateThreadPostText(threadIndex, val);
+    } else {
+      setCaption(val);
+    }
+  };
+
+  const isLockedPlatformTab =
+    isEditByNetwork &&
+    activeNetworkTab !== NETWORK_TAB_TEMPLATE &&
+    networkCustom[activeNetworkTab]?.useTemplate !== false;
 
   const isImageFile = videoFile 
     ? videoFile.type.startsWith("image/") 
@@ -172,14 +210,54 @@ export function ComposerBody() {
           
 
 
-          <textarea 
-            ref={textareaRef} 
-            value={caption}
-            onChange={(e) => setCaption(e.target.value)} 
-            data-testid="post-caption-input"
-            className="w-full p-6 text-sm font-medium leading-relaxed outline-none min-h-[350px] resize-none font-sans"
-            placeholder={t("planner:postCreator.composer.placeholders.caption")}
-          />
+          {/* Network Tab Switcher */}
+          {isEditByNetwork && <NetworkTabSwitcher />}
+
+          {/* Locked state: tab platform chưa customize */}
+          {isLockedPlatformTab ? (
+            <div className="mx-5 my-4 border-2 border-dashed border-gray-200 rounded-2xl p-6 flex flex-col items-center gap-3 bg-gray-50/50 animate-in fade-in">
+              <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center">
+                <Lock size={16} className="text-gray-400" />
+              </div>
+              <div className="text-center">
+                <p className="text-[11px] font-black text-gray-500 uppercase tracking-wider font-sans">
+                  Đang dùng nội dung chung
+                </p>
+                <p className="text-[10px] text-gray-400 mt-0.5 font-sans">
+                  Bấm bên dưới để chỉnh nội dung riêng cho nền tảng này
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => toggleUseTemplate(activeNetworkTab, false)}
+                className="px-4 py-2 bg-gray-900 hover:bg-black text-white text-[10px] font-black uppercase tracking-widest rounded-xl transition-all cursor-pointer font-sans shadow-sm"
+              >
+                Chỉnh sửa nội dung riêng
+              </button>
+            </div>
+          ) : (
+            <>
+              <textarea
+                ref={textareaRef}
+                value={activeCaptionValue}
+                onChange={(e) => handleCaptionChange(e.target.value)}
+                data-testid="post-caption-input"
+                className="w-full p-6 text-sm font-medium leading-relaxed outline-none min-h-[350px] resize-none font-sans"
+                placeholder={
+                  isThreadsTab
+                    ? `Nội dung Post ${(networkCustom['threads']?.activeThreadIndex || 0) + 1} trong chuỗi Threads...`
+                    : isCustomTab
+                      ? `Nội dung riêng cho ${activeNetworkTab}...`
+                      : t("planner:postCreator.composer.placeholders.caption")
+                }
+              />
+              {isCustomTab && (
+                <p className="px-6 pb-1 text-[10px] text-gray-400 font-sans">
+                  Media dùng chung cho mọi nền tảng
+                </p>
+              )}
+            </>
+          )}
 
           {(!postMedia || postMedia.length === 0) && (videoFile || uploadedVideoPath) && !isImageFile && (
             <div className="px-6 py-3 border-t border-gray-50 bg-gray-50/50 flex items-center justify-between animate-in fade-in slide-in-from-top-1">

@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   Lock, Instagram, Youtube, Plus, FileText, Globe,
-  ChevronDown, Video, LayoutGrid, Film, PlusCircle, Check, Send
+  ChevronDown, Video, LayoutGrid, Film, PlusCircle, Check, Send, Settings
 } from "lucide-react";
 import { usePostCreatorFormContext } from "../../../context/PostCreatorFormContext";
 import { PlatformIcon } from "../../shared/PlatformIcon";
@@ -28,7 +28,9 @@ export function ComposerHeader() {
     activeBrand,
     setIsNotesOpen,
     notes,
-    setBlockedProductId
+    setBlockedProductId,
+    isEditByNetwork,
+    setIsEditByNetwork,
   } = usePostCreatorFormContext();
 
   const [showTypeDropdown, setShowTypeDropdown] = useState(false);
@@ -439,19 +441,41 @@ export function ComposerHeader() {
           </button>
         </div>
       </div>
-      <button 
-        type="button"
-        onClick={() => setIsNotesOpen(true)}
-        className="flex items-center gap-1.5 px-3 py-1.5 border border-gray-200 bg-white hover:bg-gray-50 text-gray-600 rounded-xl transition-all cursor-pointer font-sans shadow-sm relative"
-      >
-        <FileText size={14} />
-        <span className="text-[11px] font-bold uppercase tracking-wider font-sans">{t("planner:postCreator.header.notes")}</span>
-        {notes && notes.length > 0 && (
-          <span className="absolute -top-1 -right-1 bg-black text-white text-[8px] font-black w-4 h-4 rounded-full flex items-center justify-center border border-white animate-scale-in">
-            {notes.length}
-          </span>
-        )}
-      </button>
+      <div className="flex items-center gap-2">
+        {/* Toggle: Cài đặt theo mạng */}
+        <button
+          type="button"
+          onClick={() => setIsEditByNetwork(!isEditByNetwork)}
+          title={isEditByNetwork ? "Tắt cài đặt theo mạng" : "Bật cài đặt theo mạng (Custom nội dung riêng theo platform)"}
+          className={`flex items-center gap-1.5 px-3 py-1.5 border rounded-xl transition-all cursor-pointer font-sans shadow-sm text-[11px] font-bold uppercase tracking-wider ${
+            isEditByNetwork
+              ? "bg-gray-900 text-white border-gray-900"
+              : "bg-white text-gray-500 border-gray-200 hover:bg-gray-50"
+          }`}
+        >
+          <Settings size={13} />
+          <span className="hidden sm:inline">Theo mạng</span>
+          {/* Indicator dot khi bật */}
+          {isEditByNetwork && (
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shrink-0" />
+          )}
+        </button>
+
+        {/* Notes button */}
+        <button 
+          type="button"
+          onClick={() => setIsNotesOpen(true)}
+          className="flex items-center gap-1.5 px-3 py-1.5 border border-gray-200 bg-white hover:bg-gray-50 text-gray-600 rounded-xl transition-all cursor-pointer font-sans shadow-sm relative"
+        >
+          <FileText size={14} />
+          <span className="text-[11px] font-bold uppercase tracking-wider font-sans">{t("planner:postCreator.header.notes")}</span>
+          {notes && notes.length > 0 && (
+            <span className="absolute -top-1 -right-1 bg-black text-white text-[8px] font-black w-4 h-4 rounded-full flex items-center justify-center border border-white animate-scale-in">
+              {notes.length}
+            </span>
+          )}
+        </button>
+      </div>
     </div>
   );
 }

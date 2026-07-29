@@ -4,7 +4,7 @@ import apiService from "../services/api";
 import { useBrand } from "../context/BrandContext";
 import socialService from "../services/social.service";
 import { usePostCreator } from "../context/PostCreatorContext";
-import { DEFAULT_PLATFORM, PLATFORMS } from "../constants/platforms";
+import { DEFAULT_PLATFORM, PLATFORMS, PLATFORM_API_KEY } from "../constants/platforms";
 import { PLATFORM_CONFIGS } from "../constants/platformRegistry";
 import { POST_STATUS, PUBLISH_MODE, PUBLISH_MODE_TO_STATUS, STATUS_TO_PUBLISH_MODE } from "../constants/postStatus";
 import { POST_TYPE, YOUTUBE_TYPE, FACEBOOK_TYPE, INSTAGRAM_TYPE, TIKTOK_PRIVACY, APPROVAL_POLICY, YOUTUBE_DEFAULT_CATEGORY_ID } from "../constants/postTypes";
@@ -12,6 +12,11 @@ import { buildMediaUrl, isVideoPath } from "../utils/url";
 import { validatePostForm } from "../utils/postValidation";
 import { logger } from "../utils/logger";
 import postService from "../services/post.service";
+import {
+  NETWORK_TAB_TEMPLATE,
+  buildDefaultNetworkCustom,
+  mapNetworkOverridesToCustom,
+} from "../constants/postComposerNetwork";
 
 const toLocalDatetimeString = (dateInput) => {
   if (!dateInput) return "";
@@ -112,6 +117,11 @@ export function usePostCreatorForm() {
   // Threads States
   const [threadsWhoCanReply, setThreadsWhoCanReply] = useState("everyone");
 
+  // Per-platform content override ("Cài đặt theo mạng") States
+  const [isEditByNetwork, setIsEditByNetwork] = useState(false);
+  const [activeNetworkTab, setActiveNetworkTab] = useState(NETWORK_TAB_TEMPLATE);
+  const [networkCustom, setNetworkCustom] = useState(() => buildDefaultNetworkCustom());
+
   // Video metadata states for format validation
   const [videoDuration, setVideoDuration] = useState(0);
   const [videoWidth, setVideoWidth] = useState(0);
@@ -169,6 +179,9 @@ export function usePostCreatorForm() {
       setGlobalFirstComment(backup.globalFirstComment ?? "");
       setYoutubeThumbnail(backup.youtubeThumbnail ?? "");
       setThreadsWhoCanReply(backup.threadsWhoCanReply ?? "everyone");
+      setIsEditByNetwork(backup.isEditByNetwork ?? false);
+      setActiveNetworkTab(backup.activeNetworkTab ?? NETWORK_TAB_TEMPLATE);
+      setNetworkCustom(backup.networkCustom ?? buildDefaultNetworkCustom());
       setSelectedReviewerId(backup.selectedReviewerId ?? "");
       setSelectedReviewerIds(backup.selectedReviewerIds ?? []);
       setApprovalPolicy(backup.approvalPolicy ?? APPROVAL_POLICY.AT_LEAST_ONE);
@@ -248,6 +261,9 @@ export function usePostCreatorForm() {
       globalFirstComment,
       youtubeThumbnail,
       threadsWhoCanReply,
+      isEditByNetwork,
+      activeNetworkTab,
+      networkCustom,
       selectedReviewerId,
       selectedReviewerIds,
       approvalPolicy,
@@ -343,12 +359,102 @@ export function usePostCreatorForm() {
         if (activePlatform === platLower) {
           setActivePlatform(next[0]);
         }
+        setActiveNetworkTab((prevTab) => (prevTab === platLower ? NETWORK_TAB_TEMPLATE : prevTab));
         return next;
       } else {
         setActivePlatform(platLower);
         return [...prev, platLower];
       }
     });
+  };
+
+  // Bật/tắt chế độ chỉnh nội dung riêng cho 1 nền tảng (Cài đặt theo mạng).
+  // Lần đầu customize (caption/mediaUrls đang rỗng) sẽ seed từ caption/postMedia chung
+  // để user không phải gõ lại từ đầu.
+  const toggleUseTemplate = (platformId, value) => {
+    setNetworkCustom((prev) => {
+      const current = prev[platformId] || { useTemplate: true, caption: "", mediaUrls: [] };
+      const newUseTemplate = value !== undefined ? value : !current.useTemplate;
+
+      const isThreads = platformId === PLATFORMS.THREADS;
+      const isFirstCustomization = newUseTemplate === false &&
+        (isThreads
+          ? (!current.threadPosts || current.threadPosts[0] === "")
+          : !current.caption) &&
+        (current.mediaUrls?.length || 0) === 0;
+
+      const seeded = isFirstCustomization
+        ? isThreads
+          ? { ...current, threadPosts: [caption, ...(current.threadPosts?.slice(1) || [])] }
+          : { ...current, caption }
+        : current;
+
+      return {
+        ...prev,
+        [platformId]: { ...seeded, useTemplate: newUseTemplate },
+      };
+    });
+  };
+
+  const updateNetworkCaption = (platformId, value) => {
+    setNetworkCustom((prev) => ({
+      ...prev,
+      [platformId]: { ...(prev[platformId] || { useTemplate: false, caption: "", mediaUrls: [] }), caption: value },
+    }));
+  };
+
+  const updateNetworkMedia = (platformId, mediaUrls) => {
+    setNetworkCustom((prev) => ({
+      ...prev,
+      [platformId]: { ...(prev[platformId] || { useTemplate: false, caption: "", mediaUrls: [] }), mediaUrls },
+    }));
+  };
+
+  const updateThreadPostText = (index, text) => {
+    setNetworkCustom((prev) => {
+      const threads = prev[PLATFORMS.THREADS] || { threadPosts: [""] };
+      const newPosts = [...threads.threadPosts];
+      newPosts[index] = text;
+      return { ...prev, [PLATFORMS.THREADS]: { ...threads, threadPosts: newPosts } };
+    });
+  };
+
+  const addThreadPost = () => {
+    setNetworkCustom((prev) => {
+      const threads = prev[PLATFORMS.THREADS] || { threadPosts: [""] };
+      const newPosts = [...threads.threadPosts, ""];
+      return {
+        ...prev,
+        [PLATFORMS.THREADS]: { ...threads, activeThreadIndex: newPosts.length - 1, threadPosts: newPosts },
+      };
+    });
+  };
+
+  const removeThreadPost = (index) => {
+    setNetworkCustom((prev) => {
+      const threads = prev[PLATFORMS.THREADS] || { threadPosts: [""] };
+      if (threads.threadPosts.length <= 1) return prev;
+      const newPosts = threads.threadPosts.filter((_, i) => i !== index);
+      return {
+        ...prev,
+        [PLATFORMS.THREADS]: {
+          ...threads,
+          activeThreadIndex: Math.max(0, (threads.activeThreadIndex || 0) - 1),
+          threadPosts: newPosts,
+        },
+      };
+    });
+  };
+
+  const setThreadActiveIndex = (index) => {
+    setNetworkCustom((prev) => {
+      const threads = prev[PLATFORMS.THREADS] || { threadPosts: [""] };
+      return { ...prev, [PLATFORMS.THREADS]: { ...threads, activeThreadIndex: index } };
+    });
+  };
+
+  const setNetworkTab = (tabId) => {
+    setActiveNetworkTab(tabId);
   };
 
   const connectedPlatforms = activeBrand?.socialAccounts
@@ -574,6 +680,12 @@ export function usePostCreatorForm() {
         setNotes(opts.notes || []);
         setVideoSettings(opts.videoSettings || null);
 
+        // Setup per-platform content override từ networkOverrides đã lưu (nếu có)
+        const loadedNetworkCustom = mapNetworkOverridesToCustom(editingPost.networkOverrides || []);
+        setNetworkCustom(loadedNetworkCustom);
+        setIsEditByNetwork(Object.values(loadedNetworkCustom).some((entry) => entry.useTemplate === false));
+        setActiveNetworkTab(NETWORK_TAB_TEMPLATE);
+
         // Setup Facebook
         setFacebookType(opts.facebookType || "post");
         setFacebookTitle(opts.facebookTitle || "");
@@ -637,6 +749,12 @@ export function usePostCreatorForm() {
         setThreadsWhoCanReply(opts.threadsWhoCanReply || "everyone");
         setNotes(opts.notes || []);
         setVideoSettings(opts.videoSettings || null);
+
+        // Setup per-platform content override từ networkOverrides của template (nếu có)
+        const loadedTemplateNetworkCustom = mapNetworkOverridesToCustom(templatePost.networkOverrides || []);
+        setNetworkCustom(loadedTemplateNetworkCustom);
+        setIsEditByNetwork(Object.values(loadedTemplateNetworkCustom).some((entry) => entry.useTemplate === false));
+        setActiveNetworkTab(NETWORK_TAB_TEMPLATE);
 
         // Setup Facebook
         setFacebookType(opts.facebookType || "post");
@@ -716,6 +834,11 @@ export function usePostCreatorForm() {
         setAlbumMedia([]);
         setVideoSettings(null);
 
+        // Reset per-platform content override
+        setNetworkCustom(buildDefaultNetworkCustom());
+        setIsEditByNetwork(false);
+        setActiveNetworkTab(NETWORK_TAB_TEMPLATE);
+
         // Reset Instagram
         setInstagramType(INSTAGRAM_TYPE.POST);
         setInstagramCollaborators([]);
@@ -754,6 +877,12 @@ export function usePostCreatorForm() {
     setYoutubeThumbnail(opts.youtubeThumbnail || "");
     setThreadsWhoCanReply(opts.threadsWhoCanReply || "everyone");
 
+    // Setup per-platform content override từ networkOverrides của template (nếu có)
+    const loadedNetworkCustom = mapNetworkOverridesToCustom(template.networkOverrides || []);
+    setNetworkCustom(loadedNetworkCustom);
+    setIsEditByNetwork(Object.values(loadedNetworkCustom).some((entry) => entry.useTemplate === false));
+    setActiveNetworkTab(NETWORK_TAB_TEMPLATE);
+
     // Setup Facebook
     setFacebookType(opts.facebookType || "post");
     setFacebookTitle(opts.facebookTitle || "");
@@ -771,7 +900,7 @@ export function usePostCreatorForm() {
     setTiktokAllowStitch(opts.tiktokAllowStitch !== undefined ? opts.tiktokAllowStitch : true);
     setTiktokAiGenerated(opts.tiktokAiGenerated || false);
     setTiktokCommercialContent(opts.tiktokCommercialContent || false);
-    
+
     // Setup media
     if (opts.facebookType === 'album' && opts.albumMedia) {
       setAlbumMedia(opts.albumMedia);
@@ -878,13 +1007,53 @@ export function usePostCreatorForm() {
         }
       };
 
+      const buildNetworkOverrides = () => {
+        const overrides = [];
+        Object.entries(networkCustom).forEach(([platform, entry]) => {
+          if (!selectedPlatforms.includes(platform)) return;
+          if (entry?.useTemplate !== false) return;
+          const apiKey = PLATFORM_API_KEY[platform];
+          if (!apiKey) return; // bỏ qua platform không có API key hợp lệ
+          if (platform === PLATFORMS.THREADS) {
+            const threadPosts = (entry.threadPosts || []).filter((t) => t && t.trim());
+            if (threadPosts.length === 0) return;
+            overrides.push({
+              platform: apiKey,
+              useTemplate: false,
+              caption: threadPosts[0],
+              mediaUrls: entry.mediaUrls || [],
+              threadPosts: threadPosts.map((text) => ({ text, mediaUrls: [] })),
+            });
+          } else {
+            if (!entry.caption && (!entry.mediaUrls || entry.mediaUrls.length === 0)) return;
+            overrides.push({
+              platform: apiKey,
+              useTemplate: false,
+              caption: entry.caption || '',
+              mediaUrls: entry.mediaUrls || [],
+            });
+          }
+        });
+        return overrides;
+      };
+
+      const networkOverrides = buildNetworkOverrides();
+
       if (editingPost) {
+        if (networkOverrides.length > 0) {
+          toast.warning("Cài đặt riêng theo nền tảng chưa được lưu khi cập nhật bài viết đã tồn tại");
+        }
         await apiService.put(`/posts/${editingPost.id}`, payload, { timeout: 60000 });
         toast.success("Post updated successfully");
         // Đóng form ngay sau khi cập nhật thành công để tránh user vô tình tạo thêm bài mới
         closePostCreator();
       } else {
-        await apiService.post('/posts', payload, { timeout: 60000 });
+        const finalPayload = networkOverrides.length > 0 ? { ...payload, networkOverrides } : payload;
+        if (networkOverrides.length > 0) {
+          await postService.createPostV2(finalPayload);
+        } else {
+          await apiService.post('/posts', finalPayload, { timeout: 60000 });
+        }
         toast.success("Post created successfully");
         // Reset state sau khi tạo bài mới thành công
         setSelectedPlatforms([DEFAULT_PLATFORM]);
@@ -919,6 +1088,9 @@ export function usePostCreatorForm() {
         setVideoFile(null);
         setVideoFileUrl("");
         setUploadedVideoPath("");
+        setNetworkCustom(buildDefaultNetworkCustom());
+        setIsEditByNetwork(false);
+        setActiveNetworkTab(NETWORK_TAB_TEMPLATE);
         closePostCreator();
       }
     } catch (error) {
@@ -1082,6 +1254,19 @@ export function usePostCreatorForm() {
     // Threads States
     threadsWhoCanReply,
     setThreadsWhoCanReply,
+    // Per-platform content override (Cài đặt theo mạng) States
+    isEditByNetwork,
+    setIsEditByNetwork,
+    activeNetworkTab,
+    setNetworkTab,
+    networkCustom,
+    toggleUseTemplate,
+    updateNetworkCaption,
+    updateNetworkMedia,
+    updateThreadPostText,
+    addThreadPost,
+    removeThreadPost,
+    setThreadActiveIndex,
     notes,
     setNotes,
     videoSettings,
