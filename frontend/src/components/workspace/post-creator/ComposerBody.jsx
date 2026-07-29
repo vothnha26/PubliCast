@@ -98,20 +98,26 @@ export function ComposerBody() {
     updateNetworkCaption,
     updateNetworkMedia,
     updateThreadPostText,
+    updateThreadPostMedia,
   } = usePostCreatorFormContext();
 
   // === Network Tab derived vars ===
   const isThreadsTab = isEditByNetwork && activeNetworkTab === 'threads';
+  const isThreadsCustom = isThreadsTab && networkCustom['threads']?.useTemplate === false;
   const isCustomTab =
     isEditByNetwork &&
     activeNetworkTab !== NETWORK_TAB_TEMPLATE &&
     activeNetworkTab !== 'threads' &&
     networkCustom[activeNetworkTab]?.useTemplate === false;
 
+  const activeThreadPost = isThreadsTab
+    ? networkCustom['threads']?.threadPosts?.[networkCustom['threads']?.activeThreadIndex || 0]
+    : null;
+
   const activeCaptionValue = isCustomTab
     ? (networkCustom[activeNetworkTab]?.caption || '')
     : isThreadsTab
-      ? (networkCustom['threads']?.threadPosts?.[networkCustom['threads']?.activeThreadIndex || 0] || '')
+      ? (typeof activeThreadPost === 'string' ? activeThreadPost : activeThreadPost?.text || '')
       : caption;
 
   const handleCaptionChange = (val) => {
@@ -127,13 +133,20 @@ export function ComposerBody() {
 
   const effectivePostMedia = isCustomTab
     ? (networkCustom[activeNetworkTab]?.mediaUrls || [])
-    : postMedia;
+    : isThreadsCustom
+      ? (typeof activeThreadPost === 'object' ? activeThreadPost?.mediaUrls || [] : [])
+      : postMedia;
 
   const handleRemoveMediaItem = (index) => {
     if (isCustomTab) {
       const current = networkCustom[activeNetworkTab]?.mediaUrls || [];
       const updated = current.filter((_, i) => i !== index);
       updateNetworkMedia(activeNetworkTab, updated);
+    } else if (isThreadsCustom) {
+      const threadIdx = networkCustom['threads']?.activeThreadIndex || 0;
+      const current = (typeof activeThreadPost === 'object' ? activeThreadPost?.mediaUrls : []) || [];
+      const updated = current.filter((_, i) => i !== index);
+      updateThreadPostMedia(threadIdx, updated);
     } else {
       setPostMedia(prev => {
         const next = prev.filter((_, i) => i !== index);
@@ -278,9 +291,9 @@ export function ComposerBody() {
                       : t("planner:postCreator.composer.placeholders.caption")
                 }
               />
-              {isCustomTab && (
+              {(isCustomTab || isThreadsCustom) && (
                 <p className="px-6 pb-1 text-[10px] text-purple-600 font-bold font-sans">
-                  Nội dung & media riêng cho {activeNetworkTab.toUpperCase()}
+                  Nội dung & media riêng cho {(isThreadsCustom ? 'threads' : activeNetworkTab).toUpperCase()}
                 </p>
               )}
             </>

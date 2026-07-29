@@ -109,71 +109,15 @@ export function MediaUploadModal({ isOpen, onClose, onAccept, brandId, initialTa
           toast.error("Please select at least one file");
           return;
         }
-        setIsUploading(true);
-        setUploadProgress(0);
-        const uploadedItems = [];
-        const toastId = toast.loading(`Preparing ${selectedFiles.length} file(s)...`);
-
-        const totalBytes = selectedFiles.reduce((sum, f) => sum + f.size, 0);
-        const uploadedBytesPerFile = selectedFiles.map(() => 0);
-
-        try {
-          for (let i = 0; i < selectedFiles.length; i++) {
-            const file = selectedFiles[i];
-            const isVideo = file.type.startsWith('video/');
-            const folder = isVideo ? 'publicast/videos' : 'publicast/images';
-            
-            // 1. Get signature from backend
-            const sigRes = await apiService.get(`/media/signature?folder=${folder}`);
-            const { signature, timestamp, apiKey, cloudName } = sigRes.data.data;
-
-            toast.loading(`Uploading ${file.name}... 0%`, { id: toastId });
-
-            // 2. Resumable Direct Upload to Cloudinary
-            const uploader = new CloudinaryResumableUploader(
-              cloudName,
-              apiKey,
-              folder,
-              (percent) => {
-                uploadedBytesPerFile[i] = Math.round((percent / 100) * file.size);
-                const currentTotalUploaded = uploadedBytesPerFile.reduce((sum, v) => sum + v, 0);
-                const totalPercent = totalBytes > 0 ? Math.round((currentTotalUploaded / totalBytes) * 100) : 0;
-                setUploadProgress(totalPercent);
-                toast.loading(`Uploading ${file.name}... ${percent}%`, { id: toastId });
-              }
-            );
-
-            const uploadData = await uploader.upload(file, signature, timestamp);
-
-            // 3. Save info to backend
-            const saveRes = await apiService.post("/media/save-direct", {
-              brandId,
-              fileInfo: uploadData,
-              saveToLibrary: false
-            });
-
-            const savedMedia = saveRes.data?.data || saveRes.data;
-            const finalUrl = savedMedia?.url || uploadData.secure_url;
-
-            uploadedBytesPerFile[i] = file.size;
-            uploadedItems.push({
-              file,
-              path: finalUrl,
-              previewUrl: URL.createObjectURL(file)
-            });
-          }
-          toast.success("All files uploaded successfully", { id: toastId });
-          onAccept(uploadedItems);
-          onClose();
-          setSelectedFiles([]);
-        } catch (err) {
-          const errorMessage = err.response?.data?.message || err.message || "Failed to upload one or more files";
-          toast.error(errorMessage, { id: toastId });
-          console.error(err);
-        } finally {
-          setIsUploading(false);
-          setUploadProgress(0);
-        }
+        // Hoãn upload: Tạo previewUrl blob: đồng bộ, path = null (sẽ upload khi Submit)
+        const items = selectedFiles.map((file) => ({
+          file,
+          path: null,
+          previewUrl: URL.createObjectURL(file),
+        }));
+        onAccept(items);
+        onClose();
+        setSelectedFiles([]);
       } else {
         if (!selectedFile) {
           toast.error("Please select a file first");

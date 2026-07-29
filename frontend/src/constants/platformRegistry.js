@@ -193,6 +193,9 @@ export const PLATFORM_CONFIGS = {
     id: PLATFORMS.THREADS,
     name: 'Threads',
     defaultType: 'post',
+    limits: {
+      text: { maxLength: 500 }
+    },
     supportedTypes: [
       { id: 'post', label: 'Threads Post' }
     ],

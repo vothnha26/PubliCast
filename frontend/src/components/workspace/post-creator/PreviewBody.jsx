@@ -32,12 +32,18 @@ export function PreviewBody() {
   const isPlatformCustomized = platformCustom?.useTemplate === false;
   const isThreadsPlatform = activePlatform === 'threads';
 
+  const firstThreadPost = isThreadsPlatform && platformCustom?.threadPosts?.[0];
+
   const effectiveCaption = isPlatformCustomized
-    ? (isThreadsPlatform ? (platformCustom?.threadPosts?.[0] || '') : (platformCustom?.caption || ''))
+    ? (isThreadsPlatform
+        ? (typeof firstThreadPost === 'string' ? firstThreadPost : firstThreadPost?.text || '')
+        : (platformCustom?.caption || ''))
     : caption;
 
   const effectiveMediaItems = isPlatformCustomized
-    ? (platformCustom?.mediaUrls || [])
+    ? (isThreadsPlatform
+        ? ((typeof firstThreadPost === 'object' ? firstThreadPost?.mediaUrls : []) || [])
+        : (platformCustom?.mediaUrls || []))
     : postMedia;
 
   let effectiveVideoFileUrl = videoFileUrl;

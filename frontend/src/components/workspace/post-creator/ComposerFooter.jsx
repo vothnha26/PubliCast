@@ -23,12 +23,14 @@ export function ComposerFooter() {
     hasApprovePermission,
     handleCreatePost,
     isCreating,
+    submitProgressText,
     editingPost,
     showPublishMenu,
     setShowPublishMenu
   } = usePostCreatorFormContext();
 
   const getPublishButtonLabelText = () => {
+    if (submitProgressText) return submitProgressText;
     if (editingPost) return t('planner:postCreator.footer.update');
     if (selectedPublishId === 'draft') return t('planner:postCreator.footer.save');
     if (selectedPublishId === 'review') return t('planner:postCreator.footer.send');
@@ -98,7 +100,14 @@ export function ComposerFooter() {
                   : "bg-gray-200 text-gray-400 cursor-not-allowed"
               }`}
             >
-              {isCreating ? <Loader2 size={16} className="animate-spin" /> : getPublishButtonLabelText()}
+              {isCreating ? (
+                <div className="flex items-center gap-2">
+                  <Loader2 size={16} className="animate-spin" />
+                  <span>{getPublishButtonLabelText()}</span>
+                </div>
+              ) : (
+                getPublishButtonLabelText()
+              )}
             </button>
             <div className="relative">
               <button data-testid="post-publish-menu-btn" 

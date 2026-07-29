@@ -78,6 +78,7 @@ export function PostCreatorPage() {
     setSelectedPublishId,
     activeBrand,
     isCreating,
+    submitProgressText,
     scheduledDate,
     setScheduledDate,
     isLibrary,
@@ -199,6 +200,7 @@ export function PostCreatorPage() {
     updateNetworkCaption,
     updateNetworkMedia,
     updateThreadPostText,
+    updateThreadPostMedia,
     addThreadPost,
     removeThreadPost,
     setThreadActiveIndex,
@@ -297,6 +299,7 @@ export function PostCreatorPage() {
     setSelectedPublishId,
     activeBrand,
     isCreating,
+    submitProgressText,
     scheduledDate,
     setScheduledDate,
     isLibrary,
@@ -414,6 +417,7 @@ export function PostCreatorPage() {
     updateNetworkCaption,
     updateNetworkMedia,
     updateThreadPostText,
+    updateThreadPostMedia,
     addThreadPost,
     removeThreadPost,
     setThreadActiveIndex,
@@ -566,14 +570,25 @@ export function PostCreatorPage() {
           onSelectFile={handleSelectDriveFile}
         />
         {(() => {
+          const isCustomizingThreads = isEditByNetwork
+            && activeNetworkTab === 'threads'
+            && networkCustom?.threads?.useTemplate === false;
+
           const isCustomizingNonThreadsPlatform = isEditByNetwork
             && activeNetworkTab !== NETWORK_TAB_TEMPLATE
             && activeNetworkTab !== 'threads'
             && networkCustom?.[activeNetworkTab]?.useTemplate === false;
 
+          const activeThreadIndex = networkCustom?.threads?.activeThreadIndex || 0;
+          const activeThreadPost = isCustomizingThreads
+            ? networkCustom?.threads?.threadPosts?.[activeThreadIndex]
+            : null;
+
           const activeNetworkMedia = isCustomizingNonThreadsPlatform
             ? (networkCustom?.[activeNetworkTab]?.mediaUrls || [])
-            : postMedia;
+            : isCustomizingThreads
+              ? ((typeof activeThreadPost === 'object' ? activeThreadPost?.mediaUrls : []) || [])
+              : postMedia;
 
           return (
             <>
@@ -601,7 +616,10 @@ export function PostCreatorPage() {
                       path: item.path
                     }));
 
-                    if (isCustomizingNonThreadsPlatform) {
+                    if (isCustomizingThreads) {
+                      const current = (typeof activeThreadPost === 'object' ? activeThreadPost?.mediaUrls : []) || [];
+                      updateThreadPostMedia(activeThreadIndex, [...current, ...newItems]);
+                    } else if (isCustomizingNonThreadsPlatform) {
                       const current = networkCustom?.[activeNetworkTab]?.mediaUrls || [];
                       updateNetworkMedia(activeNetworkTab, [...current, ...newItems]);
                     } else {
@@ -651,7 +669,20 @@ export function PostCreatorPage() {
                     );
                     setEditingAlbumPhoto(null);
                   } else if (editingPostMediaIndex !== null) {
-                    if (isCustomizingNonThreadsPlatform) {
+                    if (isCustomizingThreads) {
+                      const current = (typeof activeThreadPost === 'object' ? activeThreadPost?.mediaUrls : []) || [];
+                      const updated = current.map((item, idx) =>
+                        idx === editingPostMediaIndex
+                          ? {
+                              ...item,
+                              file: file || item.file,
+                              previewUrl: file ? URL.createObjectURL(file) : (path || item.previewUrl),
+                              path: path || item.path
+                            }
+                          : item
+                      );
+                      updateThreadPostMedia(activeThreadIndex, updated);
+                    } else if (isCustomizingNonThreadsPlatform) {
                       const current = networkCustom?.[activeNetworkTab]?.mediaUrls || [];
                       const updated = current.map((item, idx) =>
                         idx === editingPostMediaIndex

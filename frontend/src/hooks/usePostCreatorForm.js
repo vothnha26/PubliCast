@@ -12,6 +12,7 @@ import { buildMediaUrl, isVideoPath } from "../utils/url";
 import { validatePostForm } from "../utils/postValidation";
 import { logger } from "../utils/logger";
 import postService from "../services/post.service";
+import { uploadMediaFile } from "../services/mediaUpload.service";
 import {
   NETWORK_TAB_TEMPLATE,
   buildDefaultNetworkCustom,
@@ -67,6 +68,7 @@ export function usePostCreatorForm() {
   const [selectedPublishId, setSelectedPublishId] = useState("now");
   const { activeBrand } = useBrand();
   const [isCreating, setIsCreating] = useState(false);
+  const [submitProgressText, setSubmitProgressText] = useState(null);
   const [scheduledDate, setScheduledDate] = useState(() => toLocalDatetimeString(new Date()));
   const [isLibrary, setIsLibrary] = useState(false);
 
@@ -377,15 +379,22 @@ export function usePostCreatorForm() {
       const newUseTemplate = value !== undefined ? value : !current.useTemplate;
 
       const isThreads = platformId === PLATFORMS.THREADS;
+      const firstThreadText = typeof current.threadPosts?.[0] === 'string' ? current.threadPosts[0] : current.threadPosts?.[0]?.text;
       const isFirstCustomization = newUseTemplate === false &&
         (isThreads
-          ? (!current.threadPosts || current.threadPosts[0] === "")
+          ? (!current.threadPosts || firstThreadText === "")
           : !current.caption) &&
         (current.mediaUrls?.length || 0) === 0;
 
       const seeded = isFirstCustomization
         ? isThreads
-          ? { ...current, threadPosts: [caption, ...(current.threadPosts?.slice(1) || [])] }
+          ? {
+              ...current,
+              threadPosts: [
+                { text: caption, mediaUrls: [...postMedia] },
+                ...(Array.isArray(current.threadPosts) ? current.threadPosts.slice(1) : [])
+              ]
+            }
           : { ...current, caption }
         : current;
 
@@ -412,17 +421,32 @@ export function usePostCreatorForm() {
 
   const updateThreadPostText = (index, text) => {
     setNetworkCustom((prev) => {
-      const threads = prev[PLATFORMS.THREADS] || { threadPosts: [""] };
+      const threads = prev[PLATFORMS.THREADS] || { threadPosts: [{ text: "", mediaUrls: [] }] };
       const newPosts = [...threads.threadPosts];
-      newPosts[index] = text;
+      const curr = typeof newPosts[index] === 'object' && newPosts[index] !== null
+        ? newPosts[index]
+        : { text: typeof newPosts[index] === 'string' ? newPosts[index] : '', mediaUrls: [] };
+      newPosts[index] = { ...curr, text };
+      return { ...prev, [PLATFORMS.THREADS]: { ...threads, threadPosts: newPosts } };
+    });
+  };
+
+  const updateThreadPostMedia = (index, mediaUrls) => {
+    setNetworkCustom((prev) => {
+      const threads = prev[PLATFORMS.THREADS] || { threadPosts: [{ text: "", mediaUrls: [] }] };
+      const newPosts = [...threads.threadPosts];
+      const curr = typeof newPosts[index] === 'object' && newPosts[index] !== null
+        ? newPosts[index]
+        : { text: typeof newPosts[index] === 'string' ? newPosts[index] : '', mediaUrls: [] };
+      newPosts[index] = { ...curr, mediaUrls };
       return { ...prev, [PLATFORMS.THREADS]: { ...threads, threadPosts: newPosts } };
     });
   };
 
   const addThreadPost = () => {
     setNetworkCustom((prev) => {
-      const threads = prev[PLATFORMS.THREADS] || { threadPosts: [""] };
-      const newPosts = [...threads.threadPosts, ""];
+      const threads = prev[PLATFORMS.THREADS] || { threadPosts: [{ text: "", mediaUrls: [] }] };
+      const newPosts = [...threads.threadPosts, { text: "", mediaUrls: [] }];
       return {
         ...prev,
         [PLATFORMS.THREADS]: { ...threads, activeThreadIndex: newPosts.length - 1, threadPosts: newPosts },
@@ -495,7 +519,8 @@ export function usePostCreatorForm() {
       mediaCount: isAlbum ? albumMedia.length : (postMedia ? postMedia.length : 0),
       editingPost,
       postMedia,
-      captionText: caption
+      captionText: caption,
+      networkCustom
     });
   };
 
@@ -929,7 +954,66 @@ export function usePostCreatorForm() {
     }
 
     setIsCreating(true);
+    setSubmitProgressText(null);
     try {
+      // 1. Quét và tập hợp tất cả các file media chưa upload (has file && !path)
+      const pendingPostMedia = postMedia.filter((item) => item.file && !item.path);
+      const pendingAlbumMedia = albumMedia.filter((item) => item.file && !item.path);
+      const pendingNetworkItems = [];
+
+      Object.entries(networkCustom).forEach(([platform, entry]) => {
+        if (!selectedPlatforms.includes(platform)) return;
+        if (entry?.useTemplate !== false) return;
+
+        if (Array.isArray(entry.mediaUrls)) {
+          entry.mediaUrls.forEach((item) => {
+            if (typeof item === 'object' && item.file && !item.path) {
+              pendingNetworkItems.push(item);
+            }
+          });
+        }
+
+        if (platform === PLATFORMS.THREADS && Array.isArray(entry.threadPosts)) {
+          entry.threadPosts.forEach((post) => {
+            if (typeof post === 'object' && Array.isArray(post.mediaUrls)) {
+              post.mediaUrls.forEach((item) => {
+                if (typeof item === 'object' && item.file && !item.path) {
+                  pendingNetworkItems.push(item);
+                }
+              });
+            }
+          });
+        }
+      });
+
+      const allPendingFiles = [...pendingPostMedia, ...pendingAlbumMedia, ...pendingNetworkItems];
+      const totalPending = allPendingFiles.length;
+
+      if (totalPending > 0) {
+        let uploadedCount = 0;
+        for (const item of allPendingFiles) {
+          uploadedCount++;
+          setSubmitProgressText(`Đang tải lên file ${uploadedCount}/${totalPending}...`);
+          try {
+            const uploadedUrl = await uploadMediaFile(item.file, activeBrand.id);
+            item.path = uploadedUrl;
+          } catch (uploadErr) {
+            console.error("Failed to upload file during submit:", uploadErr);
+            setSubmitProgressText(null);
+            setIsCreating(false);
+            const fileName = item.file?.name || "media";
+            toast.error(`Tải lên file "${fileName}" thất bại: ${uploadErr.response?.data?.message || uploadErr.message || "Lỗi kết nối"}`);
+            return; // Dừng submit ngay lập tức, giữ nguyên 100% state form!
+          }
+        }
+
+        setPostMedia([...postMedia]);
+        setAlbumMedia([...albumMedia]);
+        setNetworkCustom({ ...networkCustom });
+      }
+
+      setSubmitProgressText(null);
+
       // Map publish mode → post status dùng lookup, không dùng if-else chain
       const status = PUBLISH_MODE_TO_STATUS[selectedPublishId] || POST_STATUS.DRAFT;
 
@@ -940,7 +1024,8 @@ export function usePostCreatorForm() {
       else if (activePlatform === PLATFORMS.TIKTOK) activeSubType = 'video';
 
       const isAlbum = activePlatform === PLATFORMS.FACEBOOK && facebookType === 'album';
-      const hasMedia = isAlbum ? albumMedia.length > 0 : !!(uploadedVideoPath || videoFile);
+      const effectiveUploadedPath = uploadedVideoPath || (postMedia.length > 0 ? postMedia[0].path : "");
+      const hasMedia = isAlbum ? albumMedia.length > 0 : !!(effectiveUploadedPath || (postMedia && postMedia.length > 0 && postMedia[0].path));
       const isVid = !isAlbum && isVideoPath(videoFileUrl, videoFile);
 
       const platformConfig = PLATFORM_CONFIGS[activePlatform];
@@ -953,7 +1038,7 @@ export function usePostCreatorForm() {
         ? albumMedia.map(item => item.path).filter(Boolean)
         : (postMedia && postMedia.length > 0
             ? postMedia.map(item => item.path).filter(Boolean)
-            : (uploadedVideoPath ? [uploadedVideoPath] : [])
+            : (effectiveUploadedPath ? [effectiveUploadedPath] : [])
           );
       const mediaCaptions = isAlbum
         ? albumMedia.map(item => item.caption || "")
@@ -1019,14 +1104,28 @@ export function usePostCreatorForm() {
             .filter(Boolean);
 
           if (platform === PLATFORMS.THREADS) {
-            const threadPosts = (entry.threadPosts || []).filter((t) => t && t.trim());
-            if (threadPosts.length === 0) return;
+            const validPosts = (entry.threadPosts || []).filter((p) => {
+              const txt = typeof p === 'string' ? p : p?.text;
+              const media = typeof p === 'string' ? [] : (p?.mediaUrls || []);
+              return (txt && txt.trim()) || media.length > 0;
+            });
+            if (validPosts.length === 0) return;
+            const formatPostMedia = (mediaUrls) => (mediaUrls || [])
+              .map((item) => (typeof item === 'string' ? item : item.path || item.previewUrl))
+              .filter(Boolean);
+
+            const firstPostText = typeof validPosts[0] === 'string' ? validPosts[0] : (validPosts[0].text || '');
+            const firstPostMedia = typeof validPosts[0] === 'string' ? [] : (validPosts[0].mediaUrls || []);
+
             overrides.push({
               platform: apiKey,
               useTemplate: false,
-              caption: threadPosts[0],
-              mediaUrls: formattedMediaUrls,
-              threadPosts: threadPosts.map((text) => ({ text, mediaUrls: [] })),
+              caption: firstPostText,
+              mediaUrls: formatPostMedia(firstPostMedia),
+              threadPosts: validPosts.map((p) => ({
+                text: typeof p === 'string' ? p : (p.text || ''),
+                mediaUrls: formatPostMedia(typeof p === 'string' ? [] : p.mediaUrls),
+              })),
             });
           } else {
             if (!entry.caption && formattedMediaUrls.length === 0) return;
@@ -1138,6 +1237,7 @@ export function usePostCreatorForm() {
     activeBrand,
     isCreating,
     setIsCreating,
+    submitProgressText,
     scheduledDate,
     setScheduledDate,
     isLibrary,
@@ -1272,6 +1372,7 @@ export function usePostCreatorForm() {
     updateNetworkCaption,
     updateNetworkMedia,
     updateThreadPostText,
+    updateThreadPostMedia,
     addThreadPost,
     removeThreadPost,
     setThreadActiveIndex,

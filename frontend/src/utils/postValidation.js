@@ -1,4 +1,5 @@
 import { isVideoPath } from './url';
+import { PLATFORMS } from '../constants/platforms';
 import { PLATFORM_CONFIGS } from '../constants/platformRegistry';
 
 /**
@@ -25,11 +26,29 @@ export function validatePostForm({
   mediaCount = 0,
   editingPost,
   postMedia = [],
-  captionText = ''
+  captionText = '',
+  networkCustom = {}
 }) {
   const errors = [];
   if (isLibrary || selectedPublishId === 'draft') {
     return errors;
+  }
+
+  // 0. Validate từng post trong Threads chain (nếu Threads được chọn và đang customize)
+  if (selectedPlatforms.includes(PLATFORMS.THREADS) && networkCustom?.[PLATFORMS.THREADS]?.useTemplate === false) {
+    const threadsConfig = PLATFORM_CONFIGS[PLATFORMS.THREADS];
+    const THREADS_MAX_CHARS = threadsConfig?.limits?.text?.maxLength || 500;
+    (networkCustom.threads.threadPosts || []).forEach((post, index) => {
+      const txt = typeof post === 'string' ? post : (post?.text || '');
+      const media = typeof post === 'string' ? [] : (post?.mediaUrls || []);
+      const len = txt.length;
+      if (len > THREADS_MAX_CHARS) {
+        errors.push(`[THREADS] Post ${index + 1} trong chuỗi vượt quá ${THREADS_MAX_CHARS} ký tự (hiện ${len}).`);
+      }
+      if (len === 0 && media.length === 0) {
+        errors.push(`[THREADS] Post ${index + 1} trong chuỗi đang trống (không có text lẫn media).`);
+      }
+    });
   }
 
   // 1. Validate ngày lên lịch

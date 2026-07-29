@@ -11,7 +11,7 @@ export const API_KEY_TO_PLATFORM = Object.entries(PLATFORM_API_KEY).reduce((acc,
 
 const buildDefaultNetworkEntry = (platform) => {
   if (platform === PLATFORMS.THREADS) {
-    return { useTemplate: true, activeThreadIndex: 0, threadPosts: [''], mediaUrls: [] };
+    return { useTemplate: true, activeThreadIndex: 0, threadPosts: [{ text: '', mediaUrls: [] }], mediaUrls: [] };
   }
   return { useTemplate: true, caption: '', mediaUrls: [] };
 };
@@ -36,6 +36,17 @@ const safeParseArray = (value) => {
   return [];
 };
 
+const normalizeMediaItem = (item) => {
+  if (typeof item === 'string') {
+    return { file: null, previewUrl: item, path: item };
+  }
+  return {
+    file: item?.file || null,
+    previewUrl: item?.previewUrl || item?.path || '',
+    path: item?.path || item?.previewUrl || '',
+  };
+};
+
 /**
  * Map mảng networkOverrides trả về từ backend (post.networkOverrides, mỗi phần tử
  * { platform: 'FACEBOOK', useTemplate, caption, mediaUrls, threadPosts }) sang
@@ -47,16 +58,7 @@ export const mapNetworkOverridesToCustom = (networkOverrides) => {
     if (!override?.platform) return;
     const platform = API_KEY_TO_PLATFORM[override.platform] || override.platform.toLowerCase();
     const rawMediaUrls = safeParseArray(override.mediaUrls);
-    const formattedMediaUrls = rawMediaUrls.map((item) => {
-      if (typeof item === 'string') {
-        return { file: null, previewUrl: item, path: item };
-      }
-      return {
-        file: item?.file || null,
-        previewUrl: item?.previewUrl || item?.path || '',
-        path: item?.path || item?.previewUrl || '',
-      };
-    });
+    const formattedMediaUrls = rawMediaUrls.map(normalizeMediaItem);
 
     if (platform === PLATFORMS.THREADS) {
       const threadPosts = safeParseArray(override.threadPosts);
@@ -64,8 +66,11 @@ export const mapNetworkOverridesToCustom = (networkOverrides) => {
         useTemplate: override.useTemplate !== false,
         activeThreadIndex: 0,
         threadPosts: threadPosts.length > 0
-          ? threadPosts.map((p) => (typeof p === 'string' ? p : p?.text || ''))
-          : [override.caption || ''],
+          ? threadPosts.map((p) => ({
+              text: typeof p === 'string' ? p : (p?.text || ''),
+              mediaUrls: (Array.isArray(p?.mediaUrls) ? p.mediaUrls : []).map(normalizeMediaItem),
+            }))
+          : [{ text: override.caption || '', mediaUrls: formattedMediaUrls }],
         mediaUrls: formattedMediaUrls,
       };
     } else {
