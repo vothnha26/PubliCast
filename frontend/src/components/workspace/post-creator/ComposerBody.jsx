@@ -96,6 +96,7 @@ export function ComposerBody() {
     networkCustom,
     toggleUseTemplate,
     updateNetworkCaption,
+    updateNetworkMedia,
     updateThreadPostText,
   } = usePostCreatorFormContext();
 
@@ -121,6 +122,32 @@ export function ComposerBody() {
       updateThreadPostText(threadIndex, val);
     } else {
       setCaption(val);
+    }
+  };
+
+  const effectivePostMedia = isCustomTab
+    ? (networkCustom[activeNetworkTab]?.mediaUrls || [])
+    : postMedia;
+
+  const handleRemoveMediaItem = (index) => {
+    if (isCustomTab) {
+      const current = networkCustom[activeNetworkTab]?.mediaUrls || [];
+      const updated = current.filter((_, i) => i !== index);
+      updateNetworkMedia(activeNetworkTab, updated);
+    } else {
+      setPostMedia(prev => {
+        const next = prev.filter((_, i) => i !== index);
+        if (next.length > 0) {
+          setVideoFile(next[0].file);
+          setVideoFileUrl(next[0].previewUrl);
+          setUploadedVideoPath(next[0].path);
+        } else {
+          setVideoFile(null);
+          setVideoFileUrl("");
+          setUploadedVideoPath("");
+        }
+        return next;
+      });
     }
   };
 
@@ -252,14 +279,14 @@ export function ComposerBody() {
                 }
               />
               {isCustomTab && (
-                <p className="px-6 pb-1 text-[10px] text-gray-400 font-sans">
-                  Media dùng chung cho mọi nền tảng
+                <p className="px-6 pb-1 text-[10px] text-purple-600 font-bold font-sans">
+                  Nội dung & media riêng cho {activeNetworkTab.toUpperCase()}
                 </p>
               )}
             </>
           )}
 
-          {(!postMedia || postMedia.length === 0) && (videoFile || uploadedVideoPath) && !isImageFile && (
+          {!isCustomTab && (!effectivePostMedia || effectivePostMedia.length === 0) && (videoFile || uploadedVideoPath) && !isImageFile && (
             <div className="px-6 py-3 border-t border-gray-50 bg-gray-50/50 flex items-center justify-between animate-in fade-in slide-in-from-top-1">
               <div className="flex items-center gap-2 text-xs font-bold text-gray-700">
                 <Youtube className="text-red-500 fill-red-500 font-sans" size={16} />
@@ -301,16 +328,16 @@ export function ComposerBody() {
           ) : (
             <>
               {/* Multiple thumbnails for standard posts */}
-              {postMedia && postMedia.length > 0 ? (
+              {effectivePostMedia && effectivePostMedia.length > 0 ? (
                 <div className="px-6 pb-4 bg-white flex flex-wrap gap-4 animate-in fade-in duration-300">
-                  {postMedia.map((item, index) => {
+                  {effectivePostMedia.map((item, index) => {
                     const isItemVid = isVideoPath(item.previewUrl || item.path, item.file);
                     return (
                       <div key={index} className="relative group">
                         <div className="w-16 h-16 rounded-2xl overflow-hidden border border-gray-100 shadow-md bg-gray-50 flex items-center justify-center relative">
                           {isItemVid ? (
                             <>
-                              <video src={item.previewUrl} className="w-full h-full object-cover" />
+                              <video src={item.previewUrl || item.path} className="w-full h-full object-cover" />
                               {/* Overlay Edit Video khi hover */}
                               <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                                 <button
@@ -333,7 +360,7 @@ export function ComposerBody() {
                             </>
                           ) : (
                             <>
-                              <img src={item.previewUrl} alt="Preview" className="w-full h-full object-cover" />
+                              <img src={item.previewUrl || item.path} alt="Preview" className="w-full h-full object-cover" />
                               <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                                 <button
                                   type="button"
@@ -352,21 +379,7 @@ export function ComposerBody() {
                         </div>
                         <button
                           type="button"
-                          onClick={() => {
-                            setPostMedia(prev => {
-                              const next = prev.filter((_, i) => i !== index);
-                              if (next.length > 0) {
-                                setVideoFile(next[0].file);
-                                setVideoFileUrl(next[0].previewUrl);
-                                setUploadedVideoPath(next[0].path);
-                              } else {
-                                setVideoFile(null);
-                                setVideoFileUrl("");
-                                setUploadedVideoPath("");
-                              }
-                              return next;
-                            });
-                          }}
+                          onClick={() => handleRemoveMediaItem(index)}
                           className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-red-500 hover:bg-red-600 text-white flex items-center justify-center cursor-pointer shadow-md opacity-0 group-hover:opacity-100 transition-opacity z-20"
                         >
                           <X size={10} />
@@ -378,7 +391,7 @@ export function ComposerBody() {
               ) : null}
 
               {/* Thumbnail Image display */}
-              {(!postMedia || postMedia.length === 0) && isImageFile && videoFileUrl && (
+              {(!effectivePostMedia || effectivePostMedia.length === 0) && isImageFile && videoFileUrl && (
                 <div className="px-6 pb-4 bg-white flex flex-wrap gap-3 animate-in fade-in duration-300">
                   <div className="relative">
                     <div className="w-16 h-16 rounded-2xl overflow-hidden border border-gray-100 shadow-md">

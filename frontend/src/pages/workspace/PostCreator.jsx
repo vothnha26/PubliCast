@@ -28,6 +28,7 @@ import { AltTextModal } from "../../components/workspace/post-creator/AltTextMod
 import { FacebookAlbumComposer } from "../../components/workspace/post-creator/FacebookAlbumComposer";
 import { HashtagPickerPopover } from "../../components/workspace/post-creator/HashtagPickerPopover";
 import { PLATFORM_CONFIGS } from "../../constants/platformRegistry";
+import { NETWORK_TAB_TEMPLATE } from "../../constants/postComposerNetwork";
 import { Instagram } from "lucide-react";
 import { toast } from "sonner";
 import { useBrandPermission } from "../../hooks/useBrandPermission";
@@ -42,6 +43,7 @@ import { ComposerErrorPanel } from "../../components/workspace/post-creator/Comp
 import { PreviewHeader } from "../../components/workspace/post-creator/PreviewHeader";
 import { PreviewBody } from "../../components/workspace/post-creator/PreviewBody";
 import { PreviewFooter } from "../../components/workspace/post-creator/PreviewFooter";
+import { NotesPanel } from "../../components/workspace/post-creator/NotesPanel";
 
 // Context Provider
 import { PostCreatorFormProvider } from "../../context/PostCreatorFormContext";
@@ -521,19 +523,25 @@ export function PostCreatorPage() {
             </div>
           </div>
 
-          {/* ── REGION 2: PREVIEW ── */}
+          {/* ── REGION 2: PREVIEW (hoặc NOTES khi isNotesOpen) ── */}
           <div className="flex-[0.85] flex flex-col min-h-0 overflow-hidden">
-            {/* Region Label */}
+            {/* Region Label — đổi text theo trạng thái */}
             <div className="flex items-center gap-2 px-1 pb-2 shrink-0">
-              <span className="text-[9px] font-black uppercase tracking-[0.15em] text-gray-400 font-sans">👁 Preview</span>
+              <span className="text-[9px] font-black uppercase tracking-[0.15em] text-gray-400 font-sans">
+                {isNotesOpen ? "📝 Notes" : "👁 Preview"}
+              </span>
               <div className="flex-1 h-px bg-gray-300/50" />
             </div>
-            {/* Preview Card */}
-            <div className="flex-1 bg-[#F7F8FA] rounded-[20px] border border-gray-200/80 shadow-sm flex flex-col overflow-hidden min-h-0">
-              <PreviewHeader />
-              <PreviewBody />
-              <PreviewFooter />
-            </div>
+            {/* Nội dung: NotesPanel hoặc Preview Card */}
+            {isNotesOpen ? (
+              <NotesPanel />
+            ) : (
+              <div className="flex-1 bg-[#F7F8FA] rounded-[20px] border border-gray-200/80 shadow-sm flex flex-col overflow-hidden min-h-0">
+                <PreviewHeader />
+                <PreviewBody />
+                <PreviewFooter />
+              </div>
+            )}
           </div>
 
         </div>
@@ -557,111 +565,143 @@ export function PostCreatorPage() {
           activeBrand={activeBrand}
           onSelectFile={handleSelectDriveFile}
         />
-        <MediaUploadModal 
-          isOpen={showUploadModal}
-          initialTab={uploadModalTab}
-          brandId={activeBrand?.id}
-          multiple={!isUploadingThumbnail}
-          onClose={() => {
-            setShowUploadModal(false);
-            setIsUploadingThumbnail(false);
-          }}
-          onAccept={(result, path) => {
-            if (isUploadingThumbnail) {
-              setYoutubeThumbnail(path);
-              setIsUploadingThumbnail(false);
-            } else {
-              // Normalize thành array items { file, path, previewUrl }
-              const items = Array.isArray(result)
-                ? result
-                : [{ file: result, path, previewUrl: result ? URL.createObjectURL(result) : path }];
+        {(() => {
+          const isCustomizingNonThreadsPlatform = isEditByNetwork
+            && activeNetworkTab !== NETWORK_TAB_TEMPLATE
+            && activeNetworkTab !== 'threads'
+            && networkCustom?.[activeNetworkTab]?.useTemplate === false;
 
-              setPostMedia(prev => {
-                const newItems = items.map(item => ({
-                  file: item.file,
-                  // Dùng blob URL để preview local, hoặc path nếu từ library
-                  previewUrl: item.previewUrl || item.path,
-                  path: item.path
-                }));
-                const updated = [...prev, ...newItems];
-                if (updated.length > 0) {
-                  const firstItem = updated[0];
-                  // Set videoFile để isVideoPath có thể check file.type
-                  setVideoFile(firstItem.file || null);
-                  // Ưu tiên blob previewUrl để render nhanh, fallback về path (Cloudinary URL)
-                  setVideoFileUrl(firstItem.previewUrl || firstItem.path || '');
-                  setUploadedVideoPath(firstItem.path || '');
+          const activeNetworkMedia = isCustomizingNonThreadsPlatform
+            ? (networkCustom?.[activeNetworkTab]?.mediaUrls || [])
+            : postMedia;
+
+          return (
+            <>
+              <MediaUploadModal 
+                isOpen={showUploadModal}
+                initialTab={uploadModalTab}
+                brandId={activeBrand?.id}
+                multiple={!isUploadingThumbnail}
+                onClose={() => {
+                  setShowUploadModal(false);
+                  setIsUploadingThumbnail(false);
+                }}
+                onAccept={(result, path) => {
+                  if (isUploadingThumbnail) {
+                    setYoutubeThumbnail(path);
+                    setIsUploadingThumbnail(false);
+                  } else {
+                    // Normalize thành array items { file, path, previewUrl }
+                    const items = Array.isArray(result)
+                      ? result
+                      : [{ file: result, path, previewUrl: result ? URL.createObjectURL(result) : path }];
+                    const newItems = items.map(item => ({
+                      file: item.file,
+                      previewUrl: item.previewUrl || item.path,
+                      path: item.path
+                    }));
+
+                    if (isCustomizingNonThreadsPlatform) {
+                      const current = networkCustom?.[activeNetworkTab]?.mediaUrls || [];
+                      updateNetworkMedia(activeNetworkTab, [...current, ...newItems]);
+                    } else {
+                      setPostMedia(prev => {
+                        const updated = [...prev, ...newItems];
+                        if (updated.length > 0) {
+                          const firstItem = updated[0];
+                          setVideoFile(firstItem.file || null);
+                          setVideoFileUrl(firstItem.previewUrl || firstItem.path || '');
+                          setUploadedVideoPath(firstItem.path || '');
+                        }
+                        return updated;
+                      });
+                      setImageTransform({ rotation: 0, flipH: false, flipV: false, filter: 'none' });
+                    }
+                  }
+                }}
+              />
+              <ImageEditorModal 
+                isOpen={showImageEditor}
+                imageUrl={
+                  editingAlbumPhoto 
+                    ? (editingAlbumPhoto.previewUrl || editingAlbumPhoto.path) 
+                    : (editingPostMediaIndex !== null && activeNetworkMedia[editingPostMediaIndex]) 
+                      ? (activeNetworkMedia[editingPostMediaIndex].previewUrl || activeNetworkMedia[editingPostMediaIndex].path) 
+                      : videoFileUrl
                 }
-                return updated;
-              });
-              setImageTransform({ rotation: 0, flipH: false, flipV: false, filter: 'none' });
-            }
-          }}
-        />
-        <ImageEditorModal 
-          isOpen={showImageEditor}
-          imageUrl={
-            editingAlbumPhoto 
-              ? (editingAlbumPhoto.previewUrl || editingAlbumPhoto.path) 
-              : (editingPostMediaIndex !== null && postMedia[editingPostMediaIndex]) 
-                ? (postMedia[editingPostMediaIndex].previewUrl || postMedia[editingPostMediaIndex].path) 
-                : videoFileUrl
-          }
-          currentTransform={imageTransform}
-          brandId={activeBrand?.id}
-          onClose={() => {
-            setShowImageEditor(false);
-            setEditingAlbumPhoto(null);
-            setEditingPostMediaIndex(null);
-          }}
-          onSave={(file, path, fallbackTransform) => {
-            if (editingAlbumPhoto) {
-              setAlbumMedia((prev) =>
-                prev.map((item) =>
-                  item.id === editingAlbumPhoto.id
-                    ? {
-                        ...item,
-                        previewUrl: file ? URL.createObjectURL(file) : path,
-                        path: path || item.path
+                currentTransform={imageTransform}
+                brandId={activeBrand?.id}
+                onClose={() => {
+                  setShowImageEditor(false);
+                  setEditingAlbumPhoto(null);
+                  setEditingPostMediaIndex(null);
+                }}
+                onSave={(file, path, fallbackTransform) => {
+                  if (editingAlbumPhoto) {
+                    setAlbumMedia((prev) =>
+                      prev.map((item) =>
+                        item.id === editingAlbumPhoto.id
+                          ? {
+                              ...item,
+                              previewUrl: file ? URL.createObjectURL(file) : path,
+                              path: path || item.path
+                            }
+                          : item
+                      )
+                    );
+                    setEditingAlbumPhoto(null);
+                  } else if (editingPostMediaIndex !== null) {
+                    if (isCustomizingNonThreadsPlatform) {
+                      const current = networkCustom?.[activeNetworkTab]?.mediaUrls || [];
+                      const updated = current.map((item, idx) =>
+                        idx === editingPostMediaIndex
+                          ? {
+                              ...item,
+                              file: file || item.file,
+                              previewUrl: file ? URL.createObjectURL(file) : (path || item.previewUrl),
+                              path: path || item.path
+                            }
+                          : item
+                      );
+                      updateNetworkMedia(activeNetworkTab, updated);
+                    } else {
+                      setPostMedia((prev) =>
+                        prev.map((item, idx) =>
+                          idx === editingPostMediaIndex
+                            ? {
+                                ...item,
+                                file: file || item.file,
+                                previewUrl: file ? URL.createObjectURL(file) : (path || item.previewUrl),
+                                path: path || item.path
+                              }
+                            : item
+                        )
+                      );
+                      if (editingPostMediaIndex === 0) {
+                        if (file) setVideoFile(file);
+                        if (file) setVideoFileUrl(URL.createObjectURL(file));
+                        if (path) setUploadedVideoPath(path);
                       }
-                    : item
-                )
-              );
-              setEditingAlbumPhoto(null);
-            } else if (editingPostMediaIndex !== null) {
-              setPostMedia((prev) =>
-                prev.map((item, idx) =>
-                  idx === editingPostMediaIndex
-                    ? {
-                        ...item,
-                        file: file || item.file,
-                        previewUrl: file ? URL.createObjectURL(file) : (path || item.previewUrl),
-                        path: path || item.path
-                      }
-                    : item
-                )
-              );
-              if (editingPostMediaIndex === 0) {
-                if (file) setVideoFile(file);
-                if (file) setVideoFileUrl(URL.createObjectURL(file));
-                if (path) setUploadedVideoPath(path);
-              }
-              setEditingPostMediaIndex(null);
-            } else {
-              if (file && path) {
-                setVideoFile(file);
-                const previewUrl = URL.createObjectURL(file);
-                setVideoFileUrl(previewUrl);
-                setUploadedVideoPath(path);
-                setImageTransform({ rotation: 0, flipH: false, flipV: false, filter: 'none' });
-              } else if (fallbackTransform) {
-                setImageTransform(fallbackTransform);
-              }
-            }
-            setShowImageEditor(false);
-            toast.success(t("common:success"));
-          }}
-        />
+                    }
+                    setEditingPostMediaIndex(null);
+                  } else {
+                    if (file && path) {
+                      setVideoFile(file);
+                      const previewUrl = URL.createObjectURL(file);
+                      setVideoFileUrl(previewUrl);
+                      setUploadedVideoPath(path);
+                      setImageTransform({ rotation: 0, flipH: false, flipV: false, filter: 'none' });
+                    } else if (fallbackTransform) {
+                      setImageTransform(fallbackTransform);
+                    }
+                  }
+                  setShowImageEditor(false);
+                  toast.success(t("common:success"));
+                }}
+              />
+            </>
+          );
+        })()}
 
         <AltTextModal 
           isOpen={showAltTextModal}
@@ -880,105 +920,6 @@ export function PostCreatorPage() {
           </div>
         )}
 
-        {/* Modal Team Notes */}
-        {isNotesOpen && (
-          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[100] p-4 animate-in fade-in duration-200">
-            <div className="bg-white rounded-[32px] shadow-[0_20px_50px_rgba(0,0,0,0.15)] border border-gray-100 w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200 p-6 flex flex-col max-h-[80vh] text-left">
-              <div className="flex items-start justify-between pb-4 border-b border-gray-100">
-                <div className="space-y-1">
-                  <div className="flex items-center gap-2">
-                    <FileText size={18} className="text-gray-800" />
-                    <h3 className="text-base font-bold text-[#0A0A0A] tracking-tight font-sans">{t("planner:postCreator.composer.sections.notesTitle")}</h3>
-                  </div>
-                  <p className="text-[11px] text-gray-400 font-semibold leading-relaxed uppercase tracking-widest font-sans">
-                    {t("planner:postCreator.composer.sections.notesDesc")}
-                  </p>
-                </div>
-                <button 
-                  onClick={() => setIsNotesOpen(false)}
-                  className="text-gray-400 hover:text-black transition-colors cursor-pointer p-1 rounded-full hover:bg-gray-100"
-                >
-                  <X size={18} />
-                </button>
-              </div>
-
-              <div className="flex-1 overflow-y-auto py-4 space-y-3.5 scrollbar-thin max-h-[40vh]">
-                {!notes || notes.length === 0 ? (
-                  <div className="py-12 flex flex-col items-center justify-center text-center space-y-3 text-gray-400 font-sans">
-                    <div className="p-4 bg-gray-50 rounded-2xl">
-                      <MessageSquare size={24} className="text-gray-300" />
-                    </div>
-                    <div className="space-y-1">
-                      <p className="text-[11px] font-black uppercase tracking-wider text-gray-400">{t("planner:postCreator.composer.sections.noNotes")}</p>
-                      <p className="text-[12px] text-gray-400 font-medium px-6">{t("planner:postCreator.composer.placeholders.noteDesc", "Hãy viết lời nhắn hoặc lưu ý đầu tiên cho bài viết này.")}</p>
-                    </div>
-                  </div>
-                ) : (
-                  notes.map((note, index) => {
-                    const initials = note.author ? note.author.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase() : 'M';
-                    const hash = note.author ? note.author.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0) : index;
-                    const bgColors = ["bg-[#E6F4EA] text-[#137333]", "bg-[#FEF7E0] text-[#B06000]", "bg-[#FCE8E6] text-[#C5221F]", "bg-[#F3F4F6] text-[#1F2937]", "bg-[#E4F7F6] text-[#00796B]"];
-                    const badgeStyle = bgColors[hash % bgColors.length];
-                    
-                    return (
-                      <div key={index} className="flex gap-3 group animate-in fade-in slide-in-from-bottom-2 duration-200 font-sans">
-                        <div className={`w-8 h-8 rounded-xl flex items-center justify-center text-[10px] font-black uppercase tracking-widest shrink-0 ${badgeStyle}`}>
-                          {initials}
-                        </div>
-                        <div className="flex-1 min-w-0 bg-gray-50 rounded-2xl p-3.5 relative">
-                          <div className="flex items-center justify-between gap-2 mb-1">
-                            <span className="text-[11px] font-bold text-gray-800 truncate">{note.author}</span>
-                            <span className="text-[9px] text-gray-400 font-medium tracking-tight whitespace-nowrap">
-                              {new Date(note.timestamp).toLocaleString('vi-VN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' })}
-                            </span>
-                          </div>
-                          <p className="text-xs text-gray-700 font-medium leading-relaxed break-words whitespace-pre-wrap">{note.text}</p>
-                          
-                          <button
-                            onClick={() => handleDeleteNoteClick(index)}
-                            className="absolute -top-1 -right-1 p-1 bg-white border border-gray-100 shadow-sm rounded-full text-gray-400 hover:text-red-500 hover:border-red-100 opacity-0 group-hover:opacity-100 transition-all cursor-pointer"
-                            title={t("planner:postCreator.composer.sections.deleteNote")}
-                          >
-                            <Trash2 size={12} />
-                          </button>
-                        </div>
-                      </div>
-                    );
-                  })
-                )}
-              </div>
-
-              <div className="pt-4 border-t border-gray-100 space-y-3">
-                <textarea
-                  placeholder={t("planner:postCreator.composer.placeholders.note")}
-                  value={newNoteText}
-                  onChange={(e) => setNewNoteText(e.target.value)}
-                  className="w-full px-4 py-3 bg-gray-50 border border-transparent rounded-2xl text-[12px] font-medium text-[#0A0A0A] outline-none focus:bg-white focus:border-gray-200 transition-all placeholder-gray-400 min-h-[80px] resize-none font-sans"
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' && !e.shiftKey) {
-                      e.preventDefault();
-                      handleAddNoteClick();
-                    }
-                  }}
-                />
-                <div className="flex items-center justify-between gap-3">
-                  <span className="text-[10px] text-gray-400 font-semibold uppercase tracking-widest font-sans">
-                    {t("planner:postCreator.composer.sections.enterToSend", "Enter để gửi nhanh")}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={handleAddNoteClick}
-                    disabled={!newNoteText.trim()}
-                    className="flex items-center gap-1.5 px-5 py-2.5 bg-[#0A0A0A] hover:bg-black disabled:bg-gray-100 disabled:text-gray-400 text-white text-[11px] font-black uppercase tracking-widest rounded-2xl transition-all cursor-pointer shadow-md hover:shadow-lg disabled:shadow-none font-sans"
-                  >
-                    <span>{t("planner:postCreator.composer.sections.addNote")}</span>
-                    <Send size={12} className="rotate-45" />
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
 
         {blockedProductId && (
           <div className="fixed inset-0 z-[3000] flex items-center justify-center bg-black/60 backdrop-blur-sm">

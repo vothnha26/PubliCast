@@ -46,6 +46,18 @@ export const mapNetworkOverridesToCustom = (networkOverrides) => {
   (networkOverrides || []).forEach((override) => {
     if (!override?.platform) return;
     const platform = API_KEY_TO_PLATFORM[override.platform] || override.platform.toLowerCase();
+    const rawMediaUrls = safeParseArray(override.mediaUrls);
+    const formattedMediaUrls = rawMediaUrls.map((item) => {
+      if (typeof item === 'string') {
+        return { file: null, previewUrl: item, path: item };
+      }
+      return {
+        file: item?.file || null,
+        previewUrl: item?.previewUrl || item?.path || '',
+        path: item?.path || item?.previewUrl || '',
+      };
+    });
+
     if (platform === PLATFORMS.THREADS) {
       const threadPosts = safeParseArray(override.threadPosts);
       result[platform] = {
@@ -54,13 +66,13 @@ export const mapNetworkOverridesToCustom = (networkOverrides) => {
         threadPosts: threadPosts.length > 0
           ? threadPosts.map((p) => (typeof p === 'string' ? p : p?.text || ''))
           : [override.caption || ''],
-        mediaUrls: safeParseArray(override.mediaUrls),
+        mediaUrls: formattedMediaUrls,
       };
     } else {
       result[platform] = {
         useTemplate: override.useTemplate !== false,
         caption: override.caption || '',
-        mediaUrls: safeParseArray(override.mediaUrls),
+        mediaUrls: formattedMediaUrls,
       };
     }
   });

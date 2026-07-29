@@ -1014,6 +1014,10 @@ export function usePostCreatorForm() {
           if (entry?.useTemplate !== false) return;
           const apiKey = PLATFORM_API_KEY[platform];
           if (!apiKey) return; // bỏ qua platform không có API key hợp lệ
+          const formattedMediaUrls = (entry.mediaUrls || [])
+            .map((item) => (typeof item === 'string' ? item : item.path || item.previewUrl))
+            .filter(Boolean);
+
           if (platform === PLATFORMS.THREADS) {
             const threadPosts = (entry.threadPosts || []).filter((t) => t && t.trim());
             if (threadPosts.length === 0) return;
@@ -1021,16 +1025,16 @@ export function usePostCreatorForm() {
               platform: apiKey,
               useTemplate: false,
               caption: threadPosts[0],
-              mediaUrls: entry.mediaUrls || [],
+              mediaUrls: formattedMediaUrls,
               threadPosts: threadPosts.map((text) => ({ text, mediaUrls: [] })),
             });
           } else {
-            if (!entry.caption && (!entry.mediaUrls || entry.mediaUrls.length === 0)) return;
+            if (!entry.caption && formattedMediaUrls.length === 0) return;
             overrides.push({
               platform: apiKey,
               useTemplate: false,
               caption: entry.caption || '',
-              mediaUrls: entry.mediaUrls || [],
+              mediaUrls: formattedMediaUrls,
             });
           }
         });

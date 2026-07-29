@@ -23,19 +23,49 @@ export function PreviewBody() {
     instagramType,
     imageTransform,
     albumMedia,
-    useUrlShortener
+    useUrlShortener,
+    networkCustom,
+    postMedia
   } = usePostCreatorFormContext();
+
+  const platformCustom = networkCustom?.[activePlatform];
+  const isPlatformCustomized = platformCustom?.useTemplate === false;
+  const isThreadsPlatform = activePlatform === 'threads';
+
+  const effectiveCaption = isPlatformCustomized
+    ? (isThreadsPlatform ? (platformCustom?.threadPosts?.[0] || '') : (platformCustom?.caption || ''))
+    : caption;
+
+  const effectiveMediaItems = isPlatformCustomized
+    ? (platformCustom?.mediaUrls || [])
+    : postMedia;
+
+  let effectiveVideoFileUrl = videoFileUrl;
+  let effectiveVideoFile = videoFile;
+
+  if (isPlatformCustomized) {
+    if (effectiveMediaItems.length > 0) {
+      const firstMedia = effectiveMediaItems[0];
+      effectiveVideoFileUrl = typeof firstMedia === 'string'
+        ? firstMedia
+        : (firstMedia?.previewUrl || firstMedia?.path || '');
+      effectiveVideoFile = typeof firstMedia === 'string' ? null : (firstMedia?.file || null);
+    } else {
+      effectiveVideoFileUrl = '';
+      effectiveVideoFile = null;
+    }
+  }
 
   // Mô phỏng rút gọn link thời gian thực khi sử dụng UrlShortener
   const simulatedCaption = React.useMemo(() => {
-    if (!caption || !useUrlShortener) return caption;
+    if (!effectiveCaption || !useUrlShortener) return effectiveCaption;
     const urlRegex = /(https?:\/\/[^\s<]+)/g;
     let idx = 1;
-    return caption.replace(urlRegex, (url) => {
+    return effectiveCaption.replace(urlRegex, (url) => {
       if (url.includes('/sl/')) return url;
       return `https://publicast.link/link_${idx++}`;
     });
-  }, [caption, useUrlShortener]);
+  }, [effectiveCaption, useUrlShortener]);
 
   const PreviewComponent = PreviewStrategies[activePlatform];
 
@@ -45,8 +75,8 @@ export function PreviewBody() {
         {PreviewComponent && (
           <PreviewComponent 
             caption={simulatedCaption} 
-            videoFileUrl={videoFileUrl}
-            videoFile={videoFile}
+            videoFileUrl={effectiveVideoFileUrl}
+            videoFile={effectiveVideoFile}
             youtubeType={youtubeType}
             youtubeTitle={youtubeTitle}
             youtubePlaylistId={youtubePlaylistId}
