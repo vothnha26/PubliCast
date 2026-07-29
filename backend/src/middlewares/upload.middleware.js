@@ -1,7 +1,7 @@
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
-const { storage } = require('../config/cloudinary');
+const { storage, storageWithMetadata } = require('../config/cloudinary');
 
 const fileFilter = (req, file, cb) => {
   const allowedTypes = [
@@ -56,7 +56,8 @@ const localStorage = multer.diskStorage({
   }
 });
 
-const selectedStorage = process.env.UPLOAD_STORAGE === 'local' ? localStorage : storage;
+const isLocalUploadStorage = process.env.UPLOAD_STORAGE === 'local';
+const selectedStorage = isLocalUploadStorage ? localStorage : storage;
 
 const upload = multer({
   storage: selectedStorage,
@@ -66,4 +67,21 @@ const upload = multer({
   }
 });
 
+// Used by POST /api/posts/upload only. multer's limits.fileSize is a static
+// cap chosen once at instance creation — it can't vary per request based on
+// which platform(s) the caller targets, so this is set to a high safety
+// ceiling (DoS guard, not the real limit). The actual per-platform
+// maxFileSizeMb/allowedFormats (from PlatformLimit) is enforced afterward in
+// postController.uploadVideo, once the real uploaded size/format is known.
+const POST_UPLOAD_SAFETY_CEILING_BYTES = 500 * 1024 * 1024; // 500MB
+
+const uploadForPost = multer({
+  storage: isLocalUploadStorage ? localStorage : storageWithMetadata,
+  fileFilter: fileFilter,
+  limits: {
+    fileSize: POST_UPLOAD_SAFETY_CEILING_BYTES
+  }
+});
+
 module.exports = upload;
+module.exports.uploadForPost = uploadForPost;

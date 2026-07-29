@@ -9,6 +9,7 @@ const { OUTBOX_EVENT_TYPES } = require('../../constants/outbox.constants');
 const autoListRepository = require('../../repositories/workspace/auto-list.repository');
 const outboxEventRepository = require('../../repositories/core/outbox-event.repository');
 const prisma = require('../../config/prisma');
+const { cloudinary } = require('../../config/cloudinary');
 const authorizationFacade = require('../auth/authorization.facade');
 const approvalWorkflowService = require('./approval-workflow.service');
 const validationFacade = require('./post/validators/validation.facade');
@@ -59,6 +60,78 @@ class PostService {
       data: posts.map(p => this._formatPostResponse(p)),
       meta: { total, page: Math.max(1, parseInt(page) || 1), limit: take, totalPages: Math.ceil(total / take) }
     };
+  }
+
+  /**
+   * Validates and normalizes a multer-uploaded file for POST /api/posts/upload
+   * (v1 and v2 share this — see postController.uploadVideo / uploadVideoV2).
+   * Enforces req.postUploadLimits (set by resolvePostUploadLimits from the
+   * request's ?targetPlatforms=), which is a stricter, per-platform check
+   * than multer's own limits.fileSize — a static per-instance ceiling that
+   * can't vary per request. A file exceeding the resolved limit is deleted
+   * from Cloudinary here before throwing, so rejected uploads don't leave
+   * orphaned assets behind.
+   * @throws {Error} with statusCode 400 if no file, or the file fails the
+   *   resolved size/format limit.
+   */
+  async processUploadedFile(req) {
+    if (!req.file) {
+      const error = new Error('No video file uploaded');
+      error.statusCode = 400;
+      throw error;
+    }
+
+    const isLocal = process.env.UPLOAD_STORAGE === 'local';
+    const sizeMb = req.file.size ? Math.round((req.file.size / (1024 * 1024)) * 100) / 100 : null;
+    // Local storage never went through Cloudinary, so no real duration/format
+    // metadata is available — format falls back to the original extension,
+    // matching _parseMediaInfo's existing behavior for URLs it can't
+    // otherwise identify.
+    const format = isLocal
+      ? require('path').extname(req.file.originalname || '').replace('.', '').toLowerCase() || null
+      : req.file.format;
+    const duration = isLocal ? null : req.file.duration;
+
+    const limits = req.postUploadLimits;
+    const destroyRejectedUpload = async () => {
+      if (!isLocal && req.file.filename) {
+        await cloudinary.uploader.destroy(req.file.filename, { invalidate: true, resource_type: req.file.resourceType || 'image' }).catch((err) => {
+          console.error('[Upload] Failed to delete rejected Cloudinary asset:', err);
+        });
+      }
+    };
+
+    if (limits && sizeMb !== null && sizeMb > limits.maxFileSizeMb) {
+      await destroyRejectedUpload();
+      const error = new Error(`File size (${sizeMb}MB) exceeds the ${limits.maxFileSizeMb}MB limit for the selected platform(s).`);
+      error.statusCode = 400;
+      throw error;
+    }
+    if (limits && format && limits.allowedFormats.length > 0 && !limits.allowedFormats.includes(format)) {
+      await destroyRejectedUpload();
+      const error = new Error(`Format "${format}" is not allowed for the selected platform(s). Allowed: ${limits.allowedFormats.join(', ')}.`);
+      error.statusCode = 400;
+      throw error;
+    }
+
+    let videoUrl = req.file.path;
+    if (isLocal) {
+      const path = require('path');
+      const relativePath = path.relative(process.cwd(), req.file.path).replace(/\\/g, '/');
+      videoUrl = `/${relativePath}`;
+    }
+
+    return { videoUrl, sizeMb, duration, format };
+  }
+
+  /**
+   * All PlatformLimit rows (every platform/subType) — v1 and v2 of GET
+   * /api/posts/platform-limits share this (see postController.getPlatformLimits
+   * / getPlatformLimitsV2). Consumed by the composer to pre-validate a
+   * File's size/format against the real limit before it's ever uploaded.
+   */
+  async getPlatformLimits() {
+    return prisma.platformLimit.findMany();
   }
 
   _parseMediaInfo(firstMediaUrl, hasMedia) {

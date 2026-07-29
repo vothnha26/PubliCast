@@ -27,8 +27,7 @@ class PostController {
    * Fetch all limits configuration from DB
    */
   getPlatformLimits = asyncHandler(async (req, res) => {
-    const prisma = require('../../config/prisma');
-    const limits = await prisma.platformLimit.findMany();
+    const limits = await postService.getPlatformLimits();
     res.status(200).json({
       message: 'Platform limits retrieved successfully',
       data: limits
@@ -142,22 +141,12 @@ class PostController {
 
   /**
    * POST /api/posts/upload
+   * See postService.processUploadedFile for the enforcement logic (shared
+   * with v2's uploadVideoV2 below).
    */
   uploadVideo = asyncHandler(async (req, res) => {
-    if (!req.file) {
-      return res.status(400).json({ message: 'No video file uploaded' });
-    }
-    const isLocal = process.env.UPLOAD_STORAGE === 'local';
-    let videoUrl = req.file.path;
-    if (isLocal) {
-      const path = require('path');
-      const relativePath = path.relative(process.cwd(), req.file.path).replace(/\\/g, '/');
-      videoUrl = `/${relativePath}`;
-      console.log(`[Upload] Local storage: absolute="${req.file.path}" → relative="${videoUrl}"`);
-    } else {
-      console.log(`[Upload] Cloudinary: url="${videoUrl}"`);
-    }
-    res.status(200).json({ message: 'Video uploaded successfully', videoUrl });
+    const { videoUrl, sizeMb, duration, format } = await postService.processUploadedFile(req);
+    res.status(200).json({ message: 'Video uploaded successfully', videoUrl, sizeMb, duration, format });
   });
 
   /**

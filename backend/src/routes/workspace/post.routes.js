@@ -59,13 +59,18 @@ router.post('/bulk-restore', checkPermission(PERMISSION_KEYS.CREATE_POSTS), post
 router.delete('/trash', checkPermission(PERMISSION_KEYS.DELETE_POSTS), postController.emptyTrash);
 
 const upload = require('../../middlewares/upload.middleware');
+const { uploadForPost } = upload;
+const resolvePostUploadLimits = require('../../middlewares/resolve-post-upload-limits.middleware');
 
 /**
  * POST /api/posts/upload
  * Upload video/image file (MUST be before /:id to avoid Express matching 'upload' as an id)
+ * ?targetPlatforms=FACEBOOK,TIKTOK (optional) narrows the post-upload size/
+ * format check in postController.uploadVideo to those platforms' real
+ * PlatformLimit rows — see resolvePostUploadLimits for details.
  */
-router.post('/upload', checkPermission(PERMISSION_KEYS.CREATE_POSTS), (req, res, next) => {
-  upload.single('video')(req, res, (err) => {
+router.post('/upload', checkPermission(PERMISSION_KEYS.CREATE_POSTS), resolvePostUploadLimits, (req, res, next) => {
+  uploadForPost.single('video')(req, res, (err) => {
     if (err) {
       if (err.message === 'Request aborted' || req.aborted) {
         console.warn('[Multer Upload] Client aborted request during upload.');

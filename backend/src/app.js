@@ -32,6 +32,7 @@ const inboxRoutes = require('./routes/social/inbox.routes');
 // Routes - Workspace Domain
 // const livestreamRoutes = require('./routes/workspace/livestream.routes');
 const postRoutes = require('./routes/workspace/post.routes');
+const postRoutesV2 = require('./routes/workspace/post.routes.v2');
 const mediaLibraryRoutes = require('./routes/workspace/media-library.routes');
 const mediaFolderRoutes = require('./routes/workspace/media-folder.routes');
 const teamRoutes = require('./routes/workspace/team.routes');
@@ -195,6 +196,7 @@ app.use('/api/social', socialRoutes);
 // ── API v2 (response envelope {message, data} — parallel to v1, v1 unchanged) ──
 app.use('/api/v2/social/youtube', youtubeRoutesV2);
 app.use('/api/v2/social/tiktok', tiktokRoutesV2);
+app.use('/api/v2/posts', postRoutesV2);
 app.use('/api/brands', brandRoutes);
 app.use('/api/brands/:brandId/roles', roleRoutes);
 app.use('/api/brands/:brandId/workflows', approvalWorkflowRoutes);
