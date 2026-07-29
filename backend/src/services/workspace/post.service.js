@@ -134,6 +134,57 @@ class PostService {
     return prisma.platformLimit.findMany();
   }
 
+  /**
+   * Validates and upserts per-platform caption/media overrides for a post
+   * (see PostNetworkOverride in schema.prisma). Called inside the same
+   * transaction that creates/updates the Post — an override is meaningless
+   * without the post it belongs to, so they're never written independently.
+   *
+   * networkOverrides: [{ platform, useTemplate, caption?, mediaUrls?, threadPosts? }]
+   * targetPlatforms: the post's own target platform list (already-split array),
+   * used to reject overrides for platforms the post isn't even publishing to.
+   */
+  async upsertNetworkOverrides(postId, networkOverrides, targetPlatforms, tx) {
+    if (!Array.isArray(networkOverrides) || networkOverrides.length === 0) return;
+
+    const targetSet = new Set(targetPlatforms.map((p) => p.trim().toUpperCase()));
+
+    for (const override of networkOverrides) {
+      const platform = override.platform?.trim().toUpperCase();
+      if (!platform || !Object.values(PLATFORMS).includes(platform)) {
+        const error = new Error(`Invalid platform in networkOverrides: "${override.platform}"`);
+        error.statusCode = 400;
+        throw error;
+      }
+      if (!targetSet.has(platform)) {
+        const error = new Error(`Cannot override platform "${platform}" — it is not in this post's targetPlatforms.`);
+        error.statusCode = 400;
+        throw error;
+      }
+
+      const mediaUrls = Array.isArray(override.mediaUrls) ? override.mediaUrls.filter(Boolean) : [];
+      const threadPosts = Array.isArray(override.threadPosts) ? override.threadPosts : undefined;
+
+      await tx.postNetworkOverride.upsert({
+        where: { postId_platform: { postId, platform } },
+        create: {
+          postId,
+          platform,
+          useTemplate: override.useTemplate !== false,
+          caption: override.caption ?? null,
+          mediaUrls: mediaUrls.length > 0 ? mediaUrls.join(SEPARATORS.COMMA) : null,
+          threadPosts: threadPosts ? JSON.stringify(threadPosts) : null,
+        },
+        update: {
+          useTemplate: override.useTemplate !== false,
+          caption: override.caption ?? null,
+          mediaUrls: mediaUrls.length > 0 ? mediaUrls.join(SEPARATORS.COMMA) : null,
+          threadPosts: threadPosts ? JSON.stringify(threadPosts) : null,
+        },
+      });
+    }
+  }
+
   _parseMediaInfo(firstMediaUrl, hasMedia) {
     if (!firstMediaUrl) {
       return { format: null, isVideo: false };
@@ -251,6 +302,13 @@ class PostService {
 
       const created = await postRepository.create(data, tx);
       console.log('[PostService] Post successfully created in DB with ID:', created.id);
+
+      if (postData.networkOverrides) {
+        const targetPlatformsArr = Array.isArray(postData.targetPlatforms)
+          ? postData.targetPlatforms
+          : (postData.targetPlatforms || '').split(SEPARATORS.COMMA).filter(Boolean);
+        await this.upsertNetworkOverrides(created.id, postData.networkOverrides, targetPlatformsArr, tx);
+      }
 
       // Job publish + domain event chỉ được ghi vào outbox trong CÙNG transaction với
       // việc tạo post — outbox là nguồn ghi duy nhất cho job publish-post-${postId},

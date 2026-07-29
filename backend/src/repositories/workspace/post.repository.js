@@ -87,7 +87,8 @@ class PostRepository {
             name: true,
             avatarUrl: true
           }
-        }
+        },
+        networkOverrides: true
       }
     });
   }

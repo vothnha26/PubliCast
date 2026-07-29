@@ -16,7 +16,16 @@ class FetchPostStep extends BaseStep {
       platforms = platforms.filter(p => retryList.includes(p.toUpperCase()));
     }
     context.platforms = platforms;
-    
+
+    // Map override rows by platform so SocialPublishStep can do an O(1)
+    // lookup per platform instead of scanning the array on every iteration.
+    context.networkOverrides = {};
+    if (Array.isArray(post.networkOverrides)) {
+      for (const override of post.networkOverrides) {
+        context.networkOverrides[override.platform] = override;
+      }
+    }
+
     // Parse options from metadata stored in DB
     let parsedMetadata = {};
     if (post.metadata) {

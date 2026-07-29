@@ -11,6 +11,13 @@ const router = express.Router();
 router.use(verifyAuth);
 
 /**
+ * POST /api/v2/posts
+ * Same as v1 POST /api/posts, plus optional req.body.networkOverrides
+ * (per-platform caption/media customization — see PostNetworkOverride).
+ */
+router.post('/', checkPermission(PERMISSION_KEYS.CREATE_POSTS), postControllerV2.createPostV2);
+
+/**
  * GET /api/v2/posts/platform-limits
  */
 router.get('/platform-limits', postControllerV2.getPlatformLimitsV2);

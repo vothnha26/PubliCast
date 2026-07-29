@@ -758,10 +758,36 @@ model Post {
   approvalWorkflows ApprovalWorkflow[]
 
   postAnalyticsSnapshots PostAnalyticsDailySnapshot[] @relation("PostAnalyticsSnapshots")
+  networkOverrides       PostNetworkOverride[]
 
   @@index([brandId])
   @@index([createdByUserId])
   @@map("posts")
+}
+
+// Per-platform caption/media override for a Post whose composer had "edit by
+// network" customization enabled for that platform. Absence of a row for a
+// given (postId, platform) — or a row with useTemplate=true — means publish
+// falls back to the shared Post.caption/mediaUrls, exactly as before this
+// model existed; this table only ever adds an optional override layer, it
+// never replaces Post as the single calendar/approval unit.
+model PostNetworkOverride {
+  id          String       @id @default(uuid())
+  postId      String
+  platform    PlatformType
+  useTemplate Boolean      @default(true)
+  caption     String?      @db.Text
+  mediaUrls   String?      @db.Text
+  // THREADS only: JSON array of {text, mediaUrls} for the reply chain,
+  // parallel to draft.networkCustom.THREADS.threadPosts on the frontend.
+  threadPosts String?      @db.Text
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  @@unique([postId, platform])
+  @@map("post_network_overrides")
 }
 
 model PostAnalyticsDailySnapshot {
