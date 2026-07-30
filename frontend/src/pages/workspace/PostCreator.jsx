@@ -29,7 +29,6 @@ import { ComposerFooter } from "../../components/workspace/post-creator/Composer
 import { ComposerErrorPanel } from "../../components/workspace/post-creator/ComposerErrorPanel";
 import { PreviewHeader } from "../../components/workspace/post-creator/previews/PreviewHeader";
 import { PreviewBody } from "../../components/workspace/post-creator/previews/PreviewBody";
-import { PreviewFooter } from "../../components/workspace/post-creator/previews/PreviewFooter";
 import { NotesPanel } from "../../components/workspace/post-creator/NotesPanel";
 
 // Context Provider
@@ -507,43 +506,26 @@ export function PostCreatorPage() {
           </button>
         </div>
 
-        {/* Main 2-Region Workspace */}
-        <div className="flex-1 flex gap-4 overflow-hidden min-h-0">
+        {/* Main Unified Workspace Card */}
+        <div className="flex-1 bg-white rounded-[24px] border border-gray-200/80 shadow-xl flex overflow-hidden min-h-0">
 
-          {/* ── REGION 1: COMPOSE ── */}
-          <div className="flex-[1.15] flex flex-col min-h-0 overflow-hidden">
-            {/* Region Label */}
-            <div className="flex items-center gap-2 px-1 pb-2 shrink-0">
-              <span className="text-[9px] font-black uppercase tracking-[0.15em] text-gray-400 font-sans">✏️ Compose</span>
-              <div className="flex-1 h-px bg-gray-300/50" />
-            </div>
-            {/* Compose Card */}
-            <div className="flex-1 bg-white rounded-[20px] border border-gray-200/80 shadow-sm flex flex-col overflow-hidden min-h-0">
-              <ComposerHeader />
-              <ComposerBody />
-              <ComposerErrorPanel />
-              <ComposerFooter />
-            </div>
+          {/* Cột 1: COMPOSE (Bên trái) */}
+          <div className="flex-[1.15] flex flex-col min-h-0 overflow-hidden border-r border-gray-100">
+            <ComposerHeader />
+            <ComposerBody />
+            <ComposerErrorPanel />
+            <ComposerFooter />
           </div>
 
-          {/* ── REGION 2: PREVIEW (hoặc NOTES khi isNotesOpen) ── */}
-          <div className="flex-[0.85] flex flex-col min-h-0 overflow-hidden">
-            {/* Region Label — đổi text theo trạng thái */}
-            <div className="flex items-center gap-2 px-1 pb-2 shrink-0">
-              <span className="text-[9px] font-black uppercase tracking-[0.15em] text-gray-400 font-sans">
-                {isNotesOpen ? "📝 Notes" : "👁 Preview"}
-              </span>
-              <div className="flex-1 h-px bg-gray-300/50" />
-            </div>
-            {/* Nội dung: NotesPanel hoặc Preview Card */}
+          {/* Cột 2: PREVIEW / NOTES (Bên phải) */}
+          <div className="flex-[0.85] flex flex-col min-h-0 overflow-hidden bg-white">
             {isNotesOpen ? (
               <NotesPanel />
             ) : (
-              <div className="flex-1 bg-[#F7F8FA] rounded-[20px] border border-gray-200/80 shadow-sm flex flex-col overflow-hidden min-h-0">
+              <>
                 <PreviewHeader />
                 <PreviewBody />
-                <PreviewFooter />
-              </div>
+              </>
             )}
           </div>
 
@@ -603,7 +585,8 @@ export function PostCreatorPage() {
                 }}
                 onAccept={(result, path) => {
                   if (isUploadingThumbnail) {
-                    setYoutubeThumbnail(path);
+                    // mediaThumbnailUrl là SSoT chung cho thumbnail — YouTube/Facebook Reel sẽ đọc từ đây khi submit
+                    formState.setMediaThumbnailUrl(path);
                     setIsUploadingThumbnail(false);
                   } else {
                     // Normalize thành array items { file, path, previewUrl }

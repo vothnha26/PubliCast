@@ -2,6 +2,7 @@ import { isVideoPath } from './url';
 import { PLATFORMS } from '../constants/platforms';
 import { PLATFORM_CONFIGS } from '../constants/platformRegistry';
 import { POST_TYPE } from '../constants/postTypes';
+import { isHorizontalOrSquareVideo, PLATFORM_VALIDATION_MESSAGES } from '../constants/platformValidation.constants';
 
 /**
  * validatePostForm
@@ -26,6 +27,7 @@ export function validatePostForm({
   platformLimits = [],
   mediaCount = 0,
   editingPost,
+  youtubeMadeForKids = null,
   postMedia = [],
   captionText = '',
   networkCustom = {}
@@ -119,7 +121,9 @@ export function validatePostForm({
           videoDuration: videoDuration || 0,
           videoWidth: videoWidth || 0,
           videoHeight: videoHeight || 0,
-          mediaCount
+          mediaCount,
+          caption: captionText,
+          youtubeMadeForKids
         };
 
         const alwaysRules = config.validationRules?._always || [];
@@ -166,12 +170,28 @@ export function validatePostForm({
 
       // Validate duration (chỉ cho video)
       if (isVid && videoDuration) {
-        if (limitConfig.minVideoDuration && videoDuration < limitConfig.minVideoDuration) {
+        if (platUpper === 'YOUTUBE' && subType === 'SHORT' && limitConfig.maxVideoDuration && videoDuration > limitConfig.maxVideoDuration) {
+          errors.push(`Short \u2192 Video length can't exceed ${limitConfig.maxVideoDuration} seconds. These videos don't meet the requirements: #1 (${videoDuration.toFixed(1)}s).`);
+        } else if (limitConfig.minVideoDuration && videoDuration < limitConfig.minVideoDuration) {
           errors.push(`[${platUpper} - ${subType}] Video duration (${Math.round(videoDuration)}s) is shorter than the minimum required ${limitConfig.minVideoDuration}s.`);
-        }
-        if (limitConfig.maxVideoDuration && videoDuration > limitConfig.maxVideoDuration) {
+        } else if (limitConfig.maxVideoDuration && videoDuration > limitConfig.maxVideoDuration) {
           errors.push(`[${platUpper} - ${subType}] Video duration (${Math.round(videoDuration)}s) is longer than the maximum allowed ${limitConfig.maxVideoDuration}s.`);
         }
+
+        // Validate orientation cho Short
+        if (platUpper === 'YOUTUBE' && subType === 'SHORT' && isHorizontalOrSquareVideo(videoWidth, videoHeight)) {
+          errors.push(PLATFORM_VALIDATION_MESSAGES.YOUTUBE.SHORT_INVALID_ORIENTATION);
+        }
+      }
+    }
+
+    // Validate YouTube Audience & Title
+    if (platUpper === 'YOUTUBE') {
+      if (!captionText || !captionText.trim() || captionText.length > 100 || /[<>]/.test(captionText)) {
+        errors.push("Video or short title is required and must be shorter than 100 characters. The characters < or > are not allowed.");
+      }
+      if (typeof youtubeMadeForKids !== 'boolean') {
+        errors.push("It is necessary to select the audience of the video.");
       }
     }
 

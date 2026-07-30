@@ -1,5 +1,6 @@
 import { PLATFORMS } from './platforms';
 import { POST_TYPE } from './postTypes';
+import { VALIDATION_RULES } from './platformValidation.constants';
 
 const graphemeSegmenter = typeof Intl !== 'undefined' && Intl.Segmenter
   ? new Intl.Segmenter('en', { granularity: 'grapheme' })
@@ -24,42 +25,18 @@ export const PLATFORM_CONFIGS = {
     },
     validationRules: {
       album: [
-        {
-          check: ({ mediaCount }) => !mediaCount || mediaCount < 2,
-          message: () => "Facebook Album -> Add at least 2 images."
-        }
+        VALIDATION_RULES.FACEBOOK.ALBUM_MIN_MEDIA
       ],
       reel: [
-        {
-          check: ({ hasMedia }) => !hasMedia,
-          message: () => "Reel -> Add at least 1 video."
-        },
-        {
-          check: ({ hasMedia, isVideo }) => hasMedia && !isVideo,
-          message: () => "Facebook Reel must be a video file."
-        },
-        {
-          check: ({ videoDuration }) => videoDuration > 0 && (videoDuration < 3 || videoDuration > 90),
-          message: ({ videoDuration }) => `Facebook Reels must be between 3 and 90 seconds. (Current: ${videoDuration.toFixed(1)}s)`
-        },
-        {
-          check: ({ videoWidth, videoHeight }) => videoWidth > 0 && videoHeight > 0 && videoWidth >= videoHeight,
-          message: () => "Facebook Reels must be vertical (9:16 aspect ratio). Current ratio is horizontal or square."
-        }
+        VALIDATION_RULES.FACEBOOK.REEL_MEDIA_REQUIRED,
+        VALIDATION_RULES.FACEBOOK.REEL_MUST_BE_VIDEO,
+        VALIDATION_RULES.FACEBOOK.REEL_DURATION_RANGE,
+        VALIDATION_RULES.FACEBOOK.REEL_MUST_BE_VERTICAL
       ],
       story: [
-        {
-          check: ({ hasMedia }) => !hasMedia,
-          message: () => "Auto publish (story) -> Add at least 1 image or video."
-        },
-        {
-          check: ({ isVideo, videoDuration }) => isVideo && videoDuration > 15,
-          message: ({ videoDuration }) => `Facebook Story videos should be 15 seconds or less. (Current: ${videoDuration.toFixed(1)}s)`
-        },
-        {
-          check: ({ isVideo, videoWidth, videoHeight }) => isVideo && videoWidth > 0 && videoHeight > 0 && videoWidth >= videoHeight,
-          message: () => "Facebook Story videos should be vertical (9:16 aspect ratio)."
-        }
+        VALIDATION_RULES.FACEBOOK.STORY_MEDIA_REQUIRED,
+        VALIDATION_RULES.FACEBOOK.STORY_MAX_DURATION,
+        VALIDATION_RULES.FACEBOOK.STORY_MUST_BE_VERTICAL
       ]
     }
   },
@@ -79,34 +56,16 @@ export const PLATFORM_CONFIGS = {
     },
     validationRules: {
       _always: [
-        {
-          check: ({ hasMedia }) => !hasMedia,
-          message: () => "Instagram requires at least one photo or video to publish a post."
-        }
+        VALIDATION_RULES.INSTAGRAM.MEDIA_REQUIRED
       ],
       reel: [
-        {
-          check: ({ hasMedia, isVideo }) => hasMedia && !isVideo,
-          message: () => "Instagram Reel must be a video."
-        },
-        {
-          check: ({ videoDuration }) => videoDuration > 0 && (videoDuration < 3 || videoDuration > 900),
-          message: ({ videoDuration }) => `Instagram Reels must be between 3 seconds and 15 minutes. (Current: ${videoDuration.toFixed(1)}s)`
-        },
-        {
-          check: ({ videoWidth, videoHeight }) => videoWidth > 0 && videoHeight > 0 && videoWidth >= videoHeight,
-          message: () => "Instagram Reels must be vertical (9:16 aspect ratio)."
-        }
+        VALIDATION_RULES.INSTAGRAM.REEL_MUST_BE_VIDEO,
+        VALIDATION_RULES.INSTAGRAM.REEL_DURATION_RANGE,
+        VALIDATION_RULES.INSTAGRAM.REEL_MUST_BE_VERTICAL
       ],
       story: [
-        {
-          check: ({ isVideo, videoDuration }) => isVideo && videoDuration > 15,
-          message: ({ videoDuration }) => `Instagram Story videos should be 15 seconds or less. (Current: ${videoDuration.toFixed(1)}s)`
-        },
-        {
-          check: ({ isVideo, videoWidth, videoHeight }) => isVideo && videoWidth > 0 && videoHeight > 0 && videoWidth >= videoHeight,
-          message: () => "Instagram Story videos should be vertical (9:16 aspect ratio)."
-        }
+        VALIDATION_RULES.INSTAGRAM.STORY_MAX_DURATION,
+        VALIDATION_RULES.INSTAGRAM.STORY_MUST_BE_VERTICAL
       ],
       post: []
     }
@@ -124,24 +83,14 @@ export const PLATFORM_CONFIGS = {
     },
     validationRules: {
       _always: [
-        {
-          check: ({ hasMedia }) => !hasMedia,
-          message: () => "YouTube -> Add at least 1 video."
-        },
-        {
-          check: ({ hasMedia, isVideo }) => hasMedia && !isVideo,
-          message: () => "YouTube publication must be a video file."
-        }
+        VALIDATION_RULES.YOUTUBE.MEDIA_REQUIRED,
+        VALIDATION_RULES.YOUTUBE.MUST_BE_VIDEO,
+        VALIDATION_RULES.YOUTUBE.TITLE_REQUIRED_AND_INVALID,
+        VALIDATION_RULES.YOUTUBE.AUDIENCE_REQUIRED
       ],
       short: [
-        {
-          check: ({ videoDuration }) => videoDuration > 60,
-          message: ({ videoDuration }) => `YouTube Shorts must be 60 seconds or less. (Current: ${videoDuration.toFixed(1)}s)`
-        },
-        {
-          check: ({ videoWidth, videoHeight }) => videoWidth > 0 && videoHeight > 0 && videoWidth > videoHeight,
-          message: () => "YouTube Shorts must be vertical or square. Current ratio is horizontal."
-        }
+        VALIDATION_RULES.YOUTUBE.SHORT_DURATION_EXCEEDED,
+        VALIDATION_RULES.YOUTUBE.SHORT_INVALID_ORIENTATION
       ]
     }
   },
@@ -157,10 +106,7 @@ export const PLATFORM_CONFIGS = {
     },
     validationRules: {
       _always: [
-        {
-          check: ({ hasMedia }) => !hasMedia,
-          message: () => "TikTok -> Add at least 1 image or video."
-        }
+        VALIDATION_RULES.TIKTOK.MEDIA_REQUIRED
       ]
     }
   },
@@ -176,16 +122,7 @@ export const PLATFORM_CONFIGS = {
     },
     validationRules: {
       _always: [
-        {
-          check: ({ caption, hasMedia }) => {
-            const limit = hasMedia ? 1024 : 4096;
-            return caption && caption.length > limit;
-          },
-          message: ({ caption, hasMedia }) => {
-            const limit = hasMedia ? 1024 : 4096;
-            return `Telegram post caption with ${hasMedia ? 'media' : 'text only'} must be ${limit} characters or less. (Current: ${caption ? caption.length : 0})`;
-          }
-        }
+        VALIDATION_RULES.TELEGRAM.CAPTION_MAX_LIMIT
       ]
     }
   },
@@ -204,10 +141,7 @@ export const PLATFORM_CONFIGS = {
     },
     validationRules: {
       _always: [
-        {
-          check: ({ caption }) => caption && caption.length > 500,
-          message: ({ caption }) => `Bài đăng Threads phải có độ dài dưới 500 ký tự. (Hiện tại: ${caption ? caption.length : 0})`
-        }
+        VALIDATION_RULES.THREADS.CAPTION_MAX_LIMIT
       ]
     }
   },
@@ -224,20 +158,10 @@ export const PLATFORM_CONFIGS = {
     validationRules: {
       _always: [
         {
-          check: ({ caption }) => {
-            if (!caption) return false;
-            const count = graphemeSegmenter ? [...graphemeSegmenter.segment(caption)].length : Array.from(caption).length;
-            return count > 300;
-          },
-          message: ({ caption }) => {
-            const count = caption ? (graphemeSegmenter ? [...graphemeSegmenter.segment(caption)].length : Array.from(caption).length) : 0;
-            return `Bluesky post exceeds 300 graphemes. (Current: ${count})`;
-          }
+          check: ({ caption }) => VALIDATION_RULES.BLUESKY.GRAPHEME_LIMIT_EXCEEDED.check({ caption, graphemeSegmenter }),
+          message: ({ caption }) => VALIDATION_RULES.BLUESKY.GRAPHEME_LIMIT_EXCEEDED.message({ caption, graphemeSegmenter })
         },
-        {
-          check: ({ mediaCount }) => mediaCount > 4,
-          message: ({ mediaCount }) => `Bluesky posts allow a maximum of 4 images. (Current: ${mediaCount})`
-        }
+        VALIDATION_RULES.BLUESKY.MEDIA_LIMIT_EXCEEDED
       ]
     }
   },
@@ -253,18 +177,9 @@ export const PLATFORM_CONFIGS = {
     },
     validationRules: {
       _always: [
-        {
-          check: ({ title, caption }) => !title && !caption,
-          message: () => "Reddit post requires a title (max 300 characters)."
-        },
-        {
-          check: ({ title }) => title && title.length > 300,
-          message: ({ title }) => `Reddit post title cannot exceed 300 characters. (Current: ${title ? title.length : 0})`
-        },
-        {
-          check: ({ caption }) => caption && caption.length > 40000,
-          message: ({ caption }) => `Reddit body text cannot exceed 40,000 characters. (Current: ${caption ? caption.length : 0})`
-        }
+        VALIDATION_RULES.REDDIT.TITLE_OR_CAPTION_REQUIRED,
+        VALIDATION_RULES.REDDIT.TITLE_MAX_LIMIT,
+        VALIDATION_RULES.REDDIT.BODY_MAX_LIMIT
       ]
     }
   },
@@ -278,18 +193,9 @@ export const PLATFORM_CONFIGS = {
     getPostType: () => POST_TYPE.VIDEO,
     validationRules: {
       _always: [
-        {
-          check: ({ hasMedia }) => !!hasMedia,
-          message: () => "Twitch does not support media attachments for scheduled posts. Use Livestream Chat or Stream Title instead."
-        },
-        {
-          check: ({ title }) => title && title.length > 140,
-          message: ({ title }) => `Stream title must be 140 characters or less. (Current: ${title ? title.length : 0})`
-        },
-        {
-          check: ({ caption }) => caption && caption.length > 500,
-          message: ({ caption }) => `Chat message must be 500 characters or less. (Current: ${caption ? caption.length : 0})`
-        }
+        VALIDATION_RULES.TWITCH.NO_MEDIA_SUPPORT,
+        VALIDATION_RULES.TWITCH.STREAM_TITLE_MAX_LIMIT,
+        VALIDATION_RULES.TWITCH.CHAT_MAX_LIMIT
       ]
     }
   }

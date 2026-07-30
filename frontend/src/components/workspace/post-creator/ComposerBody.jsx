@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 import {
   Info, AlertCircle, Youtube, MoreHorizontal, Edit, Type, Trash2,
   ImageIcon, Plus, Smile, Link2, Search, Languages, FileText, Send,
-  Settings, ChevronDown, Instagram, MessageSquare, X,
+  Settings, ChevronDown, Instagram, MessageSquare, X, EyeOff,
   Folder, MapPin, Sparkles, Lock
 } from "lucide-react";
 import { usePostCreatorFormContext } from "../../../context/PostCreatorFormContext";
@@ -35,6 +35,24 @@ export function ComposerBody() {
   const navigate = useNavigate();
   const [showAICopilot, setShowAICopilot] = useState(false);
   const [showStockPicker, setShowStockPicker] = useState(false);
+  const [activeMediaMenuIndex, setActiveMediaMenuIndex] = useState(null);
+  const [spoilersMap, setSpoilersMap] = useState({});
+  const thumbnailInputRef = React.useRef(null);
+
+  const handleToggleSpoiler = (key) => {
+    setSpoilersMap((prev) => ({
+      ...prev,
+      [key]: !prev[key]
+    }));
+  };
+
+  const handleThumbnailUpload = () => {
+    setIsUploadingThumbnail(true);
+    setMediaTypeFilter?.(MEDIA_FILTER_TYPES.IMAGE);
+    setUploadModalTab("computer");
+    setShowUploadModal(true);
+  };
+
   const {
     hasCreatePermission,
     hasApprovePermission,
@@ -95,6 +113,8 @@ export function ComposerBody() {
     setShowUploadModal,
     setUploadModalTab,
     setMediaTypeFilter,
+    setIsUploadingThumbnail,
+    mediaThumbnailUrl,
     getBackupPayload,
     backupFormState,
     closePostCreatorTemporarily,
@@ -344,70 +364,203 @@ export function ComposerBody() {
             </div>
           ) : (
             <>
+
               {/* Multiple thumbnails for standard posts */}
               {effectivePostMedia && effectivePostMedia.length > 0 ? (
                 <div className="px-6 pb-4 bg-white flex flex-wrap gap-4 animate-in fade-in duration-300">
                   {effectivePostMedia.map((item, index) => {
                     const isItemVid = isVideoPath(item.previewUrl || item.path, item.file);
+                    const isSpoilerActive = !!spoilersMap[index];
                     return (
                       <div key={index} className="relative group">
                         <div className="w-16 h-16 rounded-2xl overflow-hidden border border-gray-100 shadow-md bg-gray-50 flex items-center justify-center relative">
                           {isItemVid ? (
                             <>
-                              <video src={item.previewUrl || item.path} className="w-full h-full object-cover" />
-                              {/* Overlay Edit Video khi hover */}
-                              <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                                <button
-                                  type="button"
-                                  title={t("planner:postCreator.composer.editVideo")}
-                                  onClick={() => {
-                                    setEditingPostMediaIndex(index);
-                                    setShowVideoEditor(true);
-                                  }}
-                                  className="w-7 h-7 rounded-full bg-white/90 hover:bg-white text-gray-800 flex items-center justify-center cursor-pointer shadow-md active:scale-90 transition-all"
-                                >
-                                  <Edit size={12} />
-                                </button>
+                          <video 
+                            src={item.previewUrl || item.path} 
+                            poster={mediaThumbnailUrl || undefined}
+                            className="w-full h-full object-cover" 
+                          />
+                              <div className="absolute inset-0 bg-black/30 flex items-center justify-center">
+                                <div className="w-6 h-6 rounded-full bg-white/80 flex items-center justify-center">
+                                  <div className="w-0 h-0 border-y-4 border-y-transparent border-l-6 border-l-black ml-0.5" />
+                                </div>
                               </div>
                             </>
                           ) : (
                             <>
-                              <img src={item.previewUrl || item.path} alt="Preview" className="w-full h-full object-cover" />
-                              <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                                <button
-                                  type="button"
-                                  title={t("planner:postCreator.composer.editImage")}
-                                  onClick={() => {
-                                    setEditingPostMediaIndex(index);
-                                    setShowImageEditor(true);
-                                  }}
-                                  className="w-7 h-7 rounded-full bg-white/90 hover:bg-white text-gray-800 flex items-center justify-center cursor-pointer shadow-md active:scale-90 transition-all"
-                                >
-                                  <Edit size={12} />
-                                </button>
-                              </div>
+                              <img
+                                src={item.previewUrl || item.path}
+                                alt="Preview"
+                                className={`w-full h-full object-cover transition-all ${isSpoilerActive ? 'blur-sm scale-105' : ''}`}
+                              />
+                              {isSpoilerActive && (
+                                <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
+                                  <EyeOff size={16} className="text-white" />
+                                </div>
+                              )}
                             </>
                           )}
                         </div>
+
+                        {/* Nút 3 chấm tròn góc trên bên phải */}
                         <button
                           type="button"
-                          onClick={() => handleRemoveMediaItem(index)}
-                          className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-red-500 hover:bg-red-600 text-white flex items-center justify-center cursor-pointer shadow-md opacity-0 group-hover:opacity-100 transition-opacity z-20"
+                          onClick={() => setActiveMediaMenuIndex(activeMediaMenuIndex === index ? null : index)}
+                          className="absolute -top-1.5 -right-1.5 w-6 h-6 rounded-full bg-black/80 hover:bg-black text-white flex items-center justify-center cursor-pointer transition-all shadow-md z-20"
                         >
-                          <X size={10} />
+                          <MoreHorizontal size={12} />
                         </button>
+
+                        {/* Popover Menu tùy chỉnh */}
+                        {activeMediaMenuIndex === index && (
+                          <div className="absolute bottom-full left-0 mb-2 min-w-[220px] w-max bg-white rounded-2xl shadow-2xl border border-gray-100 py-2 z-50 text-left text-xs font-sans text-gray-700 animate-in fade-in slide-in-from-bottom-1">
+                            {isItemVid ? (
+                              /* Video Menu: Edit video, Add alt text, Upload video thumbnail, Remove */
+                              <>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setActiveMediaMenuIndex(null);
+                                    setEditingPostMediaIndex(index);
+                                    setShowVideoEditor(true);
+                                  }}
+                                  className="w-full flex items-center gap-2.5 px-4 py-2 hover:bg-gray-50 transition-all cursor-pointer font-bold text-gray-700 whitespace-nowrap font-sans"
+                                >
+                                  <Edit size={14} className="text-gray-500" />
+                                  {t("planner:postCreator.composer.editVideo")}
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setActiveMediaMenuIndex(null);
+                                    setEditingPostMediaIndex(index);
+                                    setShowAltTextModal(true);
+                                  }}
+                                  className="w-full flex items-center gap-2.5 px-4 py-2 hover:bg-gray-50 transition-all cursor-pointer font-bold text-gray-700 whitespace-nowrap font-sans"
+                                >
+                                  <Type size={14} className="text-gray-500" />
+                                  {t("planner:postCreator.composer.imageMenu.altText")}
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setActiveMediaMenuIndex(null);
+                                    handleThumbnailUpload();
+                                  }}
+                                  className="w-full flex items-center gap-2.5 px-4 py-2 hover:bg-gray-50 transition-all cursor-pointer font-bold text-gray-700 whitespace-nowrap font-sans"
+                                >
+                                  <ImageIcon size={14} className="text-gray-500" />
+                                  Upload video thumbnail
+                                </button>
+                                <div className="h-px bg-gray-100 my-1" />
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setActiveMediaMenuIndex(null);
+                                    handleRemoveMediaItem(index);
+                                  }}
+                                  className="w-full flex items-center gap-2.5 px-4 py-2 hover:bg-red-50 text-red-600 transition-all cursor-pointer font-bold whitespace-nowrap font-sans"
+                                >
+                                  <Trash2 size={14} />
+                                  {t("planner:postCreator.composer.imageMenu.remove")}
+                                </button>
+                              </>
+                            ) : (
+                              /* Image Menu: Edit image, Spoiler (switch), Add alt text, Remove */
+                              <>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setActiveMediaMenuIndex(null);
+                                    setEditingPostMediaIndex(index);
+                                    setShowImageEditor(true);
+                                  }}
+                                  className="w-full flex items-center gap-2.5 px-4 py-2 hover:bg-gray-50 transition-all cursor-pointer font-bold text-gray-700 whitespace-nowrap font-sans"
+                                >
+                                  <Edit size={14} className="text-gray-500" />
+                                  {t("planner:postCreator.composer.imageMenu.edit")}
+                                </button>
+                                <div 
+                                  onClick={() => handleToggleSpoiler(index)}
+                                  className="w-full flex items-center justify-between px-4 py-2 hover:bg-gray-50 transition-all cursor-pointer font-bold text-gray-700 whitespace-nowrap font-sans"
+                                >
+                                  <div className="flex items-center gap-2.5">
+                                    <EyeOff size={14} className="text-gray-500" />
+                                    <span>Spoiler</span>
+                                  </div>
+                                  <div className={`w-8 h-4.5 rounded-full transition-colors relative ml-4 ${isSpoilerActive ? 'bg-gray-900' : 'bg-gray-200'}`}>
+                                    <div className={`w-3.5 h-3.5 rounded-full bg-white absolute top-0.5 transition-transform ${isSpoilerActive ? 'translate-x-4' : 'translate-x-0.5'}`} />
+                                  </div>
+                                </div>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setActiveMediaMenuIndex(null);
+                                    setEditingPostMediaIndex(index);
+                                    setShowAltTextModal(true);
+                                  }}
+                                  className="w-full flex items-center gap-2.5 px-4 py-2 hover:bg-gray-50 transition-all cursor-pointer font-bold text-gray-700 whitespace-nowrap font-sans"
+                                >
+                                  <Type size={14} className="text-gray-500" />
+                                  {t("planner:postCreator.composer.imageMenu.altText")}
+                                </button>
+                                <div className="h-px bg-gray-100 my-1" />
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setActiveMediaMenuIndex(null);
+                                    handleRemoveMediaItem(index);
+                                  }}
+                                  className="w-full flex items-center gap-2.5 px-4 py-2 hover:bg-red-50 text-red-600 transition-all cursor-pointer font-bold whitespace-nowrap font-sans"
+                                >
+                                  <Trash2 size={14} />
+                                  {t("planner:postCreator.composer.imageMenu.remove")}
+                                </button>
+                              </>
+                            )}
+                          </div>
+                        )}
                       </div>
                     );
                   })}
                 </div>
               ) : null}
 
-              {/* Thumbnail Image display */}
-              {(!effectivePostMedia || effectivePostMedia.length === 0) && isImageFile && videoFileUrl && (
+              {/* Single Thumbnail Image / Video display */}
+              {(!effectivePostMedia || effectivePostMedia.length === 0) && videoFileUrl && (
                 <div className="px-6 pb-4 bg-white flex flex-wrap gap-3 animate-in fade-in duration-300">
                   <div className="relative">
-                    <div className="w-16 h-16 rounded-2xl overflow-hidden border border-gray-100 shadow-md">
-                      <img src={videoFileUrl} alt="Preview" data-testid="post-image-preview" style={getImageStyle(imageTransform)} className={`w-full h-full object-cover ${getImageFilterClass(imageTransform?.filter)}`} />
+                    <div className="w-16 h-16 rounded-2xl overflow-hidden border border-gray-100 shadow-md relative">
+                      {isImageFile ? (
+                        <>
+                          <img
+                            src={videoFileUrl}
+                            alt="Preview"
+                            data-testid="post-image-preview"
+                            style={getImageStyle(imageTransform)}
+                            className={`w-full h-full object-cover ${spoilersMap['single'] ? 'blur-sm scale-105' : ''} ${getImageFilterClass(imageTransform?.filter)}`}
+                          />
+                          {spoilersMap['single'] && (
+                            <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
+                              <EyeOff size={16} className="text-white" />
+                            </div>
+                          )}
+                        </>
+                      ) : (
+                        <div className="w-full h-full bg-gray-900 flex items-center justify-center relative">
+                          <video 
+                            src={videoFileUrl} 
+                            poster={mediaThumbnailUrl || undefined}
+                            className="w-full h-full object-cover" 
+                          />
+                          <div className="absolute inset-0 bg-black/30 flex items-center justify-center">
+                            <div className="w-6 h-6 rounded-full bg-white/80 flex items-center justify-center">
+                              <div className="w-0 h-0 border-y-4 border-y-transparent border-l-6 border-l-black ml-0.5" />
+                            </div>
+                          </div>
+                        </div>
+                      )}
                     </div>
                     
                     <button 
@@ -419,43 +572,90 @@ export function ComposerBody() {
                     </button>
 
                     {showImageMenu && (
-                      <div className="absolute bottom-full left-0 mb-2 w-56 bg-white rounded-2xl shadow-2xl border border-gray-100 py-2 z-50 text-left text-xs text-gray-700 animate-in fade-in slide-in-from-bottom-1">
-                        <button 
-                          type="button" 
-                          onClick={() => { setShowImageMenu(false); setShowImageEditor(true); }}
-                          className="w-full flex items-center gap-2.5 px-4 py-2 hover:bg-gray-50 transition-all cursor-pointer font-bold text-gray-700 whitespace-nowrap font-sans"
-                        >
-                          <Edit size={14} className="text-gray-500" />
-                          {t("planner:postCreator.composer.imageMenu.edit")}
-                        </button>
-                        <button 
-                          type="button" 
-                          onClick={() => { setShowImageMenu(false); toast.info("Edit with Adobe Express clicked"); }}
-                          className="w-full flex items-center gap-2.5 px-4 py-2 hover:bg-gray-50 transition-all cursor-pointer font-bold text-gray-700 whitespace-nowrap font-sans"
-                        >
-                          <span className="w-4 h-4 rounded-md bg-gradient-to-tr from-[#FF0000] via-[#FF0080] to-[#7F00FF] flex items-center justify-center text-[9px] font-black text-white shrink-0 select-none">A</span>
-                          {t("planner:postCreator.composer.imageMenu.adobe")}
-                        </button>
-                        <button 
-                          type="button" 
-                          onClick={() => { setShowImageMenu(false); setShowAltTextModal(true); }}
-                          className="w-full flex items-center gap-2.5 px-4 py-2 hover:bg-gray-50 transition-all cursor-pointer font-bold text-gray-700 whitespace-nowrap font-sans"
-                        >
-                          <Type size={14} className="text-gray-500" />
-                          {t("planner:postCreator.composer.imageMenu.altText")}
-                        </button>
-                        <div className="h-px bg-gray-100 my-1" />
-                        <button 
-                          type="button" 
-                          onClick={() => {
-                            handleRemoveVideo();
-                            setShowImageMenu(false);
-                          }}
-                          className="w-full flex items-center gap-2.5 px-4 py-2 hover:bg-red-50 text-red-600 transition-all cursor-pointer font-bold whitespace-nowrap font-sans"
-                        >
-                          <Trash2 size={14} />
-                          {t("planner:postCreator.composer.imageMenu.remove")}
-                        </button>
+                      <div className="absolute bottom-full left-0 mb-2 min-w-[220px] w-max bg-white rounded-2xl shadow-2xl border border-gray-100 py-2 z-50 text-left text-xs font-sans text-gray-700 animate-in fade-in slide-in-from-bottom-1">
+                        {isImageFile ? (
+                          <>
+                            <button 
+                              type="button" 
+                              onClick={() => { setShowImageMenu(false); setShowImageEditor(true); }}
+                              className="w-full flex items-center gap-2.5 px-4 py-2 hover:bg-gray-50 transition-all cursor-pointer font-bold text-gray-700 whitespace-nowrap font-sans"
+                            >
+                              <Edit size={14} className="text-gray-500" />
+                              {t("planner:postCreator.composer.imageMenu.edit")}
+                            </button>
+                            <div 
+                              onClick={() => handleToggleSpoiler('single')}
+                              className="w-full flex items-center justify-between px-4 py-2 hover:bg-gray-50 transition-all cursor-pointer font-bold text-gray-700 whitespace-nowrap font-sans"
+                            >
+                              <div className="flex items-center gap-2.5">
+                                <EyeOff size={14} className="text-gray-500" />
+                                <span>Spoiler</span>
+                              </div>
+                              <div className={`w-8 h-4.5 rounded-full transition-colors relative ml-4 ${spoilersMap['single'] ? 'bg-gray-900' : 'bg-gray-200'}`}>
+                                <div className={`w-3.5 h-3.5 rounded-full bg-white absolute top-0.5 transition-transform ${spoilersMap['single'] ? 'translate-x-4' : 'translate-x-0.5'}`} />
+                              </div>
+                            </div>
+                            <button 
+                              type="button" 
+                              onClick={() => { setShowImageMenu(false); setShowAltTextModal(true); }}
+                              className="w-full flex items-center gap-2.5 px-4 py-2 hover:bg-gray-50 transition-all cursor-pointer font-bold text-gray-700 whitespace-nowrap font-sans"
+                            >
+                              <Type size={14} className="text-gray-500" />
+                              {t("planner:postCreator.composer.imageMenu.altText")}
+                            </button>
+                            <div className="h-px bg-gray-100 my-1" />
+                            <button 
+                              type="button" 
+                              onClick={() => {
+                                handleRemoveVideo();
+                                setShowImageMenu(false);
+                              }}
+                              className="w-full flex items-center gap-2.5 px-4 py-2 hover:bg-red-50 text-red-600 transition-all cursor-pointer font-bold whitespace-nowrap font-sans"
+                            >
+                              <Trash2 size={14} />
+                              {t("planner:postCreator.composer.imageMenu.remove")}
+                            </button>
+                          </>
+                        ) : (
+                          <>
+                            <button 
+                              type="button" 
+                              onClick={() => { setShowImageMenu(false); setShowVideoEditor(true); }}
+                              className="w-full flex items-center gap-2.5 px-4 py-2 hover:bg-gray-50 transition-all cursor-pointer font-bold text-gray-700 whitespace-nowrap font-sans"
+                            >
+                              <Edit size={14} className="text-gray-500" />
+                              {t("planner:postCreator.composer.editVideo")}
+                            </button>
+                            <button 
+                              type="button" 
+                              onClick={() => { setShowImageMenu(false); setShowAltTextModal(true); }}
+                              className="w-full flex items-center gap-2.5 px-4 py-2 hover:bg-gray-50 transition-all cursor-pointer font-bold text-gray-700 whitespace-nowrap font-sans"
+                            >
+                              <Type size={14} className="text-gray-500" />
+                              {t("planner:postCreator.composer.imageMenu.altText")}
+                            </button>
+                            <button 
+                              type="button" 
+                              onClick={() => { setShowImageMenu(false); handleThumbnailUpload(); }}
+                              className="w-full flex items-center gap-2.5 px-4 py-2 hover:bg-gray-50 transition-all cursor-pointer font-bold text-gray-700 whitespace-nowrap font-sans"
+                            >
+                              <ImageIcon size={14} className="text-gray-500" />
+                              Upload video thumbnail
+                            </button>
+                            <div className="h-px bg-gray-100 my-1" />
+                            <button 
+                              type="button" 
+                              onClick={() => {
+                                handleRemoveVideo();
+                                setShowImageMenu(false);
+                              }}
+                              className="w-full flex items-center gap-2.5 px-4 py-2 hover:bg-red-50 text-red-600 transition-all cursor-pointer font-bold whitespace-nowrap font-sans"
+                            >
+                              <Trash2 size={14} />
+                              {t("planner:postCreator.composer.imageMenu.remove")}
+                            </button>
+                          </>
+                        )}
                       </div>
                     )}
                   </div>
