@@ -2,11 +2,25 @@ import * as React from "react";
 import { useState, useRef } from "react";
 import { X, Upload, Link2, File, Image as ImageIcon, Video, CheckCircle2, Loader2, Search, Folder, ChevronLeft } from "lucide-react";
 import { toast } from "sonner";
-import apiService from "../../../services/api";
-import { useMediaLibrary } from "../../../hooks/useMediaLibrary";
-import CloudinaryResumableUploader from "../../../utils/cloudinaryUploader";
+import apiService from "../../../../services/api";
+import { useMediaLibrary } from "../../../../hooks/useMediaLibrary";
+import CloudinaryResumableUploader from "../../../../utils/cloudinaryUploader";
 
-export function MediaUploadModal({ isOpen, onClose, onAccept, brandId, initialTab = "computer", multiple = false }) {
+import { 
+  MEDIA_FILTER_TYPES, 
+  resolveMediaAcceptString, 
+  resolveMediaPromptText 
+} from "../../../../constants/mediaAcceptStrategy";
+
+export function MediaUploadModal({ 
+  isOpen, 
+  onClose, 
+  onAccept, 
+  brandId, 
+  initialTab = "computer", 
+  multiple = false, 
+  mediaTypeFilter = MEDIA_FILTER_TYPES.ALL 
+}) {
   const [activeTab, setActiveTab] = useState(initialTab); // 'computer' | 'url' | 'library'
   const [dragActive, setDragActive] = useState(false);
   const [selectedFile, setSelectedFile] = useState(null);
@@ -16,7 +30,7 @@ export function MediaUploadModal({ isOpen, onClose, onAccept, brandId, initialTa
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   
-  // Library management using our custom hook
+  // Library management using custom hook
   const {
     filters,
     updateFilters,
@@ -27,6 +41,14 @@ export function MediaUploadModal({ isOpen, onClose, onAccept, brandId, initialTa
     folders,
     loadingFolders
   } = useMediaLibrary();
+
+  // Strategy-driven filter update without if-else branching
+  React.useEffect(() => {
+    if (isOpen) {
+      const targetFilterType = MEDIA_FILTER_TYPES[mediaTypeFilter.toUpperCase()] || mediaTypeFilter;
+      updateFilters({ type: targetFilterType });
+    }
+  }, [isOpen, mediaTypeFilter, updateFilters]);
 
   const [selectedLibraryFile, setSelectedLibraryFile] = useState(null);
   const [selectedLibraryFiles, setSelectedLibraryFiles] = useState([]);
@@ -252,7 +274,7 @@ export function MediaUploadModal({ isOpen, onClose, onAccept, brandId, initialTa
         {/* Close Button */}
         <button 
           onClick={onClose}
-          className="absolute -top-2.5 -right-2.5 w-9 h-9 rounded-full bg-[#2D1D35] hover:bg-black text-white flex items-center justify-center shadow-lg transition-all cursor-pointer z-50 group"
+          className="absolute top-5 right-5 w-8 h-8 rounded-full bg-[#2D1D35] hover:bg-black text-white flex items-center justify-center shadow-md transition-all cursor-pointer z-50 group"
         >
           <X size={16} className="group-hover:rotate-90 transition-transform duration-300 text-yellow-300" />
         </button>
@@ -306,7 +328,7 @@ export function MediaUploadModal({ isOpen, onClose, onAccept, brandId, initialTa
                   type="file" 
                   ref={fileInputRef} 
                   onChange={handleFileChange} 
-                  accept="image/*,video/*" 
+                  accept={resolveMediaAcceptString(mediaTypeFilter)} 
                   multiple={multiple}
                   className="hidden" 
                 />
@@ -316,7 +338,7 @@ export function MediaUploadModal({ isOpen, onClose, onAccept, brandId, initialTa
                     <Upload size={20} />
                   </div>
                   <p className="text-xs font-bold text-gray-500">
-                    Click to select or drag your file(s) here.
+                    {resolveMediaPromptText(mediaTypeFilter)}
                   </p>
                 </div>
               </div>

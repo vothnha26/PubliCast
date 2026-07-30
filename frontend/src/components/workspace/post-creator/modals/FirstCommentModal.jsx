@@ -1,7 +1,7 @@
 import * as React from "react";
 import { useState } from "react";
 import { X, Smile, Folder } from "lucide-react";
-import { EmojiPickerPopover } from "./EmojiPickerPopover";
+import { EmojiPickerPopover } from "../popovers/EmojiPickerPopover";
 
 export function FirstCommentModal({ value, onAccept, onCancel }) {
   const [commentText, setCommentText] = useState(value || '');
@@ -19,9 +19,9 @@ export function FirstCommentModal({ value, onAccept, onCancel }) {
         <button 
           type="button"
           onClick={onCancel}
-          className="absolute -top-3 -right-3 w-8 h-8 rounded-full bg-[#18181B] hover:bg-black text-white flex items-center justify-center transition-all shadow-md group cursor-pointer"
+          className="absolute top-5 right-5 w-8 h-8 rounded-full bg-[#18181B] hover:bg-black text-white flex items-center justify-center transition-all shadow-md group cursor-pointer z-50"
         >
-          <X size={16} className="group-hover:rotate-90 transition-transform duration-300" />
+          <X size={16} className="group-hover:rotate-90 transition-transform duration-300 text-yellow-300" />
         </button>
 
         {/* Header */}

@@ -8,8 +8,67 @@ import { usePostCreatorFormContext } from "../../../context/PostCreatorFormConte
 import { PlatformIcon } from "../../shared/PlatformIcon";
 import { ShortsIcon } from "./ShortsIcon";
 import { PRODUCT_IDS } from "../../../constants/products";
+import { PLATFORMS, PLATFORM_API_KEY } from "../../../constants/platforms";
 import { PLATFORM_CONFIGS } from "../../../constants/platformRegistry";
-import { toast } from "sonner";
+
+/** Standard UI Configs for Platform Toolbar Buttons (Module Scope) */
+const SUPPORTED_PLATFORM_BUTTONS = [
+  {
+    id: "facebook",
+    label: "Facebook",
+    productId: PRODUCT_IDS.FACEBOOK_MANAGEMENT,
+    hasTypeDropdown: true,
+    activeBgClass: "bg-[#1877F2] text-white shadow-md",
+    inactiveBgClass: "bg-[#1877F2]/15 text-[#1877F2] hover:bg-[#1877F2]/25",
+  },
+  {
+    id: "instagram",
+    label: "Instagram",
+    productId: PRODUCT_IDS.INSTAGRAM_MANAGEMENT || "instagram_management",
+    hasTypeDropdown: true,
+    activeBgClass: "bg-gradient-to-tr from-[#F58529] via-[#DD2A7B] to-[#8134AF] text-white shadow-md",
+    inactiveBgClass: "bg-[#DD2A7B]/10 text-[#DD2A7B] hover:bg-[#DD2A7B]/20",
+  },
+  {
+    id: "tiktok",
+    label: "TikTok",
+    productId: PRODUCT_IDS.TIKTOK_CREATIVE,
+    activeBgClass: "bg-black text-white shadow-md",
+    inactiveBgClass: "bg-black/10 text-black hover:bg-black/20",
+  },
+  {
+    id: "youtube",
+    label: "YouTube",
+    productId: PRODUCT_IDS.YOUTUBE_ANALYTICS,
+    hasTypeDropdown: true,
+    activeBgClass: "bg-[#FF0000] text-white shadow-md",
+    inactiveBgClass: "bg-[#FF0000]/10 text-[#FF0000] hover:bg-[#FF0000]/20",
+  },
+  {
+    id: "telegram",
+    label: "Telegram",
+    activeBgClass: "bg-[#0088cc] text-white shadow-md",
+    inactiveBgClass: "bg-[#0088cc]/10 text-[#0088cc] hover:bg-[#0088cc]/20",
+  },
+  {
+    id: "threads",
+    label: "Threads",
+    activeBgClass: "bg-black text-white shadow-md",
+    inactiveBgClass: "bg-black/10 text-black hover:bg-black/20",
+  },
+  {
+    id: "bluesky",
+    label: "Bluesky",
+    activeBgClass: "bg-[#0085FF] text-white shadow-md",
+    inactiveBgClass: "bg-[#0085FF]/20 text-[#0085FF] hover:bg-[#0085FF]/30",
+  },
+  {
+    id: "reddit",
+    label: "Reddit",
+    activeBgClass: "bg-[#FF4500] text-white shadow-md",
+    inactiveBgClass: "bg-[#FF4500]/20 text-[#FF4500] hover:bg-[#FF4500]/30",
+  },
+];
 
 export function ComposerHeader() {
   const { t } = useTranslation(["planner", "common"]);
@@ -43,23 +102,12 @@ export function ComposerHeader() {
 
   const isPlatformConnected = (platformId) => {
     if (!activeBrand || !activeBrand.socialAccounts) return false;
-    const mapping = {
-      facebook: "FACEBOOK",
-      instagram: "INSTAGRAM",
-      youtube: "YOUTUBE",
-      tiktok: "TIKTOK",
-      telegram: "TELEGRAM",
-      threads: "THREADS",
-      bluesky: "BLUESKY",
-      reddit: "REDDIT"
-      // Twitch intentionally excluded: it has no post-publishing API (stream-only
-      // platform), so it must never appear as a selectable Post Creator target —
-      // see twitch.service.js publishPost().
-    };
-    const targetPlatform = mapping[platformId];
-    if (!targetPlatform) return false;
+    // Twitch has no post-publishing API (stream-only platform), so it must never appear as a selectable Post Creator target
+    if (platformId === PLATFORMS.TWITCH) return false;
+    const targetApiKey = PLATFORM_API_KEY[platformId];
+    if (!targetApiKey) return false;
     return activeBrand.socialAccounts.some(
-      sa => sa.platform === targetPlatform && sa.isConnected
+      sa => sa.platform === targetApiKey && sa.isConnected
     );
   };
 
@@ -172,268 +220,64 @@ export function ComposerHeader() {
     );
   };
 
+  const accessRightsStrategyMap = {
+    facebook: hasFacebookAccess,
+    instagram: hasInstagramAccess,
+    tiktok: hasTiktokAccess,
+    youtube: hasYoutubeAccess,
+  };
+
+  const getPlatformAccess = (platformId) => accessRightsStrategyMap[platformId] ?? true;
+
   return (
     <div className="shrink-0 px-8 py-5 border-b border-gray-100 flex items-center justify-between bg-white z-10">
       <div className="flex items-center gap-6">
         {/* Platform Icons Toolbar */}
         <div className="flex items-center gap-4">
-          {/* Facebook */}
-          {shouldShowPlatform("facebook") && (
-            <div className="flex items-center gap-2 relative">
-              <button 
-                type="button"
-                title={getPlatformLockInfo("facebook").isFullyLocked ? `Facebook hiện đang bị khóa: ${getPlatformLockInfo("facebook").reason}` : "Facebook"}
-                data-testid="platform-select-facebook" onClick={() => handlePlatformClick("facebook", hasFacebookAccess, PRODUCT_IDS.FACEBOOK_MANAGEMENT)}
-                className={`w-9 h-9 rounded-full flex items-center justify-center transition-all cursor-pointer relative ${
-                  getPlatformLockInfo("facebook").isFullyLocked
-                    ? 'bg-red-50 text-red-400 border border-red-200 opacity-60 cursor-not-allowed'
-                    : selectedPlatforms.includes('facebook')
-                      ? activePlatform === 'facebook'
-                        ? 'bg-[#1877F2] text-white shadow-md'
-                        : 'bg-[#1877F2]/15 text-[#1877F2] hover:bg-[#1877F2]/25'
-                      : 'text-gray-400 hover:text-gray-600 hover:bg-gray-50'
-                }`}
-              >
-                <svg className="w-[18px] h-[18px] fill-current" viewBox="0 0 24 24">
-                  <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
-                </svg>
-                {selectedPlatforms.includes('facebook') && activePlatform === 'facebook' && (
-                  <span className="absolute -bottom-1 -right-1 bg-white border border-gray-200 rounded-md p-0.5 text-gray-700 shadow-sm flex items-center justify-center">
-                    <LayoutGrid size={8} strokeWidth={3} />
-                  </span>
-                )}
-                {!hasFacebookAccess && !getPlatformLockInfo("facebook").isFullyLocked && (
-                  <span className="absolute -top-1 -right-1 bg-white border border-purple-100 text-purple-600 rounded-full p-0.5 shadow-sm">
-                    <Lock size={7} strokeWidth={3} />
-                  </span>
-                )}
-                {getPlatformLockInfo("facebook").isFullyLocked && (
-                  <span className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full p-0.5 shadow-sm border border-white">
-                    <Lock size={7} strokeWidth={3} />
-                  </span>
-                )}
-              </button>
-              {selectedPlatforms.includes('facebook') && activePlatform === 'facebook' && renderTypeDropdown()}
-            </div>
-          )}
+          {SUPPORTED_PLATFORM_BUTTONS.filter(p => shouldShowPlatform(p.id)).map((p) => {
+            const isSelected = selectedPlatforms.includes(p.id);
+            const isActive = activePlatform === p.id;
+            const lockInfo = getPlatformLockInfo(p.id);
+            const hasAccess = getPlatformAccess(p.id);
 
-          {/* Instagram */}
-          {shouldShowPlatform("instagram") && (
-            <div className="flex items-center gap-2 relative">
-              <button 
-                type="button"
-                title={getPlatformLockInfo("instagram").isFullyLocked ? `Instagram hiện đang bị khóa: ${getPlatformLockInfo("instagram").reason}` : "Instagram"}
-                data-testid="platform-select-instagram" onClick={() => handlePlatformClick("instagram", hasInstagramAccess, PRODUCT_IDS.INSTAGRAM_MANAGEMENT || 'instagram_management')}
-                className={`w-9 h-9 rounded-full flex items-center justify-center transition-all cursor-pointer relative ${
-                  getPlatformLockInfo("instagram").isFullyLocked
-                    ? 'bg-red-50 text-red-400 border border-red-200 opacity-60 cursor-not-allowed'
-                    : selectedPlatforms.includes('instagram')
-                      ? activePlatform === 'instagram'
-                        ? 'bg-gradient-to-tr from-[#F58529] via-[#DD2A7B] to-[#8134AF] text-white shadow-md'
-                        : 'bg-[#DD2A7B]/10 text-[#DD2A7B] hover:bg-[#DD2A7B]/20'
-                      : 'text-gray-400 hover:text-gray-600 hover:bg-gray-50'
-                }`}
-              >
-                <Instagram size={18} />
-                {selectedPlatforms.includes('instagram') && activePlatform === 'instagram' && (
-                  <span className="absolute -bottom-1 -right-1 bg-white border border-gray-200 rounded-md p-0.5 text-gray-700 shadow-sm flex items-center justify-center">
-                    <LayoutGrid size={8} strokeWidth={3} />
-                  </span>
-                )}
-                {!hasInstagramAccess && !getPlatformLockInfo("instagram").isFullyLocked && (
-                  <span className="absolute -top-1 -right-1 bg-white border border-purple-100 text-purple-600 rounded-full p-0.5 shadow-sm">
-                    <Lock size={7} strokeWidth={3} />
-                  </span>
-                )}
-                {getPlatformLockInfo("instagram").isFullyLocked && (
-                  <span className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full p-0.5 shadow-sm border border-white">
-                    <Lock size={7} strokeWidth={3} />
-                  </span>
-                )}
-              </button>
-              {selectedPlatforms.includes('instagram') && activePlatform === 'instagram' && renderTypeDropdown()}
-            </div>
-          )}
-
-          {/* TikTok */}
-          {shouldShowPlatform("tiktok") && (
-            <div className="flex items-center gap-2 relative">
-              <button 
-                type="button"
-                title={getPlatformLockInfo("tiktok").isFullyLocked ? `TikTok hiện đang bị khóa: ${getPlatformLockInfo("tiktok").reason}` : "TikTok"}
-                data-testid="platform-select-tiktok" onClick={() => handlePlatformClick("tiktok", hasTiktokAccess, PRODUCT_IDS.TIKTOK_CREATIVE)}
-                className={`w-9 h-9 rounded-full flex items-center justify-center transition-all cursor-pointer relative ${
-                  getPlatformLockInfo("tiktok").isFullyLocked
-                    ? 'bg-red-50 text-red-400 border border-red-200 opacity-60 cursor-not-allowed'
-                    : selectedPlatforms.includes('tiktok')
-                      ? activePlatform === 'tiktok'
-                        ? 'bg-black text-white shadow-md'
-                        : 'bg-black/10 text-black hover:bg-black/20'
-                      : 'text-gray-400 hover:text-gray-600 hover:bg-gray-50'
-                }`}
-              >
-                <svg className="w-[16px] h-[16px] fill-current" viewBox="0 0 24 24">
-                  <path d="M12.53.02C13.84 0 15.14.01 16.44 0c.08 1.53.63 3.09 1.75 4.17 1.12 1.11 2.7 1.62 4.24 1.79v4.03c-1.44-.17-2.89-.6-4.09-1.5-1.1-1.02-1.7-2.48-1.9-3.96-.03 2.49 0 4.99 0 7.48-.02 1.9-.38 3.82-1.39 5.43-1.46 2.42-4.13 3.84-6.93 3.55-3.05-.2-5.78-2.44-6.39-5.46-.73-3.27.97-6.9 4.13-7.91 1.09-.34 2.24-.39 3.37-.2v4.02c-1.22-.32-2.58-.09-3.55.74-.95.83-1.29 2.19-1.03 3.4.31 1.65 1.84 2.91 3.53 2.78 1.94-.04 3.42-1.8 3.25-3.73-.02-2.91 0-5.83 0-8.74.02-3.11-.02-6.22.02-9.33z"/>
-                </svg>
-                {!hasTiktokAccess && !getPlatformLockInfo("tiktok").isFullyLocked && (
-                  <span className="absolute -top-1 -right-1 bg-white border border-purple-100 text-purple-600 rounded-full p-0.5 shadow-sm">
-                    <Lock size={7} strokeWidth={3} />
-                  </span>
-                )}
-                {getPlatformLockInfo("tiktok").isFullyLocked && (
-                  <span className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full p-0.5 shadow-sm border border-white">
-                    <Lock size={7} strokeWidth={3} />
-                  </span>
-                )}
-              </button>
-            </div>
-          )}
-
-          {/* YouTube */}
-          {shouldShowPlatform("youtube") && (
-            <div className="flex items-center gap-2 relative">
-              <button 
-                type="button"
-                title={getPlatformLockInfo("youtube").isFullyLocked ? `YouTube hiện đang bị khóa: ${getPlatformLockInfo("youtube").reason}` : "YouTube"}
-                data-testid="platform-select-youtube" onClick={() => handlePlatformClick("youtube", hasYoutubeAccess, PRODUCT_IDS.YOUTUBE_ANALYTICS)}
-                className={`w-9 h-9 rounded-full flex items-center justify-center transition-all cursor-pointer relative ${
-                  getPlatformLockInfo("youtube").isFullyLocked
-                    ? 'bg-red-50 text-red-400 border border-red-200 opacity-60 cursor-not-allowed'
-                    : selectedPlatforms.includes('youtube')
-                      ? activePlatform === 'youtube'
-                        ? 'bg-[#FF0000] text-white shadow-md'
-                        : 'bg-[#FF0000]/10 text-[#FF0000] hover:bg-[#FF0000]/20'
-                      : 'text-gray-400 hover:text-gray-600 hover:bg-gray-50'
-                }`}
-              >
-                <Youtube size={18} />
-                {selectedPlatforms.includes('youtube') && activePlatform === 'youtube' && (
-                  <span className="absolute -bottom-1 -right-1 bg-white border border-gray-200 rounded-md p-0.5 text-gray-700 shadow-sm flex items-center justify-center">
-                    <LayoutGrid size={8} strokeWidth={3} />
-                  </span>
-                )}
-                {!hasYoutubeAccess && !getPlatformLockInfo("youtube").isFullyLocked && (
-                  <span className="absolute -top-1 -right-1 bg-white border border-purple-100 text-purple-600 rounded-full p-0.5 shadow-sm">
-                    <Lock size={7} strokeWidth={3} />
-                  </span>
-                )}
-                {getPlatformLockInfo("youtube").isFullyLocked && (
-                  <span className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full p-0.5 shadow-sm border border-white">
-                    <Lock size={7} strokeWidth={3} />
-                  </span>
-                )}
-              </button>
-              {selectedPlatforms.includes('youtube') && activePlatform === 'youtube' && renderTypeDropdown()}
-            </div>
-          )}
-
-          {/* Telegram */}
-          {shouldShowPlatform("telegram") && (
-            <div className="flex items-center gap-2 relative">
-              <button 
-                type="button"
-                title={getPlatformLockInfo("telegram").isFullyLocked ? `Telegram hiện đang bị khóa: ${getPlatformLockInfo("telegram").reason}` : "Telegram"}
-                data-testid="platform-select-telegram" onClick={() => handlePlatformClick("telegram", true)}
-                className={`w-9 h-9 rounded-full flex items-center justify-center transition-all cursor-pointer relative ${
-                  getPlatformLockInfo("telegram").isFullyLocked
-                    ? 'bg-red-50 text-red-400 border border-red-200 opacity-60 cursor-not-allowed'
-                    : selectedPlatforms.includes('telegram')
-                      ? activePlatform === 'telegram'
-                        ? 'bg-[#0088cc] text-white shadow-md'
-                        : 'bg-[#0088cc]/10 text-[#0088cc] hover:bg-[#0088cc]/20'
-                      : 'text-gray-400 hover:text-gray-600 hover:bg-gray-50'
-                }`}
-              >
-                <Send size={16} className={`rotate-45 translate-x-[-1px]`} />
-                {getPlatformLockInfo("telegram").isFullyLocked && (
-                  <span className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full p-0.5 shadow-sm border border-white">
-                    <Lock size={7} strokeWidth={3} />
-                  </span>
-                )}
-              </button>
-            </div>
-          )}
-
-          {/* Threads */}
-          {shouldShowPlatform("threads") && (
-            <div className="flex items-center gap-2 relative">
-              <button 
-                type="button"
-                title={getPlatformLockInfo("threads").isFullyLocked ? `Threads hiện đang bị khóa: ${getPlatformLockInfo("threads").reason}` : "Threads"}
-                data-testid="platform-select-threads" onClick={() => handlePlatformClick("threads", true)}
-                className={`w-9 h-9 rounded-full flex items-center justify-center transition-all cursor-pointer relative ${
-                  getPlatformLockInfo("threads").isFullyLocked
-                    ? 'bg-red-50 text-red-400 border border-red-200 opacity-60 cursor-not-allowed'
-                    : selectedPlatforms.includes('threads')
-                      ? activePlatform === 'threads'
-                        ? 'bg-black text-white shadow-md'
-                        : 'bg-black/10 text-black hover:bg-black/20'
-                      : 'text-gray-400 hover:text-gray-600 hover:bg-gray-50'
-                }`}
-              >
-                <PlatformIcon platform="Threads" size={16} variant="flat" />
-                {getPlatformLockInfo("threads").isFullyLocked && (
-                  <span className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full p-0.5 shadow-sm border border-white">
-                    <Lock size={7} strokeWidth={3} />
-                  </span>
-                )}
-              </button>
-            </div>
-          )}
-
-          {/* Bluesky */}
-          {shouldShowPlatform("bluesky") && (
-            <div className="flex items-center gap-2 relative">
-              <button 
-                type="button"
-                title={getPlatformLockInfo("bluesky").isFullyLocked ? `Bluesky hiện đang bị khóa: ${getPlatformLockInfo("bluesky").reason}` : "Bluesky"}
-                data-testid="platform-select-bluesky" onClick={() => handlePlatformClick("bluesky", true)}
-                className={`w-9 h-9 rounded-full flex items-center justify-center transition-all cursor-pointer relative ${
-                  getPlatformLockInfo("bluesky").isFullyLocked
-                    ? 'bg-red-50 text-red-400 border border-red-200 opacity-60 cursor-not-allowed'
-                    : selectedPlatforms.includes('bluesky')
-                      ? activePlatform === 'bluesky'
-                        ? 'bg-[#0085FF] text-white shadow-md'
-                        : 'bg-[#0085FF]/20 text-[#0085FF] hover:bg-[#0085FF]/30'
-                      : 'text-gray-400 hover:text-gray-600 hover:bg-gray-50'
-                }`}
-              >
-                <PlatformIcon platform="bluesky" variant="flat" size={16} className={selectedPlatforms.includes('bluesky') && activePlatform === 'bluesky' ? 'text-white' : ''} />
-                {getPlatformLockInfo("bluesky").isFullyLocked && (
-                  <span className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full p-0.5 shadow-sm border border-white">
-                    <Lock size={7} strokeWidth={3} />
-                  </span>
-                )}
-              </button>
-            </div>
-          )}
-
-          {/* Reddit */}
-          {shouldShowPlatform("reddit") && (
-            <div className="flex items-center gap-2 relative">
-              <button 
-                type="button"
-                title={getPlatformLockInfo("reddit").isFullyLocked ? `Reddit hiện đang bị khóa: ${getPlatformLockInfo("reddit").reason}` : "Reddit"}
-                data-testid="platform-select-reddit" onClick={() => handlePlatformClick("reddit", true)}
-                className={`w-9 h-9 rounded-full flex items-center justify-center transition-all cursor-pointer relative ${
-                  getPlatformLockInfo("reddit").isFullyLocked
-                    ? 'bg-red-50 text-red-400 border border-red-200 opacity-60 cursor-not-allowed'
-                    : selectedPlatforms.includes('reddit')
-                      ? activePlatform === 'reddit'
-                        ? 'bg-[#FF4500] text-white shadow-md'
-                        : 'bg-[#FF4500]/20 text-[#FF4500] hover:bg-[#FF4500]/30'
-                      : 'text-gray-400 hover:text-gray-600 hover:bg-gray-50'
-                }`}
-              >
-                <Globe size={16} />
-                {getPlatformLockInfo("reddit").isFullyLocked && (
-                  <span className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full p-0.5 shadow-sm border border-white">
-                    <Lock size={7} strokeWidth={3} />
-                  </span>
-                )}
-              </button>
-            </div>
-          )}
+            return (
+              <div key={p.id} className="flex items-center gap-2 relative">
+                <button
+                  type="button"
+                  title={lockInfo.isFullyLocked ? `${p.label} hiện đang bị khóa: ${lockInfo.reason}` : p.label}
+                  data-testid={`platform-select-${p.id}`}
+                  onClick={() => handlePlatformClick(p.id, hasAccess, p.productId)}
+                  className={`w-9 h-9 rounded-full flex items-center justify-center transition-all cursor-pointer relative ${
+                    lockInfo.isFullyLocked
+                      ? 'bg-red-50 text-red-400 border border-red-200 opacity-60 cursor-not-allowed'
+                      : isSelected
+                        ? isActive
+                          ? p.activeBgClass
+                          : p.inactiveBgClass
+                        : 'text-gray-400 hover:text-gray-600 hover:bg-gray-50'
+                  }`}
+                >
+                  <PlatformIcon platform={p.id} size={16} variant="flat" className={isSelected && isActive ? 'text-white' : ''} />
+                  {isSelected && isActive && p.hasTypeDropdown && (
+                    <span className="absolute -bottom-1 -right-1 bg-white border border-gray-200 rounded-md p-0.5 text-gray-700 shadow-sm flex items-center justify-center">
+                      <LayoutGrid size={8} strokeWidth={3} />
+                    </span>
+                  )}
+                  {!hasAccess && !lockInfo.isFullyLocked && (
+                    <span className="absolute -top-1 -right-1 bg-white border border-purple-100 text-purple-600 rounded-full p-0.5 shadow-sm">
+                      <Lock size={7} strokeWidth={3} />
+                    </span>
+                  )}
+                  {lockInfo.isFullyLocked && (
+                    <span className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full p-0.5 shadow-sm border border-white">
+                      <Lock size={7} strokeWidth={3} />
+                    </span>
+                  )}
+                </button>
+                {isSelected && isActive && p.hasTypeDropdown && renderTypeDropdown()}
+              </div>
+            );
+          })}
 
           {/* Plus Add Button */}
           <button type="button" className="w-8 h-8 rounded-full bg-gray-50 border border-dashed border-gray-200 flex items-center justify-center text-gray-400 hover:border-gray-400 hover:text-gray-600 transition-all cursor-pointer">

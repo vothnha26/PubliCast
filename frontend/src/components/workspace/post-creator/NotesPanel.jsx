@@ -69,7 +69,7 @@ export function NotesPanel() {
           type="button"
           onClick={() => setIsNotesOpen(false)}
           className="text-gray-400 hover:text-black transition-colors cursor-pointer p-1 rounded-full hover:bg-gray-100"
-          title="Đóng Notes"
+          title={t("planner:postCreator.header.close")}
         >
           <X size={18} />
         </button>
@@ -88,10 +88,7 @@ export function NotesPanel() {
                 {t("planner:postCreator.composer.sections.noNotes")}
               </p>
               <p className="text-[12px] text-gray-400 font-medium px-6">
-                {t(
-                  "planner:postCreator.composer.placeholders.noteDesc",
-                  "Hãy viết lời nhắn hoặc lưu ý đầu tiên cho bài viết này."
-                )}
+                {t("planner:postCreator.composer.placeholders.noteDesc")}
               </p>
             </div>
           </div>
@@ -136,9 +133,7 @@ export function NotesPanel() {
                     type="button"
                     onClick={() => handleDeleteNoteClick(index)}
                     className="absolute -top-1 -right-1 p-1 bg-white border border-gray-100 shadow-sm rounded-full text-gray-400 hover:text-red-500 hover:border-red-100 opacity-0 group-hover:opacity-100 transition-all cursor-pointer"
-                    title={t(
-                      "planner:postCreator.composer.sections.deleteNote"
-                    )}
+                    title={t("planner:postCreator.composer.sections.deleteNote")}
                   >
                     <Trash2 size={12} />
                   </button>
@@ -165,10 +160,7 @@ export function NotesPanel() {
         />
         <div className="flex items-center justify-between gap-3">
           <span className="text-[10px] text-gray-400 font-semibold uppercase tracking-widest font-sans">
-            {t(
-              "planner:postCreator.composer.sections.enterToSend",
-              "Enter để gửi nhanh"
-            )}
+            {t("planner:postCreator.composer.sections.enterToSend")}
           </span>
           <button
             type="button"

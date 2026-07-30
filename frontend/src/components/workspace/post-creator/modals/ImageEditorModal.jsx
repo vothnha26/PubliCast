@@ -1,10 +1,10 @@
 import * as React from "react";
 import { X, Loader2 } from "lucide-react";
-import { useImageEditor } from "./image-editor/useImageEditor";
-import { Sidebar } from "./image-editor/Sidebar";
-import { Toolbar } from "./image-editor/Toolbar";
-import { Viewport } from "./image-editor/Viewport";
-import { SettingsPanel, FILTER_PRESETS } from "./image-editor/SettingsPanel";
+import { useImageEditor } from "../image-editor/useImageEditor";
+import { Sidebar } from "../image-editor/Sidebar";
+import { Toolbar } from "../image-editor/Toolbar";
+import { Viewport } from "../image-editor/Viewport";
+import { SettingsPanel, FILTER_PRESETS } from "../image-editor/SettingsPanel";
 
 export function ImageEditorModal({ isOpen, imageUrl, currentTransform, brandId, onClose, onSave }) {
   const editor = useImageEditor({ imageUrl, currentTransform, brandId, onSave, onClose });

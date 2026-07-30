@@ -35,7 +35,7 @@ import viSmartlinks from './locales/vi/smartlinks.json';
 import viCompetitors from './locales/vi/competitors.json';
 import viReports from './locales/vi/reports.json';
 
-const savedLanguage = localStorage.getItem(STORAGE_KEYS.LANGUAGE) || LANGUAGE_CODES.EN;
+const savedLanguage = localStorage.getItem(STORAGE_KEYS.LANGUAGE) || LANGUAGE_CODES.VI;
 
 i18n
   .use(initReactI18next)
@@ -75,7 +75,7 @@ i18n
       },
     },
     lng: savedLanguage,
-    fallbackLng: LANGUAGE_CODES.EN,
+    fallbackLng: LANGUAGE_CODES.VI,
     interpolation: {
       escapeValue: false, // react already safes from xss
     },

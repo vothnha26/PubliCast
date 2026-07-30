@@ -3,7 +3,7 @@ import {
   X, Search, RefreshCw, Loader2, Folder, 
   ChevronLeft, Home, FileVideo, Play, FileImage, FileText 
 } from 'lucide-react';
-import socialService from '../../../services/social.service';
+import socialService from '../../../../services/social.service';
 import { toast } from 'sonner';
 
 const FOLDERS = [

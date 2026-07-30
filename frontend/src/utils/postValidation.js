@@ -1,6 +1,7 @@
 import { isVideoPath } from './url';
 import { PLATFORMS } from '../constants/platforms';
 import { PLATFORM_CONFIGS } from '../constants/platformRegistry';
+import { POST_TYPE } from '../constants/postTypes';
 
 /**
  * validatePostForm
@@ -67,14 +68,14 @@ export function validatePostForm({
     const platUpper = platform.toUpperCase();
     
     // Xác định subType
-    let subType = 'POST';
-    if (platform === 'facebook') subType = facebookType.toUpperCase();
-    else if (platform === 'youtube') subType = youtubeType.toUpperCase();
-    else if (platform === 'instagram') subType = instagramType.toUpperCase();
-    else if (platform === 'tiktok') subType = 'VIDEO';
+    let subType = POST_TYPE.IMAGE;
+    if (platform === PLATFORMS.FACEBOOK) subType = facebookType.toUpperCase();
+    else if (platform === PLATFORMS.YOUTUBE) subType = youtubeType.toUpperCase();
+    else if (platform === PLATFORMS.INSTAGRAM) subType = instagramType.toUpperCase();
+    else if (platform === PLATFORMS.TIKTOK) subType = POST_TYPE.VIDEO;
 
     // Validation không cho phép thay đổi/thêm/bớt media trên bài viết Facebook đã xuất bản (PUBLISHED)
-    if (platUpper === 'FACEBOOK' && editingPost && editingPost.status?.toUpperCase() === 'PUBLISHED') {
+    if (platUpper === PLATFORMS.FACEBOOK.toUpperCase() && editingPost && editingPost.status?.toUpperCase() === 'PUBLISHED') {
       let originalUrls = [];
       if (Array.isArray(editingPost.mediaUrls)) {
         originalUrls = editingPost.mediaUrls.filter(Boolean);
@@ -181,16 +182,16 @@ export function validatePostForm({
     }
 
     // Bắt buộc có media đối với Reels/Stories/Shorts/TikTok/YouTube
-    if (platUpper === 'TIKTOK' && !hasMedia) {
+    if (platUpper === PLATFORMS.TIKTOK.toUpperCase() && !hasMedia) {
       errors.push(`[${platUpper} - ${subType}] TikTok posts require a video file.`);
     }
-    if (platUpper === 'YOUTUBE' && !hasMedia) {
+    if (platUpper === PLATFORMS.YOUTUBE.toUpperCase() && !hasMedia) {
       errors.push(`[${platUpper} - ${subType}] YouTube uploads require a video file.`);
     }
-    if (platUpper === 'INSTAGRAM' && !hasMedia) {
+    if (platUpper === PLATFORMS.INSTAGRAM.toUpperCase() && !hasMedia) {
       errors.push(`[${platUpper} - ${subType}] Instagram requires at least one photo or video to publish a post.`);
     }
-    if (platUpper === 'FACEBOOK' && ['REEL', 'STORY'].includes(subType) && !hasMedia) {
+    if (platUpper === PLATFORMS.FACEBOOK.toUpperCase() && [POST_TYPE.REEL, POST_TYPE.STORY].includes(subType) && !hasMedia) {
       errors.push(`[${platUpper} - ${subType}] Facebook ${subType.toLowerCase()} requires a media file.`);
     }
   }

@@ -1,6 +1,6 @@
 import React from "react";
 import { useTranslation } from "react-i18next";
-import { usePostCreatorFormContext } from "../../../context/PostCreatorFormContext";
+import { usePostCreatorFormContext } from "../../../../context/PostCreatorFormContext";
 import { PreviewStrategies } from "./PreviewStrategies";
 
 export function PreviewBody() {

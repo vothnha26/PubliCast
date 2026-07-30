@@ -14,12 +14,12 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { EmojiPickerPopover } from "@/components/workspace/post-creator/EmojiPickerPopover";
-import { UTMGeneratorPopover } from "@/components/workspace/post-creator/UTMGeneratorPopover";
-import { FirstCommentModal } from "@/components/workspace/post-creator/FirstCommentModal";
+import { EmojiPickerPopover } from "@/components/workspace/post-creator/popovers/EmojiPickerPopover";
+import { UTMGeneratorPopover } from "@/components/workspace/post-creator/popovers/UTMGeneratorPopover";
+import { FirstCommentModal } from "@/components/workspace/post-creator/modals/FirstCommentModal";
 import { MediaDropdown } from "@/components/workspace/post-creator/MediaDropdown";
-import { GoogleDrivePickerModal } from "@/components/workspace/post-creator/GoogleDrivePickerModal";
-import { ImageEditorModal } from "@/components/workspace/post-creator/ImageEditorModal";
+import { GoogleDrivePickerModal } from "@/components/workspace/post-creator/modals/GoogleDrivePickerModal";
+import { ImageEditorModal } from "@/components/workspace/post-creator/modals/ImageEditorModal";
 import { toast } from "sonner";
 import apiService from "@/services/api";
 import CloudinaryResumableUploader from "@/utils/cloudinaryUploader";

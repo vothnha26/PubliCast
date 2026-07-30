@@ -438,16 +438,18 @@
         "caption": "Bạn đang nghĩ gì vậy?",
         "title": "Nhập tiêu đề...",
         "tags": "Nhập thẻ tag và nhấn Enter...",
-        "note": "Nhập ghi chú thảo luận nội bộ..."
+        "note": "Nhập ghi chú thảo luận nội bộ...",
+        "noteDesc": "Hãy viết lời nhắn hoặc lưu ý đầu tiên cho bài viết này."
       },
       "sections": {
         "accounts": "Tài khoản kết nối",
         "noAccounts": "-- Chưa kết nối tài khoản --",
         "notesTitle": "Thảo luận & Ghi chú nội bộ",
-        "notesDesc": "Ghi chú chỉ hiển thị trong nội bộ team",
+        "notesDesc": "Ghi chú chỉ hiển thị cho các thành viên trong đội ngũ nội bộ",
         "noNotes": "Không có ghi chú nào",
         "addNote": "Thêm ghi chú",
         "deleteNote": "Xóa ghi chú",
+        "enterToSend": "Enter để gửi nhanh",
         "reviewers": "Người duyệt bài",
         "selectReviewers": "Chọn người duyệt",
         "searchUser": "Tìm kiếm người dùng...",
@@ -505,6 +507,85 @@
         "now": { "label": "ĐĂNG BÀI NGAY", "sub": "Đăng bài với thời gian hiện tại" }
       },
       "publishedState": "Bài đã đăng — chỉ có thể chỉnh nội dung"
+    },
+    "presets": {
+      "global": {
+        "title": "Thiết lập chung (Global presets)",
+        "newBadge": "Mới",
+        "firstComment": "Bình luận đầu tiên",
+        "firstCommentPlaceholder": "Nhập bình luận sẽ tự động đăng ngay sau khi bài viết được xuất bản...",
+        "smartLinks": "SmartLinks (Rút gọn liên kết URL)",
+        "smartLinksDesc": "Tự động rút gọn các liên kết trong bài viết & bình luận đầu tiên, đồng thời theo dõi phân tích."
+      },
+      "facebook": {
+        "title": "Thiết lập Facebook",
+        "titleLabel": "Tiêu đề bài viết",
+        "titlePlaceholder": "Nhập tiêu đề...",
+        "customThumbnailUrl": "URL hình thu nhỏ tùy chỉnh",
+        "collaboratorPageId": "ID Trang cộng tác viên (Collaborator)",
+        "placeId": "ID Địa điểm (Thẻ vị trí)"
+      },
+      "instagram": {
+        "title": "Thiết lập Instagram",
+        "newBadge": "Mới",
+        "collaborators": "Người cộng tác",
+        "enterUsername": "Nhập tên người dùng",
+        "backgroundAudio": "Nhạc nền / Âm thanh",
+        "selectMusicTrack": "Chọn bài hát / bản nhạc",
+        "searchAudioMeta": "Tìm kiếm âm thanh trên Meta...",
+        "searching": "Đang tìm kiếm...",
+        "noAudioFound": "Không tìm thấy bản nhạc nào",
+        "showReelOnFeed": "Hiển thị Reel trên Bảng tin",
+        "showReelOnFeedDesc": "Đồng thời chia sẻ video Reels lên Bảng tin trang cá nhân của bạn."
+      },
+      "threads": {
+        "title": "Thiết lập Threads",
+        "whoCanReply": "Ai có thể trả lời bài viết này?",
+        "everyone": "Tất cả mọi người",
+        "accountsYouFollow": "Các trang bạn theo dõi",
+        "mentionedOnly": "Chỉ các trang được nhắc đến",
+        "replyLimitDesc": "Giới hạn những người có thể trả lời bài viết Threads của bạn ngay tại đây."
+      },
+      "tiktok": {
+        "title": "Thiết lập TikTok",
+        "whoCanView": "Ai có thể xem bài viết này?",
+        "public": "Công khai",
+        "friends": "Bạn bè",
+        "self": "Chỉ mình tôi",
+        "allowComments": "Cho phép bình luận",
+        "allowDuet": "Cho phép Duet",
+        "allowStitch": "Cho phép Stitch",
+        "aiGenerated": "Nội dung do AI tạo",
+        "aiGeneratedDesc": "Gán nhãn bài viết của bạn là được tạo ra bởi AI",
+        "commercialContent": "Nội dung thương mại",
+        "commercialContentDesc": "Bật tính năng này để công khai rằng bài viết quảng cáo sản phẩm/dịch vụ có trao đổi giá trị"
+      },
+      "youtube": {
+        "title": "Thiết lập YouTube",
+        "videoTitleLabel": "Tiêu đề Video hoặc Short",
+        "videoTitlePlaceholder": "Nhập tiêu đề video...",
+        "audienceLabel": "Cấu hình đối tượng người xem",
+        "notMadeForKids": "Không, đây không phải nội dung dành cho trẻ em",
+        "madeForKids": "Có, nội dung dành cho trẻ em",
+        "privacyLabel": "Quyền riêng tư",
+        "public": "Công khai (Public)",
+        "unlisted": "Không công khai (Unlisted)",
+        "private": "Riêng tư (Private)",
+        "privacyDesc": "Trạng thái riêng tư có thể chỉnh sửa lại trên YouTube sau khi đăng video hoặc short.",
+        "categoryLabel": "Danh mục video",
+        "playlistLabel": "Thêm vào danh sách phát (Playlist)",
+        "selectPlaylist": "Chọn danh sách phát...",
+        "tagsLabel": "Thẻ Tag",
+        "tagsPlaceholder": "Nhập các thẻ tag (phân cách bằng dấu phẩy)...",
+        "tagsCopied": "Đã sao chép các thẻ tag vào bộ nhớ tạm",
+        "shortsThumbnailNotSupported": "Hình thu nhỏ tùy chỉnh không được hỗ trợ cho YouTube Shorts thông qua API của YouTube.",
+        "customThumbnailLabel": "Hình thu nhỏ tùy chỉnh (Custom Thumbnail)",
+        "uploadThumbnail": "Tải hình thu nhỏ lên",
+        "removeThumbnail": "Gỡ bỏ",
+        "thumbnailDesc": "Chọn hình ảnh từ máy tính hoặc thư viện phương tiện để làm hình thu nhỏ cho video YouTube này. Kích thước tối đa 2MB. Độ phân giải đề xuất: 1280x720.",
+        "firstCommentLabel": "Bình luận đầu tiên (Tự động đăng sau khi xuất bản)",
+        "firstCommentPlaceholder": "Nhập bình luận sẽ tự động đăng ngay sau khi bài viết được xuất bản..."
+      }
     }
   }
 }

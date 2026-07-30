@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { ChevronDown, Instagram, Plus, X, Music, UserPlus } from "lucide-react";
 import { usePostCreatorFormContext } from "../../../../context/PostCreatorFormContext";
 import socialService from "../../../../services/social.service";
@@ -12,6 +13,7 @@ const MOCK_AUDIO_TRACKS = [
 ];
 
 export function InstagramPresets() {
+  const { t } = useTranslation(["planner"]);
   const {
     instagramOpen,
     setInstagramOpen,
@@ -91,8 +93,8 @@ export function InstagramPresets() {
       >
         <div className="flex items-center gap-3">
           <Instagram size={18} className="text-[#E1306C]" />
-          <span className="text-[12px] font-bold text-gray-700 font-sans">Instagram presets</span>
-          <span className="text-[9px] bg-emerald-500 text-white font-extrabold px-1.5 py-0.5 rounded-full uppercase tracking-widest scale-90">New</span>
+          <span className="text-[12px] font-bold text-gray-700 font-sans">{t("planner:postCreator.presets.instagram.title")}</span>
+          <span className="text-[9px] bg-emerald-500 text-white font-extrabold px-1.5 py-0.5 rounded-full uppercase tracking-widest scale-90">{t("planner:postCreator.presets.instagram.newBadge")}</span>
         </div>
         <ChevronDown size={16} className={`text-gray-400 transition-transform duration-300 ${instagramOpen ? 'rotate-180 text-black' : ''}`} />
       </div>
@@ -105,7 +107,7 @@ export function InstagramPresets() {
           <div>
             <label className="flex items-center gap-1.5 text-[11px] font-bold text-gray-500 uppercase mb-2 font-sans">
               <UserPlus size={13} />
-              Collaborators
+              {t("planner:postCreator.presets.instagram.collaborators")}
             </label>
             <div className="flex gap-2">
               <div className="relative flex-1">
@@ -120,7 +122,7 @@ export function InstagramPresets() {
                       handleAddCollaborator();
                     }
                   }}
-                  placeholder="Enter username"
+                  placeholder={t("planner:postCreator.presets.instagram.enterUsername")}
                   className="w-full pl-7 pr-4 py-2.5 bg-white border border-gray-200 rounded-xl text-xs font-semibold focus:border-black outline-none font-sans"
                 />
               </div>
@@ -159,7 +161,7 @@ export function InstagramPresets() {
           <div>
             <label className="flex items-center gap-1.5 text-[11px] font-bold text-gray-500 uppercase mb-2 font-sans">
               <Music size={13} />
-              Background Audio / Music
+              {t("planner:postCreator.presets.instagram.backgroundAudio")}
             </label>
             
             <div className="relative">
@@ -185,7 +187,7 @@ export function InstagramPresets() {
                 >
                   <span className="flex items-center gap-2">
                     <Music size={14} />
-                    Select music track
+                    {t("planner:postCreator.presets.instagram.selectMusicTrack")}
                   </span>
                   <ChevronDown size={14} className={`transition-transform duration-200 ${showAudioList ? 'rotate-180' : ''}`} />
                 </button>
@@ -198,7 +200,7 @@ export function InstagramPresets() {
                       type="text"
                       value={audioSearchQuery}
                       onChange={(e) => setAudioSearchQuery(e.target.value)}
-                      placeholder="Search audio on Meta..."
+                      placeholder={t("planner:postCreator.presets.instagram.searchAudioMeta")}
                       className="w-full px-2.5 py-1.5 bg-gray-50 border border-gray-200 focus:border-purple-500 rounded-lg text-[11px] font-semibold text-gray-700 outline-none transition-colors"
                       onClick={(e) => e.stopPropagation()}
                     />
@@ -207,11 +209,11 @@ export function InstagramPresets() {
                     {isLoadingAudio ? (
                       <div className="flex items-center justify-center py-4 text-[10px] text-gray-400 font-bold gap-2">
                         <span className="w-3.5 h-3.5 border-2 border-purple-500 border-t-transparent rounded-full animate-spin" />
-                        Searching...
+                        {t("planner:postCreator.presets.instagram.searching")}
                       </div>
                     ) : audioTracks.length === 0 ? (
                       <div className="text-center py-4 text-[10px] text-gray-400 font-bold">
-                        No audio tracks found
+                        {t("planner:postCreator.presets.instagram.noAudioFound")}
                       </div>
                     ) : (
                       audioTracks.map((track) => (
@@ -240,8 +242,8 @@ export function InstagramPresets() {
           {instagramType === 'reel' && (
             <div className="flex items-center justify-between p-3.5 bg-gray-50/50 rounded-2xl border border-gray-100">
               <div className="space-y-0.5">
-                <span className="text-xs font-bold text-gray-800 font-sans block">Show Reel on feed</span>
-                <span className="text-[10px] text-gray-400 font-medium block leading-relaxed">Also share your Reels to your Profile Feed.</span>
+                <span className="text-xs font-bold text-gray-800 font-sans block">{t("planner:postCreator.presets.instagram.showReelOnFeed")}</span>
+                <span className="text-[10px] text-gray-400 font-medium block leading-relaxed">{t("planner:postCreator.presets.instagram.showReelOnFeedDesc")}</span>
               </div>
               <button
                 type="button"

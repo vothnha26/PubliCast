@@ -47,8 +47,8 @@ export function buildMediaUrl(path) {
  * @param {File|null} file - File object (nếu có, kiểm tra MIME type)
  */
 export function isVideoPath(url, file = null) {
-  if (file && file.type.startsWith('video/')) return true;
-  if (!url) return false;
+  if (file?.type?.startsWith('video/')) return true;
+  if (!url || typeof url !== 'string') return false;
 
   const VIDEO_EXTENSIONS = ['.mp4', '.mov', '.avi', '.webm'];
   const lowerUrl = url.toLowerCase().split('?')[0]; // bỏ query string

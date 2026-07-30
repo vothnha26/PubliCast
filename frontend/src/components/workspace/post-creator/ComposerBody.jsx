@@ -10,21 +10,25 @@ import {
 import { usePostCreatorFormContext } from "../../../context/PostCreatorFormContext";
 import { PlatformIcon } from "../../shared/PlatformIcon";
 import { MediaDropdown } from "./MediaDropdown";
-import { EmojiPickerPopover } from "./EmojiPickerPopover";
-import { UTMGeneratorPopover } from "./UTMGeneratorPopover";
-import { HashtagPickerPopover } from "./HashtagPickerPopover";
+import { EmojiPickerPopover } from "./popovers/EmojiPickerPopover";
+import { UTMGeneratorPopover } from "./popovers/UTMGeneratorPopover";
+import { HashtagPickerPopover } from "./popovers/HashtagPickerPopover";
 import { FacebookAlbumComposer } from "./FacebookAlbumComposer";
 import StockMediaPicker from "../../shared/StockMediaPicker";
 import { toast } from "sonner";
 import { PRODUCT_IDS } from "../../../constants/products";
-import { AICopilotPopover } from "./AICopilotPopover";
+import { AICopilotPopover } from "./popovers/AICopilotPopover";
 import { isVideoPath } from "../../../utils/url";
 import { NetworkTabSwitcher } from "./NetworkTabSwitcher";
 import { NETWORK_TAB_TEMPLATE } from "../../../constants/postComposerNetwork";
+import { PLATFORMS } from "../../../constants/platforms";
+import { FACEBOOK_TYPE, YOUTUBE_TYPE, INSTAGRAM_TYPE, POST_TYPE } from "../../../constants/postTypes";
 
 // Presets Imports
 import { GlobalPresets } from "./presets/GlobalPresets";
 import { PRESET_REGISTRY } from "../../../constants/presetRegistry";
+
+import { MEDIA_FILTER_TYPES } from "../../../constants/mediaAcceptStrategy";
 
 export function ComposerBody() {
   const { t } = useTranslation(["planner", "common"]);
@@ -55,6 +59,7 @@ export function ComposerBody() {
     handleRemoveVideo,
     facebookType,
     instagramType,
+    youtubeType,
     activeBrand,
     albumMedia,
     setAlbumMedia,
@@ -88,6 +93,7 @@ export function ComposerBody() {
     platformLimits,
     setShowUploadModal,
     setUploadModalTab,
+    setMediaTypeFilter,
     getBackupPayload,
     backupFormState,
     closePostCreatorTemporarily,
@@ -481,9 +487,9 @@ export function ComposerBody() {
                 {activePopover === 'media' && (
                   <MediaDropdown 
                     onClose={() => setActivePopover(null)} 
-                    onSelectImage={() => { setUploadModalTab("computer"); setShowUploadModal(true); setActivePopover(null); }} 
-                    onSelectVideo={() => { setUploadModalTab("computer"); setShowUploadModal(true); setActivePopover(null); }} 
-                    onSelectLibrary={() => { setUploadModalTab("library"); setShowUploadModal(true); setActivePopover(null); }}
+                    onSelectImage={() => { setUploadModalTab("computer"); setMediaTypeFilter?.(MEDIA_FILTER_TYPES.IMAGE); setShowUploadModal(true); setActivePopover(null); }} 
+                    onSelectVideo={() => { setUploadModalTab("computer"); setMediaTypeFilter?.(MEDIA_FILTER_TYPES.VIDEO); setShowUploadModal(true); setActivePopover(null); }} 
+                    onSelectLibrary={() => { setUploadModalTab("library"); setMediaTypeFilter?.(MEDIA_FILTER_TYPES.ALL); setShowUploadModal(true); setActivePopover(null); }}
                     onSelectStock={() => { setShowStockPicker(true); setActivePopover(null); }}
                     onSelectDrive={() => {
                       setActivePopover(null);
@@ -603,6 +609,9 @@ export function ComposerBody() {
             <div className="flex items-center gap-3">
               <div className="group relative cursor-help">
                 {(() => {
+                  const effectivePlatform = (isEditByNetwork && activeNetworkTab && activeNetworkTab !== NETWORK_TAB_TEMPLATE)
+                    ? activeNetworkTab
+                    : activePlatform;
                   const fallbacks = {
                     facebook: 63206,
                     instagram: 2200,
@@ -614,50 +623,72 @@ export function ComposerBody() {
                     twitch: 500,
                     reddit: 40000
                   };
-                  let maxLimit = fallbacks[activePlatform.toLowerCase()] || 5000;
+                  let maxLimit = fallbacks[effectivePlatform.toLowerCase()] || 5000;
                   if (platformLimits && platformLimits.length > 0) {
-                    const limitObj = platformLimits.find(l => l.platform.toLowerCase() === activePlatform.toLowerCase());
+                    const platLower = effectivePlatform.toLowerCase();
+                    let subType = POST_TYPE.IMAGE;
+                    if (platLower === PLATFORMS.FACEBOOK) subType = facebookType.toUpperCase();
+                    else if (platLower === PLATFORMS.YOUTUBE) subType = youtubeType.toUpperCase();
+                    else if (platLower === PLATFORMS.INSTAGRAM) subType = instagramType.toUpperCase();
+                    else if (platLower === PLATFORMS.TIKTOK) subType = POST_TYPE.VIDEO;
+
+                    const limitObj = platformLimits.find(
+                      l => l.platform.toLowerCase() === platLower && l.subType === subType
+                    ) || platformLimits.find(l => l.platform.toLowerCase() === platLower);
+
                     if (limitObj && (limitObj.maxCharacters || limitObj.maxCaptionLength)) {
                       maxLimit = limitObj.maxCharacters || limitObj.maxCaptionLength;
                     }
                   }
-                  const isExceeded = caption.length > maxLimit;
+                  const currentTextLength = activeCaptionValue ? activeCaptionValue.length : 0;
+                  const isExceeded = currentTextLength > maxLimit;
                   return (
                     <span className={`text-[11px] font-bold transition-colors tracking-wide font-sans ${isExceeded ? 'text-red-500 font-extrabold animate-pulse' : 'text-gray-400 group-hover:text-gray-600'}`}>
-                      {caption.length} / {maxLimit}
+                      {currentTextLength} / {maxLimit}
                     </span>
                   );
                 })()}
                 <div className="absolute bottom-full right-0 mb-3 w-56 p-3 bg-white rounded-xl shadow-xl border border-gray-100 hidden group-hover:block animate-in fade-in slide-in-from-bottom-1 z-50">
-                  <p className="text-[10px] text-gray-500 leading-normal font-sans">{t("planner:postCreator.composer.characterLimitDesc", { platform: activePlatform })}</p>
+                  <p className="text-[10px] text-gray-500 leading-normal font-sans">
+                    {t("planner:postCreator.composer.characterLimitDesc", {
+                      platform: (isEditByNetwork && activeNetworkTab && activeNetworkTab !== NETWORK_TAB_TEMPLATE) ? activeNetworkTab : activePlatform
+                    })}
+                  </p>
                 </div>
               </div>
               <div className="w-px h-3.5 bg-gray-200" />
-              <div className={`w-6 h-6 rounded-full flex items-center justify-center shadow-sm text-white ${
-                activePlatform === 'youtube' ? 'bg-[#FF0000]' : 
-                activePlatform === 'tiktok' ? 'bg-black' : 
-                activePlatform === 'instagram' ? 'bg-gradient-to-tr from-[#F58529] via-[#DD2A7B] to-[#8134AF]' :
-                activePlatform === 'telegram' ? 'bg-[#0088cc]' :
-                activePlatform === 'threads' ? 'bg-black' : 'bg-[#1877F2]'
-              }`}>
-                {activePlatform === 'youtube' ? (
-                  <Youtube size={12} className="text-white fill-white" />
-                ) : activePlatform === 'tiktok' ? (
-                  <svg className="w-3 h-3 text-white fill-white" viewBox="0 0 24 24">
-                    <path d="M12.53.02C13.84 0 15.14.01 16.44 0c.08 1.53.63 3.09 1.75 4.17 1.12 1.11 2.7 1.62 4.24 1.79v4.03c-1.44-.17-2.89-.6-4.09-1.5-1.1-1.02-1.7-2.48-1.9-3.96-.03 2.49 0 4.99 0 7.48-.02 1.9-.38 3.82-1.39 5.43-1.46 2.42-4.13 3.84-6.93 3.55-3.05-.2-5.78-2.44-6.39-5.46-.73-3.27.97-6.9 4.13-7.91 1.09-.34 2.24-.39 3.37-.2v4.02c-1.22-.32-2.58-.09-3.55.74-.95.83-1.29 2.19-1.03 3.4.31 1.65 1.84 2.91 3.53 2.78 1.94-.04 3.42-1.8 3.25-3.73-.02-2.91 0-5.83 0-8.74.02-3.11-.02-6.22.02-9.33z"/>
-                  </svg>
-                ) : activePlatform === 'instagram' ? (
-                  <Instagram size={12} className="text-white" />
-                ) : activePlatform === 'telegram' ? (
-                  <Send size={11} className="text-white fill-white translate-x-[-0.5px]" />
-                ) : activePlatform === 'threads' ? (
-                  <PlatformIcon platform="Threads" size={12} variant="flat" className="text-white" />
-                ) : (
-                  <svg className="w-3.5 h-3.5 text-white fill-white" viewBox="0 0 24 24">
-                    <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
-                  </svg>
-                )}
-              </div>
+              {(() => {
+                const currentPlatform = (isEditByNetwork && activeNetworkTab && activeNetworkTab !== NETWORK_TAB_TEMPLATE)
+                  ? activeNetworkTab
+                  : activePlatform;
+                return (
+                  <div className={`w-6 h-6 rounded-full flex items-center justify-center shadow-sm text-white ${
+                    currentPlatform === 'youtube' ? 'bg-[#FF0000]' : 
+                    currentPlatform === 'tiktok' ? 'bg-black' : 
+                    currentPlatform === 'instagram' ? 'bg-gradient-to-tr from-[#F58529] via-[#DD2A7B] to-[#8134AF]' :
+                    currentPlatform === 'telegram' ? 'bg-[#0088cc]' :
+                    currentPlatform === 'threads' ? 'bg-black' : 'bg-[#1877F2]'
+                  }`}>
+                    {currentPlatform === 'youtube' ? (
+                      <Youtube size={12} className="text-white fill-white" />
+                    ) : currentPlatform === 'tiktok' ? (
+                      <svg className="w-3 h-3 text-white fill-white" viewBox="0 0 24 24">
+                        <path d="M12.53.02C13.84 0 15.14.01 16.44 0c.08 1.53.63 3.09 1.75 4.17 1.12 1.11 2.7 1.62 4.24 1.79v4.03c-1.44-.17-2.89-.6-4.09-1.5-1.1-1.02-1.7-2.48-1.9-3.96-.03 2.49 0 4.99 0 7.48-.02 1.9-.38 3.82-1.39 5.43-1.46 2.42-4.13 3.84-6.93 3.55-3.05-.2-5.78-2.44-6.39-5.46-.73-3.27.97-6.9 4.13-7.91 1.09-.34 2.24-.39 3.37-.2v4.02c-1.22-.32-2.58-.09-3.55.74-.95.83-1.29 2.19-1.03 3.4.31 1.65 1.84 2.91 3.53 2.78 1.94-.04 3.42-1.8 3.25-3.73-.02-2.91 0-5.83 0-8.74.02-3.11-.02-6.22.02-9.33z"/>
+                      </svg>
+                    ) : currentPlatform === 'instagram' ? (
+                      <Instagram size={12} className="text-white" />
+                    ) : currentPlatform === 'telegram' ? (
+                      <Send size={11} className="text-white fill-white translate-x-[-0.5px]" />
+                    ) : currentPlatform === 'threads' ? (
+                      <PlatformIcon platform="Threads" size={12} variant="flat" className="text-white" />
+                    ) : (
+                      <svg className="w-3.5 h-3.5 text-white fill-white" viewBox="0 0 24 24">
+                        <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
+                      </svg>
+                    )}
+                  </div>
+                );
+              })()}
             </div>
           </div>
 

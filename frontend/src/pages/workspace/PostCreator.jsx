@@ -1,12 +1,7 @@
 import * as React from "react";
 import { useState } from "react";
 import { 
-  X, Smile, Link2, Plus, Image as ImageIcon, 
-  FileText, Loader2, RotateCw, Copy, ChevronDown, 
-  Calendar, Youtube, PlayCircle, Smartphone, Monitor, Info, MessageSquare,
-  Languages, Settings, LayoutGrid, Film, PlusCircle, AlertCircle, Check,
-  MoreHorizontal, Edit, Type, Trash2, Diamond, Search, Lock, Sparkles, ArrowRight,
-  Send, Upload, HelpCircle
+  X, Loader2, Check, Search, Lock, ArrowRight, Diamond
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
@@ -15,34 +10,24 @@ import { PRODUCT_IDS, FEATURE_GATE_REGISTRY } from "../../constants/products";
 import postService from "../../services/post.service";
 import { usePostCreatorForm } from "../../hooks/usePostCreatorForm";
 import { useAuthStore } from "../../store/useAuthStore";
-import { ShortsIcon } from "../../components/workspace/post-creator/ShortsIcon";
-import { MediaDropdown } from "../../components/workspace/post-creator/MediaDropdown";
-import { EmojiPickerPopover } from "../../components/workspace/post-creator/EmojiPickerPopover";
-import { FirstCommentModal } from "../../components/workspace/post-creator/FirstCommentModal";
-import { UTMGeneratorPopover } from "../../components/workspace/post-creator/UTMGeneratorPopover";
-import { PreviewStrategies } from "../../components/workspace/post-creator/PreviewStrategies";
-import { GoogleDrivePickerModal } from "../../components/workspace/post-creator/GoogleDrivePickerModal";
-import { MediaUploadModal } from "../../components/workspace/post-creator/MediaUploadModal";
-import { ImageEditorModal } from "../../components/workspace/post-creator/ImageEditorModal";
-import { AltTextModal } from "../../components/workspace/post-creator/AltTextModal";
-import { FacebookAlbumComposer } from "../../components/workspace/post-creator/FacebookAlbumComposer";
-import { HashtagPickerPopover } from "../../components/workspace/post-creator/HashtagPickerPopover";
-import { PLATFORM_CONFIGS } from "../../constants/platformRegistry";
+import { FirstCommentModal } from "../../components/workspace/post-creator/modals/FirstCommentModal";
+import { GoogleDrivePickerModal } from "../../components/workspace/post-creator/modals/GoogleDrivePickerModal";
+import { MediaUploadModal } from "../../components/workspace/post-creator/modals/MediaUploadModal";
+import { MEDIA_FILTER_TYPES } from "../../constants/mediaAcceptStrategy";
+import { ImageEditorModal } from "../../components/workspace/post-creator/modals/ImageEditorModal";
+import { AltTextModal } from "../../components/workspace/post-creator/modals/AltTextModal";
 import { NETWORK_TAB_TEMPLATE } from "../../constants/postComposerNetwork";
-import { Instagram } from "lucide-react";
 import { toast } from "sonner";
 import { useBrandPermission } from "../../hooks/useBrandPermission";
-import { PlatformIcon } from "../../components/shared/PlatformIcon";
-import { buildMediaUrl } from "../../utils/url";
 
 // Layout Sub-components
 import { ComposerHeader } from "../../components/workspace/post-creator/ComposerHeader";
 import { ComposerBody } from "../../components/workspace/post-creator/ComposerBody";
 import { ComposerFooter } from "../../components/workspace/post-creator/ComposerFooter";
 import { ComposerErrorPanel } from "../../components/workspace/post-creator/ComposerErrorPanel";
-import { PreviewHeader } from "../../components/workspace/post-creator/PreviewHeader";
-import { PreviewBody } from "../../components/workspace/post-creator/PreviewBody";
-import { PreviewFooter } from "../../components/workspace/post-creator/PreviewFooter";
+import { PreviewHeader } from "../../components/workspace/post-creator/previews/PreviewHeader";
+import { PreviewBody } from "../../components/workspace/post-creator/previews/PreviewBody";
+import { PreviewFooter } from "../../components/workspace/post-creator/previews/PreviewFooter";
 import { NotesPanel } from "../../components/workspace/post-creator/NotesPanel";
 
 // Context Provider
@@ -57,7 +42,9 @@ const PUBLISH_OPTIONS = [
 
 export function PostCreatorPage() {
   const { t } = useTranslation(["planner", "common"]);
-  const {    isOpen,
+  const formState = usePostCreatorForm();
+  const {
+    isOpen,
     closePostCreator,
     caption,
     setCaption,
@@ -131,6 +118,9 @@ export function PostCreatorPage() {
     handleVideoChange,
     handleRemoveVideo,
     fetchPlaylists,
+    categories,
+    isLoadingCategories,
+    fetchCategories,
     editingPost,
     handleCreatePost,
     // Facebook
@@ -211,7 +201,7 @@ export function PostCreatorPage() {
     getBackupPayload,
     backupFormState,
     closePostCreatorTemporarily
-  } = usePostCreatorForm();
+  } = formState;
 
   const [threadsOpen, setThreadsOpen] = useState(false);
   const [isNotesOpen, setIsNotesOpen] = useState(false);
@@ -252,6 +242,7 @@ export function PostCreatorPage() {
   const [reviewerSearchQuery, setReviewerSearchQuery] = useState("");
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [uploadModalTab, setUploadModalTab] = useState("computer");
+  const [mediaTypeFilter, setMediaTypeFilter] = useState(MEDIA_FILTER_TYPES.ALL);
   const [showImageMenu, setShowImageMenu] = useState(false);
   const [showImageEditor, setShowImageEditor] = useState(false);
   const [editingAlbumPhoto, setEditingAlbumPhoto] = useState(null);
@@ -282,6 +273,7 @@ export function PostCreatorPage() {
 
   // Context value object containing all states, handlers and variables
   const contextValue = {
+    ...formState,
     caption,
     setCaption,
     title,
@@ -446,6 +438,8 @@ export function PostCreatorPage() {
     setShowUploadModal,
     uploadModalTab,
     setUploadModalTab,
+    mediaTypeFilter,
+    setMediaTypeFilter,
     showImageMenu,
     setShowImageMenu,
     showImageEditor,
@@ -597,6 +591,7 @@ export function PostCreatorPage() {
                 initialTab={uploadModalTab}
                 brandId={activeBrand?.id}
                 multiple={!isUploadingThumbnail}
+                mediaTypeFilter={mediaTypeFilter}
                 onClose={() => {
                   setShowUploadModal(false);
                   setIsUploadingThumbnail(false);
