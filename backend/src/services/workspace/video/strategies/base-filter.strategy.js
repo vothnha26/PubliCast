@@ -44,6 +44,9 @@ class BaseFilterStrategy {
    * Writes text to a temp file to avoid FFmpeg command line string escaping issues
    */
   writeTempTextFile(tempDir, fileName, text) {
+    if (tempDir && !fs.existsSync(tempDir)) {
+      fs.mkdirSync(tempDir, { recursive: true });
+    }
     const filePath = path.join(tempDir, `${fileName}.txt`);
     fs.writeFileSync(filePath, text, 'utf8');
     return filePath;
