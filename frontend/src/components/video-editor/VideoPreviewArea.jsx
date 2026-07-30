@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Play, Pause, Volume2, VolumeX, Eye, EyeOff } from 'lucide-react';
+import { Play, Pause, Volume2, VolumeX, Eye, EyeOff, Scissors } from 'lucide-react';
 import { useVideoEditor } from '../../context/VideoEditorContext';
-import { ASPECT_RATIOS } from '../../constants/video-editor';
+import { ASPECT_RATIOS, FILTER_PRESETS } from '../../constants/video-editor';
 
 export default function VideoPreviewArea() {
   const {
@@ -19,7 +19,10 @@ export default function VideoPreviewArea() {
     videoRatio, setVideoRatio,
     cropX, setCropX,
     keyframes, setKeyframes,
-    isPreviewMode, setIsPreviewMode
+    isPreviewMode, setIsPreviewMode,
+    filterPreset,
+    adjustments,
+    splitPoints, setSplitPoints
   } = useVideoEditor();
 
   const [isPlaying, setIsPlaying] = useState(false);
@@ -334,7 +337,11 @@ export default function VideoPreviewArea() {
           <video
             ref={videoRef}
             src={videoUrl}
-            style={getVideoStyle()}
+            style={{
+              ...getVideoStyle(),
+              filter: `brightness(${100 + (adjustments?.brightness || 0)}%) contrast(${100 + (adjustments?.contrast || 0)}%) saturate(${100 + (adjustments?.saturation || 0)}%)`
+            }}
+            className={FILTER_PRESETS.find((f) => f.backendPreset === filterPreset)?.class || ''}
             playsInline
             onLoadedMetadata={handleLoadedMetadata}
             onClick={togglePlay}
@@ -451,6 +458,24 @@ export default function VideoPreviewArea() {
                 <span>{isPreviewMode ? 'Editing Mode' : 'Preview Crop'}</span>
               </button>
             )}
+
+            {/* Split video at current playhead position */}
+            <button
+              type="button"
+              onClick={() => {
+                const video = videoRef.current;
+                if (!video) return;
+                const t = video.currentTime;
+                if (t <= trimRange.start || t >= trimRange.end) return;
+                setSplitPoints((prev) => (prev.includes(t) ? prev : [...prev, t].sort((a, b) => a - b)));
+              }}
+              disabled={!videoRef.current || videoRef.current.currentTime <= trimRange.start || videoRef.current.currentTime >= trimRange.end}
+              className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer bg-gray-800 hover:bg-gray-700 text-gray-300 disabled:opacity-40 disabled:cursor-not-allowed"
+              title="Tách clip tại vị trí hiện tại"
+            >
+              <Scissors className="w-3.5 h-3.5" />
+              <span>Split</span>
+            </button>
 
             <button
               onClick={toggleMute}

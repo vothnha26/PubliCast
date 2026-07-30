@@ -6,7 +6,9 @@ export default function TrimTimeline() {
     videoRef,
     duration,
     trimRange,
-    setTrimRange
+    setTrimRange,
+    splitPoints,
+    setSplitPoints
   } = useVideoEditor();
 
   const timelineRef = useRef(null);
@@ -69,6 +71,15 @@ export default function TrimTimeline() {
     }
   }, [duration, setTrimRange, trimRange.end]);
 
+  // Loại bỏ split point nằm ngoài trimRange khi tay cầm trim bị kéo hẹp lại —
+  // backend từ chối splitPoints không nằm strictly trong [startTime, endTime].
+  useEffect(() => {
+    setSplitPoints(prev => {
+      const filtered = prev.filter(p => p > trimRange.start && p < trimRange.end);
+      return filtered.length === prev.length ? prev : filtered;
+    });
+  }, [trimRange.start, trimRange.end, setSplitPoints]);
+
   return (
     <div className="bg-[#0E0E15] border border-gray-800/80 rounded-2xl p-5 space-y-4 w-full">
       <div className="flex justify-between items-center">
@@ -95,6 +106,22 @@ export default function TrimTimeline() {
             className="absolute top-0 bottom-0 bg-lime-400/20 border-l border-r border-lime-400 z-0"
           />
         )}
+
+        {/* Split Point Markers — click to remove */}
+        {duration > 0 && splitPoints.map((sp) => (
+          <div
+            key={sp}
+            className="absolute top-0 bottom-0 w-0.5 bg-indigo-400 z-10 cursor-pointer group/split"
+            style={{ left: `${(sp / duration) * 100}%` }}
+            title="Bấm để xóa điểm tách"
+            onClick={(e) => {
+              e.stopPropagation();
+              setSplitPoints(prev => prev.filter(p => p !== sp));
+            }}
+          >
+            <div className="absolute -top-1 left-1/2 -translate-x-1/2 w-2 h-2 rounded-full bg-indigo-400 border border-white group-hover/split:bg-red-500 transition-colors" />
+          </div>
+        ))}
 
         {/* Start Handle */}
         {duration > 0 && (

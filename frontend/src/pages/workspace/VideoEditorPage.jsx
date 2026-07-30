@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Save, Loader2, Scissors, Crop, Music, Type, Languages } from 'lucide-react';
+import { ArrowLeft, Save, Loader2, Scissors, Crop, Music, Type, Languages, Palette, Sliders, Maximize2 } from 'lucide-react';
 import { toast } from 'sonner';
 
 import { usePostCreatorStore } from '../../store/usePostCreatorStore';
@@ -14,6 +14,9 @@ import TrimTimeline from '../../components/video-editor/TrimTimeline';
 import AudioSelector from '../../components/video-editor/AudioSelector';
 import TextOverlayEditor from '../../components/video-editor/TextOverlayEditor';
 import SubtitlesGenerator from '../../components/video-editor/SubtitlesGenerator';
+import FilterPanel from '../../components/video-editor/FilterPanel';
+import FinetunePanel from '../../components/video-editor/FinetunePanel';
+import ResizePanel from '../../components/video-editor/ResizePanel';
 
 function VideoEditorContent() {
   const navigate = useNavigate();
@@ -42,7 +45,12 @@ function VideoEditorContent() {
     subtitles, setSubtitles,
     activeTab, setActiveTab,
     cropX, setCropX,
-    keyframes, setKeyframes
+    keyframes, setKeyframes,
+    filterPreset, setFilterPreset,
+    adjustments, setAdjustments,
+    resize, setResize,
+    isResizeDirty, setIsResizeDirty,
+    splitPoints, setSplitPoints
   } = useVideoEditor();
 
   const { isProcessing, startVideoProcessing } = useVideoProcessing();
@@ -76,6 +84,11 @@ function VideoEditorContent() {
         setSubtitles(videoSettings.subtitles ?? []);
         setCropX(videoSettings.cropX ?? 50);
         setKeyframes(videoSettings.keyframes ?? []);
+        setFilterPreset(videoSettings.filterPreset ?? 'none');
+        setAdjustments(videoSettings.adjustments ?? { brightness: 0, contrast: 0, saturation: 0 });
+        setResize(videoSettings.resize ?? { width: null, height: null });
+        setIsResizeDirty(false);
+        setSplitPoints(videoSettings.splitPoints ?? []);
       } else {
         setTrimRange({ start: 0, end: 10 });
         setAspectRatio(ASPECT_RATIOS.ORIGINAL);
@@ -84,9 +97,14 @@ function VideoEditorContent() {
         setSubtitles([]);
         setCropX(50);
         setKeyframes([]);
+        setFilterPreset('none');
+        setAdjustments({ brightness: 0, contrast: 0, saturation: 0 });
+        setResize({ width: null, height: null });
+        setIsResizeDirty(false);
+        setSplitPoints([]);
       }
     }
-  }, [activeVideoUrl, videoSettings, setTrimRange, setAspectRatio, setBgMusic, setTextOverlays, setSubtitles, setCropX, setKeyframes]);
+  }, [activeVideoUrl, videoSettings, setTrimRange, setAspectRatio, setBgMusic, setTextOverlays, setSubtitles, setCropX, setKeyframes, setFilterPreset, setAdjustments, setResize, setIsResizeDirty, setSplitPoints]);
 
   // Sync video element metadata
   const handleSaveVideo = () => {
@@ -98,6 +116,10 @@ function VideoEditorContent() {
       keyframes: keyframes.length > 0 ? keyframes : [{ id: 'default', time: 0, cropX: cropX / 100 }],
       audioUrl: bgMusic.trackUrl || null,
       audioVolume: bgMusic.volume,
+      adjustments,
+      filterPreset,
+      resize: isResizeDirty && resize.width && resize.height ? resize : undefined,
+      splitPoints: splitPoints.length > 0 ? splitPoints : undefined,
       brandId
     };
 
@@ -115,13 +137,28 @@ function VideoEditorContent() {
       subtitles,
       cropX,
       keyframes,
+      filterPreset,
+      adjustments,
+      resize,
+      splitPoints,
       brandId
     };
 
     startVideoProcessing({
       params,
       settings,
-      onSuccess: (newVideoUrl, finalSettings) => {
+      onSuccess: (result, finalSettings) => {
+        // Split-into-clips mode resolves to an ordered array of clip URLs
+        // instead of a single string. The composer only has one video slot
+        // today, so we adopt the first clip as the active video and let the
+        // user know the rest are ready (full multi-clip post support is a
+        // separate, larger feature — out of scope here).
+        const isSplitResult = Array.isArray(result);
+        const newVideoUrl = isSplitResult ? result[0] : result;
+        if (isSplitResult && result.length > 1) {
+          toast.success(`Đã tách thành ${result.length} đoạn. Đang dùng đoạn 1 làm video chính — các đoạn còn lại: ${result.slice(1).join(', ')}`, { duration: 8000 });
+        }
+
         setVideoFileUrl(newVideoUrl);
         setUploadedVideoPath(newVideoUrl);
         setVideoSettings(finalSettings);
@@ -255,6 +292,39 @@ function VideoEditorContent() {
               <Languages className="w-4 h-4" />
               <span>AI Subtitles</span>
             </button>
+            <button
+              onClick={() => setActiveTab(VIDEO_EDITOR_TABS.FILTER)}
+              className={`flex-1 py-3.5 flex flex-col items-center justify-center gap-1.5 border-b-2 text-xs font-semibold transition ${
+                activeTab === VIDEO_EDITOR_TABS.FILTER
+                  ? 'border-lime-400 text-lime-400 bg-lime-400/5'
+                  : 'border-transparent text-gray-400 hover:text-gray-200'
+              }`}
+            >
+              <Palette className="w-4 h-4" />
+              <span>Filter</span>
+            </button>
+            <button
+              onClick={() => setActiveTab(VIDEO_EDITOR_TABS.FINETUNE)}
+              className={`flex-1 py-3.5 flex flex-col items-center justify-center gap-1.5 border-b-2 text-xs font-semibold transition ${
+                activeTab === VIDEO_EDITOR_TABS.FINETUNE
+                  ? 'border-lime-400 text-lime-400 bg-lime-400/5'
+                  : 'border-transparent text-gray-400 hover:text-gray-200'
+              }`}
+            >
+              <Sliders className="w-4 h-4" />
+              <span>Finetune</span>
+            </button>
+            <button
+              onClick={() => setActiveTab(VIDEO_EDITOR_TABS.RESIZE)}
+              className={`flex-1 py-3.5 flex flex-col items-center justify-center gap-1.5 border-b-2 text-xs font-semibold transition ${
+                activeTab === VIDEO_EDITOR_TABS.RESIZE
+                  ? 'border-lime-400 text-lime-400 bg-lime-400/5'
+                  : 'border-transparent text-gray-400 hover:text-gray-200'
+              }`}
+            >
+              <Maximize2 className="w-4 h-4" />
+              <span>Resize</span>
+            </button>
           </div>
 
           {/* Panel Views */}
@@ -286,6 +356,9 @@ function VideoEditorContent() {
             {activeTab === VIDEO_EDITOR_TABS.AUDIO && <AudioSelector />}
             {activeTab === VIDEO_EDITOR_TABS.TEXT && <TextOverlayEditor />}
             {activeTab === VIDEO_EDITOR_TABS.SUBTITLES && <SubtitlesGenerator />}
+            {activeTab === VIDEO_EDITOR_TABS.FILTER && <FilterPanel />}
+            {activeTab === VIDEO_EDITOR_TABS.FINETUNE && <FinetunePanel />}
+            {activeTab === VIDEO_EDITOR_TABS.RESIZE && <ResizePanel />}
           </div>
         </div>
       </div>

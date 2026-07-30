@@ -24,6 +24,13 @@ export function VideoEditorProvider({ children }) {
   const [keyframes, setKeyframes] = useState([]);
   const [isPreviewMode, setIsPreviewMode] = useState(false);
 
+  // Filter / Finetune / Resize / Split states
+  const [filterPreset, setFilterPreset] = useState('none');
+  const [adjustments, setAdjustments] = useState({ brightness: 0, contrast: 0, saturation: 0 });
+  const [resize, setResize] = useState({ width: null, height: null });
+  const [isResizeDirty, setIsResizeDirty] = useState(false);
+  const [splitPoints, setSplitPoints] = useState([]);
+
   // Without memoizing, every provider render (e.g. from currentTime-driven
   // parent updates) created a new value object, forcing every consumer to
   // re-render regardless of which slice of state it actually reads (#90 M11).
@@ -41,11 +48,16 @@ export function VideoEditorProvider({ children }) {
     videoRatio, setVideoRatio,
     cropX, setCropX,
     keyframes, setKeyframes,
-    isPreviewMode, setIsPreviewMode
+    isPreviewMode, setIsPreviewMode,
+    filterPreset, setFilterPreset,
+    adjustments, setAdjustments,
+    resize, setResize,
+    isResizeDirty, setIsResizeDirty,
+    splitPoints, setSplitPoints
   }), [
     videoUrl, duration, aspectRatio, trimRange, bgMusic, textOverlays,
     activeOverlayId, subtitles, activeTab, videoRatio, cropX, keyframes,
-    isPreviewMode
+    isPreviewMode, filterPreset, adjustments, resize, isResizeDirty, splitPoints
   ]);
 
   return (
