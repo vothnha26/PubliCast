@@ -23,12 +23,6 @@ router.get('/', checkBrandAccess, postController.getPosts);
 router.get('/platform-limits', postController.getPlatformLimits);
 
 /**
- * GET /api/posts/best-times
- * Fetch best times to post analytics based on historical published posts engagement
- */
-router.get('/best-times', checkBrandAccess, postController.getBestTimes);
-
-/**
  * POST /api/posts
  * Create a new post
  */

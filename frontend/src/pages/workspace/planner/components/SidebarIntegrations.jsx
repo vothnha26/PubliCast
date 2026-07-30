@@ -125,7 +125,7 @@ const INTEGRATIONS = [
   }
 ];
 
-export function SidebarIntegrations({ activeBrand }) {
+export function SidebarIntegrations({ activeBrand, onClose }) {
   const { t } = useTranslation("planner");
   const confirm = useConfirm();
   const { hasAccess } = useFeatureGate();
@@ -221,13 +221,33 @@ export function SidebarIntegrations({ activeBrand }) {
     setLoading(true);
     try {
       const res = await socialService.getGoogleDriveFiles(activeBrand.id);
-      setConnected(res.connected);
-      setFiles(res.data || []);
-      setConnectedAccount(res.account || null);
+      setConnected(!!res?.connected);
+      setFiles(res?.data || []);
+      setConnectedAccount(res?.account || null);
       setHasFetched(true);
     } catch (err) {
-      console.error(err);
-      const errMsg = err.response?.data?.message || '';
+      console.error('Drive files fetch check:', err);
+      const status = err.response?.status;
+      const errMsg = err.response?.data?.message || err.message || '';
+      
+      // If error indicates Google Drive is not connected, handle gracefully without toast
+      const isNotConnectedErr = 
+        status === 404 || 
+        status === 401 || 
+        status === 400 ||
+        errMsg.toLowerCase().includes('not connected') ||
+        errMsg.toLowerCase().includes('chưa kết nối') ||
+        errMsg.toLowerCase().includes('no account') ||
+        errMsg.toLowerCase().includes('token');
+
+      if (isNotConnectedErr) {
+        setConnected(false);
+        setFiles([]);
+        setConnectedAccount(null);
+        setHasFetched(true);
+        return;
+      }
+
       if (errMsg.includes('Google Drive API has not been used') || errMsg.includes('disabled')) {
         const urlMatch = errMsg.match(/https:\/\/console\S+/);
         const enableUrl = urlMatch ? urlMatch[0].replace(/[.,;]$/, '') : 'https://console.developers.google.com';
@@ -322,24 +342,35 @@ export function SidebarIntegrations({ activeBrand }) {
   return (
     <div className="bg-white border border-gray-100 rounded-3xl overflow-hidden shadow-sm flex flex-col h-full no-print shrink-0 w-full">
       {/* Header Tabs Navigation */}
-      <div className="flex border-b border-gray-100 h-12 shrink-0">
-        {INTEGRATIONS.map((item) => {
-          const isActive = item.id === activeTab;
-          return (
-            <button
-              key={item.id}
-              onClick={() => setActiveTab(item.id)}
-              className="flex-1 flex flex-col items-center justify-center relative hover:bg-gray-50/50 transition-colors cursor-pointer"
-            >
-              <div className="h-full flex items-center justify-center">
-                {item.icon(isActive)}
-              </div>
-              {isActive && (
-                <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-black" />
-              )}
-            </button>
-          );
-        })}
+      <div className="flex border-b border-gray-100 h-12 shrink-0 items-center pr-2">
+        <div className="flex-1 flex h-full">
+          {INTEGRATIONS.map((item) => {
+            const isActive = item.id === activeTab;
+            return (
+              <button
+                key={item.id}
+                onClick={() => setActiveTab(item.id)}
+                className="flex-1 flex flex-col items-center justify-center relative hover:bg-gray-50/50 transition-colors cursor-pointer"
+              >
+                <div className="h-full flex items-center justify-center">
+                  {item.icon(isActive)}
+                </div>
+                {isActive && (
+                  <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-black" />
+                )}
+              </button>
+            );
+          })}
+        </div>
+        {onClose && (
+          <button
+            onClick={onClose}
+            title={t("sidebarIntegrations.explorer.collapseSidebar", { defaultValue: "Collapse sidebar" })}
+            className="w-7 h-7 flex items-center justify-center text-gray-400 hover:text-gray-900 hover:bg-gray-100 rounded-full transition-all cursor-pointer shrink-0 border-none bg-transparent"
+          >
+            <X size={15} />
+          </button>
+        )}
       </div>
 
       {/* Dynamic strategies / tabs rendering */}

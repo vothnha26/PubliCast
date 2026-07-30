@@ -35,21 +35,6 @@ class PostController {
   });
 
   /**
-   * GET /api/posts/best-times
-   */
-  getBestTimes = asyncHandler(async (req, res) => {
-    const brandId = req.query.brandId;
-    const platform = req.query.platform || 'INSTAGRAM';
-    if (!brandId) return res.status(400).json({ message: 'brandId is required' });
-
-    const data = await postService.getBestTimes(brandId, platform);
-    res.status(200).json({
-      message: 'Best times retrieved successfully',
-      data
-    });
-  });
-
-  /**
    * POST /api/posts
    * Create a new post
    */

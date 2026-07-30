@@ -10,7 +10,8 @@
   "upgrade": {
     "title": "Bạn cần gói cao hơn?",
     "desc": "Bạn đã đăng <span>{{posted}} trên tổng số {{limit}}</span> bài viết giới hạn trong gói tháng này. Hãy nâng cấp gói cước để tăng giới hạn.",
-    "button": "Nâng cấp gói cước"
+    "button": "Nâng cấp gói cước",
+    "dismiss": "Ẩn thông báo"
   },
   "autolists": {
     "title": "Hàng đợi tự động",
@@ -236,6 +237,7 @@
         "desc": "Giảm dần"
       },
       "home": "Trang chủ",
+      "collapseSidebar": "Thu gọn bảng bên",
       "loadingFiles": "Đang tải các tệp tin từ Drive...",
       "noFiles": "Không tìm thấy tệp tin phù hợp",
       "noFilesDesc": "Tải các video, hình ảnh hoặc PDF vào thư mục này rồi tải lại trang.",

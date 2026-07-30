@@ -1,7 +1,6 @@
 import * as React from "react";
 import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { Loader2 } from "lucide-react";
 import { usePostCreator } from "../../../context/PostCreatorContext";
 import apiService from "../../../services/api";
 import { useBrand } from "../../../context/BrandContext";
@@ -20,6 +19,7 @@ import { WeeklyGrid } from "./components/WeeklyGrid";
 import { SidebarIntegrations } from "./components/SidebarIntegrations";
 import { ImportOverlay } from "./components/ImportOverlay";
 import { MonthlyGrid } from "./components/MonthlyGrid";
+import { CalendarSkeleton } from "./components/CalendarSkeleton";
 
 import { useBrandPermission } from "../../../hooks/useBrandPermission";
 
@@ -73,7 +73,7 @@ export function WeeklyCalendarView() {
   // Filtering and Best Times States
   const [filterStatus, setFilterStatus] = useState("ALL");
   const [filterType, setFilterType] = useState("ALL");
-  const [bestTimePlatform, setBestTimePlatform] = useState("INSTAGRAM");
+  // Best times state removed
   const [calendarViewMode, setCalendarViewMode] = useState("WEEK"); // DAY, WEEK, MONTH
   
   // Center date of current selected week (Defaults to current date)
@@ -84,23 +84,7 @@ export function WeeklyCalendarView() {
   const { isImporting, importFromDrive } = useGoogleDriveImport(activeBrand);
   
   const [monthlyPostCount, setMonthlyPostCount] = useState(0);
-  const [bestTimesData, setBestTimesData] = useState([]);
   const postsRequest = useLatestRequestId();
-
-  // Fetch Best Times to Post metrics
-  useEffect(() => {
-    if (!activeBrand) return;
-    const fetchBestTimes = async () => {
-      try {
-        const res = await apiService.get(`/posts/best-times?brandId=${activeBrand.id}&platform=${bestTimePlatform}`);
-        setBestTimesData(res.data.data || []);
-      } catch (e) {
-        console.error("Failed to fetch best times:", e);
-      }
-    };
-    fetchBestTimes();
-  }, [activeBrand, bestTimePlatform]);
-
   useEffect(() => {
     if (!activeBrand) return;
     const fetchMonthlyCount = async () => {
@@ -311,24 +295,17 @@ export function WeeklyCalendarView() {
         onFilterStatusChange={setFilterStatus}
         filterType={filterType}
         onFilterTypeChange={setFilterType}
-        bestTimePlatform={bestTimePlatform}
-        onBestTimePlatformChange={setBestTimePlatform}
         calendarViewMode={calendarViewMode}
         onCalendarViewModeChange={setCalendarViewMode}
       />
 
-      {loading && (
-        <div className="flex items-center justify-center py-4 no-print">
-          <Loader2 className="animate-spin text-[#0A0A0A] mr-2" size={18} />
-          <span className="text-xs font-bold text-gray-500 uppercase tracking-widest">{t("weeklyCalendar.loadingPosts")}</span>
-        </div>
-      )}
-
       {/* 3. Main Grid layout: Lịch bên trái, Tích hợp bên phải */}
       <div className="flex-1 min-h-0 flex flex-col lg:flex-row gap-6 items-stretch mb-6">
-        {/* Lưới lịch tuần/ngày/tháng */}
-        <div className="flex-1 w-full h-full">
-          {calendarViewMode === 'MONTH' ? (
+        {/* Main Calendar Content - Always 100% full width */}
+        <div className="flex-1 min-w-0 h-full overflow-hidden">
+          {loading ? (
+            <CalendarSkeleton viewMode={calendarViewMode} />
+          ) : calendarViewMode === 'MONTH' ? (
             <MonthlyGrid
               selectedDate={selectedDate}
               postData={searchStatusTypeFiltered}
@@ -348,21 +325,28 @@ export function WeeklyCalendarView() {
               onDuplicateClick={handleDuplicatePost}
               onCellDrop={importFromDrive}
               rowHeight={rowHeight}
-              bestTimePlatform={bestTimePlatform}
-              bestTimesData={bestTimesData}
               eventsData={eventsData}
               viewMode={calendarViewMode}
             />
           )}
         </div>
-
-        {/* Cột tích hợp bên phải */}
-        {showSidebar && (
-          <div className="w-full lg:w-[280px] shrink-0 h-full animate-in slide-in-from-right duration-250">
-            <SidebarIntegrations activeBrand={activeBrand} />
-          </div>
-        )}
       </div>
+
+      {/* Right Slide-over Drawer for Integrations & Media Drive */}
+      {showSidebar && (
+        <div className="fixed inset-y-0 right-0 z-50 flex pl-10 max-w-full no-print">
+          {/* Backdrop Overlay */}
+          <div 
+            className="fixed inset-0 bg-black/25 backdrop-blur-xs transition-opacity animate-in fade-in duration-200 cursor-pointer"
+            onClick={() => setShowSidebar(false)}
+          />
+          
+          {/* Slide-over Drawer Panel */}
+          <div className="relative w-screen max-w-sm bg-white shadow-2xl z-10 flex flex-col h-full border-l border-gray-200 animate-in slide-in-from-right duration-300">
+            <SidebarIntegrations activeBrand={activeBrand} onClose={() => setShowSidebar(false)} />
+          </div>
+        </div>
+      )}
 
       {/* Google Drive Import Backdrop Overlay */}
       <ImportOverlay isOpen={isImporting} />
