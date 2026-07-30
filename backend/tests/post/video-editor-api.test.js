@@ -137,6 +137,10 @@ describe('Video Editor & Social Publishing Pipeline Integration Tests', () => {
           videoUrl: '/uploads/media/original.mp4',
           startTime: 2,
           endTime: 7,
+          aspectRatio: '1:1',
+          adjustments: { brightness: 10, contrast: 15, saturation: 5 },
+          filterPreset: 'grayscale',
+          resize: { width: 720, height: 720 },
           brandId: 'brand_123'
         });
 
@@ -144,7 +148,16 @@ describe('Video Editor & Social Publishing Pipeline Integration Tests', () => {
       expect(res.body).toHaveProperty('taskId');
       expect(res.body).toHaveProperty('message', 'Video processing started in background');
       expect(mockRedis.set).toHaveBeenCalled();
-      expect(mockVideoQueue.add).toHaveBeenCalled();
+      expect(mockVideoQueue.add).toHaveBeenCalledWith(
+        'process-video',
+        expect.objectContaining({
+          aspectRatio: '1:1',
+          adjustments: { brightness: 10, contrast: 15, saturation: 5 },
+          filterPreset: 'grayscale',
+          resize: { width: 720, height: 720 }
+        }),
+        expect.any(Object)
+      );
     });
 
     it('GET /api/posts/trim/:taskId/status should return status & progress (Happy Path)', async () => {
@@ -193,6 +206,47 @@ describe('Video Editor & Social Publishing Pipeline Integration Tests', () => {
       expect(res.status).toBe(500);
       expect(res.body.message).toContain('BullMQ Connection Failure');
       expect(mockRedis.del).toHaveBeenCalled();
+    });
+
+    it('POST /api/posts/trim should return 429 Rate Limit WITH taskId on lock contention', async () => {
+      mockRedis.set.mockResolvedValue(null); // Lock failed (already locked)
+
+      const res = await request(app)
+        .post('/api/posts/trim')
+        .send({
+          videoUrl: '/uploads/media/original.mp4',
+          startTime: 2,
+          endTime: 7,
+          brandId: 'brand_123'
+        });
+
+      expect(res.status).toBe(429);
+      expect(res.body).toHaveProperty('taskId');
+      expect(res.body.message).toContain('Yêu cầu đang được xử lý');
+    });
+
+    it('POST /api/posts/trim should accept saveAudio/keepAudio and pass keepAudio: false to queue', async () => {
+      mockRedis.set.mockResolvedValue('OK');
+      mockVideoQueue.add.mockResolvedValue({ id: 'job_123' });
+
+      const res = await request(app)
+        .post('/api/posts/trim')
+        .send({
+          videoUrl: '/uploads/media/original.mp4',
+          startTime: 0,
+          endTime: 5,
+          saveAudio: false,
+          brandId: 'brand_123'
+        });
+
+      expect(res.status).toBe(202);
+      expect(mockVideoQueue.add).toHaveBeenCalledWith(
+        'process-video',
+        expect.objectContaining({
+          keepAudio: false
+        }),
+        expect.any(Object)
+      );
     });
   });
 

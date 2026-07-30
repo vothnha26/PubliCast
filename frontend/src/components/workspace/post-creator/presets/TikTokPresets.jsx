@@ -1,8 +1,10 @@
 import React from "react";
+import { useTranslation } from "react-i18next";
 import { ChevronDown } from "lucide-react";
 import { usePostCreatorFormContext } from "../../../../context/PostCreatorFormContext";
 
 export function TikTokPresets() {
+  const { t } = useTranslation(["planner"]);
   const {
     tiktokOpen,
     setTiktokOpen,
@@ -30,7 +32,7 @@ export function TikTokPresets() {
           <svg className="w-[18px] h-[18px] text-black fill-current" viewBox="0 0 24 24">
             <path d="M12.53.02C13.84 0 15.14.01 16.44 0c.08 1.53.63 3.09 1.75 4.17 1.12 1.11 2.7 1.62 4.24 1.79v4.03c-1.44-.17-2.89-.6-4.09-1.5-1.1-1.02-1.7-2.48-1.9-3.96-.03 2.49 0 4.99 0 7.48-.02 1.9-.38 3.82-1.39 5.43-1.46 2.42-4.13 3.84-6.93 3.55-3.05-.2-5.78-2.44-6.39-5.46-.73-3.27.97-6.9 4.13-7.91 1.09-.34 2.24-.39 3.37-.2v4.02c-1.22-.32-2.58-.09-3.55.74-.95.83-1.29 2.19-1.03 3.4.31 1.65 1.84 2.91 3.53 2.78 1.94-.04 3.42-1.8 3.25-3.73-.02-2.91 0-5.83 0-8.74.02-3.11-.02-6.22.02-9.33z"/>
           </svg>
-          <span className="text-[12px] font-bold text-gray-700 font-sans">Tiktok presets</span>
+          <span className="text-[12px] font-bold text-gray-700 font-sans">{t("planner:postCreator.presets.tiktok.title")}</span>
         </div>
         <ChevronDown size={16} className={`text-gray-400 transition-transform duration-300 ${tiktokOpen ? 'rotate-180 text-black' : ''}`} />
       </div>
@@ -40,16 +42,16 @@ export function TikTokPresets() {
           
           {/* Privacy dropdown */}
           <div>
-            <label className="block text-[11px] font-bold text-gray-500 uppercase mb-2 font-sans">Who can view your post?</label>
+            <label className="block text-[11px] font-bold text-gray-500 uppercase mb-2 font-sans">{t("planner:postCreator.presets.tiktok.whoCanView")}</label>
             <div className="relative">
               <select
                 value={tiktokPrivacy}
                 onChange={(e) => setTiktokPrivacy(e.target.value)}
                 className="w-full px-4 py-3 bg-white border border-gray-200 rounded-2xl text-xs font-semibold focus:border-black outline-none appearance-none cursor-pointer font-sans"
               >
-                <option value="public">Public</option>
-                <option value="friends">Friends</option>
-                <option value="self">Self</option>
+                <option value="public">{t("planner:postCreator.presets.tiktok.public")}</option>
+                <option value="friends">{t("planner:postCreator.presets.tiktok.friends")}</option>
+                <option value="self">{t("planner:postCreator.presets.tiktok.self")}</option>
               </select>
               <ChevronDown size={14} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
             </div>
@@ -58,7 +60,7 @@ export function TikTokPresets() {
           {/* 3 Switches */}
           <div className="flex items-center justify-between gap-4 pt-2 border-t border-gray-50">
             <div className="flex flex-col items-start gap-1">
-              <span className="text-[11px] font-bold text-gray-500 uppercase font-sans">Allow comments</span>
+              <span className="text-[11px] font-bold text-gray-500 uppercase font-sans">{t("planner:postCreator.presets.tiktok.allowComments")}</span>
               <button
                 type="button"
                 onClick={() => setTiktokAllowComments(!tiktokAllowComments)}
@@ -74,7 +76,7 @@ export function TikTokPresets() {
               </button>
             </div>
             <div className="flex flex-col items-start gap-1">
-              <span className="text-[11px] font-bold text-gray-500 uppercase font-sans">Allow duet</span>
+              <span className="text-[11px] font-bold text-gray-500 uppercase font-sans">{t("planner:postCreator.presets.tiktok.allowDuet")}</span>
               <button
                 type="button"
                 onClick={() => setTiktokAllowDuet(!tiktokAllowDuet)}
@@ -90,7 +92,7 @@ export function TikTokPresets() {
               </button>
             </div>
             <div className="flex flex-col items-start gap-1">
-              <span className="text-[11px] font-bold text-gray-500 uppercase font-sans">Allow stitch</span>
+              <span className="text-[11px] font-bold text-gray-500 uppercase font-sans">{t("planner:postCreator.presets.tiktok.allowStitch")}</span>
               <button
                 type="button"
                 onClick={() => setTiktokAllowStitch(!tiktokAllowStitch)}
@@ -111,8 +113,8 @@ export function TikTokPresets() {
           <div className="border-t border-gray-100 pt-4 space-y-4">
             <div className="flex items-center justify-between">
               <div className="flex flex-col text-left">
-                <span className="block text-[11px] font-bold text-gray-500 uppercase font-sans">AI-generated content</span>
-                <span className="text-[9px] text-gray-400 font-medium font-sans">Label your content as generated by AI</span>
+                <span className="block text-[11px] font-bold text-gray-500 uppercase font-sans">{t("planner:postCreator.presets.tiktok.aiGenerated")}</span>
+                <span className="text-[9px] text-gray-400 font-medium font-sans">{t("planner:postCreator.presets.tiktok.aiGeneratedDesc")}</span>
               </div>
               <button
                 type="button"
@@ -131,9 +133,9 @@ export function TikTokPresets() {
 
             <div className="flex items-start justify-between gap-4">
               <div className="space-y-0.5 text-left">
-                <span className="block text-[11px] font-bold text-gray-500 uppercase font-sans">Commercial content</span>
+                <span className="block text-[11px] font-bold text-gray-500 uppercase font-sans">{t("planner:postCreator.presets.tiktok.commercialContent")}</span>
                 <span className="block text-[9px] text-gray-400 font-medium leading-normal font-sans">
-                  Turn on to disclose that this post promotes goods or services in exchange for something of value
+                  {t("planner:postCreator.presets.tiktok.commercialContentDesc")}
                 </span>
               </div>
               <button

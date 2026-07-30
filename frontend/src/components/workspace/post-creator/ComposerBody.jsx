@@ -5,24 +5,30 @@ import {
   Info, AlertCircle, Youtube, MoreHorizontal, Edit, Type, Trash2,
   ImageIcon, Plus, Smile, Link2, Search, Languages, FileText, Send,
   Settings, ChevronDown, Instagram, MessageSquare, X,
-  Folder, MapPin, Sparkles
+  Folder, MapPin, Sparkles, Lock
 } from "lucide-react";
 import { usePostCreatorFormContext } from "../../../context/PostCreatorFormContext";
 import { PlatformIcon } from "../../shared/PlatformIcon";
 import { MediaDropdown } from "./MediaDropdown";
-import { EmojiPickerPopover } from "./EmojiPickerPopover";
-import { UTMGeneratorPopover } from "./UTMGeneratorPopover";
-import { HashtagPickerPopover } from "./HashtagPickerPopover";
+import { EmojiPickerPopover } from "./popovers/EmojiPickerPopover";
+import { UTMGeneratorPopover } from "./popovers/UTMGeneratorPopover";
+import { HashtagPickerPopover } from "./popovers/HashtagPickerPopover";
 import { FacebookAlbumComposer } from "./FacebookAlbumComposer";
 import StockMediaPicker from "../../shared/StockMediaPicker";
 import { toast } from "sonner";
 import { PRODUCT_IDS } from "../../../constants/products";
-import { AICopilotPopover } from "./AICopilotPopover";
+import { AICopilotPopover } from "./popovers/AICopilotPopover";
 import { isVideoPath } from "../../../utils/url";
+import { NetworkTabSwitcher } from "./NetworkTabSwitcher";
+import { NETWORK_TAB_TEMPLATE } from "../../../constants/postComposerNetwork";
+import { PLATFORMS } from "../../../constants/platforms";
+import { FACEBOOK_TYPE, YOUTUBE_TYPE, INSTAGRAM_TYPE, POST_TYPE } from "../../../constants/postTypes";
 
 // Presets Imports
 import { GlobalPresets } from "./presets/GlobalPresets";
 import { PRESET_REGISTRY } from "../../../constants/presetRegistry";
+
+import { MEDIA_FILTER_TYPES } from "../../../constants/mediaAcceptStrategy";
 
 export function ComposerBody() {
   const { t } = useTranslation(["planner", "common"]);
@@ -53,11 +59,13 @@ export function ComposerBody() {
     handleRemoveVideo,
     facebookType,
     instagramType,
+    youtubeType,
     activeBrand,
     albumMedia,
     setAlbumMedia,
     setEditingAlbumPhoto,
     setShowImageEditor,
+    setShowVideoEditor,
     setEditingPostMediaIndex,
     imageTransform,
     showImageMenu,
@@ -86,10 +94,87 @@ export function ComposerBody() {
     platformLimits,
     setShowUploadModal,
     setUploadModalTab,
+    setMediaTypeFilter,
     getBackupPayload,
     backupFormState,
-    closePostCreatorTemporarily
+    closePostCreatorTemporarily,
+    isEditByNetwork,
+    activeNetworkTab,
+    networkCustom,
+    toggleUseTemplate,
+    updateNetworkCaption,
+    updateNetworkMedia,
+    updateThreadPostText,
+    updateThreadPostMedia,
   } = usePostCreatorFormContext();
+
+  // === Network Tab derived vars ===
+  const isThreadsTab = isEditByNetwork && activeNetworkTab === 'threads';
+  const isThreadsCustom = isThreadsTab && networkCustom['threads']?.useTemplate === false;
+  const isCustomTab =
+    isEditByNetwork &&
+    activeNetworkTab !== NETWORK_TAB_TEMPLATE &&
+    activeNetworkTab !== 'threads' &&
+    networkCustom[activeNetworkTab]?.useTemplate === false;
+
+  const activeThreadPost = isThreadsTab
+    ? networkCustom['threads']?.threadPosts?.[networkCustom['threads']?.activeThreadIndex || 0]
+    : null;
+
+  const activeCaptionValue = isCustomTab
+    ? (networkCustom[activeNetworkTab]?.caption || '')
+    : isThreadsTab
+      ? (typeof activeThreadPost === 'string' ? activeThreadPost : activeThreadPost?.text || '')
+      : caption;
+
+  const handleCaptionChange = (val) => {
+    if (isCustomTab) {
+      updateNetworkCaption(activeNetworkTab, val);
+    } else if (isThreadsTab) {
+      const threadIndex = networkCustom['threads']?.activeThreadIndex || 0;
+      updateThreadPostText(threadIndex, val);
+    } else {
+      setCaption(val);
+    }
+  };
+
+  const effectivePostMedia = isCustomTab
+    ? (networkCustom[activeNetworkTab]?.mediaUrls || [])
+    : isThreadsCustom
+      ? (typeof activeThreadPost === 'object' ? activeThreadPost?.mediaUrls || [] : [])
+      : postMedia;
+
+  const handleRemoveMediaItem = (index) => {
+    if (isCustomTab) {
+      const current = networkCustom[activeNetworkTab]?.mediaUrls || [];
+      const updated = current.filter((_, i) => i !== index);
+      updateNetworkMedia(activeNetworkTab, updated);
+    } else if (isThreadsCustom) {
+      const threadIdx = networkCustom['threads']?.activeThreadIndex || 0;
+      const current = (typeof activeThreadPost === 'object' ? activeThreadPost?.mediaUrls : []) || [];
+      const updated = current.filter((_, i) => i !== index);
+      updateThreadPostMedia(threadIdx, updated);
+    } else {
+      setPostMedia(prev => {
+        const next = prev.filter((_, i) => i !== index);
+        if (next.length > 0) {
+          setVideoFile(next[0].file);
+          setVideoFileUrl(next[0].previewUrl);
+          setUploadedVideoPath(next[0].path);
+        } else {
+          setVideoFile(null);
+          setVideoFileUrl("");
+          setUploadedVideoPath("");
+        }
+        return next;
+      });
+    }
+  };
+
+  const isLockedPlatformTab =
+    isEditByNetwork &&
+    activeNetworkTab !== NETWORK_TAB_TEMPLATE &&
+    networkCustom[activeNetworkTab]?.useTemplate !== false;
 
   const isImageFile = videoFile 
     ? videoFile.type.startsWith("image/") 
@@ -172,16 +257,56 @@ export function ComposerBody() {
           
 
 
-          <textarea 
-            ref={textareaRef} 
-            value={caption}
-            onChange={(e) => setCaption(e.target.value)} 
-            data-testid="post-caption-input"
-            className="w-full p-6 text-sm font-medium leading-relaxed outline-none min-h-[350px] resize-none font-sans"
-            placeholder={t("planner:postCreator.composer.placeholders.caption")}
-          />
+          {/* Network Tab Switcher */}
+          {isEditByNetwork && <NetworkTabSwitcher />}
 
-          {(!postMedia || postMedia.length === 0) && (videoFile || uploadedVideoPath) && !isImageFile && (
+          {/* Locked state: tab platform chưa customize */}
+          {isLockedPlatformTab ? (
+            <div className="mx-5 my-4 border-2 border-dashed border-gray-200 rounded-2xl p-6 flex flex-col items-center gap-3 bg-gray-50/50 animate-in fade-in">
+              <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center">
+                <Lock size={16} className="text-gray-400" />
+              </div>
+              <div className="text-center">
+                <p className="text-[11px] font-black text-gray-500 uppercase tracking-wider font-sans">
+                  Đang dùng nội dung chung
+                </p>
+                <p className="text-[10px] text-gray-400 mt-0.5 font-sans">
+                  Bấm bên dưới để chỉnh nội dung riêng cho nền tảng này
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => toggleUseTemplate(activeNetworkTab, false)}
+                className="px-4 py-2 bg-gray-900 hover:bg-black text-white text-[10px] font-black uppercase tracking-widest rounded-xl transition-all cursor-pointer font-sans shadow-sm"
+              >
+                Chỉnh sửa nội dung riêng
+              </button>
+            </div>
+          ) : (
+            <>
+              <textarea
+                ref={textareaRef}
+                value={activeCaptionValue}
+                onChange={(e) => handleCaptionChange(e.target.value)}
+                data-testid="post-caption-input"
+                className="w-full p-6 text-sm font-medium leading-relaxed outline-none min-h-[350px] resize-none font-sans"
+                placeholder={
+                  isThreadsTab
+                    ? `Nội dung Post ${(networkCustom['threads']?.activeThreadIndex || 0) + 1} trong chuỗi Threads...`
+                    : isCustomTab
+                      ? `Nội dung riêng cho ${activeNetworkTab}...`
+                      : t("planner:postCreator.composer.placeholders.caption")
+                }
+              />
+              {(isCustomTab || isThreadsCustom) && (
+                <p className="px-6 pb-1 text-[10px] text-purple-600 font-bold font-sans">
+                  Nội dung & media riêng cho {(isThreadsCustom ? 'threads' : activeNetworkTab).toUpperCase()}
+                </p>
+              )}
+            </>
+          )}
+
+          {!isCustomTab && (!effectivePostMedia || effectivePostMedia.length === 0) && (videoFile || uploadedVideoPath) && !isImageFile && (
             <div className="px-6 py-3 border-t border-gray-50 bg-gray-50/50 flex items-center justify-between animate-in fade-in slide-in-from-top-1">
               <div className="flex items-center gap-2 text-xs font-bold text-gray-700">
                 <Youtube className="text-red-500 fill-red-500 font-sans" size={16} />
@@ -193,10 +318,7 @@ export function ComposerBody() {
                 <button 
                   type="button"
                   onClick={() => {
-                    const payload = getBackupPayload();
-                    backupFormState(payload);
-                    closePostCreatorTemporarily();
-                    navigate("/workspace/video-editor");
+                    setShowVideoEditor(true);
                   }}
                   className="text-[10px] font-black text-purple-600 hover:text-purple-800 uppercase tracking-widest transition-all cursor-pointer font-sans"
                 >
@@ -223,29 +345,24 @@ export function ComposerBody() {
           ) : (
             <>
               {/* Multiple thumbnails for standard posts */}
-              {postMedia && postMedia.length > 0 ? (
+              {effectivePostMedia && effectivePostMedia.length > 0 ? (
                 <div className="px-6 pb-4 bg-white flex flex-wrap gap-4 animate-in fade-in duration-300">
-                  {postMedia.map((item, index) => {
+                  {effectivePostMedia.map((item, index) => {
                     const isItemVid = isVideoPath(item.previewUrl || item.path, item.file);
                     return (
                       <div key={index} className="relative group">
                         <div className="w-16 h-16 rounded-2xl overflow-hidden border border-gray-100 shadow-md bg-gray-50 flex items-center justify-center relative">
                           {isItemVid ? (
                             <>
-                              <video src={item.previewUrl} className="w-full h-full object-cover" />
+                              <video src={item.previewUrl || item.path} className="w-full h-full object-cover" />
                               {/* Overlay Edit Video khi hover */}
                               <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                                 <button
                                   type="button"
                                   title={t("planner:postCreator.composer.editVideo")}
                                   onClick={() => {
-                                    const payload = getBackupPayload();
-                                    payload.videoFileUrl = item.previewUrl || item.path;
-                                    payload.uploadedVideoPath = item.path || "";
-                                    payload.videoFile = item.file || null;
-                                    backupFormState(payload);
-                                    closePostCreatorTemporarily();
-                                    navigate("/workspace/video-editor");
+                                    setEditingPostMediaIndex(index);
+                                    setShowVideoEditor(true);
                                   }}
                                   className="w-7 h-7 rounded-full bg-white/90 hover:bg-white text-gray-800 flex items-center justify-center cursor-pointer shadow-md active:scale-90 transition-all"
                                 >
@@ -255,7 +372,7 @@ export function ComposerBody() {
                             </>
                           ) : (
                             <>
-                              <img src={item.previewUrl} alt="Preview" className="w-full h-full object-cover" />
+                              <img src={item.previewUrl || item.path} alt="Preview" className="w-full h-full object-cover" />
                               <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                                 <button
                                   type="button"
@@ -274,21 +391,7 @@ export function ComposerBody() {
                         </div>
                         <button
                           type="button"
-                          onClick={() => {
-                            setPostMedia(prev => {
-                              const next = prev.filter((_, i) => i !== index);
-                              if (next.length > 0) {
-                                setVideoFile(next[0].file);
-                                setVideoFileUrl(next[0].previewUrl);
-                                setUploadedVideoPath(next[0].path);
-                              } else {
-                                setVideoFile(null);
-                                setVideoFileUrl("");
-                                setUploadedVideoPath("");
-                              }
-                              return next;
-                            });
-                          }}
+                          onClick={() => handleRemoveMediaItem(index)}
                           className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-red-500 hover:bg-red-600 text-white flex items-center justify-center cursor-pointer shadow-md opacity-0 group-hover:opacity-100 transition-opacity z-20"
                         >
                           <X size={10} />
@@ -300,7 +403,7 @@ export function ComposerBody() {
               ) : null}
 
               {/* Thumbnail Image display */}
-              {(!postMedia || postMedia.length === 0) && isImageFile && videoFileUrl && (
+              {(!effectivePostMedia || effectivePostMedia.length === 0) && isImageFile && videoFileUrl && (
                 <div className="px-6 pb-4 bg-white flex flex-wrap gap-3 animate-in fade-in duration-300">
                   <div className="relative">
                     <div className="w-16 h-16 rounded-2xl overflow-hidden border border-gray-100 shadow-md">
@@ -377,9 +480,9 @@ export function ComposerBody() {
                 {activePopover === 'media' && (
                   <MediaDropdown 
                     onClose={() => setActivePopover(null)} 
-                    onSelectImage={() => { setUploadModalTab("computer"); setShowUploadModal(true); setActivePopover(null); }} 
-                    onSelectVideo={() => { setUploadModalTab("computer"); setShowUploadModal(true); setActivePopover(null); }} 
-                    onSelectLibrary={() => { setUploadModalTab("library"); setShowUploadModal(true); setActivePopover(null); }}
+                    onSelectImage={() => { setUploadModalTab("computer"); setMediaTypeFilter?.(MEDIA_FILTER_TYPES.IMAGE); setShowUploadModal(true); setActivePopover(null); }} 
+                    onSelectVideo={() => { setUploadModalTab("computer"); setMediaTypeFilter?.(MEDIA_FILTER_TYPES.VIDEO); setShowUploadModal(true); setActivePopover(null); }} 
+                    onSelectLibrary={() => { setUploadModalTab("library"); setMediaTypeFilter?.(MEDIA_FILTER_TYPES.ALL); setShowUploadModal(true); setActivePopover(null); }}
                     onSelectStock={() => { setShowStockPicker(true); setActivePopover(null); }}
                     onSelectDrive={() => {
                       setActivePopover(null);
@@ -499,6 +602,9 @@ export function ComposerBody() {
             <div className="flex items-center gap-3">
               <div className="group relative cursor-help">
                 {(() => {
+                  const effectivePlatform = (isEditByNetwork && activeNetworkTab && activeNetworkTab !== NETWORK_TAB_TEMPLATE)
+                    ? activeNetworkTab
+                    : activePlatform;
                   const fallbacks = {
                     facebook: 63206,
                     instagram: 2200,
@@ -510,50 +616,72 @@ export function ComposerBody() {
                     twitch: 500,
                     reddit: 40000
                   };
-                  let maxLimit = fallbacks[activePlatform.toLowerCase()] || 5000;
+                  let maxLimit = fallbacks[effectivePlatform.toLowerCase()] || 5000;
                   if (platformLimits && platformLimits.length > 0) {
-                    const limitObj = platformLimits.find(l => l.platform.toLowerCase() === activePlatform.toLowerCase());
+                    const platLower = effectivePlatform.toLowerCase();
+                    let subType = POST_TYPE.IMAGE;
+                    if (platLower === PLATFORMS.FACEBOOK) subType = facebookType.toUpperCase();
+                    else if (platLower === PLATFORMS.YOUTUBE) subType = youtubeType.toUpperCase();
+                    else if (platLower === PLATFORMS.INSTAGRAM) subType = instagramType.toUpperCase();
+                    else if (platLower === PLATFORMS.TIKTOK) subType = POST_TYPE.VIDEO;
+
+                    const limitObj = platformLimits.find(
+                      l => l.platform.toLowerCase() === platLower && l.subType === subType
+                    ) || platformLimits.find(l => l.platform.toLowerCase() === platLower);
+
                     if (limitObj && (limitObj.maxCharacters || limitObj.maxCaptionLength)) {
                       maxLimit = limitObj.maxCharacters || limitObj.maxCaptionLength;
                     }
                   }
-                  const isExceeded = caption.length > maxLimit;
+                  const currentTextLength = activeCaptionValue ? activeCaptionValue.length : 0;
+                  const isExceeded = currentTextLength > maxLimit;
                   return (
                     <span className={`text-[11px] font-bold transition-colors tracking-wide font-sans ${isExceeded ? 'text-red-500 font-extrabold animate-pulse' : 'text-gray-400 group-hover:text-gray-600'}`}>
-                      {caption.length} / {maxLimit}
+                      {currentTextLength} / {maxLimit}
                     </span>
                   );
                 })()}
                 <div className="absolute bottom-full right-0 mb-3 w-56 p-3 bg-white rounded-xl shadow-xl border border-gray-100 hidden group-hover:block animate-in fade-in slide-in-from-bottom-1 z-50">
-                  <p className="text-[10px] text-gray-500 leading-normal font-sans">{t("planner:postCreator.composer.characterLimitDesc", { platform: activePlatform })}</p>
+                  <p className="text-[10px] text-gray-500 leading-normal font-sans">
+                    {t("planner:postCreator.composer.characterLimitDesc", {
+                      platform: (isEditByNetwork && activeNetworkTab && activeNetworkTab !== NETWORK_TAB_TEMPLATE) ? activeNetworkTab : activePlatform
+                    })}
+                  </p>
                 </div>
               </div>
               <div className="w-px h-3.5 bg-gray-200" />
-              <div className={`w-6 h-6 rounded-full flex items-center justify-center shadow-sm text-white ${
-                activePlatform === 'youtube' ? 'bg-[#FF0000]' : 
-                activePlatform === 'tiktok' ? 'bg-black' : 
-                activePlatform === 'instagram' ? 'bg-gradient-to-tr from-[#F58529] via-[#DD2A7B] to-[#8134AF]' :
-                activePlatform === 'telegram' ? 'bg-[#0088cc]' :
-                activePlatform === 'threads' ? 'bg-black' : 'bg-[#1877F2]'
-              }`}>
-                {activePlatform === 'youtube' ? (
-                  <Youtube size={12} className="text-white fill-white" />
-                ) : activePlatform === 'tiktok' ? (
-                  <svg className="w-3 h-3 text-white fill-white" viewBox="0 0 24 24">
-                    <path d="M12.53.02C13.84 0 15.14.01 16.44 0c.08 1.53.63 3.09 1.75 4.17 1.12 1.11 2.7 1.62 4.24 1.79v4.03c-1.44-.17-2.89-.6-4.09-1.5-1.1-1.02-1.7-2.48-1.9-3.96-.03 2.49 0 4.99 0 7.48-.02 1.9-.38 3.82-1.39 5.43-1.46 2.42-4.13 3.84-6.93 3.55-3.05-.2-5.78-2.44-6.39-5.46-.73-3.27.97-6.9 4.13-7.91 1.09-.34 2.24-.39 3.37-.2v4.02c-1.22-.32-2.58-.09-3.55.74-.95.83-1.29 2.19-1.03 3.4.31 1.65 1.84 2.91 3.53 2.78 1.94-.04 3.42-1.8 3.25-3.73-.02-2.91 0-5.83 0-8.74.02-3.11-.02-6.22.02-9.33z"/>
-                  </svg>
-                ) : activePlatform === 'instagram' ? (
-                  <Instagram size={12} className="text-white" />
-                ) : activePlatform === 'telegram' ? (
-                  <Send size={11} className="text-white fill-white translate-x-[-0.5px]" />
-                ) : activePlatform === 'threads' ? (
-                  <PlatformIcon platform="Threads" size={12} variant="flat" className="text-white" />
-                ) : (
-                  <svg className="w-3.5 h-3.5 text-white fill-white" viewBox="0 0 24 24">
-                    <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
-                  </svg>
-                )}
-              </div>
+              {(() => {
+                const currentPlatform = (isEditByNetwork && activeNetworkTab && activeNetworkTab !== NETWORK_TAB_TEMPLATE)
+                  ? activeNetworkTab
+                  : activePlatform;
+                return (
+                  <div className={`w-6 h-6 rounded-full flex items-center justify-center shadow-sm text-white ${
+                    currentPlatform === 'youtube' ? 'bg-[#FF0000]' : 
+                    currentPlatform === 'tiktok' ? 'bg-black' : 
+                    currentPlatform === 'instagram' ? 'bg-gradient-to-tr from-[#F58529] via-[#DD2A7B] to-[#8134AF]' :
+                    currentPlatform === 'telegram' ? 'bg-[#0088cc]' :
+                    currentPlatform === 'threads' ? 'bg-black' : 'bg-[#1877F2]'
+                  }`}>
+                    {currentPlatform === 'youtube' ? (
+                      <Youtube size={12} className="text-white fill-white" />
+                    ) : currentPlatform === 'tiktok' ? (
+                      <svg className="w-3 h-3 text-white fill-white" viewBox="0 0 24 24">
+                        <path d="M12.53.02C13.84 0 15.14.01 16.44 0c.08 1.53.63 3.09 1.75 4.17 1.12 1.11 2.7 1.62 4.24 1.79v4.03c-1.44-.17-2.89-.6-4.09-1.5-1.1-1.02-1.7-2.48-1.9-3.96-.03 2.49 0 4.99 0 7.48-.02 1.9-.38 3.82-1.39 5.43-1.46 2.42-4.13 3.84-6.93 3.55-3.05-.2-5.78-2.44-6.39-5.46-.73-3.27.97-6.9 4.13-7.91 1.09-.34 2.24-.39 3.37-.2v4.02c-1.22-.32-2.58-.09-3.55.74-.95.83-1.29 2.19-1.03 3.4.31 1.65 1.84 2.91 3.53 2.78 1.94-.04 3.42-1.8 3.25-3.73-.02-2.91 0-5.83 0-8.74.02-3.11-.02-6.22.02-9.33z"/>
+                      </svg>
+                    ) : currentPlatform === 'instagram' ? (
+                      <Instagram size={12} className="text-white" />
+                    ) : currentPlatform === 'telegram' ? (
+                      <Send size={11} className="text-white fill-white translate-x-[-0.5px]" />
+                    ) : currentPlatform === 'threads' ? (
+                      <PlatformIcon platform="Threads" size={12} variant="flat" className="text-white" />
+                    ) : (
+                      <svg className="w-3.5 h-3.5 text-white fill-white" viewBox="0 0 24 24">
+                        <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
+                      </svg>
+                    )}
+                  </div>
+                );
+              })()}
             </div>
           </div>
 

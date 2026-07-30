@@ -3,25 +3,54 @@ const path = require('path');
 const { execFile } = require('child_process');
 const axios = require('axios');
 const { cloudinary } = require('../../../config/cloudinary');
+const videoFilterPipeline = require('./video-filter.pipeline');
+const { FFMPEG_DEFAULTS, VIDEO_FILE_CONFIG } = require('../../../constants/video-editor.constants');
 
 class VideoProcessorFacade {
   /**
-   * Main entry point to process video edits (Trim, Audio merge, and Crop Aspect Ratio with Keyframes)
+   * Main entry point to process video edits (Trim, Audio merge, Crop, Adjustments, Filters, Overlays, Subtitles, Resize)
    * @param {Object} params
    * @param {string} params.videoUrl - Input video URL (Cloudinary or local path)
    * @param {number} params.startTime - Trim start time in seconds
    * @param {number} params.endTime - Trim end time in seconds
    * @param {string} params.aspectRatio - Target aspect ratio ('original', '1:1', '9:16', '16:9')
    * @param {Array} params.keyframes - Crop dynamic position keyframes [{ time, cropX }]
+   * @param {Object} params.adjustments - { brightness, contrast, saturation }
+   * @param {string} params.filterPreset - Color preset filter ('none', 'grayscale', 'sepia', etc.)
+   * @param {Object} params.resize - Custom target width/height { width, height }
+   * @param {Array} params.textOverlays - Text and sticker overlays
+   * @param {Array} params.subtitles - Timed subtitles
    * @param {string} params.audioUrl - Selected audio track URL (optional)
    * @param {number} params.audioVolume - Volume for selected audio (0-100)
    * @param {string} params.brandId - Brand identifier for organization
    * @returns {Promise<string>} Output video URL (local path or Cloudinary URL)
    */
-  async processVideo({ videoUrl, startTime, endTime, aspectRatio, keyframes, audioUrl, audioVolume = 50, textOverlays = [], subtitles = [], brandId = 'unassigned' }) {
-    console.log(`[VideoProcessorFacade] Starting process: videoUrl=${videoUrl}, trim=${startTime}s-${endTime}s, aspectRatio=${aspectRatio}, keyframesCount=${keyframes?.length || 0}, textOverlaysCount=${textOverlays?.length || 0}`);
+  async processVideo({
+    videoUrl,
+    startTime,
+    endTime,
+    aspectRatio,
+    keyframes,
+    adjustments,
+    filterPreset,
+    resize,
+    keepAudio = true,
+    audioUrl,
+    audioVolume = FFMPEG_DEFAULTS.DEFAULT_AUDIO_VOLUME,
+    textOverlays = [],
+    subtitles = [],
+    brandId = VIDEO_FILE_CONFIG.DEFAULT_BRAND_ID,
+    // Transform params (Size tab: rotation, scale, flip)
+    rotation = 0,
+    scaleVal = 100,
+    flipH = false,
+    flipV = false
+  }) {
+    console.log(
+      `[VideoProcessorFacade] Starting process: videoUrl=${videoUrl}, trim=${startTime}s-${endTime}s, aspectRatio=${aspectRatio}, filterPreset=${filterPreset}, keepAudio=${keepAudio}, keyframesCount=${keyframes?.length || 0}`
+    );
 
-    const tempDir = path.join(process.cwd(), 'uploads', 'temp');
+    const tempDir = path.join(process.cwd(), 'uploads', VIDEO_FILE_CONFIG.TEMP_DIR);
     if (!fs.existsSync(tempDir)) {
       fs.mkdirSync(tempDir, { recursive: true });
     }
@@ -49,13 +78,22 @@ class VideoProcessorFacade {
         endTime,
         aspectRatio,
         keyframes,
+        adjustments,
+        filterPreset,
+        resize,
+        keepAudio,
         audioPath: localAudioPath,
         audioVolume,
         textOverlays,
         subtitles,
         tempDir,
         uniqueId,
-        textFilePaths
+        textFilePaths,
+        // Transform params
+        rotation,
+        scaleVal,
+        flipH,
+        flipV
       });
 
       // 4. Handle output persistence
@@ -64,13 +102,13 @@ class VideoProcessorFacade {
         const cloudResult = await this._uploadToCloudinary(localOutputPath, brandId);
         return cloudResult.secure_url;
       } else {
-        const destDir = path.join(process.cwd(), 'uploads', 'media', brandId);
+        const destDir = path.join(process.cwd(), 'uploads', VIDEO_FILE_CONFIG.MEDIA_DIR, brandId);
         if (!fs.existsSync(destDir)) {
           fs.mkdirSync(destDir, { recursive: true });
         }
-        const finalDestPath = path.join(destDir, `${uniqueId}-edited.mp4`);
+        const finalDestPath = path.join(destDir, `${uniqueId}-${VIDEO_FILE_CONFIG.OUTPUT_PREFIX}.mp4`);
         fs.copyFileSync(localOutputPath, finalDestPath);
-        return `/uploads/media/${brandId}/${uniqueId}-edited.mp4`;
+        return `/uploads/${VIDEO_FILE_CONFIG.MEDIA_DIR}/${brandId}/${uniqueId}-${VIDEO_FILE_CONFIG.OUTPUT_PREFIX}.mp4`;
       }
     } finally {
       // Cleanup temp files
@@ -80,39 +118,6 @@ class VideoProcessorFacade {
 
   // ================= Private Helper Methods =================
 
-  _buildFfmpegCropXExpr(keyframes) {
-    if (!keyframes || keyframes.length === 0) return '0.5000';
-    const sorted = [...keyframes].sort((a, b) => a.time - b.time);
-    if (sorted.length === 1) return sorted[0].cropX.toFixed(4);
-
-    // Xây dựng đệ quy
-    const buildExpr = (index) => {
-      if (index === sorted.length - 1) {
-        return sorted[index].cropX.toFixed(4);
-      }
-      const current = sorted[index];
-      const next = sorted[index + 1];
-      const deltaT = next.time - current.time;
-      const x0 = current.cropX.toFixed(4);
-
-      if (deltaT <= 0.001) {
-        return buildExpr(index + 1);
-      }
-
-      const slope = ((next.cropX - current.cropX) / deltaT).toFixed(4);
-      const segmentExpr = `${x0}+(${slope})*(t-${current.time.toFixed(3)})`;
-      
-      return `if(lt(t,${next.time.toFixed(3)}),${segmentExpr},${buildExpr(index + 1)})`;
-    };
-
-    const firstTime = sorted[0].time;
-    const baseExpr = buildExpr(0);
-    if (firstTime > 0) {
-      return `if(lt(t,${firstTime.toFixed(3)}),${sorted[0].cropX.toFixed(4)},${baseExpr})`;
-    }
-    return baseExpr;
-  }
-
   async _resolveFile(fileSource, targetLocalPath) {
     if (fileSource.startsWith('http://') || fileSource.startsWith('https://')) {
       console.log(`[VideoProcessorFacade] Downloading remote file: ${fileSource} → ${targetLocalPath}`);
@@ -120,7 +125,10 @@ class VideoProcessorFacade {
       const response = await axios({
         url: fileSource,
         method: 'GET',
-        responseType: 'stream'
+        responseType: 'stream',
+        // Some CDNs (e.g. mixkit.co) return 403 for requests without a
+        // browser-like User-Agent, treating axios's default UA as a bot.
+        headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36' }
       });
       response.data.pipe(writer);
       await new Promise((resolve, reject) => {
@@ -131,7 +139,7 @@ class VideoProcessorFacade {
       // Local relative path: resolve absolute path
       const relativePath = fileSource.startsWith('/') ? fileSource.slice(1) : fileSource;
       const absoluteSourcePath = path.resolve(process.cwd(), relativePath);
-      
+
       // Prevent Path Traversal by checking if the resolved path starts with the uploads directory
       const allowedDir = path.resolve(process.cwd(), 'uploads');
       if (!absoluteSourcePath.startsWith(allowedDir)) {
@@ -145,142 +153,141 @@ class VideoProcessorFacade {
     }
   }
 
-  _buildVideoFilters({ aspectRatio, keyframes, textOverlays, subtitles, startTime, tempDir, uniqueId, textFilePaths }) {
-    const filters = [];
-
-    // 1. Crop & Scale Filter
-    if (aspectRatio && aspectRatio !== 'original') {
-      const cropXExpr = this._buildFfmpegCropXExpr(keyframes);
-      const escapedCropXExpr = cropXExpr.split(',').join('\\,');
-      if (aspectRatio === '1:1') {
-        filters.push(`crop=min(iw\\,ih):min(iw\\,ih):(iw-ow)*(${escapedCropXExpr}):(ih-oh)/2`);
-        filters.push('scale=720:720');
-      } else if (aspectRatio === '9:16') {
-        filters.push(`crop=min(iw\\,ih*9/16):min(iw*16/9\\,ih):(iw-ow)*(${escapedCropXExpr}):(ih-oh)/2`);
-        filters.push('scale=720:1280');
-      } else if (aspectRatio === '16:9') {
-        filters.push(`crop=min(iw\\,ih*16/9):min(iw*9/16\\,ih):(iw-ow)*(${escapedCropXExpr}):(ih-oh)/2`);
-        filters.push('scale=1280:720');
-      }
-    }
-
-    // 2. Text Overlays (Tĩnh)
-    if (Array.isArray(textOverlays)) {
-      textOverlays.forEach((overlay, index) => {
-        const text = String(overlay.text || '');
-        if (!text) return;
-        const color = this._sanitizeFfmpegColor(overlay.color);
-        const size = this._sanitizeFfmpegNumber(overlay.size, 24);
-        const x = this._sanitizeFfmpegNumber(overlay.x, 50);
-        const y = this._sanitizeFfmpegNumber(overlay.y, 50);
-        const textFilePath = this._writeDrawtextFile(tempDir, `${uniqueId}-overlay-${index}`, text);
-        textFilePaths.push(textFilePath);
-        const escapedPath = this._escapeFfmpegOptionValue(textFilePath);
-
-        // Căn giữa tương đối theo phần trăm toạ độ
-        filters.push(`drawtext=textfile='${escapedPath}':x=(w*${x}/100-tw/2):y=(h*${y}/100-th/2):fontcolor=${color}:fontsize=${size}`);
-      });
-    }
-
-    // 3. Subtitles (Động theo thời gian)
-    if (Array.isArray(subtitles)) {
-      subtitles.forEach((sub, index) => {
-        const text = String(sub.text || '');
-        if (!text) return;
-
-        // Thời gian hiển thị tương đối so với start time đã cắt (-ss ở input)
-        const start = Math.max(0, sub.start - startTime);
-        const end = Math.max(0, sub.end - startTime);
-        const textFilePath = this._writeDrawtextFile(tempDir, `${uniqueId}-subtitle-${index}`, text);
-        textFilePaths.push(textFilePath);
-        const escapedPath = this._escapeFfmpegOptionValue(textFilePath);
-
-        filters.push(`drawtext=textfile='${escapedPath}':x=(w-tw)/2:y=h-80:fontcolor=white:fontsize=22:box=1:boxcolor=black@0.6:boxborderw=6:enable='between(t,${start.toFixed(3)},${end.toFixed(3)})'`);
-      });
-    }
-
-    return filters.join(',');
-  }
-
-  /**
-   * Writes overlay/subtitle text to a server-generated temp file and points
-   * drawtext at it via textfile= instead of interpolating the text directly
-   * into the filter string via text=. This sidesteps ffmpeg's three-layer
-   * filtergraph escaping (option value / filter description / shell) for
-   * arbitrary user text entirely — the only thing that still needs escaping
-   * is the file path itself, which is server-generated (uniqueId-based) and
-   * never contains the characters that make that escaping hard.
-   * See: https://ffmpeg.org/ffmpeg-filters.html#drawtext
-   */
-  _writeDrawtextFile(tempDir, name, text) {
-    const filePath = path.join(tempDir, `${name}.txt`);
-    fs.writeFileSync(filePath, text, 'utf8');
-    return filePath;
-  }
-
-  /**
-   * Escapes a filter option value per ffmpeg's filtergraph syntax. The
-   * textfile= path is server-generated so it can never contain a single
-   * quote, but on Windows it does contain a drive-letter colon (e.g.
-   * "D:/...") — colon is the filter-option separator, so without escaping
-   * it ffmpeg's parser stops reading the path at the first ':' and treats
-   * the remainder as a bogus option name.
-   * See: https://ffmpeg.org/ffmpeg-filters.html#Notes-on-filtergraph-escaping
-   */
-  _escapeFfmpegOptionValue(value) {
-    return String(value).replace(/\\/g, '/').replace(/:/g, '\\:');
-  }
-
-  /**
-   * fontcolor accepts an ffmpeg color name/spec, not free text — restrict to
-   * a safe charset so it can't be used to break out of the filter option.
-   */
-  _sanitizeFfmpegColor(color) {
-    if (typeof color !== 'string' || !/^[a-zA-Z0-9#@.]+$/.test(color)) return 'white';
-    return color;
-  }
-
-  /**
-   * Numeric filter options (fontsize, x%, y%) — reject anything that isn't
-   * actually a finite number rather than interpolating arbitrary input.
-   */
-  _sanitizeFfmpegNumber(value, fallback) {
-    const num = Number(value);
-    return Number.isFinite(num) ? num : fallback;
-  }
-
-  _executeFfmpeg({ inputPath, outputPath, startTime, endTime, aspectRatio, keyframes, audioPath, audioVolume, textOverlays, subtitles, tempDir, uniqueId, textFilePaths }) {
+  _executeFfmpeg({
+    inputPath,
+    outputPath,
+    startTime,
+    endTime,
+    aspectRatio,
+    keyframes,
+    adjustments,
+    filterPreset,
+    resize,
+    keepAudio = true,
+    audioPath,
+    audioVolume,
+    textOverlays,
+    subtitles,
+    tempDir,
+    uniqueId,
+    textFilePaths,
+    // Transform params
+    rotation = 0,
+    scaleVal = 100,
+    flipH = false,
+    flipV = false
+  }) {
     return new Promise((resolve, reject) => {
       const duration = endTime - startTime;
       const volCoef = (audioVolume / 100).toFixed(2);
 
-      const videoFilterString = this._buildVideoFilters({ aspectRatio, keyframes, textOverlays, subtitles, startTime, tempDir, uniqueId, textFilePaths });
+      const videoFilterString = videoFilterPipeline.buildPipeline({
+        aspectRatio,
+        keyframes,
+        adjustments,
+        filterPreset,
+        resize,
+        textOverlays,
+        subtitles,
+        startTime,
+        tempDir,
+        uniqueId,
+        textFilePaths,
+        // Transform params
+        rotation,
+        scaleVal,
+        flipH,
+        flipV
+      });
+
       const videoChain = videoFilterString ? `[0:v]${videoFilterString}[v]` : `[0:v]null[v]`;
 
-      // Built as an argv array and run via execFile (no shell) instead of a
-      // single interpolated string run via exec — user-controlled text
-      // (textOverlays[].text, subtitles[].text) flows into videoChain, and a
-      // shell would let a value like `"; rm -rf /; echo "` escape the
-      // -filter_complex argument and execute as a separate command. With
-      // execFile, each array element is passed to ffmpeg directly as one
-      // argument; there's no shell to escape out of.
       let args;
       if (audioPath) {
+        // Nếu có nhạc nền bổ sung
+        const audioChain = keepAudio
+          ? `${videoChain};[1:a]volume=${volCoef}[a1];[0:a][a1]amix=inputs=2:duration=first[a]`
+          : `${videoChain};[1:a]volume=${volCoef}[a]`;
+
         args = [
-          '-y', '-ss', String(startTime), '-t', String(duration),
-          '-i', inputPath, '-i', audioPath,
-          '-filter_complex', `${videoChain};[1:a]volume=${volCoef}[a1];[0:a][a1]amix=inputs=2:duration=first[a]`,
-          '-map', '[v]', '-map', '[a]',
-          '-c:v', 'libx264', '-c:a', 'aac', '-preset', 'superfast', '-crf', '20', '-strict', 'experimental',
+          '-y',
+          '-ss',
+          String(startTime),
+          '-t',
+          String(duration),
+          '-i',
+          inputPath,
+          '-i',
+          audioPath,
+          '-filter_complex',
+          audioChain,
+          '-map',
+          '[v]',
+          '-map',
+          '[a]',
+          '-c:v',
+          FFMPEG_DEFAULTS.VIDEO_CODEC,
+          '-c:a',
+          FFMPEG_DEFAULTS.AUDIO_CODEC,
+          '-preset',
+          FFMPEG_DEFAULTS.PRESET,
+          '-crf',
+          FFMPEG_DEFAULTS.CRF,
+          '-strict',
+          FFMPEG_DEFAULTS.STRICT,
+          outputPath
+        ];
+      } else if (!keepAudio) {
+        // Nếu tắt giữ âm thanh gốc và không chọn nhạc nền thay thế -> Tắt toàn bộ âm thanh (-an)
+        args = [
+          '-y',
+          '-ss',
+          String(startTime),
+          '-t',
+          String(duration),
+          '-i',
+          inputPath,
+          '-filter_complex',
+          videoChain,
+          '-map',
+          '[v]',
+          '-an',
+          '-c:v',
+          FFMPEG_DEFAULTS.VIDEO_CODEC,
+          '-preset',
+          FFMPEG_DEFAULTS.PRESET,
+          '-crf',
+          FFMPEG_DEFAULTS.CRF,
+          '-strict',
+          FFMPEG_DEFAULTS.STRICT,
           outputPath
         ];
       } else {
+        // Mặc định giữ âm thanh gốc của video
         args = [
-          '-y', '-ss', String(startTime), '-t', String(duration),
-          '-i', inputPath,
-          '-filter_complex', videoChain,
-          '-map', '[v]', '-map', '0:a?',
-          '-c:v', 'libx264', '-c:a', 'aac', '-preset', 'superfast', '-crf', '20', '-strict', 'experimental',
+          '-y',
+          '-ss',
+          String(startTime),
+          '-t',
+          String(duration),
+          '-i',
+          inputPath,
+          '-filter_complex',
+          videoChain,
+          '-map',
+          '[v]',
+          '-map',
+          '0:a?',
+          '-c:v',
+          FFMPEG_DEFAULTS.VIDEO_CODEC,
+          '-c:a',
+          FFMPEG_DEFAULTS.AUDIO_CODEC,
+          '-preset',
+          FFMPEG_DEFAULTS.PRESET,
+          '-crf',
+          FFMPEG_DEFAULTS.CRF,
+          '-strict',
+          FFMPEG_DEFAULTS.STRICT,
           outputPath
         ];
       }
@@ -296,6 +303,16 @@ class VideoProcessorFacade {
         }
       });
     });
+  }
+
+  _buildFfmpegCropXExpr(keyframes) {
+    const CropScaleFilterStrategy = require('./strategies/crop-scale-filter.strategy');
+    const cropStrategy = new CropScaleFilterStrategy();
+    return cropStrategy._buildCropXExpr(keyframes);
+  }
+
+  _buildVideoFilters(options) {
+    return videoFilterPipeline.buildPipeline(options);
   }
 
   _uploadToCloudinary(filePath, brandId) {
@@ -316,7 +333,7 @@ class VideoProcessorFacade {
   }
 
   _cleanupFiles(paths) {
-    paths.forEach(p => {
+    paths.forEach((p) => {
       if (p && fs.existsSync(p)) {
         try {
           fs.unlinkSync(p);

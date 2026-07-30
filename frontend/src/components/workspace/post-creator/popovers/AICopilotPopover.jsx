@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { Sparkles, X, ChevronRight, Check, Copy, RefreshCw, MessageSquare, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
-import apiService from "../../../services/api";
-import { useBrand } from "../../../context/BrandContext";
+import apiService from "../../../../services/api";
+import { useBrand } from "../../../../context/BrandContext";
 
 export function AICopilotPopover({ caption, onUpdateCaption, activePlatform, onClose }) {
   const { activeBrand } = useBrand();

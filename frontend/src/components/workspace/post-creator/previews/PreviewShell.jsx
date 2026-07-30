@@ -1,7 +1,7 @@
 import * as React from "react";
 import { Play } from "lucide-react";
-import { isVideoPath } from "../../../utils/url";
-import { usePostCreatorFormContext } from "../../../context/PostCreatorFormContext";
+import { isVideoPath } from "../../../../utils/url";
+import { usePostCreatorFormContext } from "../../../../context/PostCreatorFormContext";
 
 // Safe wrapper - returns null nếu không có context
 function useOptionalPostCreatorContext() {

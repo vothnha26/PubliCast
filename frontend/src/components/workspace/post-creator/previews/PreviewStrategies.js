@@ -4,9 +4,9 @@ import { PreviewTikTok } from "./PreviewTikTok";
 import { PreviewInstagram } from "./PreviewInstagram";
 import { PreviewTelegram } from "./PreviewTelegram";
 import { PreviewThreads } from "./PreviewThreads";
-import { BlueskyPreview } from "./previews/BlueskyPreview";
-import { RedditPreview } from "./previews/RedditPreview";
-import { TwitchPreview } from "./previews/TwitchPreview";
+import { BlueskyPreview } from "./BlueskyPreview";
+import { RedditPreview } from "./RedditPreview";
+import { TwitchPreview } from "./TwitchPreview";
 
 export const PreviewStrategies = {
   youtube: PreviewYouTube,

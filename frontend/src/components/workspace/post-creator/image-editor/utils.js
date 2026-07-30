@@ -4,6 +4,55 @@ export const getFullImageUrl = (url) => {
   return buildMediaUrl(url);
 };
 
+export const getFinetuneFilterString = ({
+  brightness = 100,
+  contrast = 100,
+  saturate = 100,
+  adjustments = {},
+  activeFilter = 'none'
+}) => {
+  const bAdj = (brightness - 100) + (adjustments.brightness || 0);
+  const cAdj = (contrast - 100) + (adjustments.contrast || 0);
+  const sAdj = (saturate - 100) + (adjustments.saturation || 0);
+
+  const exp = adjustments.exposure || 0;
+  const temp = adjustments.temperature || 0;
+  const gamma = adjustments.gamma || 0;
+  const clarity = adjustments.clarity || 0;
+
+  const netBrightness = Math.max(10, 100 + bAdj * 2 + exp * 1.5 + gamma * 1.5 - clarity * 0.3);
+  const netContrast = Math.max(10, 100 + cAdj * 2 + clarity * 2.5 - gamma * 1.2 + exp * 0.8);
+  const netSaturate = Math.max(0, 100 + sAdj * 3 + clarity * 0.8);
+
+  let filter = `brightness(${netBrightness}%) contrast(${netContrast}%) saturate(${netSaturate}%)`;
+
+  if (temp > 0) {
+    filter += ` sepia(${temp * 1.5}%) hue-rotate(${-temp * 0.6}deg) saturate(${100 + temp * 0.5}%)`;
+  } else if (temp < 0) {
+    const absTemp = Math.abs(temp);
+    filter += ` hue-rotate(${absTemp * 0.8}deg) saturate(${100 + absTemp * 0.5}%) brightness(${100 + absTemp * 0.2}%)`;
+  }
+
+  if (activeFilter === 'grayscale' || activeFilter === 'mono') filter += ' grayscale(100%)';
+  else if (activeFilter === 'noir') filter += ' grayscale(100%) contrast(150%) brightness(85%)';
+  else if (activeFilter === 'stark') filter += ' grayscale(100%) contrast(200%)';
+  else if (activeFilter === 'wash') filter += ' grayscale(100%) brightness(120%) contrast(80%)';
+  else if (activeFilter === 'chrome') filter += ' saturate(160%) contrast(125%) brightness(105%)';
+  else if (activeFilter === 'fade') filter += ' contrast(85%) brightness(110%) saturate(80%)';
+  else if (activeFilter === 'cold') filter += ' saturate(90%) hue-rotate(15deg) brightness(105%)';
+  else if (activeFilter === 'pastel') filter += ' saturate(70%) brightness(115%) contrast(90%)';
+  else if (activeFilter === 'sepia') filter += ' sepia(100%)';
+  else if (activeFilter === 'rust') filter += ' sepia(80%) saturate(140%) hue-rotate(-20deg)';
+  else if (activeFilter === 'blues') filter += ' hue-rotate(180deg) sepia(30%) saturate(120%)';
+  else if (activeFilter === 'invert') filter += ' invert(100%)';
+  else if (activeFilter === 'blur') filter += ' blur(2px)';
+  else if (activeFilter === 'warm') filter += ' sepia(35%) saturate(140%) hue-rotate(-10deg)';
+  else if (activeFilter === 'cool') filter += ' saturate(90%) hue-rotate(10deg) brightness(105%)';
+  else if (activeFilter === 'dramatic') filter += ' contrast(120%) brightness(90%)';
+
+  return filter;
+};
+
 export const processCanvas = ({
   img,
   rotation,
@@ -12,6 +61,7 @@ export const processCanvas = ({
   brightness,
   contrast,
   saturate,
+  adjustments = {},
   activeFilter,
   scaleVal,
   position,
@@ -23,6 +73,7 @@ export const processCanvas = ({
   activeFrame,
   frameColor,
   frameSize,
+  frameOffset1,
   resizeWidth,
   resizeHeight
 }) => {
@@ -40,15 +91,13 @@ export const processCanvas = ({
   canvas.height = cropBox.height * scaleFactor;
 
   // 3. Apply CSS-like filters directly to canvas context
-  let filterString = `brightness(${brightness}%) contrast(${contrast}%) saturate(${saturate}%)`;
-  if (activeFilter === 'grayscale') filterString += ' grayscale(100%)';
-  else if (activeFilter === 'sepia') filterString += ' sepia(100%)';
-  else if (activeFilter === 'invert') filterString += ' invert(100%)';
-  else if (activeFilter === 'blur') filterString += ' blur(2px)';
-  else if (activeFilter === 'warm') filterString += ' sepia(30%) saturate(130%) hue-rotate(-10deg)';
-  else if (activeFilter === 'cool') filterString += ' saturate(90%) hue-rotate(10deg) brightness(105%)';
-  else if (activeFilter === 'dramatic') filterString += ' contrast(120%) brightness(90%)';
-  ctx.filter = filterString;
+  ctx.filter = getFinetuneFilterString({
+    brightness,
+    contrast,
+    saturate,
+    adjustments,
+    activeFilter
+  });
 
   // 4. Translate, pan, rotate, flip, and zoom the main image
   ctx.translate(canvas.width / 2, canvas.height / 2);
@@ -69,6 +118,19 @@ export const processCanvas = ({
   // 5. Reset transform to draw overlays in canvas coordinate space
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   ctx.filter = 'none';
+
+  // 6. Draw Vignette on canvas output if active
+  if (adjustments.vignette && Math.abs(adjustments.vignette) > 0) {
+    const vRadius = Math.max(canvas.width, canvas.height) / 1.2;
+    const vGrad = ctx.createRadialGradient(
+      canvas.width / 2, canvas.height / 2, vRadius * 0.3,
+      canvas.width / 2, canvas.height / 2, vRadius
+    );
+    vGrad.addColorStop(0, 'rgba(0,0,0,0)');
+    vGrad.addColorStop(1, `rgba(0,0,0,${Math.min(0.9, Math.abs(adjustments.vignette) / 50)})`);
+    ctx.fillStyle = vGrad;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+  }
 
   const ratioX = scaleFactor;
   const ratioY = scaleFactor;
@@ -168,28 +230,35 @@ export const processCanvas = ({
 
   // 9. Draw Frames
   if (activeFrame !== 'none') {
-    ctx.strokeStyle = frameColor;
-    const borderWidth = (canvas.width * (frameSize / 100));
+    ctx.strokeStyle = activeFrame === 'lumber' ? '#8B5A2B' : (frameColor || '#FFFFFF');
+    const borderWidth = Math.max(2, (canvas.width * ((frameSize || 3) / 100)));
+    const offsetPx = (canvas.width * ((frameOffset1 || 0) / 100));
     ctx.lineWidth = borderWidth;
     
-    if (activeFrame === 'mat' || activeFrame === 'classic' || activeFrame === 'line') {
-      ctx.strokeRect(borderWidth / 2, borderWidth / 2, canvas.width - borderWidth, canvas.height - borderWidth);
-    } else if (activeFrame === 'dashed') {
+    const fx = offsetPx + borderWidth / 2;
+    const fy = offsetPx + borderWidth / 2;
+    const fw = canvas.width - (offsetPx * 2) - borderWidth;
+    const fh = canvas.height - (offsetPx * 2) - borderWidth;
+
+    if (activeFrame === 'mat' || activeFrame === 'line' || activeFrame === 'lumber' || activeFrame === 'hook') {
+      ctx.strokeRect(fx, fy, fw, fh);
+    } else if (activeFrame === 'inset') {
       ctx.setLineDash([15 * ratioX, 10 * ratioX]);
-      ctx.strokeRect(borderWidth / 2, borderWidth / 2, canvas.width - borderWidth, canvas.height - borderWidth);
+      ctx.strokeRect(fx, fy, fw, fh);
+      ctx.setLineDash([]);
     } else if (activeFrame === 'bevel') {
-      ctx.strokeStyle = "rgba(0,0,0,0.5)";
-      ctx.strokeRect(borderWidth / 4, borderWidth / 4, canvas.width - borderWidth / 2, canvas.height - borderWidth / 2);
-      ctx.strokeStyle = "rgba(255,255,255,0.7)";
-      ctx.strokeRect(borderWidth * 0.75, borderWidth * 0.75, canvas.width - borderWidth * 1.5, canvas.height - borderWidth * 1.5);
+      ctx.strokeStyle = "rgba(0,0,0,0.6)";
+      ctx.strokeRect(fx, fy, fw, fh);
+      ctx.strokeStyle = frameColor || "#FFFFFF";
+      ctx.strokeRect(fx + borderWidth, fy + borderWidth, fw - borderWidth * 2, fh - borderWidth * 2);
     } else if (activeFrame === 'zebra') {
       ctx.lineWidth = borderWidth / 3;
       ctx.strokeStyle = '#000000';
-      ctx.strokeRect(borderWidth / 6, borderWidth / 6, canvas.width - borderWidth / 3, canvas.height - borderWidth / 3);
+      ctx.strokeRect(fx, fy, fw, fh);
       ctx.strokeStyle = '#FFFFFF';
-      ctx.strokeRect(borderWidth * 0.5, borderWidth * 0.5, canvas.width - borderWidth, canvas.height - borderWidth);
+      ctx.strokeRect(fx + borderWidth / 3, fy + borderWidth / 3, fw - (borderWidth * 2 / 3), fh - (borderWidth * 2 / 3));
       ctx.strokeStyle = '#000000';
-      ctx.strokeRect(borderWidth * 0.83, borderWidth * 0.83, canvas.width - borderWidth * 1.66, canvas.height - borderWidth * 1.66);
+      ctx.strokeRect(fx + borderWidth * 2 / 3, fy + borderWidth * 2 / 3, fw - (borderWidth * 4 / 3), fh - (borderWidth * 4 / 3));
     } else if (activeFrame === 'polaroid') {
       ctx.fillStyle = '#FFFFFF';
       ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -203,9 +272,41 @@ export const processCanvas = ({
       ctx.rotate((rotation * Math.PI) / 180);
       ctx.scale(flipH ? -1 : 1, flipV ? -1 : 1);
       ctx.scale(scaleVal, scaleVal);
-      
-      ctx.drawImage(img, -img.naturalWidth / 2, -img.naturalHeight / 2, img.naturalWidth, img.naturalHeight);
+
+      ctx.filter = getFinetuneFilterString({
+        brightness,
+        contrast,
+        saturate,
+        adjustments,
+        activeFilter
+      });
+      ctx.drawImage(
+        img,
+        -img.naturalWidth / 2,
+        -img.naturalHeight / 2,
+        img.naturalWidth,
+        img.naturalHeight
+      );
       ctx.restore();
+    } else if (activeFrame === 'film') {
+      const filmHeaderHeight = Math.max(12, borderWidth * 1.8);
+      ctx.fillStyle = '#000000';
+      // Top & Bottom film bars
+      ctx.fillRect(0, 0, canvas.width, filmHeaderHeight);
+      ctx.fillRect(0, canvas.height - filmHeaderHeight, canvas.width, filmHeaderHeight);
+
+      // Draw film sprocket holes (hàng lỗ cuộn phim trắng)
+      ctx.fillStyle = '#FFFFFF';
+      const holeW = Math.max(4, filmHeaderHeight * 0.4);
+      const holeH = Math.max(6, filmHeaderHeight * 0.5);
+      const holeGap = holeW * 2.5;
+      const topHoleY = (filmHeaderHeight - holeH) / 2;
+      const botHoleY = canvas.height - filmHeaderHeight + (filmHeaderHeight - holeH) / 2;
+
+      for (let x = holeW; x < canvas.width - holeW; x += holeGap) {
+        ctx.fillRect(x, topHoleY, holeW, holeH);
+        ctx.fillRect(x, botHoleY, holeW, holeH);
+      }
     }
   }
 

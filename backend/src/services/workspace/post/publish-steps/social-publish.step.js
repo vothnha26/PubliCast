@@ -4,13 +4,13 @@ const { SEPARATORS, splitMediaUrls } = require('../../../../utils/constants');
 
 class SocialPublishStep extends BaseStep {
   async execute(context) {
-    const { post, platforms, options, brandId } = context;
+    const { post, platforms, options, brandId, networkOverrides = {} } = context;
     context.results = [];
 
     const publishPromises = platforms.map(async (platform) => {
       try {
         const service = socialPlatformFactory.getService(platform);
-        
+
         let platformPostId = null;
         if (post.platformPostId) {
           try {
@@ -25,15 +25,41 @@ class SocialPublishStep extends BaseStep {
           }
         }
 
+        // Per-platform override (see PostNetworkOverride): only takes effect
+        // when the composer's "edit by network" was actually turned on for
+        // this platform (useTemplate === false). Otherwise every platform
+        // shares the post's own caption/mediaUrls, same as before overrides
+        // existed.
+        const override = networkOverrides[platform];
+        const useOverride = override && override.useTemplate === false;
+        const effectiveCaption = useOverride && override.caption != null ? override.caption : post.caption;
+        const effectiveMediaUrls = useOverride && override.mediaUrls
+          ? splitMediaUrls(override.mediaUrls)
+          : splitMediaUrls(post.mediaUrls);
+
+        let effectiveThreadPosts = undefined;
+        if (useOverride && override.threadPosts) {
+          try {
+            effectiveThreadPosts = typeof override.threadPosts === 'string'
+              ? JSON.parse(override.threadPosts)
+              : override.threadPosts;
+          } catch (e) {
+            effectiveThreadPosts = override.threadPosts;
+          }
+        }
+
         console.log(`[SocialPublishStep] 🚀 Publishing post ${post.id} to platform ${platform}...`);
 
         const result = await service.publishPost(brandId, {
           title: post.title,
-          caption: post.caption,
-          mediaUrls: splitMediaUrls(post.mediaUrls),
+          caption: effectiveCaption,
+          mediaUrls: effectiveMediaUrls,
           type: post.type,
           platformPostId: platformPostId,
-          options: options
+          options: {
+            ...options,
+            ...(effectiveThreadPosts ? { threadPosts: effectiveThreadPosts } : {}),
+          }
         });
         
         console.log(`[SocialPublishStep] ✅ Successfully published post ${post.id} to platform ${platform}! Result:`, JSON.stringify(result));

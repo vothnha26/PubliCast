@@ -399,64 +399,83 @@ class ThreadsService extends BaseSocialService {
     const accounts = await require('../../../repositories/social/social-account.repository').findByBrandAndPlatform(brandId, PLATFORMS.THREADS);
     if (!accounts || accounts.length === 0) throw new Error('Threads account not linked');
     const account = accounts[0];
-
-    const text = postData.caption || '';
-    const rawMediaUrl = (postData.mediaUrls && postData.mediaUrls.length > 0) ? postData.mediaUrls[0] : null;
-    const mediaUrl = this.resolveUrl(rawMediaUrl);
-    
-    let mediaType = 'TEXT';
-    if (mediaUrl) {
-      const isVideo = ['.mp4', '.mov', '.avi', '.mkv'].some(ext => mediaUrl.toLowerCase().endsWith(ext));
-      mediaType = isVideo ? 'VIDEO' : 'IMAGE';
-    }
     const whoCanReply = postData.options?.threadsWhoCanReply || null;
 
-    console.log(`\n[Threads] ▶ publishPost | brandId=${brandId} | userId=${account.platformAccountId}`);
-    console.log(`[Threads] mediaType=${mediaType} | mediaUrl=${mediaUrl} | whoCanReply=${whoCanReply}`);
+    // Chuỗi thread nhiều bài (networkOverrides.threadPosts): [{text, mediaUrls}, ...].
+    // Bài đầu tiên đăng như post gốc, các bài sau đăng làm reply nối tiếp bài
+    // ngay trước đó (reply_to_id) để tạo thành 1 chuỗi thread thật trên Threads.
+    const threadPosts = Array.isArray(postData.options?.threadPosts) && postData.options.threadPosts.length > 0
+      ? postData.options.threadPosts
+      : [{ text: postData.caption || '', mediaUrls: postData.mediaUrls || [] }];
+
+    console.log(`\n[Threads] ▶ publishPost | brandId=${brandId} | userId=${account.platformAccountId} | postsInThread=${threadPosts.length}`);
     console.log(`[Threads] tokenPrefix=${account.accessToken?.substring(0, 10)}...`);
 
     try {
-      // Tạo media container
-      console.log(`[Threads] Creating media container...`);
-      const container = await threadsGateway.createMediaContainer(account.platformAccountId, account.accessToken, text, mediaUrl, mediaType, whoCanReply);
-      console.log(`[Threads] Container created | containerId=${container.id}`);
+      let rootPostId = null;
+      let previousPostId = null;
 
-      // Polling cho đến khi container xử lý xong (nếu có media)
-      if (mediaType !== 'TEXT') {
-        const maxAttempts = 60;
-        const intervalMs = 5000;
-        let isReady = false;
+      for (let i = 0; i < threadPosts.length; i++) {
+        const { text = '', mediaUrls = [] } = threadPosts[i] || {};
+        const rawMediaUrl = mediaUrls.length > 0 ? mediaUrls[0] : null;
+        const mediaUrl = this.resolveUrl(rawMediaUrl);
 
-        for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-          const statusData = await threadsGateway.getContainerStatus(account.accessToken, container.id);
-          const status = statusData.status;
-          console.log(`[Threads Polling] Attempt ${attempt}/${maxAttempts} | Container: ${container.id} | Status: ${status}`);
-
-          if (status === 'FINISHED') {
-            isReady = true;
-            break;
-          }
-          if (status === 'ERROR') {
-            throw new Error(statusData.error_message || 'Threads media processing failed');
-          }
-          await new Promise(resolve => setTimeout(resolve, intervalMs));
+        let mediaType = 'TEXT';
+        if (mediaUrl) {
+          const isVideo = ['.mp4', '.mov', '.avi', '.mkv'].some(ext => mediaUrl.toLowerCase().endsWith(ext));
+          mediaType = isVideo ? 'VIDEO' : 'IMAGE';
         }
 
-        if (!isReady) {
-          throw new Error('Timeout waiting for Threads media container to be processed');
+        console.log(`[Threads] Creating media container for post ${i + 1}/${threadPosts.length} | mediaType=${mediaType} | replyToId=${previousPostId || 'none'}`);
+        const container = await threadsGateway.createMediaContainer(
+          account.platformAccountId,
+          account.accessToken,
+          text,
+          mediaUrl,
+          mediaType,
+          whoCanReply,
+          previousPostId
+        );
+        console.log(`[Threads] Container created | containerId=${container.id}`);
+
+        if (mediaType !== 'TEXT') {
+          const maxAttempts = 60;
+          const intervalMs = 5000;
+          let isReady = false;
+
+          for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+            const statusData = await threadsGateway.getContainerStatus(account.accessToken, container.id);
+            const status = statusData.status;
+            console.log(`[Threads Polling] Attempt ${attempt}/${maxAttempts} | Container: ${container.id} | Status: ${status}`);
+
+            if (status === 'FINISHED') {
+              isReady = true;
+              break;
+            }
+            if (status === 'ERROR') {
+              throw new Error(statusData.error_message || 'Threads media processing failed');
+            }
+            await new Promise(resolve => setTimeout(resolve, intervalMs));
+          }
+
+          if (!isReady) {
+            throw new Error('Timeout waiting for Threads media container to be processed');
+          }
         }
+
+        console.log(`[Threads] Publishing container ${container.id}...`);
+        const publishRes = await threadsGateway.publishMediaContainer(account.platformAccountId, account.accessToken, container.id);
+        console.log(`[Threads] ✅ Published post ${i + 1}/${threadPosts.length} | platformPostId=${publishRes.id}`);
+
+        if (i === 0) rootPostId = publishRes.id;
+        previousPostId = publishRes.id;
       }
-
-      // Publish container
-      console.log(`[Threads] Publishing container ${container.id}...`);
-      const publishRes = await threadsGateway.publishMediaContainer(account.platformAccountId, account.accessToken, container.id);
-      console.log(`[Threads] ✅ Published successfully! platformPostId=${publishRes.id}`);
 
       // Post First Comment if published immediately
       if (postData.options?.firstComment?.trim()) {
         try {
           console.log(`[Threads] Posting first comment: "${postData.options.firstComment.trim()}"`);
-          await threadsGateway.createComment(account.platformAccountId, account.accessToken, publishRes.id, postData.options.firstComment.trim());
+          await threadsGateway.createComment(account.platformAccountId, account.accessToken, rootPostId, postData.options.firstComment.trim());
           console.log(`[Threads] First comment posted successfully.`);
         } catch (commentErr) {
           console.error(`[Threads] Failed to post first comment:`, commentErr.message);
@@ -465,7 +484,7 @@ class ThreadsService extends BaseSocialService {
 
       return {
         success: true,
-        platformVideoId: publishRes.id,
+        platformVideoId: rootPostId,
         publishedAt: new Date()
       };
     } catch (err) {

@@ -1,8 +1,8 @@
 import * as React from "react";
 import { useState, useEffect } from "react";
 import { Hash, ChevronRight, X, Loader2 } from "lucide-react";
-import { useBrand } from "../../../context/BrandContext";
-import apiService from "../../../services/api";
+import { useBrand } from "../../../../context/BrandContext";
+import apiService from "../../../../services/api";
 
 export function HashtagPickerPopover({ onInsert, onClose }) {
   const { activeBrand } = useBrand();

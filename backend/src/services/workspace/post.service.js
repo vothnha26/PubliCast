@@ -9,6 +9,7 @@ const { OUTBOX_EVENT_TYPES } = require('../../constants/outbox.constants');
 const autoListRepository = require('../../repositories/workspace/auto-list.repository');
 const outboxEventRepository = require('../../repositories/core/outbox-event.repository');
 const prisma = require('../../config/prisma');
+const { cloudinary } = require('../../config/cloudinary');
 const authorizationFacade = require('../auth/authorization.facade');
 const approvalWorkflowService = require('./approval-workflow.service');
 const validationFacade = require('./post/validators/validation.facade');
@@ -59,6 +60,203 @@ class PostService {
       data: posts.map(p => this._formatPostResponse(p)),
       meta: { total, page: Math.max(1, parseInt(page) || 1), limit: take, totalPages: Math.ceil(total / take) }
     };
+  }
+
+  /**
+   * Validates and normalizes a multer-uploaded file for POST /api/posts/upload
+   * (v1 and v2 share this — see postController.uploadVideo / uploadVideoV2).
+   * Enforces req.postUploadLimits (set by resolvePostUploadLimits from the
+   * request's ?targetPlatforms=), which is a stricter, per-platform check
+   * than multer's own limits.fileSize — a static per-instance ceiling that
+   * can't vary per request. A file exceeding the resolved limit is deleted
+   * from Cloudinary here before throwing, so rejected uploads don't leave
+   * orphaned assets behind.
+   * @throws {Error} with statusCode 400 if no file, or the file fails the
+   *   resolved size/format limit.
+   */
+  async processUploadedFile(req) {
+    if (!req.file) {
+      const error = new Error('No video file uploaded');
+      error.statusCode = 400;
+      throw error;
+    }
+
+    const isLocal = process.env.UPLOAD_STORAGE === 'local';
+    const sizeMb = req.file.size ? Math.round((req.file.size / (1024 * 1024)) * 100) / 100 : null;
+    // Local storage never went through Cloudinary, so no real duration/format
+    // metadata is available — format falls back to the original extension,
+    // matching _parseMediaInfo's existing behavior for URLs it can't
+    // otherwise identify.
+    const format = isLocal
+      ? require('path').extname(req.file.originalname || '').replace('.', '').toLowerCase() || null
+      : req.file.format;
+    const duration = isLocal ? null : req.file.duration;
+
+    const limits = req.postUploadLimits;
+    const destroyRejectedUpload = async () => {
+      if (!isLocal && req.file.filename) {
+        await cloudinary.uploader.destroy(req.file.filename, { invalidate: true, resource_type: req.file.resourceType || 'image' }).catch((err) => {
+          console.error('[Upload] Failed to delete rejected Cloudinary asset:', err);
+        });
+      }
+    };
+
+    if (limits && sizeMb !== null && sizeMb > limits.maxFileSizeMb) {
+      await destroyRejectedUpload();
+      const error = new Error(`File size (${sizeMb}MB) exceeds the ${limits.maxFileSizeMb}MB limit for the selected platform(s).`);
+      error.statusCode = 400;
+      throw error;
+    }
+    if (limits && format && limits.allowedFormats.length > 0 && !limits.allowedFormats.includes(format)) {
+      await destroyRejectedUpload();
+      const error = new Error(`Format "${format}" is not allowed for the selected platform(s). Allowed: ${limits.allowedFormats.join(', ')}.`);
+      error.statusCode = 400;
+      throw error;
+    }
+
+    let videoUrl = req.file.path;
+    if (isLocal) {
+      const path = require('path');
+      const relativePath = path.relative(process.cwd(), req.file.path).replace(/\\/g, '/');
+      videoUrl = `/${relativePath}`;
+    }
+
+    return { videoUrl, sizeMb, duration, format };
+  }
+
+  /**
+   * Deletes an uploaded asset (Local file or Cloudinary resource)
+   * Safely verifies directory bounds to prevent path-traversal for local assets.
+   */
+  async deleteUploadedAsset(fileUrl) {
+    if (!fileUrl || typeof fileUrl !== 'string') {
+      return { deleted: false, reason: 'Invalid file URL provided' };
+    }
+
+    const isLocal = process.env.UPLOAD_STORAGE === 'local';
+
+    if (isLocal || fileUrl.startsWith('/uploads/') || fileUrl.startsWith('uploads/')) {
+      const fs = require('fs');
+      const path = require('path');
+
+      const sanitizedPath = fileUrl.replace(/^[/\\]+/, '');
+      const absolutePath = path.resolve(process.cwd(), sanitizedPath);
+      const uploadsDir = path.resolve(process.cwd(), 'uploads');
+
+      // Path traversal security check
+      if (!absolutePath.startsWith(uploadsDir)) {
+        const error = new Error('Access denied: File path outside of uploads directory');
+        error.statusCode = 403;
+        throw error;
+      }
+
+      if (fs.existsSync(absolutePath)) {
+        try {
+          fs.unlinkSync(absolutePath);
+          return { deleted: true, type: 'local', path: sanitizedPath };
+        } catch (err) {
+          console.error('[DeleteAsset] Failed to delete local file:', err);
+          return { deleted: false, reason: err.message };
+        }
+      }
+      return { deleted: false, reason: 'File not found on server' };
+    } else {
+      // Cloudinary asset deletion
+      const cleanUrl = fileUrl.split('?')[0];
+
+      // Match public_id including folder hierarchy (e.g. publicast/images/123456789)
+      // Handles optional transformation tokens (e.g. c_scale,w_500) and version tokens (v12345)
+      const uploadMatch = cleanUrl.match(/\/upload\/(?:(?:[a-z]_[^/]+,)*[a-z]_[^/]+\/)?(?:v\d+\/)?(.+?)(?:\.[a-zA-Z0-9]+)?$/);
+      const publicId = uploadMatch ? decodeURIComponent(uploadMatch[1]) : null;
+
+      if (!publicId) {
+        return { deleted: false, reason: 'Could not resolve Cloudinary public ID' };
+      }
+
+      // Determine proper resource_type ('image', 'video', or 'raw') as 'auto' is invalid for destroy API
+      const isVideo = /\.(mp4|mov|mkv|avi|webm|flv|m4v)$/i.test(cleanUrl) || cleanUrl.includes('/videos/') || cleanUrl.includes('/video/upload/');
+      const isRaw = /\.(pdf|doc|docx|xls|xlsx|zip|rar)$/i.test(cleanUrl) || cleanUrl.includes('/raw/upload/');
+      const primaryResourceType = isVideo ? 'video' : isRaw ? 'raw' : 'image';
+
+      try {
+        const result = await cloudinary.uploader.destroy(publicId, { invalidate: true, resource_type: primaryResourceType });
+        
+        // If first attempt returned 'not found', attempt fallback with alternative resource_type
+        if (result && result.result === 'not found' && primaryResourceType === 'image') {
+          const fallbackResult = await cloudinary.uploader.destroy(publicId, { invalidate: true, resource_type: 'video' });
+          if (fallbackResult && fallbackResult.result === 'ok') {
+            return { deleted: true, type: 'cloudinary', publicId, resourceType: 'video' };
+          }
+        }
+
+        const isOk = result && (result.result === 'ok' || result.result === 'not found');
+        return { deleted: isOk, type: 'cloudinary', publicId, result: result?.result || 'ok' };
+      } catch (err) {
+        console.error('[DeleteAsset] Cloudinary destroy error:', err);
+        return { deleted: false, reason: err.message };
+      }
+    }
+  }
+
+  /**
+   * All PlatformLimit rows (every platform/subType) — v1 and v2 of GET
+   * /api/posts/platform-limits share this (see postController.getPlatformLimits
+   * / getPlatformLimitsV2). Consumed by the composer to pre-validate a
+   * File's size/format against the real limit before it's ever uploaded.
+   */
+  async getPlatformLimits() {
+    return prisma.platformLimit.findMany();
+  }
+
+  /**
+   * Validates and upserts per-platform caption/media overrides for a post
+   * (see PostNetworkOverride in schema.prisma). Called inside the same
+   * transaction that creates/updates the Post — an override is meaningless
+   * without the post it belongs to, so they're never written independently.
+   *
+   * networkOverrides: [{ platform, useTemplate, caption?, mediaUrls?, threadPosts? }]
+   * targetPlatforms: the post's own target platform list (already-split array),
+   * used to reject overrides for platforms the post isn't even publishing to.
+   */
+  async upsertNetworkOverrides(postId, networkOverrides, targetPlatforms, tx) {
+    if (!Array.isArray(networkOverrides) || networkOverrides.length === 0) return;
+
+    const targetSet = new Set(targetPlatforms.map((p) => p.trim().toUpperCase()));
+
+    for (const override of networkOverrides) {
+      const platform = override.platform?.trim().toUpperCase();
+      if (!platform || !Object.values(PLATFORMS).includes(platform)) {
+        const error = new Error(`Invalid platform in networkOverrides: "${override.platform}"`);
+        error.statusCode = 400;
+        throw error;
+      }
+      if (!targetSet.has(platform)) {
+        const error = new Error(`Cannot override platform "${platform}" — it is not in this post's targetPlatforms.`);
+        error.statusCode = 400;
+        throw error;
+      }
+
+      const mediaUrls = Array.isArray(override.mediaUrls) ? override.mediaUrls.filter(Boolean) : [];
+      const threadPosts = Array.isArray(override.threadPosts) ? override.threadPosts : undefined;
+
+      await tx.postNetworkOverride.upsert({
+        where: { postId_platform: { postId, platform } },
+        create: {
+          postId,
+          platform,
+          useTemplate: override.useTemplate !== false,
+          caption: override.caption ?? null,
+          mediaUrls: mediaUrls.length > 0 ? mediaUrls.join(SEPARATORS.COMMA) : null,
+          threadPosts: threadPosts ? JSON.stringify(threadPosts) : null,
+        },
+        update: {
+          useTemplate: override.useTemplate !== false,
+          caption: override.caption ?? null,
+          mediaUrls: mediaUrls.length > 0 ? mediaUrls.join(SEPARATORS.COMMA) : null,
+          threadPosts: threadPosts ? JSON.stringify(threadPosts) : null,
+        },
+      });
+    }
   }
 
   _parseMediaInfo(firstMediaUrl, hasMedia) {
@@ -178,6 +376,13 @@ class PostService {
 
       const created = await postRepository.create(data, tx);
       console.log('[PostService] Post successfully created in DB with ID:', created.id);
+
+      if (postData.networkOverrides) {
+        const targetPlatformsArr = Array.isArray(postData.targetPlatforms)
+          ? postData.targetPlatforms
+          : (postData.targetPlatforms || '').split(SEPARATORS.COMMA).filter(Boolean);
+        await this.upsertNetworkOverrides(created.id, postData.networkOverrides, targetPlatformsArr, tx);
+      }
 
       // Job publish + domain event chỉ được ghi vào outbox trong CÙNG transaction với
       // việc tạo post — outbox là nguồn ghi duy nhất cho job publish-post-${postId},
@@ -360,6 +565,20 @@ class PostService {
       await postRepository.lockAndAssertFresh(id, post.updatedAt, tx);
 
       const updated = await postRepository.update(id, data, tx);
+
+      // Ghi lại networkOverrides khi bài CHƯA publish — bài đã PUBLISHED có luồng
+      // xử lý riêng ở nhánh phía trên (dòng 439-468) và không hỗ trợ sửa override.
+      // Dùng post.status (snapshot CŨ trước update) để quyết định: nếu bài chưa
+      // từng published tại thời điểm request này, override phải được lưu, kể cả khi
+      // cùng request đó đổi status sang SCHEDULED/DRAFT trong payload mới.
+      // targetPlatforms lấy từ updated (đã qua _prepareUpdateData) — luôn là string
+      // chuẩn hoá, split SEPARATORS.COMMA là đủ, không cần xử lý mảng/string 2 nhánh.
+      if (postData.networkOverrides && post.status !== POST_STATUS.PUBLISHED) {
+        const targetPlatformsArr = updated.targetPlatforms
+          ? updated.targetPlatforms.split(SEPARATORS.COMMA).filter(Boolean)
+          : [];
+        await this.upsertNetworkOverrides(updated.id, postData.networkOverrides, targetPlatformsArr, tx);
+      }
 
       // Job publish + domain event ghi vào outbox trong CÙNG transaction với việc
       // cập nhật post — outbox là nguồn ghi duy nhất cho job publish-post-${postId}.
@@ -644,7 +863,14 @@ class PostService {
       isLibrary: p.isLibrary,
       options,
       approvalInfo,
-      platformPostId
+      platformPostId,
+      networkOverrides: (p.networkOverrides || []).map((o) => ({
+        platform: o.platform,
+        useTemplate: o.useTemplate,
+        caption: o.caption,
+        mediaUrls: o.mediaUrls ? splitMediaUrls(o.mediaUrls) : [],
+        threadPosts: o.threadPosts ? JSON.parse(o.threadPosts) : null,
+      }))
     };
   }
 

@@ -33,9 +33,11 @@ export function BrandSettingsPage() {
   const [conflictData, setConflictData] = useState(null);
 
   const allowedBrandsLimit = brands.reduce((max, b) => {
-    const brandMax = b.currentPlan?.limits?.maxBrands || 1;
+    const planName = b.currentPlan?.name;
+    const fallbackMax = planName === 'PRO' ? 10 : planName === 'AGENCY' ? 50 : 3;
+    const brandMax = b.currentPlan?.limits?.maxBrands ?? fallbackMax;
     return Math.max(max, brandMax);
-  }, 1);
+  }, 3);
   const isLimitReached = brands.length >= allowedBrandsLimit;
   
   const dropdownRef = useRef(null);

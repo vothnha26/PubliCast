@@ -2,7 +2,7 @@ import * as React from "react";
 import { 
   Folder, ThumbsUp, MessageSquare, Share2, Download, MoreHorizontal 
 } from "lucide-react";
-import { ShortsIcon } from "./ShortsIcon";
+import { ShortsIcon } from "../ShortsIcon";
 import { PreviewShell } from "./PreviewShell";
 
 function ThumbsDown({ size }) {

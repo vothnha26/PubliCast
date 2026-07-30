@@ -277,7 +277,7 @@ async function main() {
   const bcrypt = require('bcryptjs');
 
   // Create deterministic test users matching Selenium/test credentials
-  const adminEmail = process.env.ADMIN_EMAIL || 'ci-admin@publicast.test';
+  const adminEmail = process.env.ADMIN_EMAIL || 'vothanhnha26@gmail.com';
   const adminPassword = process.env.ADMIN_PASSWORD || 'nhacc123@';
   const adminHash = await bcrypt.hash(adminPassword, 10);
 

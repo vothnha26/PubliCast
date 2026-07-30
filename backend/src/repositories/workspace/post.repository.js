@@ -68,7 +68,8 @@ class PostRepository {
                 }
               }
             }
-          }
+          },
+          networkOverrides: true
         }
       }),
       prisma.post.count({ where })
@@ -87,7 +88,8 @@ class PostRepository {
             name: true,
             avatarUrl: true
           }
-        }
+        },
+        networkOverrides: true
       }
     });
   }

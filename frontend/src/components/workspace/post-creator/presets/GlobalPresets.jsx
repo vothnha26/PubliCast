@@ -1,8 +1,10 @@
 import React from "react";
+import { useTranslation } from "react-i18next";
 import { Settings, ChevronDown, Link2 } from "lucide-react";
 import { usePostCreatorFormContext } from "../../../../context/PostCreatorFormContext";
 
 export function GlobalPresets() {
+  const { t } = useTranslation(["planner"]);
   const {
     globalOpen,
     setGlobalOpen,
@@ -20,8 +22,8 @@ export function GlobalPresets() {
       >
         <div className="flex items-center gap-3">
           <Settings size={18} className="text-gray-400 group-hover:text-black transition-colors" />
-          <span className="text-[12px] font-bold text-gray-700 font-sans">Global presets</span>
-          <span className="px-2 py-0.5 bg-[#D1FAE5] text-[#065F46] rounded-lg text-[9px] font-bold font-sans">New</span>
+          <span className="text-[12px] font-bold text-gray-700 font-sans">{t("planner:postCreator.presets.global.title")}</span>
+          <span className="px-2 py-0.5 bg-[#D1FAE5] text-[#065F46] rounded-lg text-[9px] font-bold font-sans">{t("planner:postCreator.presets.global.newBadge")}</span>
         </div>
         <ChevronDown size={16} className={`text-gray-400 transition-transform duration-300 ${globalOpen ? 'rotate-180 text-black' : ''}`} />
       </div>
@@ -29,11 +31,11 @@ export function GlobalPresets() {
       <div className={`transition-all duration-300 ease-in-out overflow-hidden ${globalOpen ? 'max-h-[500px] border-t border-gray-50 p-6' : 'max-h-0'}`}>
         <div className="space-y-4">
           <div>
-            <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 font-sans">First Comment</label>
+            <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 font-sans">{t("planner:postCreator.presets.global.firstComment")}</label>
             <textarea 
               value={globalFirstComment}
               onChange={(e) => setGlobalFirstComment(e.target.value)}
-              placeholder="Write a comment to be posted automatically right after publishing..."
+              placeholder={t("planner:postCreator.presets.global.firstCommentPlaceholder")}
               className="w-full p-4 border border-gray-200 rounded-2xl text-xs font-medium focus:border-black outline-none resize-none h-20 font-sans"
             />
           </div>
@@ -44,8 +46,8 @@ export function GlobalPresets() {
                 <Link2 size={16} />
               </div>
               <div className="text-left">
-                <div className="text-xs font-bold text-gray-800 font-sans">SmartLinks (URL Shortener)</div>
-                <div className="text-[10px] text-gray-400 font-medium font-sans">Auto-shorten links in your post body & first comment, and track analytics.</div>
+                <div className="text-xs font-bold text-gray-800 font-sans">{t("planner:postCreator.presets.global.smartLinks")}</div>
+                <div className="text-[10px] text-gray-400 font-medium font-sans">{t("planner:postCreator.presets.global.smartLinksDesc")}</div>
               </div>
             </div>
             <button

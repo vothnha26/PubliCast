@@ -1,6 +1,6 @@
 import React from 'react';
 import { Heart, Repeat2, MessageSquare, MoreHorizontal, Image as ImageIcon } from 'lucide-react';
-import { PreviewShell } from '../PreviewShell';
+import { PreviewShell } from './PreviewShell';
 
 export function BlueskyPreview({
   caption,

@@ -2,7 +2,7 @@ import * as React from "react";
 import { useState } from "react";
 import { Plus, X, ImageIcon, GripVertical, Edit } from "lucide-react";
 import { toast } from "sonner";
-import { MediaUploadModal } from "./MediaUploadModal";
+import { MediaUploadModal } from "./modals/MediaUploadModal";
 
 export function FacebookAlbumComposer({ brandId, albumMedia = [], setAlbumMedia, onEditPhoto }) {
   const [showUploadModal, setShowUploadModal] = useState(false);

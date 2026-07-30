@@ -27,13 +27,15 @@ export function Viewport({
   activeFrame,
   frameColor,
   frameSize,
+  frameOffset1 = 0,
   frameRadius,
   handleImageMouseDown,
   handleCornerMouseDown,
   imageUrl,
   imageStyle,
   filterClass,
-  stretchStyle
+  stretchStyle,
+  adjustments = {}
 }) {
   return (
     <div className="flex-1 flex items-center justify-center p-12 relative overflow-auto bg-[#F9F9F8]">
@@ -195,16 +197,23 @@ export function Viewport({
           {activeFrame !== 'none' && (
             <div 
               style={{ 
-                borderColor: frameColor, 
-                borderWidth: `${frameSize}%`,
-                borderRadius: `${frameRadius}%`
+                inset: `${frameOffset1 || 0}%`,
+                borderColor: activeFrame === 'lumber' ? '#8B5A2B' : frameColor,
+                borderWidth: `${Math.max(1, frameSize)}px`,
+                borderRadius: activeFrame === 'hook' ? '12px' : '0px'
               }}
-              className={`absolute inset-0 z-20 pointer-events-none ${
-                activeFrame === 'dashed' ? 'border-dashed' : 'border-solid'
+              className={`absolute z-20 pointer-events-none transition-all duration-150 ${
+                activeFrame === 'inset' ? 'border-dashed' : 'border-solid'
               } ${
-                activeFrame === 'bevel' ? 'shadow-inner' : ''
+                activeFrame === 'bevel' ? 'shadow-inner border-gray-800' : ''
               } ${
                 activeFrame === 'zebra' ? 'border-double' : ''
+              } ${
+                activeFrame === 'mat' ? 'border-4' : ''
+              } ${
+                activeFrame === 'film' ? 'border-x-0 border-y-4 border-black' : ''
+              } ${
+                activeFrame === 'polaroid' ? 'border-b-[24px] border-white shadow-md' : ''
               }`}
             />
           )}
@@ -217,10 +226,18 @@ export function Viewport({
             <img 
               src={imageUrl} 
               style={imageStyle}
-              className={`max-w-[420px] max-h-[380px] object-contain ${filterClass}`}
+              className={`w-full h-full object-cover select-none ${filterClass}`}
               alt="Main viewport preview" 
               draggable={false}
             />
+            {adjustments?.vignette !== undefined && Math.abs(adjustments.vignette) > 0 && (
+              <div 
+                style={{ 
+                  background: `radial-gradient(ellipse at center, transparent 40%, rgba(0,0,0,${Math.min(0.9, Math.abs(adjustments.vignette) / 50)}) 100%)` 
+                }}
+                className="absolute inset-0 z-15 pointer-events-none" 
+              />
+            )}
           </div>
         </div>
 

@@ -30,7 +30,6 @@ import { AIAssistant } from "./pages/workspace/AIAssistant";
 import { HashtagManager } from "./pages/workspace/HashtagManager";
 import { ErrorPages } from "./pages/workspace/ErrorPages";
 import { NotificationsPage } from "./pages/workspace/Notifications";
-import { VideoEditorPage } from "./pages/workspace/VideoEditorPage";
 import { PlannerLayout } from "./pages/workspace/planner/PlannerLayout";
 import { WeeklyCalendarView } from "./pages/workspace/planner/WeeklyCalendarView";
 import { ListView } from "./pages/workspace/planner/ListView";
@@ -170,7 +169,6 @@ export default function App() {
               <Route path="/hashtags" element={<ProtectedRoute allowedRoles={CLIENT_ROLES}><HashtagManager /></ProtectedRoute>} />
               <Route path="/errors" element={<ProtectedRoute allowedRoles={CLIENT_ROLES}><ErrorPages /></ProtectedRoute>} />
               <Route path="/notifications" element={<ProtectedRoute allowedRoles={CLIENT_ROLES}><NotificationsPage /></ProtectedRoute>} />
-              <Route path="/workspace/video-editor" element={<ProtectedRoute allowedRoles={CLIENT_ROLES}><VideoEditorPage /></ProtectedRoute>} />
               
               {/* Protected Manage Routes */}
               <Route path="/manage/inbox" element={<ProtectedRoute allowedRoles={CLIENT_ROLES}><FeatureGate productId={PRODUCT_IDS.UNIFIED_INBOX}><InboxPage /></FeatureGate></ProtectedRoute>} />

@@ -1,6 +1,6 @@
 import React from 'react';
 import { ArrowBigUp, ArrowBigDown, MessageSquare, Share2, MoreHorizontal, ExternalLink, ShieldAlert } from 'lucide-react';
-import { PreviewShell } from '../PreviewShell';
+import { PreviewShell } from './PreviewShell';
 
 export function RedditPreview({
   caption,

@@ -1,6 +1,6 @@
 import React from 'react';
 import { Tv, MessageSquare, Radio, Gamepad2, User } from 'lucide-react';
-import { PreviewShell } from '../PreviewShell';
+import { PreviewShell } from './PreviewShell';
 
 export function TwitchPreview({
   caption,

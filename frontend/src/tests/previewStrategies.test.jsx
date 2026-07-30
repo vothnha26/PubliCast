@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { PreviewStrategies } from '../components/workspace/post-creator/PreviewStrategies';
+import { PreviewStrategies } from '../components/workspace/post-creator/previews/PreviewStrategies';
 import { BlueskyPreview } from '../components/workspace/post-creator/previews/BlueskyPreview';
 import { RedditPreview } from '../components/workspace/post-creator/previews/RedditPreview';
 import { TwitchPreview } from '../components/workspace/post-creator/previews/TwitchPreview';

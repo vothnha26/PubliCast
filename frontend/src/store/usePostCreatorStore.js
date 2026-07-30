@@ -1,7 +1,8 @@
 import { create } from 'zustand';
 import { buildMediaUrl } from '../utils/url';
+import apiService from '../services/api';
 
-export const usePostCreatorStore = create((set) => ({
+export const usePostCreatorStore = create((set, get) => ({
   isOpen: false,
   editingPost: null,
   templatePost: null,
@@ -11,11 +12,22 @@ export const usePostCreatorStore = create((set) => ({
   videoFileUrl: "",
   isUploadingVideo: false,
   uploadedVideoPath: "",
+  uploadedAssetsThisSession: [],
   // State phục vụ Facebook Album
   albumMedia: [], // Mảng chứa các đối tượng { file, previewUrl, path, caption }
   postMedia: [], // Mảng chứa các đối tượng { file, previewUrl, path } for standard posts
   videoSettings: null,
   postCreatorFormBackup: null,
+
+  trackUploadedAsset: (url) => {
+    if (!url || typeof url !== 'string') return;
+    set((state) => {
+      if (state.uploadedAssetsThisSession.includes(url)) return state;
+      return { uploadedAssetsThisSession: [...state.uploadedAssetsThisSession, url] };
+    });
+  },
+
+  clearTrackedAssets: () => set({ uploadedAssetsThisSession: [] }),
 
   setVideoFile: (val) => set({ videoFile: val }),
   setVideoFileUrl: (val) => set({ videoFileUrl: val }),
@@ -58,6 +70,7 @@ export const usePostCreatorStore = create((set) => ({
     videoFileUrl: options.defaultVideoUrl !== undefined ? options.defaultVideoUrl : state.videoFileUrl,
     uploadedVideoPath: options.defaultVideoPath !== undefined ? options.defaultVideoPath : state.uploadedVideoPath,
     isUploadingVideo: options.isUploadingVideo || false,
+    uploadedAssetsThisSession: [],
     videoSettings: options.videoSettings !== undefined ? options.videoSettings : (options.post?.options?.videoSettings || state.videoSettings || null),
     albumMedia: options.albumMedia !== undefined ? options.albumMedia : (options.post?.options?.albumMedia || options.template?.options?.albumMedia || []),
     postMedia: options.postMedia !== undefined ? options.postMedia : (
@@ -80,6 +93,21 @@ export const usePostCreatorStore = create((set) => ({
 
   closePostCreator: () => {
     sessionStorage.removeItem('postCreatorFormBackup');
+    
+    const { uploadedAssetsThisSession } = get();
+
+    // Rollback uncommitted uploads asynchronously in background without blocking UI
+    if (uploadedAssetsThisSession && uploadedAssetsThisSession.length > 0) {
+      const assetsToDelete = [...uploadedAssetsThisSession];
+      Promise.allSettled(
+        assetsToDelete.map((url) =>
+          apiService.delete('/posts/upload', { data: { url } }).catch((err) => {
+            console.warn('[Rollback] Failed to delete unused asset:', url, err);
+          })
+        )
+      );
+    }
+
     set({
       editingPost: null,
       templatePost: null,
@@ -89,6 +117,7 @@ export const usePostCreatorStore = create((set) => ({
       videoFileUrl: "",
       uploadedVideoPath: "",
       isUploadingVideo: false,
+      uploadedAssetsThisSession: [],
       videoSettings: null,
       postCreatorFormBackup: null,
       albumMedia: [],

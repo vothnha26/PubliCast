@@ -1,10 +1,11 @@
 import * as React from "react";
 import { X, Loader2 } from "lucide-react";
-import { useImageEditor } from "./image-editor/useImageEditor";
-import { Sidebar } from "./image-editor/Sidebar";
-import { Toolbar } from "./image-editor/Toolbar";
-import { Viewport } from "./image-editor/Viewport";
-import { SettingsPanel, FILTER_PRESETS } from "./image-editor/SettingsPanel";
+import { useImageEditor } from "../image-editor/useImageEditor";
+import { Sidebar } from "../image-editor/Sidebar";
+import { Toolbar } from "../image-editor/Toolbar";
+import { Viewport } from "../image-editor/Viewport";
+import { SettingsPanel, FILTER_PRESETS } from "../image-editor/SettingsPanel";
+import { getFinetuneFilterString } from "../image-editor/utils";
 
 export function ImageEditorModal({ isOpen, imageUrl, currentTransform, brandId, onClose, onSave }) {
   const editor = useImageEditor({ imageUrl, currentTransform, brandId, onSave, onClose });
@@ -26,9 +27,17 @@ export function ImageEditorModal({ isOpen, imageUrl, currentTransform, brandId, 
     transformOrigin: 'center center',
   };
 
+  const finetuneFilter = getFinetuneFilterString({
+    brightness: editor.brightness,
+    contrast: editor.contrast,
+    saturate: editor.saturate,
+    adjustments: editor.adjustments,
+    activeFilter: editor.activeFilter
+  });
+
   const imageStyle = {
     transform: `translate(${editor.position.x}px, ${editor.position.y}px) rotate(${editor.rotation}deg) scaleX(${editor.flipH ? -1 : 1}) scaleY(${editor.flipV ? -1 : 1}) scale(${editor.scaleVal})`,
-    filter: `brightness(${editor.brightness}%) contrast(${editor.contrast}%) saturate(${editor.saturate}%)`,
+    filter: finetuneFilter,
     cursor: editor.isDraggingImage ? 'grabbing' : (editor.activeTab === 'draw' ? 'crosshair' : 'grab'),
   };
 
@@ -72,6 +81,10 @@ export function ImageEditorModal({ isOpen, imageUrl, currentTransform, brandId, 
               scaleVal={editor.scaleVal}
               flipH={editor.flipH}
               flipV={editor.flipV}
+              canUndo={editor.canUndo}
+              canRedo={editor.canRedo}
+              handleUndo={editor.handleUndo}
+              handleRedo={editor.handleRedo}
               handleReset={editor.handleReset}
               handleZoomOut={editor.handleZoomOut}
               handleZoomIn={editor.handleZoomIn}
@@ -106,6 +119,7 @@ export function ImageEditorModal({ isOpen, imageUrl, currentTransform, brandId, 
               activeFrame={editor.activeFrame}
               frameColor={editor.frameColor}
               frameSize={editor.frameSize}
+              frameOffset1={editor.frameOffset1}
               frameRadius={editor.frameRadius}
               handleImageMouseDown={editor.handleImageMouseDown}
               handleCornerMouseDown={editor.handleCornerMouseDown}
@@ -113,6 +127,7 @@ export function ImageEditorModal({ isOpen, imageUrl, currentTransform, brandId, 
               imageStyle={imageStyle}
               filterClass={filterClass}
               stretchStyle={stretchStyle}
+              adjustments={editor.adjustments}
             />
 
             <SettingsPanel
@@ -121,12 +136,18 @@ export function ImageEditorModal({ isOpen, imageUrl, currentTransform, brandId, 
               setAdjustMode={editor.setAdjustMode}
               scaleVal={editor.scaleVal}
               setScaleVal={editor.setScaleVal}
+              rotation={editor.rotation}
+              setRotation={editor.setRotation}
               brightness={editor.brightness}
               setBrightness={editor.setBrightness}
               contrast={editor.contrast}
               setContrast={editor.setContrast}
               saturate={editor.saturate}
               setSaturate={editor.setSaturate}
+              adjustments={editor.adjustments}
+              setAdjustments={editor.setAdjustments}
+              finetuneActiveField={editor.finetuneActiveField}
+              setFinetuneActiveField={editor.setFinetuneActiveField}
               activeFilter={editor.activeFilter}
               setActiveFilter={editor.setActiveFilter}
               imageUrl={imageUrl}

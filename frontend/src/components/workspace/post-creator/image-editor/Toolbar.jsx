@@ -5,6 +5,10 @@ export function Toolbar({
   scaleVal,
   flipH,
   flipV,
+  canUndo,
+  canRedo,
+  handleUndo,
+  handleRedo,
   handleReset,
   handleZoomOut,
   handleZoomIn,
@@ -15,7 +19,7 @@ export function Toolbar({
   return (
     <div className="h-14 flex items-center justify-between border-b border-gray-100/50 bg-white px-8 shrink-0 select-none">
       {/* Reset History Icon */}
-      <button 
+      <button
         onClick={handleReset}
         title="Reset modifications"
         className="p-2 hover:bg-gray-50 rounded-xl text-gray-500 hover:text-black transition-all cursor-pointer"
@@ -26,14 +30,35 @@ export function Toolbar({
       {/* Central adjustments group (Undo/Redo & Zoom ratio) */}
       <div className="flex items-center gap-6">
         <div className="flex bg-gray-50 p-1 rounded-xl border border-gray-100">
-          <button type="button" className="p-1.5 text-gray-400 hover:text-black rounded-lg transition-colors cursor-pointer"><Undo2 size={14} /></button>
-          <button type="button" className="p-1.5 text-gray-400 hover:text-black rounded-lg transition-colors cursor-pointer rotate-180"><Undo2 size={14} /></button>
+          <button
+            type="button"
+            onClick={handleUndo}
+            disabled={!canUndo}
+            title="Undo (Hoàn tác)"
+            className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
+              canUndo ? 'text-gray-700 hover:text-black hover:bg-white' : 'text-gray-300 cursor-not-allowed'
+            }`}
+          >
+            <Undo2 size={14} />
+          </button>
+
+          <button
+            type="button"
+            onClick={handleRedo}
+            disabled={!canRedo}
+            title="Redo (Làm lại)"
+            className={`p-1.5 rounded-lg transition-colors cursor-pointer rotate-180 ${
+              canRedo ? 'text-gray-700 hover:text-black hover:bg-white' : 'text-gray-300 cursor-not-allowed'
+            }`}
+          >
+            <Undo2 size={14} />
+          </button>
         </div>
 
         <div className="flex items-center bg-gray-50 p-1 rounded-xl border border-gray-100 text-[10px] font-black text-gray-600">
-          <button onClick={handleZoomOut} className="px-2.5 py-1 hover:bg-white rounded-md cursor-pointer">-</button>
+          <button onClick={handleZoomOut} className="px-2.5 py-1 hover:bg-white rounded-md cursor-pointer" title="Thu nhỏ">-</button>
           <span className="px-3 min-w-[48px] text-center">{Math.round(scaleVal * 100)}%</span>
-          <button onClick={handleZoomIn} className="px-2.5 py-1 hover:bg-white rounded-md cursor-pointer">+</button>
+          <button onClick={handleZoomIn} className="px-2.5 py-1 hover:bg-white rounded-md cursor-pointer" title="Phóng to">+</button>
         </div>
       </div>
 
@@ -47,6 +72,7 @@ export function Toolbar({
         >
           <RotateCw size={14} />
         </button>
+
         <button
           type="button"
           onClick={handleFlipH}
@@ -59,6 +85,7 @@ export function Toolbar({
             <path strokeLinecap="round" strokeLinejoin="round" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l-4-4" />
           </svg>
         </button>
+
         <button
           type="button"
           onClick={handleFlipV}

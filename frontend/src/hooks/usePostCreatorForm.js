@@ -4,7 +4,8 @@ import apiService from "../services/api";
 import { useBrand } from "../context/BrandContext";
 import socialService from "../services/social.service";
 import { usePostCreator } from "../context/PostCreatorContext";
-import { DEFAULT_PLATFORM, PLATFORMS } from "../constants/platforms";
+import { usePostCreatorStore } from "../store/usePostCreatorStore";
+import { DEFAULT_PLATFORM, PLATFORMS, PLATFORM_API_KEY } from "../constants/platforms";
 import { PLATFORM_CONFIGS } from "../constants/platformRegistry";
 import { POST_STATUS, PUBLISH_MODE, PUBLISH_MODE_TO_STATUS, STATUS_TO_PUBLISH_MODE } from "../constants/postStatus";
 import { POST_TYPE, YOUTUBE_TYPE, FACEBOOK_TYPE, INSTAGRAM_TYPE, TIKTOK_PRIVACY, APPROVAL_POLICY, YOUTUBE_DEFAULT_CATEGORY_ID } from "../constants/postTypes";
@@ -12,6 +13,12 @@ import { buildMediaUrl, isVideoPath } from "../utils/url";
 import { validatePostForm } from "../utils/postValidation";
 import { logger } from "../utils/logger";
 import postService from "../services/post.service";
+import { uploadMediaFile } from "../services/mediaUpload.service";
+import {
+  NETWORK_TAB_TEMPLATE,
+  buildDefaultNetworkCustom,
+  mapNetworkOverridesToCustom,
+} from "../constants/postComposerNetwork";
 
 const toLocalDatetimeString = (dateInput) => {
   if (!dateInput) return "";
@@ -62,6 +69,7 @@ export function usePostCreatorForm() {
   const [selectedPublishId, setSelectedPublishId] = useState("now");
   const { activeBrand } = useBrand();
   const [isCreating, setIsCreating] = useState(false);
+  const [submitProgressText, setSubmitProgressText] = useState(null);
   const [scheduledDate, setScheduledDate] = useState(() => toLocalDatetimeString(new Date()));
   const [isLibrary, setIsLibrary] = useState(false);
 
@@ -111,6 +119,11 @@ export function usePostCreatorForm() {
 
   // Threads States
   const [threadsWhoCanReply, setThreadsWhoCanReply] = useState("everyone");
+
+  // Per-platform content override ("Cài đặt theo mạng") States
+  const [isEditByNetwork, setIsEditByNetwork] = useState(false);
+  const [activeNetworkTab, setActiveNetworkTab] = useState(NETWORK_TAB_TEMPLATE);
+  const [networkCustom, setNetworkCustom] = useState(() => buildDefaultNetworkCustom());
 
   // Video metadata states for format validation
   const [videoDuration, setVideoDuration] = useState(0);
@@ -169,6 +182,9 @@ export function usePostCreatorForm() {
       setGlobalFirstComment(backup.globalFirstComment ?? "");
       setYoutubeThumbnail(backup.youtubeThumbnail ?? "");
       setThreadsWhoCanReply(backup.threadsWhoCanReply ?? "everyone");
+      setIsEditByNetwork(backup.isEditByNetwork ?? false);
+      setActiveNetworkTab(backup.activeNetworkTab ?? NETWORK_TAB_TEMPLATE);
+      setNetworkCustom(backup.networkCustom ?? buildDefaultNetworkCustom());
       setSelectedReviewerId(backup.selectedReviewerId ?? "");
       setSelectedReviewerIds(backup.selectedReviewerIds ?? []);
       setApprovalPolicy(backup.approvalPolicy ?? APPROVAL_POLICY.AT_LEAST_ONE);
@@ -248,6 +264,9 @@ export function usePostCreatorForm() {
       globalFirstComment,
       youtubeThumbnail,
       threadsWhoCanReply,
+      isEditByNetwork,
+      activeNetworkTab,
+      networkCustom,
       selectedReviewerId,
       selectedReviewerIds,
       approvalPolicy,
@@ -343,12 +362,124 @@ export function usePostCreatorForm() {
         if (activePlatform === platLower) {
           setActivePlatform(next[0]);
         }
+        setActiveNetworkTab((prevTab) => (prevTab === platLower ? NETWORK_TAB_TEMPLATE : prevTab));
         return next;
       } else {
         setActivePlatform(platLower);
         return [...prev, platLower];
       }
     });
+  };
+
+  // Bật/tắt chế độ chỉnh nội dung riêng cho 1 nền tảng (Cài đặt theo mạng).
+  // Lần đầu customize (caption/mediaUrls đang rỗng) sẽ seed từ caption/postMedia chung
+  // để user không phải gõ lại từ đầu.
+  const toggleUseTemplate = (platformId, value) => {
+    setNetworkCustom((prev) => {
+      const current = prev[platformId] || { useTemplate: true, caption: "", mediaUrls: [] };
+      const newUseTemplate = value !== undefined ? value : !current.useTemplate;
+
+      const isThreads = platformId === PLATFORMS.THREADS;
+      const firstThreadText = typeof current.threadPosts?.[0] === 'string' ? current.threadPosts[0] : current.threadPosts?.[0]?.text;
+      const isFirstCustomization = newUseTemplate === false &&
+        (isThreads
+          ? (!current.threadPosts || firstThreadText === "")
+          : !current.caption) &&
+        (current.mediaUrls?.length || 0) === 0;
+
+      const seeded = isFirstCustomization
+        ? isThreads
+          ? {
+              ...current,
+              threadPosts: [
+                { text: caption, mediaUrls: [...postMedia] },
+                ...(Array.isArray(current.threadPosts) ? current.threadPosts.slice(1) : [])
+              ]
+            }
+          : { ...current, caption }
+        : current;
+
+      return {
+        ...prev,
+        [platformId]: { ...seeded, useTemplate: newUseTemplate },
+      };
+    });
+  };
+
+  const updateNetworkCaption = (platformId, value) => {
+    setNetworkCustom((prev) => ({
+      ...prev,
+      [platformId]: { ...(prev[platformId] || { useTemplate: false, caption: "", mediaUrls: [] }), caption: value },
+    }));
+  };
+
+  const updateNetworkMedia = (platformId, mediaUrls) => {
+    setNetworkCustom((prev) => ({
+      ...prev,
+      [platformId]: { ...(prev[platformId] || { useTemplate: false, caption: "", mediaUrls: [] }), mediaUrls },
+    }));
+  };
+
+  const updateThreadPostText = (index, text) => {
+    setNetworkCustom((prev) => {
+      const threads = prev[PLATFORMS.THREADS] || { threadPosts: [{ text: "", mediaUrls: [] }] };
+      const newPosts = [...threads.threadPosts];
+      const curr = typeof newPosts[index] === 'object' && newPosts[index] !== null
+        ? newPosts[index]
+        : { text: typeof newPosts[index] === 'string' ? newPosts[index] : '', mediaUrls: [] };
+      newPosts[index] = { ...curr, text };
+      return { ...prev, [PLATFORMS.THREADS]: { ...threads, threadPosts: newPosts } };
+    });
+  };
+
+  const updateThreadPostMedia = (index, mediaUrls) => {
+    setNetworkCustom((prev) => {
+      const threads = prev[PLATFORMS.THREADS] || { threadPosts: [{ text: "", mediaUrls: [] }] };
+      const newPosts = [...threads.threadPosts];
+      const curr = typeof newPosts[index] === 'object' && newPosts[index] !== null
+        ? newPosts[index]
+        : { text: typeof newPosts[index] === 'string' ? newPosts[index] : '', mediaUrls: [] };
+      newPosts[index] = { ...curr, mediaUrls };
+      return { ...prev, [PLATFORMS.THREADS]: { ...threads, threadPosts: newPosts } };
+    });
+  };
+
+  const addThreadPost = () => {
+    setNetworkCustom((prev) => {
+      const threads = prev[PLATFORMS.THREADS] || { threadPosts: [{ text: "", mediaUrls: [] }] };
+      const newPosts = [...threads.threadPosts, { text: "", mediaUrls: [] }];
+      return {
+        ...prev,
+        [PLATFORMS.THREADS]: { ...threads, activeThreadIndex: newPosts.length - 1, threadPosts: newPosts },
+      };
+    });
+  };
+
+  const removeThreadPost = (index) => {
+    setNetworkCustom((prev) => {
+      const threads = prev[PLATFORMS.THREADS] || { threadPosts: [""] };
+      if (threads.threadPosts.length <= 1) return prev;
+      const newPosts = threads.threadPosts.filter((_, i) => i !== index);
+      return {
+        ...prev,
+        [PLATFORMS.THREADS]: {
+          ...threads,
+          activeThreadIndex: Math.max(0, (threads.activeThreadIndex || 0) - 1),
+          threadPosts: newPosts,
+        },
+      };
+    });
+  };
+
+  const setThreadActiveIndex = (index) => {
+    setNetworkCustom((prev) => {
+      const threads = prev[PLATFORMS.THREADS] || { threadPosts: [""] };
+      return { ...prev, [PLATFORMS.THREADS]: { ...threads, activeThreadIndex: index } };
+    });
+  };
+
+  const setNetworkTab = (tabId) => {
+    setActiveNetworkTab(tabId);
   };
 
   const connectedPlatforms = activeBrand?.socialAccounts
@@ -389,7 +520,8 @@ export function usePostCreatorForm() {
       mediaCount: isAlbum ? albumMedia.length : (postMedia ? postMedia.length : 0),
       editingPost,
       postMedia,
-      captionText: caption
+      captionText: caption,
+      networkCustom
     });
   };
 
@@ -450,6 +582,12 @@ export function usePostCreatorForm() {
         }
       });
       setUploadedVideoPath(res.data.videoUrl);
+      
+      const trackUploadedAsset = usePostCreatorStore.getState().trackUploadedAsset;
+      if (trackUploadedAsset && res.data.videoUrl) {
+        trackUploadedAsset(res.data.videoUrl);
+      }
+
       toast.success("Video uploaded successfully");
     } catch (err) {
       toast.error("Failed to upload video to server");
@@ -485,10 +623,15 @@ export function usePostCreatorForm() {
       if (res.videoUrl) {
         toast.success(`Successfully imported "${file.name}"!`, { id: 'import-drive-toast' });
 
-      const fullUrl = buildMediaUrl(res.videoUrl);
+        const fullUrl = buildMediaUrl(res.videoUrl);
 
         setUploadedVideoPath(res.videoUrl);
         setVideoFileUrl(fullUrl);
+
+        const trackUploadedAsset = usePostCreatorStore.getState().trackUploadedAsset;
+        if (trackUploadedAsset && res.videoUrl) {
+          trackUploadedAsset(res.videoUrl);
+        }
       } else {
         throw new Error("Invalid response received from import service");
       }
@@ -574,6 +717,12 @@ export function usePostCreatorForm() {
         setNotes(opts.notes || []);
         setVideoSettings(opts.videoSettings || null);
 
+        // Setup per-platform content override từ networkOverrides đã lưu (nếu có)
+        const loadedNetworkCustom = mapNetworkOverridesToCustom(editingPost.networkOverrides || []);
+        setNetworkCustom(loadedNetworkCustom);
+        setIsEditByNetwork(Object.values(loadedNetworkCustom).some((entry) => entry.useTemplate === false));
+        setActiveNetworkTab(NETWORK_TAB_TEMPLATE);
+
         // Setup Facebook
         setFacebookType(opts.facebookType || "post");
         setFacebookTitle(opts.facebookTitle || "");
@@ -637,6 +786,12 @@ export function usePostCreatorForm() {
         setThreadsWhoCanReply(opts.threadsWhoCanReply || "everyone");
         setNotes(opts.notes || []);
         setVideoSettings(opts.videoSettings || null);
+
+        // Setup per-platform content override từ networkOverrides của template (nếu có)
+        const loadedTemplateNetworkCustom = mapNetworkOverridesToCustom(templatePost.networkOverrides || []);
+        setNetworkCustom(loadedTemplateNetworkCustom);
+        setIsEditByNetwork(Object.values(loadedTemplateNetworkCustom).some((entry) => entry.useTemplate === false));
+        setActiveNetworkTab(NETWORK_TAB_TEMPLATE);
 
         // Setup Facebook
         setFacebookType(opts.facebookType || "post");
@@ -716,6 +871,11 @@ export function usePostCreatorForm() {
         setAlbumMedia([]);
         setVideoSettings(null);
 
+        // Reset per-platform content override
+        setNetworkCustom(buildDefaultNetworkCustom());
+        setIsEditByNetwork(false);
+        setActiveNetworkTab(NETWORK_TAB_TEMPLATE);
+
         // Reset Instagram
         setInstagramType(INSTAGRAM_TYPE.POST);
         setInstagramCollaborators([]);
@@ -754,6 +914,12 @@ export function usePostCreatorForm() {
     setYoutubeThumbnail(opts.youtubeThumbnail || "");
     setThreadsWhoCanReply(opts.threadsWhoCanReply || "everyone");
 
+    // Setup per-platform content override từ networkOverrides của template (nếu có)
+    const loadedNetworkCustom = mapNetworkOverridesToCustom(template.networkOverrides || []);
+    setNetworkCustom(loadedNetworkCustom);
+    setIsEditByNetwork(Object.values(loadedNetworkCustom).some((entry) => entry.useTemplate === false));
+    setActiveNetworkTab(NETWORK_TAB_TEMPLATE);
+
     // Setup Facebook
     setFacebookType(opts.facebookType || "post");
     setFacebookTitle(opts.facebookTitle || "");
@@ -771,7 +937,7 @@ export function usePostCreatorForm() {
     setTiktokAllowStitch(opts.tiktokAllowStitch !== undefined ? opts.tiktokAllowStitch : true);
     setTiktokAiGenerated(opts.tiktokAiGenerated || false);
     setTiktokCommercialContent(opts.tiktokCommercialContent || false);
-    
+
     // Setup media
     if (opts.facebookType === 'album' && opts.albumMedia) {
       setAlbumMedia(opts.albumMedia);
@@ -800,7 +966,72 @@ export function usePostCreatorForm() {
     }
 
     setIsCreating(true);
+    setSubmitProgressText(null);
     try {
+      // 1. Quét và tập hợp tất cả các file media chưa upload (has file && !path)
+      const pendingPostMedia = postMedia.filter((item) => item.file && !item.path);
+      const pendingAlbumMedia = albumMedia.filter((item) => item.file && !item.path);
+      const pendingNetworkItems = [];
+
+      Object.entries(networkCustom).forEach(([platform, entry]) => {
+        if (!selectedPlatforms.includes(platform)) return;
+        if (entry?.useTemplate !== false) return;
+
+        if (Array.isArray(entry.mediaUrls)) {
+          entry.mediaUrls.forEach((item) => {
+            if (typeof item === 'object' && item.file && !item.path) {
+              pendingNetworkItems.push(item);
+            }
+          });
+        }
+
+        if (platform === PLATFORMS.THREADS && Array.isArray(entry.threadPosts)) {
+          entry.threadPosts.forEach((post) => {
+            if (typeof post === 'object' && Array.isArray(post.mediaUrls)) {
+              post.mediaUrls.forEach((item) => {
+                if (typeof item === 'object' && item.file && !item.path) {
+                  pendingNetworkItems.push(item);
+                }
+              });
+            }
+          });
+        }
+      });
+
+      const allPendingFiles = [...pendingPostMedia, ...pendingAlbumMedia, ...pendingNetworkItems];
+      const totalPending = allPendingFiles.length;
+
+      if (totalPending > 0) {
+        let uploadedCount = 0;
+        for (const item of allPendingFiles) {
+          uploadedCount++;
+          setSubmitProgressText(`Đang tải lên file ${uploadedCount}/${totalPending}...`);
+          try {
+            const uploadedUrl = await uploadMediaFile(item.file, activeBrand.id);
+            item.path = uploadedUrl;
+
+            // Track asset immediately upon successful upload to allow rollback if subsequent uploads fail
+            const trackUploadedAsset = usePostCreatorStore.getState().trackUploadedAsset;
+            if (trackUploadedAsset && uploadedUrl) {
+              trackUploadedAsset(uploadedUrl);
+            }
+          } catch (uploadErr) {
+            console.error("Failed to upload file during submit:", uploadErr);
+            setSubmitProgressText(null);
+            setIsCreating(false);
+            const fileName = item.file?.name || "media";
+            toast.error(`Tải lên file "${fileName}" thất bại: ${uploadErr.response?.data?.message || uploadErr.message || "Lỗi kết nối"}`);
+            return; // Dừng submit ngay lập tức, giữ nguyên 100% state form!
+          }
+        }
+
+        setPostMedia([...postMedia]);
+        setAlbumMedia([...albumMedia]);
+        setNetworkCustom({ ...networkCustom });
+      }
+
+      setSubmitProgressText(null);
+
       // Map publish mode → post status dùng lookup, không dùng if-else chain
       const status = PUBLISH_MODE_TO_STATUS[selectedPublishId] || POST_STATUS.DRAFT;
 
@@ -811,7 +1042,8 @@ export function usePostCreatorForm() {
       else if (activePlatform === PLATFORMS.TIKTOK) activeSubType = 'video';
 
       const isAlbum = activePlatform === PLATFORMS.FACEBOOK && facebookType === 'album';
-      const hasMedia = isAlbum ? albumMedia.length > 0 : !!(uploadedVideoPath || videoFile);
+      const effectiveUploadedPath = uploadedVideoPath || (postMedia.length > 0 ? postMedia[0].path : "");
+      const hasMedia = isAlbum ? albumMedia.length > 0 : !!(effectiveUploadedPath || (postMedia && postMedia.length > 0 && postMedia[0].path));
       const isVid = !isAlbum && isVideoPath(videoFileUrl, videoFile);
 
       const platformConfig = PLATFORM_CONFIGS[activePlatform];
@@ -824,7 +1056,7 @@ export function usePostCreatorForm() {
         ? albumMedia.map(item => item.path).filter(Boolean)
         : (postMedia && postMedia.length > 0
             ? postMedia.map(item => item.path).filter(Boolean)
-            : (uploadedVideoPath ? [uploadedVideoPath] : [])
+            : (effectiveUploadedPath ? [effectiveUploadedPath] : [])
           );
       const mediaCaptions = isAlbum
         ? albumMedia.map(item => item.caption || "")
@@ -878,14 +1110,82 @@ export function usePostCreatorForm() {
         }
       };
 
+      const buildNetworkOverrides = () => {
+        const overrides = [];
+        Object.entries(networkCustom).forEach(([platform, entry]) => {
+          if (!selectedPlatforms.includes(platform)) return;
+          if (entry?.useTemplate !== false) return;
+          const apiKey = PLATFORM_API_KEY[platform];
+          if (!apiKey) return; // bỏ qua platform không có API key hợp lệ
+          const formattedMediaUrls = (entry.mediaUrls || [])
+            .map((item) => (typeof item === 'string' ? item : item.path || item.previewUrl))
+            .filter(Boolean);
+
+          if (platform === PLATFORMS.THREADS) {
+            const validPosts = (entry.threadPosts || []).filter((p) => {
+              const txt = typeof p === 'string' ? p : p?.text;
+              const media = typeof p === 'string' ? [] : (p?.mediaUrls || []);
+              return (txt && txt.trim()) || media.length > 0;
+            });
+            if (validPosts.length === 0) return;
+            const formatPostMedia = (mediaUrls) => (mediaUrls || [])
+              .map((item) => (typeof item === 'string' ? item : item.path || item.previewUrl))
+              .filter(Boolean);
+
+            const firstPostText = typeof validPosts[0] === 'string' ? validPosts[0] : (validPosts[0].text || '');
+            const firstPostMedia = typeof validPosts[0] === 'string' ? [] : (validPosts[0].mediaUrls || []);
+
+            overrides.push({
+              platform: apiKey,
+              useTemplate: false,
+              caption: firstPostText,
+              mediaUrls: formatPostMedia(firstPostMedia),
+              threadPosts: validPosts.map((p) => ({
+                text: typeof p === 'string' ? p : (p.text || ''),
+                mediaUrls: formatPostMedia(typeof p === 'string' ? [] : p.mediaUrls),
+              })),
+            });
+          } else {
+            if (!entry.caption && formattedMediaUrls.length === 0) return;
+            overrides.push({
+              platform: apiKey,
+              useTemplate: false,
+              caption: entry.caption || '',
+              mediaUrls: formattedMediaUrls,
+            });
+          }
+        });
+        return overrides;
+      };
+
+      const networkOverrides = buildNetworkOverrides();
+
       if (editingPost) {
-        await apiService.put(`/posts/${editingPost.id}`, payload, { timeout: 60000 });
+        // Gửi networkOverrides trong PUT payload — backend đã được vá để xử lý
+        // (upsertNetworkOverrides trong updatePost, chỉ khi bài chưa PUBLISHED).
+        // Nếu không có override nào (networkOverrides rỗng), payload giống y như trước
+        // (backward-compatible 100% — backend bỏ qua khi postData.networkOverrides falsy).
+        const updatePayload = networkOverrides.length > 0
+          ? { ...payload, networkOverrides }
+          : payload;
+        await apiService.put(`/posts/${editingPost.id}`, updatePayload, { timeout: 60000 });
         toast.success("Post updated successfully");
+        // Xóa danh sách track để không bị rollback nhầm file đã đăng
+        const clearTrackedAssets = usePostCreatorStore.getState().clearTrackedAssets;
+        if (clearTrackedAssets) clearTrackedAssets();
         // Đóng form ngay sau khi cập nhật thành công để tránh user vô tình tạo thêm bài mới
         closePostCreator();
       } else {
-        await apiService.post('/posts', payload, { timeout: 60000 });
+        const finalPayload = networkOverrides.length > 0 ? { ...payload, networkOverrides } : payload;
+        if (networkOverrides.length > 0) {
+          await postService.createPostV2(finalPayload);
+        } else {
+          await apiService.post('/posts', finalPayload, { timeout: 60000 });
+        }
         toast.success("Post created successfully");
+        // Xóa danh sách track để không bị rollback nhầm file đã đăng
+        const clearTrackedAssets = usePostCreatorStore.getState().clearTrackedAssets;
+        if (clearTrackedAssets) clearTrackedAssets();
         // Reset state sau khi tạo bài mới thành công
         setSelectedPlatforms([DEFAULT_PLATFORM]);
         setActivePlatform(DEFAULT_PLATFORM);
@@ -919,6 +1219,9 @@ export function usePostCreatorForm() {
         setVideoFile(null);
         setVideoFileUrl("");
         setUploadedVideoPath("");
+        setNetworkCustom(buildDefaultNetworkCustom());
+        setIsEditByNetwork(false);
+        setActiveNetworkTab(NETWORK_TAB_TEMPLATE);
         closePostCreator();
       }
     } catch (error) {
@@ -958,6 +1261,7 @@ export function usePostCreatorForm() {
     activeBrand,
     isCreating,
     setIsCreating,
+    submitProgressText,
     scheduledDate,
     setScheduledDate,
     isLibrary,
@@ -1082,6 +1386,20 @@ export function usePostCreatorForm() {
     // Threads States
     threadsWhoCanReply,
     setThreadsWhoCanReply,
+    // Per-platform content override (Cài đặt theo mạng) States
+    isEditByNetwork,
+    setIsEditByNetwork,
+    activeNetworkTab,
+    setNetworkTab,
+    networkCustom,
+    toggleUseTemplate,
+    updateNetworkCaption,
+    updateNetworkMedia,
+    updateThreadPostText,
+    updateThreadPostMedia,
+    addThreadPost,
+    removeThreadPost,
+    setThreadActiveIndex,
     notes,
     setNotes,
     videoSettings,
