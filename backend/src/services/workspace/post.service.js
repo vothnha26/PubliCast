@@ -139,7 +139,7 @@ class PostService {
       const fs = require('fs');
       const path = require('path');
 
-      const sanitizedPath = fileUrl.replace(/^[\/\\]+/, '');
+      const sanitizedPath = fileUrl.replace(/^[/\\]+/, '');
       const absolutePath = path.resolve(process.cwd(), sanitizedPath);
       const uploadsDir = path.resolve(process.cwd(), 'uploads');
 

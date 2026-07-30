@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { getFullImageUrl, processCanvas } from "./utils";
 import apiService from "../../../../services/api";
+import { usePostCreatorStore } from "../../../../store/usePostCreatorStore";
 
 export function useImageEditor({ imageUrl, currentTransform, brandId, onSave, onClose }) {
   const [activeTab, setActiveTab] = useState('size');

@@ -5,6 +5,7 @@ import { useDragScroll } from '../../hooks/useDragScroll';
 import { toast } from 'sonner';
 import apiService from '../../services/api';
 import { getFullImageUrl } from '../workspace/post-creator/image-editor/utils';
+import { usePostCreatorStore } from '../../store/usePostCreatorStore';
 
 // Social & Brand Logos SVG Icons
 const LOGO_ITEMS = [

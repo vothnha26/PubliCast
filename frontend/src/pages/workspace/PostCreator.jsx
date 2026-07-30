@@ -10,6 +10,7 @@ import { PRODUCT_IDS, FEATURE_GATE_REGISTRY } from "../../constants/products";
 import postService from "../../services/post.service";
 import { usePostCreatorForm } from "../../hooks/usePostCreatorForm";
 import { useAuthStore } from "../../store/useAuthStore";
+import { usePostCreatorStore } from "../../store/usePostCreatorStore";
 import { FirstCommentModal } from "../../components/workspace/post-creator/modals/FirstCommentModal";
 import { GoogleDrivePickerModal } from "../../components/workspace/post-creator/modals/GoogleDrivePickerModal";
 import { MediaUploadModal } from "../../components/workspace/post-creator/modals/MediaUploadModal";
@@ -784,7 +785,7 @@ export function PostCreatorPage() {
                       )
                     );
                   } else if (editingPostMediaIndex !== null && activeNetworkMedia[editingPostMediaIndex]) {
-                    handleUpdateActiveNetworkMedia(editingPostMediaIndex, {
+                    updateNetworkMedia(editingPostMediaIndex, {
                       previewUrl: newUrl,
                       path: newUrl
                     });

@@ -6,7 +6,7 @@ describe('VideoFilterPipeline Unit Tests (Strategy Pattern & No Magic Strings)',
     const filterString = videoFilterPipeline.buildPipeline({
       aspectRatio: ASPECT_RATIOS.SQUARE_1_1,
       adjustments: { brightness: 10, contrast: 20, saturation: -10 },
-      filterPreset: FILTER_PRESETS.GRAYSCALE,
+      filterPreset: FILTER_PRESETS.MONO,
       textOverlays: [{ text: 'Hello World', color: 'red', size: 30, x: 50, y: 50 }],
       subtitles: [{ text: 'Sample Subtitle', start: 2, end: 5 }],
       startTime: 1,
@@ -42,16 +42,17 @@ describe('VideoFilterPipeline Unit Tests (Strategy Pattern & No Magic Strings)',
     expect(filterString).not.toContain('scale=1920:1080');
   });
 
-  it('should apply color preset strategy correctly (Sepia & Vintage)', () => {
+  it('should apply color preset strategy correctly (Sepia & Rust)', () => {
     const sepiaString = videoFilterPipeline.buildPipeline({
       filterPreset: FILTER_PRESETS.SEPIA
     });
     expect(sepiaString).toContain('colorchannelmixer=.393:.769:.189');
 
-    const vintageString = videoFilterPipeline.buildPipeline({
-      filterPreset: FILTER_PRESETS.VINTAGE
+    const rustString = videoFilterPipeline.buildPipeline({
+      filterPreset: FILTER_PRESETS.RUST
     });
-    expect(vintageString).toContain('colorbalance=rs=.1:gs=-.05:bs=-.2');
+    expect(rustString).toContain('colorchannelmixer=.393:.769:.189');
+    expect(rustString).toContain('hue=H=-20:s=1.4');
   });
 
   it('should return empty filter string when no strategies apply', () => {
