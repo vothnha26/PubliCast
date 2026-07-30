@@ -18,9 +18,6 @@ export function ConnectionsGrid({ className = "", brand, onDisconnect }) {
   const [botToken, setBotToken] = React.useState("");
   const [chatId, setChatId] = React.useState("");
 
-  const [showBlueskyModal, setShowBlueskyModal] = React.useState(false);
-  const [blueskyHandle, setBlueskyHandle] = React.useState("");
-  const [blueskyAppPassword, setBlueskyAppPassword] = React.useState("");
   const [isSubmitting, setIsSubmitting] = React.useState(false);
 
   React.useEffect(() => {
@@ -29,6 +26,16 @@ export function ConnectionsGrid({ className = "", brand, onDisconnect }) {
 
     if (success === "threads_connected") {
       toast.success("Threads connected successfully!");
+      const url = new URL(window.location.href);
+      url.searchParams.delete("success");
+      window.history.replaceState({}, document.title, url.pathname + url.search);
+      if (onDisconnect) onDisconnect();
+      else window.location.reload();
+      return;
+    }
+
+    if (success === "bluesky_connected") {
+      toast.success("Bluesky connected successfully!");
       const url = new URL(window.location.href);
       url.searchParams.delete("success");
       window.history.replaceState({}, document.title, url.pathname + url.search);
@@ -97,28 +104,13 @@ export function ConnectionsGrid({ className = "", brand, onDisconnect }) {
       }
       return;
     }
-    setBlueskyHandle("");
-    setBlueskyAppPassword("");
-    setShowBlueskyModal(true);
-  };
-
-  const submitBlueskyConnection = async (e) => {
-    e.preventDefault();
-    if (!blueskyHandle || !blueskyAppPassword) {
-      toast.error("Handle and App Password are required");
-      return;
-    }
-    setIsSubmitting(true);
     try {
-      await socialService.connectBlueskyAccount(brand.id, blueskyHandle, blueskyAppPassword);
-      toast.success("Bluesky connected successfully!");
-      setShowBlueskyModal(false);
-      if (onDisconnect) onDisconnect();
-      else window.location.reload();
+      const response = await socialService.getBlueskyAuthUrl(brand.id);
+      if (response.url) {
+        window.location.href = response.url;
+      }
     } catch (error) {
-      toast.error(error.message || "Failed to connect Bluesky");
-    } finally {
-      setIsSubmitting(false);
+      toast.error(error.message || "Failed to start Bluesky connection");
     }
   };
 
@@ -501,80 +493,7 @@ export function ConnectionsGrid({ className = "", brand, onDisconnect }) {
         </div>
       )}
 
-      {/* Bluesky Modal */}
-      {showBlueskyModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-white dark:bg-[#1a1a1a] rounded-[24px] p-6 max-w-md w-full shadow-2xl border border-gray-100 dark:border-gray-800 animate-in zoom-in-95 duration-200 text-left">
-            <div className="flex items-center justify-between mb-6">
-              <div className="flex items-center gap-2.5">
-                <div className="w-9 h-9 rounded-xl flex items-center justify-center">
-                  <PlatformIcon platform="bluesky" size={32} />
-                </div>
-                <h3 className="text-lg font-bold text-gray-900 dark:text-white">Connect Bluesky Account</h3>
-              </div>
-              <button 
-                onClick={() => setShowBlueskyModal(false)}
-                className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 p-1.5 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full transition-all"
-              >
-                <X size={18} />
-              </button>
-            </div>
 
-            <form onSubmit={submitBlueskyConnection} className="space-y-4">
-              <div>
-                <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5 uppercase tracking-wider">Bluesky Handle</label>
-                <input 
-                  type="text"
-                  required
-                  placeholder="e.g. username.bsky.social"
-                  value={blueskyHandle}
-                  onChange={(e) => setBlueskyHandle(e.target.value)}
-                  className="w-full h-11 px-4 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#0085FF] transition-all"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5 uppercase tracking-wider">App Password</label>
-                <input 
-                  type="password"
-                  required
-                  placeholder="e.g. xxxx-xxxx-xxxx-xxxx"
-                  value={blueskyAppPassword}
-                  onChange={(e) => setBlueskyAppPassword(e.target.value)}
-                  className="w-full h-11 px-4 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#0085FF] transition-all"
-                />
-              </div>
-
-              <div className="bg-blue-50 dark:bg-blue-950/40 p-4 rounded-2xl border border-blue-100 dark:border-blue-900/40 text-[11px] text-blue-700 dark:text-blue-300 leading-relaxed space-y-1">
-                <span className="font-bold block text-xs mb-1">Quick Instructions:</span>
-                <p>1. Open Bluesky Settings &gt; Advanced &gt; <span className="font-bold">App Passwords</span>.</p>
-                <p>2. Create a new App Password and paste it above along with your Bluesky Handle.</p>
-              </div>
-
-              <div className="flex gap-3 pt-3">
-                <button
-                  type="button"
-                  onClick={() => setShowBlueskyModal(false)}
-                  className="flex-1 h-11 rounded-xl text-sm font-semibold text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-all border border-gray-200 dark:border-gray-700 cursor-pointer"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={isSubmitting}
-                  className="flex-1 h-11 rounded-xl text-sm font-semibold text-white bg-[#0085FF] hover:bg-[#0070D6] disabled:opacity-50 transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-lg shadow-[#0085FF]/20"
-                >
-                  {isSubmitting ? (
-                    <Loader2 size={16} className="animate-spin" />
-                  ) : (
-                    <span>Connect</span>
-                  )}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
 
     </>
   );
