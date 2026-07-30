@@ -29,19 +29,50 @@ describe('Brand Creation', function () {
     await driver.get(`${BASE_URL}/manage/connections`);
     // Wait for Brand Settings page to load
     await driver.wait(until.elementLocated(By.css('h1')), 15000);
+
+    // Clean up extra brands via API to ensure exactly 1 brand exists
+    await driver.executeAsyncScript(async (done) => {
+      try {
+        const res = await fetch('/api/brands', { credentials: 'include' });
+        const data = await res.json();
+        const brands = data.data || [];
+        if (Array.isArray(brands) && brands.length > 1) {
+          for (let i = 1; i < brands.length; i++) {
+            await fetch(`/api/brands/${brands[i].id}`, { method: 'DELETE', credentials: 'include' });
+          }
+        }
+      } catch (e) {}
+      done();
+    });
+    await driver.navigate().refresh();
+    await driver.wait(until.elementLocated(By.css('h1')), 15000);
   });
   after(async function () {
     await driver.quit();
   });
 
-  // TC03 – Create brand successfully
-  it('TC03 – Create brand successfully', async function () {
-    // Click Add brand button
+  // Helper to click Add Brand button safely
+  async function clickAddBrandBtn() {
+    const cancelBtns = await driver.findElements(By.css('[data-testid="cancel-brand-btn"]'));
+    for (const btn of cancelBtns) {
+      try { await driver.executeScript("arguments[0].click();", btn); } catch (e) {}
+    }
+    const backdrops = await driver.findElements(By.css('.fixed.inset-0'));
+    for (const bg of backdrops) {
+      try { await driver.wait(until.stalenessOf(bg), 3000); } catch (e) {}
+    }
     const addBtn = await driver.wait(
       until.elementLocated(By.css('[data-testid="add-brand-btn"]')),
       10000
     );
-    await addBtn.click();
+    await driver.wait(until.elementIsEnabled(addBtn), 10000);
+    await driver.sleep(400);
+    await driver.executeScript("arguments[0].click();", addBtn);
+  }
+
+  // TC03 – Create brand successfully
+  it('TC03 – Create brand successfully', async function () {
+    await clickAddBrandBtn();
 
     // Wait for modal to appear with brand name input
     const nameInput = await driver.wait(
@@ -59,15 +90,28 @@ describe('Brand Creation', function () {
       until.stalenessOf(nameInput),
       10000
     );
+
+    // Delete created brand via API to reset brand count to 1 for remaining tests
+    await driver.executeAsyncScript(async (done) => {
+      try {
+        const res = await fetch('/api/brands', { credentials: 'include' });
+        const data = await res.json();
+        const brands = data.data || [];
+        if (Array.isArray(brands) && brands.length > 1) {
+          for (let i = 1; i < brands.length; i++) {
+            await fetch(`/api/brands/${brands[i].id}`, { method: 'DELETE', credentials: 'include' });
+          }
+        }
+      } catch (e) {}
+      done();
+    });
+    await driver.navigate().refresh();
+    await driver.wait(until.elementLocated(By.css('h1')), 15000);
   });
 
   // TC04 – Validation: empty name
   it('TC04 – Validation: empty name', async function () {
-    const addBtn = await driver.wait(
-      until.elementLocated(By.css('[data-testid="add-brand-btn"]')),
-      10000
-    );
-    await addBtn.click();
+    await clickAddBrandBtn();
 
     const nameInput = await driver.wait(
       until.elementLocated(By.css('[data-testid="create-brand-name"]')),

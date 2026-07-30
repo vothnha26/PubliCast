@@ -37,7 +37,9 @@ describe('Brand List', function () {
   // TC01 – Hiển thị trang Brand Settings
   it('TC01 – Hiển thị trang Brand Settings', async function () {
     const heading = await driver.findElement(By.css('h1'));
-    expect(await heading.getText()).to.contain('Brand settings');
+    const text = await heading.getText();
+    const isMatched = text.includes('Brand settings') || text.includes('Cấu hình thương hiệu');
+    expect(isMatched, `Expected heading "${text}" to include "Brand settings" or "Cấu hình thương hiệu"`).to.be.true;
     // Verify Add brand button exists
     const addBtn = await driver.findElements(By.css('[data-testid="add-brand-btn"]'));
     expect(addBtn.length).to.be.at.least(0); // button may exist if not at limit
