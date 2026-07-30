@@ -581,6 +581,12 @@ export function usePostCreatorForm() {
         }
       });
       setUploadedVideoPath(res.data.videoUrl);
+      
+      const trackUploadedAsset = usePostCreatorStore.getState().trackUploadedAsset;
+      if (trackUploadedAsset && res.data.videoUrl) {
+        trackUploadedAsset(res.data.videoUrl);
+      }
+
       toast.success("Video uploaded successfully");
     } catch (err) {
       toast.error("Failed to upload video to server");
@@ -616,10 +622,15 @@ export function usePostCreatorForm() {
       if (res.videoUrl) {
         toast.success(`Successfully imported "${file.name}"!`, { id: 'import-drive-toast' });
 
-      const fullUrl = buildMediaUrl(res.videoUrl);
+        const fullUrl = buildMediaUrl(res.videoUrl);
 
         setUploadedVideoPath(res.videoUrl);
         setVideoFileUrl(fullUrl);
+
+        const trackUploadedAsset = usePostCreatorStore.getState().trackUploadedAsset;
+        if (trackUploadedAsset && res.videoUrl) {
+          trackUploadedAsset(res.videoUrl);
+        }
       } else {
         throw new Error("Invalid response received from import service");
       }
@@ -997,6 +1008,12 @@ export function usePostCreatorForm() {
           try {
             const uploadedUrl = await uploadMediaFile(item.file, activeBrand.id);
             item.path = uploadedUrl;
+
+            // Track asset immediately upon successful upload to allow rollback if subsequent uploads fail
+            const trackUploadedAsset = usePostCreatorStore.getState().trackUploadedAsset;
+            if (trackUploadedAsset && uploadedUrl) {
+              trackUploadedAsset(uploadedUrl);
+            }
           } catch (uploadErr) {
             console.error("Failed to upload file during submit:", uploadErr);
             setSubmitProgressText(null);
@@ -1152,6 +1169,9 @@ export function usePostCreatorForm() {
           : payload;
         await apiService.put(`/posts/${editingPost.id}`, updatePayload, { timeout: 60000 });
         toast.success("Post updated successfully");
+        // Xóa danh sách track để không bị rollback nhầm file đã đăng
+        const clearTrackedAssets = usePostCreatorStore.getState().clearTrackedAssets;
+        if (clearTrackedAssets) clearTrackedAssets();
         // Đóng form ngay sau khi cập nhật thành công để tránh user vô tình tạo thêm bài mới
         closePostCreator();
       } else {
@@ -1162,6 +1182,9 @@ export function usePostCreatorForm() {
           await apiService.post('/posts', finalPayload, { timeout: 60000 });
         }
         toast.success("Post created successfully");
+        // Xóa danh sách track để không bị rollback nhầm file đã đăng
+        const clearTrackedAssets = usePostCreatorStore.getState().clearTrackedAssets;
+        if (clearTrackedAssets) clearTrackedAssets();
         // Reset state sau khi tạo bài mới thành công
         setSelectedPlatforms([DEFAULT_PLATFORM]);
         setActivePlatform(DEFAULT_PLATFORM);

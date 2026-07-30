@@ -84,6 +84,12 @@ router.post('/upload', checkPermission(PERMISSION_KEYS.CREATE_POSTS), resolvePos
 }, postController.uploadVideo);
 
 /**
+ * DELETE /api/posts/upload
+ * Delete uploaded asset file (Rollback uncommitted upload)
+ */
+router.delete('/upload', checkPermission(PERMISSION_KEYS.CREATE_POSTS), postController.deleteUploadedFile);
+
+/**
  * POST /api/posts/trim
  */
 router.post('/trim', checkPermission(PERMISSION_KEYS.CREATE_POSTS), postController.trimVideo);

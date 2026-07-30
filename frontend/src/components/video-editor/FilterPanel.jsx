@@ -1,33 +1,80 @@
 import React from 'react';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { useVideoEditor } from '../../context/VideoEditorContext';
 import { FILTER_PRESETS } from '../../constants/video-editor';
+import { useDragScroll } from '../../hooks/useDragScroll';
 
 export default function FilterPanel() {
-  const { filterPreset, setFilterPreset } = useVideoEditor();
+  const { filterPreset, setFilterPreset, videoUrl } = useVideoEditor();
+  const { scrollRef, dragHandlers, scrollByAmount } = useDragScroll();
 
   return (
-    <div className="space-y-4">
-      <h3 className="text-sm font-semibold text-white">Bộ lọc (Filter)</h3>
-      <div className="grid grid-cols-3 gap-3">
-        {FILTER_PRESETS.map((filter) => (
-          <button
-            key={filter.id}
-            type="button"
-            onClick={() => setFilterPreset(filter.backendPreset)}
-            className={`flex flex-col items-center gap-2 p-2 rounded-xl border transition-all cursor-pointer ${
-              filterPreset === filter.backendPreset
-                ? 'border-lime-400 bg-lime-400/5'
-                : 'border-gray-800 hover:border-gray-700 bg-gray-900/50'
-            }`}
-          >
-            <div
-              className={`w-full aspect-square rounded-lg bg-gradient-to-br from-gray-600 to-gray-800 ${filter.class}`}
-            />
-            <span className={`text-[11px] font-medium ${filterPreset === filter.backendPreset ? 'text-lime-400' : 'text-gray-400'}`}>
-              {filter.name}
-            </span>
-          </button>
-        ))}
+    <div className="w-full flex items-center justify-center py-2 select-none">
+      <div className="relative w-full flex items-center justify-center px-4">
+        {/* Left Arrow Button */}
+        <button
+          onClick={() => scrollByAmount(-240)}
+          className="w-7 h-7 rounded-full bg-white border border-gray-200 shadow-sm flex items-center justify-center text-gray-500 hover:text-black hover:bg-gray-100 shrink-0 transition cursor-pointer z-10 mr-1"
+          title="Cuộn sang trái"
+        >
+          <ChevronLeft size={16} />
+        </button>
+
+        {/* Scrollable Container (Native Scrollbar Completely Hidden + Mouse Drag-Scrubbing) */}
+        <div
+          ref={scrollRef}
+          {...dragHandlers}
+          className="flex-1 flex items-center gap-3 overflow-x-auto py-1 cursor-grab active:cursor-grabbing [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
+        >
+          {FILTER_PRESETS.map((filter) => {
+            const isSelected = filterPreset === filter.backendPreset || (filterPreset === 'none' && filter.id === 'default');
+            return (
+              <button
+                key={filter.id}
+                type="button"
+                onClick={() => setFilterPreset(filter.backendPreset)}
+                className="flex flex-col items-center gap-1.5 shrink-0 cursor-pointer group"
+              >
+                {/* Thumbnail Container */}
+                <div
+                  className={`w-16 h-16 rounded-xl overflow-hidden shadow-sm transition-all duration-150 border-2 ${
+                    isSelected
+                      ? 'border-black ring-2 ring-black/20 scale-105'
+                      : 'border-transparent group-hover:scale-105 group-hover:border-gray-300'
+                  }`}
+                >
+                  {videoUrl ? (
+                    <video
+                      src={videoUrl}
+                      style={{ filter: filter.filterCss }}
+                      className="w-full h-full object-cover pointer-events-none"
+                      muted
+                    />
+                  ) : (
+                    <div
+                      style={{ filter: filter.filterCss }}
+                      className="w-full h-full bg-gradient-to-br from-amber-400 via-emerald-500 to-indigo-600"
+                    />
+                  )}
+                </div>
+
+                {/* Filter Label */}
+                <span className={`text-[11px] font-medium transition ${isSelected ? 'text-black font-bold' : 'text-gray-500 group-hover:text-black'}`}>
+                  {filter.name}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Right Arrow Button */}
+        <button
+          onClick={() => scrollByAmount(240)}
+          className="w-7 h-7 rounded-full bg-white border border-gray-200 shadow-sm flex items-center justify-center text-gray-500 hover:text-black hover:bg-gray-100 shrink-0 transition cursor-pointer z-10 ml-1"
+          title="Cuộn sang phải"
+        >
+          <ChevronRight size={16} />
+        </button>
       </div>
     </div>
   );

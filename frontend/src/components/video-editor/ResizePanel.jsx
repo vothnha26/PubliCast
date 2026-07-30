@@ -7,6 +7,9 @@ export default function ResizePanel() {
   const [isAspectLocked, setIsAspectLocked] = useState(true);
   const lastEditedRef = useRef('width');
 
+  const widthVal = resize.width ?? 576;
+  const heightVal = resize.height ?? 1024;
+
   const applyChange = (field, value) => {
     const num = value === '' ? null : Number(value);
     lastEditedRef.current = field;
@@ -15,7 +18,7 @@ export default function ResizePanel() {
     setResize((prev) => {
       const next = { ...prev, [field]: num };
       if (isAspectLocked && num) {
-        const ratio = videoRatio || 16 / 9;
+        const ratio = videoRatio || 9 / 16;
         if (field === 'width') {
           next.height = Math.round(num / ratio);
         } else {
@@ -27,49 +30,42 @@ export default function ResizePanel() {
   };
 
   return (
-    <div className="space-y-5">
-      <h3 className="text-sm font-semibold text-white">Đổi kích thước (Resize)</h3>
-
+    <div className="w-full flex items-center justify-center py-2 select-none font-sans">
       <div className="flex items-center gap-3">
-        <div className="flex items-center gap-1.5 bg-gray-850 px-3 py-2 rounded-xl border border-gray-800 flex-1">
-          <span className="text-xs text-gray-400">W:</span>
+        {/* Width Input Pill */}
+        <div className="flex items-center justify-between bg-gray-200/70 border border-gray-300 rounded-xl px-4 py-1.5 w-32 shadow-inner transition hover:border-gray-400">
           <input
             type="number"
-            value={resize.width ?? ''}
+            value={widthVal}
             onChange={(e) => applyChange('width', e.target.value)}
-            className="w-full bg-transparent text-sm font-mono text-white text-center focus:outline-none"
-            placeholder="auto"
+            className="w-16 bg-transparent text-sm font-semibold text-gray-800 text-center focus:outline-none"
           />
-          <span className="text-xs text-gray-500">px</span>
+          <span className="text-xs font-bold text-gray-500">W</span>
         </div>
 
+        {/* Lock Aspect Ratio Toggle Button */}
         <button
           type="button"
           onClick={() => setIsAspectLocked((prev) => !prev)}
-          className={`p-2 rounded-lg transition-colors cursor-pointer ${
-            isAspectLocked ? 'bg-lime-400 text-black' : 'bg-gray-850 text-gray-400 border border-gray-800'
+          className={`p-2 rounded-xl transition cursor-pointer ${
+            isAspectLocked ? 'text-black bg-gray-200/80 shadow-sm' : 'text-gray-400 hover:text-black hover:bg-gray-100'
           }`}
-          title={isAspectLocked ? 'Đang khóa tỉ lệ' : 'Tỉ lệ tự do'}
+          title={isAspectLocked ? 'Đang khóa tỉ lệ khung hình' : 'Tỉ lệ khung hình tự do'}
         >
-          {isAspectLocked ? <Lock className="w-3.5 h-3.5" /> : <Unlock className="w-3.5 h-3.5" />}
+          {isAspectLocked ? <Lock size={15} strokeWidth={2.2} /> : <Unlock size={15} strokeWidth={2.2} />}
         </button>
 
-        <div className="flex items-center gap-1.5 bg-gray-850 px-3 py-2 rounded-xl border border-gray-800 flex-1">
-          <span className="text-xs text-gray-400">H:</span>
+        {/* Height Input Pill */}
+        <div className="flex items-center justify-between bg-gray-200/70 border border-gray-300 rounded-xl px-4 py-1.5 w-32 shadow-inner transition hover:border-gray-400">
           <input
             type="number"
-            value={resize.height ?? ''}
+            value={heightVal}
             onChange={(e) => applyChange('height', e.target.value)}
-            className="w-full bg-transparent text-sm font-mono text-white text-center focus:outline-none"
-            placeholder="auto"
+            className="w-16 bg-transparent text-sm font-semibold text-gray-800 text-center focus:outline-none"
           />
-          <span className="text-xs text-gray-500">px</span>
+          <span className="text-xs font-bold text-gray-500">H</span>
         </div>
       </div>
-
-      <p className="text-[11px] text-gray-500">
-        Để trống cả hai để giữ nguyên kích thước gốc. Bật khóa để giữ tỉ lệ khung hình khi chỉnh 1 chiều.
-      </p>
     </div>
   );
 }

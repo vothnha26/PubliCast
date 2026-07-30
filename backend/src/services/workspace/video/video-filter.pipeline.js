@@ -1,9 +1,10 @@
-const CropScaleFilterStrategy = require('./strategies/crop-scale-filter.strategy');
-const AdjustmentFilterStrategy = require('./strategies/adjustment-filter.strategy');
-const PresetFilterStrategy = require('./strategies/preset-filter.strategy');
-const TextOverlayFilterStrategy = require('./strategies/text-overlay-filter.strategy');
-const SubtitleFilterStrategy = require('./strategies/subtitle-filter.strategy');
-const ResizeFilterStrategy = require('./strategies/resize-filter.strategy');
+const CropScaleFilterStrategy     = require('./strategies/crop-scale-filter.strategy');
+const AdjustmentFilterStrategy     = require('./strategies/adjustment-filter.strategy');
+const PresetFilterStrategy         = require('./strategies/preset-filter.strategy');
+const TextOverlayFilterStrategy    = require('./strategies/text-overlay-filter.strategy');
+const SubtitleFilterStrategy       = require('./strategies/subtitle-filter.strategy');
+const ResizeFilterStrategy         = require('./strategies/resize-filter.strategy');
+const RotationTransformStrategy    = require('./strategies/rotation-transform.strategy');
 
 /**
  * Composite Pipeline for FFmpeg Video Filters using Strategy Pattern
@@ -11,8 +12,15 @@ const ResizeFilterStrategy = require('./strategies/resize-filter.strategy');
  */
 class VideoFilterPipeline {
   constructor() {
-    // Thứ tự xử lý bộ lọc tối ưu cho FFmpeg (Crop/Scale -> Resize -> Eq Adjust -> Color Preset -> Text/Subtitles)
+    // Thứ tự xử lý bộ lọc tối ưu cho FFmpeg:
+    //   1. Rotation/Scale/Flip  (transform geometry trước crop)
+    //   2. Crop/Scale aspect    (crop & scale aspect ratio)
+    //   3. Resize               (target output resolution)
+    //   4. Eq Adjust            (brightness/contrast/saturation)
+    //   5. Color Preset         (filter preset FFmpeg)
+    //   6. Text/Subtitles       (drawtext overlays — cuối cùng để không bị crop)
     this.strategies = [
+      new RotationTransformStrategy(),
       new CropScaleFilterStrategy(),
       new ResizeFilterStrategy(),
       new AdjustmentFilterStrategy(),

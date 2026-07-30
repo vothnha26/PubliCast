@@ -15,6 +15,7 @@ import { GoogleDrivePickerModal } from "../../components/workspace/post-creator/
 import { MediaUploadModal } from "../../components/workspace/post-creator/modals/MediaUploadModal";
 import { MEDIA_FILTER_TYPES } from "../../constants/mediaAcceptStrategy";
 import { ImageEditorModal } from "../../components/workspace/post-creator/modals/ImageEditorModal";
+import { VideoEditorModal } from "../../components/workspace/post-creator/modals/VideoEditorModal";
 import { AltTextModal } from "../../components/workspace/post-creator/modals/AltTextModal";
 import { NETWORK_TAB_TEMPLATE } from "../../constants/postComposerNetwork";
 import { toast } from "sonner";
@@ -245,6 +246,7 @@ export function PostCreatorPage() {
   const [mediaTypeFilter, setMediaTypeFilter] = useState(MEDIA_FILTER_TYPES.ALL);
   const [showImageMenu, setShowImageMenu] = useState(false);
   const [showImageEditor, setShowImageEditor] = useState(false);
+  const [showVideoEditor, setShowVideoEditor] = useState(false);
   const [editingAlbumPhoto, setEditingAlbumPhoto] = useState(null);
   const [editingPostMediaIndex, setEditingPostMediaIndex] = useState(null);
   const [imageTransform, setImageTransform] = useState({ rotation: 0, flipH: false, flipV: false, filter: 'none' });
@@ -444,6 +446,8 @@ export function PostCreatorPage() {
     setShowImageMenu,
     showImageEditor,
     setShowImageEditor,
+    showVideoEditor,
+    setShowVideoEditor,
     editingAlbumPhoto,
     setEditingAlbumPhoto,
     editingPostMediaIndex,
@@ -611,6 +615,14 @@ export function PostCreatorPage() {
                       path: item.path
                     }));
 
+                    // Track bất kỳ path nào mới upload trong session
+                    const trackAssetFn = usePostCreatorStore.getState().trackUploadedAsset;
+                    if (trackAssetFn) {
+                      newItems.forEach(item => {
+                        if (item.path) trackAssetFn(item.path);
+                      });
+                    }
+
                     if (isCustomizingThreads) {
                       const current = (typeof activeThreadPost === 'object' ? activeThreadPost?.mediaUrls : []) || [];
                       updateThreadPostMedia(activeThreadIndex, [...current, ...newItems]);
@@ -650,6 +662,11 @@ export function PostCreatorPage() {
                   setEditingPostMediaIndex(null);
                 }}
                 onSave={(file, path, fallbackTransform) => {
+                  const trackAssetFn = usePostCreatorStore.getState().trackUploadedAsset;
+                  if (trackAssetFn && path) {
+                    trackAssetFn(path);
+                  }
+
                   if (editingAlbumPhoto) {
                     setAlbumMedia((prev) =>
                       prev.map((item) =>
@@ -723,6 +740,62 @@ export function PostCreatorPage() {
                   }
                   setShowImageEditor(false);
                   toast.success(t("common:success"));
+                }}
+              />
+              <VideoEditorModal 
+                isOpen={showVideoEditor}
+                videoUrl={
+                  editingAlbumPhoto 
+                    ? (editingAlbumPhoto.previewUrl || editingAlbumPhoto.path) 
+                    : (editingPostMediaIndex !== null && activeNetworkMedia[editingPostMediaIndex]) 
+                      ? (activeNetworkMedia[editingPostMediaIndex].previewUrl || activeNetworkMedia[editingPostMediaIndex].path) 
+                      : videoFileUrl
+                }
+                videoPath={
+                  editingAlbumPhoto
+                    ? editingAlbumPhoto.path
+                    : (editingPostMediaIndex !== null && activeNetworkMedia[editingPostMediaIndex])
+                      ? activeNetworkMedia[editingPostMediaIndex].path
+                      : uploadedVideoPath
+                }
+                initialSettings={videoSettings}
+                brandId={activeBrand?.id}
+                onClose={() => {
+                  setShowVideoEditor(false);
+                  setEditingAlbumPhoto(null);
+                  setEditingPostMediaIndex(null);
+                }}
+                onSave={(newUrl, newSettings) => {
+                  const trackAssetFn = usePostCreatorStore.getState().trackUploadedAsset;
+                  if (trackAssetFn && newUrl && typeof newUrl === 'string' && !newUrl.startsWith('blob:')) {
+                    trackAssetFn(newUrl);
+                  }
+
+                  if (editingAlbumPhoto) {
+                    setAlbumMedia((prev) =>
+                      prev.map((item) =>
+                        item.id === editingAlbumPhoto.id
+                          ? {
+                              ...item,
+                              previewUrl: newUrl,
+                              path: newUrl
+                            }
+                          : item
+                      )
+                    );
+                  } else if (editingPostMediaIndex !== null && activeNetworkMedia[editingPostMediaIndex]) {
+                    handleUpdateActiveNetworkMedia(editingPostMediaIndex, {
+                      previewUrl: newUrl,
+                      path: newUrl
+                    });
+                  } else {
+                    setVideoFileUrl(newUrl);
+                    setUploadedVideoPath(newUrl);
+                    setVideoSettings(newSettings);
+                  }
+                  setShowVideoEditor(false);
+                  setEditingAlbumPhoto(null);
+                  setEditingPostMediaIndex(null);
                 }}
               />
             </>

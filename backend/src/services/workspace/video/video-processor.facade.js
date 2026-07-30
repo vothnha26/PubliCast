@@ -39,7 +39,12 @@ class VideoProcessorFacade {
     audioVolume = FFMPEG_DEFAULTS.DEFAULT_AUDIO_VOLUME,
     textOverlays = [],
     subtitles = [],
-    brandId = VIDEO_FILE_CONFIG.DEFAULT_BRAND_ID
+    brandId = VIDEO_FILE_CONFIG.DEFAULT_BRAND_ID,
+    // Transform params (Size tab: rotation, scale, flip)
+    rotation = 0,
+    scaleVal = 100,
+    flipH = false,
+    flipV = false
   }) {
     console.log(
       `[VideoProcessorFacade] Starting process: videoUrl=${videoUrl}, trim=${startTime}s-${endTime}s, aspectRatio=${aspectRatio}, filterPreset=${filterPreset}, keepAudio=${keepAudio}, keyframesCount=${keyframes?.length || 0}`
@@ -83,7 +88,12 @@ class VideoProcessorFacade {
         subtitles,
         tempDir,
         uniqueId,
-        textFilePaths
+        textFilePaths,
+        // Transform params
+        rotation,
+        scaleVal,
+        flipH,
+        flipV
       });
 
       // 4. Handle output persistence
@@ -160,7 +170,12 @@ class VideoProcessorFacade {
     subtitles,
     tempDir,
     uniqueId,
-    textFilePaths
+    textFilePaths,
+    // Transform params
+    rotation = 0,
+    scaleVal = 100,
+    flipH = false,
+    flipV = false
   }) {
     return new Promise((resolve, reject) => {
       const duration = endTime - startTime;
@@ -177,7 +192,12 @@ class VideoProcessorFacade {
         startTime,
         tempDir,
         uniqueId,
-        textFilePaths
+        textFilePaths,
+        // Transform params
+        rotation,
+        scaleVal,
+        flipH,
+        flipV
       });
 
       const videoChain = videoFilterString ? `[0:v]${videoFilterString}[v]` : `[0:v]null[v]`;

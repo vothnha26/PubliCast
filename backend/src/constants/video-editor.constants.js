@@ -12,13 +12,22 @@ const ASPECT_RATIOS = Object.freeze({
 });
 
 const FILTER_PRESETS = Object.freeze({
-  NONE: 'none',
-  GRAYSCALE: 'grayscale',
-  SEPIA: 'sepia',
-  VINTAGE: 'vintage',
-  WARM: 'warm',
-  COOL: 'cool',
-  DRAMATIC: 'dramatic'
+  NONE:    'none',
+  // Color Group
+  CHROME:  'chrome',
+  FADE:    'fade',
+  COLD:    'cold',
+  WARM:    'warm',
+  PASTEL:  'pastel',
+  // Mono Group
+  MONO:    'mono',
+  NOIR:    'noir',
+  STARK:   'stark',
+  WASH:    'wash',
+  // Tone Group
+  SEPIA:   'sepia',
+  RUST:    'rust',
+  BLUES:   'blues'
 });
 
 const ADJUSTMENT_LIMITS = Object.freeze({
@@ -55,10 +64,23 @@ const VIDEO_FILE_CONFIG = Object.freeze({
   OUTPUT_PREFIX: 'edited'
 });
 
+const TRANSFORM_DEFAULTS = Object.freeze({
+  ROTATION_NONE: 0,
+  SCALE_NONE: 100,
+  FLIP_NONE: false,
+  // Official FFmpeg transpose filter options:
+  // 0 = 90° CCW + Vertical Flip, 1 = 90° Clockwise, 2 = 90° Counter-Clockwise, 3 = 90° Clockwise + Vertical Flip
+  TRANSPOSE_90CW: '1',
+  TRANSPOSE_90CCW: '2',
+  HFLIP: 'hflip',
+  VFLIP: 'vflip'
+});
+
 module.exports = {
   ASPECT_RATIOS,
   FILTER_PRESETS,
   ADJUSTMENT_LIMITS,
   FFMPEG_DEFAULTS,
-  VIDEO_FILE_CONFIG
+  VIDEO_FILE_CONFIG,
+  TRANSFORM_DEFAULTS
 };

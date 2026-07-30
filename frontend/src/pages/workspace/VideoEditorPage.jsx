@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Save, Loader2, Scissors, Crop, Music, Type, Languages, Palette, Sliders, Maximize2 } from 'lucide-react';
+import { ArrowLeft, Save, Loader2, Scissors, Crop, Type, Languages, Palette, Sliders, Maximize2 } from 'lucide-react';
 import { toast } from 'sonner';
 
 import { usePostCreatorStore } from '../../store/usePostCreatorStore';
@@ -11,7 +11,6 @@ import { VIDEO_EDITOR_TABS, ASPECT_RATIOS } from '../../constants/video-editor';
 
 import VideoPreviewArea from '../../components/video-editor/VideoPreviewArea';
 import TrimTimeline from '../../components/video-editor/TrimTimeline';
-import AudioSelector from '../../components/video-editor/AudioSelector';
 import TextOverlayEditor from '../../components/video-editor/TextOverlayEditor';
 import SubtitlesGenerator from '../../components/video-editor/SubtitlesGenerator';
 import FilterPanel from '../../components/video-editor/FilterPanel';
@@ -40,7 +39,6 @@ function VideoEditorContent() {
     duration, setDuration,
     aspectRatio, setAspectRatio,
     trimRange, setTrimRange,
-    bgMusic, setBgMusic,
     textOverlays, setTextOverlays,
     subtitles, setSubtitles,
     activeTab, setActiveTab,
@@ -74,12 +72,6 @@ function VideoEditorContent() {
           end: videoSettings.endTime ?? 10
         });
         setAspectRatio(videoSettings.aspectRatio ?? ASPECT_RATIOS.ORIGINAL);
-        setBgMusic({
-          trackId: videoSettings.selectedAudio ?? null,
-          trackUrl: videoSettings.bgMusicUrl || null,
-          volume: videoSettings.audioVolume ?? 50,
-          title: videoSettings.audioTitle || ''
-        });
         setTextOverlays(videoSettings.textOverlays ?? []);
         setSubtitles(videoSettings.subtitles ?? []);
         setCropX(videoSettings.cropX ?? 50);
@@ -92,7 +84,6 @@ function VideoEditorContent() {
       } else {
         setTrimRange({ start: 0, end: 10 });
         setAspectRatio(ASPECT_RATIOS.ORIGINAL);
-        setBgMusic({ trackId: null, trackUrl: null, volume: 50, title: '' });
         setTextOverlays([]);
         setSubtitles([]);
         setCropX(50);
@@ -104,7 +95,7 @@ function VideoEditorContent() {
         setSplitPoints([]);
       }
     }
-  }, [activeVideoUrl, videoSettings, setTrimRange, setAspectRatio, setBgMusic, setTextOverlays, setSubtitles, setCropX, setKeyframes, setFilterPreset, setAdjustments, setResize, setIsResizeDirty, setSplitPoints]);
+  }, [activeVideoUrl, videoSettings, setTrimRange, setAspectRatio, setTextOverlays, setSubtitles, setCropX, setKeyframes, setFilterPreset, setAdjustments, setResize, setIsResizeDirty, setSplitPoints]);
 
   // Sync video element metadata
   const handleSaveVideo = () => {
@@ -114,8 +105,6 @@ function VideoEditorContent() {
       endTime: trimRange.end,
       aspectRatio,
       keyframes: keyframes.length > 0 ? keyframes : [{ id: 'default', time: 0, cropX: cropX / 100 }],
-      audioUrl: bgMusic.trackUrl || null,
-      audioVolume: bgMusic.volume,
       adjustments,
       filterPreset,
       resize: isResizeDirty && resize.width && resize.height ? resize : undefined,
@@ -129,10 +118,6 @@ function VideoEditorContent() {
       startTime: trimRange.start,
       endTime: trimRange.end,
       aspectRatio,
-      selectedAudio: bgMusic.trackId,
-      bgMusicUrl: bgMusic.trackUrl,
-      audioTitle: bgMusic.title,
-      audioVolume: bgMusic.volume,
       textOverlays,
       subtitles,
       cropX,
@@ -260,17 +245,6 @@ function VideoEditorContent() {
               <span>Trim</span>
             </button>
             <button
-              onClick={() => setActiveTab(VIDEO_EDITOR_TABS.AUDIO)}
-              className={`flex-1 py-3.5 flex flex-col items-center justify-center gap-1.5 border-b-2 text-xs font-semibold transition ${
-                activeTab === VIDEO_EDITOR_TABS.AUDIO
-                  ? 'border-lime-400 text-lime-400 bg-lime-400/5'
-                  : 'border-transparent text-gray-400 hover:text-gray-200'
-              }`}
-            >
-              <Music className="w-4 h-4" />
-              <span>Audio</span>
-            </button>
-            <button
               onClick={() => setActiveTab(VIDEO_EDITOR_TABS.TEXT)}
               className={`flex-1 py-3.5 flex flex-col items-center justify-center gap-1.5 border-b-2 text-xs font-semibold transition ${
                 activeTab === VIDEO_EDITOR_TABS.TEXT
@@ -353,7 +327,6 @@ function VideoEditorContent() {
               </div>
             )}
 
-            {activeTab === VIDEO_EDITOR_TABS.AUDIO && <AudioSelector />}
             {activeTab === VIDEO_EDITOR_TABS.TEXT && <TextOverlayEditor />}
             {activeTab === VIDEO_EDITOR_TABS.SUBTITLES && <SubtitlesGenerator />}
             {activeTab === VIDEO_EDITOR_TABS.FILTER && <FilterPanel />}

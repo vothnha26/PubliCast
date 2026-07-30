@@ -65,6 +65,7 @@ export function ComposerBody() {
     setAlbumMedia,
     setEditingAlbumPhoto,
     setShowImageEditor,
+    setShowVideoEditor,
     setEditingPostMediaIndex,
     imageTransform,
     showImageMenu,
@@ -317,10 +318,7 @@ export function ComposerBody() {
                 <button 
                   type="button"
                   onClick={() => {
-                    const payload = getBackupPayload();
-                    backupFormState(payload);
-                    closePostCreatorTemporarily();
-                    navigate("/workspace/video-editor");
+                    setShowVideoEditor(true);
                   }}
                   className="text-[10px] font-black text-purple-600 hover:text-purple-800 uppercase tracking-widest transition-all cursor-pointer font-sans"
                 >
@@ -363,13 +361,8 @@ export function ComposerBody() {
                                   type="button"
                                   title={t("planner:postCreator.composer.editVideo")}
                                   onClick={() => {
-                                    const payload = getBackupPayload();
-                                    payload.videoFileUrl = item.previewUrl || item.path;
-                                    payload.uploadedVideoPath = item.path || "";
-                                    payload.videoFile = item.file || null;
-                                    backupFormState(payload);
-                                    closePostCreatorTemporarily();
-                                    navigate("/workspace/video-editor");
+                                    setEditingPostMediaIndex(index);
+                                    setShowVideoEditor(true);
                                   }}
                                   className="w-7 h-7 rounded-full bg-white/90 hover:bg-white text-gray-800 flex items-center justify-center cursor-pointer shadow-md active:scale-90 transition-all"
                                 >

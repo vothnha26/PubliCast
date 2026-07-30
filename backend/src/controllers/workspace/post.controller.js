@@ -150,6 +150,21 @@ class PostController {
   });
 
   /**
+   * DELETE /api/posts/upload
+   * Delete uploaded asset file (Rollback uncommitted uploads)
+   */
+  deleteUploadedFile = asyncHandler(async (req, res) => {
+    const { url } = req.body;
+    if (!url) return res.status(400).json({ message: 'url is required' });
+
+    const result = await postService.deleteUploadedAsset(url);
+    res.status(200).json({
+      message: result.deleted ? 'Uploaded asset deleted successfully' : 'Asset not deleted',
+      ...result
+    });
+  });
+
+  /**
    * GET /api/posts/:id/analytics
    */
   getPostAnalytics = asyncHandler(async (req, res) => {

@@ -125,6 +125,80 @@ class PostService {
   }
 
   /**
+   * Deletes an uploaded asset (Local file or Cloudinary resource)
+   * Safely verifies directory bounds to prevent path-traversal for local assets.
+   */
+  async deleteUploadedAsset(fileUrl) {
+    if (!fileUrl || typeof fileUrl !== 'string') {
+      return { deleted: false, reason: 'Invalid file URL provided' };
+    }
+
+    const isLocal = process.env.UPLOAD_STORAGE === 'local';
+
+    if (isLocal || fileUrl.startsWith('/uploads/') || fileUrl.startsWith('uploads/')) {
+      const fs = require('fs');
+      const path = require('path');
+
+      const sanitizedPath = fileUrl.replace(/^[\/\\]+/, '');
+      const absolutePath = path.resolve(process.cwd(), sanitizedPath);
+      const uploadsDir = path.resolve(process.cwd(), 'uploads');
+
+      // Path traversal security check
+      if (!absolutePath.startsWith(uploadsDir)) {
+        const error = new Error('Access denied: File path outside of uploads directory');
+        error.statusCode = 403;
+        throw error;
+      }
+
+      if (fs.existsSync(absolutePath)) {
+        try {
+          fs.unlinkSync(absolutePath);
+          return { deleted: true, type: 'local', path: sanitizedPath };
+        } catch (err) {
+          console.error('[DeleteAsset] Failed to delete local file:', err);
+          return { deleted: false, reason: err.message };
+        }
+      }
+      return { deleted: false, reason: 'File not found on server' };
+    } else {
+      // Cloudinary asset deletion
+      const cleanUrl = fileUrl.split('?')[0];
+
+      // Match public_id including folder hierarchy (e.g. publicast/images/123456789)
+      // Handles optional transformation tokens (e.g. c_scale,w_500) and version tokens (v12345)
+      const uploadMatch = cleanUrl.match(/\/upload\/(?:(?:[a-z]_[^/]+,)*[a-z]_[^/]+\/)?(?:v\d+\/)?(.+?)(?:\.[a-zA-Z0-9]+)?$/);
+      const publicId = uploadMatch ? decodeURIComponent(uploadMatch[1]) : null;
+
+      if (!publicId) {
+        return { deleted: false, reason: 'Could not resolve Cloudinary public ID' };
+      }
+
+      // Determine proper resource_type ('image', 'video', or 'raw') as 'auto' is invalid for destroy API
+      const isVideo = /\.(mp4|mov|mkv|avi|webm|flv|m4v)$/i.test(cleanUrl) || cleanUrl.includes('/videos/') || cleanUrl.includes('/video/upload/');
+      const isRaw = /\.(pdf|doc|docx|xls|xlsx|zip|rar)$/i.test(cleanUrl) || cleanUrl.includes('/raw/upload/');
+      const primaryResourceType = isVideo ? 'video' : isRaw ? 'raw' : 'image';
+
+      try {
+        const result = await cloudinary.uploader.destroy(publicId, { invalidate: true, resource_type: primaryResourceType });
+        
+        // If first attempt returned 'not found', attempt fallback with alternative resource_type
+        if (result && result.result === 'not found' && primaryResourceType === 'image') {
+          const fallbackResult = await cloudinary.uploader.destroy(publicId, { invalidate: true, resource_type: 'video' });
+          if (fallbackResult && fallbackResult.result === 'ok') {
+            return { deleted: true, type: 'cloudinary', publicId, resourceType: 'video' };
+          }
+        }
+
+        const isOk = result && (result.result === 'ok' || result.result === 'not found');
+        return { deleted: isOk, type: 'cloudinary', publicId, result: result?.result || 'ok' };
+      } catch (err) {
+        console.error('[DeleteAsset] Cloudinary destroy error:', err);
+        return { deleted: false, reason: err.message };
+      }
+    }
+  }
+
+  /**
    * All PlatformLimit rows (every platform/subType) — v1 and v2 of GET
    * /api/posts/platform-limits share this (see postController.getPlatformLimits
    * / getPlatformLimitsV2). Consumed by the composer to pre-validate a

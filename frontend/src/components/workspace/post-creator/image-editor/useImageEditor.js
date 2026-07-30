@@ -12,6 +12,17 @@ export function useImageEditor({ imageUrl, currentTransform, brandId, onSave, on
   const [brightness, setBrightness] = useState(100);
   const [contrast, setContrast] = useState(100);
   const [saturate, setSaturate] = useState(100);
+  const [adjustments, setAdjustments] = useState({
+    brightness: 0,
+    contrast: 0,
+    saturation: 0,
+    exposure: 0,
+    temperature: 0,
+    gamma: 0,
+    clarity: 0,
+    vignette: 0,
+  });
+  const [finetuneActiveField, setFinetuneActiveField] = useState('brightness');
   const [scaleVal, setScaleVal] = useState(1);
   const [isSaving, setIsSaving] = useState(false);
   const [isDraggingImage, setIsDraggingImage] = useState(false);
@@ -50,8 +61,87 @@ export function useImageEditor({ imageUrl, currentTransform, brandId, onSave, on
   const [resizeHeight, setResizeHeight] = useState(800);
   const [keepRatio, setKeepRatio] = useState(true);
 
+  // Undo / Redo History Stack
+  const [history, setHistory] = useState([]);
+  const [historyIndex, setHistoryIndex] = useState(-1);
+
   const containerRef = useRef(null);
   const drawCanvasRef = useRef(null);
+
+  const getCurrentSnapshot = () => ({
+    rotation, flipH, flipV, activeFilter, brightness, contrast, saturate, adjustments, scaleVal,
+    position, cropBox, stickers, drawLines, activeFrame, frameColor, frameSize,
+    frameOffset1, frameOffset2, frameRadius, frameAmount, censures, resizeWidth, resizeHeight
+  });
+
+  const pushHistory = (snapshot) => {
+    setHistory((prev) => {
+      const updated = prev.slice(0, historyIndex + 1);
+      return [...updated, snapshot];
+    });
+    setHistoryIndex((prev) => prev + 1);
+  };
+
+  const handleUndo = () => {
+    if (historyIndex > 0) {
+      const prevSnap = history[historyIndex - 1];
+      setHistoryIndex((prev) => prev - 1);
+      if (prevSnap) {
+        setRotation(prevSnap.rotation);
+        setFlipH(prevSnap.flipH);
+        setFlipV(prevSnap.flipV);
+        setActiveFilter(prevSnap.activeFilter);
+        setBrightness(prevSnap.brightness);
+        setContrast(prevSnap.contrast);
+        setSaturate(prevSnap.saturate);
+        if (prevSnap.adjustments) setAdjustments(prevSnap.adjustments);
+        setScaleVal(prevSnap.scaleVal);
+        setPosition(prevSnap.position);
+        setCropBox(prevSnap.cropBox);
+        setStickers(prevSnap.stickers);
+        setDrawLines(prevSnap.drawLines);
+        setActiveFrame(prevSnap.activeFrame);
+        setFrameColor(prevSnap.frameColor);
+        setFrameSize(prevSnap.frameSize);
+        setFrameRadius(prevSnap.frameRadius);
+        setCensures(prevSnap.censures);
+        setResizeWidth(prevSnap.resizeWidth);
+        setResizeHeight(prevSnap.resizeHeight);
+      }
+    }
+  };
+
+  const handleRedo = () => {
+    if (historyIndex < history.length - 1) {
+      const nextSnap = history[historyIndex + 1];
+      setHistoryIndex((prev) => prev + 1);
+      if (nextSnap) {
+        setRotation(nextSnap.rotation);
+        setFlipH(nextSnap.flipH);
+        setFlipV(nextSnap.flipV);
+        setActiveFilter(nextSnap.activeFilter);
+        setBrightness(nextSnap.brightness);
+        setContrast(nextSnap.contrast);
+        setSaturate(nextSnap.saturate);
+        if (nextSnap.adjustments) setAdjustments(nextSnap.adjustments);
+        setScaleVal(nextSnap.scaleVal);
+        setPosition(nextSnap.position);
+        setCropBox(nextSnap.cropBox);
+        setStickers(nextSnap.stickers);
+        setDrawLines(nextSnap.drawLines);
+        setActiveFrame(nextSnap.activeFrame);
+        setFrameColor(nextSnap.frameColor);
+        setFrameSize(nextSnap.frameSize);
+        setFrameRadius(nextSnap.frameRadius);
+        setCensures(nextSnap.censures);
+        setResizeWidth(nextSnap.resizeWidth);
+        setResizeHeight(nextSnap.resizeHeight);
+      }
+    }
+  };
+
+  const canUndo = historyIndex > 0;
+  const canRedo = historyIndex < history.length - 1;
 
   useEffect(() => {
     if (imageUrl) {
@@ -104,13 +194,16 @@ export function useImageEditor({ imageUrl, currentTransform, brandId, onSave, on
     
     drawLines.forEach(line => {
       ctx.beginPath();
-      ctx.strokeStyle = line.color;
       ctx.lineWidth = line.width;
       ctx.lineCap = 'round';
       ctx.lineJoin = 'round';
       
       if (line.type === 'eraser') {
-        ctx.strokeStyle = '#F9F9F8';
+        ctx.globalCompositeOperation = 'destination-out';
+        ctx.strokeStyle = 'rgba(0,0,0,1)';
+      } else {
+        ctx.globalCompositeOperation = 'source-over';
+        ctx.strokeStyle = line.color;
       }
 
       if (line.type === 'sharpie' || line.type === 'path' || line.type === 'eraser') {
@@ -148,19 +241,22 @@ export function useImageEditor({ imageUrl, currentTransform, brandId, onSave, on
         const h = line.points[1].y - y;
         ctx.strokeRect(x, y, w, h);
       } else if (line.type === 'ellipse' && line.points.length >= 2) {
-        const x = line.points[0].x;
-        const y = line.points[0].y;
-        const w = Math.abs(line.points[1].x - x);
-        const h = Math.abs(line.points[1].y - y);
-        ctx.beginPath();
-        ctx.ellipse(x, y, w, h, 0, 0, 2 * Math.PI);
-        ctx.stroke();
+        const cx = (line.points[0].x + line.points[1].x) / 2;
+        const cy = (line.points[0].y + line.points[1].y) / 2;
+        const rx = Math.abs(line.points[1].x - line.points[0].x) / 2;
+        const ry = Math.abs(line.points[1].y - line.points[0].y) / 2;
+        if (rx > 0 && ry > 0) {
+          ctx.beginPath();
+          ctx.ellipse(cx, cy, rx, ry, 0, 0, 2 * Math.PI);
+          ctx.stroke();
+        }
       } else if (line.type === 'text' && line.textVal) {
         ctx.fillStyle = line.color;
         ctx.font = `${line.width * 4}px Arial`;
         ctx.fillText(line.textVal, line.points[0].x, line.points[0].y);
       }
     });
+    ctx.globalCompositeOperation = 'source-over';
   }, [drawLines, activeTab, cropBox]);
 
   const handleRotate90 = () => {
@@ -183,6 +279,17 @@ export function useImageEditor({ imageUrl, currentTransform, brandId, onSave, on
     setBrightness(100);
     setContrast(100);
     setSaturate(100);
+    setAdjustments({
+      brightness: 0,
+      contrast: 0,
+      saturation: 0,
+      exposure: 0,
+      temperature: 0,
+      gamma: 0,
+      clarity: 0,
+      vignette: 0,
+    });
+    setFinetuneActiveField('brightness');
     setScaleVal(1);
     setPosition({ x: 0, y: 0 });
     setCropBox({ width: initialBox.width, height: initialBox.height });
@@ -330,17 +437,62 @@ export function useImageEditor({ imageUrl, currentTransform, brandId, onSave, on
     } : s));
   };
 
+const distanceToPoint = (p1, p2) => Math.hypot(p1.x - p2.x, p1.y - p2.y);
+
+const isPointNearLine = (cursorPt, line, threshold = 25) => {
+  if (!line || !line.points || line.points.length === 0) return false;
+
+  if (line.type === 'sharpie' || line.type === 'path' || line.type === 'eraser') {
+    return line.points.some(pt => distanceToPoint(cursorPt, pt) <= threshold + (line.width || 4) / 2);
+  }
+
+  if ((line.type === 'line' || line.type === 'arrow') && line.points.length >= 2) {
+    const p1 = line.points[0];
+    const p2 = line.points[1];
+    if (distanceToPoint(cursorPt, p1) <= threshold || distanceToPoint(cursorPt, p2) <= threshold) return true;
+    const l2 = (p2.x - p1.x) ** 2 + (p2.y - p1.y) ** 2;
+    if (l2 === 0) return distanceToPoint(cursorPt, p1) <= threshold;
+    let t = ((cursorPt.x - p1.x) * (p2.x - p1.x) + (cursorPt.y - p1.y) * (p2.y - p1.y)) / l2;
+    t = Math.max(0, Math.min(1, t));
+    const proj = { x: p1.x + t * (p2.x - p1.x), y: p1.y + t * (p2.y - p1.y) };
+    return distanceToPoint(cursorPt, proj) <= threshold + (line.width || 4) / 2;
+  }
+
+  if ((line.type === 'rectangle' || line.type === 'ellipse') && line.points.length >= 2) {
+    const minX = Math.min(line.points[0].x, line.points[1].x) - threshold;
+    const maxX = Math.max(line.points[0].x, line.points[1].x) + threshold;
+    const minY = Math.min(line.points[0].y, line.points[1].y) - threshold;
+    const maxY = Math.max(line.points[0].y, line.points[1].y) + threshold;
+    return cursorPt.x >= minX && cursorPt.x <= maxX && cursorPt.y >= minY && cursorPt.y <= maxY;
+  }
+
+  if (line.type === 'text') {
+    return distanceToPoint(cursorPt, line.points[0]) <= threshold * 2;
+  }
+
+  return false;
+};
+
   const handleDrawStart = (e) => {
     if (activeTab !== 'draw') return;
     const canvas = drawCanvasRef.current;
     if (!canvas) return;
     const rect = canvas.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+    const x = (e.clientX - rect.left) * scaleX;
+    const y = (e.clientY - rect.top) * scaleY;
     
     if (activeDrawTool === 'text') {
       setTextPosition({ x, y });
       setTextInputVal("");
+      return;
+    }
+
+    if (activeDrawTool === 'eraser') {
+      setIsDrawing(true);
+      const eraseRadius = Math.max(25, drawWidth * 3);
+      setDrawLines(prev => prev.filter(line => !isPointNearLine({ x, y }, line, eraseRadius)));
       return;
     }
 
@@ -358,18 +510,22 @@ export function useImageEditor({ imageUrl, currentTransform, brandId, onSave, on
     const canvas = drawCanvasRef.current;
     if (!canvas) return;
     const rect = canvas.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+    const x = (e.clientX - rect.left) * scaleX;
+    const y = (e.clientY - rect.top) * scaleY;
+
+    if (activeDrawTool === 'eraser') {
+      const eraseRadius = Math.max(25, drawWidth * 3);
+      setDrawLines(prev => prev.filter(line => !isPointNearLine({ x, y }, line, eraseRadius)));
+      return;
+    }
 
     setDrawLines(prev => {
       const currentLine = prev[prev.length - 1];
       if (!currentLine) return prev;
 
-      // Spreading the array alone doesn't clone currentLine itself — pushing
-      // into currentLine.points mutated the SAME object still referenced by
-      // the previous state array, silently breaking undo/equality checks
-      // that assume state updates never mutate prior snapshots (#90 L2).
-      const updatedLine = currentLine.type === 'sharpie' || currentLine.type === 'path' || currentLine.type === 'eraser'
+      const updatedLine = currentLine.type === 'sharpie' || currentLine.type === 'path'
         ? { ...currentLine, points: [...currentLine.points, { x, y }] }
         : { ...currentLine, points: [currentLine.points[0], { x, y }] };
 
@@ -378,7 +534,10 @@ export function useImageEditor({ imageUrl, currentTransform, brandId, onSave, on
   };
 
   const handleDrawEnd = () => {
-    setIsDrawing(false);
+    if (isDrawing) {
+      setIsDrawing(false);
+      pushHistory(getCurrentSnapshot());
+    }
   };
 
   const handleAddText = () => {
@@ -507,6 +666,7 @@ export function useImageEditor({ imageUrl, currentTransform, brandId, onSave, on
             brightness,
             contrast,
             saturate,
+            adjustments,
             activeFilter,
             scaleVal,
             position,
@@ -518,6 +678,7 @@ export function useImageEditor({ imageUrl, currentTransform, brandId, onSave, on
             activeFrame,
             frameColor,
             frameSize,
+            frameOffset1,
             resizeWidth,
             resizeHeight
           });
@@ -546,6 +707,13 @@ export function useImageEditor({ imageUrl, currentTransform, brandId, onSave, on
                 }
               });
               const path = res.data.videoUrl;
+
+              // Track saved image asset in current session for rollback
+              const trackUploadedAsset = usePostCreatorStore.getState().trackUploadedAsset;
+              if (trackUploadedAsset && path) {
+                trackUploadedAsset(path);
+              }
+
               onSave(file, path);
             } catch (err) {
               console.error("Failed to upload edited image", err);
@@ -588,6 +756,8 @@ export function useImageEditor({ imageUrl, currentTransform, brandId, onSave, on
     brightness, setBrightness,
     contrast, setContrast,
     saturate, setSaturate,
+    adjustments, setAdjustments,
+    finetuneActiveField, setFinetuneActiveField,
     scaleVal, setScaleVal,
     isSaving, setIsSaving,
     isDraggingImage,
@@ -621,7 +791,11 @@ export function useImageEditor({ imageUrl, currentTransform, brandId, onSave, on
     containerRef,
     drawCanvasRef,
     
-    // Handlers
+    // Handlers & History
+    handleUndo,
+    handleRedo,
+    canUndo,
+    canRedo,
     handleRotate90,
     handleFlipH,
     handleFlipV,
