@@ -93,8 +93,6 @@ export function PlannerToolbar({
   onFilterStatusChange,
   filterType = 'ALL',
   onFilterTypeChange,
-  bestTimePlatform = 'INSTAGRAM',
-  onBestTimePlatformChange,
   calendarViewMode = 'WEEK',
   onCalendarViewModeChange,
   onImportIcsClick
@@ -107,7 +105,6 @@ export function PlannerToolbar({
   const [isMoreMenuOpen, setIsMoreMenuOpen] = useState(false);
   const [isPreviewFeedOpen, setIsPreviewFeedOpen] = useState(false);
   const [isFilterMenuOpen, setIsFilterMenuOpen] = useState(false);
-  const [isBestTimesOpen, setIsBestTimesOpen] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isWizardOpen, setIsWizardOpen] = useState(false);
 
@@ -124,6 +121,7 @@ export function PlannerToolbar({
 
   // Format date display based on viewMode
   const formatDateDisplay = (centerDate, viewMode) => {
+    if (!centerDate) return '';
     const current = new Date(centerDate);
     const locale = t('common:langLocale') || 'en-US';
     
@@ -134,10 +132,13 @@ export function PlannerToolbar({
       return current.toLocaleDateString(locale, { month: 'long', year: 'numeric' });
     }
     
-    // WEEK mode (default)
-    const day = current.getDay();
-    const sunday = new Date(current.setDate(current.getDate() - day));
-    const saturday = new Date(current.setDate(current.getDate() - day + 6));
+    // WEEK mode (default): Calculate Sunday to Saturday without mutating current
+    const sunday = new Date(current);
+    sunday.setDate(current.getDate() - current.getDay());
+    
+    const saturday = new Date(sunday);
+    saturday.setDate(sunday.getDate() + 6);
+    
     const options = { year: 'numeric', month: 'short', day: 'numeric' };
     return `${sunday.toLocaleDateString(locale, options)} - ${saturday.toLocaleDateString(locale, options)}`;
   };
@@ -145,393 +146,363 @@ export function PlannerToolbar({
   return (
     <>
     <div className="flex flex-col gap-4 w-full no-print">
-      {/* Row 1: Search, Navigator, Filters */}
-      <div className="flex flex-wrap items-center gap-3 w-full">
-        {/* Search Input */}
-      <div className="relative flex-1 min-w-[200px] max-w-sm group">
-        <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-gray-900 transition-colors" />
-        <input 
-          type="text" 
-          placeholder={t('toolbar.searchPlaceholder')}
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          className="w-full bg-white border border-gray-200 rounded-xl py-2.5 pl-10 pr-4 text-xs font-medium outline-none focus:border-gray-900 focus:ring-1 focus:ring-gray-900 transition-all text-gray-700"
-        />
-      </div>
+      {/* Unified Toolbar: Left Cluster (View & Filter) vs Right Cluster (Actions) */}
+      <div className="flex flex-wrap items-center justify-between gap-3 w-full">
+        {/* Left Cluster: Search & Navigation & View Mode & Filters */}
+        <div className="flex flex-wrap items-center gap-2.5">
+          {/* Search Input */}
+          <div className="relative min-w-[180px] max-w-xs group">
+            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-gray-900 transition-colors" />
+            <input 
+              type="text" 
+              placeholder={t('toolbar.searchPlaceholder')}
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full bg-white border border-gray-200 rounded-xl py-2 pl-9 pr-3 text-xs font-medium outline-none focus:border-gray-900 focus:ring-1 focus:ring-gray-900 transition-all text-gray-700 h-10"
+            />
+          </div>
 
-      {/* This Week Button */}
-      <button 
-        onClick={onTodayWeek}
-        className="px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-xs font-bold text-gray-700 hover:bg-gray-50 active:scale-95 transition-all cursor-pointer shadow-sm"
-      >
-        {t('toolbar.thisWeek')}
-      </button>
-
-      {/* Date Navigation group */}
-      <div className="flex items-center bg-white border border-gray-200 rounded-xl overflow-visible relative shadow-sm h-10">
-        <button 
-          onClick={onPrevWeek}
-          className="px-3 h-full hover:bg-gray-50 text-gray-400 hover:text-gray-700 transition-colors cursor-pointer"
-        >
-          <ChevronLeft size={16} />
-        </button>
-        
-        <button 
-          onClick={() => setIsDatePickerOpen(!isDatePickerOpen)}
-          className="px-4 h-full flex items-center gap-2 text-xs font-bold text-gray-700 hover:bg-gray-50 transition-all border-l border-r border-gray-100 cursor-pointer"
-        >
-          <CalendarIcon size={14} className="text-gray-400" />
-          {formatDateDisplay(selectedDate, calendarViewMode)}
-        </button>
-
-        <DatePickerPopover 
-          isOpen={isDatePickerOpen}
-          onClose={() => setIsDatePickerOpen(false)}
-          selectedDate={selectedDate}
-          onSelectDate={onSelectDate}
-        />
-
-        <button 
-          onClick={onNextWeek}
-          className="px-3 h-full hover:bg-gray-50 text-gray-400 hover:text-gray-700 transition-colors cursor-pointer"
-        >
-          <ChevronRight size={16} />
-        </button>
-      </div>
-
-      {/* Filter and More buttons */}
-      <div className="flex gap-2 relative">
-        <div className="relative">
-          <button 
-            onClick={() => setIsFilterMenuOpen(!isFilterMenuOpen)}
-            className={`w-10 h-10 flex items-center justify-center border rounded-xl transition-all cursor-pointer shadow-sm ${
-              isFilterMenuOpen 
-                ? "bg-[#0A0A0A] border-[#0A0A0A] text-white" 
-                : "bg-white border-gray-200 text-gray-400 hover:text-gray-700 hover:bg-gray-50"
-            }`}
-          >
-            <Filter size={16} />
-          </button>
-          
-          {isFilterMenuOpen && (
-            <>
-              {/* Overlay backdrop */}
-              <div 
-                className="fixed inset-0 z-40 cursor-default" 
-                onClick={() => setIsFilterMenuOpen(false)} 
-              />
-              
-              {/* Filter Dropdown */}
-              <div className="absolute left-0 mt-2 w-56 bg-white rounded-2xl border border-gray-100 shadow-xl py-3 z-50 text-left animate-in fade-in slide-in-from-top-3 duration-200 font-medium">
-                <div className="px-4 pb-1.5 border-b border-gray-100 mb-1.5">
-                  <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest">{t('toolbar.filterStatusLabel')}</span>
-                </div>
-                {[
-                  { label: t('toolbar.statuses.all'), value: "ALL" },
-                  { label: t('toolbar.statuses.draft'), value: "DRAFT" },
-                  { label: t('toolbar.statuses.scheduled'), value: "SCHEDULED" },
-                  { label: t('toolbar.statuses.pendingApproval'), value: "PENDING_APPROVAL" },
-                  { label: t('toolbar.statuses.published'), value: "PUBLISHED" },
-                  { label: t('toolbar.statuses.failed'), value: "FAILED" }
-                ].map(opt => (
-                  <button
-                    key={opt.value}
-                    onClick={() => {
-                      if (onFilterStatusChange) onFilterStatusChange(opt.value);
-                      setIsFilterMenuOpen(false);
-                    }}
-                    className="w-full px-4 py-2 text-xs font-bold text-gray-700 hover:bg-gray-50 flex items-center justify-between cursor-pointer border-none bg-transparent"
-                  >
-                    <span>{opt.label}</span>
-                    {filterStatus === opt.value && <Check size={12} className="text-green-500" />}
-                  </button>
-                ))}
-
-                <div className="my-2 border-t border-gray-100" />
-                
-                <div className="px-4 pb-1.5 mb-1">
-                  <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest">{t('toolbar.filterTypeLabel')}</span>
-                </div>
-                {[
-                  { label: t('toolbar.types.all'), value: "ALL" },
-                  { label: t('toolbar.types.image'), value: "IMAGE" },
-                  { label: t('toolbar.types.video'), value: "VIDEO" },
-                  { label: t('toolbar.types.carousel'), value: "CAROUSEL" }
-                ].map(opt => (
-                  <button
-                    key={opt.value}
-                    onClick={() => {
-                      if (onFilterTypeChange) onFilterTypeChange(opt.value);
-                      setIsFilterMenuOpen(false);
-                    }}
-                    className="w-full px-4 py-2 text-xs font-bold text-gray-700 hover:bg-gray-50 flex items-center justify-between cursor-pointer border-none bg-transparent"
-                  >
-                    <span>{opt.label}</span>
-                    {filterType === opt.value && <Check size={12} className="text-green-500" />}
-                  </button>
-                ))}
-              </div>
-            </>
-          )}
-        </div>
-
-        <div className="relative">
-          <button 
-            onClick={() => setIsMoreMenuOpen(!isMoreMenuOpen)}
-            className={`w-10 h-10 flex items-center justify-center border rounded-xl transition-all cursor-pointer shadow-sm ${
-              isMoreMenuOpen 
-                ? "bg-[#0A0A0A] border-[#0A0A0A] text-white" 
-                : "bg-white border-gray-200 text-gray-400 hover:text-gray-700 hover:bg-gray-50"
-            }`}
-          >
-            <MoreVertical size={16} />
-          </button>
-          
-          {isMoreMenuOpen && (
-            <>
-              {/* Overlay backdrop to close menu when click outside */}
-              <div 
-                className="fixed inset-0 z-40 cursor-default" 
-                onClick={() => setIsMoreMenuOpen(false)} 
-              />
-              
-              {/* Floating Menu Container */}
-              <div className="absolute right-0 mt-2 w-64 bg-white rounded-2xl border border-gray-100 shadow-xl py-2.5 z-50 text-left animate-in fade-in slide-in-from-top-3 duration-200 font-medium">
-                
-                {/* 1. Calendar Zoom */}
-                <div className="relative group/sub">
-                  <button className="w-full px-4 py-2 text-xs font-bold text-gray-700 hover:bg-gray-50 flex items-center justify-between group cursor-pointer transition-colors border-none bg-transparent">
-                    <div className="flex items-center gap-3">
-                      <ZoomIn size={14} className="text-gray-400 group-hover:text-gray-700" />
-                      <span>{t('toolbar.calendarZoom')}</span>
-                    </div>
-                    <ChevronRight size={12} className="text-gray-400" />
-                  </button>
-                  {/* Submenu for Zoom */}
-                  <div className="absolute left-full top-0 pl-1.5 hidden group-hover/sub:block animate-in fade-in slide-in-from-left-2 duration-150 z-50">
-                    <div className="bg-white rounded-2xl border border-gray-100 shadow-xl py-2 w-48 text-left">
-                      {[
-                        { label: t('toolbar.zooms.small'), value: 80 },
-                        { label: t('toolbar.zooms.medium'), value: 100 },
-                        { label: t('toolbar.zooms.large'), value: 120 }
-                      ].map(opt => (
-                        <button
-                          key={opt.value}
-                          onClick={() => {
-                            if (onRowHeightChange) onRowHeightChange(opt.value);
-                            toast.success(t('toolbar.toasts.zoomLevelSet', { size: opt.value }));
-                            setIsMoreMenuOpen(false);
-                          }}
-                          className="w-full px-4 py-2 text-[11px] font-bold text-gray-700 hover:bg-gray-50 flex items-center justify-between cursor-pointer border-none bg-transparent"
-                        >
-                          <span>{opt.label}</span>
-                          {rowHeight === opt.value && <Check size={12} className="text-green-500" />}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-
-                {/* 2. Calendar View */}
-                <div className="relative group/sub">
-                  <button className="w-full px-4 py-2 text-xs font-bold text-gray-700 hover:bg-gray-50 flex items-center justify-between group cursor-pointer transition-colors border-none bg-transparent">
-                    <div className="flex items-center gap-3">
-                      <CalendarIcon size={14} className="text-gray-400 group-hover:text-gray-700" />
-                      <span>{t('toolbar.calendarView')}</span>
-                    </div>
-                    <ChevronRight size={12} className="text-gray-400" />
-                  </button>
-                  {/* Submenu for Views */}
-                  <div className="absolute left-full top-0 pl-1.5 hidden group-hover/sub:block animate-in fade-in slide-in-from-left-2 duration-150 z-50">
-                    <div className="bg-white rounded-2xl border border-gray-100 shadow-xl py-2 w-48 text-left">
-                      {[
-                        { label: t('toolbar.views.day'), value: "DAY" },
-                        { label: t('toolbar.views.week'), value: "WEEK" },
-                        { label: t('toolbar.views.month'), value: "MONTH" }
-                      ].map(opt => (
-                        <button
-                          key={opt.value}
-                          onClick={() => {
-                            if (onCalendarViewModeChange) onCalendarViewModeChange(opt.value);
-                            setIsMoreMenuOpen(false);
-                            toast.success(t('toolbar.toasts.switchedTo', { view: opt.label }));
-                          }}
-                          className="w-full px-4 py-2 text-[11px] font-bold text-gray-700 hover:bg-gray-50 flex items-center justify-between cursor-pointer border-none bg-transparent"
-                        >
-                          <span>{opt.label}</span>
-                          {calendarViewMode === opt.value && <Check size={12} className="text-green-500 shrink-0" />}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-
-                {/* 3. Social Calendars */}
-                <div className="relative group/sub">
-                  <button className="w-full px-4 py-2 text-xs font-bold text-gray-700 hover:bg-gray-50 flex items-center justify-between group cursor-pointer transition-colors border-none bg-transparent">
-                    <div className="flex items-center gap-3">
-                      <Layers size={14} className="text-gray-400 group-hover:text-gray-700" />
-                      <span>{t('toolbar.socialCalendars')}</span>
-                    </div>
-                    <ChevronRight size={12} className="text-gray-400" />
-                  </button>
-                  {/* Submenu for Social Channels toggling */}
-                  <div className="absolute left-full top-0 pl-1.5 hidden group-hover/sub:block animate-in fade-in slide-in-from-left-2 duration-150 z-50">
-                    <div className="bg-white rounded-2xl border border-gray-100 shadow-xl py-2 w-48 text-left">
-                      {[
-                        { label: "YouTube", key: "YOUTUBE" },
-                        { label: "Facebook", key: "FACEBOOK" },
-                        { label: "TikTok", key: "TIKTOK" },
-                        { label: "Instagram", key: "INSTAGRAM" },
-                        { label: "X / Twitter", key: "X" }
-                      ].map(platform => (
-                        <button
-                          key={platform.key}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            e.preventDefault();
-                            togglePlatform(platform.key);
-                          }}
-                          className="w-full px-4 py-2 text-[11px] font-bold text-gray-700 hover:bg-gray-50 flex items-center justify-between cursor-pointer border-none bg-transparent"
-                        >
-                          <span>{platform.label}</span>
-                          {visiblePlatforms[platform.key] !== false && <Check size={12} className="text-green-500 shrink-0" />}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-
-                <div className="my-1 border-t border-gray-100" />
-
-                 <AccessGuard feature="IMPORT_CSV">
-                  <button 
-                    onClick={() => {
-                      setIsWizardOpen(true);
-                      setIsMoreMenuOpen(false);
-                    }}
-                    className="w-full px-4 py-2 text-xs font-bold flex items-center gap-3 group transition-colors border-none bg-transparent text-gray-700 hover:bg-gray-50 cursor-pointer"
-                  >
-                    <RefreshCw size={14} className="text-gray-400 group-hover:text-gray-700" />
-                    <span>{t('toolbar.syncImportExport')}</span>
-                  </button>
-                 </AccessGuard>
-
-                <div className="my-1 border-t border-gray-100" />
-
-                {/* 6. Preview feed */}
-                <button 
-                  onClick={() => {
-                    setIsPreviewFeedOpen(true);
-                    setIsMoreMenuOpen(false);
-                  }}
-                  className="w-full px-4 py-2 text-xs font-bold text-gray-700 hover:bg-gray-50 flex items-center gap-3 group cursor-pointer transition-colors border-none bg-transparent"
-                >
-                  <Instagram size={14} className="text-gray-400 group-hover:text-gray-700" />
-                  <span>{t('toolbar.previewFeed')}</span>
-                </button>
-
-                {/* 7. Notifications */}
-                <button 
-                  onClick={() => {
-                    navigate("/settings?tab=account");
-                    setIsMoreMenuOpen(false);
-                  }}
-                  className="w-full px-4 py-2 text-xs font-bold text-gray-700 hover:bg-gray-50 flex items-center gap-3 group cursor-pointer transition-colors border-none bg-transparent"
-                >
-                  <Settings size={14} className="text-gray-400 group-hover:text-gray-700" />
-                  <span>{t('toolbar.notifications')}</span>
-                </button>
-
-              </div>
-            </>
-          )}
-        </div>
-      </div>
-      </div>
-
-      {/* Row 2: Platforms, Media, Create Post */}
-      <div className="flex items-center gap-3">
-        {/* Best Times Dropdown */}
-        <div className="relative">
-          <button 
-            onClick={() => setIsBestTimesOpen(!isBestTimesOpen)}
-            className="flex items-center gap-2 px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-xs font-bold text-gray-700 hover:bg-gray-50 transition-all cursor-pointer shadow-sm"
-          >
-            {/* Display selected platform color and icon */}
-            <div 
-              style={{ backgroundColor: PLATFORM_DETAILS[bestTimePlatform]?.color || '#FF0000' }}
-              className="w-4 h-4 rounded-sm flex items-center justify-center shrink-0"
+          {/* Integrated Date Navigation & View Mode Anchor Point */}
+          <div className="flex items-center gap-1.5 bg-gray-50/80 p-1 border border-gray-200/80 rounded-xl shrink-0">
+            {/* This Week Button */}
+            <button 
+              onClick={onTodayWeek}
+              className="px-3 h-8 bg-white border border-gray-200/80 rounded-lg text-xs font-bold text-gray-700 hover:bg-gray-100 active:scale-95 transition-all cursor-pointer shadow-2xs shrink-0"
             >
-              {PLATFORM_DETAILS[bestTimePlatform]?.icon(10)}
-            </div>
-            <span className="capitalize">{PLATFORM_DETAILS[bestTimePlatform] ? PLATFORM_DETAILS[bestTimePlatform].label : t('toolbar.bestTimes')}</span>
-            <ChevronDown size={14} className="text-gray-400" />
-          </button>
-          
-          {isBestTimesOpen && (
-            <>
-              {/* Backdrop */}
-              <div 
-                className="fixed inset-0 z-40 cursor-default" 
-                onClick={() => setIsBestTimesOpen(false)} 
+              {t('toolbar.thisWeek')}
+            </button>
+
+            {/* Date Navigation group */}
+            <div className="flex items-center bg-white border border-gray-200/80 rounded-lg overflow-visible relative shadow-2xs h-8">
+              <button 
+                onClick={onPrevWeek}
+                className="px-2 h-full hover:bg-gray-50 text-gray-500 hover:text-gray-900 transition-colors cursor-pointer border-none bg-transparent"
+              >
+                <ChevronLeft size={15} />
+              </button>
+              
+              <button 
+                onClick={() => setIsDatePickerOpen(!isDatePickerOpen)}
+                className="px-2.5 h-full flex items-center gap-1.5 text-xs font-extrabold text-gray-800 hover:bg-gray-50 transition-all border-l border-r border-gray-100 cursor-pointer bg-transparent"
+              >
+                <CalendarIcon size={13} className="text-gray-400" />
+                <span>{formatDateDisplay(selectedDate, calendarViewMode)}</span>
+              </button>
+
+              <DatePickerPopover 
+                isOpen={isDatePickerOpen}
+                onClose={() => setIsDatePickerOpen(false)}
+                selectedDate={selectedDate}
+                onSelectDate={onSelectDate}
               />
-              {/* Menu */}
-              <div className="absolute right-0 mt-2 w-48 bg-white rounded-2xl border border-gray-100 shadow-xl py-2 z-50 text-left animate-in fade-in slide-in-from-top-3 duration-200">
-                <div className="px-4 py-1.5 border-b border-gray-100 mb-1">
-                  <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest font-mono">{t('toolbar.selectHeatmapPlatform')}</span>
-                </div>
-                {Object.keys(PLATFORM_DETAILS).map(key => {
-                  const detail = PLATFORM_DETAILS[key];
-                  return (
+
+              <button 
+                onClick={onNextWeek}
+                className="px-2 h-full hover:bg-gray-50 text-gray-500 hover:text-gray-900 transition-colors cursor-pointer border-none bg-transparent"
+              >
+                <ChevronRight size={15} />
+              </button>
+            </div>
+
+            {/* View Mode Quick Switcher Pills (Day / Week / Month) */}
+            <div className="flex items-center bg-gray-200/70 p-0.5 rounded-lg shrink-0">
+              {[
+                { label: t('toolbar.views.day', { defaultValue: 'Day' }), value: 'DAY' },
+                { label: t('toolbar.views.week', { defaultValue: 'Week' }), value: 'WEEK' },
+                { label: t('toolbar.views.month', { defaultValue: 'Month' }), value: 'MONTH' }
+              ].map(opt => (
+                <button
+                  key={opt.value}
+                  onClick={() => onCalendarViewModeChange && onCalendarViewModeChange(opt.value)}
+                  className={`px-2.5 py-1 text-[11px] font-extrabold rounded-md transition-all cursor-pointer border-none ${
+                    calendarViewMode === opt.value
+                      ? 'bg-[#0A0A0A] text-white shadow-2xs'
+                      : 'text-gray-600 hover:text-gray-900 bg-transparent'
+                  }`}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Filter button */}
+          <div className="relative">
+            <button 
+              onClick={() => setIsFilterMenuOpen(!isFilterMenuOpen)}
+              className={`w-10 h-10 flex items-center justify-center border rounded-xl transition-all cursor-pointer shadow-sm ${
+                isFilterMenuOpen || filterStatus !== 'ALL' || filterType !== 'ALL'
+                  ? "bg-[#0A0A0A] border-[#0A0A0A] text-white" 
+                  : "bg-white border-gray-200 text-gray-400 hover:text-gray-700 hover:bg-gray-50"
+              }`}
+            >
+              <Filter size={16} />
+            </button>
+            
+            {isFilterMenuOpen && (
+              <>
+                {/* Overlay backdrop */}
+                <div 
+                  className="fixed inset-0 z-40 cursor-default" 
+                  onClick={() => setIsFilterMenuOpen(false)} 
+                />
+                
+                {/* Filter Dropdown */}
+                <div className="absolute left-0 mt-2 w-56 bg-white rounded-2xl border border-gray-100 shadow-xl py-3 z-50 text-left animate-in fade-in slide-in-from-top-3 duration-200 font-medium">
+                  <div className="px-4 pb-1.5 border-b border-gray-100 mb-1.5">
+                    <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest">{t('toolbar.filterStatusLabel')}</span>
+                  </div>
+                  {[
+                    { label: t('toolbar.statuses.all'), value: "ALL" },
+                    { label: t('toolbar.statuses.draft'), value: "DRAFT" },
+                    { label: t('toolbar.statuses.scheduled'), value: "SCHEDULED" },
+                    { label: t('toolbar.statuses.pendingApproval'), value: "PENDING_APPROVAL" },
+                    { label: t('toolbar.statuses.published'), value: "PUBLISHED" },
+                    { label: t('toolbar.statuses.failed'), value: "FAILED" }
+                  ].map(opt => (
                     <button
-                      key={key}
+                      key={opt.value}
                       onClick={() => {
-                        if (onBestTimePlatformChange) onBestTimePlatformChange(key);
-                        setIsBestTimesOpen(false);
-                        toast.success(t('toolbar.toasts.showingBestTimes', { platform: detail.label }));
+                        if (onFilterStatusChange) onFilterStatusChange(opt.value);
+                        setIsFilterMenuOpen(false);
                       }}
                       className="w-full px-4 py-2 text-xs font-bold text-gray-700 hover:bg-gray-50 flex items-center justify-between cursor-pointer border-none bg-transparent"
                     >
-                      <div className="flex items-center gap-2.5">
-                        <div 
-                          style={{ backgroundColor: detail.color }}
-                          className="w-4 h-4 rounded-sm flex items-center justify-center shrink-0"
-                        >
-                          {detail.icon(9)}
-                        </div>
-                        <span>{detail.label}</span>
-                      </div>
-                      {bestTimePlatform === key && <Check size={12} className="text-green-500" />}
+                      <span>{opt.label}</span>
+                      {filterStatus === opt.value && <Check size={12} className="text-green-500" />}
                     </button>
-                  );
-                })}
-              </div>
-            </>
-          )}
+                  ))}
+
+                  <div className="my-2 border-t border-gray-100" />
+                  
+                  <div className="px-4 pb-1.5 mb-1">
+                    <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest">{t('toolbar.filterTypeLabel')}</span>
+                  </div>
+                  {[
+                    { label: t('toolbar.types.all'), value: "ALL" },
+                    { label: t('toolbar.types.image'), value: "IMAGE" },
+                    { label: t('toolbar.types.video'), value: "VIDEO" },
+                    { label: t('toolbar.types.carousel'), value: "CAROUSEL" }
+                  ].map(opt => (
+                    <button
+                      key={opt.value}
+                      onClick={() => {
+                        if (onFilterTypeChange) onFilterTypeChange(opt.value);
+                        setIsFilterMenuOpen(false);
+                      }}
+                      className="w-full px-4 py-2 text-xs font-bold text-gray-700 hover:bg-gray-50 flex items-center justify-between cursor-pointer border-none bg-transparent"
+                    >
+                      <span>{opt.label}</span>
+                      {filterType === opt.value && <Check size={12} className="text-green-500" />}
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
         </div>
 
-        {/* Media/Photo Button */}
-        <button 
-          onClick={onToggleSidebar}
-          className={`w-10 h-10 flex items-center justify-center border rounded-xl transition-all cursor-pointer shadow-sm ${
-            showSidebar 
-              ? "bg-[#0A0A0A] border-[#0A0A0A] text-white hover:bg-black" 
-              : "bg-[#F3EFE9] border-gray-200/50 text-gray-700 hover:bg-[#EAE5DF]"
-          }`}
-        >
-          <Image size={18} />
-        </button>
+        {/* Right Cluster: Actions & Integrations */}
+        <div className="flex items-center gap-2.5 shrink-0">
 
-        <AccessGuard feature="CREATE_POSTS">
+          {/* Media/Photo Button */}
           <button 
-            onClick={onCreatePostClick} data-testid="planner-create-post-btn"
-            className="flex items-center gap-2 px-5 py-2.5 rounded-full text-xs font-bold bg-[#0A0A0A] hover:bg-[#1A1A1A] text-white hover:scale-[1.02] active:scale-[0.98] cursor-pointer transition-all shadow-md"
+            onClick={onToggleSidebar}
+            title="Drive & Media Library"
+            className={`w-10 h-10 flex items-center justify-center border rounded-xl transition-all cursor-pointer shadow-sm ${
+              showSidebar 
+                ? "bg-[#0A0A0A] border-[#0A0A0A] text-white hover:bg-black" 
+                : "bg-[#F3EFE9] border-gray-200/50 text-gray-700 hover:bg-[#EAE5DF]"
+            }`}
           >
-            <Plus size={16} />
-            <span>{t('toolbar.createPost')}</span>
+            <Image size={18} />
           </button>
-        </AccessGuard>
+
+          {/* More options button */}
+          <div className="relative">
+            <button 
+              onClick={() => setIsMoreMenuOpen(!isMoreMenuOpen)}
+              className={`w-10 h-10 flex items-center justify-center border rounded-xl transition-all cursor-pointer shadow-sm ${
+                isMoreMenuOpen 
+                  ? "bg-[#0A0A0A] border-[#0A0A0A] text-white" 
+                  : "bg-white border-gray-200 text-gray-400 hover:text-gray-700 hover:bg-gray-50"
+              }`}
+            >
+              <MoreVertical size={16} />
+            </button>
+            
+            {isMoreMenuOpen && (
+              <>
+                {/* Overlay backdrop to close menu when click outside */}
+                <div 
+                  className="fixed inset-0 z-40 cursor-default" 
+                  onClick={() => setIsMoreMenuOpen(false)} 
+                />
+                
+                {/* Floating Menu Container */}
+                <div className="absolute right-0 mt-2 w-64 bg-white rounded-2xl border border-gray-100 shadow-xl py-2.5 z-50 text-left animate-in fade-in slide-in-from-top-3 duration-200 font-medium">
+                  
+                  {/* 1. Calendar Zoom */}
+                  <div className="relative group/sub">
+                    <button className="w-full px-4 py-2 text-xs font-bold text-gray-700 hover:bg-gray-50 flex items-center justify-between group cursor-pointer transition-colors border-none bg-transparent">
+                      <div className="flex items-center gap-3">
+                        <ZoomIn size={14} className="text-gray-400 group-hover:text-gray-700" />
+                        <span>{t('toolbar.calendarZoom')}</span>
+                      </div>
+                      <ChevronRight size={12} className="text-gray-400" />
+                    </button>
+                    {/* Submenu for Zoom */}
+                    <div className="absolute left-full top-0 pl-1.5 hidden group-hover/sub:block animate-in fade-in slide-in-from-left-2 duration-150 z-50">
+                      <div className="bg-white rounded-2xl border border-gray-100 shadow-xl py-2 w-48 text-left">
+                        {[
+                          { label: t('toolbar.zooms.small'), value: 80 },
+                          { label: t('toolbar.zooms.medium'), value: 100 },
+                          { label: t('toolbar.zooms.large'), value: 120 }
+                        ].map(opt => (
+                          <button
+                            key={opt.value}
+                            onClick={() => {
+                              if (onRowHeightChange) onRowHeightChange(opt.value);
+                              toast.success(t('toolbar.toasts.zoomLevelSet', { size: opt.value }));
+                              setIsMoreMenuOpen(false);
+                            }}
+                            className="w-full px-4 py-2 text-[11px] font-bold text-gray-700 hover:bg-gray-50 flex items-center justify-between cursor-pointer border-none bg-transparent"
+                          >
+                            <span>{opt.label}</span>
+                            {rowHeight === opt.value && <Check size={12} className="text-green-500" />}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* 2. Calendar View */}
+                  <div className="relative group/sub">
+                    <button className="w-full px-4 py-2 text-xs font-bold text-gray-700 hover:bg-gray-50 flex items-center justify-between group cursor-pointer transition-colors border-none bg-transparent">
+                      <div className="flex items-center gap-3">
+                        <CalendarIcon size={14} className="text-gray-400 group-hover:text-gray-700" />
+                        <span>{t('toolbar.calendarView')}</span>
+                      </div>
+                      <ChevronRight size={12} className="text-gray-400" />
+                    </button>
+                    {/* Submenu for Views */}
+                    <div className="absolute left-full top-0 pl-1.5 hidden group-hover/sub:block animate-in fade-in slide-in-from-left-2 duration-150 z-50">
+                      <div className="bg-white rounded-2xl border border-gray-100 shadow-xl py-2 w-48 text-left">
+                        {[
+                          { label: t('toolbar.views.day'), value: "DAY" },
+                          { label: t('toolbar.views.week'), value: "WEEK" },
+                          { label: t('toolbar.views.month'), value: "MONTH" }
+                        ].map(opt => (
+                          <button
+                            key={opt.value}
+                            onClick={() => {
+                              if (onCalendarViewModeChange) onCalendarViewModeChange(opt.value);
+                              setIsMoreMenuOpen(false);
+                              toast.success(t('toolbar.toasts.switchedTo', { view: opt.label }));
+                            }}
+                            className="w-full px-4 py-2 text-[11px] font-bold text-gray-700 hover:bg-gray-50 flex items-center justify-between cursor-pointer border-none bg-transparent"
+                          >
+                            <span>{opt.label}</span>
+                            {calendarViewMode === opt.value && <Check size={12} className="text-green-500 shrink-0" />}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* 3. Social Calendars */}
+                  <div className="relative group/sub">
+                    <button className="w-full px-4 py-2 text-xs font-bold text-gray-700 hover:bg-gray-50 flex items-center justify-between group cursor-pointer transition-colors border-none bg-transparent">
+                      <div className="flex items-center gap-3">
+                        <Layers size={14} className="text-gray-400 group-hover:text-gray-700" />
+                        <span>{t('toolbar.socialCalendars')}</span>
+                      </div>
+                      <ChevronRight size={12} className="text-gray-400" />
+                    </button>
+                    {/* Submenu for Social Channels toggling */}
+                    <div className="absolute left-full top-0 pl-1.5 hidden group-hover/sub:block animate-in fade-in slide-in-from-left-2 duration-150 z-50">
+                      <div className="bg-white rounded-2xl border border-gray-100 shadow-xl py-2 w-48 text-left">
+                        {[
+                          { label: "YouTube", key: "YOUTUBE" },
+                          { label: "Facebook", key: "FACEBOOK" },
+                          { label: "TikTok", key: "TIKTOK" },
+                          { label: "Instagram", key: "INSTAGRAM" },
+                          { label: "X / Twitter", key: "X" }
+                        ].map(platform => (
+                          <button
+                            key={platform.key}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              e.preventDefault();
+                              togglePlatform(platform.key);
+                            }}
+                            className="w-full px-4 py-2 text-[11px] font-bold text-gray-700 hover:bg-gray-50 flex items-center justify-between cursor-pointer border-none bg-transparent"
+                          >
+                            <span>{platform.label}</span>
+                            {visiblePlatforms[platform.key] !== false && <Check size={12} className="text-green-500 shrink-0" />}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="my-1 border-t border-gray-100" />
+
+                   <AccessGuard feature="IMPORT_CSV">
+                    <button 
+                      onClick={() => {
+                        setIsWizardOpen(true);
+                        setIsMoreMenuOpen(false);
+                      }}
+                      className="w-full px-4 py-2 text-xs font-bold flex items-center gap-3 group transition-colors border-none bg-transparent text-gray-700 hover:bg-gray-50 cursor-pointer"
+                    >
+                      <RefreshCw size={14} className="text-gray-400 group-hover:text-gray-700" />
+                      <span>{t('toolbar.syncImportExport')}</span>
+                    </button>
+                   </AccessGuard>
+
+                  <div className="my-1 border-t border-gray-100" />
+
+                  {/* 6. Preview feed */}
+                  <button 
+                    onClick={() => {
+                      setIsPreviewFeedOpen(true);
+                      setIsMoreMenuOpen(false);
+                    }}
+                    className="w-full px-4 py-2 text-xs font-bold text-gray-700 hover:bg-gray-50 flex items-center gap-3 group cursor-pointer transition-colors border-none bg-transparent"
+                  >
+                    <Instagram size={14} className="text-gray-400 group-hover:text-gray-700" />
+                    <span>{t('toolbar.previewFeed')}</span>
+                  </button>
+
+                  {/* 7. Notifications */}
+                  <button 
+                    onClick={() => {
+                      navigate("/settings?tab=account");
+                      setIsMoreMenuOpen(false);
+                    }}
+                    className="w-full px-4 py-2 text-xs font-bold text-gray-700 hover:bg-gray-50 flex items-center gap-3 group cursor-pointer transition-colors border-none bg-transparent"
+                  >
+                    <Settings size={14} className="text-gray-400 group-hover:text-gray-700" />
+                    <span>{t('toolbar.notifications')}</span>
+                  </button>
+
+                </div>
+              </>
+            )}
+          </div>
+
+          {/* Create Post Action Button */}
+          <AccessGuard feature="CREATE_POSTS">
+            <button 
+              onClick={onCreatePostClick} data-testid="planner-create-post-btn"
+              className="flex items-center gap-2 px-4.5 h-10 rounded-full text-xs font-bold bg-[#0A0A0A] hover:bg-[#1A1A1A] text-white hover:scale-[1.02] active:scale-[0.98] cursor-pointer transition-all shadow-md shrink-0"
+            >
+              <Plus size={16} />
+              <span>{t('toolbar.createPost')}</span>
+            </button>
+          </AccessGuard>
+        </div>
       </div>
 
 

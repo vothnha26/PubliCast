@@ -659,6 +659,11 @@ model BlueskyAccount {
   followersCount  Int     @default(0)
   followsCount    Int     @default(0)
   postsCount      Int     @default(0)
+  // OAuth2 DPoP-bound access tokens (AT Protocol) must be re-signed with this
+  // ES256 key on every API request — plain Bearer auth is rejected. Stored
+  // encrypted (same as accessToken) since dpopPrivateKey is a real private key.
+  dpopPrivateKey  String? @db.Text
+  dpopJwk         String? @db.Text
 
   socialAccount SocialAccount @relation(fields: [socialAccountId], references: [id], onDelete: Cascade)
 

@@ -1,11 +1,13 @@
 const BaseSocialService = require('../base-social.service');
 const blueskyGateway = require('./bluesky.gateway');
+const blueskyOAuthHelper = require('./bluesky-oauth.helper');
 const socialAccountRepository = require('../../../repositories/social/social-account.repository');
 const QuotaTrackerService = require('../quota-tracker.service');
 const { decrypt } = require('../../../utils/encryption');
 const { PLATFORMS, QUOTA_TTL_STRATEGY } = require('../../../utils/constants');
 const redisClient = require('../../../config/redis');
 const BLUESKY_CONSTANTS = require('./bluesky.constants');
+const crypto = require('crypto');
 
 class BlueskyService extends BaseSocialService {
   constructor() {
@@ -14,16 +16,29 @@ class BlueskyService extends BaseSocialService {
   }
 
   async _getAuthenticatedAgent(account) {
-    const agent = blueskyGateway.createAgent(account.blueskyAccount?.pdsUrl);
-    const accessJwt = decrypt(account.accessToken);
-    const refreshJwt = account.refreshToken ? decrypt(account.refreshToken) : undefined;
-    await blueskyGateway.resumeSession(agent, {
-      accessJwt,
-      refreshJwt,
-      did: account.platformAccountId,
-      handle: account.username
-    });
-    
+    let agent;
+
+    if (account.blueskyAccount?.dpopPrivateKey && account.blueskyAccount?.dpopJwk) {
+      const privateKey = crypto.createPrivateKey(decrypt(account.blueskyAccount.dpopPrivateKey));
+      const jwk = JSON.parse(decrypt(account.blueskyAccount.dpopJwk));
+      agent = blueskyGateway.createDPoPAgent({
+        did: account.platformAccountId,
+        accessJwt: decrypt(account.accessToken),
+        keyPair: { privateKey, jwk },
+        pdsUrl: account.blueskyAccount?.pdsUrl
+      });
+    } else {
+      agent = blueskyGateway.createAgent(account.blueskyAccount?.pdsUrl);
+      const accessJwt = decrypt(account.accessToken);
+      const refreshJwt = account.refreshToken ? decrypt(account.refreshToken) : undefined;
+      await blueskyGateway.resumeSession(agent, {
+        accessJwt,
+        refreshJwt,
+        did: account.platformAccountId,
+        handle: account.username
+      });
+    }
+
     // Auto-sync emailConfirmed status if it became verified
     if (account.blueskyAccount && !account.blueskyAccount.emailConfirmed) {
       try {
@@ -42,30 +57,39 @@ class BlueskyService extends BaseSocialService {
     return agent;
   }
 
-  async connectChannel(brandId, { handle, appPassword }) {
-    const agent = blueskyGateway.createAgent();
-    const session = await blueskyGateway.loginWithAppPassword(agent, handle, appPassword);
-    
-    const profile = await blueskyGateway.getProfile(agent, session.data.did);
+  async connectChannelViaOAuth(brandId, { tokenData, keyPair }) {
+    const accessJwt = tokenData?.access_token;
+    const refreshJwt = tokenData?.refresh_token;
+    const did = tokenData?.sub || tokenData?.did;
 
-    // Sau khi login(), SDK cập nhật agent.pdsUrl từ didDoc trả về.
-    // agent.pdsUrl là PDS thực sự của user (VD: discina.us-west.host.bsky.network).
-    // Phải lưu vào DB để _getAuthenticatedAgent sau này createAgent đúng PDS endpoint,
-    // đảm bảo getServiceAuth dùng đúng audience khi upload video.
-    const pdsUrl = agent.pdsUrl?.href ?? agent.serviceUrl?.href ?? BLUESKY_CONSTANTS.DEFAULT_PDS_URL;
+    if (!accessJwt || !did) {
+      throw new Error('Bluesky OAuth token exchange did not return an access token/DID');
+    }
+
+    // DPoP-bound access tokens are only valid against the user's actual PDS,
+    // which is frequently NOT bsky.social (e.g. *.host.bsky.network) — must
+    // resolve it from the DID document before making any authenticated call,
+    // or every request fails with "OAuth tokens are meant for PDS access only".
+    const pdsUrl = await blueskyOAuthHelper.resolveDidToPdsUrl(did);
+
+    const agent = blueskyGateway.createDPoPAgent({ did, accessJwt, keyPair, pdsUrl });
+    const profile = await blueskyGateway.getProfile(agent, did);
+    const privatePem = keyPair.privateKey.export({ type: 'pkcs8', format: 'pem' });
 
     return socialAccountRepository.upsertBlueskyAccount(brandId, {
       did: profile.did,
       handle: profile.handle,
       displayName: profile.displayName || profile.handle,
       avatarUrl: profile.avatar,
-      accessToken: session.data.accessJwt,
-      refreshToken: session.data.refreshJwt,
-      emailConfirmed: Boolean(session.data.emailConfirmed),
-      followersCount: profile.followersCount,
-      followsCount: profile.followsCount,
-      postsCount: profile.postsCount,
-      pdsUrl
+      accessToken: accessJwt,
+      refreshToken: refreshJwt,
+      emailConfirmed: true,
+      followersCount: profile.followersCount || 0,
+      followsCount: profile.followsCount || 0,
+      postsCount: profile.postsCount || 0,
+      pdsUrl,
+      dpopPrivateKey: privatePem,
+      dpopJwk: JSON.stringify(keyPair.jwk)
     });
   }
 

@@ -1,13 +1,30 @@
-const { BskyAgent, RichText } = require('@atproto/api');
+const { BskyAgent, Agent, RichText } = require('@atproto/api');
 const BLUESKY_CONSTANTS = require('./bluesky.constants');
+const blueskyOAuthHelper = require('./bluesky-oauth.helper');
 
 class BlueskyGateway {
   createAgent(pdsUrl = BLUESKY_CONSTANTS.DEFAULT_PDS_URL) {
     return new BskyAgent({ service: pdsUrl });
   }
 
-  async loginWithAppPassword(agent, identifier, password) {
-    return agent.login({ identifier, password });
+  /**
+   * Builds an @atproto/api Agent authenticated via an OAuth2 DPoP-bound
+   * access token (AT Protocol OAuth flow) instead of session-based Bearer
+   * auth — see bluesky-oauth.helper.js's createDPoPFetchHandler for why
+   * resumeSession() (plain Bearer) cannot be used with these tokens.
+   *
+   * Must use the base `Agent` class, not `BskyAgent`/`AtpAgent`: AtpAgent's
+   * constructor always does `new URL(options.service)` and only accepts a
+   * custom sessionManager when it's already a CredentialSession instance —
+   * there's no path to inject a custom fetchHandler through it (throws
+   * "Invalid URL" otherwise). `Agent` (the class AtpAgent itself extends)
+   * accepts any object with a `fetchHandler` key directly. `getProfile`,
+   * `uploadBlob`, and `post` used elsewhere in this gateway are all defined
+   * on `Agent` itself, so no BskyAgent-specific functionality is lost.
+   */
+  createDPoPAgent({ did, accessJwt, keyPair, pdsUrl = BLUESKY_CONSTANTS.DEFAULT_PDS_URL }) {
+    const sessionManager = blueskyOAuthHelper.createDPoPFetchHandler({ did, accessJwt, keyPair, pdsUrl });
+    return new Agent(sessionManager);
   }
 
   async resumeSession(agent, { accessJwt, refreshJwt, did, handle }) {
@@ -32,17 +49,16 @@ class BlueskyGateway {
    * Trả về DID của PDS (Personal Data Server) của user dưới dạng did:web.
    * Theo AT Protocol spec, đây là `aud` (audience) phải dùng khi gọi getServiceAuth.
    *
-   * agent.dispatchUrl = agent.pdsUrl ?? agent.serviceUrl
-   *   - agent.pdsUrl:     URL object, được set từ didDoc sau resumeSession/login.
-   *                       Là PDS thực sự của user (có thể khác serviceUrl).
-   *   - agent.serviceUrl: URL object, là endpoint ban đầu truyền vào constructor
-   *                       (giá trị từ DB). Fallback khi pdsUrl chưa được set.
-   *
-   * Cả hai đều là URL objects nên dùng .href để lấy string.
+   * `agent.dispatchUrl` (pdsUrl ?? serviceUrl) is an AtpAgent/BskyAgent-only
+   * getter — the base `Agent` class used for OAuth DPoP agents (see
+   * createDPoPAgent) has no such getter, only whatever we put on its
+   * sessionManager (dispatchUrl/pdsUrl/serviceUrl, all URL objects — see
+   * bluesky-oauth.helper.js's createDPoPFetchHandler). Reading from
+   * sessionManager first keeps this working for both agent kinds.
    */
   _getPdsDid(agent) {
-    // agent.dispatchUrl luôn là URL object hợp lệ (pdsUrl ?? serviceUrl)
-    const pdsHref = agent.dispatchUrl.href;
+    const pdsHref = (agent.dispatchUrl ?? agent.sessionManager?.dispatchUrl ?? agent.sessionManager?.pdsUrl ?? agent.sessionManager?.serviceUrl)?.href;
+    if (!pdsHref) throw new Error('Unable to determine Bluesky PDS URL from agent');
     // Chuẩn hoá: bỏ "https://" và trailing slash
     const host = pdsHref.replace(/^https?:\/\//, '').replace(/\/$/, '');
     return `did:web:${host}`;
@@ -64,7 +80,7 @@ class BlueskyGateway {
     });
     const token = tokenRes.data.token;
 
-    const uploadUrl = `${BLUESKY_CONSTANTS.VIDEO_SERVICE_URL}/xrpc/app.bsky.video.uploadVideo?did=${encodeURIComponent(agent.session.did)}&name=${Date.now()}.mp4`;
+    const uploadUrl = `${BLUESKY_CONSTANTS.VIDEO_SERVICE_URL}/xrpc/app.bsky.video.uploadVideo?did=${encodeURIComponent(agent.did)}&name=${Date.now()}.mp4`;
     const uploadRes = await fetch(uploadUrl, {
       method: 'POST',
       headers: {

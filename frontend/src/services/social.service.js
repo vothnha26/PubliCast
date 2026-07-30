@@ -243,8 +243,8 @@ class SocialService {
   }
 
   // --- Bluesky ---
-  async connectBlueskyAccount(brandId, handle, appPassword) {
-    const response = await apiService.post('/social/bluesky/connect', { brandId, handle, appPassword });
+  async getBlueskyAuthUrl(brandId) {
+    const response = await apiService.get(`/social/bluesky/url?brandId=${brandId}`);
     return response.data;
   }
 

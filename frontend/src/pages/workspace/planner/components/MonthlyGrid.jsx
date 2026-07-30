@@ -121,18 +121,18 @@ export function MonthlyGrid({
   };
 
   return (
-    <div className="w-full h-full bg-white border border-gray-100 rounded-3xl shadow-sm overflow-hidden flex flex-col min-h-[500px]">
+    <div className="w-full h-full bg-white border border-gray-200 rounded-3xl shadow-sm overflow-hidden flex flex-col min-h-[500px]">
       {/* Weekday headers */}
-      <div className="grid grid-cols-7 border-b border-gray-100 bg-gray-50/20 py-3 text-center no-print">
+      <div className="grid grid-cols-7 border-b border-gray-200 bg-gray-50/40 py-3 text-center no-print">
         {weekdayNames.map((dayName, idx) => (
-          <div key={idx} className="text-[11px] font-black text-gray-400 uppercase tracking-wider">
+          <div key={idx} className="text-[11px] font-black text-gray-500 uppercase tracking-wider">
             {dayName.slice(0, 3)}
           </div>
         ))}
       </div>
 
       {/* 42 Days Grid */}
-      <div className="grid grid-cols-7 flex-1 divide-x divide-y divide-gray-100 bg-gray-50/10 overflow-y-auto">
+      <div className="grid grid-cols-7 flex-1 divide-x divide-y divide-gray-200 bg-gray-50/20 overflow-y-auto">
         {daysInMonthGrid.map((day, idx) => {
           const cellPosts = postsByDate[day.fullStr] || [];
           const cellEvents = eventsByDate[day.fullStr] || [];
@@ -141,16 +141,25 @@ export function MonthlyGrid({
             <div
               key={idx}
               onClick={() => handleDateClick(day.raw)}
-              className={`min-h-[125px] p-2 flex flex-col gap-1 transition-all hover:bg-gray-50/50 cursor-pointer relative ${
-                day.isCurrentMonth ? "bg-white text-gray-800" : "bg-gray-50/30 text-gray-300"
+              className={`min-h-[125px] p-2 flex flex-col gap-1 transition-all hover:bg-gray-100/70 cursor-pointer relative group/cell ${
+                day.isCurrentMonth ? "bg-white text-gray-800" : "bg-gray-50/50 text-gray-400"
               }`}
             >
+              {/* Quick Add '+' button indicator on cell hover */}
+              <div 
+                className="absolute top-2 right-2 opacity-0 group-hover/cell:opacity-100 transition-all duration-200 z-20 pointer-events-none"
+              >
+                <div className="w-5 h-5 bg-[#0A0A0A] text-white rounded-full flex items-center justify-center shadow-md text-xs font-black">
+                  +
+                </div>
+              </div>
+
               {/* Day number */}
-              <div className="flex justify-between items-center mb-1">
+              <div className="flex justify-between items-center mb-1 pr-6">
                 <span className={`text-[11px] font-black w-6 h-6 flex items-center justify-center rounded-full ${
                   day.isToday 
                     ? "bg-[#10B981] text-white shadow-sm" 
-                    : day.isCurrentMonth ? "text-gray-700" : "text-gray-300"
+                    : day.isCurrentMonth ? "text-gray-700" : "text-gray-400"
                 }`}>
                   {day.date}
                 </span>

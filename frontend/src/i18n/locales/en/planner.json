@@ -10,7 +10,8 @@
   "upgrade": {
     "title": "Do you need a higher plan?",
     "desc": "You have posted <span>{{posted}} out of your {{limit}}</span> available posts in your plan this month. Upgrade your plan to increase the limit.",
-    "button": "Upgrade your plan"
+    "button": "Upgrade your plan",
+    "dismiss": "Dismiss banner"
   },
   "autolists": {
     "title": "Autolists",
@@ -236,6 +237,7 @@
         "desc": "Desc"
       },
       "home": "Home",
+      "collapseSidebar": "Collapse sidebar",
       "loadingFiles": "Loading Drive files...",
       "noFiles": "No matching files found",
       "noFilesDesc": "Upload videos, images, or PDFs to this folder, then refresh.",

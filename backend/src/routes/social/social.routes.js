@@ -80,7 +80,9 @@ router.delete('/facebook/competitors/:id', verifyAuth, facebookController.delete
 router.post('/instagram/disconnect', verifyAuth, requireManageConnections, socialConnectionController.disconnectInstagramAccount);
 router.post('/tiktok/disconnect', verifyAuth, requireManageConnections, socialConnectionController.disconnectTikTokAccount);
 router.post('/threads/disconnect', verifyAuth, requireManageConnections, socialConnectionController.disconnectThreadsAccount);
-router.post('/bluesky/connect', verifyAuth, requireManageConnections, blueskyController.connectBluesky);
+router.get('/bluesky/client-metadata.json', blueskyController.getClientMetadata);
+router.get('/bluesky/url', verifyAuth, blueskyController.getBlueskyAuthUrl);
+router.get('/bluesky/callback', blueskyController.blueskyCallback);
 router.post('/bluesky/disconnect', verifyAuth, requireManageConnections, socialConnectionController.disconnectBlueskyAccount);
 router.post('/telegram/connect', verifyAuth, requireManageConnections, telegramController.connectTelegram);
 router.post('/telegram/disconnect', verifyAuth, requireManageConnections, socialConnectionController.disconnectTelegramAccount);

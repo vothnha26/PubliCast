@@ -70,6 +70,8 @@ export function usePostCreatorForm() {
   const { activeBrand } = useBrand();
   const [isCreating, setIsCreating] = useState(false);
   const [submitProgressText, setSubmitProgressText] = useState(null);
+  const [showMediaViewer, setShowMediaViewer] = useState(false);
+  const [mediaThumbnailUrl, setMediaThumbnailUrl] = useState("");
   const [scheduledDate, setScheduledDate] = useState(() => toLocalDatetimeString(new Date()));
   const [isLibrary, setIsLibrary] = useState(false);
 
@@ -108,7 +110,7 @@ export function usePostCreatorForm() {
 
   // YouTube Presets States
   const [youtubeTitle, setYoutubeTitle] = useState("");
-  const [youtubeMadeForKids, setYoutubeMadeForKids] = useState(false);
+  const [youtubeMadeForKids, setYoutubeMadeForKids] = useState(null);
   const [youtubePrivacy, setYoutubePrivacy] = useState("public");
   const [youtubeCategory, setYoutubeCategory] = useState(YOUTUBE_DEFAULT_CATEGORY_ID);
   const [youtubePlaylistId, setYoutubePlaylistId] = useState("");
@@ -173,7 +175,7 @@ export function usePostCreatorForm() {
       setFacebookReelPlaceId(backup.facebookReelPlaceId ?? "");
       setFacebookReelThumbnail(backup.facebookReelThumbnail ?? "");
       setYoutubeTitle(backup.youtubeTitle ?? "");
-      setYoutubeMadeForKids(backup.youtubeMadeForKids ?? false);
+      setYoutubeMadeForKids(typeof backup.youtubeMadeForKids === 'boolean' ? backup.youtubeMadeForKids : null);
       setYoutubePrivacy(backup.youtubePrivacy ?? "public");
       setYoutubeCategory(backup.youtubeCategory ?? YOUTUBE_DEFAULT_CATEGORY_ID);
       setYoutubePlaylistId(backup.youtubePlaylistId ?? "");
@@ -521,6 +523,7 @@ export function usePostCreatorForm() {
       editingPost,
       postMedia,
       captionText: caption,
+      youtubeMadeForKids,
       networkCustom
     });
   };
@@ -705,7 +708,7 @@ export function usePostCreatorForm() {
         const opts = editingPost.options || {};
         setYoutubeType(opts.youtubeType || "video");
         setYoutubeTitle(opts.youtubeTitle || "");
-        setYoutubeMadeForKids(opts.madeForKids || false);
+        setYoutubeMadeForKids(typeof opts.madeForKids === 'boolean' ? opts.madeForKids : null);
         setYoutubePrivacy(opts.privacyStatus || "public");
         setYoutubeCategory(opts.categoryId || "22");
         setYoutubePlaylistId(opts.playlistId || "");
@@ -775,7 +778,7 @@ export function usePostCreatorForm() {
         const opts = templatePost.options || {};
         setYoutubeType(opts.youtubeType || "video");
         setYoutubeTitle(opts.youtubeTitle || "");
-        setYoutubeMadeForKids(opts.madeForKids || false);
+        setYoutubeMadeForKids(typeof opts.madeForKids === 'boolean' ? opts.madeForKids : null);
         setYoutubePrivacy(opts.privacyStatus || "public");
         setYoutubeCategory(opts.categoryId || "22");
         setYoutubePlaylistId(opts.playlistId || "");
@@ -852,7 +855,7 @@ export function usePostCreatorForm() {
         setSelectedPublishId(defaultScheduledAt ? PUBLISH_MODE.SCHEDULE : PUBLISH_MODE.NOW);
         setYoutubeType(YOUTUBE_TYPE.VIDEO);
         setYoutubeTitle("");
-        setYoutubeMadeForKids(false);
+        setYoutubeMadeForKids(null);
         setYoutubePrivacy("public");
         setYoutubeCategory(YOUTUBE_DEFAULT_CATEGORY_ID);
         setYoutubePlaylistId("");
@@ -904,7 +907,7 @@ export function usePostCreatorForm() {
     const opts = template.options || {};
     setYoutubeType(opts.youtubeType || "video");
     setYoutubeTitle(opts.youtubeTitle || "");
-    setYoutubeMadeForKids(opts.madeForKids || false);
+    setYoutubeMadeForKids(typeof opts.madeForKids === 'boolean' ? opts.madeForKids : null);
     setYoutubePrivacy(opts.privacyStatus || "public");
     setYoutubeCategory(opts.categoryId || "22");
     setYoutubePlaylistId(opts.playlistId || "");
@@ -1073,6 +1076,7 @@ export function usePostCreatorForm() {
         targetPlatforms: selectedPlatforms.filter(p => connectedPlatforms.includes(p)).map(p => p.toUpperCase()),
         scheduledAt: ['schedule', 'review'].includes(selectedPublishId) ? (scheduledDate ? new Date(scheduledDate).toISOString() : null) : null,
         mediaUrls: postMediaUrls,
+        mediaThumbnailUrls: mediaThumbnailUrl ? [mediaThumbnailUrl] : [],
         reviewerIds: selectedReviewerIds,
         approvalPolicy: approvalPolicy,
         requesterNote: requesterNote || "Vui lòng phê duyệt bài viết này.",
@@ -1085,12 +1089,13 @@ export function usePostCreatorForm() {
           tags: youtubeTags,
           madeForKids: youtubeMadeForKids,
           firstComment: youtubeFirstComment || globalFirstComment,
-          youtubeThumbnail,
+          // mediaThumbnailUrl làm SSoT cho thumbnail, nối dây cho cả YouTube và Facebook Reel
+          youtubeThumbnail: mediaThumbnailUrl || youtubeThumbnail,
           facebookType,
           facebookTitle,
           facebookReelCollaboratorId,
           facebookReelPlaceId,
-          facebookReelThumbnail,
+          facebookReelThumbnail: mediaThumbnailUrl || facebookReelThumbnail,
           instagramType,
           instagramCollaborators,
           instagramAudio,
@@ -1193,11 +1198,13 @@ export function usePostCreatorForm() {
         setIsLibrary(false);
         setSelectedPublishId(PUBLISH_MODE.NOW);
         setYoutubeType(YOUTUBE_TYPE.VIDEO);
+        setYoutubeMadeForKids(null);
         setYoutubeTitle("");
         setYoutubeTags("");
         setYoutubeFirstComment("");
         setGlobalFirstComment("");
         setYoutubeThumbnail("");
+        setMediaThumbnailUrl("");
         setFacebookTitle("");
         setFacebookType(FACEBOOK_TYPE.POST);
         setFacebookReelCollaboratorId("");
@@ -1404,6 +1411,10 @@ export function usePostCreatorForm() {
     setNotes,
     videoSettings,
     setVideoSettings,
+    showMediaViewer,
+    setShowMediaViewer,
+    mediaThumbnailUrl,
+    setMediaThumbnailUrl,
     getBackupPayload,
     backupFormState,
     closePostCreatorTemporarily

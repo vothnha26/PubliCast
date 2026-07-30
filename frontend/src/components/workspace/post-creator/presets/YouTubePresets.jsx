@@ -1,10 +1,8 @@
 import React, { useEffect } from "react";
 import { useTranslation } from "react-i18next";
-import { Youtube, ChevronDown, RotateCw, Copy, Upload } from "lucide-react";
+import { Youtube, ChevronDown, RotateCw, Copy } from "lucide-react";
 import { usePostCreatorFormContext } from "../../../../context/PostCreatorFormContext";
-import { buildMediaUrl } from "../../../../utils/url";
 import { toast } from "sonner";
-import { MEDIA_FILTER_TYPES } from "../../../../constants/mediaAcceptStrategy";
 
 const FALLBACK_CATEGORIES = [
   { id: "22", title: "People & Blogs" },
@@ -32,8 +30,6 @@ export function YouTubePresets() {
     youtubeTags,
     setYoutubeTags,
     youtubeType,
-    youtubeThumbnail,
-    setYoutubeThumbnail,
     youtubeFirstComment,
     setYoutubeFirstComment,
     globalFirstComment,
@@ -42,11 +38,7 @@ export function YouTubePresets() {
     fetchPlaylists,
     categories,
     isLoadingCategories,
-    fetchCategories,
-    setIsUploadingThumbnail,
-    setUploadModalTab,
-    setMediaTypeFilter,
-    setShowUploadModal
+    fetchCategories
   } = usePostCreatorFormContext();
 
   useEffect(() => {
@@ -97,10 +89,15 @@ export function YouTubePresets() {
             <label className="block text-[11px] font-bold text-gray-500 uppercase mb-2 font-sans">{t("planner:postCreator.presets.youtube.audienceLabel")}</label>
             <div className="relative">
               <select 
-                value={youtubeMadeForKids ? "true" : "false"}
-                onChange={(e) => setYoutubeMadeForKids(e.target.value === "true")}
-                className="w-full px-4 py-3 bg-white border border-gray-200 rounded-2xl text-xs font-semibold focus:border-black outline-none appearance-none cursor-pointer font-sans"
+                value={typeof youtubeMadeForKids === "boolean" ? (youtubeMadeForKids ? "true" : "false") : ""}
+                onChange={(e) => setYoutubeMadeForKids(e.target.value === "" ? null : e.target.value === "true")}
+                className={`w-full px-4 py-3 bg-white border rounded-2xl text-xs font-semibold focus:border-black outline-none appearance-none cursor-pointer font-sans transition-all ${
+                  youtubeMadeForKids === null 
+                    ? "border-amber-300 bg-amber-50/20 text-amber-900 font-bold" 
+                    : "border-gray-200 text-gray-900"
+                }`}
               >
+                <option value="" disabled className="text-gray-400 font-normal">-- Select Audience (Required) --</option>
                 <option value="false">{t("planner:postCreator.presets.youtube.notMadeForKids")}</option>
                 <option value="true">{t("planner:postCreator.presets.youtube.madeForKids")}</option>
               </select>
@@ -205,50 +202,6 @@ export function YouTubePresets() {
             </div>
           </div>
 
-          {/* Custom Thumbnail */}
-          {youtubeType.toLowerCase() === 'short' ? (
-            <div className="col-span-2 p-4 bg-amber-50/50 rounded-2xl border border-amber-100 flex items-center gap-2">
-              <span className="text-amber-600 text-xs">💡</span>
-              <span className="text-[11px] text-amber-700 font-semibold leading-normal font-sans">
-                {t("planner:postCreator.presets.youtube.shortsThumbnailNotSupported")}
-              </span>
-            </div>
-          ) : (
-            <div className="col-span-2">
-              <label className="block text-[11px] font-bold text-gray-500 uppercase mb-2 font-sans">{t("planner:postCreator.presets.youtube.customThumbnailLabel")}</label>
-              <div className="flex items-center gap-4">
-                {youtubeThumbnail ? (
-                  <div className="relative w-28 h-20 rounded-2xl overflow-hidden border border-gray-200 shadow-sm group">
-                    <img src={buildMediaUrl(youtubeThumbnail)} alt="YT Thumbnail" className="w-full h-full object-cover" />
-                    <button 
-                      type="button" 
-                      onClick={() => setYoutubeThumbnail("")}
-                      className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white text-[10px] font-black uppercase tracking-wider cursor-pointer"
-                    >
-                      {t("planner:postCreator.presets.youtube.removeThumbnail")}
-                    </button>
-                  </div>
-                ) : (
-                  <button 
-                    type="button"
-                    onClick={() => {
-                      setIsUploadingThumbnail(true);
-                      setMediaTypeFilter?.(MEDIA_FILTER_TYPES.IMAGE);
-                      setUploadModalTab("computer");
-                      setShowUploadModal(true);
-                    }}
-                    className="w-full max-w-xs h-20 border-2 border-dashed border-gray-200 hover:border-gray-400 rounded-2xl flex flex-col items-center justify-center gap-1 text-gray-400 hover:text-gray-600 transition-all cursor-pointer bg-gray-50/50"
-                  >
-                    <Upload size={16} />
-                    <span className="text-[10px] font-bold uppercase tracking-wider font-sans">{t("planner:postCreator.presets.youtube.uploadThumbnail")}</span>
-                  </button>
-                )}
-                <div className="flex-1 text-[10px] text-gray-400 font-medium leading-normal text-left font-sans">
-                  {t("planner:postCreator.presets.youtube.thumbnailDesc")}
-                </div>
-              </div>
-            </div>
-          )}
 
           {/* First Comment inside YT presets */}
           <div className="col-span-2 text-left">

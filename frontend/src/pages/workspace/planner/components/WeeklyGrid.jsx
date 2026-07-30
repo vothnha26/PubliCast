@@ -3,27 +3,6 @@ import { buildMediaUrl } from '@/utils/url';
 import { PlatformIcon } from '@/components/shared/PlatformIcon';
 import { PostMediaThumbnail } from '@/components/shared/PostMediaThumbnail';
 
-const getBestTimePercentage = (dayIdx, hourVal, bestTimesData = [], platform = 'INSTAGRAM') => {
-  // Tìm khung giờ tương ứng trong data thật từ API
-  if (Array.isArray(bestTimesData) && bestTimesData.length > 0) {
-    const found = bestTimesData.find(item => item.day === dayIdx && item.hour === hourVal);
-    if (found) {
-      return found.percentage;
-    }
-  }
-
-  // Fallback thuật toán cũ nếu chưa load xong
-  const platformShift = platform.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
-  const seed = (dayIdx * 13 + hourVal * 19 + platformShift) % 100;
-  return 30 + Math.round((seed / 100) * 60); // 30% to 90%
-};
-
-const getHeatmapBg = (percentage) => {
-  // Soft coral/pink color style of image.png
-  const opacity = ((percentage - 20) / 80) * 0.55; // range 0.05 to 0.55
-  return `rgba(254, 215, 215, ${opacity})`;
-};
-
 const PLATFORM_COLORS = {
   YOUTUBE: "#FF0000",
   FACEBOOK: "#1877F2",
@@ -52,8 +31,6 @@ export function WeeklyGrid({
   onDuplicateClick,
   onCellDrop,
   rowHeight = 100,
-  bestTimePlatform = 'INSTAGRAM',
-  bestTimesData = [],
   eventsData = [],
   viewMode = 'WEEK'
 }) {
@@ -169,11 +146,11 @@ export function WeeklyGrid({
   }, [rowHeight]);
 
   return (
-    <div className="w-full h-full bg-white border border-gray-100 rounded-3xl shadow-sm overflow-hidden flex flex-col">
+    <div className="w-full h-full bg-white border border-gray-200 rounded-3xl shadow-sm overflow-hidden flex flex-col">
       {/* Days Header */}
-      <div className="flex border-b border-gray-100 bg-white shrink-0 no-print">
+      <div className="flex border-b border-gray-200 bg-white shrink-0 no-print">
         {/* Time column spacer */}
-        <div className="w-20 shrink-0 border-r border-gray-100" />
+        <div className="w-20 shrink-0 border-r border-gray-200 bg-gray-50/20" />
         
         {days.map((day, idx) => {
           const dayEvents = eventsByDate[day.full] || [];
@@ -181,7 +158,7 @@ export function WeeklyGrid({
           return (
             <div 
               key={idx} 
-              className="flex-1 py-3 flex flex-col items-center justify-center border-l border-gray-50 first:border-l-0 gap-1.5 min-h-[70px]"
+              className="flex-1 py-3 flex flex-col items-center justify-center border-l border-gray-200 first:border-l-0 gap-1.5 min-h-[70px]"
             >
               {day.isToday ? (
                 <div className="px-4 py-2 bg-[#10B981] text-white rounded-lg text-xs font-black uppercase tracking-wider shadow-sm animate-in zoom-in-95 duration-200">
@@ -228,7 +205,7 @@ export function WeeklyGrid({
       {/* Scrollable Grid Body */}
       <div 
         ref={gridContainerRef}
-        className="flex-1 overflow-y-auto relative scrollbar-none select-none"
+        className="flex-1 overflow-y-auto relative scrollbar-none select-none pb-16"
         id="planner-grid"
       >
         {/* Current Time Indicator Line */}
@@ -243,10 +220,10 @@ export function WeeklyGrid({
 
         {/* 24 Hour Rows */}
         {hours.map((hour, hIdx) => (
-          <div key={hIdx} className="flex border-b border-gray-100 group/row" style={{ minHeight: `${rowHeight}px` }}>
+          <div key={hIdx} className="flex border-b border-gray-200/80 group/row" style={{ minHeight: `${rowHeight}px` }}>
             {/* Time label cell */}
-            <div className="w-20 shrink-0 flex items-start justify-center pt-3.5 border-r border-gray-100 bg-gray-50/10 no-print">
-              <span className="text-[9px] font-extrabold text-gray-400 uppercase tracking-tighter">
+            <div className="w-20 shrink-0 flex items-start justify-center pt-3.5 border-r border-gray-200/80 bg-gray-50/20 no-print">
+              <span className="text-[9px] font-extrabold text-gray-500 uppercase tracking-tighter">
                 {hour.label}
               </span>
             </div>
@@ -254,11 +231,6 @@ export function WeeklyGrid({
             {/* Day columns for this hour */}
             {days.map((day, dIdx) => {
               const cellPosts = groupedPosts[`${day.full}-${hour.value}`] || [];
-              // Use the actual weekday of this column, not its render index —
-              // in DAY view `days` always has exactly 1 element so dIdx is
-              // always 0, making the heatmap ignore which day is selected (#88 M9).
-              const percentage = getBestTimePercentage(day.raw.getDay(), hour.value, bestTimesData, bestTimePlatform);
-              const heatmapBg = getHeatmapBg(percentage);
 
               return (
                 <div 
@@ -283,14 +255,13 @@ export function WeeklyGrid({
                       }
                     }
                   }}
-                  style={{ backgroundColor: heatmapBg }}
-                  className="flex-1 border-l border-gray-100 first:border-l-0 transition-all hover:bg-red-100/30 cursor-pointer p-1.5 relative flex flex-col justify-start min-w-[100px]"
+                  className="flex-1 border-l border-gray-200/80 first:border-l-0 transition-all hover:bg-gray-50/80 cursor-pointer p-1.5 relative flex flex-col justify-start min-w-[100px] group/hcell"
                 >
-                  {/* Heatmap Percentage Background Text */}
-                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none select-none z-0">
-                    <span className="text-[10px] font-black text-red-900/10 tracking-tight">
-                      {percentage}%
-                    </span>
+                  {/* Quick Add '+' indicator on cell hover */}
+                  <div className="absolute top-1.5 right-1.5 opacity-0 group-hover/hcell:opacity-100 transition-opacity z-20 pointer-events-none">
+                    <div className="w-4 h-4 bg-[#0A0A0A] text-white rounded-full flex items-center justify-center text-[10px] font-black shadow-sm">
+                      +
+                    </div>
                   </div>
 
                   {/* Scheduled Posts rendering */}

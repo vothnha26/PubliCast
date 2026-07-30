@@ -1,10 +1,12 @@
 // @atproto/api is globally mocked in jest.setup.cjs (its dependency tree
 // ships ESM-only packages Jest can't load).
 const blueskyGateway = require('../../src/services/social/bluesky/bluesky.gateway');
+const blueskyOAuthHelper = require('../../src/services/social/bluesky/bluesky-oauth.helper');
 const blueskyService = require('../../src/services/social/bluesky/bluesky.service');
 const socialAccountRepository = require('../../src/repositories/social/social-account.repository');
 
 jest.mock('../../src/services/social/bluesky/bluesky.gateway');
+jest.mock('../../src/services/social/bluesky/bluesky-oauth.helper');
 jest.mock('../../src/repositories/social/social-account.repository');
 jest.mock('../../src/utils/encryption', () => ({
   decrypt: jest.fn(val => val || 'decrypted_token'),
@@ -35,13 +37,16 @@ describe('Bluesky Integration Suite', () => {
   });
 
   describe('Bluesky Service Facade', () => {
-    it('should connect a bluesky channel and upsert into repository', async () => {
+    it('should connect a bluesky channel via OAuth DPoP and upsert into repository', async () => {
       const mockAgent = {};
-      const mockSession = { data: { accessJwt: 'access_123', refreshJwt: 'refresh_123', did: 'did:plc:123' } };
+      const mockKeyPair = {
+        privateKey: { export: jest.fn(() => 'mock-private-key-pem') },
+        jwk: { kty: 'EC', crv: 'P-256', x: 'x', y: 'y' }
+      };
       const mockProfile = { did: 'did:plc:123', handle: 'user.bsky.social', displayName: 'Test User', avatar: 'http://example.com/avatar.jpg', followersCount: 100, followsCount: 50, postsCount: 10 };
 
-      blueskyGateway.createAgent.mockReturnValue(mockAgent);
-      blueskyGateway.loginWithAppPassword.mockResolvedValue(mockSession);
+      blueskyOAuthHelper.resolveDidToPdsUrl.mockResolvedValue('https://puffball.us-east.host.bsky.network');
+      blueskyGateway.createDPoPAgent.mockReturnValue(mockAgent);
       blueskyGateway.getProfile.mockResolvedValue(mockProfile);
 
       socialAccountRepository.upsertBlueskyAccount.mockResolvedValue({
@@ -51,11 +56,19 @@ describe('Bluesky Integration Suite', () => {
         username: 'user.bsky.social'
       });
 
-      const account = await blueskyService.connectChannel('brand_1', { handle: 'user.bsky.social', appPassword: 'app-password-123' });
+      const tokenData = { access_token: 'access_123', refresh_token: 'refresh_123', sub: 'did:plc:123' };
+      const account = await blueskyService.connectChannelViaOAuth('brand_1', { tokenData, keyPair: mockKeyPair });
 
-      expect(blueskyGateway.loginWithAppPassword).toHaveBeenCalledWith(mockAgent, 'user.bsky.social', 'app-password-123');
+      expect(blueskyOAuthHelper.resolveDidToPdsUrl).toHaveBeenCalledWith('did:plc:123');
+      expect(blueskyGateway.createDPoPAgent).toHaveBeenCalledWith({ did: 'did:plc:123', accessJwt: 'access_123', keyPair: mockKeyPair, pdsUrl: 'https://puffball.us-east.host.bsky.network' });
       expect(socialAccountRepository.upsertBlueskyAccount).toHaveBeenCalled();
       expect(account.username).toBe('user.bsky.social');
+    });
+
+    it('should throw when OAuth token exchange did not return an access token or DID', async () => {
+      await expect(
+        blueskyService.connectChannelViaOAuth('brand_1', { tokenData: {}, keyPair: {} })
+      ).rejects.toThrow('Bluesky OAuth token exchange did not return an access token/DID');
     });
 
     it('should publish post successfully through service facade', async () => {

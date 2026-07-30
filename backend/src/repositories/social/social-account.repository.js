@@ -974,7 +974,7 @@ class SocialAccountRepository {
 
   async upsertBlueskyAccount(brandId, accountData, options = {}) {
     const { enqueueSync = true } = options;
-    const { did, handle, displayName, avatarUrl, accessToken, refreshToken, pdsUrl = 'https://bsky.social', emailConfirmed = false, followersCount = 0, followsCount = 0, postsCount = 0 } = accountData;
+    const { did, handle, displayName, avatarUrl, accessToken, refreshToken, pdsUrl = 'https://bsky.social', emailConfirmed = false, followersCount = 0, followsCount = 0, postsCount = 0, dpopPrivateKey, dpopJwk } = accountData;
 
     return prisma.$transaction(async (tx) => {
       const account = await tx.socialAccount.upsert({
@@ -1004,7 +1004,9 @@ class SocialAccountRepository {
                 emailConfirmed: Boolean(emailConfirmed),
                 followersCount: parseInt(followersCount) || 0,
                 followsCount: parseInt(followsCount) || 0,
-                postsCount: parseInt(postsCount) || 0
+                postsCount: parseInt(postsCount) || 0,
+                dpopPrivateKey: dpopPrivateKey ? encrypt(dpopPrivateKey) : undefined,
+                dpopJwk: dpopJwk ? encrypt(dpopJwk) : undefined
               },
               update: {
                 handle,
@@ -1012,7 +1014,9 @@ class SocialAccountRepository {
                 emailConfirmed: Boolean(emailConfirmed),
                 followersCount: parseInt(followersCount) || 0,
                 followsCount: parseInt(followsCount) || 0,
-                postsCount: parseInt(postsCount) || 0
+                postsCount: parseInt(postsCount) || 0,
+                dpopPrivateKey: dpopPrivateKey ? encrypt(dpopPrivateKey) : undefined,
+                dpopJwk: dpopJwk ? encrypt(dpopJwk) : undefined
               }
             }
           }
@@ -1037,7 +1041,9 @@ class SocialAccountRepository {
               emailConfirmed: Boolean(emailConfirmed),
               followersCount: parseInt(followersCount) || 0,
               followsCount: parseInt(followsCount) || 0,
-              postsCount: parseInt(postsCount) || 0
+              postsCount: parseInt(postsCount) || 0,
+              dpopPrivateKey: dpopPrivateKey ? encrypt(dpopPrivateKey) : undefined,
+              dpopJwk: dpopJwk ? encrypt(dpopJwk) : undefined
             }
           }
         },
