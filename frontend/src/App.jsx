@@ -45,13 +45,11 @@ import { MyTasksPage } from "./pages/manage/MyTasks";
 import { CreateWorkplacePage } from "./pages/manage/CreateWorkplace";
 import { BrandSettingsPage } from "./pages/manage/BrandSettings";
 import { StaffChatPage } from "./pages/manage/StaffChat";
-import { AdsPage } from "./pages/manage/Ads";
 import { CompetitorsPage } from "./pages/manage/Competitors";
 import { ReportsPage } from "./pages/manage/Reports";
 import { SmartLinksPage } from "./pages/manage/SmartLinks";
 import { PublicSmartLinksPage } from "./pages/manage/PublicSmartLinksPage";
 import { ConnectPlatformsPage } from "./pages/manage/Placeholder";
-import { LivestreamChat } from "./pages/manage/LivestreamChat";
 import HighlightStudio from "./pages/manage/HighlightStudio";
 import { ObsChatOverlay } from "./pages/manage/ObsChatOverlay";
 
@@ -175,11 +173,11 @@ export default function App() {
               <Route path="/manage/team" element={<ProtectedRoute allowedRoles={CLIENT_ROLES}><TeamManagementPage /></ProtectedRoute>} />
               <Route path="/manage/workplace/new" element={<ProtectedRoute allowedRoles={CLIENT_ROLES}><CreateWorkplacePage /></ProtectedRoute>} />
               <Route path="/manage/reports" element={<ProtectedRoute allowedRoles={CLIENT_ROLES}><ReportsPage /></ProtectedRoute>} />
-              <Route path="/manage/ads" element={<ProtectedRoute allowedRoles={CLIENT_ROLES}><FeatureGate productId={PRODUCT_IDS.ADS_MANAGER}><AdsPage /></FeatureGate></ProtectedRoute>} />
+              <Route path="/manage/ads" element={<Navigate to="/dashboard" replace />} />
               <Route path="/manage/tasks" element={<ProtectedRoute allowedRoles={CLIENT_ROLES}><MyTasksPage /></ProtectedRoute>} />
               <Route path="/manage/competitors" element={<ProtectedRoute allowedRoles={CLIENT_ROLES}><CompetitorsPage /></ProtectedRoute>} />
               <Route path="/manage/connections" element={<ProtectedRoute allowedRoles={CLIENT_ROLES}><BrandSettingsPage /></ProtectedRoute>} />
-              <Route path="/manage/livestream-chat" element={<ProtectedRoute allowedRoles={CLIENT_ROLES}><LivestreamChat /></ProtectedRoute>} />
+              <Route path="/manage/livestream-chat" element={<Navigate to="/dashboard" replace />} />
               <Route path="/manage/highlight-studio" element={<ProtectedRoute allowedRoles={CLIENT_ROLES}><HighlightStudio /></ProtectedRoute>} />
               
               {/* Protected Admin Routes */}
