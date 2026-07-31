@@ -3,6 +3,30 @@ const logger = require('../../utils/logger');
 const trendingHashtagService = require('../../services/workspace/hashtag/trending/TrendingHashtagService');
 const tokApiHashtagProvider = require('../../services/workspace/hashtag/tokapi-hashtag.provider');
 
+const PLATFORM_MAP = {
+  IG: 'INSTAGRAM',
+  INSTAGRAM: 'INSTAGRAM',
+  FB: 'FACEBOOK',
+  FACEBOOK: 'FACEBOOK',
+  TK: 'TIKTOK',
+  TIKTOK: 'TIKTOK',
+  YT: 'YOUTUBE',
+  YOUTUBE: 'YOUTUBE',
+  TW: 'TWITTER_X',
+  TWITTER: 'TWITTER_X',
+  TWITTER_X: 'TWITTER_X',
+  PIN: 'PINTEREST',
+  PINTEREST: 'PINTEREST',
+  LI: 'LINKEDIN',
+  LINKEDIN: 'LINKEDIN'
+};
+
+function normalizePlatform(p) {
+  if (!p) return 'INSTAGRAM';
+  const upper = String(p).toUpperCase();
+  return PLATFORM_MAP[upper] || upper;
+}
+
 /**
  * Fetches real hashtag stats from TokApi (TikTok only — no equivalent data
  * source is wired up for other platforms yet). Returns null fields rather
@@ -40,7 +64,7 @@ exports.getHashtagData = async (req, res, next) => {
   try {
     const { brandId } = req.query;
     if (!brandId) {
-      return res.status(400).json({ message: 'Missing brandId parameter' });
+      return res.status(400).json({ message: 'Missing required fields: brandId' });
     }
 
     // Fetch sets
@@ -166,6 +190,8 @@ exports.trackHashtag = async (req, res, next) => {
       return res.status(400).json({ message: 'Missing required fields: brandId, hashtag, platform' });
     }
 
+    const normPlatform = normalizePlatform(platform);
+
     // Clean up hashtag input
     const cleanTag = hashtag.startsWith('#') ? hashtag : `#${hashtag}`;
 
@@ -174,7 +200,7 @@ exports.trackHashtag = async (req, res, next) => {
       where: {
         brandId_platform_hashtag: {
           brandId,
-          platform,
+          platform: normPlatform,
           hashtag: cleanTag
         }
       }
@@ -184,13 +210,13 @@ exports.trackHashtag = async (req, res, next) => {
       return res.status(409).json({ message: 'Hashtag is already being tracked on this platform' });
     }
 
-    const stats = await fetchRealHashtagStats(platform, cleanTag, null);
+    const stats = await fetchRealHashtagStats(normPlatform, cleanTag, null);
 
     const newTracker = await prisma.hashtagTracker.create({
       data: {
         brandId,
         hashtag: cleanTag,
-        platform,
+        platform: normPlatform,
         platformHashtagId: stats.platformHashtagId,
         totalPosts: stats.totalPosts,
         postsLast24h: null,

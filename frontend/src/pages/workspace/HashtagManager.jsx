@@ -209,7 +209,7 @@ export function HashtagManager() {
       await apiService.post("/hashtags/track", {
         brandId: activeBrand.id,
         hashtag: tagText,
-        platform: "IG"
+        platform: "INSTAGRAM"
       });
       toast.success(t("toasts.trackSuccess", { tag: tagText }));
       loadData(true);
@@ -486,8 +486,8 @@ export function HashtagManager() {
       {/* Editor Modal for Updating Set */}
       {selectedSet && (
         <div className="fixed inset-0 z-50 flex justify-end">
-           <div className="absolute inset-0 bg-black/30 backdrop-blur-xs" onClick={() => setSelectedSet(null)} />
-           <div className="w-[450px] h-full bg-white shadow-2xl flex flex-col animate-in slide-in-from-right duration-350">
+           <div className="absolute inset-0 bg-black/40 backdrop-blur-xs" onClick={() => setSelectedSet(null)} />
+           <div className="relative z-10 w-[450px] h-full bg-white shadow-2xl flex flex-col animate-in slide-in-from-right duration-350">
               <div className="p-5 border-b border-gray-150 flex items-center justify-between">
                  <h3 className="font-bold text-sm text-gray-900 flex items-center gap-1.5">
                    <Sparkles className="text-indigo-500" size={16} />
@@ -545,8 +545,8 @@ export function HashtagManager() {
       {/* Editor Modal for Creating new Set */}
       {isCreateOpen && (
         <div className="fixed inset-0 z-50 flex justify-end">
-           <div className="absolute inset-0 bg-black/30 backdrop-blur-xs" onClick={() => setIsCreateOpen(false)} />
-           <div className="w-[450px] h-full bg-white shadow-2xl flex flex-col animate-in slide-in-from-right duration-350">
+           <div className="absolute inset-0 bg-black/40 backdrop-blur-xs" onClick={() => setIsCreateOpen(false)} />
+           <div className="relative z-10 w-[450px] h-full bg-white shadow-2xl flex flex-col animate-in slide-in-from-right duration-350">
               <div className="p-5 border-b border-gray-150 flex items-center justify-between">
                  <h3 className="font-bold text-sm text-gray-900 flex items-center gap-1.5">
                    <Plus className="text-blue-500" size={16} />
