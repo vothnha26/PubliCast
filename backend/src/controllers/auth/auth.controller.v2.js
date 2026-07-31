@@ -1,5 +1,7 @@
 const authService = require('../../services/auth/auth.service');
-const { v2Success, v2Error } = require('../../utils/response.helper');
+const { v2Success } = require('../../utils/response.helper');
+const { setAuthCookies } = require('../../utils/cookie.utils');
+const jwtUtils = require('../../utils/jwt.utils');
 
 /**
  * Auth Controller V2 - Enforces Standardized Envelope Responses: { message, data }
@@ -7,8 +9,9 @@ const { v2Success, v2Error } = require('../../utils/response.helper');
 class AuthControllerV2 {
   async register(req, res, next) {
     try {
-      const result = await authService.registerUser(req.body);
-      return v2Success(res, result, 'Registration initiated. OTP sent to email.', 201);
+      const { name, email, password } = req.body;
+      const user = await authService.register(name, email, password);
+      return v2Success(res, { userId: user.id }, 'Registration initiated. OTP sent to email.', 201);
     } catch (err) {
       next(err);
     }
@@ -18,7 +21,10 @@ class AuthControllerV2 {
     try {
       const { email, otp } = req.body;
       const result = await authService.verifyOTP(email, otp);
-      return v2Success(res, result, 'Email verified successfully.');
+      if (result.accessToken && result.refreshToken) {
+        setAuthCookies(res, result.accessToken, result.refreshToken);
+      }
+      return v2Success(res, { user: result.user }, 'Email verified successfully.');
     } catch (err) {
       next(err);
     }
@@ -36,8 +42,15 @@ class AuthControllerV2 {
 
   async login(req, res, next) {
     try {
-      const result = await authService.loginUser(req.body, res);
-      return v2Success(res, result, 'Login successful.');
+      const { email, password } = req.body;
+      const result = await authService.login(email, password);
+
+      if (result.require2FA) {
+        return v2Success(res, { require2FA: true, preAuthToken: result.preAuthToken }, '2FA required.');
+      }
+
+      setAuthCookies(res, result.accessToken, result.refreshToken);
+      return v2Success(res, { user: result.user, role: result.role }, 'Login successful.');
     } catch (err) {
       next(err);
     }
@@ -45,8 +58,12 @@ class AuthControllerV2 {
 
   async logout(req, res, next) {
     try {
-      const refreshToken = req.cookies?.refreshToken || req.body?.refreshToken;
-      await authService.logoutUser(req.user?.id, refreshToken, res);
+      const userId = req.user?.id;
+      if (userId) {
+        await authService.logout(userId);
+      }
+      res.clearCookie('accessToken', { path: '/' });
+      res.clearCookie('refreshToken', { path: '/' });
       return v2Success(res, null, 'Logged out successfully.');
     } catch (err) {
       next(err);
@@ -55,9 +72,16 @@ class AuthControllerV2 {
 
   async refreshToken(req, res, next) {
     try {
-      const token = req.cookies?.refreshToken || req.body?.refreshToken;
-      const result = await authService.refreshAccessToken(token, res);
-      return v2Success(res, result, 'Token refreshed successfully.');
+      const refreshToken = req.cookies?.refreshToken;
+      if (!refreshToken) {
+        const error = new Error('Refresh token required');
+        error.status = 401;
+        throw error;
+      }
+      const decoded = jwtUtils.verifyRefreshToken(refreshToken);
+      const result = await authService.refreshTokens(refreshToken, decoded.id);
+      setAuthCookies(res, result.accessToken, result.refreshToken);
+      return v2Success(res, null, 'Token refreshed successfully.');
     } catch (err) {
       next(err);
     }
@@ -86,7 +110,7 @@ class AuthControllerV2 {
   async resetPassword(req, res, next) {
     try {
       const { token, newPassword } = req.body;
-      const result = await authService.resetPassword(token, newPassword);
+      const result = await authService.resetPasswordWithToken(token, newPassword);
       return v2Success(res, result, 'Password reset successfully.');
     } catch (err) {
       next(err);
@@ -104,8 +128,8 @@ class AuthControllerV2 {
 
   async verify2FA(req, res, next) {
     try {
-      const { token } = req.body;
-      const result = await authService.verify2FA(req.user.id, token);
+      const { code } = req.body;
+      const result = await authService.verify2FA(req.user.id, code);
       return v2Success(res, result, '2FA enabled successfully.');
     } catch (err) {
       next(err);
@@ -114,8 +138,8 @@ class AuthControllerV2 {
 
   async disable2FA(req, res, next) {
     try {
-      const { password } = req.body;
-      const result = await authService.disable2FA(req.user.id, password);
+      const { code } = req.body;
+      const result = await authService.disable2FA(req.user.id, code);
       return v2Success(res, result, '2FA disabled successfully.');
     } catch (err) {
       next(err);
@@ -125,8 +149,9 @@ class AuthControllerV2 {
   async loginVerify2FA(req, res, next) {
     try {
       const { preAuthToken, code } = req.body;
-      const result = await authService.loginVerify2FA(preAuthToken, code, res);
-      return v2Success(res, result, '2FA verification successful.');
+      const result = await authService.loginVerify2FA(preAuthToken, code);
+      setAuthCookies(res, result.accessToken, result.refreshToken);
+      return v2Success(res, { user: result.user, role: result.role, isBackupUsed: result.isBackupUsed }, '2FA verification successful.');
     } catch (err) {
       next(err);
     }
