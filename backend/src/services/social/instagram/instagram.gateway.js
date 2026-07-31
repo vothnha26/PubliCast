@@ -346,7 +346,12 @@ class InstagramGateway {
   /**
    * Lấy insights của một bài đăng Instagram
    */
-  async getInstagramMediaInsights(mediaId, accessToken, metrics = 'impressions,reach,saved') {
+  // `impressions` is deprecated for media created after July 2, 2024 (see
+  // guide/instagram/reference/instagram-media.insights.md) and Graph API
+  // rejects the whole request when it's included with other metrics for a
+  // new post — not just that one field. `views` is the supported replacement
+  // (same metric family, available for FEED/REELS/STORY).
+  async getInstagramMediaInsights(mediaId, accessToken, metrics = 'views,reach,saved') {
     const url = `${this.graphBaseUrl}/${mediaId}/insights?metric=${metrics}&access_token=${accessToken}`;
     
     const res = await fetch(url);
@@ -400,21 +405,63 @@ class InstagramGateway {
     return res.json();
   }
 
+  /**
+   * Fetches daily account-level insights (views, reach, profile_views).
+   *
+   * Verified live against Graph API v25.0 (2026): the `impressions` metric
+   * used previously is no longer accepted at all — the API rejects it with
+   * "(#100) metric[0] must be one of the following values: reach,
+   * follower_count, ..., views, ...". `views` is the direct replacement, BUT
+   * it (like several other current metrics) only supports
+   * `metric_type=total_value`, which collapses the entire since/until window
+   * into a single number — it no longer returns a `values[]` array with one
+   * entry per day the way the old `impressions`/`reach` metrics used to.
+   * Confirmed live: requesting `metric_type=time_series` for `views` is
+   * rejected outright ("incompatible with the metric type").
+   *
+   * To keep the daily-breakdown growth chart working, this fetches one
+   * single-day window per calendar day in [startDate, endDate] and
+   * reassembles them into the old `{ name, values: [{ value, end_time }] }`
+   * shape callers (`instagram-analytics.service.js`) already expect. Each
+   * day is fetched independently and a failure on one day is skipped rather
+   * than aborting the whole range — one bad day's insights shouldn't blank
+   * out an otherwise-successful multi-week sync.
+   */
   async getAccountInsights(igAccountId, accessToken, startDate, endDate) {
-    const since = Math.floor(new Date(startDate).getTime() / 1000);
-    const until = Math.floor(new Date(endDate).getTime() / 1000);
-    const metrics = 'impressions,reach,profile_views';
-    const url = `${this.graphBaseUrl}/${igAccountId}/insights?metric=${metrics}&period=day&since=${since}&until=${until}&access_token=${accessToken}`;
-    
-    const res = await fetch(url);
-    if (!res.ok) {
-      const errData = await res.json().catch(() => ({}));
-      console.warn(`[InstagramGateway] getAccountInsights failed:`, errData.error?.message);
-      return [];
+    const metrics = 'views,reach,profile_views';
+    const dayMs = 24 * 60 * 60 * 1000;
+    const start = new Date(new Date(startDate).toISOString().split('T')[0] + 'T00:00:00Z');
+    const end = new Date(new Date(endDate).toISOString().split('T')[0] + 'T00:00:00Z');
+
+    const byMetric = { views: [], reach: [], profile_views: [] };
+
+    for (let dayStart = start.getTime(); dayStart <= end.getTime(); dayStart += dayMs) {
+      const since = Math.floor(dayStart / 1000);
+      const until = Math.floor((dayStart + dayMs) / 1000);
+      const endTimeIso = new Date(dayStart + dayMs).toISOString();
+      const url = `${this.graphBaseUrl}/${igAccountId}/insights?metric=${metrics}&period=day&metric_type=total_value&since=${since}&until=${until}&access_token=${accessToken}`;
+
+      try {
+        const res = await fetch(url);
+        if (!res.ok) {
+          const errData = await res.json().catch(() => ({}));
+          console.warn(`[InstagramGateway] getAccountInsights failed for day ${new Date(dayStart).toISOString().split('T')[0]}:`, errData.error?.message);
+          continue;
+        }
+        const data = await res.json();
+        for (const item of data.data || []) {
+          if (byMetric[item.name] && item.total_value) {
+            byMetric[item.name].push({ value: item.total_value.value || 0, end_time: endTimeIso });
+          }
+        }
+      } catch (err) {
+        console.warn(`[InstagramGateway] getAccountInsights request error for day ${new Date(dayStart).toISOString().split('T')[0]}:`, err.message);
+      }
     }
-    
-    const data = await res.json();
-    return data.data || [];
+
+    return Object.entries(byMetric)
+      .filter(([, values]) => values.length > 0)
+      .map(([name, values]) => ({ name, period: 'day', values }));
   }
 
   async searchAudio(q, accessToken) {
