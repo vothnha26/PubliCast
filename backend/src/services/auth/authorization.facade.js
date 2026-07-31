@@ -101,10 +101,12 @@ class AuthorizationFacade {
       return true;
     }
 
-    // 2. Fetch the user's membership in the brand
-    const membership = await prisma.team.findUnique({
+    // 2. Fetch the user's membership in the brand (ensuring brand is not soft-deleted)
+    const membership = await prisma.team.findFirst({
       where: {
-        brandId_userId: { brandId, userId }
+        brandId,
+        userId,
+        brand: { deletedAt: null }
       }
     });
 
@@ -129,7 +131,7 @@ class AuthorizationFacade {
   }
 
   /**
-   * Check if a user has access to a brand (is owner or active member)
+   * Check if a user has access to a brand (is owner or active member of non-deleted brand)
    */
   async checkBrandAccess(userId, brandId) {
     if (!userId || !brandId) return false;
@@ -138,10 +140,12 @@ class AuthorizationFacade {
     const isOwner = await this.ownerStrategy.canAccess(userId, brandId);
     if (isOwner) return true;
 
-    // Check membership
-    const membership = await prisma.team.findUnique({
+    // Check membership (ensuring brand is not soft-deleted)
+    const membership = await prisma.team.findFirst({
       where: {
-        brandId_userId: { brandId, userId }
+        brandId,
+        userId,
+        brand: { deletedAt: null }
       }
     });
 

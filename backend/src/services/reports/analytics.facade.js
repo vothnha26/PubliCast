@@ -193,56 +193,58 @@ class AnalyticsFacade {
     const allPlatformPosts = [];
     const socialPlatformFactory = require('../social/social-platform.factory');
 
-    for (const acc of activeAccounts) {
-      let followers = 0;
-      if (acc.platform === 'YOUTUBE' && acc.youtubeChannel) {
-        followers = acc.youtubeChannel.subscribersCount;
-      } else if (acc.platform === 'FACEBOOK' && acc.facebookPage) {
-        followers = acc.facebookPage.followersCount;
-      } else if (acc.platform === 'INSTAGRAM' && acc.instagramAccount) {
-        followers = acc.instagramAccount.followersCount;
-      } else if (acc.platform === 'TIKTOK' && acc.tikTokAccount) {
-        followers = acc.tikTokAccount.followersCount;
-      } else if (acc.platform === 'TELEGRAM' && acc.telegramAccount) {
-        followers = acc.telegramAccount.memberCount;
-      }
-
-      try {
-        const service = socialPlatformFactory.getService(acc.platform);
-        // Fetch published videos/posts from social platform API
-        const apiResult = await service.getPublishedVideos(brandId, null, 20, acc.id);
-        const apiPosts = apiResult?.videos || apiResult?.posts || apiResult?.data || [];
-
-        if (Array.isArray(apiPosts)) {
-          apiPosts.forEach(post => {
-            const pubDate = post.publishedAt ? new Date(post.publishedAt) : null;
-            // Check if post falls within the date range
-            if (pubDate && pubDate >= dateFrom && pubDate <= dateTo) {
-              const likes = post.likes || 0;
-              const comments = post.comments || 0;
-              const shares = post.shares || 0;
-              const viewsOrReach = post.views || post.reach || 0;
-
-              const denominator = viewsOrReach > 0 ? viewsOrReach : (followers || 1000);
-              const engagementRate = parseFloat((((likes + comments + shares) / denominator) * 100).toFixed(2));
-
-              allPlatformPosts.push({
-                id: post.id || post.platformPostId,
-                title: post.title || post.caption || 'Không có tiêu đề',
-                caption: post.caption || '',
-                platform: acc.platform,
-                likes,
-                comments,
-                shares,
-                engagementRate
-              });
-            }
-          });
+    await Promise.allSettled(
+      activeAccounts.map(async (acc) => {
+        let followers = 0;
+        if (acc.platform === 'YOUTUBE' && acc.youtubeChannel) {
+          followers = acc.youtubeChannel.subscribersCount;
+        } else if (acc.platform === 'FACEBOOK' && acc.facebookPage) {
+          followers = acc.facebookPage.followersCount;
+        } else if (acc.platform === 'INSTAGRAM' && acc.instagramAccount) {
+          followers = acc.instagramAccount.followersCount;
+        } else if (acc.platform === 'TIKTOK' && acc.tikTokAccount) {
+          followers = acc.tikTokAccount.followersCount;
+        } else if (acc.platform === 'TELEGRAM' && acc.telegramAccount) {
+          followers = acc.telegramAccount.memberCount;
         }
-      } catch (err) {
-        console.warn(`[Report Sync] Failed to fetch live posts for platform ${acc.platform}:`, err.message);
-      }
-    }
+
+        try {
+          const service = socialPlatformFactory.getService(acc.platform);
+          // Fetch published videos/posts from social platform API
+          const apiResult = await service.getPublishedVideos(brandId, null, 20, acc.id);
+          const apiPosts = apiResult?.videos || apiResult?.posts || apiResult?.data || [];
+
+          if (Array.isArray(apiPosts)) {
+            apiPosts.forEach(post => {
+              const pubDate = post.publishedAt ? new Date(post.publishedAt) : null;
+              // Check if post falls within the date range
+              if (pubDate && pubDate >= dateFrom && pubDate <= dateTo) {
+                const likes = post.likes || 0;
+                const comments = post.comments || 0;
+                const shares = post.shares || 0;
+                const viewsOrReach = post.views || post.reach || 0;
+
+                const denominator = viewsOrReach > 0 ? viewsOrReach : (followers || 1000);
+                const engagementRate = parseFloat((((likes + comments + shares) / denominator) * 100).toFixed(2));
+
+                allPlatformPosts.push({
+                  id: post.id || post.platformPostId,
+                  title: post.title || post.caption || 'Không có tiêu đề',
+                  caption: post.caption || '',
+                  platform: acc.platform,
+                  likes,
+                  comments,
+                  shares,
+                  engagementRate
+                });
+              }
+            });
+          }
+        } catch (err) {
+          console.warn(`[Report Sync] Failed to fetch live posts for platform ${acc.platform}:`, err.message);
+        }
+      })
+    );
 
     // Also fetch posts from our local database to ensure scheduled/published app posts are included
     const dbPosts = await prisma.post.findMany({

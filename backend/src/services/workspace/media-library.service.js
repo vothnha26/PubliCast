@@ -123,7 +123,14 @@ class MediaLibraryService {
       }
     }
 
-    await mediaLibraryRepository.delete(id);
+    try {
+      await mediaLibraryRepository.delete(id);
+    } catch (err) {
+      if (err.code === 'P2025' || (err.message && err.message.includes('Record to delete does not exist'))) {
+        return { success: true };
+      }
+      throw err;
+    }
     return { success: true };
   }
 

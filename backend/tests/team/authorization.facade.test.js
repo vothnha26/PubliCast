@@ -7,7 +7,7 @@
  */
 jest.mock('../../src/config/prisma', () => ({
   brand: { findFirst: jest.fn() },
-  team: { findUnique: jest.fn() },
+  team: { findUnique: jest.fn(), findFirst: jest.fn() },
   customRolePermission: { findUnique: jest.fn() }
 }));
 
@@ -33,12 +33,12 @@ describe('AuthorizationFacade.checkPermission', () => {
     const result = await authorizationFacade.checkPermission('owner-1', 'brand-1', PERMISSION_KEYS.MANAGE_BILLING);
 
     expect(result).toBe(true);
-    expect(prisma.team.findUnique).not.toHaveBeenCalled();
+    expect(prisma.team.findFirst).not.toHaveBeenCalled();
   });
 
   it('denies access when the user is not the owner and has no team membership', async () => {
     prisma.brand.findFirst.mockResolvedValue(null);
-    prisma.team.findUnique.mockResolvedValue(null);
+    prisma.team.findFirst.mockResolvedValue(null);
 
     const result = await authorizationFacade.checkPermission('stranger-1', 'brand-1', PERMISSION_KEYS.VIEW_ANALYTICS);
 
@@ -47,7 +47,7 @@ describe('AuthorizationFacade.checkPermission', () => {
 
   it('denies access when membership exists but is not ACTIVE (e.g. still PENDING)', async () => {
     prisma.brand.findFirst.mockResolvedValue(null);
-    prisma.team.findUnique.mockResolvedValue({ role: 'ADMIN', status: 'PENDING', customRoleId: null });
+    prisma.team.findFirst.mockResolvedValue({ role: 'ADMIN', status: 'PENDING', customRoleId: null });
 
     const result = await authorizationFacade.checkPermission('user-1', 'brand-1', PERMISSION_KEYS.MANAGE_TEAM);
 
@@ -60,7 +60,7 @@ describe('AuthorizationFacade.checkPermission', () => {
     });
 
     it('ADMIN has MANAGE_TEAM, MANAGE_ROLES, and APPROVE_POSTS', async () => {
-      prisma.team.findUnique.mockResolvedValue({ role: 'ADMIN', status: 'ACTIVE', customRoleId: null });
+      prisma.team.findFirst.mockResolvedValue({ role: 'ADMIN', status: 'ACTIVE', customRoleId: null });
 
       expect(await authorizationFacade.checkPermission('u', 'b', PERMISSION_KEYS.MANAGE_TEAM)).toBe(true);
       expect(await authorizationFacade.checkPermission('u', 'b', PERMISSION_KEYS.MANAGE_ROLES)).toBe(true);
@@ -68,7 +68,7 @@ describe('AuthorizationFacade.checkPermission', () => {
     });
 
     it('USER (Member) can create posts and manage media but cannot manage team or approve posts', async () => {
-      prisma.team.findUnique.mockResolvedValue({ role: 'USER', status: 'ACTIVE', customRoleId: null });
+      prisma.team.findFirst.mockResolvedValue({ role: 'USER', status: 'ACTIVE', customRoleId: null });
 
       expect(await authorizationFacade.checkPermission('u', 'b', PERMISSION_KEYS.CREATE_POSTS)).toBe(true);
       expect(await authorizationFacade.checkPermission('u', 'b', PERMISSION_KEYS.MANAGE_MEDIA)).toBe(true);
@@ -78,7 +78,7 @@ describe('AuthorizationFacade.checkPermission', () => {
     });
 
     it('ANALYST can only view analytics — every write/manage permission is denied', async () => {
-      prisma.team.findUnique.mockResolvedValue({ role: 'ANALYST', status: 'ACTIVE', customRoleId: null });
+      prisma.team.findFirst.mockResolvedValue({ role: 'ANALYST', status: 'ACTIVE', customRoleId: null });
 
       expect(await authorizationFacade.checkPermission('u', 'b', PERMISSION_KEYS.VIEW_ANALYTICS)).toBe(true);
       expect(await authorizationFacade.checkPermission('u', 'b', PERMISSION_KEYS.CREATE_POSTS)).toBe(false);
@@ -87,7 +87,7 @@ describe('AuthorizationFacade.checkPermission', () => {
     });
 
     it('denies (fails closed) for an unrecognized role not present in the matrix', async () => {
-      prisma.team.findUnique.mockResolvedValue({ role: 'SOME_FUTURE_ROLE', status: 'ACTIVE', customRoleId: null });
+      prisma.team.findFirst.mockResolvedValue({ role: 'SOME_FUTURE_ROLE', status: 'ACTIVE', customRoleId: null });
 
       const result = await authorizationFacade.checkPermission('u', 'b', PERMISSION_KEYS.VIEW_ANALYTICS);
 
@@ -101,7 +101,7 @@ describe('AuthorizationFacade.checkPermission', () => {
     });
 
     it('takes precedence over the default role matrix when customRoleId is set', async () => {
-      prisma.team.findUnique.mockResolvedValue({ role: 'USER', status: 'ACTIVE', customRoleId: 'custom-role-1' });
+      prisma.team.findFirst.mockResolvedValue({ role: 'USER', status: 'ACTIVE', customRoleId: 'custom-role-1' });
       prisma.customRolePermission.findUnique.mockResolvedValue({ isAllowed: true });
 
       // Default USER matrix denies MANAGE_TEAM, but the custom role explicitly grants it.
@@ -114,7 +114,7 @@ describe('AuthorizationFacade.checkPermission', () => {
     });
 
     it('denies when the custom role permission row explicitly has isAllowed: false', async () => {
-      prisma.team.findUnique.mockResolvedValue({ role: 'ADMIN', status: 'ACTIVE', customRoleId: 'custom-role-1' });
+      prisma.team.findFirst.mockResolvedValue({ role: 'ADMIN', status: 'ACTIVE', customRoleId: 'custom-role-1' });
       prisma.customRolePermission.findUnique.mockResolvedValue({ isAllowed: false });
 
       // Even though legacy role is ADMIN, an explicit custom-role revocation wins.
@@ -124,7 +124,7 @@ describe('AuthorizationFacade.checkPermission', () => {
     });
 
     it('denies when no CustomRolePermission row exists for this key (fail closed, no fallback to default matrix)', async () => {
-      prisma.team.findUnique.mockResolvedValue({ role: 'ADMIN', status: 'ACTIVE', customRoleId: 'custom-role-1' });
+      prisma.team.findFirst.mockResolvedValue({ role: 'ADMIN', status: 'ACTIVE', customRoleId: 'custom-role-1' });
       prisma.customRolePermission.findUnique.mockResolvedValue(null);
 
       const result = await authorizationFacade.checkPermission('u', 'b', PERMISSION_KEYS.MANAGE_TEAM);
@@ -143,19 +143,19 @@ describe('AuthorizationFacade.checkBrandAccess', () => {
     prisma.brand.findFirst.mockResolvedValue({ id: 'brand-1', ownerId: 'owner-1' });
 
     expect(await authorizationFacade.checkBrandAccess('owner-1', 'brand-1')).toBe(true);
-    expect(prisma.team.findUnique).not.toHaveBeenCalled();
+    expect(prisma.team.findFirst).not.toHaveBeenCalled();
   });
 
   it('grants access to an ACTIVE member regardless of role', async () => {
     prisma.brand.findFirst.mockResolvedValue(null);
-    prisma.team.findUnique.mockResolvedValue({ role: 'ANALYST', status: 'ACTIVE' });
+    prisma.team.findFirst.mockResolvedValue({ role: 'ANALYST', status: 'ACTIVE' });
 
     expect(await authorizationFacade.checkBrandAccess('user-1', 'brand-1')).toBe(true);
   });
 
   it('denies access to a PENDING (not-yet-accepted) member', async () => {
     prisma.brand.findFirst.mockResolvedValue(null);
-    prisma.team.findUnique.mockResolvedValue({ role: 'ADMIN', status: 'PENDING' });
+    prisma.team.findFirst.mockResolvedValue({ role: 'ADMIN', status: 'PENDING' });
 
     expect(await authorizationFacade.checkBrandAccess('user-1', 'brand-1')).toBe(false);
   });

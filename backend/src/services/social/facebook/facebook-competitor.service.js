@@ -92,7 +92,7 @@ class FacebookCompetitorService {
         displayName: `Facebook Page (${pageId})`,
         avatarUrl: `https://graph.facebook.com/${pageId}/picture?type=large`, // URL ảnh profile công khai không cần token
         profileUrl: `https://www.facebook.com/${pageId}`,
-        followersCount: Math.floor(Math.random() * 5000) + 1200,
+        followersCount: 0,
       };
     }
 
