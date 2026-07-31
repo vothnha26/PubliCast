@@ -174,6 +174,9 @@ app.use('/uploads', express.static('uploads', {
   }
 }));
 
+// ── Swagger API Documentation UI ─────────────────────────────────────────
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+
 // ── API Routes ─────────────────────────────────────────────────────────────
 app.use('/api/auth', authRoutes);
 app.use('/oauth', authRoutes);
