@@ -112,6 +112,7 @@ function BillingIcon({ size, className }) {
 
 export function Topbar() {
   const { t } = useTranslation("topbar");
+  const { language, setLanguage } = useLanguage();
   const navigate = useNavigate();
   const location = useLocation();
   const [brandOpen, setBrandOpen] = useState(false);
@@ -330,6 +331,17 @@ export function Topbar() {
 
         {/* Right: Actions & Brand */}
         <div className="flex items-center gap-3">
+          {/* Global Language Switcher */}
+          {!isSuperadmin && (
+            <button
+              onClick={() => setLanguage(language === "vi" ? "en" : "vi")}
+              className="px-2 py-1 rounded-lg bg-[var(--muted)] hover:bg-gray-200/80 dark:hover:bg-gray-800 text-[10px] font-extrabold text-[var(--foreground)] border border-[var(--sidebar-border)] transition-all flex items-center gap-1 cursor-pointer shadow-2xs"
+              title="Đổi ngôn ngữ ứng dụng / Switch App Language"
+            >
+              <span>{language === "vi" ? "🇻🇳 VI" : "🇬🇧 EN"}</span>
+            </button>
+          )}
+
           {/* Notification Bell (Workspace only) */}
           {!isSuperadmin && (
             <button 

@@ -22,7 +22,6 @@ const productDropdownData = {
       { name: "Analytics", desc: "Unified performance data", path: "/dashboard" },
       { name: "Reports", desc: "Client-ready reports", path: "/manage/reports" },
       { name: "Competitors", desc: "Benchmark your growth", path: "/manage/competitors" },
-      { name: "Ads", desc: "Ad campaign tracking", path: "/manage/ads" },
       { name: "Inbox", desc: "All messages in one place", path: "/manage/inbox" },
     ],
   },

@@ -13,7 +13,8 @@ import {
 } from "../ui/popover";
 
 export function DateRangeFilter({ className, date, setDate }) {
-  // Use uncontrolled popover for better compatibility
+  const [activePresetLabel, setActivePresetLabel] = React.useState("Last 30 days");
+
   const presets = [
     { label: "Yesterday", getValue: () => ({ from: subDays(new Date(), 1), to: subDays(new Date(), 1) }), premium: false },
     { label: "Last week", getValue: () => ({ from: subDays(new Date(), 7), to: new Date() }), premium: false },
@@ -26,15 +27,20 @@ export function DateRangeFilter({ className, date, setDate }) {
   ];
 
   const handlePresetClick = (preset) => {
+    setActivePresetLabel(preset.label);
     setDate(preset.getValue());
   };
 
   const isActivePreset = (preset) => {
+    if (activePresetLabel) {
+      return activePresetLabel === preset.label;
+    }
     const value = preset.getValue();
     return isSameDay(date?.from, value.from) && isSameDay(date?.to, value.to);
   };
 
   const handleSelect = (range, selectedDay) => {
+    setActivePresetLabel(null);
     if (!range) {
       setDate({ from: selectedDay, to: selectedDay });
       return;

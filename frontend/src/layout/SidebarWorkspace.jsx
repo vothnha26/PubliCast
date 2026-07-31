@@ -31,8 +31,6 @@ const MANAGE_ITEMS = [
   { name: "Hashtag Tracker", nameKey: "sidebar.hashtagTracker", icon: <Hash size={18} />, path: "/hashtags" },
   { name: "Reporting", nameKey: "sidebar.reporting", icon: <FileText size={18} />, path: "/manage/reports" },
   { name: "Competitors", nameKey: "sidebar.competitors", icon: <TrendingUp size={18} />, path: "/manage/competitors" },
-  { name: "Ads Manager", nameKey: "sidebar.adsManager", icon: <Megaphone size={18} />, path: "/manage/ads" },
-  { name: "Livestream Chat", nameKey: "sidebar.livestreamChat", icon: <PlayCircle size={18} />, path: "/manage/livestream-chat" },
 ];
 
 export function SidebarWorkspace() {

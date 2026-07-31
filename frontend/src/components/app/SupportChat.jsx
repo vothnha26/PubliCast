@@ -266,7 +266,7 @@ export function SupportChat() {
   };
 
   return (
-    <div className="fixed bottom-6 right-6 z-[60] flex flex-col items-end font-sans">
+    <div className="fixed bottom-4 right-4 z-40 flex flex-col items-end font-sans">
       {/* Chat Window */}
       {isOpen && (
         <div className="mb-4 w-[350px] h-[520px] bg-white rounded-2xl shadow-2xl border border-gray-100 flex flex-col overflow-hidden animate-in slide-in-from-bottom-4 duration-300">
