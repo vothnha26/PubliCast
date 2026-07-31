@@ -293,13 +293,14 @@ export function SettingsPage() {
     setIsLoading(true);
     try {
       const res = await profileService.getUserProfile();
-      if (res && res.data) {
-        setFullName(res.data.name || "");
-        setEmail(res.data.email || "");
-        setReceiveSummary(res.data.receiveSummary ?? true);
-        setCustomSummaryEmail(res.data.customSummaryEmail || "");
-        setTwoFactor(res.data.isTwoFactorEnabled ?? false);
-        setAccounts(res.data.accounts || []);
+      const userData = res?.data || res;
+      if (userData) {
+        setFullName(userData.name || "");
+        setEmail(userData.email || "");
+        setReceiveSummary(userData.receiveSummary ?? true);
+        setCustomSummaryEmail(userData.customSummaryEmail || "");
+        setTwoFactor(userData.isTwoFactorEnabled ?? false);
+        setAccounts(userData.accounts || []);
       }
     } catch (err) {
       toast.error(language === 'vi' ? "Không thể tải thông tin cá nhân" : "Failed to load profile details");
