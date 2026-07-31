@@ -174,9 +174,11 @@ async function runAuthSuite() {
       console.log("🖱️ Click nút Verify Code...");
       await verifyButton.click();
 
-      // Chờ chuyển sang trang Onboarding /start
-      console.log("⏳ Chờ chuyển hướng sang trang Onboarding (/start)...");
-      await driver.wait(until.urlContains('/start'), 15000);
+      // Sau verify OTP, app điều hướng thẳng vào Dashboard — Onboarding giờ
+      // hiển thị dưới dạng modal trên Dashboard (xem OnboardingModal.jsx),
+      // không còn route /start riêng.
+      console.log("⏳ Chờ chuyển hướng sang trang Dashboard...");
+      await driver.wait(until.urlContains('/dashboard'), 15000);
       console.log("🎉 Đăng ký & Xác thực OTP hoàn tất!");
       await takeScreenshot(driver, 'auth_001_3_onboarding_start.png');
 
