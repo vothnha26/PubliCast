@@ -112,12 +112,116 @@ describe('Instagram Integration Service Tests', () => {
         'brand_1',
         expect.objectContaining({
           igAccountId: 'ig_123',
+          // Regression guard: the linked Facebook Page ID must be persisted at
+          // connect time — periodic sync has no other way to re-derive it
+          // (Instagram Graph API insights are only reachable via the Page
+          // node, never via the IG Business Account ID alone).
+          facebookPageId: 'page_123',
           username: 'publicast_ig',
           displayName: 'PubliCast Instagram'
         }),
         expect.any(Object)
       );
       expect(result.id).toBe('sa_ig_1');
+    });
+
+    it('syncChannelMetrics calls the Graph API with the stored facebookPageId, not the IG Business Account ID', async () => {
+      socialAccountRepository.findById.mockResolvedValue({
+        id: 'sa_ig_1',
+        brandId: 'brand_1',
+        platform: PLATFORMS.INSTAGRAM,
+        platformAccountId: 'ig_123', // IG Business Account ID — must NOT be used as pageId
+        accessToken: 'page_token_123',
+        refreshToken: '',
+        username: 'publicast_ig',
+        displayName: 'PubliCast Instagram',
+        instagramAccount: { facebookPageId: 'page_123' }
+      });
+      socialAccountRepository.upsertInstagramAccount.mockResolvedValue({ id: 'sa_ig_1' });
+
+      await instagramService.syncChannelMetrics('sa_ig_1', '2026-05-20', '2026-05-25');
+
+      expect(instagramGateway.getInstagramAccountForPage).toHaveBeenCalledWith('page_123', 'page_token_123');
+      expect(socialAccountRepository.upsertInstagramAccount).toHaveBeenCalledWith(
+        'brand_1',
+        expect.objectContaining({ igAccountId: 'ig_123', facebookPageId: 'page_123' }),
+        expect.any(Object),
+        PLATFORMS.INSTAGRAM,
+        { enqueueSync: false }
+      );
+    });
+
+    it('syncChannelMetrics throws instead of silently syncing zeros when facebookPageId is missing (pre-migration accounts)', async () => {
+      socialAccountRepository.findById.mockResolvedValue({
+        id: 'sa_ig_1',
+        brandId: 'brand_1',
+        platform: PLATFORMS.INSTAGRAM,
+        platformAccountId: 'ig_123',
+        accessToken: 'page_token_123',
+        instagramAccount: { facebookPageId: null }
+      });
+
+      await expect(instagramService.syncChannelMetrics('sa_ig_1', '2026-05-20', '2026-05-25'))
+        .rejects.toThrow(/Facebook Page ID/);
+      expect(socialAccountRepository.upsertInstagramAccount).not.toHaveBeenCalled();
+    });
+
+    // Regression guard: `impressions` is deprecated by Meta for Instagram
+    // media created after July 2, 2024 (guide/instagram/reference/
+    // instagram-media.insights.md) and Graph API rejects the request when
+    // it's requested alongside other metrics for a new post. `views` is the
+    // supported replacement metric.
+    it('enriches published posts using the "views" metric, not the deprecated "impressions" metric', async () => {
+      socialAccountRepository.findByBrandAndPlatform.mockResolvedValue([{
+        platformAccountId: 'ig_123',
+        accessToken: 'ig_access_token'
+      }]);
+      instagramGateway.getInstagramMediaFeed.mockResolvedValue({
+        data: [{ id: 'media_1', like_count: 5, comments_count: 2, media_type: 'IMAGE', timestamp: '2026-05-20T00:00:00+0000' }],
+        nextPageToken: null,
+        prevPageToken: null
+      });
+      instagramGateway.getInstagramMediaInsights.mockResolvedValue([
+        { name: 'views', values: [{ value: 42 }] },
+        { name: 'reach', values: [{ value: 30 }] },
+        { name: 'shares', values: [{ value: 1 }] }
+      ]);
+
+      const result = await instagramService.getPublishedVideos('brand_views_metric_test');
+
+      expect(instagramGateway.getInstagramMediaInsights).toHaveBeenCalledWith('media_1', 'ig_access_token');
+      expect(result.data[0].views).toBe(42);
+      expect(result.data[0].reach).toBe(30);
+    });
+
+    // Regression guard: for VIDEO/Reels posts, `media_url` points at the raw
+    // .mp4 file — an <img> tag can't render that as a thumbnail. The
+    // dedicated `thumbnail_url` field (the actual preview image) must be
+    // surfaced separately as `thumbnailUrl`, not collapsed into `mediaUrl`.
+    it('exposes a separate thumbnailUrl distinct from the raw video mediaUrl for VIDEO posts', async () => {
+      socialAccountRepository.findByBrandAndPlatform.mockResolvedValue([{
+        platformAccountId: 'ig_123',
+        accessToken: 'ig_access_token'
+      }]);
+      instagramGateway.getInstagramMediaFeed.mockResolvedValue({
+        data: [{
+          id: 'media_video_1',
+          media_type: 'VIDEO',
+          media_url: 'https://instagram.example.com/video.mp4',
+          thumbnail_url: 'https://scontent.example.com/preview.jpg',
+          like_count: 0,
+          comments_count: 0,
+          timestamp: '2026-05-20T00:00:00+0000'
+        }],
+        nextPageToken: null,
+        prevPageToken: null
+      });
+      instagramGateway.getInstagramMediaInsights.mockResolvedValue([]);
+
+      const result = await instagramService.getPublishedVideos('brand_thumbnail_test');
+
+      expect(result.data[0].mediaUrl).toBe('https://instagram.example.com/video.mp4');
+      expect(result.data[0].thumbnailUrl).toBe('https://scontent.example.com/preview.jpg');
     });
 
     it('should publish single photo post successfully via Photo strategy', async () => {

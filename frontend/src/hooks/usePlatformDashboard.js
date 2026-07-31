@@ -7,6 +7,7 @@ import socialService from "../services/social.service";
 import postService from "../services/post.service";
 import { useLatestRequestId } from "./useLatestRequestId";
 import { FALLBACK_DEMOGRAPHICS, EMPTY_ANALYTICS_DATA } from "@/mocks/dashboardFallback";
+import { getPlatformPostUrl } from "../utils/postUrlHelper";
 import { PLATFORM_DEFAULT_TAB } from "../constants/platforms";
 
 const getPlatformTabDefault = (plat) => {
@@ -55,7 +56,7 @@ export function usePlatformDashboard(platform) {
     const ytTabs = ["community", "demographics", "published", "viewed", "competitors"];
     const fbTabs = ["overview", "posts", "posts_list", "stories", "competitors"];
     const ttTabs = ["community", "posts"];
-    const igTabs = ["community", "account", "competitors"];
+    const igTabs = ["community", "account", "reels", "stories", "competitors"];
     const threadsTabs = ["community", "posts", "competitors"];
     const bskyTabs = ["community", "posts", "competitors"];
 
@@ -274,8 +275,8 @@ export function usePlatformDashboard(platform) {
   };
 
   const handleVideoClick = useCallback((video) => {
-    const url = video?.permalinkUrl || video?.url || video?.postUrl || video?.shareUrl;
-    if (url && url !== "#") {
+    const url = getPlatformPostUrl(video) || (video.permalinkUrl ? video.permalinkUrl : null);
+    if (url) {
       window.open(url, "_blank", "noopener,noreferrer");
     }
   }, []);
@@ -315,7 +316,7 @@ export function usePlatformDashboard(platform) {
     const ytTabs = ["community", "demographics", "published", "viewed", "competitors"];
     const fbTabs = ["overview", "posts", "posts_list", "stories", "competitors"];
     const ttTabs = ["community", "posts"];
-    const igTabs = ["community", "account", "competitors"];
+    const igTabs = ["community", "account", "reels", "stories", "competitors"];
     const threadsTabs = ["community", "posts", "competitors"];
     const bskyTabs = ["community", "posts", "competitors"];
 
@@ -351,7 +352,10 @@ export function usePlatformDashboard(platform) {
     if (
       activeTab === "published" ||
       activeTab === "posts_list" ||
-      (activeTab === "posts" && (platform === "tiktok" || platform === "threads" || platform === "facebook")) ||
+      activeTab === "account" ||
+      activeTab === "reels" ||
+      activeTab === "stories" ||
+      (activeTab === "posts" && (platform === "tiktok" || platform === "threads" || platform === "facebook" || platform === "instagram")) ||
       (activeTab === "community" && platform === "youtube")
     ) {
       fetchPublishedVideos(null, pageSize);
@@ -626,11 +630,30 @@ export function usePlatformDashboard(platform) {
         const realDayData = realData.growth?.find(g => g.date === searchDate);
 
         if (platform === "instagram") {
+          const likesCount = realDayData ? (realDayData.likes || 0) : 0;
+          const commentsCount = realDayData ? (realDayData.comments || 0) : 0;
+          const savedCount = realDayData ? (realDayData.saved || 0) : 0;
+          const sharesCount = realDayData ? (realDayData.shares || 0) : 0;
+          const postsCount = realDayData ? (realDayData.totalContent || realDayData.posts || 0) : 0;
+          const interactionsCount = realDayData ? (realDayData.interactions || (likesCount + commentsCount + savedCount + sharesCount)) : 0;
+          const reachCount = realDayData ? (realDayData.reach || 0) : 0;
+          const viewsCount = realDayData ? (realDayData.views || 0) : 0;
+          const engagementRate = realDayData ? (realDayData.engagement || 0) : 0;
+
           return {
             name: dateString,
             followers: realDayData ? (realDayData.followers || 0) : 0,
             following: metrics?.instagramAccount?.followingCount || 0,
-            totalContent: realDayData ? (realDayData.totalContent || 0) : 0
+            totalContent: postsCount,
+            posts: postsCount,
+            engagement: engagementRate,
+            interactions: interactionsCount,
+            reach: reachCount,
+            views: viewsCount,
+            likes: likesCount,
+            comments: commentsCount,
+            saved: savedCount,
+            shares: sharesCount
           };
         }
 

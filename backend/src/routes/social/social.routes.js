@@ -32,6 +32,8 @@ router.post('/youtube/pubsub/callback', express.raw({ type: ['application/atom+x
 // OAuth
 router.get('/google/url', verifyAuth, oauthController.getGoogleAuthUrl);
 router.get('/google/callback', oauthController.googleCallback);
+router.get('/google-drive/auth-url', verifyAuth, oauthController.getGoogleDriveAuthUrl);
+router.get('/google-drive/callback', oauthController.googleDriveCallback);
 router.get('/facebook/url', verifyAuth, oauthController.getFacebookAuthUrl);
 router.get('/facebook/callback', oauthController.facebookCallback);
 router.get('/facebook/webhook', facebookWebhookController.verifyWebhook);
@@ -201,6 +203,7 @@ router.delete('/youtube/competitors/:id', verifyAuth, youtubeController.deleteYo
 router.get('/google/drive/files', verifyAuth, requireBrandMember, requireFeature(PRODUCT_IDS.GOOGLE_DRIVE), googleDriveController.getGoogleDriveFiles);
 router.post('/google/drive/download', verifyAuth, requireBrandMember, requireFeature(PRODUCT_IDS.GOOGLE_DRIVE), googleDriveController.downloadGoogleDriveFile);
 router.post('/google/disconnect', verifyAuth, requireManageConnections, socialConnectionController.disconnectGoogleAccount);
+router.post('/google-drive/disconnect', verifyAuth, requireManageConnections, socialConnectionController.disconnectGoogleDriveAccount);
 
 module.exports = router;
 

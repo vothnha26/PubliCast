@@ -171,7 +171,7 @@ class InstagramPostService {
       
       const totalInteractions = reactions + comments + shares;
       const reach = metrics.reach || 0;
-      const views = metrics.impressions || 0;
+      const views = metrics.views || 0;
       const clicks = metrics.clicks || 0;
 
       const engagement = reach ? parseFloat((((reactions + comments + shares + clicks) / reach) * 100).toFixed(2)) : 0;
@@ -181,6 +181,12 @@ class InstagramPostService {
         message: post.caption || DEFAULT_CONFIG.NO_CONTENT || 'No caption',
         type: this._determinePostType(post),
         mediaUrl: post.media_url || post.thumbnail_url || '',
+        // For VIDEO/Reels, media_url points at the raw .mp4 file, which an
+        // <img> tag can't render as a thumbnail (guide/instagram/reference/
+        // instagram-media.md: thumbnail_url is "Only available on VIDEO
+        // media" and is the actual preview image). IMAGE/CAROUSEL posts have
+        // no thumbnail_url at all, so fall back to media_url for those.
+        thumbnailUrl: post.thumbnail_url || post.media_url || '',
         date: post.timestamp,
         status: POST_STATUS.PUBLISHED,
         reach,
@@ -202,10 +208,10 @@ class InstagramPostService {
   }
 
   _parseInsightsMetrics(insights) {
-    const result = { reach: 0, impressions: 0, shares: 0, clicks: 0 };
+    const result = { reach: 0, views: 0, shares: 0, clicks: 0 };
     for (const item of insights) {
       if (item.name === 'reach') result.reach = item.values?.[0]?.value || 0;
-      else if (item.name === 'impressions') result.impressions = item.values?.[0]?.value || 0;
+      else if (item.name === 'views') result.views = item.values?.[0]?.value || 0;
       else if (item.name === 'shares') result.shares = item.values?.[0]?.value || 0;
     }
     return result;
@@ -226,6 +232,7 @@ class InstagramPostService {
       message: post.caption || 'Instagram Post',
       type: this._determinePostType(post),
       mediaUrl: post.media_url || post.thumbnail_url || '',
+      thumbnailUrl: post.thumbnail_url || post.media_url || '',
       date: post.timestamp,
       status: POST_STATUS.PUBLISHED,
       reach: 0,

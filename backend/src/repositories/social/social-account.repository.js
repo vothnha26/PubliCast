@@ -462,7 +462,7 @@ class SocialAccountRepository {
   /** Xem ghi chú options.enqueueSync ở upsertFacebookAccount phía trên. */
   async upsertInstagramAccount(brandId, accountData, tokens, platform = PLATFORMS.INSTAGRAM, options = {}) {
     const { enqueueSync = true } = options;
-    const { igAccountId, username, displayName, profilePictureUrl, followersCount = 0, followingCount = 0, mediaCount = 0, biography = '', website = '', accountType = 'BUSINESS', businessCategoryName = '' } = accountData;
+    const { igAccountId, facebookPageId, username, displayName, profilePictureUrl, followersCount = 0, followingCount = 0, mediaCount = 0, biography = '', website = '', accountType = 'BUSINESS', businessCategoryName = '' } = accountData;
 
     const finalUsername = username || displayName || 'instagram_user';
 
@@ -489,6 +489,7 @@ class SocialAccountRepository {
           instagramAccount: {
             upsert: {
               create: {
+                facebookPageId,
                 accountType,
                 businessCategoryName,
                 followersCount: parseInt(followersCount) || 0,
@@ -502,6 +503,12 @@ class SocialAccountRepository {
                 supportsCollaboration: true
               },
               update: {
+                // facebookPageId omitted from update on purpose: syncChannelMetrics
+                // re-upserts on every periodic sync without knowing the Page ID
+                // (it only has the already-stored account), so an explicit
+                // undefined here would otherwise null out the value saved at
+                // connect time. Only connectChannel ever has a fresh Page ID.
+                facebookPageId: facebookPageId || undefined,
                 accountType,
                 businessCategoryName,
                 followersCount: parseInt(followersCount) || 0,
@@ -528,6 +535,7 @@ class SocialAccountRepository {
           connectedAt: new Date(),
           instagramAccount: {
             create: {
+              facebookPageId,
               accountType,
               businessCategoryName,
               followersCount: parseInt(followersCount) || 0,
@@ -1116,6 +1124,54 @@ class SocialAccountRepository {
     return prisma.socialAccount.update({
       where: { id },
       data: { lastSyncAt: new Date() }
+    });
+  }
+
+  async upsertGoogleDriveAccount(brandId, profile, tokens) {
+    const platformAccountId = profile.id || profile.email;
+    const finalUsername = profile.email || profile.name || 'google_drive_user';
+    const displayName = profile.name || profile.email || 'Google Drive';
+
+    return prisma.socialAccount.upsert({
+      where: {
+        brandId_platform_platformAccountId: {
+          brandId,
+          platform: PLATFORMS.GOOGLE_DRIVE,
+          platformAccountId
+        }
+      },
+      update: {
+        username: finalUsername,
+        displayName,
+        profilePictureUrl: profile.picture || null,
+        accessToken: encrypt(tokens.access_token),
+        refreshToken: tokens.refresh_token ? encrypt(tokens.refresh_token) : undefined,
+        tokenExpiresAt: tokens.expiry_date ? new Date(tokens.expiry_date) : null,
+        scopes: tokens.scope || '',
+        isConnected: true,
+        lastSyncAt: new Date(),
+        updatedAt: new Date()
+      },
+      create: {
+        brandId,
+        platform: PLATFORMS.GOOGLE_DRIVE,
+        platformAccountId,
+        username: finalUsername,
+        displayName,
+        profilePictureUrl: profile.picture || null,
+        accessToken: encrypt(tokens.access_token),
+        refreshToken: tokens.refresh_token ? encrypt(tokens.refresh_token) : '',
+        tokenExpiresAt: tokens.expiry_date ? new Date(tokens.expiry_date) : null,
+        scopes: tokens.scope || '',
+        connectedAt: new Date(),
+        lastSyncAt: new Date()
+      }
+    });
+  }
+
+  async disconnectGoogleDriveAccount(brandId) {
+    return prisma.socialAccount.deleteMany({
+      where: { brandId, platform: PLATFORMS.GOOGLE_DRIVE }
     });
   }
 

@@ -29,8 +29,12 @@ router.post('/', checkPermission('CREATE_POSTS'), calendarEventController.create
 
 /**
  * POST /api/calendar-events/import-ics
+ * multer MUST run before checkPermission — this is a multipart/form-data
+ * request, so req.body.brandId does not exist until multer parses the body.
+ * With the old order, checkPermission always read req.body as empty and 400'd
+ * with "brandId is required" regardless of what the client sent.
  */
-router.post('/import-ics', checkPermission('CREATE_POSTS'), upload.single('file'), calendarEventController.importIcs);
+router.post('/import-ics', upload.single('file'), checkPermission('CREATE_POSTS'), calendarEventController.importIcs);
 
 /**
  * GET /api/calendar-events/export-ics

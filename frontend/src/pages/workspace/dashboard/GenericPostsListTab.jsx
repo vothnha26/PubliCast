@@ -62,8 +62,11 @@ export function GenericPostsListTab({
   };
 
   // Helper trích xuất thumbnail hình ảnh
+  // thumbnailUrl phải được ưu tiên trước mediaUrl: với video/reel, mediaUrl
+  // trỏ thẳng tới file .mp4 gốc, mà <img> không thể render video đó thành
+  // ảnh — thumbnailUrl mới là ảnh preview thật (xem instagram-post.service.js).
   const getPostThumbnail = (item) => {
-    return item.picture || item.mediaUrl || item.thumbnailUrl || item.thumbnail || "";
+    return item.picture || item.thumbnailUrl || item.thumbnail || item.mediaUrl || "";
   };
 
   // Helper định dạng số lượt xem, thích, bình luận (ví dụ: 25.81K)

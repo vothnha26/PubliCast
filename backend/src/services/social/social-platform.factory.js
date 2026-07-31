@@ -50,6 +50,18 @@ class SocialPlatformFactory {
     }
     return service;
   }
+
+  /**
+   * Whether this platform has a registered syncChannelMetrics-capable service.
+   * Used by callers (e.g. SocialService.getAggregatedMetrics) that iterate
+   * over ALL of a brand's connected accounts to skip platforms like
+   * GOOGLE_DRIVE, which is a media-source integration, not a publishable/
+   * analyzable social channel, and has no entry in `this.services`.
+   */
+  isSupported(platform) {
+    if (!platform) return false;
+    return !!this.services[platform.toUpperCase()];
+  }
 }
 
 module.exports = new SocialPlatformFactory();
