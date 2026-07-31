@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import apiService from '../../services/api';
+import billingService from '../../services/billing.service';
 import './PaymentModal.css';
 
 const CopyIcon = () => (
@@ -46,8 +46,8 @@ const PaymentModal = ({ paymentData, onClose, onSuccess }) => {
 
     const pollInterval = setInterval(async () => {
       try {
-        const res = await apiService.get(`/billing/subscriptions/status/${paymentData.transactionCode}`);
-        const status = res.data?.data?.status;
+        const res = await billingService.getSubscriptionStatus(paymentData.transactionCode);
+        const status = res?.status || res?.data?.status;
         if (status === 'PAID') {
           clearInterval(pollInterval);
           clearInterval(timerInterval);
