@@ -3,7 +3,7 @@ import { Image as ImageIcon, Upload, ChevronLeft, ChevronRight } from 'lucide-re
 import { useVideoEditor } from '../../context/VideoEditorContext';
 import { useDragScroll } from '../../hooks/useDragScroll';
 import { toast } from 'sonner';
-import apiService from '../../services/api';
+import mediaService from '../../services/media.service';
 import { getFullImageUrl } from '../workspace/post-creator/image-editor/utils';
 import { usePostCreatorStore } from '../../store/usePostCreatorStore';
 
@@ -48,16 +48,13 @@ export default function StickerPanel() {
 
     const toastId = toast.loading(`Đang tải nhãn dán hình ảnh...`);
     try {
-      const formData = new FormData();
-      formData.append("video", file);
-
-      const res = await apiService.post("/posts/upload", formData, {
-        headers: {
-          "Content-Type": "multipart/form-data"
-        }
+      const res = await mediaService.saveDirect(null, null, {
+        filename: file.name,
+        size: file.size,
+        type: file.type
       });
 
-      const serverPath = res.data?.videoUrl || res.data?.url;
+      const serverPath = res?.url;
       const fullUrl = getFullImageUrl(serverPath);
 
       // Track asset in current session for rollback if discarded
