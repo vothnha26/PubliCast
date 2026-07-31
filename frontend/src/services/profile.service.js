@@ -1,10 +1,10 @@
-import apiService from './api';
+import { apiV2 } from './api';
 
 class ProfileService {
   async getUserProfile() {
     try {
-      const response = await apiService.get('/user/profile');
-      return response.data;
+      const data = await apiV2.get('/profile');
+      return data;
     } catch (error) {
       if (error.status === 403) {
         return this.getAdminProfile();
@@ -14,18 +14,18 @@ class ProfileService {
   }
 
   async getAdminProfile() {
-    const response = await apiService.get('/admin/profile');
-    return response.data;
+    const data = await apiV2.get('/profile/admin');
+    return data;
   }
 
   async editProfile(payload) {
-    const response = await apiService.put('/profile/edit', payload);
-    return response.data;
+    const data = await apiV2.put('/profile/edit', payload);
+    return data;
   }
 
   async setDefaultBrand(brandId) {
-    const response = await apiService.put('/profile/default-brand', { defaultBrandId: brandId });
-    return response.data;
+    const data = await apiV2.put('/profile/default-brand', { defaultBrandId: brandId });
+    return data;
   }
 }
 

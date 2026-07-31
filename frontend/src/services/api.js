@@ -122,4 +122,105 @@ class ApiService {
 }
 
 const apiService = new ApiService();
+
+// ── V2 Dedicated Axios Client Instance (Standardized Envelope Unwrapping) ─────────────
+const v2BaseURL = baseURL ? `${baseURL}/api/v2` : '/api/v2';
+
+export const apiV2 = axios.create({
+  baseURL: v2BaseURL,
+  timeout: 15000,
+  withCredentials: true,
+});
+
+// Helper to extract cookie by name for apiV2
+const getCookieV2 = (name) => {
+  if (typeof document === 'undefined') return null;
+  const match = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'));
+  return match ? decodeURIComponent(match[2]) : null;
+};
+
+// Request Interceptor: Attach CSRF Token
+apiV2.interceptors.request.use(
+  (config) => {
+    const csrfToken = getCookieV2('csrfToken');
+    if (csrfToken && !['get', 'head', 'options'].includes((config.method || '').toLowerCase())) {
+      config.headers['X-CSRF-Token'] = csrfToken;
+    }
+    return config;
+  },
+  (error) => Promise.reject(error)
+);
+
+// Response Interceptor: Auto Unwrap Envelope { message, data } & Handle 401 Refresh Token
+apiV2.interceptors.response.use(
+  (response) => {
+    // Standardized V2 Envelope Unwrapping:
+    // Backend response format: { message: "...", data: { ... } }
+    if (response.data && typeof response.data === 'object' && 'data' in response.data) {
+      const payload = response.data.data;
+      if (payload && typeof payload === 'object' && !Array.isArray(payload) && response.data.message) {
+        payload._envelopeMessage = response.data.message;
+      }
+      return payload;
+    }
+    return response.data;
+  },
+  async (error) => {
+    const originalRequest = error.config;
+    const data = error.response?.data;
+
+    // Handle LIMIT_REACHED
+    if (error.response?.status === 403 && data?.code === 'LIMIT_REACHED') {
+      window.dispatchEvent(new CustomEvent('LIMIT_REACHED', { detail: data }));
+    }
+
+    // Auto-refresh on 401
+    if (
+      error.response?.status === 401 &&
+      !originalRequest._retry &&
+      !originalRequest.url?.includes('/auth/refresh') &&
+      !originalRequest.url?.includes('/auth/login') &&
+      !originalRequest.url?.includes('/auth/logout')
+    ) {
+      if (isRefreshing) {
+        return new Promise((resolve) => {
+          addRefreshSubscriber(() => {
+            resolve(apiV2(originalRequest));
+          });
+        });
+      }
+
+      originalRequest._retry = true;
+      isRefreshing = true;
+
+      try {
+        await apiV2.post('/auth/refresh');
+        isRefreshing = false;
+        onRefreshed();
+        return apiV2(originalRequest);
+      } catch (refreshError) {
+        isRefreshing = false;
+        refreshSubscribers = [];
+        window.dispatchEvent(new CustomEvent('SESSION_EXPIRED'));
+        const message = data?.message || error.message;
+        const customError = new Error(message);
+        customError.status = error.response?.status;
+        return Promise.reject(customError);
+      }
+    }
+
+    if (error.response?.status === 429) {
+      const retryAfter = error.response?.data?.retryAfterSeconds || error.response?.headers?.['retry-after'];
+      const retryMsg = retryAfter ? ` Vui lòng thử lại sau ${retryAfter} giây.` : '';
+      toast.error(`Yêu cầu quá nhanh (Rate Limit).${retryMsg}`);
+    }
+
+    const message = data?.message || (data?.errors && data.errors[0] ? data.errors[0].msg : null) || error.message;
+    const customError = new Error(message);
+    customError.status = error.response?.status;
+    customError.response = error.response;
+    return Promise.reject(customError);
+  }
+);
+
 export default apiService;
