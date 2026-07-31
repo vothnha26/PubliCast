@@ -44,13 +44,6 @@ class SmartLinkAnalyticsService {
       throw error;
     }
 
-    // Same IP already clicked this link today: don't double-count, but still
-    // return the current link state so the caller sees an accurate click count.
-    const isFirstClickToday = await this._isFirstEventToday('click', linkItemId, ip);
-    if (!isFirstClickToday) {
-      return existingLink;
-    }
-
     const updatedLink = await linkItemRepository.incrementClicks(linkItemId);
     const today = this._today();
 

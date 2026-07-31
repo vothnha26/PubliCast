@@ -101,17 +101,19 @@ describe('SmartLinkAnalyticsService Unit Tests', () => {
     });
   });
 
-  describe('SL_UT_004 - trackLinkClick (per-IP dedup)', () => {
-    it('should ignore a repeat click from the same IP on the same day (no increment)', async () => {
-      mockRedis.set.mockResolvedValue(null); // Redis SET NX no-op -> already clicked today
+  describe('SL_UT_004 - trackLinkClick (always increments clicks)', () => {
+    it('should increment clicks and update total clicks on link click', async () => {
       const link = { id: 'link-1', smartLinkId: 'smart-1', clicks: 4 };
       linkItemRepository.findById.mockResolvedValue(link);
+      linkItemRepository.incrementClicks.mockResolvedValue({ ...link, clicks: 5 });
+      smartLinkRepository.incrementTotalClicks.mockResolvedValue({ id: 'smart-1' });
+      linkItemRepository.upsertDailyClick.mockResolvedValue({});
 
       const result = await smartLinkAnalyticsService.trackLinkClick('link-1', '1.2.3.4', 'jest');
 
-      expect(result).toBe(link);
-      expect(linkItemRepository.incrementClicks).not.toHaveBeenCalled();
-      expect(smartLinkRepository.incrementTotalClicks).not.toHaveBeenCalled();
+      expect(result.clicks).toBe(5);
+      expect(linkItemRepository.incrementClicks).toHaveBeenCalledWith('link-1');
+      expect(smartLinkRepository.incrementTotalClicks).toHaveBeenCalledWith('smart-1');
     });
 
     it('should fail open (still count the click) when Redis errors', async () => {

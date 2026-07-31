@@ -90,12 +90,12 @@ describe('SmartLink & Strategy Patterns Tests', () => {
     userId = user.id;
 
     // 2. Create default Brand
-    const freePlan = await prisma.plan.findFirst({
-      where: { name: 'FREE' }
+    const proPlan = await prisma.plan.findFirst({
+      where: { name: 'PRO' }
     });
     const sub = await prisma.subscription.create({
       data: {
-        planId: freePlan.id,
+        planId: proPlan.id,
         status: 'ACTIVE',
         currentPeriodStart: new Date(),
         currentPeriodEnd: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
@@ -358,6 +358,74 @@ describe('SmartLink & Strategy Patterns Tests', () => {
       
       const updatedLink = afterGet.body.data.links.find(l => l.id === createdLinkItemId);
       expect(updatedLink.clicks).toBe(initialClicks + 1);
+    });
+
+    describe('SmartLink Multi-Link Management (List, Clone, Delete)', () => {
+      it('should list all smart links for a brand', async () => {
+        const res = await request(app)
+          .get(`/api/smart-links/list?brandId=${brandId}`)
+          .set('Cookie', cookie);
+
+        expect(res.status).toBe(200);
+        expect(Array.isArray(res.body.data)).toBe(true);
+        expect(res.body.data.length).toBeGreaterThanOrEqual(1);
+      });
+
+      it('should clone a SmartLink creating a new record with reset clicks', async () => {
+        const res = await request(app)
+          .post(`/api/smart-links/${createdSmartLinkId}/clone`)
+          .set('Cookie', cookie)
+          .send({ brandId });
+
+        expect(res.status).toBe(201);
+        expect(res.body.data).toBeDefined();
+        expect(res.body.data.id).not.toBe(createdSmartLinkId);
+        expect(res.body.data.slug).toContain('-clone');
+        expect(res.body.data.totalClicks).toBe(0);
+        expect(res.body.data.links.length).toBeGreaterThan(0);
+        expect(res.body.data.links[0].clicks).toBe(0);
+      });
+
+      it('should reject deleting a SmartLink if it is the only one remaining for brand', async () => {
+        // First delete cloned smartlinks to leave only 1
+        const listRes = await request(app)
+          .get(`/api/smart-links/list?brandId=${brandId}`)
+          .set('Cookie', cookie);
+
+        const list = listRes.body.data;
+        const clonedLinks = list.filter(l => l.id !== createdSmartLinkId);
+        for (const item of clonedLinks) {
+          await request(app)
+            .delete(`/api/smart-links/${item.id}?brandId=${brandId}`)
+            .set('Cookie', cookie);
+        }
+
+        // Now try deleting the last remaining smartlink
+        const deleteRes = await request(app)
+          .delete(`/api/smart-links/${createdSmartLinkId}?brandId=${brandId}`)
+          .set('Cookie', cookie);
+
+        expect(deleteRes.status).toBe(400);
+        expect(deleteRes.body.message).toContain('Cannot delete the only SmartLink');
+      });
+
+      it('should allow deleting a SmartLink when brand has more than 1 SmartLink', async () => {
+        // Clone one first so count > 1
+        const cloneRes = await request(app)
+          .post(`/api/smart-links/${createdSmartLinkId}/clone`)
+          .set('Cookie', cookie)
+          .send({ brandId });
+
+        const clonedId = cloneRes.body.data.id;
+
+        // Delete the cloned SmartLink
+        const deleteRes = await request(app)
+          .delete(`/api/smart-links/${clonedId}?brandId=${brandId}`)
+          .set('Cookie', cookie);
+
+        expect(deleteRes.status).toBe(200);
+        expect(deleteRes.body.message).toContain('deleted successfully');
+      });
     });
 
   });

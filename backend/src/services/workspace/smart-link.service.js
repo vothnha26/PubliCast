@@ -13,6 +13,86 @@ class SmartLinkService {
     return await smartLinkRepository.findByBrandId(brandId);
   }
 
+  async getAllByBrand(brandId) {
+    if (!brandId) {
+      const error = new Error('Brand ID is required');
+      error.statusCode = 400;
+      throw error;
+    }
+    return await smartLinkRepository.findAllByBrandId(brandId);
+  }
+
+  async getById(id, brandId) {
+    if (!id || !brandId) {
+      const error = new Error('ID and Brand ID are required');
+      error.statusCode = 400;
+      throw error;
+    }
+    const smartLink = await smartLinkRepository.findById(id);
+    if (!smartLink) {
+      const error = new Error('SmartLink not found');
+      error.statusCode = 404;
+      throw error;
+    }
+    if (smartLink.brandId !== brandId) {
+      const error = new Error('Unauthorized brand access');
+      error.statusCode = 403;
+      throw error;
+    }
+    return smartLink;
+  }
+
+  async cloneSmartLink(id, brandId) {
+    if (!id || !brandId) {
+      const error = new Error('ID and Brand ID are required');
+      error.statusCode = 400;
+      throw error;
+    }
+
+    const existing = await smartLinkRepository.findById(id);
+    if (!existing) {
+      const error = new Error('SmartLink not found');
+      error.statusCode = 404;
+      throw error;
+    }
+    if (existing.brandId !== brandId) {
+      const error = new Error('Unauthorized brand access');
+      error.statusCode = 403;
+      throw error;
+    }
+
+    return await smartLinkRepository.cloneById(id);
+  }
+
+  async deleteSmartLink(id, brandId) {
+    if (!id || !brandId) {
+      const error = new Error('ID and Brand ID are required');
+      error.statusCode = 400;
+      throw error;
+    }
+
+    const existing = await smartLinkRepository.findById(id);
+    if (!existing) {
+      const error = new Error('SmartLink not found');
+      error.statusCode = 404;
+      throw error;
+    }
+    if (existing.brandId !== brandId) {
+      const error = new Error('Unauthorized brand access');
+      error.statusCode = 403;
+      throw error;
+    }
+
+    const count = await smartLinkRepository.countByBrandId(brandId);
+    if (count <= 1) {
+      const error = new Error('Cannot delete the only SmartLink for this brand');
+      error.statusCode = 400;
+      throw error;
+    }
+
+    return await smartLinkRepository.deleteById(id);
+  }
+
   async getPublicSmartLinkBySlug(slug) {
     if (!slug) {
       const error = new Error('Slug is required');
@@ -226,8 +306,8 @@ class SmartLinkService {
       end = new Date(range.to);
     } else {
       end = new Date();
-      end.setUTCHours(0, 0, 0, 0);
     }
+    end.setUTCHours(23, 59, 59, 999);
 
     let start;
     if (range.from) {

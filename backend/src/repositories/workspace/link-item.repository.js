@@ -1,3 +1,4 @@
+const crypto = require('crypto');
 const prisma = require('../../config/prisma');
 
 class LinkItemRepository {
@@ -17,17 +18,17 @@ class LinkItemRepository {
   }
 
   async upsertDailyClick(linkItemId, smartLinkId, date) {
-    // Dùng raw SQL để đảm bảo atomic INSERT ... ON CONFLICT DO UPDATE,
+    // Dùng raw SQL để đảm bảo atomic INSERT ... ON DUPLICATE KEY UPDATE (MySQL),
     // tránh race condition "Unique constraint failed" khi nhiều request đồng thời.
     const dateStr = date instanceof Date
       ? date.toISOString().slice(0, 10)
       : String(date).slice(0, 10);
+    const uid = crypto.randomUUID();
 
     return await prisma.$executeRaw`
-      INSERT INTO link_item_daily_metrics ("id", "linkItemId", "smartLinkId", "date", "clicks", "createdAt", "updatedAt")
-      VALUES (gen_random_uuid(), ${linkItemId}, ${smartLinkId}, ${dateStr}::date, 1, now(), now())
-      ON CONFLICT ("linkItemId", "date")
-      DO UPDATE SET "clicks" = link_item_daily_metrics."clicks" + 1, "updatedAt" = now()
+      INSERT INTO link_item_daily_metrics (id, linkItemId, smartLinkId, date, clicks, createdAt, updatedAt)
+      VALUES (${uid}, ${linkItemId}, ${smartLinkId}, ${dateStr}, 1, NOW(), NOW())
+      ON DUPLICATE KEY UPDATE clicks = clicks + 1, updatedAt = NOW()
     `;
   }
 
