@@ -33,7 +33,8 @@ import {
 import { toast } from "sonner";
 import { PlatformIcon } from "../../components/shared/PlatformIcon";
 import { useBrand } from "../../context/BrandContext";
-import apiService from "../../services/api";
+import reportService from "../../services/report.service";
+import teamService from "../../services/team.service";
 import { createPortal } from "react-dom";
 import { GenericDashboardTab } from "../workspace/dashboard/GenericDashboardTab";
 import { GenericPostsListTab } from "../workspace/dashboard/GenericPostsListTab";
@@ -254,8 +255,8 @@ export function ReportsPage() {
     if (!activeBrand) return;
     setLoading(true);
     try {
-      const res = await apiService.get(`/reports?brandId=${activeBrand.id}`);
-      setReports(res.data.reports || []);
+      const res = await reportService.getReports(activeBrand.id);
+      setReports(res?.reports || []);
     } catch (err) {
       toast.error(t("toasts.listError"));
       console.error(err);
@@ -321,15 +322,9 @@ export function ReportsPage() {
     setPreviewLoading(true);
     try {
       const platforms = ["Facebook", "YouTube", "Instagram", "TikTok", "Telegram"];
-      const res = await apiService.get(`/reports/preview-data`, {
-        params: {
-          brandId: activeBrand.id,
-          dateRange: period,
-          platforms: platforms.join(",")
-        }
-      });
-      if (res.data && res.data.data) {
-        setPreviewData(res.data.data);
+      const res = await reportService.getPreviewData(activeBrand.id, period, platforms.join(","));
+      if (res?.data) {
+        setPreviewData(res.data);
         setDataLoaded(true);
         toast.success(t("toasts.loadSuccess"));
       }
@@ -370,8 +365,8 @@ export function ReportsPage() {
     const fetchScheduleConfig = async () => {
       if (!activeBrand?.id) return;
       try {
-        const response = await apiService.get(`/reports/schedule-config?brandId=${activeBrand.id}`);
-        const config = response.data?.config;
+        const response = await reportService.getScheduleConfig(activeBrand.id);
+        const config = response?.config;
         if (config) {
           setReceiveEmail(config.receiveEmail || false);
           setEmailsList(config.emailsList || []);
@@ -392,8 +387,8 @@ export function ReportsPage() {
       if (!activeBrand?.id) return;
       setMembersLoading(true);
       try {
-        const response = await apiService.get(`/team?brandId=${activeBrand.id}`);
-        setBrandMembers(response.data?.data || []);
+        const response = await teamService.getBrandTeam(activeBrand.id);
+        setBrandMembers(response?.data || []);
       } catch (error) {
         console.error("Failed to fetch brand members:", error);
       } finally {
@@ -1574,7 +1569,7 @@ export function ReportsPage() {
     }
     const toastId = toast.loading("Đang lưu cấu hình gửi báo cáo...");
     try {
-      await apiService.post(`/reports/schedule-config?brandId=${activeBrand.id}`, {
+      await reportService.saveScheduleConfig(activeBrand.id, {
         receiveEmail,
         emailsList,
         emailText,
@@ -1596,7 +1591,7 @@ export function ReportsPage() {
     toast.loading("Đang tạo và gửi báo cáo qua Email...", { id: "test-report" });
     try {
       const platforms = ["Facebook", "YouTube", "Instagram", "TikTok", "Telegram"];
-      await apiService.post(`/reports/send-test?brandId=${activeBrand.id}`, {
+      await reportService.sendTestReport(activeBrand.id, {
         title: templateName || "Social Media Insights",
         format: "Excel",
         dateRange: period,
@@ -1623,15 +1618,9 @@ export function ReportsPage() {
       const toastId = toast.loading("Đang tự động tải dữ liệu thực tế trước khi xuất PDF...");
       try {
         const platforms = ["Facebook", "YouTube", "Instagram", "TikTok", "Telegram"];
-        const res = await apiService.get(`/reports/preview-data`, {
-          params: {
-            brandId: activeBrand.id,
-            dateRange: period,
-            platforms: platforms.join(",")
-          }
-        });
-        if (res.data && res.data.data) {
-          setPreviewData(res.data.data);
+        const res = await reportService.getPreviewData(activeBrand.id, period, platforms.join(","));
+        if (res?.data) {
+          setPreviewData(res.data);
           setDataLoaded(true);
           toast.success("Tải dữ liệu thực tế thành công! Đang mở hộp thoại in...", { id: toastId });
         } else {
@@ -1689,7 +1678,7 @@ export function ReportsPage() {
 
     const toastId = toast.loading(`Đang khởi tạo báo cáo ${format}...`);
     try {
-      const res = await apiService.post(`/reports?brandId=${activeBrand.id}`, {
+      const res = await reportService.createReport(activeBrand.id, {
         title,
         format,
         dateRange: period,
@@ -1701,7 +1690,7 @@ export function ReportsPage() {
         selectedWidgets
       });
       
-      setReports(prev => [res.data.report, ...prev]);
+      setReports(prev => [res?.report, ...prev].filter(Boolean));
       toast.success(`Đã sinh báo cáo thành công!`, { id: toastId });
     } catch (err) {
       toast.error("Lỗi xuất báo cáo: " + (err.message || "Lỗi hệ thống"), { id: toastId });
@@ -1712,7 +1701,7 @@ export function ReportsPage() {
   const handleDeleteReport = async (id) => {
     if (!activeBrand) return;
     try {
-      await apiService.delete(`/reports/${id}?brandId=${activeBrand.id}`);
+      await reportService.deleteReport(id, activeBrand.id);
       setReports(prev => prev.filter(r => r.id !== id));
       toast.success("Đã xóa báo cáo khỏi hệ thống.");
     } catch (err) {
@@ -1727,11 +1716,9 @@ export function ReportsPage() {
     try {
       // Goes through the backend (auth + brand-ownership check), not the raw
       // fileUrl — report files aren't publicly readable from /uploads anymore.
-      const response = await apiService.get(`/reports/${reportId}/download?brandId=${activeBrand.id}`, {
-        responseType: 'blob'
-      });
+      const response = await reportService.downloadReport(reportId, activeBrand.id);
 
-      const downloadUrl = window.URL.createObjectURL(response.data);
+      const downloadUrl = window.URL.createObjectURL(response);
 
       const link = document.createElement("a");
       link.href = downloadUrl;

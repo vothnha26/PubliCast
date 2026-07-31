@@ -38,8 +38,8 @@ import {
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { useBrand } from "../../context/BrandContext";
-import apiService from "../../services/api";
-import { uploadMediaFile } from "../../services/media.service";
+import smartLinkService from "../../services/smartlink.service";
+import { uploadMediaFile } from "../../services/mediaUpload.service";
 import { SmartLinksAnalyticsPanel } from "./components/SmartLinksAnalyticsPanel";
 
 const renderSocialIcon = (platform, size = 15) => {
@@ -226,8 +226,8 @@ export function SmartLinksPage() {
     setLoading(true);
     setIsFeatureLocked(false);
     try {
-      const res = await apiService.get(`/smart-links/list?brandId=${activeBrand.id}`);
-      const list = Array.isArray(res.data?.data) ? res.data.data : [];
+      const res = await smartLinkService.getSmartLinks(activeBrand.id);
+      const list = Array.isArray(res) ? res : (Array.isArray(res?.data) ? res.data : []);
       setSmartLinksList(list);
 
       if (list.length > 0) {
@@ -269,8 +269,8 @@ export function SmartLinksPage() {
     try {
       const fromStr = formatDateStr(range.from);
       const toStr = formatDateStr(range.to);
-      const res = await apiService.get(`/smart-links/${id}/analytics?brandId=${activeBrand.id}&from=${fromStr}&to=${toStr}`);
-      const analytics = res.data?.data || null;
+      const res = await smartLinkService.getAnalytics(id, activeBrand.id, fromStr, toStr);
+      const analytics = res || null;
       setAnalyticsSummary(analytics?.summary || null);
       setAnalyticsTimeline(Array.isArray(analytics?.timeline) ? analytics.timeline : []);
       const analyticsLinksArr = Array.isArray(analytics?.links) ? analytics.links : [];
@@ -312,8 +312,8 @@ export function SmartLinksPage() {
         links: []
       };
       
-      const res = await apiService.post("/smart-links", payload);
-      const data = res.data.data;
+      const res = await smartLinkService.createSmartLink(payload);
+      const data = res?.data || res;
       if (data) {
         toast.success(t("toasts.initSuccess"));
         await fetchSmartLinksList(data.id);
@@ -347,8 +347,8 @@ export function SmartLinksPage() {
         links: []
       };
 
-      const res = await apiService.post("/smart-links", payload);
-      const newSmartLink = res.data?.data;
+      const res = await smartLinkService.createSmartLink(payload);
+      const newSmartLink = res?.data || res;
       if (newSmartLink) {
         toast.success("Đã tạo SmartLink mới thành công!");
         await fetchSmartLinksList(newSmartLink.id);
@@ -363,8 +363,8 @@ export function SmartLinksPage() {
   const handleCloneSmartLink = async () => {
     if (!smartLinkId || !activeBrand) return;
     try {
-      const res = await apiService.post(`/smart-links/${smartLinkId}/clone`, { brandId: activeBrand.id });
-      const cloned = res.data?.data;
+      const res = await smartLinkService.cloneSmartLink(smartLinkId, activeBrand.id);
+      const cloned = res?.data || res;
       if (cloned) {
         toast.success(t("toasts.cloneSuccess") || "Đã nhân bản SmartLink thành công!");
         await fetchSmartLinksList(cloned.id);
@@ -388,7 +388,7 @@ export function SmartLinksPage() {
     }
 
     try {
-      await apiService.delete(`/smart-links/${smartLinkId}?brandId=${activeBrand.id}`);
+      await smartLinkService.deleteSmartLink(smartLinkId, activeBrand.id);
       toast.success("Đã xóa SmartLink thành công!");
       await fetchSmartLinksList();
     } catch (err) {
@@ -454,8 +454,8 @@ export function SmartLinksPage() {
         })
       };
 
-      const res = await apiService.put(`/smart-links/${smartLinkId}`, payload);
-      if (res.data?.data) {
+      const res = await smartLinkService.updateSmartLink(smartLinkId, payload);
+      if (res) {
         setProfileName(renameTitle.trim());
         setSlug(sanitizedSlug);
         toast.success("Đã đổi tên SmartLink thành công!");
@@ -504,8 +504,8 @@ export function SmartLinksPage() {
         })
       };
 
-      const res = await apiService.put(`/smart-links/${smartLinkId}`, payload);
-      if (res.data.data) {
+      const res = await smartLinkService.updateSmartLink(smartLinkId, payload);
+      if (res) {
         toast.success(t("toasts.saveSuccess"));
         await fetchSmartLinksList(smartLinkId); // reload clean data from server and refresh dropdown
       }
@@ -1320,7 +1320,7 @@ export function SmartLinksPage() {
                         rel="noreferrer"
                         onClick={() => {
                           if (link.id && !String(link.id).startsWith("l-")) {
-                            apiService.post(`/smart-links/click/${link.id}`)
+                            smartLinkService.registerClick(link.id)
                               .then(() => {
                                 if (smartLinkId) fetchAnalytics(smartLinkId);
                               })

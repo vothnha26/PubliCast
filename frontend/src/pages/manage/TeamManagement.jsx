@@ -5,6 +5,7 @@ import { useFilters } from "../../hooks/useFilters";
 import { useDebounce } from "../../hooks/useDebounce";
 import { useLatestRequestId } from "../../hooks/useLatestRequestId";
 import { useBrand } from "../../context/BrandContext";
+import teamService from "../../services/team.service";
 import apiService from "../../services/api";
 import { toast } from "sonner";
 import { SYSTEM_ROLES, ASSIGNABLE_ROLES, TEAM_FILTER_ROLES, MEMBER_STATUS } from "../../constants/roles";
@@ -54,10 +55,10 @@ export function TeamManagementPage() {
   const handleResendInvite = async (member) => {
     setResendingId(member.id);
     try {
-      const res = await apiService.post(`/team/${member.id}/resend-invite`);
-      toast.success(res.data?.message || t("team.inviteResent", { email: member.email }));
+      const res = await teamService.resendInvite(member.id);
+      toast.success(res?.message || t("team.inviteResent", { email: member.email }));
     } catch (error) {
-      toast.error(error.response?.data?.message || t("team.resendFailed"));
+      toast.error(error.message || t("team.resendFailed"));
     } finally {
       setResendingId(null);
     }
@@ -81,9 +82,9 @@ export function TeamManagementPage() {
     const requestId = teamRequest.start();
     setLoading(true);
     try {
-      const response = await apiService.get(`/team?brandId=${activeBrand.id}&${searchParamsString}`);
+      const response = await teamService.getMembers(activeBrand.id);
       if (!teamRequest.isLatest(requestId)) return;
-      setTeamData(response.data);
+      setTeamData(response.data || response);
     } catch (error) {
       if (!teamRequest.isLatest(requestId)) return;
       toast.error(error.message || t("team.loadMembersFailed"));
@@ -97,8 +98,8 @@ export function TeamManagementPage() {
     if (!activeBrand?.id) return;
     setRolesLoading(true);
     try {
-      const response = await apiService.get(`/brands/${activeBrand.id}/roles`);
-      setRoles(response.data.data || []);
+      const response = await teamService.getBrandRoles(activeBrand.id);
+      setRoles(response || []);
     } catch (error) {
       toast.error(error.message || t("team.loadRolesFailed"));
     } finally {
@@ -108,9 +109,9 @@ export function TeamManagementPage() {
 
   const fetchSystemPermissions = async () => {
     try {
-      const response = await apiService.get("/permissions");
-      if (response.data?.data) {
-        setSystemPermissions(response.data.data);
+      const response = await teamService.getPermissions();
+      if (response) {
+        setSystemPermissions(response);
       }
     } catch (error) {
       console.error("Failed to fetch system permissions", error);
@@ -141,7 +142,7 @@ export function TeamManagementPage() {
     });
     if (!isConfirmed) return;
     try {
-      await apiService.delete(`/brands/${activeBrand.id}/roles/${roleId}`);
+      await teamService.deleteRole(activeBrand.id, roleId);
       toast.success(t("team.deleteRoleSuccess"));
       fetchRoles();
       fetchTeam();
@@ -536,13 +537,13 @@ function InviteModal({ isOpen, onClose, activeBrandId, customRoles = [], onInvit
 
     setIsSubmitting(true);
     try {
-      const response = await apiService.post("/team/invite", {
+      const response = await teamService.inviteMember({
         emails: finalEmails,
         role,
         brandId: activeBrandId
       });
 
-      const { message, successes = [], failures = [] } = response.data || {};
+      const { message, successes = [], failures = [] } = response || {};
       
       if (failures.length > 0) {
         if (successes.length > 0) {
@@ -682,7 +683,7 @@ function RoleModal({ isOpen, onClose, member, customRoles = [], onSuccess }) {
   const handleUpdateRole = async (newRole) => {
     setIsUpdating(true);
     try {
-      await apiService.put(`/team/${member.id}/role`, { role: newRole });
+      await teamService.updateRole(member.id, newRole);
       toast.success(t("team.roleUpdateSuccess"));
       onSuccess();
       onClose();
@@ -704,7 +705,7 @@ function RoleModal({ isOpen, onClose, member, customRoles = [], onSuccess }) {
     if (!isConfirmed) return;
     setIsRemoving(true);
     try {
-      await apiService.delete(`/team/${member.id}`);
+      await teamService.removeMember(member.id);
       toast.success(t("team.removeSuccess"));
       onSuccess();
       onClose();
@@ -823,7 +824,7 @@ function RoleCreateEditModal({ isOpen, onClose, activeBrandId, role, onSuccess, 
 
     try {
       if (isEdit) {
-        await apiService.put(`/brands/${activeBrandId}/roles/${role.id}`, {
+        await teamService.updateBrandRole(activeBrandId, role.id, {
           name,
           description,
           colorHex,
@@ -831,7 +832,7 @@ function RoleCreateEditModal({ isOpen, onClose, activeBrandId, role, onSuccess, 
         });
         toast.success(t("team.roleSaveSuccess"));
       } else {
-        await apiService.post(`/brands/${activeBrandId}/roles`, {
+        await teamService.createRole(activeBrandId, {
           name,
           description,
           colorHex,

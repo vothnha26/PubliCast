@@ -17,7 +17,7 @@ import {
   Github,
   Chrome 
 } from "lucide-react";
-import apiService from "../../services/api";
+import smartLinkService from "../../services/smartlink.service";
 
 const THEMES = [
   { id: "midnight", name: "Midnight Black", bg: "bg-slate-950", text: "text-white", buttonBg: "bg-slate-800 hover:bg-slate-700", buttonText: "text-white", border: "border-slate-800" },
@@ -53,8 +53,8 @@ export function PublicSmartLinksPage() {
   useEffect(() => {
     const fetchPublicData = async () => {
       try {
-        const res = await apiService.get(`/smart-links/public/${slug}`);
-        const smartLink = res.data.data;
+        const res = await smartLinkService.getPublicSmartLink(slug);
+        const smartLink = res?.data || res;
         setData(smartLink);
         
         // Match theme
@@ -98,7 +98,7 @@ export function PublicSmartLinksPage() {
     try {
       // Async track in background for valid saved link items
       if (linkId && !String(linkId).startsWith("l-")) {
-        apiService.post(`/smart-links/click/${linkId}`).catch(err => console.error("Track click error:", err));
+        smartLinkService.registerClick(linkId).catch(err => console.error("Track click error:", err));
       }
       
       // Open link in new window

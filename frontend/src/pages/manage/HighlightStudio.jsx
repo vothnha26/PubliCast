@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { Scissors, Sparkles, Upload, Play, CheckCircle2, AlertCircle, Loader2, Edit3, X, Youtube } from "lucide-react";
-import apiService from "../../services/api";
+import highlightService from "../../services/highlight.service";
 import { useBrand } from "../../context/BrandContext";
 
 export default function HighlightStudio() {
@@ -41,20 +41,22 @@ export default function HighlightStudio() {
     if (status === "processing" && taskId) {
       pollRef.current = setInterval(async () => {
         try {
-          const res = await apiService.get(`/highlights/${taskId}/status`);
-          const data = res.data.data.highlight;
-          setProgress(data.progress || 0);
-          setProgressMsg(data.progressMsg || "Đang xử lý...");
+          const res = await highlightService.getStatus(taskId);
+          const data = res?.highlight || res?.data?.highlight;
+          if (data) {
+            setProgress(data.progress || 0);
+            setProgressMsg(data.progressMsg || "Đang xử lý...");
 
-          if (data.status === "completed") {
-            setStatus("completed");
-            setHighlightData(data);
-            clearInterval(pollRef.current);
-            if (data.subtitleUrl) fetchSubtitles(data.subtitleUrl);
-          } else if (data.status === "failed") {
-            setStatus("error");
-            setErrorMsg("Colab Worker báo lỗi khi xử lý video.");
-            clearInterval(pollRef.current);
+            if (data.status === "completed") {
+              setStatus("completed");
+              setHighlightData(data);
+              clearInterval(pollRef.current);
+              if (data.subtitleUrl) fetchSubtitles(data.subtitleUrl);
+            } else if (data.status === "failed") {
+              setStatus("error");
+              setErrorMsg("Colab Worker báo lỗi khi xử lý video.");
+              clearInterval(pollRef.current);
+            }
           }
         } catch (err) {
           console.error("Polling error:", err);
@@ -87,16 +89,18 @@ export default function HighlightStudio() {
     setErrorMsg("");
 
     try {
-      const res = await apiService.post("/highlights/import", {
+      const res = await highlightService.importHighlight({
         youtubeUrl: youtubeUrl.trim(),
         brandId: activeBrand.id,
       });
-      const newTaskId = res.data.data.highlight.id;
-      setTaskId(newTaskId);
-      localStorage.setItem("highlight_task_id", newTaskId);
+      const newTaskId = res?.highlight?.id || res?.data?.highlight?.id;
+      if (newTaskId) {
+        setTaskId(newTaskId);
+        localStorage.setItem("highlight_task_id", newTaskId);
+      }
     } catch (err) {
       console.error("Import failed:", err);
-      setErrorMsg(err.response?.data?.message || "Không thể kết nối Backend.");
+      setErrorMsg(err.message || "Không thể kết nối Backend.");
       setStatus("error");
     }
   };
@@ -119,15 +123,15 @@ export default function HighlightStudio() {
     if (!ytTitle.trim()) return;
     setYtPublishing(true);
     try {
-      const res = await apiService.post(`/highlights/${taskId}/publish-youtube`, {
+      const res = await highlightService.publishYoutube(taskId, {
         title: ytTitle,
         description: ytDesc,
         brandId: activeBrand.id,
       });
-      setYtResult(res.data.data);
+      setYtResult(res || null);
       setYtModal(false);
     } catch (err) {
-      alert(err.response?.data?.message || "Đăng thất bại. Kiểm tra kết nối YouTube!");
+      alert(err.message || "Đăng thất bại. Kiểm tra kết nối YouTube!");
     } finally {
       setYtPublishing(false);
     }
@@ -140,14 +144,14 @@ export default function HighlightStudio() {
     setTwitchClipResult(null);
 
     try {
-      const res = await apiService.post("/social/twitch/clips/create", {
+      const res = await highlightService.createTwitchClip({
         broadcasterId: twitchBroadcasterId.trim(),
         maxAttempts: 10
       });
-      setTwitchClipResult(res.data?.data);
+      setTwitchClipResult(res || null);
     } catch (err) {
       console.error("Twitch clip creation failed:", err);
-      setTwitchClipError(err.response?.data?.message || "Không thể tạo clip Twitch.");
+      setTwitchClipError(err.message || "Không thể tạo clip Twitch.");
     } finally {
       setIsCreatingTwitchClip(false);
     }
