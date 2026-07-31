@@ -2,12 +2,10 @@ const socialService = require('../../src/services/social/social.service');
 const socialAccountRepository = require('../../src/repositories/social/social-account.repository');
 const youtubePubSubService = require('../../src/services/social/youtube/youtube-pubsub.service');
 const notificationService = require('../../src/services/core/notification.service');
-const syncPostAnalyticsService = require('../../src/services/social/sync-post-analytics.service');
 
 jest.mock('../../src/repositories/social/social-account.repository');
 jest.mock('../../src/services/social/youtube/youtube-pubsub.service');
 jest.mock('../../src/services/core/notification.service');
-jest.mock('../../src/services/social/sync-post-analytics.service');
 
 describe('SocialService - disconnectAccount (PubSub Unsubscribe)', () => {
   const originalEnv = process.env.PUBLIC_WEBHOOK_URL;
@@ -15,9 +13,9 @@ describe('SocialService - disconnectAccount (PubSub Unsubscribe)', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     process.env.PUBLIC_WEBHOOK_URL = 'https://app.publicast.com';
+    socialAccountRepository.findByBrandAndPlatformFirst = jest.fn().mockResolvedValue(null);
     socialAccountRepository.deleteManyByBrandAndPlatform.mockResolvedValue({ count: 1 });
     notificationService.create.mockResolvedValue({});
-    syncPostAnalyticsService.cleanupOrphanSnapshotsForBrandPlatform.mockResolvedValue({});
   });
 
   afterEach(() => {

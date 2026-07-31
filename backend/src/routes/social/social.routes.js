@@ -63,10 +63,8 @@ router.post('/reddit/submit', verifyAuth, requireBrandMember, redditController.s
 router.get('/facebook/published-posts', verifyAuth, requireBrandMember, facebookController.getFacebookPublishedPosts);
 router.post('/facebook/disconnect', verifyAuth, requireManageConnections, socialConnectionController.disconnectFacebookAccount);
 
-// Facebook Post Detail Analytics
-// These three already verify brand access inline via brandRepository.userCanAccessBrand
-router.get('/facebook/post-insights', verifyAuth, facebookController.getFacebookPostInsights);
-router.get('/facebook/post-analytics', verifyAuth, facebookController.getFacebookPostAnalytics);
+// Facebook Reels
+// Already verifies brand access inline via brandRepository.userCanAccessBrand
 router.get('/facebook/reels/:videoId/copyright-check', verifyAuth, facebookController.checkFacebookReelCopyright);
 
 // Facebook Competitors

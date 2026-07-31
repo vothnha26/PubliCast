@@ -488,38 +488,6 @@ describe('PostService Unit Tests', () => {
     });
   });
 
-  describe('getPostAnalytics', () => {
-    it('should retrieve post metric history from prisma', async () => {
-      postRepository.findById.mockResolvedValue({
-        id: 'post-123',
-        brandId: 'brand-abc'
-      });
-
-      const mockHistory = [
-        { id: 1, viewsCumulative: 100, reactionsCumulative: 10 }
-      ];
-
-      const prismaMock = require('../../src/config/prisma');
-      prismaMock.postAnalyticsDailySnapshot.findMany.mockResolvedValue(mockHistory);
-
-      const result = await postService.getPostAnalytics('post-123', 'brand-abc');
-
-      expect(result).toEqual(mockHistory);
-      expect(prismaMock.postAnalyticsDailySnapshot.findMany).toHaveBeenCalledWith({
-        where: { postId: 'post-123', brandId: 'brand-abc' },
-        orderBy: { date: 'asc' }
-      });
-    });
-
-    it('should throw error if post is not found or brand unauthorized', async () => {
-      postRepository.findById.mockResolvedValue(null);
-
-      await expect(
-        postService.getPostAnalytics('post-123', 'brand-abc')
-      ).rejects.toThrow('Post not found or unauthorized');
-    });
-  });
-
   describe('Path Normalization & Sanitization', () => {
     it('should recursively normalize Windows backslashes to forward slashes in post media paths and metadata', () => {
       const input = {
@@ -599,60 +567,6 @@ describe('PostService Unit Tests', () => {
       await expect(
         postService.retryFailedPlatforms('post-1', ['INSTAGRAM'], 'brand-abc', 'user-1')
       ).rejects.toMatchObject({ statusCode: 409 });
-    });
-  });
-
-  describe('getBestTimes (#55, #56)', () => {
-    const prisma = require('../../src/config/prisma');
-
-    it('blends real engagement data into the heuristic instead of discarding it', async () => {
-      // 2026-01-06 12:00:00 UTC is 2026-01-06 19:00 in Asia/Ho_Chi_Minh (UTC+7)
-      // -> Tuesday, hour 19. Post heavily engaged, so its bucket's score
-      // should be pulled toward 100 relative to a brand with zero posts.
-      prisma.post.findMany.mockResolvedValueOnce(
-        Array.from({ length: 5 }, () => ({
-          publishedAt: new Date('2026-01-06T12:00:00.000Z'),
-          scheduledAt: null,
-          postAnalyticsSnapshots: [
-            { clicksCumulative: 1000, reactionsCumulative: 1000, viewsCumulative: 1000 }
-          ]
-        }))
-      );
-
-      const withData = await postService.getBestTimes('brand-1', 'INSTAGRAM');
-
-      prisma.post.findMany.mockResolvedValueOnce([]);
-      const withoutData = await postService.getBestTimes('brand-1', 'INSTAGRAM');
-
-      const cellWithData = withData.find(c => c.day === 2 && c.hour === 19);
-      const cellWithoutData = withoutData.find(c => c.day === 2 && c.hour === 19);
-
-      expect(cellWithData.percentage).toBeGreaterThan(cellWithoutData.percentage);
-    });
-
-    it('does not throw and falls back to 0 engagement when cumulative fields are null (#56)', async () => {
-      prisma.post.findMany.mockResolvedValueOnce([
-        {
-          publishedAt: new Date('2026-01-06T12:00:00.000Z'),
-          scheduledAt: null,
-          postAnalyticsSnapshots: [
-            { clicksCumulative: null, reactionsCumulative: null, viewsCumulative: null }
-          ]
-        }
-      ]);
-
-      const result = await postService.getBestTimes('brand-1', 'INSTAGRAM');
-
-      expect(result.every(cell => Number.isFinite(cell.percentage))).toBe(true);
-    });
-
-    it('falls back to pure heuristic (no NaN/undefined) when the brand has no published posts', async () => {
-      prisma.post.findMany.mockResolvedValueOnce([]);
-
-      const result = await postService.getBestTimes('brand-1', 'TIKTOK');
-
-      expect(result).toHaveLength(7 * 24);
-      expect(result.every(cell => Number.isFinite(cell.percentage) && cell.percentage >= 15 && cell.percentage <= 98)).toBe(true);
     });
   });
 

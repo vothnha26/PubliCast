@@ -239,6 +239,12 @@ const ANALYTICS = {
   COOLDOWN_HOURS: parseInt(process.env.SOCIAL_SYNC_COOLDOWN_HOURS) || 12,
   // Mốc bắt đầu "lifetime" — trước ngày này YouTube Analytics không có data chi tiết theo video
   LIFETIME_START_DATE: '2020-01-01',
+  // YouTube Data/Analytics API's default daily quota cap (units/day), and the
+  // remaining-budget floor below which youtube-analytics.service.js treats
+  // quota as exhausted and falls back to mock/estimated data instead of
+  // risking a 403 quotaExceeded mid-request.
+  YOUTUBE_DAILY_QUOTA_LIMIT: 10000,
+  YOUTUBE_QUOTA_THRESHOLD: 1500,
   GRANULARITY: {
     DAILY: 'DAILY',
     WEEKLY: 'WEEKLY',

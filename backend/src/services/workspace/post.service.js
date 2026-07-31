@@ -1137,33 +1137,6 @@ class PostService {
     }
     return data;
   }
-
-  /**
-   * Get historical interaction metrics for a post
-   */
-  async getPostAnalytics(postId, brandId) {
-    const post = await postRepository.findById(postId);
-    if (!post || post.brandId !== brandId) {
-      const error = new Error('Post not found or unauthorized');
-      error.statusCode = 404;
-      throw error;
-    }
-
-    const prisma = require('../../config/prisma');
-    const history = await prisma.postAnalyticsDailySnapshot.findMany({
-      where: {
-        postId: postId,
-        brandId: brandId
-      },
-      orderBy: {
-        date: 'asc'
-      }
-    });
-
-    return history;
-  }
-
-
 }
 
 module.exports = new PostService();

@@ -1,6 +1,5 @@
 import * as React from "react";
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
 import {
   Search, Filter, MoreHorizontal, Plus,
   Trash2, CheckCircle, Clock, AlertCircle,
@@ -21,8 +20,7 @@ import { AccessGuard } from "../../../components/shared/AccessGuard";
 import { buildMediaUrl } from "@/utils/url";
 import { PostMediaThumbnail } from "@/components/shared/PostMediaThumbnail";
 import { useTranslation } from "react-i18next";
-import { mapToPostPreview } from "../../../utils/postPreview";
-import { buildPostDetailRoute } from "../../../constants/routes";
+import { getPlatformPostUrl } from "../../../utils/postUrlHelper";
 
 const STATUS_STYLE = {
   published: "bg-green-50 text-green-700 border-green-100",
@@ -36,40 +34,7 @@ const STATUS_STYLE = {
 
 const getPostLink = (platform, platformPostId) => {
   if (!platformPostId) return null;
-  const plt = platform.toLowerCase();
-
-  let id = null;
-  if (typeof platformPostId === 'object' && platformPostId !== null) {
-    id = platformPostId[plt] || platformPostId[platform.toUpperCase()];
-  } else if (typeof platformPostId === 'string') {
-    try {
-      const parsed = JSON.parse(platformPostId);
-      if (parsed && typeof parsed === 'object') {
-        id = parsed[plt] || parsed[platform.toUpperCase()];
-      } else {
-        id = platformPostId;
-      }
-    } catch (e) {
-      id = platformPostId;
-    }
-  }
-
-  if (!id) return null;
-
-  switch (plt) {
-    case 'facebook':
-      return `https://www.facebook.com/${id}`;
-    case 'youtube':
-      return `https://www.youtube.com/watch?v=${id}`;
-    case 'instagram':
-      return `https://www.instagram.com/p/${id}`;
-    case 'tiktok':
-      return `https://www.tiktok.com/video/${id}`;
-    case 'threads':
-      return `https://www.threads.net/post/${id}`;
-    default:
-      return null;
-  }
+  return getPlatformPostUrl({ targetPlatforms: [platform], platformPostId });
 };
 
 export function ListView() {
@@ -86,13 +51,14 @@ export function ListView() {
   const [activeMenuId, setActiveMenuId] = useState(null);
   const [repostingIds, setRepostingIds] = useState([]);
   const [reviewerPanel, setReviewerPanel] = useState({ open: false, post: null, availableReviewers: [], selectedIds: [], policy: 'AT_LEAST_ONE', saving: false });
-  const navigate = useNavigate();
 
   const openPostAnalytics = (post) => {
-    const platform = (post.platforms?.[0] || "youtube").toLowerCase();
-    navigate(buildPostDetailRoute(platform, post.id), {
-      state: { post: mapToPostPreview(post, platform) }
-    });
+    const url = getPlatformPostUrl(post);
+    if (url) {
+      window.open(url, "_blank", "noopener,noreferrer");
+    } else {
+      openPostCreator({ post });
+    }
   };
 
   const { openPostCreator, isOpen } = usePostCreator();

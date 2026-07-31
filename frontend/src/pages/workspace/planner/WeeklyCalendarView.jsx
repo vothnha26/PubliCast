@@ -1,6 +1,5 @@
 import * as React from "react";
 import { useState, useEffect, useMemo } from "react";
-import { useNavigate } from "react-router-dom";
 import { usePostCreator } from "../../../context/PostCreatorContext";
 import apiService from "../../../services/api";
 import { useBrand } from "../../../context/BrandContext";
@@ -8,8 +7,7 @@ import { useGoogleDriveImport } from "../../../hooks/useGoogleDriveImport";
 import { toast } from "sonner";
 import postService from "../../../services/post.service";
 import { useTranslation } from "react-i18next";
-import { mapToPostPreview } from "../../../utils/postPreview";
-import { buildPostDetailRoute } from "../../../constants/routes";
+import { getPlatformPostUrl } from "../../../utils/postUrlHelper";
 import { useLatestRequestId } from "../../../hooks/useLatestRequestId";
 
 // Import SOLID Subcomponents
@@ -30,14 +28,15 @@ export function WeeklyCalendarView() {
 
   const [searchTerm, setSearchTerm] = useState("");
   const { openPostCreator, isOpen } = usePostCreator();
-  const navigate = useNavigate();
 
   const handlePostClick = (post) => {
     if (post.status?.toLowerCase() === "published") {
-      const platform = (post.platforms?.[0] || "youtube").toLowerCase();
-      navigate(buildPostDetailRoute(platform, post.id), {
-        state: { post: mapToPostPreview(post, platform) }
-      });
+      const url = getPlatformPostUrl(post);
+      if (url) {
+        window.open(url, "_blank", "noopener,noreferrer");
+      } else {
+        openPostCreator({ post });
+      }
     } else {
       openPostCreator({ post });
     }

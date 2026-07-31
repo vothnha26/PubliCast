@@ -109,12 +109,6 @@ router.post('/transcribe', checkPermission(PERMISSION_KEYS.CREATE_POSTS), postCo
 router.get('/music', postController.getMusicTracks);
 
 /**
- * GET /api/posts/:id/analytics
- * Get historical metrics for a post
- */
-router.get('/:id/analytics', checkBrandAccess, postController.getPostAnalytics);
-
-/**
  * PUT /api/posts/:id
  * Update an existing post
  */

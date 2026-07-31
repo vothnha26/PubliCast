@@ -149,20 +149,7 @@ class PostController {
     });
   });
 
-  /**
-   * GET /api/posts/:id/analytics
-   */
-  getPostAnalytics = asyncHandler(async (req, res) => {
-    const { id } = req.params;
-    const brandId = req.query.brandId;
-    if (!brandId) return res.status(400).json({ message: 'brandId is required' });
 
-    const data = await postService.getPostAnalytics(id, brandId);
-    res.status(200).json({
-      message: 'Post analytics history retrieved successfully',
-      data
-    });
-  });
 
   /**
    * Submits a single trim job to BullMQ, deduped/locked by a content hash of

@@ -38,7 +38,8 @@ jest.mock('../../src/queues/social.queue', () => ({
 const QuotaTrackerService = require('../../src/services/social/quota-tracker.service');
 const socialAccountRepository = require('../../src/repositories/social/social-account.repository');
 const youtubeGateway = require('../../src/services/social/youtube/youtube.gateway');
-const { YOUTUBE_QUOTA_THRESHOLD, YOUTUBE_DAILY_QUOTA_LIMIT } = require('../../src/constants/analytics-snapshot.constants');
+const { ANALYTICS } = require('../../src/utils/constants');
+const { YOUTUBE_QUOTA_THRESHOLD, YOUTUBE_DAILY_QUOTA_LIMIT } = ANALYTICS;
 const youtubeAnalytics = require('../../src/services/social/youtube/youtube-analytics.service');
 
 const BRAND_ID = 'brand_1';
