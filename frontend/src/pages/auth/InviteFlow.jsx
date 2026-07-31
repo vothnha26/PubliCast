@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { Check, AlertTriangle, Loader2 } from "lucide-react";
-import apiService from "../../services/api";
+import teamService from "../../services/team.service";
 import { toast } from "sonner";
 import { STORAGE_KEYS } from "../../constants/storageKeys";
 
@@ -28,8 +28,8 @@ export function InviteFlow() {
 
     const validateToken = async () => {
       try {
-        const response = await apiService.get(`/team/invitations/validate?token=${token}`);
-        setInviteDetails(response.data);
+        const response = await teamService.validateInvitation(token);
+        setInviteDetails(response);
         setScreen("landing");
       } catch (err) {
         setScreen("expired");
@@ -48,7 +48,7 @@ export function InviteFlow() {
 
     setIsSubmitting(true);
     try {
-      const response = await apiService.post("/team/invitations/accept", {
+      const response = await teamService.acceptInvitation({
         token,
         name: inviteDetails?.isNewUser ? name : undefined,
         password: inviteDetails?.isNewUser ? password : undefined
@@ -57,7 +57,7 @@ export function InviteFlow() {
       // Auth is via the HttpOnly cookies the backend sets alongside this
       // response — the subsequent full-page navigation to /dashboard below
       // re-authenticates via that cookie, no token needs to be stored here.
-      const brandId = response.data.brandId;
+      const brandId = response?.brandId;
       if (brandId) {
         localStorage.setItem(STORAGE_KEYS.ACTIVE_BRAND_ID, brandId);
       }
