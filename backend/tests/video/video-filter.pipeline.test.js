@@ -32,15 +32,15 @@ describe('VideoFilterPipeline Unit Tests', () => {
     expect(filter).toContain('eq=brightness=0.20:contrast=1.10:saturation=1.15');
   });
 
-  it('should build filtergraph for color preset filters (grayscale, sepia, etc.)', () => {
-    const grayscaleFilter = videoFilterPipeline.buildPipeline({ filterPreset: FILTER_PRESETS.GRAYSCALE });
-    expect(grayscaleFilter).toBe('hue=s=0');
+  it('should build filtergraph for color preset filters (mono, sepia, cold, etc.)', () => {
+    const monoFilter = videoFilterPipeline.buildPipeline({ filterPreset: FILTER_PRESETS.MONO });
+    expect(monoFilter).toBe('hue=s=0,eq=contrast=1.25');
 
     const sepiaFilter = videoFilterPipeline.buildPipeline({ filterPreset: FILTER_PRESETS.SEPIA });
     expect(sepiaFilter).toContain('colorchannelmixer=');
 
-    const vintageFilter = videoFilterPipeline.buildPipeline({ filterPreset: FILTER_PRESETS.VINTAGE });
-    expect(vintageFilter).toBe('colorbalance=rs=.1:gs=-.05:bs=-.2');
+    const coldFilter = videoFilterPipeline.buildPipeline({ filterPreset: FILTER_PRESETS.COLD });
+    expect(coldFilter).toBe('hue=h=195:s=0.9,eq=brightness=0.05');
   });
 
   it('should build filtergraph for custom resize dimensions', () => {
@@ -55,7 +55,7 @@ describe('VideoFilterPipeline Unit Tests', () => {
     const filter = videoFilterPipeline.buildPipeline({
       aspectRatio: ASPECT_RATIOS.VERTICAL_9_16,
       adjustments: { brightness: 10, contrast: 0, saturation: 0 },
-      filterPreset: FILTER_PRESETS.COOL,
+      filterPreset: FILTER_PRESETS.COLD,
       resize: { width: 999, height: 999 }
     });
 
@@ -63,6 +63,6 @@ describe('VideoFilterPipeline Unit Tests', () => {
     expect(filter).toContain('scale=720:1280');
     expect(filter).not.toContain('scale=999:999');
     expect(filter).toContain('eq=brightness=0.10');
-    expect(filter).toContain('colorbalance=');
+    expect(filter).toContain('hue=h=195');
   });
 });

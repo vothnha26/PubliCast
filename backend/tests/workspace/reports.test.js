@@ -13,9 +13,9 @@ jest.mock('../../src/middlewares/auth.middleware', () => ({
 
 // Mock Permission Middleware
 jest.mock('../../src/middlewares/permission.middleware', () => {
-  return jest.fn(() => (req, res, next) => {
-    next();
-  });
+  const middleware = jest.fn(() => (req, res, next) => next());
+  middleware.requireBrandMember = (req, res, next) => next();
+  return middleware;
 });
 
 // Mock Prisma
@@ -38,14 +38,30 @@ jest.mock('../../src/config/prisma', () => {
 
   const mockPost = {
     count: jest.fn(),
-    findMany: jest.fn()
+    findMany: jest.fn(),
+    groupBy: jest.fn().mockResolvedValue([])
+  };
+
+  const mockAnalytics = {
+    findMany: jest.fn().mockResolvedValue([])
+  };
+
+  const mockFacebookPostMetric = {
+    findMany: jest.fn().mockResolvedValue([])
+  };
+
+  const mockTrackedVideo = {
+    findMany: jest.fn().mockResolvedValue([])
   };
 
   return {
     report: mockReport,
     brand: mockBrand,
     socialAccount: mockSocialAccount,
-    post: mockPost
+    post: mockPost,
+    analytics: mockAnalytics,
+    facebookPostMetric: mockFacebookPostMetric,
+    trackedVideo: mockTrackedVideo
   };
 });
 
@@ -247,7 +263,7 @@ describe('Reports API and Strategy Patterns Tests', () => {
         .expect(200);
 
       expect(res.headers['content-type']).toContain('application/pdf');
-      expect(res.text).toContain('dummy content');
+      expect(res.body.toString()).toContain('dummy content');
 
       fs.unlinkSync(filePath);
     });

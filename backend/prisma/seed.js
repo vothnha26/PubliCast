@@ -339,7 +339,7 @@ async function main() {
         owner: { connect: { id: adminUser.id } },
         subscription: {
           create: {
-            planId: starterPlan.id,
+            planId: proPlan.id,
             status: 'ACTIVE',
             currentPeriodStart: new Date(),
             currentPeriodEnd: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)

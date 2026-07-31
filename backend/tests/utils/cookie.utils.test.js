@@ -14,23 +14,16 @@ describe('Cookie Utils Unit Tests', () => {
 
       expect(options).toEqual({
         httpOnly: true,
-        secure: false, // since process.env.NODE_ENV is set to 'test'
-        sameSite: 'lax',
+        secure: true,
+        sameSite: 'none',
         maxAge,
         path: '/'
       });
     });
 
-    it('should set secure to true when NODE_ENV is production', () => {
-      process.env.NODE_ENV = 'production';
+    it('should set secure to true always for sameSite: none', () => {
       const options = cookieUtils.buildCookieOptions(1000);
       expect(options.secure).toBe(true);
-    });
-
-    it('should set secure to false when NODE_ENV is not production', () => {
-      process.env.NODE_ENV = 'development';
-      const options = cookieUtils.buildCookieOptions(1000);
-      expect(options.secure).toBe(false);
     });
   });
 
