@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { 
   Loader2, Play, FileVideo, RefreshCw, X, 
   MoreVertical, Filter, ArrowUpDown, Home, Folder, 
-  ChevronLeft, FileImage, FileText
+  ChevronLeft, FileImage, FileText, Sparkles
 } from 'lucide-react';
 import socialService from '../../../../services/social.service';
 import { toast } from 'sonner';
@@ -10,6 +10,8 @@ import { useConfirm } from "@/hooks/useConfirm";
 import { useFeatureGate } from '../../../../hooks/useFeatureGate';
 import { PRODUCT_IDS } from '../../../../constants/products';
 import { useTranslation } from "react-i18next";
+import { usePostCreator } from '../../../../context/PostCreatorContext';
+import { useNavigate } from 'react-router-dom';
 
 // Custom icons mapping for category folders matching the screenshot design
 const FOLDERS = [
@@ -128,6 +130,8 @@ const INTEGRATIONS = [
 export function SidebarIntegrations({ activeBrand, onClose }) {
   const { t } = useTranslation("planner");
   const confirm = useConfirm();
+  const { openPostCreator } = usePostCreator();
+  const navigate = useNavigate();
   const { hasAccess } = useFeatureGate();
   const hasDriveAccess = hasAccess(PRODUCT_IDS.GOOGLE_DRIVE);
   const [activeTab, setActiveTab] = useState('drive');
@@ -295,7 +299,7 @@ export function SidebarIntegrations({ activeBrand, onClose }) {
   const handleConnect = async () => {
     if (!activeBrand) return;
     try {
-      const res = await socialService.getGoogleAuthUrl(activeBrand.id);
+      const res = await socialService.getGoogleDriveAuthUrl(activeBrand.id);
       if (res.url) {
         window.location.href = res.url;
       } else {
@@ -319,7 +323,7 @@ export function SidebarIntegrations({ activeBrand, onClose }) {
     if (!isConfirmed) return;
     setLoading(true);
     try {
-      await socialService.disconnectGoogleAccount(activeBrand.id);
+      await socialService.disconnectGoogleDriveAccount(activeBrand.id);
       toast.success(t("sidebarIntegrations.toasts.disconnectSuccess"));
       setConnected(false);
       setFiles([]);
@@ -395,6 +399,11 @@ export function SidebarIntegrations({ activeBrand, onClose }) {
                           <img 
                             src={connectedAccount.profilePictureUrl} 
                             alt="Avatar" 
+                            referrerPolicy="no-referrer"
+                            onError={(e) => {
+                              e.target.onerror = null;
+                              e.target.style.display = 'none';
+                            }}
                             className="w-4 h-4 rounded-full object-cover border border-gray-100" 
                           />
                         ) : (
@@ -739,7 +748,16 @@ export function SidebarIntegrations({ activeBrand, onClose }) {
                             {/* Thumbnail */}
                             <div className="w-12 h-12 bg-gray-50 rounded-xl overflow-hidden shrink-0 flex items-center justify-center border border-gray-50 relative">
                               {file.thumbnailLink ? (
-                                <img src={file.thumbnailLink} alt="Thumb" className="w-full h-full object-cover" />
+                                <img 
+                                  src={file.thumbnailLink} 
+                                  alt="" 
+                                  referrerPolicy="no-referrer"
+                                  onError={(e) => {
+                                    e.target.onerror = null;
+                                    e.target.src = `https://drive.google.com/thumbnail?id=${file.id}&sz=s220`;
+                                  }}
+                                  className="w-full h-full object-cover" 
+                                />
                               ) : file.mimeType?.startsWith('video/') ? (
                                 <FileVideo size={16} className="text-gray-400" />
                               ) : file.mimeType?.startsWith('image/') ? (
@@ -799,13 +817,39 @@ export function SidebarIntegrations({ activeBrand, onClose }) {
               {t(activeStrategy.descKey)}
             </p>
 
-            <button 
-              onClick={() => window.location.href = '/pricing'}
-              className="flex items-center justify-center gap-1.5 px-6 py-2.5 bg-[#FEF08A] hover:bg-[#FDE047] text-gray-900 rounded-xl text-xs font-bold transition-all shadow-sm cursor-pointer hover:scale-[1.02] active:scale-[0.98]"
-            >
-              <span>{t(activeStrategy.buttonTextKey)}</span>
-              {activeStrategy.hasDiamond && <span className="text-[10px]">💎</span>}
-            </button>
+            {activeStrategy.id === 'ideas' ? (
+              <div className="flex flex-col gap-2.5 w-full max-w-[220px]">
+                <button 
+                  onClick={() => {
+                    const oneHourFromNow = new Date(Date.now() + 3600000);
+                    openPostCreator({ 
+                      defaultScheduledAt: oneHourFromNow,
+                      template: {
+                        caption: ""
+                      }
+                    });
+                  }}
+                  className="flex items-center justify-center gap-1.5 px-4 py-2.5 bg-[#FEF08A] hover:bg-[#FDE047] text-gray-900 rounded-xl text-xs font-bold transition-all shadow-sm cursor-pointer hover:scale-[1.02] active:scale-[0.98]"
+                >
+                  <Sparkles size={14} className="text-indigo-700" />
+                  <span>{t(activeStrategy.buttonTextKey)}</span>
+                </button>
+                <button 
+                  onClick={() => navigate('/ai-assistant')}
+                  className="flex items-center justify-center gap-1.5 px-4 py-2 border border-gray-200 hover:bg-gray-50 text-gray-700 rounded-xl text-[11px] font-bold transition-all cursor-pointer"
+                >
+                  <span>Mở Trợ lý AI chuyên sâu 🚀</span>
+                </button>
+              </div>
+            ) : (
+              <button 
+                onClick={() => window.location.href = '/pricing'}
+                className="flex items-center justify-center gap-1.5 px-6 py-2.5 bg-[#FEF08A] hover:bg-[#FDE047] text-gray-900 rounded-xl text-xs font-bold transition-all shadow-sm cursor-pointer hover:scale-[1.02] active:scale-[0.98]"
+              >
+                <span>{t(activeStrategy.buttonTextKey)}</span>
+                {activeStrategy.hasDiamond && <span className="text-[10px]">💎</span>}
+              </button>
+            )}
           </div>
         )}
       </div>

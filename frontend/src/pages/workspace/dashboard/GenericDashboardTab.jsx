@@ -158,14 +158,14 @@ export function GenericDashboardTab({
 
       {/* Summary Grid */}
       {summaryGrid && summaryGrid.length > 0 && (
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className={`grid grid-cols-2 sm:grid-cols-3 ${summaryGrid.length === 5 ? 'lg:grid-cols-5' : 'lg:grid-cols-6'} gap-3`}>
           {summaryGrid.map((item, idx) => (
             <div
               key={idx}
-              className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm flex flex-col justify-center min-h-[90px]"
+              className="bg-[#E2E8F0]/40 p-4 rounded-2xl border border-gray-200/50 shadow-xs flex flex-col items-center justify-center min-h-[85px] transition-all hover:bg-[#E2E8F0]/60"
             >
-              <span className="text-xl font-bold text-gray-800">{item.value}</span>
-              <span className="text-[10px] text-gray-400 font-bold uppercase mt-1 tracking-tight">
+              <span className="text-xl font-bold text-gray-900">{item.value}</span>
+              <span className="text-[11px] text-gray-500 font-medium mt-1 text-center">
                 {item.label}
               </span>
             </div>
