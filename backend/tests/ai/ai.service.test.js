@@ -37,7 +37,7 @@ describe('AIService Unit Tests', () => {
     brandId: 'brand-123',
     defaultTone: 'PROFESSIONAL',
     defaultLanguage: 'vi',
-    creditsLimit: 1000,
+    creditsLimit: 10,
     creditsUsed: 5,
     usageCountThisMonth: 5
   };
@@ -79,7 +79,7 @@ describe('AIService Unit Tests', () => {
           brandId: 'brand-123',
           defaultTone: 'PROFESSIONAL',
           defaultLanguage: 'vi',
-          creditsLimit: 1000,
+          creditsLimit: 10,
           creditsUsed: 0,
           usageCountThisMonth: 0
         }
@@ -131,8 +131,8 @@ describe('AIService Unit Tests', () => {
       subscriptionGate.checkFeatureAccess.mockResolvedValue(true);
       prisma.aIAssistant.findUnique.mockResolvedValue({
         ...mockSettings,
-        creditsUsed: 1000,
-        creditsLimit: 1000
+        creditsUsed: 10,
+        creditsLimit: 10
       });
 
       await expect(
