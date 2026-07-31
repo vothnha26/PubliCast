@@ -13,7 +13,9 @@ const logger = require('./utils/logger');
 
 // Routes - Auth Domain
 const authRoutes = require('./routes/auth/auth.routes');
+const authRoutesV2 = require('./routes/auth/auth.routes.v2');
 const profileRoutes = require('./routes/auth/profile.routes');
+const profileRoutesV2 = require('./routes/auth/profile.routes.v2');
 
 // Routes - Admin Domain
 const pricingRoutes = require('./routes/admin/pricing.routes');
@@ -194,6 +196,8 @@ app.use('/api/admin/users', userRoutes);
 app.use('/api/social', socialRoutes);
 
 // ── API v2 (response envelope {message, data} — parallel to v1, v1 unchanged) ──
+app.use('/api/v2/auth', authRoutesV2);
+app.use('/api/v2/profile', profileRoutesV2);
 app.use('/api/v2/social/youtube', youtubeRoutesV2);
 app.use('/api/v2/social/tiktok', tiktokRoutesV2);
 app.use('/api/v2/posts', postRoutesV2);

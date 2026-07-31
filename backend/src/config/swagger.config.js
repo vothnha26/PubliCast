@@ -18,6 +18,27 @@ const options = {
           type: 'apiKey',
           in: 'cookie',
           name: 'accessToken'
+        },
+        bearerAuth: {
+          type: 'http',
+          scheme: 'bearer',
+          bearerFormat: 'JWT'
+        }
+      },
+      schemas: {
+        V2EnvelopeResponse: {
+          type: 'object',
+          properties: {
+            message: { type: 'string', example: 'Operation completed successfully' },
+            data: { type: 'object', nullable: true }
+          }
+        },
+        ErrorResponse: {
+          type: 'object',
+          properties: {
+            message: { type: 'string', example: 'Invalid credentials or request error' },
+            errors: { type: 'array', items: { type: 'object' }, nullable: true }
+          }
         }
       }
     },
