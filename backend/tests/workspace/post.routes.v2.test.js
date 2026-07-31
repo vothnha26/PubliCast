@@ -13,7 +13,11 @@ jest.mock('../../src/middlewares/auth.middleware', () => ({
   },
 }));
 
-jest.mock('../../src/middlewares/permission.middleware', () => () => (req, res, next) => next());
+jest.mock('../../src/middlewares/permission.middleware', () => {
+  const middleware = jest.fn(() => (req, res, next) => next());
+  middleware.requireBrandMember = (req, res, next) => next();
+  return middleware;
+});
 
 jest.mock('../../src/middlewares/resolve-post-upload-limits.middleware', () => (req, res, next) => {
   req.postUploadLimits = { maxFileSizeMb: 100, allowedFormats: ['mp4'] };

@@ -68,7 +68,9 @@ jest.mock('../../src/middlewares/auth.middleware', () => ({
 }));
 
 jest.mock('../../src/middlewares/permission.middleware', () => {
-  return () => (req, res, next) => next();
+  const middleware = jest.fn(() => (req, res, next) => next());
+  middleware.requireBrandMember = (req, res, next) => next();
+  return middleware;
 });
 
 jest.mock('../../src/services/workspace/video/video-processor.facade', () => ({

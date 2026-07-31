@@ -20,13 +20,15 @@ jest.mock('../../src/services/core/notification.service', () => ({
 }));
 
 jest.mock('../../src/services/social/social-platform.factory', () => ({
-  getService: jest.fn()
+  getService: jest.fn(),
+  isSupported: jest.fn().mockReturnValue(true)
 }));
 
 const socialPlatformFactory = require('../../src/services/social/social-platform.factory');
 
 jest.mock('../../src/repositories/social/social-account.repository', () => ({
   findByBrandAndPlatform: jest.fn(),
+  findByBrandAndPlatformFirst: jest.fn().mockResolvedValue(null),
   deleteManyByBrandAndPlatform: jest.fn()
 }));
 
@@ -94,15 +96,15 @@ describe('Notification integration hooks', () => {
       postRepository.update.mockResolvedValue({});
       notificationService.create.mockResolvedValue({});
 
-      await step.execute({
+      await expect(step.execute({
         post,
         results: [
           { platform: 'TikTok', success: false, error: 'Token expired' }
         ]
-      });
+      })).rejects.toThrow();
 
       expect(postRepository.update).toHaveBeenCalledWith('post-2', expect.objectContaining({
-        status: POST_STATUS.FAILED,
+        status: POST_STATUS.RETRYING,
         failureReason: 'TikTok: Token expired'
       }));
       expect(notificationService.create).toHaveBeenCalledWith(expect.objectContaining({

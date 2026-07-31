@@ -17,7 +17,7 @@ jest.mock('../../src/config/redis', () => ({
   set: jest.fn(),
   incr: jest.fn(),
   expire: jest.fn(),
-  del: jest.fn(),
+  del: jest.fn().mockResolvedValue(1),
   isOpen: true
 }));
 
@@ -55,6 +55,8 @@ const otpService = require('../../src/services/auth/otp.service');
 describe('AuthService', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    process.env.ACCESS_TOKEN_SECRET = 'mock-access-token-secret-12345';
+    process.env.REFRESH_TOKEN_SECRET = 'mock-refresh-token-secret-12345';
   });
 
   describe('register', () => {

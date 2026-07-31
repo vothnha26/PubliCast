@@ -16,6 +16,7 @@ describe('FacebookGateway resumable video upload streaming (B3)', () => {
     // same fix in tests/social/tiktok-gateway.test.js for the full rationale).
     fs = require('fs');
     facebookGateway = require('../../src/services/social/facebook/facebook.gateway');
+    jest.spyOn(facebookGateway, '_pollVideoStatus').mockResolvedValue(true);
     global.fetch = jest.fn();
   });
 
@@ -66,9 +67,17 @@ describe('FacebookGateway resumable video upload streaming (B3)', () => {
 
   describe('publishVideo', () => {
     it('uses direct file_url ingestion when mediaUrl is an HTTP/HTTPS URL (Cloudinary)', async () => {
-      global.fetch.mockResolvedValue({
-        ok: true,
-        json: () => Promise.resolve({ id: 'fb_video_direct_123' })
+      global.fetch.mockImplementation((url) => {
+        if (url.includes('fields=status')) {
+          return Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve({ processing_phase: { status: 'complete' } })
+          });
+        }
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ id: 'fb_video_direct_123' })
+        });
       });
 
       const result = await facebookGateway.publishVideo(
@@ -108,6 +117,9 @@ describe('FacebookGateway resumable video upload streaming (B3)', () => {
         }
         if (url.includes('upload_phase=finish')) {
           return Promise.resolve({ ok: true, json: () => Promise.resolve({ id: 'fb_video_123' }) });
+        }
+        if (url.includes('fields=status')) {
+          return Promise.resolve({ ok: true, json: () => Promise.resolve({ processing_phase: { status: 'complete' } }) });
         }
         return Promise.reject(new Error(`Unexpected fetch: ${url}`));
       });

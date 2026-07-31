@@ -13,7 +13,7 @@ jest.mock('../../src/middlewares/auth.middleware', () => ({
 }));
 
 jest.mock('../../src/middlewares/permission.middleware', () => {
-  const middleware = (req, res, next) => next();
+  const middleware = jest.fn(() => (req, res, next) => next());
   middleware.requireBrandMember = (req, res, next) => next();
   return middleware;
 });
