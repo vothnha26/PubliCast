@@ -21,12 +21,32 @@ class OAuthController {
   }
 
   getGoogleAuthUrl = asyncHandler(async (req, res) => {
-    const { brandId } = req.query;
+    const { brandId, frontendOrigin } = req.query;
     if (!brandId) return res.status(400).json({ message: 'brandId is required' });
 
     const scopes = GOOGLE_OAUTH_SCOPE_SETS.YOUTUBE;
+    // frontendOrigin (optional) lets multiple frontends (legacy app, publicast-frontend
+    // sandbox, ...) share this one OAuth flow — encoded into `state` so googleCallback
+    // knows which origin to redirect back to. Only http(s) origins from ALLOWED
+    // origins are accepted to prevent open-redirect via a spoofed frontendOrigin value;
+    // falls back to DEFAULT_CONFIG.FRONTEND_URL (legacy app) when absent/invalid.
+    const allowedOrigins = (process.env.CORS_ALLOWED_ORIGINS || '').split(',').map(o => o.trim());
+    const isValidOrigin = frontendOrigin
+      && /^https?:\/\/[^/]+$/.test(frontendOrigin)
+      && (allowedOrigins.includes(frontendOrigin) || /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(frontendOrigin));
+    const state = isValidOrigin ? `${brandId}::${frontendOrigin}` : brandId;
+
+    const scopes = [
+      GOOGLE_SCOPES.YOUTUBE,
+      GOOGLE_SCOPES.YOUTUBE_READONLY,
+      GOOGLE_SCOPES.YOUTUBE_FORCE_SSL,
+      GOOGLE_SCOPES.YT_ANALYTICS_READONLY,
+      GOOGLE_SCOPES.USERINFO_EMAIL,
+      GOOGLE_SCOPES.USERINFO_PROFILE,
+      GOOGLE_SCOPES.DRIVE_READONLY
+    ];
     const redirectUri = `${this._getRedirectBaseUrl(req)}/api/social/google/callback`;
-    const url = googleOAuthService.getAuthUrl(scopes, brandId, redirectUri);
+    const url = googleOAuthService.getAuthUrl(scopes, state, redirectUri);
     res.json({ url });
   });
 
@@ -56,8 +76,10 @@ class OAuthController {
 
   googleCallback = asyncHandler(async (req, res) => {
     const { code, state } = req.query;
-    const brandId = state;
-    const frontendUrl = DEFAULT_CONFIG.FRONTEND_URL;
+    // state is either "<brandId>" (legacy shape) or "<brandId>::<frontendOrigin>"
+    // (see getGoogleAuthUrl above) — split defensively, first segment is always brandId.
+    const [brandId, encodedFrontendOrigin] = (state || '').split('::');
+    const frontendUrl = encodedFrontendOrigin || DEFAULT_CONFIG.FRONTEND_URL;
     const redirectUri = `${this._getRedirectBaseUrl(req)}/api/social/google/callback`;
 
     if (!brandId) return res.redirect(`${frontendUrl}/manage/connections?error=brand_id_missing`);

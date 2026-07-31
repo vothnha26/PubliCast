@@ -61,11 +61,11 @@ class CalendarEventController {
     }
 
     const icsContent = req.file.buffer.toString('utf-8');
-    const importedEvents = await calendarEventService.importIcs(brandId, icsContent);
+    const importedPosts = await calendarEventService.importIcs(brandId, icsContent, req.user.id);
 
     res.status(200).json({
-      message: `Successfully imported ${importedEvents.length} calendar events`,
-      data: importedEvents
+      message: `Successfully imported ${importedPosts.length} posts`,
+      data: importedPosts
     });
   });
 
