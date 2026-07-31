@@ -1,19 +1,46 @@
 import { apiV2 } from "./api";
 
-export async function uploadMediaFile(file, brandId, folderId = null) {
-  const formData = new FormData();
-  formData.append("file", file);
-  formData.append("brandId", brandId);
-  if (folderId) {
-    formData.append("folderId", folderId);
+class MediaService {
+  async getMedia(brandId, paramsString = "") {
+    return await apiV2.get(`/media?brandId=${brandId}&${paramsString}`);
   }
 
-  const data = await apiV2.post("/media/upload", formData, {
-    headers: {
-      "Content-Type": "multipart/form-data"
-    },
-    timeout: 120000 // 120 seconds timeout for media uploads
-  });
+  async getFolders(brandId, parentId = null) {
+    const query = parentId ? `&parentId=${parentId}` : "";
+    return await apiV2.get(`/media-folders?brandId=${brandId}${query}`);
+  }
 
-  return data;
+  async createFolder(brandId, name, parentId = null) {
+    return await apiV2.post("/media-folders", {
+      name,
+      brandId,
+      parentId
+    });
+  }
+
+  async getSignature(folder) {
+    return await apiV2.get(`/media/signature?folder=${folder}`);
+  }
+
+  async saveDirect(brandId, folderId, fileInfo) {
+    return await apiV2.post("/media/save-direct", {
+      brandId,
+      folderId,
+      fileInfo
+    });
+  }
+
+  async deleteFile(id, brandId) {
+    return await apiV2.delete(`/media/${id}`, { data: { brandId } });
+  }
+
+  async renameFile(id, brandId, filename) {
+    return await apiV2.patch(`/media/${id}/rename`, {
+      brandId,
+      filename
+    });
+  }
 }
+
+const mediaService = new MediaService();
+export default mediaService;

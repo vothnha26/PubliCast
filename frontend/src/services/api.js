@@ -159,11 +159,7 @@ apiV2.interceptors.response.use(
     // Standardized V2 Envelope Unwrapping:
     // Backend response format: { message: "...", data: { ... } }
     if (response.data && typeof response.data === 'object' && 'data' in response.data) {
-      const payload = response.data.data;
-      if (payload && typeof payload === 'object' && !Array.isArray(payload) && response.data.message) {
-        payload._envelopeMessage = response.data.message;
-      }
-      return payload;
+      return response.data.data;
     }
     return response.data;
   },
@@ -177,26 +173,27 @@ apiV2.interceptors.response.use(
     }
 
     // Auto-refresh on 401
-    if (
-      error.response?.status === 401 &&
-      !originalRequest._retry &&
-      !originalRequest.url?.includes('/auth/refresh') &&
-      !originalRequest.url?.includes('/auth/login') &&
-      !originalRequest.url?.includes('/auth/logout')
-    ) {
-      if (isRefreshing) {
-        return new Promise((resolve) => {
-          addRefreshSubscriber(() => {
-            resolve(apiV2(originalRequest));
+      if (
+        error.response?.status === 401 &&
+        !originalRequest._retry &&
+        !originalRequest.url?.includes('/v2/auth/refresh') &&
+        !originalRequest.url?.includes('/auth/refresh') &&
+        !originalRequest.url?.includes('/auth/login') &&
+        !originalRequest.url?.includes('/auth/logout')
+      ) {
+        if (isRefreshing) {
+          return new Promise((resolve) => {
+            addRefreshSubscriber(() => {
+              resolve(apiV2(originalRequest));
+            });
           });
-        });
-      }
+        }
 
-      originalRequest._retry = true;
-      isRefreshing = true;
+        originalRequest._retry = true;
+        isRefreshing = true;
 
-      try {
-        await apiV2.post('/auth/refresh');
+        try {
+          await apiV2.post('/v2/auth/refresh');
         isRefreshing = false;
         onRefreshed();
         return apiV2(originalRequest);

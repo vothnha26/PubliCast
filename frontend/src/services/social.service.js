@@ -59,6 +59,13 @@ class SocialService {
     return data;
   }
 
+  async getReelCopyrightStatus(brandId, videoId, socialAccountId = null) {
+    const url = `/facebook/reels/${videoId}/copyright-check?brandId=${brandId}` +
+      (socialAccountId ? `&socialAccountId=${socialAccountId}` : '');
+    const data = await apiV2.get(url);
+    return data;
+  }
+
   async getVideoAnalytics(brandId, videoId, startDate, endDate) {
     let url = `/social/youtube/video-analytics?brandId=${encodeURIComponent(brandId)}&videoId=${encodeURIComponent(videoId)}`;
     if (startDate) url += `&startDate=${encodeURIComponent(startDate)}`;

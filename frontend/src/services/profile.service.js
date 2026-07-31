@@ -27,6 +27,21 @@ class ProfileService {
     const data = await apiV2.put('/profile/default-brand', { defaultBrandId: brandId });
     return data;
   }
+
+  async unlinkAccount(provider) {
+    const data = await apiV2.post('/profile/accounts/unlink', { provider });
+    return data;
+  }
+
+  async changePassword(payload) {
+    const data = await apiV2.put('/profile/change-password', payload);
+    return data;
+  }
+
+  async getGoogleAuthUrl(state = 'settings') {
+    const data = await apiV2.get(`/auth/google?state=${state}`);
+    return data;
+  }
 }
 
 const profileService = new ProfileService();
