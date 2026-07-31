@@ -11,11 +11,10 @@ export const useAuthStore = create((set, get) => ({
   checkAuth: async () => {
     try {
       const res = await profileService.getUserProfile();
-      if (res && res.data) {
-        set({ user: res.data, isAuthenticated: true });
-        // Auth is cookie-based — the socket handshake authenticates via the
-        // HttpOnly cookie fallback in the backend's socketAuthMiddleware,
-        // same as this profile request just did.
+      // Handle both raw object (unwrapped by apiV2 interceptor) and legacy { data: ... }
+      const userData = res?.data || res;
+      if (userData && (userData.id || userData.email)) {
+        set({ user: userData, isAuthenticated: true });
         try {
           const { socketClient } = await import('../services/socket');
           socketClient.connect();
