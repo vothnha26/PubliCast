@@ -175,6 +175,8 @@ router.post('/bulk-approve', checkPermission(PERMISSION_KEYS.APPROVE_POSTS), pos
  *               $ref: '#/components/schemas/V2EnvelopeResponse'
  */
 router.delete('/bulk', checkPermission(PERMISSION_KEYS.DELETE_POSTS), postController.bulkDelete);
+router.post('/bulk-restore', checkPermission(PERMISSION_KEYS.CREATE_POSTS), postController.bulkRestore);
+router.delete('/trash', checkPermission(PERMISSION_KEYS.DELETE_POSTS), postController.emptyTrash);
 
 /**
  * @openapi
@@ -192,6 +194,8 @@ router.delete('/bulk', checkPermission(PERMISSION_KEYS.DELETE_POSTS), postContro
  *               $ref: '#/components/schemas/V2EnvelopeResponse'
  */
 router.post('/trim', checkPermission(PERMISSION_KEYS.CREATE_POSTS), postController.trimVideo);
+router.get('/trim/:taskId/status', postController.getTrimStatus);
+router.post('/transcribe', checkPermission(PERMISSION_KEYS.CREATE_POSTS), postController.transcribeVideo);
 
 /**
  * @openapi

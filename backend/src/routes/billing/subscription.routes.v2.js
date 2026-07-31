@@ -104,4 +104,45 @@ router.get('/plans', subscriptionController.getPlans);
  */
 router.get('/history', requireBrandMember, subscriptionController.getPaymentHistory);
 
+/**
+ * @openapi
+ * /v2/billing/subscriptions/addons:
+ *   get:
+ *     summary: Get public catalog of available addons
+ *     tags: [Billing V2]
+ *     security: [{ cookieAuth: [] }]
+ *     responses:
+ *       200:
+ *         description: Addons list
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/V2EnvelopeResponse'
+ */
+router.get('/addons', subscriptionController.getActiveAddons);
+router.post('/addons/initiate', checkPermission(PERMISSION_KEYS.MANAGE_BILLING), subscriptionController.initiateAddonPayment);
+
+/**
+ * @openapi
+ * /v2/billing/subscriptions/status/{transactionCode}:
+ *   get:
+ *     summary: Poll SePay payment confirmation status
+ *     tags: [Billing V2]
+ *     security: [{ cookieAuth: [] }]
+ *     parameters:
+ *       - in: path
+ *         name: transactionCode
+ *         required: true
+ *         schema: { type: string }
+ *     responses:
+ *       200:
+ *         description: Payment status
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/V2EnvelopeResponse'
+ */
+router.get('/status/:transactionCode', subscriptionController.checkPaymentStatus);
+router.post('/cancel', subscriptionController.cancelPayment);
+
 module.exports = router;

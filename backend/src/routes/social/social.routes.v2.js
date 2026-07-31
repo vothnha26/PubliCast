@@ -77,6 +77,41 @@ router.get('/facebook/published-posts', verifyAuth, requireBrandMember, facebook
 
 /**
  * @openapi
+ * /v2/social/facebook/competitors:
+ *   get:
+ *     summary: Get tracked Facebook competitor pages for brand
+ *     tags: [Social V2]
+ *     security: [{ cookieAuth: [] }]
+ *     parameters:
+ *       - in: query
+ *         name: brandId
+ *         required: true
+ *         schema: { type: string }
+ *     responses:
+ *       200:
+ *         description: Facebook competitors list
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/V2EnvelopeResponse'
+ *   post:
+ *     summary: Add a Facebook competitor page to track
+ *     tags: [Social V2]
+ *     security: [{ cookieAuth: [] }]
+ *     responses:
+ *       201:
+ *         description: Facebook competitor added
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/V2EnvelopeResponse'
+ */
+router.post('/facebook/competitors', verifyAuth, requireBrandMember, facebookController.addFacebookCompetitor);
+router.get('/facebook/competitors', verifyAuth, requireBrandMember, facebookController.getFacebookCompetitors);
+router.delete('/facebook/competitors/:id', verifyAuth, facebookController.deleteFacebookCompetitor);
+
+/**
+ * @openapi
  * /v2/social/instagram/published-posts:
  *   get:
  *     summary: Get Instagram published posts list for brand
@@ -191,5 +226,46 @@ router.post('/tiktok/disconnect', verifyAuth, requireManageConnections, socialCo
  *               $ref: '#/components/schemas/V2EnvelopeResponse'
  */
 router.get('/google/drive/files', verifyAuth, requireBrandMember, requireFeature(PRODUCT_IDS.GOOGLE_DRIVE), googleDriveController.getGoogleDriveFiles);
+router.post('/google/drive/download', verifyAuth, requireBrandMember, requireFeature(PRODUCT_IDS.GOOGLE_DRIVE), googleDriveController.downloadGoogleDriveFile);
+router.post('/google/disconnect', verifyAuth, requireManageConnections, socialConnectionController.disconnectGoogleAccount);
+router.post('/google-drive/disconnect', verifyAuth, requireManageConnections, socialConnectionController.disconnectGoogleDriveAccount);
+
+// ── OAuth Auth URLs V2 ──
+router.get('/google/url', verifyAuth, oauthController.getGoogleAuthUrl);
+router.get('/google-drive/auth-url', verifyAuth, oauthController.getGoogleDriveAuthUrl);
+router.get('/facebook/url', verifyAuth, oauthController.getFacebookAuthUrl);
+router.get('/facebook/search-pages', verifyAuth, requireBrandMember, facebookController.searchFacebookPages);
+router.get('/facebook/reels/:videoId/copyright-check', verifyAuth, facebookController.checkFacebookReelCopyright);
+router.get('/instagram/url', verifyAuth, oauthController.getInstagramAuthUrl);
+router.get('/instagram/audio-search', verifyAuth, requireBrandMember, instagramController.searchAudio);
+router.get('/tiktok/url', verifyAuth, oauthController.getTikTokAuthUrl);
+router.get('/tiktok/published-videos', verifyAuth, requireBrandMember, tiktokController.getTikTokPublishedVideos);
+router.get('/threads/url', verifyAuth, oauthController.getThreadsAuthUrl);
+router.post('/threads/disconnect', verifyAuth, requireManageConnections, socialConnectionController.disconnectThreadsAccount);
+
+// ── Reddit V2 ──
+router.get('/reddit/url', verifyAuth, redditController.getAuthUrl);
+router.get('/reddit/subreddits', verifyAuth, requireBrandMember, redditController.getUserSubreddits);
+router.get('/reddit/subreddits/search', verifyAuth, requireBrandMember, redditController.searchSubreddits);
+router.get('/reddit/subreddits/:subreddit/flairs', verifyAuth, requireBrandMember, redditController.getSubredditFlairs);
+router.post('/reddit/disconnect', verifyAuth, requireManageConnections, redditController.disconnect);
+router.post('/reddit/submit', verifyAuth, requireBrandMember, redditController.submitPost);
+
+// ── Twitch V2 ──
+router.get('/twitch/url', verifyAuth, twitchController.getTwitchAuthUrl);
+router.post('/twitch/disconnect', verifyAuth, requireManageConnections, twitchController.disconnectTwitchAccount);
+router.post('/twitch/clips/create', verifyAuth, requireBrandMember, twitchController.createClip);
+router.get('/twitch/stream-status', verifyAuth, requireBrandMember, twitchController.getStreamStatus);
+
+// ── Bluesky V2 ──
+router.get('/bluesky/url', verifyAuth, blueskyController.getBlueskyAuthUrl);
+router.post('/bluesky/disconnect', verifyAuth, requireManageConnections, socialConnectionController.disconnectBlueskyAccount);
+
+// ── Telegram V2 ──
+router.post('/telegram/connect', verifyAuth, requireManageConnections, telegramController.connectTelegram);
+router.post('/telegram/disconnect', verifyAuth, requireManageConnections, socialConnectionController.disconnectTelegramAccount);
+
+// ── Account Reassignment V2 ──
+router.post('/reassign', verifyAuth, socialConnectionController.reassignSocialAccount);
 
 module.exports = router;

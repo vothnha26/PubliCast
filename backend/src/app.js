@@ -40,7 +40,11 @@ const postRoutesV2 = require('./routes/workspace/post.routes.v2');
 const contentExtrasRoutesV2 = require('./routes/workspace/content-extras.routes.v2');
 const mediaLibraryRoutes = require('./routes/workspace/media-library.routes');
 const mediaLibraryRoutesV2 = require('./routes/workspace/media-library.routes.v2');
+const mediaFolderRoutesV2 = require('./routes/workspace/media-folder.routes.v2');
+const highlightRoutesV2 = require('./routes/workspace/highlight.routes.v2');
+const adminRoutesV2 = require('./routes/admin/admin.routes.v2');
 const workspaceCoreRoutesV2 = require('./routes/workspace/workspace-core.routes.v2');
+const aiRoutesV2 = require('./routes/workspace/ai.routes.v2');
 const analyticsSupportRoutesV2 = require('./routes/workspace/analytics-support.routes.v2');
 const billingSubscriptionRoutesV2 = require('./routes/billing/subscription.routes.v2');
 const systemRoutesV2 = require('./routes/core/system.routes.v2');
@@ -62,6 +66,8 @@ const calendarEventRoutes = require('./routes/workspace/calendar-event.routes');
 // Routes - Core Domain
 const searchRoutes = require('./routes/core/search.routes');
 const notificationRoutes = require('./routes/core/notification.routes');
+const notificationRoutesV2 = require('./routes/core/notification.routes.v2');
+const ticketRoutesV2 = require('./routes/workspace/ticket.routes.v2');
 
 // Routes - Billing Domain
 const subscriptionRoutes = require('./routes/billing/subscription.routes');
@@ -216,10 +222,16 @@ app.use('/api/v2/social/tiktok', tiktokRoutesV2);
 app.use('/api/v2/posts', postRoutesV2);
 app.use('/api/v2/content-extras', contentExtrasRoutesV2);
 app.use('/api/v2/media', mediaLibraryRoutesV2);
+app.use('/api/v2/media-folders', mediaFolderRoutesV2);
+app.use('/api/v2/highlights', highlightRoutesV2);
+app.use('/api/v2/admin', adminRoutesV2);
 app.use('/api/v2/workspace', workspaceCoreRoutesV2);
+app.use('/api/v2/ai', aiRoutesV2);
 app.use('/api/v2/analytics-support', analyticsSupportRoutesV2);
 app.use('/api/v2/billing/subscriptions', billingSubscriptionRoutesV2);
 app.use('/api/v2/system', systemRoutesV2);
+app.use('/api/v2/notifications', notificationRoutesV2);
+app.use('/api/v2/tickets', ticketRoutesV2);
 app.use('/api/brands', brandRoutes);
 app.use('/api/brands/:brandId/roles', roleRoutes);
 app.use('/api/brands/:brandId/workflows', approvalWorkflowRoutes);
