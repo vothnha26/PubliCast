@@ -21,12 +21,27 @@ class ApiService {
     this.api = axios.create({
       baseURL,
       timeout: 15000, // 15 giây timeout
-      headers: {
-        'Content-Type': 'application/json',
-        'ngrok-skip-browser-warning': 'true', // Giữ lại của nhánh develop
-      },
-      withCredentials: true, // Sends HttpOnly cookies (accessToken + refreshToken) automatically
+      withCredentials: true,
     });
+
+    // Helper to extract cookie by name
+    const getCookie = (name) => {
+      if (typeof document === 'undefined') return null;
+      const match = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'));
+      return match ? decodeURIComponent(match[2]) : null;
+    };
+
+    // ── Request interceptor: attach X-CSRF-Token header ───────────────────
+    this.api.interceptors.request.use(
+      (config) => {
+        const csrfToken = getCookie('csrfToken');
+        if (csrfToken && !['get', 'head', 'options'].includes((config.method || '').toLowerCase())) {
+          config.headers['X-CSRF-Token'] = csrfToken;
+        }
+        return config;
+      },
+      (error) => Promise.reject(error)
+    );
 
     // ── Response interceptor: auto-refresh on 401 ───────────────────
     // Auth is entirely cookie-based (withCredentials above sends the
