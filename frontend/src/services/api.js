@@ -193,7 +193,7 @@ apiV2.interceptors.response.use(
         isRefreshing = true;
 
         try {
-          await apiV2.post('/v2/auth/refresh');
+          await apiV2.post('/auth/refresh');
         isRefreshing = false;
         onRefreshed();
         return apiV2(originalRequest);
