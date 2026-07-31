@@ -29,7 +29,8 @@ jest.mock('../../src/services/social/google-oauth.service', () => ({
 }));
 
 jest.mock('../../src/repositories/social/social-account.repository', () => ({
-  findByBrandAndPlatform: jest.fn()
+  findByBrandAndPlatform: jest.fn(),
+  findByBrandAndPlatformFirst: jest.fn()
 }));
 
 const socialAccountRepository = require('../../src/repositories/social/social-account.repository');
@@ -43,9 +44,9 @@ describe('GoogleDriveService', () => {
     // exercises the download path instead of depending on filesystem state
     // left over from a previous run.
     fs.existsSync.mockReturnValue(false);
-    socialAccountRepository.findByBrandAndPlatform.mockResolvedValue([
-      { accessToken: 'tok', refreshToken: 'ref', tokenExpiresAt: null }
-    ]);
+    socialAccountRepository.findByBrandAndPlatformFirst.mockResolvedValue({
+      accessToken: 'tok', refreshToken: 'ref', tokenExpiresAt: null
+    });
   });
 
   describe('downloadFile — fileId validation', () => {
@@ -94,7 +95,7 @@ describe('GoogleDriveService', () => {
 
   describe('listVideos', () => {
     it('should throw NOT_CONNECTED when no Google account is linked to the brand', async () => {
-      socialAccountRepository.findByBrandAndPlatform.mockResolvedValue([]);
+      socialAccountRepository.findByBrandAndPlatformFirst.mockResolvedValue(null);
 
       await expect(googleDriveService.listVideos('brand-1')).rejects.toMatchObject({ code: 'NOT_CONNECTED' });
     });

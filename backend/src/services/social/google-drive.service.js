@@ -14,22 +14,21 @@ const DRIVE_FILE_ID_PATTERN = /^[a-zA-Z0-9_-]+$/;
 
 class GoogleDriveService {
   async getDriveClient(brandId) {
-    const socialAccount = await socialAccountRepository.findByBrandAndPlatform(brandId, PLATFORMS.YOUTUBE);
-    if (!socialAccount || socialAccount.length === 0) {
-      const error = new Error('Google account not connected');
+    const socialAccount = await socialAccountRepository.findByBrandAndPlatformFirst(brandId, PLATFORMS.GOOGLE_DRIVE);
+    if (!socialAccount) {
+      const error = new Error('Google Drive account not connected');
       error.code = 'NOT_CONNECTED';
       throw error;
     }
     
-    const account = socialAccount[0];
     const auth = googleOAuthService.createClient();
     auth.setCredentials({
-      access_token: account.accessToken,
-      refresh_token: account.refreshToken,
-      expiry_date: account.tokenExpiresAt ? account.tokenExpiresAt.getTime() : undefined
+      access_token: socialAccount.accessToken,
+      refresh_token: socialAccount.refreshToken,
+      expiry_date: socialAccount.tokenExpiresAt ? socialAccount.tokenExpiresAt.getTime() : undefined
     });
 
-    return google.drive({ version: API_VERSIONS.YOUTUBE, auth });
+    return google.drive({ version: 'v3', auth });
   }
 
   async listVideos(brandId) {

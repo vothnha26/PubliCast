@@ -15,6 +15,14 @@ class SocialConnectionController {
     res.json({ success: true, message: 'Google account disconnected successfully' });
   });
 
+  disconnectGoogleDriveAccount = asyncHandler(async (req, res) => {
+    const { brandId } = req.body;
+    if (!brandId) return res.status(400).json({ message: 'brandId is required' });
+
+    await socialService.disconnectAccount(brandId, PLATFORMS.GOOGLE_DRIVE);
+    res.json({ success: true, message: 'Google Drive account disconnected successfully' });
+  });
+
   disconnectFacebookAccount = asyncHandler(async (req, res) => {
     const { brandId } = req.body;
     if (!brandId) return res.status(400).json({ message: 'brandId is required' });
