@@ -36,15 +36,6 @@ class OAuthController {
       && (allowedOrigins.includes(frontendOrigin) || /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(frontendOrigin));
     const state = isValidOrigin ? `${brandId}::${frontendOrigin}` : brandId;
 
-    const scopes = [
-      GOOGLE_SCOPES.YOUTUBE,
-      GOOGLE_SCOPES.YOUTUBE_READONLY,
-      GOOGLE_SCOPES.YOUTUBE_FORCE_SSL,
-      GOOGLE_SCOPES.YT_ANALYTICS_READONLY,
-      GOOGLE_SCOPES.USERINFO_EMAIL,
-      GOOGLE_SCOPES.USERINFO_PROFILE,
-      GOOGLE_SCOPES.DRIVE_READONLY
-    ];
     const redirectUri = `${this._getRedirectBaseUrl(req)}/api/social/google/callback`;
     const url = googleOAuthService.getAuthUrl(scopes, state, redirectUri);
     res.json({ url });
