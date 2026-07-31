@@ -13,7 +13,9 @@ const logger = require('./utils/logger');
 
 // Routes - Auth Domain
 const authRoutes = require('./routes/auth/auth.routes');
+const authRoutesV2 = require('./routes/auth/auth.routes.v2');
 const profileRoutes = require('./routes/auth/profile.routes');
+const profileRoutesV2 = require('./routes/auth/profile.routes.v2');
 
 // Routes - Admin Domain
 const pricingRoutes = require('./routes/admin/pricing.routes');
@@ -25,15 +27,23 @@ const userRoutes = require('./routes/admin/user.routes');
 
 // Routes - Social Domain
 const socialRoutes = require('./routes/social/social.routes');
+const socialRoutesV2 = require('./routes/social/social.routes.v2');
 const youtubeRoutesV2 = require('./routes/social/youtube.routes.v2');
 const tiktokRoutesV2 = require('./routes/social/tiktok.routes.v2');
 const inboxRoutes = require('./routes/social/inbox.routes');
+const inboxRoutesV2 = require('./routes/social/inbox.routes.v2');
 
 // Routes - Workspace Domain
 // const livestreamRoutes = require('./routes/workspace/livestream.routes');
 const postRoutes = require('./routes/workspace/post.routes');
 const postRoutesV2 = require('./routes/workspace/post.routes.v2');
+const contentExtrasRoutesV2 = require('./routes/workspace/content-extras.routes.v2');
 const mediaLibraryRoutes = require('./routes/workspace/media-library.routes');
+const mediaLibraryRoutesV2 = require('./routes/workspace/media-library.routes.v2');
+const workspaceCoreRoutesV2 = require('./routes/workspace/workspace-core.routes.v2');
+const analyticsSupportRoutesV2 = require('./routes/workspace/analytics-support.routes.v2');
+const billingSubscriptionRoutesV2 = require('./routes/billing/subscription.routes.v2');
+const systemRoutesV2 = require('./routes/core/system.routes.v2');
 const mediaFolderRoutes = require('./routes/workspace/media-folder.routes');
 const teamRoutes = require('./routes/workspace/team.routes');
 const brandRoutes = require('./routes/workspace/brand.routes');
@@ -164,6 +174,9 @@ app.use('/uploads', express.static('uploads', {
   }
 }));
 
+// ── Swagger API Documentation UI ─────────────────────────────────────────
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+
 // ── API Routes ─────────────────────────────────────────────────────────────
 app.use('/api/auth', authRoutes);
 app.use('/oauth', authRoutes);
@@ -194,9 +207,19 @@ app.use('/api/admin/users', userRoutes);
 app.use('/api/social', socialRoutes);
 
 // ── API v2 (response envelope {message, data} — parallel to v1, v1 unchanged) ──
+app.use('/api/v2/auth', authRoutesV2);
+app.use('/api/v2/profile', profileRoutesV2);
+app.use('/api/v2/social', socialRoutesV2);
+app.use('/api/v2/social/inbox', inboxRoutesV2);
 app.use('/api/v2/social/youtube', youtubeRoutesV2);
 app.use('/api/v2/social/tiktok', tiktokRoutesV2);
 app.use('/api/v2/posts', postRoutesV2);
+app.use('/api/v2/content-extras', contentExtrasRoutesV2);
+app.use('/api/v2/media', mediaLibraryRoutesV2);
+app.use('/api/v2/workspace', workspaceCoreRoutesV2);
+app.use('/api/v2/analytics-support', analyticsSupportRoutesV2);
+app.use('/api/v2/billing/subscriptions', billingSubscriptionRoutesV2);
+app.use('/api/v2/system', systemRoutesV2);
 app.use('/api/brands', brandRoutes);
 app.use('/api/brands/:brandId/roles', roleRoutes);
 app.use('/api/brands/:brandId/workflows', approvalWorkflowRoutes);
