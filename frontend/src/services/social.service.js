@@ -10,12 +10,12 @@ class SocialService {
       mediaType,
       ...(orientation ? { orientation } : {})
     }).toString();
-    const data = await apiV2.get(`/stock/search?${params}`);
+    const data = await apiV2.get(`/content-extras/stock/search?${params}`);
     return data;
   }
 
   async importStockMedia(payload) {
-    const data = await apiV2.post('/stock/import', payload);
+    const data = await apiV2.post('/content-extras/stock/import', payload);
     return data;
   }
 
@@ -60,7 +60,7 @@ class SocialService {
   }
 
   async getReelCopyrightStatus(brandId, videoId, socialAccountId = null) {
-    const url = `/facebook/reels/${videoId}/copyright-check?brandId=${brandId}` +
+    const url = `/social/facebook/reels/${videoId}/copyright-check?brandId=${brandId}` +
       (socialAccountId ? `&socialAccountId=${socialAccountId}` : '');
     const data = await apiV2.get(url);
     return data;

@@ -42,7 +42,7 @@ class AdminService {
   }
 
   async updatePricingPlan(id, payload) {
-    const data = await apiV2.put(`/admin/pricing/${id}`, payload);
+    const data = await apiV2.patch(`/admin/pricing/${id}`, payload);
     return data;
   }
 
@@ -107,7 +107,7 @@ class AdminService {
   }
 
   async updateUserRole(userId, role) {
-    const data = await apiV2.put(`/admin/users/${userId}/role`, { role });
+    const data = await apiV2.patch(`/admin/users/${userId}/role`, { role });
     return data;
   }
 

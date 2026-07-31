@@ -29,7 +29,7 @@ class ProfileService {
   }
 
   async unlinkAccount(provider) {
-    const data = await apiV2.post('/profile/accounts/unlink', { provider });
+    const data = await apiV2.delete(`/profile/accounts/${provider}`);
     return data;
   }
 

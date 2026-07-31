@@ -32,7 +32,7 @@ class BillingService {
   }
 
   async cancelTransaction(txCode) {
-    const data = await apiV2.post(`/billing/transactions/${txCode}/cancel`);
+    const data = await apiV2.post('/billing/subscriptions/cancel', { transactionCode: txCode });
     return data;
   }
 

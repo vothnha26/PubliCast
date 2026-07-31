@@ -32,7 +32,7 @@ class AIService {
   }
 
   async getAutoLists(brandId) {
-    const data = await apiV2.get(`/auto-lists?brandId=${brandId}`);
+    const data = await apiV2.get(`/content-extras/auto-lists?brandId=${brandId}`);
     return data;
   }
 }

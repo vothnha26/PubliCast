@@ -68,7 +68,7 @@ class PostService {
   }
 
   async getCalendarEvents(brandId, startDate, endDate) {
-    const data = await apiV2.get(`/calendar-events?brandId=${brandId}&startDate=${startDate}&endDate=${endDate}`);
+    const data = await apiV2.get(`/content-extras/calendar-events?brandId=${brandId}&startDate=${startDate}&endDate=${endDate}`);
     return data;
   }
 }
