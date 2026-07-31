@@ -166,7 +166,23 @@ export function GoogleDrivePickerModal({ isOpen, onClose, activeBrand, onSelectF
                 </div>
                 <h3 className="text-base font-black text-gray-800 uppercase mb-2">Drive Disconnected</h3>
                 <p className="text-xs text-gray-400 font-bold leading-relaxed mb-6">Your Google account session has expired or was disconnected. Please reconnect from settings.</p>
-                <button className="px-6 py-3 bg-black text-white rounded-2xl text-xs font-black uppercase tracking-widest hover:scale-105 active:scale-95 transition-all shadow-lg">Reconnect Now</button>
+                <button
+                  onClick={async () => {
+                    try {
+                      if (!activeBrand?.id) {
+                        toast.error('Please select a brand first');
+                        return;
+                      }
+                      const res = await socialService.getGoogleDriveAuthUrl(activeBrand.id);
+                      if (res.url) window.location.href = res.url;
+                    } catch (err) {
+                      toast.error('Failed to start Google Drive connection');
+                    }
+                  }}
+                  className="px-6 py-3 bg-black text-white rounded-2xl text-xs font-black uppercase tracking-widest hover:scale-105 active:scale-95 transition-all shadow-lg cursor-pointer"
+                >
+                  Reconnect Now
+                </button>
               </div>
             ) : viewMode === 'categories' ? (
               <div className="grid grid-cols-3 gap-6">
@@ -201,7 +217,16 @@ export function GoogleDrivePickerModal({ isOpen, onClose, activeBrand, onSelectF
                   >
                     <div className="w-16 h-16 bg-gray-50 rounded-xl overflow-hidden shrink-0 relative flex items-center justify-center border border-gray-50">
                       {file.thumbnailLink ? (
-                        <img src={file.thumbnailLink} alt="" className="w-full h-full object-cover" />
+                        <img 
+                          src={file.thumbnailLink} 
+                          alt="" 
+                          referrerPolicy="no-referrer"
+                          onError={(e) => {
+                            e.target.onerror = null;
+                            e.target.src = `https://drive.google.com/thumbnail?id=${file.id}&sz=s220`;
+                          }}
+                          className="w-full h-full object-cover" 
+                        />
                       ) : file.mimeType?.startsWith('video/') ? (
                         <FileVideo className="text-gray-300" size={24} />
                       ) : file.mimeType?.startsWith('image/') ? (

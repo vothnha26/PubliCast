@@ -43,7 +43,44 @@ export function ConnectionsGrid({ className = "", brand, onDisconnect }) {
       else window.location.reload();
       return;
     }
+
+    if (success === "google_drive_connected") {
+      toast.success("Google Drive connected successfully!");
+      const url = new URL(window.location.href);
+      url.searchParams.delete("success");
+      window.history.replaceState({}, document.title, url.pathname + url.search);
+      if (onDisconnect) onDisconnect();
+      else window.location.reload();
+      return;
+    }
   }, []);
+
+  const handleConnectGoogleDrive = async () => {
+    if (!brand) {
+      toast.error("Please select a brand first");
+      return;
+    }
+    const status = getStatus("google_drive");
+    if (status.connected) {
+      try {
+        await socialService.disconnectGoogleDriveAccount(brand.id);
+        toast.success("Google Drive disconnected");
+        if (onDisconnect) onDisconnect();
+        else window.location.reload();
+      } catch (error) {
+        toast.error(error.message || "Failed to disconnect Google Drive");
+      }
+      return;
+    }
+    try {
+      const response = await socialService.getGoogleDriveAuthUrl(brand.id);
+      if (response.url) {
+        window.location.href = response.url;
+      }
+    } catch (error) {
+      toast.error(error.message || "Failed to start Google Drive connection");
+    }
+  };
 
   const handleConnectTelegram = async () => {
     if (!brand) {
@@ -315,7 +352,8 @@ export function ConnectionsGrid({ className = "", brand, onDisconnect }) {
       "threads": "THREADS",
       "twitch": "TWITCH",
       "bluesky": "BLUESKY",
-      "reddit": "REDDIT"
+      "reddit": "REDDIT",
+      "google_drive": "GOOGLE_DRIVE"
     };
     const platform = mapping[platformId];
     const account = brand.socialAccounts.find(sa => sa.platform === platform);
@@ -341,6 +379,10 @@ export function ConnectionsGrid({ className = "", brand, onDisconnect }) {
     { 
       id: "youtube", name: "YouTube", icon: <Youtube size={16} className="text-red-600" />, 
       btnText: "Connect a YouTube channel", btnBg: "bg-red-600", ...getStatus("youtube")
+    },
+    {
+      id: "google_drive", name: "Google Drive", icon: <PlatformIcon platform="google_drive" size={16} variant="flat" />,
+      btnText: "Connect Google Drive", btnBg: "bg-[#4285F4]", ...getStatus("google_drive")
     },
     { 
       id: "tiktok", name: "TikTok", icon: <Music2 size={16} className="text-black" />, 
@@ -384,6 +426,7 @@ export function ConnectionsGrid({ className = "", brand, onDisconnect }) {
                 <button
                   onClick={() => {
                     if (net.id === "youtube") handleConnectYouTube();
+                    if (net.id === "google_drive") handleConnectGoogleDrive();
                     if (net.id === "facebook") handleConnectFacebook();
                     if (net.id === "tiktok") handleConnectTikTok();
                     if (net.id === "instagram") handleConnectInstagram();

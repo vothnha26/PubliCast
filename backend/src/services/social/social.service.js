@@ -9,7 +9,13 @@ class SocialService {
    * Sync and aggregate metrics for all social accounts of a brand
    */
   async getAggregatedMetrics(brandId, startDate, endDate, force = false) {
-    const accounts = await socialAccountRepository.findByBrandAndPlatform(brandId, null); // passing null to platform to get all platforms
+    const allAccounts = await socialAccountRepository.findByBrandAndPlatform(brandId, null); // passing null to platform to get all platforms
+    // GOOGLE_DRIVE (and any other non-publishable integration) has no
+    // syncChannelMetrics-capable service registered in socialPlatformFactory —
+    // it's a media-source integration, not an analyzable social channel.
+    // Filtering here avoids a guaranteed "not supported yet" error/log entry
+    // on every dashboard load for brands that connected it.
+    const accounts = allAccounts.filter(account => socialPlatformFactory.isSupported(account.platform));
 
     const withTimeout = (promise, ms = 60000, fallback) => {
       let timeoutId;
@@ -69,7 +75,7 @@ class SocialService {
   async getGoogleDriveContext(brandId) {
     try {
       const files = await googleDriveService.listVideos(brandId);
-      const socialAccount = await socialAccountRepository.findByBrandAndPlatformFirst(brandId, PLATFORMS.YOUTUBE);
+      const socialAccount = await socialAccountRepository.findByBrandAndPlatformFirst(brandId, PLATFORMS.GOOGLE_DRIVE);
 
       return {
         connected: true,
@@ -125,11 +131,6 @@ class SocialService {
 
     const result = await socialAccountRepository.deleteManyByBrandAndPlatform(brandId, platform);
     await this._notifyPlatformDisconnected(brandId, platform);
-
-    const syncPostAnalyticsService = require('./sync-post-analytics.service');
-    await syncPostAnalyticsService.cleanupOrphanSnapshotsForBrandPlatform(brandId, platform).catch(err => {
-      console.error(`[SocialService] Failed to cleanup orphan snapshots for ${platform}:`, err.message);
-    });
 
     return result;
   }

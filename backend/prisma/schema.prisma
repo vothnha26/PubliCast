@@ -135,7 +135,6 @@ model Brand {
   youtubePlaylistCache    YouTubePlaylistCache[]
   calendarEvents          CalendarEvent[]
   livestreamHighlights    LivestreamHighlight[]
-  postAnalyticsSnapshots  PostAnalyticsDailySnapshot[] @relation("BrandAnalyticsSnapshots")
 
   @@index([ownerId])
   @@map("brands")
@@ -590,6 +589,13 @@ model YouTubeSubscription {
 model InstagramAccount {
   id                    String  @id @default(uuid())
   socialAccountId       String  @unique
+  // Facebook Page ID linked to this Instagram Business Account — required to
+  // call Graph API insights/media endpoints (Instagram Graph API only exposes
+  // these via the linked Page node, never via the IG Business Account ID
+  // itself). Without this, periodic sync has no way to re-derive the Page ID
+  // after the initial connect, since platformAccountId stores the IG account
+  // ID (see social-account.repository.js#upsertInstagramAccount).
+  facebookPageId        String?
   accountType           String
   businessCategoryName  String?
   followersCount        Int     @default(0)
@@ -762,7 +768,6 @@ model Post {
   autoList          AutoList?          @relation(fields: [autoListId], references: [id], onDelete: Cascade)
   approvalWorkflows ApprovalWorkflow[]
 
-  postAnalyticsSnapshots PostAnalyticsDailySnapshot[] @relation("PostAnalyticsSnapshots")
   networkOverrides       PostNetworkOverride[]
 
   @@index([brandId])
@@ -795,30 +800,7 @@ model PostNetworkOverride {
   @@map("post_network_overrides")
 }
 
-model PostAnalyticsDailySnapshot {
-  id             String       @id @default(uuid())
-  postId         String?
-  platformPostId String
-  brandId        String
-  platform       PlatformType
-  date           DateTime     @db.Date // UTC-normalized day
 
-  viewsCumulative     Int @default(0)
-  reachCumulative     Int @default(0)
-  clicksCumulative    Int @default(0)
-  reactionsCumulative Int @default(0)
-
-  isEstimated Boolean  @default(false) // true for carry-forward/baseline-seeded rows
-  createdAt   DateTime @default(now())
-
-  post  Post? @relation("PostAnalyticsSnapshots", fields: [postId], references: [id], onDelete: Cascade)
-  brand Brand @relation("BrandAnalyticsSnapshots", fields: [brandId], references: [id], onDelete: Cascade)
-
-  @@unique([platformPostId, date])
-  @@index([brandId, date])
-  @@index([postId])
-  @@map("post_analytics_daily_snapshot")
-}
 
 model Livestream {
   id               String   @id @default(uuid())
@@ -1695,6 +1677,7 @@ enum PlatformType {
   REDDIT
   GOOGLE_BUSINESS
   TELEGRAM
+  GOOGLE_DRIVE
 }
 
 enum AdPlatformType {

@@ -1,11 +1,12 @@
 const googleOAuthService = require('../../services/social/google-oauth.service');
+const googleDriveOAuthService = require('../../services/social/google-drive-oauth.service');
 const youtubeService = require('../../services/social/youtube');
 const facebookService = require('../../services/social/facebook');
 const tiktokService = require('../../services/social/tiktok');
 const instagramService = require('../../services/social/instagram');
 const tiktokGateway = require('../../services/social/tiktok/tiktok.gateway');
 const notificationService = require('../../services/core/notification.service');
-const { SOCIAL_TECHNICAL, GOOGLE_SCOPES, FACEBOOK_SCOPES, FACEBOOK_API, DEFAULT_CONFIG, API_VERSIONS, NOTIFICATION_TYPES } = require('../../utils/constants');
+const { SOCIAL_TECHNICAL, GOOGLE_SCOPES, GOOGLE_OAUTH_SCOPE_SETS, FACEBOOK_SCOPES, FACEBOOK_API, DEFAULT_CONFIG, API_VERSIONS, NOTIFICATION_TYPES } = require('../../utils/constants');
 const asyncHandler = require('../../utils/async-handler');
 const logger = require('../../utils/logger');
 const redisClient = require('../../config/redis');
@@ -23,6 +24,7 @@ class OAuthController {
     const { brandId, frontendOrigin } = req.query;
     if (!brandId) return res.status(400).json({ message: 'brandId is required' });
 
+    const scopes = GOOGLE_OAUTH_SCOPE_SETS.YOUTUBE;
     // frontendOrigin (optional) lets multiple frontends (legacy app, publicast-frontend
     // sandbox, ...) share this one OAuth flow — encoded into `state` so googleCallback
     // knows which origin to redirect back to. Only http(s) origins from ALLOWED
@@ -34,17 +36,16 @@ class OAuthController {
       && (allowedOrigins.includes(frontendOrigin) || /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(frontendOrigin));
     const state = isValidOrigin ? `${brandId}::${frontendOrigin}` : brandId;
 
-    const scopes = [
-      GOOGLE_SCOPES.YOUTUBE,
-      GOOGLE_SCOPES.YOUTUBE_READONLY,
-      GOOGLE_SCOPES.YOUTUBE_FORCE_SSL,
-      GOOGLE_SCOPES.YT_ANALYTICS_READONLY,
-      GOOGLE_SCOPES.USERINFO_EMAIL,
-      GOOGLE_SCOPES.USERINFO_PROFILE,
-      GOOGLE_SCOPES.DRIVE_READONLY
-    ];
     const redirectUri = `${this._getRedirectBaseUrl(req)}/api/social/google/callback`;
     const url = googleOAuthService.getAuthUrl(scopes, state, redirectUri);
+    res.json({ url });
+  });
+
+  getGoogleDriveAuthUrl = asyncHandler(async (req, res) => {
+    const { brandId } = req.query;
+    if (!brandId) return res.status(400).json({ message: 'brandId is required' });
+    const redirectUri = `${this._getRedirectBaseUrl(req)}/api/social/google-drive/callback`;
+    const url = googleDriveOAuthService.getAuthUrl(brandId, redirectUri);
     res.json({ url });
   });
 
@@ -80,6 +81,23 @@ class OAuthController {
       await youtubeService.connectChannel(brandId, code, redirectUri);
       await this._notifySocialConnected(brandId, 'YouTube');
       return res.redirect(`${frontendUrl}/manage/connections?tab=connections&success=youtube_connected`);
+    } catch (error) {
+      return this._handleCallbackError(error, frontendUrl, res);
+    }
+  });
+
+  googleDriveCallback = asyncHandler(async (req, res) => {
+    const { code, state } = req.query;
+    const brandId = state;
+    const frontendUrl = DEFAULT_CONFIG.FRONTEND_URL;
+    const redirectUri = `${this._getRedirectBaseUrl(req)}/api/social/google-drive/callback`;
+
+    if (!brandId) return res.redirect(`${frontendUrl}/manage/connections?error=brand_id_missing`);
+
+    try {
+      await googleDriveOAuthService.connectAccount(brandId, code, redirectUri);
+      await this._notifySocialConnected(brandId, 'Google Drive');
+      return res.redirect(`${frontendUrl}/manage/connections?tab=connections&success=google_drive_connected`);
     } catch (error) {
       return this._handleCallbackError(error, frontendUrl, res);
     }
