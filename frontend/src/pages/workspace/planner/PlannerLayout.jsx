@@ -14,22 +14,81 @@ export function PlannerLayout() {
     { id: "history", label: t("tabs.history", { defaultValue: "Deleted posts" }), path: "history" },
   ];
 
+  const defaultSystemTz = React.useMemo(() => {
+    try {
+      return Intl.DateTimeFormat().resolvedOptions().timeZone || "Asia/Bangkok";
+    } catch (_) {
+      return "Asia/Bangkok";
+    }
+  }, []);
+
+  const [selectedTimezone, setSelectedTimezone] = React.useState(() => {
+    return localStorage.getItem("publicast_planner_tz") || defaultSystemTz;
+  });
+
+  const [isTzOpen, setIsTzOpen] = React.useState(false);
+  const tzRef = React.useRef(null);
+
   const [time, setTime] = React.useState(new Date());
 
   React.useEffect(() => {
     const timer = setInterval(() => {
       setTime(new Date());
-    }, 1000); // Update every second for better responsiveness or 60000 for every minute. Let's do 1000.
+    }, 1000);
     return () => clearInterval(timer);
   }, []);
 
-  const formattedTime = time.toLocaleTimeString("en-US", {
-    hour: "numeric",
-    minute: "2-digit",
-    hour12: true,
-  });
+  React.useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (tzRef.current && !tzRef.current.contains(event.target)) {
+        setIsTzOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
-  const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  const handleSelectTz = (tz) => {
+    setSelectedTimezone(tz);
+    localStorage.setItem("publicast_planner_tz", tz);
+    setIsTzOpen(false);
+  };
+
+  const TIMEZONES = [
+    { value: defaultSystemTz, label: `${defaultSystemTz} (System Default)` },
+    { value: "Asia/Bangkok", label: "Asia/Bangkok (GMT+7)" },
+    { value: "Asia/Ho_Chi_Minh", label: "Asia/Ho_Chi_Minh (GMT+7)" },
+    { value: "Asia/Singapore", label: "Asia/Singapore (GMT+8)" },
+    { value: "Asia/Tokyo", label: "Asia/Tokyo (GMT+9)" },
+    { value: "Europe/London", label: "Europe/London (GMT+0)" },
+    { value: "Europe/Paris", label: "Europe/Paris (GMT+1)" },
+    { value: "America/New_York", label: "America/New_York (GMT-5)" },
+    { value: "America/Los_Angeles", label: "America/Los_Angeles (GMT-8)" },
+    { value: "UTC", label: "UTC (Coordinated Universal Time)" },
+  ];
+
+  // Deduplicate timezone choices
+  const uniqueTimezones = React.useMemo(() => {
+    const seen = new Set();
+    return TIMEZONES.filter(item => {
+      if (seen.has(item.value)) return false;
+      seen.add(item.value);
+      return true;
+    });
+  }, [defaultSystemTz]);
+
+  const formattedTime = React.useMemo(() => {
+    try {
+      return time.toLocaleTimeString("en-US", {
+        timeZone: selectedTimezone,
+        hour: "numeric",
+        minute: "2-digit",
+        hour12: true,
+      });
+    } catch (_) {
+      return time.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true });
+    }
+  }, [time, selectedTimezone]);
 
   return (
     <div className="flex-1 flex flex-col overflow-hidden bg-[#F8F8F7]">
@@ -59,10 +118,42 @@ export function PlannerLayout() {
           ))}
         </div>
 
-        <div className="flex items-center gap-2 text-gray-400">
-           <Clock size={14} />
-           <span className="text-[11px] font-bold text-gray-500 tracking-tight">{formattedTime} - {timezone}</span>
-           <ChevronDown size={14} className="cursor-pointer" />
+        {/* Timezone Selector Dropdown */}
+        <div className="relative" ref={tzRef}>
+          <button
+            onClick={() => setIsTzOpen(!isTzOpen)}
+            className="flex items-center gap-2 px-2.5 py-1 rounded-lg hover:bg-gray-100 text-gray-500 hover:text-gray-700 transition-colors border border-transparent hover:border-gray-200 cursor-pointer"
+            title="Đổi múi giờ xem lịch / Change Timezone"
+          >
+            <Clock size={14} className="text-gray-400" />
+            <span className="text-[11px] font-bold tracking-tight">{formattedTime} - {selectedTimezone}</span>
+            <ChevronDown size={14} className={`transition-transform duration-200 ${isTzOpen ? "rotate-180" : ""}`} />
+          </button>
+
+          {isTzOpen && (
+            <div className="absolute right-0 top-full mt-1.5 w-64 bg-white rounded-xl shadow-xl border border-gray-200 py-1.5 z-50 animate-in fade-in slide-in-from-top-2 duration-150">
+              <div className="px-3 py-1.5 text-[10px] font-bold text-gray-400 uppercase tracking-wider border-b border-gray-100">
+                Chọn múi giờ / Select Timezone
+              </div>
+              <div className="max-h-60 overflow-y-auto py-1">
+                {uniqueTimezones.map((tz) => {
+                  const isSelected = selectedTimezone === tz.value;
+                  return (
+                    <button
+                      key={tz.value}
+                      onClick={() => handleSelectTz(tz.value)}
+                      className={`w-full text-left px-3 py-1.5 text-xs flex items-center justify-between hover:bg-gray-50 transition-colors ${
+                        isSelected ? "font-bold text-purple-600 bg-purple-50/50" : "text-gray-700"
+                      }`}
+                    >
+                      <span className="truncate">{tz.label}</span>
+                      {isSelected && <span className="text-purple-600 text-xs font-bold">✓</span>}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
