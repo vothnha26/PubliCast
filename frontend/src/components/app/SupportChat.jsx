@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { MessageCircle, X, Send, User, BadgeCheck, Paperclip, File, Image as ImageIcon, History } from "lucide-react";
 import { toast } from "sonner";
-import apiService from "../../services/api";
+import ticketService from "../../services/ticket.service";
 import socketClient from "../../services/socket";
 import { useBrand } from "../../context/BrandContext";
 import { useNavigate } from "react-router-dom";
@@ -21,8 +21,7 @@ export function SupportChat() {
   const fetchActiveSession = async () => {
     if (!activeBrand) return;
     try {
-      const res = await apiService.get(`/tickets/active?brandId=${activeBrand.id}`);
-      const activeTicket = res.data.data;
+      const activeTicket = await ticketService.getActiveTicket(activeBrand.id);
       if (activeTicket) {
         setTicket(activeTicket);
         
@@ -162,13 +161,6 @@ export function SupportChat() {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  // Initialize new ticket session on first message
-  // Split into a shared sender plus two call sites (text vs attachment) —
-  // the old single handleSend(text = input, attachmentUrl) signature meant
-  // sending a file (handleSend(file.name, url)) reused the `text` param slot
-  // for the filename AND unconditionally cleared the live `input` box the
-  // user might have been mid-typing a caption into, even though that text
-  // was never part of the sent message (#112 K9).
   const sendMessage = async (text, attachmentUrl = null) => {
     if (!text.trim() && !attachmentUrl) return;
     if (!activeBrand) return;
@@ -178,11 +170,10 @@ export function SupportChat() {
     try {
       // Create new support session if none exists
       if (!currentTicket) {
-        const res = await apiService.post('/tickets', {
-          brandId: activeBrand.id,
-          subject: text.substring(0, 40) || 'Hỗ trợ khách hàng'
-        });
-        currentTicket = res.data.data;
+        currentTicket = await ticketService.createTicket(
+          activeBrand.id,
+          text.substring(0, 40) || 'Hỗ trợ khách hàng'
+        );
         setTicket(currentTicket);
         // Clear default greeting message
         setMessages([]);
@@ -245,14 +236,8 @@ export function SupportChat() {
 
     setIsUploading(true);
     try {
-      const formData = new FormData();
-      formData.append("file", file);
-      formData.append("brandId", activeBrand.id);
-
-      const res = await apiService.post("/media/upload", formData, {
-        headers: { 'Content-Type': 'multipart/form-data' }
-      });
-      const url = res.data.data?.url;
+      const { uploadMediaFile } = await import("../../services/mediaUpload.service");
+      const url = await uploadMediaFile(file, activeBrand.id);
       if (url) {
         handleSendAttachment(file.name, url);
         toast.success("Đã gửi tệp đính kèm!");

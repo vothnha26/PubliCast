@@ -143,8 +143,8 @@ export function DashboardPage() {
           socialService.getMetrics(activeBrand.id),
           postService.getPosts(activeBrand.id, { limit: 5 })
         ]);
-        setMetrics(metricsRes.data || []);
-        setRecentPosts(postsRes.data || []);
+        setMetrics(metricsRes || []);
+        setRecentPosts(postsRes || []);
       } catch (error) {
         console.error("Failed to load dashboard data:", error);
       } finally {

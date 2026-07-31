@@ -8,6 +8,8 @@ import {
   Sun, Moon
 } from "lucide-react";
 import profileService from "../../services/profile.service";
+import ticketService from "../../services/ticket.service";
+import billingService from "../../services/billing.service";
 import apiService from "../../services/api";
 import { toast } from "sonner";
 import { useConfirm } from "@/hooks/useConfirm";
@@ -98,8 +100,8 @@ export function SettingsPage() {
     if (!activeBrand) return;
     setLoadingTickets(true);
     try {
-      const res = await apiService.get(`/tickets?brandId=${activeBrand.id}`);
-      setTickets(res.data.data || []);
+      const res = await ticketService.getTickets(activeBrand.id);
+      setTickets(res || []);
     } catch (err) {
       console.error("Error fetching support history:", err);
       toast.error(t("support.errorFetchHistory"));
@@ -112,8 +114,7 @@ export function SettingsPage() {
   const fetchActiveSession = async () => {
     if (!activeBrand) return;
     try {
-      const res = await apiService.get(`/tickets/active?brandId=${activeBrand.id}`);
-      const activeTicket = res.data.data;
+      const activeTicket = await ticketService.getActiveTicket(activeBrand.id);
       if (activeTicket) {
         setActiveSupportTicket(activeTicket);
         
@@ -155,12 +156,12 @@ export function SettingsPage() {
     if (activeTab === "billing" && activeBrand?.id) {
       setLoadingBilling(true);
       Promise.all([
-        apiService.get(`/billing/subscriptions/current?brandId=${activeBrand.id}`),
-        apiService.get(`/billing/subscriptions/history?brandId=${activeBrand.id}`)
+        billingService.getCurrentSubscription(activeBrand.id),
+        billingService.getSubscriptionHistory(activeBrand.id)
       ])
-        .then(([currentRes, historyRes]) => {
-          setCurrentPlan(currentRes.data.data);
-          setPaymentHistory(historyRes.data.data || []);
+        .then(([currentPlanData, historyData]) => {
+          setCurrentPlan(currentPlanData);
+          setPaymentHistory(historyData || []);
         })
         .catch(console.error)
         .finally(() => setLoadingBilling(false));
@@ -262,11 +263,10 @@ export function SettingsPage() {
 
     try {
       if (!currentTicket) {
-        const res = await apiService.post('/tickets', {
-          brandId: activeBrand.id,
-          subject: originalText.substring(0, 40) || 'Hỗ trợ khách hàng'
-        });
-        currentTicket = res.data.data;
+        currentTicket = await ticketService.createTicket(
+          activeBrand.id,
+          originalText.substring(0, 40) || 'Hỗ trợ khách hàng'
+        );
         setActiveSupportTicket(currentTicket);
         socketClient.emit('join_room', { ticketId: currentTicket.id });
       }
@@ -282,9 +282,7 @@ export function SettingsPage() {
       setActiveSupportMessages(prev => [...prev, tempMessage]);
       setActiveSupportInput("");
 
-      await apiService.post(`/tickets/${currentTicket.id}/messages`, {
-        content: originalText
-      });
+      await ticketService.sendMessage(currentTicket.id, originalText);
     } catch (err) {
       console.error("Error sending support message:", err);
       toast.error(language === 'vi' ? "Gửi tin nhắn thất bại" : "Failed to send message");
@@ -335,8 +333,8 @@ export function SettingsPage() {
     setSelectedTicket(t);
     setLoadingMessages(true);
     try {
-      const res = await apiService.get(`/tickets/${t.id}/messages`);
-      setTicketMessages(res.data.data || []);
+      const res = await ticketService.getTicketMessages(t.id);
+      setTicketMessages(res || []);
     } catch (err) {
       console.error("Error loading ticket messages:", err);
     } finally {
@@ -346,9 +344,10 @@ export function SettingsPage() {
 
   const handleLinkGoogle = async () => {
     try {
-      const res = await apiService.get("/auth/google?state=settings");
-      if (res.data?.url) {
-        window.location.href = res.data.url;
+      const res = await profileService.getGoogleAuthUrl("settings");
+      const url = res?.url || res?.data?.url;
+      if (url) {
+        window.location.href = url;
       }
     } catch (err) {
       toast.error(err.message || (language === 'vi' ? "Không thể khởi tạo liên kết Google" : "Failed to initialize Google linking"));
@@ -365,12 +364,12 @@ export function SettingsPage() {
     if (!ok) return;
 
     try {
-      await apiService.post(`/billing/transactions/${txCode}/cancel`);
+      await billingService.cancelTransaction(txCode);
       toast.success(language === 'vi' ? "Đã hủy giao dịch thanh toán." : "Payment transaction cancelled.");
       // Reload history
       if (activeBrand?.id) {
-        const historyRes = await apiService.get(`/billing/subscriptions/history?brandId=${activeBrand.id}`);
-        setPaymentHistory(historyRes.data.data || []);
+        const historyRes = await billingService.getSubscriptionHistory(activeBrand.id);
+        setPaymentHistory(historyRes || []);
       }
     } catch (err) {
       toast.error(err.message || (language === 'vi' ? "Lỗi khi hủy giao dịch" : "Error cancelling transaction"));
@@ -387,12 +386,12 @@ export function SettingsPage() {
     if (!ok) return;
 
     try {
-      await apiService.post(`/profile/accounts/unlink`, { provider });
+      await profileService.unlinkAccount(provider);
       toast.success(language === 'vi' ? `Hủy liên kết tài khoản ${provider} thành công!` : `Unlinked ${provider} account successfully!`);
       // Refresh profile info
       const res = await profileService.getUserProfile();
-      if (res && res.data) {
-        setAccounts(res.data.accounts || []);
+      if (res) {
+        setAccounts(res.accounts || res.data?.accounts || []);
       }
     } catch (err) {
       toast.error(err.message || (language === 'vi' ? "Hủy liên kết thất bại" : "Failed to unlink"));
@@ -412,7 +411,7 @@ export function SettingsPage() {
 
     setIsUpdatingPassword(true);
     try {
-      await apiService.put("/profile/change-password", {
+      await profileService.changePassword({
         currentPassword,
         newPassword
       });

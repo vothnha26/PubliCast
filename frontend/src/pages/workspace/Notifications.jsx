@@ -2,7 +2,7 @@ import { useCallback, useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Bell, Radio, CheckCircle, XCircle, AlertTriangle, Users, TrendingUp, CreditCard, FileText, Loader2, ExternalLink } from "lucide-react";
 import { useFilters } from "../../hooks/useFilters";
-import apiService from "../../services/api";
+import notificationService from "../../services/notification.service";
 import { toast } from "sonner";
 import { openNotificationStream } from "../../utils/notification-stream";
 import { useBrand } from "../../context/BrandContext";
@@ -45,9 +45,9 @@ export function NotificationsPage() {
       if (activeBrand?.id && !queryParams.has("brandId")) {
         queryParams.set("brandId", activeBrand.id);
       }
-      const query = queryParams.toString() ? `?${queryParams.toString()}` : "";
-      const response = await apiService.get(`/notifications${query}`);
-      setNotifData(response.data);
+      const paramsObj = Object.fromEntries(queryParams.entries());
+      const response = await notificationService.getNotifications(paramsObj);
+      setNotifData(response || { data: [], meta: { categoryCounts: {} } });
       setErrorMessage("");
     } catch (error) {
       const message = error.message || t("toasts.loadFailed");
@@ -107,8 +107,7 @@ export function NotificationsPage() {
 
   const markAsRead = async (id) => {
     try {
-      const query = activeBrand?.id ? `?brandId=${activeBrand.id}` : "";
-      await apiService.post(`/notifications/${id}/read${query}`);
+      await notificationService.markAsRead(id, activeBrand?.id);
       // Optimistic update
       setNotifData(prev => ({
         ...prev,
@@ -122,8 +121,7 @@ export function NotificationsPage() {
 
   const markAllRead = async () => {
     try {
-      const query = activeBrand?.id ? `?brandId=${activeBrand.id}` : "";
-      await apiService.post(`/notifications/read-all${query}`);
+      await notificationService.markAllRead(activeBrand?.id);
       setNotifData(prev => ({
         ...prev,
         data: prev.data.map(n => ({ ...n, isRead: true }))

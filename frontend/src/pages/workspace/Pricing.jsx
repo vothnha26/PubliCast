@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Check, Minus, ChevronDown } from "lucide-react";
-import apiService from "../../services/api";
+import billingService from "../../services/billing.service";
 import PaymentModal from "../../components/billing/PaymentModal";
 import { toast } from "sonner";
 import { useBrand } from "../../context/BrandContext";
@@ -51,14 +51,14 @@ export function PricingPage() {
 
   useEffect(() => {
     if (activeBrand?.id) {
-      apiService.get(`/billing/subscriptions/current?brandId=${activeBrand.id}`)
-        .then(res => setCurrentPlan(res.data.data))
+      billingService.getCurrentSubscription(activeBrand.id)
+        .then(res => setCurrentPlan(res))
         .catch(console.error);
     }
     
-    apiService.get('/billing/subscriptions/plans')
+    billingService.getPlans()
       .then(res => {
-        const sorted = res.data.data.sort((a, b) => {
+        const sorted = (res || []).sort((a, b) => {
           const rankA = PLAN_TIERS.indexOf(a.name.toUpperCase());
           const rankB = PLAN_TIERS.indexOf(b.name.toUpperCase());
           return rankA - rankB;
@@ -67,8 +67,8 @@ export function PricingPage() {
       })
       .catch(console.error);
 
-    apiService.get('/billing/subscriptions/addons')
-      .then(res => setAddonsList(res.data.data))
+    billingService.getAddons()
+      .then(res => setAddonsList(res || []))
       .catch(console.error);
   }, [activeBrand?.id]);
 
@@ -137,13 +137,13 @@ export function PricingPage() {
         return;
       }
 
-      const res = await apiService.post('/billing/subscriptions/initiate', {
+      const paymentInfo = await billingService.initiateSubscription({
         planId: plan.id,
         brandId: activeBrand.id,
         billingCycle: billingCycle === 'annual' ? 'ANNUAL' : 'MONTHLY'
       });
 
-      setPaymentData(res.data.data);
+      setPaymentData(paymentInfo);
     } catch (err) {
       toast.error(err.message || "Không thể khởi tạo thanh toán.");
     } finally {
@@ -157,12 +157,12 @@ export function PricingPage() {
         toast.error("Vui lòng chọn Brand");
         return;
       }
-      const res = await apiService.post('/billing/subscriptions/addons/initiate', {
+      const paymentInfo = await billingService.initiateAddon({
         addonId,
         brandId: activeBrand.id,
         quantity: parseInt(qty, 10)
       });
-      setPaymentData(res.data.data);
+      setPaymentData(paymentInfo);
     } catch (err) {
       toast.error(err.message || "Không thể khởi tạo mua Addon");
     }
