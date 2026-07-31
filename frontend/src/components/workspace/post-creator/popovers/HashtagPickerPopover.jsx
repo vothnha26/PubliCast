@@ -2,7 +2,7 @@ import * as React from "react";
 import { useState, useEffect } from "react";
 import { Hash, ChevronRight, X, Loader2 } from "lucide-react";
 import { useBrand } from "../../../../context/BrandContext";
-import apiService from "../../../../services/api";
+import hashtagService from "../../../../services/hashtag.service";
 
 export function HashtagPickerPopover({ onInsert, onClose }) {
   const { activeBrand } = useBrand();
@@ -16,9 +16,9 @@ export function HashtagPickerPopover({ onInsert, onClose }) {
       if (!activeBrand?.id) return;
       setLoading(true);
       try {
-        const res = await apiService.get(`/hashtags?brandId=${activeBrand.id}`);
+        const res = await hashtagService.getHashtags(activeBrand.id);
         if (isMounted) {
-          setHashtagSets(res.data.sets || []);
+          setHashtagSets(res.sets || res.data?.sets || []);
         }
       } catch (error) {
         console.error("Failed to fetch hashtag sets in popover:", error);

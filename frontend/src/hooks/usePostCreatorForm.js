@@ -1,8 +1,9 @@
 import { useState, useEffect, useRef } from "react";
 import { toast } from "sonner";
-import apiService from "../services/api";
 import { useBrand } from "../context/BrandContext";
 import socialService from "../services/social.service";
+import workflowService from "../services/workflow.service";
+import mediaService from "../services/media.service";
 import { usePostCreator } from "../context/PostCreatorContext";
 import { usePostCreatorStore } from "../store/usePostCreatorStore";
 import { DEFAULT_PLATFORM, PLATFORMS, PLATFORM_API_KEY } from "../constants/platforms";
@@ -289,8 +290,8 @@ export function usePostCreatorForm() {
       if (!activeBrand?.id) return;
       setIsLoadingReviewers(true);
       try {
-        const res = await apiService.get(`/brands/${activeBrand.id}/workflows/reviewers`);
-        const list = res.data?.data || [];
+        const res = await workflowService.getReviewers(activeBrand.id);
+        const list = res || [];
         setPotentialReviewers(list);
         if (list.length > 0) {
           setSelectedReviewerId(list[0].id);
@@ -579,16 +580,16 @@ export function usePostCreatorForm() {
     formData.append("video", file);
 
     try {
-      const res = await apiService.post(`/posts/upload?brandId=${activeBrand?.id}`, formData, {
-        headers: {
-          "Content-Type": "multipart/form-data"
-        }
+      const res = await mediaService.saveDirect(activeBrand?.id, null, {
+        filename: file.name,
+        size: file.size,
+        type: file.type
       });
-      setUploadedVideoPath(res.data.videoUrl);
+      setUploadedVideoPath(res?.url);
       
       const trackUploadedAsset = usePostCreatorStore.getState().trackUploadedAsset;
-      if (trackUploadedAsset && res.data.videoUrl) {
-        trackUploadedAsset(res.data.videoUrl);
+      if (trackUploadedAsset && res?.url) {
+        trackUploadedAsset(res.url);
       }
 
       toast.success("Video uploaded successfully");
@@ -650,9 +651,8 @@ export function usePostCreatorForm() {
     if (!activeBrand) return;
     setIsLoadingPlaylists(true);
     try {
-      const url = `/social/youtube/playlists?brandId=${activeBrand.id}${forceRefresh ? '&sync=true' : ''}`;
-      const res = await apiService.get(url);
-      setPlaylists(res.data?.data || []);
+      const res = await socialService.getYouTubePlaylists(activeBrand.id, forceRefresh);
+      setPlaylists(res.data || res || []);
       if (forceRefresh) {
         toast.success("YouTube Playlists synchronized successfully");
       }
@@ -1173,7 +1173,7 @@ export function usePostCreatorForm() {
         const updatePayload = networkOverrides.length > 0
           ? { ...payload, networkOverrides }
           : payload;
-        await apiService.put(`/posts/${editingPost.id}`, updatePayload, { timeout: 60000 });
+        await postService.updatePost(editingPost.id, updatePayload);
         toast.success("Post updated successfully");
         // Xóa danh sách track để không bị rollback nhầm file đã đăng
         const clearTrackedAssets = usePostCreatorStore.getState().clearTrackedAssets;
@@ -1182,11 +1182,7 @@ export function usePostCreatorForm() {
         closePostCreator();
       } else {
         const finalPayload = networkOverrides.length > 0 ? { ...payload, networkOverrides } : payload;
-        if (networkOverrides.length > 0) {
-          await postService.createPostV2(finalPayload);
-        } else {
-          await apiService.post('/posts', finalPayload, { timeout: 60000 });
-        }
+        await postService.createPost(finalPayload);
         toast.success("Post created successfully");
         // Xóa danh sách track để không bị rollback nhầm file đã đăng
         const clearTrackedAssets = usePostCreatorStore.getState().clearTrackedAssets;

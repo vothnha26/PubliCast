@@ -2,9 +2,8 @@ import * as React from "react";
 import { useState, useRef } from "react";
 import { X, Upload, Link2, File, Image as ImageIcon, Video, CheckCircle2, Loader2, Search, Folder, ChevronLeft } from "lucide-react";
 import { toast } from "sonner";
-import apiService from "../../../../services/api";
+import { uploadMediaFile } from "../../../../services/mediaUpload.service";
 import { useMediaLibrary } from "../../../../hooks/useMediaLibrary";
-import CloudinaryResumableUploader from "../../../../utils/cloudinaryUploader";
 
 import { 
   MEDIA_FILTER_TYPES, 
@@ -151,37 +150,12 @@ export function MediaUploadModal({
         const toastId = toast.loading(`Preparing ${selectedFile.name}...`);
 
         try {
-          const isVideo = selectedFile.type.startsWith('video/');
-          const folder = isVideo ? 'publicast/videos' : 'publicast/images';
-          
-          // 1. Get signature from backend
-          const sigRes = await apiService.get(`/media/signature?folder=${folder}`);
-          const { signature, timestamp, apiKey, cloudName } = sigRes.data.data;
-
           toast.loading(`Uploading ${selectedFile.name}... 0%`, { id: toastId });
 
-          // 2. Resumable Direct Upload to Cloudinary
-          const uploader = new CloudinaryResumableUploader(
-            cloudName,
-            apiKey,
-            folder,
-            (percent) => {
-              setUploadProgress(percent);
-              toast.loading(`Uploading ${selectedFile.name}... ${percent}%`, { id: toastId });
-            }
-          );
-
-          const uploadData = await uploader.upload(selectedFile, signature, timestamp);
-
-          // 3. Save info to backend
-          const saveRes = await apiService.post("/media/save-direct", {
-            brandId,
-            fileInfo: uploadData,
-            saveToLibrary: false
+          const finalUrl = await uploadMediaFile(selectedFile, brandId, (percent) => {
+            setUploadProgress(percent);
+            toast.loading(`Uploading ${selectedFile.name}... ${percent}%`, { id: toastId });
           });
-
-          const savedMedia = saveRes.data?.data || saveRes.data;
-          const finalUrl = savedMedia?.url || uploadData.secure_url;
 
           onAccept(selectedFile, finalUrl);
           toast.success("File uploaded successfully", { id: toastId });
