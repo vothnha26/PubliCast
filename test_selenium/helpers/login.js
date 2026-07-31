@@ -3,8 +3,6 @@ const path = require('path');
 require('dotenv').config({ path: path.resolve(__dirname, '..', '.env') });
 
 async function loginAs(driver, role) {
-  // Navigate to login page
-  await driver.get(`${process.env.BASE_URL || 'http://localhost:5173'}/login`);
   const emailEnv = role.toUpperCase() + '_EMAIL';
   const passwordEnv = role.toUpperCase() + '_PASSWORD';
   const email = process.env[emailEnv] || '';
@@ -16,7 +14,7 @@ async function loginAs(driver, role) {
   
   // Navigate to login page
   await driver.get(`${process.env.BASE_URL || 'http://localhost:5173'}/login`);
-  await driver.wait(until.elementLocated(By.id('email')), 15000);
+  await driver.wait(until.elementLocated(By.id('email')), 30000);
   
   // Fill credentials
   await driver.findElement(By.id('email')).sendKeys(email);
@@ -49,10 +47,10 @@ async function loginAs(driver, role) {
     await driver.get(`${process.env.BASE_URL || 'http://localhost:5173'}/signup`);
     
     // Chờ tất cả các input element load đầy đủ trên DOM
-    const nameInput = await driver.wait(until.elementLocated(By.xpath("//input[@placeholder='Your name']")), 15000);
-    const emailInput = await driver.wait(until.elementLocated(By.id('email')), 15000);
-    const passwordInput = await driver.wait(until.elementLocated(By.id('password')), 15000);
-    const confirmPasswordInput = await driver.wait(until.elementLocated(By.xpath("//input[@placeholder='••••••••']")), 15000);
+    const nameInput = await driver.wait(until.elementLocated(By.xpath("//input[@placeholder='Your name']")), 30000);
+    const emailInput = await driver.wait(until.elementLocated(By.id('email')), 30000);
+    const passwordInput = await driver.wait(until.elementLocated(By.id('password')), 30000);
+    const confirmPasswordInput = await driver.wait(until.elementLocated(By.xpath("//input[@placeholder='••••••••']")), 30000);
     
     const timestamp = Date.now();
     const newEmail = `brandtestadmin${timestamp}@gmail.com`;

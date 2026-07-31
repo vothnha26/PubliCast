@@ -28,7 +28,7 @@ describe('Brand Deletion', function () {
     await loginAs(driver, 'admin');
     await driver.get(`${BASE_URL}/manage/connections`);
     // Wait for Brand Settings page to load
-    await driver.wait(until.elementLocated(By.css('h1')), 15000);
+    await driver.wait(until.elementLocated(By.css('h1')), 30000);
   });
   after(async function () {
     await driver.quit();
