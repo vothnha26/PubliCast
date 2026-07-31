@@ -7,8 +7,6 @@ import socialService from "../services/social.service";
 import postService from "../services/post.service";
 import { useLatestRequestId } from "./useLatestRequestId";
 import { FALLBACK_DEMOGRAPHICS, EMPTY_ANALYTICS_DATA } from "@/mocks/dashboardFallback";
-import { mapToPostPreview } from "../utils/postPreview";
-import { buildPostDetailRoute } from "../constants/routes";
 import { PLATFORM_DEFAULT_TAB } from "../constants/platforms";
 
 const getPlatformTabDefault = (plat) => {
@@ -276,24 +274,11 @@ export function usePlatformDashboard(platform) {
   };
 
   const handleVideoClick = useCallback((video) => {
-    const extractPlatformPostId = (rawPost, platformKey) => {
-      if (!rawPost?.platformPostId) return rawPost?.id || rawPost?.videoId || null;
-      if (typeof rawPost.platformPostId === "object") {
-        return rawPost.platformPostId[platformKey] || rawPost.platformPostId[platformKey.toUpperCase()] || null;
-      }
-      try {
-        const parsed = JSON.parse(rawPost.platformPostId);
-        return parsed[platformKey] || parsed[platformKey.toUpperCase()] || null;
-      } catch (e) {
-        return rawPost.platformPostId;
-      }
-    };
-
-    const postId = extractPlatformPostId(video, platform) || video.id || video.videoId;
-    navigate(buildPostDetailRoute(platform, postId), {
-      state: { post: mapToPostPreview(video, platform) }
-    });
-  }, [navigate, platform]);
+    const url = video?.permalinkUrl || video?.url || video?.postUrl || video?.shareUrl;
+    if (url && url !== "#") {
+      window.open(url, "_blank", "noopener,noreferrer");
+    }
+  }, []);
 
   // Single effect covering brand/platform/lock changes AND dateRange changes
   // — previously these were 2 separate effects that both fired on mount
