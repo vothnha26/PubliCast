@@ -27,9 +27,11 @@ const userRoutes = require('./routes/admin/user.routes');
 
 // Routes - Social Domain
 const socialRoutes = require('./routes/social/social.routes');
+const socialRoutesV2 = require('./routes/social/social.routes.v2');
 const youtubeRoutesV2 = require('./routes/social/youtube.routes.v2');
 const tiktokRoutesV2 = require('./routes/social/tiktok.routes.v2');
 const inboxRoutes = require('./routes/social/inbox.routes');
+const inboxRoutesV2 = require('./routes/social/inbox.routes.v2');
 
 // Routes - Workspace Domain
 // const livestreamRoutes = require('./routes/workspace/livestream.routes');
@@ -198,6 +200,8 @@ app.use('/api/social', socialRoutes);
 // ── API v2 (response envelope {message, data} — parallel to v1, v1 unchanged) ──
 app.use('/api/v2/auth', authRoutesV2);
 app.use('/api/v2/profile', profileRoutesV2);
+app.use('/api/v2/social', socialRoutesV2);
+app.use('/api/v2/social/inbox', inboxRoutesV2);
 app.use('/api/v2/social/youtube', youtubeRoutesV2);
 app.use('/api/v2/social/tiktok', tiktokRoutesV2);
 app.use('/api/v2/posts', postRoutesV2);
