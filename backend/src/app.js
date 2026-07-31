@@ -41,6 +41,7 @@ const contentExtrasRoutesV2 = require('./routes/workspace/content-extras.routes.
 const mediaLibraryRoutes = require('./routes/workspace/media-library.routes');
 const mediaLibraryRoutesV2 = require('./routes/workspace/media-library.routes.v2');
 const workspaceCoreRoutesV2 = require('./routes/workspace/workspace-core.routes.v2');
+const analyticsSupportRoutesV2 = require('./routes/workspace/analytics-support.routes.v2');
 const mediaFolderRoutes = require('./routes/workspace/media-folder.routes');
 const teamRoutes = require('./routes/workspace/team.routes');
 const brandRoutes = require('./routes/workspace/brand.routes');
@@ -211,6 +212,7 @@ app.use('/api/v2/posts', postRoutesV2);
 app.use('/api/v2/content-extras', contentExtrasRoutesV2);
 app.use('/api/v2/media', mediaLibraryRoutesV2);
 app.use('/api/v2/workspace', workspaceCoreRoutesV2);
+app.use('/api/v2/analytics-support', analyticsSupportRoutesV2);
 app.use('/api/brands', brandRoutes);
 app.use('/api/brands/:brandId/roles', roleRoutes);
 app.use('/api/brands/:brandId/workflows', approvalWorkflowRoutes);
