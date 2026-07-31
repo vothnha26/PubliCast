@@ -34,7 +34,7 @@ export function PostsLibraryView() {
         isLibrary: true,
         search: searchTerm
       });
-      setPosts(res.data || []);
+      setPosts(res || []);
     } catch (e) {
       toast.error(t("postsLibrary.toasts.loadFail"));
     } finally {

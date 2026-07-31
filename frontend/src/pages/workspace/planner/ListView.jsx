@@ -86,8 +86,8 @@ export function ListView() {
     setLoading(true);
     try {
       const res = await postService.getPosts(activeBrand.id, filters);
-      setPosts(res.data || []);
-      setMeta(res.meta || { total: 0, page: 1, totalPages: 1 });
+      setPosts(res?.posts || res || []);
+      setMeta(res?.meta || { total: 0, page: 1, totalPages: 1 });
     } catch (e) {
       toast.error(t("listView.toasts.loadFail"));
     } finally {
@@ -251,13 +251,12 @@ export function ListView() {
   const openReviewerPanel = async (post) => {
     if (!activeBrand || !post.approvalInfo) return;
     try {
-      const res = await postService.getReviewers(activeBrand.id);
-      const available = res.data || [];
+      const available = await postService.getReviewers(activeBrand.id);
       const currentIds = (post.approvalInfo.reviewers || []).map(r => r.id).filter(Boolean);
       setReviewerPanel({
         open: true,
         post,
-        availableReviewers: available,
+        availableReviewers: available || [],
         selectedIds: currentIds,
         policy: post.approvalInfo.approvalPolicy || 'AT_LEAST_ONE',
         saving: false
