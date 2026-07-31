@@ -9,7 +9,7 @@ import { useConnections } from "../context/ConnectionsContext";
 import { useBrand } from "../context/BrandContext";
 import { PlatformIcon } from "../components/shared/PlatformIcon";
 import { useState, useEffect } from "react";
-import apiService from "../services/api";
+import billingService from "../services/billing.service";
 import { useTheme } from "../context/ThemeContext";
 import { THEME_MODES } from "../constants/theme";
 import { useTranslation } from "react-i18next";
@@ -45,9 +45,9 @@ export function SidebarWorkspace() {
 
   useEffect(() => {
     if (!activeBrand) return;
-    apiService.get(`/billing/subscriptions/current?brandId=${activeBrand.id}`)
+    billingService.getCurrentSubscription(activeBrand.id)
       .then(res => {
-        setPlanInfo(res.data.data);
+        setPlanInfo(res);
       })
       .catch(err => {
         console.error("Failed to fetch current plan info in sidebar:", err);

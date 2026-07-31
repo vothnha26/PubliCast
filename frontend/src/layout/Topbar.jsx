@@ -10,7 +10,8 @@ import { useConnections } from "../context/ConnectionsContext";
 import { useAuth } from "../context/AuthContext";
 import { useBrand } from "../context/BrandContext";
 import { useDebounce } from "../hooks/useDebounce";
-import apiService from "../services/api";
+import notificationService from "../services/notification.service";
+import { apiV2 } from "../services/api";
 import { openNotificationStream } from "../utils/notification-stream";
 import { useTranslation } from "react-i18next";
 import { useLanguage } from "../context/LanguageContext";
@@ -147,8 +148,8 @@ export function Topbar() {
     const fetchResults = async () => {
       setIsLoading(true);
       try {
-        const response = await apiService.get(`/search?q=${encodeURIComponent(debouncedSearch)}`);
-        setSearchResults(response.data);
+        const response = await apiV2.get(`/search?q=${encodeURIComponent(debouncedSearch)}`);
+        setSearchResults(response || []);
       } catch (error) {
         console.error("Search error:", error);
         setSearchResults([]);
@@ -188,8 +189,8 @@ export function Topbar() {
 
     const fetchUnreadNotifications = async () => {
       try {
-        const response = await apiService.get("/notifications?isRead=false&limit=1");
-        setUnreadNotifications(response.data?.meta?.total || 0);
+        const response = await notificationService.getUnread(1);
+        setUnreadNotifications(response?.meta?.total || 0);
       } catch (error) {
         setUnreadNotifications(0);
       }
