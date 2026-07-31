@@ -1,4 +1,4 @@
-import apiService from "./api";
+import { apiV2 } from "./api";
 
 export async function uploadMediaFile(file, brandId, folderId = null) {
   const formData = new FormData();
@@ -8,12 +8,12 @@ export async function uploadMediaFile(file, brandId, folderId = null) {
     formData.append("folderId", folderId);
   }
 
-  const res = await apiService.post("/media/upload", formData, {
+  const data = await apiV2.post("/media/upload", formData, {
     headers: {
       "Content-Type": "multipart/form-data"
     },
     timeout: 120000 // 120 seconds timeout for media uploads
   });
 
-  return res.data.data;
+  return data;
 }
