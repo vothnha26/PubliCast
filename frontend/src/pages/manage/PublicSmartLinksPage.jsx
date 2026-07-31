@@ -1,6 +1,22 @@
 import React, { useState, useEffect } from "react";
 import { useParams } from "react-router-dom";
-import { Loader2, AlertCircle, ArrowUpRight, Twitter, Instagram, Youtube, Chrome } from "lucide-react";
+import { 
+  Loader2, 
+  AlertCircle, 
+  ArrowUpRight, 
+  Twitter, 
+  Instagram, 
+  Youtube, 
+  Facebook, 
+  Globe, 
+  Mail, 
+  Share2, 
+  Video, 
+  Send,
+  Linkedin,
+  Github,
+  Chrome 
+} from "lucide-react";
 import apiService from "../../services/api";
 
 const THEMES = [
@@ -10,13 +26,29 @@ const THEMES = [
   { id: "cyberpunk", name: "Cyberpunk Neon", bg: "bg-[#0c0f1d]", text: "text-[#00ffcc]", buttonBg: "bg-slate-900 hover:bg-slate-850 border border-[#ff0055] shadow-[0_0_8px_rgba(255,0,85,0.4)]", buttonText: "text-[#00ffcc]", border: "border-[#ff0055]" }
 ];
 
+const renderSocialIcon = (platform, size = 15) => {
+  const p = (platform || "").toLowerCase().trim();
+  if (p === "twitter" || p === "x") return <Twitter size={size} />;
+  if (p === "instagram") return <Instagram size={size} />;
+  if (p === "youtube") return <Youtube size={size} />;
+  if (p === "facebook") return <Facebook size={size} />;
+  if (p === "email" || p === "mail") return <Mail size={size} />;
+  if (p === "website" || p === "globe") return <Globe size={size} />;
+  if (p === "tiktok") return <Video size={size} />;
+  if (p === "linkedin") return <Linkedin size={size} />;
+  if (p === "github") return <Github size={size} />;
+  if (p === "telegram") return <Send size={size} />;
+  return <Share2 size={size} />;
+};
+
 export function PublicSmartLinksPage() {
   const { slug } = useParams();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [data, setData] = useState(null);
   const [theme, setTheme] = useState(THEMES[0]);
-  const [socialIcons, setSocialIcons] = useState([]); // State để lưu social icons động thực tế
+  const [socialIcons, setSocialIcons] = useState([]);
+  const [avatarError, setAvatarError] = useState(false);
 
   useEffect(() => {
     const fetchPublicData = async () => {
@@ -64,8 +96,10 @@ export function PublicSmartLinksPage() {
 
   const handleLinkClick = async (linkId, url) => {
     try {
-      // Async track in background
-      apiService.post(`/smart-links/click/${linkId}`).catch(err => console.error("Track click error:", err));
+      // Async track in background for valid saved link items
+      if (linkId && !String(linkId).startsWith("l-")) {
+        apiService.post(`/smart-links/click/${linkId}`).catch(err => console.error("Track click error:", err));
+      }
       
       // Open link in new window
       const normalizedUrl = url.startsWith("http") ? url : `https://${url}`;
@@ -108,12 +142,19 @@ export function PublicSmartLinksPage() {
       
       {/* Profile Area */}
       <div className="flex flex-col items-center text-center max-w-sm mb-12">
-        <div className="w-24 h-24 rounded-full bg-white flex items-center justify-center shadow-xl mb-4 border border-slate-205 overflow-hidden shrink-0 transform hover:scale-105 transition-transform duration-300">
-          <img 
-            src={data.profileImageUrl || "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=150&auto=format&fit=crop&q=80"} 
-            alt={data.pageTitle} 
-            className="w-full h-full object-cover"
-          />
+        <div className="w-24 h-24 rounded-full bg-white flex items-center justify-center shadow-xl mb-4 border border-slate-200 overflow-hidden shrink-0 transform hover:scale-105 transition-transform duration-300">
+          {!avatarError && data.profileImageUrl ? (
+            <img 
+              src={data.profileImageUrl} 
+              alt={data.pageTitle} 
+              className="w-full h-full object-cover"
+              onError={() => setAvatarError(true)}
+            />
+          ) : (
+            <div className="w-full h-full bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 flex items-center justify-center text-white font-extrabold text-2xl">
+              {(data?.pageTitle || "P").charAt(0).toUpperCase()}
+            </div>
+          )}
         </div>
         <h1 className="text-xl font-bold tracking-tight">{data.pageTitle}</h1>
         {data.bio && (
@@ -153,6 +194,8 @@ export function PublicSmartLinksPage() {
               borderColor: borderColor || bgColor
             } : {};
 
+            const hasCustomIconUrl = link.iconUrl && !link.iconUrl.startsWith("style:");
+
             return (
               <button
                 key={link.id}
@@ -162,7 +205,11 @@ export function PublicSmartLinksPage() {
                   !bgColor ? `${theme.buttonBg} ${theme.buttonText} ${theme.border}` : ""
                 }`}
               >
-                <span className="text-lg w-5 h-5 flex items-center justify-center shrink-0">{link.emoji || "🔗"}</span>
+                {hasCustomIconUrl ? (
+                  <img src={link.iconUrl} alt="" className="w-5 h-5 object-contain shrink-0 rounded" />
+                ) : (
+                  <span className="text-lg w-5 h-5 flex items-center justify-center shrink-0">{link.emoji || "🔗"}</span>
+                )}
                 <span className="mx-2 truncate flex-1 text-center">{link.title}</span>
                 <ArrowUpRight size={16} className="opacity-60 group-hover:opacity-100 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-all shrink-0" />
               </button>
@@ -177,14 +224,13 @@ export function PublicSmartLinksPage() {
           {socialIcons.map(sIcon => (
             <a 
               key={sIcon.id} 
-              href={sIcon.url} 
+              href={sIcon.url.startsWith("http") ? sIcon.url : `https://${sIcon.url}`} 
               target="_blank" 
               rel="noreferrer" 
               className="w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition-all border border-white/5"
+              title={sIcon.platform}
             >
-              {sIcon.platform === "twitter" && <Twitter size={15} />}
-              {sIcon.platform === "instagram" && <Instagram size={15} />}
-              {sIcon.platform === "youtube" && <Youtube size={15} />}
+              {renderSocialIcon(sIcon.platform, 15)}
             </a>
           ))}
         </div>

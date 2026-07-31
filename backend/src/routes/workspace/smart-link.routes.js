@@ -16,9 +16,13 @@ const router = express.Router();
 // silently auto-create a SmartLink just by visiting the page (frontend's
 // fetchSmartLink -> createInitialSmartLink fallback had no plan check either).
 router.get('/', verifyAuth, checkBrandAccess, requireFeature(PRODUCT_IDS.CUSTOM_LINKS), smartLinkController.getSmartLink);
+router.get('/list', verifyAuth, checkBrandAccess, requireFeature(PRODUCT_IDS.CUSTOM_LINKS), smartLinkController.listSmartLinks);
+router.get('/:id', verifyAuth, checkBrandAccess, requireFeature(PRODUCT_IDS.CUSTOM_LINKS), smartLinkController.getSmartLinkById);
 router.post('/', verifyAuth, checkBrandAccess, requireFeature(PRODUCT_IDS.CUSTOM_LINKS), smartLinkController.createSmartLink);
+router.post('/:id/clone', verifyAuth, checkBrandAccess, requireFeature(PRODUCT_IDS.CUSTOM_LINKS), smartLinkController.cloneSmartLink);
 router.get('/:id/analytics', verifyAuth, checkBrandAccess, requireFeature(PRODUCT_IDS.CUSTOM_LINKS), smartLinkController.getAnalytics);
 router.put('/:id', verifyAuth, checkBrandAccess, requireFeature(PRODUCT_IDS.CUSTOM_LINKS), smartLinkController.updateSmartLink);
+router.delete('/:id', verifyAuth, checkBrandAccess, requireFeature(PRODUCT_IDS.CUSTOM_LINKS), smartLinkController.deleteSmartLink);
 
 // Public Endpoints
 router.get('/public/:slug', smartLinkPublicRateLimiter, smartLinkController.getPublicSmartLink);

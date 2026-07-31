@@ -16,6 +16,56 @@ class SmartLinkController {
     });
   });
 
+  listSmartLinks = asyncHandler(async (req, res) => {
+    const { brandId } = req.query;
+    if (!brandId) {
+      return res.status(400).json({ message: 'brandId is required' });
+    }
+    const smartLinks = await smartLinkService.getAllByBrand(brandId);
+    res.status(200).json({
+      message: 'SmartLinks retrieved successfully',
+      data: smartLinks
+    });
+  });
+
+  getSmartLinkById = asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    const { brandId } = req.query;
+    if (!brandId) {
+      return res.status(400).json({ message: 'brandId is required' });
+    }
+    const smartLink = await smartLinkService.getById(id, brandId);
+    res.status(200).json({
+      message: 'SmartLink retrieved successfully',
+      data: smartLink
+    });
+  });
+
+  cloneSmartLink = asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    const { brandId } = req.body;
+    if (!brandId) {
+      return res.status(400).json({ message: 'brandId is required' });
+    }
+    const cloned = await smartLinkService.cloneSmartLink(id, brandId);
+    res.status(201).json({
+      message: 'SmartLink cloned successfully',
+      data: cloned
+    });
+  });
+
+  deleteSmartLink = asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    const { brandId } = req.query;
+    if (!brandId) {
+      return res.status(400).json({ message: 'brandId is required' });
+    }
+    await smartLinkService.deleteSmartLink(id, brandId);
+    res.status(200).json({
+      message: 'SmartLink deleted successfully'
+    });
+  });
+
   createSmartLink = asyncHandler(async (req, res) => {
     const { brandId, ...payload } = req.body;
     if (!brandId) {
