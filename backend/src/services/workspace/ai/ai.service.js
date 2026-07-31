@@ -27,10 +27,15 @@ class AiService {
           brandId,
           defaultTone: 'PROFESSIONAL',
           defaultLanguage: 'vi',
-          creditsLimit: 1000,
+          creditsLimit: 10,
           creditsUsed: 0,
           usageCountThisMonth: 0
         }
+      });
+    } else if (settings.creditsLimit > 10) {
+      settings = await prisma.aIAssistant.update({
+        where: { brandId },
+        data: { creditsLimit: 10 }
       });
     }
 
@@ -108,7 +113,10 @@ class AiService {
           platform,
           language: langToUse,
           genre,
-          situation
+          situation,
+          response: result.caption || '',
+          hashtags: result.suggestedHashtags || [],
+          adjustments: result.platformSpecificAdjustments || {}
         })
       }
     });

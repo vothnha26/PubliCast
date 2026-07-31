@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { Send, Paperclip, X, Sparkles, Settings, RefreshCw, Layers, Check, Copy, Bookmark, BookOpen, UserCheck, ChevronRight, History, Clock } from "lucide-react";
+import { Send, Paperclip, X, Sparkles, Settings, RefreshCw, Layers, Check, Copy, Bookmark, BookOpen, UserCheck, ChevronRight, History, Clock, PanelRightClose, PanelRightOpen, SlidersHorizontal, Coins, MessageSquare, ChevronDown, ChevronUp, Calendar } from "lucide-react";
 import { toast } from "sonner";
 import apiService from "../../services/api";
 import { useBrand } from "../../context/BrandContext";
@@ -149,6 +149,26 @@ function AiMessageBubble({ msg, activeBrand, autoLists, openPostCreator }) {
             <Sparkles size={11} /> Đưa vào Post Creator
           </button>
           <button 
+            onClick={() => {
+              const platformsToUse = availablePlatforms.length > 0
+                ? availablePlatforms.map(p => p.toUpperCase())
+                : [activeTab.toUpperCase()];
+
+              const defaultDate = new Date(Date.now() + 3600000); // Default schedule: 1 hour from now
+              openPostCreator({
+                template: {
+                  caption: `${currentCaption}\n\n${currentHashtags.join(" ")}`,
+                  platforms: platformsToUse
+                },
+                defaultScheduledAt: defaultDate
+              });
+              toast.success("Đã mở Post Creator và sẵn sàng lên lịch đăng!");
+            }}
+            className="px-3.5 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-[10px] transition-all flex items-center gap-1.5 cursor-pointer shadow-sm shadow-indigo-100"
+          >
+            <Calendar size={11} /> Lên lịch bài đăng
+          </button>
+          <button 
             onClick={() => handleQuickPostAction("DRAFT", false)}
             disabled={isQuickPosting}
             className="px-3 py-1.5 rounded-lg border border-gray-200 hover:bg-gray-50 disabled:bg-gray-100 disabled:text-gray-400 text-gray-600 font-bold text-[10px] transition-all cursor-pointer"
@@ -216,6 +236,227 @@ export function AIAssistant() {
     ? Array.from(new Set(connectedTextPlatforms))
     : ["facebook", "instagram", "tiktok"];
 
+/**
+ * Custom sub-component for rendering each History Card Item.
+ * Supports viewing original prompt, expanding/collapsing AI response, copying answer, and loading conversation into Chat.
+ */
+function HistoryCardItem({ item, toneLabels, supportedFormats, setInput, setTone, setLanguage, setSituation, setSelectedFormat, setGenre, setSelectedPlatforms, setCurrentTab, setMessages }) {
+  const [showResponse, setShowResponse] = useState(true);
+  const [copiedResponse, setCopiedResponse] = useState(false);
+
+  let meta = {};
+  try {
+    meta = JSON.parse(item.details || "{}");
+  } catch (e) {
+    meta = { prompt: item.details || "" };
+  }
+
+  const hasResponse = Boolean(meta.response);
+
+  const handleReusePrompt = () => {
+    try {
+      setInput(meta.prompt || "");
+      if (meta.tone) setTone(meta.tone);
+      if (meta.language) setLanguage(meta.language);
+      if (meta.situation) setSituation(meta.situation);
+      if (meta.genre) {
+        const genreStr = String(meta.genre);
+        const formatMatch = supportedFormats.find(f => genreStr.startsWith(f.value));
+        if (formatMatch) {
+          setSelectedFormat(formatMatch.value);
+          const cleanGenre = genreStr.replace(formatMatch.value, "").replace(/[()]/g, "").trim();
+          setGenre(cleanGenre);
+        } else {
+          setGenre(genreStr);
+        }
+      }
+      if (meta.platform) {
+        if (Array.isArray(meta.platform)) {
+          setSelectedPlatforms(meta.platform);
+        } else if (typeof meta.platform === "string") {
+          setSelectedPlatforms(meta.platform.split(","));
+        }
+      }
+
+      // Load full conversation turn into Chat if response exists
+      if (hasResponse) {
+        setMessages([
+          {
+            role: "user",
+            content: meta.prompt,
+            timestamp: new Date(item.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+          },
+          {
+            role: "ai",
+            content: meta.response,
+            hashtags: meta.hashtags || [],
+            adjustments: meta.adjustments || {},
+            timestamp: new Date(item.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+          }
+        ]);
+        toast.success("Đã nạp toàn bộ cuộc hội thoại & câu trả lời AI vào khung Chat!");
+      } else {
+        toast.success("Đã nạp Prompt & cấu hình vào khung Chat!");
+      }
+      setCurrentTab("chat");
+    } catch (err) {
+      console.error("Error reusing prompt:", err);
+      toast.error("Không thể sử dụng lại prompt này: " + err.message);
+    }
+  };
+
+  const handleCopyResponse = () => {
+    if (!meta.response) return;
+    let fullText = meta.response;
+    if (meta.hashtags && meta.hashtags.length > 0) {
+      fullText += "\n\n" + meta.hashtags.map(h => h.startsWith("#") ? h : `#${h}`).join(" ");
+    }
+    navigator.clipboard.writeText(fullText);
+    setCopiedResponse(true);
+    toast.success("Đã sao chép câu trả lời AI!");
+    setTimeout(() => setCopiedResponse(false), 2000);
+  };
+
+  return (
+    <div 
+      key={item.id} 
+      className="p-5 rounded-2xl border border-gray-200/80 bg-white shadow-sm flex flex-col gap-3.5 hover:border-indigo-100 hover:shadow-indigo-50/10 hover:shadow-lg transition-all"
+    >
+      {/* Header metadata */}
+      <div className="flex justify-between items-start gap-4">
+        <div className="flex items-center gap-2">
+          <div className="w-7 h-7 rounded-full bg-indigo-50 text-indigo-700 font-bold text-[10px] flex items-center justify-center border border-indigo-100">
+            {item.user?.name ? item.user.name.charAt(0).toUpperCase() : "U"}
+          </div>
+          <div>
+            <div className="text-[10px] font-bold text-gray-700">{item.user?.name || "Người dùng"}</div>
+            <div className="text-[9px] text-gray-400 font-medium">{item.user?.email || ""}</div>
+          </div>
+        </div>
+        <div className="flex items-center gap-1 text-[9px] text-gray-400 font-bold bg-gray-50 border border-gray-150 px-2 py-0.5 rounded-md">
+          <Clock size={10} />
+          {new Date(item.createdAt).toLocaleString("vi-VN", {
+            day: "2-digit",
+            month: "2-digit",
+            year: "numeric",
+            hour: "2-digit",
+            minute: "2-digit",
+          })}
+        </div>
+      </div>
+
+      {/* Content Prompt box */}
+      <div className="bg-indigo-50/40 rounded-xl p-3.5 border border-indigo-100/80 flex flex-col gap-2">
+        <div className="flex items-center justify-between">
+          <span className="text-[10px] font-extrabold text-indigo-700 uppercase tracking-wider flex items-center gap-1">
+            <MessageSquare size={12} className="text-indigo-600" /> Câu hỏi / Prompt yêu cầu:
+          </span>
+          <button
+            onClick={() => {
+              navigator.clipboard.writeText(meta.prompt || "");
+              toast.success("Đã sao chép Prompt!");
+            }}
+            className="text-[10px] text-indigo-600 hover:text-indigo-800 font-bold flex items-center gap-1 hover:underline cursor-pointer"
+            title="Sao chép toàn bộ Prompt"
+          >
+            <Copy size={11} /> Sao chép Prompt
+          </button>
+        </div>
+        <div className="text-xs font-semibold text-gray-900 leading-relaxed whitespace-pre-wrap select-text bg-white p-3 rounded-lg border border-gray-150 shadow-2xs">
+          {meta.prompt || "(Không có nội dung)"}
+        </div>
+      </div>
+
+      {/* AI Response Box (if available) */}
+      {hasResponse && (
+        <div className="bg-emerald-50/40 rounded-xl p-3.5 border border-emerald-100/80 flex flex-col gap-2 transition-all">
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] font-extrabold text-emerald-800 uppercase tracking-wider flex items-center gap-1">
+              <Sparkles size={12} className="text-emerald-600 animate-pulse" /> Câu trả lời từ Trợ lý AI:
+            </span>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={handleCopyResponse}
+                className="text-[10px] text-emerald-700 hover:text-emerald-900 font-bold flex items-center gap-1 hover:underline cursor-pointer"
+              >
+                {copiedResponse ? <Check size={11} /> : <Copy size={11} />} {copiedResponse ? "Đã sao chép" : "Sao chép câu trả lời"}
+              </button>
+              <button
+                onClick={() => setShowResponse(!showResponse)}
+                className="text-gray-400 hover:text-gray-600 p-0.5 rounded cursor-pointer"
+                title={showResponse ? "Thu gọn câu trả lời" : "Mở rộng câu trả lời"}
+              >
+                {showResponse ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+              </button>
+            </div>
+          </div>
+
+          {showResponse && (
+            <div className="flex flex-col gap-2.5 bg-white p-3.5 rounded-lg border border-gray-150 shadow-2xs text-xs">
+              <div className="text-gray-800 font-medium leading-relaxed whitespace-pre-wrap select-text">
+                {meta.response}
+              </div>
+
+              {meta.hashtags && meta.hashtags.length > 0 && (
+                <div className="flex flex-wrap gap-1.5 pt-2 border-t border-gray-100">
+                  {meta.hashtags.map((tag, idx) => (
+                    <span key={idx} className="text-[10px] font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-md border border-indigo-100/60">
+                      {tag.startsWith("#") ? tag : `#${tag}`}
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Attribute Pills */}
+      <div className="flex flex-wrap gap-1.5 items-center">
+        {meta.platform && (
+          <span className="text-[9px] font-bold px-2 py-0.5 rounded-md bg-indigo-50 text-indigo-700 border border-indigo-100/50">
+            Nền tảng: {meta.platform.toUpperCase()}
+          </span>
+        )}
+        {meta.tone && (
+          <span className="text-[9px] font-bold px-2 py-0.5 rounded-md bg-purple-50 text-purple-700 border border-purple-100/50">
+            Văn phong: {toneLabels[meta.tone] || meta.tone}
+          </span>
+        )}
+        {meta.genre && (
+          <span className="text-[9px] font-bold px-2 py-0.5 rounded-md bg-amber-50 text-amber-700 border border-amber-100/50">
+            Dạng: {meta.genre}
+          </span>
+        )}
+        {meta.situation && (
+          <span className="text-[9px] font-bold px-2 py-0.5 rounded-md bg-rose-50 text-rose-700 border border-rose-100/50">
+            Bối cảnh: {meta.situation}
+          </span>
+        )}
+        {meta.language && (
+          <span className="text-[9px] font-bold px-2 py-0.5 rounded-md bg-teal-50 text-teal-700 border border-teal-100/50">
+            Ngôn ngữ: {meta.language === "vi" ? "Tiếng Việt 🇻🇳" : "Tiếng Anh 🇬🇧"}
+          </span>
+        )}
+      </div>
+
+      {/* Actions */}
+      <div className="flex justify-between items-center border-t border-gray-100 pt-3 mt-1">
+        <span className="text-[10px] text-gray-400 font-medium">
+          {hasResponse ? "✅ Đã lưu đầy đủ câu trả lời AI" : "ℹ️ Nhật ký prompt trước đây"}
+        </span>
+        <button
+          onClick={handleReusePrompt}
+          className="px-3.5 py-1.5 bg-gray-900 hover:bg-gray-800 text-white font-bold text-[10px] rounded-lg flex items-center gap-1.5 cursor-pointer shadow-sm transition-all"
+        >
+          <Sparkles size={11} className="text-amber-400" />
+          {hasResponse ? "Xem & Nạp lại vào Chat" : "Sử dụng lại Prompt"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
   // Tab View State: "chat" or "settings" Managed via URL Query Parameter
   const [searchParams, setSearchParams] = useSearchParams();
   const currentTab = searchParams.get("tab") || "chat";
@@ -236,6 +477,10 @@ export function AIAssistant() {
   const [tone, setTone] = useState("PROFESSIONAL");
   const [showToneMenu, setShowToneMenu] = useState(false);
   const [isTyping, setIsTyping] = useState(false);
+
+  // UI Layout & Toolbar States
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [showAdvancedOptions, setShowAdvancedOptions] = useState(false);
 
   // Selected Options for Generation (Supports multi-select platforms)
   const [selectedPlatforms, setSelectedPlatforms] = useState(availableTextPlatforms);
@@ -544,9 +789,9 @@ export function AIAssistant() {
   const remainingCredits = Math.max(0, creditsLimit - creditsUsed);
 
   return (
-    <div className="p-6 h-full bg-[#FAFAFA] flex flex-col" style={{ fontFamily: "'Outfit', sans-serif" }}>
+    <div className="h-full w-full max-h-full overflow-hidden p-4 sm:p-5 bg-[#FAFAFA] flex flex-col min-h-0" style={{ fontFamily: "'Outfit', sans-serif" }}>
       {/* Header */}
-      <div className="flex items-center justify-between mb-4 bg-white p-4 rounded-2xl border border-gray-100 shadow-sm">
+      <div className="flex items-center justify-between mb-4 bg-white p-4 rounded-2xl border border-gray-100 shadow-sm shrink-0">
         <div>
           <h1 className="text-lg font-bold text-gray-900 flex items-center gap-2">
             <Sparkles size={20} className="text-indigo-600 animate-pulse" />
@@ -555,10 +800,10 @@ export function AIAssistant() {
           <p className="text-xs text-gray-500 mt-0.5">Tối ưu bài viết đa nền tảng, thiết lập Brand Voice thông minh.</p>
         </div>
         
-        <div className="flex bg-gray-100 p-1 rounded-xl gap-1.5 border border-gray-200/50">
+        <div className="flex items-center bg-gray-100 p-1 rounded-xl gap-1.5 border border-gray-200/50">
           <button 
             onClick={() => setCurrentTab("chat")}
-            className={`px-4 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+            className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
               currentTab === "chat" 
                 ? "bg-white text-gray-900 shadow-sm" 
                 : "text-gray-500 hover:text-gray-800"
@@ -568,7 +813,7 @@ export function AIAssistant() {
           </button>
           <button 
             onClick={() => setCurrentTab("history")}
-            className={`px-4 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+            className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
               currentTab === "history" 
                 ? "bg-white text-gray-900 shadow-sm" 
                 : "text-gray-500 hover:text-gray-800"
@@ -578,7 +823,7 @@ export function AIAssistant() {
           </button>
           <button 
             onClick={() => setCurrentTab("settings")}
-            className={`px-4 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+            className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
               currentTab === "settings" 
                 ? "bg-white text-gray-900 shadow-sm" 
                 : "text-gray-500 hover:text-gray-800"
@@ -586,50 +831,87 @@ export function AIAssistant() {
           >
             Cài đặt Brand Voice
           </button>
+
+          {/* Sub-header Language Switcher Pill */}
+          <div className="h-4 w-px bg-gray-300/60 mx-0.5" />
+          <div className="flex items-center gap-1 bg-white px-2.5 py-1 rounded-lg border border-gray-200 shadow-2xs">
+            <select
+              value={language}
+              onChange={(e) => setLanguage(e.target.value)}
+              className="bg-transparent text-[11px] text-gray-800 font-extrabold border-none outline-none cursor-pointer"
+            >
+              <option value="vi">🇻🇳 VI</option>
+              <option value="en">🇬🇧 EN</option>
+            </select>
+          </div>
         </div>
       </div>
 
       {/* Main Tab Render Workspace */}
       {currentTab === "chat" && (
-        <div className="grid grid-cols-5 gap-6 flex-1 overflow-hidden" style={{ minHeight: 0 }}>
-          {/* Left Chat Screen (col-span-4) */}
-          <div className="col-span-4 flex flex-col h-full bg-white rounded-2xl border border-gray-200/80 shadow-sm overflow-hidden">
+        <div className="flex gap-5 flex-1 overflow-hidden" style={{ minHeight: 0 }}>
+          {/* Main Chat Area */}
+          <div className="flex-1 flex flex-col h-full bg-white rounded-2xl border border-gray-200/80 shadow-sm overflow-hidden min-w-0">
             {/* Active AI Agent Header */}
             <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 bg-gray-50/50">
               <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-indigo-600 to-purple-600 flex items-center justify-center text-white shadow-md shadow-indigo-100">
+                <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-indigo-600 to-purple-600 flex items-center justify-center text-white shadow-md shadow-indigo-100 shrink-0">
                   <Sparkles size={14} />
                 </div>
                 <div>
-                  <div className="text-xs font-bold text-gray-900">PubliCast Content Engine</div>
-                  <div className="text-[10px] text-gray-500 flex items-center gap-1">
+                  <div className="text-xs font-bold text-gray-900 flex items-center gap-2">
+                    PubliCast Content Engine
+                    <span className="text-[9px] bg-indigo-50 text-indigo-700 font-extrabold px-2 py-0.5 rounded-md border border-indigo-100/60 hidden sm:inline-block">
+                      Tone chính: {toneLabels[defaultTone] || defaultTone}
+                    </span>
+                  </div>
+                  <div className="text-[10px] text-gray-500 flex items-center gap-1 mt-0.5">
                     <span className="inline-block w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping"></span>
-                    Mô hình hoạt động: {toneLabels[defaultTone] || defaultTone} (Gemini 2.5 Flash / GPT-4o Mini)
+                    Mô hình: Gemini 2.5 Flash / GPT-4o Mini
                   </div>
                 </div>
               </div>
+
               <div className="flex items-center gap-2">
+                {isSidebarCollapsed && (
+                  <button 
+                    onClick={() => setIsSidebarCollapsed(false)}
+                    className="p-1.5 px-2.5 rounded-lg border border-indigo-100 bg-indigo-50/60 hover:bg-indigo-100/70 text-indigo-700 transition-colors flex items-center gap-1.5 cursor-pointer shadow-2xs"
+                    title="Mở rộng Bảng điều khiển Sidebar"
+                  >
+                    <PanelRightOpen size={14} className="text-indigo-600" />
+                    <span className="hidden sm:inline text-[10px] font-bold">Hiện Sidebar</span>
+                  </button>
+                )}
+
                 <button 
                   onClick={() => setMessages([])}
                   className="px-2.5 py-1.5 rounded-lg border border-gray-200 hover:bg-gray-50 text-[10px] font-bold text-gray-600 transition-colors cursor-pointer"
                 >
-                  Làm sạch đoạn chat
+                  Làm sạch chat
                 </button>
+                
+                {/* Temporary Tone Override Dropdown */}
                 <div className="relative">
                   <button 
                     onClick={() => setShowToneMenu(!showToneMenu)}
-                    className="px-2.5 py-1.5 rounded-lg border border-gray-200 text-xs font-semibold text-gray-700 bg-white hover:bg-gray-50 transition-colors flex items-center gap-1.5 cursor-pointer"
+                    className="px-2.5 py-1.5 rounded-lg border border-gray-200 text-xs font-semibold text-gray-700 bg-white hover:bg-gray-50 transition-colors flex items-center gap-1.5 cursor-pointer shadow-sm"
+                    title="Ghi đè sắc thái nhanh cho prompt này"
                   >
-                    {toneLabels[tone] || tone}
+                    <span className="text-[10px] font-bold text-gray-400">⚡ Sắc thái:</span>
+                    <span>{toneLabels[tone] || tone}</span>
                     <span className="text-[9px] text-gray-400">▼</span>
                   </button>
                   {showToneMenu && (
-                    <div className="absolute right-0 mt-1 w-44 bg-white rounded-xl shadow-lg border border-gray-100 py-1.5 z-20 animate-in fade-in slide-in-from-top-1 duration-150">
+                    <div className="absolute right-0 mt-1 w-48 bg-white rounded-xl shadow-xl border border-gray-100 py-1.5 z-30 animate-in fade-in slide-in-from-top-1 duration-150">
+                      <div className="px-3 py-1 text-[9px] font-bold text-gray-400 uppercase tracking-wider border-b border-gray-100 mb-1">
+                        Sắc thái bài này (Override)
+                      </div>
                       {supportedTones.map((t) => (
                         <button 
                           key={t.value} 
                           onClick={() => { setTone(t.value); setShowToneMenu(false); }} 
-                          className="block w-full text-left px-3.5 py-2 hover:bg-gray-50 text-xs text-gray-700 font-semibold transition-colors cursor-pointer"
+                          className="block w-full text-left px-3.5 py-2 hover:bg-indigo-50/60 text-xs text-gray-700 font-semibold transition-colors cursor-pointer"
                         >
                           {t.label} {t.emoji}
                         </button>
@@ -637,11 +919,24 @@ export function AIAssistant() {
                     </div>
                   )}
                 </div>
+
+                {/* Sidebar Toggle Button */}
+                <button
+                  onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+                  className={`p-2 rounded-lg border transition-all cursor-pointer ${
+                    isSidebarCollapsed 
+                      ? "bg-indigo-50 border-indigo-200 text-indigo-700 shadow-sm" 
+                      : "border-gray-200 hover:bg-gray-100 text-gray-500"
+                  }`}
+                  title={isSidebarCollapsed ? "Mở rộng Sidebar thông số" : "Thu gọn Sidebar để mở rộng ô Chat"}
+                >
+                  {isSidebarCollapsed ? <PanelRightOpen size={16} /> : <PanelRightClose size={16} />}
+                </button>
               </div>
             </div>
 
-            {/* Messages Log */}
-            <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gradient-to-b from-transparent to-gray-50/20">
+            {/* Messages Log with extra right padding for scrollbar */}
+            <div className="flex-1 overflow-y-auto p-4 pr-3 space-y-4 bg-gradient-to-b from-transparent to-gray-50/20">
               {messages.length === 0 ? (
                 <div className="h-full flex flex-col items-center justify-center p-6 text-center">
                   <div className="w-12 h-12 rounded-2xl bg-indigo-50 flex items-center justify-center text-indigo-600 mb-4">
@@ -649,7 +944,7 @@ export function AIAssistant() {
                   </div>
                   <h3 className="text-sm font-bold text-gray-800">Trợ lý Content sẵn sàng phục vụ</h3>
                   <p className="text-xs text-gray-500 max-w-sm mt-1 mb-6">Bạn có thể đính kèm hình ảnh để phân tích, chọn văn phong và ngôn ngữ riêng. Hãy dùng gợi ý nhanh bên dưới để tạo bài viết ngay lập tức.</p>
-                  <div className="grid grid-cols-2 gap-3 max-w-lg w-full">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-w-lg w-full">
                     {quickPrompts.map((p) => (
                       <button
                         key={p.text}
@@ -717,19 +1012,19 @@ export function AIAssistant() {
               </div>
             )}
 
-            {/* Chat Input Area */}
-            <div className="p-4 border-t border-gray-100 bg-white">
-              {/* Platform & Format Selectors Checkbox list */}
-              <div className="flex flex-wrap gap-x-5 gap-y-2.5 mb-3.5 pb-3 border-b border-gray-100/50">
-                {/* Multi-Select Platforms Dropdown */}
-                <div className="flex items-center gap-2" ref={platformDropdownRef}>
-                  <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Nền tảng:</span>
-                  <div className="relative">
+            {/* Chat Input Area with Compact Integrated Control Toolbar */}
+            <div className="p-3 border-t border-gray-100 bg-white flex flex-col gap-2.5">
+              {/* Single Integrated Toolbar Row */}
+              <div className="flex items-center justify-between gap-2 px-1 w-full overflow-hidden">
+                <div className="flex items-center gap-2 overflow-x-auto no-scrollbar scrollbar-none py-0.5 max-w-full shrink-0 flex-nowrap">
+                  {/* Multi-Select Platforms Pill Dropdown */}
+                  <div className="relative" ref={platformDropdownRef}>
                     <button
                       onClick={() => setShowPlatformDropdown(!showPlatformDropdown)}
-                      className="px-3 py-1.5 rounded-lg border border-gray-200 text-xs font-semibold text-gray-700 bg-white hover:bg-gray-50 transition-colors flex items-center gap-1.5 cursor-pointer shadow-sm min-w-[130px] justify-between"
+                      className="px-2.5 py-1 rounded-lg border border-gray-200 text-xs font-semibold text-gray-700 bg-gray-50 hover:bg-gray-100 transition-colors flex items-center gap-1.5 cursor-pointer shadow-sm"
                     >
-                      <span className="max-w-[150px] truncate text-[10px] font-bold">
+                      <span className="text-[10px] font-bold text-gray-400">🌐 Nền tảng:</span>
+                      <span className="max-w-[140px] truncate text-[10px] font-extrabold text-indigo-700">
                         {selectedPlatforms.length === 0
                           ? "Chọn nền tảng..."
                           : selectedPlatforms.map(p => p.charAt(0).toUpperCase() + p.slice(1)).join(", ")}
@@ -738,7 +1033,10 @@ export function AIAssistant() {
                     </button>
 
                     {showPlatformDropdown && (
-                      <div className="absolute left-0 mt-1 w-48 bg-white rounded-xl shadow-lg border border-gray-100 py-1.5 z-20 animate-in fade-in slide-in-from-top-1 duration-150">
+                      <div className="absolute left-0 bottom-full mb-1 w-48 bg-white rounded-xl shadow-xl border border-gray-100 py-1.5 z-30 animate-in fade-in slide-in-from-bottom-1 duration-150">
+                        <div className="px-3 py-1 text-[9px] font-bold text-gray-400 uppercase tracking-wider border-b border-gray-100 mb-1">
+                          Chọn nền tảng đăng
+                        </div>
                         {availableTextPlatforms.map((plat) => {
                           const isSelected = selectedPlatforms.includes(plat);
                           return (
@@ -752,7 +1050,7 @@ export function AIAssistant() {
                                 onChange={() => {
                                   setSelectedPlatforms((prev) => {
                                     if (isSelected) {
-                                      if (prev.length <= 1) return prev; // Keep at least one selected
+                                      if (prev.length <= 1) return prev;
                                       return prev.filter((p) => p !== plat);
                                     } else {
                                       return [...prev, plat];
@@ -768,20 +1066,17 @@ export function AIAssistant() {
                       </div>
                     )}
                   </div>
-                </div>
 
-                {/* Formats Selector dropdown */}
-                <div className="flex items-center gap-2">
-                  <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Dạng bài:</span>
-                  <div className="flex gap-1.5">
+                  {/* Formats Selector Pills */}
+                  <div className="flex items-center gap-1 bg-gray-50/80 p-0.5 rounded-lg border border-gray-200/60">
                     {supportedFormats.map((fmt) => (
                       <button
                         key={fmt.value}
                         onClick={() => setSelectedFormat(fmt.value)}
-                        className={`px-2.5 py-1 rounded-lg text-[10px] font-bold transition-all cursor-pointer border ${
+                        className={`px-2 py-0.5 rounded-md text-[10px] font-bold transition-all cursor-pointer ${
                           selectedFormat === fmt.value
-                            ? "bg-purple-600 text-white border-purple-600 shadow-sm"
-                            : "bg-white text-gray-600 border-gray-200 hover:bg-gray-50 hover:border-gray-300"
+                            ? "bg-purple-600 text-white shadow-sm"
+                            : "text-gray-600 hover:bg-gray-200/50"
                         }`}
                         title={fmt.description}
                       >
@@ -789,47 +1084,73 @@ export function AIAssistant() {
                       </button>
                     ))}
                   </div>
+
+                  {/* Language Switcher Pill */}
+                  <div className="flex items-center gap-1 bg-gray-50 px-2 py-1 rounded-lg border border-gray-200 text-xs">
+                    <select
+                      value={language}
+                      onChange={(e) => setLanguage(e.target.value)}
+                      className="bg-transparent text-[10px] text-gray-700 font-bold border-none outline-none cursor-pointer"
+                    >
+                      <option value="vi">🇻🇳 Tiếng Việt</option>
+                      <option value="en">🇬🇧 English</option>
+                    </select>
+                  </div>
                 </div>
+
+                {/* Advanced Filter Toggle (Genre & Situation) */}
+                <button
+                  onClick={() => setShowAdvancedOptions(!showAdvancedOptions)}
+                  className={`px-2.5 py-1 rounded-lg text-[10px] font-bold border transition-all flex items-center gap-1 cursor-pointer shrink-0 whitespace-nowrap ${
+                    showAdvancedOptions || genre || situation
+                      ? "bg-indigo-50 border-indigo-200 text-indigo-700"
+                      : "bg-gray-50 border-gray-200 text-gray-500 hover:text-gray-700"
+                  }`}
+                  title="Thêm bối cảnh & văn phong phụ"
+                >
+                  <SlidersHorizontal size={11} />
+                  <span>{genre || situation ? "Đang lọc thêm" : "Bối cảnh & Sắc thái phụ"}</span>
+                </button>
               </div>
 
-              {/* Dynamic Controls */}
-              <div className="flex items-center gap-2.5 mb-2.5 px-0.5 text-gray-500">
-                <div className="flex items-center gap-1 bg-gray-50 px-2 py-1 rounded-lg border border-gray-100">
-                  <span className="text-[9px] font-bold text-gray-400">Ngôn ngữ:</span>
-                  <select
-                    value={language}
-                    onChange={(e) => setLanguage(e.target.value)}
-                    className="bg-transparent text-[10px] text-gray-700 font-bold border-none outline-none cursor-pointer"
-                  >
-                    <option value="vi">Tiếng Việt 🇻🇳</option>
-                    <option value="en">English 🇬🇧</option>
-                  </select>
-                </div>
+              {/* Expandable Advanced Options Bar */}
+              {showAdvancedOptions && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 p-2 bg-indigo-50/40 rounded-xl border border-indigo-100 animate-in fade-in duration-150">
+                  <div className="flex items-center gap-1.5 bg-white px-2.5 py-1 rounded-lg border border-indigo-100">
+                    <span className="text-[9px] font-bold text-gray-400 whitespace-nowrap">Văn phong thêm:</span>
+                    <input
+                      type="text"
+                      value={genre}
+                      onChange={(e) => setGenre(e.target.value)}
+                      placeholder="Kể chuyện, Thơ, Thuyết phục..."
+                      className="bg-transparent text-[10px] text-gray-700 font-bold border-none outline-none w-full placeholder-gray-400"
+                    />
+                    {genre && (
+                      <button onClick={() => setGenre("")} className="text-gray-400 hover:text-gray-600">
+                        <X size={10} />
+                      </button>
+                    )}
+                  </div>
 
-                <div className="flex-1 flex items-center gap-1.5 bg-gray-50 px-2.5 py-1 rounded-lg border border-gray-100">
-                  <span className="text-[9px] font-bold text-gray-400 whitespace-nowrap">Văn phong thêm:</span>
-                  <input
-                    type="text"
-                    value={genre}
-                    onChange={(e) => setGenre(e.target.value)}
-                    placeholder="Kể chuyện, Thơ, Thuyết phục..."
-                    className="bg-transparent text-[10px] text-gray-700 font-bold border-none outline-none w-full placeholder-gray-400/80"
-                  />
+                  <div className="flex items-center gap-1.5 bg-white px-2.5 py-1 rounded-lg border border-indigo-100">
+                    <span className="text-[9px] font-bold text-gray-400 whitespace-nowrap">Bối cảnh:</span>
+                    <input
+                      type="text"
+                      value={situation}
+                      onChange={(e) => setSituation(e.target.value)}
+                      placeholder="Black Friday, Ra mắt sản phẩm..."
+                      className="bg-transparent text-[10px] text-gray-700 font-bold border-none outline-none w-full placeholder-gray-400"
+                    />
+                    {situation && (
+                      <button onClick={() => setSituation("")} className="text-gray-400 hover:text-gray-600">
+                        <X size={10} />
+                      </button>
+                    )}
+                  </div>
                 </div>
+              )}
 
-                <div className="flex-1 flex items-center gap-1.5 bg-gray-50 px-2.5 py-1 rounded-lg border border-gray-100">
-                  <span className="text-[9px] font-bold text-gray-400 whitespace-nowrap">Bối cảnh:</span>
-                  <input
-                    type="text"
-                    value={situation}
-                    onChange={(e) => setSituation(e.target.value)}
-                    placeholder="Black Friday, Giáng sinh..."
-                    className="bg-transparent text-[10px] text-gray-700 font-bold border-none outline-none w-full placeholder-gray-400/80"
-                  />
-                </div>
-              </div>
-
-              {/* Message Box Input */}
+              {/* Chat Input Text Box */}
               <div className="flex items-end gap-3 bg-gray-50 border border-gray-200 rounded-2xl p-2 focus-within:border-indigo-500 focus-within:ring-2 focus-within:ring-indigo-500/10 transition-all">
                 <input 
                   type="file" 
@@ -862,7 +1183,7 @@ export function AIAssistant() {
                 <button
                   onClick={sendMessage}
                   disabled={(!input.trim() && !imagePreview) || isTyping}
-                  className="w-8 h-8 rounded-xl bg-gray-950 hover:bg-gray-800 disabled:bg-gray-200 disabled:text-gray-400 flex items-center justify-center text-white shadow-sm transition-all cursor-pointer"
+                  className="w-8 h-8 rounded-xl bg-gray-950 hover:bg-gray-800 disabled:bg-gray-200 disabled:text-gray-400 flex items-center justify-center text-white shadow-sm transition-all cursor-pointer shrink-0"
                 >
                   <Send size={11} />
                 </button>
@@ -870,61 +1191,79 @@ export function AIAssistant() {
             </div>
           </div>
 
-          {/* Right Status Sidebar (col-span-1) */}
-          <div className="col-span-1 flex flex-col gap-5 overflow-y-auto pr-1">
-            {/* Usage Credits Tracker */}
-            <div className="bg-white rounded-2xl p-5 border border-gray-200/80 shadow-sm flex flex-col gap-4">
-              <div>
-                <h3 className="text-xs font-bold text-gray-800">Credits Sử dụng</h3>
-                <p className="text-[10px] text-gray-400 mt-0.5">Thời hạn: Hàng tháng</p>
-              </div>
-              <div className="flex flex-col gap-2">
-                <div className="flex justify-between items-end text-[10px] font-bold">
-                  <span className="text-gray-500">Đã tiêu thụ</span>
-                  <span className="text-gray-800">{creditsUsed} / {creditsLimit}</span>
+          {/* Right Status Sidebar (Collapsible) */}
+          {!isSidebarCollapsed && (
+            <div className="w-72 flex flex-col gap-4 overflow-y-auto pr-3 shrink-0 animate-in fade-in slide-in-from-right-3 duration-300 transition-all">
+              {/* Unified AI & Brand Voice Status Card */}
+              <div className="bg-white rounded-2xl p-4 border border-gray-200/80 shadow-sm flex flex-col gap-3.5">
+                {/* Header with Title and Collapse Button */}
+                <div className="flex items-center justify-between border-b border-gray-100 pb-3">
+                  <div className="flex items-center gap-2">
+                    <div className="w-7 h-7 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center font-bold">
+                      <Sparkles size={14} />
+                    </div>
+                    <div>
+                      <h3 className="text-xs font-bold text-gray-900">Bảng điều khiển AI</h3>
+                      <p className="text-[10px] text-gray-400">Thông số & Brand Voice</p>
+                    </div>
+                  </div>
+                  <button 
+                    onClick={() => setIsSidebarCollapsed(true)} 
+                    className="text-gray-400 hover:text-gray-700 p-1.5 rounded-lg hover:bg-gray-100 transition-colors cursor-pointer"
+                    title="Thu gọn Sidebar"
+                  >
+                    <PanelRightClose size={14} />
+                  </button>
                 </div>
-                <div className="w-full h-2 rounded-full bg-gray-100 overflow-hidden">
-                  <div 
-                    className="h-full bg-gradient-to-r from-indigo-500 to-purple-600 rounded-full transition-all duration-500" 
-                    style={{ width: `${Math.min(100, (creditsUsed / creditsLimit) * 100)}%` }} 
-                  />
+
+                {/* Section 1: Usage Credits Tracker */}
+                <div className="bg-gray-50/70 p-3 rounded-xl border border-gray-100 flex flex-col gap-2">
+                  <div className="flex items-center justify-between text-[11px] font-bold">
+                    <span className="text-gray-600 flex items-center gap-1">
+                      <Coins size={13} className="text-amber-500" /> Hạn mức Credits
+                    </span>
+                    <span className="text-indigo-600 font-extrabold">{creditsUsed} / {creditsLimit}</span>
+                  </div>
+                  <div className="w-full h-1.5 rounded-full bg-gray-200/80 overflow-hidden">
+                    <div 
+                      className="h-full bg-gradient-to-r from-indigo-500 to-purple-600 rounded-full transition-all duration-500" 
+                      style={{ width: `${Math.min(100, (creditsUsed / creditsLimit) * 100)}%` }} 
+                    />
+                  </div>
+                  <span className="text-[9px] text-gray-400 font-medium">Tự động làm mới khi gia hạn gói cước.</span>
                 </div>
-                <span className="text-[9px] text-gray-400 font-semibold">Tự động làm mới khi gia hạn gói cước.</span>
+
+                {/* Section 2: Brand Voice Overview */}
+                <div className="flex flex-col gap-2">
+                  <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Cấu hình Brand Voice</span>
+                  
+                  <div className="grid grid-cols-1 gap-1.5 text-xs">
+                    <div className="flex justify-between items-center bg-gray-50/50 px-2.5 py-1.5 rounded-lg border border-gray-100">
+                      <span className="text-[10px] text-gray-500 font-medium">Khách hàng:</span>
+                      <span className="text-[11px] font-bold text-gray-800 truncate max-w-[130px]">{targetAudience || "(Mặc định)"}</span>
+                    </div>
+
+                    <div className="flex justify-between items-center bg-gray-50/50 px-2.5 py-1.5 rounded-lg border border-gray-100">
+                      <span className="text-[10px] text-gray-500 font-medium">Nền tảng:</span>
+                      <span className="text-[11px] font-bold text-gray-800 truncate max-w-[130px]">{targetPlatforms || "(Đa nền tảng)"}</span>
+                    </div>
+
+                    <div className="flex justify-between items-center bg-gray-50/50 px-2.5 py-1.5 rounded-lg border border-gray-100">
+                      <span className="text-[10px] text-gray-500 font-medium">Giọng điệu chính:</span>
+                      <span className="text-[11px] font-extrabold text-indigo-700">{toneLabels[defaultTone] || defaultTone}</span>
+                    </div>
+                  </div>
+                </div>
+
+                <button 
+                  onClick={() => setCurrentTab("settings")}
+                  className="w-full py-2 rounded-xl bg-indigo-50/60 border border-indigo-100 text-indigo-700 font-bold text-[10px] hover:bg-indigo-100/70 transition-all flex items-center justify-center gap-1 cursor-pointer mt-0.5"
+                >
+                  Cài đặt Brand Voice <ChevronRight size={11} />
+                </button>
               </div>
             </div>
-
-            {/* Brand Voice Overview card */}
-            <div className="bg-white rounded-2xl p-5 border border-gray-200/80 shadow-sm flex flex-col gap-4">
-              <div>
-                <h3 className="text-xs font-bold text-gray-800">Giọng điệu Thương hiệu</h3>
-                <p className="text-[10px] text-gray-400 mt-0.5">Dựa trên cấu hình hiện tại</p>
-              </div>
-
-              <div className="flex flex-col gap-2.5">
-                <div className="flex flex-col gap-1">
-                  <span className="text-[9px] font-bold text-gray-400 uppercase tracking-wider">Khách hàng mục tiêu</span>
-                  <span className="text-xs font-semibold text-gray-700 truncate">{targetAudience || "(Chưa thiết lập)"}</span>
-                </div>
-
-                <div className="flex flex-col gap-1">
-                  <span className="text-[9px] font-bold text-gray-400 uppercase tracking-wider">Nền tảng mục tiêu</span>
-                  <span className="text-xs font-semibold text-gray-700 truncate">{targetPlatforms || "(Chưa thiết lập)"}</span>
-                </div>
-
-                <div className="flex flex-col gap-1 pb-1">
-                  <span className="text-[9px] font-bold text-gray-400 uppercase tracking-wider">Giọng điệu chính</span>
-                  <span className="text-xs font-semibold text-gray-700">{toneLabels[defaultTone] || defaultTone}</span>
-                </div>
-              </div>
-
-              <button 
-                onClick={() => setCurrentTab("settings")}
-                className="w-full py-2 rounded-xl bg-gray-50 border border-gray-200 text-gray-700 font-bold text-[10px] hover:bg-gray-100 transition-all flex items-center justify-center gap-1 cursor-pointer"
-              >
-                Cập nhật ở Cài đặt <ChevronRight size={10} />
-              </button>
-            </div>
-          </div>
+          )}
         </div>
       )}
 
@@ -986,120 +1325,23 @@ export function AIAssistant() {
           ) : (
             <div className="flex-1 flex flex-col gap-4">
               <div className="flex flex-col gap-4">
-                {historyItems.map((item) => {
-                  let meta = {};
-                  try {
-                    meta = JSON.parse(item.details || "{}");
-                  } catch (e) {
-                    meta = { prompt: item.details || "" };
-                  }
-
-                  const handleReusePrompt = () => {
-                    try {
-                      setInput(meta.prompt || "");
-                      if (meta.tone) setTone(meta.tone);
-                      if (meta.language) setLanguage(meta.language);
-                      if (meta.situation) setSituation(meta.situation);
-                      if (meta.genre) {
-                        const genreStr = String(meta.genre);
-                        const formatMatch = supportedFormats.find(f => genreStr.startsWith(f.value));
-                        if (formatMatch) {
-                          setSelectedFormat(formatMatch.value);
-                          const cleanGenre = genreStr.replace(formatMatch.value, "").replace(/[()]/g, "").trim();
-                          setGenre(cleanGenre);
-                        } else {
-                          setGenre(genreStr);
-                        }
-                      }
-                      if (meta.platform) {
-                        if (Array.isArray(meta.platform)) {
-                          setSelectedPlatforms(meta.platform);
-                        } else if (typeof meta.platform === "string") {
-                          setSelectedPlatforms(meta.platform.split(","));
-                        }
-                      }
-                      setCurrentTab("chat");
-                      toast.success("Đã nạp prompt và cấu hình vào màn hình chat!");
-                    } catch (err) {
-                      console.error("Error reusing prompt:", err);
-                      toast.error("Không thể sử dụng lại prompt này: " + err.message);
-                    }
-                  };
-
-                  return (
-                    <div 
-                      key={item.id} 
-                      className="p-5 rounded-2xl border border-gray-200/80 bg-white shadow-sm flex flex-col gap-3.5 hover:border-indigo-100 hover:shadow-indigo-50/10 hover:shadow-lg transition-all"
-                    >
-                      {/* Header metadata */}
-                      <div className="flex justify-between items-start gap-4">
-                        <div className="flex items-center gap-2">
-                          <div className="w-7 h-7 rounded-full bg-gray-100 text-gray-700 font-bold text-[10px] flex items-center justify-center">
-                            {item.user?.name ? item.user.name.charAt(0).toUpperCase() : "U"}
-                          </div>
-                          <div>
-                            <div className="text-[10px] font-bold text-gray-700">{item.user?.name || "Người dùng"}</div>
-                            <div className="text-[9px] text-gray-400 font-medium">{item.user?.email || ""}</div>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-1 text-[9px] text-gray-400 font-bold bg-gray-50 border border-gray-150 px-2 py-0.5 rounded-md">
-                          <Clock size={10} />
-                          {new Date(item.createdAt).toLocaleString("vi-VN", {
-                            day: "2-digit",
-                            month: "2-digit",
-                            year: "numeric",
-                            hour: "2-digit",
-                            minute: "2-digit",
-                          })}
-                        </div>
-                      </div>
-
-                      {/* Content Prompt box */}
-                      <div className="bg-gray-50 rounded-xl p-3 border border-gray-100 text-xs font-semibold text-gray-800 leading-relaxed italic whitespace-pre-wrap">
-                        "{meta.prompt}"
-                      </div>
-
-                      {/* Attribute Pills */}
-                      <div className="flex flex-wrap gap-1.5 items-center">
-                        {meta.platform && (
-                          <span className="text-[9px] font-bold px-2 py-0.5 rounded-md bg-indigo-50 text-indigo-700 border border-indigo-100/50">
-                            Nền tảng: {meta.platform.toUpperCase()}
-                          </span>
-                        )}
-                        {meta.tone && (
-                          <span className="text-[9px] font-bold px-2 py-0.5 rounded-md bg-purple-50 text-purple-700 border border-purple-100/50">
-                            Văn phong: {toneLabels[meta.tone] || meta.tone}
-                          </span>
-                        )}
-                        {meta.genre && (
-                          <span className="text-[9px] font-bold px-2 py-0.5 rounded-md bg-amber-50 text-amber-700 border border-amber-100/50">
-                            Dạng: {meta.genre}
-                          </span>
-                        )}
-                        {meta.situation && (
-                          <span className="text-[9px] font-bold px-2 py-0.5 rounded-md bg-rose-50 text-rose-700 border border-rose-100/50">
-                            Bối cảnh: {meta.situation}
-                          </span>
-                        )}
-                        {meta.language && (
-                          <span className="text-[9px] font-bold px-2 py-0.5 rounded-md bg-teal-50 text-teal-700 border border-teal-100/50">
-                            Ngôn ngữ: {meta.language === "vi" ? "Tiếng Việt 🇻🇳" : "Tiếng Anh 🇬🇧"}
-                          </span>
-                        )}
-                      </div>
-
-                      {/* Actions */}
-                      <div className="flex justify-end border-t border-gray-100 pt-3 mt-1">
-                        <button
-                          onClick={handleReusePrompt}
-                          className="px-3.5 py-1.5 bg-gray-900 hover:bg-gray-800 text-white font-bold text-[10px] rounded-lg flex items-center gap-1.5 cursor-pointer shadow-sm"
-                        >
-                          <Sparkles size={11} /> Sử dụng lại Prompt
-                        </button>
-                      </div>
-                    </div>
-                  );
-                })}
+                {historyItems.map((item) => (
+                  <HistoryCardItem
+                    key={item.id}
+                    item={item}
+                    toneLabels={toneLabels}
+                    supportedFormats={supportedFormats}
+                    setInput={setInput}
+                    setTone={setTone}
+                    setLanguage={setLanguage}
+                    setSituation={setSituation}
+                    setSelectedFormat={setSelectedFormat}
+                    setGenre={setGenre}
+                    setSelectedPlatforms={setSelectedPlatforms}
+                    setCurrentTab={setCurrentTab}
+                    setMessages={setMessages}
+                  />
+                ))}
               </div>
 
               {/* Pagination UI */}
