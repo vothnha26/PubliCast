@@ -10,6 +10,13 @@ jest.mock('../../src/middlewares/auth.middleware', () => ({
   }
 }));
 
+// Mock Permission Middleware
+jest.mock('../../src/middlewares/permission.middleware', () => {
+  const middleware = () => (req, res, next) => next();
+  middleware.requireBrandMember = (req, res, next) => next();
+  return middleware;
+});
+
 // Mock Brand Repository for Subscription checks
 jest.mock('../../src/repositories/workspace/brand.repository', () => ({
   findBrandWithSubscription: jest.fn().mockResolvedValue({
@@ -89,9 +96,8 @@ describe('AI Content Engine Routes Integration Tests', () => {
       prisma.aIAssistant.findUnique.mockResolvedValue({
         id: 'ai-1',
         brandId: 'brand-123',
-        defaultTone: 'PROFESSIONAL',
-        creditsUsed: 10,
-        creditsLimit: 1000
+        creditsUsed: 5,
+        creditsLimit: 10
       });
 
       const res = await request(app)
@@ -99,7 +105,7 @@ describe('AI Content Engine Routes Integration Tests', () => {
         .expect(200);
 
       expect(res.body.brandId).toBe('brand-123');
-      expect(res.body.creditsLimit).toBe(1000);
+      expect(res.body.creditsLimit).toBe(10);
       expect(prisma.aIAssistant.findUnique).toHaveBeenCalledWith({
         where: { brandId: 'brand-123' }
       });
