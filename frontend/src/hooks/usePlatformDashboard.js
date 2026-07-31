@@ -161,13 +161,13 @@ export function usePlatformDashboard(platform) {
       // local time can shift to yesterday's date, silently dropping the
       // last day's metrics from the query range (#87). format() below uses
       // the date's local calendar fields instead.
-      const metricsRes = await socialService.getMetrics(brandId, {
+      const metrics = await socialService.getMetrics(brandId, {
         startDate: dateRange.from ? format(dateRange.from, 'yyyy-MM-dd') : undefined,
         endDate: dateRange.to ? format(dateRange.to, 'yyyy-MM-dd') : undefined,
         force: force
       });
       const platformType = platform.toUpperCase() === 'X' ? 'TWITTER_X' : platform.toUpperCase();
-      const platformMetrics = metricsRes.data?.find(m => m?.platform === platformType);
+      const platformMetrics = (metrics || []).find(m => m?.platform === platformType);
       if (!metricsRequest.isLatest(requestId)) return;
       setMetrics(platformMetrics || null);
       if (force) {
@@ -194,8 +194,8 @@ export function usePlatformDashboard(platform) {
     if (!activeBrand) return;
     setIsTrackingLoading(true);
     try {
-      const res = await socialService.getTrackedVideos(activeBrand.id);
-      setTrackedVideos(res.data || []);
+      const videos = await socialService.getTrackedVideos(activeBrand.id);
+      setTrackedVideos(videos || []);
     } catch (error) {
       console.error("Failed to fetch tracked videos:", error);
     } finally {
@@ -207,13 +207,13 @@ export function usePlatformDashboard(platform) {
     if (!activeBrand) return;
     setIsCompetitorLoading(true);
     try {
-      let res;
+      let comps;
       if (platform === 'facebook') {
-        res = await socialService.getFacebookCompetitors(activeBrand.id);
+        comps = await socialService.getFacebookCompetitors(activeBrand.id);
       } else {
-        res = await socialService.getCompetitors(activeBrand.id);
+        comps = await socialService.getCompetitors(activeBrand.id);
       }
-      setCompetitors(res.data || []);
+      setCompetitors(comps || []);
     } catch (error) {
       console.error("Failed to fetch competitors:", error);
     } finally {
@@ -227,27 +227,27 @@ export function usePlatformDashboard(platform) {
     try {
       if (platform === "facebook") {
         const res = await socialService.getFacebookPublishedPosts(activeBrand.id, pageToken, limit);
-        setPublishedVideos(res.data || []);
-        setNextPageToken(res.nextPageToken || null);
-        setPrevPageToken(res.prevPageToken || null);
+        setPublishedVideos(res || []);
+        setNextPageToken(res?.nextPageToken || null);
+        setPrevPageToken(res?.prevPageToken || null);
       } else if (platform === "instagram") {
         const res = await socialService.getInstagramPublishedPosts(activeBrand.id, pageToken, limit);
-        setPublishedVideos(res.data || []);
-        setNextPageToken(res.nextPageToken || null);
-        setPrevPageToken(res.prevPageToken || null);
+        setPublishedVideos(res || []);
+        setNextPageToken(res?.nextPageToken || null);
+        setPrevPageToken(res?.prevPageToken || null);
       } else if (platform === "tiktok") {
         const res = await socialService.getTikTokPublishedVideos(activeBrand.id, pageToken, limit);
-        setPublishedVideos(res.videos || []);
-        setNextPageToken(res.nextPageToken || null);
-        setPrevPageToken(res.prevPageToken || null);
+        setPublishedVideos(res?.videos || res || []);
+        setNextPageToken(res?.nextPageToken || null);
+        setPrevPageToken(res?.prevPageToken || null);
       } else if (platform === "threads") {
         const res = await socialService.getThreadsPublishedPosts(activeBrand.id, pageToken, limit);
-        setPublishedVideos(res.data || []);
-        setNextPageToken(res.nextPageToken || null);
-        setPrevPageToken(res.prevPageToken || null);
+        setPublishedVideos(res || []);
+        setNextPageToken(res?.nextPageToken || null);
+        setPrevPageToken(res?.prevPageToken || null);
       } else if (platform === "bluesky") {
-        const res = await postService.getPosts(activeBrand.id, { platform: 'BLUESKY', status: 'PUBLISHED', limit });
-        const postsList = Array.isArray(res) ? res : (res.data || res.posts || []);
+        const posts = await postService.getPosts(activeBrand.id, { platform: 'BLUESKY', status: 'PUBLISHED', limit });
+        const postsList = posts || [];
         const mapped = postsList.map(p => ({
           id: p.id,
           message: p.caption || p.title || '',
