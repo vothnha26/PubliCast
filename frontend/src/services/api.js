@@ -124,7 +124,8 @@ class ApiService {
 const apiService = new ApiService();
 
 // ── V2 Dedicated Axios Client Instance (Standardized Envelope Unwrapping) ─────────────
-const v2BaseURL = baseURL ? `${baseURL}/api/v2` : '/api/v2';
+const cleanBaseURL = baseURL ? baseURL.replace(/\/api\/?$/, '') : '';
+const v2BaseURL = cleanBaseURL ? `${cleanBaseURL}/api/v2` : '/api/v2';
 
 export const apiV2 = axios.create({
   baseURL: v2BaseURL,
