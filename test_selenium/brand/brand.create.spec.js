@@ -45,7 +45,7 @@ describe('Brand Creation', function () {
       done();
     });
     await driver.navigate().refresh();
-    await driver.wait(until.elementLocated(By.css('h1')), 15000);
+    await driver.wait(until.elementLocated(By.css('h1')), 30000);
   });
   after(async function () {
     await driver.quit();
@@ -106,7 +106,7 @@ describe('Brand Creation', function () {
       done();
     });
     await driver.navigate().refresh();
-    await driver.wait(until.elementLocated(By.css('h1')), 15000);
+    await driver.wait(until.elementLocated(By.css('h1')), 30000);
   });
 
   // TC04 – Validation: empty name

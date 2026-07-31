@@ -38,8 +38,7 @@ const QUEUE_CONFIG = Object.freeze({
   },
   SOCIAL: {
     NAME: 'social-sync-queue',
-    JOB_SYNC: 'sync-channel-metrics',
-    JOB_BACKFILL_POST_ANALYTICS: 'backfill-post-analytics'
+    JOB_SYNC: 'sync-channel-metrics'
   }
 });
 

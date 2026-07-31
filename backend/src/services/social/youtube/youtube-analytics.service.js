@@ -3,7 +3,7 @@ const googleOAuthService = require('../google-oauth.service');
 const socialAccountRepository = require('../../../repositories/social/social-account.repository');
 const competitorRepository = require('../../../repositories/social/competitor.repository');
 const { PLATFORMS, SEPARATORS, ANALYTICS, SOCIAL_TECHNICAL, YT_VIDEO_INSIGHTS, REDIS_TTL } = require('../../../utils/constants');
-const { YOUTUBE_QUOTA_THRESHOLD, YOUTUBE_DAILY_QUOTA_LIMIT } = require('../../../constants/analytics-snapshot.constants');
+const { YOUTUBE_QUOTA_THRESHOLD, YOUTUBE_DAILY_QUOTA_LIMIT } = ANALYTICS;
 
 let redisClient = null;
 try {
@@ -537,9 +537,7 @@ class YouTubeAnalyticsService {
         return this._getMockVideoAnalytics(start, end);
       }
 
-      this._enqueueBackfillIfNoSnapshotsYet(brandId, videoId).catch(err => {
-        console.error('[YouTube Analytics] Failed to enqueue backfill:', err.message);
-      });
+
 
       return rows.map(row => ({
         date: row[0],
@@ -579,31 +577,7 @@ class YouTubeAnalyticsService {
     }
   }
 
-  /**
-   * Cold-start symmetry with Facebook's coldStartLock branch: the first time a
-   * video is viewed with zero persisted snapshot rows, enqueue a background
-   * backfill so the daily history lands in PostAnalyticsDailySnapshot instead
-   * of re-querying the live API on every future view.
-   */
-  async _enqueueBackfillIfNoSnapshotsYet(brandId, videoId) {
-    const prisma = require('../../../config/prisma');
-    const existingCount = await prisma.postAnalyticsDailySnapshot.count({ where: { platformPostId: videoId } });
-    if (existingCount > 0) return;
 
-    const { socialQueue } = require('../../../queues/social.queue');
-    const { QUEUE_CONFIG } = require('../../../constants/video-publish.constants');
-    // jobId dedupes concurrent enqueues for the same video — the count===0
-    // check above is a TOCTOU (N simultaneous views of a fresh video can all
-    // pass it before any of them finishes the backfill), and BullMQ's own
-    // acquireLock-based dedup only kicks in after a job is already dequeued,
-    // not before it's added (#107 / I4).
-    await socialQueue.add(QUEUE_CONFIG.SOCIAL.JOB_BACKFILL_POST_ANALYTICS, {
-      postId: null,
-      platformPostId: videoId,
-      brandId,
-      publishedAt: null
-    }, { jobId: `backfill-${videoId}` });
-  }
 
   /**
    * @param {boolean} isFallback - true when this represents a failed/quota-blocked API

@@ -43,8 +43,6 @@ const FacebookPublishStrategyFactory = require('./publish-strategies/publish-str
 const redisClient = require('../../../config/redis');
 const prisma = require('../../../config/prisma');
 const DistributedLockService = require('../distributed-lock.service');
-const { upsertDailySnapshot } = require('../post-analytics-snapshot-writer');
-const { REDIS_KEY_BUILDERS, LOCK_TTL, PLATFORM, PLATFORM_CAPABILITIES } = require('../../../constants/analytics-snapshot.constants');
 
 const POST_INSIGHTS_CACHE_TTL_SEC = 5 * 60; // 5 minutes
 const PAGE_DEMOGRAPHICS_CACHE_TTL_SEC = 60 * 60; // 1 hour
@@ -314,172 +312,7 @@ class FacebookPostService {
     return result;
   }
 
-  /**
-   * Lấy dữ liệu tăng trưởng theo thời gian (timeseries) cho 1 bài viết Facebook,
-   * đọc từ PostAnalyticsDailySnapshot (nguồn dữ liệu daily duy nhất — xem
-   * post-metric-sync.service.js#upsertDailySnapshot).
-   *
-   * Cold-start (chưa có snapshot nào): giành khóa Redis để tạo baseline record,
-   * request khác poll DB chờ record xuất hiện thay vì gọi trùng API ngoài.
-   */
-  async getPostAnalytics(brandId, platformPostId, startDate, endDate, socialAccountId = null) {
-    const { pageAccessToken } = await this._getAccountCredentials(brandId, socialAccountId);
 
-    if (pageAccessToken && pageAccessToken.startsWith('mock-')) {
-      return this._buildMockPostAnalytics(startDate, endDate);
-    }
-
-    const existingCount = await prisma.postAnalyticsDailySnapshot.count({ where: { platformPostId } });
-
-    if (existingCount === 0) {
-      const coldStartResult = await this._handleColdStart(brandId, platformPostId, socialAccountId);
-      if (coldStartResult?.retryAfter) {
-        return coldStartResult;
-      }
-    }
-
-    return this._readSnapshotSeries(platformPostId, startDate, endDate);
-  }
-
-  /**
-   * @returns {Promise<{retryAfter: number}|void>} retryAfter contract if the caller
-   * should back off and retry; resolves with no return value once a baseline row exists.
-   */
-  async _handleColdStart(brandId, platformPostId, socialAccountId) {
-    const lockKey = REDIS_KEY_BUILDERS.coldStartLock(platformPostId);
-    const token = await lockService.acquireLock(lockKey, LOCK_TTL.COLD_START);
-
-    if (token) {
-      try {
-        await this._seedBaselineSnapshot(brandId, platformPostId, socialAccountId);
-      } finally {
-        await lockService.releaseLock(lockKey, token);
-      }
-      return;
-    }
-
-    const foundDuringPoll = await this._pollForSnapshot(platformPostId, COLD_START_POLL_TIMEOUT_MS);
-    if (foundDuringPoll) return;
-
-    // Poll window elapsed with no row yet — try once more to grab the lock ourselves.
-    const retryToken = await lockService.acquireLock(lockKey, LOCK_TTL.COLD_START);
-    if (retryToken) {
-      try {
-        await this._seedBaselineSnapshot(brandId, platformPostId, socialAccountId);
-      } finally {
-        await lockService.releaseLock(lockKey, retryToken);
-      }
-      return;
-    }
-
-    return { retryAfter: COLD_START_RETRY_AFTER_SEC };
-  }
-
-  async _pollForSnapshot(platformPostId, timeoutMs) {
-    const deadline = Date.now() + timeoutMs;
-    while (Date.now() < deadline) {
-      const count = await prisma.postAnalyticsDailySnapshot.count({ where: { platformPostId } });
-      if (count > 0) return true;
-      await new Promise(resolve => setTimeout(resolve, COLD_START_POLL_INTERVAL_MS));
-    }
-    return false;
-  }
-
-  async _seedBaselineSnapshot(brandId, platformPostId, socialAccountId) {
-    const details = await this.getPostDetails(brandId, platformPostId, socialAccountId);
-    const postRecord = await prisma.post.findFirst({
-      where: {
-        OR: [
-          { platformPostId: { contains: platformPostId } },
-          { id: platformPostId }
-        ]
-      },
-      select: { id: true, publishedAt: true, createdAt: true }
-    });
-
-    const defaultThreeMonthsAgo = new Date();
-    defaultThreeMonthsAgo.setDate(defaultThreeMonthsAgo.getDate() - 90);
-
-    const baselineDate = postRecord?.publishedAt || postRecord?.createdAt || (details.date ? new Date(details.date) : defaultThreeMonthsAgo);
-
-    await upsertDailySnapshot({
-      postId: postRecord?.id || null,
-      platformPostId,
-      brandId,
-      platform: PLATFORM.FACEBOOK,
-      date: baselineDate,
-      metrics: {
-        views: details.views,
-        reach: details.reach,
-        clicks: details.clicks,
-        reactions: details.reactions?.total || 0
-      },
-      isEstimated: true
-    });
-  }
-
-  /**
-   * Reads the daily snapshot series for a post and fills gap days by carrying
-   * forward the last known cumulative values, marking filled days isEstimated=true
-   * (per PLATFORM_CAPABILITIES.supportsHistoricalBackfill === false for Facebook).
-   */
-  async _readSnapshotSeries(platformPostId, startDate, endDate) {
-    const end = endDate ? new Date(endDate) : new Date();
-    const start = startDate ? new Date(startDate) : new Date(Date.now() - 90 * 24 * 60 * 60 * 1000);
-    end.setUTCHours(0, 0, 0, 0);
-    start.setUTCHours(0, 0, 0, 0);
-
-    const rows = await prisma.postAnalyticsDailySnapshot.findMany({
-      where: { platformPostId, date: { gte: start, lte: end } },
-      orderBy: { date: 'asc' }
-    });
-
-    const earliestRow = await prisma.postAnalyticsDailySnapshot.findFirst({
-      where: { platformPostId },
-      orderBy: { date: 'asc' }
-    });
-
-    const byDate = new Map(rows.map(row => [row.date.toISOString().split('T')[0], row]));
-    const series = [];
-    let lastKnown = null;
-
-    for (let t = start.getTime(); t <= end.getTime(); t += 24 * 60 * 60 * 1000) {
-      const dateStr = new Date(t).toISOString().split('T')[0];
-      const row = byDate.get(dateStr);
-
-      const currentViews = row ? row.viewsCumulative : (lastKnown ? lastKnown.viewsCumulative : 0);
-      const currentReach = row ? row.reachCumulative : (lastKnown ? lastKnown.reachCumulative : 0);
-      const currentClicks = row ? row.clicksCumulative : (lastKnown ? lastKnown.clicksCumulative : 0);
-      const currentReactions = row ? row.reactionsCumulative : (lastKnown ? lastKnown.reactionsCumulative : 0);
-
-      const prevViews = lastKnown ? lastKnown.viewsCumulative : 0;
-      const prevReach = lastKnown ? lastKnown.reachCumulative : 0;
-      const prevClicks = lastKnown ? lastKnown.clicksCumulative : 0;
-      const prevReactions = lastKnown ? lastKnown.reactionsCumulative : 0;
-
-      if (row) {
-        lastKnown = row;
-      }
-
-      series.push({
-        date: dateStr,
-        views: currentViews,
-        reach: currentReach,
-        clicks: currentClicks,
-        reactions: currentReactions,
-        viewsDelta: Math.max(0, currentViews - prevViews),
-        reachDelta: Math.max(0, currentReach - prevReach),
-        clicksDelta: Math.max(0, currentClicks - prevClicks),
-        reactionsDelta: Math.max(0, currentReactions - prevReactions),
-        isEstimated: !row && !!lastKnown
-      });
-    }
-
-    return {
-      series,
-      historicalDataAvailableFrom: earliestRow ? earliestRow.date.toISOString().split('T')[0] : null
-    };
-  }
 
   async _getPageDemographicsCached(brandId, pageId, pageAccessToken) {
     const cacheKey = `fb:page-demographics:${brandId}`;
@@ -523,20 +356,7 @@ class FacebookPostService {
     };
   }
 
-  _buildMockPostAnalytics(startDate, endDate) {
-    const today = new Date().toISOString().split('T')[0];
-    return {
-      series: [{
-        date: today,
-        views: 1800,
-        reach: 1200,
-        clicks: 45,
-        reactions: 56,
-        isEstimated: false
-      }],
-      historicalDataAvailableFrom: today
-    };
-  }
+
 
   // ============= Private Helper Methods =============
 

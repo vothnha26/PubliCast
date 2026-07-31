@@ -3,7 +3,6 @@ const { XMLParser } = require('fast-xml-parser');
 const prisma = require('../../../config/prisma');
 const logger = require('../../../utils/logger');
 const youtubeAnalyticsService = require('./youtube-analytics.service');
-const postMetricSyncService = require('../post-metric-sync.service');
 
 /**
  * YouTube PubSub Event Processor (Facade Pattern)
@@ -108,18 +107,12 @@ class YoutubePubSubProcessor {
         }
       });
 
-      if (existingPost) {
-        logger.info(`[YouTube PubSub Processor] Syncing metrics for existing post ${existingPost.id} (Video ${videoId})...`);
-        await postMetricSyncService._syncYouTubeVideo(existingPost, videoId);
-      } else {
-        logger.info(`[YouTube PubSub Processor] New video detected (${videoId} - "${videoTitle}"). Triggering channel metrics sync...`);
-        // Sync channel metrics mới nhất
-        const socialAccount = await prisma.socialAccount.findFirst({
-          where: { brandId, platform: 'YOUTUBE' }
-        });
-        if (socialAccount) {
-          await youtubeAnalyticsService.syncChannelMetrics(socialAccount.id);
-        }
+      logger.info(`[YouTube PubSub Processor] Video event detected (${videoId} - "${videoTitle}"). Triggering channel metrics sync...`);
+      const socialAccount = await prisma.socialAccount.findFirst({
+        where: { brandId, platform: 'YOUTUBE' }
+      });
+      if (socialAccount) {
+        await youtubeAnalyticsService.syncChannelMetrics(socialAccount.id);
       }
     } catch (err) {
       logger.error(`[YouTube PubSub Processor] Failed to sync video ${videoId}:`, err.message);

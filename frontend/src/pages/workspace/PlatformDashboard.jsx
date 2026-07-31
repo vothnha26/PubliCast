@@ -22,6 +22,8 @@ import { TrackedVideosTab } from "./dashboard/TrackedVideosTab";
 import { FacebookDashboard } from "./dashboard/FacebookDashboard";
 import { TikTokDashboard } from "./dashboard/TikTokDashboard";
 import { InstagramAccountTab } from "./dashboard/InstagramAccountTab";
+import { InstagramReelsTab } from "./dashboard/InstagramReelsTab";
+import { InstagramStoriesTab } from "./dashboard/InstagramStoriesTab";
 import { ThreadsPostsTab } from "./dashboard/ThreadsPostsTab";
 import { BlueskyDashboardTab } from "./dashboard/BlueskyDashboardTab";
 import { usePlatformDashboard } from "../../hooks/usePlatformDashboard";
@@ -59,7 +61,9 @@ const TT_TABS = [
 
 const IG_TABS = [
   { id: "community", label: "COMMUNITY" },
-  { id: "account", label: "ACCOUNT" },
+  { id: "account", label: "POSTS" },
+  { id: "reels", label: "REELS" },
+  { id: "stories", label: "STORIES" },
   { id: "competitors", label: "COMPETITORS" },
 ];
 
@@ -391,7 +395,16 @@ export function PlatformDashboardPage() {
            
            <div className="flex items-center gap-3 bg-white px-3 py-1.5 rounded-xl border border-gray-100 shadow-sm">
               <div className="w-6 h-6 rounded-lg overflow-hidden border border-gray-100">
-                <img src={metrics?.profilePictureUrl} alt="Avatar" className="w-full h-full object-cover" />
+                <img 
+                  src={metrics?.profilePictureUrl} 
+                  alt="Avatar" 
+                  referrerPolicy="no-referrer"
+                  onError={(e) => {
+                    e.target.onerror = null;
+                    e.target.style.display = 'none';
+                  }}
+                  className="w-full h-full object-cover" 
+                />
               </div>
               <span className="text-[11px] font-bold text-gray-700">{metrics?.displayName}</span>
               <div 
@@ -484,6 +497,10 @@ export function PlatformDashboardPage() {
             {activeTab === "community" && (
               <div className="space-y-6">
                 {(() => {
+                  const followersCount = metrics?.instagramAccount?.followersCount || 0;
+                  const followingCount = metrics?.instagramAccount?.followingCount || 0;
+                  const mediaCount = metrics?.instagramAccount?.mediaCount || 0;
+
                   const igGrowthConfig = [
                     {
                       key: "followers",
@@ -491,7 +508,7 @@ export function PlatformDashboardPage() {
                       color: "bg-[#8E9BEE] text-white",
                       chartColor: "#8E9BEE",
                       type: "area",
-                      value: metrics?.instagramAccount?.followersCount || 0
+                      value: followersCount
                     },
                     {
                       key: "following",
@@ -499,7 +516,7 @@ export function PlatformDashboardPage() {
                       color: "bg-[#A7F3D0] text-gray-900",
                       chartColor: "#A7F3D0",
                       type: "line",
-                      value: metrics?.instagramAccount?.followingCount || 0
+                      value: followingCount
                     },
                     {
                       key: "totalContent",
@@ -507,18 +524,60 @@ export function PlatformDashboardPage() {
                       color: "bg-[#E6A34A] text-white",
                       chartColor: "#E6A34A",
                       type: "bar",
-                      value: metrics?.instagramAccount?.mediaCount || 0
+                      value: mediaCount
+                    }
+                  ];
+
+                  const daysCount = communityGrowthData?.length || 30;
+                  const totalContentInPeriod = communityGrowthData?.reduce((acc, curr) => acc + (curr.totalContent || 0), 0) || mediaCount;
+
+                  const dailyPostsNum = daysCount > 0 ? (totalContentInPeriod / daysCount) : 0;
+                  const dailyPosts = dailyPostsNum.toFixed(2);
+                  const postsPerWeek = (dailyPostsNum * 7).toFixed(2);
+                  const followersPerPost = mediaCount > 0 ? (followersCount / mediaCount).toFixed(2) : "0";
+                  const dailyFollowers = daysCount > 0 ? (totalPeriodGained / daysCount).toFixed(2) : "0";
+
+                  const summaryGrid = [
+                    { label: "Followers", value: followersCount.toLocaleString() },
+                    { label: "Daily followers", value: dailyFollowers },
+                    { label: "Followers per post", value: followersPerPost },
+                    { label: "Following", value: followingCount.toLocaleString() },
+                    { label: "Daily posts", value: dailyPosts },
+                    { label: "Posts per week", value: postsPerWeek }
+                  ];
+
+                  const igBalanceConfig = [
+                    {
+                      key: "followers",
+                      label: "Followers",
+                      color: "bg-[#86EFAC] text-[#166534]",
+                      chartColor: "#22C55E",
+                      type: "line",
+                      value: followersCount
                     }
                   ];
 
                   return (
-                    <GenericDashboardTab
-                      title="Growth"
-                      description="Growth metrics for Followers, Following, and Total Content"
-                      data={communityGrowthData}
-                      metricConfig={igGrowthConfig}
-                      watermark="publicast"
-                    />
+                    <>
+                      <GenericDashboardTab
+                        title="Growth"
+                        description=""
+                        data={communityGrowthData}
+                        metricConfig={igGrowthConfig}
+                        watermark="publicast"
+                        summaryGrid={summaryGrid}
+                      />
+
+                      <div className="h-2" />
+
+                      <GenericDashboardTab
+                        title="Balance of Followers"
+                        description=""
+                        data={communityGrowthData}
+                        metricConfig={igBalanceConfig}
+                        watermark="publicast"
+                      />
+                    </>
                   );
                 })()}
               </div>
@@ -536,6 +595,39 @@ export function PlatformDashboardPage() {
                 prevPageToken={prevPageToken}
                 nextPageToken={nextPageToken}
                 onVideoClick={handleVideoClick}
+                communityGrowthData={communityGrowthData}
+              />
+            )}
+
+            {activeTab === "reels" && (
+              <InstagramReelsTab
+                metrics={metrics}
+                realData={realData}
+                publishedVideos={publishedVideos}
+                isPublishedLoading={isPublishedLoading}
+                pageSize={pageSize}
+                setPageSize={setPageSize}
+                fetchPublishedVideos={fetchPublishedVideos}
+                prevPageToken={prevPageToken}
+                nextPageToken={nextPageToken}
+                onVideoClick={handleVideoClick}
+                communityGrowthData={communityGrowthData}
+              />
+            )}
+
+            {activeTab === "stories" && (
+              <InstagramStoriesTab
+                metrics={metrics}
+                realData={realData}
+                publishedVideos={publishedVideos}
+                isPublishedLoading={isPublishedLoading}
+                pageSize={pageSize}
+                setPageSize={setPageSize}
+                fetchPublishedVideos={fetchPublishedVideos}
+                prevPageToken={prevPageToken}
+                nextPageToken={nextPageToken}
+                onVideoClick={handleVideoClick}
+                communityGrowthData={communityGrowthData}
               />
             )}
 
