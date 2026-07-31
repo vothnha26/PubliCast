@@ -64,6 +64,7 @@ class InstagramService extends BaseSocialService {
     
     return require('../../../repositories/social/social-account.repository').upsertInstagramAccount(brandId, {
       igAccountId: igAccountData.igAccountId,
+      facebookPageId: selectedPage.id,
       username: igAccountData.username,
       displayName: igAccountData.displayName,
       profilePictureUrl: igAccountData.profilePictureUrl,
@@ -85,7 +86,17 @@ class InstagramService extends BaseSocialService {
       throw new Error('Social account not found or is not an Instagram account');
     }
 
-    const pageId = account.platformAccountId;
+    // The Facebook Page ID is required to call Graph API insights/media
+    // endpoints — Instagram Graph API only exposes them via the linked Page
+    // node, never via the IG Business Account ID (platformAccountId). Accounts
+    // connected before facebookPageId was introduced won't have it; failing
+    // loudly here (instead of falling back to platformAccountId, which causes
+    // a silent 400 from Graph API and overwrites good stored data with zeros)
+    // forces a reconnect that populates it, rather than corrupting analytics.
+    const pageId = account.instagramAccount?.facebookPageId;
+    if (!pageId) {
+      throw new Error('Instagram account is missing its linked Facebook Page ID — please reconnect this account.');
+    }
     const pageAccessToken = account.accessToken;
 
     const igInfo = await instagramAnalytics.getChannelInfo({ pageId, pageAccessToken }, startDate, endDate, socialAccountId);
@@ -95,6 +106,7 @@ class InstagramService extends BaseSocialService {
     // (PLATFORMS.INSTAGRAM) từ account đã lưu — không đổi nền tảng khi sync.
     return require('../../../repositories/social/social-account.repository').upsertInstagramAccount(account.brandId, {
       igAccountId: account.platformAccountId,
+      facebookPageId: pageId,
       username: account.username,
       displayName: account.displayName,
       profilePictureUrl: igInfo.profilePictureUrl,

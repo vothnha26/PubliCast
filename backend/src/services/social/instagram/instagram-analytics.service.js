@@ -143,7 +143,7 @@ class InstagramAnalyticsService {
         for (const val of item.values) {
           const dateStr = val.end_time.split('T')[0];
           if (dailyMap[dateStr]) {
-            if (item.name === 'impressions') {
+            if (item.name === 'views') {
               dailyMap[dateStr].views = val.value || 0;
             } else if (item.name === 'reach') {
               dailyMap[dateStr].pageVisits = val.value || 0;
