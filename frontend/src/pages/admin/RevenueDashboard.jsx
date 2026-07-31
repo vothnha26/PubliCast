@@ -1,6 +1,6 @@
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
 import React, { useState, useEffect } from "react";
-import apiService from "../../services/api";
+import adminService from "../../services/admin.service";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
 
@@ -19,8 +19,8 @@ export function RevenueDashboard() {
     const fetchRevenue = async () => {
       setLoading(true);
       try {
-        const response = await apiService.get("/admin/revenue");
-        setData(response.data.data);
+        const response = await adminService.getRevenueStats();
+        setData(response || null);
       } catch (error) {
         toast.error("Failed to load revenue analytics");
       } finally {

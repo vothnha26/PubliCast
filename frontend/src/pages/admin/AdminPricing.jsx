@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Plus, X, Check, Settings2, Edit3, Trash2, Box, Layers, Globe, Zap, Megaphone, Loader2 } from "lucide-react";
-import apiService from "../../services/api";
+import adminService from "../../services/admin.service";
 import { toast } from "sonner";
 import { useConfirm } from "@/hooks/useConfirm";
 
@@ -201,14 +201,14 @@ export function AdminPricing() {
     setLoading(true);
     try {
       const [plansRes, limitsRes, productsRes] = await Promise.all([
-        apiService.get("/admin/pricing"),
-        apiService.get("/admin/pricing/limits"),
-        apiService.get("/admin/pricing/products")
+        adminService.getPricingPlans(),
+        adminService.getPricingLimits(),
+        adminService.getPricingProducts()
       ]);
-      setPlans(plansRes.data.data.plans);
-      setSummary(plansRes.data.data.summary);
-      setLimits(limitsRes.data.data);
-      setProducts(productsRes.data.data);
+      setPlans(plansRes.plans || plansRes.data?.plans || []);
+      setSummary(plansRes.summary || plansRes.data?.summary || null);
+      setLimits(limitsRes || []);
+      setProducts(productsRes || []);
     } catch (error) {
       toast.error("Failed to load pricing data");
     } finally {
@@ -233,10 +233,10 @@ export function AdminPricing() {
       };
 
       if (editingPlan) {
-        await apiService.patch(`/admin/pricing/${editingPlan.id}`, payload);
+        await adminService.updatePricingPlanPatch(editingPlan.id, payload);
         toast.success("Plan updated successfully");
       } else {
-        await apiService.post("/admin/pricing", {
+        await adminService.createPricingPlan({
            ...payload,
            currency: "USD"
         });
@@ -246,7 +246,7 @@ export function AdminPricing() {
       setEditingPlan(null);
       fetchData();
     } catch (error) {
-      toast.error(error.response?.data?.message || "Failed to save plan");
+      toast.error(error.message || "Failed to save plan");
     }
   };
 
@@ -260,7 +260,7 @@ export function AdminPricing() {
     });
     if (isConfirmed) {
       try {
-        await apiService.delete(`/admin/pricing/${id}`);
+        await adminService.deletePricingPlan(id);
         toast.success("Plan deactivated successfully");
         fetchData();
       } catch (error) {

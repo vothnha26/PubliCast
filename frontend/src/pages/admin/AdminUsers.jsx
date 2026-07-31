@@ -5,7 +5,7 @@ import {
 } from "lucide-react";
 import { useFilters } from "../../hooks/useFilters";
 import { useDebounce } from "../../hooks/useDebounce";
-import apiService from "../../services/api";
+import adminService from "../../services/admin.service";
 import { toast } from "sonner";
 
 const roleColors = {
@@ -51,10 +51,10 @@ export function AdminUsers() {
   const fetchUsers = async () => {
     setLoading(true);
     try {
-      const response = await apiService.get(`/admin/users?${searchParamsString}`);
-      setUserData(response.data.data);
+      const response = await adminService.getUsers(searchParamsString);
+      setUserData(response || { data: [], meta: { total: 0, page: 1, limit: 10, totalPages: 1 } });
     } catch (error) {
-      toast.error(error.response?.data?.message || "Failed to load users list");
+      toast.error(error.message || "Failed to load users list");
     } finally {
       setLoading(false);
     }
@@ -72,26 +72,22 @@ export function AdminUsers() {
     }
 
     try {
-      const response = await apiService.patch(`/admin/users/${userId}/status`, {
-        isActive: !currentActive
-      });
-      toast.success(response.data.message || `${currentActive ? 'Vô hiệu hóa' : 'Kích hoạt'} thành công!`);
+      const response = await adminService.updateUserStatus(userId, !currentActive);
+      toast.success(response?.message || `${currentActive ? 'Vô hiệu hóa' : 'Kích hoạt'} thành công!`);
       fetchUsers();
     } catch (error) {
-      toast.error(error.response?.data?.message || `Lỗi khi ${actionText} tài khoản`);
+      toast.error(error.message || `Lỗi khi ${actionText} tài khoản`);
     }
   };
 
   // Handle User Role change
   const handleChangeRole = async (userId, newRole) => {
     try {
-      const response = await apiService.patch(`/admin/users/${userId}/role`, {
-        role: newRole
-      });
-      toast.success(response.data.message || "Thay đổi vai trò thành công!");
+      const response = await adminService.updateUserRole(userId, newRole);
+      toast.success(response?.message || "Thay đổi vai trò thành công!");
       fetchUsers();
     } catch (error) {
-      toast.error(error.response?.data?.message || "Lỗi khi thay đổi vai trò");
+      toast.error(error.message || "Lỗi khi thay đổi vai trò");
     }
   };
 

@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { Plus, X, Check, Globe, Zap, Megaphone, Box, Layers, Filter, Edit3, Trash2, Upload, Image as ImageIcon, Loader2 } from "lucide-react";
-import apiService from "../../services/api";
+import adminService from "../../services/admin.service";
 import { toast } from "sonner";
 
 function MatrixCell({ exists, module, platform, onAdd, onDisable }) {
@@ -152,10 +152,11 @@ export function AdminProducts() {
     const fetchMatrix = async () => {
       setLoading(true);
       try {
-        const response = await apiService.get("/admin/products/matrix");
-        setModules(response.data.data.modules);
-        setPlatforms(response.data.data.platforms);
-        setMatrix(response.data.data.matrix);
+        const response = await adminService.getProductsMatrix();
+        const data = response || {};
+        setModules(data.modules || []);
+        setPlatforms(data.platforms || []);
+        setMatrix(data.matrix || {});
       } catch (error) {
         toast.error("Failed to load product matrix");
       } finally {
@@ -173,7 +174,7 @@ export function AdminProducts() {
 
   const saveProductMatrix = async () => {
     try {
-      const response = await apiService.post("/admin/products/matrix", {
+      const response = await adminService.saveProductsMatrix({
         platformId: activeSelection.platform.id,
         moduleId: activeSelection.module.id
       });
@@ -182,20 +183,20 @@ export function AdminProducts() {
         ...matrix,
         [key]: {
           status: "ACTIVE",
-          sku: response.data.data.sku
+          sku: response?.sku || response?.data?.sku
         }
       });
       setShowAddModal(false);
       toast.success(`Module enabled for ${activeSelection.platform.name}`);
     } catch (error) {
-      toast.error(error.response?.data?.message || "Failed to enable module");
+      toast.error(error.message || "Failed to enable module");
     }
   };
 
   const handleDisableProduct = async (module, platform) => {
     if (window.confirm(`Are you sure you want to disable ${module.name} for ${platform.name}?`)) {
       try {
-        await apiService.post("/admin/products/matrix/disable", {
+        await adminService.disableProductsMatrix({
           platformId: platform.id,
           moduleId: module.id
         });
@@ -205,37 +206,37 @@ export function AdminProducts() {
         setMatrix(newMatrix);
         toast.success(`Module ${module.name} disabled for ${platform.name}`);
       } catch (error) {
-        toast.error(error.response?.data?.message || "Failed to disable module");
+        toast.error(error.message || "Failed to disable module");
       }
     }
   };
 
   const addNewPlatform = async (newPlatform) => {
     try {
-      const response = await apiService.post("/admin/products/platforms", {
+      const response = await adminService.createProductPlatform({
         id: newPlatform.id,
         name: newPlatform.name,
         color: newPlatform.color,
         image: newPlatform.image
       });
-      setPlatforms([...platforms, response.data.data]);
+      setPlatforms([...platforms, response]);
       toast.success(`Platform ${newPlatform.name} added successfully`);
     } catch (error) {
-      toast.error(error.response?.data?.message || "Failed to add platform");
+      toast.error(error.message || "Failed to add platform");
     }
   };
 
   const addNewModule = async (newModule) => {
     try {
-      const response = await apiService.post("/admin/products/modules", {
+      const response = await adminService.createProductModule({
         id: newModule.id,
         name: newModule.name,
         description: newModule.description
       });
-      setModules([...modules, response.data.data]);
+      setModules([...modules, response]);
       toast.success(`Module ${newModule.name} added successfully`);
     } catch (error) {
-      toast.error(error.response?.data?.message || "Failed to add module");
+      toast.error(error.message || "Failed to add module");
     }
   };
 
