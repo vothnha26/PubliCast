@@ -67,7 +67,7 @@ export function Navbar() {
           <div className="w-7 h-7 bg-[#0A0A0A] rounded-lg flex items-center justify-center">
             <Wifi size={14} color="#FFF" />
           </div>
-          <span style={{ fontSize: 15, fontWeight: 500, color: "#0A0A0A" }}>StreamHub</span>
+          <span style={{ fontSize: 15, fontWeight: 500, color: "#0A0A0A" }}>PubliCast</span>
         </Link>
 
         {/* Center Nav */}

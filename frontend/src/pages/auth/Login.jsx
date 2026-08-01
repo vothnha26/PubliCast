@@ -19,7 +19,7 @@ function LeftPanel({ tagline, features, trustedText }) {
         <div style={{ width: 32, height: 32, background: "#FFF", borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center" }}>
           <Wifi size={16} color="#0A0A0A" />
         </div>
-        <span style={{ color: "#FFF", fontSize: 16, fontWeight: 500 }}>StreamHub</span>
+                   <span style={{ color: "#0A0A0A", fontSize: 16, fontWeight: 500 }}>PubliCast</span>
       </div>
 
       <div className="flex flex-col justify-center flex-1 py-12">
@@ -263,7 +263,7 @@ export function LoginPage({ initialScreen = "login" }) {
                    <div style={{ width: 28, height: 28, background: "#0A0A0A", borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center" }}>
                       <Wifi size={14} color="#FFF" />
                    </div>
-                   <span style={{ color: "#0A0A0A", fontSize: 16, fontWeight: 500 }}>StreamHub</span>
+                   <span style={{ color: "#0A0A0A", fontSize: 16, fontWeight: 500 }}>PubliCast</span>
                 </div>
 
                 <h3 style={{ fontSize: 24, fontWeight: 500, color: "#0A0A0A", marginBottom: 4 }}>{t("login.title")}</h3>
@@ -336,7 +336,7 @@ export function LoginPage({ initialScreen = "login" }) {
                    <div style={{ width: 28, height: 28, background: "#0A0A0A", borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center" }}>
                       <Wifi size={14} color="#FFF" />
                    </div>
-                   <span style={{ color: "#0A0A0A", fontSize: 16, fontWeight: 500 }}>StreamHub</span>
+                   <span style={{ color: "#0A0A0A", fontSize: 16, fontWeight: 500 }}>PubliCast</span>
                 </div>
 
                 <h3 style={{ fontSize: 24, fontWeight: 500, color: "#0A0A0A", marginBottom: 4 }}>{t("register.title")}</h3>
@@ -416,7 +416,7 @@ export function LoginPage({ initialScreen = "login" }) {
                    <div style={{ width: 28, height: 28, background: "#0A0A0A", borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center" }}>
                       <Wifi size={14} color="#FFF" />
                    </div>
-                   <span style={{ color: "#0A0A0A", fontSize: 16, fontWeight: 500 }}>StreamHub</span>
+                   <span style={{ color: "#0A0A0A", fontSize: 16, fontWeight: 500 }}>PubliCast</span>
                 </div>
 
                 <h3 style={{ fontSize: 24, fontWeight: 500, color: "#0A0A0A", marginBottom: 4 }}>Bảo mật 2 lớp</h3>
@@ -455,7 +455,7 @@ export function LoginPage({ initialScreen = "login" }) {
                    <div style={{ width: 28, height: 28, background: "#0A0A0A", borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center" }}>
                       <Wifi size={14} color="#FFF" />
                    </div>
-                   <span style={{ color: "#0A0A0A", fontSize: 16, fontWeight: 500 }}>StreamHub</span>
+                   <span style={{ color: "#0A0A0A", fontSize: 16, fontWeight: 500 }}>PubliCast</span>
                 </div>
 
                 <h3 style={{ fontSize: 24, fontWeight: 500, color: "#0A0A0A", marginBottom: 4 }}>{t("verify.title")}</h3>

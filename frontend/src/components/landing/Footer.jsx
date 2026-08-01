@@ -21,7 +21,7 @@ export function Footer() {
               <div className="w-7 h-7 bg-white rounded-lg flex items-center justify-center">
                 <span style={{ fontSize: 12, color: "#0A0A0A", fontWeight: 700 }}>S</span>
               </div>
-              <span style={{ fontSize: 15, fontWeight: 500, color: "#fff" }}>StreamHub</span>
+              <span style={{ fontSize: 15, fontWeight: 500, color: "#fff" }}>PubliCast</span>
             </Link>
             <p style={{ fontSize: 13, color: "#777", lineHeight: 1.6, marginBottom: 20 }}>
               The all-in-one social media management and scheduling platform.
@@ -65,7 +65,7 @@ export function Footer() {
 
         {/* Bottom row */}
         <div className="flex flex-col md:flex-row items-center justify-between gap-4">
-          <span style={{ fontSize: 11, color: "#555" }}>© 2026 StreamHub. All rights reserved.</span>
+          <span style={{ fontSize: 11, color: "#555" }}>© 2026 PubliCast. All rights reserved.</span>
           <div className="flex items-center gap-4">
             {["Privacy Policy", "Terms of Service", "Cookie Settings"].map((link) => (
               <button key={link} className="hover:text-white transition-colors duration-150 cursor-pointer" style={{ fontSize: 11, color: "#555" }}>

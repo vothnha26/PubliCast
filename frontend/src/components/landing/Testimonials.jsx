@@ -1,7 +1,7 @@
 const testimonials = [
   {
     stars: 5,
-    quote: "StreamHub completely replaced 4 different tools we were using. The multi-platform scheduling alone saved us hours every week.",
+    quote: "PubliCast completely replaced 4 different tools we were using. The multi-platform scheduling alone saved us hours every week.",
     name: "Sarah Chen",
     role: "Content Director",
     brand: "Pixel Studios",

@@ -22,7 +22,7 @@ export function AdminShell({ children, activePage, onNavigate }) {
             <div className="w-6 h-6 bg-white rounded-md flex items-center justify-center">
               <span style={{ fontSize: 10, color: "#0A0A0A", fontWeight: 700 }}>S</span>
             </div>
-            <span style={{ fontSize: 13, fontWeight: 500, color: "#fff" }}>StreamHub</span>
+            <span style={{ fontSize: 13, fontWeight: 500, color: "#fff" }}>PubliCast</span>
           </div>
           <div
             className="px-2 py-0.5 rounded"

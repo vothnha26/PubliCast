@@ -160,7 +160,7 @@ export function FeatureDeepDive() {
         <FeatureBlock
           pill="PUBLISHING"
           headline="Publish on every platform — simultaneously"
-          body="Stop juggling multiple social media apps. StreamHub schedules and publishes your posts to YouTube, Facebook, TikTok, Instagram, and Threads in one setup. Control everything from one screen."
+          body="Stop juggling multiple social media apps. PubliCast schedules and publishes your posts to YouTube, Facebook, TikTok, Instagram, and Threads in one setup. Control everything from one screen."
           checks={[
             "Multi-platform auto-posting",
             "Platform-specific caption tuning",
