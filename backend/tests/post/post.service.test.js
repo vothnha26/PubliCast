@@ -18,7 +18,7 @@ jest.mock('../../src/repositories/workspace/post.repository', () => ({
   updateStatus: jest.fn(),
   lockAndAssertFresh: jest.fn(),
   findManyByIdsAndBrand: jest.fn(),
-  updateMany: jest.fn(),
+  updateMany: jest.fn().mockResolvedValue({ count: 3 }),
   deleteMany: jest.fn().mockResolvedValue({ count: 3 }),
   countActivePostsThisMonth: jest.fn()
 }));
@@ -352,8 +352,9 @@ describe('PostService Unit Tests', () => {
       const count = await postService.bulkDelete(['post-1', 'post-2', 'post-3'], 'brand-abc');
 
       expect(count).toBe(3);
-      expect(postRepository.deleteMany).toHaveBeenCalledWith(
+      expect(postRepository.updateMany).toHaveBeenCalledWith(
         { id: { in: ['post-1', 'post-2', 'post-3'] }, brandId: 'brand-abc' },
+        expect.objectContaining({ isDeleted: true }),
         expect.anything()
       );
     });
