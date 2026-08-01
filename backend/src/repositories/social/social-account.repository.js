@@ -121,7 +121,7 @@ class SocialAccountRepository {
       }
 
       return this.findById(account.id, tx);
-    });
+    }, { timeout: 20000 });
   }
 
   /** Xem ghi chú options.enqueueSync ở upsertFacebookAccount phía trên. */
@@ -211,7 +211,7 @@ class SocialAccountRepository {
       }
 
       return this.findById(account.id, tx);
-    });
+    }, { timeout: 20000 });
   }
 
   async saveTikTokAnalytics(brandId, socialAccountId, analyticsData, startDate, endDate, client = prisma) {
@@ -397,7 +397,7 @@ class SocialAccountRepository {
       }
 
       return this.findById(account.id, tx);
-    });
+    }, { timeout: 20000 });
   }
 
   async saveYouTubeAnalytics(brandId, socialAccountId, analyticsData, startDate, endDate, client = prisma) {
@@ -571,7 +571,7 @@ class SocialAccountRepository {
       }
 
       return this.findById(account.id, tx);
-    });
+    }, { timeout: 20000 });
   }
 
   async saveInstagramAnalytics(brandId, socialAccountId, analyticsData, startDate, endDate, client = prisma) {
