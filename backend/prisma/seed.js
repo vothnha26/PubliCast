@@ -46,7 +46,6 @@ async function main() {
     'approval_workflows',
     'workflow_reviewers',
     'posts',
-    'livestreams',
     'content_calendars',
     'best_time_slots',
     'auto_lists',
