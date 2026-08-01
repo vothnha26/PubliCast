@@ -2,6 +2,7 @@ const socialPlatformFactory = require('./social-platform.factory');
 const socialAccountRepository = require('../../repositories/social/social-account.repository');
 const googleDriveService = require('./google-drive.service');
 const notificationService = require('../core/notification.service');
+const redisClient = require('../../config/redis');
 const { PLATFORMS, NOTIFICATION_TYPES } = require('../../utils/constants');
 
 class SocialService {
@@ -9,12 +10,22 @@ class SocialService {
    * Sync and aggregate metrics for all social accounts of a brand
    */
   async getAggregatedMetrics(brandId, startDate, endDate, force = false) {
+    const cacheKey = `sync:metrics:${brandId}:${startDate || 'all'}:${endDate || 'all'}`;
+
+    // Step 1: Redis Cache First (<5ms response, ZERO MySQL DB queries!)
+    if (!force && redisClient.isOpen) {
+      try {
+        const cachedMetrics = await redisClient.get(cacheKey);
+        if (cachedMetrics) {
+          console.log(`[SocialService] Returning Redis cached metrics for brand ${brandId}`);
+          return JSON.parse(cachedMetrics);
+        }
+      } catch (cacheErr) {
+        console.warn(`[SocialService] Redis read failed, falling back to DB:`, cacheErr.message);
+      }
+    }
+
     const allAccounts = await socialAccountRepository.findByBrandAndPlatform(brandId, null); // passing null to platform to get all platforms
-    // GOOGLE_DRIVE (and any other non-publishable integration) has no
-    // syncChannelMetrics-capable service registered in socialPlatformFactory —
-    // it's a media-source integration, not an analyzable social channel.
-    // Filtering here avoids a guaranteed "not supported yet" error/log entry
-    // on every dashboard load for brands that connected it.
     const accounts = allAccounts.filter(account => socialPlatformFactory.isSupported(account.platform));
 
     const withTimeout = (promise, ms = 60000, fallback) => {
@@ -44,10 +55,16 @@ class SocialService {
         });
     };
 
-    // Optimization: When not forcing a fresh sync (normal dashboard page load),
-    // return existing database records instantly (<100ms) and trigger live API sync asynchronously
-    // in the background. This eliminates the 10+ second skeleton loading delay.
+    // Optimization: When not forcing a fresh sync, save DB result to Redis Cache (TTL = 300s)
+    // and trigger live API sync asynchronously in background.
     if (!force) {
+      // Save MySQL DB snapshot to Redis Cache (300s TTL)
+      if (redisClient.isOpen && accounts.length > 0) {
+        redisClient.setEx(cacheKey, 300, JSON.stringify(accounts)).catch(err => {
+          console.warn(`[SocialService] Redis write failed:`, err.message);
+        });
+      }
+
       // Trigger background sync non-blocking
       Promise.all(accounts.map(async (account) => {
         try {
@@ -62,11 +79,11 @@ class SocialService {
         }
       })).catch(() => {});
 
-      // Return instant DB accounts immediately
       return accounts;
     }
 
-    return await Promise.all(accounts.map(async (account) => {
+    // Force === true: Sync from live social APIs, update DB and refresh Redis Cache
+    const freshAccounts = await Promise.all(accounts.map(async (account) => {
       try {
         const service = socialPlatformFactory.getService(account.platform);
         return await withTimeout(
@@ -75,7 +92,7 @@ class SocialService {
           account
         );
       } catch (error) {
-        console.error(`Failed to sync metrics for ${account.platform} (${account.id}):`, error.message);
+        console.error(`Failed to sync metrics for ${error.platform || account.platform} (${account.id}):`, error.message);
         const errMsg = (error.message || '').toLowerCase();
         const isNetworkOrTimeout = errMsg.includes('timeout') || 
                                    errMsg.includes('etimedout') || 
@@ -89,6 +106,14 @@ class SocialService {
         return account; 
       }
     }));
+
+    if (redisClient.isOpen && freshAccounts.length > 0) {
+      redisClient.setEx(cacheKey, 300, JSON.stringify(freshAccounts)).catch(err => {
+        console.warn(`[SocialService] Redis cache update on force sync failed:`, err.message);
+      });
+    }
+
+    return freshAccounts;
   }
 
   /**
