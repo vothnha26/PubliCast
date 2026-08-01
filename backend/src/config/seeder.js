@@ -12,7 +12,6 @@ const PERMISSION_METADATA = {
   [PERMISSION_KEYS.APPROVE_POSTS]: { label: 'Phê duyệt bài đăng (Approve Posts)', description: 'Duyệt hoặc từ chối bài viết trong hàng đợi', category: 'content' },
   [PERMISSION_KEYS.DELETE_POSTS]: { label: 'Xóa bài viết (Delete Posts)', description: 'Xóa bài viết', category: 'content' },
   [PERMISSION_KEYS.MANAGE_MEDIA]: { label: 'Quản lý hình ảnh/Media (Manage Media)', description: 'Tải lên, xóa và quản lý thư viện hình ảnh/video', category: 'content' },
-  [PERMISSION_KEYS.CREATE_LIVESTREAM]: { label: 'Quản lý Livestream (Manage Livestream)', description: 'Thiết lập, lên lịch và quản lý phát trực tiếp', category: 'content' },
   [PERMISSION_KEYS.MANAGE_CONNECTIONS]: { label: 'Liên kết MXH (Manage Connections)', description: 'Kết nối hoặc hủy kết nối các kênh mạng xã hội', category: 'management' },
   [PERMISSION_KEYS.MANAGE_TEAM]: { label: 'Quản lý thành viên (Manage Team)', description: 'Mời thành viên mới, cập nhật vai trò, trục xuất', category: 'management' },
   [PERMISSION_KEYS.INVITE_MEMBERS]: { label: 'Mời thành viên (Invite Members)', description: 'Mời thành viên mới vào thương hiệu', category: 'management' },

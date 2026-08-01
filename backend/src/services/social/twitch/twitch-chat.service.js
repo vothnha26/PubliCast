@@ -26,8 +26,8 @@ class TwitchChatService {
       };
 
       if (ioSocketServer && ioSocketServer.to) {
-        ioSocketServer.to(`livestream:${broadcasterId}`).emit('chat:message', chatPayload);
-        ioSocketServer.to(`livestream:${broadcasterId}`).emit('twitch:chat_message', chatPayload);
+        ioSocketServer.to(`brand:${broadcasterId}`).emit('chat:message', chatPayload);
+        ioSocketServer.to(`brand:${broadcasterId}`).emit('twitch:chat_message', chatPayload);
       }
     });
 

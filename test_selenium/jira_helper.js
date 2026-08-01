@@ -17,15 +17,8 @@ const path = require('path');
  * @param {string} screenshotPath    - Đường dẫn ảnh chụp màn hình lỗi (optional)
  */
 async function reportBugToJira(summary, bugDetails = {}, screenshotPath = null) {
-  const JIRA_BASE_URL = process.env.JIRA_BASE_URL;
-  const JIRA_USER_EMAIL = process.env.JIRA_USER_EMAIL;
-  const JIRA_API_TOKEN = process.env.JIRA_API_TOKEN;
-  const PROJECT_KEY = 'PC'; // Space key đã được thay đổi sang PC
-
-  if (!JIRA_BASE_URL || !JIRA_USER_EMAIL || !JIRA_API_TOKEN) {
-    console.log('⚠️ Không tìm thấy đầy đủ cấu hình Jira API. Bỏ qua bước tạo Bug.');
-    return null;
-  }
+  // Bỏ tự động tạo Bug ticket trên Jira theo yêu cầu
+  return null;
 
   const {
     description = 'Không có mô tả.',

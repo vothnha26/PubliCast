@@ -37,45 +37,7 @@ class FacebookFeedStrategy extends BaseWebhookStrategy {
       const isFromMe = authorId === pageId;
       const postPlatformId = value.post_id || value.parent_id;
 
-      // 1. Check if this comment belongs to an active livestream
-      let activeLivestream = null;
-      try {
-        const prisma = require('../../../../config/prisma');
-        activeLivestream = await prisma.livestream.findFirst({
-          where: {
-            brandId: account.brandId,
-            platformStreamId: postPlatformId,
-            status: 'LIVE'
-          }
-        });
-      } catch (livestreamErr) {
-        logger.error(`[FacebookFeedStrategy] Error checking active livestream:`, livestreamErr);
-      }
-
-      if (activeLivestream) {
-        // Comment belongs to active livestream -> ONLY emit socket, DO NOT save to Unified Inbox
-        try {
-          const socketManager = require('../../../workspace/socket/socket.manager');
-          const { SOCKET_EVENTS } = require('../../../../utils/socket-constants');
-          
-          const livestreamComment = {
-            id: commentId,
-            authorName,
-            authorAvatarUrl: authorAvatar,
-            content: value.message || '',
-            platform: 'facebook',
-            timestamp: value.created_time ? new Date(value.created_time * 1000) : new Date()
-          };
-
-          socketManager.emitToLivestreamRoom(activeLivestream.id, SOCKET_EVENTS.NEW_LIVESTREAM_COMMENT, livestreamComment);
-          logger.info(`[FacebookFeedStrategy] Forwarded Facebook Live Comment ${commentId} to livestream ${activeLivestream.id} (not saved to inbox)`);
-        } catch (livestreamErr) {
-          logger.error(`[FacebookFeedStrategy] Error forwarding live comment to socket:`, livestreamErr);
-        }
-        return; // Exit early to bypass inbox saving
-      }
-
-      // 2. Standard comment processing (not livestream) -> Save to Unified Inbox
+      // 2. Standard comment processing -> Save to Unified Inbox
       // Determine parent ID if this is a reply to another comment. If the
       // parent hasn't been ingested yet (webhooks can arrive out of order),
       // remember the raw platform parent id so it can be reconciled once the

@@ -64,7 +64,7 @@ class TwitchService extends BaseSocialService {
   }
 
   async publishPost() {
-    throw new Error('Twitch does not support scheduled post publishing. Use Livestream Chat or Highlight Studio instead.');
+    throw new Error('Twitch does not support scheduled post publishing.');
   }
 
   async syncChannelMetrics(socialAccountId) {

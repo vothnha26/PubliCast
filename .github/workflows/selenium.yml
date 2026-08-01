@@ -140,7 +140,6 @@ jobs:
           npm run test:auth-suite
           npm run test:profile
           npm run test:post-creator
-          npm run test:livestream-chat
 
       - name: Run YouTube Dashboard Tests (PC-53 branch only)
         if: ${{ startsWith(github.ref_name, 'bug/PC-53') }}

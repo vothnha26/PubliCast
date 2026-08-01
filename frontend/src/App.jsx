@@ -49,8 +49,6 @@ import { ReportsPage } from "./pages/manage/Reports";
 import { SmartLinksPage } from "./pages/manage/SmartLinks";
 import { PublicSmartLinksPage } from "./pages/manage/PublicSmartLinksPage";
 import { ConnectPlatformsPage } from "./pages/manage/Placeholder";
-import HighlightStudio from "./pages/manage/HighlightStudio";
-import { ObsChatOverlay } from "./pages/manage/ObsChatOverlay";
 
 // Admin Pages
 import { AdminPricing } from "./pages/admin/AdminPricing";
@@ -65,7 +63,7 @@ import { LandingPage } from "./pages/landing/LandingPage";
 
 import UpsellModal from "./components/billing/UpsellModal";
 
-const CLIENT_ROLES = ["OWNER", "MANAGER", "USER", "EDITOR", "VIEWER", "ANALYST", "STREAM_MANAGER", "CONTENT_MANAGER", "CONTENT_CREATOR", "STREAM_OPERATOR", "CLIENT"];
+const CLIENT_ROLES = ["OWNER", "MANAGER", "USER", "EDITOR", "VIEWER", "ANALYST", "CONTENT_MANAGER", "CONTENT_CREATOR", "CLIENT"];
 const NO_LAYOUT_PATHS = ["/", "/login", "/signup", "/register", "/register/verify-otp", "/reset-password", "/start", "/forgot-password", "/connect", "/invite", "/manage/workplace/new"];
 
 export default function App() {
@@ -175,7 +173,6 @@ export default function App() {
               <Route path="/manage/tasks" element={<ProtectedRoute allowedRoles={CLIENT_ROLES}><MyTasksPage /></ProtectedRoute>} />
               <Route path="/manage/competitors" element={<ProtectedRoute allowedRoles={CLIENT_ROLES}><CompetitorsPage /></ProtectedRoute>} />
               <Route path="/manage/connections" element={<ProtectedRoute allowedRoles={CLIENT_ROLES}><BrandSettingsPage /></ProtectedRoute>} />
-              <Route path="/manage/highlight-studio" element={<ProtectedRoute allowedRoles={CLIENT_ROLES}><HighlightStudio /></ProtectedRoute>} />
               
               {/* Protected Admin Routes */}
               <Route path="/admin/pricing" element={<ProtectedRoute allowedRoles={['ADMIN']}><AdminPricing /></ProtectedRoute>} />
@@ -195,7 +192,6 @@ export default function App() {
               <Route path="/connect" element={<ProtectedRoute allowedRoles={CLIENT_ROLES}><ConnectPlatformsPage /></ProtectedRoute>} />
               <Route path="/invite" element={<InviteFlow />} />
               <Route path="/s/:slug" element={<PublicSmartLinksPage />} />
-              <Route path="/overlay/chat/:livestreamId" element={<ObsChatOverlay />} />
               
               <Route path="*" element={<Navigate to="/" />} />
             </Routes>

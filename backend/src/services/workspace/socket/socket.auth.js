@@ -26,20 +26,8 @@ async function socketAuthMiddleware(socket, next) {
       return next(new Error('Authentication error: Token missing'));
     }
 
-    // OBS Browser Source runs in an isolated CEF instance with no access to
-    // the app's cookies/localStorage (#173), so overlay links carry their
-    // own narrow-scope token instead of a full access token.
-    let decoded;
-    try {
-      decoded = jwtUtils.verifyOverlayToken(token);
-      socket.overlayLivestreamId = decoded.livestreamId;
-      return next();
-    } catch (overlayErr) {
-      // Not an overlay token — fall through to normal access-token auth.
-    }
-
     // Verify JWT using centralized jwtUtils
-    decoded = jwtUtils.verifyAccessToken(token);
+    const decoded = jwtUtils.verifyAccessToken(token);
     if (!decoded || !decoded.id) {
       return next(new Error('Authentication error: Invalid Token'));
     }

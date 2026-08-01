@@ -42,7 +42,6 @@ model User {
   teamMembers              Team[]                    @relation("TeamMember")
   teamInviter              Team[]                    @relation("TeamInviter")
   createdPosts             Post[]                    @relation("PostCreator")
-  createdLivestreams       Livestream[]              @relation("LivestreamCreator")
   createdReports           Report[]                  @relation("ReportCreator")
   auditLogs                AuditLog[]                @relation("AuditLogUser")
   notifications            SystemNotification[]
@@ -106,7 +105,6 @@ model Brand {
   teamMembers             Team[]
   customRoles             CustomRole[]                 @relation("CustomRoleBrand")
   posts                   Post[]
-  livestreams             Livestream[]
   contentCalendars        ContentCalendar[]
   bestTimeSlots           BestTimeSlot[]
   autoLists               AutoList[]
@@ -134,7 +132,6 @@ model Brand {
   trackedVideos           TrackedVideo[]
   youtubePlaylistCache    YouTubePlaylistCache[]
   calendarEvents          CalendarEvent[]
-  livestreamHighlights    LivestreamHighlight[]
 
   @@index([ownerId])
   @@map("brands")
@@ -554,7 +551,6 @@ model YouTubeChannel {
   isVerified            Boolean @default(false)
   isMonetized           Boolean @default(false)
   supportsShorts        Boolean @default(true)
-  supportsLivestream    Boolean @default(false)
   madeForKids           Boolean @default(false)
   hiddenSubscriberCount Boolean @default(false)
 
@@ -802,36 +798,7 @@ model PostNetworkOverride {
 
 
 
-model Livestream {
-  id               String   @id @default(uuid())
-  brandId          String
-  createdByUserId  String
-  title            String
-  description      String?
-  thumbnailUrl     String?
-  scheduledAt      DateTime
-  durationMinutes  Int
-  status           String   @default("DRAFT")
-  platformStreamId String?  @db.VarChar(255)
-  metadata         String?  @db.Text
-  streamKey        String
-  rtmpUrl          String
-  targetPlatforms  String   @db.Text
-  streamQuality    String   @db.Text
-  requireApproval  Boolean  @default(false)
-  peakViewers      Int      @default(0)
-  totalViews       Int      @default(0)
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
 
-  brand             Brand              @relation(fields: [brandId], references: [id], onDelete: Cascade)
-  creator           User               @relation("LivestreamCreator", fields: [createdByUserId], references: [id], onDelete: Restrict)
-  approvalWorkflows ApprovalWorkflow[]
-
-  @@index([brandId])
-  @@index([scheduledAt])
-  @@map("livestreams")
-}
 
 model ContentCalendar {
   id               String       @id @default(uuid())
@@ -898,7 +865,6 @@ model AutoList {
 model ApprovalWorkflow {
   id                String         @id @default(uuid())
   postId            String?
-  livestreamId      String?
   brandId           String
   requesterId       String
   approvalPolicy    ApprovalPolicy
@@ -913,7 +879,6 @@ model ApprovalWorkflow {
   version           Int            @default(1)
 
   post       Post?              @relation(fields: [postId], references: [id], onDelete: Cascade)
-  livestream Livestream?        @relation(fields: [livestreamId], references: [id], onDelete: Cascade)
   brand      Brand              @relation(fields: [brandId], references: [id], onDelete: Cascade)
   requester  User               @relation("ApprovalWorkflowRequester", fields: [requesterId], references: [id], onDelete: Restrict)
   reviewers  WorkflowReviewer[]
@@ -1834,24 +1799,6 @@ model CalendarEvent {
 
   @@index([brandId])
   @@map("calendar_events")
-}
-
-model LivestreamHighlight {
-  id             String   @id @default(uuid())
-  brandId        String
-  youtubeUrl     String
-  status         String   @default("pending")
-  progress       Int      @default(0)
-  progressMsg    String?
-  videoUrl       String?  @db.Text
-  subtitleUrl    String?  @db.Text
-  duration       Float?
-  youtubeVideoId String? // ID video sau khi đăng lên YouTube Shorts
-  createdAt      DateTime @default(now())
-
-  brand Brand @relation(fields: [brandId], references: [id], onDelete: Cascade)
-
-  @@map("livestream_highlights")
 }
 
 // ============================================

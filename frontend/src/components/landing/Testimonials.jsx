@@ -1,7 +1,7 @@
 const testimonials = [
   {
     stars: 5,
-    quote: "StreamHub completely replaced 4 different tools we were using. The multi-platform livestream alone saved us hours every week.",
+    quote: "StreamHub completely replaced 4 different tools we were using. The multi-platform scheduling alone saved us hours every week.",
     name: "Sarah Chen",
     role: "Content Director",
     brand: "Pixel Studios",
@@ -23,7 +23,7 @@ const testimonials = [
   },
   {
     stars: 5,
-    quote: "Analytics across social and livestream in one dashboard? I can finally see the full picture of my content performance without spreadsheets.",
+    quote: "Analytics across all social media channels in one dashboard? I can finally see the full picture of my content performance without spreadsheets.",
     name: "Priya Nair",
     role: "Creator & Educator",
     brand: "LearnWithPriya",

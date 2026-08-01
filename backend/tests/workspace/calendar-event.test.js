@@ -10,7 +10,8 @@ jest.mock('../../src/config/prisma', () => ({
     findUnique: jest.fn()
   },
   post: {
-    findMany: jest.fn()
+    findMany: jest.fn(),
+    createMany: jest.fn()
   }
 }));
 
@@ -83,7 +84,7 @@ describe('CalendarEventService Export tests', () => {
       const ics = `BEGIN:VCALENDAR\n${manyEvents}END:VCALENDAR`;
 
       await expect(calendarEventService.importIcs('brand-abc', ics)).rejects.toMatchObject({ statusCode: 400 });
-      expect(prisma.calendarEvent.createMany).not.toHaveBeenCalled();
+      expect(prisma.post.createMany).not.toHaveBeenCalled();
     });
 
     it('uses createMany (batch insert) instead of looping single creates', async () => {
@@ -94,19 +95,19 @@ describe('CalendarEventService Export tests', () => {
         'END:VCALENDAR'
       ].join('\n');
 
-      prisma.calendarEvent.createMany.mockResolvedValue({ count: 2 });
-      prisma.calendarEvent.findMany.mockResolvedValue([
+      prisma.post.createMany.mockResolvedValue({ count: 2 });
+      prisma.post.findMany.mockResolvedValue([
         { id: 'ev-a', title: 'Event A' },
         { id: 'ev-b', title: 'Event B' }
       ]);
 
       const result = await calendarEventService.importIcs('brand-abc', ics);
 
-      expect(prisma.calendarEvent.createMany).toHaveBeenCalledTimes(1);
-      expect(prisma.calendarEvent.createMany).toHaveBeenCalledWith({
+      expect(prisma.post.createMany).toHaveBeenCalledTimes(1);
+      expect(prisma.post.createMany).toHaveBeenCalledWith({
         data: expect.arrayContaining([
-          expect.objectContaining({ brandId: 'brand-abc', title: 'Event A', isSystem: false }),
-          expect.objectContaining({ brandId: 'brand-abc', title: 'Event B', isSystem: false })
+          expect.objectContaining({ brandId: 'brand-abc', title: 'Event A', type: 'IMAGE', status: 'DRAFT' }),
+          expect.objectContaining({ brandId: 'brand-abc', title: 'Event B', type: 'IMAGE', status: 'DRAFT' })
         ])
       });
       expect(prisma.calendarEvent.create).not.toHaveBeenCalled();

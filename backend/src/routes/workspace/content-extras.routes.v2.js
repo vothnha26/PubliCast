@@ -5,7 +5,6 @@ const autoListController = require('../../controllers/workspace/auto-list.contro
 const hashtagController = require('../../controllers/workspace/hashtag.controller');
 const calendarEventController = require('../../controllers/workspace/calendar-event.controller');
 const stockController = require('../../controllers/stock.controller');
-const livestreamController = require('../../controllers/workspace/livestream.controller');
 const { verifyAuth } = require('../../middlewares/auth.middleware');
 const checkPermission = require('../../middlewares/permission.middleware');
 const checkBrandAccess = require('../../middlewares/brand-access.middleware');
@@ -27,7 +26,7 @@ router.use(verifyAuth);
  * @openapi
  * tags:
  *   name: Workspace Content Extras V2
- *   description: Smart Links, Auto Lists, Hashtags, Calendar, Stock & Livestreams endpoints (v2 Envelope API)
+ *   description: Smart Links, Auto Lists, Hashtags, Calendar & Stock endpoints (v2 Envelope API)
  */
 
 // ── Smart Links V2 ──
@@ -171,23 +170,5 @@ router.delete('/calendar-events/:id', checkPermission('DELETE_POSTS'), calendarE
  */
 router.get('/stock/search', stockController.searchMedia);
 router.post('/stock/import', checkPermission(PERMISSION_KEYS.MANAGE_MEDIA), stockController.importMedia);
-
-// ── Livestreams V2 ──
-/**
- * @openapi
- * /v2/content-extras/livestreams/history:
- *   get:
- *     summary: Get scheduled livestreams history
- *     tags: [Workspace Content Extras V2]
- *     security: [{ cookieAuth: [] }]
- *     responses:
- *       200:
- *         description: Livestreams history list
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/V2EnvelopeResponse'
- */
-router.get('/livestreams/history', livestreamController.getStreamHistory);
 
 module.exports = router;

@@ -116,7 +116,7 @@ export function Features() {
             className="mx-auto mt-2"
             style={{ fontSize: 32, fontWeight: 500, color: "#0A0A0A", maxWidth: 480, lineHeight: 1.25 }}
           >
-            One tool for social media and livestreams
+            One tool for all your social media channels
           </h2>
         </div>
 
@@ -141,21 +141,21 @@ export function Features() {
             <MiniCalendar />
           </div>
 
-          {/* Card 2 – Livestream (FEATURED) */}
+          {/* Card 2 – Multi-Account Manager */}
           <div className="bg-[#0A0A0A] rounded-xl p-7 relative" style={{ border: "0.5px solid #1E1E1E" }}>
             <div
               className="absolute top-4 right-4 flex items-center gap-1.5 px-2 py-1 rounded"
-              style={{ backgroundColor: "#DC2626" }}
+              style={{ backgroundColor: "#16A34A" }}
             >
               <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
-              <span style={{ fontSize: 9, color: "#fff", fontWeight: 500 }}>LIVE · 3 active</span>
+              <span style={{ fontSize: 9, color: "#fff", fontWeight: 500 }}>Active Sync</span>
             </div>
             <div className="w-10 h-10 bg-[#1E1E1E] rounded-lg flex items-center justify-center mb-4">
               <Radio size={18} color="#fff" />
             </div>
-            <div style={{ fontSize: 15, fontWeight: 500, color: "#FFFFFF", marginBottom: 8 }}>Go Live Everywhere</div>
+            <div style={{ fontSize: 15, fontWeight: 500, color: "#FFFFFF", marginBottom: 8 }}>Multi-Channel Sync</div>
             <p style={{ fontSize: 13, color: "#9CA3AF", lineHeight: 1.6 }}>
-              Stream to YouTube, Facebook, TikTok, Instagram, Twitch — all at once, one click.
+              Publish to YouTube, Facebook, TikTok, Instagram, Threads — all at once in one click.
             </p>
             <PlatformToggles />
           </div>
@@ -170,7 +170,7 @@ export function Features() {
               Track every metric, benchmark competitors, and export beautiful reports in one click.
             </p>
             <div className="flex flex-wrap gap-1.5 mt-4">
-              {["Social", "Livestream", "Ads", "Competitors"].map((tag) => (
+              {["Engagement", "Reach", "Ads", "Competitors"].map((tag) => (
                 <span key={tag} className="px-2 py-0.5 rounded" style={{ fontSize: 10, color: "#6B7280", border: "0.5px solid #E5E7EB" }}>
                   {tag}
                 </span>

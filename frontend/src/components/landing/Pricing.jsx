@@ -24,7 +24,7 @@ const plans = [
     monthly: 49,
     annual: 39,
     cta: "Start Pro",
-    features: ["10 brands", "500 posts/mo", "Unlimited members", "Livestreaming"],
+    features: ["10 brands", "500 posts/mo", "Unlimited members", "Multi-Channel Sync"],
     highlight: false,
   },
   {

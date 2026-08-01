@@ -62,9 +62,6 @@ describe('Login Integration Tests', () => {
           await prisma.post.deleteMany({
             where: { brandId: { in: brandIds } }
           });
-          await prisma.livestream.deleteMany({
-            where: { brandId: { in: brandIds } }
-          });
           await prisma.autoList.deleteMany({
             where: { brandId: { in: brandIds } }
           });

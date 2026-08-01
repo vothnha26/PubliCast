@@ -4,7 +4,6 @@ const crypto = require('crypto');
 const ACCESS_TOKEN_EXPIRY = '15m';
 const REFRESH_TOKEN_EXPIRY = '7d';
 const REFRESH_TOKEN_REDIS_EXPIRY = 7 * 24 * 60 * 60; // 7 days in seconds
-const OVERLAY_TOKEN_EXPIRY = '12h'; // covers a full stream session pasted once into OBS
 
 class JWTUtils {
   /**
@@ -54,41 +53,7 @@ class JWTUtils {
     }
   }
 
-  /**
-   * Generate a narrow-scope overlay token for embedding in public OBS
-   * Browser Source URLs (see #173). Grants read-only access to a single
-   * livestream's chat room only — never a full-privilege access token.
-   * @param {Object} payload - { livestreamId, scope: 'overlay' }
-   * @returns {string} JWT token
-   */
-  generateOverlayToken(payload) {
-    return jwt.sign({ ...payload, scope: 'overlay' }, process.env.ACCESS_TOKEN_SECRET, {
-      expiresIn: OVERLAY_TOKEN_EXPIRY
-    });
-  }
 
-  /**
-   * Verify an overlay token, rejecting anything not minted by
-   * generateOverlayToken (e.g. a regular access token) since this is
-   * used on an unauthenticated public route.
-   * @param {string} token - JWT token
-   * @returns {Object} decoded payload
-   */
-  verifyOverlayToken(token) {
-    let decoded;
-    try {
-      decoded = jwt.verify(token, process.env.ACCESS_TOKEN_SECRET);
-    } catch (error) {
-      if (error.name === 'TokenExpiredError') {
-        throw new Error('Overlay token expired');
-      }
-      throw new Error('Invalid overlay token');
-    }
-    if (decoded.scope !== 'overlay' || !decoded.livestreamId) {
-      throw new Error('Invalid overlay token');
-    }
-    return decoded;
-  }
 
   /**
    * Verify Refresh Token
