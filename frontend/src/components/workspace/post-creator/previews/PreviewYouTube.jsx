@@ -157,31 +157,31 @@ function YouTubeDesktopView({
   const effectiveFirstComment = youtubeFirstComment || globalFirstComment;
 
   return (
-    <div className="w-full max-w-[680px] mx-auto bg-white rounded-3xl overflow-hidden shadow-2xl border border-gray-100 font-sans animate-in fade-in duration-300 text-left">
+    <div className="w-full max-w-[680px] mx-auto bg-card rounded-3xl overflow-hidden shadow-2xl border border-border font-sans animate-in fade-in duration-300 text-left">
       {/* 1. Trình phát Video 16:9 */}
       <YouTubeVideoPlayer videoFileUrl={videoFileUrl} />
 
       {/* Tiêu đề Video YouTube (Hiển thị ngay dưới Video Player) */}
       <div className="px-4 pt-3.5 pb-1">
-        <h3 className="text-base font-bold text-gray-900 leading-snug line-clamp-2">
+        <h3 className="text-base font-bold text-foreground leading-snug line-clamp-2">
           {displayTitle}
         </h3>
       </div>
 
       {/* 2. Dòng Channel Info & Bar tương tác */}
       <div className="p-4 space-y-4 pt-2">
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-gray-100 pb-3">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border pb-3">
           {/* Avatar + Kênh + Join / Subscribe */}
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-full bg-[#ec4899] text-white flex items-center justify-center font-bold text-sm shadow-sm shrink-0">
               {YOUTUBE_PREVIEW_DEFAULTS.CHANNEL_INITIAL}
             </div>
             <div>
-              <h4 className="text-sm font-bold text-gray-900 leading-tight">{channelName}</h4>
-              <span className="text-[11px] text-gray-500 font-medium">{YOUTUBE_PREVIEW_DEFAULTS.SUBSCRIBERS_COUNT_TEXT}</span>
+              <h4 className="text-sm font-bold text-foreground leading-tight">{channelName}</h4>
+              <span className="text-[11px] text-muted-foreground font-medium">{YOUTUBE_PREVIEW_DEFAULTS.SUBSCRIBERS_COUNT_TEXT}</span>
             </div>
             <div className="flex items-center gap-2 ml-2">
-              <button type="button" className="px-4 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-900 rounded-full text-xs font-bold transition-all cursor-pointer">
+              <button type="button" className="px-4 py-1.5 bg-muted hover:bg-gray-200 text-foreground rounded-full text-xs font-bold transition-all cursor-pointer">
                 {YOUTUBE_PREVIEW_LABELS.JOIN}
               </button>
               <button type="button" className="px-4 py-1.5 bg-black hover:bg-gray-800 text-white rounded-full text-xs font-bold transition-all cursor-pointer">
@@ -193,43 +193,43 @@ function YouTubeDesktopView({
           {/* Action Bar (Like/Dislike, Share, Download, Clip, More) */}
           <div className="flex items-center gap-2 overflow-x-auto no-scrollbar">
             {/* Dải Like / Dislike gộp */}
-            <div className="flex items-center bg-gray-100 hover:bg-gray-200/80 rounded-full px-3 py-1.5 text-xs font-bold text-gray-800 gap-2 cursor-pointer transition-all">
+            <div className="flex items-center bg-muted hover:bg-gray-200/80 rounded-full px-3 py-1.5 text-xs font-bold text-foreground gap-2 cursor-pointer transition-all">
               <span className="flex items-center gap-1.5">
                 <ThumbsUp size={14} />
                 <span>{YOUTUBE_PREVIEW_DEFAULTS.LIKE_COUNT_TEXT}</span>
               </span>
               <span className="w-px h-3.5 bg-gray-300" />
-              <ThumbsDownIcon size={14} className="text-gray-700" />
+              <ThumbsDownIcon size={14} className="text-foreground" />
             </div>
 
             {/* Share */}
-            <button type="button" className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-800 rounded-full text-xs font-bold transition-all cursor-pointer">
+            <button type="button" className="flex items-center gap-1.5 px-3 py-1.5 bg-muted hover:bg-gray-200 text-foreground rounded-full text-xs font-bold transition-all cursor-pointer">
               <Share2 size={14} />
               <span>{YOUTUBE_PREVIEW_LABELS.SHARE}</span>
             </button>
 
             {/* Download */}
-            <button type="button" className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-800 rounded-full text-xs font-bold transition-all cursor-pointer">
+            <button type="button" className="flex items-center gap-1.5 px-3 py-1.5 bg-muted hover:bg-gray-200 text-foreground rounded-full text-xs font-bold transition-all cursor-pointer">
               <Download size={14} />
               <span>{YOUTUBE_PREVIEW_LABELS.DOWNLOAD}</span>
             </button>
 
             {/* Clip */}
-            <button type="button" className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-800 rounded-full text-xs font-bold transition-all cursor-pointer">
+            <button type="button" className="flex items-center gap-1.5 px-3 py-1.5 bg-muted hover:bg-gray-200 text-foreground rounded-full text-xs font-bold transition-all cursor-pointer">
               <Scissors size={14} />
               <span>{YOUTUBE_PREVIEW_LABELS.CLIP}</span>
             </button>
 
             {/* More */}
-            <button type="button" aria-label="More" className="w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center text-gray-800 transition-all cursor-pointer">
+            <button type="button" aria-label="More" className="w-8 h-8 rounded-full bg-muted hover:bg-gray-200 flex items-center justify-center text-foreground transition-all cursor-pointer">
               <MoreHorizontal size={14} />
             </button>
           </div>
         </div>
 
         {/* 3. Description Box màu xám nhạt (Mô tả video) */}
-        <div className="bg-gray-100/80 rounded-2xl p-3.5 space-y-2 text-xs text-gray-900 font-medium font-sans">
-          <div className="font-bold text-gray-900 flex items-center justify-between">
+        <div className="bg-muted/80 rounded-2xl p-3.5 space-y-2 text-xs text-foreground font-medium font-sans">
+          <div className="font-bold text-foreground flex items-center justify-between">
             <span>{YOUTUBE_PREVIEW_DEFAULTS.VIEWS_AND_DATE_TEXT}</span>
             {selectedPlaylist && (
               <span className="flex items-center gap-1 text-[10px] text-blue-600 font-bold bg-blue-50 px-2 py-0.5 rounded-md">
@@ -237,8 +237,8 @@ function YouTubeDesktopView({
               </span>
             )}
           </div>
-          <div className="text-gray-800 font-medium line-clamp-3 leading-relaxed whitespace-pre-wrap">
-            {caption || <span className="text-gray-400 italic font-normal">Chưa nhập mô tả (Description)...</span>}
+          <div className="text-foreground font-medium line-clamp-3 leading-relaxed whitespace-pre-wrap">
+            {caption || <span className="text-muted-foreground italic font-normal">Chưa nhập mô tả (Description)...</span>}
           </div>
 
           {/* Tags */}
@@ -255,16 +255,16 @@ function YouTubeDesktopView({
 
         {/* 4. First Comment Preview Section */}
         {effectiveFirstComment && (
-          <div className="bg-gray-50 border border-gray-100 rounded-2xl p-3 flex items-start gap-2.5 text-xs text-left">
+          <div className="bg-muted border border-border rounded-2xl p-3 flex items-start gap-2.5 text-xs text-left">
             <div className="w-7 h-7 rounded-full bg-[#ec4899] text-white flex items-center justify-center font-bold text-xs shrink-0">
               {YOUTUBE_PREVIEW_DEFAULTS.CHANNEL_INITIAL}
             </div>
             <div className="flex-1 space-y-0.5">
               <div className="flex items-center gap-2 text-[10px]">
-                <span className="font-bold text-gray-900">{channelName}</span>
-                <span className="bg-gray-200 text-gray-700 px-1.5 py-0.5 rounded text-[9px] font-bold">Pinned Comment</span>
+                <span className="font-bold text-foreground">{channelName}</span>
+                <span className="bg-gray-200 text-foreground px-1.5 py-0.5 rounded text-[9px] font-bold">Pinned Comment</span>
               </div>
-              <p className="text-gray-800 text-xs font-medium leading-normal">{effectiveFirstComment}</p>
+              <p className="text-foreground text-xs font-medium leading-normal">{effectiveFirstComment}</p>
             </div>
           </div>
         )}
@@ -295,22 +295,22 @@ function YouTubeMobileView({
   return (
     <div className="flex flex-col items-center mx-auto font-sans animate-in fade-in duration-300">
       {/* 1. Thẻ Mobile Phone Container */}
-      <div className="w-[320px] bg-white rounded-3xl overflow-hidden shadow-2xl border border-gray-100 text-left">
+      <div className="w-[320px] bg-card rounded-3xl overflow-hidden shadow-2xl border border-border text-left">
         {/* Trình phát Video */}
         <YouTubeVideoPlayer videoFileUrl={videoFileUrl} />
 
         <div className="p-3 space-y-3">
           {/* Thống kê & Tiêu đề chính của Video YouTube */}
-          <div className="text-xs text-gray-800 leading-snug space-y-1">
+          <div className="text-xs text-foreground leading-snug space-y-1">
             <div className="flex items-center justify-between">
-              <span className="font-semibold text-[11px] text-gray-500">{YOUTUBE_PREVIEW_DEFAULTS.VIEWS_AND_DATE_TEXT}</span>
+              <span className="font-semibold text-[11px] text-muted-foreground">{YOUTUBE_PREVIEW_DEFAULTS.VIEWS_AND_DATE_TEXT}</span>
               {selectedPlaylist && (
                 <span className="text-[9px] text-blue-600 font-bold bg-blue-50 px-1.5 py-0.5 rounded flex items-center gap-1 truncate max-w-[120px]">
                   <Folder size={10} /> {selectedPlaylist.title || selectedPlaylist.name || selectedPlaylist.label}
                 </span>
               )}
             </div>
-            <h4 className="font-bold text-gray-900 line-clamp-2 text-xs leading-snug">{displayTitle}</h4>
+            <h4 className="font-bold text-foreground line-clamp-2 text-xs leading-snug">{displayTitle}</h4>
             {tagList.length > 0 && (
               <div className="flex flex-wrap gap-1 pt-0.5">
                 {tagList.map((tag, idx) => (
@@ -323,12 +323,12 @@ function YouTubeMobileView({
           </div>
 
           {/* Dòng Channel Kênh + Subscribe */}
-          <div className="flex items-center justify-between pt-1 border-t border-b border-gray-100 py-2">
+          <div className="flex items-center justify-between pt-1 border-t border-b border-border py-2">
             <div className="flex items-center gap-2">
               <div className="w-7 h-7 rounded-full bg-[#ec4899] text-white flex items-center justify-center font-bold text-xs shrink-0">
                 {YOUTUBE_PREVIEW_DEFAULTS.CHANNEL_INITIAL}
               </div>
-              <span className="text-xs font-bold text-gray-900">{channelName}</span>
+              <span className="text-xs font-bold text-foreground">{channelName}</span>
             </div>
             <button type="button" className="px-3 py-1 bg-black hover:bg-gray-800 text-white rounded-full text-[11px] font-bold transition-all cursor-pointer">
               {YOUTUBE_PREVIEW_LABELS.SUBSCRIBE}
@@ -337,9 +337,9 @@ function YouTubeMobileView({
 
           {/* Description Box (Mô tả video từ Caption) */}
           {caption && (
-            <div className="bg-gray-50 p-2.5 rounded-xl border border-gray-100 space-y-1">
-              <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">Description</span>
-              <p className="text-[11px] text-gray-700 font-medium line-clamp-3 leading-relaxed whitespace-pre-wrap">
+            <div className="bg-muted p-2.5 rounded-xl border border-border space-y-1">
+              <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block">Description</span>
+              <p className="text-[11px] text-foreground font-medium line-clamp-3 leading-relaxed whitespace-pre-wrap">
                 {caption}
               </p>
             </div>
@@ -347,37 +347,37 @@ function YouTubeMobileView({
 
           {/* Action Bar dạng lướt ngang */}
           <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pt-1">
-            <div className="flex items-center bg-gray-100 rounded-full px-2.5 py-1 text-[11px] font-bold text-gray-800 gap-1.5">
+            <div className="flex items-center bg-muted rounded-full px-2.5 py-1 text-[11px] font-bold text-foreground gap-1.5">
               <ThumbsUp size={12} />
               <span>{YOUTUBE_PREVIEW_DEFAULTS.LIKE_COUNT_TEXT}</span>
               <span className="w-px h-3 bg-gray-300" />
               <ThumbsDownIcon size={12} />
             </div>
 
-            <button type="button" className="flex items-center gap-1 px-2.5 py-1 bg-gray-100 text-gray-800 rounded-full text-[11px] font-bold whitespace-nowrap">
+            <button type="button" className="flex items-center gap-1 px-2.5 py-1 bg-muted text-foreground rounded-full text-[11px] font-bold whitespace-nowrap">
               <Share2 size={12} />
               <span>{YOUTUBE_PREVIEW_LABELS.SHARE}</span>
             </button>
 
-            <button type="button" className="flex items-center gap-1 px-2.5 py-1 bg-gray-100 text-gray-800 rounded-full text-[11px] font-bold whitespace-nowrap">
+            <button type="button" className="flex items-center gap-1 px-2.5 py-1 bg-muted text-foreground rounded-full text-[11px] font-bold whitespace-nowrap">
               <Download size={12} />
               <span>{YOUTUBE_PREVIEW_LABELS.DOWNLOAD}</span>
             </button>
 
-            <button type="button" aria-label="More" className="p-1 bg-gray-100 text-gray-800 rounded-full shrink-0">
+            <button type="button" aria-label="More" className="p-1 bg-muted text-foreground rounded-full shrink-0">
               <MoreHorizontal size={12} />
             </button>
           </div>
 
           {/* First Comment Preview (Mobile) */}
           {effectiveFirstComment && (
-            <div className="bg-gray-50 rounded-xl p-2 flex items-start gap-2 text-[11px] border border-gray-100">
+            <div className="bg-muted rounded-xl p-2 flex items-start gap-2 text-[11px] border border-border">
               <div className="w-5 h-5 rounded-full bg-[#ec4899] text-white flex items-center justify-center font-bold text-[9px] shrink-0">
                 {YOUTUBE_PREVIEW_DEFAULTS.CHANNEL_INITIAL}
               </div>
               <div className="flex-1 min-w-0">
-                <div className="font-bold text-gray-900 text-[10px] truncate">{channelName} • <span className="text-gray-500 font-normal">Pinned</span></div>
-                <p className="text-gray-700 font-medium line-clamp-1">{effectiveFirstComment}</p>
+                <div className="font-bold text-foreground text-[10px] truncate">{channelName} • <span className="text-muted-foreground font-normal">Pinned</span></div>
+                <p className="text-foreground font-medium line-clamp-1">{effectiveFirstComment}</p>
               </div>
             </div>
           )}
@@ -385,7 +385,7 @@ function YouTubeMobileView({
       </div>
 
       {/* 2. Dòng Ghi chú Footnote nhỏ bên dưới Thẻ Mobile */}
-      <p className="text-[10px] text-gray-400 text-center max-w-[320px] mt-3 leading-normal font-medium">
+      <p className="text-[10px] text-muted-foreground text-center max-w-[320px] mt-3 leading-normal font-medium">
         {YOUTUBE_PREVIEW_LABELS.FOOTNOTE_MOBILE_NOTE}
       </p>
     </div>

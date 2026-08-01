@@ -147,7 +147,7 @@ export default function CompetitorStatsModal({
 
   return (
     <Dialog open={!!selectedCompetitorForStats} onOpenChange={() => setSelectedCompetitorForStats(null)}>
-      <DialogContent className="max-w-5xl h-[90vh] flex flex-col p-0 overflow-hidden bg-[#F8F8F7]">
+      <DialogContent className="max-w-5xl h-[90vh] flex flex-col p-0 overflow-hidden bg-background text-foreground">
         <DialogTitle className="sr-only">
           Competitor Stats - {selectedCompetitorForStats.competitorDisplayName}
         </DialogTitle>
@@ -155,19 +155,19 @@ export default function CompetitorStatsModal({
           Detailed metrics, growth analytics and list of videos for competitor {selectedCompetitorForStats.competitorDisplayName}.
         </DialogDescription>
         {/* Modal Header */}
-        <div className="px-8 py-5 bg-white border-b border-gray-100 flex items-center justify-between shrink-0">
+        <div className="px-8 py-5 bg-card border-b border-border flex items-center justify-between shrink-0">
           <div className="flex items-center gap-3">
             <img 
               src={selectedCompetitorForStats.competitorAvatarUrl} 
-              className="w-10 h-10 rounded-full border border-gray-100 object-cover" 
+              className="w-10 h-10 rounded-full border border-border object-cover" 
               referrerPolicy="no-referrer" 
             />
             <div>
-              <h3 className="text-sm font-bold text-[#0A0A0A] flex items-center gap-2">
+              <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
                 {selectedCompetitorForStats.competitorDisplayName}
                 <span className="bg-[#FF0000] text-[8px] text-white px-1.5 py-0.5 rounded font-black tracking-widest uppercase">YouTube</span>
               </h3>
-              <span className="text-[10px] text-gray-400 font-medium">{selectedCompetitorForStats.competitorHandle}</span>
+              <span className="text-[10px] text-muted-foreground font-medium">{selectedCompetitorForStats.competitorHandle}</span>
             </div>
           </div>
         </div>
@@ -176,26 +176,26 @@ export default function CompetitorStatsModal({
         <div className="flex-1 overflow-y-auto p-8 space-y-6">
           
           {/* Higher Plan Upgrade Alert */}
-          <div className="bg-[#FEFCE8] border border-[#FEF08A] rounded-2xl p-4 flex items-center justify-between gap-4">
+          <div className="bg-[#FEFCE8] dark:bg-amber-950/30 border border-[#FEF08A] dark:border-amber-800/50 rounded-2xl p-4 flex items-center justify-between gap-4">
             <div className="flex items-center gap-3">
               <HelpCircle className="text-[#EAB308] shrink-0" size={20} />
-              <div className="text-xs text-[#854D0E] font-medium">
+              <div className="text-xs text-[#854D0E] dark:text-amber-200 font-medium">
                 <span className="font-bold">Do you need a higher plan?</span> Upgrade your plan to learn more about your competitor's strategy.
               </div>
             </div>
             <div className="shrink-0">
-              <button className="px-4 py-2 bg-[#0A0A0A] text-white rounded-xl text-[10px] font-bold hover:bg-black/90 transition-all cursor-pointer">
+              <button className="px-4 py-2 bg-foreground text-background rounded-xl text-[10px] font-bold hover:opacity-90 transition-all cursor-pointer">
                 Upgrade your plan
               </button>
             </div>
           </div>
 
           {/* Chart Growth analysis & Metricool Filters */}
-          <div className="bg-white border border-gray-100 rounded-3xl p-6 shadow-sm">
+          <div className="bg-card border border-border rounded-3xl p-6 shadow-sm">
             <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-6">
               <div>
-                <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Community</h4>
-                <h3 className="text-lg font-black text-[#0A0A0A] mt-0.5">Growth</h3>
+                <h4 className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Community</h4>
+                <h3 className="text-lg font-black text-foreground mt-0.5">Growth</h3>
               </div>
               
               {/* Metricool style interactive buttons */}
@@ -204,8 +204,8 @@ export default function CompetitorStatsModal({
                   onClick={() => setShowSubscribers(!showSubscribers)}
                   className={`px-4 py-2 rounded-2xl flex flex-col items-start gap-0.5 transition-all border text-left cursor-pointer ${
                     showSubscribers 
-                      ? 'bg-[#EEF2FF] border-[#C7D2FE] text-[#4F46E5] shadow-sm' 
-                      : 'bg-white border-gray-100 text-gray-400 opacity-60 hover:opacity-90'
+                      ? 'bg-[#EEF2FF] dark:bg-indigo-950/40 border-[#C7D2FE] dark:border-indigo-800/60 text-[#4F46E5] dark:text-indigo-300 shadow-sm' 
+                      : 'bg-card border-border text-muted-foreground opacity-60 hover:opacity-90'
                   }`}
                 >
                   <span className="text-base font-black flex items-center gap-1.5">
@@ -219,8 +219,8 @@ export default function CompetitorStatsModal({
                   onClick={() => setShowViews(!showViews)}
                   className={`px-4 py-2 rounded-2xl flex flex-col items-start gap-0.5 transition-all border text-left cursor-pointer ${
                     showViews 
-                      ? 'bg-[#ECFDF5] border-[#A7F3D0] text-[#059669] shadow-sm' 
-                      : 'bg-white border-gray-100 text-gray-400 opacity-60 hover:opacity-90'
+                      ? 'bg-[#ECFDF5] dark:bg-emerald-950/40 border-[#A7F3D0] dark:border-emerald-800/60 text-[#059669] dark:text-emerald-300 shadow-sm' 
+                      : 'bg-card border-border text-muted-foreground opacity-60 hover:opacity-90'
                   }`}
                 >
                   <span className="text-base font-black flex items-center gap-1.5">
@@ -234,8 +234,8 @@ export default function CompetitorStatsModal({
                   onClick={() => setShowVideos(!showVideos)}
                   className={`px-4 py-2 rounded-2xl flex flex-col items-start gap-0.5 transition-all border text-left cursor-pointer ${
                     showVideos 
-                      ? 'bg-[#FFFBEB] border-[#FDE68A] text-[#D97706] shadow-sm' 
-                      : 'bg-white border-gray-100 text-gray-400 opacity-60 hover:opacity-90'
+                      ? 'bg-[#FFFBEB] dark:bg-amber-950/40 border-[#FDE68A] dark:border-amber-800/60 text-[#D97706] dark:text-amber-300 shadow-sm' 
+                      : 'bg-card border-border text-muted-foreground opacity-60 hover:opacity-90'
                   }`}
                 >
                   <span className="text-base font-black flex items-center gap-1.5">
@@ -250,8 +250,8 @@ export default function CompetitorStatsModal({
             <div className="h-80 w-full mt-4">
               <ResponsiveContainer width="100%" height="100%">
                 <ComposedChart data={chartData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#F3F4F6" vertical={false} />
-                  <XAxis dataKey="date" tick={{ fontSize: 9, fill: '#9CA3AF' }} stroke="#E5E7EB" tickLine={false} />
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--border, #F3F4F6)" vertical={false} />
+                  <XAxis dataKey="date" tick={{ fontSize: 9, fill: 'var(--muted-foreground, #9CA3AF)' }} stroke="var(--border, #E5E7EB)" tickLine={false} />
                   
                   {/* Trục Y trái dành riêng cho Subscribers để tránh bị bẹp do chênh lệch scale */}
                   {showSubscribers && (
@@ -290,7 +290,7 @@ export default function CompetitorStatsModal({
                   />
 
                   <Tooltip 
-                    contentStyle={{ background: '#FFF', border: '1px solid #E5E7EB', borderRadius: '16px', fontSize: '11px', boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.05)' }} 
+                    contentStyle={{ background: 'var(--card, #FFF)', border: '1px solid var(--border, #E5E7EB)', borderRadius: '16px', fontSize: '11px', color: 'var(--foreground, #000)', boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.05)' }} 
                     formatter={(value, name) => [value.toLocaleString(), name]}
                   />
 
@@ -338,11 +338,11 @@ export default function CompetitorStatsModal({
           </div>
 
           {/* Videos list in modal */}
-          <div className="bg-white border border-gray-100 rounded-3xl p-6 shadow-sm space-y-4">
+          <div className="bg-card border border-border rounded-3xl p-6 shadow-sm space-y-4">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4">
               {/* Search video bar */}
               <div className="relative flex-1">
-                <Search className="absolute left-3.5 top-2.5 text-gray-400" size={14} />
+                <Search className="absolute left-3.5 top-2.5 text-muted-foreground" size={14} />
                 <input 
                   type="text"
                   placeholder="Search"
@@ -351,70 +351,70 @@ export default function CompetitorStatsModal({
                     setVideoSearchQuery(e.target.value);
                     setCurrentPage(1);
                   }}
-                  className="w-full bg-white border border-gray-200 rounded-xl py-2 pl-9 pr-4 text-xs focus:border-gray-300 outline-none transition-all font-medium"
+                  className="w-full bg-card border border-border rounded-xl py-2 pl-9 pr-4 text-xs font-medium focus:border-foreground outline-none transition-all text-foreground placeholder:text-muted-foreground"
                 />
               </div>
 
               <div className="flex items-center gap-2 shrink-0">
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <button className="flex items-center gap-1.5 px-3 py-2 bg-white border border-gray-200 hover:border-gray-300 text-gray-700 rounded-xl text-xs font-bold transition-all shadow-sm cursor-pointer outline-none select-none">
+                    <button className="flex items-center gap-1.5 px-3 py-2 bg-card border border-border hover:border-border text-foreground rounded-xl text-xs font-bold transition-all shadow-sm cursor-pointer outline-none select-none">
                       <Columns size={14} /> Columns
                     </button>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent className="p-4 w-72 bg-white rounded-2xl border border-gray-100 shadow-xl flex gap-4" align="end">
+                  <DropdownMenuContent className="p-4 w-72 bg-card rounded-2xl border border-border shadow-xl flex gap-4" align="end">
                     {/* Cột trái */}
                     <div className="flex-1 space-y-3">
                       <div className="flex items-center justify-between gap-3 text-xs">
-                        <span className="text-gray-600 font-bold">Date</span>
+                        <span className="text-muted-foreground font-bold">Date</span>
                         <button 
                           onClick={() => setVisibleColumns(prev => ({ ...prev, date: !prev.date }))}
-                          className={`w-8 h-4 rounded-full relative transition-colors ${visibleColumns.date ? 'bg-indigo-600' : 'bg-gray-200'}`}
+                          className={`w-8 h-4 rounded-full relative transition-colors ${visibleColumns.date ? 'bg-indigo-600' : 'bg-muted'}`}
                         >
-                          <span className={`w-3 h-3 rounded-full bg-white absolute top-0.5 transition-transform ${visibleColumns.date ? 'right-0.5' : 'left-0.5'}`} />
+                          <span className={`w-3 h-3 rounded-full bg-background absolute top-0.5 transition-transform ${visibleColumns.date ? 'right-0.5' : 'left-0.5'}`} />
                         </button>
                       </div>
                       <div className="flex items-center justify-between gap-3 text-xs">
-                        <span className="text-gray-600 font-bold">Video views</span>
+                        <span className="text-muted-foreground font-bold">Video views</span>
                         <button 
                           onClick={() => setVisibleColumns(prev => ({ ...prev, views: !prev.views }))}
-                          className={`w-8 h-4 rounded-full relative transition-colors ${visibleColumns.views ? 'bg-indigo-600' : 'bg-gray-200'}`}
+                          className={`w-8 h-4 rounded-full relative transition-colors ${visibleColumns.views ? 'bg-indigo-600' : 'bg-muted'}`}
                         >
-                          <span className={`w-3 h-3 rounded-full bg-white absolute top-0.5 transition-transform ${visibleColumns.views ? 'right-0.5' : 'left-0.5'}`} />
+                          <span className={`w-3 h-3 rounded-full bg-background absolute top-0.5 transition-transform ${visibleColumns.views ? 'right-0.5' : 'left-0.5'}`} />
                         </button>
                       </div>
                       <div className="flex items-center justify-between gap-3 text-xs">
-                        <span className="text-gray-600 font-bold">Likes</span>
+                        <span className="text-muted-foreground font-bold">Likes</span>
                         <button 
                           onClick={() => setVisibleColumns(prev => ({ ...prev, likes: !prev.likes }))}
-                          className={`w-8 h-4 rounded-full relative transition-colors ${visibleColumns.likes ? 'bg-indigo-600' : 'bg-gray-200'}`}
+                          className={`w-8 h-4 rounded-full relative transition-colors ${visibleColumns.likes ? 'bg-indigo-600' : 'bg-muted'}`}
                         >
-                          <span className={`w-3 h-3 rounded-full bg-white absolute top-0.5 transition-transform ${visibleColumns.likes ? 'right-0.5' : 'left-0.5'}`} />
+                          <span className={`w-3 h-3 rounded-full bg-background absolute top-0.5 transition-transform ${visibleColumns.likes ? 'right-0.5' : 'left-0.5'}`} />
                         </button>
                       </div>
                     </div>
                     
                     {/* Đường phân tách dọc */}
-                    <div className="border-r border-gray-100" />
+                    <div className="border-r border-border" />
                     
                     {/* Cột phải */}
                     <div className="flex-1 space-y-3">
                       <div className="flex items-center justify-between gap-3 text-xs">
-                        <span className="text-gray-600 font-bold">Dislikes</span>
+                        <span className="text-muted-foreground font-bold">Dislikes</span>
                         <button 
                           onClick={() => setVisibleColumns(prev => ({ ...prev, dislikes: !prev.dislikes }))}
-                          className={`w-8 h-4 rounded-full relative transition-colors ${visibleColumns.dislikes ? 'bg-indigo-600' : 'bg-gray-200'}`}
+                          className={`w-8 h-4 rounded-full relative transition-colors ${visibleColumns.dislikes ? 'bg-indigo-600' : 'bg-muted'}`}
                         >
-                          <span className={`w-3 h-3 rounded-full bg-white absolute top-0.5 transition-transform ${visibleColumns.dislikes ? 'right-0.5' : 'left-0.5'}`} />
+                          <span className={`w-3 h-3 rounded-full bg-background absolute top-0.5 transition-transform ${visibleColumns.dislikes ? 'right-0.5' : 'left-0.5'}`} />
                         </button>
                       </div>
                       <div className="flex items-center justify-between gap-3 text-xs">
-                        <span className="text-gray-600 font-bold">Comments</span>
+                        <span className="text-muted-foreground font-bold">Comments</span>
                         <button 
                           onClick={() => setVisibleColumns(prev => ({ ...prev, comments: !prev.comments }))}
-                          className={`w-8 h-4 rounded-full relative transition-colors ${visibleColumns.comments ? 'bg-indigo-600' : 'bg-gray-200'}`}
+                          className={`w-8 h-4 rounded-full relative transition-colors ${visibleColumns.comments ? 'bg-indigo-600' : 'bg-muted'}`}
                         >
-                          <span className={`w-3 h-3 rounded-full bg-white absolute top-0.5 transition-transform ${visibleColumns.comments ? 'right-0.5' : 'left-0.5'}`} />
+                          <span className={`w-3 h-3 rounded-full bg-background absolute top-0.5 transition-transform ${visibleColumns.comments ? 'right-0.5' : 'left-0.5'}`} />
                         </button>
                       </div>
                     </div>
@@ -423,7 +423,7 @@ export default function CompetitorStatsModal({
 
                 <button 
                   onClick={() => handleDownloadCSV(selectedCompetitorForStats)}
-                  className="flex items-center gap-1.5 px-3 py-2 bg-[#FEF9C3] hover:bg-[#FEF08A] text-[#854D0E] border border-[#FEF08A] rounded-xl text-xs font-bold transition-all shadow-sm cursor-pointer"
+                  className="flex items-center gap-1.5 px-3 py-2 bg-[#FEF9C3] dark:bg-amber-950/40 hover:bg-[#FEF08A] text-[#854D0E] dark:text-amber-300 border border-[#FEF08A] dark:border-amber-800/60 rounded-xl text-xs font-bold transition-all shadow-sm cursor-pointer"
                 >
                   <Download size={14} /> Download CSV
                 </button>
@@ -434,30 +434,30 @@ export default function CompetitorStatsModal({
             <div className="overflow-x-auto">
               <table className="w-full min-w-[700px] text-left">
                 <thead>
-                  <tr className="border-b border-gray-50">
-                    <th className="pb-3 text-[10px] font-bold text-gray-400 uppercase tracking-widest">Title</th>
-                    {visibleColumns.date && <th className="pb-3 text-[10px] font-bold text-gray-400 uppercase tracking-widest">Date</th>}
-                    {visibleColumns.views && <th className="pb-3 text-[10px] font-bold text-gray-400 uppercase tracking-widest">Video views</th>}
-                    {visibleColumns.likes && <th className="pb-3 text-[10px] font-bold text-gray-400 uppercase tracking-widest">Likes</th>}
-                    {visibleColumns.dislikes && <th className="pb-3 text-[10px] font-bold text-gray-400 uppercase tracking-widest">Dislikes</th>}
-                    {visibleColumns.comments && <th className="pb-3 text-[10px] font-bold text-gray-400 uppercase tracking-widest">Comments</th>}
+                  <tr className="border-b border-border">
+                    <th className="pb-3 text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Title</th>
+                    {visibleColumns.date && <th className="pb-3 text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Date</th>}
+                    {visibleColumns.views && <th className="pb-3 text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Video views</th>}
+                    {visibleColumns.likes && <th className="pb-3 text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Likes</th>}
+                    {visibleColumns.dislikes && <th className="pb-3 text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Dislikes</th>}
+                    {visibleColumns.comments && <th className="pb-3 text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Comments</th>}
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-50">
+                <tbody className="divide-y divide-border">
                   {paginatedVideos.length === 0 ? (
                     <tr>
                       <td 
                         colSpan={1 + Object.values(visibleColumns).filter(Boolean).length} 
-                        className="py-8 text-center text-gray-400 text-xs"
+                        className="py-8 text-center text-muted-foreground text-xs"
                       >
                         No videos found.
                       </td>
                     </tr>
                   ) : paginatedVideos.map((vid, index) => (
-                    <tr key={index} className="hover:bg-gray-50/50 transition-colors">
+                    <tr key={index} className="hover:bg-muted/50 transition-colors">
                       <td className="py-4 pr-4 max-w-xs">
                         <div className="flex gap-3">
-                          <div className="w-16 h-10 rounded-lg overflow-hidden shrink-0 border border-gray-100 relative bg-gray-50 shadow-sm">
+                          <div className="w-16 h-10 rounded-lg overflow-hidden shrink-0 border border-border relative bg-muted shadow-sm">
                             <img 
                               src={vid.thumbnailUrl} 
                               className="w-full h-full object-cover" 
@@ -465,7 +465,7 @@ export default function CompetitorStatsModal({
                             />
                           </div>
                           <div className="min-w-0 flex flex-col justify-between py-0.5">
-                            <h5 className="text-[11px] font-bold text-[#0A0A0A] line-clamp-1 leading-snug" title={vid.title}>
+                            <h5 className="text-[11px] font-bold text-foreground line-clamp-1 leading-snug" title={vid.title}>
                               {vid.title}
                             </h5>
                             <div className="flex items-center gap-2 mt-1">
@@ -475,12 +475,12 @@ export default function CompetitorStatsModal({
                               >
                                 <Star 
                                   size={12} 
-                                  className={favoriteVideos[vid.id] ? "fill-yellow-400 stroke-yellow-400" : "text-gray-300 hover:text-yellow-400"} 
+                                  className={favoriteVideos[vid.id] ? "fill-yellow-400 stroke-yellow-400" : "text-muted-foreground hover:text-yellow-400"} 
                                 />
                               </button>
                               <button 
                                 onClick={() => window.open(`https://www.youtube.com/watch?v=${vid.id}`, '_blank')}
-                                className="text-gray-400 hover:text-[#0A0A0A] cursor-pointer"
+                                className="text-muted-foreground hover:text-foreground cursor-pointer"
                               >
                                 <ExternalLink size={12} />
                               </button>
@@ -489,17 +489,17 @@ export default function CompetitorStatsModal({
                         </div>
                       </td>
                       {visibleColumns.date && (
-                        <td className="py-4 text-xs font-bold text-[#0A0A0A]">
+                        <td className="py-4 text-xs font-bold text-foreground">
                           {new Date(vid.publishedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-                          <div className="text-[9px] text-gray-400 font-medium mt-0.5">
+                          <div className="text-[9px] text-muted-foreground font-medium mt-0.5">
                             {new Date(vid.publishedAt).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
                           </div>
                         </td>
                       )}
-                      {visibleColumns.views && <td className="py-4 text-xs font-black text-[#0A0A0A]">{formatNumber(vid.views)}</td>}
-                      {visibleColumns.likes && <td className="py-4 text-xs font-bold text-[#0A0A0A]">{vid.likes ? formatNumber(vid.likes) : '-'}</td>}
-                      {visibleColumns.dislikes && <td className="py-4 text-xs font-medium text-gray-400">-</td>}
-                      {visibleColumns.comments && <td className="py-4 text-xs font-bold text-[#0A0A0A]">{vid.comments ? formatNumber(vid.comments) : '-'}</td>}
+                      {visibleColumns.views && <td className="py-4 text-xs font-black text-foreground">{formatNumber(vid.views)}</td>}
+                      {visibleColumns.likes && <td className="py-4 text-xs font-bold text-foreground">{vid.likes ? formatNumber(vid.likes) : '-'}</td>}
+                      {visibleColumns.dislikes && <td className="py-4 text-xs font-medium text-muted-foreground">-</td>}
+                      {visibleColumns.comments && <td className="py-4 text-xs font-bold text-foreground">{vid.comments ? formatNumber(vid.comments) : '-'}</td>}
                     </tr>
                   ))}
                 </tbody>
@@ -507,7 +507,7 @@ export default function CompetitorStatsModal({
             </div>
 
             {/* Pagination Footer */}
-            <div className="flex items-center justify-end gap-6 pt-4 border-t border-gray-50 text-xs text-gray-500 font-medium">
+            <div className="flex items-center justify-end gap-6 pt-4 border-t border-border text-xs text-muted-foreground font-medium">
               <div className="flex items-center gap-2">
                 <span>Items per page:</span>
                 <div className="relative">
@@ -517,7 +517,7 @@ export default function CompetitorStatsModal({
                       setItemsPerPage(Number(e.target.value));
                       setCurrentPage(1);
                     }}
-                    className="bg-white border border-gray-200 rounded-xl px-2 py-1 outline-none text-xs font-bold text-[#0A0A0A] cursor-pointer"
+                    className="bg-card border border-border rounded-xl px-2 py-1 outline-none text-xs font-bold text-foreground cursor-pointer"
                   >
                     {[5, 10, 20, 50].map((size) => (
                       <option key={size} value={size}>{size}</option>
@@ -540,28 +540,28 @@ export default function CompetitorStatsModal({
                 <button
                   onClick={() => setCurrentPage(1)}
                   disabled={currentPage === 1}
-                  className="w-7 h-7 flex items-center justify-center rounded-lg border border-gray-200 hover:bg-gray-50 text-gray-600 disabled:opacity-40 disabled:hover:bg-transparent cursor-pointer"
+                  className="w-7 h-7 flex items-center justify-center rounded-lg border border-border hover:bg-muted text-foreground disabled:opacity-40 disabled:hover:bg-transparent cursor-pointer"
                 >
                   <ChevronsLeft size={14} />
                 </button>
                 <button
                   onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
                   disabled={currentPage === 1}
-                  className="w-7 h-7 flex items-center justify-center rounded-lg border border-gray-200 hover:bg-gray-50 text-gray-600 disabled:opacity-40 disabled:hover:bg-transparent cursor-pointer"
+                  className="w-7 h-7 flex items-center justify-center rounded-lg border border-border hover:bg-muted text-foreground disabled:opacity-40 disabled:hover:bg-transparent cursor-pointer"
                 >
                   <ChevronLeft size={14} />
                 </button>
                 <button
                   onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
                   disabled={currentPage === totalPages}
-                  className="w-7 h-7 flex items-center justify-center rounded-lg border border-gray-200 hover:bg-gray-50 text-gray-600 disabled:opacity-40 disabled:hover:bg-transparent cursor-pointer"
+                  className="w-7 h-7 flex items-center justify-center rounded-lg border border-border hover:bg-muted text-foreground disabled:opacity-40 disabled:hover:bg-transparent cursor-pointer"
                 >
                   <ChevronRight size={14} />
                 </button>
                 <button
                   onClick={() => setCurrentPage(totalPages)}
                   disabled={currentPage === totalPages}
-                  className="w-7 h-7 flex items-center justify-center rounded-lg border border-gray-200 hover:bg-gray-50 text-gray-600 disabled:opacity-40 disabled:hover:bg-transparent cursor-pointer"
+                  className="w-7 h-7 flex items-center justify-center rounded-lg border border-border hover:bg-muted text-foreground disabled:opacity-40 disabled:hover:bg-transparent cursor-pointer"
                 >
                   <ChevronsRight size={14} />
                 </button>

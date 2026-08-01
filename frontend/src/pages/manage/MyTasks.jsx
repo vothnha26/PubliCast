@@ -183,54 +183,51 @@ export function MyTasksPage() {
   ];
 
   return (
-    <div className="flex-1 overflow-y-auto bg-[#F8F8F7] p-8 text-left font-sans">
+    <div className="flex-1 overflow-y-auto bg-background p-8 text-left font-sans">
       {/* Title */}
       <div className="mb-6 flex justify-between items-center">
         <div>
-          <h1 className="text-2xl font-bold text-[#0A0A0A] tracking-tight">My tasks</h1>
-          <p className="text-xs text-gray-500 mt-1">Review and coordinate posts waiting for feedback or approval</p>
+          <h1 className="text-2xl font-bold text-foreground tracking-tight">My tasks</h1>
+          <p className="text-xs text-muted-foreground mt-1">Review and coordinate posts waiting for feedback or approval</p>
         </div>
       </div>
 
       {/* Upgrade Banner */}
-      <div className="bg-white rounded-3xl p-6 border border-gray-100 flex items-center justify-between mb-8 shadow-sm">
+      <div className="bg-card rounded-3xl p-6 border border-border flex items-center justify-between mb-8 shadow-sm">
         <div className="flex gap-4 items-center">
-          <div className="w-12 h-12 rounded-full bg-[#E8F5E9] flex items-center justify-center shrink-0">
-            <Diamond size={24} className="text-[#2E7D32]" />
+          <div className="w-12 h-12 rounded-full bg-emerald-500/10 flex items-center justify-center shrink-0">
+            <Diamond size={24} className="text-emerald-600" />
           </div>
           <div>
-            <h3 className="text-base font-bold text-[#0A0A0A]">Do you need a higher plan?</h3>
-            <p className="text-xs text-gray-500 mt-0.5">
+            <h3 className="text-base font-bold text-foreground">Do you need a higher plan?</h3>
+            <p className="text-xs text-muted-foreground mt-0.5">
               Upgrade your plan to send posts to your team for review.{" "}
-              <button onClick={() => navigate("/pricing")} className="text-gray-600 underline font-medium cursor-pointer">More info</button>
+              <button onClick={() => navigate("/pricing")} className="text-foreground underline font-medium cursor-pointer">More info</button>
             </p>
           </div>
         </div>
         <button 
           onClick={() => navigate("/pricing")}
-          className="px-5 py-2.5 bg-[#0A0A0A] text-white rounded-xl text-xs font-bold hover:bg-gray-800 transition-all shadow-sm active:scale-95 cursor-pointer"
+          className="px-5 py-2.5 bg-foreground text-background rounded-xl text-xs font-bold hover:bg-foreground/90 transition-all shadow-sm active:scale-95 cursor-pointer"
         >
           Upgrade your plan
         </button>
       </div>
 
       {/* Tabs Layout */}
-      <div className="flex gap-8 border-b border-gray-200 mb-6">
+      <div className="flex gap-8 border-b border-border mb-6">
         {TABS.map((tab) => (
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
-            className="pb-3 text-sm font-semibold transition-all relative flex items-center gap-1.5 cursor-pointer"
-            style={{ 
-              color: activeTab === tab.id ? "#0A0A0A" : "#9CA3AF",
-            }}
+            className={`pb-3 text-sm font-semibold transition-all relative flex items-center gap-1.5 cursor-pointer ${activeTab === tab.id ? 'text-foreground' : 'text-muted-foreground'}`}
           >
             {tab.label}
-            <span className={`px-1.5 py-0.5 text-[10px] font-bold rounded-md ${activeTab === tab.id ? 'bg-[#0A0A0A] text-white' : 'bg-gray-100 text-gray-400'}`}>
+            <span className={`px-1.5 py-0.5 text-[10px] font-bold rounded-md ${activeTab === tab.id ? 'bg-foreground text-background' : 'bg-muted text-muted-foreground'}`}>
               {tab.count}
             </span>
             {activeTab === tab.id && (
-              <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-[#0A0A0A]" />
+              <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-foreground" />
             )}
           </button>
         ))}
@@ -240,13 +237,13 @@ export function MyTasksPage() {
       <div className="flex flex-wrap items-center gap-4 mb-6">
         {/* Search Bar */}
         <div className="flex-1 min-w-[280px] relative">
-          <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
+          <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground" />
           <input
             type="text"
             placeholder="Search post"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-11 pr-4 py-2.5 bg-white border border-gray-200 rounded-xl text-xs outline-none focus:border-black transition-all"
+            className="w-full pl-11 pr-4 py-2.5 bg-background border border-border text-foreground rounded-xl text-xs outline-none focus:border-foreground transition-all"
           />
         </div>
 
@@ -255,7 +252,7 @@ export function MyTasksPage() {
           <select
             value={selectedPlatform}
             onChange={(e) => setSelectedPlatform(e.target.value)}
-            className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-xs outline-none focus:border-black transition-all appearance-none cursor-pointer"
+            className="w-full px-4 py-2.5 bg-background border border-border text-foreground rounded-xl text-xs outline-none focus:border-foreground transition-all appearance-none cursor-pointer"
           >
             <option value="All">Social network</option>
             {PlatformRegistry.getAllStrategies().map(strat => (
@@ -272,7 +269,7 @@ export function MyTasksPage() {
           <select
             value={selectedBrandId}
             onChange={(e) => setSelectedBrandId(e.target.value)}
-            className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-xs outline-none focus:border-black transition-all appearance-none cursor-pointer"
+            className="w-full px-4 py-2.5 bg-background border border-border text-foreground rounded-xl text-xs outline-none focus:border-foreground transition-all appearance-none cursor-pointer"
           >
             <option value="all">Any brand</option>
             {brands.map(b => (
@@ -287,31 +284,31 @@ export function MyTasksPage() {
 
       {/* Task Table */}
       {loading ? (
-        <div className="bg-white rounded-3xl p-16 flex items-center justify-center shadow-sm border border-gray-100">
-          <Loader2 className="animate-spin text-gray-400" size={32} />
+        <div className="bg-card rounded-3xl p-16 flex items-center justify-center shadow-sm border border-border">
+          <Loader2 className="animate-spin text-muted-foreground" size={32} />
         </div>
       ) : currentList.length === 0 ? (
-        <div className="bg-white rounded-3xl p-16 flex flex-col items-center justify-center shadow-sm border border-gray-100 text-center">
-          <div className="w-20 h-20 bg-[#F9FAFB] rounded-full flex items-center justify-center mb-6">
-            <ClipboardCheck size={36} className="text-gray-400" />
+        <div className="bg-card rounded-3xl p-16 flex flex-col items-center justify-center shadow-sm border border-border text-center">
+          <div className="w-20 h-20 bg-muted rounded-full flex items-center justify-center mb-6">
+            <ClipboardCheck size={36} className="text-muted-foreground" />
           </div>
-          <h3 className="text-base font-bold text-gray-800">No tasks found</h3>
-          <p className="text-xs text-gray-400 mt-1 max-w-[280px]">No workflows or tasks match the active filters or tab.</p>
+          <h3 className="text-base font-bold text-foreground">No tasks found</h3>
+          <p className="text-xs text-muted-foreground mt-1 max-w-[280px]">No workflows or tasks match the active filters or tab.</p>
         </div>
       ) : (
-        <div className="bg-white rounded-3xl border border-gray-100 overflow-hidden shadow-sm">
+        <div className="bg-card rounded-3xl border border-border overflow-hidden shadow-sm">
           <table className="w-full border-collapse">
             <thead>
-              <tr className="border-b border-gray-100 bg-[#FAFAFA]">
-                <th className="px-6 py-4 text-left text-[11px] font-bold text-gray-400 uppercase tracking-wider">Date</th>
-                <th className="px-6 py-4 text-left text-[11px] font-bold text-gray-400 uppercase tracking-wider">Post</th>
-                <th className="px-6 py-4 text-left text-[11px] font-bold text-gray-400 uppercase tracking-wider">Networks</th>
-                <th className="px-6 py-4 text-left text-[11px] font-bold text-gray-400 uppercase tracking-wider">Status</th>
-                <th className="px-6 py-4 text-left text-[11px] font-bold text-gray-400 uppercase tracking-wider">Brand</th>
-                <th className="px-6 py-4 text-right text-[11px] font-bold text-gray-400 uppercase tracking-wider"></th>
+              <tr className="border-b border-border bg-muted/50">
+                <th className="px-6 py-4 text-left text-[11px] font-bold text-muted-foreground uppercase tracking-wider">Date</th>
+                <th className="px-6 py-4 text-left text-[11px] font-bold text-muted-foreground uppercase tracking-wider">Post</th>
+                <th className="px-6 py-4 text-left text-[11px] font-bold text-muted-foreground uppercase tracking-wider">Networks</th>
+                <th className="px-6 py-4 text-left text-[11px] font-bold text-muted-foreground uppercase tracking-wider">Status</th>
+                <th className="px-6 py-4 text-left text-[11px] font-bold text-muted-foreground uppercase tracking-wider">Brand</th>
+                <th className="px-6 py-4 text-right text-[11px] font-bold text-muted-foreground uppercase tracking-wider"></th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-100">
+            <tbody className="divide-y divide-border">
               {currentList.map((w) => {
                 const post = w.post;
                 const brand = w.brand || brands.find(b => b.id === w.brandId);
@@ -322,13 +319,13 @@ export function MyTasksPage() {
                   <tr
                     key={w.id}
                     onClick={() => setPreviewWorkflow(w)}
-                    className="hover:bg-gray-50/70 transition-all cursor-pointer group"
+                    className="hover:bg-muted/40 transition-all cursor-pointer group"
                   >
                     {/* Date Column */}
                     <td className="px-6 py-5 whitespace-nowrap">
-                      <div className="text-xs font-semibold text-gray-800">{dateStr}</div>
-                      <div className="text-[11px] text-gray-500 mt-0.5">{timeStr}</div>
-                      <div className="text-[9px] font-medium text-gray-400 uppercase tracking-wider mt-0.5">{timezone}</div>
+                      <div className="text-xs font-semibold text-foreground">{dateStr}</div>
+                      <div className="text-[11px] text-muted-foreground mt-0.5">{timeStr}</div>
+                      <div className="text-[9px] font-medium text-muted-foreground/70 uppercase tracking-wider mt-0.5">{timezone}</div>
                     </td>
 
                     {/* Post Content Column */}
@@ -338,18 +335,18 @@ export function MyTasksPage() {
                           <img
                             src={post.mediaUrls.split(",")[0]}
                             alt="Post Thumbnail"
-                            className="w-12 h-12 rounded-lg object-cover bg-gray-100 border border-gray-100 shrink-0 shadow-sm"
+                            className="w-12 h-12 rounded-lg object-cover bg-muted border border-border shrink-0 shadow-sm"
                           />
                         ) : (
-                          <div className="w-12 h-12 rounded-lg bg-amber-50 text-amber-500 border border-amber-100 flex items-center justify-center shrink-0 shadow-sm">
+                          <div className="w-12 h-12 rounded-lg bg-amber-500/10 text-amber-500 border border-amber-500/20 flex items-center justify-center shrink-0 shadow-sm">
                             <Calendar size={20} />
                           </div>
                         )}
                         <div className="overflow-hidden">
                           {post?.title && (
-                            <h4 className="text-xs font-bold text-gray-800 truncate">{post.title}</h4>
+                            <h4 className="text-xs font-bold text-foreground truncate">{post.title}</h4>
                           )}
-                          <p className="text-xs text-gray-500 mt-0.5 line-clamp-2 leading-relaxed font-medium">
+                          <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2 leading-relaxed font-medium">
                             {post?.caption || "No content description."}
                           </p>
                         </div>
@@ -381,7 +378,7 @@ export function MyTasksPage() {
 
                     {/* Brand Column */}
                     <td className="px-6 py-5 whitespace-nowrap">
-                      <span className="text-xs font-semibold text-gray-600">{brand?.name || "Workspace"}</span>
+                      <span className="text-xs font-semibold text-muted-foreground">{brand?.name || "Workspace"}</span>
                     </td>
 
                     {/* Action Column */}
@@ -454,25 +451,25 @@ function PostPreviewModal({ workflow, brands, onClose, onApprove, onReject, onEd
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
       {/* Modal Card */}
-      <div className="bg-white rounded-3xl shadow-2xl max-w-4xl w-full flex flex-col overflow-hidden relative border border-gray-100 max-h-[90vh]">
+      <div className="bg-card rounded-3xl shadow-2xl max-w-4xl w-full flex flex-col overflow-hidden relative border border-border max-h-[90vh]">
         {/* Close Button */}
         <button
           onClick={onClose}
-          className="absolute top-4 right-4 bg-gray-50 border border-gray-100 hover:bg-gray-100 rounded-full p-2 text-gray-500 cursor-pointer transition-all z-10"
+          className="absolute top-4 right-4 bg-muted border border-border hover:bg-muted/80 rounded-full p-2 text-muted-foreground cursor-pointer transition-all z-10"
         >
           <X size={16} />
         </button>
 
         {/* Top: Platforms Tabs Selector */}
-        <div className="border-b border-gray-100 px-6 py-4 flex justify-center items-center gap-2 bg-gray-50/50">
+        <div className="border-b border-border px-6 py-4 flex justify-center items-center gap-2 bg-muted/40">
           {platforms.map(plt => (
             <button
               key={plt}
               onClick={() => setActivePlatform(plt)}
               className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold uppercase transition-all cursor-pointer ${
                 activePlatform.toLowerCase() === plt.toLowerCase()
-                  ? 'bg-[#0A0A0A] text-white'
-                  : 'bg-white text-gray-500 border border-gray-200 hover:bg-gray-50'
+                  ? 'bg-foreground text-background'
+                  : 'bg-background text-muted-foreground border border-border hover:bg-muted'
               }`}
             >
               {PlatformRegistry.getIcon(plt, 14)}
@@ -482,7 +479,7 @@ function PostPreviewModal({ workflow, brands, onClose, onApprove, onReject, onEd
         </div>
 
         {/* Middle: Preview Display Zone */}
-        <div className="flex-1 bg-gray-100/60 py-10 px-4 overflow-y-auto flex flex-col items-center justify-center min-h-[350px]">
+        <div className="flex-1 bg-muted/30 py-10 px-4 overflow-y-auto flex flex-col items-center justify-center min-h-[350px]">
           
           {/* Main Mockup Box */}
           <div 
@@ -494,11 +491,11 @@ function PostPreviewModal({ workflow, brands, onClose, onApprove, onReject, onEd
           </div>
 
           {/* Device Toggle selector */}
-          <div className="flex bg-white border border-gray-200 rounded-xl p-1 shadow-sm mt-6 gap-1">
+          <div className="flex bg-card border border-border rounded-xl p-1 shadow-sm mt-6 gap-1">
             <button
               onClick={() => setDevice("mobile")}
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-bold transition-all cursor-pointer ${
-                device === 'mobile' ? 'bg-[#0A0A0A] text-white' : 'text-gray-500 hover:bg-gray-50'
+                device === 'mobile' ? 'bg-foreground text-background' : 'text-muted-foreground hover:bg-muted'
               }`}
             >
               <Smartphone size={12} /> Mobile
@@ -506,7 +503,7 @@ function PostPreviewModal({ workflow, brands, onClose, onApprove, onReject, onEd
             <button
               onClick={() => setDevice("desktop")}
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-bold transition-all cursor-pointer ${
-                device === 'desktop' ? 'bg-[#0A0A0A] text-white' : 'text-gray-500 hover:bg-gray-50'
+                device === 'desktop' ? 'bg-foreground text-background' : 'text-muted-foreground hover:bg-muted'
               }`}
             >
               <Monitor size={12} /> Desktop
@@ -516,24 +513,24 @@ function PostPreviewModal({ workflow, brands, onClose, onApprove, onReject, onEd
 
         {/* Reviewers Status */}
         {workflow.reviewers && workflow.reviewers.length > 0 && (
-          <div className="px-8 py-4 border-t border-gray-100 bg-[#FAFAFA] flex flex-col gap-2">
-            <div className="text-[10px] font-bold text-gray-400 uppercase tracking-widest flex items-center justify-between">
+          <div className="px-8 py-4 border-t border-border bg-muted/40 flex flex-col gap-2">
+            <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest flex items-center justify-between">
               <span>Trạng thái phê duyệt</span>
-              <span className="bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full normal-case text-[9px]">
+              <span className="bg-muted text-foreground px-2 py-0.5 rounded-full normal-case text-[9px]">
                 {workflow.approvalPolicy === 'ALL' ? 'Tất cả đồng thuận (ALL)' : 'Tối thiểu một người (ANY)'}
               </span>
             </div>
             <div className="flex flex-wrap gap-3 mt-1">
               {workflow.reviewers.map(r => (
-                <div key={r.id} className="flex items-center gap-2 bg-white px-3 py-1.5 rounded-full border border-gray-200 shadow-sm text-xs">
+                <div key={r.id} className="flex items-center gap-2 bg-card px-3 py-1.5 rounded-full border border-border shadow-sm text-xs">
                   {r.reviewer?.avatarUrl ? (
                     <img src={r.reviewer.avatarUrl} alt={r.reviewer.name} className="w-5 h-5 rounded-full object-cover" />
                   ) : (
-                    <div className="w-5 h-5 rounded-full bg-gray-100 flex items-center justify-center font-bold text-[10px] text-gray-500">
+                    <div className="w-5 h-5 rounded-full bg-muted flex items-center justify-center font-bold text-[10px] text-muted-foreground">
                       {r.reviewer?.name?.charAt(0).toUpperCase()}
                     </div>
                   )}
-                  <span className="font-medium text-gray-700">{r.reviewer?.name}</span>
+                  <span className="font-medium text-foreground">{r.reviewer?.name}</span>
                   <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold uppercase ${
                     r.status === 'APPROVED' ? 'bg-emerald-50 text-emerald-600 border border-emerald-100' :
                     r.status === 'REJECTED' ? 'bg-rose-50 text-rose-600 border border-rose-100' :
@@ -552,17 +549,17 @@ function PostPreviewModal({ workflow, brands, onClose, onApprove, onReject, onEd
         )}
 
         {/* Notice text */}
-        <div className="px-8 py-3 border-t border-gray-100 bg-[#FAFAFA] text-center">
-          <p className="text-[10px] text-gray-400 font-medium leading-relaxed max-w-xl mx-auto">
+        <div className="px-8 py-3 border-t border-border bg-muted/40 text-center">
+          <p className="text-[10px] text-muted-foreground font-medium leading-relaxed max-w-xl mx-auto">
             Please note that these previews are an approximation of how your post would look like when published. We aim to be as accurate as possible but take into account that final result may look different.
           </p>
         </div>
 
         {/* Footer actions */}
-        <div className="border-t border-gray-100 px-6 py-4 flex items-center justify-between bg-white">
+        <div className="border-t border-border px-6 py-4 flex items-center justify-between bg-card">
           <button
             onClick={onEdit}
-            className="flex items-center gap-1.5 text-xs font-bold text-gray-600 hover:text-black border border-gray-200 hover:border-gray-300 rounded-xl px-4 py-2.5 transition-all cursor-pointer"
+            className="flex items-center gap-1.5 text-xs font-bold text-muted-foreground hover:text-foreground border border-border hover:border-foreground/30 rounded-xl px-4 py-2.5 transition-all cursor-pointer"
           >
             View configuration <ExternalLink size={12} />
           </button>
@@ -586,7 +583,7 @@ function PostPreviewModal({ workflow, brands, onClose, onApprove, onReject, onEd
             ) : (
               <button
                 onClick={onClose}
-                className="px-5 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl text-xs font-bold transition-all cursor-pointer"
+                className="px-5 py-2.5 bg-muted hover:bg-muted/80 text-foreground rounded-xl text-xs font-bold transition-all cursor-pointer"
               >
                 Close
               </button>

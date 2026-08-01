@@ -50,7 +50,7 @@ export function InstagramReelsTab({
     {
       key: "interactions",
       label: "Interactions",
-      color: "bg-[#A7F3D0] text-gray-900",
+      color: "bg-[#A7F3D0] text-foreground",
       chartColor: "#A7F3D0",
       type: "line",
       value: totalReelsInteractions
@@ -87,7 +87,7 @@ export function InstagramReelsTab({
     {
       key: "likes",
       label: "Likes",
-      color: "bg-[#A7F3D0] text-gray-900",
+      color: "bg-[#A7F3D0] text-foreground",
       chartColor: "#A7F3D0",
       type: "line",
       value: totalReelsLikes
@@ -135,7 +135,7 @@ export function InstagramReelsTab({
       renderCell: (item) => (
         <div className="flex items-center gap-4">
           {item.mediaUrl ? (
-            <div className="w-12 h-12 bg-gray-100 rounded-lg overflow-hidden relative shadow-sm border border-gray-100 shrink-0">
+            <div className="w-12 h-12 bg-muted rounded-lg overflow-hidden relative shadow-sm border border-border shrink-0">
               <img src={item.mediaUrl} className="w-full h-full object-cover" alt="Reel" />
             </div>
           ) : (
@@ -144,7 +144,7 @@ export function InstagramReelsTab({
             </div>
           )}
           <div className="flex flex-col">
-            <span className="text-sm font-bold text-[#0A0A0A] line-clamp-2 max-w-[280px]">
+            <span className="text-sm font-bold text-foreground line-clamp-2 max-w-[280px]">
               {item.message || "No caption message"}
             </span>
           </div>
@@ -155,10 +155,10 @@ export function InstagramReelsTab({
       header: "Date",
       renderCell: (item) => (
         <div className="flex flex-col">
-          <span className="text-xs font-bold text-[#0A0A0A]">
+          <span className="text-xs font-bold text-foreground">
             {new Date(item.date).toLocaleDateString()}
           </span>
-          <span className="text-[10px] text-gray-400">
+          <span className="text-[10px] text-muted-foreground">
             {new Date(item.date).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
           </span>
         </div>
@@ -166,31 +166,31 @@ export function InstagramReelsTab({
     },
     {
       header: "Organic Reach",
-      renderCell: (item) => <span className="text-xs font-bold text-gray-800">{(item.reach || 0).toLocaleString()}</span>,
+      renderCell: (item) => <span className="text-xs font-bold text-foreground">{(item.reach || 0).toLocaleString()}</span>,
     },
     {
       header: "Organic Views",
-      renderCell: (item) => <span className="text-xs font-bold text-gray-800">{(item.views || 0).toLocaleString()}</span>,
+      renderCell: (item) => <span className="text-xs font-bold text-foreground">{(item.views || 0).toLocaleString()}</span>,
     },
     {
       header: "Organic Interactions",
-      renderCell: (item) => <span className="text-xs font-bold text-gray-800">{(item.reactions || 0) + (item.comments || 0)}</span>,
+      renderCell: (item) => <span className="text-xs font-bold text-foreground">{(item.reactions || 0) + (item.comments || 0)}</span>,
     },
     {
       header: "Organic Likes",
-      renderCell: (item) => <span className="text-xs text-gray-500 font-semibold">{(item.reactions || 0).toLocaleString()}</span>,
+      renderCell: (item) => <span className="text-xs text-muted-foreground font-semibold">{(item.reactions || 0).toLocaleString()}</span>,
     },
     {
       header: "Organic Saved",
-      renderCell: (item) => <span className="text-xs text-gray-500 font-semibold">{(item.saved || 0).toLocaleString()}</span>,
+      renderCell: (item) => <span className="text-xs text-muted-foreground font-semibold">{(item.saved || 0).toLocaleString()}</span>,
     },
     {
       header: "Organic Shares",
-      renderCell: (item) => <span className="text-xs text-gray-500 font-semibold">{(item.shares || 0).toLocaleString()}</span>,
+      renderCell: (item) => <span className="text-xs text-muted-foreground font-semibold">{(item.shares || 0).toLocaleString()}</span>,
     },
     {
       header: "Organic Comments",
-      renderCell: (item) => <span className="text-xs text-gray-500 font-semibold">{(item.comments || 0).toLocaleString()}</span>,
+      renderCell: (item) => <span className="text-xs text-muted-foreground font-semibold">{(item.comments || 0).toLocaleString()}</span>,
     },
     {
       header: "Organic Engagement",
@@ -202,11 +202,11 @@ export function InstagramReelsTab({
     },
     {
       header: "Avg. watch time",
-      renderCell: (item) => <span className="text-xs text-gray-500 font-mono">{item.avgWatchTime || "0:07"}</span>,
+      renderCell: (item) => <span className="text-xs text-muted-foreground font-mono">{item.avgWatchTime || "0:07"}</span>,
     },
     {
       header: "Total watch time",
-      renderCell: (item) => <span className="text-xs text-gray-500 font-mono">{item.totalWatchTime || "7:47"}</span>,
+      renderCell: (item) => <span className="text-xs text-muted-foreground font-mono">{item.totalWatchTime || "7:47"}</span>,
     },
   ];
 
@@ -214,7 +214,7 @@ export function InstagramReelsTab({
     <div className="space-y-6">
       {/* Reels published in period Section */}
       <div className="space-y-6">
-        <h2 className="text-lg font-bold text-[#0A0A0A] tracking-tight">Reels published in period</h2>
+        <h2 className="text-lg font-bold text-foreground tracking-tight">Reels published in period</h2>
 
         <GenericDashboardTab
           title="Organic Summary"
@@ -235,7 +235,7 @@ export function InstagramReelsTab({
 
       {/* List of reels */}
       <div className="space-y-4">
-        <h2 className="text-lg font-bold text-[#0A0A0A] tracking-tight">List of reels</h2>
+        <h2 className="text-lg font-bold text-foreground tracking-tight">List of reels</h2>
         <GenericPostsListTab
           posts={displayReels}
           isLoading={isPublishedLoading}

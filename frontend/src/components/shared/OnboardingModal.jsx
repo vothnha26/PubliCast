@@ -73,7 +73,7 @@ export function OnboardingModal({ isOpen, onClose }) {
 
   return (
     <div className="fixed inset-0 z-[2000] flex items-center justify-center bg-black/40 backdrop-blur-sm animate-in fade-in duration-200 p-6 overflow-y-auto">
-      <div className="relative w-full max-w-[640px] bg-white rounded-[20px] p-12 border border-gray-100 shadow-2xl animate-in zoom-in-95 duration-300 my-auto">
+      <div className="relative w-full max-w-[640px] bg-card rounded-[20px] p-12 border border-border shadow-2xl animate-in zoom-in-95 duration-300 my-auto">
         {screen !== "complete" && (
           <button
             onClick={handleClose}

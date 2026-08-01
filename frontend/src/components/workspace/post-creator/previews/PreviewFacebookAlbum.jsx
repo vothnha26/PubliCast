@@ -28,8 +28,8 @@ export function PreviewFacebookAlbum({
   const renderAlbumGrid = () => {
     if (albumMedia.length === 0) {
       return (
-        <div className="aspect-video bg-gray-50 flex items-center justify-center text-center p-6 text-gray-400 border-y border-gray-100">
-          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">No photos added yet</p>
+        <div className="aspect-video bg-muted flex items-center justify-center text-center p-6 text-muted-foreground border-y border-border">
+          <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">No photos added yet</p>
         </div>
       );
     }
@@ -93,34 +93,34 @@ export function PreviewFacebookAlbum({
               {pageName.charAt(0).toUpperCase()}
             </div>
             <div className="text-left">
-              <span className="block text-xs font-bold text-gray-900 leading-tight hover:underline cursor-pointer">
+              <span className="block text-xs font-bold text-foreground leading-tight hover:underline cursor-pointer">
                 {pageName}
               </span>
-              <div className="flex items-center gap-1 text-[9px] font-bold text-gray-400 uppercase tracking-tight mt-0.5">
+              <div className="flex items-center gap-1 text-[9px] font-bold text-muted-foreground uppercase tracking-tight mt-0.5">
                 <span>Just now</span>
                 <span>·</span>
-                <Globe size={10} className="text-gray-400" />
+                <Globe size={10} className="text-muted-foreground" />
               </div>
             </div>
           </div>
-          <button className="text-gray-400 hover:text-gray-600 p-1.5 hover:bg-gray-50 rounded-full transition-all">
+          <button className="text-muted-foreground hover:text-muted-foreground p-1.5 hover:bg-muted rounded-full transition-all">
             <MoreHorizontal size={16} />
           </button>
         </div>
 
         {/* Body Details Slot */}
         <div className="px-4 pb-4 space-y-3.5 text-left">
-          <p className="text-[11px] font-medium leading-relaxed text-gray-800 whitespace-pre-wrap px-0.5">
+          <p className="text-[11px] font-medium leading-relaxed text-foreground whitespace-pre-wrap px-0.5">
             {displayCaption}
           </p>
 
           {/* Rendering custom album layout */}
-          <div className="rounded-2xl overflow-hidden border border-gray-100 shadow-inner">
+          <div className="rounded-2xl overflow-hidden border border-border shadow-inner">
             {renderAlbumGrid()}
           </div>
 
           {/* Analytics Action Counts Bar */}
-          <div className="flex items-center justify-between text-[10px] text-gray-500 font-bold border-b border-gray-100 pb-2.5 px-0.5">
+          <div className="flex items-center justify-between text-[10px] text-muted-foreground font-bold border-b border-border pb-2.5 px-0.5">
             <div className="flex items-center gap-1">
               <div className="w-4 h-4 rounded-full bg-[#1877F2] flex items-center justify-center text-white ring-1 ring-white">
                 <ThumbsUp size={8} className="fill-current text-white" />
@@ -135,16 +135,16 @@ export function PreviewFacebookAlbum({
           </div>
 
           {/* Interactivity Buttons */}
-          <div className="flex items-center justify-between pt-0.5 px-1 text-gray-500">
-            <button className="flex items-center gap-1.5 hover:bg-gray-50 px-3 py-2 rounded-xl transition-all cursor-pointer group text-[10px] font-black uppercase tracking-wider">
+          <div className="flex items-center justify-between pt-0.5 px-1 text-muted-foreground">
+            <button className="flex items-center gap-1.5 hover:bg-muted px-3 py-2 rounded-xl transition-all cursor-pointer group text-[10px] font-black uppercase tracking-wider">
               <ThumbsUp size={14} className="group-hover:scale-110 transition-transform group-hover:text-[#1877F2]" />
               <span>Like</span>
             </button>
-            <button className="flex items-center gap-1.5 hover:bg-gray-50 px-3 py-2 rounded-xl transition-all cursor-pointer group text-[10px] font-black uppercase tracking-wider">
+            <button className="flex items-center gap-1.5 hover:bg-muted px-3 py-2 rounded-xl transition-all cursor-pointer group text-[10px] font-black uppercase tracking-wider">
               <MessageSquare size={14} className="group-hover:scale-110 transition-transform" />
               <span>Comment</span>
             </button>
-            <button className="flex items-center gap-1.5 hover:bg-gray-50 px-3 py-2 rounded-xl transition-all cursor-pointer group text-[10px] font-black uppercase tracking-wider">
+            <button className="flex items-center gap-1.5 hover:bg-muted px-3 py-2 rounded-xl transition-all cursor-pointer group text-[10px] font-black uppercase tracking-wider">
               <Share2 size={14} className="group-hover:scale-110 transition-transform" />
               <span>Share</span>
             </button>
@@ -158,7 +158,7 @@ export function PreviewFacebookAlbum({
           {/* Close button */}
           <button
             onClick={() => setLightboxOpen(false)}
-            className="absolute top-4 right-4 z-50 p-2 text-white/80 hover:text-white hover:bg-white/10 rounded-full transition-all cursor-pointer"
+            className="absolute top-4 right-4 z-50 p-2 text-white/80 hover:text-white hover:bg-card/10 rounded-full transition-all cursor-pointer"
           >
             <X size={24} />
           </button>
@@ -187,7 +187,7 @@ export function PreviewFacebookAlbum({
           </div>
 
           {/* Right / Caption sidebar info (Standard Facebook Desktop Lightbox Layout) */}
-          <div className="w-[360px] bg-white text-gray-900 border-l border-gray-100 flex flex-col justify-between text-left p-6 font-sans">
+          <div className="w-[360px] bg-card text-foreground border-l border-border flex flex-col justify-between text-left p-6 font-sans">
             <div className="space-y-6 flex-1 overflow-y-auto pr-1 scrollbar-thin">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-full bg-[#1877F2] flex items-center justify-center text-white text-sm font-bold shadow-sm shrink-0">
@@ -195,15 +195,15 @@ export function PreviewFacebookAlbum({
                 </div>
                 <div>
                   <span className="block text-sm font-black hover:underline cursor-pointer">{pageName}</span>
-                  <span className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">Photo {activeIndex + 1} of {albumMedia.length}</span>
+                  <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-tight">Photo {activeIndex + 1} of {albumMedia.length}</span>
                 </div>
               </div>
 
               <div className="space-y-4">
-                <div className="bg-gray-50 border border-gray-100 rounded-2xl p-4">
-                  <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1.5">Photo caption</p>
-                  <p className="text-xs font-semibold leading-relaxed text-gray-800 whitespace-pre-wrap">
-                    {albumMedia[activeIndex].caption || <span className="italic text-gray-400 font-medium">No caption for this photo.</span>}
+                <div className="bg-muted border border-border rounded-2xl p-4">
+                  <p className="text-[9px] font-black text-muted-foreground uppercase tracking-widest mb-1.5">Photo caption</p>
+                  <p className="text-xs font-semibold leading-relaxed text-foreground whitespace-pre-wrap">
+                    {albumMedia[activeIndex].caption || <span className="italic text-muted-foreground font-medium">No caption for this photo.</span>}
                   </p>
                 </div>
 
@@ -216,8 +216,8 @@ export function PreviewFacebookAlbum({
               </div>
             </div>
 
-            <div className="border-t border-gray-100 pt-4 text-center">
-              <span className="text-[10px] text-gray-400 font-black uppercase tracking-widest">PubliCast Lightbox Preview</span>
+            <div className="border-t border-border pt-4 text-center">
+              <span className="text-[10px] text-muted-foreground font-black uppercase tracking-widest">PubliCast Lightbox Preview</span>
             </div>
           </div>
         </div>

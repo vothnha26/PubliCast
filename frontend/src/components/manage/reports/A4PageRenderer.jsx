@@ -38,7 +38,7 @@ export function A4PageRenderer({
       >
         <div 
           className={`w-full h-full relative flex flex-col justify-between overflow-hidden p-6 transition-all rounded-xl ${
-            coverBackgroundUrl ? "bg-white" : "bg-gradient-to-br from-slate-900 via-slate-800 to-slate-950 text-white"
+            coverBackgroundUrl ? "bg-card" : "bg-gradient-to-br from-slate-900 via-slate-800 to-slate-950 text-white"
           }`}
           style={coverBackgroundUrl ? {
             backgroundImage: `url(${coverBackgroundUrl})`,
@@ -54,12 +54,12 @@ export function A4PageRenderer({
           )}
 
           <div className={`flex justify-between items-start border-b pb-3 z-10 ${
-            coverBackgroundUrl ? "border-gray-150 text-gray-700" : "border-white/10 text-white"
+            coverBackgroundUrl ? "border-gray-150 text-foreground" : "border-white/10 text-white"
           }`}>
             {logoUrl ? (
               <img src={logoUrl} alt="Logo" className="h-6.5 max-w-[120px] object-contain rounded" />
             ) : (
-              <div className="h-6.5 px-2 bg-white/10 rounded flex items-center justify-center font-bold text-[8px] text-white/80">
+              <div className="h-6.5 px-2 bg-card/10 rounded flex items-center justify-center font-bold text-[8px] text-white/80">
                 {brandName.substring(0, 10)}
               </div>
             )}
@@ -69,7 +69,7 @@ export function A4PageRenderer({
           <div className="my-auto z-10 space-y-3">
             <h1 
               className={`text-xl font-black tracking-tight leading-tight uppercase ${
-                coverBackgroundUrl ? "text-gray-800" : "text-white"
+                coverBackgroundUrl ? "text-foreground" : "text-white"
               }`}
             >
               {reportTitle || "BÁO CÁO PHÂN TÍCH ĐA KÊNH"}
@@ -173,7 +173,7 @@ export function A4PageRenderer({
       }
       default:
         return (
-          <div className="w-full h-full flex items-center justify-center text-xs text-gray-400">
+          <div className="w-full h-full flex items-center justify-center text-xs text-muted-foreground">
             Chưa hỗ trợ render trang: {pageType}
           </div>
         );

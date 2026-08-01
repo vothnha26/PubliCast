@@ -254,15 +254,15 @@ export function SettingsPanel({
   const selectedLineWidthObj = LINE_WIDTH_OPTIONS.find(l => l.id === drawWidth) || LINE_WIDTH_OPTIONS[1];
 
   return (
-    <div className="h-44 bg-white border-t border-gray-100 flex flex-col items-center justify-center px-8 shrink-0 space-y-4 font-sans">
+    <div className="h-44 bg-card border-t border-border flex flex-col items-center justify-center px-8 shrink-0 space-y-4 font-sans">
       {/* Frame Tab - Exactly matched to user screenshot */}
       {activeTab === 'frame' && (
         <div className="w-full flex flex-col items-center justify-center gap-3 py-1 select-none font-sans animate-in fade-in duration-300">
           {/* Upper control row: color, size, offset */}
-          <div className="flex items-center justify-center gap-14 text-xs font-medium text-gray-500">
+          <div className="flex items-center justify-center gap-14 text-xs font-medium text-muted-foreground">
             {/* Color Circle Picker */}
             <div className="flex flex-col items-center gap-1 relative">
-              <span className="text-[11px] font-normal text-gray-500">color</span>
+              <span className="text-[11px] font-normal text-muted-foreground">color</span>
               <div className="relative flex items-center justify-center w-7 h-7 rounded-full border border-gray-300 shadow-sm cursor-pointer overflow-hidden hover:scale-105 transition">
                 <input
                   type="color"
@@ -271,7 +271,7 @@ export function SettingsPanel({
                   className="absolute inset-0 w-10 h-10 -left-1 -top-1 opacity-0 cursor-pointer"
                 />
                 <div
-                  className="w-5 h-5 rounded-full border border-gray-200 shadow-inner"
+                  className="w-5 h-5 rounded-full border border-border shadow-inner"
                   style={{ backgroundColor: frameColor || '#FFFFFF' }}
                 />
               </div>
@@ -279,8 +279,8 @@ export function SettingsPanel({
 
             {/* Size Slider */}
             <div className="flex flex-col items-center gap-1">
-              <span className="text-[11px] font-normal text-gray-500">size</span>
-              <span className="text-xs font-semibold text-gray-800">{frameSize}%</span>
+              <span className="text-[11px] font-normal text-muted-foreground">size</span>
+              <span className="text-xs font-semibold text-foreground">{frameSize}%</span>
               <input
                 type="range"
                 min="1"
@@ -293,8 +293,8 @@ export function SettingsPanel({
 
             {/* Offset Slider */}
             <div className="flex flex-col items-center gap-1">
-              <span className="text-[11px] font-normal text-gray-500">offset</span>
-              <span className="text-xs font-semibold text-gray-800">{frameOffset1}%</span>
+              <span className="text-[11px] font-normal text-muted-foreground">offset</span>
+              <span className="text-xs font-semibold text-foreground">{frameOffset1}%</span>
               <input
                 type="range"
                 min="0"
@@ -310,7 +310,7 @@ export function SettingsPanel({
           <div className="relative w-full flex items-center justify-center px-4 mt-1">
             <button
               onClick={() => frameScroll.scrollByAmount(-200)}
-              className="w-7 h-7 rounded-full bg-white border border-gray-200 shadow-sm flex items-center justify-center text-gray-500 hover:text-black hover:bg-gray-100 shrink-0 transition cursor-pointer z-10 mr-1"
+              className="w-7 h-7 rounded-full bg-card border border-border shadow-sm flex items-center justify-center text-muted-foreground hover:text-black hover:bg-muted shrink-0 transition cursor-pointer z-10 mr-1"
               title="Scroll left"
             >
               <ChevronLeft size={16} />
@@ -330,26 +330,26 @@ export function SettingsPanel({
                     className={`flex flex-col items-center gap-1 p-1.5 rounded-xl transition-all cursor-pointer border shrink-0 ${
                       isSelected
                         ? 'border-dashed border-yellow-400 bg-yellow-50/20 shadow-sm'
-                        : 'border-dashed border-gray-300 hover:border-gray-400 bg-white'
+                        : 'border-dashed border-gray-300 hover:border-gray-400 bg-card'
                     }`}
                   >
-                    <div className="w-11 h-13 border border-gray-300 rounded bg-white flex items-center justify-center relative p-1">
+                    <div className="w-11 h-13 border border-gray-300 rounded bg-card flex items-center justify-center relative p-1">
                       {preset.id === 'none' && (
-                        <div className="w-full h-full border border-dashed border-gray-300 rounded flex items-center justify-center bg-gray-50/50">
-                          <span className="text-[8px] font-extrabold text-gray-400 uppercase tracking-tighter">None</span>
+                        <div className="w-full h-full border border-dashed border-gray-300 rounded flex items-center justify-center bg-muted/50">
+                          <span className="text-[8px] font-extrabold text-muted-foreground uppercase tracking-tighter">None</span>
                         </div>
                       )}
-                      {preset.id === 'mat' && <div className="w-full h-full border-4 border-black bg-gray-50" />}
-                      {preset.id === 'bevel' && <div className="w-full h-full border-2 border-gray-800 shadow-inner bg-gray-50" />}
-                      {preset.id === 'line' && <div className="w-full h-full border border-black bg-gray-50" />}
-                      {preset.id === 'zebra' && <div className="w-full h-full border-double border-4 border-black bg-gray-50" />}
+                      {preset.id === 'mat' && <div className="w-full h-full border-4 border-black bg-muted" />}
+                      {preset.id === 'bevel' && <div className="w-full h-full border-2 border-gray-800 shadow-inner bg-muted" />}
+                      {preset.id === 'line' && <div className="w-full h-full border border-black bg-muted" />}
+                      {preset.id === 'zebra' && <div className="w-full h-full border-double border-4 border-black bg-muted" />}
                       {preset.id === 'lumber' && <div className="w-full h-full border-2 border-[#8B5A2B] bg-amber-50" />}
-                      {preset.id === 'inset' && <div className="w-full h-full border border-dashed border-black bg-gray-50" />}
-                      {preset.id === 'film' && <div className="w-full h-full border border-black bg-gray-50 flex flex-col justify-between"><div className="h-1 w-full bg-black" /><div className="h-1 w-full bg-black" /></div>}
-                      {preset.id === 'hook' && <div className="w-full h-full border border-black bg-gray-50 rounded-md" />}
-                      {preset.id === 'polaroid' && <div className="w-full h-full border border-gray-300 bg-white flex flex-col"><div className="flex-1 bg-gray-100" /><div className="h-2.5 w-full bg-white" /></div>}
+                      {preset.id === 'inset' && <div className="w-full h-full border border-dashed border-black bg-muted" />}
+                      {preset.id === 'film' && <div className="w-full h-full border border-black bg-muted flex flex-col justify-between"><div className="h-1 w-full bg-black" /><div className="h-1 w-full bg-black" /></div>}
+                      {preset.id === 'hook' && <div className="w-full h-full border border-black bg-muted rounded-md" />}
+                      {preset.id === 'polaroid' && <div className="w-full h-full border border-gray-300 bg-card flex flex-col"><div className="flex-1 bg-muted" /><div className="h-2.5 w-full bg-card" /></div>}
                     </div>
-                    <span className="text-[10px] font-semibold text-gray-700">{preset.name}</span>
+                    <span className="text-[10px] font-semibold text-foreground">{preset.name}</span>
                   </button>
                 );
               })}
@@ -357,7 +357,7 @@ export function SettingsPanel({
 
             <button
               onClick={() => frameScroll.scrollByAmount(200)}
-              className="w-7 h-7 rounded-full bg-white border border-gray-200 shadow-sm flex items-center justify-center text-gray-500 hover:text-black hover:bg-gray-100 shrink-0 transition cursor-pointer z-10 ml-1"
+              className="w-7 h-7 rounded-full bg-card border border-border shadow-sm flex items-center justify-center text-muted-foreground hover:text-black hover:bg-muted shrink-0 transition cursor-pointer z-10 ml-1"
               title="Scroll right"
             >
               <ChevronRight size={16} />
@@ -373,8 +373,8 @@ export function SettingsPanel({
           <div className="flex items-center justify-center gap-8 py-1">
             {/* Color Picker Group */}
             <div className="flex flex-col items-center gap-1">
-              <span className="text-[11px] text-gray-500 font-medium">color</span>
-              <div className="relative flex items-center justify-center w-8 h-8 rounded-full border-2 border-gray-200 shadow-sm cursor-pointer overflow-hidden hover:scale-105 transition">
+              <span className="text-[11px] text-muted-foreground font-medium">color</span>
+              <div className="relative flex items-center justify-center w-8 h-8 rounded-full border-2 border-border shadow-sm cursor-pointer overflow-hidden hover:scale-105 transition">
                 <input
                   type="color"
                   value={drawColor || '#FF3B30'}
@@ -385,25 +385,25 @@ export function SettingsPanel({
                   className="w-7 h-7 rounded-full flex items-center justify-center border-2 border-white shadow-inner"
                   style={{ backgroundColor: drawColor || '#FF3B30' }}
                 >
-                  <div className="w-2.5 h-2.5 bg-white rounded-full" />
+                  <div className="w-2.5 h-2.5 bg-card rounded-full" />
                 </div>
               </div>
             </div>
 
             {/* Line Width Dropdown Group */}
             <div className="flex flex-col items-center gap-1 relative" ref={lineWidthDropdownRef}>
-              <span className="text-[11px] text-gray-500 font-medium">line width</span>
+              <span className="text-[11px] text-muted-foreground font-medium">line width</span>
               <button
                 type="button"
                 onClick={() => setIsLineWidthOpen(!isLineWidthOpen)}
-                className="flex items-center gap-2 px-4 py-1 bg-white border border-gray-200 rounded-full shadow-sm text-xs font-semibold text-gray-800 hover:border-gray-300 transition cursor-pointer"
+                className="flex items-center gap-2 px-4 py-1 bg-card border border-border rounded-full shadow-sm text-xs font-semibold text-foreground hover:border-gray-300 transition cursor-pointer"
               >
                 <span>{selectedLineWidthObj.label}</span>
-                <ChevronDown size={14} className="text-gray-600" />
+                <ChevronDown size={14} className="text-muted-foreground" />
               </button>
 
               {isLineWidthOpen && (
-                <div className="absolute bottom-full mb-2 w-44 bg-white rounded-2xl border border-gray-200 shadow-2xl overflow-hidden py-1.5 z-50 animate-in fade-in zoom-in-95 duration-150">
+                <div className="absolute bottom-full mb-2 w-44 bg-card rounded-2xl border border-border shadow-2xl overflow-hidden py-1.5 z-50 animate-in fade-in zoom-in-95 duration-150">
                   {LINE_WIDTH_OPTIONS.map((opt) => {
                     const isSelected = drawWidth === opt.id;
                     return (
@@ -417,7 +417,7 @@ export function SettingsPanel({
                         className={`w-full text-left px-5 py-2 text-xs font-semibold transition cursor-pointer ${
                           isSelected
                             ? 'bg-gray-300 text-black font-extrabold'
-                            : 'hover:bg-gray-100 text-gray-700'
+                            : 'hover:bg-muted text-foreground'
                         }`}
                       >
                         {opt.label}
@@ -433,7 +433,7 @@ export function SettingsPanel({
           <div className="relative w-full flex items-center justify-center px-4 mt-1">
             <button
               onClick={() => drawScroll.scrollByAmount(-200)}
-              className="w-7 h-7 rounded-full bg-white border border-gray-200 shadow-sm flex items-center justify-center text-gray-500 hover:text-black hover:bg-gray-100 shrink-0 transition cursor-pointer z-10 mr-1"
+              className="w-7 h-7 rounded-full bg-card border border-border shadow-sm flex items-center justify-center text-muted-foreground hover:text-black hover:bg-muted shrink-0 transition cursor-pointer z-10 mr-1"
               title="Scroll left"
             >
               <ChevronLeft size={16} />
@@ -457,7 +457,7 @@ export function SettingsPanel({
                     className={`flex items-center gap-1.5 px-4 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition cursor-pointer shrink-0 border ${
                       isSelected
                         ? 'bg-gray-300 text-black border-transparent font-extrabold shadow-sm'
-                        : 'bg-gray-50 text-gray-600 border-gray-200 hover:text-black hover:bg-gray-100'
+                        : 'bg-muted text-muted-foreground border-border hover:text-black hover:bg-muted'
                     }`}
                   >
                     <Icon size={14} strokeWidth={2} />
@@ -469,7 +469,7 @@ export function SettingsPanel({
 
             <button
               onClick={() => drawScroll.scrollByAmount(200)}
-              className="w-7 h-7 rounded-full bg-white border border-gray-200 shadow-sm flex items-center justify-center text-gray-500 hover:text-black hover:bg-gray-100 shrink-0 transition cursor-pointer z-10 ml-1"
+              className="w-7 h-7 rounded-full bg-card border border-border shadow-sm flex items-center justify-center text-muted-foreground hover:text-black hover:bg-muted shrink-0 transition cursor-pointer z-10 ml-1"
               title="Scroll right"
             >
               <ChevronRight size={16} />
@@ -493,7 +493,7 @@ export function SettingsPanel({
                   className="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-black"
                 />
               </div>
-              <span className="text-xs font-mono font-bold text-gray-800 bg-gray-100 px-2 py-0.5 rounded-full border border-gray-200">
+              <span className="text-xs font-mono font-bold text-foreground bg-muted px-2 py-0.5 rounded-full border border-border">
                 {rotation > 0 ? `+${rotation}°` : `${rotation}°`}
               </span>
             </div>
@@ -510,20 +510,20 @@ export function SettingsPanel({
                   className="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-black"
                 />
               </div>
-              <span className="text-xs font-mono font-bold text-gray-800 bg-gray-100 px-2 py-0.5 rounded-full border border-gray-200">
+              <span className="text-xs font-mono font-bold text-foreground bg-muted px-2 py-0.5 rounded-full border border-border">
                 {scaleVal.toFixed(2)}x
               </span>
             </div>
           )}
 
           {/* Sub-tab Pill: Rotation vs Scale */}
-          <div className="flex items-center justify-center bg-gray-100 p-0.5 rounded-full border border-gray-200 text-xs font-semibold">
+          <div className="flex items-center justify-center bg-muted p-0.5 rounded-full border border-border text-xs font-semibold">
             <button
               onClick={() => setAdjustMode('rotation')}
               className={`px-4 py-1 rounded-full transition cursor-pointer ${
                 adjustMode === 'rotation'
                   ? 'bg-gray-300 text-black font-extrabold shadow-sm'
-                  : 'text-gray-500 hover:text-gray-800'
+                  : 'text-muted-foreground hover:text-foreground'
               }`}
             >
               Rotation
@@ -533,14 +533,14 @@ export function SettingsPanel({
               className={`px-4 py-1 rounded-full transition cursor-pointer ${
                 adjustMode === 'scale'
                   ? 'bg-gray-300 text-black font-extrabold shadow-sm'
-                  : 'text-gray-500 hover:text-gray-800'
+                  : 'text-muted-foreground hover:text-foreground'
               }`}
             >
               Scale
             </button>
           </div>
 
-          <div className="absolute right-4 bottom-2 text-xs font-mono font-semibold text-gray-500">
+          <div className="absolute right-4 bottom-2 text-xs font-mono font-semibold text-muted-foreground">
             {imgSize.w || 0} × {imgSize.h || 0}
           </div>
         </div>
@@ -550,7 +550,7 @@ export function SettingsPanel({
       {activeTab === 'finetune' && (
         <div className="w-full flex flex-col items-center justify-center gap-3 py-1 select-none animate-in fade-in duration-300">
           <div className="w-full max-w-lg flex flex-col items-center gap-1 px-4">
-            <div className="text-gray-800 text-xs font-mono font-black px-2 py-0.5 rounded-md">
+            <div className="text-foreground text-xs font-mono font-black px-2 py-0.5 rounded-md">
               {curVal > 0 ? `+${curVal}` : curVal}
             </div>
 
@@ -561,7 +561,7 @@ export function SettingsPanel({
                 max="50"
                 value={curVal}
                 onChange={handleFinetuneSliderChange}
-                className="w-full h-1.5 bg-gray-100 rounded-lg appearance-none cursor-pointer accent-black"
+                className="w-full h-1.5 bg-muted rounded-lg appearance-none cursor-pointer accent-black"
               />
               <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-0.5 h-3 bg-gray-400 pointer-events-none rounded-full" />
             </div>
@@ -570,7 +570,7 @@ export function SettingsPanel({
           <div className="relative w-full flex items-center justify-center px-4 mt-1">
             <button
               onClick={() => finetuneScroll.scrollByAmount(-200)}
-              className="w-7 h-7 rounded-full bg-white border border-gray-200 shadow-sm flex items-center justify-center text-gray-500 hover:text-black hover:bg-gray-100 shrink-0 transition cursor-pointer z-10 mr-1"
+              className="w-7 h-7 rounded-full bg-card border border-border shadow-sm flex items-center justify-center text-muted-foreground hover:text-black hover:bg-muted shrink-0 transition cursor-pointer z-10 mr-1"
               title="Scroll left"
             >
               <ChevronLeft size={16} />
@@ -594,8 +594,8 @@ export function SettingsPanel({
                       isSelected
                         ? 'bg-gray-300 text-black border-transparent font-extrabold shadow-sm'
                         : hasCustomValue
-                        ? 'bg-gray-100 text-black border-gray-300 font-bold'
-                        : 'bg-gray-50 text-gray-500 border-gray-200 hover:text-black hover:bg-gray-100'
+                        ? 'bg-muted text-black border-gray-300 font-bold'
+                        : 'bg-muted text-muted-foreground border-border hover:text-black hover:bg-muted'
                     }`}
                   >
                     {label}
@@ -606,7 +606,7 @@ export function SettingsPanel({
 
             <button
               onClick={() => finetuneScroll.scrollByAmount(200)}
-              className="w-7 h-7 rounded-full bg-white border border-gray-200 shadow-sm flex items-center justify-center text-gray-500 hover:text-black hover:bg-gray-100 shrink-0 transition cursor-pointer z-10 ml-1"
+              className="w-7 h-7 rounded-full bg-card border border-border shadow-sm flex items-center justify-center text-muted-foreground hover:text-black hover:bg-muted shrink-0 transition cursor-pointer z-10 ml-1"
               title="Scroll right"
             >
               <ChevronRight size={16} />
@@ -620,7 +620,7 @@ export function SettingsPanel({
         <div className="w-full flex items-center justify-center px-4 relative select-none animate-in fade-in duration-300">
           <button
             onClick={() => filterScroll.scrollByAmount(-250)}
-            className="w-7 h-7 rounded-full bg-white border border-gray-200 shadow-sm flex items-center justify-center text-gray-500 hover:text-black hover:bg-gray-100 shrink-0 transition cursor-pointer z-10 mr-2"
+            className="w-7 h-7 rounded-full bg-card border border-border shadow-sm flex items-center justify-center text-muted-foreground hover:text-black hover:bg-muted shrink-0 transition cursor-pointer z-10 mr-2"
             title="Scroll left"
           >
             <ChevronLeft size={16} />
@@ -640,18 +640,18 @@ export function SettingsPanel({
                   onClick={() => setActiveFilter(filter.id)}
                   className={`flex flex-col items-center gap-1.5 shrink-0 p-1.5 rounded-2xl transition-all cursor-pointer border ${
                     isSelected 
-                      ? 'border-gray-800 bg-gray-100/70 shadow-sm scale-105' 
-                      : 'border-transparent hover:bg-gray-50'
+                      ? 'border-gray-800 bg-muted/70 shadow-sm scale-105' 
+                      : 'border-transparent hover:bg-muted'
                   }`}
                 >
-                  <div className="w-14 h-14 rounded-xl overflow-hidden border border-gray-200 bg-gray-100 shadow-sm">
+                  <div className="w-14 h-14 rounded-xl overflow-hidden border border-border bg-muted shadow-sm">
                     <img 
                       src={imageUrl} 
                       className={`w-full h-full object-cover ${filter.class}`} 
                       alt={filter.name} 
                     />
                   </div>
-                  <span className={`text-[10px] tracking-tight ${isSelected ? 'font-black text-black' : 'font-semibold text-gray-500'}`}>
+                  <span className={`text-[10px] tracking-tight ${isSelected ? 'font-black text-black' : 'font-semibold text-muted-foreground'}`}>
                     {filter.name}
                   </span>
                 </button>
@@ -661,7 +661,7 @@ export function SettingsPanel({
 
           <button
             onClick={() => filterScroll.scrollByAmount(250)}
-            className="w-7 h-7 rounded-full bg-white border border-gray-200 shadow-sm flex items-center justify-center text-gray-500 hover:text-black hover:bg-gray-100 shrink-0 transition cursor-pointer z-10 ml-2"
+            className="w-7 h-7 rounded-full bg-card border border-border shadow-sm flex items-center justify-center text-muted-foreground hover:text-black hover:bg-muted shrink-0 transition cursor-pointer z-10 ml-2"
             title="Scroll right"
           >
             <ChevronRight size={16} />
@@ -676,7 +676,7 @@ export function SettingsPanel({
             {stickerSubTab !== 'select-image' && (
               <button
                 onClick={() => stickerScroll.scrollByAmount(-200)}
-                className="w-7 h-7 rounded-full bg-white border border-gray-200 shadow-sm flex items-center justify-center text-gray-500 hover:text-black hover:bg-gray-100 shrink-0 transition cursor-pointer z-10 mr-1"
+                className="w-7 h-7 rounded-full bg-card border border-border shadow-sm flex items-center justify-center text-muted-foreground hover:text-black hover:bg-muted shrink-0 transition cursor-pointer z-10 mr-1"
                 title="Scroll left"
               >
                 <ChevronLeft size={16} />
@@ -694,7 +694,7 @@ export function SettingsPanel({
                     <button
                       key={logo.id}
                       onClick={() => handleAddSticker(logo.name)}
-                      className="w-10 h-10 rounded-full bg-white border border-gray-200 shadow-sm flex items-center justify-center hover:scale-110 transition cursor-pointer hover:shadow-md shrink-0"
+                      className="w-10 h-10 rounded-full bg-card border border-border shadow-sm flex items-center justify-center hover:scale-110 transition cursor-pointer hover:shadow-md shrink-0"
                       title={`Add logo ${logo.name}`}
                     >
                       {logo.svg}
@@ -709,7 +709,7 @@ export function SettingsPanel({
                     <button
                       key={idx}
                       onClick={() => handleAddSticker(emoji)}
-                      className="w-10 h-10 rounded-full bg-gray-50 border border-gray-200 text-xl flex items-center justify-center hover:scale-125 transition cursor-pointer shrink-0"
+                      className="w-10 h-10 rounded-full bg-muted border border-border text-xl flex items-center justify-center hover:scale-125 transition cursor-pointer shrink-0"
                       title="Add Emoji"
                     >
                       {emoji}
@@ -720,7 +720,7 @@ export function SettingsPanel({
 
               {stickerSubTab === 'select-image' && (
                 <div className="flex items-center justify-center py-1">
-                  <label className="flex items-center gap-2 px-5 py-2 rounded-full border border-dashed border-gray-300 bg-gray-50 hover:bg-gray-100 text-gray-700 text-xs font-semibold cursor-pointer transition">
+                  <label className="flex items-center gap-2 px-5 py-2 rounded-full border border-dashed border-gray-300 bg-muted hover:bg-muted text-foreground text-xs font-semibold cursor-pointer transition">
                     <Upload size={14} />
                     <span>Upload sticker image from computer</span>
                     <input type="file" accept="image/*" onChange={handleStickerFileUpload} className="hidden" />
@@ -732,7 +732,7 @@ export function SettingsPanel({
             {stickerSubTab !== 'select-image' && (
               <button
                 onClick={() => stickerScroll.scrollByAmount(200)}
-                className="w-7 h-7 rounded-full bg-white border border-gray-200 shadow-sm flex items-center justify-center text-gray-500 hover:text-black hover:bg-gray-100 shrink-0 transition cursor-pointer z-10 ml-1"
+                className="w-7 h-7 rounded-full bg-card border border-border shadow-sm flex items-center justify-center text-muted-foreground hover:text-black hover:bg-muted shrink-0 transition cursor-pointer z-10 ml-1"
                 title="Scroll right"
               >
                 <ChevronRight size={16} />
@@ -741,13 +741,13 @@ export function SettingsPanel({
           </div>
 
           {/* Sub-tab Pill: Select Image / Emojis / Logos */}
-          <div className="flex items-center justify-center bg-gray-100 p-0.5 rounded-full border border-gray-200 text-xs font-semibold">
+          <div className="flex items-center justify-center bg-muted p-0.5 rounded-full border border-border text-xs font-semibold">
             <button
               onClick={() => setStickerSubTab('select-image')}
               className={`flex items-center gap-1.5 px-4 py-1 rounded-full transition cursor-pointer ${
                 stickerSubTab === 'select-image'
                   ? 'bg-gray-300 text-black font-extrabold shadow-sm'
-                  : 'text-gray-500 hover:text-gray-800'
+                  : 'text-muted-foreground hover:text-foreground'
               }`}
             >
               <ImageIcon size={13} />
@@ -759,7 +759,7 @@ export function SettingsPanel({
               className={`px-4 py-1 rounded-full transition cursor-pointer ${
                 stickerSubTab === 'emojis'
                   ? 'bg-gray-300 text-black font-extrabold shadow-sm'
-                  : 'text-gray-500 hover:text-gray-800'
+                  : 'text-muted-foreground hover:text-foreground'
               }`}
             >
               Emojis
@@ -770,7 +770,7 @@ export function SettingsPanel({
               className={`px-4 py-1 rounded-full transition cursor-pointer ${
                 stickerSubTab === 'logos'
                   ? 'bg-gray-300 text-black font-extrabold shadow-sm'
-                  : 'text-gray-500 hover:text-gray-800'
+                  : 'text-muted-foreground hover:text-foreground'
               }`}
             >
               Logos
@@ -788,7 +788,7 @@ export function SettingsPanel({
           >
             <Plus size={12} /> Add Censure Box
           </button>
-          <span className="text-[8px] font-black text-gray-400 uppercase tracking-widest">
+          <span className="text-[8px] font-black text-muted-foreground uppercase tracking-widest">
             Drag box to position. Drag yellow dot to resize.
           </span>
         </div>
@@ -803,16 +803,16 @@ export function SettingsPanel({
                 type="number"
                 value={resizeWidth}
                 onChange={(e) => handleResizeWidthChange(Number(e.target.value))}
-                className="w-16 bg-transparent text-sm font-semibold text-gray-800 text-center focus:outline-none"
+                className="w-16 bg-transparent text-sm font-semibold text-foreground text-center focus:outline-none"
               />
-              <span className="text-xs font-bold text-gray-500">W</span>
+              <span className="text-xs font-bold text-muted-foreground">W</span>
             </div>
 
             <button
               type="button"
               onClick={() => setKeepRatio(!keepRatio)}
               className={`p-2 rounded-xl transition cursor-pointer ${
-                keepRatio ? 'text-black bg-gray-200/80 shadow-sm' : 'text-gray-400 hover:text-black hover:bg-gray-100'
+                keepRatio ? 'text-black bg-gray-200/80 shadow-sm' : 'text-muted-foreground hover:text-black hover:bg-muted'
               }`}
               title={keepRatio ? 'Aspect ratio locked' : 'Free aspect ratio'}
             >
@@ -824,9 +824,9 @@ export function SettingsPanel({
                 type="number"
                 value={resizeHeight}
                 onChange={(e) => handleResizeHeightChange(Number(e.target.value))}
-                className="w-16 bg-transparent text-sm font-semibold text-gray-800 text-center focus:outline-none"
+                className="w-16 bg-transparent text-sm font-semibold text-foreground text-center focus:outline-none"
               />
-              <span className="text-xs font-bold text-gray-500">H</span>
+              <span className="text-xs font-bold text-muted-foreground">H</span>
             </div>
           </div>
         </div>

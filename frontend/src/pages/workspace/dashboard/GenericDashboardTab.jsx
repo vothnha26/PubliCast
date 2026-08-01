@@ -30,11 +30,11 @@ export function GenericDashboardTab({
   return (
     <div className="space-y-6">
       {/* Chart Block */}
-      <div className="bg-white p-8 rounded-3xl border border-gray-100 shadow-sm relative overflow-hidden">
+      <div className="bg-card p-8 rounded-3xl border border-border shadow-sm relative overflow-hidden">
         <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 mb-8">
           <div>
-            <h3 className="text-base font-bold text-[#0A0A0A]">{title}</h3>
-            {description && <p className="text-xs text-gray-400 mt-1">{description}</p>}
+            <h3 className="text-base font-bold text-foreground">{title}</h3>
+            {description && <p className="text-xs text-muted-foreground mt-1">{description}</p>}
           </div>
 
           {/* Metric Selector Cards */}
@@ -43,7 +43,7 @@ export function GenericDashboardTab({
               <MetricCard
                 key={m.key}
                 isActive={selectedMetrics[m.key]}
-                color={m.color || "bg-gray-100 text-gray-900"}
+                color={m.color || "bg-muted text-foreground"}
                 value={m.value ?? 0}
                 label={m.label}
                 onClick={() => toggleMetric(m.key)}
@@ -63,12 +63,12 @@ export function GenericDashboardTab({
 
           <ResponsiveContainer width="100%" height="100%">
             <ComposedChart data={data}>
-              <CartesianGrid strokeDasharray="0" vertical={false} stroke="#F3F4F6" />
+              <CartesianGrid strokeDasharray="0" vertical={false} stroke="var(--border, #F3F4F6)" />
               <XAxis
                 dataKey="name"
                 axisLine={false}
                 tickLine={false}
-                tick={{ fontSize: 10, fill: "#9CA3AF", fontWeight: 600 }}
+                tick={{ fontSize: 10, fill: "var(--muted-foreground, #9CA3AF)", fontWeight: 600 }}
                 dy={10}
                 interval={
                   data.length <= 7 ? 0 :
@@ -81,21 +81,23 @@ export function GenericDashboardTab({
                 yAxisId="left"
                 axisLine={false}
                 tickLine={false}
-                tick={{ fontSize: 10, fill: "#9CA3AF", fontWeight: 600 }}
+                tick={{ fontSize: 10, fill: "var(--muted-foreground, #9CA3AF)", fontWeight: 600 }}
               />
               <YAxis
                 yAxisId="right"
                 orientation="right"
                 axisLine={false}
                 tickLine={false}
-                tick={{ fontSize: 10, fill: "#9CA3AF", fontWeight: 600 }}
+                tick={{ fontSize: 10, fill: "var(--muted-foreground, #9CA3AF)", fontWeight: 600 }}
                 hide={!hasRightAxis}
               />
               <Tooltip
-                cursor={{ fill: "#F9FAFB" }}
+                cursor={{ fill: "var(--muted, #F9FAFB)" }}
                 contentStyle={{
                   borderRadius: 12,
-                  border: "none",
+                  border: "1px solid var(--border)",
+                  background: "var(--card)",
+                  color: "var(--foreground)",
                   boxShadow: "0 4px 12px rgba(0,0,0,0.05)",
                 }}
               />
@@ -117,7 +119,7 @@ export function GenericDashboardTab({
                       stroke={strokeColor}
                       fill={m.fillColor || `rgba(${parseInt(strokeColor.slice(1,3),16)}, ${parseInt(strokeColor.slice(3,5),16)}, ${parseInt(strokeColor.slice(5,7),16)}, 0.05)`}
                       strokeWidth={3}
-                      dot={{ fill: strokeColor, strokeWidth: 2, r: 4, stroke: "#fff" }}
+                      dot={{ fill: strokeColor, strokeWidth: 2, r: 4, stroke: "var(--card)" }}
                       activeDot={{ r: 6 }}
                       connectNulls
                     />
@@ -131,7 +133,7 @@ export function GenericDashboardTab({
                       dataKey={dataKey}
                       stroke={strokeColor}
                       strokeWidth={3}
-                      dot={{ fill: strokeColor, strokeWidth: 2, r: 4, stroke: "#fff" }}
+                      dot={{ fill: strokeColor, strokeWidth: 2, r: 4, stroke: "var(--card)" }}
                       activeDot={{ r: 6 }}
                       connectNulls
                     />
@@ -162,10 +164,10 @@ export function GenericDashboardTab({
           {summaryGrid.map((item, idx) => (
             <div
               key={idx}
-              className="bg-[#E2E8F0]/40 p-4 rounded-2xl border border-gray-200/50 shadow-xs flex flex-col items-center justify-center min-h-[85px] transition-all hover:bg-[#E2E8F0]/60"
+              className="bg-muted/40 p-4 rounded-2xl border border-border shadow-xs flex flex-col items-center justify-center min-h-[85px] transition-all hover:bg-muted/60"
             >
-              <span className="text-xl font-bold text-gray-900">{item.value}</span>
-              <span className="text-[11px] text-gray-500 font-medium mt-1 text-center">
+              <span className="text-xl font-bold text-foreground">{item.value}</span>
+              <span className="text-[11px] text-muted-foreground font-medium mt-1 text-center">
                 {item.label}
               </span>
             </div>

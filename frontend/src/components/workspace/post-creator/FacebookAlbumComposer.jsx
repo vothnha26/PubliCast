@@ -53,7 +53,7 @@ export function FacebookAlbumComposer({ brandId, albumMedia = [], setAlbumMedia,
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block">
+        <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest block">
           Album Photos ({albumMedia.length})
         </label>
         <button
@@ -69,17 +69,17 @@ export function FacebookAlbumComposer({ brandId, albumMedia = [], setAlbumMedia,
       {albumMedia.length === 0 ? (
         <div
           onClick={() => setShowUploadModal(true)}
-          className="border-2 border-dashed border-gray-200 rounded-3xl p-10 text-center hover:border-gray-300 transition-all cursor-pointer bg-gray-50/50"
+          className="border-2 border-dashed border-border rounded-3xl p-10 text-center hover:border-gray-300 transition-all cursor-pointer bg-muted/50"
         >
-          <ImageIcon size={28} className="text-gray-400 mx-auto mb-2" />
-          <p className="text-xs font-bold text-gray-500">No photos in album yet</p>
-          <p className="text-[10px] text-gray-400 mt-1 font-medium leading-normal">Click to upload at least 2 images for Facebook Album</p>
+          <ImageIcon size={28} className="text-muted-foreground mx-auto mb-2" />
+          <p className="text-xs font-bold text-muted-foreground">No photos in album yet</p>
+          <p className="text-[10px] text-muted-foreground mt-1 font-medium leading-normal">Click to upload at least 2 images for Facebook Album</p>
         </div>
       ) : (
         <div className="space-y-3 max-h-[350px] overflow-y-auto pr-1 scrollbar-thin">
           {albumMedia.map((item, idx) => (
-            <div key={item.id} className="flex gap-4 p-4 bg-white border border-gray-100 rounded-3xl shadow-sm hover:shadow-md transition-all relative group">
-              <div className="w-16 h-16 rounded-2xl overflow-hidden border border-gray-100 shrink-0 relative">
+            <div key={item.id} className="flex gap-4 p-4 bg-card border border-border rounded-3xl shadow-sm hover:shadow-md transition-all relative group">
+              <div className="w-16 h-16 rounded-2xl overflow-hidden border border-border shrink-0 relative">
                 <img src={item.previewUrl || item.path} alt="" className="w-full h-full object-cover" />
                 <span className="absolute bottom-1 left-1 bg-black/60 backdrop-blur text-[8px] font-black text-white px-1.5 py-0.5 rounded">
                   #{idx + 1}
@@ -99,14 +99,14 @@ export function FacebookAlbumComposer({ brandId, albumMedia = [], setAlbumMedia,
               </div>
 
               <div className="flex-1 space-y-1.5 text-left">
-                <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest block">
+                <label className="text-[9px] font-black text-muted-foreground uppercase tracking-widest block">
                   Photo Caption
                 </label>
                 <textarea
                   value={item.caption}
                   onChange={(e) => handleCaptionChange(item.id, e.target.value)}
                   placeholder="Enter caption for this photo..."
-                  className="w-full p-2 border border-gray-200 rounded-xl text-xs font-semibold focus:border-black outline-none resize-none min-h-[44px]"
+                  className="w-full p-2 border border-border rounded-xl text-xs font-semibold focus:border-black outline-none resize-none min-h-[44px]"
                 />
               </div>
 

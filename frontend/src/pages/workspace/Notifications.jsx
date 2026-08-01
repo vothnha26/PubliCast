@@ -268,7 +268,7 @@ export function NotificationsPage() {
                 {cat.count > 0 && (
                   <span className={`text-[10px] font-black px-2 py-0.5 rounded-full ${
                     isActive 
-                      ? "bg-white text-purple-600" 
+                      ? "bg-card text-purple-600" 
                       : "bg-[var(--muted)] text-[var(--muted-foreground)]"
                   }`}>
                     {cat.count}
@@ -284,7 +284,7 @@ export function NotificationsPage() {
           <div className="flex flex-col items-center justify-center py-20 text-[var(--muted-foreground)] gap-3 bg-[var(--card)] rounded-2xl border border-[var(--border)] shadow-sm">
             <XCircle size={40} className="text-red-500" />
             <span className="text-xs font-bold uppercase tracking-wider">{t("loadErrorTitle")}</span>
-            <span className="text-xs text-gray-400">{errorMessage}</span>
+            <span className="text-xs text-muted-foreground">{errorMessage}</span>
             <button
               onClick={() => fetchNotifications()}
               className="mt-2 text-xs font-bold px-4 py-2 rounded-xl border border-[var(--border)] bg-[var(--card)] text-[var(--foreground)] hover:bg-[var(--muted)] cursor-pointer transition-all shadow-sm"
@@ -314,14 +314,14 @@ export function NotificationsPage() {
             </div>
             <div className="text-center">
               <span className="text-xs font-bold uppercase tracking-widest text-[var(--foreground)] block">{t("emptyTitle")}</span>
-              <span className="text-xs text-gray-400 mt-1 block">{t("emptyDesc")}</span>
+              <span className="text-xs text-muted-foreground mt-1 block">{t("emptyDesc")}</span>
             </div>
           </div>
         ) : (
           <div className="flex flex-col gap-4">
             {notifications.map((notif) => {
               const borderLeftColor = notif.isRead ? "border-[var(--border)]" : "border-l-4 border-l-purple-600";
-              const catStyle = CATEGORY_STYLES[notif.category] || { bg: "bg-gray-50 dark:bg-gray-800/20", text: "text-gray-500", iconBg: "#6B7280" };
+              const catStyle = CATEGORY_STYLES[notif.category] || { bg: "bg-muted dark:bg-gray-800/20", text: "text-muted-foreground", iconBg: "#6B7280" };
               
               return (
                 <div
@@ -345,7 +345,7 @@ export function NotificationsPage() {
                     <div className="text-xs font-medium text-[var(--muted-foreground)] leading-relaxed">
                       {notif.desc}
                     </div>
-                    <div className="text-[10px] font-bold text-gray-400 mt-2 flex items-center gap-1.5">
+                    <div className="text-[10px] font-bold text-muted-foreground mt-2 flex items-center gap-1.5">
                       <span>•</span>
                       <span>{notif.time}</span>
                     </div>
@@ -411,7 +411,7 @@ export function NotificationsPage() {
                 onClick={() => updateFilters({ page: currentPage - 1 })}
                 className={`px-4 py-2 rounded-xl border border-[var(--border)] text-xs font-bold transition-all ${
                   currentPage <= 1 
-                    ? "bg-gray-50 text-gray-300 dark:bg-[var(--muted)]/30 dark:text-gray-600 cursor-not-allowed" 
+                    ? "bg-muted text-gray-300 dark:bg-[var(--muted)]/30 dark:text-muted-foreground cursor-not-allowed" 
                     : "bg-[var(--card)] text-[var(--foreground)] hover:bg-[var(--muted)]/50 cursor-pointer"
                 }`}
               >
@@ -422,7 +422,7 @@ export function NotificationsPage() {
                 onClick={() => updateFilters({ page: currentPage + 1 })}
                 className={`px-4 py-2 rounded-xl border border-[var(--border)] text-xs font-bold transition-all ${
                   currentPage >= totalPages 
-                    ? "bg-gray-50 text-gray-300 dark:bg-[var(--muted)]/30 dark:text-gray-600 cursor-not-allowed" 
+                    ? "bg-muted text-gray-300 dark:bg-[var(--muted)]/30 dark:text-muted-foreground cursor-not-allowed" 
                     : "bg-[var(--card)] text-[var(--foreground)] hover:bg-[var(--muted)]/50 cursor-pointer"
                 }`}
               >

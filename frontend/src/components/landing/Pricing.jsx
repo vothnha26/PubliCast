@@ -42,7 +42,7 @@ export function Pricing() {
   const navigate = useNavigate();
 
   return (
-    <section className="bg-white py-24" style={{ fontFamily: "'DM Sans', sans-serif" }}>
+    <section className="bg-card py-24" style={{ fontFamily: "'DM Sans', sans-serif" }}>
       <div className="max-w-[900px] mx-auto px-6 text-center">
         <p style={{ fontSize: 10, fontWeight: 500, color: "#9CA3AF", textTransform: "uppercase", letterSpacing: "0.8px" }}>
           PRICING
@@ -66,7 +66,7 @@ export function Pricing() {
             onClick={() => setAnnual(!annual)}
           >
             <div
-              className="absolute top-0.5 w-4 h-4 bg-white rounded-full transition-transform"
+              className="absolute top-0.5 w-4 h-4 bg-card rounded-full transition-transform"
               style={{ transform: annual ? "translateX(22px)" : "translateX(2px)" }}
             />
           </div>
@@ -117,7 +117,7 @@ export function Pricing() {
               <ul className="space-y-2 mb-6">
                 {plan.features.map((f) => (
                   <li key={f} className="flex items-start gap-2" style={{ fontSize: 12, color: "#6B7280" }}>
-                    <Check size={12} className="mt-0.5 shrink-0 text-[#0A0A0A]" />
+                    <Check size={12} className="mt-0.5 shrink-0 text-foreground" />
                     {f}
                   </li>
                 ))}
@@ -140,7 +140,7 @@ export function Pricing() {
         </div>
 
         <button
-          className="hover:text-[#0A0A0A] transition-colors duration-150 cursor-pointer"
+          className="hover:text-foreground transition-colors duration-150 cursor-pointer"
           style={{ fontSize: 13, color: "#6B7280", border: "0.5px solid #E5E7EB", padding: "8px 20px", borderRadius: 8 }}
           onClick={() => navigate("/pricing")}
         >

@@ -482,14 +482,14 @@ export function AutoListEdit() {
 
   if (isLoading) {
     return (
-      <div className="flex-1 flex items-center justify-center bg-white min-h-screen">
-        <Loader2 className="animate-spin text-gray-200" size={40} />
+      <div className="flex-1 flex items-center justify-center bg-background min-h-screen">
+        <Loader2 className="animate-spin text-muted-foreground" size={40} />
       </div>
     );
   }
 
   return (
-    <div className="flex-1 flex flex-col bg-white min-h-screen overflow-y-auto animate-in slide-in-from-right duration-300">
+    <div className="flex-1 flex flex-col bg-background text-foreground min-h-screen overflow-y-auto animate-in slide-in-from-right duration-300">
       {/* Header */}
       <AutoListHeader 
         isNew={isNew} 
@@ -502,30 +502,30 @@ export function AutoListEdit() {
       <div className="p-8 max-w-6xl mx-auto w-full space-y-8">
         {/* Error Alert */}
         {selectedPlatforms.length === 0 && (
-          <div className="bg-red-50 border border-red-100 rounded-2xl p-4 flex items-center gap-3 animate-in fade-in slide-in-from-top-2">
-            <div className="w-6 h-6 bg-red-100 rounded-lg flex items-center justify-center text-red-600">
+          <div className="bg-red-500/10 border border-red-500/20 rounded-2xl p-4 flex items-center gap-3 animate-in fade-in slide-in-from-top-2">
+            <div className="w-6 h-6 bg-red-500/20 rounded-lg flex items-center justify-center text-red-500">
               <AlertTriangle size={14} />
             </div>
-            <span className="text-[11px] font-bold text-red-700 uppercase tracking-tight">
+            <span className="text-[11px] font-bold text-red-500 uppercase tracking-tight">
               You must select at least one network.
             </span>
           </div>
         )}
 
         {/* Unified Edit Autolist Form Panel */}
-        <div className="bg-white border border-gray-200/80 rounded-3xl p-8 shadow-sm space-y-8 text-left">
+        <div className="bg-card border border-border rounded-3xl p-8 shadow-sm space-y-8 text-left">
           {/* Row 1: Name and Platforms side-by-side */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
             {/* Name Input */}
             <div className="md:col-span-3 space-y-2">
-              <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider">Name</label>
+              <label className="block text-xs font-bold text-foreground uppercase tracking-wider">Name</label>
               <div className="relative">
-                <label className="absolute -top-2 left-4 px-1.5 bg-white text-[9px] font-black text-gray-400 uppercase tracking-widest z-10">Name</label>
+                <label className="absolute -top-2 left-4 px-1.5 bg-card text-[9px] font-black text-muted-foreground uppercase tracking-widest z-10">Name</label>
                 <input 
                   type="text" 
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  className="w-full px-5 py-3.5 border border-gray-200 rounded-xl text-xs font-bold focus:border-black outline-none shadow-sm transition-all focus:ring-1 focus:ring-black/10"
+                  className="w-full px-5 py-3.5 border border-border bg-card text-foreground rounded-xl text-xs font-bold focus:border-foreground outline-none shadow-sm transition-all focus:ring-1 focus:ring-foreground/10 placeholder:text-muted-foreground"
                   placeholder="Enter queue name..."
                 />
               </div>
@@ -533,10 +533,10 @@ export function AutoListEdit() {
 
             {/* Where to publish? */}
             <div className="md:col-span-1 space-y-2">
-              <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider">Where to publish?</label>
+              <label className="block text-xs font-bold text-foreground uppercase tracking-wider">Where to publish?</label>
               <div className="flex flex-wrap gap-2 pt-1">
                 {connectedPlatforms.length === 0 ? (
-                  <span className="text-[11px] font-semibold text-gray-400 italic">No connections</span>
+                  <span className="text-[11px] font-semibold text-muted-foreground italic">No connections</span>
                 ) : (
                   connectedPlatforms.map((p) => {
                     const isSelected = selectedPlatforms.includes(p.id);
@@ -547,8 +547,8 @@ export function AutoListEdit() {
                         onClick={() => togglePlatform(p.id)}
                         className={`flex items-center gap-1.5 px-3 py-1.5 border rounded-lg text-xs font-medium cursor-pointer transition-all ${
                           isSelected
-                            ? 'border-gray-300 bg-gray-100 font-semibold text-black'
-                            : 'border-gray-200 bg-white text-gray-600 hover:bg-gray-50'
+                            ? 'border-border bg-muted font-semibold text-foreground'
+                            : 'border-border bg-card text-muted-foreground hover:bg-muted'
                         }`}
                       >
                         {p.icon}
@@ -563,7 +563,7 @@ export function AutoListEdit() {
 
           {/* Row 2: Configuration */}
           <div className="space-y-3">
-            <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider">Configuration</label>
+            <label className="block text-xs font-bold text-foreground uppercase tracking-wider">Configuration</label>
             <AutoListConfigCard 
               selectedPlatforms={selectedPlatforms}
               autoPublish={autoPublish}
@@ -628,7 +628,7 @@ export function AutoListEdit() {
           </div>
 
           {/* Row 3: Timing */}
-          <div className="border-t border-gray-100 pt-8">
+          <div className="border-t border-border pt-8">
             <AutoListTimingCard 
               scheduleType={scheduleType}
               setScheduleType={setScheduleType}
@@ -643,7 +643,7 @@ export function AutoListEdit() {
         </div>
 
         {/* Separator line */}
-        <div className="w-full h-px bg-gray-100 my-8" />
+        <div className="w-full h-px bg-border my-8" />
 
         {/* Queue Content list */}
         <div className="space-y-6 text-left pb-20">
@@ -658,10 +658,10 @@ export function AutoListEdit() {
           />
 
           {posts.length === 0 ? (
-            <div className="border border-dashed border-gray-200 rounded-3xl p-12 text-center">
-              <Calendar className="mx-auto text-gray-200 mb-4" size={40} />
-              <h4 className="text-xs font-bold text-gray-700">The queue is currently empty</h4>
-              <p className="text-[11px] text-gray-400 mt-1 max-w-sm mx-auto mb-4">
+            <div className="border border-dashed border-border rounded-3xl p-12 text-center">
+              <Calendar className="mx-auto text-muted-foreground mb-4 opacity-50" size={40} />
+              <h4 className="text-xs font-bold text-foreground">The queue is currently empty</h4>
+              <p className="text-[11px] text-muted-foreground mt-1 max-w-sm mx-auto mb-4">
                 Add your first post to begin automated scheduling based on your cadence settings.
               </p>
               <button
@@ -670,7 +670,7 @@ export function AutoListEdit() {
                   e.preventDefault();
                   handleInsertPost();
                 }}
-                className="px-5 py-2.5 bg-black hover:bg-gray-800 text-white rounded-xl text-xs font-bold transition-all cursor-pointer shadow-sm hover:scale-105 active:scale-95"
+                className="px-5 py-2.5 bg-foreground hover:bg-foreground/90 text-background rounded-xl text-xs font-bold transition-all cursor-pointer shadow-sm hover:scale-105 active:scale-95"
               >
                 Add your first post
               </button>
@@ -701,14 +701,14 @@ export function AutoListEdit() {
                 if (invalidCount === 0) return null;
 
                 return (
-                  <div className="p-4 bg-red-50 border border-red-200 rounded-2xl flex items-center justify-between shadow-sm animate-in fade-in duration-200">
+                  <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-2xl flex items-center justify-between shadow-sm animate-in fade-in duration-200">
                     <div className="flex items-center gap-3">
                       <AlertTriangle className="text-red-500 shrink-0" size={20} />
                       <div className="text-left">
-                        <h5 className="text-xs font-bold text-red-800 font-sans">
+                        <h5 className="text-xs font-bold text-red-500 font-sans">
                           {invalidCount} {invalidCount === 1 ? 'post has' : 'posts have'} platform requirement issues
                         </h5>
-                        <p className="text-[11px] text-red-600 font-medium font-sans">
+                        <p className="text-[11px] text-red-500/80 font-medium font-sans">
                           Please review the red warnings on the post cards below (e.g. YouTube requires video instead of image).
                         </p>
                       </div>
@@ -744,9 +744,9 @@ export function AutoListEdit() {
                     e.preventDefault();
                     handleInsertPost();
                   }}
-                  className="flex items-center gap-1.5 text-xs font-bold text-gray-500 hover:text-black transition-colors cursor-pointer"
+                  className="flex items-center gap-1.5 text-xs font-bold text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
                 >
-                  <Plus size={14} className="text-gray-400" /> Add post to end
+                  <Plus size={14} className="text-muted-foreground" /> Add post to end
                 </button>
               </div>
             </div>

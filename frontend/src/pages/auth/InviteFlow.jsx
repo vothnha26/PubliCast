@@ -73,10 +73,10 @@ export function InviteFlow() {
 
   if (screen === "loading") {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#F8F8F7]">
+      <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="flex flex-col items-center gap-3">
           <Loader2 className="animate-spin text-black" size={32} />
-          <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">Đang kiểm tra lời mời...</p>
+          <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Đang kiểm tra lời mời...</p>
         </div>
       </div>
     );
@@ -89,7 +89,7 @@ export function InviteFlow() {
           {/* Left - black */}
           <div className="w-2/5 bg-[#0A0A0A] flex flex-col p-8">
             <div className="flex items-center gap-2 mb-auto">
-              <div className="w-6 h-6 bg-white rounded-md flex items-center justify-center">
+              <div className="w-6 h-6 bg-card rounded-md flex items-center justify-center">
                 <span style={{ fontSize: 10, color: "#0A0A0A", fontWeight: 700 }}>P</span>
               </div>
               <span style={{ fontSize: 13, color: "#fff", fontWeight: 700 }}>PubliCast</span>
@@ -119,9 +119,9 @@ export function InviteFlow() {
             <p style={{ fontSize: 11, color: "#555", marginTop: "auto" }}>publicast.com</p>
           </div>
 
-          {/* Right - white */}
-          <div className="flex-1 flex items-center justify-center p-12 bg-[#F8F8F7]">
-            <div className="bg-white p-8 rounded-3xl border border-gray-100 shadow-sm" style={{ maxWidth: 400, width: "100%" }}>
+          {/* Right - form */}
+          <div className="flex-1 flex items-center justify-center p-12 bg-background">
+            <div className="bg-card p-8 rounded-3xl border border-border shadow-sm text-foreground" style={{ maxWidth: 400, width: "100%" }}>
               <h2 style={{ fontSize: 18, fontWeight: 700, color: "#0A0A0A", marginBottom: 6 }}>
                 {inviteDetails.isNewUser ? "Tạo tài khoản & Tham gia" : "Chấp nhận lời mời"}
               </h2>
@@ -165,8 +165,8 @@ export function InviteFlow() {
                     </div>
                   </>
                 ) : (
-                  <div className="p-4 bg-gray-50 rounded-2xl border border-gray-100">
-                    <p className="text-xs text-gray-500 font-medium">Bạn sẽ tham gia thương hiệu này với tài khoản:</p>
+                  <div className="p-4 bg-muted rounded-2xl border border-border">
+                    <p className="text-xs text-muted-foreground font-medium">Bạn sẽ tham gia thương hiệu này với tài khoản:</p>
                     <p className="text-sm font-bold text-black mt-1">{inviteDetails.email}</p>
                   </div>
                 )}
@@ -191,26 +191,25 @@ export function InviteFlow() {
       )}
 
       {screen === "accepted" && inviteDetails && (
-        <div className="flex items-center justify-center h-screen bg-[#F8F8F7]">
-          <div className="bg-white rounded-3xl p-10 text-center border border-gray-100 shadow-sm" style={{ maxWidth: 480 }}>
-            <div className="w-14 h-14 rounded-full bg-[#0A0A0A] flex items-center justify-center mx-auto mb-5">
-              <Check size={24} color="#fff" />
+        <div className="flex items-center justify-center h-screen bg-background">
+          <div className="bg-card rounded-3xl p-10 text-center border border-border shadow-sm text-foreground" style={{ maxWidth: 480 }}>
+            <div className="w-14 h-14 rounded-full bg-foreground text-background flex items-center justify-center mx-auto mb-5">
+              <Check size={24} />
             </div>
-            <h2 style={{ fontSize: 20, fontWeight: 700, color: "#0A0A0A", marginBottom: 6 }}>Chào mừng bạn đến với thương hiệu!</h2>
-            <p style={{ fontSize: 14, color: "#6B7280", marginBottom: 16 }}>Bạn đã tham gia nhóm thành công.</p>
-            <div className="flex items-center justify-center gap-2 mb-6 p-3 rounded-2xl bg-gray-50" style={{ border: "1px solid #E5E7EB" }}>
+            <h2 className="text-xl font-bold text-foreground mb-1.5">Chào mừng bạn đến với thương hiệu!</h2>
+            <p className="text-sm text-muted-foreground mb-4">Bạn đã tham gia nhóm thành công.</p>
+            <div className="flex items-center justify-center gap-2 mb-6 p-3 rounded-2xl bg-muted border border-border">
               <div className="w-8 h-8 rounded-full bg-blue-700 flex items-center justify-center text-white font-bold text-xs">
                 {inviteDetails.brandName?.charAt(0).toUpperCase()}
               </div>
-              <span style={{ fontSize: 13, fontWeight: 700, color: "#0A0A0A" }}>{inviteDetails.brandName}</span>
+              <span className="text-xs font-bold text-foreground">{inviteDetails.brandName}</span>
             </div>
             <button 
               onClick={() => {
                 // Force a page refresh to reload brand context with new membership
                 window.location.href = "/dashboard";
               }}
-              className="w-full py-3 rounded-xl bg-[#0A0A0A] text-white mb-3 hover:bg-gray-900 transition-all font-bold"
-              style={{ fontSize: 14 }}
+              className="w-full py-3 rounded-xl bg-foreground text-background mb-3 hover:opacity-90 transition-all font-bold cursor-pointer text-sm"
             >
               Đi tới Dashboard →
             </button>
@@ -219,16 +218,16 @@ export function InviteFlow() {
       )}
 
       {screen === "expired" && (
-        <div className="flex items-center justify-center h-screen bg-[#F8F8F7]">
-          <div className="bg-white rounded-3xl p-10 text-center border border-gray-100 shadow-sm" style={{ maxWidth: 480 }}>
-            <AlertTriangle size={48} color="#EF4444" className="mx-auto mb-5" />
-            <h2 style={{ fontSize: 18, fontWeight: 700, color: "#0A0A0A", marginBottom: 8 }}>Lời mời đã hết hạn hoặc không tồn tại</h2>
-            <p style={{ fontSize: 13, color: "#6B7280", lineHeight: 1.6, marginBottom: 24 }}>
+        <div className="flex items-center justify-center h-screen bg-background">
+          <div className="bg-card rounded-3xl p-10 text-center border border-border shadow-sm text-foreground" style={{ maxWidth: 480 }}>
+            <AlertTriangle size={48} className="text-red-500 mx-auto mb-5" />
+            <h2 className="text-lg font-bold text-foreground mb-2">Lời mời đã hết hạn hoặc không tồn tại</h2>
+            <p className="text-xs text-muted-foreground leading-relaxed mb-6">
               {errorMsg || "Liên kết mời cộng tác viên chỉ có hiệu lực trong vòng 7 ngày. Vui lòng liên hệ với người quản trị để nhận lại lời mời mới."}
             </p>
             <button 
               onClick={() => navigate("/login")}
-              className="px-5 py-2.5 rounded-xl w-full bg-[#0A0A0A] text-white font-bold text-xs hover:bg-gray-900 transition-all"
+              className="px-5 py-2.5 rounded-xl w-full bg-foreground text-background font-bold text-xs hover:opacity-90 transition-all cursor-pointer"
             >
               Đi tới trang Đăng nhập
             </button>

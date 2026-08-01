@@ -41,17 +41,17 @@ export function PreviewThreads({
   };
 
   return (
-    <div className={`${containerWidth} bg-white rounded-2xl overflow-hidden shadow-xl border border-gray-100 text-gray-900 font-sans mx-auto animate-in fade-in duration-300 text-left p-4`}>
+    <div className={`${containerWidth} bg-card rounded-2xl overflow-hidden shadow-xl border border-border text-foreground font-sans mx-auto animate-in fade-in duration-300 text-left p-4`}>
       {/* Desktop Web Header Branding */}
       {previewDevice === "desktop" && (
-        <div className="flex items-center justify-between border-b border-gray-100 pb-3 mb-3 text-xs font-semibold text-gray-400">
+        <div className="flex items-center justify-between border-b border-border pb-3 mb-3 text-xs font-semibold text-muted-foreground">
           <div className="flex items-center gap-2">
             <div className="w-5 h-5 rounded-full bg-black text-white flex items-center justify-center font-extrabold text-[11px]">
               @
             </div>
-            <span className="font-bold text-gray-900">Threads</span>
+            <span className="font-bold text-foreground">Threads</span>
           </div>
-          <span className="text-[11px] text-gray-400">For you</span>
+          <span className="text-[11px] text-muted-foreground">For you</span>
         </div>
       )}
 
@@ -82,21 +82,21 @@ export function PreviewThreads({
               <span className="text-xs font-bold text-gray-950 hover:underline cursor-pointer truncate">
                 {pageName}
               </span>
-              <span className="text-[11px] text-gray-400 font-normal">· 1h</span>
+              <span className="text-[11px] text-muted-foreground font-normal">· 1h</span>
             </div>
-            <button className="text-gray-400 hover:text-gray-900 p-1 rounded-full hover:bg-gray-100 transition-colors">
+            <button className="text-muted-foreground hover:text-foreground p-1 rounded-full hover:bg-muted transition-colors">
               <MoreHorizontal size={16} />
             </button>
           </div>
 
           {/* Text Caption */}
-          <p className="text-[12px] text-gray-900 leading-relaxed font-normal whitespace-pre-wrap">
+          <p className="text-[12px] text-foreground leading-relaxed font-normal whitespace-pre-wrap">
             {displayCaption}
           </p>
 
           {/* Media Attachment Container */}
           {videoFileUrl ? (
-            <div className="rounded-xl overflow-hidden bg-black border border-gray-200 max-h-[360px] relative flex items-center justify-center">
+            <div className="rounded-xl overflow-hidden bg-black border border-border max-h-[360px] relative flex items-center justify-center">
               {isVideo ? (
                 <video src={videoFileUrl} controls className="w-full h-full max-h-[360px] object-cover" />
               ) : (
@@ -109,30 +109,30 @@ export function PreviewThreads({
               )}
             </div>
           ) : (
-            <div className="rounded-xl border border-dashed border-gray-200 bg-gray-50 h-32 flex flex-col items-center justify-center text-gray-400">
+            <div className="rounded-xl border border-dashed border-border bg-muted h-32 flex flex-col items-center justify-center text-muted-foreground">
               <Play size={18} className="text-gray-300 mb-1" />
-              <span className="text-[10px] font-semibold uppercase tracking-wider text-gray-400">Threads Media</span>
+              <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Threads Media</span>
             </div>
           )}
 
           {/* Action Bar (Heart, Comment, Repost, Share) */}
-          <div className="flex items-center gap-4 text-gray-700 pt-1">
-            <button className="hover:text-red-500 transition-colors p-1 -ml-1 rounded-full hover:bg-gray-100">
+          <div className="flex items-center gap-4 text-foreground pt-1">
+            <button className="hover:text-red-500 transition-colors p-1 -ml-1 rounded-full hover:bg-muted">
               <Heart size={18} />
             </button>
-            <button className="hover:text-gray-950 transition-colors p-1 rounded-full hover:bg-gray-100">
+            <button className="hover:text-gray-950 transition-colors p-1 rounded-full hover:bg-muted">
               <MessageCircle size={18} />
             </button>
-            <button className="hover:text-green-600 transition-colors p-1 rounded-full hover:bg-gray-100">
+            <button className="hover:text-green-600 transition-colors p-1 rounded-full hover:bg-muted">
               <Repeat2 size={18} />
             </button>
-            <button className="hover:text-gray-950 transition-colors p-1 rounded-full hover:bg-gray-100 -rotate-12">
+            <button className="hover:text-gray-950 transition-colors p-1 rounded-full hover:bg-muted -rotate-12">
               <Send size={17} />
             </button>
           </div>
 
           {/* Counts Info */}
-          <div className="text-[11px] text-gray-400 font-medium flex items-center gap-1.5 pt-0.5">
+          <div className="text-[11px] text-muted-foreground font-medium flex items-center gap-1.5 pt-0.5">
             <span>0 replies</span>
             <span>·</span>
             <span>0 likes</span>

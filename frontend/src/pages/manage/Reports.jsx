@@ -266,12 +266,12 @@ export function ReportsPage() {
   };
 
   const renderNoDataSkeleton = (title) => (
-    <div className="w-full aspect-[1.414/1] relative flex flex-col items-center justify-center gap-4 bg-white border border-dashed border-gray-200 rounded-xl p-6">
+    <div className="w-full aspect-[1.414/1] relative flex flex-col items-center justify-center gap-4 bg-card border border-dashed border-border rounded-xl p-6">
       <div className="flex flex-col items-center gap-2 text-center">
-        <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center">
+        <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center">
           <Calendar size={18} className="text-gray-300" />
         </div>
-        <span className="text-xs font-bold text-gray-400">{title}</span>
+        <span className="text-xs font-bold text-muted-foreground">{title}</span>
         <span className="text-[10px] text-gray-300 max-w-[200px] leading-relaxed">
           {t("editor.noDataDesc")}
         </span>
@@ -279,12 +279,12 @@ export function ReportsPage() {
       {/* Skeleton bars */}
       <div className="w-full grid grid-cols-4 gap-2 px-4">
         {[...Array(4)].map((_, i) => (
-          <div key={i} className="h-8 bg-gray-100 rounded-lg animate-pulse" />
+          <div key={i} className="h-8 bg-muted rounded-lg animate-pulse" />
         ))}
       </div>
       <div className="w-full grid grid-cols-2 gap-2 px-4">
-        <div className="h-16 bg-gray-100 rounded-lg animate-pulse" />
-        <div className="h-16 bg-gray-100 rounded-lg animate-pulse" />
+        <div className="h-16 bg-muted rounded-lg animate-pulse" />
+        <div className="h-16 bg-muted rounded-lg animate-pulse" />
       </div>
     </div>
   );
@@ -299,16 +299,16 @@ export function ReportsPage() {
             type="button"
             onClick={() => setSelectedWidgets((prev) => ({ ...prev, [section.key]: !prev[section.key] }))}
             className={`text-left rounded-xl border p-4 transition-all ${
-              checked ? "border-black ring-1 ring-black bg-white shadow-sm" : "border-gray-200 bg-white hover:shadow-sm"
+              checked ? "border-black ring-1 ring-black bg-card shadow-sm" : "border-border bg-card hover:shadow-sm"
             }`}
           >
             <div className="flex items-start justify-between gap-3">
               <div>
-                <div className="text-[11px] font-extrabold text-gray-900 tracking-tight">{section.title}</div>
-                <div className="text-[10px] text-gray-400 mt-1 leading-relaxed">{section.description}</div>
+                <div className="text-[11px] font-extrabold text-foreground tracking-tight">{section.title}</div>
+                <div className="text-[10px] text-muted-foreground mt-1 leading-relaxed">{section.description}</div>
               </div>
-              <div className={`mt-0.5 w-4 h-4 rounded-full border flex items-center justify-center ${checked ? "border-black bg-black" : "border-gray-300 bg-white"}`}>
-                {checked && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
+              <div className={`mt-0.5 w-4 h-4 rounded-full border flex items-center justify-center ${checked ? "border-black bg-black" : "border-gray-300 bg-card"}`}>
+                {checked && <div className="w-1.5 h-1.5 rounded-full bg-card" />}
               </div>
             </div>
           </button>
@@ -439,19 +439,19 @@ export function ReportsPage() {
     const actualPreview = renderActualDashboardPreview(pageType);
     if (actualPreview) {
       return (
-        <div className="w-full aspect-[1.414/1] relative flex flex-col overflow-hidden bg-white rounded-xl border border-gray-100">
-          <div className="flex items-center justify-between px-4 py-2 border-b border-gray-100 bg-white">
+        <div className="w-full aspect-[1.414/1] relative flex flex-col overflow-hidden bg-card rounded-xl border border-border">
+          <div className="flex items-center justify-between px-4 py-2 border-b border-border bg-card">
             <div className="flex items-center gap-2">
               {logoUrl ? (
                 <img src={logoUrl} alt="Logo" className="h-5 max-w-[100px] object-contain rounded" />
               ) : (
-                <div className="h-5 px-1.5 bg-gray-100 rounded flex items-center justify-center font-bold text-[7px] text-gray-500 uppercase">
+                <div className="h-5 px-1.5 bg-muted rounded flex items-center justify-center font-bold text-[7px] text-muted-foreground uppercase">
                   {brandName.substring(0, 3)}
                 </div>
               )}
-              <span className="text-[8px] font-black text-gray-700 uppercase tracking-wider">{brandName}</span>
+              <span className="text-[8px] font-black text-foreground uppercase tracking-wider">{brandName}</span>
             </div>
-            <span className="text-[7.5px] font-mono text-gray-400 font-bold uppercase tracking-widest">
+            <span className="text-[7.5px] font-mono text-muted-foreground font-bold uppercase tracking-widest">
               {pageType} • {period}
             </span>
           </div>
@@ -468,15 +468,15 @@ export function ReportsPage() {
           {logoUrl ? (
             <img src={logoUrl} alt="Logo" className="h-5 max-w-[100px] object-contain rounded" />
           ) : (
-            <div className="h-5 px-1.5 bg-gray-150 rounded flex items-center justify-center font-bold text-[7px] text-gray-500 uppercase">
+            <div className="h-5 px-1.5 bg-gray-150 rounded flex items-center justify-center font-bold text-[7px] text-muted-foreground uppercase">
               {brandName.substring(0, 3)}
             </div>
           )}
-          <span className="text-[8px] font-black text-gray-700 uppercase tracking-wider">{brandName}</span>
+          <span className="text-[8px] font-black text-foreground uppercase tracking-wider">{brandName}</span>
         </div>
         <div className="flex items-center gap-3">
-          <span className="text-[7.5px] font-mono text-gray-400 font-bold uppercase tracking-widest">{subtitle}</span>
-          <span className="text-[7.5px] font-mono text-gray-400 font-bold">{period}</span>
+          <span className="text-[7.5px] font-mono text-muted-foreground font-bold uppercase tracking-widest">{subtitle}</span>
+          <span className="text-[7.5px] font-mono text-muted-foreground font-bold">{period}</span>
         </div>
       </div>
     );
@@ -492,7 +492,7 @@ export function ReportsPage() {
       return (
         <div 
           className={`w-full aspect-[1.414/1] relative flex flex-col justify-between overflow-hidden p-6 transition-all rounded-xl ${
-            coverBackgroundUrl ? "bg-white" : "bg-gradient-to-br from-slate-900 via-slate-800 to-slate-955 text-white"
+            coverBackgroundUrl ? "bg-card" : "bg-gradient-to-br from-slate-900 via-slate-800 to-slate-955 text-white"
           }`}
           style={coverBackgroundUrl ? {
             backgroundImage: `url(${coverBackgroundUrl})`,
@@ -513,7 +513,7 @@ export function ReportsPage() {
             {logoUrl ? (
               <img src={logoUrl} alt="Logo" className="h-6.5 max-w-[120px] object-contain rounded" />
             ) : (
-              <div className="h-6.5 px-2 bg-white/10 rounded flex items-center justify-center font-bold text-[8px] text-white/80">
+              <div className="h-6.5 px-2 bg-card/10 rounded flex items-center justify-center font-bold text-[8px] text-white/80">
                 {brandName.substring(0, 10)}
               </div>
             )}
@@ -523,7 +523,7 @@ export function ReportsPage() {
           <div className="my-auto z-10 space-y-3">
             <h1 
               className={`text-xl font-black tracking-tight leading-tight uppercase ${
-                coverBackgroundUrl ? "text-gray-800" : "text-white"
+                coverBackgroundUrl ? "text-foreground" : "text-white"
               }`}
             >
               {reportTitle || t("editor.coverTitle")}
@@ -551,7 +551,7 @@ export function ReportsPage() {
       const { overview, channels } = data;
       return (
         <div 
-          className="w-full aspect-[1.414/1] relative flex flex-col justify-between overflow-hidden p-5 bg-white text-gray-800 border border-gray-150 rounded-xl"
+          className="w-full aspect-[1.414/1] relative flex flex-col justify-between overflow-hidden p-5 bg-card text-foreground border border-gray-150 rounded-xl"
           style={bodyBackgroundUrl ? {
             backgroundImage: `url(${bodyBackgroundUrl})`,
             backgroundSize: "cover",
@@ -561,41 +561,41 @@ export function ReportsPage() {
           {renderHeader(t("sections.overview").toUpperCase())}
 
           <div className="grid grid-cols-4 gap-3 mb-3">
-            <div className="p-2 bg-gray-50 border border-gray-100 rounded-lg space-y-0.5 hover:shadow-sm transition-all" style={{ borderLeft: `3px solid ${color}` }}>
-              <div className="text-[6.5px] text-gray-400 font-bold uppercase tracking-wider">{t("sections.reach")}</div>
+            <div className="p-2 bg-muted border border-border rounded-lg space-y-0.5 hover:shadow-sm transition-all" style={{ borderLeft: `3px solid ${color}` }}>
+              <div className="text-[6.5px] text-muted-foreground font-bold uppercase tracking-wider">{t("sections.reach")}</div>
               <div className="text-sm font-black text-gray-850 font-mono">
                 {overview.reach >= 1000 ? `${(overview.reach / 1000).toFixed(1)}K` : overview.reach}
               </div>
             </div>
-            <div className="p-2 bg-gray-50 border border-gray-100 rounded-lg space-y-0.5 hover:shadow-sm transition-all" style={{ borderLeft: `3px solid #52C79F` }}>
-              <div className="text-[6.5px] text-gray-400 font-bold uppercase tracking-wider">{t("sections.impressions")}</div>
+            <div className="p-2 bg-muted border border-border rounded-lg space-y-0.5 hover:shadow-sm transition-all" style={{ borderLeft: `3px solid #52C79F` }}>
+              <div className="text-[6.5px] text-muted-foreground font-bold uppercase tracking-wider">{t("sections.impressions")}</div>
               <div className="text-sm font-black text-gray-850 font-mono">
                 {overview.impressions >= 1000 ? `${(overview.impressions / 1000).toFixed(1)}K` : overview.impressions}
               </div>
             </div>
-            <div className="p-2 bg-gray-50 border border-gray-100 rounded-lg space-y-0.5 hover:shadow-sm transition-all" style={{ borderLeft: `3px solid #E6A735` }}>
-              <div className="text-[6.5px] text-gray-400 font-bold uppercase tracking-wider">{t("sections.engagements")}</div>
+            <div className="p-2 bg-muted border border-border rounded-lg space-y-0.5 hover:shadow-sm transition-all" style={{ borderLeft: `3px solid #E6A735` }}>
+              <div className="text-[6.5px] text-muted-foreground font-bold uppercase tracking-wider">{t("sections.engagements")}</div>
               <div className="text-sm font-black text-gray-850 font-mono">
                 {overview.engagements >= 1000 ? `${(overview.engagements / 1000).toFixed(1)}K` : overview.engagements}
               </div>
             </div>
-            <div className="p-2 bg-gray-50 border border-gray-100 rounded-lg space-y-0.5 hover:shadow-sm transition-all" style={{ borderLeft: `3px solid #C65880` }}>
-              <div className="text-[6.5px] text-gray-400 font-bold uppercase tracking-wider">{t("sections.engagementRate")}</div>
+            <div className="p-2 bg-muted border border-border rounded-lg space-y-0.5 hover:shadow-sm transition-all" style={{ borderLeft: `3px solid #C65880` }}>
+              <div className="text-[6.5px] text-muted-foreground font-bold uppercase tracking-wider">{t("sections.engagementRate")}</div>
               <div className="text-sm font-black text-gray-850 font-mono">{overview.engagementRate}%</div>
             </div>
           </div>
 
           <div className="grid grid-cols-5 gap-3 items-stretch mb-1">
-            <div className="col-span-2 bg-gray-50 border border-gray-100 rounded-lg p-2.5 flex flex-col justify-between">
-              <span className="text-[7px] font-extrabold text-gray-500 uppercase tracking-wider mb-1.5">{t("sections.activeChannels")}</span>
+            <div className="col-span-2 bg-muted border border-border rounded-lg p-2.5 flex flex-col justify-between">
+              <span className="text-[7px] font-extrabold text-muted-foreground uppercase tracking-wider mb-1.5">{t("sections.activeChannels")}</span>
               <div className="space-y-1.5">
                 {channels.map((ch, idx) => (
                   <div key={idx} className="flex justify-between items-center text-[7.5px]">
                     <div className="flex items-center gap-1 truncate">
                       <PlatformIcon platform={ch.platform} size={9} />
-                      <span className="font-bold text-gray-700 truncate w-16">{ch.displayName}</span>
+                      <span className="font-bold text-foreground truncate w-16">{ch.displayName}</span>
                     </div>
-                    <span className="font-mono font-bold text-gray-500">
+                    <span className="font-mono font-bold text-muted-foreground">
                       {ch.followers >= 1000 ? `${(ch.followers / 1000).toFixed(1)}K` : ch.followers}
                     </span>
                   </div>
@@ -603,8 +603,8 @@ export function ReportsPage() {
               </div>
             </div>
 
-            <div className="col-span-3 bg-gray-50 border border-gray-100 rounded-lg p-2.5 flex flex-col justify-between">
-              <span className="text-[7px] font-extrabold text-gray-500 uppercase tracking-wider">{t("sections.engagementTrend")}</span>
+            <div className="col-span-3 bg-muted border border-border rounded-lg p-2.5 flex flex-col justify-between">
+              <span className="text-[7px] font-extrabold text-muted-foreground uppercase tracking-wider">{t("sections.engagementTrend")}</span>
               {(() => {
                 const combined = getCombinedGrowth(channels);
                 const maxEng = Math.max(...combined, 1);
@@ -652,7 +652,7 @@ export function ReportsPage() {
       
       return (
         <div 
-          className="w-full aspect-[1.414/1] relative flex flex-col justify-between overflow-hidden p-5 bg-white text-gray-800 border border-gray-150 rounded-xl"
+          className="w-full aspect-[1.414/1] relative flex flex-col justify-between overflow-hidden p-5 bg-card text-foreground border border-gray-150 rounded-xl"
           style={bodyBackgroundUrl ? {
             backgroundImage: `url(${bodyBackgroundUrl})`,
             backgroundSize: "cover",
@@ -662,31 +662,31 @@ export function ReportsPage() {
           {renderHeader("FACEBOOK PERFORMANCE")}
 
           <div className="grid grid-cols-4 gap-3 mb-2.5">
-            <div className="p-2 bg-gray-50 border border-gray-100 rounded-lg space-y-0.5">
+            <div className="p-2 bg-muted border border-border rounded-lg space-y-0.5">
               <span className="text-[6.5px] text-gray-450 font-bold uppercase">{t("sections.followers")}</span>
               <div className="text-xs font-black text-blue-600 font-mono">
                 {fbChannel.followers >= 1000 ? `${(fbChannel.followers / 1000).toFixed(1)}K` : fbChannel.followers}
               </div>
             </div>
-            <div className="p-2 bg-gray-50 border border-gray-100 rounded-lg space-y-0.5">
+            <div className="p-2 bg-muted border border-border rounded-lg space-y-0.5">
               <span className="text-[6.5px] text-gray-450 font-bold uppercase">{t("sections.pageReach")}</span>
               <div className="text-xs font-black text-gray-850 font-mono">
                 {fbChannel.reach >= 1000 ? `${(fbChannel.reach / 1000).toFixed(1)}K` : fbChannel.reach}
               </div>
             </div>
-            <div className="p-2 bg-gray-50 border border-gray-100 rounded-lg space-y-0.5">
+            <div className="p-2 bg-muted border border-border rounded-lg space-y-0.5">
               <span className="text-[6.5px] text-gray-450 font-bold uppercase">{t("sections.postsCount")}</span>
               <div className="text-xs font-black text-gray-850 font-mono">{fbChannel.postsCount}</div>
             </div>
-            <div className="p-2 bg-gray-50 border border-gray-100 rounded-lg space-y-0.5">
+            <div className="p-2 bg-muted border border-border rounded-lg space-y-0.5">
               <span className="text-[6.5px] text-gray-450 font-bold uppercase">{t("sections.avgEngagement")}</span>
               <div className="text-xs font-black text-gray-850 font-mono">{fbChannel.engagementRate}%</div>
             </div>
           </div>
 
           <div className="grid grid-cols-5 gap-3 items-stretch mb-1">
-            <div className="col-span-2 bg-gray-50 border border-gray-100 rounded-lg p-2 flex flex-col justify-between">
-              <span className="text-[7px] font-extrabold text-gray-500 uppercase tracking-wider">{t("sections.weeklyReach")}</span>
+            <div className="col-span-2 bg-muted border border-border rounded-lg p-2 flex flex-col justify-between">
+              <span className="text-[7px] font-extrabold text-muted-foreground uppercase tracking-wider">{t("sections.weeklyReach")}</span>
               <svg viewBox="0 0 150 75" className="w-full h-12 overflow-visible">
                 <line x1="10" y1="10" x2="140" y2="10" stroke="#E2E8F0" strokeWidth="0.5" strokeDasharray="2 2" />
                 <line x1="10" y1="35" x2="140" y2="35" stroke="#E2E8F0" strokeWidth="0.5" strokeDasharray="2 2" />
@@ -708,19 +708,19 @@ export function ReportsPage() {
               </svg>
             </div>
 
-            <div className="col-span-3 bg-gray-50 border border-gray-100 rounded-lg p-2.5 flex flex-col justify-between">
-              <span className="text-[7px] font-extrabold text-gray-500 uppercase tracking-wider mb-1.5">{t("sections.topPosts")}</span>
+            <div className="col-span-3 bg-muted border border-border rounded-lg p-2.5 flex flex-col justify-between">
+              <span className="text-[7px] font-extrabold text-muted-foreground uppercase tracking-wider mb-1.5">{t("sections.topPosts")}</span>
               <div className="space-y-1.5">
                 {fbPosts.length > 0 ? fbPosts.map((post, idx) => (
                   <div key={post.id || idx} className="border-b border-gray-150 pb-1 last:border-b-0 last:pb-0">
-                    <p className="text-[7px] text-gray-700 font-bold truncate line-clamp-1 w-full">{post.title}</p>
-                    <div className="flex justify-between items-center text-[6px] text-gray-400 font-mono mt-0.5">
+                    <p className="text-[7px] text-foreground font-bold truncate line-clamp-1 w-full">{post.title}</p>
+                    <div className="flex justify-between items-center text-[6px] text-muted-foreground font-mono mt-0.5">
                       <span>Likes: {post.likes} • Shares: {post.shares}</span>
                       <span className="text-[#3B82F6] font-bold">{post.engagementRate}% {t("sections.engagementRate")}</span>
                     </div>
                   </div>
                 )) : (
-                  <div className="text-[7.5px] text-gray-400 text-center py-2">{t("sections.noPosts")}</div>
+                  <div className="text-[7.5px] text-muted-foreground text-center py-2">{t("sections.noPosts")}</div>
                 )}
               </div>
             </div>
@@ -737,7 +737,7 @@ export function ReportsPage() {
       
       return (
         <div 
-          className="w-full aspect-[1.414/1] relative flex flex-col justify-between overflow-hidden p-5 bg-white text-gray-800 border border-gray-150 rounded-xl"
+          className="w-full aspect-[1.414/1] relative flex flex-col justify-between overflow-hidden p-5 bg-card text-foreground border border-gray-150 rounded-xl"
           style={bodyBackgroundUrl ? {
             backgroundImage: `url(${bodyBackgroundUrl})`,
             backgroundSize: "cover",
@@ -747,33 +747,33 @@ export function ReportsPage() {
           {renderHeader("INSTAGRAM PROFILE ANALYSIS")}
 
           <div className="grid grid-cols-4 gap-3 mb-2.5">
-            <div className="p-2 bg-gray-50 border border-gray-100 rounded-lg space-y-0.5">
+            <div className="p-2 bg-muted border border-border rounded-lg space-y-0.5">
               <span className="text-[6.5px] text-gray-450 font-bold uppercase">{t("sections.followers")}</span>
               <div className="text-xs font-black text-pink-650 font-mono">
                 {igChannel.followers >= 1000 ? `${(igChannel.followers / 1000).toFixed(1)}K` : igChannel.followers}
               </div>
             </div>
-            <div className="p-2 bg-gray-50 border border-gray-100 rounded-lg space-y-0.5">
+            <div className="p-2 bg-muted border border-border rounded-lg space-y-0.5">
               <span className="text-[6.5px] text-gray-450 font-bold uppercase">{t("sections.reach")}</span>
               <div className="text-xs font-black text-gray-850 font-mono">
                 {igChannel.reach >= 1000 ? `${(igChannel.reach / 1000).toFixed(1)}K` : igChannel.reach}
               </div>
             </div>
-            <div className="p-2 bg-gray-50 border border-gray-100 rounded-lg space-y-0.5">
+            <div className="p-2 bg-muted border border-border rounded-lg space-y-0.5">
               <span className="text-[6.5px] text-gray-450 font-bold uppercase">{t("sections.impressions")}</span>
               <div className="text-xs font-black text-gray-850 font-mono">
                 {igChannel.impressions >= 1000 ? `${(igChannel.impressions / 1000).toFixed(1)}K` : igChannel.impressions}
               </div>
             </div>
-            <div className="p-2 bg-gray-50 border border-gray-100 rounded-lg space-y-0.5">
+            <div className="p-2 bg-muted border border-border rounded-lg space-y-0.5">
               <span className="text-[6.5px] text-gray-450 font-bold uppercase">{t("sections.postsCount")}</span>
               <div className="text-xs font-black text-gray-850 font-mono">{igChannel.postsCount}</div>
             </div>
           </div>
 
           <div className="grid grid-cols-5 gap-3 items-stretch mb-1">
-            <div className="col-span-2 bg-gray-50 border border-gray-100 rounded-lg p-2 flex flex-col justify-between">
-              <span className="text-[7px] font-extrabold text-gray-500 uppercase tracking-wider mb-1 self-start">{t("sections.engagementStructure")}</span>
+            <div className="col-span-2 bg-muted border border-border rounded-lg p-2 flex flex-col justify-between">
+              <span className="text-[7px] font-extrabold text-muted-foreground uppercase tracking-wider mb-1 self-start">{t("sections.engagementStructure")}</span>
               {(() => {
                 const likesVal = igChannel.likes || 0;
                 const commentsVal = igChannel.comments || 0;
@@ -808,10 +808,10 @@ export function ReportsPage() {
                       </svg>
                       <div className="absolute flex flex-col items-center justify-center">
                         <span className="text-[5px] text-gray-450 font-bold uppercase">Likes</span>
-                        <span className="text-[7.5px] font-black text-gray-700">{likesPct.toFixed(0)}%</span>
+                        <span className="text-[7.5px] font-black text-foreground">{likesPct.toFixed(0)}%</span>
                       </div>
                     </div>
-                    <div className="flex flex-col gap-0.5 text-[5.5px] font-bold text-gray-600 font-mono">
+                    <div className="flex flex-col gap-0.5 text-[5.5px] font-bold text-muted-foreground font-mono">
                       <div className="flex items-center gap-1">
                         <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: color }} />
                         <span>{t("sections.likesLabel", { percent: likesPct.toFixed(0) })}</span>
@@ -834,13 +834,13 @@ export function ReportsPage() {
               })()}
             </div>
 
-            <div className="col-span-3 bg-gray-50 border border-gray-100 rounded-lg p-2.5 flex flex-col justify-between">
-              <span className="text-[7px] font-extrabold text-gray-500 uppercase tracking-wider mb-1.5">{t("sections.topIgPosts")}</span>
+            <div className="col-span-3 bg-muted border border-border rounded-lg p-2.5 flex flex-col justify-between">
+              <span className="text-[7px] font-extrabold text-muted-foreground uppercase tracking-wider mb-1.5">{t("sections.topIgPosts")}</span>
               <div className="space-y-1.5">
                 {igPosts.length > 0 ? igPosts.map((post, idx) => (
                   <div key={post.id || idx} className="border-b border-gray-150 pb-1 last:border-b-0 last:pb-0">
-                    <p className="text-[7px] text-gray-700 font-bold truncate line-clamp-1 w-full">{post.title}</p>
-                    <div className="flex justify-between items-center text-[6px] text-gray-400 font-mono mt-0.5">
+                    <p className="text-[7px] text-foreground font-bold truncate line-clamp-1 w-full">{post.title}</p>
+                    <div className="flex justify-between items-center text-[6px] text-muted-foreground font-mono mt-0.5">
                       <span>Likes: {post.likes} • Comments: {post.comments}</span>
                       <span className="text-pink-500 font-bold">{post.engagementRate}% {t("sections.engagementRate")}</span>
                     </div>
@@ -863,7 +863,7 @@ export function ReportsPage() {
       
       return (
         <div 
-          className="w-full aspect-[1.414/1] relative flex flex-col justify-between overflow-hidden p-5 bg-white text-gray-800 border border-gray-150 rounded-xl"
+          className="w-full aspect-[1.414/1] relative flex flex-col justify-between overflow-hidden p-5 bg-card text-foreground border border-gray-150 rounded-xl"
           style={bodyBackgroundUrl ? {
             backgroundImage: `url(${bodyBackgroundUrl})`,
             backgroundSize: "cover",
@@ -873,31 +873,31 @@ export function ReportsPage() {
           {renderHeader("YOUTUBE VIDEO ANALYSIS")}
 
           <div className="grid grid-cols-4 gap-3 mb-2.5">
-            <div className="p-2 bg-gray-50 border border-gray-100 rounded-lg space-y-0.5">
+            <div className="p-2 bg-muted border border-border rounded-lg space-y-0.5">
               <span className="text-[6.5px] text-gray-450 font-bold uppercase">{t("sections.followers")}</span>
               <div className="text-xs font-black text-red-600 font-mono">
                 {ytChannel.followers >= 1000 ? `${(ytChannel.followers / 1000).toFixed(1)}K` : ytChannel.followers}
               </div>
             </div>
-            <div className="p-2 bg-gray-50 border border-gray-100 rounded-lg space-y-0.5">
+            <div className="p-2 bg-muted border border-border rounded-lg space-y-0.5">
               <span className="text-[6.5px] text-gray-450 font-bold uppercase">{t("sections.totalViews")}</span>
               <div className="text-xs font-black text-gray-850 font-mono">
                 {ytChannel.impressions >= 1000 ? `${(ytChannel.impressions / 1000).toFixed(1)}K` : ytChannel.impressions}
               </div>
             </div>
-            <div className="p-2 bg-gray-50 border border-gray-100 rounded-lg space-y-0.5">
+            <div className="p-2 bg-muted border border-border rounded-lg space-y-0.5">
               <span className="text-[6.5px] text-gray-450 font-bold uppercase">{t("sections.postsCount")}</span>
               <div className="text-xs font-black text-gray-850 font-mono">{ytChannel.postsCount}</div>
             </div>
-            <div className="p-2 bg-gray-50 border border-gray-100 rounded-lg space-y-0.5">
+            <div className="p-2 bg-muted border border-border rounded-lg space-y-0.5">
               <span className="text-[6.5px] text-gray-450 font-bold uppercase">{t("sections.avgEngagement")}</span>
               <div className="text-xs font-black text-gray-850 font-mono">{ytChannel.engagementRate}%</div>
             </div>
           </div>
 
           <div className="grid grid-cols-5 gap-3 items-stretch mb-1">
-            <div className="col-span-2 bg-gray-50 border border-gray-100 rounded-lg p-2 flex flex-col justify-between">
-              <span className="text-[7px] font-extrabold text-gray-500 uppercase tracking-wider">{t("sections.subscribersGrowth")}</span>
+            <div className="col-span-2 bg-muted border border-border rounded-lg p-2 flex flex-col justify-between">
+              <span className="text-[7px] font-extrabold text-muted-foreground uppercase tracking-wider">{t("sections.subscribersGrowth")}</span>
               <svg viewBox="0 0 150 75" className="w-full h-12 overflow-visible">
                 <line x1="10" y1="10" x2="140" y2="10" stroke="#E2E8F0" strokeWidth="0.5" strokeDasharray="2 2" />
                 <line x1="10" y1="35" x2="140" y2="35" stroke="#E2E8F0" strokeWidth="0.5" strokeDasharray="2 2" />
@@ -923,13 +923,13 @@ export function ReportsPage() {
               </svg>
             </div>
 
-            <div className="col-span-3 bg-gray-50 border border-gray-100 rounded-lg p-2.5 flex flex-col justify-between">
-              <span className="text-[7px] font-extrabold text-gray-500 uppercase tracking-wider mb-1.5">{t("sections.topVideos")}</span>
+            <div className="col-span-3 bg-muted border border-border rounded-lg p-2.5 flex flex-col justify-between">
+              <span className="text-[7px] font-extrabold text-muted-foreground uppercase tracking-wider mb-1.5">{t("sections.topVideos")}</span>
               <div className="space-y-1.5">
                 {ytPosts.length > 0 ? ytPosts.map((post, idx) => (
                   <div key={post.id || idx} className="border-b border-gray-150 pb-1 last:border-b-0 last:pb-0">
-                    <p className="text-[7px] text-gray-700 font-bold truncate line-clamp-1 w-full">{post.title}</p>
-                    <div className="flex justify-between items-center text-[6px] text-gray-400 font-mono mt-0.5">
+                    <p className="text-[7px] text-foreground font-bold truncate line-clamp-1 w-full">{post.title}</p>
+                    <div className="flex justify-between items-center text-[6px] text-muted-foreground font-mono mt-0.5">
                       <span>{t("sections.totalViews")}: {post.likes * 12} • {t("sections.totalLikes")}: {post.likes}</span>
                       <span className="text-red-500 font-bold">{post.engagementRate}%</span>
                     </div>
@@ -953,7 +953,7 @@ export function ReportsPage() {
 
       return (
         <div
-          className="w-full aspect-[1.414/1] relative flex flex-col justify-between overflow-hidden p-5 bg-white text-gray-800 border border-gray-150 rounded-xl"
+          className="w-full aspect-[1.414/1] relative flex flex-col justify-between overflow-hidden p-5 bg-card text-foreground border border-gray-150 rounded-xl"
           style={bodyBackgroundUrl ? { backgroundImage: `url(${bodyBackgroundUrl})`, backgroundSize: "cover", backgroundPosition: "center" } : {}}
         >
           {renderHeader("TIKTOK PERFORMANCE")}
@@ -966,7 +966,7 @@ export function ReportsPage() {
               { label: t("sections.totalLikes"), value: ttChannel.likes >= 1000 ? `${(ttChannel.likes / 1000).toFixed(1)}K` : ttChannel.likes, accent: "#25F4EE" },
               { label: t("sections.avgEngagement"), value: `${ttChannel.engagementRate}%`, accent: color }
             ].map((kpi, i) => (
-              <div key={i} className="p-2 bg-gray-50 border border-gray-100 rounded-lg space-y-0.5" style={{ borderTop: `2px solid ${kpi.accent}` }}>
+              <div key={i} className="p-2 bg-muted border border-border rounded-lg space-y-0.5" style={{ borderTop: `2px solid ${kpi.accent}` }}>
                 <span className="text-[6.5px] text-gray-450 font-bold uppercase tracking-wider block">{kpi.label}</span>
                 <div className="text-xs font-black font-mono" style={{ color: kpi.accent === "#000000" ? "#111" : kpi.accent }}>{kpi.value}</div>
               </div>
@@ -975,8 +975,8 @@ export function ReportsPage() {
 
           <div className="grid grid-cols-5 gap-2.5 items-stretch mb-1">
             {/* Weekly Views Bar Chart */}
-            <div className="col-span-2 bg-gray-50 border border-gray-100 rounded-lg p-2 flex flex-col">
-              <span className="text-[7px] font-extrabold text-gray-500 uppercase tracking-wider mb-1">{t("sections.weeklyViews")}</span>
+            <div className="col-span-2 bg-muted border border-border rounded-lg p-2 flex flex-col">
+              <span className="text-[7px] font-extrabold text-muted-foreground uppercase tracking-wider mb-1">{t("sections.weeklyViews")}</span>
               <svg viewBox="0 0 150 70" className="w-full flex-1">
                 <line x1="10" y1="10" x2="140" y2="10" stroke="#E2E8F0" strokeWidth="0.5" strokeDasharray="2 2" />
                 <line x1="10" y1="35" x2="140" y2="35" stroke="#E2E8F0" strokeWidth="0.5" strokeDasharray="2 2" />
@@ -999,16 +999,16 @@ export function ReportsPage() {
             </div>
 
             {/* Top Videos Ranking */}
-            <div className="col-span-3 bg-gray-50 border border-gray-100 rounded-lg p-2.5 flex flex-col">
+            <div className="col-span-3 bg-muted border border-border rounded-lg p-2.5 flex flex-col">
               <div className="flex items-center justify-between mb-1.5">
-                <span className="text-[7px] font-extrabold text-gray-500 uppercase tracking-wider">Top TikTok Videos</span>
+                <span className="text-[7px] font-extrabold text-muted-foreground uppercase tracking-wider">Top TikTok Videos</span>
                 <span className="text-[6px] px-1.5 py-0.5 rounded font-bold text-white" style={{ backgroundColor: "#FE2C55" }}>TIKTOK</span>
               </div>
               <div className="space-y-1.5">
                 {ttPosts.length > 0 ? ttPosts.map((post, idx) => (
-                  <div key={post.id || idx} className="border-b border-gray-100 pb-1 last:border-b-0 last:pb-0">
-                    <p className="text-[7px] text-gray-700 font-bold truncate">{post.title}</p>
-                    <div className="flex justify-between items-center text-[6px] text-gray-400 font-mono mt-0.5">
+                  <div key={post.id || idx} className="border-b border-border pb-1 last:border-b-0 last:pb-0">
+                    <p className="text-[7px] text-foreground font-bold truncate">{post.title}</p>
+                    <div className="flex justify-between items-center text-[6px] text-muted-foreground font-mono mt-0.5">
                       <span>❤️ {(post.likes || 0).toLocaleString()} · 💬 {(post.comments || 0).toLocaleString()} · 🔁 {(post.shares || 0).toLocaleString()}</span>
                       <span className="font-bold" style={{ color: "#FE2C55" }}>{post.engagementRate}%</span>
                     </div>
@@ -1035,7 +1035,7 @@ export function ReportsPage() {
 
       return (
         <div
-          className="w-full aspect-[1.414/1] relative flex flex-col justify-between overflow-hidden p-5 bg-white text-gray-800 border border-gray-150 rounded-xl"
+          className="w-full aspect-[1.414/1] relative flex flex-col justify-between overflow-hidden p-5 bg-card text-foreground border border-gray-150 rounded-xl"
           style={bodyBackgroundUrl ? { backgroundImage: `url(${bodyBackgroundUrl})`, backgroundSize: "cover", backgroundPosition: "center" } : {}}
         >
           {renderHeader("TELEGRAM CHANNEL ANALYTICS")}
@@ -1048,7 +1048,7 @@ export function ReportsPage() {
               { label: t("sections.forwarded"), value: tgChannel.shares >= 1000 ? `${(tgChannel.shares / 1000).toFixed(1)}K` : tgChannel.shares, accent: color },
               { label: t("sections.reactionRate"), value: `${tgChannel.engagementRate}%`, accent: "#52C79F" }
             ].map((kpi, i) => (
-              <div key={i} className="p-2 bg-gray-50 border border-gray-100 rounded-lg space-y-0.5" style={{ borderTop: `2px solid ${kpi.accent}` }}>
+              <div key={i} className="p-2 bg-muted border border-border rounded-lg space-y-0.5" style={{ borderTop: `2px solid ${kpi.accent}` }}>
                 <span className="text-[6.5px] text-gray-450 font-bold uppercase tracking-wider block">{kpi.label}</span>
                 <div className="text-xs font-black font-mono" style={{ color: kpi.accent }}>{kpi.value}</div>
               </div>
@@ -1057,8 +1057,8 @@ export function ReportsPage() {
 
           <div className="grid grid-cols-5 gap-2.5 items-stretch mb-1">
             {/* Views Trend Line */}
-            <div className="col-span-2 bg-gray-50 border border-gray-100 rounded-lg p-2 flex flex-col">
-              <span className="text-[7px] font-extrabold text-gray-500 uppercase tracking-wider mb-1">{t("sections.totalViews")}</span>
+            <div className="col-span-2 bg-muted border border-border rounded-lg p-2 flex flex-col">
+              <span className="text-[7px] font-extrabold text-muted-foreground uppercase tracking-wider mb-1">{t("sections.totalViews")}</span>
               <svg viewBox="0 0 150 70" className="w-full flex-1">
                 <line x1="10" y1="10" x2="140" y2="10" stroke="#E2E8F0" strokeWidth="0.5" strokeDasharray="2 2" />
                 <line x1="10" y1="35" x2="140" y2="35" stroke="#E2E8F0" strokeWidth="0.5" strokeDasharray="2 2" />
@@ -1095,16 +1095,16 @@ export function ReportsPage() {
             </div>
 
             {/* Subscriber Growth + Top Posts */}
-            <div className="col-span-3 bg-gray-50 border border-gray-100 rounded-lg p-2.5 flex flex-col">
+            <div className="col-span-3 bg-muted border border-border rounded-lg p-2.5 flex flex-col">
               <div className="flex items-center justify-between mb-1.5">
-                <span className="text-[7px] font-extrabold text-gray-500 uppercase tracking-wider">{t("sections.topPosts")}</span>
+                <span className="text-[7px] font-extrabold text-muted-foreground uppercase tracking-wider">{t("sections.topPosts")}</span>
                 <span className="text-[6px] px-1.5 py-0.5 rounded font-bold text-white" style={{ backgroundColor: "#24A1DE" }}>TELEGRAM</span>
               </div>
               <div className="space-y-1.5">
                 {tgPosts.length > 0 ? tgPosts.map((post, idx) => (
-                  <div key={post.id || idx} className="border-b border-gray-100 pb-1 last:border-b-0 last:pb-0">
-                    <p className="text-[7px] text-gray-700 font-bold truncate">{post.title}</p>
-                    <div className="flex justify-between items-center text-[6px] text-gray-400 font-mono mt-0.5">
+                  <div key={post.id || idx} className="border-b border-border pb-1 last:border-b-0 last:pb-0">
+                    <p className="text-[7px] text-foreground font-bold truncate">{post.title}</p>
+                    <div className="flex justify-between items-center text-[6px] text-muted-foreground font-mono mt-0.5">
                       <span>👁 {(post.views || 0).toLocaleString()} {t("sections.totalViews").toLowerCase()}</span>
                       <span className="font-bold" style={{ color: "#24A1DE" }}>{post.engagementRate}% reach</span>
                     </div>
@@ -1115,7 +1115,7 @@ export function ReportsPage() {
               </div>
               
               {/* Subscriber growth progress */}
-              <div className="mt-auto pt-1.5 border-t border-gray-100">
+              <div className="mt-auto pt-1.5 border-t border-border">
                 {(() => {
                   const weeklyMembers = getWeeklyData(tgChannel.analyticsData?.growth, "followers");
                   const initialTgMembers = weeklyMembers[0] || 0;
@@ -1123,7 +1123,7 @@ export function ReportsPage() {
                   const tgGrowthPct = initialTgMembers > 0 ? (((finalTgMembers - initialTgMembers) / initialTgMembers) * 100).toFixed(1) : "0.0";
                   return (
                     <>
-                      <div className="flex justify-between text-[6.5px] text-gray-500 mb-1">
+                      <div className="flex justify-between text-[6.5px] text-muted-foreground mb-1">
                         <span>{t("sections.subscribersGrowthMonthly")}</span>
                         <span className="font-bold text-green-500">+{tgGrowthPct}%</span>
                       </div>
@@ -1188,9 +1188,9 @@ export function ReportsPage() {
       ).map(v => ({ ...v, platform: 'FACEBOOK' }));
 
       return (
-        <div className="space-y-8 p-4 bg-white rounded-3xl border border-gray-100">
+        <div className="space-y-8 p-4 bg-card rounded-3xl border border-border">
           <div className="border-b pb-4 mb-4 flex items-center justify-between">
-             <h4 className="text-base font-bold text-gray-800 uppercase tracking-tight flex items-center gap-2">
+             <h4 className="text-base font-bold text-foreground uppercase tracking-tight flex items-center gap-2">
                <PlatformIcon platform="Facebook" size={18} />
                {t("dashboard.fbOverview")}
              </h4>
@@ -1202,7 +1202,7 @@ export function ReportsPage() {
             <FacebookInteractionsTab realData={fbRealData} />
           )}
           <div>
-            <h5 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">Danh sách bài đăng Facebook</h5>
+            <h5 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-3">Danh sách bài đăng Facebook</h5>
             <GenericPostsListTab
               posts={fbPublishedPosts}
               isLoading={false}
@@ -1228,9 +1228,9 @@ export function ReportsPage() {
       };
 
       return (
-        <div className="space-y-8 p-4 bg-white rounded-3xl border border-gray-100">
+        <div className="space-y-8 p-4 bg-card rounded-3xl border border-border">
           <div className="border-b pb-4 mb-4">
-             <h4 className="text-base font-bold text-gray-800 uppercase tracking-tight flex items-center gap-2">
+             <h4 className="text-base font-bold text-foreground uppercase tracking-tight flex items-center gap-2">
                <PlatformIcon platform="Instagram" size={18} />
                {t("dashboard.igAnalysis")}
              </h4>
@@ -1242,8 +1242,8 @@ export function ReportsPage() {
               data={igRealData.growth}
               metricConfig={[
                 { key: "followers", label: t("sections.followers"), color: "bg-[#8E9BEE] text-white", chartColor: "#8E9BEE", type: "area", value: channelData.followers || 0 },
-                { key: "following", label: t("sections.following", "Following"), color: "bg-[#A7F3D0] text-gray-900", chartColor: "#A7F3D0", type: "line", value: 0 },
-                { key: "totalContent", label: t("sections.postsCount"), color: "bg-[#FEF08A] text-gray-900", chartColor: "#EAB308", type: "bar", yAxisId: "right", value: channelData.postsCount || 0 }
+                { key: "following", label: t("sections.following", "Following"), color: "bg-[#A7F3D0] text-foreground", chartColor: "#A7F3D0", type: "line", value: 0 },
+                { key: "totalContent", label: t("sections.postsCount"), color: "bg-[#FEF08A] text-foreground", chartColor: "#EAB308", type: "bar", yAxisId: "right", value: channelData.postsCount || 0 }
               ]}
               summaryGrid={[
                 { label: t("sections.followers"), value: channelData.followers || 0 },
@@ -1275,7 +1275,7 @@ export function ReportsPage() {
       const ytMetricConfig = [
         { key: "subscribers", label: t("sections.followers"), color: "bg-[#EF4444] text-white", chartColor: "#EF4444", type: "area", value: ytGrowthData.reduce((a,b)=>a+(b.subscribers||0),0) },
         { key: "views", label: t("sections.totalViews"), color: "bg-[#818CF8] text-white", chartColor: "#818CF8", type: "line", value: channelData.impressions || 0 },
-        { key: "videos", label: t("sections.postsCount"), color: "bg-[#FEF08A] text-gray-900", chartColor: "#EAB308", type: "bar", yAxisId: "right", value: channelData.postsCount || 0 }
+        { key: "videos", label: t("sections.postsCount"), color: "bg-[#FEF08A] text-foreground", chartColor: "#EAB308", type: "bar", yAxisId: "right", value: channelData.postsCount || 0 }
       ];
       const ytSummaryGrid = [
         { label: t("sections.followers"), value: channelData.followers >= 1000 ? `${(channelData.followers/1000).toFixed(1)}K` : channelData.followers || 0 },
@@ -1326,22 +1326,22 @@ export function ReportsPage() {
       const ttPublishedPosts = (ad.publishedVideos || []).map(v => ({ ...v, platform: 'TIKTOK' }));
 
       return (
-        <div className="space-y-8 p-4 bg-white rounded-3xl border border-gray-100">
+        <div className="space-y-8 p-4 bg-card rounded-3xl border border-border">
           <div className="border-b pb-4 mb-4">
-             <h4 className="text-base font-bold text-gray-800 uppercase tracking-tight flex items-center gap-2">
+             <h4 className="text-base font-bold text-foreground uppercase tracking-tight flex items-center gap-2">
                <PlatformIcon platform="TikTok" size={18} />
                {t("dashboard.ttPerformance")}
              </h4>
           </div>
           {selectedWidgets.ttGrowth && (
             <div>
-              <h5 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">{t("dashboard.ttCommunityGrowth")}</h5>
+              <h5 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-3">{t("dashboard.ttCommunityGrowth")}</h5>
               <TikTokCommunityTab realData={ttRealData} dateRange={period} />
             </div>
           )}
           {selectedWidgets.ttViews && (
             <div>
-              <h5 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">{t("dashboard.ttPostsPerformance")}</h5>
+              <h5 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-3">{t("dashboard.ttPostsPerformance")}</h5>
               <GenericPostsListTab
                 posts={ttPublishedPosts}
                 isLoading={false}
@@ -1365,7 +1365,7 @@ export function ReportsPage() {
       }));
       const tgMetricConfig = [
         { key: "members", label: t("sections.followers"), color: "bg-[#24A1DE] text-white", chartColor: "#24A1DE", type: "area", value: channelData.followers || 0 },
-        { key: "views", label: t("sections.avgViews"), color: "bg-[#A7F3D0] text-gray-900", chartColor: "#34D399", type: "line", value: channelData.impressions || 0 }
+        { key: "views", label: t("sections.avgViews"), color: "bg-[#A7F3D0] text-foreground", chartColor: "#34D399", type: "line", value: channelData.impressions || 0 }
       ];
       const tgSummaryGrid = [
         { label: t("sections.followers"), value: channelData.followers >= 1000 ? `${(channelData.followers/1000).toFixed(1)}K` : channelData.followers || 0 },
@@ -1395,7 +1395,7 @@ export function ReportsPage() {
     if (!channel) return null;
 
     return (
-      <div className="w-full h-full overflow-auto bg-white">
+      <div className="w-full h-full overflow-auto bg-card">
         <div className="min-w-[980px] p-4">
           {renderPlatformDashboardCharts(pageType, channel)}
         </div>
@@ -1820,7 +1820,7 @@ export function ReportsPage() {
       {createPortal(
         <div className="print-container hidden print:block">
           {getEnabledPages().map((pageType, idx) => (
-            <div key={idx} className="print-page bg-white">
+            <div key={idx} className="print-page bg-card">
               {renderA4Page(pageType, idx + 1, getEnabledPages().length)}
             </div>
           ))}
@@ -1833,16 +1833,16 @@ export function ReportsPage() {
         <div className="fixed inset-0 bg-[#000]/60 z-50 flex flex-col animate-in fade-in duration-300">
           
           {/* Editor Header Bar */}
-          <div className="bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">
+          <div className="bg-card border-b border-border px-6 py-4 flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="flex items-center border border-gray-300 rounded-xl px-3 py-1 bg-gray-50">
+              <div className="flex items-center border border-gray-300 rounded-xl px-3 py-1 bg-muted">
                 <input 
                   type="text" 
                   value={templateName} 
                   onChange={(e) => setTemplateName(e.target.value)} 
-                  className="font-bold text-gray-800 outline-none w-48 text-sm bg-transparent"
+                  className="font-bold text-foreground outline-none w-48 text-sm bg-transparent"
                 />
-                <Edit2 size={14} className="text-gray-400 ml-1" />
+                <Edit2 size={14} className="text-muted-foreground ml-1" />
               </div>
             </div>
 
@@ -1851,28 +1851,28 @@ export function ReportsPage() {
               <button 
                 onClick={() => setEditorStep(1)}
                 className={`flex items-center gap-2 text-sm font-semibold pb-1 border-b-2 transition-all ${
-                  editorStep === 1 ? "border-black text-black" : "border-transparent text-gray-400 hover:text-gray-600"
+                  editorStep === 1 ? "border-black text-black" : "border-transparent text-muted-foreground hover:text-muted-foreground"
                 }`}
               >
-                <span className="w-5 h-5 rounded-full bg-gray-100 flex items-center justify-center text-xs">1</span>
+                <span className="w-5 h-5 rounded-full bg-muted flex items-center justify-center text-xs">1</span>
                 Pages & Sections
               </button>
               <button 
                 onClick={() => setEditorStep(2)}
                 className={`flex items-center gap-2 text-sm font-semibold pb-1 border-b-2 transition-all ${
-                  editorStep === 2 ? "border-black text-black" : "border-transparent text-gray-400 hover:text-gray-600"
+                  editorStep === 2 ? "border-black text-black" : "border-transparent text-muted-foreground hover:text-muted-foreground"
                 }`}
               >
-                <span className="w-5 h-5 rounded-full bg-gray-100 flex items-center justify-center text-xs">2</span>
+                <span className="w-5 h-5 rounded-full bg-muted flex items-center justify-center text-xs">2</span>
                 Background & Logo
               </button>
               <button 
                 onClick={() => setEditorStep(3)}
                 className={`flex items-center gap-2 text-sm font-semibold pb-1 border-b-2 transition-all ${
-                  editorStep === 3 ? "border-black text-black" : "border-transparent text-gray-400 hover:text-gray-600"
+                  editorStep === 3 ? "border-black text-black" : "border-transparent text-muted-foreground hover:text-muted-foreground"
                 }`}
               >
-                <span className="w-5 h-5 rounded-full bg-gray-100 flex items-center justify-center text-xs">3</span>
+                <span className="w-5 h-5 rounded-full bg-muted flex items-center justify-center text-xs">3</span>
                 Colors & Preview
               </button>
             </div>
@@ -1882,7 +1882,7 @@ export function ReportsPage() {
               <button 
                 onClick={() => setEditorStep(prev => Math.max(1, prev - 1))}
                 disabled={editorStep === 1}
-                className="flex items-center gap-1.5 border border-gray-300 hover:bg-gray-50 text-gray-700 text-xs font-bold px-3.5 py-2 rounded-xl transition-all disabled:opacity-40"
+                className="flex items-center gap-1.5 border border-gray-300 hover:bg-muted text-foreground text-xs font-bold px-3.5 py-2 rounded-xl transition-all disabled:opacity-40"
               >
                 <ChevronLeft size={14} />
                 PREV
@@ -1902,7 +1902,7 @@ export function ReportsPage() {
               </button>
               <button 
                 onClick={() => setIsEditorOpen(false)}
-                className="text-gray-400 hover:text-black p-1.5 rounded-lg ml-2"
+                className="text-muted-foreground hover:text-black p-1.5 rounded-lg ml-2"
               >
                 <X size={20} />
               </button>
@@ -1910,7 +1910,7 @@ export function ReportsPage() {
           </div>
 
           {/* Editor Body */}
-          <div className="flex-1 overflow-y-auto bg-gray-50 p-6">
+          <div className="flex-1 overflow-y-auto bg-muted p-6">
             
             {/* STEP 1: Pages & Sections */}
             {editorStep === 1 && (
@@ -1919,11 +1919,11 @@ export function ReportsPage() {
                 <div className="space-y-6">
                 
                 {/* Horizontal network tabs */}
-                <div className="flex flex-wrap items-center gap-3 bg-white p-3.5 rounded-2xl border border-gray-200 shadow-sm">
+                <div className="flex flex-wrap items-center gap-3 bg-card p-3.5 rounded-2xl border border-border shadow-sm">
                   <button 
                     onClick={() => setEditorTab("summary")}
                     className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all ${
-                      editorTab === "summary" ? "bg-black text-white" : "hover:bg-gray-50 text-gray-600"
+                      editorTab === "summary" ? "bg-black text-white" : "hover:bg-muted text-muted-foreground"
                     }`}
                   >
                     <Layers size={14} />
@@ -1932,7 +1932,7 @@ export function ReportsPage() {
                   <button 
                     onClick={() => setEditorTab("facebook")}
                     className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all ${
-                      editorTab === "facebook" ? "bg-blue-600 text-white" : "hover:bg-gray-50 text-gray-600"
+                      editorTab === "facebook" ? "bg-blue-600 text-white" : "hover:bg-muted text-muted-foreground"
                     }`}
                   >
                     <PlatformIcon platform="Facebook" size={14} />
@@ -1941,7 +1941,7 @@ export function ReportsPage() {
                   <button 
                     onClick={() => setEditorTab("instagram")}
                     className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all ${
-                      editorTab === "instagram" ? "bg-gradient-to-tr from-yellow-500 via-pink-500 to-purple-600 text-white" : "hover:bg-gray-50 text-gray-600"
+                      editorTab === "instagram" ? "bg-gradient-to-tr from-yellow-500 via-pink-500 to-purple-600 text-white" : "hover:bg-muted text-muted-foreground"
                     }`}
                   >
                     <PlatformIcon platform="Instagram" size={14} />
@@ -1950,7 +1950,7 @@ export function ReportsPage() {
                   <button 
                     onClick={() => setEditorTab("youtube")}
                     className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all ${
-                      editorTab === "youtube" ? "bg-red-600 text-white" : "hover:bg-gray-50 text-gray-600"
+                      editorTab === "youtube" ? "bg-red-600 text-white" : "hover:bg-muted text-muted-foreground"
                     }`}
                   >
                     <PlatformIcon platform="YouTube" size={14} />
@@ -1959,7 +1959,7 @@ export function ReportsPage() {
                   <button 
                     onClick={() => setEditorTab("tiktok")}
                     className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all ${
-                      editorTab === "tiktok" ? "bg-slate-900 text-white" : "hover:bg-gray-50 text-gray-600"
+                      editorTab === "tiktok" ? "bg-slate-900 text-white" : "hover:bg-muted text-muted-foreground"
                     }`}
                   >
                     <PlatformIcon platform="TikTok" size={14} />
@@ -1967,29 +1967,29 @@ export function ReportsPage() {
                   </button>
                 </div>
 
-                <div className="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm">
+                <div className="bg-card rounded-2xl p-6 border border-border shadow-sm">
                   
                   {/* TAB: Summary */}
                   {editorTab === "summary" && (
                     <div className="space-y-6">
-                      <div className="flex items-center justify-between pb-4 border-b border-gray-100">
-                        <span className="font-bold text-gray-800 text-sm">Summary Widgets (Các mẫu tổng quan)</span>
+                      <div className="flex items-center justify-between pb-4 border-b border-border">
+                        <span className="font-bold text-foreground text-sm">Summary Widgets (Các mẫu tổng quan)</span>
                       </div>
 
                       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
                         {/* Followers */}
                         <div 
                           onClick={() => setSelectedWidgets(prev => ({ ...prev, followers: !prev.followers }))}
-                          className={`relative bg-white rounded-xl border hover:shadow-md transition-all cursor-pointer overflow-hidden p-3.5 aspect-[1.414/1] flex flex-col justify-between select-none ${
-                            selectedWidgets.followers ? "border-black ring-1 ring-black shadow-sm" : "border-gray-200"
+                          className={`relative bg-card rounded-xl border hover:shadow-md transition-all cursor-pointer overflow-hidden p-3.5 aspect-[1.414/1] flex flex-col justify-between select-none ${
+                            selectedWidgets.followers ? "border-black ring-1 ring-black shadow-sm" : "border-border"
                           }`}
                         >
                           <div className="absolute left-0 top-0 bottom-0 w-1" style={{ backgroundColor: selectedColor }} />
-                          <div className="absolute top-2.5 right-2.5 w-4.5 h-4.5 rounded-full flex items-center justify-center bg-gray-50 border border-gray-200">
+                          <div className="absolute top-2.5 right-2.5 w-4.5 h-4.5 rounded-full flex items-center justify-center bg-muted border border-border">
                             {selectedWidgets.followers && <div className="w-2.5 h-2.5 bg-black rounded-full" />}
                           </div>
                           <div className="pl-2 space-y-2">
-                            <div className="text-[10px] font-extrabold text-gray-800 tracking-tight">Followers</div>
+                            <div className="text-[10px] font-extrabold text-foreground tracking-tight">Followers</div>
                             <div className="flex gap-1">
                               <span className="text-[7px] text-white px-1 py-0.5 rounded font-bold" style={{ backgroundColor: "#3B82F6" }}>113K</span>
                               <span className="text-[7px] text-white px-1 py-0.5 rounded font-bold" style={{ backgroundColor: "#EC4899" }}>5.2K</span>
@@ -2000,7 +2000,7 @@ export function ReportsPage() {
                               <path d="M 0,30 Q 25,10 50,22 T 100,5 L 100,35 L 0,35 Z" fill={selectedColor} fillOpacity="0.08" />
                             </svg>
                           </div>
-                          <div className="flex justify-between items-center pl-2 pt-1 border-t border-gray-100 text-[6px] text-gray-400 font-mono">
+                          <div className="flex justify-between items-center pl-2 pt-1 border-t border-border text-[6px] text-muted-foreground font-mono">
                             <span>publicast</span>
                             <Maximize2 size={8} />
                           </div>
@@ -2009,16 +2009,16 @@ export function ReportsPage() {
                         {/* Post impressions */}
                         <div 
                           onClick={() => setSelectedWidgets(prev => ({ ...prev, postImpressions: !prev.postImpressions }))}
-                          className={`relative bg-white rounded-xl border hover:shadow-md transition-all cursor-pointer overflow-hidden p-3.5 aspect-[1.414/1] flex flex-col justify-between select-none ${
-                            selectedWidgets.postImpressions ? "border-black ring-1 ring-black shadow-sm" : "border-gray-200"
+                          className={`relative bg-card rounded-xl border hover:shadow-md transition-all cursor-pointer overflow-hidden p-3.5 aspect-[1.414/1] flex flex-col justify-between select-none ${
+                            selectedWidgets.postImpressions ? "border-black ring-1 ring-black shadow-sm" : "border-border"
                           }`}
                         >
                           <div className="absolute left-0 top-0 bottom-0 w-1" style={{ backgroundColor: selectedColor }} />
-                          <div className="absolute top-2.5 right-2.5 w-4.5 h-4.5 rounded-full flex items-center justify-center bg-gray-50 border border-gray-200">
+                          <div className="absolute top-2.5 right-2.5 w-4.5 h-4.5 rounded-full flex items-center justify-center bg-muted border border-border">
                             {selectedWidgets.postImpressions && <div className="w-2.5 h-2.5 bg-black rounded-full" />}
                           </div>
                           <div className="pl-2 space-y-2">
-                            <div className="text-[10px] font-extrabold text-gray-800 tracking-tight">Post impressions</div>
+                            <div className="text-[10px] font-extrabold text-foreground tracking-tight">Post impressions</div>
                             <div className="flex gap-1.5">
                               <span className="text-[7px] text-white px-1 py-0.5 rounded font-bold" style={{ backgroundColor: "#F59E0B" }}>6.4M</span>
                             </div>
@@ -2029,7 +2029,7 @@ export function ReportsPage() {
                               <rect x="35" y="5" width="5" height="30" rx="1" fill={selectedColor} />
                             </svg>
                           </div>
-                          <div className="flex justify-between items-center pl-2 pt-1 border-t border-gray-100 text-[6px] text-gray-400 font-mono">
+                          <div className="flex justify-between items-center pl-2 pt-1 border-t border-border text-[6px] text-muted-foreground font-mono">
                             <span>publicast</span>
                             <Maximize2 size={8} />
                           </div>
@@ -2041,29 +2041,29 @@ export function ReportsPage() {
                             if (e.target.tagName === "SELECT" || e.target.tagName === "INPUT") return;
                             setSelectedWidgets(prev => ({ ...prev, rankingOfPosts: !prev.rankingOfPosts }));
                           }}
-                          className={`relative bg-white rounded-xl border hover:shadow-md transition-all cursor-pointer overflow-hidden p-3.5 aspect-[1.414/1] flex flex-col justify-between select-none ${
-                            selectedWidgets.rankingOfPosts ? "border-black ring-1 ring-black shadow-sm" : "border-gray-200"
+                          className={`relative bg-card rounded-xl border hover:shadow-md transition-all cursor-pointer overflow-hidden p-3.5 aspect-[1.414/1] flex flex-col justify-between select-none ${
+                            selectedWidgets.rankingOfPosts ? "border-black ring-1 ring-black shadow-sm" : "border-border"
                           }`}
                         >
                           <div className="absolute left-0 top-0 bottom-0 w-1" style={{ backgroundColor: selectedColor }} />
-                          <div className="absolute top-2.5 right-2.5 w-4.5 h-4.5 rounded-full flex items-center justify-center bg-gray-50 border border-gray-200">
+                          <div className="absolute top-2.5 right-2.5 w-4.5 h-4.5 rounded-full flex items-center justify-center bg-muted border border-border">
                             {selectedWidgets.rankingOfPosts && <div className="w-2.5 h-2.5 bg-black rounded-full" />}
                           </div>
                           <div className="pl-2 space-y-2">
-                            <div className="text-[10px] font-extrabold text-gray-800 tracking-tight">Ranking of posts</div>
+                            <div className="text-[10px] font-extrabold text-foreground tracking-tight">Ranking of posts</div>
                             <div className="space-y-1">
-                              <div className="flex items-center justify-between text-[6px] border-b border-gray-100 pb-0.5">
-                                <span className="font-bold text-gray-700 truncate w-32">Bài viết viral trên FB...</span>
-                                <span className="font-mono text-gray-500 font-bold text-right">12.4K view</span>
+                              <div className="flex items-center justify-between text-[6px] border-b border-border pb-0.5">
+                                <span className="font-bold text-foreground truncate w-32">Bài viết viral trên FB...</span>
+                                <span className="font-mono text-muted-foreground font-bold text-right">12.4K view</span>
                               </div>
                             </div>
                             <div className="space-y-1 pt-1.5 border-t border-gray-50">
                               <div className="flex justify-between items-center">
-                                <span className="text-[8px] text-gray-400 font-bold">Sort by</span>
+                                <span className="text-[8px] text-muted-foreground font-bold">Sort by</span>
                                 <select 
                                   value={postsSortBy} 
                                   onChange={(e) => setPostsSortBy(e.target.value)}
-                                  className="text-[8px] bg-white border border-gray-200 rounded px-1 py-0.5 text-gray-700 font-bold"
+                                  className="text-[8px] bg-card border border-border rounded px-1 py-0.5 text-foreground font-bold"
                                 >
                                   <option>Impressions</option>
                                   <option>Engagement</option>
@@ -2071,7 +2071,7 @@ export function ReportsPage() {
                               </div>
                             </div>
                           </div>
-                          <div className="flex justify-between items-center pl-2 pt-1 border-t border-gray-100 text-[6px] text-gray-400 font-mono">
+                          <div className="flex justify-between items-center pl-2 pt-1 border-t border-border text-[6px] text-muted-foreground font-mono">
                             <span>publicast</span>
                             <Maximize2 size={8} />
                           </div>
@@ -2083,8 +2083,8 @@ export function ReportsPage() {
                   {/* TAB: Facebook */}
                   {editorTab === "facebook" && (
                     <div className="space-y-6">
-                      <div className="flex items-center justify-between pb-4 border-b border-gray-100">
-                        <span className="font-bold text-gray-800 text-sm">Facebook Dashboard Widgets (Overview + Posts + Stories + Competitors)</span>
+                      <div className="flex items-center justify-between pb-4 border-b border-border">
+                        <span className="font-bold text-foreground text-sm">Facebook Dashboard Widgets (Overview + Posts + Stories + Competitors)</span>
                       </div>
                       {renderSectionList([
                         { key: "fbGrowth", title: "Overview", description: "Followers, views, page visits, content" },
@@ -2101,31 +2101,31 @@ export function ReportsPage() {
                   {/* legacy facebook block disabled */}
                   {false && (
                     <div className="space-y-6">
-                      <div className="flex items-center justify-between pb-4 border-b border-gray-100">
-                        <span className="font-bold text-gray-800 text-sm">Facebook Dashboard Widgets (Overview + Posts + Stories + Competitors)</span>
+                      <div className="flex items-center justify-between pb-4 border-b border-border">
+                        <span className="font-bold text-foreground text-sm">Facebook Dashboard Widgets (Overview + Posts + Stories + Competitors)</span>
                       </div>
 
                       <div className="space-y-6">
                         <div>
-                          <div className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-3">Overview</div>
+                          <div className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-3">Overview</div>
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                             {/* fbGrowth */}
                             <div 
                           onClick={() => setSelectedWidgets(prev => ({ ...prev, fbGrowth: !prev.fbGrowth }))}
-                          className={`relative bg-white rounded-xl border hover:shadow-md transition-all cursor-pointer overflow-hidden p-3.5 aspect-[1.414/1] flex flex-col justify-between select-none ${
-                            selectedWidgets.fbGrowth ? "border-black ring-1 ring-black shadow-sm" : "border-gray-200"
+                          className={`relative bg-card rounded-xl border hover:shadow-md transition-all cursor-pointer overflow-hidden p-3.5 aspect-[1.414/1] flex flex-col justify-between select-none ${
+                            selectedWidgets.fbGrowth ? "border-black ring-1 ring-black shadow-sm" : "border-border"
                           }`}
                         >
                           <div className="absolute left-0 top-0 bottom-0 w-1" style={{ backgroundColor: selectedColor }} />
-                          <div className="absolute top-2.5 right-2.5 w-4.5 h-4.5 rounded-full flex items-center justify-center bg-gray-50 border border-gray-200">
+                          <div className="absolute top-2.5 right-2.5 w-4.5 h-4.5 rounded-full flex items-center justify-center bg-muted border border-border">
                             {selectedWidgets.fbGrowth && <div className="w-2.5 h-2.5 bg-black rounded-full" />}
                           </div>
                           <div className="pl-2 space-y-2">
-                            <div className="text-[10px] font-extrabold text-gray-800 tracking-tight">Overview</div>
-                            <div className="text-[7px] text-gray-400 font-semibold">Followers, views, page visits, content</div>
+                            <div className="text-[10px] font-extrabold text-foreground tracking-tight">Overview</div>
+                            <div className="text-[7px] text-muted-foreground font-semibold">Followers, views, page visits, content</div>
                             {renderWidgetThumbnail("fbGrowth", selectedColor, previewData)}
                           </div>
-                          <div className="flex justify-between items-center pl-2 pt-1 border-t border-gray-100 text-[6px] text-gray-400 font-mono">
+                          <div className="flex justify-between items-center pl-2 pt-1 border-t border-border text-[6px] text-muted-foreground font-mono">
                             <span>publicast</span>
                             <Maximize2 size={8} />
                           </div>
@@ -2134,20 +2134,20 @@ export function ReportsPage() {
                             {/* fbBalance */}
                             <div 
                           onClick={() => setSelectedWidgets(prev => ({ ...prev, fbBalance: !prev.fbBalance }))}
-                          className={`relative bg-white rounded-xl border hover:shadow-md transition-all cursor-pointer overflow-hidden p-3.5 aspect-[1.414/1] flex flex-col justify-between select-none ${
-                            selectedWidgets.fbBalance ? "border-black ring-1 ring-black shadow-sm" : "border-gray-200"
+                          className={`relative bg-card rounded-xl border hover:shadow-md transition-all cursor-pointer overflow-hidden p-3.5 aspect-[1.414/1] flex flex-col justify-between select-none ${
+                            selectedWidgets.fbBalance ? "border-black ring-1 ring-black shadow-sm" : "border-border"
                           }`}
                         >
                           <div className="absolute left-0 top-0 bottom-0 w-1" style={{ backgroundColor: selectedColor }} />
-                          <div className="absolute top-2.5 right-2.5 w-4.5 h-4.5 rounded-full flex items-center justify-center bg-gray-50 border border-gray-200">
+                          <div className="absolute top-2.5 right-2.5 w-4.5 h-4.5 rounded-full flex items-center justify-center bg-muted border border-border">
                             {selectedWidgets.fbBalance && <div className="w-2.5 h-2.5 bg-black rounded-full" />}
                           </div>
                           <div className="pl-2 space-y-2">
-                            <div className="text-[10px] font-extrabold text-gray-800 tracking-tight">Posts</div>
-                            <div className="text-[7px] text-gray-400 font-semibold">Overview, interactions, types, top posts</div>
+                            <div className="text-[10px] font-extrabold text-foreground tracking-tight">Posts</div>
+                            <div className="text-[7px] text-muted-foreground font-semibold">Overview, interactions, types, top posts</div>
                             {renderWidgetThumbnail("fbBalance", selectedColor, previewData)}
                           </div>
-                          <div className="flex justify-between items-center pl-2 pt-1 border-t border-gray-100 text-[6px] text-gray-400 font-mono">
+                          <div className="flex justify-between items-center pl-2 pt-1 border-t border-border text-[6px] text-muted-foreground font-mono">
                             <span>publicast</span>
                             <Maximize2 size={8} />
                           </div>
@@ -2156,25 +2156,25 @@ export function ReportsPage() {
                         </div>
 
                         <div>
-                          <div className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-3">Posts</div>
+                          <div className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-3">Posts</div>
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                             {/* fbViews */}
                             <div 
                           onClick={() => setSelectedWidgets(prev => ({ ...prev, fbViews: !prev.fbViews }))}
-                          className={`relative bg-white rounded-xl border hover:shadow-md transition-all cursor-pointer overflow-hidden p-3.5 aspect-[1.414/1] flex flex-col justify-between select-none ${
-                            selectedWidgets.fbViews ? "border-black ring-1 ring-black shadow-sm" : "border-gray-200"
+                          className={`relative bg-card rounded-xl border hover:shadow-md transition-all cursor-pointer overflow-hidden p-3.5 aspect-[1.414/1] flex flex-col justify-between select-none ${
+                            selectedWidgets.fbViews ? "border-black ring-1 ring-black shadow-sm" : "border-border"
                           }`}
                         >
                           <div className="absolute left-0 top-0 bottom-0 w-1" style={{ backgroundColor: selectedColor }} />
-                          <div className="absolute top-2.5 right-2.5 w-4.5 h-4.5 rounded-full flex items-center justify-center bg-gray-50 border border-gray-200">
+                          <div className="absolute top-2.5 right-2.5 w-4.5 h-4.5 rounded-full flex items-center justify-center bg-muted border border-border">
                             {selectedWidgets.fbViews && <div className="w-2.5 h-2.5 bg-black rounded-full" />}
                           </div>
                           <div className="pl-2 space-y-2">
-                            <div className="text-[10px] font-extrabold text-gray-800 tracking-tight">Stories</div>
-                            <div className="text-[7px] text-gray-400 font-semibold">Story performance in the real dashboard</div>
+                            <div className="text-[10px] font-extrabold text-foreground tracking-tight">Stories</div>
+                            <div className="text-[7px] text-muted-foreground font-semibold">Story performance in the real dashboard</div>
                             {renderWidgetThumbnail("fbViews", selectedColor, previewData)}
                           </div>
-                          <div className="flex justify-between items-center pl-2 pt-1 border-t border-gray-100 text-[6px] text-gray-400 font-mono">
+                          <div className="flex justify-between items-center pl-2 pt-1 border-t border-border text-[6px] text-muted-foreground font-mono">
                             <span>publicast</span>
                             <Maximize2 size={8} />
                           </div>
@@ -2183,20 +2183,20 @@ export function ReportsPage() {
                             {/* fbInteractions */}
                             <div 
                           onClick={() => setSelectedWidgets(prev => ({ ...prev, fbInteractions: !prev.fbInteractions }))}
-                          className={`relative bg-white rounded-xl border hover:shadow-md transition-all cursor-pointer overflow-hidden p-3.5 aspect-[1.414/1] flex flex-col justify-between select-none ${
-                            selectedWidgets.fbInteractions ? "border-black ring-1 ring-black shadow-sm" : "border-gray-200"
+                          className={`relative bg-card rounded-xl border hover:shadow-md transition-all cursor-pointer overflow-hidden p-3.5 aspect-[1.414/1] flex flex-col justify-between select-none ${
+                            selectedWidgets.fbInteractions ? "border-black ring-1 ring-black shadow-sm" : "border-border"
                           }`}
                         >
                           <div className="absolute left-0 top-0 bottom-0 w-1" style={{ backgroundColor: selectedColor }} />
-                          <div className="absolute top-2.5 right-2.5 w-4.5 h-4.5 rounded-full flex items-center justify-center bg-gray-50 border border-gray-200">
+                          <div className="absolute top-2.5 right-2.5 w-4.5 h-4.5 rounded-full flex items-center justify-center bg-muted border border-border">
                             {selectedWidgets.fbInteractions && <div className="w-2.5 h-2.5 bg-black rounded-full" />}
                           </div>
                           <div className="pl-2 space-y-2">
-                            <div className="text-[10px] font-extrabold text-gray-800 tracking-tight">Competitors</div>
-                            <div className="text-[7px] text-gray-400 font-semibold">Competitor comparison and ranking</div>
+                            <div className="text-[10px] font-extrabold text-foreground tracking-tight">Competitors</div>
+                            <div className="text-[7px] text-muted-foreground font-semibold">Competitor comparison and ranking</div>
                             {renderWidgetThumbnail("fbRankingOfPosts", selectedColor, previewData)}
                           </div>
-                          <div className="flex justify-between items-center pl-2 pt-1 border-t border-gray-100 text-[6px] text-gray-400 font-mono">
+                          <div className="flex justify-between items-center pl-2 pt-1 border-t border-border text-[6px] text-muted-foreground font-mono">
                             <span>publicast</span>
                             <Maximize2 size={8} />
                           </div>
@@ -2205,25 +2205,25 @@ export function ReportsPage() {
                         </div>
 
                         <div>
-                          <div className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-3">Stories</div>
+                          <div className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-3">Stories</div>
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                             {/* fbTypesBreakdown */}
                             <div 
                           onClick={() => setSelectedWidgets(prev => ({ ...prev, fbTypesBreakdown: !prev.fbTypesBreakdown }))}
-                          className={`relative bg-white rounded-xl border hover:shadow-md transition-all cursor-pointer overflow-hidden p-3.5 aspect-[1.414/1] flex flex-col justify-between select-none ${
-                            selectedWidgets.fbTypesBreakdown ? "border-black ring-1 ring-black shadow-sm" : "border-gray-200"
+                          className={`relative bg-card rounded-xl border hover:shadow-md transition-all cursor-pointer overflow-hidden p-3.5 aspect-[1.414/1] flex flex-col justify-between select-none ${
+                            selectedWidgets.fbTypesBreakdown ? "border-black ring-1 ring-black shadow-sm" : "border-border"
                           }`}
                         >
                           <div className="absolute left-0 top-0 bottom-0 w-1" style={{ backgroundColor: selectedColor }} />
-                          <div className="absolute top-2.5 right-2.5 w-4.5 h-4.5 rounded-full flex items-center justify-center bg-gray-50 border border-gray-200">
+                          <div className="absolute top-2.5 right-2.5 w-4.5 h-4.5 rounded-full flex items-center justify-center bg-muted border border-border">
                             {selectedWidgets.fbTypesBreakdown && <div className="w-2.5 h-2.5 bg-black rounded-full" />}
                           </div>
                           <div className="pl-2 space-y-2">
-                            <div className="text-[10px] font-extrabold text-gray-800 tracking-tight">Views Breakdown</div>
-                            <div className="text-[7px] text-gray-400 font-semibold">Organic vs promoted</div>
+                            <div className="text-[10px] font-extrabold text-foreground tracking-tight">Views Breakdown</div>
+                            <div className="text-[7px] text-muted-foreground font-semibold">Organic vs promoted</div>
                             {renderWidgetThumbnail("fbViewsBreakdown", selectedColor, previewData)}
                           </div>
-                          <div className="flex justify-between items-center pl-2 pt-1 border-t border-gray-100 text-[6px] text-gray-400 font-mono">
+                          <div className="flex justify-between items-center pl-2 pt-1 border-t border-border text-[6px] text-muted-foreground font-mono">
                             <span>publicast</span>
                             <Maximize2 size={8} />
                           </div>
@@ -2232,20 +2232,20 @@ export function ReportsPage() {
                             {/* fbViewsBreakdown */}
                             <div 
                           onClick={() => setSelectedWidgets(prev => ({ ...prev, fbViewsBreakdown: !prev.fbViewsBreakdown }))}
-                          className={`relative bg-white rounded-xl border hover:shadow-md transition-all cursor-pointer overflow-hidden p-3.5 aspect-[1.414/1] flex flex-col justify-between select-none ${
-                            selectedWidgets.fbViewsBreakdown ? "border-black ring-1 ring-black shadow-sm" : "border-gray-200"
+                          className={`relative bg-card rounded-xl border hover:shadow-md transition-all cursor-pointer overflow-hidden p-3.5 aspect-[1.414/1] flex flex-col justify-between select-none ${
+                            selectedWidgets.fbViewsBreakdown ? "border-black ring-1 ring-black shadow-sm" : "border-border"
                           }`}
                         >
                           <div className="absolute left-0 top-0 bottom-0 w-1" style={{ backgroundColor: selectedColor }} />
-                          <div className="absolute top-2.5 right-2.5 w-4.5 h-4.5 rounded-full flex items-center justify-center bg-gray-50 border border-gray-200">
+                          <div className="absolute top-2.5 right-2.5 w-4.5 h-4.5 rounded-full flex items-center justify-center bg-muted border border-border">
                             {selectedWidgets.fbViewsBreakdown && <div className="w-2.5 h-2.5 bg-black rounded-full" />}
                           </div>
                           <div className="pl-2 space-y-2">
-                            <div className="text-[10px] font-extrabold text-gray-800 tracking-tight">Types Breakdown</div>
-                            <div className="text-[7px] text-gray-400 font-semibold">Post format mix</div>
+                            <div className="text-[10px] font-extrabold text-foreground tracking-tight">Types Breakdown</div>
+                            <div className="text-[7px] text-muted-foreground font-semibold">Post format mix</div>
                             {renderWidgetThumbnail("fbTypesBreakdown", selectedColor, previewData)}
                           </div>
-                          <div className="flex justify-between items-center pl-2 pt-1 border-t border-gray-100 text-[6px] text-gray-400 font-mono">
+                          <div className="flex justify-between items-center pl-2 pt-1 border-t border-border text-[6px] text-muted-foreground font-mono">
                             <span>publicast</span>
                             <Maximize2 size={8} />
                           </div>
@@ -2254,7 +2254,7 @@ export function ReportsPage() {
                         </div>
 
                         <div>
-                          <div className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-3">Competitors</div>
+                          <div className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-3">Competitors</div>
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                             {/* fbRankingOfPosts */}
                             <div 
@@ -2262,24 +2262,24 @@ export function ReportsPage() {
                             if (e.target.tagName === "SELECT" || e.target.tagName === "INPUT") return;
                             setSelectedWidgets(prev => ({ ...prev, fbRankingOfPosts: !prev.fbRankingOfPosts }));
                           }}
-                          className={`relative bg-white rounded-xl border hover:shadow-md transition-all cursor-pointer overflow-hidden p-3.5 aspect-[1.414/1] flex flex-col justify-between select-none ${
-                            selectedWidgets.fbRankingOfPosts ? "border-black ring-1 ring-black shadow-sm" : "border-gray-200"
+                          className={`relative bg-card rounded-xl border hover:shadow-md transition-all cursor-pointer overflow-hidden p-3.5 aspect-[1.414/1] flex flex-col justify-between select-none ${
+                            selectedWidgets.fbRankingOfPosts ? "border-black ring-1 ring-black shadow-sm" : "border-border"
                           }`}
                         >
                           <div className="absolute left-0 top-0 bottom-0 w-1" style={{ backgroundColor: selectedColor }} />
-                          <div className="absolute top-2.5 right-2.5 w-4.5 h-4.5 rounded-full flex items-center justify-center bg-gray-50 border border-gray-200">
+                          <div className="absolute top-2.5 right-2.5 w-4.5 h-4.5 rounded-full flex items-center justify-center bg-muted border border-border">
                             {selectedWidgets.fbRankingOfPosts && <div className="w-2.5 h-2.5 bg-black rounded-full" />}
                           </div>
                           <div className="pl-2 space-y-2">
-                            <div className="text-[10px] font-extrabold text-gray-800 tracking-tight">Ranking of posts</div>
+                            <div className="text-[10px] font-extrabold text-foreground tracking-tight">Ranking of posts</div>
                             {renderWidgetThumbnail("fbRankingOfPosts", selectedColor, previewData)}
                             <div className="space-y-1 pt-1.5 border-t border-gray-50">
                               <div className="flex justify-between items-center">
-                                <span className="text-[8px] text-gray-400 font-bold">Sort by</span>
+                                <span className="text-[8px] text-muted-foreground font-bold">Sort by</span>
                                 <select 
                                   value={fbPostsSortBy} 
                                   onChange={(e) => setFbPostsSortBy(e.target.value)}
-                                  className="text-[8px] bg-white border border-gray-200 rounded px-1 py-0.5 text-gray-700 font-bold"
+                                  className="text-[8px] bg-card border border-border rounded px-1 py-0.5 text-foreground font-bold"
                                 >
                                   <option>Engagement</option>
                                   <option>Impressions</option>
@@ -2288,7 +2288,7 @@ export function ReportsPage() {
                               </div>
                             </div>
                           </div>
-                          <div className="flex justify-between items-center pl-2 pt-1 border-t border-gray-100 text-[6px] text-gray-400 font-mono">
+                          <div className="flex justify-between items-center pl-2 pt-1 border-t border-border text-[6px] text-muted-foreground font-mono">
                             <span>publicast</span>
                             <Maximize2 size={8} />
                           </div>
@@ -2302,8 +2302,8 @@ export function ReportsPage() {
                   {/* TAB: Instagram */}
                   {editorTab === "instagram" && (
                     <div className="space-y-6">
-                      <div className="flex items-center justify-between pb-4 border-b border-gray-100">
-                        <span className="font-bold text-gray-800 text-sm">Instagram Dashboard Widgets (Community + Account + Competitors)</span>
+                      <div className="flex items-center justify-between pb-4 border-b border-border">
+                        <span className="font-bold text-foreground text-sm">Instagram Dashboard Widgets (Community + Account + Competitors)</span>
                       </div>
                       {renderSectionList([
                         { key: "igGrowth", title: "Community", description: "Followers, following, total content" },
@@ -2313,31 +2313,31 @@ export function ReportsPage() {
                   )}
                   {false && (
                     <div className="space-y-6">
-                      <div className="flex items-center justify-between pb-4 border-b border-gray-100">
-                        <span className="font-bold text-gray-800 text-sm">Instagram Dashboard Widgets (Community + Account + Competitors)</span>
+                      <div className="flex items-center justify-between pb-4 border-b border-border">
+                        <span className="font-bold text-foreground text-sm">Instagram Dashboard Widgets (Community + Account + Competitors)</span>
                       </div>
 
                       <div className="space-y-5">
                         <div>
-                          <div className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-3">Community</div>
+                          <div className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-3">Community</div>
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                         {/* igGrowth */}
                         <div 
                           onClick={() => setSelectedWidgets(prev => ({ ...prev, igGrowth: !prev.igGrowth }))}
-                          className={`relative bg-white rounded-xl border hover:shadow-md transition-all cursor-pointer overflow-hidden p-3.5 aspect-[1.414/1] flex flex-col justify-between select-none ${
-                            selectedWidgets.igGrowth ? "border-black ring-1 ring-black shadow-sm" : "border-gray-200"
+                          className={`relative bg-card rounded-xl border hover:shadow-md transition-all cursor-pointer overflow-hidden p-3.5 aspect-[1.414/1] flex flex-col justify-between select-none ${
+                            selectedWidgets.igGrowth ? "border-black ring-1 ring-black shadow-sm" : "border-border"
                           }`}
                         >
                           <div className="absolute left-0 top-0 bottom-0 w-1" style={{ backgroundColor: selectedColor }} />
-                          <div className="absolute top-2.5 right-2.5 w-4.5 h-4.5 rounded-full flex items-center justify-center bg-gray-50 border border-gray-200">
+                          <div className="absolute top-2.5 right-2.5 w-4.5 h-4.5 rounded-full flex items-center justify-center bg-muted border border-border">
                             {selectedWidgets.igGrowth && <div className="w-2.5 h-2.5 bg-black rounded-full" />}
                           </div>
                           <div className="pl-2 space-y-2">
-                            <div className="text-[10px] font-extrabold text-gray-800 tracking-tight">Community</div>
-                            <div className="text-[7px] text-gray-400 font-semibold">Followers, following, total content</div>
+                            <div className="text-[10px] font-extrabold text-foreground tracking-tight">Community</div>
+                            <div className="text-[7px] text-muted-foreground font-semibold">Followers, following, total content</div>
                             {renderWidgetThumbnail("igGrowth", selectedColor, previewData)}
                           </div>
-                          <div className="flex justify-between items-center pl-2 pt-1 border-t border-gray-100 text-[6px] text-gray-400 font-mono">
+                          <div className="flex justify-between items-center pl-2 pt-1 border-t border-border text-[6px] text-muted-foreground font-mono">
                             <span>publicast</span>
                             <Maximize2 size={8} />
                           </div>
@@ -2349,20 +2349,20 @@ export function ReportsPage() {
                             if (e.target.tagName === "SELECT" || e.target.tagName === "INPUT") return;
                             setSelectedWidgets(prev => ({ ...prev, igRankingOfPosts: !prev.igRankingOfPosts }));
                           }}
-                          className={`relative bg-white rounded-xl border hover:shadow-md transition-all cursor-pointer overflow-hidden p-3.5 aspect-[1.414/1] flex flex-col justify-between select-none ${
-                            selectedWidgets.igRankingOfPosts ? "border-black ring-1 ring-black shadow-sm" : "border-gray-200"
+                          className={`relative bg-card rounded-xl border hover:shadow-md transition-all cursor-pointer overflow-hidden p-3.5 aspect-[1.414/1] flex flex-col justify-between select-none ${
+                            selectedWidgets.igRankingOfPosts ? "border-black ring-1 ring-black shadow-sm" : "border-border"
                           }`}
                         >
                           <div className="absolute left-0 top-0 bottom-0 w-1" style={{ backgroundColor: selectedColor }} />
-                          <div className="absolute top-2.5 right-2.5 w-4.5 h-4.5 rounded-full flex items-center justify-center bg-gray-50 border border-gray-200">
+                          <div className="absolute top-2.5 right-2.5 w-4.5 h-4.5 rounded-full flex items-center justify-center bg-muted border border-border">
                             {selectedWidgets.igRankingOfPosts && <div className="w-2.5 h-2.5 bg-black rounded-full" />}
                           </div>
                           <div className="pl-2 space-y-2">
-                            <div className="text-[10px] font-extrabold text-gray-800 tracking-tight">Account</div>
-                            <div className="text-[7px] text-gray-400 font-semibold">Profile header and account-level posts</div>
+                            <div className="text-[10px] font-extrabold text-foreground tracking-tight">Account</div>
+                            <div className="text-[7px] text-muted-foreground font-semibold">Profile header and account-level posts</div>
                             {renderWidgetThumbnail("igRankingOfPosts", selectedColor, previewData)}
                           </div>
-                          <div className="flex justify-between items-center pl-2 pt-1 border-t border-gray-100 text-[6px] text-gray-400 font-mono">
+                          <div className="flex justify-between items-center pl-2 pt-1 border-t border-border text-[6px] text-muted-foreground font-mono">
                             <span>publicast</span>
                             <Maximize2 size={8} />
                           </div>
@@ -2376,8 +2376,8 @@ export function ReportsPage() {
                   {/* TAB: YouTube */}
                   {editorTab === "youtube" && (
                     <div className="space-y-6">
-                      <div className="flex items-center justify-between pb-4 border-b border-gray-100">
-                        <span className="font-bold text-gray-800 text-sm">YouTube Dashboard Widgets (Community + Demographics + Published + Viewed + Competitors)</span>
+                      <div className="flex items-center justify-between pb-4 border-b border-border">
+                        <span className="font-bold text-foreground text-sm">YouTube Dashboard Widgets (Community + Demographics + Published + Viewed + Competitors)</span>
                       </div>
                       {renderSectionList([
                         { key: "ytGrowth", title: "Community", description: "Subscribers, views, videos" },
@@ -2387,31 +2387,31 @@ export function ReportsPage() {
                   )}
                   {false && (
                     <div className="space-y-6">
-                      <div className="flex items-center justify-between pb-4 border-b border-gray-100">
-                        <span className="font-bold text-gray-800 text-sm">YouTube Dashboard Widgets (Community + Demographics + Published videos + Viewed videos + Competitors)</span>
+                      <div className="flex items-center justify-between pb-4 border-b border-border">
+                        <span className="font-bold text-foreground text-sm">YouTube Dashboard Widgets (Community + Demographics + Published videos + Viewed videos + Competitors)</span>
                       </div>
 
                       <div className="space-y-5">
                         <div>
-                          <div className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-3">Community</div>
+                          <div className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-3">Community</div>
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                         {/* ytGrowth */}
                         <div 
                           onClick={() => setSelectedWidgets(prev => ({ ...prev, ytGrowth: !prev.ytGrowth }))}
-                          className={`relative bg-white rounded-xl border hover:shadow-md transition-all cursor-pointer overflow-hidden p-3.5 aspect-[1.414/1] flex flex-col justify-between select-none ${
-                            selectedWidgets.ytGrowth ? "border-black ring-1 ring-black shadow-sm" : "border-gray-200"
+                          className={`relative bg-card rounded-xl border hover:shadow-md transition-all cursor-pointer overflow-hidden p-3.5 aspect-[1.414/1] flex flex-col justify-between select-none ${
+                            selectedWidgets.ytGrowth ? "border-black ring-1 ring-black shadow-sm" : "border-border"
                           }`}
                         >
                           <div className="absolute left-0 top-0 bottom-0 w-1" style={{ backgroundColor: selectedColor }} />
-                          <div className="absolute top-2.5 right-2.5 w-4.5 h-4.5 rounded-full flex items-center justify-center bg-gray-50 border border-gray-200">
+                          <div className="absolute top-2.5 right-2.5 w-4.5 h-4.5 rounded-full flex items-center justify-center bg-muted border border-border">
                             {selectedWidgets.ytGrowth && <div className="w-2.5 h-2.5 bg-black rounded-full" />}
                           </div>
                           <div className="pl-2 space-y-2">
-                            <div className="text-[10px] font-extrabold text-gray-800 tracking-tight">Community</div>
-                            <div className="text-[7px] text-gray-400 font-semibold">Subscribers, views, videos</div>
+                            <div className="text-[10px] font-extrabold text-foreground tracking-tight">Community</div>
+                            <div className="text-[7px] text-muted-foreground font-semibold">Subscribers, views, videos</div>
                             {renderWidgetThumbnail("ytGrowth", selectedColor, previewData)}
                           </div>
-                          <div className="flex justify-between items-center pl-2 pt-1 border-t border-gray-100 text-[6px] text-gray-400 font-mono">
+                          <div className="flex justify-between items-center pl-2 pt-1 border-t border-border text-[6px] text-muted-foreground font-mono">
                             <span>publicast</span>
                             <Maximize2 size={8} />
                           </div>
@@ -2423,20 +2423,20 @@ export function ReportsPage() {
                             if (e.target.tagName === "SELECT" || e.target.tagName === "INPUT") return;
                             setSelectedWidgets(prev => ({ ...prev, ytRankingOfVideos: !prev.ytRankingOfVideos }));
                           }}
-                          className={`relative bg-white rounded-xl border hover:shadow-md transition-all cursor-pointer overflow-hidden p-3.5 aspect-[1.414/1] flex flex-col justify-between select-none ${
-                            selectedWidgets.ytRankingOfVideos ? "border-black ring-1 ring-black shadow-sm" : "border-gray-200"
+                          className={`relative bg-card rounded-xl border hover:shadow-md transition-all cursor-pointer overflow-hidden p-3.5 aspect-[1.414/1] flex flex-col justify-between select-none ${
+                            selectedWidgets.ytRankingOfVideos ? "border-black ring-1 ring-black shadow-sm" : "border-border"
                           }`}
                         >
                           <div className="absolute left-0 top-0 bottom-0 w-1" style={{ backgroundColor: selectedColor }} />
-                          <div className="absolute top-2.5 right-2.5 w-4.5 h-4.5 rounded-full flex items-center justify-center bg-gray-50 border border-gray-200">
+                          <div className="absolute top-2.5 right-2.5 w-4.5 h-4.5 rounded-full flex items-center justify-center bg-muted border border-border">
                             {selectedWidgets.ytRankingOfVideos && <div className="w-2.5 h-2.5 bg-black rounded-full" />}
                           </div>
                           <div className="pl-2 space-y-2">
-                            <div className="text-[10px] font-extrabold text-gray-800 tracking-tight">Published videos</div>
-                            <div className="text-[7px] text-gray-400 font-semibold">Published video list from the dashboard</div>
+                            <div className="text-[10px] font-extrabold text-foreground tracking-tight">Published videos</div>
+                            <div className="text-[7px] text-muted-foreground font-semibold">Published video list from the dashboard</div>
                             {renderWidgetThumbnail("ytRankingOfVideos", selectedColor, previewData)}
                           </div>
-                          <div className="flex justify-between items-center pl-2 pt-1 border-t border-gray-100 text-[6px] text-gray-400 font-mono">
+                          <div className="flex justify-between items-center pl-2 pt-1 border-t border-border text-[6px] text-muted-foreground font-mono">
                             <span>publicast</span>
                             <Maximize2 size={8} />
                           </div>
@@ -2450,8 +2450,8 @@ export function ReportsPage() {
                   {/* TAB: TikTok */}
                   {editorTab === "tiktok" && (
                     <div className="space-y-6">
-                      <div className="flex items-center justify-between pb-4 border-b border-gray-100">
-                        <span className="font-bold text-gray-800 text-sm">TikTok Dashboard Widgets (Community + Posts)</span>
+                      <div className="flex items-center justify-between pb-4 border-b border-border">
+                        <span className="font-bold text-foreground text-sm">TikTok Dashboard Widgets (Community + Posts)</span>
                       </div>
                       {renderSectionList([
                         { key: "ttGrowth", title: "Community", description: "Followers over time" },
@@ -2464,31 +2464,31 @@ export function ReportsPage() {
                   )}
                   {false && (
                     <div className="space-y-6">
-                      <div className="flex items-center justify-between pb-4 border-b border-gray-100">
-                        <span className="font-bold text-gray-800 text-sm">TikTok Dashboard Widgets (Community + Posts)</span>
+                      <div className="flex items-center justify-between pb-4 border-b border-border">
+                        <span className="font-bold text-foreground text-sm">TikTok Dashboard Widgets (Community + Posts)</span>
                       </div>
 
                       <div className="space-y-5">
                         <div>
-                          <div className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-3">Community</div>
+                          <div className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-3">Community</div>
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                         {/* ttGrowth */}
                         <div 
                           onClick={() => setSelectedWidgets(prev => ({ ...prev, ttGrowth: !prev.ttGrowth }))}
-                          className={`relative bg-white rounded-xl border hover:shadow-md transition-all cursor-pointer overflow-hidden p-3.5 aspect-[1.414/1] flex flex-col justify-between select-none ${
-                            selectedWidgets.ttGrowth ? "border-black ring-1 ring-black shadow-sm" : "border-gray-200"
+                          className={`relative bg-card rounded-xl border hover:shadow-md transition-all cursor-pointer overflow-hidden p-3.5 aspect-[1.414/1] flex flex-col justify-between select-none ${
+                            selectedWidgets.ttGrowth ? "border-black ring-1 ring-black shadow-sm" : "border-border"
                           }`}
                         >
                           <div className="absolute left-0 top-0 bottom-0 w-1" style={{ backgroundColor: selectedColor }} />
-                          <div className="absolute top-2.5 right-2.5 w-4.5 h-4.5 rounded-full flex items-center justify-center bg-gray-50 border border-gray-200">
+                          <div className="absolute top-2.5 right-2.5 w-4.5 h-4.5 rounded-full flex items-center justify-center bg-muted border border-border">
                             {selectedWidgets.ttGrowth && <div className="w-2.5 h-2.5 bg-black rounded-full" />}
                           </div>
                           <div className="pl-2 space-y-2">
-                            <div className="text-[10px] font-extrabold text-gray-800 tracking-tight">Growth</div>
-                            <div className="text-[7px] text-gray-400 font-semibold">Followers over time</div>
+                            <div className="text-[10px] font-extrabold text-foreground tracking-tight">Growth</div>
+                            <div className="text-[7px] text-muted-foreground font-semibold">Followers over time</div>
                             {renderWidgetThumbnail("ttGrowth", selectedColor, previewData)}
                           </div>
-                          <div className="flex justify-between items-center pl-2 pt-1 border-t border-gray-100 text-[6px] text-gray-400 font-mono">
+                          <div className="flex justify-between items-center pl-2 pt-1 border-t border-border text-[6px] text-muted-foreground font-mono">
                             <span>publicast</span>
                             <Maximize2 size={8} />
                           </div>
@@ -2500,20 +2500,20 @@ export function ReportsPage() {
                             if (e.target.tagName === "SELECT" || e.target.tagName === "INPUT") return;
                             setSelectedWidgets(prev => ({ ...prev, ttBalance: !prev.ttBalance }));
                           }}
-                          className={`relative bg-white rounded-xl border hover:shadow-md transition-all cursor-pointer overflow-hidden p-3.5 aspect-[1.414/1] flex flex-col justify-between select-none ${
-                            selectedWidgets.ttBalance ? "border-black ring-1 ring-black shadow-sm" : "border-gray-200"
+                          className={`relative bg-card rounded-xl border hover:shadow-md transition-all cursor-pointer overflow-hidden p-3.5 aspect-[1.414/1] flex flex-col justify-between select-none ${
+                            selectedWidgets.ttBalance ? "border-black ring-1 ring-black shadow-sm" : "border-border"
                           }`}
                         >
                           <div className="absolute left-0 top-0 bottom-0 w-1" style={{ backgroundColor: selectedColor }} />
-                          <div className="absolute top-2.5 right-2.5 w-4.5 h-4.5 rounded-full flex items-center justify-center bg-gray-50 border border-gray-200">
+                          <div className="absolute top-2.5 right-2.5 w-4.5 h-4.5 rounded-full flex items-center justify-center bg-muted border border-border">
                             {selectedWidgets.ttBalance && <div className="w-2.5 h-2.5 bg-black rounded-full" />}
                           </div>
                           <div className="pl-2 space-y-2">
-                            <div className="text-[10px] font-extrabold text-gray-800 tracking-tight">Balance of Followers</div>
-                            <div className="text-[7px] text-gray-400 font-semibold">New vs lost followers</div>
+                            <div className="text-[10px] font-extrabold text-foreground tracking-tight">Balance of Followers</div>
+                            <div className="text-[7px] text-muted-foreground font-semibold">New vs lost followers</div>
                             {renderWidgetThumbnail("ttBalance", selectedColor, previewData)}
                           </div>
-                          <div className="flex justify-between items-center pl-2 pt-1 border-t border-gray-100 text-[6px] text-gray-400 font-mono">
+                          <div className="flex justify-between items-center pl-2 pt-1 border-t border-border text-[6px] text-muted-foreground font-mono">
                             <span>publicast</span>
                             <Maximize2 size={8} />
                           </div>
@@ -2523,25 +2523,25 @@ export function ReportsPage() {
                         </div>
 
                         <div>
-                          <div className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-3">Posts</div>
+                          <div className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-3">Posts</div>
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                             {/* ttViews */}
                             <div 
                               onClick={() => setSelectedWidgets(prev => ({ ...prev, ttViews: !prev.ttViews }))}
-                              className={`relative bg-white rounded-xl border hover:shadow-md transition-all cursor-pointer overflow-hidden p-3.5 aspect-[1.414/1] flex flex-col justify-between select-none ${
-                                selectedWidgets.ttViews ? "border-black ring-1 ring-black shadow-sm" : "border-gray-200"
+                              className={`relative bg-card rounded-xl border hover:shadow-md transition-all cursor-pointer overflow-hidden p-3.5 aspect-[1.414/1] flex flex-col justify-between select-none ${
+                                selectedWidgets.ttViews ? "border-black ring-1 ring-black shadow-sm" : "border-border"
                               }`}
                             >
                               <div className="absolute left-0 top-0 bottom-0 w-1" style={{ backgroundColor: selectedColor }} />
-                              <div className="absolute top-2.5 right-2.5 w-4.5 h-4.5 rounded-full flex items-center justify-center bg-gray-50 border border-gray-200">
+                              <div className="absolute top-2.5 right-2.5 w-4.5 h-4.5 rounded-full flex items-center justify-center bg-muted border border-border">
                                 {selectedWidgets.ttViews && <div className="w-2.5 h-2.5 bg-black rounded-full" />}
                               </div>
                               <div className="pl-2 space-y-2">
-                                <div className="text-[10px] font-extrabold text-gray-800 tracking-tight">Views</div>
-                                <div className="text-[7px] text-gray-400 font-semibold">Video views by period</div>
+                                <div className="text-[10px] font-extrabold text-foreground tracking-tight">Views</div>
+                                <div className="text-[7px] text-muted-foreground font-semibold">Video views by period</div>
                                 {renderWidgetThumbnail("ttViews", selectedColor, previewData)}
                               </div>
-                              <div className="flex justify-between items-center pl-2 pt-1 border-t border-gray-100 text-[6px] text-gray-400 font-mono">
+                              <div className="flex justify-between items-center pl-2 pt-1 border-t border-border text-[6px] text-muted-foreground font-mono">
                                 <span>publicast</span>
                                 <Maximize2 size={8} />
                               </div>
@@ -2550,20 +2550,20 @@ export function ReportsPage() {
                             {/* ttInteractions */}
                             <div 
                               onClick={() => setSelectedWidgets(prev => ({ ...prev, ttInteractions: !prev.ttInteractions }))}
-                              className={`relative bg-white rounded-xl border hover:shadow-md transition-all cursor-pointer overflow-hidden p-3.5 aspect-[1.414/1] flex flex-col justify-between select-none ${
-                                selectedWidgets.ttInteractions ? "border-black ring-1 ring-black shadow-sm" : "border-gray-200"
+                              className={`relative bg-card rounded-xl border hover:shadow-md transition-all cursor-pointer overflow-hidden p-3.5 aspect-[1.414/1] flex flex-col justify-between select-none ${
+                                selectedWidgets.ttInteractions ? "border-black ring-1 ring-black shadow-sm" : "border-border"
                               }`}
                             >
                               <div className="absolute left-0 top-0 bottom-0 w-1" style={{ backgroundColor: selectedColor }} />
-                              <div className="absolute top-2.5 right-2.5 w-4.5 h-4.5 rounded-full flex items-center justify-center bg-gray-50 border border-gray-200">
+                              <div className="absolute top-2.5 right-2.5 w-4.5 h-4.5 rounded-full flex items-center justify-center bg-muted border border-border">
                                 {selectedWidgets.ttInteractions && <div className="w-2.5 h-2.5 bg-black rounded-full" />}
                               </div>
                               <div className="pl-2 space-y-2">
-                                <div className="text-[10px] font-extrabold text-gray-800 tracking-tight">Interactions</div>
-                                <div className="text-[7px] text-gray-400 font-semibold">Likes, comments, shares</div>
+                                <div className="text-[10px] font-extrabold text-foreground tracking-tight">Interactions</div>
+                                <div className="text-[7px] text-muted-foreground font-semibold">Likes, comments, shares</div>
                                 {renderWidgetThumbnail("ttInteractions", selectedColor, previewData)}
                               </div>
-                              <div className="flex justify-between items-center pl-2 pt-1 border-t border-gray-100 text-[6px] text-gray-400 font-mono">
+                              <div className="flex justify-between items-center pl-2 pt-1 border-t border-border text-[6px] text-muted-foreground font-mono">
                                 <span>publicast</span>
                                 <Maximize2 size={8} />
                               </div>
@@ -2575,20 +2575,20 @@ export function ReportsPage() {
                                 if (e.target.tagName === "SELECT" || e.target.tagName === "INPUT") return;
                                 setSelectedWidgets(prev => ({ ...prev, ttPosts: !prev.ttPosts }));
                               }}
-                              className={`relative bg-white rounded-xl border hover:shadow-md transition-all cursor-pointer overflow-hidden p-3.5 aspect-[1.414/1] flex flex-col justify-between select-none ${
-                                selectedWidgets.ttPosts ? "border-black ring-1 ring-black shadow-sm" : "border-gray-200"
+                              className={`relative bg-card rounded-xl border hover:shadow-md transition-all cursor-pointer overflow-hidden p-3.5 aspect-[1.414/1] flex flex-col justify-between select-none ${
+                                selectedWidgets.ttPosts ? "border-black ring-1 ring-black shadow-sm" : "border-border"
                               }`}
                             >
                               <div className="absolute left-0 top-0 bottom-0 w-1" style={{ backgroundColor: selectedColor }} />
-                              <div className="absolute top-2.5 right-2.5 w-4.5 h-4.5 rounded-full flex items-center justify-center bg-gray-50 border border-gray-200">
+                              <div className="absolute top-2.5 right-2.5 w-4.5 h-4.5 rounded-full flex items-center justify-center bg-muted border border-border">
                                 {selectedWidgets.ttPosts && <div className="w-2.5 h-2.5 bg-black rounded-full" />}
                               </div>
                               <div className="pl-2 space-y-2">
-                                <div className="text-[10px] font-extrabold text-gray-800 tracking-tight">List of posts</div>
-                                <div className="text-[7px] text-gray-400 font-semibold">Top performing posts</div>
+                                <div className="text-[10px] font-extrabold text-foreground tracking-tight">List of posts</div>
+                                <div className="text-[7px] text-muted-foreground font-semibold">Top performing posts</div>
                                 {renderWidgetThumbnail("ttPosts", selectedColor, previewData)}
                               </div>
-                              <div className="flex justify-between items-center pl-2 pt-1 border-t border-gray-100 text-[6px] text-gray-400 font-mono">
+                              <div className="flex justify-between items-center pl-2 pt-1 border-t border-border text-[6px] text-muted-foreground font-mono">
                                 <span>publicast</span>
                                 <Maximize2 size={8} />
                               </div>
@@ -2607,13 +2607,13 @@ export function ReportsPage() {
               {/* RIGHT: Live A4 Preview của tab đang chọn */}
               <div className="sticky top-6 space-y-3">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-gray-500 uppercase tracking-wider">Live Preview</span>
-                  <span className="text-[10px] font-mono text-gray-400 bg-gray-100 px-2 py-0.5 rounded-lg capitalize">{editorTab}</span>
+                  <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Live Preview</span>
+                  <span className="text-[10px] font-mono text-muted-foreground bg-muted px-2 py-0.5 rounded-lg capitalize">{editorTab}</span>
                 </div>
-                <div className="rounded-2xl overflow-hidden border border-gray-200 shadow-sm">
+                <div className="rounded-2xl overflow-hidden border border-border shadow-sm">
                   {renderA4Page(editorTab, 1, 1)}
                 </div>
-                <p className="text-[10px] text-gray-400 text-center">Xem trước trang báo cáo theo widget đã chọn</p>
+                <p className="text-[10px] text-muted-foreground text-center">Xem trước trang báo cáo theo widget đã chọn</p>
               </div>
 
             </div>
@@ -2627,28 +2627,28 @@ export function ReportsPage() {
                 <div className="grid grid-cols-4 gap-4">
 
                   {/* Logo Card */}
-                  <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
+                  <div className="bg-card rounded-2xl border border-border shadow-sm overflow-hidden">
                     <div className="flex justify-between items-center px-4 pt-4 pb-2">
-                      <span className="text-sm font-bold text-gray-800">Logo</span>
-                      <span className="text-[10px] text-gray-400 font-mono">600x86px</span>
+                      <span className="text-sm font-bold text-foreground">Logo</span>
+                      <span className="text-[10px] text-muted-foreground font-mono">600x86px</span>
                     </div>
                     <div className="px-4 pb-4">
                       <input type="file" id="logo-upload" accept="image/*" className="hidden" onChange={handleLogoUpload} />
                       <label
                         htmlFor="logo-upload"
-                        className="flex flex-col items-center justify-center border-2 border-dashed border-gray-200 rounded-xl cursor-pointer hover:border-gray-400 hover:bg-gray-50 transition-all group"
+                        className="flex flex-col items-center justify-center border-2 border-dashed border-border rounded-xl cursor-pointer hover:border-gray-400 hover:bg-muted transition-all group"
                         style={{ minHeight: "120px" }}
                       >
                         {logoUrl ? (
                           <div className="relative w-full flex items-center justify-center p-3" style={{ minHeight: "120px" }}>
                             <img src={logoUrl} alt="Logo" className="max-h-16 max-w-full object-contain" />
                             <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 bg-black/5 rounded-xl transition-all">
-                              <span className="text-[10px] font-bold text-gray-700 bg-white px-2 py-1 rounded-lg shadow-sm">Thay đổi</span>
+                              <span className="text-[10px] font-bold text-foreground bg-card px-2 py-1 rounded-lg shadow-sm">Thay đổi</span>
                             </div>
                           </div>
                         ) : (
                           <div className="flex flex-col items-center gap-2 text-center px-3 py-4">
-                            <span className="text-[10px] text-gray-400 leading-relaxed">Click to select or drag your file here.</span>
+                            <span className="text-[10px] text-muted-foreground leading-relaxed">Click to select or drag your file here.</span>
                           </div>
                         )}
                       </label>
@@ -2656,16 +2656,16 @@ export function ReportsPage() {
                   </div>
 
                   {/* Cover Background Card */}
-                  <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
+                  <div className="bg-card rounded-2xl border border-border shadow-sm overflow-hidden">
                     <div className="flex justify-between items-center px-4 pt-4 pb-2">
-                      <span className="text-sm font-bold text-gray-800">Cover background</span>
-                      <span className="text-[10px] text-gray-400 font-mono">842x595px</span>
+                      <span className="text-sm font-bold text-foreground">Cover background</span>
+                      <span className="text-[10px] text-muted-foreground font-mono">842x595px</span>
                     </div>
                     <div className="px-4 pb-4">
                       <input type="file" id="cover-upload" accept="image/*" className="hidden" onChange={handleCoverUpload} />
                       <label
                         htmlFor="cover-upload"
-                        className="flex flex-col items-center justify-center border-2 border-dashed border-gray-200 rounded-xl cursor-pointer hover:border-gray-400 hover:bg-gray-50 transition-all group overflow-hidden"
+                        className="flex flex-col items-center justify-center border-2 border-dashed border-border rounded-xl cursor-pointer hover:border-gray-400 hover:bg-muted transition-all group overflow-hidden"
                         style={{ minHeight: "120px" }}
                       >
                         {coverBackgroundUrl ? (
@@ -2682,7 +2682,7 @@ export function ReportsPage() {
                                 <div key={i} className="w-3 h-full rounded-sm" style={{ backgroundColor: c }} />
                               ))}
                             </div>
-                            <span className="text-[10px] text-gray-400">Click to select or drag your file here.</span>
+                            <span className="text-[10px] text-muted-foreground">Click to select or drag your file here.</span>
                           </div>
                         )}
                       </label>
@@ -2690,16 +2690,16 @@ export function ReportsPage() {
                   </div>
 
                   {/* Body Background Card */}
-                  <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
+                  <div className="bg-card rounded-2xl border border-border shadow-sm overflow-hidden">
                     <div className="flex justify-between items-center px-4 pt-4 pb-2">
-                      <span className="text-sm font-bold text-gray-800">Body background</span>
-                      <span className="text-[10px] text-gray-400 font-mono">842x595px</span>
+                      <span className="text-sm font-bold text-foreground">Body background</span>
+                      <span className="text-[10px] text-muted-foreground font-mono">842x595px</span>
                     </div>
                     <div className="px-4 pb-4">
                       <input type="file" id="body-upload" accept="image/*" className="hidden" onChange={handleBodyUpload} />
                       <label
                         htmlFor="body-upload"
-                        className="flex flex-col items-center justify-center border-2 border-dashed border-gray-200 rounded-xl cursor-pointer hover:border-gray-400 hover:bg-gray-50 transition-all group overflow-hidden"
+                        className="flex flex-col items-center justify-center border-2 border-dashed border-border rounded-xl cursor-pointer hover:border-gray-400 hover:bg-muted transition-all group overflow-hidden"
                         style={{ minHeight: "120px" }}
                       >
                         {bodyBackgroundUrl ? (
@@ -2712,7 +2712,7 @@ export function ReportsPage() {
                         ) : (
                           <div className="flex flex-col items-center gap-2 text-center px-3 py-4">
                             <div className="w-px h-14 bg-gray-300" />
-                            <span className="text-[10px] text-gray-400">Click to select or drag your file here.</span>
+                            <span className="text-[10px] text-muted-foreground">Click to select or drag your file here.</span>
                           </div>
                         )}
                       </label>
@@ -2720,10 +2720,10 @@ export function ReportsPage() {
                   </div>
 
                   {/* Title Card */}
-                  <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
+                  <div className="bg-card rounded-2xl border border-border shadow-sm overflow-hidden">
                     <div className="flex justify-between items-center px-4 pt-4 pb-2">
-                      <span className="text-sm font-bold text-gray-800">Title</span>
-                      <span className="text-[10px] text-gray-400 font-mono">Max 50 characters</span>
+                      <span className="text-sm font-bold text-foreground">Title</span>
+                      <span className="text-[10px] text-muted-foreground font-mono">Max 50 characters</span>
                     </div>
                     <div className="px-4 pb-4 flex flex-col gap-2" style={{ minHeight: "120px" }}>
                       <input
@@ -2731,10 +2731,10 @@ export function ReportsPage() {
                         maxLength={50}
                         value={reportTitle}
                         onChange={(e) => setReportTitle(e.target.value)}
-                        className="w-full px-3 py-2.5 bg-white border border-gray-300 rounded-xl text-sm font-semibold text-gray-800 focus:border-gray-500 outline-none transition-colors mt-1"
+                        className="w-full px-3 py-2.5 bg-card border border-gray-300 rounded-xl text-sm font-semibold text-foreground focus:border-gray-500 outline-none transition-colors mt-1"
                         placeholder="Social Media Insights"
                       />
-                      <span className="text-[10px] text-gray-400 font-mono">{reportTitle.length}/50 characters</span>
+                      <span className="text-[10px] text-muted-foreground font-mono">{reportTitle.length}/50 characters</span>
                     </div>
                   </div>
 
@@ -2742,25 +2742,25 @@ export function ReportsPage() {
 
                 {/* Preview label */}
                 <div className="flex items-center gap-3">
-                  <span className="text-sm font-bold text-gray-700">Preview</span>
+                  <span className="text-sm font-bold text-foreground">Preview</span>
                   <div className="flex-1 h-px bg-gray-200" />
                 </div>
 
                 {/* Full-width 2-page preview */}
                 <div className="grid grid-cols-2 gap-4">
-                  <div className="rounded-2xl overflow-hidden border border-gray-200 shadow-sm">
+                  <div className="rounded-2xl overflow-hidden border border-border shadow-sm">
                     {renderA4Page("cover", 1, 2)}
                   </div>
-                  <div className="rounded-2xl overflow-hidden border border-gray-200 shadow-sm">
+                  <div className="rounded-2xl overflow-hidden border border-border shadow-sm">
                     {(() => {
                       const pages = getEnabledPages();
                       const contentPage = pages.find(p => p !== "cover");
                       return contentPage
                         ? renderA4Page(contentPage, 2, pages.length)
                         : (
-                          <div className="w-full aspect-[1.414/1] bg-gray-50 flex flex-col items-center justify-center gap-2">
+                          <div className="w-full aspect-[1.414/1] bg-muted flex flex-col items-center justify-center gap-2">
                             <Layers size={24} className="text-gray-300" />
-                            <span className="text-xs text-gray-400">Bật widget ở Step 1 để xem trước</span>
+                            <span className="text-xs text-muted-foreground">Bật widget ở Step 1 để xem trước</span>
                           </div>
                         );
                     })()}
@@ -2775,10 +2775,10 @@ export function ReportsPage() {
               <div className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-8">
                 
                 {/* Left Color Selector */}
-                <div className="lg:col-span-1 bg-white rounded-2xl p-6 border border-gray-200 shadow-sm space-y-6">
+                <div className="lg:col-span-1 bg-card rounded-2xl p-6 border border-border shadow-sm space-y-6">
                   <div>
-                    <h3 className="font-bold text-gray-800 text-base mb-1">Pick your colors</h3>
-                    <p className="text-xs text-gray-400">Chọn màu sắc chủ đạo đại diện cho báo cáo</p>
+                    <h3 className="font-bold text-foreground text-base mb-1">Pick your colors</h3>
+                    <p className="text-xs text-muted-foreground">Chọn màu sắc chủ đạo đại diện cho báo cáo</p>
                   </div>
 
                   {/* Colors Grid */}
@@ -2788,12 +2788,12 @@ export function ReportsPage() {
                         key={color}
                         onClick={() => setSelectedColor(color)}
                         className={`w-full aspect-square rounded-xl flex flex-col justify-end p-2 transition-all border relative ${
-                          selectedColor === color ? "ring-2 ring-black ring-offset-2 scale-95" : "border-gray-200"
+                          selectedColor === color ? "ring-2 ring-black ring-offset-2 scale-95" : "border-border"
                         }`}
                         style={{ backgroundColor: color }}
                       >
                         {selectedColor === color && (
-                          <div className="absolute top-2 right-2 w-4 h-4 bg-white rounded-full flex items-center justify-center shadow">
+                          <div className="absolute top-2 right-2 w-4 h-4 bg-card rounded-full flex items-center justify-center shadow">
                             <Check size={10} className="text-black" />
                           </div>
                         )}
@@ -2808,31 +2808,31 @@ export function ReportsPage() {
                 {/* Right Interactive Live Preview */}
                 <div className="lg:col-span-2 space-y-4">
                   <div className="flex justify-between items-center">
-                    <span className="text-xs font-bold text-gray-500 uppercase tracking-wider">Xem trước nội dung kết xuất (A4 Live Preview)</span>
-                    <div className="flex items-center gap-2 bg-white px-3 py-1 rounded-xl border border-gray-200 shadow-sm">
+                    <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Xem trước nội dung kết xuất (A4 Live Preview)</span>
+                    <div className="flex items-center gap-2 bg-card px-3 py-1 rounded-xl border border-border shadow-sm">
                       <button 
                         type="button"
                         disabled={editorPreviewPage === 1}
                         onClick={() => setEditorPreviewPage(prev => Math.max(1, prev - 1))}
-                        className="text-gray-400 hover:text-black disabled:opacity-30 transition-opacity"
+                        className="text-muted-foreground hover:text-black disabled:opacity-30 transition-opacity"
                       >
                         <ChevronLeft size={14} />
                       </button>
-                      <span className="text-xs font-mono font-bold text-gray-700">
+                      <span className="text-xs font-mono font-bold text-foreground">
                         {editorPreviewPage} / {getEnabledPages().length}
                       </span>
                       <button 
                         type="button"
                         disabled={editorPreviewPage === getEnabledPages().length}
                         onClick={() => setEditorPreviewPage(prev => Math.min(getEnabledPages().length, prev + 1))}
-                        className="text-gray-400 hover:text-black disabled:opacity-30 transition-opacity"
+                        className="text-muted-foreground hover:text-black disabled:opacity-30 transition-opacity"
                       >
                         <ChevronRight size={14} />
                       </button>
                     </div>
                   </div>
 
-                  <div className="bg-white rounded-2xl border border-gray-200 shadow-lg overflow-hidden relative">
+                  <div className="bg-card rounded-2xl border border-border shadow-lg overflow-hidden relative">
                     {renderA4Page(getEnabledPages()[editorPreviewPage - 1], editorPreviewPage, getEnabledPages().length)}
                   </div>
                 </div>
@@ -2845,13 +2845,13 @@ export function ReportsPage() {
       )}
 
       {/* Main Reports Page Layout */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white p-5 rounded-2xl shadow-sm border border-gray-200">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-card p-5 rounded-2xl shadow-sm border border-border">
         <div>
-          <h1 className="text-xl font-extrabold text-gray-800 flex items-center gap-2">
+          <h1 className="text-xl font-extrabold text-foreground flex items-center gap-2">
             <FileText className="text-[#3B82F6] w-6 h-6" />
             Automated Analytics Reports
           </h1>
-          <p className="text-xs text-gray-400 mt-1">
+          <p className="text-xs text-muted-foreground mt-1">
             Lập lịch gửi email tự động hàng tháng và thiết kế báo cáo white-label đa kênh chuyên nghiệp.
           </p>
         </div>
@@ -2874,7 +2874,7 @@ export function ReportsPage() {
           </button>
           <button 
             onClick={() => handleGenerateReport("Excel")}
-            className="flex items-center gap-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-semibold px-4 py-2.5 rounded-xl transition-all border border-gray-200 cursor-pointer"
+            className="flex items-center gap-1.5 bg-muted hover:bg-gray-200 text-foreground text-xs font-semibold px-4 py-2.5 rounded-xl transition-all border border-border cursor-pointer"
           >
             <Download size={14} />
             GENERATE EXCEL
@@ -2889,16 +2889,16 @@ export function ReportsPage() {
         <div className="lg:col-span-2 space-y-6">
           
           {/* Period & Language Config Panel */}
-          <div className="bg-white rounded-2xl p-5 border border-gray-200 shadow-sm grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="bg-card rounded-2xl p-5 border border-border shadow-sm grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
-              <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Period</label>
+              <label className="block text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">Period</label>
               <div className="flex items-center gap-3">
-                <div className="flex-1 flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-xl px-3 py-2.5">
-                  <Calendar size={16} className="text-gray-400" />
+                <div className="flex-1 flex items-center gap-2 bg-muted border border-border rounded-xl px-3 py-2.5">
+                  <Calendar size={16} className="text-muted-foreground" />
                   <select 
                     value={isCustomPeriod ? "custom" : (["30 ngày qua", "7 ngày qua", "Tháng này", "Tháng trước"].includes(period) ? period : "custom")}
                     onChange={(e) => handlePeriodChange(e.target.value)}
-                    className="bg-transparent border-none text-sm font-semibold text-gray-700 outline-none w-full cursor-pointer"
+                    className="bg-transparent border-none text-sm font-semibold text-foreground outline-none w-full cursor-pointer"
                   >
                     <option value="30 ngày qua">30 ngày qua</option>
                     <option value="7 ngày qua">7 ngày qua</option>
@@ -2924,34 +2924,34 @@ export function ReportsPage() {
               {isCustomPeriod && (
                 <div className="grid grid-cols-2 gap-3 mt-3 animate-in slide-in-from-top-2 duration-200">
                   <div className="flex flex-col gap-1">
-                    <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Từ ngày</span>
+                    <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Từ ngày</span>
                     <input 
                       type="date"
                       value={customStartDate}
                       onChange={(e) => setCustomStartDate(e.target.value)}
-                      className="bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-xs font-semibold text-gray-700 outline-none focus:border-gray-500 cursor-pointer"
+                      className="bg-muted border border-border rounded-xl px-3 py-2 text-xs font-semibold text-foreground outline-none focus:border-gray-500 cursor-pointer"
                     />
                   </div>
                   <div className="flex flex-col gap-1">
-                    <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Đến ngày</span>
+                    <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Đến ngày</span>
                     <input 
                       type="date"
                       value={customEndDate}
                       onChange={(e) => setCustomEndDate(e.target.value)}
-                      className="bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-xs font-semibold text-gray-700 outline-none focus:border-gray-500 cursor-pointer"
+                      className="bg-muted border border-border rounded-xl px-3 py-2 text-xs font-semibold text-foreground outline-none focus:border-gray-500 cursor-pointer"
                     />
                   </div>
                 </div>
               )}
-              <span className="text-[10px] text-gray-400 mt-1 block font-mono">So sánh với chu kỳ trước đó</span>
+              <span className="text-[10px] text-muted-foreground mt-1 block font-mono">So sánh với chu kỳ trước đó</span>
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Language</label>
+              <label className="block text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">Language</label>
               <select 
                 value={language}
                 onChange={(e) => setLanguage(e.target.value)}
-                className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2.5 text-sm font-semibold text-gray-700 outline-none cursor-pointer"
+                className="w-full bg-muted border border-border rounded-xl px-3 py-2.5 text-sm font-semibold text-foreground outline-none cursor-pointer"
               >
                 <option>English</option>
                 <option>Tiếng Việt</option>
@@ -2961,9 +2961,9 @@ export function ReportsPage() {
           </div>
 
           {/* Templates Section */}
-          <div className="bg-white rounded-2xl p-5 border border-gray-200 shadow-sm space-y-4">
-            <div className="flex justify-between items-center border-b border-gray-100 pb-3">
-              <h4 className="font-bold text-gray-800 text-sm">Templates</h4>
+          <div className="bg-card rounded-2xl p-5 border border-border shadow-sm space-y-4">
+            <div className="flex justify-between items-center border-b border-border pb-3">
+              <h4 className="font-bold text-foreground text-sm">Templates</h4>
               <button 
                 onClick={handleCreateTemplateClick}
                 className="flex items-center gap-1.5 text-[#3B82F6] hover:text-blue-700 text-xs font-bold"
@@ -2978,7 +2978,7 @@ export function ReportsPage() {
                 <select
                   value={selectedTemplateId}
                   onChange={handleTemplateChange}
-                  className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2.5 text-sm text-gray-700 font-semibold outline-none cursor-pointer"
+                  className="w-full bg-muted border border-border rounded-xl px-3 py-2.5 text-sm text-foreground font-semibold outline-none cursor-pointer"
                 >
                   <option value="">Pick a template</option>
                   {templates.map(t => (
@@ -2992,7 +2992,7 @@ export function ReportsPage() {
                 <button
                   onClick={handleEditTemplateClick}
                   disabled={!selectedTemplateId}
-                  className="flex-1 md:flex-initial flex items-center justify-center gap-1 bg-white hover:bg-gray-50 border border-gray-200 text-gray-600 disabled:opacity-40 text-xs font-bold px-3 py-2.5 rounded-xl transition-all"
+                  className="flex-1 md:flex-initial flex items-center justify-center gap-1 bg-card hover:bg-muted border border-border text-muted-foreground disabled:opacity-40 text-xs font-bold px-3 py-2.5 rounded-xl transition-all"
                 >
                   <Edit2 size={13} />
                   EDIT
@@ -3000,7 +3000,7 @@ export function ReportsPage() {
                 <button
                   onClick={handleRemoveTemplate}
                   disabled={!selectedTemplateId}
-                  className="flex-1 md:flex-initial flex items-center justify-center gap-1 bg-white hover:bg-red-50 hover:text-red-500 border border-gray-200 text-gray-600 disabled:opacity-40 text-xs font-bold px-3 py-2.5 rounded-xl transition-all"
+                  className="flex-1 md:flex-initial flex items-center justify-center gap-1 bg-card hover:bg-red-50 hover:text-red-500 border border-border text-muted-foreground disabled:opacity-40 text-xs font-bold px-3 py-2.5 rounded-xl transition-all"
                 >
                   <Trash2 size={13} />
                   REMOVE
@@ -3008,7 +3008,7 @@ export function ReportsPage() {
                 <button
                   onClick={handleDuplicateTemplate}
                   disabled={!selectedTemplateId}
-                  className="flex-1 md:flex-initial flex items-center justify-center gap-1 bg-white hover:bg-gray-50 border border-gray-200 text-gray-600 disabled:opacity-40 text-xs font-bold px-3 py-2.5 rounded-xl transition-all"
+                  className="flex-1 md:flex-initial flex items-center justify-center gap-1 bg-card hover:bg-muted border border-border text-muted-foreground disabled:opacity-40 text-xs font-bold px-3 py-2.5 rounded-xl transition-all"
                 >
                   <Copy size={13} />
                   DUPLICATE
@@ -3018,11 +3018,11 @@ export function ReportsPage() {
           </div>
 
           {/* Section details configure (Premium Redesign) */}
-          <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-[0_8px_30px_rgb(0,0,0,0.04)] backdrop-blur-md bg-opacity-80 space-y-6">
+          <div className="bg-card rounded-2xl p-6 border border-border shadow-[0_8px_30px_rgb(0,0,0,0.04)] backdrop-blur-md bg-opacity-80 space-y-6">
             <div className="flex items-center justify-between border-b border-gray-50 pb-4">
               <div>
-                <h4 className="font-extrabold text-gray-900 text-sm tracking-tight">Sections & Quick Settings</h4>
-                <p className="text-[11px] text-gray-400 mt-0.5">Bật/tắt các nền tảng hoặc chọn từng widget hiển thị trong báo cáo</p>
+                <h4 className="font-extrabold text-foreground text-sm tracking-tight">Sections & Quick Settings</h4>
+                <p className="text-[11px] text-muted-foreground mt-0.5">Bật/tắt các nền tảng hoặc chọn từng widget hiển thị trong báo cáo</p>
               </div>
               <span className="text-[10px] text-blue-600 bg-blue-50 px-2.5 py-1 rounded-full font-bold uppercase tracking-wider">
                 Interactive Config
@@ -3097,13 +3097,13 @@ export function ReportsPage() {
                 return (
                   <div 
                     key={plat.id} 
-                    className={`border border-gray-100 rounded-2xl overflow-hidden transition-all duration-300 ${
-                      isExpanded ? "shadow-[0_4px_20px_rgba(0,0,0,0.02)] bg-slate-50/50" : "bg-white"
+                    className={`border border-border rounded-2xl overflow-hidden transition-all duration-300 ${
+                      isExpanded ? "shadow-[0_4px_20px_rgba(0,0,0,0.02)] bg-slate-50/50" : "bg-card"
                     }`}
                   >
                     {/* Platform Header */}
                     <div 
-                      className="flex justify-between items-center px-4 py-3.5 hover:bg-gray-50/80 cursor-pointer select-none transition-colors"
+                      className="flex justify-between items-center px-4 py-3.5 hover:bg-muted/80 cursor-pointer select-none transition-colors"
                       onClick={() => setExpandedPlatforms(prev => ({ ...prev, [plat.id]: !prev[plat.id] }))}
                     >
                       <div className="flex items-center gap-3">
@@ -3124,32 +3124,32 @@ export function ReportsPage() {
                             activeCount > 0 ? "bg-emerald-500 shadow-[0_2px_8px_rgba(16,185,129,0.3)]" : "bg-gray-200"
                           }`}
                         >
-                          <div className={`w-4 h-4 bg-white rounded-full shadow-md transform transition-transform duration-300 ${
+                          <div className={`w-4 h-4 bg-card rounded-full shadow-md transform transition-transform duration-300 ${
                             activeCount > 0 ? "translate-x-4" : "translate-x-0"
                           }`} />
                         </button>
                         
                         <div className="flex items-center gap-2">
                           <div className={`w-1.5 h-6 rounded-full bg-gradient-to-b ${plat.color}`} />
-                          <span className="text-xs font-bold text-gray-800 tracking-tight">{plat.label}</span>
+                          <span className="text-xs font-bold text-foreground tracking-tight">{plat.label}</span>
                         </div>
                       </div>
                       
                       <div className="flex items-center gap-2.5">
                         <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full font-mono transition-all duration-300 ${
-                          activeCount > 0 ? "bg-blue-50 text-blue-600" : "bg-gray-100 text-gray-400"
+                          activeCount > 0 ? "bg-blue-50 text-blue-600" : "bg-muted text-muted-foreground"
                         }`}>
                           {activeCount}/{plat.widgets.length}
                         </span>
-                        <div className="p-1 rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors">
-                          {isExpanded ? <ChevronUp size={13} className="text-gray-500" /> : <ChevronDown size={13} className="text-gray-500" />}
+                        <div className="p-1 rounded-lg bg-muted hover:bg-muted transition-colors">
+                          {isExpanded ? <ChevronUp size={13} className="text-muted-foreground" /> : <ChevronDown size={13} className="text-muted-foreground" />}
                         </div>
                       </div>
                     </div>
 
                     {/* Collapsible Widgets Container */}
                     {isExpanded && (
-                      <div className="px-4 pb-4 pt-1 bg-white/70 space-y-2.5 border-t border-gray-50/50 animate-in fade-in duration-200">
+                      <div className="px-4 pb-4 pt-1 bg-card/70 space-y-2.5 border-t border-gray-50/50 animate-in fade-in duration-200">
                         {plat.widgets.map((widget) => {
                           const isWidgetChecked = !!selectedWidgets[widget.key];
                           return (
@@ -3157,8 +3157,8 @@ export function ReportsPage() {
                               key={widget.key} 
                               className={`flex items-center justify-between text-xs cursor-pointer py-2 px-3 rounded-xl select-none transition-all duration-200 border ${
                                 isWidgetChecked 
-                                  ? "bg-slate-50 border-gray-200/60 text-gray-900 font-medium" 
-                                  : "bg-transparent border-transparent text-gray-500 hover:text-gray-800"
+                                  ? "bg-slate-50 border-border/60 text-foreground font-medium" 
+                                  : "bg-transparent border-transparent text-muted-foreground hover:text-foreground"
                               }`}
                             >
                               <span>{widget.label}</span>
@@ -3228,10 +3228,10 @@ export function ReportsPage() {
 
       {/* Real-time Dashboard Charts section showing actual channel performance matching preview settings */}
       {(dataLoaded && previewData || previewLoading) && (
-        <div className="mt-8 pt-8 border-t border-gray-200 space-y-6">
+        <div className="mt-8 pt-8 border-t border-border space-y-6">
           <div className="flex items-center gap-2 mb-2">
             <BarChart2 className="text-[#3B82F6] w-5 h-5" />
-            <h2 className="text-lg font-bold text-gray-800">Kênh Dữ Liệu Thực Tế (Dashboard Analytics)</h2>
+            <h2 className="text-lg font-bold text-foreground">Kênh Dữ Liệu Thực Tế (Dashboard Analytics)</h2>
           </div>
 
           {/* Quick Overview Widgets */}
@@ -3260,10 +3260,10 @@ export function ReportsPage() {
               {previewData.channels && previewData.channels.map((ch) => {
                 const platform = ch.platform.toUpperCase();
                 return (
-                  <div key={ch.id} className="bg-white p-6 rounded-2xl border border-gray-200 shadow-sm space-y-4">
-                    <div className="flex items-center gap-2 border-b border-gray-100 pb-3">
+                  <div key={ch.id} className="bg-card p-6 rounded-2xl border border-border shadow-sm space-y-4">
+                    <div className="flex items-center gap-2 border-b border-border pb-3">
                       <PlatformIcon platform={ch.platform} size={20} />
-                      <span className="font-extrabold text-sm text-gray-800 uppercase tracking-wider">
+                      <span className="font-extrabold text-sm text-foreground uppercase tracking-wider">
                         {ch.displayName} ({platform})
                       </span>
                     </div>

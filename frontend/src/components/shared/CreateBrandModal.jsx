@@ -25,7 +25,7 @@ export function CreateBrandModal({ isOpen, onClose, onCreate }) {
 
   return (
     <div className="fixed inset-0 z-[2000] flex items-center justify-center bg-black/40 backdrop-blur-sm animate-in fade-in duration-200 p-6">
-      <div className="w-full max-w-md bg-white rounded-2xl shadow-2xl overflow-hidden flex flex-col relative animate-in zoom-in-95 duration-300">
+      <div className="w-full max-w-md bg-card rounded-2xl shadow-2xl overflow-hidden flex flex-col relative animate-in zoom-in-95 duration-300">
         
         {/* Close Button */}
         <button 
@@ -42,16 +42,16 @@ export function CreateBrandModal({ isOpen, onClose, onCreate }) {
             <div className="p-2 bg-purple-50 text-purple-600 rounded-lg">
               <Sparkles size={18} />
             </div>
-            <h2 className="text-lg font-bold text-[#0A0A0A]">Tạo thương hiệu mới</h2>
+            <h2 className="text-lg font-bold text-foreground">Tạo thương hiệu mới</h2>
           </div>
           
-          <p className="text-xs text-gray-500 mb-6 leading-relaxed">
+          <p className="text-xs text-muted-foreground mb-6 leading-relaxed">
             Thêm một thương hiệu mới giúp bạn quản lý các tài khoản mạng xã hội, lên lịch bài viết và theo dõi số liệu phân tích một cách độc lập.
           </p>
 
           <div className="space-y-4">
             <div className="space-y-1.5 text-left">
-              <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Tên thương hiệu</label>
+              <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Tên thương hiệu</label>
               <input 
                 type="text"
                 required
@@ -59,7 +59,7 @@ export function CreateBrandModal({ isOpen, onClose, onCreate }) {
                 placeholder="Ví dụ: TechVN Studio, Beauty Salon..."
                 value={brandName}
                 onChange={(e) => setBrandName(e.target.value)}
-                className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-black outline-none text-sm font-semibold transition-all shadow-sm focus:ring-1 focus:ring-black/10"
+                className="w-full px-4 py-3 rounded-xl border border-border focus:border-black outline-none text-sm font-semibold transition-all shadow-sm focus:ring-1 focus:ring-black/10"
                 data-testid="create-brand-name"
               />
             </div>
@@ -69,7 +69,7 @@ export function CreateBrandModal({ isOpen, onClose, onCreate }) {
                 type="button"
                 onClick={onClose}
                 disabled={loading}
-                className="flex-1 py-3 border border-gray-300 rounded-xl text-xs font-bold text-gray-700 hover:bg-gray-50 transition-all cursor-pointer text-center disabled:opacity-50"
+                className="flex-1 py-3 border border-gray-300 rounded-xl text-xs font-bold text-foreground hover:bg-muted transition-all cursor-pointer text-center disabled:opacity-50"
                 data-testid="cancel-brand-btn"
               >
                 Hủy

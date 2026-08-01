@@ -2,7 +2,7 @@ import { Calendar, Radio, TrendingUp, Users, MessageCircle } from "lucide-react"
 
 function MiniCalendar() {
   return (
-    <div className="mt-4 p-2 rounded-lg bg-[#F8F8F7]" style={{ height: 60 }}>
+    <div className="mt-4 p-2 rounded-lg bg-background" style={{ height: 60 }}>
       <div className="grid grid-cols-7 gap-0.5">
         {Array.from({ length: 14 }).map((_, i) => (
           <div
@@ -75,7 +75,7 @@ function PlatformToggles() {
             <span style={{ fontSize: 11, color: "#DDD" }}>{p.name}</span>
           </div>
           <div className="w-7 h-3.5 bg-[#16A34A] rounded-full flex items-center justify-end pr-0.5">
-            <div className="w-2.5 h-2.5 bg-white rounded-full" />
+            <div className="w-2.5 h-2.5 bg-card rounded-full" />
           </div>
         </div>
       ))}
@@ -106,7 +106,7 @@ function MessageRows() {
 
 export function Features() {
   return (
-    <section className="bg-white py-24" style={{ fontFamily: "'DM Sans', sans-serif" }}>
+    <section className="bg-card py-24" style={{ fontFamily: "'DM Sans', sans-serif" }}>
       <div className="max-w-[1100px] mx-auto px-6">
         <div className="text-center mb-14">
           <p style={{ fontSize: 10, fontWeight: 500, color: "#9CA3AF", textTransform: "uppercase", letterSpacing: "0.8px" }}>
@@ -123,7 +123,7 @@ export function Features() {
         {/* Top 3 cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
           {/* Card 1 – Planner */}
-          <div className="bg-white rounded-xl p-7" style={{ border: "0.5px solid #E5E7EB" }}>
+          <div className="bg-card rounded-xl p-7" style={{ border: "0.5px solid #E5E7EB" }}>
             <div className="w-10 h-10 bg-[#0A0A0A] rounded-lg flex items-center justify-center mb-4">
               <Calendar size={18} color="#fff" />
             </div>
@@ -147,7 +147,7 @@ export function Features() {
               className="absolute top-4 right-4 flex items-center gap-1.5 px-2 py-1 rounded"
               style={{ backgroundColor: "#16A34A" }}
             >
-              <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
+              <span className="w-1.5 h-1.5 rounded-full bg-card animate-pulse" />
               <span style={{ fontSize: 9, color: "#fff", fontWeight: 500 }}>Active Sync</span>
             </div>
             <div className="w-10 h-10 bg-[#1E1E1E] rounded-lg flex items-center justify-center mb-4">
@@ -161,7 +161,7 @@ export function Features() {
           </div>
 
           {/* Card 3 – Analytics */}
-          <div className="bg-white rounded-xl p-7" style={{ border: "0.5px solid #E5E7EB" }}>
+          <div className="bg-card rounded-xl p-7" style={{ border: "0.5px solid #E5E7EB" }}>
             <div className="w-10 h-10 bg-[#0A0A0A] rounded-lg flex items-center justify-center mb-4">
               <TrendingUp size={18} color="#fff" />
             </div>
@@ -183,7 +183,7 @@ export function Features() {
         {/* Bottom 2 cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-[740px] mx-auto">
           {/* Card 4 – Team */}
-          <div className="bg-white rounded-xl p-7" style={{ border: "0.5px solid #E5E7EB" }}>
+          <div className="bg-card rounded-xl p-7" style={{ border: "0.5px solid #E5E7EB" }}>
             <div className="w-10 h-10 bg-[#0A0A0A] rounded-lg flex items-center justify-center mb-4">
               <Users size={18} color="#fff" />
             </div>
@@ -206,7 +206,7 @@ export function Features() {
           </div>
 
           {/* Card 5 – Inbox */}
-          <div className="bg-white rounded-xl p-7" style={{ border: "0.5px solid #E5E7EB" }}>
+          <div className="bg-card rounded-xl p-7" style={{ border: "0.5px solid #E5E7EB" }}>
             <div className="w-10 h-10 bg-[#0A0A0A] rounded-lg flex items-center justify-center mb-4">
               <MessageCircle size={18} color="#fff" />
             </div>

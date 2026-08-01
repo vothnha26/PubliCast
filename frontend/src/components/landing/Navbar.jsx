@@ -59,7 +59,7 @@ export function Navbar() {
   return (
     <nav
       style={{ fontFamily: "'DM Sans', sans-serif", borderBottom: "0.5px solid #E5E7EB" }}
-      className="sticky top-0 z-50 bg-white"
+      className="sticky top-0 z-50 bg-card"
     >
       <div className="max-w-[1200px] mx-auto px-6 h-14 flex items-center justify-between" ref={dropdownRef}>
         {/* Logo */}
@@ -83,7 +83,7 @@ export function Navbar() {
             </button>
             {productOpen && (
               <div
-                className="absolute top-8 left-0 bg-white rounded-xl p-4 z-50"
+                className="absolute top-8 left-0 bg-card rounded-xl p-4 z-50"
                 style={{ border: "0.5px solid #E5E7EB", width: 420, boxShadow: "0 10px 15px -3px rgba(0,0,0,0.1)" }}
                 onMouseLeave={() => setProductOpen(false)}
               >
@@ -98,7 +98,7 @@ export function Navbar() {
                         <button
                           key={item.name}
                           onClick={() => handleProductClick(item)}
-                          className="block w-full text-left px-2 py-1.5 rounded-md hover:bg-[#F8F8F7] transition-colors duration-150 cursor-pointer"
+                          className="block w-full text-left px-2 py-1.5 rounded-md hover:bg-background transition-colors duration-150 cursor-pointer"
                         >
                           <div style={{ fontSize: 13, color: "#0A0A0A", fontWeight: 500 }}>{item.name}</div>
                           <div style={{ fontSize: 11, color: "#9CA3AF" }}>{item.desc}</div>
@@ -122,12 +122,12 @@ export function Navbar() {
             </button>
             {platformsOpen && (
               <div
-                className="absolute top-8 left-0 bg-white rounded-xl p-3 z-50"
+                className="absolute top-8 left-0 bg-card rounded-xl p-3 z-50"
                 style={{ border: "0.5px solid #E5E7EB", width: 180, boxShadow: "0 10px 15px -3px rgba(0,0,0,0.1)" }}
                 onMouseLeave={() => setPlatformsOpen(false)}
               >
                 {["YouTube", "Instagram", "TikTok", "Facebook", "Twitch", "X"].map((p) => (
-                  <button key={p} onClick={() => { navigate("/manage/connections?tab=connections"); setPlatformsOpen(false); }} className="block w-full text-left px-2 py-1.5 rounded-md hover:bg-[#F8F8F7] transition-colors cursor-pointer" style={{ fontSize: 13, color: "#0A0A0A" }}>
+                  <button key={p} onClick={() => { navigate("/manage/connections?tab=connections"); setPlatformsOpen(false); }} className="block w-full text-left px-2 py-1.5 rounded-md hover:bg-background transition-colors cursor-pointer" style={{ fontSize: 13, color: "#0A0A0A" }}>
                     {p}
                   </button>
                 ))}
@@ -135,15 +135,15 @@ export function Navbar() {
             )}
           </div>
 
-          <button onClick={() => navigate("/pricing")} className="hover:text-[#0A0A0A] transition-colors duration-150 cursor-pointer text-[13px] color-[#6B7280]" style={{ color: "#6B7280" }}>Pricing</button>
-          <button onClick={() => navigate("/manage/team")} className="hover:text-[#0A0A0A] transition-colors duration-150 cursor-pointer text-[13px] color-[#6B7280]" style={{ color: "#6B7280" }}>Agencies</button>
-          <button onClick={() => navigate("/start")} className="hover:text-[#0A0A0A] transition-colors duration-150 cursor-pointer text-[13px] color-[#6B7280]" style={{ color: "#6B7280" }}>Resources</button>
+          <button onClick={() => navigate("/pricing")} className="hover:text-foreground transition-colors duration-150 cursor-pointer text-[13px] color-[#6B7280]" style={{ color: "#6B7280" }}>Pricing</button>
+          <button onClick={() => navigate("/manage/team")} className="hover:text-foreground transition-colors duration-150 cursor-pointer text-[13px] color-[#6B7280]" style={{ color: "#6B7280" }}>Agencies</button>
+          <button onClick={() => navigate("/start")} className="hover:text-foreground transition-colors duration-150 cursor-pointer text-[13px] color-[#6B7280]" style={{ color: "#6B7280" }}>Resources</button>
         </div>
 
         {/* Right */}
         <div className="hidden md:flex items-center gap-3">
           <button
-            className="hover:text-[#0A0A0A] transition-colors duration-150 cursor-pointer"
+            className="hover:text-foreground transition-colors duration-150 cursor-pointer"
             style={{ fontSize: 13, color: "#0A0A0A" }}
             onClick={() => navigate("/login")}
           >
@@ -166,7 +166,7 @@ export function Navbar() {
 
       {/* Mobile Menu */}
       {menuOpen && (
-        <div className="md:hidden bg-white px-6 pb-4 border-t border-gray-100 animate-in slide-in-from-top duration-300">
+        <div className="md:hidden bg-card px-6 pb-4 border-t border-border animate-in slide-in-from-top duration-300">
           {[
             { label: "Product", path: "/dashboard" },
             { label: "Platforms", path: "/manage/connections" },

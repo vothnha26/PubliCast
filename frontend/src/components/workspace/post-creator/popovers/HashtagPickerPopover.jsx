@@ -44,24 +44,24 @@ export function HashtagPickerPopover({ onInsert, onClose }) {
   };
 
   return (
-    <div className="absolute bottom-full left-0 mb-2 w-72 bg-white rounded-2xl shadow-2xl border border-gray-100 z-[300] animate-in fade-in slide-in-from-bottom-2 duration-150 overflow-hidden">
-      <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
+    <div className="absolute bottom-full left-0 mb-2 w-72 bg-card rounded-2xl shadow-2xl border border-border z-[300] animate-in fade-in slide-in-from-bottom-2 duration-150 overflow-hidden">
+      <div className="flex items-center justify-between px-4 py-3 border-b border-border">
         <div className="flex items-center gap-2">
-          <Hash size={14} className="text-[#0A0A0A]" />
-          <span className="text-[11px] font-bold text-[#0A0A0A] uppercase tracking-widest">Hashtag Sets</span>
+          <Hash size={14} className="text-foreground" />
+          <span className="text-[11px] font-bold text-foreground uppercase tracking-widest">Hashtag Sets</span>
         </div>
-        <button type="button" onClick={onClose} className="text-gray-400 hover:text-black transition-colors">
+        <button type="button" onClick={onClose} className="text-muted-foreground hover:text-black transition-colors">
           <X size={14} />
         </button>
       </div>
       <div className="max-h-64 overflow-y-auto">
         {loading ? (
-          <div className="flex items-center justify-center py-6 text-xs text-gray-400 font-semibold gap-2">
+          <div className="flex items-center justify-center py-6 text-xs text-muted-foreground font-semibold gap-2">
             <Loader2 size={14} className="animate-spin text-blue-500" />
             Đang tải bộ hashtag...
           </div>
         ) : hashtagSets.length === 0 ? (
-          <div className="px-4 py-6 text-center text-xs text-gray-400 font-medium">
+          <div className="px-4 py-6 text-center text-xs text-muted-foreground font-medium">
             Chưa có bộ hashtag nào.
             <br />
             Hãy tạo bộ hashtag trong mục <strong>Hashtag Manager</strong>.
@@ -71,7 +71,7 @@ export function HashtagPickerPopover({ onInsert, onClose }) {
             const tags = set.hashtags ? set.hashtags.split(",") : [];
             return (
               <div key={set.id || idx} className="border-b border-gray-50 last:border-0">
-                <div className="flex items-center justify-between px-4 py-2.5 hover:bg-gray-50 transition-colors group">
+                <div className="flex items-center justify-between px-4 py-2.5 hover:bg-muted transition-colors group">
                   <button
                     type="button"
                     onClick={() => setExpandedSet(expandedSet === idx ? null : idx)}
@@ -79,10 +79,10 @@ export function HashtagPickerPopover({ onInsert, onClose }) {
                   >
                     <ChevronRight
                       size={12}
-                      className={`text-gray-400 transition-transform ${expandedSet === idx ? "rotate-90" : ""}`}
+                      className={`text-muted-foreground transition-transform ${expandedSet === idx ? "rotate-90" : ""}`}
                     />
-                    <span className="text-[11px] font-semibold text-gray-700">{set.name}</span>
-                    <span className="text-[9px] text-gray-400 font-medium">{tags.length} tags</span>
+                    <span className="text-[11px] font-semibold text-foreground">{set.name}</span>
+                    <span className="text-[9px] text-muted-foreground font-medium">{tags.length} tags</span>
                   </button>
                   <button
                     type="button"
@@ -111,8 +111,8 @@ export function HashtagPickerPopover({ onInsert, onClose }) {
           })
         )}
       </div>
-      <div className="px-4 py-2 bg-gray-50 border-t border-gray-100">
-        <p className="text-[9px] text-gray-400 font-medium">
+      <div className="px-4 py-2 bg-muted border-t border-border">
+        <p className="text-[9px] text-muted-foreground font-medium">
           Rê chuột vào bộ rồi nhấn <strong>Insert All</strong>, hoặc mở rộng để chọn từng tag.
         </p>
       </div>

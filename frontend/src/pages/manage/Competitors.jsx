@@ -418,16 +418,16 @@ export function CompetitorsPage() {
   };
 
   return (
-    <div className="flex-1 flex flex-col overflow-y-auto bg-[#F8F9FA] p-6 space-y-6">
+    <div className="flex-1 flex flex-col overflow-y-auto bg-background p-6 space-y-6">
       
       {/* Heading Block */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-[#1A1F36] flex items-center gap-2">
+          <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
             <BarChart3 className="text-[#3B82F6] w-6 h-6" />
             {t("header.title")}
           </h1>
-          <p className="text-sm text-[#8792A2] mt-0.5">
+          <p className="text-sm text-muted-foreground mt-0.5">
             {t("header.subtitle")}
           </p>
         </div>
@@ -442,7 +442,7 @@ export function CompetitorsPage() {
       </div>
 
       {/* Tabs Filter */}
-      <div className="flex border-b border-gray-200">
+      <div className="flex border-b border-border">
         {[
           { id: "all", label: t("tabs.all") },
           { id: "facebook", label: t("tabs.facebook") },
@@ -453,8 +453,8 @@ export function CompetitorsPage() {
             onClick={() => setActiveViewTab(tab.id)}
             className={`py-3 px-6 text-xs font-bold uppercase tracking-wider border-b-2 cursor-pointer transition-all ${
               activeViewTab === tab.id 
-                ? "border-black text-black font-extrabold" 
-                : "border-transparent text-gray-400 hover:text-black"
+                ? "border-foreground text-foreground font-extrabold" 
+                : "border-transparent text-muted-foreground hover:text-foreground"
             }`}
           >
             {tab.label}
@@ -473,11 +473,11 @@ export function CompetitorsPage() {
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             
             {/* Left Column: Benchmarking Matrix Table */}
-            <div className="lg:col-span-2 bg-white rounded-2xl shadow-sm border border-[#E5E7EB] overflow-hidden flex flex-col">
-              <div className="px-6 py-5 border-b border-[#E5E7EB] flex justify-between items-center">
+            <div className="lg:col-span-2 bg-card rounded-2xl shadow-sm border border-border overflow-hidden flex flex-col">
+              <div className="px-6 py-5 border-b border-border flex justify-between items-center">
                 <div>
-                  <h4 className="text-base font-bold text-[#1A1F36]">{t("matrix.title")}</h4>
-                  <p className="text-xs text-[#8792A2] mt-0.5">{t("matrix.subtitle")}</p>
+                  <h4 className="text-base font-bold text-foreground">{t("matrix.title")}</h4>
+                  <p className="text-xs text-muted-foreground mt-0.5">{t("matrix.subtitle")}</p>
                 </div>
                 <span className="text-xs text-blue-600 font-bold bg-blue-50 px-2.5 py-1 rounded-lg">
                   {t("matrix.tracking", { count: displayCompetitors.length - 1 })}
@@ -494,16 +494,16 @@ export function CompetitorsPage() {
                 <div className="overflow-x-auto">
                   <table className="w-full text-left border-collapse">
                     <thead>
-                      <tr className="bg-[#FAFAFA] border-b border-[#E5E7EB]">
-                        <th className="py-3.5 px-6 text-xs font-bold text-[#8792A2] uppercase tracking-wider">{t("matrix.cols.brand")}</th>
-                        <th className="py-3.5 px-6 text-xs font-bold text-[#8792A2] uppercase tracking-wider">{t("matrix.cols.followers")}</th>
-                        <th className="py-3.5 px-6 text-xs font-bold text-[#8792A2] uppercase tracking-wider">{t("matrix.cols.frequency")}</th>
-                        <th className="py-3.5 px-6 text-xs font-bold text-[#8792A2] uppercase tracking-wider">{t("matrix.cols.engagement")}</th>
-                        <th className="py-3.5 px-6 text-xs font-bold text-[#8792A2] uppercase tracking-wider">{t("matrix.cols.growth")}</th>
-                        <th className="py-3.5 px-6 text-xs font-bold text-[#8792A2] uppercase tracking-wider"></th>
+                      <tr className="bg-muted/50 border-b border-border">
+                        <th className="py-3.5 px-6 text-xs font-bold text-muted-foreground uppercase tracking-wider">{t("matrix.cols.brand")}</th>
+                        <th className="py-3.5 px-6 text-xs font-bold text-muted-foreground uppercase tracking-wider">{t("matrix.cols.followers")}</th>
+                        <th className="py-3.5 px-6 text-xs font-bold text-muted-foreground uppercase tracking-wider">{t("matrix.cols.frequency")}</th>
+                        <th className="py-3.5 px-6 text-xs font-bold text-muted-foreground uppercase tracking-wider">{t("matrix.cols.engagement")}</th>
+                        <th className="py-3.5 px-6 text-xs font-bold text-muted-foreground uppercase tracking-wider">{t("matrix.cols.growth")}</th>
+                        <th className="py-3.5 px-6 text-xs font-bold text-muted-foreground uppercase tracking-wider"></th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-[#E5E7EB]">
+                    <tbody className="divide-y divide-border">
                       {displayCompetitors.map((c) => (
                         <tr 
                           key={c.id} 
@@ -516,16 +516,16 @@ export function CompetitorsPage() {
                           <td className="py-4 px-6">
                             <div className="flex items-center gap-3">
                               {c.avatarUrl ? (
-                                <img src={c.avatarUrl} referrerPolicy="no-referrer" alt="" className="w-8 h-8 rounded-full object-cover border border-gray-100 shrink-0" />
+                                <img src={c.avatarUrl} referrerPolicy="no-referrer" alt="" className="w-8 h-8 rounded-full object-cover border border-border shrink-0" />
                               ) : (
                                 <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs uppercase shrink-0 ${
-                                  c.isSelf ? "bg-emerald-500 text-white" : "bg-slate-100 text-[#4F5B66]"
+                                  c.isSelf ? "bg-emerald-500 text-white" : "bg-muted text-muted-foreground"
                                 }`}>
                                   {c.name.slice(0, 2)}
                                 </div>
                               )}
                               <div>
-                                <div className="font-semibold text-sm text-[#1A1F36] flex items-center gap-1.5">
+                                <div className="font-semibold text-sm text-foreground flex items-center gap-1.5">
                                   {c.isSelf ? (
                                     <span>{c.name}</span>
                                   ) : (
@@ -533,23 +533,23 @@ export function CompetitorsPage() {
                                       href={c.profileUrl || (c.platform === "facebook" ? `https://www.facebook.com/${c.handle}` : `https://www.youtube.com/channel/${c.handle}`)}
                                       target="_blank" 
                                       rel="noopener noreferrer"
-                                      className="hover:underline hover:text-blue-600 flex items-center gap-1 group"
+                                      className="hover:underline hover:text-blue-500 flex items-center gap-1 group"
                                       title={c.name}
                                     >
                                       {c.name}
-                                      <ExternalLink size={12} className="text-gray-400 group-hover:text-blue-600 transition-colors inline" />
+                                      <ExternalLink size={12} className="text-muted-foreground group-hover:text-blue-500 transition-colors inline" />
                                     </a>
                                   )}
                                   {c.isSelf && (
-                                    <span className="text-[10px] bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded-md font-bold uppercase">
+                                    <span className="text-[10px] bg-emerald-500/10 text-emerald-500 px-1.5 py-0.5 rounded-md font-bold uppercase">
                                       {t("matrix.youBadge")}
                                     </span>
                                   )}
                                 </div>
-                                <div className="text-xs text-[#8792A2] flex items-center gap-1.5">
+                                <div className="text-xs text-muted-foreground flex items-center gap-1.5">
                                   {c.handle}
                                   {!c.isSelf && c.platform && (
-                                    <span className="text-[9px] bg-gray-100 text-gray-500 font-bold px-1 py-0.2 rounded uppercase scale-90">
+                                    <span className="text-[9px] bg-muted text-muted-foreground font-bold px-1 py-0.2 rounded uppercase scale-90">
                                       {c.platform}
                                     </span>
                                   )}
@@ -559,23 +559,23 @@ export function CompetitorsPage() {
                           </td>
 
                           {/* Followers */}
-                          <td className="py-4 px-6 text-sm font-bold text-[#1A1F36]">
+                          <td className="py-4 px-6 text-sm font-bold text-foreground">
                             {c.followers.toLocaleString()}
                           </td>
 
                           {/* Posts Per Week */}
                           <td className="py-4 px-6">
-                            <div className="text-sm font-semibold text-[#1A1F36]">{c.postsPerWeek ?? "N/A"}</div>
-                            <div className="text-xs text-[#8792A2]">{t("matrix.postsPerWeek")}</div>
+                            <div className="text-sm font-semibold text-foreground">{c.postsPerWeek ?? "N/A"}</div>
+                            <div className="text-xs text-muted-foreground">{t("matrix.postsPerWeek")}</div>
                           </td>
 
                           {/* Engagement Rate */}
                           <td className="py-4 px-6">
                             {c.engagementRate == null ? (
-                              <span className="text-sm text-[#8792A2]">N/A</span>
+                              <span className="text-sm text-muted-foreground">N/A</span>
                             ) : (
                               <span className={`text-sm font-bold ${
-                                c.engagementRate >= 4.0 ? "text-emerald-600" : "text-[#1A1F36]"
+                                c.engagementRate >= 4.0 ? "text-emerald-500" : "text-foreground"
                               }`}>
                                 {c.engagementRate}%
                               </span>
@@ -585,7 +585,7 @@ export function CompetitorsPage() {
                           {/* Growth Rate */}
                           <td className="py-4 px-6">
                             {c.growth == null ? (
-                              <span className="text-sm text-[#8792A2]">N/A</span>
+                              <span className="text-sm text-muted-foreground">N/A</span>
                             ) : (
                               <span className="text-sm font-semibold text-[#16A34A] flex items-center gap-0.5">
                                 <TrendingUp size={12} /> +{c.growth}%
@@ -614,13 +614,13 @@ export function CompetitorsPage() {
             </div>
 
             {/* Right Column: Followers Growth Chart */}
-            <div className="bg-white rounded-2xl shadow-sm border border-[#E5E7EB] p-6 flex flex-col justify-between">
+            <div className="bg-card rounded-2xl shadow-sm border border-border p-6 flex flex-col justify-between">
               <div>
-                <h4 className="text-base font-bold text-[#1A1F36] flex items-center gap-2">
+                <h4 className="text-base font-bold text-foreground flex items-center gap-2">
                   <Users size={18} className="text-[#10B981]" />
                   {t("chart.title")}
                 </h4>
-                <p className="text-xs text-[#8792A2] mt-0.5">{t("chart.subtitle")}</p>
+                <p className="text-xs text-muted-foreground mt-0.5">{t("chart.subtitle")}</p>
               </div>
 
               {/* No real historical follower data source exists for this
@@ -636,14 +636,14 @@ export function CompetitorsPage() {
           </div>
 
           {/* Bottom Section: Top Performing Competitor Posts */}
-          <div className="bg-white rounded-2xl shadow-sm border border-[#E5E7EB] p-6">
+          <div className="bg-card rounded-2xl shadow-sm border border-border p-6">
             <div className="flex justify-between items-center mb-6">
               <div>
-                <h4 className="text-base font-bold text-[#1A1F36] flex items-center gap-2">
+                <h4 className="text-base font-bold text-foreground flex items-center gap-2">
                   <Flame size={18} className="text-[#EF4444] animate-bounce" />
                   {t("topPosts.title")}
                 </h4>
-                <p className="text-xs text-[#8792A2] mt-0.5">{t("topPosts.subtitle")}</p>
+                <p className="text-xs text-muted-foreground mt-0.5">{t("topPosts.subtitle")}</p>
               </div>
             </div>
 
@@ -658,17 +658,17 @@ export function CompetitorsPage() {
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {displayTopPosts.map((post) => (
-                  <div key={post.id} className="border border-[#E5E7EB] rounded-2xl overflow-hidden flex flex-col bg-white hover:shadow-md transition-shadow">
+                  <div key={post.id} className="border border-border rounded-2xl overflow-hidden flex flex-col bg-card hover:shadow-md transition-shadow">
                     
                     {/* Post Header */}
-                    <div className="p-4 border-b border-[#E5E7EB] flex justify-between items-center bg-[#FAFAFA]">
+                    <div className="p-4 border-b border-border flex justify-between items-center bg-muted/40">
                       <div className="flex items-center gap-2">
-                        <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center font-bold text-xs uppercase">
+                        <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center font-bold text-xs uppercase text-foreground">
                           {post.author.slice(0, 2)}
                         </div>
                         <div>
-                          <div className="text-xs font-bold text-[#1A1F36]">{post.author}</div>
-                          <div className="text-[10px] text-[#8792A2]">{post.date}</div>
+                          <div className="text-xs font-bold text-foreground">{post.author}</div>
+                          <div className="text-[10px] text-muted-foreground">{post.date}</div>
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
@@ -701,12 +701,12 @@ export function CompetitorsPage() {
 
                     {/* Post Content */}
                     <div className="p-4 flex-1 flex flex-col justify-between">
-                      <p className="text-xs text-[#4F5B66] leading-relaxed line-clamp-4">
+                      <p className="text-xs text-muted-foreground leading-relaxed line-clamp-4">
                         {post.content}
                       </p>
 
                       {/* Post Footer / Engagement Metrics */}
-                      <div className="mt-4 pt-3 border-t border-gray-100 flex justify-between items-center text-[#8792A2]">
+                      <div className="mt-4 pt-3 border-t border-border flex justify-between items-center text-muted-foreground">
                         <div className="flex items-center gap-3">
                           <span className="flex items-center gap-1 text-[11px]">
                             <ThumbsUp size={12} className="text-[#3B82F6]" />
@@ -722,7 +722,7 @@ export function CompetitorsPage() {
                           </span>
                         </div>
 
-                        <span className="text-[10px] font-bold bg-[#FAFAFA] border border-[#E5E7EB] text-[#1A1F36] px-2 py-0.5 rounded-md">
+                        <span className="text-[10px] font-bold bg-muted border border-border text-foreground px-2 py-0.5 rounded-md">
                           {post.reachRate == null ? "N/A" : `${post.reachRate}%`} {t("topPosts.engagementLabel")}
                         </span>
                       </div>
@@ -738,8 +738,8 @@ export function CompetitorsPage() {
 
       {/* Modal: Add Competitor */}
       {isModalOpen && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 animate-in fade-in duration-200 p-4">
-          <div className="bg-white rounded-3xl w-full max-w-md p-6 relative shadow-2xl border border-[#E5E7EB] flex flex-col max-h-[90vh]">
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 animate-in fade-in duration-200 p-4">
+          <div className="bg-card rounded-3xl w-full max-w-md p-6 relative shadow-2xl border border-border flex flex-col max-h-[90vh]">
             
             <button 
               onClick={() => {

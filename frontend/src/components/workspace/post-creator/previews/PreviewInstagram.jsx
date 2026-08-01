@@ -123,13 +123,13 @@ export function PreviewInstagram({
         fallbackLabel="Instagram Story"
       >
         <div className="px-3 pt-3 space-y-2 w-full pointer-events-auto">
-          <div className="w-full h-[2px] bg-white/30 rounded-full overflow-hidden">
-            <div className="w-1/3 h-full bg-white rounded-full animate-pulse" />
+          <div className="w-full h-[2px] bg-card/30 rounded-full overflow-hidden">
+            <div className="w-1/3 h-full bg-card rounded-full animate-pulse" />
           </div>
 
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <div className="w-6.5 h-6.5 rounded-full bg-white/20 p-0.5">
+              <div className="w-6.5 h-6.5 rounded-full bg-card/20 p-0.5">
                 <div className="w-full h-full rounded-full bg-black border border-white/20 flex items-center justify-center font-bold text-[8px] text-white">
                   {pageName.substring(0, 2).toUpperCase()}
                 </div>
@@ -163,35 +163,35 @@ export function PreviewInstagram({
     const cardWidth = previewDevice === 'mobile' ? 'w-[320px]' : 'w-full max-w-[460px]';
 
     return (
-      <div className={`${cardWidth} bg-white rounded-3xl overflow-hidden shadow-2xl font-sans border border-gray-100 flex flex-col mx-auto animate-in fade-in duration-300 text-left`}>
+      <div className={`${cardWidth} bg-card rounded-3xl overflow-hidden shadow-2xl font-sans border border-border flex flex-col mx-auto animate-in fade-in duration-300 text-left`}>
         {/* Header Navigation */}
-        <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
+        <div className="flex items-center justify-between px-4 py-3 border-b border-border">
           <ChevronLeft 
             size={20} 
-            className="text-gray-900 cursor-pointer hover:opacity-75 transition-opacity" 
+            className="text-foreground cursor-pointer hover:opacity-75 transition-opacity" 
             onClick={() => setViewMode("post")}
           />
-          <span className="text-xs font-bold text-gray-900">{pageName}</span>
+          <span className="text-xs font-bold text-foreground">{pageName}</span>
           
           <div className="flex items-center gap-2">
             {/* Grid/Post View Switcher Button */}
             <button
               onClick={() => setViewMode("post")}
               title="Switch to post view"
-              className="p-1 rounded-md bg-gray-100 hover:bg-gray-200 text-gray-700 transition-colors cursor-pointer"
+              className="p-1 rounded-md bg-muted hover:bg-gray-200 text-foreground transition-colors cursor-pointer"
             >
               <LayoutGrid size={15} />
             </button>
-            <MoreHorizontal size={18} className="text-gray-900 cursor-pointer" />
+            <MoreHorizontal size={18} className="text-foreground cursor-pointer" />
           </div>
         </div>
 
         {/* Profile Details Header */}
-        <div className="p-4 space-y-3 border-b border-gray-100">
+        <div className="p-4 space-y-3 border-b border-border">
           <div className="flex items-center justify-between">
             {/* Profile Avatar with Gradient Border */}
             <div className="w-16 h-16 rounded-full bg-gradient-to-tr from-[#F58529] via-[#DD2A7B] to-[#8134AF] p-[2px] shrink-0">
-              <div className="w-full h-full rounded-full bg-white flex items-center justify-center font-bold text-sm text-gray-800 border border-white">
+              <div className="w-full h-full rounded-full bg-card flex items-center justify-center font-bold text-sm text-foreground border border-white">
                 {pageName.substring(0, 2).toUpperCase()}
               </div>
             </div>
@@ -200,15 +200,15 @@ export function PreviewInstagram({
             <div className="flex items-center gap-6 text-center pr-2">
               <div>
                 <span className="text-xs font-bold block text-gray-950">7</span>
-                <span className="text-[10px] text-gray-500">posts</span>
+                <span className="text-[10px] text-muted-foreground">posts</span>
               </div>
               <div>
                 <span className="text-xs font-bold block text-gray-950">0</span>
-                <span className="text-[10px] text-gray-500">followers</span>
+                <span className="text-[10px] text-muted-foreground">followers</span>
               </div>
               <div>
                 <span className="text-xs font-bold block text-gray-950">0</span>
-                <span className="text-[10px] text-gray-500">following</span>
+                <span className="text-[10px] text-muted-foreground">following</span>
               </div>
             </div>
           </div>
@@ -216,7 +216,7 @@ export function PreviewInstagram({
           {/* Profile Bio */}
           <div className="space-y-0.5 text-left">
             <span className="text-xs font-bold text-gray-950 block">{pageName}</span>
-            <div className="flex items-center gap-1 text-[10px] font-semibold text-gray-800">
+            <div className="flex items-center gap-1 text-[10px] font-semibold text-foreground">
               <span className="w-3.5 h-3.5 rounded-full bg-black text-white flex items-center justify-center font-extrabold text-[8px]">@</span>
               <span>{pageName}</span>
             </div>
@@ -224,33 +224,33 @@ export function PreviewInstagram({
 
           {/* Action Buttons (Following / Message / Add Person) */}
           <div className="flex items-center gap-2 pt-1">
-            <button className="flex-1 py-1.5 bg-gray-100 hover:bg-gray-200 rounded-lg text-xs font-bold text-gray-900 transition-colors">
+            <button className="flex-1 py-1.5 bg-muted hover:bg-gray-200 rounded-lg text-xs font-bold text-foreground transition-colors">
               Following v
             </button>
-            <button className="flex-1 py-1.5 bg-gray-100 hover:bg-gray-200 rounded-lg text-xs font-bold text-gray-900 transition-colors">
+            <button className="flex-1 py-1.5 bg-muted hover:bg-gray-200 rounded-lg text-xs font-bold text-foreground transition-colors">
               Message
             </button>
-            <button className="p-1.5 bg-gray-100 hover:bg-gray-200 rounded-lg text-gray-900 transition-colors">
+            <button className="p-1.5 bg-muted hover:bg-gray-200 rounded-lg text-foreground transition-colors">
               <UserPlus size={16} />
             </button>
           </div>
         </div>
 
         {/* Profile Tab Navigation Bar */}
-        <div className="flex items-center justify-around border-b border-gray-200 text-gray-400">
+        <div className="flex items-center justify-around border-b border-border text-muted-foreground">
           <button className="py-2.5 border-b-2 border-black text-black flex-1 flex justify-center">
             <Grid size={18} />
           </button>
-          <button className="py-2.5 flex-1 flex justify-center hover:text-gray-800">
+          <button className="py-2.5 flex-1 flex justify-center hover:text-foreground">
             <Film size={18} />
           </button>
-          <button className="py-2.5 flex-1 flex justify-center hover:text-gray-800">
+          <button className="py-2.5 flex-1 flex justify-center hover:text-foreground">
             <Tag size={18} />
           </button>
         </div>
 
         {/* 3x3 Profile Media Grid */}
-        <div className="grid grid-cols-3 gap-0.5 bg-white p-0.5">
+        <div className="grid grid-cols-3 gap-0.5 bg-card p-0.5">
           {/* Cell 1: Current Post Being Created */}
           <div className="aspect-square bg-gray-900 relative overflow-hidden group">
             {videoFileUrl ? (
@@ -296,19 +296,19 @@ export function PreviewInstagram({
       layout="card"
       aspectRatioClass="aspect-square"
       fallbackLabel="Feed Post Preview"
-      fallbackIcon={<User size={22} className="text-gray-400" />}
+      fallbackIcon={<User size={22} className="text-muted-foreground" />}
     >
       {/* Header Slot */}
       <div slot="header" className="flex items-center justify-between p-3">
         <div className="flex items-center gap-2.5">
           <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-[#F58529] via-[#DD2A7B] to-[#8134AF] p-[1.5px]">
-            <div className="w-full h-full rounded-full bg-white border border-white flex items-center justify-center font-bold text-[9px] text-gray-800">
+            <div className="w-full h-full rounded-full bg-card border border-white flex items-center justify-center font-bold text-[9px] text-foreground">
               {pageName.substring(0, 2).toUpperCase()}
             </div>
           </div>
           <div className="text-left">
             <div className="text-xs font-bold hover:underline cursor-pointer leading-tight text-gray-950">{pageName}</div>
-            <div className="text-[8px] text-gray-400 font-semibold leading-tight">Sponsored</div>
+            <div className="text-[8px] text-muted-foreground font-semibold leading-tight">Sponsored</div>
           </div>
         </div>
 
@@ -317,11 +317,11 @@ export function PreviewInstagram({
           <button
             onClick={() => setViewMode("grid")}
             title="Switch to profile grid view"
-            className="p-1 rounded-md bg-gray-100 hover:bg-gray-200 text-gray-700 transition-colors cursor-pointer"
+            className="p-1 rounded-md bg-muted hover:bg-gray-200 text-foreground transition-colors cursor-pointer"
           >
             <LayoutGrid size={15} />
           </button>
-          <button className="text-gray-700 hover:text-black">
+          <button className="text-foreground hover:text-black">
             <MoreHorizontal size={16} />
           </button>
         </div>
@@ -331,31 +331,31 @@ export function PreviewInstagram({
       <div className="px-3 pt-3 pb-4 space-y-2 text-left">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3.5">
-            <button className="text-gray-800 hover:text-red-500 hover:scale-110 transition-transform">
+            <button className="text-foreground hover:text-red-500 hover:scale-110 transition-transform">
               <Heart size={20} />
             </button>
-            <button className="text-gray-800 hover:scale-110 transition-transform">
+            <button className="text-foreground hover:scale-110 transition-transform">
               <MessageCircle size={20} />
             </button>
-            <button className="text-gray-800 hover:scale-110 transition-transform -rotate-12">
+            <button className="text-foreground hover:scale-110 transition-transform -rotate-12">
               <Send size={18} />
             </button>
           </div>
-          <button className="text-gray-800 hover:scale-110 transition-transform">
+          <button className="text-foreground hover:scale-110 transition-transform">
             <Bookmark size={20} />
           </button>
         </div>
 
-        <div className="text-[10.5px] font-bold text-gray-900 leading-tight">
+        <div className="text-[10.5px] font-bold text-foreground leading-tight">
           Liked by <b>you</b> and <b>others</b>
         </div>
 
-        <div className="text-[10.5px] leading-relaxed text-gray-800 font-medium">
+        <div className="text-[10.5px] leading-relaxed text-foreground font-medium">
           <span className="font-bold hover:underline cursor-pointer mr-1.5">{pageName}</span>
           <span className="whitespace-pre-wrap">{displayCaption}</span>
         </div>
 
-        <div className="text-[8.5px] text-gray-400 font-bold uppercase tracking-wider mt-1">
+        <div className="text-[8.5px] text-muted-foreground font-bold uppercase tracking-wider mt-1">
           1 minute ago
         </div>
       </div>

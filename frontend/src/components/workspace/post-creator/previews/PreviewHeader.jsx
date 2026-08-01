@@ -18,7 +18,7 @@ export function PreviewHeader() {
   } = usePostCreatorFormContext();
 
   return (
-    <div className="shrink-0 px-6 py-3.5 border-b border-gray-100 flex items-center justify-between bg-white z-10 font-sans">
+    <div className="shrink-0 px-6 py-3.5 border-b border-border flex items-center justify-between bg-card z-10 font-sans">
       <div className="flex items-center gap-2">
         {selectedPlatforms.map((platform) => {
           const isActive = platform === activePlatform;
@@ -30,8 +30,8 @@ export function PreviewHeader() {
               title={t("planner:postCreator.preview.header.switchPreview", { platform })}
               className={`w-9 h-9 rounded-full flex items-center justify-center transition-all cursor-pointer ${
                 isActive 
-                  ? 'bg-gray-100 ring-2 ring-gray-900/10 scale-105 shadow-sm' 
-                  : 'bg-transparent hover:bg-gray-50 text-gray-400 opacity-70 hover:opacity-100'
+                  ? 'bg-muted ring-2 ring-gray-900/10 scale-105 shadow-sm' 
+                  : 'bg-transparent hover:bg-muted text-muted-foreground opacity-70 hover:opacity-100'
               }`}
             >
               {platform === 'youtube' ? (
@@ -55,19 +55,19 @@ export function PreviewHeader() {
           );
         })}
         {selectedPlatforms.length === 0 && (
-          <div className="w-9 h-9 rounded-full bg-gray-50 flex items-center justify-center text-gray-300">
+          <div className="w-9 h-9 rounded-full bg-muted flex items-center justify-center text-gray-300">
             <AlertCircle size={18} />
           </div>
         )}
       </div>
 
-      <div className="flex items-center gap-1.5 bg-gray-100/80 p-1 rounded-xl border border-gray-200/50">
+      <div className="flex items-center gap-1.5 bg-muted/80 p-1 rounded-xl border border-border/50">
         <button 
           type="button" 
           onClick={() => setShowMediaViewer(!showMediaViewer)}
           title={showMediaViewer ? "Show post preview" : "Show media viewer"} 
           className={`p-1.5 rounded-lg transition-all cursor-pointer ${
-            showMediaViewer ? 'bg-black text-white shadow-sm' : 'text-gray-700 hover:bg-white/60 bg-white border border-gray-200/60 shadow-sm'
+            showMediaViewer ? 'bg-black text-white shadow-sm' : 'text-foreground hover:bg-card/60 bg-card border border-border/60 shadow-sm'
           }`}
         >
           <Eye size={15} />
@@ -77,7 +77,7 @@ export function PreviewHeader() {
           type="button" 
           onClick={() => setPreviewDevice("mobile")} 
           className={`p-1.5 rounded-lg transition-all cursor-pointer ${
-            previewDevice === 'mobile' ? 'bg-black text-white shadow-sm' : 'text-gray-500 hover:text-black hover:bg-white/60'
+            previewDevice === 'mobile' ? 'bg-black text-white shadow-sm' : 'text-muted-foreground hover:text-black hover:bg-card/60'
           }`}
         >
           <Smartphone size={15} />
@@ -86,7 +86,7 @@ export function PreviewHeader() {
           type="button" 
           onClick={() => setPreviewDevice("desktop")} 
           className={`p-1.5 rounded-lg transition-all cursor-pointer ${
-            previewDevice === 'desktop' ? 'bg-black text-white shadow-sm' : 'text-gray-500 hover:text-black hover:bg-white/60'
+            previewDevice === 'desktop' ? 'bg-black text-white shadow-sm' : 'text-muted-foreground hover:text-black hover:bg-card/60'
           }`}
         >
           <Monitor size={15} />

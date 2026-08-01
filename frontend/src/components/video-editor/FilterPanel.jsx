@@ -14,7 +14,7 @@ export default function FilterPanel() {
         {/* Left Arrow Button */}
         <button
           onClick={() => scrollByAmount(-240)}
-          className="w-7 h-7 rounded-full bg-white border border-gray-200 shadow-sm flex items-center justify-center text-gray-500 hover:text-black hover:bg-gray-100 shrink-0 transition cursor-pointer z-10 mr-1"
+          className="w-7 h-7 rounded-full bg-card border border-border shadow-sm flex items-center justify-center text-muted-foreground hover:text-black hover:bg-muted shrink-0 transition cursor-pointer z-10 mr-1"
           title="Cuộn sang trái"
         >
           <ChevronLeft size={16} />
@@ -59,7 +59,7 @@ export default function FilterPanel() {
                 </div>
 
                 {/* Filter Label */}
-                <span className={`text-[11px] font-medium transition ${isSelected ? 'text-black font-bold' : 'text-gray-500 group-hover:text-black'}`}>
+                <span className={`text-[11px] font-medium transition ${isSelected ? 'text-black font-bold' : 'text-muted-foreground group-hover:text-black'}`}>
                   {filter.name}
                 </span>
               </button>
@@ -70,7 +70,7 @@ export default function FilterPanel() {
         {/* Right Arrow Button */}
         <button
           onClick={() => scrollByAmount(240)}
-          className="w-7 h-7 rounded-full bg-white border border-gray-200 shadow-sm flex items-center justify-center text-gray-500 hover:text-black hover:bg-gray-100 shrink-0 transition cursor-pointer z-10 ml-1"
+          className="w-7 h-7 rounded-full bg-card border border-border shadow-sm flex items-center justify-center text-muted-foreground hover:text-black hover:bg-muted shrink-0 transition cursor-pointer z-10 ml-1"
           title="Cuộn sang phải"
         >
           <ChevronRight size={16} />

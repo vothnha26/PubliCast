@@ -52,7 +52,7 @@ export function BlueskyPreview({
       aspectRatioClass="aspect-square"
       fallbackLabel="Bluesky Post"
     >
-      <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-4 text-left font-sans shadow-sm">
+      <div className="bg-card dark:bg-gray-900 border border-border dark:border-gray-800 rounded-2xl p-4 text-left font-sans shadow-sm">
         {/* Author Header */}
         <div className="flex items-start justify-between mb-3">
           <div className="flex items-center gap-3">
@@ -60,28 +60,28 @@ export function BlueskyPreview({
               {pageName.charAt(0).toUpperCase()}
             </div>
             <div className="overflow-hidden">
-              <h4 className="text-xs font-bold text-gray-900 dark:text-white truncate leading-tight">{pageName}</h4>
-              <p className="text-[11px] text-gray-500 truncate leading-tight">{handle}</p>
+              <h4 className="text-xs font-bold text-foreground dark:text-white truncate leading-tight">{pageName}</h4>
+              <p className="text-[11px] text-muted-foreground truncate leading-tight">{handle}</p>
             </div>
           </div>
-          <button className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">
+          <button className="text-muted-foreground hover:text-muted-foreground dark:hover:text-gray-200">
             <MoreHorizontal size={16} />
           </button>
         </div>
 
         {/* Post Content */}
         <div className="space-y-3">
-          <p className="text-[13px] text-gray-800 dark:text-gray-200 leading-relaxed whitespace-pre-wrap">
+          <p className="text-[13px] text-foreground dark:text-gray-200 leading-relaxed whitespace-pre-wrap">
             {renderFormattedText(displayCaption)}
           </p>
 
           {/* Media Attachments Grid */}
           {mediaList.length > 0 && (
-            <div className={`grid gap-1.5 rounded-xl overflow-hidden border border-gray-100 dark:border-gray-800 ${
+            <div className={`grid gap-1.5 rounded-xl overflow-hidden border border-border dark:border-gray-800 ${
               mediaList.length === 1 ? 'grid-cols-1' : mediaList.length === 2 ? 'grid-cols-2' : 'grid-cols-2'
             }`}>
               {mediaList.slice(0, 4).map((url, idx) => (
-                <div key={idx} className="relative aspect-[4/3] bg-gray-100 dark:bg-gray-800 overflow-hidden group">
+                <div key={idx} className="relative aspect-[4/3] bg-muted dark:bg-gray-800 overflow-hidden group">
                   <img src={url} alt={`Attachment ${idx + 1}`} className="w-full h-full object-cover" />
                   <span className="absolute bottom-1.5 right-1.5 px-1.5 py-0.5 bg-black/60 text-white text-[9px] font-semibold rounded backdrop-blur-sm opacity-0 group-hover:opacity-100 transition">
                     ALT
@@ -92,10 +92,10 @@ export function BlueskyPreview({
           )}
 
           {/* Metadata Footer */}
-          <div className="flex items-center justify-between pt-2 text-[11px] text-gray-400 border-t border-gray-50 dark:border-gray-800/60">
+          <div className="flex items-center justify-between pt-2 text-[11px] text-muted-foreground border-t border-gray-50 dark:border-gray-800/60">
             <span>Just now</span>
             <div className="flex items-center gap-1 font-mono text-[10px]">
-              <span className={graphemeCount > 300 ? 'text-red-500 font-bold' : 'text-gray-400'}>
+              <span className={graphemeCount > 300 ? 'text-red-500 font-bold' : 'text-muted-foreground'}>
                 {graphemeCount}
               </span>
               <span>/ 300 graphemes</span>
@@ -103,7 +103,7 @@ export function BlueskyPreview({
           </div>
 
           {/* Action Bar */}
-          <div className="flex items-center justify-between text-gray-400 pt-1 text-xs">
+          <div className="flex items-center justify-between text-muted-foreground pt-1 text-xs">
             <button className="flex items-center gap-1.5 hover:text-blue-500 transition">
               <MessageSquare size={15} />
               <span className="text-[10px]">0</span>

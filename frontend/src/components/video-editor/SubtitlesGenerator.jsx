@@ -60,14 +60,14 @@ export default function SubtitlesGenerator() {
         </div>
         <div className="space-y-1">
           <h3 className="text-sm font-semibold text-white">Sinh Phụ Đề Bằng AI (AI Subtitles)</h3>
-          <p className="text-xs text-gray-400">
+          <p className="text-xs text-muted-foreground">
             Hệ thống sẽ tự động quét âm thanh của video và tạo phụ đề chuẩn xác bằng thuật toán AI Transcribe.
           </p>
         </div>
         <button
           onClick={handleGenerateAIQuotes}
           disabled={isGenerating || !videoUrl}
-          className="w-full flex items-center justify-center gap-2 py-3 bg-lime-400 hover:bg-lime-500 disabled:bg-gray-800 disabled:text-gray-500 text-black font-semibold rounded-xl transition shadow-lg shadow-lime-400/5 cursor-pointer"
+          className="w-full flex items-center justify-center gap-2 py-3 bg-lime-400 hover:bg-lime-500 disabled:bg-gray-800 disabled:text-muted-foreground text-black font-semibold rounded-xl transition shadow-lg shadow-lime-400/5 cursor-pointer"
         >
           {isGenerating ? (
             <>
@@ -109,7 +109,7 @@ export default function SubtitlesGenerator() {
                 className="p-3 bg-gray-900/40 border border-gray-800 hover:border-gray-700 rounded-xl space-y-2.5 transition"
               >
                 <div className="flex justify-between items-center">
-                  <div className="flex items-center gap-1.5 text-[10px] font-mono text-gray-500">
+                  <div className="flex items-center gap-1.5 text-[10px] font-mono text-muted-foreground">
                     <span>Từ:</span>
                     <input
                       type="number"
@@ -133,7 +133,7 @@ export default function SubtitlesGenerator() {
 
                   <button
                     onClick={() => handleDeleteSubtitle(index)}
-                    className="p-1 hover:bg-red-500/10 text-gray-500 hover:text-red-400 rounded transition"
+                    className="p-1 hover:bg-red-500/10 text-muted-foreground hover:text-red-400 rounded transition"
                   >
                     <Trash2 className="w-3 h-3" />
                   </button>

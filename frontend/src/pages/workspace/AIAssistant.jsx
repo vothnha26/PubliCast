@@ -96,17 +96,17 @@ function AiMessageBubble({ msg, activeBrand, autoLists, openPostCreator }) {
   };
 
   return (
-    <div className="flex flex-col w-full max-w-[90%] bg-white rounded-2xl border border-gray-200/80 shadow-sm p-4 text-xs font-medium text-gray-800">
+    <div className="flex flex-col w-full max-w-[90%] bg-card rounded-2xl border border-border shadow-sm p-4 text-xs font-medium text-foreground">
       {/* Platform Switcher */}
-      <div className="flex flex-wrap gap-1 mb-3 border-b border-gray-100 pb-2">
+      <div className="flex flex-wrap gap-1 mb-3 border-b border-border pb-2">
         {displayPlatforms.map((p) => (
           <button 
             key={p} 
             onClick={() => setActiveTab(p.toLowerCase())} 
             className={`px-3 py-1 rounded-lg text-[10px] font-bold transition-all cursor-pointer ${
               activeTab === p.toLowerCase() 
-                ? "bg-indigo-50 text-indigo-700 border border-indigo-200/50 shadow-sm" 
-                : "text-gray-500 hover:text-gray-800 hover:bg-gray-50"
+                ? 'bg-indigo-50 text-indigo-700 border border-indigo-200/50 shadow-sm' 
+                : 'text-muted-foreground hover:text-foreground hover:bg-muted'
             }`}
           >
             {p}
@@ -115,13 +115,13 @@ function AiMessageBubble({ msg, activeBrand, autoLists, openPostCreator }) {
       </div>
 
       {/* Main Text Content */}
-      <div className="relative min-h-[60px] bg-gray-50/50 rounded-xl p-3 border border-gray-100 group">
-        <div className="text-xs text-gray-700 leading-relaxed whitespace-pre-wrap pr-7">
+      <div className="relative min-h-[60px] bg-muted/40 rounded-xl p-3 border border-border group">
+        <div className="text-xs text-foreground leading-relaxed whitespace-pre-wrap pr-7">
           {currentCaption}
         </div>
         <button
           onClick={() => handleCopyText(currentCaption)}
-          className="absolute top-2 right-2 p-1.5 rounded-lg bg-white border border-gray-200 text-gray-400 hover:text-gray-800 shadow-sm opacity-0 group-hover:opacity-100 transition-opacity duration-150 cursor-pointer"
+          className="absolute top-2 right-2 p-1.5 rounded-lg bg-card border border-border text-muted-foreground hover:text-foreground shadow-sm opacity-0 group-hover:opacity-100 transition-opacity duration-150 cursor-pointer"
           title="Sao chép"
         >
           {copied ? <Check size={11} className="text-emerald-500" /> : <Copy size={11} />}
@@ -140,7 +140,7 @@ function AiMessageBubble({ msg, activeBrand, autoLists, openPostCreator }) {
       )}
 
       {/* Action Buttons Panel */}
-      <div className="mt-4 pt-3 border-t border-gray-100 flex flex-col gap-2.5">
+      <div className="mt-4 pt-3 border-t border-border flex flex-col gap-2.5">
         <div className="flex flex-wrap gap-2">
           <button 
             onClick={handleInsertIntoPost}
@@ -171,21 +171,21 @@ function AiMessageBubble({ msg, activeBrand, autoLists, openPostCreator }) {
           <button 
             onClick={() => handleQuickPostAction("DRAFT", false)}
             disabled={isQuickPosting}
-            className="px-3 py-1.5 rounded-lg border border-gray-200 hover:bg-gray-50 disabled:bg-gray-100 disabled:text-gray-400 text-gray-600 font-bold text-[10px] transition-all cursor-pointer"
+            className="px-3 py-1.5 rounded-lg border border-border hover:bg-muted disabled:bg-muted disabled:text-muted-foreground text-foreground font-bold text-[10px] transition-all cursor-pointer"
           >
             Lưu Nháp
           </button>
           <button 
             onClick={() => handleQuickPostAction("PENDING_APPROVAL", false)}
             disabled={isQuickPosting}
-            className="px-3 py-1.5 rounded-lg border border-gray-200 hover:bg-gray-50 disabled:bg-gray-100 disabled:text-gray-400 text-gray-600 font-bold text-[10px] transition-all cursor-pointer"
+            className="px-3 py-1.5 rounded-lg border border-border hover:bg-muted disabled:bg-muted disabled:text-muted-foreground text-foreground font-bold text-[10px] transition-all cursor-pointer"
           >
             Gửi duyệt
           </button>
           <button 
             onClick={() => handleQuickPostAction("DRAFT", true)}
             disabled={isQuickPosting}
-            className="px-3 py-1.5 rounded-lg border border-gray-200 hover:bg-gray-50 disabled:bg-gray-100 disabled:text-gray-400 text-gray-600 font-bold text-[10px] transition-all flex items-center gap-1 cursor-pointer"
+            className="px-3 py-1.5 rounded-lg border border-border hover:bg-muted disabled:bg-muted disabled:text-muted-foreground text-foreground font-bold text-[10px] transition-all flex items-center gap-1 cursor-pointer"
           >
             <Bookmark size={11} /> Lưu Thư viện mẫu
           </button>
@@ -193,12 +193,12 @@ function AiMessageBubble({ msg, activeBrand, autoLists, openPostCreator }) {
 
         {/* AutoLists Selector */}
         {autoLists.length > 0 && (
-          <div className="flex items-center gap-2 bg-gray-50 p-2 rounded-xl border border-gray-100 w-full md:max-w-md">
-            <Layers size={12} className="text-gray-400 shrink-0" />
+          <div className="flex items-center gap-2 bg-muted p-2 rounded-xl border border-border w-full md:max-w-md">
+            <Layers size={12} className="text-muted-foreground shrink-0" />
             <select 
               value={selectedAutoListId}
               onChange={(e) => setSelectedAutoListId(e.target.value)}
-              className="bg-transparent text-[10px] text-gray-600 font-bold border-none outline-none flex-1"
+              className="bg-transparent text-[10px] text-foreground font-bold border-none outline-none flex-1"
             >
               <option value="">Thêm vào hàng đợi AutoList...</option>
               {autoLists.map((q) => (
@@ -208,7 +208,7 @@ function AiMessageBubble({ msg, activeBrand, autoLists, openPostCreator }) {
             <button 
               onClick={() => handleQuickPostAction("SCHEDULED", false, true)}
               disabled={!selectedAutoListId || isQuickPosting}
-              className="px-3 py-1 rounded-lg bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-200 disabled:text-gray-400 text-white font-bold text-[9px] transition-all shrink-0 cursor-pointer shadow-sm shadow-indigo-100"
+              className="px-3 py-1 rounded-lg bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-200 disabled:text-muted-foreground text-white font-bold text-[9px] transition-all shrink-0 cursor-pointer shadow-sm shadow-indigo-100"
             >
               Thêm vào hàng đợi
             </button>
@@ -216,7 +216,7 @@ function AiMessageBubble({ msg, activeBrand, autoLists, openPostCreator }) {
         )}
       </div>
 
-      <div className="text-[9px] text-gray-400 mt-2 font-medium">
+      <div className="text-[9px] text-muted-foreground mt-2 font-medium">
         Bài viết hiển thị: {currentCaption.length} ký tự
       </div>
     </div>
@@ -320,7 +320,7 @@ function HistoryCardItem({ item, toneLabels, supportedFormats, setInput, setTone
   return (
     <div 
       key={item.id} 
-      className="p-5 rounded-2xl border border-gray-200/80 bg-white shadow-sm flex flex-col gap-3.5 hover:border-indigo-100 hover:shadow-indigo-50/10 hover:shadow-lg transition-all"
+      className="p-5 rounded-2xl border border-border bg-card shadow-sm flex flex-col gap-3.5 hover:border-indigo-100 hover:shadow-indigo-50/10 hover:shadow-lg transition-all"
     >
       {/* Header metadata */}
       <div className="flex justify-between items-start gap-4">
@@ -329,11 +329,11 @@ function HistoryCardItem({ item, toneLabels, supportedFormats, setInput, setTone
             {item.user?.name ? item.user.name.charAt(0).toUpperCase() : "U"}
           </div>
           <div>
-            <div className="text-[10px] font-bold text-gray-700">{item.user?.name || "Người dùng"}</div>
-            <div className="text-[9px] text-gray-400 font-medium">{item.user?.email || ""}</div>
+            <div className="text-[10px] font-bold text-foreground">{item.user?.name || "Người dùng"}</div>
+            <div className="text-[9px] text-muted-foreground font-medium">{item.user?.email || ""}</div>
           </div>
         </div>
-        <div className="flex items-center gap-1 text-[9px] text-gray-400 font-bold bg-gray-50 border border-gray-150 px-2 py-0.5 rounded-md">
+        <div className="flex items-center gap-1 text-[9px] text-muted-foreground font-bold bg-muted border border-border px-2 py-0.5 rounded-md">
           <Clock size={10} />
           {new Date(item.createdAt).toLocaleString("vi-VN", {
             day: "2-digit",
@@ -362,7 +362,7 @@ function HistoryCardItem({ item, toneLabels, supportedFormats, setInput, setTone
             <Copy size={11} /> Sao chép Prompt
           </button>
         </div>
-        <div className="text-xs font-semibold text-gray-900 leading-relaxed whitespace-pre-wrap select-text bg-white p-3 rounded-lg border border-gray-150 shadow-2xs">
+        <div className="text-xs font-semibold text-foreground leading-relaxed whitespace-pre-wrap select-text bg-background p-3 rounded-lg border border-border shadow-2xs">
           {meta.prompt || "(Không có nội dung)"}
         </div>
       </div>
@@ -383,7 +383,7 @@ function HistoryCardItem({ item, toneLabels, supportedFormats, setInput, setTone
               </button>
               <button
                 onClick={() => setShowResponse(!showResponse)}
-                className="text-gray-400 hover:text-gray-600 p-0.5 rounded cursor-pointer"
+                className="text-muted-foreground hover:text-foreground p-0.5 rounded cursor-pointer"
                 title={showResponse ? "Thu gọn câu trả lời" : "Mở rộng câu trả lời"}
               >
                 {showResponse ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
@@ -392,13 +392,13 @@ function HistoryCardItem({ item, toneLabels, supportedFormats, setInput, setTone
           </div>
 
           {showResponse && (
-            <div className="flex flex-col gap-2.5 bg-white p-3.5 rounded-lg border border-gray-150 shadow-2xs text-xs">
-              <div className="text-gray-800 font-medium leading-relaxed whitespace-pre-wrap select-text">
+            <div className="flex flex-col gap-2.5 bg-background p-3.5 rounded-lg border border-border shadow-2xs text-xs">
+              <div className="text-foreground font-medium leading-relaxed whitespace-pre-wrap select-text">
                 {meta.response}
               </div>
 
               {meta.hashtags && meta.hashtags.length > 0 && (
-                <div className="flex flex-wrap gap-1.5 pt-2 border-t border-gray-100">
+                <div className="flex flex-wrap gap-1.5 pt-2 border-t border-border">
                   {meta.hashtags.map((tag, idx) => (
                     <span key={idx} className="text-[10px] font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-md border border-indigo-100/60">
                       {tag.startsWith("#") ? tag : `#${tag}`}
@@ -441,8 +441,8 @@ function HistoryCardItem({ item, toneLabels, supportedFormats, setInput, setTone
       </div>
 
       {/* Actions */}
-      <div className="flex justify-between items-center border-t border-gray-100 pt-3 mt-1">
-        <span className="text-[10px] text-gray-400 font-medium">
+      <div className="flex justify-between items-center border-t border-border pt-3 mt-1">
+        <span className="text-[10px] text-muted-foreground font-medium">
           {hasResponse ? "✅ Đã lưu đầy đủ câu trả lời AI" : "ℹ️ Nhật ký prompt trước đây"}
         </span>
         <button
@@ -775,9 +775,9 @@ function HistoryCardItem({ item, toneLabels, supportedFormats, setInput, setTone
 
   if (!activeBrand) {
     return (
-      <div className="flex flex-col items-center justify-center h-[calc(100vh-120px)] bg-gray-50">
+      <div className="flex flex-col items-center justify-center h-[calc(100vh-120px)] bg-muted">
         <Sparkles size={48} className="text-gray-300 animate-pulse mb-4" />
-        <p className="text-gray-500 font-medium text-sm">Vui lòng chọn một Thương hiệu để sử dụng Trợ lý AI</p>
+        <p className="text-muted-foreground font-medium text-sm">Vui lòng chọn một Thương hiệu để sử dụng Trợ lý AI</p>
       </div>
     );
   }
@@ -785,24 +785,24 @@ function HistoryCardItem({ item, toneLabels, supportedFormats, setInput, setTone
   const remainingCredits = Math.max(0, creditsLimit - creditsUsed);
 
   return (
-    <div className="h-full w-full max-h-full overflow-hidden p-4 sm:p-5 bg-[#FAFAFA] flex flex-col min-h-0" style={{ fontFamily: "'Outfit', sans-serif" }}>
+    <div className="h-full w-full max-h-full overflow-hidden p-4 sm:p-5 bg-background flex flex-col min-h-0" style={{ fontFamily: "'Outfit', sans-serif" }}>
       {/* Header */}
-      <div className="flex items-center justify-between mb-4 bg-white p-4 rounded-2xl border border-gray-100 shadow-sm shrink-0">
+      <div className="flex items-center justify-between mb-4 bg-card p-4 rounded-2xl border border-border shadow-sm shrink-0">
         <div>
-          <h1 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+          <h1 className="text-lg font-bold text-foreground flex items-center gap-2">
             <Sparkles size={20} className="text-indigo-600 animate-pulse" />
             Trợ lý Sáng tạo Nội dung AI
           </h1>
-          <p className="text-xs text-gray-500 mt-0.5">Tối ưu bài viết đa nền tảng, thiết lập Brand Voice thông minh.</p>
+          <p className="text-xs text-muted-foreground mt-0.5">Tối ưu bài viết đa nền tảng, thiết lập Brand Voice thông minh.</p>
         </div>
         
-        <div className="flex items-center bg-gray-100 p-1 rounded-xl gap-1.5 border border-gray-200/50">
+        <div className="flex items-center bg-muted p-1 rounded-xl gap-1.5 border border-border/50">
           <button 
             onClick={() => setCurrentTab("chat")}
             className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
               currentTab === "chat" 
-                ? "bg-white text-gray-900 shadow-sm" 
-                : "text-gray-500 hover:text-gray-800"
+                ? "bg-card text-foreground shadow-sm" 
+                : "text-muted-foreground hover:text-foreground"
             }`}
           >
             Trò chuyện & Sáng tạo
@@ -811,8 +811,8 @@ function HistoryCardItem({ item, toneLabels, supportedFormats, setInput, setTone
             onClick={() => setCurrentTab("history")}
             className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
               currentTab === "history" 
-                ? "bg-white text-gray-900 shadow-sm" 
-                : "text-gray-500 hover:text-gray-800"
+                ? "bg-card text-foreground shadow-sm" 
+                : "text-muted-foreground hover:text-foreground"
             }`}
           >
             Lịch sử sáng tạo
@@ -821,8 +821,8 @@ function HistoryCardItem({ item, toneLabels, supportedFormats, setInput, setTone
             onClick={() => setCurrentTab("settings")}
             className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
               currentTab === "settings" 
-                ? "bg-white text-gray-900 shadow-sm" 
-                : "text-gray-500 hover:text-gray-800"
+                ? "bg-card text-foreground shadow-sm" 
+                : "text-muted-foreground hover:text-foreground"
             }`}
           >
             Cài đặt Brand Voice
@@ -830,11 +830,11 @@ function HistoryCardItem({ item, toneLabels, supportedFormats, setInput, setTone
 
           {/* Sub-header Language Switcher Pill */}
           <div className="h-4 w-px bg-gray-300/60 mx-0.5" />
-          <div className="flex items-center gap-1 bg-white px-2.5 py-1 rounded-lg border border-gray-200 shadow-2xs">
+          <div className="flex items-center gap-1 bg-card px-2.5 py-1 rounded-lg border border-border shadow-2xs">
             <select
               value={language}
               onChange={(e) => setLanguage(e.target.value)}
-              className="bg-transparent text-[11px] text-gray-800 font-extrabold border-none outline-none cursor-pointer"
+              className="bg-transparent text-[11px] text-foreground font-extrabold border-none outline-none cursor-pointer"
             >
               <option value="vi">🇻🇳 VI</option>
               <option value="en">🇬🇧 EN</option>
@@ -847,21 +847,21 @@ function HistoryCardItem({ item, toneLabels, supportedFormats, setInput, setTone
       {currentTab === "chat" && (
         <div className="flex gap-5 flex-1 overflow-hidden" style={{ minHeight: 0 }}>
           {/* Main Chat Area */}
-          <div className="flex-1 flex flex-col h-full bg-white rounded-2xl border border-gray-200/80 shadow-sm overflow-hidden min-w-0">
+          <div className="flex-1 flex flex-col h-full bg-card rounded-2xl border border-border shadow-sm overflow-hidden min-w-0">
             {/* Active AI Agent Header */}
-            <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 bg-gray-50/50">
+            <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-muted/30">
               <div className="flex items-center gap-3">
                 <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-indigo-600 to-purple-600 flex items-center justify-center text-white shadow-md shadow-indigo-100 shrink-0">
                   <Sparkles size={14} />
                 </div>
                 <div>
-                  <div className="text-xs font-bold text-gray-900 flex items-center gap-2">
+                  <div className="text-xs font-bold text-foreground flex items-center gap-2">
                     PubliCast Content Engine
                     <span className="text-[9px] bg-indigo-50 text-indigo-700 font-extrabold px-2 py-0.5 rounded-md border border-indigo-100/60 hidden sm:inline-block">
                       Tone chính: {toneLabels[defaultTone] || defaultTone}
                     </span>
                   </div>
-                  <div className="text-[10px] text-gray-500 flex items-center gap-1 mt-0.5">
+                  <div className="text-[10px] text-muted-foreground flex items-center gap-1 mt-0.5">
                     <span className="inline-block w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping"></span>
                     Mô hình: Gemini 2.5 Flash / GPT-4o Mini
                   </div>
@@ -882,7 +882,7 @@ function HistoryCardItem({ item, toneLabels, supportedFormats, setInput, setTone
 
                 <button 
                   onClick={() => setMessages([])}
-                  className="px-2.5 py-1.5 rounded-lg border border-gray-200 hover:bg-gray-50 text-[10px] font-bold text-gray-600 transition-colors cursor-pointer"
+                  className="px-2.5 py-1.5 rounded-lg border border-border hover:bg-muted text-[10px] font-bold text-muted-foreground transition-colors cursor-pointer"
                 >
                   Làm sạch chat
                 </button>
@@ -891,23 +891,23 @@ function HistoryCardItem({ item, toneLabels, supportedFormats, setInput, setTone
                 <div className="relative">
                   <button 
                     onClick={() => setShowToneMenu(!showToneMenu)}
-                    className="px-2.5 py-1.5 rounded-lg border border-gray-200 text-xs font-semibold text-gray-700 bg-white hover:bg-gray-50 transition-colors flex items-center gap-1.5 cursor-pointer shadow-sm"
+                    className="px-2.5 py-1.5 rounded-lg border border-border text-xs font-semibold text-foreground bg-card hover:bg-muted transition-colors flex items-center gap-1.5 cursor-pointer shadow-sm"
                     title="Ghi đè sắc thái nhanh cho prompt này"
                   >
-                    <span className="text-[10px] font-bold text-gray-400">⚡ Sắc thái:</span>
+                    <span className="text-[10px] font-bold text-muted-foreground">⚡ Sắc thái:</span>
                     <span>{toneLabels[tone] || tone}</span>
-                    <span className="text-[9px] text-gray-400">▼</span>
+                    <span className="text-[9px] text-muted-foreground">▼</span>
                   </button>
                   {showToneMenu && (
-                    <div className="absolute right-0 mt-1 w-48 bg-white rounded-xl shadow-xl border border-gray-100 py-1.5 z-30 animate-in fade-in slide-in-from-top-1 duration-150">
-                      <div className="px-3 py-1 text-[9px] font-bold text-gray-400 uppercase tracking-wider border-b border-gray-100 mb-1">
+                    <div className="absolute right-0 mt-1 w-48 bg-card rounded-xl shadow-xl border border-border py-1.5 z-30 animate-in fade-in slide-in-from-top-1 duration-150">
+                      <div className="px-3 py-1 text-[9px] font-bold text-muted-foreground uppercase tracking-wider border-b border-border mb-1">
                         Sắc thái bài này (Override)
                       </div>
                       {supportedTones.map((t) => (
                         <button 
                           key={t.value} 
                           onClick={() => { setTone(t.value); setShowToneMenu(false); }} 
-                          className="block w-full text-left px-3.5 py-2 hover:bg-indigo-50/60 text-xs text-gray-700 font-semibold transition-colors cursor-pointer"
+                          className="block w-full text-left px-3.5 py-2 hover:bg-indigo-50/60 text-xs text-foreground font-semibold transition-colors cursor-pointer"
                         >
                           {t.label} {t.emoji}
                         </button>
@@ -922,7 +922,7 @@ function HistoryCardItem({ item, toneLabels, supportedFormats, setInput, setTone
                   className={`p-2 rounded-lg border transition-all cursor-pointer ${
                     isSidebarCollapsed 
                       ? "bg-indigo-50 border-indigo-200 text-indigo-700 shadow-sm" 
-                      : "border-gray-200 hover:bg-gray-100 text-gray-500"
+                      : "border-border hover:bg-muted text-muted-foreground"
                   }`}
                   title={isSidebarCollapsed ? "Mở rộng Sidebar thông số" : "Thu gọn Sidebar để mở rộng ô Chat"}
                 >
@@ -938,14 +938,14 @@ function HistoryCardItem({ item, toneLabels, supportedFormats, setInput, setTone
                   <div className="w-12 h-12 rounded-2xl bg-indigo-50 flex items-center justify-center text-indigo-600 mb-4">
                     <Sparkles size={24} />
                   </div>
-                  <h3 className="text-sm font-bold text-gray-800">Trợ lý Content sẵn sàng phục vụ</h3>
-                  <p className="text-xs text-gray-500 max-w-sm mt-1 mb-6">Bạn có thể đính kèm hình ảnh để phân tích, chọn văn phong và ngôn ngữ riêng. Hãy dùng gợi ý nhanh bên dưới để tạo bài viết ngay lập tức.</p>
+                  <h3 className="text-sm font-bold text-foreground">Trợ lý Content sẵn sàng phục vụ</h3>
+                  <p className="text-xs text-muted-foreground max-w-sm mt-1 mb-6">Bạn có thể đính kèm hình ảnh để phân tích, chọn văn phong và ngôn ngữ riêng. Hãy dùng gợi ý nhanh bên dưới để tạo bài viết ngay lập tức.</p>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-w-lg w-full">
                     {quickPrompts.map((p) => (
                       <button
                         key={p.text}
                         onClick={() => setInput(p.text)}
-                        className="text-left p-3 rounded-xl border border-gray-100 bg-white hover:border-indigo-300 hover:shadow-md hover:shadow-indigo-50/25 transition-all text-xs font-semibold text-gray-700 flex items-start gap-2.5 cursor-pointer"
+                        className="text-left p-3 rounded-xl border border-border bg-card hover:border-indigo-300 hover:shadow-md hover:shadow-indigo-50/25 transition-all text-xs font-semibold text-foreground flex items-start gap-2.5 cursor-pointer"
                       >
                         <span className="text-sm leading-none">{p.emoji}</span>
                         <span>{p.text}</span>
@@ -966,7 +966,7 @@ function HistoryCardItem({ item, toneLabels, supportedFormats, setInput, setTone
                           )}
                           {msg.content}
                         </div>
-                        <span className="text-[9px] text-gray-400 mt-1 px-1">{msg.timestamp}</span>
+                        <span className="text-[9px] text-muted-foreground mt-1 px-1">{msg.timestamp}</span>
                       </div>
                     ) : (
                       <AiMessageBubble 
@@ -982,7 +982,7 @@ function HistoryCardItem({ item, toneLabels, supportedFormats, setInput, setTone
               
               {isTyping && (
                 <div className="flex justify-start">
-                  <div className="px-4 py-3 rounded-2xl border border-gray-200 bg-white shadow-sm flex items-center gap-1.5">
+                  <div className="px-4 py-3 rounded-2xl border border-border bg-card shadow-sm flex items-center gap-1.5">
                     <div className="w-1.5 h-1.5 rounded-full bg-indigo-500 animate-bounce" style={{ animationDelay: '0ms' }} />
                     <div className="w-1.5 h-1.5 rounded-full bg-indigo-500 animate-bounce" style={{ animationDelay: '200ms' }} />
                     <div className="w-1.5 h-1.5 rounded-full bg-indigo-500 animate-bounce" style={{ animationDelay: '400ms' }} />
@@ -994,8 +994,8 @@ function HistoryCardItem({ item, toneLabels, supportedFormats, setInput, setTone
 
             {/* Image Preview inside input Area */}
             {imagePreview && (
-              <div className="px-4 py-2 bg-gray-50 border-t border-gray-100 flex items-center gap-3">
-                <div className="relative w-12 h-12 rounded-lg overflow-hidden border border-gray-200 bg-white shadow-sm">
+              <div className="px-4 py-2 bg-muted border-t border-border flex items-center gap-3">
+                <div className="relative w-12 h-12 rounded-lg overflow-hidden border border-border bg-card shadow-sm">
                   <img src={imagePreview} alt="Xem trước" className="w-full h-full object-cover" />
                   <button 
                     onClick={handleRemoveImage}
@@ -1004,12 +1004,12 @@ function HistoryCardItem({ item, toneLabels, supportedFormats, setInput, setTone
                     <X size={9} />
                   </button>
                 </div>
-                <span className="text-[10px] text-gray-500 font-medium">Đã đính kèm ảnh phân tích visual</span>
+                <span className="text-[10px] text-muted-foreground font-medium">Đã đính kèm ảnh phân tích visual</span>
               </div>
             )}
 
             {/* Chat Input Area with Compact Integrated Control Toolbar */}
-            <div className="p-3 border-t border-gray-100 bg-white flex flex-col gap-2.5">
+            <div className="p-3 border-t border-border bg-card flex flex-col gap-2.5">
               {/* Single Integrated Toolbar Row */}
               <div className="flex items-center justify-between gap-2 px-1 w-full overflow-hidden">
                 <div className="flex items-center gap-2 overflow-x-auto no-scrollbar scrollbar-none py-0.5 max-w-full shrink-0 flex-nowrap">
@@ -1017,20 +1017,20 @@ function HistoryCardItem({ item, toneLabels, supportedFormats, setInput, setTone
                   <div className="relative" ref={platformDropdownRef}>
                     <button
                       onClick={() => setShowPlatformDropdown(!showPlatformDropdown)}
-                      className="px-2.5 py-1 rounded-lg border border-gray-200 text-xs font-semibold text-gray-700 bg-gray-50 hover:bg-gray-100 transition-colors flex items-center gap-1.5 cursor-pointer shadow-sm"
+                      className="px-2.5 py-1 rounded-lg border border-border text-xs font-semibold text-foreground bg-muted hover:bg-muted/80 transition-colors flex items-center gap-1.5 cursor-pointer shadow-sm"
                     >
-                      <span className="text-[10px] font-bold text-gray-400">🌐 Nền tảng:</span>
+                      <span className="text-[10px] font-bold text-muted-foreground">🌐 Nền tảng:</span>
                       <span className="max-w-[140px] truncate text-[10px] font-extrabold text-indigo-700">
                         {selectedPlatforms.length === 0
                           ? "Chọn nền tảng..."
                           : selectedPlatforms.map(p => p.charAt(0).toUpperCase() + p.slice(1)).join(", ")}
                       </span>
-                      <span className="text-[9px] text-gray-400">▼</span>
+                      <span className="text-[9px] text-muted-foreground">▼</span>
                     </button>
 
                     {showPlatformDropdown && (
-                      <div className="absolute left-0 bottom-full mb-1 w-48 bg-white rounded-xl shadow-xl border border-gray-100 py-1.5 z-30 animate-in fade-in slide-in-from-bottom-1 duration-150">
-                        <div className="px-3 py-1 text-[9px] font-bold text-gray-400 uppercase tracking-wider border-b border-gray-100 mb-1">
+                      <div className="absolute left-0 bottom-full mb-1 w-48 bg-card rounded-xl shadow-xl border border-border py-1.5 z-30 animate-in fade-in slide-in-from-bottom-1 duration-150">
+                        <div className="px-3 py-1 text-[9px] font-bold text-muted-foreground uppercase tracking-wider border-b border-border mb-1">
                           Chọn nền tảng đăng
                         </div>
                         {availableTextPlatforms.map((plat) => {
@@ -1038,7 +1038,7 @@ function HistoryCardItem({ item, toneLabels, supportedFormats, setInput, setTone
                           return (
                             <label
                               key={plat}
-                              className="flex items-center gap-2.5 px-3.5 py-2 hover:bg-gray-50 text-[11px] text-gray-700 font-bold cursor-pointer transition-colors"
+                              className="flex items-center gap-2.5 px-3.5 py-2 hover:bg-muted text-[11px] text-foreground font-bold cursor-pointer transition-colors"
                             >
                               <input
                                 type="checkbox"
@@ -1064,7 +1064,7 @@ function HistoryCardItem({ item, toneLabels, supportedFormats, setInput, setTone
                   </div>
 
                   {/* Formats Selector Pills */}
-                  <div className="flex items-center gap-1 bg-gray-50/80 p-0.5 rounded-lg border border-gray-200/60">
+                  <div className="flex items-center gap-1 bg-muted/60 p-0.5 rounded-lg border border-border/60">
                     {supportedFormats.map((fmt) => (
                       <button
                         key={fmt.value}
@@ -1072,7 +1072,7 @@ function HistoryCardItem({ item, toneLabels, supportedFormats, setInput, setTone
                         className={`px-2 py-0.5 rounded-md text-[10px] font-bold transition-all cursor-pointer ${
                           selectedFormat === fmt.value
                             ? "bg-purple-600 text-white shadow-sm"
-                            : "text-gray-600 hover:bg-gray-200/50"
+                            : "text-muted-foreground hover:bg-gray-200/50"
                         }`}
                         title={fmt.description}
                       >
@@ -1082,11 +1082,11 @@ function HistoryCardItem({ item, toneLabels, supportedFormats, setInput, setTone
                   </div>
 
                   {/* Language Switcher Pill */}
-                  <div className="flex items-center gap-1 bg-gray-50 px-2 py-1 rounded-lg border border-gray-200 text-xs">
+                  <div className="flex items-center gap-1 bg-muted px-2 py-1 rounded-lg border border-border text-xs">
                     <select
                       value={language}
                       onChange={(e) => setLanguage(e.target.value)}
-                      className="bg-transparent text-[10px] text-gray-700 font-bold border-none outline-none cursor-pointer"
+                      className="bg-transparent text-[10px] text-foreground font-bold border-none outline-none cursor-pointer"
                     >
                       <option value="vi">🇻🇳 Tiếng Việt</option>
                       <option value="en">🇬🇧 English</option>
@@ -1100,7 +1100,7 @@ function HistoryCardItem({ item, toneLabels, supportedFormats, setInput, setTone
                   className={`px-2.5 py-1 rounded-lg text-[10px] font-bold border transition-all flex items-center gap-1 cursor-pointer shrink-0 whitespace-nowrap ${
                     showAdvancedOptions || genre || situation
                       ? "bg-indigo-50 border-indigo-200 text-indigo-700"
-                      : "bg-gray-50 border-gray-200 text-gray-500 hover:text-gray-700"
+                      : "bg-muted border-border text-muted-foreground hover:text-foreground"
                   }`}
                   title="Thêm bối cảnh & văn phong phụ"
                 >
@@ -1112,33 +1112,33 @@ function HistoryCardItem({ item, toneLabels, supportedFormats, setInput, setTone
               {/* Expandable Advanced Options Bar */}
               {showAdvancedOptions && (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 p-2 bg-indigo-50/40 rounded-xl border border-indigo-100 animate-in fade-in duration-150">
-                  <div className="flex items-center gap-1.5 bg-white px-2.5 py-1 rounded-lg border border-indigo-100">
-                    <span className="text-[9px] font-bold text-gray-400 whitespace-nowrap">Văn phong thêm:</span>
+                  <div className="flex items-center gap-1.5 bg-card px-2.5 py-1 rounded-lg border border-indigo-100">
+                    <span className="text-[9px] font-bold text-muted-foreground whitespace-nowrap">Văn phong thêm:</span>
                     <input
                       type="text"
                       value={genre}
                       onChange={(e) => setGenre(e.target.value)}
                       placeholder="Kể chuyện, Thơ, Thuyết phục..."
-                      className="bg-transparent text-[10px] text-gray-700 font-bold border-none outline-none w-full placeholder-gray-400"
+                      className="bg-transparent text-[10px] text-foreground font-bold border-none outline-none w-full placeholder-gray-400"
                     />
                     {genre && (
-                      <button onClick={() => setGenre("")} className="text-gray-400 hover:text-gray-600">
+                      <button onClick={() => setGenre("")} className="text-muted-foreground hover:text-muted-foreground">
                         <X size={10} />
                       </button>
                     )}
                   </div>
 
-                  <div className="flex items-center gap-1.5 bg-white px-2.5 py-1 rounded-lg border border-indigo-100">
-                    <span className="text-[9px] font-bold text-gray-400 whitespace-nowrap">Bối cảnh:</span>
+                  <div className="flex items-center gap-1.5 bg-card px-2.5 py-1 rounded-lg border border-indigo-100">
+                    <span className="text-[9px] font-bold text-muted-foreground whitespace-nowrap">Bối cảnh:</span>
                     <input
                       type="text"
                       value={situation}
                       onChange={(e) => setSituation(e.target.value)}
                       placeholder="Black Friday, Ra mắt sản phẩm..."
-                      className="bg-transparent text-[10px] text-gray-700 font-bold border-none outline-none w-full placeholder-gray-400"
+                      className="bg-transparent text-[10px] text-foreground font-bold border-none outline-none w-full placeholder-gray-400"
                     />
                     {situation && (
-                      <button onClick={() => setSituation("")} className="text-gray-400 hover:text-gray-600">
+                      <button onClick={() => setSituation("")} className="text-muted-foreground hover:text-muted-foreground">
                         <X size={10} />
                       </button>
                     )}
@@ -1147,7 +1147,7 @@ function HistoryCardItem({ item, toneLabels, supportedFormats, setInput, setTone
               )}
 
               {/* Chat Input Text Box */}
-              <div className="flex items-end gap-3 bg-gray-50 border border-gray-200 rounded-2xl p-2 focus-within:border-indigo-500 focus-within:ring-2 focus-within:ring-indigo-500/10 transition-all">
+              <div className="flex items-end gap-3 bg-muted border border-border rounded-2xl p-2 focus-within:border-indigo-500 focus-within:ring-2 focus-within:ring-indigo-500/10 transition-all">
                 <input 
                   type="file" 
                   ref={fileInputRef} 
@@ -1157,7 +1157,7 @@ function HistoryCardItem({ item, toneLabels, supportedFormats, setInput, setTone
                 />
                 <button 
                   onClick={() => fileInputRef.current?.click()}
-                  className="p-2 rounded-xl hover:bg-gray-200/60 text-gray-500 transition-colors cursor-pointer"
+                  className="p-2 rounded-xl hover:bg-gray-200/60 text-muted-foreground transition-colors cursor-pointer"
                   title="Đính kèm ảnh phân tích visual"
                 >
                   <Paperclip size={16} />
@@ -1172,14 +1172,14 @@ function HistoryCardItem({ item, toneLabels, supportedFormats, setInput, setTone
                     } 
                   }}
                   placeholder="Hỏi trợ lý viết bài đăng mạng xã hội, sửa caption hoặc dịch bài viết..."
-                  className="flex-1 bg-transparent resize-none border-none outline-none py-1.5 text-xs text-gray-800 placeholder-gray-400 font-semibold"
+                  className="flex-1 bg-transparent resize-none border-none outline-none py-1.5 text-xs text-foreground placeholder-gray-400 font-semibold"
                   rows={1}
                   style={{ maxHeight: 120, minHeight: 24 }}
                 />
                 <button
                   onClick={sendMessage}
                   disabled={(!input.trim() && !imagePreview) || isTyping}
-                  className="w-8 h-8 rounded-xl bg-gray-950 hover:bg-gray-800 disabled:bg-gray-200 disabled:text-gray-400 flex items-center justify-center text-white shadow-sm transition-all cursor-pointer shrink-0"
+                  className="w-8 h-8 rounded-xl bg-gray-950 hover:bg-gray-800 disabled:bg-gray-200 disabled:text-muted-foreground flex items-center justify-center text-white shadow-sm transition-all cursor-pointer shrink-0"
                 >
                   <Send size={11} />
                 </button>
@@ -1191,21 +1191,21 @@ function HistoryCardItem({ item, toneLabels, supportedFormats, setInput, setTone
           {!isSidebarCollapsed && (
             <div className="w-72 flex flex-col gap-4 overflow-y-auto pr-3 shrink-0 animate-in fade-in slide-in-from-right-3 duration-300 transition-all">
               {/* Unified AI & Brand Voice Status Card */}
-              <div className="bg-white rounded-2xl p-4 border border-gray-200/80 shadow-sm flex flex-col gap-3.5">
+              <div className="bg-card rounded-2xl p-4 border border-border/80 shadow-sm flex flex-col gap-3.5">
                 {/* Header with Title and Collapse Button */}
-                <div className="flex items-center justify-between border-b border-gray-100 pb-3">
+                <div className="flex items-center justify-between border-b border-border pb-3">
                   <div className="flex items-center gap-2">
                     <div className="w-7 h-7 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center font-bold">
                       <Sparkles size={14} />
                     </div>
                     <div>
-                      <h3 className="text-xs font-bold text-gray-900">Bảng điều khiển AI</h3>
-                      <p className="text-[10px] text-gray-400">Thông số & Brand Voice</p>
+                      <h3 className="text-xs font-bold text-foreground">Bảng điều khiển AI</h3>
+                      <p className="text-[10px] text-muted-foreground">Thông số & Brand Voice</p>
                     </div>
                   </div>
                   <button 
                     onClick={() => setIsSidebarCollapsed(true)} 
-                    className="text-gray-400 hover:text-gray-700 p-1.5 rounded-lg hover:bg-gray-100 transition-colors cursor-pointer"
+                    className="text-muted-foreground hover:text-foreground p-1.5 rounded-lg hover:bg-muted transition-colors cursor-pointer"
                     title="Thu gọn Sidebar"
                   >
                     <PanelRightClose size={14} />
@@ -1213,9 +1213,9 @@ function HistoryCardItem({ item, toneLabels, supportedFormats, setInput, setTone
                 </div>
 
                 {/* Section 1: Usage Credits Tracker */}
-                <div className="bg-gray-50/70 p-3 rounded-xl border border-gray-100 flex flex-col gap-2">
+                <div className="bg-muted/70 p-3 rounded-xl border border-border flex flex-col gap-2">
                   <div className="flex items-center justify-between text-[11px] font-bold">
-                    <span className="text-gray-600 flex items-center gap-1">
+                    <span className="text-muted-foreground flex items-center gap-1">
                       <Coins size={13} className="text-amber-500" /> Hạn mức Credits
                     </span>
                     <span className="text-indigo-600 font-extrabold">{creditsUsed} / {creditsLimit}</span>
@@ -1226,26 +1226,26 @@ function HistoryCardItem({ item, toneLabels, supportedFormats, setInput, setTone
                       style={{ width: `${Math.min(100, (creditsUsed / creditsLimit) * 100)}%` }} 
                     />
                   </div>
-                  <span className="text-[9px] text-gray-400 font-medium">Tự động làm mới khi gia hạn gói cước.</span>
+                  <span className="text-[9px] text-muted-foreground font-medium">Tự động làm mới khi gia hạn gói cước.</span>
                 </div>
 
                 {/* Section 2: Brand Voice Overview */}
                 <div className="flex flex-col gap-2">
-                  <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Cấu hình Brand Voice</span>
+                  <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Cấu hình Brand Voice</span>
                   
                   <div className="grid grid-cols-1 gap-1.5 text-xs">
-                    <div className="flex justify-between items-center bg-gray-50/50 px-2.5 py-1.5 rounded-lg border border-gray-100">
-                      <span className="text-[10px] text-gray-500 font-medium">Khách hàng:</span>
-                      <span className="text-[11px] font-bold text-gray-800 truncate max-w-[130px]">{targetAudience || "(Mặc định)"}</span>
+                    <div className="flex justify-between items-center bg-muted/50 px-2.5 py-1.5 rounded-lg border border-border">
+                      <span className="text-[10px] text-muted-foreground font-medium">Khách hàng:</span>
+                      <span className="text-[11px] font-bold text-foreground truncate max-w-[130px]">{targetAudience || "(Mặc định)"}</span>
                     </div>
 
-                    <div className="flex justify-between items-center bg-gray-50/50 px-2.5 py-1.5 rounded-lg border border-gray-100">
-                      <span className="text-[10px] text-gray-500 font-medium">Nền tảng:</span>
-                      <span className="text-[11px] font-bold text-gray-800 truncate max-w-[130px]">{targetPlatforms || "(Đa nền tảng)"}</span>
+                    <div className="flex justify-between items-center bg-muted/50 px-2.5 py-1.5 rounded-lg border border-border">
+                      <span className="text-[10px] text-muted-foreground font-medium">Nền tảng:</span>
+                      <span className="text-[11px] font-bold text-foreground truncate max-w-[130px]">{targetPlatforms || "(Đa nền tảng)"}</span>
                     </div>
 
-                    <div className="flex justify-between items-center bg-gray-50/50 px-2.5 py-1.5 rounded-lg border border-gray-100">
-                      <span className="text-[10px] text-gray-500 font-medium">Giọng điệu chính:</span>
+                    <div className="flex justify-between items-center bg-muted/50 px-2.5 py-1.5 rounded-lg border border-border">
+                      <span className="text-[10px] text-muted-foreground font-medium">Giọng điệu chính:</span>
                       <span className="text-[11px] font-extrabold text-indigo-700">{toneLabels[defaultTone] || defaultTone}</span>
                     </div>
                   </div>
@@ -1264,21 +1264,21 @@ function HistoryCardItem({ item, toneLabels, supportedFormats, setInput, setTone
       )}
 
       {currentTab === "history" && (
-        <div className="flex-1 bg-white rounded-2xl border border-gray-200/80 shadow-sm p-6 overflow-y-auto max-w-4xl mx-auto w-full flex flex-col">
+        <div className="flex-1 bg-card rounded-2xl border border-border/80 shadow-sm p-6 overflow-y-auto max-w-4xl mx-auto w-full flex flex-col">
           {/* Header */}
-          <div className="flex items-center justify-between mb-6 border-b border-gray-100 pb-4">
+          <div className="flex items-center justify-between mb-6 border-b border-border pb-4">
             <div className="flex items-center gap-2.5">
               <div className="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center">
                 <History size={20} />
               </div>
               <div>
-                <h2 className="text-sm font-bold text-gray-900">Lịch sử yêu cầu sáng tạo</h2>
-                <p className="text-xs text-gray-500 mt-0.5">Xem lại và sử dụng lại các Prompt bạn đã yêu cầu Trợ lý AI thực hiện trước đây.</p>
+                <h2 className="text-sm font-bold text-foreground">Lịch sử yêu cầu sáng tạo</h2>
+                <p className="text-xs text-muted-foreground mt-0.5">Xem lại và sử dụng lại các Prompt bạn đã yêu cầu Trợ lý AI thực hiện trước đây.</p>
               </div>
             </div>
             <button
               onClick={() => loadHistory(1)}
-              className="p-2 text-gray-400 hover:text-gray-700 transition-colors bg-gray-50 border border-gray-200 rounded-xl flex items-center justify-center cursor-pointer"
+              className="p-2 text-muted-foreground hover:text-foreground transition-colors bg-muted border border-border rounded-xl flex items-center justify-center cursor-pointer"
               title="Làm mới lịch sử"
             >
               <RefreshCw size={14} className={isLoadingHistory ? "animate-spin text-indigo-600" : ""} />
@@ -1289,7 +1289,7 @@ function HistoryCardItem({ item, toneLabels, supportedFormats, setInput, setTone
           {isLoadingHistory ? (
             <div className="flex-1 flex flex-col gap-4">
               {[1, 2, 3].map((n) => (
-                <div key={n} className="p-4 rounded-2xl border border-gray-100 bg-gray-50/40 animate-pulse flex flex-col gap-3">
+                <div key={n} className="p-4 rounded-2xl border border-border bg-muted/40 animate-pulse flex flex-col gap-3">
                   <div className="flex justify-between items-center">
                     <div className="h-4 bg-gray-200 rounded w-1/4" />
                     <div className="h-3 bg-gray-200 rounded w-1/6" />
@@ -1303,13 +1303,13 @@ function HistoryCardItem({ item, toneLabels, supportedFormats, setInput, setTone
               ))}
             </div>
           ) : historyItems.length === 0 ? (
-            <div className="flex-1 flex flex-col items-center justify-center p-8 text-center text-gray-500 gap-3">
-              <div className="w-12 h-12 rounded-full bg-gray-50 flex items-center justify-center text-gray-400">
+            <div className="flex-1 flex flex-col items-center justify-center p-8 text-center text-muted-foreground gap-3">
+              <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center text-muted-foreground">
                 <History size={22} />
               </div>
               <div>
-                <h3 className="text-xs font-bold text-gray-700">Không tìm thấy lịch sử sáng tạo</h3>
-                <p className="text-[11px] text-gray-400 mt-0.5">Thương hiệu này chưa thực hiện yêu cầu tạo nội dung nào bằng AI.</p>
+                <h3 className="text-xs font-bold text-foreground">Không tìm thấy lịch sử sáng tạo</h3>
+                <p className="text-[11px] text-muted-foreground mt-0.5">Thương hiệu này chưa thực hiện yêu cầu tạo nội dung nào bằng AI.</p>
               </div>
               <button
                 onClick={() => setCurrentTab("chat")}
@@ -1342,22 +1342,22 @@ function HistoryCardItem({ item, toneLabels, supportedFormats, setInput, setTone
 
               {/* Pagination UI */}
               {historyTotalPages > 1 && (
-                <div className="flex items-center justify-between border-t border-gray-100 pt-4 mt-2">
-                  <span className="text-[10px] text-gray-500 font-bold">
+                <div className="flex items-center justify-between border-t border-border pt-4 mt-2">
+                  <span className="text-[10px] text-muted-foreground font-bold">
                     Hiển thị trang {historyPage} / {historyTotalPages} ({historyTotal} kết quả)
                   </span>
                   <div className="flex items-center gap-2">
                     <button
                       onClick={() => setHistoryPage((prev) => Math.max(1, prev - 1))}
                       disabled={historyPage === 1 || isLoadingHistory}
-                      className="px-3 py-1.5 text-[10px] font-bold border border-gray-250 rounded-lg hover:bg-gray-50 disabled:bg-gray-100 disabled:text-gray-400 disabled:border-gray-200 transition-colors cursor-pointer"
+                      className="px-3 py-1.5 text-[10px] font-bold border border-gray-250 rounded-lg hover:bg-muted disabled:bg-muted disabled:text-muted-foreground disabled:border-border transition-colors cursor-pointer"
                     >
                       Trang trước
                     </button>
                     <button
                       onClick={() => setHistoryPage((prev) => Math.min(historyTotalPages, prev + 1))}
                       disabled={historyPage === historyTotalPages || isLoadingHistory}
-                      className="px-3 py-1.5 text-[10px] font-bold border border-gray-250 rounded-lg hover:bg-gray-50 disabled:bg-gray-100 disabled:text-gray-400 disabled:border-gray-200 transition-colors cursor-pointer"
+                      className="px-3 py-1.5 text-[10px] font-bold border border-gray-250 rounded-lg hover:bg-muted disabled:bg-muted disabled:text-muted-foreground disabled:border-border transition-colors cursor-pointer"
                     >
                       Trang sau
                     </button>
@@ -1371,20 +1371,20 @@ function HistoryCardItem({ item, toneLabels, supportedFormats, setInput, setTone
 
       {currentTab === "settings" && (
         /* Tab 2: Brand Voice Settings */
-        <div className="flex-1 bg-white rounded-2xl border border-gray-200/80 shadow-sm p-6 overflow-y-auto max-w-4xl mx-auto w-full">
-          <div className="flex items-center gap-2 mb-6 border-b border-gray-100 pb-4">
+        <div className="flex-1 bg-card rounded-2xl border border-border/80 shadow-sm p-6 overflow-y-auto max-w-4xl mx-auto w-full">
+          <div className="flex items-center gap-2 mb-6 border-b border-border pb-4">
             <div className="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center">
               <Settings size={20} />
             </div>
             <div>
-              <h2 className="text-sm font-bold text-gray-900">Thiết lập cấu hình Trợ lý AI</h2>
-              <p className="text-xs text-gray-500 mt-0.5">Dạy AI về thông tin dự án, tệp khách hàng và định dạng ngôn ngữ mặc định.</p>
+              <h2 className="text-sm font-bold text-foreground">Thiết lập cấu hình Trợ lý AI</h2>
+              <p className="text-xs text-muted-foreground mt-0.5">Dạy AI về thông tin dự án, tệp khách hàng và định dạng ngôn ngữ mặc định.</p>
             </div>
           </div>
 
           <div className="flex flex-col gap-5">
             <div className="flex flex-col gap-2">
-              <label className="text-[11px] font-bold text-gray-500 uppercase tracking-wider flex items-center gap-1">
+              <label className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-1">
                 Ngữ cảnh Thương hiệu (Brand Context)
                 <span className="text-red-500">*</span>
               </label>
@@ -1392,42 +1392,42 @@ function HistoryCardItem({ item, toneLabels, supportedFormats, setInput, setTone
                 value={brandVoiceContext}
                 onChange={(e) => setBrandVoiceContext(e.target.value)}
                 placeholder="Ví dụ: PubliCast là một giải pháp SaaS giúp tự động hóa quản lý mạng xã hội, tối ưu hóa các chiến dịch SEO và Marketing đa nền tảng..."
-                className="w-full resize-none rounded-xl px-4 py-3 text-xs border border-gray-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/10 outline-none text-gray-700 font-medium placeholder-gray-400"
+                className="w-full resize-none rounded-xl px-4 py-3 text-xs border border-border focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/10 outline-none text-foreground font-medium placeholder-gray-400"
                 style={{ height: 110 }}
               />
             </div>
 
             <div className="grid grid-cols-2 gap-5">
               <div className="flex flex-col gap-2">
-                <label className="text-[11px] font-bold text-gray-500 uppercase tracking-wider">Khách hàng mục tiêu (Target Audience)</label>
+                <label className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">Khách hàng mục tiêu (Target Audience)</label>
                 <input
                   type="text"
                   value={targetAudience}
                   onChange={(e) => setTargetAudience(e.target.value)}
                   placeholder="Ví dụ: Marketers, chủ doanh nghiệp SME, Gen Z..."
-                  className="w-full rounded-xl px-4 py-2.5 text-xs border border-gray-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/10 outline-none text-gray-700 font-medium placeholder-gray-400"
+                  className="w-full rounded-xl px-4 py-2.5 text-xs border border-border focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/10 outline-none text-foreground font-medium placeholder-gray-400"
                 />
               </div>
 
               <div className="flex flex-col gap-2">
-                <label className="text-[11px] font-bold text-gray-500 uppercase tracking-wider">Nền tảng truyền thông mục tiêu</label>
+                <label className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">Nền tảng truyền thông mục tiêu</label>
                 <input
                   type="text"
                   value={targetPlatforms}
                   onChange={(e) => setTargetPlatforms(e.target.value)}
                   placeholder="Ví dụ: Facebook, Instagram, TikTok..."
-                  className="w-full rounded-xl px-4 py-2.5 text-xs border border-gray-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/10 outline-none text-gray-700 font-medium placeholder-gray-400"
+                  className="w-full rounded-xl px-4 py-2.5 text-xs border border-border focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/10 outline-none text-foreground font-medium placeholder-gray-400"
                 />
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-5 border-t border-gray-100 pt-5 mt-2">
+            <div className="grid grid-cols-2 gap-5 border-t border-border pt-5 mt-2">
               <div className="flex flex-col gap-2">
-                <label className="text-[11px] font-bold text-gray-500 uppercase tracking-wider">Ngôn ngữ phản hồi mặc định</label>
+                <label className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">Ngôn ngữ phản hồi mặc định</label>
                 <select 
                   value={defaultLanguage}
                   onChange={(e) => setDefaultLanguage(e.target.value)}
-                  className="w-full rounded-xl px-4 py-2.5 text-xs border border-gray-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/10 outline-none text-gray-700 font-bold bg-white"
+                  className="w-full rounded-xl px-4 py-2.5 text-xs border border-border focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/10 outline-none text-foreground font-bold bg-card"
                 >
                   <option value="vi">Tiếng Việt (vi)</option>
                   <option value="en">English (en)</option>
@@ -1435,11 +1435,11 @@ function HistoryCardItem({ item, toneLabels, supportedFormats, setInput, setTone
               </div>
 
               <div className="flex flex-col gap-2">
-                <label className="text-[11px] font-bold text-gray-500 uppercase tracking-wider">Giọng điệu mặc định (Default Tone)</label>
+                <label className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">Giọng điệu mặc định (Default Tone)</label>
                 <select 
                   value={defaultTone}
                   onChange={(e) => setDefaultTone(e.target.value)}
-                  className="w-full rounded-xl px-4 py-2.5 text-xs border border-gray-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/10 outline-none text-gray-700 font-bold bg-white"
+                  className="w-full rounded-xl px-4 py-2.5 text-xs border border-border focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/10 outline-none text-foreground font-bold bg-card"
                 >
                   {supportedTones.map((t) => (
                     <option key={t.value} value={t.value}>{t.label} {t.emoji}</option>
@@ -1448,17 +1448,17 @@ function HistoryCardItem({ item, toneLabels, supportedFormats, setInput, setTone
               </div>
             </div>
 
-            <div className="flex items-center justify-end gap-3 mt-6 border-t border-gray-100 pt-5">
+            <div className="flex items-center justify-end gap-3 mt-6 border-t border-border pt-5">
               <button 
                 onClick={() => setCurrentTab("chat")}
-                className="px-5 py-2.5 rounded-xl border border-gray-200 hover:bg-gray-50 text-gray-600 font-bold text-xs transition-colors cursor-pointer"
+                className="px-5 py-2.5 rounded-xl border border-border hover:bg-muted text-muted-foreground font-bold text-xs transition-colors cursor-pointer"
               >
                 Hủy bỏ
               </button>
               <button 
                 onClick={handleSaveVoice}
                 disabled={isSavingVoice}
-                className="px-6 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-200 disabled:text-gray-400 text-white font-bold text-xs shadow-md shadow-indigo-100 transition-all flex items-center gap-1.5 cursor-pointer"
+                className="px-6 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-200 disabled:text-muted-foreground text-white font-bold text-xs shadow-md shadow-indigo-100 transition-all flex items-center gap-1.5 cursor-pointer"
               >
                 {isSavingVoice && <RefreshCw size={12} className="animate-spin" />}
                 Lưu cấu hình thương hiệu

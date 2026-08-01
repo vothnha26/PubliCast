@@ -158,14 +158,14 @@ export function TikTokPostsTab({
       renderCell: (post) => (
         <div className="flex items-center gap-4">
           {post.thumbnailUrl ? (
-            <img src={post.thumbnailUrl} className="w-12 h-12 rounded-lg object-cover border border-gray-100 shrink-0" alt="Thumbnail" />
+            <img src={post.thumbnailUrl} className="w-12 h-12 rounded-lg object-cover border border-border shrink-0" alt="Thumbnail" />
           ) : (
             <div className="w-12 h-12 bg-black rounded-lg flex items-center justify-center text-white shrink-0 border border-gray-800 font-black text-xs">
               TikTok
             </div>
           )}
           <div className="flex flex-col">
-            <span className="text-sm font-bold text-[#0A0A0A] line-clamp-2 max-w-[300px]">
+            <span className="text-sm font-bold text-foreground line-clamp-2 max-w-[300px]">
               {post.title || post.caption || "No content message"}
             </span>
             {post.shareUrl && (
@@ -187,10 +187,10 @@ export function TikTokPostsTab({
       header: "Date",
       renderCell: (post) => (
         <div className="flex flex-col">
-          <span className="text-xs font-bold text-[#0A0A0A]">
+          <span className="text-xs font-bold text-foreground">
             {new Date(post.publishedAt || post.date).toLocaleDateString()}
           </span>
-          <span className="text-[10px] text-gray-400 font-medium">
+          <span className="text-[10px] text-muted-foreground font-medium">
             {new Date(post.publishedAt || post.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
           </span>
         </div>
@@ -198,19 +198,19 @@ export function TikTokPostsTab({
     },
     {
       header: "Views",
-      renderCell: (post) => <span className="text-xs font-bold text-gray-800">{(post.views || 0).toLocaleString()}</span>
+      renderCell: (post) => <span className="text-xs font-bold text-foreground">{(post.views || 0).toLocaleString()}</span>
     },
     {
       header: "Likes",
-      renderCell: (post) => <span className="text-xs text-gray-500 font-semibold">{(post.likes || 0).toLocaleString()}</span>
+      renderCell: (post) => <span className="text-xs text-muted-foreground font-semibold">{(post.likes || 0).toLocaleString()}</span>
     },
     {
       header: "Comments",
-      renderCell: (post) => <span className="text-xs text-gray-500 font-semibold">{(post.comments || 0).toLocaleString()}</span>
+      renderCell: (post) => <span className="text-xs text-muted-foreground font-semibold">{(post.comments || 0).toLocaleString()}</span>
     },
     {
       header: "Shares",
-      renderCell: (post) => <span className="text-xs text-gray-500 font-semibold">{(post.shares || 0).toLocaleString()}</span>
+      renderCell: (post) => <span className="text-xs text-muted-foreground font-semibold">{(post.shares || 0).toLocaleString()}</span>
     }
   ];
 

@@ -43,19 +43,19 @@ export function ImageEditorModal({ isOpen, imageUrl, currentTransform, brandId, 
 
   return (
     <div className="fixed inset-0 z-[3000] flex items-center justify-center bg-black/85 backdrop-blur-md animate-in fade-in duration-300">
-      <div className="bg-white w-full h-full max-w-7xl max-h-[90vh] md:rounded-[32px] overflow-hidden shadow-2xl flex flex-col justify-between font-sans relative border border-gray-100 mx-4">
+      <div className="bg-card w-full h-full max-w-7xl max-h-[90vh] md:rounded-[32px] overflow-hidden shadow-2xl flex flex-col justify-between font-sans relative border border-border mx-4">
         
         {/* Loading Overlay */}
         {editor.isSaving && (
-          <div className="absolute inset-0 bg-white/80 backdrop-blur-sm z-[3100] flex flex-col items-center justify-center space-y-4 animate-in fade-in duration-200">
+          <div className="absolute inset-0 bg-card/80 backdrop-blur-sm z-[3100] flex flex-col items-center justify-center space-y-4 animate-in fade-in duration-200">
             <Loader2 size={36} className="text-[#1A1A1A] animate-spin" />
-            <span className="text-xs font-black uppercase tracking-widest text-gray-700">Saving Changes...</span>
+            <span className="text-xs font-black uppercase tracking-widest text-foreground">Saving Changes...</span>
           </div>
         )}
 
         {/* Header */}
-        <div className="h-16 border-b border-gray-100 flex items-center justify-between px-8 bg-white shrink-0">
-          <h2 className="text-base font-black text-gray-800 tracking-tight">Image Editor</h2>
+        <div className="h-16 border-b border-border flex items-center justify-between px-8 bg-card shrink-0">
+          <h2 className="text-base font-black text-foreground tracking-tight">Image Editor</h2>
           <button 
             onClick={onClose}
             className="w-10 h-10 rounded-full bg-[#180F1E] hover:bg-black text-white flex items-center justify-center shadow-md transition-all cursor-pointer group"
@@ -75,7 +75,7 @@ export function ImageEditorModal({ isOpen, imageUrl, currentTransform, brandId, 
           />
 
           {/* Center Main Screen */}
-          <div className="flex-1 bg-white flex flex-col relative overflow-hidden select-none" ref={editor.containerRef}>
+          <div className="flex-1 bg-card flex flex-col relative overflow-hidden select-none" ref={editor.containerRef}>
             
             <Toolbar
               scaleVal={editor.scaleVal}
@@ -190,7 +190,7 @@ export function ImageEditorModal({ isOpen, imageUrl, currentTransform, brandId, 
             />
 
             {/* Size dimension detail badge */}
-            <div className="absolute right-4 bottom-4 text-[10px] font-black text-gray-400 select-none">
+            <div className="absolute right-4 bottom-4 text-[10px] font-black text-muted-foreground select-none">
               {Math.round(editor.imgSize.w * (editor.cropBox.width / editor.initialBox.width))} × {Math.round(editor.imgSize.h * (editor.cropBox.height / editor.initialBox.height))}
             </div>
 
@@ -199,11 +199,11 @@ export function ImageEditorModal({ isOpen, imageUrl, currentTransform, brandId, 
         </div>
 
         {/* Footer controls */}
-        <div className="h-16 bg-white border-t border-gray-100 flex items-center justify-end px-8 gap-4 shrink-0">
+        <div className="h-16 bg-card border-t border-border flex items-center justify-end px-8 gap-4 shrink-0">
           <button
             type="button"
             onClick={onClose}
-            className="text-xs font-black text-gray-500 hover:text-black transition-all cursor-pointer uppercase tracking-wider"
+            className="text-xs font-black text-muted-foreground hover:text-black transition-all cursor-pointer uppercase tracking-wider"
           >
             Cancel
           </button>

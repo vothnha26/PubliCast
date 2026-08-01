@@ -18,7 +18,7 @@ export function Footer() {
           {/* Col 1 – Brand */}
           <div>
             <Link to="/" className="flex items-center gap-2 mb-4 no-underline">
-              <div className="w-7 h-7 bg-white rounded-lg flex items-center justify-center">
+              <div className="w-7 h-7 bg-card rounded-lg flex items-center justify-center">
                 <span style={{ fontSize: 12, color: "#0A0A0A", fontWeight: 700 }}>S</span>
               </div>
               <span style={{ fontSize: 15, fontWeight: 500, color: "#fff" }}>PubliCast</span>

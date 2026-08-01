@@ -19,7 +19,7 @@ export function AdminShell({ children, activePage, onNavigate }) {
         {/* Logo + Admin label */}
         <div className="px-4 pt-5 pb-3">
           <div className="flex items-center gap-2 mb-4">
-            <div className="w-6 h-6 bg-white rounded-md flex items-center justify-center">
+            <div className="w-6 h-6 bg-card rounded-md flex items-center justify-center">
               <span style={{ fontSize: 10, color: "#0A0A0A", fontWeight: 700 }}>S</span>
             </div>
             <span style={{ fontSize: 13, fontWeight: 500, color: "#fff" }}>PubliCast</span>
@@ -67,25 +67,23 @@ export function AdminShell({ children, activePage, onNavigate }) {
       <div className="flex-1 flex flex-col overflow-hidden">
         {/* Topbar */}
         <div
-          className="bg-white flex items-center justify-between px-6 h-14 shrink-0"
-          style={{ borderBottom: "0.5px solid #E5E7EB" }}
+          className="bg-card flex items-center justify-between px-6 h-14 shrink-0 border-b border-border"
         >
           <div />
           <div className="flex items-center gap-3">
             <span
-              className="px-3 py-1 rounded-md"
-              style={{ fontSize: 11, fontWeight: 500, backgroundColor: "#FEF2F2", color: "#DC2626", border: "0.5px solid #FCA5A5" }}
+              className="px-3 py-1 rounded-md bg-red-500/10 text-red-600 dark:text-red-400 border border-red-500/20 text-[11px] font-medium"
             >
               ⚠ Admin Mode
             </span>
-            <div className="w-8 h-8 rounded-full bg-[#E5E7EB] flex items-center justify-center">
-              <span style={{ fontSize: 11, fontWeight: 500, color: "#6B7280" }}>SA</span>
+            <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center">
+              <span className="text-[11px] font-medium text-muted-foreground">SA</span>
             </div>
           </div>
         </div>
 
         {/* Page content */}
-        <div className="flex-1 overflow-y-auto bg-[#F8F8F7]">
+        <div className="flex-1 overflow-y-auto bg-background">
           {children}
         </div>
       </div>

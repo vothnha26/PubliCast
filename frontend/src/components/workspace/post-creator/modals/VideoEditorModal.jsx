@@ -254,18 +254,18 @@ function VideoEditorInner({ videoUrl, videoPath, initialSettings, brandId, onClo
   };
 
   return (
-    <div className="relative bg-white w-full max-w-5xl max-h-[90vh] rounded-2xl shadow-2xl overflow-hidden flex flex-col border border-gray-200 mx-4 font-sans">
+    <div className="relative bg-card w-full max-w-5xl max-h-[90vh] rounded-2xl shadow-2xl overflow-hidden flex flex-col border border-border mx-4 font-sans">
       {/* Processing overlay */}
       {isProcessing && (
-        <div className="absolute inset-0 bg-white/80 z-50 flex flex-col items-center justify-center gap-3">
-          <Loader2 className="animate-spin text-gray-700" size={32} />
-          <p className="text-xs font-bold uppercase tracking-widest text-gray-500">Đang lưu video…</p>
+        <div className="absolute inset-0 bg-card/80 z-50 flex flex-col items-center justify-center gap-3">
+          <Loader2 className="animate-spin text-foreground" size={32} />
+          <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Đang lưu video…</p>
         </div>
       )}
 
       {/* HEADER */}
-      <div className="h-14 flex items-center justify-between px-6 border-b border-gray-100 shrink-0 bg-white">
-        <h2 className="text-lg font-bold text-gray-900 tracking-tight">Video Editor</h2>
+      <div className="h-14 flex items-center justify-between px-6 border-b border-border shrink-0 bg-card">
+        <h2 className="text-lg font-bold text-foreground tracking-tight">Video Editor</h2>
         <button
           onClick={handleClose}
           className="w-9 h-9 rounded-full bg-[#1C1822] text-white flex items-center justify-center hover:bg-black transition cursor-pointer group shadow-md"
@@ -277,15 +277,15 @@ function VideoEditorInner({ videoUrl, videoPath, initialSettings, brandId, onClo
       {/* BODY */}
       <div className="flex flex-1 min-h-0 overflow-hidden">
         {/* LEFT SIDEBAR */}
-        <aside className="w-[108px] border-r border-gray-100 flex flex-col py-3 px-2 gap-1 shrink-0 bg-white select-none">
+        <aside className="w-[108px] border-r border-border flex flex-col py-3 px-2 gap-1 shrink-0 bg-card select-none">
           {SIDEBAR_TABS.map(({ id, label, icon: Icon }) => (
             <button
               key={id}
               onClick={() => switchTab(id)}
               className={`w-full flex flex-col items-center gap-1.5 py-3 px-2 rounded-xl text-[10px] font-semibold tracking-wide transition-all cursor-pointer ${
                 activeTab === id
-                  ? 'bg-gray-200 text-gray-900 font-extrabold'
-                  : 'text-gray-500 hover:bg-gray-50 hover:text-gray-800'
+                  ? 'bg-gray-200 text-foreground font-extrabold'
+                  : 'text-muted-foreground hover:bg-muted hover:text-foreground'
               }`}
             >
               <Icon size={17} strokeWidth={1.8} />
@@ -295,9 +295,9 @@ function VideoEditorInner({ videoUrl, videoPath, initialSettings, brandId, onClo
         </aside>
 
         {/* CENTER MAIN AREA */}
-        <main className="flex-1 flex flex-col min-h-0 overflow-hidden bg-white select-none">
+        <main className="flex-1 flex flex-col min-h-0 overflow-hidden bg-card select-none">
           {/* Top Utility Toolbar */}
-          <div className="h-12 flex items-center justify-between px-6 border-b border-gray-100 shrink-0 bg-white relative">
+          <div className="h-12 flex items-center justify-between px-6 border-b border-border shrink-0 bg-card relative">
             {/* Left side Reset Button (in Size, Finetune, Filter, Sticker, or Draw mode) */}
             {activeTab === 'size' || activeTab === 'finetune' || activeTab === 'filter' || activeTab === 'sticker' || activeTab === 'draw' ? (
               <button
@@ -317,7 +317,7 @@ function VideoEditorInner({ videoUrl, videoPath, initialSettings, brandId, onClo
                     toast.info('Đã xóa tất cả nét vẽ');
                   }
                 }}
-                className="w-8 h-8 rounded-full border border-gray-200 flex items-center justify-center text-gray-400 hover:text-black hover:bg-gray-100 transition cursor-pointer"
+                className="w-8 h-8 rounded-full border border-border flex items-center justify-center text-muted-foreground hover:text-black hover:bg-muted transition cursor-pointer"
                 title="Reset"
               >
                 <RefreshCw size={13} />
@@ -327,11 +327,11 @@ function VideoEditorInner({ videoUrl, videoPath, initialSettings, brandId, onClo
             {/* Center Utility Group */}
             <div className="flex items-center gap-4">
               {/* Undo / Redo */}
-              <div className="flex items-center gap-0.5 border border-gray-200 rounded-full px-1 py-0.5 shadow-sm bg-white">
+              <div className="flex items-center gap-0.5 border border-border rounded-full px-1 py-0.5 shadow-sm bg-card">
                 <button
                   onClick={handleUndo}
                   className={`p-1.5 rounded-full transition cursor-pointer ${
-                    canUndo ? 'text-gray-700 hover:text-black hover:bg-gray-100' : 'text-gray-300 cursor-not-allowed'
+                    canUndo ? 'text-foreground hover:text-black hover:bg-muted' : 'text-gray-300 cursor-not-allowed'
                   }`}
                   title="Undo (Hoàn tác)"
                 >
@@ -340,7 +340,7 @@ function VideoEditorInner({ videoUrl, videoPath, initialSettings, brandId, onClo
                 <button
                   onClick={handleRedo}
                   className={`p-1.5 rounded-full transition cursor-pointer ${
-                    canRedo ? 'text-gray-700 hover:text-black hover:bg-gray-100' : 'text-gray-300 cursor-not-allowed'
+                    canRedo ? 'text-foreground hover:text-black hover:bg-muted' : 'text-gray-300 cursor-not-allowed'
                   }`}
                   title="Redo (Làm lại)"
                 >
@@ -350,10 +350,10 @@ function VideoEditorInner({ videoUrl, videoPath, initialSettings, brandId, onClo
 
               {/* Size Mode Transform Tools Pill */}
               {activeTab === 'size' && (
-                <div className="flex items-center gap-1 border border-gray-200 rounded-full px-2 py-0.5 shadow-sm bg-white">
+                <div className="flex items-center gap-1 border border-border rounded-full px-2 py-0.5 shadow-sm bg-card">
                   <button
                     onClick={handleRotate90}
-                    className="p-1.5 text-gray-600 hover:text-black hover:bg-gray-100 rounded-full transition cursor-pointer"
+                    className="p-1.5 text-muted-foreground hover:text-black hover:bg-muted rounded-full transition cursor-pointer"
                     title="Xoay 90°"
                   >
                     <Rotate90Icon size={13} />
@@ -361,7 +361,7 @@ function VideoEditorInner({ videoUrl, videoPath, initialSettings, brandId, onClo
                   <button
                     onClick={handleToggleFlipH}
                     className={`p-1.5 rounded-full transition cursor-pointer ${
-                      flipH ? 'bg-gray-200 text-black font-bold' : 'text-gray-600 hover:text-black hover:bg-gray-100'
+                      flipH ? 'bg-gray-200 text-black font-bold' : 'text-muted-foreground hover:text-black hover:bg-muted'
                     }`}
                     title="Lật ngang (Flip Horizontal)"
                   >
@@ -370,7 +370,7 @@ function VideoEditorInner({ videoUrl, videoPath, initialSettings, brandId, onClo
                   <button
                     onClick={handleToggleFlipV}
                     className={`p-1.5 rounded-full transition cursor-pointer ${
-                      flipV ? 'bg-gray-200 text-black font-bold' : 'text-gray-600 hover:text-black hover:bg-gray-100'
+                      flipV ? 'bg-gray-200 text-black font-bold' : 'text-muted-foreground hover:text-black hover:bg-muted'
                     }`}
                     title="Lật dọc (Flip Vertical)"
                   >
@@ -382,10 +382,10 @@ function VideoEditorInner({ videoUrl, videoPath, initialSettings, brandId, onClo
               {/* Zoom Controls & Dropdown Menu */}
               {activeTab !== 'size' && (
                 <div className="relative" ref={zoomMenuRef}>
-                  <div className="flex items-center gap-1.5 border border-gray-200 rounded-full px-3 py-1 text-xs font-semibold text-gray-700 shadow-sm bg-white">
+                  <div className="flex items-center gap-1.5 border border-border rounded-full px-3 py-1 text-xs font-semibold text-foreground shadow-sm bg-card">
                     <button
                       onClick={handleZoomOut}
-                      className="hover:text-black transition cursor-pointer px-1 text-gray-600 hover:bg-gray-100 rounded"
+                      className="hover:text-black transition cursor-pointer px-1 text-muted-foreground hover:bg-muted rounded"
                       title="Thu nhỏ Zoom"
                     >
                       -
@@ -393,7 +393,7 @@ function VideoEditorInner({ videoUrl, videoPath, initialSettings, brandId, onClo
 
                     <button
                       onClick={() => setIsZoomMenuOpen(!isZoomMenuOpen)}
-                      className="w-12 text-center hover:text-black transition cursor-pointer hover:bg-gray-100 rounded py-0.5 flex items-center justify-center gap-0.5"
+                      className="w-12 text-center hover:text-black transition cursor-pointer hover:bg-muted rounded py-0.5 flex items-center justify-center gap-0.5"
                       title="Bấm để mở danh sách Zoom"
                     >
                       <span>{zoomLevel}%</span>
@@ -401,7 +401,7 @@ function VideoEditorInner({ videoUrl, videoPath, initialSettings, brandId, onClo
 
                     <button
                       onClick={handleZoomIn}
-                      className="hover:text-black transition cursor-pointer px-1 text-gray-600 hover:bg-gray-100 rounded"
+                      className="hover:text-black transition cursor-pointer px-1 text-muted-foreground hover:bg-muted rounded"
                       title="Phóng to Zoom"
                     >
                       +
@@ -409,7 +409,7 @@ function VideoEditorInner({ videoUrl, videoPath, initialSettings, brandId, onClo
                   </div>
 
                   {isZoomMenuOpen && (
-                    <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 w-48 max-h-72 bg-white rounded-2xl border border-gray-200 shadow-2xl overflow-y-auto py-2 z-50 animate-in fade-in zoom-in-95 duration-150">
+                    <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 w-48 max-h-72 bg-card rounded-2xl border border-border shadow-2xl overflow-y-auto py-2 z-50 animate-in fade-in zoom-in-95 duration-150">
                       {ZOOM_OPTIONS.map((opt) => {
                         const isSelected = zoomLevel === opt.value;
                         return (
@@ -418,13 +418,13 @@ function VideoEditorInner({ videoUrl, videoPath, initialSettings, brandId, onClo
                             onClick={() => handleSelectZoom(opt.value)}
                             className={`w-full text-left px-5 py-2.5 transition flex flex-col justify-center cursor-pointer ${
                               isSelected
-                                ? 'bg-gray-300/90 text-gray-900 font-bold'
-                                : 'hover:bg-gray-50 text-gray-700'
+                                ? 'bg-gray-300/90 text-foreground font-bold'
+                                : 'hover:bg-muted text-foreground'
                             }`}
                           >
                             <span className="text-sm font-semibold">{opt.label}</span>
                             {opt.sub && (
-                              <span className={`text-[11px] ${isSelected ? 'text-gray-700' : 'text-gray-400'}`}>
+                              <span className={`text-[11px] ${isSelected ? 'text-foreground' : 'text-muted-foreground'}`}>
                                 {opt.sub}
                               </span>
                             )}
@@ -438,15 +438,15 @@ function VideoEditorInner({ videoUrl, videoPath, initialSettings, brandId, onClo
 
               {/* Save Audio Toggle */}
               <div className="flex items-center gap-2">
-                <span className="text-xs text-gray-500 font-medium">Save audio</span>
-                <div className="flex bg-gray-100 rounded-full p-0.5 text-xs shadow-inner border border-gray-200/60">
+                <span className="text-xs text-muted-foreground font-medium">Save audio</span>
+                <div className="flex bg-muted rounded-full p-0.5 text-xs shadow-inner border border-border/60">
                   <button
                     onClick={() => {
                       setSaveAudio(true);
                       toast.success('Đã BẬT lưu âm thanh video (Save audio ON)');
                     }}
                     className={`px-3 py-0.5 rounded-full transition cursor-pointer font-bold ${
-                      saveAudio ? 'bg-white shadow-sm text-black' : 'text-gray-400 hover:text-gray-700'
+                      saveAudio ? 'bg-card shadow-sm text-black' : 'text-muted-foreground hover:text-foreground'
                     }`}
                   >
                     On
@@ -457,7 +457,7 @@ function VideoEditorInner({ videoUrl, videoPath, initialSettings, brandId, onClo
                       toast.info('Đã TẮT lưu âm thanh video (Save audio OFF)');
                     }}
                     className={`px-3 py-0.5 rounded-full transition cursor-pointer font-bold ${
-                      !saveAudio ? 'bg-white shadow-sm text-black' : 'text-gray-400 hover:text-gray-700'
+                      !saveAudio ? 'bg-card shadow-sm text-black' : 'text-muted-foreground hover:text-foreground'
                     }`}
                   >
                     Off
@@ -470,37 +470,37 @@ function VideoEditorInner({ videoUrl, videoPath, initialSettings, brandId, onClo
           </div>
 
           {/* Video preview area */}
-          <div className="flex-1 overflow-hidden flex items-center justify-center bg-white min-h-0 p-2">
+          <div className="flex-1 overflow-hidden flex items-center justify-center bg-card min-h-0 p-2">
             <VideoPreviewArea />
           </div>
 
           {/* Bottom Area: Size / Finetune / Filter / Sticker / Draw / Resize / Timeline */}
           {activeTab === 'size' ? (
-            <div className="shrink-0 px-5 py-2 border-t border-gray-100 bg-white">
+            <div className="shrink-0 px-5 py-2 border-t border-border bg-card">
               <SizePanel />
             </div>
           ) : activeTab === 'finetune' ? (
-            <div className="shrink-0 px-5 py-2 border-t border-gray-100 bg-white">
+            <div className="shrink-0 px-5 py-2 border-t border-border bg-card">
               <FinetunePanel />
             </div>
           ) : activeTab === 'filter' ? (
-            <div className="shrink-0 px-5 py-2 border-t border-gray-100 bg-white">
+            <div className="shrink-0 px-5 py-2 border-t border-border bg-card">
               <FilterPanel />
             </div>
           ) : activeTab === 'sticker' ? (
-            <div className="shrink-0 px-5 py-2 border-t border-gray-100 bg-white">
+            <div className="shrink-0 px-5 py-2 border-t border-border bg-card">
               <StickerPanel />
             </div>
           ) : activeTab === 'draw' ? (
-            <div className="shrink-0 px-5 py-2 border-t border-gray-100 bg-white">
+            <div className="shrink-0 px-5 py-2 border-t border-border bg-card">
               <DrawPanel />
             </div>
           ) : activeTab === 'resize' ? (
-            <div className="shrink-0 px-5 py-2 border-t border-gray-100 bg-white">
+            <div className="shrink-0 px-5 py-2 border-t border-border bg-card">
               <ResizePanel />
             </div>
           ) : (
-            <div className="shrink-0 px-5 py-3 border-t border-gray-100 bg-white">
+            <div className="shrink-0 px-5 py-3 border-t border-border bg-card">
               <TrimTimeline />
             </div>
           )}
@@ -508,10 +508,10 @@ function VideoEditorInner({ videoUrl, videoPath, initialSettings, brandId, onClo
       </div>
 
       {/* FOOTER */}
-      <div className="h-14 flex items-center justify-end gap-4 px-6 border-t border-gray-100 shrink-0 bg-white">
+      <div className="h-14 flex items-center justify-end gap-4 px-6 border-t border-border shrink-0 bg-card">
         <button
           onClick={handleClose}
-          className="text-sm font-medium text-gray-500 hover:text-gray-900 transition cursor-pointer"
+          className="text-sm font-medium text-muted-foreground hover:text-foreground transition cursor-pointer"
         >
           Cancel
         </button>

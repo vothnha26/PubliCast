@@ -23,18 +23,18 @@ export function TikTokPresets() {
   } = usePostCreatorFormContext();
 
   return (
-    <div className="border border-gray-100 rounded-3xl overflow-hidden bg-white shadow-sm transition-all duration-300">
+    <div className="border border-border rounded-3xl overflow-hidden bg-card shadow-sm transition-all duration-300">
       <div 
         onClick={() => setTiktokOpen(!tiktokOpen)}
-        className="p-5 flex items-center justify-between hover:bg-gray-50/50 transition-all cursor-pointer group"
+        className="p-5 flex items-center justify-between hover:bg-muted/50 transition-all cursor-pointer group"
       >
         <div className="flex items-center gap-3">
           <svg className="w-[18px] h-[18px] text-black fill-current" viewBox="0 0 24 24">
             <path d="M12.53.02C13.84 0 15.14.01 16.44 0c.08 1.53.63 3.09 1.75 4.17 1.12 1.11 2.7 1.62 4.24 1.79v4.03c-1.44-.17-2.89-.6-4.09-1.5-1.1-1.02-1.7-2.48-1.9-3.96-.03 2.49 0 4.99 0 7.48-.02 1.9-.38 3.82-1.39 5.43-1.46 2.42-4.13 3.84-6.93 3.55-3.05-.2-5.78-2.44-6.39-5.46-.73-3.27.97-6.9 4.13-7.91 1.09-.34 2.24-.39 3.37-.2v4.02c-1.22-.32-2.58-.09-3.55.74-.95.83-1.29 2.19-1.03 3.4.31 1.65 1.84 2.91 3.53 2.78 1.94-.04 3.42-1.8 3.25-3.73-.02-2.91 0-5.83 0-8.74.02-3.11-.02-6.22.02-9.33z"/>
           </svg>
-          <span className="text-[12px] font-bold text-gray-700 font-sans">{t("planner:postCreator.presets.tiktok.title")}</span>
+          <span className="text-[12px] font-bold text-foreground font-sans">{t("planner:postCreator.presets.tiktok.title")}</span>
         </div>
-        <ChevronDown size={16} className={`text-gray-400 transition-transform duration-300 ${tiktokOpen ? 'rotate-180 text-black' : ''}`} />
+        <ChevronDown size={16} className={`text-muted-foreground transition-transform duration-300 ${tiktokOpen ? 'rotate-180 text-black' : ''}`} />
       </div>
 
       <div className={`transition-all duration-300 ease-in-out overflow-hidden ${tiktokOpen ? 'max-h-[500px] border-t border-gray-50 p-6' : 'max-h-0'}`}>
@@ -42,25 +42,25 @@ export function TikTokPresets() {
           
           {/* Privacy dropdown */}
           <div>
-            <label className="block text-[11px] font-bold text-gray-500 uppercase mb-2 font-sans">{t("planner:postCreator.presets.tiktok.whoCanView")}</label>
+            <label className="block text-[11px] font-bold text-muted-foreground uppercase mb-2 font-sans">{t("planner:postCreator.presets.tiktok.whoCanView")}</label>
             <div className="relative">
               <select
                 value={tiktokPrivacy}
                 onChange={(e) => setTiktokPrivacy(e.target.value)}
-                className="w-full px-4 py-3 bg-white border border-gray-200 rounded-2xl text-xs font-semibold focus:border-black outline-none appearance-none cursor-pointer font-sans"
+                className="w-full px-4 py-3 bg-card border border-border rounded-2xl text-xs font-semibold focus:border-black outline-none appearance-none cursor-pointer font-sans"
               >
                 <option value="public">{t("planner:postCreator.presets.tiktok.public")}</option>
                 <option value="friends">{t("planner:postCreator.presets.tiktok.friends")}</option>
                 <option value="self">{t("planner:postCreator.presets.tiktok.self")}</option>
               </select>
-              <ChevronDown size={14} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+              <ChevronDown size={14} className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
             </div>
           </div>
 
           {/* 3 Switches */}
           <div className="flex items-center justify-between gap-4 pt-2 border-t border-gray-50">
             <div className="flex flex-col items-start gap-1">
-              <span className="text-[11px] font-bold text-gray-500 uppercase font-sans">{t("planner:postCreator.presets.tiktok.allowComments")}</span>
+              <span className="text-[11px] font-bold text-muted-foreground uppercase font-sans">{t("planner:postCreator.presets.tiktok.allowComments")}</span>
               <button
                 type="button"
                 onClick={() => setTiktokAllowComments(!tiktokAllowComments)}
@@ -69,14 +69,14 @@ export function TikTokPresets() {
                 }`}
               >
                 <div
-                  className={`bg-white w-4 h-4 rounded-full shadow-sm transform transition-all duration-300 ${
+                  className={`bg-card w-4 h-4 rounded-full shadow-sm transform transition-all duration-300 ${
                     tiktokAllowComments ? 'translate-x-4' : 'translate-x-0'
                   }`}
                 />
               </button>
             </div>
             <div className="flex flex-col items-start gap-1">
-              <span className="text-[11px] font-bold text-gray-500 uppercase font-sans">{t("planner:postCreator.presets.tiktok.allowDuet")}</span>
+              <span className="text-[11px] font-bold text-muted-foreground uppercase font-sans">{t("planner:postCreator.presets.tiktok.allowDuet")}</span>
               <button
                 type="button"
                 onClick={() => setTiktokAllowDuet(!tiktokAllowDuet)}
@@ -85,14 +85,14 @@ export function TikTokPresets() {
                 }`}
               >
                 <div
-                  className={`bg-white w-4 h-4 rounded-full shadow-sm transform transition-all duration-300 ${
+                  className={`bg-card w-4 h-4 rounded-full shadow-sm transform transition-all duration-300 ${
                     tiktokAllowDuet ? 'translate-x-4' : 'translate-x-0'
                   }`}
                 />
               </button>
             </div>
             <div className="flex flex-col items-start gap-1">
-              <span className="text-[11px] font-bold text-gray-500 uppercase font-sans">{t("planner:postCreator.presets.tiktok.allowStitch")}</span>
+              <span className="text-[11px] font-bold text-muted-foreground uppercase font-sans">{t("planner:postCreator.presets.tiktok.allowStitch")}</span>
               <button
                 type="button"
                 onClick={() => setTiktokAllowStitch(!tiktokAllowStitch)}
@@ -101,7 +101,7 @@ export function TikTokPresets() {
                 }`}
               >
                 <div
-                  className={`bg-white w-4 h-4 rounded-full shadow-sm transform transition-all duration-300 ${
+                  className={`bg-card w-4 h-4 rounded-full shadow-sm transform transition-all duration-300 ${
                     tiktokAllowStitch ? 'translate-x-4' : 'translate-x-0'
                   }`}
                 />
@@ -110,11 +110,11 @@ export function TikTokPresets() {
           </div>
 
           {/* AI and Commercial Switches */}
-          <div className="border-t border-gray-100 pt-4 space-y-4">
+          <div className="border-t border-border pt-4 space-y-4">
             <div className="flex items-center justify-between">
               <div className="flex flex-col text-left">
-                <span className="block text-[11px] font-bold text-gray-500 uppercase font-sans">{t("planner:postCreator.presets.tiktok.aiGenerated")}</span>
-                <span className="text-[9px] text-gray-400 font-medium font-sans">{t("planner:postCreator.presets.tiktok.aiGeneratedDesc")}</span>
+                <span className="block text-[11px] font-bold text-muted-foreground uppercase font-sans">{t("planner:postCreator.presets.tiktok.aiGenerated")}</span>
+                <span className="text-[9px] text-muted-foreground font-medium font-sans">{t("planner:postCreator.presets.tiktok.aiGeneratedDesc")}</span>
               </div>
               <button
                 type="button"
@@ -124,7 +124,7 @@ export function TikTokPresets() {
                 }`}
               >
                 <div
-                  className={`bg-white w-4 h-4 rounded-full shadow-sm transform transition-all duration-300 ${
+                  className={`bg-card w-4 h-4 rounded-full shadow-sm transform transition-all duration-300 ${
                     tiktokAiGenerated ? 'translate-x-4' : 'translate-x-0'
                   }`}
                 />
@@ -133,8 +133,8 @@ export function TikTokPresets() {
 
             <div className="flex items-start justify-between gap-4">
               <div className="space-y-0.5 text-left">
-                <span className="block text-[11px] font-bold text-gray-500 uppercase font-sans">{t("planner:postCreator.presets.tiktok.commercialContent")}</span>
-                <span className="block text-[9px] text-gray-400 font-medium leading-normal font-sans">
+                <span className="block text-[11px] font-bold text-muted-foreground uppercase font-sans">{t("planner:postCreator.presets.tiktok.commercialContent")}</span>
+                <span className="block text-[9px] text-muted-foreground font-medium leading-normal font-sans">
                   {t("planner:postCreator.presets.tiktok.commercialContentDesc")}
                 </span>
               </div>
@@ -146,7 +146,7 @@ export function TikTokPresets() {
                 }`}
               >
                 <div
-                  className={`bg-white w-4 h-4 rounded-full shadow-sm transform transition-all duration-300 ${
+                  className={`bg-card w-4 h-4 rounded-full shadow-sm transform transition-all duration-300 ${
                     tiktokCommercialContent ? 'translate-x-4' : 'translate-x-0'
                   }`}
                 />

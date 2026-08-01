@@ -155,7 +155,7 @@ export default function TrimTimeline() {
           <span
             key={pct}
             style={{ left: `${pct}%`, transform: pct === 0 ? 'none' : pct === 100 ? 'translateX(-100%)' : 'translateX(-50%)' }}
-            className="absolute bottom-0 text-[10px] font-mono text-gray-400"
+            className="absolute bottom-0 text-[10px] font-mono text-muted-foreground"
           >
             {label}
           </span>
