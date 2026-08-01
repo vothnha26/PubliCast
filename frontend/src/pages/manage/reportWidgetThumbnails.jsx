@@ -80,17 +80,17 @@ const getRankingItems = (rows, valueKeys, nameKey = "name") => {
 };
 
 const MiniChip = ({ label, value, color }) => (
-  <div className="rounded-md border border-gray-100 bg-white px-2 py-1 shadow-sm">
-    <div className="text-[5.5px] uppercase tracking-wider text-gray-400 font-bold">{label}</div>
-    <div className="text-[7px] font-black text-gray-800 leading-none mt-0.5" style={{ color }}>{value}</div>
+  <div className="rounded-md border border-border bg-card px-2 py-1 shadow-sm">
+    <div className="text-[5.5px] uppercase tracking-wider text-muted-foreground font-bold">{label}</div>
+    <div className="text-[7px] font-black text-foreground leading-none mt-0.5" style={{ color }}>{value}</div>
   </div>
 );
 
 const TinyHeader = ({ title, subtitle, color }) => (
   <div className="flex items-start justify-between gap-2">
     <div className="min-w-0">
-      <div className="text-[8px] font-black text-gray-800 truncate">{title}</div>
-      <div className="text-[5.5px] text-gray-400 font-semibold truncate">{subtitle}</div>
+      <div className="text-[8px] font-black text-foreground truncate">{title}</div>
+      <div className="text-[5.5px] text-muted-foreground font-semibold truncate">{subtitle}</div>
     </div>
     <div className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: color }} />
   </div>

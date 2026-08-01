@@ -174,23 +174,23 @@ export function BrandSettingsPage() {
 
   if (loading && brands.length === 0) {
     return (
-      <div className="flex-1 flex items-center justify-center bg-white">
-        <Loader2 className="animate-spin text-gray-300" size={40} />
+      <div className="flex-1 flex items-center justify-center bg-background">
+        <Loader2 className="animate-spin text-muted-foreground" size={40} />
       </div>
     );
   }
 
   return (
-    <div className="flex-1 overflow-y-auto bg-white p-8 font-sans">
-      <h1 className="text-xl font-medium text-[#0A0A0A] mb-8">{t("brand.title")}</h1>
+    <div className="flex-1 overflow-y-auto bg-background p-8 font-sans">
+      <h1 className="text-xl font-medium text-foreground mb-8">{t("brand.title")}</h1>
 
       {/* Brands Selector Section */}
-      <div className="bg-[#F8F9FB] rounded-2xl p-6 border border-gray-100 mb-10 relative">
+      <div className="bg-muted/50 rounded-2xl p-6 border border-border mb-10 relative">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-1.5">
-            <span className="text-sm font-bold text-[#0A0A0A]">{t("brand.brands")}</span>
-            <span className="text-xs text-gray-400 font-medium">{brands.length > 0 ? t("brand.brandsCount", { count: brands.length }) : t("brand.noBrandsCount")}</span>
-            <HelpCircle size={14} className="text-gray-300 ml-1" />
+            <span className="text-sm font-bold text-foreground">{t("brand.brands")}</span>
+            <span className="text-xs text-muted-foreground font-medium">{brands.length > 0 ? t("brand.brandsCount", { count: brands.length }) : t("brand.noBrandsCount")}</span>
+            <HelpCircle size={14} className="text-muted-foreground/50 ml-1" />
           </div>
           <button 
             onClick={() => {
@@ -230,19 +230,19 @@ export function BrandSettingsPage() {
 
              {/* Dropdown Menu */}
              {isDropdownOpen && (
-               <div className="absolute top-full left-0 right-0 bg-white border border-gray-300 border-t-transparent rounded-b-xl shadow-xl z-50 overflow-hidden animate-in fade-in slide-in-from-top-1 duration-200">
+               <div className="absolute top-full left-0 right-0 bg-card border border-border border-t-transparent rounded-b-xl shadow-xl z-50 overflow-hidden animate-in fade-in slide-in-from-top-1 duration-200">
                   {brands.map((brand) => (
                     <div 
                       key={brand.id}
                       onClick={() => { setSelectedBrand({ ...brand }); selectBrand(brand.id); setIsDropdownOpen(false); }}
-                      className="p-3 flex items-center gap-3 hover:bg-[#E5E7EB] transition-colors cursor-pointer group brand-row"
+                      className="p-3 flex items-center gap-3 hover:bg-muted transition-colors cursor-pointer group brand-row"
                       data-testid={`brand-row-${brand.id}`}
                     >
                        <div className="w-10 h-10 rounded-lg flex items-center justify-center text-white font-bold text-lg shadow-sm" style={{ backgroundColor: '#E1306C' }}>
                           {brand.name.charAt(0)}
                        </div>
                        <div>
-                          <div className="text-sm font-bold text-[#0A0A0A]">{brand.name}</div>
+                          <div className="text-sm font-bold text-foreground">{brand.name}</div>
                           <div className="flex items-center gap-1 mt-0.5">
                              {brand.socialAccounts?.some(sa => sa.platform === 'YOUTUBE') && <Youtube size={12} className="text-red-600" />}
                           </div>
@@ -254,31 +254,31 @@ export function BrandSettingsPage() {
 
              <button 
                onClick={() => setIsTableOverlayOpen(true)}
-               className="mt-3 text-xs text-gray-400 hover:text-gray-600 font-medium ml-1 cursor-pointer"
+               className="mt-3 text-xs text-muted-foreground hover:text-foreground font-medium ml-1 cursor-pointer"
              >
                {t("brand.viewAsTable")}
              </button>
           </div>
         ) : (
-          <div className="text-gray-400 text-sm italic">{t("brand.noBrands")}</div>
+          <div className="text-muted-foreground text-sm italic">{t("brand.noBrands")}</div>
         )}
       </div>
 
       {/* Tabs */}
-      <div className="flex items-center justify-between border-b border-gray-100 mb-8">
+      <div className="flex items-center justify-between border-b border-border mb-8">
         <div className="flex gap-10">
           {[
             { id: "brand-settings", label: t("brand.tabSettings") },
             { id: "connections", label: t("brand.tabConnections") },
             { id: "ai-configuration", label: t("brand.tabAi") },
           ].map((tab) => (
-            <button key={tab.id} onClick={() => handleTabChange(tab.id)} className={`pb-4 text-sm font-black transition-all relative ${activeTab === tab.id ? "text-black" : "text-gray-400"}`}>
+            <button key={tab.id} onClick={() => handleTabChange(tab.id)} className={`pb-4 text-sm font-black transition-all relative cursor-pointer ${activeTab === tab.id ? "text-foreground" : "text-muted-foreground"}`}>
               {tab.label}
-              {activeTab === tab.id && <div className="absolute bottom-0 left-0 right-0 h-[2.5px] bg-[#0A0A0A]" />}
+              {activeTab === tab.id && <div className="absolute bottom-0 left-0 right-0 h-[2.5px] bg-foreground" />}
             </button>
           ))}
         </div>
-        <button className="p-2 text-gray-400 hover:text-[#0A0A0A] transition-colors"><Share2 size={18} /></button>
+        <button className="p-2 text-muted-foreground hover:text-foreground transition-colors cursor-pointer"><Share2 size={18} /></button>
       </div>
 
       <div className="max-w-6xl pb-20">
@@ -287,27 +287,27 @@ export function BrandSettingsPage() {
             <div className="grid grid-cols-2 gap-x-20 gap-y-10">
               <div className="space-y-8 col-span-2 md:col-span-1">
                 <div>
-                  <h3 className="text-lg font-bold text-[#0A0A0A] mb-2">{t("brand.name")}</h3>
-                  <p className="text-sm text-gray-500 mb-4">{t("brand.nameDesc")}</p>
+                  <h3 className="text-lg font-bold text-foreground mb-2">{t("brand.name")}</h3>
+                  <p className="text-sm text-muted-foreground mb-4">{t("brand.nameDesc")}</p>
                   <div className="space-y-1.5">
-                    <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{t("brand.brandName")}</label>
+                    <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">{t("brand.brandName")}</label>
                     <input 
                       placeholder={t("brand.brandName")} 
                       value={selectedBrand.name} 
                       onChange={(e) => setSelectedBrand({...selectedBrand, name: e.target.value})} 
-                      className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-black outline-none text-sm font-medium" 
+                      className="w-full px-4 py-3 rounded-xl border border-border bg-background text-foreground focus:border-foreground outline-none text-sm font-medium" 
                       data-testid="brand-name-input"
                     />
                   </div>
                 </div>
                 <div>
-                  <h3 className="text-lg font-bold text-[#0A0A0A] mb-2">{t("brand.engagement")}</h3>
-                  <p className="text-sm text-gray-400 leading-relaxed">{t("brand.engagementDesc")}</p>
+                  <h3 className="text-lg font-bold text-foreground mb-2">{t("brand.engagement")}</h3>
+                  <p className="text-sm text-muted-foreground leading-relaxed">{t("brand.engagementDesc")}</p>
                 </div>
               </div>
               <div className="col-span-2 md:col-span-1">
-                <h3 className="text-lg font-bold text-[#0A0A0A] mb-2">{t("brand.image")}</h3>
-                <p className="text-sm text-gray-500 mb-4">{t("brand.imageDesc")}</p>
+                <h3 className="text-lg font-bold text-foreground mb-2">{t("brand.image")}</h3>
+                <p className="text-sm text-muted-foreground mb-4">{t("brand.imageDesc")}</p>
                 <div className="w-16 h-16 rounded-xl bg-[#581C2C] flex items-center justify-center relative cursor-pointer border-2 border-transparent hover:border-gray-200 shadow-sm">
                   {selectedBrand.logoUrl ? (
                      <img src={selectedBrand.logoUrl} className="w-full h-full object-cover rounded-xl" />
@@ -319,7 +319,7 @@ export function BrandSettingsPage() {
             </div>
 
             {/* Actions Section */}
-            <div className="border-t border-gray-100 pt-8 flex items-center justify-between">
+            <div className="border-t border-border pt-8 flex items-center justify-between">
               <button
                 type="button"
                 onClick={handleDeleteBrand}
@@ -380,7 +380,7 @@ export function BrandSettingsPage() {
       {/* Limit Reached Modal */}
       {isLimitModalOpen && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[100] animate-in fade-in duration-200">
-          <div className="bg-white rounded-3xl p-8 max-w-md w-full border border-gray-100 shadow-2xl mx-4 transform animate-in zoom-in-95 duration-200 text-center relative overflow-hidden">
+          <div className="bg-card rounded-3xl p-8 max-w-md w-full border border-border shadow-2xl mx-4 transform animate-in zoom-in-95 duration-200 text-center relative overflow-hidden">
             <div className="absolute -top-10 -left-10 w-40 h-40 bg-purple-200/40 rounded-full filter blur-2xl pointer-events-none"></div>
             <div className="absolute -bottom-10 -right-10 w-40 h-40 bg-orange-200/30 rounded-full filter blur-2xl pointer-events-none"></div>
 
@@ -388,8 +388,8 @@ export function BrandSettingsPage() {
               <AlertTriangle size={26} className="animate-bounce" />
             </div>
 
-            <h3 className="text-lg font-bold text-[#0A0A0A] mb-2 font-sans">{t("brand.limitReachedTitle")}</h3>
-            <p className="text-sm text-gray-500 leading-relaxed mb-6 font-sans">
+            <h3 className="text-lg font-bold text-foreground mb-2 font-sans">{t("brand.limitReachedTitle")}</h3>
+            <p className="text-sm text-muted-foreground leading-relaxed mb-6 font-sans">
               {t("brand.limitReachedDesc", { limit: allowedBrandsLimit })}
             </p>
 
@@ -397,7 +397,7 @@ export function BrandSettingsPage() {
               <button
                 type="button"
                 onClick={() => setIsLimitModalOpen(false)}
-                className="flex-1 py-3 border border-gray-200 hover:bg-gray-50 text-gray-700 rounded-xl text-xs font-bold transition-all cursor-pointer text-center font-sans"
+                className="flex-1 py-3 border border-border hover:bg-muted text-foreground rounded-xl text-xs font-bold transition-all cursor-pointer text-center font-sans"
               >
                 {t("brand.cancel")}
               </button>
@@ -420,13 +420,13 @@ export function BrandSettingsPage() {
       {/* Social Connection Conflict Modal */}
       {conflictData && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[100] animate-in fade-in duration-200">
-          <div className="bg-white rounded-3xl p-8 max-w-md w-full border border-gray-100 shadow-2xl mx-4 transform animate-in zoom-in-95 duration-200">
-            <div className="w-12 h-12 rounded-full bg-amber-50 flex items-center justify-center text-amber-500 mb-6">
+          <div className="bg-card rounded-3xl p-8 max-w-md w-full border border-border shadow-2xl mx-4 transform animate-in zoom-in-95 duration-200">
+            <div className="w-12 h-12 rounded-full bg-amber-500/10 flex items-center justify-center text-amber-500 mb-6">
               <AlertTriangle size={24} />
             </div>
             
-            <h3 className="text-lg font-bold text-[#0A0A0A] mb-2 font-sans">{t("brand.conflictTitle")}</h3>
-            <p className="text-sm text-gray-500 leading-relaxed mb-6 font-sans">
+            <h3 className="text-lg font-bold text-foreground mb-2 font-sans">{t("brand.conflictTitle")}</h3>
+            <p className="text-sm text-muted-foreground leading-relaxed mb-6 font-sans">
               {t("brand.conflictDesc", { channelName: conflictData.channelName, existingBrandName: conflictData.existingBrandName, activeBrandName: activeBrand?.name })}
             </p>
             
@@ -437,7 +437,7 @@ export function BrandSettingsPage() {
                   setConflictData(null);
                   navigate(location.pathname + "?tab=connections");
                 }}
-                className="flex-1 py-3 border border-gray-200 hover:bg-gray-50 text-gray-700 rounded-xl text-xs font-bold transition-all cursor-pointer text-center font-sans"
+                className="flex-1 py-3 border border-border hover:bg-muted text-foreground rounded-xl text-xs font-bold transition-all cursor-pointer text-center font-sans"
               >
                 {t("brand.cancel")}
               </button>
