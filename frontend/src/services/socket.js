@@ -66,6 +66,18 @@ class SocketClient {
       queued.forEach(({ event, data }) => this.socket.emit(event, data));
     });
 
+    // Realtime Hybrid Cache Invalidation Handler
+    this.socket.on('data_invalidate', ({ scope, brandId }) => {
+      console.log(`⚡ [SocketClient] Received data_invalidate for scope '${scope}', brandId '${brandId}'`);
+      if (scope && brandId) {
+        import('../App').then(({ queryClient }) => {
+          queryClient.invalidateQueries({ queryKey: [scope, brandId] });
+        }).catch(err => {
+          console.warn('[SocketClient] Failed to import queryClient for invalidation:', err.message);
+        });
+      }
+    });
+
     this.socket.on('connect_error', (err) => {
       console.error('❌ [SocketClient] Connection error:', err.message);
     });
