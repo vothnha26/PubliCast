@@ -55,10 +55,6 @@ jest.mock('../../src/routes/social/inbox.routes', () => {
   const express = require('express');
   return express.Router();
 });
-jest.mock('../../src/routes/workspace/livestream.routes', () => {
-  const express = require('express');
-  return express.Router();
-});
 jest.mock('../../src/routes/workspace/post.routes', () => {
   const express = require('express');
   return express.Router();

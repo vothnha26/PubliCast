@@ -1,6 +1,6 @@
 /**
  * Regression tests for issues #72 and #73: socket.manager.js join/send
- * handlers must verify the caller belongs to the ticket/brand/livestream
+ * handlers must verify the caller belongs to the ticket/brand
  * before joining a room or persisting a message, instead of only checking
  * the resource exists.
  *
@@ -11,7 +11,6 @@
  */
 jest.mock('../../src/config/prisma', () => ({
   supportTicket: { findUnique: jest.fn() },
-  livestream: { findUnique: jest.fn() },
   ticketMessage: { create: jest.fn() }
 }));
 jest.mock('../../src/services/auth/authorization.facade', () => ({
@@ -43,16 +42,7 @@ function fakeSocket(user) {
   };
 }
 
-function fakeOverlaySocket(overlayLivestreamId) {
-  return {
-    overlayLivestreamId,
-    id: 'socket-overlay-1',
-    joinedRooms: [],
-    emittedEvents: [],
-    join(room) { this.joinedRooms.push(room); },
-    emit(event, data) { this.emittedEvents.push({ event, data }); }
-  };
-}
+
 
 describe('socket.manager _handleSendMessage (#72)', () => {
   beforeEach(() => jest.clearAllMocks());
@@ -135,53 +125,5 @@ describe('socket.manager _handleJoinRoom (#73)', () => {
     await socketManager._handleJoinRoom(socket, { ticketId: 't-1' });
 
     expect(socket.joinedRooms.length).toBe(1);
-  });
-});
-
-describe('socket.manager _handleJoinLivestream (#73)', () => {
-  beforeEach(() => jest.clearAllMocks());
-
-  test('joins the livestream room when the caller belongs to its brand', async () => {
-    prisma.livestream.findUnique.mockResolvedValue({ id: 'ls-1', brandId: 'brand-1', targetPlatforms: 'facebook' });
-    authorizationFacade.checkBrandAccess.mockResolvedValue(true);
-    const socket = fakeSocket({ id: 'user-1', name: 'User', role: 'OWNER' });
-
-    await socketManager._handleJoinLivestream(socket, { livestreamId: 'ls-1' });
-
-    expect(socket.joinedRooms.length).toBe(1);
-  });
-
-  test('rejects joining another brand\'s livestream room (core #73 bug)', async () => {
-    prisma.livestream.findUnique.mockResolvedValue({ id: 'ls-victim', brandId: 'brand-victim', targetPlatforms: 'youtube' });
-    authorizationFacade.checkBrandAccess.mockResolvedValue(false);
-    const socket = fakeSocket({ id: 'attacker-1', name: 'Attacker', role: 'OWNER' });
-
-    await socketManager._handleJoinLivestream(socket, { livestreamId: 'ls-victim' });
-
-    expect(socket.joinedRooms.length).toBe(0);
-    expect(socket.emittedEvents.some(e => e.event === SOCKET_EVENTS.ERROR)).toBe(true);
-  });
-});
-
-describe('socket.manager _handleJoinLivestream overlay tokens (#173)', () => {
-  beforeEach(() => jest.clearAllMocks());
-
-  test('an overlay-scoped socket joins its own livestream room without a brand check', async () => {
-    const socket = fakeOverlaySocket('ls-1');
-
-    await socketManager._handleJoinLivestream(socket, { livestreamId: 'ls-1' });
-
-    expect(socket.joinedRooms.length).toBe(1);
-    expect(authorizationFacade.checkBrandAccess).not.toHaveBeenCalled();
-    expect(socket.emittedEvents.some(e => e.event === SOCKET_EVENTS.ERROR)).toBe(false);
-  });
-
-  test('an overlay-scoped socket cannot join a different livestream room', async () => {
-    const socket = fakeOverlaySocket('ls-1');
-
-    await socketManager._handleJoinLivestream(socket, { livestreamId: 'ls-other' });
-
-    expect(socket.joinedRooms.length).toBe(0);
-    expect(socket.emittedEvents.some(e => e.event === SOCKET_EVENTS.ERROR)).toBe(true);
   });
 });

@@ -23,9 +23,7 @@ jest.mock('../../src/repositories/social/inbox.repository', () => ({
   reconcilePendingChildren: mockReconcile
 }));
 
-jest.mock('../../src/config/prisma', () => ({
-  livestream: { findFirst: jest.fn().mockResolvedValue(null) }
-}));
+
 
 const FacebookFeedStrategy = require('../../src/services/social/facebook/webhooks/facebook-feed.strategy');
 const InstagramCommentsStrategy = require('../../src/services/social/facebook/webhooks/instagram-comments.strategy');

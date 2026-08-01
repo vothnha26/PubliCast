@@ -19,10 +19,7 @@ jest.mock('../../src/repositories/social/inbox.repository', () => ({
   reconcilePendingChildren: jest.fn().mockResolvedValue({ count: 0 })
 }));
 
-// Silence prisma livestream lookup (no active livestream).
-jest.mock('../../src/config/prisma', () => ({
-  livestream: { findFirst: jest.fn().mockResolvedValue(null) }
-}));
+
 
 const FacebookFeedStrategy = require('../../src/services/social/facebook/webhooks/facebook-feed.strategy');
 

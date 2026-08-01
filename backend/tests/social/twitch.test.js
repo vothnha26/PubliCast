@@ -17,7 +17,7 @@ describe('Twitch Integration Suite', () => {
   describe('Twitch Service Unit Tests', () => {
     it('should throw error when calling publishPost because Twitch does not support scheduled posting', async () => {
       await expect(twitchService.publishPost()).rejects.toThrow(
-        'Twitch does not support scheduled post publishing. Use Livestream Chat or Highlight Studio instead.'
+        'Twitch does not support scheduled post publishing.'
       );
     });
 
