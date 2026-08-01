@@ -91,9 +91,9 @@ export function PlannerLayout() {
   }, [time, selectedTimezone]);
 
   return (
-    <div className="flex-1 flex flex-col overflow-hidden bg-[#F8F8F7]">
+    <div className="flex-1 flex flex-col overflow-hidden bg-[#F8F8F7] dark:bg-zinc-950">
       {/* Top Tabs Header */}
-      <div className="bg-white border-b border-gray-100 px-6 flex items-center justify-between" style={{ height: 48 }}>
+      <div className="bg-white dark:bg-zinc-900 border-b border-gray-100 dark:border-zinc-800 px-6 flex items-center justify-between" style={{ height: 48 }}>
         <div className="flex gap-8 h-full">
           {tabs.map((tab) => (
             <NavLink
@@ -101,7 +101,7 @@ export function PlannerLayout() {
               to={tab.path}
               className={({ isActive }) => 
                 `h-full flex items-center text-[13px] font-medium transition-all relative px-1 ${
-                  isActive ? "text-[#0A0A0A]" : "text-gray-400 hover:text-gray-600"
+                  isActive ? "text-[#0A0A0A] dark:text-white" : "text-gray-400 dark:text-zinc-400 hover:text-gray-600 dark:hover:text-zinc-200"
                 }`
               }
             >
@@ -111,7 +111,7 @@ export function PlannerLayout() {
                     {tab.label}
                     {tab.premium && <div className="w-3.5 h-3.5 bg-[#D9F99D] rounded-full flex items-center justify-center text-[8px] text-black">💎</div>}
                   </div>
-                  {isActive && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-black" />}
+                  {isActive && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-black dark:bg-white" />}
                 </>
               )}
             </NavLink>
@@ -122,17 +122,17 @@ export function PlannerLayout() {
         <div className="relative" ref={tzRef}>
           <button
             onClick={() => setIsTzOpen(!isTzOpen)}
-            className="flex items-center gap-2 px-2.5 py-1 rounded-lg hover:bg-gray-100 text-gray-500 hover:text-gray-700 transition-colors border border-transparent hover:border-gray-200 cursor-pointer"
+            className="flex items-center gap-2 px-2.5 py-1 rounded-lg hover:bg-gray-100 dark:hover:bg-zinc-800 text-gray-500 dark:text-zinc-400 hover:text-gray-700 dark:hover:text-zinc-200 transition-colors border border-transparent hover:border-gray-200 dark:hover:border-zinc-700 cursor-pointer"
             title="Đổi múi giờ xem lịch / Change Timezone"
           >
-            <Clock size={14} className="text-gray-400" />
+            <Clock size={14} className="text-gray-400 dark:text-zinc-500" />
             <span className="text-[11px] font-bold tracking-tight">{formattedTime} - {selectedTimezone}</span>
             <ChevronDown size={14} className={`transition-transform duration-200 ${isTzOpen ? "rotate-180" : ""}`} />
           </button>
 
           {isTzOpen && (
-            <div className="absolute right-0 top-full mt-1.5 w-64 bg-white rounded-xl shadow-xl border border-gray-200 py-1.5 z-50 animate-in fade-in slide-in-from-top-2 duration-150">
-              <div className="px-3 py-1.5 text-[10px] font-bold text-gray-400 uppercase tracking-wider border-b border-gray-100">
+            <div className="absolute right-0 top-full mt-1.5 w-64 bg-white dark:bg-zinc-900 rounded-xl shadow-xl border border-gray-200 dark:border-zinc-800 py-1.5 z-50 animate-in fade-in slide-in-from-top-2 duration-150">
+              <div className="px-3 py-1.5 text-[10px] font-bold text-gray-400 dark:text-zinc-500 uppercase tracking-wider border-b border-gray-100 dark:border-zinc-800">
                 Chọn múi giờ / Select Timezone
               </div>
               <div className="max-h-60 overflow-y-auto py-1">
@@ -142,12 +142,12 @@ export function PlannerLayout() {
                     <button
                       key={tz.value}
                       onClick={() => handleSelectTz(tz.value)}
-                      className={`w-full text-left px-3 py-1.5 text-xs flex items-center justify-between hover:bg-gray-50 transition-colors ${
-                        isSelected ? "font-bold text-purple-600 bg-purple-50/50" : "text-gray-700"
+                      className={`w-full text-left px-3 py-1.5 text-xs flex items-center justify-between hover:bg-gray-50 dark:hover:bg-zinc-800 transition-colors ${
+                        isSelected ? "font-bold text-purple-600 dark:text-purple-400 bg-purple-50/50 dark:bg-purple-950/30" : "text-gray-700 dark:text-zinc-300"
                       }`}
                     >
                       <span className="truncate">{tz.label}</span>
-                      {isSelected && <span className="text-purple-600 text-xs font-bold">✓</span>}
+                      {isSelected && <span className="text-purple-600 dark:text-purple-400 text-xs font-bold">✓</span>}
                     </button>
                   );
                 })}
