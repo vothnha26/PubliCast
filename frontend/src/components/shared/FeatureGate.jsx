@@ -12,8 +12,8 @@ export function UpgradeOverlay({ productId }) {
   };
 
   return (
-    <div className="absolute inset-0 z-40 flex items-center justify-center bg-white/40 backdrop-blur-[3px] rounded-3xl transition-all duration-300">
-      <div className="bg-white/95 border border-purple-100 rounded-3xl p-8 max-w-md w-full shadow-2xl text-center flex flex-col items-center justify-center mx-4 relative overflow-hidden animate-in zoom-in-95 duration-200">
+    <div className="absolute inset-0 z-40 flex items-center justify-center bg-card/40 backdrop-blur-[3px] rounded-3xl transition-all duration-300">
+      <div className="bg-card/95 border border-purple-100 rounded-3xl p-8 max-w-md w-full shadow-2xl text-center flex flex-col items-center justify-center mx-4 relative overflow-hidden animate-in zoom-in-95 duration-200">
         {/* Glow effects */}
         <div className="absolute -top-10 -left-10 w-40 h-40 bg-purple-200/40 rounded-full filter blur-2xl pointer-events-none"></div>
         <div className="absolute -bottom-10 -right-10 w-40 h-40 bg-orange-200/30 rounded-full filter blur-2xl pointer-events-none"></div>
@@ -22,8 +22,8 @@ export function UpgradeOverlay({ productId }) {
           <Sparkles size={26} className="animate-pulse" />
         </div>
         
-        <h3 className="text-xl font-bold text-gray-900 mb-2">{config.title}</h3>
-        <p className="text-sm text-gray-500 mb-6 leading-relaxed">
+        <h3 className="text-xl font-bold text-foreground mb-2">{config.title}</h3>
+        <p className="text-sm text-muted-foreground mb-6 leading-relaxed">
           {config.description}
         </p>
         

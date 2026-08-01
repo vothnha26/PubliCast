@@ -125,22 +125,22 @@ export function AutoListConfigCard({
     <div className="space-y-4 text-left font-sans">
       <div className="space-y-4">
         {/* 1. Global Presets */}
-        <div className="border border-gray-100 rounded-3xl overflow-hidden bg-white shadow-sm transition-all duration-300">
+        <div className="border border-border rounded-3xl overflow-hidden bg-card shadow-sm transition-all duration-300">
           <div 
             onClick={() => setGlobalExpanded(!globalExpanded)}
-            className="p-5 flex items-center justify-between hover:bg-gray-50/50 transition-all cursor-pointer group"
+            className="p-5 flex items-center justify-between hover:bg-muted/50 transition-all cursor-pointer group"
           >
             <div className="flex items-center gap-3">
-              <Settings size={18} className="text-gray-400 group-hover:text-black transition-colors" />
-              <span className="text-[12px] font-bold text-gray-700 font-sans">Global presets</span>
+              <Settings size={18} className="text-muted-foreground group-hover:text-foreground transition-colors" />
+              <span className="text-[12px] font-bold text-foreground font-sans">Global presets</span>
               <span className="px-2 py-0.5 bg-[#D1FAE5] text-[#065F46] rounded-lg text-[9px] font-bold font-sans">New</span>
             </div>
             
             <div className="flex items-center gap-6" onClick={(e) => e.stopPropagation()}>
               <div className="flex items-center gap-2">
-                <span className="text-[11px] font-semibold text-gray-500 flex items-center gap-1 font-sans">
+                <span className="text-[11px] font-semibold text-muted-foreground flex items-center gap-1 font-sans">
                   Auto publish
-                  <HelpCircle size={12} className="text-gray-400 cursor-help" title="Automatically publish posts in the queue when their scheduled time arrives" />
+                  <HelpCircle size={12} className="text-muted-foreground cursor-help" title="Automatically publish posts in the queue when their scheduled time arrives" />
                 </span>
                 <Switch 
                   checked={autoPublish} 
@@ -150,7 +150,7 @@ export function AutoListConfigCard({
               </div>
 
               <div className="flex items-center gap-2">
-                <span className="text-[11px] font-semibold text-gray-500 font-sans">Repeat</span>
+                <span className="text-[11px] font-semibold text-muted-foreground font-sans">Repeat</span>
                 <Switch 
                   checked={!!repeat} 
                   onCheckedChange={setRepeat} 
@@ -158,39 +158,39 @@ export function AutoListConfigCard({
                 />
               </div>
 
-              <ChevronDown size={16} className={`text-gray-400 transition-transform duration-300 ${globalExpanded ? 'rotate-180 text-black' : ''}`} />
+              <ChevronDown size={16} className={`text-muted-foreground transition-transform duration-300 ${globalExpanded ? 'rotate-180 text-foreground' : ''}`} />
             </div>
           </div>
           
-          <div className={`transition-all duration-300 ease-in-out overflow-hidden ${globalExpanded ? 'max-h-[500px] border-t border-gray-50 p-6' : 'max-h-0'}`}>
+          <div className={`transition-all duration-300 ease-in-out overflow-hidden ${globalExpanded ? 'max-h-[500px] border-t border-border p-6' : 'max-h-0'}`}>
             <div className="space-y-4">
               <div>
-                <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 font-sans">First Comment</label>
+                <label className="block text-[10px] font-black text-muted-foreground uppercase tracking-widest mb-2 font-sans">First Comment</label>
                 <textarea 
                   value={globalFirstComment || ''}
                   onChange={(e) => setGlobalFirstComment(e.target.value)}
                   placeholder="Write a comment to be posted automatically right after publishing..."
-                  className="w-full p-4 border border-gray-200 rounded-2xl text-xs font-medium focus:border-black outline-none resize-none h-20 font-sans shadow-sm"
+                  className="w-full p-4 border border-border bg-card text-foreground rounded-2xl text-xs font-medium focus:border-foreground outline-none resize-none h-20 font-sans shadow-sm placeholder:text-muted-foreground"
                 />
               </div>
 
-              <div className="flex items-center justify-between p-4 bg-gray-50 rounded-2xl border border-gray-100 hover:bg-gray-100/50 transition-colors">
+              <div className="flex items-center justify-between p-4 bg-muted/50 rounded-2xl border border-border hover:bg-muted transition-colors">
                 <div className="flex items-center gap-3">
-                  <div className="p-2 bg-white rounded-xl shadow-sm text-gray-500">
+                  <div className="p-2 bg-card rounded-xl shadow-sm text-muted-foreground">
                     <LinkIcon size={16} />
                   </div>
                   <div className="text-left">
-                    <div className="text-xs font-bold text-gray-800 font-sans">SmartLinks (URL Shortener)</div>
-                    <div className="text-[10px] text-gray-400 font-medium font-sans">Auto-shorten links in your post body & first comment, and track analytics.</div>
+                    <div className="text-xs font-bold text-foreground font-sans">SmartLinks (URL Shortener)</div>
+                    <div className="text-[10px] text-muted-foreground font-medium font-sans">Auto-shorten links in your post body & first comment, and track analytics.</div>
                   </div>
                 </div>
                 <button
                   type="button"
                   onClick={() => setUseUrlShortener(!useUrlShortener)}
-                  className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${useUrlShortener ? 'bg-black' : 'bg-gray-200'}`}
+                  className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${useUrlShortener ? 'bg-foreground' : 'bg-muted'}`}
                 >
                   <span
-                    className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${useUrlShortener ? 'translate-x-5' : 'translate-x-0'}`}
+                    className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-background shadow ring-0 transition duration-200 ease-in-out ${useUrlShortener ? 'translate-x-5' : 'translate-x-0'}`}
                   />
                 </button>
               </div>
@@ -200,82 +200,82 @@ export function AutoListConfigCard({
 
         {/* 2. Facebook Presets */}
         {hasFacebook && (
-          <div className="border border-gray-100 rounded-3xl overflow-hidden bg-white shadow-sm transition-all duration-300">
+          <div className="border border-border rounded-3xl overflow-hidden bg-card shadow-sm transition-all duration-300">
             <div 
               onClick={() => setFacebookExpanded(!facebookExpanded)}
-              className="p-5 flex items-center justify-between hover:bg-gray-50/50 transition-all cursor-pointer group"
+              className="p-5 flex items-center justify-between hover:bg-muted/50 transition-all cursor-pointer group"
             >
               <div className="flex items-center gap-3">
                 <svg className="w-[18px] h-[18px] text-[#1877F2] fill-[#1877F2]" viewBox="0 0 24 24">
                   <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
                 </svg>
-                <span className="text-[12px] font-bold text-gray-700 font-sans">Facebook presets</span>
+                <span className="text-[12px] font-bold text-foreground font-sans">Facebook presets</span>
               </div>
-              <ChevronDown size={16} className={`text-gray-400 transition-transform duration-300 ${facebookExpanded ? 'rotate-180 text-black' : ''}`} />
+              <ChevronDown size={16} className={`text-muted-foreground transition-transform duration-300 ${facebookExpanded ? 'rotate-180 text-black' : ''}`} />
             </div>
 
             <div className={`transition-all duration-300 ease-in-out overflow-hidden ${facebookExpanded ? 'max-h-[600px] border-t border-gray-50 p-6' : 'max-h-0'}`}>
               <div className="space-y-4 text-left">
                 <div>
-                  <label className="block text-[11px] font-bold text-gray-500 uppercase mb-2 font-sans">Content type</label>
+                  <label className="block text-[11px] font-bold text-muted-foreground uppercase mb-2 font-sans">Content type</label>
                   <div className="relative">
                     <select 
                       value={facebookContentType}
                       onChange={(e) => setFacebookContentType(e.target.value)}
-                      className="w-full px-4 py-3 bg-white border border-gray-200 rounded-2xl text-xs font-semibold focus:border-black outline-none appearance-none cursor-pointer font-sans"
+                      className="w-full px-4 py-3 bg-card border border-border rounded-2xl text-xs font-semibold focus:border-black outline-none appearance-none cursor-pointer font-sans"
                     >
                       <option value="post">Post</option>
                       <option value="reel">Reel</option>
                       <option value="story">Story</option>
                       <option value="album">Album</option>
                     </select>
-                    <ChevronDown size={14} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+                    <ChevronDown size={14} className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-[11px] font-bold text-gray-500 uppercase mb-2 font-sans">Title</label>
+                  <label className="block text-[11px] font-bold text-muted-foreground uppercase mb-2 font-sans">Title</label>
                   <input 
                     type="text"
                     value={facebookTitle || ''}
                     onChange={(e) => setFacebookTitle(e.target.value)}
                     placeholder="Title"
-                    className="w-full px-4 py-3 bg-white border border-gray-200 rounded-2xl text-xs font-semibold focus:border-black outline-none font-sans"
+                    className="w-full px-4 py-3 bg-card border border-border rounded-2xl text-xs font-semibold focus:border-black outline-none font-sans"
                   />
                 </div>
 
                 {facebookContentType === 'reel' && (
                   <>
                     <div>
-                      <label className="block text-[11px] font-bold text-gray-500 uppercase mb-2 font-sans">Custom Thumbnail URL</label>
+                      <label className="block text-[11px] font-bold text-muted-foreground uppercase mb-2 font-sans">Custom Thumbnail URL</label>
                       <input 
                         type="text"
                         value={facebookReelThumbnail || ''}
                         onChange={(e) => setFacebookReelThumbnail(e.target.value)}
                         placeholder="https://example.com/thumbnail.jpg"
-                        className="w-full px-4 py-3 bg-white border border-gray-200 rounded-2xl text-xs font-semibold focus:border-black outline-none font-sans"
+                        className="w-full px-4 py-3 bg-card border border-border rounded-2xl text-xs font-semibold focus:border-black outline-none font-sans"
                       />
                     </div>
 
                     <div>
-                      <label className="block text-[11px] font-bold text-gray-500 uppercase mb-2 font-sans">Collaborator Page ID</label>
+                      <label className="block text-[11px] font-bold text-muted-foreground uppercase mb-2 font-sans">Collaborator Page ID</label>
                       <input 
                         type="text"
                         value={facebookReelCollaboratorId || ''}
                         onChange={(e) => setFacebookReelCollaboratorId(e.target.value)}
                         placeholder="e.g., 1029384756"
-                        className="w-full px-4 py-3 bg-white border border-gray-200 rounded-2xl text-xs font-semibold focus:border-black outline-none font-sans"
+                        className="w-full px-4 py-3 bg-card border border-border rounded-2xl text-xs font-semibold focus:border-black outline-none font-sans"
                       />
                     </div>
 
                     <div>
-                      <label className="block text-[11px] font-bold text-gray-500 uppercase mb-2 font-sans">Place ID (Location Tag)</label>
+                      <label className="block text-[11px] font-bold text-muted-foreground uppercase mb-2 font-sans">Place ID (Location Tag)</label>
                       <input 
                         type="text"
                         value={facebookReelPlaceId || ''}
                         onChange={(e) => setFacebookReelPlaceId(e.target.value)}
                         placeholder="e.g., 987654321"
-                        className="w-full px-4 py-3 bg-white border border-gray-200 rounded-2xl text-xs font-semibold focus:border-black outline-none font-sans"
+                        className="w-full px-4 py-3 bg-card border border-border rounded-2xl text-xs font-semibold focus:border-black outline-none font-sans"
                       />
                     </div>
                   </>
@@ -287,16 +287,16 @@ export function AutoListConfigCard({
 
         {/* 3. YouTube Presets — Đổi về giao diện gốc của AutoList */}
         {hasYoutube && (
-          <div className="border border-gray-100 rounded-3xl overflow-hidden bg-white shadow-sm transition-all duration-300">
+          <div className="border border-border rounded-3xl overflow-hidden bg-card shadow-sm transition-all duration-300">
             <div 
               onClick={() => setYoutubeExpanded(!youtubeExpanded)}
-              className="p-5 flex items-center justify-between hover:bg-gray-50/50 transition-all cursor-pointer group"
+              className="p-5 flex items-center justify-between hover:bg-muted/50 transition-all cursor-pointer group"
             >
               <div className="flex items-center gap-3">
                 <Youtube size={18} className="text-[#FF0000]" />
-                <span className="text-[12px] font-bold text-gray-700 font-sans">YouTube presets</span>
+                <span className="text-[12px] font-bold text-foreground font-sans">YouTube presets</span>
               </div>
-              <ChevronDown size={16} className={`text-gray-400 transition-transform duration-300 ${youtubeExpanded ? 'rotate-180 text-black' : ''}`} />
+              <ChevronDown size={16} className={`text-muted-foreground transition-transform duration-300 ${youtubeExpanded ? 'rotate-180 text-black' : ''}`} />
             </div>
 
             <div className={`transition-all duration-300 ease-in-out overflow-hidden ${youtubeExpanded ? 'max-h-[600px] border-t border-gray-50 p-6' : 'max-h-0'}`}>
@@ -312,41 +312,41 @@ export function AutoListConfigCard({
 
                 {/* Video type */}
                 <div>
-                  <label className="block text-[11px] font-bold text-gray-500 uppercase mb-2 font-sans">Video type</label>
+                  <label className="block text-[11px] font-bold text-muted-foreground uppercase mb-2 font-sans">Video type</label>
                   <div className="relative">
                     <select 
                       value={youtubeVideoType}
                       onChange={(e) => setYoutubeVideoType(e.target.value)}
-                      className="w-full px-4 py-3 bg-white border border-gray-200 rounded-2xl text-xs font-semibold focus:border-black outline-none appearance-none cursor-pointer font-sans"
+                      className="w-full px-4 py-3 bg-card border border-border rounded-2xl text-xs font-semibold focus:border-black outline-none appearance-none cursor-pointer font-sans"
                     >
                       <option value="video">Video</option>
                       <option value="short">Short</option>
                     </select>
-                    <ChevronDown size={14} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+                    <ChevronDown size={14} className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
                   </div>
                 </div>
 
                 {/* Privacy configuration */}
                 <div>
-                  <label className="block text-[11px] font-bold text-gray-500 uppercase mb-2 font-sans">Privacy configuration</label>
+                  <label className="block text-[11px] font-bold text-muted-foreground uppercase mb-2 font-sans">Privacy configuration</label>
                   <div className="relative">
                     <select 
                       value={youtubePrivacy || 'public'}
                       onChange={(e) => setYoutubePrivacy(e.target.value)}
-                      className="w-full px-4 py-3 bg-white border border-gray-200 rounded-2xl text-xs font-semibold focus:border-black outline-none appearance-none cursor-pointer font-sans"
+                      className="w-full px-4 py-3 bg-card border border-border rounded-2xl text-xs font-semibold focus:border-black outline-none appearance-none cursor-pointer font-sans"
                     >
                       <option value="public">Public</option>
                       <option value="unlisted">Unlisted</option>
                       <option value="private">Private</option>
                     </select>
-                    <ChevronDown size={14} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+                    <ChevronDown size={14} className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
                   </div>
                 </div>
 
                 {/* Audience configuration */}
                 <div>
-                  <label className="block text-[11px] font-bold text-gray-500 uppercase mb-2 font-sans">Audience configuration</label>
-                  <div className="space-y-2 text-xs text-gray-700 font-semibold font-sans pt-1">
+                  <label className="block text-[11px] font-bold text-muted-foreground uppercase mb-2 font-sans">Audience configuration</label>
+                  <div className="space-y-2 text-xs text-foreground font-semibold font-sans pt-1">
                     <label className="flex items-center gap-2 cursor-pointer">
                       <input 
                         type="radio" 
@@ -377,17 +377,17 @@ export function AutoListConfigCard({
 
         {/* 4. Instagram Presets */}
         {hasInstagram && (
-          <div className="border border-gray-100 rounded-3xl overflow-hidden bg-white shadow-sm transition-all duration-300">
+          <div className="border border-border rounded-3xl overflow-hidden bg-card shadow-sm transition-all duration-300">
             <div 
               onClick={() => setInstagramExpanded(!instagramExpanded)}
-              className="p-5 flex items-center justify-between hover:bg-gray-50/50 transition-all cursor-pointer group"
+              className="p-5 flex items-center justify-between hover:bg-muted/50 transition-all cursor-pointer group"
             >
               <div className="flex items-center gap-3">
                 <Instagram size={18} className="text-[#E1306C]" />
-                <span className="text-[12px] font-bold text-gray-700 font-sans">Instagram presets</span>
+                <span className="text-[12px] font-bold text-foreground font-sans">Instagram presets</span>
                 <span className="text-[9px] bg-emerald-500 text-white font-extrabold px-1.5 py-0.5 rounded-full uppercase tracking-widest scale-90">New</span>
               </div>
-              <ChevronDown size={16} className={`text-gray-400 transition-transform duration-300 ${instagramExpanded ? 'rotate-180 text-black' : ''}`} />
+              <ChevronDown size={16} className={`text-muted-foreground transition-transform duration-300 ${instagramExpanded ? 'rotate-180 text-black' : ''}`} />
             </div>
 
             <div className={`transition-all duration-300 ease-in-out overflow-hidden ${instagramExpanded ? 'max-h-[500px] border-t border-gray-50 p-6' : 'max-h-0'}`}>
@@ -395,30 +395,30 @@ export function AutoListConfigCard({
                 
                 {/* Content Type */}
                 <div>
-                  <label className="block text-[11px] font-bold text-gray-500 uppercase mb-2 font-sans">Content type</label>
+                  <label className="block text-[11px] font-bold text-muted-foreground uppercase mb-2 font-sans">Content type</label>
                   <div className="relative">
                     <select 
                       value={instagramContentType}
                       onChange={(e) => setInstagramContentType(e.target.value)}
-                      className="w-full px-4 py-3 bg-white border border-gray-200 rounded-2xl text-xs font-semibold focus:border-black outline-none appearance-none cursor-pointer font-sans"
+                      className="w-full px-4 py-3 bg-card border border-border rounded-2xl text-xs font-semibold focus:border-black outline-none appearance-none cursor-pointer font-sans"
                     >
                       <option value="post">Post</option>
                       <option value="reel">Reel</option>
                       <option value="story">Story</option>
                     </select>
-                    <ChevronDown size={14} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+                    <ChevronDown size={14} className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
                   </div>
                 </div>
 
                 {/* Collaborators section */}
                 <div>
-                  <label className="flex items-center gap-1.5 text-[11px] font-bold text-gray-500 uppercase mb-2 font-sans">
+                  <label className="flex items-center gap-1.5 text-[11px] font-bold text-muted-foreground uppercase mb-2 font-sans">
                     <UserPlus size={13} />
                     Collaborators
                   </label>
                   <div className="flex gap-2">
                     <div className="relative flex-1">
-                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs font-semibold">@</span>
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-xs font-semibold">@</span>
                       <input 
                         type="text"
                         value={collabInput}
@@ -430,7 +430,7 @@ export function AutoListConfigCard({
                           }
                         }}
                         placeholder="Enter username"
-                        className="w-full pl-7 pr-4 py-2.5 bg-white border border-gray-200 rounded-xl text-xs font-semibold focus:border-black outline-none font-sans"
+                        className="w-full pl-7 pr-4 py-2.5 bg-card border border-border rounded-xl text-xs font-semibold focus:border-black outline-none font-sans"
                       />
                     </div>
                     <button
@@ -447,13 +447,13 @@ export function AutoListConfigCard({
                       {instagramCollaborators.map((collab) => (
                         <span 
                           key={collab}
-                          className="flex items-center gap-1 px-2.5 py-1 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-full text-[11px] font-bold transition-all font-sans"
+                          className="flex items-center gap-1 px-2.5 py-1 bg-muted hover:bg-gray-200 text-foreground rounded-full text-[11px] font-bold transition-all font-sans"
                         >
                           @{collab}
                           <button 
                             type="button"
                             onClick={() => handleRemoveCollaborator(collab)}
-                            className="text-gray-400 hover:text-red-500 rounded-full transition-all"
+                            className="text-muted-foreground hover:text-red-500 rounded-full transition-all"
                           >
                             <X size={12} />
                           </button>
@@ -465,7 +465,7 @@ export function AutoListConfigCard({
 
                 {/* Background Audio / Music */}
                 <div>
-                  <label className="flex items-center gap-1.5 text-[11px] font-bold text-gray-500 uppercase mb-2 font-sans">
+                  <label className="flex items-center gap-1.5 text-[11px] font-bold text-muted-foreground uppercase mb-2 font-sans">
                     <Music size={13} />
                     Background Audio / Music
                   </label>
@@ -489,7 +489,7 @@ export function AutoListConfigCard({
                       <button
                         type="button"
                         onClick={() => setShowAudioList(!showAudioList)}
-                        className="w-full px-4 py-3 bg-white border border-dashed border-gray-300 hover:border-black rounded-xl text-left text-xs font-semibold text-gray-500 hover:text-black transition-all flex items-center justify-between cursor-pointer font-sans"
+                        className="w-full px-4 py-3 bg-card border border-dashed border-gray-300 hover:border-black rounded-xl text-left text-xs font-semibold text-muted-foreground hover:text-black transition-all flex items-center justify-between cursor-pointer font-sans"
                       >
                         <span className="flex items-center gap-2">
                           <Music size={14} />
@@ -500,20 +500,20 @@ export function AutoListConfigCard({
                     )}
 
                     {showAudioList && !instagramAudio && (
-                      <div className="absolute left-0 right-0 mt-1 bg-white border border-gray-100 rounded-xl shadow-lg z-10 py-2 overflow-hidden animate-in fade-in slide-in-from-top-1 duration-150 flex flex-col max-h-56">
-                        <div className="px-3 pb-2 border-b border-gray-100">
+                      <div className="absolute left-0 right-0 mt-1 bg-card border border-border rounded-xl shadow-lg z-10 py-2 overflow-hidden animate-in fade-in slide-in-from-top-1 duration-150 flex flex-col max-h-56">
+                        <div className="px-3 pb-2 border-b border-border">
                           <input
                             type="text"
                             value={audioSearchQuery}
                             onChange={(e) => setAudioSearchQuery(e.target.value)}
                             placeholder="Search audio on Meta..."
-                            className="w-full px-2.5 py-1.5 bg-gray-50 border border-gray-200 focus:border-purple-500 rounded-lg text-[11px] font-semibold text-gray-700 outline-none transition-colors font-sans"
+                            className="w-full px-2.5 py-1.5 bg-muted border border-border focus:border-purple-500 rounded-lg text-[11px] font-semibold text-foreground outline-none transition-colors font-sans"
                             onClick={(e) => e.stopPropagation()}
                           />
                         </div>
                         <div className="overflow-y-auto flex-1 py-1">
                           {audioTracks.length === 0 ? (
-                            <div className="text-center py-4 text-[10px] text-gray-400 font-bold font-sans">
+                            <div className="text-center py-4 text-[10px] text-muted-foreground font-bold font-sans">
                               No audio tracks found
                             </div>
                           ) : (
@@ -526,9 +526,9 @@ export function AutoListConfigCard({
                                   setShowAudioList(false);
                                   setAudioSearchQuery("");
                                 }}
-                                className="w-full text-left px-4 py-2.5 hover:bg-purple-50/40 text-xs font-semibold text-gray-700 hover:text-purple-700 transition-colors flex items-center gap-2 cursor-pointer font-sans"
+                                className="w-full text-left px-4 py-2.5 hover:bg-purple-50/40 text-xs font-semibold text-foreground hover:text-purple-700 transition-colors flex items-center gap-2 cursor-pointer font-sans"
                               >
-                                <Music size={12} className="text-gray-400" />
+                                <Music size={12} className="text-muted-foreground" />
                                 {track.name}
                               </button>
                             ))
@@ -541,17 +541,17 @@ export function AutoListConfigCard({
 
                 {/* Show Reel on Feed Toggle (Reels only) */}
                 {instagramContentType === 'reel' && (
-                  <div className="flex items-center justify-between p-3.5 bg-gray-50/50 rounded-2xl border border-gray-100">
+                  <div className="flex items-center justify-between p-3.5 bg-muted/50 rounded-2xl border border-border">
                     <div className="space-y-0.5">
-                      <span className="text-xs font-bold text-gray-800 font-sans block">Show Reel on feed</span>
-                      <span className="text-[10px] text-gray-400 font-medium block leading-relaxed font-sans">Also share your Reels to your Profile Feed.</span>
+                      <span className="text-xs font-bold text-foreground font-sans block">Show Reel on feed</span>
+                      <span className="text-[10px] text-muted-foreground font-medium block leading-relaxed font-sans">Also share your Reels to your Profile Feed.</span>
                     </div>
                     <button
                       type="button"
                       onClick={() => setInstagramShowOnFeed(!instagramShowOnFeed)}
                       className={`w-11 h-6 rounded-full transition-all duration-300 relative ${instagramShowOnFeed ? 'bg-[#E1306C]' : 'bg-gray-200'}`}
                     >
-                      <span className={`absolute top-1 left-1 w-4 h-4 rounded-full bg-white transition-all duration-300 ${instagramShowOnFeed ? 'translate-x-5' : 'translate-x-0'}`} />
+                      <span className={`absolute top-1 left-1 w-4 h-4 rounded-full bg-card transition-all duration-300 ${instagramShowOnFeed ? 'translate-x-5' : 'translate-x-0'}`} />
                     </button>
                   </div>
                 )}
@@ -563,35 +563,35 @@ export function AutoListConfigCard({
 
         {/* 5. Threads Presets */}
         {hasThreads && (
-          <div className="border border-gray-100 rounded-3xl overflow-hidden bg-white shadow-sm transition-all duration-300">
+          <div className="border border-border rounded-3xl overflow-hidden bg-card shadow-sm transition-all duration-300">
             <div 
               onClick={() => setThreadsExpanded(!threadsExpanded)}
-              className="p-5 flex items-center justify-between hover:bg-gray-50/50 transition-all cursor-pointer group"
+              className="p-5 flex items-center justify-between hover:bg-muted/50 transition-all cursor-pointer group"
             >
               <div className="flex items-center gap-3">
                 <PlatformIcon platform="Threads" size={18} variant="flat" className="text-black" />
-                <span className="text-[12px] font-bold text-gray-700 font-sans">Threads presets</span>
+                <span className="text-[12px] font-bold text-foreground font-sans">Threads presets</span>
               </div>
-              <ChevronDown size={16} className={`text-gray-400 transition-transform duration-300 ${threadsExpanded ? 'rotate-180 text-black' : ''}`} />
+              <ChevronDown size={16} className={`text-muted-foreground transition-transform duration-300 ${threadsExpanded ? 'rotate-180 text-black' : ''}`} />
             </div>
 
             <div className={`transition-all duration-300 ease-in-out overflow-hidden ${threadsExpanded ? 'max-h-[300px] border-t border-gray-50 p-6' : 'max-h-0'}`}>
               <div className="space-y-4 text-left">
                 <div>
-                  <label className="block text-[11px] font-bold text-gray-500 uppercase mb-2 font-sans">Who can reply to this post?</label>
+                  <label className="block text-[11px] font-bold text-muted-foreground uppercase mb-2 font-sans">Who can reply to this post?</label>
                   <div className="relative">
                     <select
                       value={threadsWhoCanReply || 'everyone'}
                       onChange={(e) => setThreadsWhoCanReply(e.target.value)}
-                      className="w-full px-4 py-3 bg-white border border-gray-200 rounded-2xl text-xs font-semibold focus:border-black outline-none appearance-none cursor-pointer font-sans"
+                      className="w-full px-4 py-3 bg-card border border-border rounded-2xl text-xs font-semibold focus:border-black outline-none appearance-none cursor-pointer font-sans"
                     >
                       <option value="everyone">Everyone</option>
                       <option value="accounts_you_follow">Profiles you follow</option>
                       <option value="mentioned_only">Mentioned profiles only</option>
                     </select>
-                    <ChevronDown size={14} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+                    <ChevronDown size={14} className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
                   </div>
-                  <p className="text-[10px] text-gray-400 mt-2 font-medium leading-normal font-sans">
+                  <p className="text-[10px] text-muted-foreground mt-2 font-medium leading-normal font-sans">
                     Limit who can reply to your Threads post directly from here.
                   </p>
                 </div>
@@ -602,18 +602,18 @@ export function AutoListConfigCard({
 
         {/* 6. TikTok Presets */}
         {hasTiktok && (
-          <div className="border border-gray-100 rounded-3xl overflow-hidden bg-white shadow-sm transition-all duration-300">
+          <div className="border border-border rounded-3xl overflow-hidden bg-card shadow-sm transition-all duration-300">
             <div 
               onClick={() => setTiktokExpanded(!tiktokExpanded)}
-              className="p-5 flex items-center justify-between hover:bg-gray-50/50 transition-all cursor-pointer group"
+              className="p-5 flex items-center justify-between hover:bg-muted/50 transition-all cursor-pointer group"
             >
               <div className="flex items-center gap-3">
                 <svg className="w-[18px] h-[18px] text-black fill-current" viewBox="0 0 24 24">
                   <path d="M12.53.02C13.84 0 15.14.01 16.44 0c.08 1.53.63 3.09 1.75 4.17 1.12 1.11 2.7 1.62 4.24 1.79v4.03c-1.44-.17-2.89-.6-4.09-1.5-1.1-1.02-1.7-2.48-1.9-3.96-.03 2.49 0 4.99 0 7.48-.02 1.9-.38 3.82-1.39 5.43-1.46 2.42-4.13 3.84-6.93 3.55-3.05-.2-5.78-2.44-6.39-5.46-.73-3.27.97-6.9 4.13-7.91 1.09-.34 2.24-.39 3.37-.2v4.02c-1.22-.32-2.58-.09-3.55.74-.95.83-1.29 2.19-1.03 3.4.31 1.65 1.84 2.91 3.53 2.78 1.94-.04 3.42-1.8 3.25-3.73-.02-2.91 0-5.83 0-8.74.02-3.11-.02-6.22.02-9.33z"/>
                 </svg>
-                <span className="text-[12px] font-bold text-gray-700 font-sans">Tiktok presets</span>
+                <span className="text-[12px] font-bold text-foreground font-sans">Tiktok presets</span>
               </div>
-              <ChevronDown size={16} className={`text-gray-400 transition-transform duration-300 ${tiktokExpanded ? 'rotate-180 text-black' : ''}`} />
+              <ChevronDown size={16} className={`text-muted-foreground transition-transform duration-300 ${tiktokExpanded ? 'rotate-180 text-black' : ''}`} />
             </div>
 
             <div className={`transition-all duration-300 ease-in-out overflow-hidden ${tiktokExpanded ? 'max-h-[500px] border-t border-gray-50 p-6' : 'max-h-0'}`}>
@@ -621,25 +621,25 @@ export function AutoListConfigCard({
                 
                 {/* Privacy dropdown */}
                 <div>
-                  <label className="block text-[11px] font-bold text-gray-500 uppercase mb-2 font-sans">Who can view your post?</label>
+                  <label className="block text-[11px] font-bold text-muted-foreground uppercase mb-2 font-sans">Who can view your post?</label>
                   <div className="relative">
                     <select
                       value={tiktokPrivacy || 'public'}
                       onChange={(e) => setTiktokPrivacy(e.target.value)}
-                      className="w-full px-4 py-3 bg-white border border-gray-200 rounded-2xl text-xs font-semibold focus:border-black outline-none appearance-none cursor-pointer font-sans"
+                      className="w-full px-4 py-3 bg-card border border-border rounded-2xl text-xs font-semibold focus:border-black outline-none appearance-none cursor-pointer font-sans"
                     >
                       <option value="public">Public</option>
                       <option value="friends">Friends</option>
                       <option value="self">Self</option>
                     </select>
-                    <ChevronDown size={14} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+                    <ChevronDown size={14} className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
                   </div>
                 </div>
 
                 {/* 3 Switches */}
                 <div className="flex items-center justify-between gap-4 pt-2 border-t border-gray-50">
                   <div className="flex flex-col items-start gap-1">
-                    <span className="text-[11px] font-bold text-gray-500 uppercase font-sans">Allow comments</span>
+                    <span className="text-[11px] font-bold text-muted-foreground uppercase font-sans">Allow comments</span>
                     <button
                       type="button"
                       onClick={() => setTiktokAllowComments(!tiktokAllowComments)}
@@ -648,14 +648,14 @@ export function AutoListConfigCard({
                       }`}
                     >
                       <div
-                        className={`bg-white w-4 h-4 rounded-full shadow-sm transform transition-all duration-300 ${
+                        className={`bg-card w-4 h-4 rounded-full shadow-sm transform transition-all duration-300 ${
                           tiktokAllowComments ? 'translate-x-4' : 'translate-x-0'
                         }`}
                       />
                     </button>
                   </div>
                   <div className="flex flex-col items-start gap-1">
-                    <span className="text-[11px] font-bold text-gray-500 uppercase font-sans">Allow duet</span>
+                    <span className="text-[11px] font-bold text-muted-foreground uppercase font-sans">Allow duet</span>
                     <button
                       type="button"
                       onClick={() => setTiktokAllowDuet(!tiktokAllowDuet)}
@@ -664,14 +664,14 @@ export function AutoListConfigCard({
                       }`}
                     >
                       <div
-                        className={`bg-white w-4 h-4 rounded-full shadow-sm transform transition-all duration-300 ${
+                        className={`bg-card w-4 h-4 rounded-full shadow-sm transform transition-all duration-300 ${
                           tiktokAllowDuet ? 'translate-x-4' : 'translate-x-0'
                         }`}
                       />
                     </button>
                   </div>
                   <div className="flex flex-col items-start gap-1">
-                    <span className="text-[11px] font-bold text-gray-500 uppercase font-sans">Allow stitch</span>
+                    <span className="text-[11px] font-bold text-muted-foreground uppercase font-sans">Allow stitch</span>
                     <button
                       type="button"
                       onClick={() => setTiktokAllowStitch(!tiktokAllowStitch)}
@@ -680,7 +680,7 @@ export function AutoListConfigCard({
                       }`}
                     >
                       <div
-                        className={`bg-white w-4 h-4 rounded-full shadow-sm transform transition-all duration-300 ${
+                        className={`bg-card w-4 h-4 rounded-full shadow-sm transform transition-all duration-300 ${
                           tiktokAllowStitch ? 'translate-x-4' : 'translate-x-0'
                         }`}
                       />
@@ -689,11 +689,11 @@ export function AutoListConfigCard({
                 </div>
 
                 {/* AI and Commercial Switches */}
-                <div className="border-t border-gray-100 pt-4 space-y-4">
+                <div className="border-t border-border pt-4 space-y-4">
                   <div className="flex items-center justify-between">
                     <div className="flex flex-col text-left">
-                      <span className="block text-[11px] font-bold text-gray-500 uppercase font-sans">AI-generated content</span>
-                      <span className="text-[9px] text-gray-400 font-medium font-sans">Label your content as generated by AI</span>
+                      <span className="block text-[11px] font-bold text-muted-foreground uppercase font-sans">AI-generated content</span>
+                      <span className="text-[9px] text-muted-foreground font-medium font-sans">Label your content as generated by AI</span>
                     </div>
                     <button
                       type="button"
@@ -703,7 +703,7 @@ export function AutoListConfigCard({
                       }`}
                     >
                       <div
-                        className={`bg-white w-4 h-4 rounded-full shadow-sm transform transition-all duration-300 ${
+                        className={`bg-card w-4 h-4 rounded-full shadow-sm transform transition-all duration-300 ${
                           tiktokAiGenerated ? 'translate-x-4' : 'translate-x-0'
                         }`}
                       />
@@ -712,8 +712,8 @@ export function AutoListConfigCard({
 
                   <div className="flex items-start justify-between gap-4">
                     <div className="space-y-0.5 text-left">
-                      <span className="block text-[11px] font-bold text-gray-500 uppercase font-sans">Commercial content</span>
-                      <span className="block text-[9px] text-gray-400 font-medium leading-normal font-sans">
+                      <span className="block text-[11px] font-bold text-muted-foreground uppercase font-sans">Commercial content</span>
+                      <span className="block text-[9px] text-muted-foreground font-medium leading-normal font-sans">
                         Turn on to disclose that this post promotes goods or services in exchange for something of value
                       </span>
                     </div>
@@ -725,7 +725,7 @@ export function AutoListConfigCard({
                       }`}
                     >
                       <div
-                        className={`bg-white w-4 h-4 rounded-full shadow-sm transform transition-all duration-300 ${
+                        className={`bg-card w-4 h-4 rounded-full shadow-sm transform transition-all duration-300 ${
                           tiktokCommercialContent ? 'translate-x-4' : 'translate-x-0'
                         }`}
                       />

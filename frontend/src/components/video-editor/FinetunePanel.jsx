@@ -54,7 +54,7 @@ export default function FinetunePanel() {
       <div className="relative w-full flex items-center justify-center px-4 mt-1">
         <button
           onClick={() => scrollByAmount(-200)}
-          className="w-7 h-7 rounded-full bg-white border border-gray-200 shadow-sm flex items-center justify-center text-gray-500 hover:text-black hover:bg-gray-100 shrink-0 transition cursor-pointer z-10 mr-1"
+          className="w-7 h-7 rounded-full bg-card border border-border shadow-sm flex items-center justify-center text-muted-foreground hover:text-black hover:bg-muted shrink-0 transition cursor-pointer z-10 mr-1"
           title="Cuộn sang trái"
         >
           <ChevronLeft size={16} />
@@ -78,8 +78,8 @@ export default function FinetunePanel() {
                   isSelected
                     ? 'bg-gray-300 text-black border-transparent font-extrabold shadow-sm'
                     : hasCustomValue
-                    ? 'bg-gray-100 text-black border-gray-300 font-bold'
-                    : 'bg-gray-50 text-gray-500 border-gray-200 hover:text-black hover:bg-gray-100'
+                    ? 'bg-muted text-black border-gray-300 font-bold'
+                    : 'bg-muted text-muted-foreground border-border hover:text-black hover:bg-muted'
                 }`}
               >
                 {label}
@@ -90,7 +90,7 @@ export default function FinetunePanel() {
 
         <button
           onClick={() => scrollByAmount(200)}
-          className="w-7 h-7 rounded-full bg-white border border-gray-200 shadow-sm flex items-center justify-center text-gray-500 hover:text-black hover:bg-gray-100 shrink-0 transition cursor-pointer z-10 ml-1"
+          className="w-7 h-7 rounded-full bg-card border border-border shadow-sm flex items-center justify-center text-muted-foreground hover:text-black hover:bg-muted shrink-0 transition cursor-pointer z-10 ml-1"
           title="Cuộn sang phải"
         >
           <ChevronRight size={16} />

@@ -8,17 +8,17 @@ export function MediaGrid({ folders = [], filteredMedia, setDetail, selected, to
   if (filteredMedia.length === 0 && folders.length === 0) {
     return (
       <div
-        className="flex flex-col items-center justify-center bg-white rounded-2xl border border-gray-100 shadow-sm"
+        className="flex flex-col items-center justify-center bg-card rounded-2xl border border-border shadow-sm"
         style={{ padding: "80px 16px", gap: 8 }}
       >
-        <div className="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mb-2">
+        <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mb-2">
            <Folder size={32} className="text-gray-200" />
         </div>
         <span style={{ fontSize: 14, fontWeight: 600, color: "#0A0A0A" }}>{t("grid.noFiles")}</span>
         <span style={{ fontSize: 12, color: "#9CA3AF" }}>{t("grid.noFilesDesc")}</span>
         <button
           onClick={clearFilters}
-          className="mt-4 px-4 py-2 rounded-xl text-xs font-bold cursor-pointer transition-all border border-gray-200 bg-white hover:bg-gray-50"
+          className="mt-4 px-4 py-2 rounded-xl text-xs font-bold cursor-pointer transition-all border border-border bg-card hover:bg-muted"
         >
           {t("clearFilters")}
         </button>
@@ -32,18 +32,18 @@ export function MediaGrid({ folders = [], filteredMedia, setDetail, selected, to
       {folders.map((folder) => (
         <div
           key={folder.id}
-          className="group relative rounded-2xl p-4 flex items-center gap-3 cursor-pointer transition-all hover:shadow-md bg-white border border-gray-100"
+          className="group relative rounded-2xl p-4 flex items-center gap-3 cursor-pointer transition-all hover:shadow-md bg-card border border-border"
           onClick={() => updateFilters({ folderId: folder.id })}
         >
           <div className="w-10 h-10 bg-yellow-50 rounded-xl flex items-center justify-center text-yellow-600">
             <Folder size={20} fill="currentColor" fillOpacity={0.2} />
           </div>
           <div className="flex-1 overflow-hidden">
-             <div className="text-xs font-bold text-gray-800 truncate">{folder.name}</div>
-             <div className="text-[10px] text-gray-400 font-medium">{folder._count?.media || 0} {t("breadcrumbFolder").toLowerCase() === 'folder' ? 'items' : 'mục'}</div>
+             <div className="text-xs font-bold text-foreground truncate">{folder.name}</div>
+             <div className="text-[10px] text-muted-foreground font-medium">{folder._count?.media || 0} {t("breadcrumbFolder").toLowerCase() === 'folder' ? 'items' : 'mục'}</div>
           </div>
-          <button className="opacity-0 group-hover:opacity-100 p-1 hover:bg-gray-50 rounded-lg transition-all">
-             <MoreHorizontal size={14} className="text-gray-400" />
+          <button className="opacity-0 group-hover:opacity-100 p-1 hover:bg-muted rounded-lg transition-all">
+             <MoreHorizontal size={14} className="text-muted-foreground" />
           </button>
         </div>
       ))}
@@ -52,7 +52,7 @@ export function MediaGrid({ folders = [], filteredMedia, setDetail, selected, to
       {filteredMedia.map((item) => (
         <div
           key={item.id}
-          className="group relative rounded-2xl overflow-hidden cursor-pointer transition-all hover:shadow-lg bg-white border border-gray-100"
+          className="group relative rounded-2xl overflow-hidden cursor-pointer transition-all hover:shadow-lg bg-card border border-border"
           onClick={() => setDetail(item)}
         >
           {/* Thumbnail */}
@@ -72,8 +72,8 @@ export function MediaGrid({ folders = [], filteredMedia, setDetail, selected, to
 
             {item.type === 'video' && (
               <div className="absolute inset-0 flex items-center justify-center bg-black/10 group-hover:bg-black/20 transition-colors">
-                <div className="w-10 h-10 bg-white/90 rounded-full flex items-center justify-center shadow-lg transform scale-90 group-hover:scale-100 transition-transform">
-                  <Play size={16} fill="currentColor" className="text-gray-900 ml-0.5" />
+                <div className="w-10 h-10 bg-card/90 rounded-full flex items-center justify-center shadow-lg transform scale-90 group-hover:scale-100 transition-transform">
+                  <Play size={16} fill="currentColor" className="text-foreground ml-0.5" />
                 </div>
               </div>
             )}
@@ -120,7 +120,7 @@ export function MediaGrid({ folders = [], filteredMedia, setDetail, selected, to
               className={`absolute top-2.5 left-2.5 w-5 h-5 rounded-lg border-2 transition-all flex items-center justify-center ${
                 selected.has(item.id) 
                   ? "bg-black border-black text-white" 
-                  : "bg-white/80 border-white/50 opacity-0 group-hover:opacity-100"
+                  : "bg-card/80 border-white/50 opacity-0 group-hover:opacity-100"
               }`}
             >
               {selected.has(item.id) && (
@@ -133,7 +133,7 @@ export function MediaGrid({ folders = [], filteredMedia, setDetail, selected, to
             {/* Hover actions */}
             <div className="absolute bottom-2.5 left-2.5 right-2.5 translate-y-2 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-300">
                 <button
-                  className="w-full py-2 bg-white/95 backdrop-blur-sm hover:bg-white text-gray-900 text-[10px] font-black uppercase tracking-widest rounded-xl shadow-xl border border-gray-100 active:scale-95 transition-all"
+                  className="w-full py-2 bg-card/95 backdrop-blur-sm hover:bg-card text-foreground text-[10px] font-black uppercase tracking-widest rounded-xl shadow-xl border border-border active:scale-95 transition-all"
                   onClick={(e) => {
                     e.stopPropagation();
                     // Handle use in post
@@ -145,14 +145,14 @@ export function MediaGrid({ folders = [], filteredMedia, setDetail, selected, to
           </div>
           
           <div className="p-3">
-            <div className="text-[11px] font-bold text-gray-800 mb-0.5 truncate pr-4">
+            <div className="text-[11px] font-bold text-foreground mb-0.5 truncate pr-4">
               {item.name}
             </div>
             <div className="flex items-center gap-2">
-               <span className="text-[9px] font-black uppercase text-gray-400 tracking-tighter bg-gray-50 px-1.5 py-0.5 rounded">
+               <span className="text-[9px] font-black uppercase text-muted-foreground tracking-tighter bg-muted px-1.5 py-0.5 rounded">
                   {item.type}
                </span>
-               <span className="text-[10px] text-gray-400 font-medium">
+               <span className="text-[10px] text-muted-foreground font-medium">
                 {item.size} · {item.date}
               </span>
             </div>

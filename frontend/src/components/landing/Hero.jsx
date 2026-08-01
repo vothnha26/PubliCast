@@ -18,7 +18,7 @@ function DashboardMockup() {
     <div className="relative w-full max-w-[1100px] mx-auto mt-14">
       {/* Floating stat badge top-left */}
       <div
-        className="absolute -top-4 left-8 z-10 bg-white flex items-center gap-2 px-3 py-2"
+        className="absolute -top-4 left-8 z-10 bg-card flex items-center gap-2 px-3 py-2"
         style={{ borderRadius: 8, border: "0.5px solid #E5E7EB" }}
       >
         <span style={{ fontSize: 11, fontWeight: 500, color: "#16A34A" }}>↑ 12.4% viewers today</span>
@@ -35,7 +35,7 @@ function DashboardMockup() {
 
       {/* Main dashboard frame */}
       <div
-        className="w-full bg-[#F8F8F7] overflow-hidden relative"
+        className="w-full bg-background overflow-hidden relative"
         style={{
           borderRadius: 12,
           border: "0.5px solid #E5E7EB",
@@ -45,7 +45,7 @@ function DashboardMockup() {
         }}
       >
         {/* Topbar */}
-        <div className="bg-white flex items-center justify-between px-4 py-3" style={{ borderBottom: "0.5px solid #E5E7EB" }}>
+        <div className="bg-card flex items-center justify-between px-4 py-3" style={{ borderBottom: "0.5px solid #E5E7EB" }}>
           <div className="flex items-center gap-3">
             <div className="w-5 h-5 bg-[#0A0A0A] rounded-md" />
             <span style={{ fontSize: 12, color: "#0A0A0A", fontWeight: 500 }}>PubliCast</span>
@@ -82,7 +82,7 @@ function DashboardMockup() {
                 { label: "Posts", value: "247", delta: "↑ 12%" },
                 { label: "Live Hours", value: "36h", delta: "↑ 5.4%" },
               ].map((kpi) => (
-                <div key={kpi.label} className="bg-white rounded-xl p-3" style={{ border: "0.5px solid #E5E7EB" }}>
+                <div key={kpi.label} className="bg-card rounded-xl p-3" style={{ border: "0.5px solid #E5E7EB" }}>
                   <div style={{ fontSize: 10, color: "#9CA3AF" }}>{kpi.label}</div>
                   <div style={{ fontSize: 16, fontWeight: 500, color: "#0A0A0A" }}>{kpi.value}</div>
                   <div style={{ fontSize: 10, color: "#16A34A" }}>{kpi.delta}</div>
@@ -91,7 +91,7 @@ function DashboardMockup() {
             </div>
 
             {/* Chart area */}
-            <div className="bg-white rounded-xl p-3 mb-3" style={{ border: "0.5px solid #E5E7EB", height: 120 }}>
+            <div className="bg-card rounded-xl p-3 mb-3" style={{ border: "0.5px solid #E5E7EB", height: 120 }}>
               <div style={{ fontSize: 11, fontWeight: 500, color: "#0A0A0A", marginBottom: 8 }}>Performance Overview</div>
               <svg viewBox="0 0 400 80" className="w-full h-16">
                 <polyline
@@ -112,7 +112,7 @@ function DashboardMockup() {
 
             {/* Bottom row */}
             <div className="grid grid-cols-2 gap-3">
-              <div className="bg-white rounded-xl p-3" style={{ border: "0.5px solid #E5E7EB" }}>
+              <div className="bg-card rounded-xl p-3" style={{ border: "0.5px solid #E5E7EB" }}>
                 <div style={{ fontSize: 10, color: "#9CA3AF", marginBottom: 6 }}>Upcoming Streams</div>
                 {["Product Launch – YT+FB", "Weekly AMA – TW"].map((s) => (
                   <div key={s} className="flex items-center gap-2 mb-1">
@@ -121,7 +121,7 @@ function DashboardMockup() {
                   </div>
                 ))}
               </div>
-              <div className="bg-white rounded-xl p-3" style={{ border: "0.5px solid #E5E7EB" }}>
+              <div className="bg-card rounded-xl p-3" style={{ border: "0.5px solid #E5E7EB" }}>
                 <div style={{ fontSize: 10, color: "#9CA3AF", marginBottom: 6 }}>Scheduled Posts</div>
                 {["Instagram · 2:00 PM", "Twitter · 4:30 PM", "Facebook · 9:00 AM"].map((p) => (
                   <div key={p} style={{ fontSize: 10, color: "#6B7280", marginBottom: 2 }}>{p}</div>
@@ -133,7 +133,7 @@ function DashboardMockup() {
       </div>
 
       {/* Floating platform icons row bottom-center */}
-      <div className="absolute bottom-16 left-1/2 -translate-x-1/2 flex items-center gap-1.5 bg-white px-3 py-2 z-10" style={{ borderRadius: 8, border: "0.5px solid #E5E7EB" }}>
+      <div className="absolute bottom-16 left-1/2 -translate-x-1/2 flex items-center gap-1.5 bg-card px-3 py-2 z-10" style={{ borderRadius: 8, border: "0.5px solid #E5E7EB" }}>
         {platformIcons.map((p) => (
           <div
             key={p.name}
@@ -152,7 +152,7 @@ export function Hero() {
   const navigate = useNavigate();
 
   return (
-    <section className="bg-white pt-24 pb-20 text-center overflow-hidden" style={{ fontFamily: "'DM Sans', sans-serif" }}>
+    <section className="bg-card pt-24 pb-20 text-center overflow-hidden" style={{ fontFamily: "'DM Sans', sans-serif" }}>
       <div className="max-w-[760px] mx-auto px-4">
         {/* Announcement pill */}
         <div className="inline-flex items-center bg-[#0A0A0A] text-white mb-8" style={{ borderRadius: 6, padding: "4px 12px", fontSize: 11, fontWeight: 500 }}>
@@ -185,7 +185,7 @@ export function Hero() {
             Start for free →
           </button>
           <button
-            className="hover:bg-[#F8F8F7] transition-colors duration-150 cursor-pointer"
+            className="hover:bg-background transition-colors duration-150 cursor-pointer"
             style={{ height: 44, borderRadius: 12, padding: "0 24px", fontSize: 16, color: "#0A0A0A", border: "0.5px solid #E5E7EB" }}
           >
             Watch demo ▶

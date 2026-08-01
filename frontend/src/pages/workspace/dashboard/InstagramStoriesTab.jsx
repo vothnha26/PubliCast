@@ -40,7 +40,7 @@ export function InstagramStoriesTab({
     {
       key: "reach",
       label: "Avg. reach per story",
-      color: "bg-[#A7F3D0] text-gray-900",
+      color: "bg-[#A7F3D0] text-foreground",
       chartColor: "#A7F3D0",
       type: "line",
       value: avgReachPerStory > 0 ? avgReachPerStory : "-"
@@ -64,7 +64,7 @@ export function InstagramStoriesTab({
       renderCell: (item) => (
         <div className="flex items-center gap-4">
           {item.mediaUrl ? (
-            <div className="w-10 h-16 bg-gray-100 rounded-lg overflow-hidden relative shadow-sm border border-gray-100 shrink-0">
+            <div className="w-10 h-16 bg-muted rounded-lg overflow-hidden relative shadow-sm border border-border shrink-0">
               <img src={item.mediaUrl} className="w-full h-full object-cover" alt="Story" />
             </div>
           ) : (
@@ -73,7 +73,7 @@ export function InstagramStoriesTab({
             </div>
           )}
           <div className="flex flex-col">
-            <span className="text-xs font-bold text-gray-500 line-clamp-2 max-w-[240px]">
+            <span className="text-xs font-bold text-muted-foreground line-clamp-2 max-w-[240px]">
               {item.message || "Without text"}
             </span>
           </div>
@@ -84,10 +84,10 @@ export function InstagramStoriesTab({
       header: "Date",
       renderCell: (item) => (
         <div className="flex flex-col">
-          <span className="text-xs font-bold text-[#0A0A0A]">
+          <span className="text-xs font-bold text-foreground">
             {new Date(item.date).toLocaleDateString()}
           </span>
-          <span className="text-[10px] text-gray-400">
+          <span className="text-[10px] text-muted-foreground">
             {new Date(item.date).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
           </span>
         </div>
@@ -95,31 +95,31 @@ export function InstagramStoriesTab({
     },
     {
       header: "Organic Reach",
-      renderCell: (item) => <span className="text-xs font-bold text-gray-800">{(item.reach || 0).toLocaleString()}</span>,
+      renderCell: (item) => <span className="text-xs font-bold text-foreground">{(item.reach || 0).toLocaleString()}</span>,
     },
     {
       header: "Paid Reach",
-      renderCell: (item) => <span className="text-xs text-gray-400 font-semibold">0</span>,
+      renderCell: (item) => <span className="text-xs text-muted-foreground font-semibold">0</span>,
     },
     {
       header: "Impressions",
-      renderCell: (item) => <span className="text-xs font-bold text-gray-800">{(item.impressions || item.views || 0).toLocaleString()}</span>,
+      renderCell: (item) => <span className="text-xs font-bold text-foreground">{(item.impressions || item.views || 0).toLocaleString()}</span>,
     },
     {
       header: "Organic Replies",
-      renderCell: (item) => <span className="text-xs text-gray-500 font-semibold">{(item.replies || 0).toLocaleString()}</span>,
+      renderCell: (item) => <span className="text-xs text-muted-foreground font-semibold">{(item.replies || 0).toLocaleString()}</span>,
     },
     {
       header: "Organic Taps back",
-      renderCell: (item) => <span className="text-xs text-gray-500 font-semibold">{(item.tapsBack || 0).toLocaleString()}</span>,
+      renderCell: (item) => <span className="text-xs text-muted-foreground font-semibold">{(item.tapsBack || 0).toLocaleString()}</span>,
     },
     {
       header: "Organic Taps forward",
-      renderCell: (item) => <span className="text-xs text-gray-500 font-semibold">{(item.tapsForward || 0).toLocaleString()}</span>,
+      renderCell: (item) => <span className="text-xs text-muted-foreground font-semibold">{(item.tapsForward || 0).toLocaleString()}</span>,
     },
     {
       header: "Organic Exits",
-      renderCell: (item) => <span className="text-xs text-gray-500 font-semibold">{(item.exits || 0).toLocaleString()}</span>,
+      renderCell: (item) => <span className="text-xs text-muted-foreground font-semibold">{(item.exits || 0).toLocaleString()}</span>,
     },
   ];
 
@@ -138,7 +138,7 @@ export function InstagramStoriesTab({
 
       {/* List of stories */}
       <div className="space-y-4">
-        <h2 className="text-lg font-bold text-[#0A0A0A] tracking-tight">List of stories</h2>
+        <h2 className="text-lg font-bold text-foreground tracking-tight">List of stories</h2>
         <GenericPostsListTab
           posts={displayStories}
           isLoading={isPublishedLoading}

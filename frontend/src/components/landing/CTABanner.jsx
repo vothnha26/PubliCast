@@ -20,14 +20,14 @@ export function CTABanner() {
 
         <div className="flex items-center justify-center gap-3 flex-wrap mb-6">
           <button
-            className="bg-white text-[#0A0A0A] hover:bg-[#F3F4F6] transition-colors duration-150 cursor-pointer"
+            className="bg-card text-foreground hover:bg-[#F3F4F6] transition-colors duration-150 cursor-pointer"
             style={{ height: 44, borderRadius: 12, padding: "0 24px", fontSize: 16, fontWeight: 500 }}
             onClick={() => navigate("/login")}
           >
             Create free account →
           </button>
           <button
-            className="hover:bg-white/10 transition-colors duration-150 cursor-pointer"
+            className="hover:bg-card/10 transition-colors duration-150 cursor-pointer"
             style={{ height: 44, borderRadius: 12, padding: "0 24px", fontSize: 16, color: "#fff", border: "0.5px solid rgba(255,255,255,0.2)" }}
           >
             Talk to sales

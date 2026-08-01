@@ -17,26 +17,26 @@ export function Toolbar({
   handleFlipV
 }) {
   return (
-    <div className="h-14 flex items-center justify-between border-b border-gray-100/50 bg-white px-8 shrink-0 select-none">
+    <div className="h-14 flex items-center justify-between border-b border-border/50 bg-card px-8 shrink-0 select-none">
       {/* Reset History Icon */}
       <button
         onClick={handleReset}
         title="Reset modifications"
-        className="p-2 hover:bg-gray-50 rounded-xl text-gray-500 hover:text-black transition-all cursor-pointer"
+        className="p-2 hover:bg-muted rounded-xl text-muted-foreground hover:text-black transition-all cursor-pointer"
       >
         <RotateCcw size={16} />
       </button>
 
       {/* Central adjustments group (Undo/Redo & Zoom ratio) */}
       <div className="flex items-center gap-6">
-        <div className="flex bg-gray-50 p-1 rounded-xl border border-gray-100">
+        <div className="flex bg-muted p-1 rounded-xl border border-border">
           <button
             type="button"
             onClick={handleUndo}
             disabled={!canUndo}
             title="Undo (Hoàn tác)"
             className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
-              canUndo ? 'text-gray-700 hover:text-black hover:bg-white' : 'text-gray-300 cursor-not-allowed'
+              canUndo ? 'text-foreground hover:text-black hover:bg-card' : 'text-gray-300 cursor-not-allowed'
             }`}
           >
             <Undo2 size={14} />
@@ -48,17 +48,17 @@ export function Toolbar({
             disabled={!canRedo}
             title="Redo (Làm lại)"
             className={`p-1.5 rounded-lg transition-colors cursor-pointer rotate-180 ${
-              canRedo ? 'text-gray-700 hover:text-black hover:bg-white' : 'text-gray-300 cursor-not-allowed'
+              canRedo ? 'text-foreground hover:text-black hover:bg-card' : 'text-gray-300 cursor-not-allowed'
             }`}
           >
             <Undo2 size={14} />
           </button>
         </div>
 
-        <div className="flex items-center bg-gray-50 p-1 rounded-xl border border-gray-100 text-[10px] font-black text-gray-600">
-          <button onClick={handleZoomOut} className="px-2.5 py-1 hover:bg-white rounded-md cursor-pointer" title="Thu nhỏ">-</button>
+        <div className="flex items-center bg-muted p-1 rounded-xl border border-border text-[10px] font-black text-muted-foreground">
+          <button onClick={handleZoomOut} className="px-2.5 py-1 hover:bg-card rounded-md cursor-pointer" title="Thu nhỏ">-</button>
           <span className="px-3 min-w-[48px] text-center">{Math.round(scaleVal * 100)}%</span>
-          <button onClick={handleZoomIn} className="px-2.5 py-1 hover:bg-white rounded-md cursor-pointer" title="Phóng to">+</button>
+          <button onClick={handleZoomIn} className="px-2.5 py-1 hover:bg-card rounded-md cursor-pointer" title="Phóng to">+</button>
         </div>
       </div>
 
@@ -68,7 +68,7 @@ export function Toolbar({
           type="button"
           onClick={handleRotate90}
           title="Rotate 90°"
-          className="p-2 bg-gray-50 border border-gray-100 rounded-xl hover:bg-gray-100 text-gray-700 transition-all cursor-pointer"
+          className="p-2 bg-muted border border-border rounded-xl hover:bg-muted text-foreground transition-all cursor-pointer"
         >
           <RotateCw size={14} />
         </button>
@@ -78,7 +78,7 @@ export function Toolbar({
           onClick={handleFlipH}
           title="Flip Horizontal"
           className={`p-2 border rounded-xl transition-all cursor-pointer ${
-            flipH ? 'border-black bg-black/5 text-black' : 'bg-gray-50 border-gray-100 text-gray-700 hover:bg-gray-100'
+            flipH ? 'border-black bg-black/5 text-black' : 'bg-muted border-border text-foreground hover:bg-muted'
           }`}
         >
           <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -91,7 +91,7 @@ export function Toolbar({
           onClick={handleFlipV}
           title="Flip Vertical"
           className={`p-2 border rounded-xl transition-all cursor-pointer ${
-            flipV ? 'border-black bg-black/5 text-black' : 'bg-gray-50 border-gray-100 text-gray-700 hover:bg-gray-100'
+            flipV ? 'border-black bg-black/5 text-black' : 'bg-muted border-border text-foreground hover:bg-muted'
           }`}
         >
           <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>

@@ -263,26 +263,26 @@ export function AICopilotPopover({ caption, onUpdateCaption, activePlatform, onC
   return (
     <div className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200 font-sans">
       {/* Modal Dialog Box */}
-      <div className="w-full max-w-4xl bg-white rounded-[28px] shadow-2xl overflow-hidden flex flex-col max-h-[90vh] border border-gray-100 animate-in zoom-in-95 duration-200">
+      <div className="w-full max-w-4xl bg-card rounded-[28px] shadow-2xl overflow-hidden flex flex-col max-h-[90vh] border border-border animate-in zoom-in-95 duration-200">
         
         {/* Top Header */}
-        <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-white shrink-0">
+        <div className="px-6 py-4 border-b border-border flex items-center justify-between bg-card shrink-0">
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 rounded-2xl bg-purple-50 flex items-center justify-center text-purple-600 shadow-xs border border-purple-100/50">
               <Sparkles size={18} className="animate-pulse" />
             </div>
             <div>
-              <h2 className="text-base font-extrabold text-gray-900 tracking-tight">Text generator with AI</h2>
-              <p className="text-[11px] text-gray-400 font-bold">Tối ưu hóa bài viết cho {PLATFORM_OPTIONS.find(p => p.id === targetPlatform)?.name || 'mạng xã hội'}</p>
+              <h2 className="text-base font-extrabold text-foreground tracking-tight">Text generator with AI</h2>
+              <p className="text-[11px] text-muted-foreground font-bold">Tối ưu hóa bài viết cho {PLATFORM_OPTIONS.find(p => p.id === targetPlatform)?.name || 'mạng xã hội'}</p>
             </div>
           </div>
 
           <div className="flex items-center gap-4">
             {/* Credits Counter */}
-            <div className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-50 border border-gray-200/80 rounded-xl text-xs font-bold text-gray-600">
+            <div className="flex items-center gap-1.5 px-3 py-1.5 bg-muted border border-border/80 rounded-xl text-xs font-bold text-muted-foreground">
               <span>Available AI credits:</span>
               <span className="text-purple-600 font-black">{remainingCredits} of {creditsLimit}</span>
-              <Info size={14} className="text-gray-400 hover:text-gray-700 cursor-pointer ml-0.5" title="Mỗi lượt tạo tiêu tốn 1 Credit" />
+              <Info size={14} className="text-muted-foreground hover:text-foreground cursor-pointer ml-0.5" title="Mỗi lượt tạo tiêu tốn 1 Credit" />
             </div>
 
             {/* Dark Close Button */}
@@ -299,14 +299,14 @@ export function AICopilotPopover({ caption, onUpdateCaption, activePlatform, onC
         <div className="flex-1 flex flex-col md:flex-row overflow-hidden min-h-0">
           
           {/* Left Column: Chat Thread Feed */}
-          <div className="md:w-[56%] p-5 border-b md:border-b-0 md:border-r border-gray-100 bg-gray-50/40 flex flex-col justify-between overflow-y-auto scrollbar-thin">
+          <div className="md:w-[56%] p-5 border-b md:border-b-0 md:border-r border-border bg-muted/40 flex flex-col justify-between overflow-y-auto scrollbar-thin">
             
             <div className="space-y-4">
               {chatHistory.map((item) => {
                 if (item.role === "user") {
                   return (
                     <div key={item.id} className="flex justify-end gap-2.5 my-3 animate-in fade-in">
-                      <div className="bg-[#E8F1FC] text-gray-800 text-xs font-medium rounded-2xl rounded-tr-xs p-3.5 max-w-[85%] border border-blue-100/60 shadow-2xs leading-relaxed">
+                      <div className="bg-[#E8F1FC] text-foreground text-xs font-medium rounded-2xl rounded-tr-xs p-3.5 max-w-[85%] border border-blue-100/60 shadow-2xs leading-relaxed">
                         {item.text}
                       </div>
                       <div className="w-7 h-7 rounded-full bg-pink-500 text-white font-extrabold text-xs flex items-center justify-center shrink-0 shadow-xs mt-1">
@@ -337,10 +337,10 @@ export function AICopilotPopover({ caption, onUpdateCaption, activePlatform, onC
                         )}
 
                         {item.content && (
-                          <div className="bg-white text-gray-900 rounded-xl p-3.5 mt-2.5 text-xs font-medium leading-relaxed max-h-[280px] overflow-y-auto scrollbar-thin shadow-xs border border-gray-100">
+                          <div className="bg-card text-foreground rounded-xl p-3.5 mt-2.5 text-xs font-medium leading-relaxed max-h-[280px] overflow-y-auto scrollbar-thin shadow-xs border border-border">
                             <div className="whitespace-pre-wrap">{item.content}</div>
                             {item.hashtags && item.hashtags.length > 0 && (
-                              <div className="mt-2.5 pt-2 border-t border-gray-100 text-purple-600 font-bold">
+                              <div className="mt-2.5 pt-2 border-t border-border text-purple-600 font-bold">
                                 {item.hashtags.join(" ")}
                               </div>
                             )}
@@ -350,7 +350,7 @@ export function AICopilotPopover({ caption, onUpdateCaption, activePlatform, onC
                         {/* Card Action Footer */}
                         {item.content && (
                           <div className="flex items-center justify-between mt-3 pt-2.5 border-t border-purple-900/40">
-                            <div className="flex items-center gap-2 text-[11px] text-gray-400 font-medium">
+                            <div className="flex items-center gap-2 text-[11px] text-muted-foreground font-medium">
                               <span>Rank this answer</span>
                               <button className="p-1 hover:text-white transition-colors cursor-pointer"><ThumbsUp size={13} /></button>
                               <button className="p-1 hover:text-white transition-colors cursor-pointer"><ThumbsDown size={13} /></button>
@@ -358,7 +358,7 @@ export function AICopilotPopover({ caption, onUpdateCaption, activePlatform, onC
                             
                             <button
                               onClick={() => handleUseText(item.content, item.hashtags)}
-                              className="px-4 py-1.5 rounded-xl bg-white hover:bg-gray-100 text-gray-900 text-xs font-bold transition-all shadow-xs cursor-pointer active:scale-95"
+                              className="px-4 py-1.5 rounded-xl bg-card hover:bg-muted text-foreground text-xs font-bold transition-all shadow-xs cursor-pointer active:scale-95"
                             >
                               Use text
                             </button>
@@ -388,7 +388,7 @@ export function AICopilotPopover({ caption, onUpdateCaption, activePlatform, onC
           </div>
 
           {/* Right Column: Dynamic Form vs Refinement Action List */}
-          <div className="md:w-[44%] p-6 flex flex-col justify-between bg-white overflow-y-auto scrollbar-thin gap-5">
+          <div className="md:w-[44%] p-6 flex flex-col justify-between bg-card overflow-y-auto scrollbar-thin gap-5">
             
             {hasGeneratedText ? (
               /* Action List Mode (Matching Screenshot 100%) */
@@ -397,118 +397,118 @@ export function AICopilotPopover({ caption, onUpdateCaption, activePlatform, onC
                 <button
                   onClick={() => handleGenerate("translate")}
                   disabled={isLoading}
-                  className="w-full p-3 px-4 rounded-xl border border-gray-200/90 hover:border-purple-300 hover:bg-purple-50/40 text-gray-800 text-xs font-bold transition-all flex items-center justify-between bg-white cursor-pointer"
+                  className="w-full p-3 px-4 rounded-xl border border-border/90 hover:border-purple-300 hover:bg-purple-50/40 text-foreground text-xs font-bold transition-all flex items-center justify-between bg-card cursor-pointer"
                 >
                   <div className="flex items-center gap-3">
                     <span className="text-base">🌐</span>
                     <span>Translate</span>
                   </div>
-                  <ChevronRight size={15} className="text-gray-400" />
+                  <ChevronRight size={15} className="text-muted-foreground" />
                 </button>
 
                 <button
                   onClick={() => handleGenerate("cta")}
                   disabled={isLoading}
-                  className="w-full p-3 px-4 rounded-xl border border-gray-200/90 hover:border-purple-300 hover:bg-purple-50/40 text-gray-800 text-xs font-bold transition-all flex items-center justify-between bg-white cursor-pointer"
+                  className="w-full p-3 px-4 rounded-xl border border-border/90 hover:border-purple-300 hover:bg-purple-50/40 text-foreground text-xs font-bold transition-all flex items-center justify-between bg-card cursor-pointer"
                 >
                   <div className="flex items-center gap-3">
                     <span className="text-base">🎯</span>
                     <span>Add CTA</span>
                   </div>
-                  <ChevronRight size={15} className="text-gray-400" />
+                  <ChevronRight size={15} className="text-muted-foreground" />
                 </button>
 
                 <button
                   onClick={() => handleGenerate("hashtag")}
                   disabled={isLoading}
-                  className="w-full p-3 px-4 rounded-xl border border-gray-200/90 hover:border-purple-300 hover:bg-purple-50/40 text-gray-800 text-xs font-bold transition-all flex items-center justify-between bg-white cursor-pointer"
+                  className="w-full p-3 px-4 rounded-xl border border-border/90 hover:border-purple-300 hover:bg-purple-50/40 text-foreground text-xs font-bold transition-all flex items-center justify-between bg-card cursor-pointer"
                 >
                   <div className="flex items-center gap-3">
                     <span className="text-base">#</span>
                     <span>Add hashtags</span>
                   </div>
-                  <ChevronRight size={15} className="text-gray-400" />
+                  <ChevronRight size={15} className="text-muted-foreground" />
                 </button>
 
                 <button
                   onClick={() => handleGenerate("expand")}
                   disabled={isLoading}
-                  className="w-full p-3 px-4 rounded-xl border border-gray-200/90 hover:border-purple-300 hover:bg-purple-50/40 text-gray-800 text-xs font-bold transition-all flex items-center justify-between bg-white cursor-pointer"
+                  className="w-full p-3 px-4 rounded-xl border border-border/90 hover:border-purple-300 hover:bg-purple-50/40 text-foreground text-xs font-bold transition-all flex items-center justify-between bg-card cursor-pointer"
                 >
                   <div className="flex items-center gap-3">
                     <span className="text-base">☰</span>
                     <span>Lengthen text</span>
                   </div>
-                  <ChevronRight size={15} className="text-gray-400" />
+                  <ChevronRight size={15} className="text-muted-foreground" />
                 </button>
 
                 <button
                   onClick={() => handleGenerate("shorten")}
                   disabled={isLoading}
-                  className="w-full p-3 px-4 rounded-xl border border-gray-200/90 hover:border-purple-300 hover:bg-purple-50/40 text-gray-800 text-xs font-bold transition-all flex items-center justify-between bg-white cursor-pointer"
+                  className="w-full p-3 px-4 rounded-xl border border-border/90 hover:border-purple-300 hover:bg-purple-50/40 text-foreground text-xs font-bold transition-all flex items-center justify-between bg-card cursor-pointer"
                 >
                   <div className="flex items-center gap-3">
                     <span className="text-base">=</span>
                     <span>Shorten text</span>
                   </div>
-                  <ChevronRight size={15} className="text-gray-400" />
+                  <ChevronRight size={15} className="text-muted-foreground" />
                 </button>
 
                 <button
                   onClick={() => setShowToneModal(true)}
-                  className="w-full p-3 px-4 rounded-xl border border-gray-200/90 hover:border-purple-300 hover:bg-purple-50/40 text-gray-800 text-xs font-bold transition-all flex items-center justify-between bg-white cursor-pointer"
+                  className="w-full p-3 px-4 rounded-xl border border-border/90 hover:border-purple-300 hover:bg-purple-50/40 text-foreground text-xs font-bold transition-all flex items-center justify-between bg-card cursor-pointer"
                 >
                   <div className="flex items-center gap-3">
                     <span className="text-base">😊</span>
                     <span>Change tone</span>
                   </div>
-                  <ChevronRight size={15} className="text-gray-400" />
+                  <ChevronRight size={15} className="text-muted-foreground" />
                 </button>
 
                 <button
                   onClick={() => handleGenerate("add_emoji")}
                   disabled={isLoading}
-                  className="w-full p-3 px-4 rounded-xl border border-gray-200/90 hover:border-purple-300 hover:bg-purple-50/40 text-gray-800 text-xs font-bold transition-all flex items-center justify-between bg-white cursor-pointer"
+                  className="w-full p-3 px-4 rounded-xl border border-border/90 hover:border-purple-300 hover:bg-purple-50/40 text-foreground text-xs font-bold transition-all flex items-center justify-between bg-card cursor-pointer"
                 >
                   <div className="flex items-center gap-3">
                     <span className="text-base">🎭</span>
                     <span>Add emojis</span>
                   </div>
-                  <ChevronRight size={15} className="text-gray-400" />
+                  <ChevronRight size={15} className="text-muted-foreground" />
                 </button>
 
                 <button
                   onClick={() => handleGenerate("correct")}
                   disabled={isLoading}
-                  className="w-full p-3 px-4 rounded-xl border border-gray-200/90 hover:border-purple-300 hover:bg-purple-50/40 text-gray-800 text-xs font-bold transition-all flex items-center justify-between bg-white cursor-pointer"
+                  className="w-full p-3 px-4 rounded-xl border border-border/90 hover:border-purple-300 hover:bg-purple-50/40 text-foreground text-xs font-bold transition-all flex items-center justify-between bg-card cursor-pointer"
                 >
                   <div className="flex items-center gap-3">
                     <span className="text-base">🔤</span>
                     <span>Correct text</span>
                   </div>
-                  <ChevronRight size={15} className="text-gray-400" />
+                  <ChevronRight size={15} className="text-muted-foreground" />
                 </button>
 
                 <button
                   onClick={() => setShowPlatformModal(true)}
-                  className="w-full p-3 px-4 rounded-xl border border-gray-200/90 hover:border-purple-300 hover:bg-purple-50/40 text-gray-800 text-xs font-bold transition-all flex items-center justify-between bg-white cursor-pointer"
+                  className="w-full p-3 px-4 rounded-xl border border-border/90 hover:border-purple-300 hover:bg-purple-50/40 text-foreground text-xs font-bold transition-all flex items-center justify-between bg-card cursor-pointer"
                 >
                   <div className="flex items-center gap-3">
                     <span className="text-base">📢</span>
                     <span>Optimize for social media</span>
                   </div>
-                  <ChevronRight size={15} className="text-gray-400" />
+                  <ChevronRight size={15} className="text-muted-foreground" />
                 </button>
 
                 <button
                   onClick={handleRestart}
-                  className="w-full p-3 px-4 rounded-xl border border-gray-200/90 hover:border-purple-300 hover:bg-purple-50/40 text-gray-800 text-xs font-bold transition-all flex items-center justify-between bg-white cursor-pointer mt-2 text-red-600"
+                  className="w-full p-3 px-4 rounded-xl border border-border/90 hover:border-purple-300 hover:bg-purple-50/40 text-foreground text-xs font-bold transition-all flex items-center justify-between bg-card cursor-pointer mt-2 text-red-600"
                 >
                   <div className="flex items-center gap-3">
                     <RotateCcw size={16} className="text-red-500" />
                     <span>Restart</span>
                   </div>
-                  <ChevronRight size={15} className="text-gray-400" />
+                  <ChevronRight size={15} className="text-muted-foreground" />
                 </button>
 
               </div>
@@ -518,44 +518,44 @@ export function AICopilotPopover({ caption, onUpdateCaption, activePlatform, onC
                 
                 {/* Field 1: Topic Textarea */}
                 <div className="space-y-1.5">
-                  <label className="block text-xs font-extrabold text-gray-900">
+                  <label className="block text-xs font-extrabold text-foreground">
                     Write the topic of the text to generate.
                   </label>
                   <textarea
                     value={prompt}
                     onChange={(e) => setPrompt(e.target.value)}
                     placeholder="E.g. Five benefits of having Labrador dogs at home..."
-                    className="w-full h-24 p-3.5 rounded-xl border border-gray-200 text-xs font-medium text-gray-800 placeholder-gray-400 focus:outline-none focus:border-purple-600 focus:ring-1 focus:ring-purple-600 resize-none transition-all"
+                    className="w-full h-24 p-3.5 rounded-xl border border-border text-xs font-medium text-foreground placeholder-gray-400 focus:outline-none focus:border-purple-600 focus:ring-1 focus:ring-purple-600 resize-none transition-all"
                   />
                 </div>
 
                 {/* Field 2: Tone Selection Button & Dropdown */}
                 <div className="space-y-1.5">
-                  <label className="block text-xs font-bold text-gray-700">
+                  <label className="block text-xs font-bold text-foreground">
                     Choose a tone
                   </label>
                   <button
                     type="button"
                     onClick={() => setShowToneModal(true)}
-                    className="w-full p-2.5 px-3.5 rounded-xl border border-gray-200 text-xs font-bold text-gray-800 flex items-center justify-between bg-white hover:border-gray-300 transition-all cursor-pointer"
+                    className="w-full p-2.5 px-3.5 rounded-xl border border-border text-xs font-bold text-foreground flex items-center justify-between bg-card hover:border-gray-300 transition-all cursor-pointer"
                   >
                     <div className="flex items-center gap-2">
                       <span className="text-base">{currentToneObj.emoji}</span>
                       <span>{currentToneObj.name}</span>
                     </div>
-                    <ChevronDown size={16} className="text-gray-400" />
+                    <ChevronDown size={16} className="text-muted-foreground" />
                   </button>
                 </div>
 
                 {/* Field 3: Language */}
                 <div className="space-y-1.5">
-                  <label className="block text-xs font-bold text-gray-700">
+                  <label className="block text-xs font-bold text-foreground">
                     Language
                   </label>
                   <select
                     value={language}
                     onChange={(e) => setLanguage(e.target.value)}
-                    className="w-full p-2.5 rounded-xl border border-gray-200 text-xs font-bold text-gray-700 focus:outline-none focus:border-purple-600 bg-white cursor-pointer"
+                    className="w-full p-2.5 rounded-xl border border-border text-xs font-bold text-foreground focus:outline-none focus:border-purple-600 bg-card cursor-pointer"
                   >
                     <option value="vi">Vietnamese</option>
                     <option value="en">English</option>
@@ -564,13 +564,13 @@ export function AICopilotPopover({ caption, onUpdateCaption, activePlatform, onC
 
                 {/* Field 4: Optimize for Social media (Click opens modal) */}
                 <div className="space-y-1.5">
-                  <label className="block text-xs font-bold text-gray-700">
+                  <label className="block text-xs font-bold text-foreground">
                     Optimize for Social media
                   </label>
                   <button
                     type="button"
                     onClick={() => setShowPlatformModal(true)}
-                    className="w-full p-2.5 px-3.5 rounded-xl border border-gray-200 text-xs font-bold text-gray-800 flex items-center justify-between bg-white hover:border-gray-300 transition-all cursor-pointer"
+                    className="w-full p-2.5 px-3.5 rounded-xl border border-border text-xs font-bold text-foreground flex items-center justify-between bg-card hover:border-gray-300 transition-all cursor-pointer"
                   >
                     <div className="flex items-center gap-2.5">
                       {targetPlatform !== "any" ? (
@@ -578,19 +578,19 @@ export function AICopilotPopover({ caption, onUpdateCaption, activePlatform, onC
                       ) : null}
                       <span>{PLATFORM_OPTIONS.find(p => p.id === targetPlatform)?.name || "Any Social media"}</span>
                     </div>
-                    <ChevronDown size={16} className="text-gray-400" />
+                    <ChevronDown size={16} className="text-muted-foreground" />
                   </button>
                 </div>
 
                 {/* Field 5: Format */}
                 <div className="space-y-1.5">
-                  <label className="block text-xs font-bold text-gray-700">
+                  <label className="block text-xs font-bold text-foreground">
                     Định dạng bài viết (Format)
                   </label>
                   <select
                     value={format}
                     onChange={(e) => setFormat(e.target.value)}
-                    className="w-full p-2.5 rounded-xl border border-gray-200 text-xs font-bold text-gray-700 focus:outline-none focus:border-purple-600 bg-white cursor-pointer"
+                    className="w-full p-2.5 rounded-xl border border-border text-xs font-bold text-foreground focus:outline-none focus:border-purple-600 bg-card cursor-pointer"
                   >
                     <option value="Caption">Caption ngắn</option>
                     <option value="Article">Bài viết chi tiết</option>
@@ -604,7 +604,7 @@ export function AICopilotPopover({ caption, onUpdateCaption, activePlatform, onC
 
             {/* Bottom CTA Button */}
             {!hasGeneratedText && (
-              <div className="pt-3 border-t border-gray-100">
+              <div className="pt-3 border-t border-border">
                 <button
                   onClick={() => handleGenerate("generate")}
                   disabled={isLoading || !prompt.trim()}
@@ -628,10 +628,10 @@ export function AICopilotPopover({ caption, onUpdateCaption, activePlatform, onC
       {/* Tone Selection Modal */}
       {showToneModal && (
         <div className="fixed inset-0 z-[120] bg-black/70 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-150">
-          <div className="w-full max-w-sm bg-white rounded-[24px] shadow-2xl p-6 relative font-sans animate-in zoom-in-95 duration-150">
+          <div className="w-full max-w-sm bg-card rounded-[24px] shadow-2xl p-6 relative font-sans animate-in zoom-in-95 duration-150">
             {/* Header */}
-            <div className="flex items-center justify-between pb-4 border-b border-gray-100 mb-4">
-              <h3 className="text-base font-extrabold text-gray-900">
+            <div className="flex items-center justify-between pb-4 border-b border-border mb-4">
+              <h3 className="text-base font-extrabold text-foreground">
                 Choose a tone
               </h3>
               <button
@@ -659,12 +659,12 @@ export function AICopilotPopover({ caption, onUpdateCaption, activePlatform, onC
                     className={`p-3 px-4 border rounded-2xl flex items-center justify-between cursor-pointer transition-all ${
                       isSelected
                         ? "border-indigo-600 bg-indigo-50/20 shadow-2xs"
-                        : "border-gray-200 hover:border-gray-300 bg-white"
+                        : "border-border hover:border-gray-300 bg-card"
                     }`}
                   >
                     <div className="flex items-center gap-3">
                       <span className="text-xl">{t.emoji}</span>
-                      <span className="text-sm font-bold text-gray-800">
+                      <span className="text-sm font-bold text-foreground">
                         {t.name}
                       </span>
                     </div>
@@ -674,11 +674,11 @@ export function AICopilotPopover({ caption, onUpdateCaption, activePlatform, onC
                       className={`w-5 h-5 rounded-full flex items-center justify-center transition-all ${
                         isSelected
                           ? "bg-indigo-600 border-2 border-indigo-600"
-                          : "border-2 border-gray-300 bg-white"
+                          : "border-2 border-gray-300 bg-card"
                       }`}
                     >
                       {isSelected && (
-                        <div className="w-2 h-2 rounded-full bg-white" />
+                        <div className="w-2 h-2 rounded-full bg-card" />
                       )}
                     </div>
                   </div>
@@ -692,10 +692,10 @@ export function AICopilotPopover({ caption, onUpdateCaption, activePlatform, onC
       {/* Social Media Selection Modal */}
       {showPlatformModal && (
         <div className="fixed inset-0 z-[120] bg-black/70 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-150">
-          <div className="w-full max-w-sm bg-white rounded-[24px] shadow-2xl p-6 relative font-sans animate-in zoom-in-95 duration-150">
+          <div className="w-full max-w-sm bg-card rounded-[24px] shadow-2xl p-6 relative font-sans animate-in zoom-in-95 duration-150">
             {/* Header */}
-            <div className="flex items-center justify-between pb-4 border-b border-gray-100 mb-4">
-              <h3 className="text-base font-extrabold text-gray-900">
+            <div className="flex items-center justify-between pb-4 border-b border-border mb-4">
+              <h3 className="text-base font-extrabold text-foreground">
                 Optimize for Social media
               </h3>
               <button
@@ -723,18 +723,18 @@ export function AICopilotPopover({ caption, onUpdateCaption, activePlatform, onC
                     className={`p-3.5 px-4 border rounded-2xl flex items-center justify-between cursor-pointer transition-all ${
                       isSelected
                         ? "border-indigo-600 bg-indigo-50/20 shadow-2xs"
-                        : "border-gray-200 hover:border-gray-300 bg-white"
+                        : "border-border hover:border-gray-300 bg-card"
                     }`}
                   >
                     <div className="flex items-center gap-3">
                       {plat.id !== "any" ? (
                         <PlatformIcon platform={plat.name} size={28} />
                       ) : (
-                        <div className="w-7 h-7 rounded-full bg-gray-100 border border-gray-200 flex items-center justify-center text-gray-400 font-bold text-xs">
+                        <div className="w-7 h-7 rounded-full bg-muted border border-border flex items-center justify-center text-muted-foreground font-bold text-xs">
                           🌐
                         </div>
                       )}
-                      <span className="text-sm font-bold text-gray-800">
+                      <span className="text-sm font-bold text-foreground">
                         {plat.name}
                       </span>
                     </div>
@@ -744,11 +744,11 @@ export function AICopilotPopover({ caption, onUpdateCaption, activePlatform, onC
                       className={`w-5 h-5 rounded-full flex items-center justify-center transition-all ${
                         isSelected
                           ? "bg-indigo-600 border-2 border-indigo-600"
-                          : "border-2 border-gray-300 bg-white"
+                          : "border-2 border-gray-300 bg-card"
                       }`}
                     >
                       {isSelected && (
-                        <div className="w-2 h-2 rounded-full bg-white" />
+                        <div className="w-2 h-2 rounded-full bg-card" />
                       )}
                     </div>
                   </div>

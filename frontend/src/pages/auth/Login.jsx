@@ -243,7 +243,7 @@ export function LoginPage({ initialScreen = "login" }) {
 
   if (screen === "login" || screen === "signup" || screen === "verify-otp" || screen === "verify-2fa") {
     return (
-      <div className="flex h-screen w-full bg-white overflow-hidden">
+      <div className="flex h-screen w-full bg-background text-foreground overflow-hidden">
         <LeftPanel
           tagline="Manage your social media — all in one place"
           features={[
@@ -443,7 +443,7 @@ export function LoginPage({ initialScreen = "login" }) {
                       setTwoFactorCode("");
                     }}
                     style={{ width: "100%", marginTop: 12 }}
-                    className="text-center text-sm text-gray-500 hover:text-black transition-colors bg-transparent border-none cursor-pointer"
+                    className="text-center text-sm text-muted-foreground hover:text-black transition-colors bg-transparent border-none cursor-pointer"
                   >
                     Quay lại đăng nhập
                   </button>

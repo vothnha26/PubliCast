@@ -121,37 +121,37 @@ export function ForgotPasswordPage() {
   };
 
   return (
-    <div className="flex h-screen w-full bg-white overflow-hidden font-sans">
+    <div className="flex h-screen w-full bg-background overflow-hidden font-sans">
       <LeftPanel />
 
       <div className="flex-1 flex flex-col justify-center px-8 md:px-16 lg:px-24 py-12 overflow-y-auto">
         <div style={{ maxWidth: 400, width: "100%", margin: "0 auto" }}>
           <button 
             onClick={() => navigate("/login")}
-            className="flex items-center gap-2 text-sm text-gray-500 hover:text-black mb-8 transition-colors"
+            className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground mb-8 transition-colors cursor-pointer"
           >
             <ChevronLeft size={16} /> {t("forgot.backToLogin")}
           </button>
 
           {!submitted ? (
             <div className="animate-in fade-in slide-in-from-bottom-2 duration-300">
-              <h3 style={{ fontSize: 24, fontWeight: 500, color: "#0A0A0A", marginBottom: 8 }}>{t("forgot.title")}</h3>
-              <p style={{ fontSize: 14, color: "#6B7280", marginBottom: 32 }}>
+              <h3 className="text-2xl font-medium text-foreground mb-2">{t("forgot.title")}</h3>
+              <p className="text-sm text-muted-foreground mb-8">
                 {t("forgot.subtitle")}
               </p>
 
               <form onSubmit={handleSubmit} className="space-y-6">
                 <div>
-                  <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">{t("forgot.emailLabel")}</label>
+                  <label className="block text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">{t("forgot.emailLabel")}</label>
                   <div className="relative">
-                    <Mail size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                    <Mail size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
                     <input 
                       type="email" 
                       required
                       placeholder="you@company.com" 
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
-                      className="w-full pl-10 pr-4 py-3 rounded-xl border border-gray-200 focus:border-[#0A0A0A] outline-none text-sm transition-all" 
+                      className="w-full pl-10 pr-4 py-3 rounded-xl border border-border bg-card text-foreground focus:border-foreground outline-none text-sm transition-all" 
                     />
                   </div>
                 </div>
@@ -159,7 +159,7 @@ export function ForgotPasswordPage() {
                 <button
                   type="submit"
                   disabled={isLoading}
-                  className="w-full py-3 bg-[#0A0A0A] text-white rounded-xl text-sm font-bold hover:bg-gray-800 transition-all shadow-lg flex items-center justify-center gap-2"
+                  className="w-full py-3 bg-[#0A0A0A] dark:bg-lime-400 text-white dark:text-black rounded-xl text-sm font-bold hover:scale-[1.02] active:scale-[0.98] transition-all shadow-lg flex items-center justify-center gap-2 cursor-pointer"
                 >
                   {isLoading ? <Loader2 size={16} className="animate-spin" /> : <>{t("forgot.sendBtn")} <ArrowRight size={16} /></>}
                 </button>
@@ -167,26 +167,26 @@ export function ForgotPasswordPage() {
             </div>
           ) : (
             <div className="text-center animate-in zoom-in-95 duration-300">
-              <div className="w-16 h-16 bg-green-50 rounded-full flex items-center justify-center mx-auto mb-6">
-                <Mail size={32} className="text-green-600" />
+              <div className="w-16 h-16 bg-green-500/10 rounded-full flex items-center justify-center mx-auto mb-6">
+                <Mail size={32} className="text-green-600 dark:text-green-400" />
               </div>
-              <h3 style={{ fontSize: 22, fontWeight: 500, color: "#0A0A0A", marginBottom: 12 }}>Kiểm tra Email</h3>
-              <p style={{ fontSize: 14, color: "#6B7280", lineHeight: 1.6, marginBottom: 32 }}>
-                Chúng tôi đã gửi một liên kết đặt lại mật khẩu đến địa chỉ email <strong>{email}</strong>. Vui lòng kiểm tra hộp thư của bạn (bao gồm cả thư rác).
+              <h3 className="text-2xl font-medium text-foreground mb-3">Kiểm tra Email</h3>
+              <p className="text-sm text-muted-foreground leading-relaxed mb-8">
+                Chúng tôi đã gửi một liên kết đặt lại mật khẩu đến địa chỉ email <strong className="text-foreground">{email}</strong>. Vui lòng kiểm tra hộp thư của bạn (bao gồm cả thư rác).
               </p>
               
               <div className="space-y-4">
                 <button 
                   onClick={handleResend}
                   disabled={isLoading || resendTimer > 0}
-                  className="w-full py-3 border border-gray-200 rounded-xl text-sm font-bold text-gray-600 hover:bg-gray-50 hover:text-black transition-all flex items-center justify-center gap-2"
+                  className="w-full py-3 border border-border bg-card rounded-xl text-sm font-bold text-foreground hover:bg-muted transition-all flex items-center justify-center gap-2 cursor-pointer"
                 >
                   {isLoading && <Loader2 size={16} className="animate-spin" />}
                   {resendTimer > 0 ? `Gửi lại sau ${resendTimer}s` : "Gửi lại email khôi phục"}
                 </button>
                 <button 
                   onClick={() => navigate("/login")}
-                  className="w-full py-3 bg-[#0A0A0A] text-white rounded-xl text-sm font-bold hover:bg-gray-800 transition-all flex items-center justify-center gap-2"
+                  className="w-full py-3 bg-[#0A0A0A] dark:bg-lime-400 text-white dark:text-black rounded-xl text-sm font-bold hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-2 cursor-pointer"
                 >
                   Trở lại Đăng nhập
                 </button>

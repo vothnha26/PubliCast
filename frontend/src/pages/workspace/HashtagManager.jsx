@@ -221,13 +221,13 @@ export function HashtagManager() {
   return (
     <div className="flex-1 overflow-y-auto bg-slate-50 font-sans">
       {/* Header */}
-      <div className="px-10 py-8 bg-white border-b border-gray-100 flex items-center justify-between">
+      <div className="px-10 py-8 bg-card border-b border-border flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-black text-gray-900 tracking-tight flex items-center gap-2">
+          <h1 className="text-xl font-black text-foreground tracking-tight flex items-center gap-2">
             <Hash className="text-blue-500" size={24} />
             {t("header.title")}
           </h1>
-          <p className="text-xs text-gray-400 mt-1">{t("header.subtitle")}</p>
+          <p className="text-xs text-muted-foreground mt-1">{t("header.subtitle")}</p>
         </div>
         <button 
           onClick={() => setIsCreateOpen(true)}
@@ -239,7 +239,7 @@ export function HashtagManager() {
       </div>
 
       {/* Internal Tabs */}
-      <div className="px-10 bg-white border-b border-gray-100 flex gap-8">
+      <div className="px-10 bg-card border-b border-border flex gap-8">
         {[
           { id: "sets", label: t("tabs.sets"), icon: <Layers size={14} /> },
           { id: "discover", label: t("tabs.discover"), icon: <Compass size={14} /> },
@@ -261,7 +261,7 @@ export function HashtagManager() {
       {/* Content */}
       <div className="p-10 max-w-[1200px] mx-auto">
         {loading ? (
-          <div className="flex items-center justify-center py-20 text-xs text-gray-400 font-bold gap-2">
+          <div className="flex items-center justify-center py-20 text-xs text-muted-foreground font-bold gap-2">
             <div className="w-5 h-5 border-2 border-t-transparent border-black rounded-full animate-spin" />
             Loading...
           </div>
@@ -273,25 +273,25 @@ export function HashtagManager() {
                   const tagList = set.hashtags ? set.hashtags.split(",") : [];
                   const platformList = set.targetPlatforms ? set.targetPlatforms.split(",") : ["IG"];
                   return (
-                    <div key={set.id} className="bg-white rounded-2xl p-6 border border-gray-150 shadow-sm hover:shadow-md transition-all group flex flex-col justify-between min-h-[220px]">
+                    <div key={set.id} className="bg-card rounded-2xl p-6 border border-gray-150 shadow-sm hover:shadow-md transition-all group flex flex-col justify-between min-h-[220px]">
                       <div>
                         <div className="flex items-center justify-between mb-3.5">
-                          <span className="text-sm font-bold text-gray-900">{set.name}</span>
+                          <span className="text-sm font-bold text-foreground">{set.name}</span>
                           <button 
                             onClick={() => handleDeleteSet(set.id)}
-                            className="p-1.5 text-gray-400 hover:text-red-500 rounded-lg hover:bg-gray-50 opacity-0 group-hover:opacity-100 transition-all cursor-pointer"
+                            className="p-1.5 text-muted-foreground hover:text-red-500 rounded-lg hover:bg-muted opacity-0 group-hover:opacity-100 transition-all cursor-pointer"
                           >
                             <Trash2 size={14} />
                           </button>
                         </div>
                         <div className="flex flex-wrap gap-1.5 mb-6">
                           {tagList.map((tag) => (
-                            <span key={tag} className="px-2 py-0.5 rounded-md bg-slate-50 text-slate-600 text-[10px] font-semibold border border-gray-100">{tag}</span>
+                            <span key={tag} className="px-2 py-0.5 rounded-md bg-slate-50 text-slate-600 text-[10px] font-semibold border border-border">{tag}</span>
                           ))}
                         </div>
                       </div>
                       
-                      <div className="flex items-center justify-between pt-4 border-t border-gray-100">
+                      <div className="flex items-center justify-between pt-4 border-t border-border">
                         <div className="flex gap-1">
                           {platformList.map((p) => (
                             <div key={p} className="w-5 h-5 rounded-md flex items-center justify-center shadow-xs" style={{ backgroundColor: platformColors[p] || "#0A0A0A" }}>
@@ -306,7 +306,7 @@ export function HashtagManager() {
                             tags: tagList,
                             targetPlatforms: platformList
                           })}
-                          className="py-1.5 px-3 rounded-lg bg-gray-50 text-gray-600 text-[10px] font-bold hover:bg-black hover:text-white transition-all cursor-pointer border border-gray-150"
+                          className="py-1.5 px-3 rounded-lg bg-muted text-muted-foreground text-[10px] font-bold hover:bg-black hover:text-white transition-all cursor-pointer border border-gray-150"
                         >
                           {t("sets.editBtn")}
                         </button>
@@ -318,12 +318,12 @@ export function HashtagManager() {
                 {/* Create new dashed card */}
                 <div 
                   onClick={() => setIsCreateOpen(true)}
-                  className="border-2 border-dashed border-gray-200 rounded-2xl p-6 bg-white flex flex-col items-center justify-center gap-3 cursor-pointer hover:bg-gray-50 hover:border-gray-300 transition-all group min-h-[220px]"
+                  className="border-2 border-dashed border-border rounded-2xl p-6 bg-card flex flex-col items-center justify-center gap-3 cursor-pointer hover:bg-muted hover:border-border transition-all group min-h-[220px]"
                 >
-                   <div className="w-11 h-11 rounded-2xl bg-gray-50 border border-gray-100 flex items-center justify-center text-gray-400 group-hover:scale-110 transition-transform">
+                   <div className="w-11 h-11 rounded-2xl bg-muted border border-border flex items-center justify-center text-muted-foreground group-hover:scale-110 transition-transform">
                       <Plus size={20} />
                    </div>
-                   <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">{t("sets.createCard")}</span>
+                   <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">{t("sets.createCard")}</span>
                 </div>
               </div>
             )}
@@ -335,7 +335,7 @@ export function HashtagManager() {
                     <button
                       key={c}
                       onClick={() => setActiveCategory(c)}
-                      className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all border ${activeCategory === c ? "bg-[#0A0A0A] text-white border-black" : "bg-white text-gray-400 border-gray-100 hover:border-gray-200 cursor-pointer"}`}
+                      className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all border ${activeCategory === c ? "bg-foreground text-background border-foreground" : "bg-background text-muted-foreground border-border hover:border-border cursor-pointer"}`}
                     >
                       {c}
                     </button>
@@ -344,21 +344,21 @@ export function HashtagManager() {
                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                   {trendingLoading ? (
                     Array.from({ length: 8 }).map((_, i) => (
-                      <div key={i} className="bg-white rounded-xl p-4 border border-gray-150 shadow-xs flex flex-col justify-between min-h-[110px] animate-pulse">
+                      <div key={i} className="bg-card rounded-xl p-4 border border-gray-150 shadow-xs flex flex-col justify-between min-h-[110px] animate-pulse">
                         <div className="space-y-2">
-                          <div className="h-4 bg-gray-100 rounded w-2/3" />
-                          <div className="h-3 bg-gray-100 rounded w-1/3" />
+                          <div className="h-4 bg-muted rounded w-2/3" />
+                          <div className="h-3 bg-muted rounded w-1/3" />
                         </div>
                         <div className="flex items-center justify-between pt-3 border-t border-gray-50">
-                          <div className="h-3 bg-gray-100 rounded w-1/2" />
-                          <div className="h-3 bg-gray-100 rounded w-1/4" />
+                          <div className="h-3 bg-muted rounded w-1/2" />
+                          <div className="h-3 bg-muted rounded w-1/4" />
                         </div>
                       </div>
                     ))
                   ) : trendingError ? (
-                    <div className="col-span-full bg-white rounded-2xl p-10 border border-gray-150 shadow-xs flex flex-col items-center justify-center text-center gap-3">
+                    <div className="col-span-full bg-card rounded-2xl p-10 border border-gray-150 shadow-xs flex flex-col items-center justify-center text-center gap-3">
                       <AlertCircle size={24} className="text-red-500" />
-                      <span className="text-xs text-gray-500 font-bold">{trendingError}</span>
+                      <span className="text-xs text-muted-foreground font-bold">{trendingError}</span>
                       <button 
                         onClick={() => loadTrendingHashtags(activeCategory)} 
                         className="px-4 py-2 bg-black text-white text-[10px] font-bold rounded-lg cursor-pointer"
@@ -367,24 +367,24 @@ export function HashtagManager() {
                       </button>
                     </div>
                   ) : trendingHashtags.length === 0 ? (
-                    <div className="col-span-full bg-white rounded-2xl p-10 border border-gray-150 shadow-xs flex flex-col items-center justify-center text-center gap-2">
+                    <div className="col-span-full bg-card rounded-2xl p-10 border border-gray-150 shadow-xs flex flex-col items-center justify-center text-center gap-2">
                       <Compass size={24} className="text-gray-300" />
-                      <span className="text-xs text-gray-500 font-bold">{t("discover.noResults")}</span>
+                      <span className="text-xs text-muted-foreground font-bold">{t("discover.noResults")}</span>
                     </div>
                   ) : (
                     trendingHashtags.map((tag) => (
-                      <div key={tag.hashtag} className="bg-white rounded-xl p-4 border border-gray-150 shadow-xs flex flex-col justify-between min-h-[110px]">
+                      <div key={tag.hashtag} className="bg-card rounded-xl p-4 border border-gray-150 shadow-xs flex flex-col justify-between min-h-[110px]">
                         <div>
-                          <div className="font-bold text-gray-900 text-xs flex items-center gap-1">
-                            <Globe size={11} className="text-gray-400" />
+                          <div className="font-bold text-foreground text-xs flex items-center gap-1">
+                            <Globe size={11} className="text-muted-foreground" />
                             {tag.hashtag}
                           </div>
-                          <div className="text-[9px] text-gray-400 font-bold uppercase mt-1">
+                          <div className="text-[9px] text-muted-foreground font-bold uppercase mt-1">
                             {tag.postsCount ? (tag.postsCount / 1000).toFixed(0) + "K" : "0"} {t("discover.posts")}
                           </div>
                         </div>
                         <div className="flex items-center justify-between pt-3 border-t border-gray-50">
-                          <span className={`text-[9px] font-extrabold ${tag.growthRate > 10 ? "text-green-500" : "text-gray-400"}`}>
+                          <span className={`text-[9px] font-extrabold ${tag.growthRate > 10 ? "text-green-500" : "text-muted-foreground"}`}>
                             {tag.growthRate > 10 ? t("discover.trending", { rate: tag.growthRate }) : t("discover.stable")}
                           </span>
                           <button 
@@ -404,17 +404,17 @@ export function HashtagManager() {
             {activeTab === "stats" && (
               <div className="space-y-8 animate-in fade-in duration-300">
                 {trackedHashtags.length === 0 ? (
-                  <div className="bg-white rounded-2xl p-10 border border-gray-150 shadow-xs flex flex-col items-center justify-center text-center gap-2">
+                  <div className="bg-card rounded-2xl p-10 border border-gray-150 shadow-xs flex flex-col items-center justify-center text-center gap-2">
                     <AlertCircle size={24} className="text-gray-300" />
-                    <span className="text-xs text-gray-500 font-bold">{t("stats.empty.title")}</span>
-                    <p className="text-[10px] text-gray-400 max-w-[320px]">
+                    <span className="text-xs text-muted-foreground font-bold">{t("stats.empty.title")}</span>
+                    <p className="text-[10px] text-muted-foreground max-w-[320px]">
                       {t("stats.empty.desc")}
                     </p>
                   </div>
                 ) : (
                   <>
-                    <div className="bg-white rounded-2xl p-6 border border-gray-150 shadow-xs">
-                      <h3 className="text-xs font-bold text-gray-800 mb-6 uppercase tracking-wider">{t("stats.chartTitle")}</h3>
+                    <div className="bg-card rounded-2xl p-6 border border-gray-150 shadow-xs">
+                      <h3 className="text-xs font-bold text-foreground mb-6 uppercase tracking-wider">{t("stats.chartTitle")}</h3>
                       <ResponsiveContainer width="100%" height={240}>
                         <BarChart data={trackedHashtags.map(t => ({ tag: t.hashtag, reach: t.totalReach || 0 }))}>
                           <XAxis dataKey="tag" tick={{ fontSize: 10, fill: "#9CA3AF", fontWeight: 700 }} axisLine={false} tickLine={false} />
@@ -425,7 +425,7 @@ export function HashtagManager() {
                       </ResponsiveContainer>
                     </div>
 
-                    <div className="bg-white rounded-2xl border border-gray-150 shadow-xs overflow-hidden">
+                    <div className="bg-card rounded-2xl border border-gray-150 shadow-xs overflow-hidden">
                       <table className="w-full text-left">
                         <thead>
                           <tr className="bg-slate-50 border-b border-gray-150">
@@ -436,18 +436,18 @@ export function HashtagManager() {
                               t("stats.tableHeaders.platform"),
                               ""
                             ].map((h, i) => (
-                              <th key={i} className="px-6 py-3.5 text-[9px] font-bold text-gray-400 uppercase tracking-widest">{h}</th>
+                              <th key={i} className="px-6 py-3.5 text-[9px] font-bold text-muted-foreground uppercase tracking-widest">{h}</th>
                             ))}
                           </tr>
                         </thead>
-                        <tbody className="divide-y divide-gray-100">
+                        <tbody className="divide-y divide-border">
                           {trackedHashtags.map((row) => (
                             <tr key={row.id} className="hover:bg-slate-50/50 transition-colors">
-                              <td className="px-6 py-4 text-xs font-bold text-gray-900">{row.hashtag}</td>
-                              <td className="px-6 py-4 text-xs text-gray-400 font-semibold">
+                              <td className="px-6 py-4 text-xs font-bold text-foreground">{row.hashtag}</td>
+                              <td className="px-6 py-4 text-xs text-muted-foreground font-semibold">
                                 {row.postsLast24h != null ? `${row.postsLast24h} ${t("stats.postsPerDay")}` : t("stats.noData")}
                               </td>
-                              <td className="px-6 py-4 text-xs font-bold text-gray-900">
+                              <td className="px-6 py-4 text-xs font-bold text-foreground">
                                 {row.totalReach != null ? `${(row.totalReach / 1000).toFixed(1)}${t("stats.reachSuffix")}` : t("stats.noData")}
                               </td>
                               <td className="px-6 py-4">
@@ -459,7 +459,7 @@ export function HashtagManager() {
                                  <button
                                    onClick={() => handleRefreshTag(row.id)}
                                    disabled={refreshingTagId === row.id}
-                                   className="text-gray-500 text-[10px] font-bold hover:underline cursor-pointer mr-3 disabled:opacity-50"
+                                   className="text-muted-foreground text-[10px] font-bold hover:underline cursor-pointer mr-3 disabled:opacity-50"
                                  >
                                    {refreshingTagId === row.id ? t("stats.refreshing") : t("stats.refreshBtn")}
                                  </button>
@@ -487,29 +487,29 @@ export function HashtagManager() {
       {selectedSet && (
         <div className="fixed inset-0 z-50 flex justify-end">
            <div className="absolute inset-0 bg-black/40 backdrop-blur-xs" onClick={() => setSelectedSet(null)} />
-           <div className="relative z-10 w-[450px] h-full bg-white shadow-2xl flex flex-col animate-in slide-in-from-right duration-350">
+           <div className="relative z-10 w-[450px] h-full bg-card shadow-2xl flex flex-col animate-in slide-in-from-right duration-350">
               <div className="p-5 border-b border-gray-150 flex items-center justify-between">
-                 <h3 className="font-bold text-sm text-gray-900 flex items-center gap-1.5">
+                 <h3 className="font-bold text-sm text-foreground flex items-center gap-1.5">
                    <Sparkles className="text-indigo-500" size={16} />
                    {t("editor.editTitle", { name: selectedSet.name })}
                  </h3>
-                 <button onClick={() => setSelectedSet(null)} className="p-2 hover:bg-gray-100 rounded-full transition-all cursor-pointer"><X size={18} /></button>
+                 <button onClick={() => setSelectedSet(null)} className="p-2 hover:bg-muted rounded-full transition-all cursor-pointer"><X size={18} /></button>
               </div>
               <div className="p-6 flex-1 overflow-y-auto space-y-5">
                  <div>
-                    <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5 block">{t("editor.nameLabel")}</label>
+                    <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1.5 block">{t("editor.nameLabel")}</label>
                     <input 
                       type="text"
                       value={selectedSet.name}
                       onChange={(e) => setSelectedSet({ ...selectedSet, name: e.target.value })}
-                      className="w-full bg-slate-50 border border-gray-200 rounded-xl px-3 py-2 text-xs font-semibold outline-none focus:border-gray-400"
+                      className="w-full bg-slate-50 border border-border rounded-xl px-3 py-2 text-xs font-semibold outline-none focus:border-gray-400"
                     />
                  </div>
                  <div>
-                    <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5 block">{t("editor.hashtagsLabel")}</label>
+                    <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1.5 block">{t("editor.hashtagsLabel")}</label>
                     <div className="flex flex-wrap gap-1.5 p-3 rounded-xl bg-slate-50 border border-gray-150 min-h-[90px] mb-3">
                        {selectedSet.tags.map(t_node => (
-                         <span key={t_node} className="px-2.5 py-1 bg-white rounded-lg text-[10px] font-bold flex items-center gap-1.5 border border-gray-200">
+                         <span key={t_node} className="px-2.5 py-1 bg-background rounded-lg text-[10px] font-bold flex items-center gap-1.5 border border-border">
                             {t_node} 
                             <button onClick={() => setSelectedSet({ ...selectedSet, tags: selectedSet.tags.filter(x => x !== t_node) })} className="hover:text-red-500"><X size={11} /></button>
                          </span>
@@ -523,7 +523,7 @@ export function HashtagManager() {
                         value={newTagInput}
                         onChange={(e) => setNewTagInput(e.target.value)}
                         onKeyDown={addTagToForm}
-                        className="flex-1 bg-white border border-gray-250 rounded-xl px-3 py-2 text-xs font-semibold outline-none focus:border-gray-400"
+                        className="flex-1 bg-background border border-border rounded-xl px-3 py-2 text-xs font-semibold text-foreground outline-none focus:border-foreground"
                       />
                       <button 
                         onClick={addTagToForm}
@@ -535,7 +535,7 @@ export function HashtagManager() {
                  </div>
               </div>
               <div className="p-5 bg-slate-50 border-t border-gray-150 flex gap-2">
-                 <button onClick={() => setSelectedSet(null)} className="flex-1 py-2.5 rounded-xl bg-white border border-gray-250 text-gray-700 text-xs font-bold transition-all cursor-pointer">{t("editor.cancelBtn")}</button>
+                 <button onClick={() => setSelectedSet(null)} className="flex-1 py-2.5 rounded-xl bg-background border border-border text-foreground text-xs font-bold transition-all cursor-pointer">{t("editor.cancelBtn")}</button>
                  <button onClick={handleUpdateSet} className="flex-1 py-2.5 rounded-xl bg-black text-white text-xs font-bold hover:bg-gray-800 transition-all cursor-pointer shadow-sm">{t("editor.saveBtn")}</button>
               </div>
            </div>
@@ -546,30 +546,30 @@ export function HashtagManager() {
       {isCreateOpen && (
         <div className="fixed inset-0 z-50 flex justify-end">
            <div className="absolute inset-0 bg-black/40 backdrop-blur-xs" onClick={() => setIsCreateOpen(false)} />
-           <div className="relative z-10 w-[450px] h-full bg-white shadow-2xl flex flex-col animate-in slide-in-from-right duration-350">
+           <div className="relative z-10 w-[450px] h-full bg-card shadow-2xl flex flex-col animate-in slide-in-from-right duration-350">
               <div className="p-5 border-b border-gray-150 flex items-center justify-between">
-                 <h3 className="font-bold text-sm text-gray-900 flex items-center gap-1.5">
+                 <h3 className="font-bold text-sm text-foreground flex items-center gap-1.5">
                    <Plus className="text-blue-500" size={16} />
                    {t("editor.createTitle")}
                  </h3>
-                 <button onClick={() => setIsCreateOpen(false)} className="p-2 hover:bg-gray-100 rounded-full transition-all cursor-pointer"><X size={18} /></button>
+                 <button onClick={() => setIsCreateOpen(false)} className="p-2 hover:bg-muted rounded-full transition-all cursor-pointer"><X size={18} /></button>
               </div>
               <div className="p-6 flex-1 overflow-y-auto space-y-5">
                  <div>
-                    <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5 block">{t("editor.nameLabel")}</label>
+                    <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1.5 block">{t("editor.nameLabel")}</label>
                     <input 
                       type="text"
                       placeholder={t("editor.namePlaceholder")}
                       value={setName}
                       onChange={(e) => setSetName(e.target.value)}
-                      className="w-full bg-slate-50 border border-gray-200 rounded-xl px-3 py-2 text-xs font-semibold outline-none focus:border-gray-400"
+                      className="w-full bg-slate-50 border border-border rounded-xl px-3 py-2 text-xs font-semibold outline-none focus:border-gray-400"
                     />
                  </div>
                  <div>
-                    <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5 block">{t("editor.hashtagsLabel")}</label>
+                    <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1.5 block">{t("editor.hashtagsLabel")}</label>
                     <div className="flex flex-wrap gap-1.5 p-3 rounded-xl bg-slate-50 border border-gray-150 min-h-[90px] mb-3">
                        {setTags.map(t_node => (
-                         <span key={t_node} className="px-2.5 py-1 bg-white rounded-lg text-[10px] font-bold flex items-center gap-1.5 border border-gray-200">
+                         <span key={t_node} className="px-2.5 py-1 bg-background rounded-lg text-[10px] font-bold flex items-center gap-1.5 border border-border">
                             {t_node} 
                             <button onClick={() => setSetTags(prev => prev.filter(x => x !== t_node))} className="hover:text-red-500"><X size={11} /></button>
                          </span>
@@ -583,7 +583,7 @@ export function HashtagManager() {
                         value={newTagInput}
                         onChange={(e) => setNewTagInput(e.target.value)}
                         onKeyDown={addTagToForm}
-                        className="flex-1 bg-white border border-gray-250 rounded-xl px-3 py-2 text-xs font-semibold outline-none focus:border-gray-400"
+                        className="flex-1 bg-background border border-border rounded-xl px-3 py-2 text-xs font-semibold text-foreground outline-none focus:border-foreground"
                       />
                       <button 
                         onClick={addTagToForm}
@@ -595,7 +595,7 @@ export function HashtagManager() {
                  </div>
               </div>
               <div className="p-5 bg-slate-50 border-t border-gray-150 flex gap-2">
-                 <button onClick={() => setIsCreateOpen(false)} className="flex-1 py-2.5 rounded-xl bg-white border border-gray-250 text-gray-700 text-xs font-bold transition-all cursor-pointer">{t("editor.cancelBtn")}</button>
+                 <button onClick={() => setIsCreateOpen(false)} className="flex-1 py-2.5 rounded-xl bg-background border border-border text-foreground text-xs font-bold transition-all cursor-pointer">{t("editor.cancelBtn")}</button>
                  <button onClick={handleCreateSet} className="flex-1 py-2.5 rounded-xl bg-black text-white text-xs font-bold hover:bg-gray-800 transition-all cursor-pointer shadow-sm">{t("editor.createBtn")}</button>
               </div>
            </div>

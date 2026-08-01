@@ -164,14 +164,14 @@ export function PricingPage() {
 
   if (dbPlans.length === 0) {
     return (
-      <div className="flex-1 flex items-center justify-center bg-[#F8F8F7]">
+      <div className="flex-1 flex items-center justify-center bg-background">
         <div style={{ fontSize: 14, color: "#6B7280" }}>Đang tải cấu hình gói dịch vụ...</div>
       </div>
     );
   }
 
   return (
-    <div className="flex-1 overflow-y-auto bg-[#F8F8F7]" style={{ padding: "32px 24px" }}>
+    <div className="flex-1 overflow-y-auto bg-background" style={{ padding: "32px 24px" }}>
       {/* Header */}
       <div className="text-center mb-8">
         <h2 style={{ fontSize: 24, fontWeight: 500, color: "#0A0A0A", marginBottom: 8 }}>Choose Your Plan</h2>

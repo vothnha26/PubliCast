@@ -188,10 +188,10 @@ export function AutoListPostCard({
       onDragOver={(e) => onDragOver(e, index - 1)}
       onDragEnd={onDragEnd}
       onDrop={(e) => onDrop(e, index - 1)}
-      className={`bg-[#f0f2f5] rounded-2xl p-4 flex flex-col gap-3 shadow-sm hover:shadow-md transition-all duration-300 text-left relative cursor-grab active:cursor-grabbing border ${
-        validationErrors.length > 0 ? "border-red-300 ring-1 ring-red-200" : "border-transparent"
+      className={`bg-muted/40 rounded-2xl p-4 flex flex-col gap-3 shadow-sm hover:shadow-md transition-all duration-300 text-left relative cursor-grab active:cursor-grabbing border ${
+        validationErrors.length > 0 ? "border-red-500/30 ring-1 ring-red-500/20" : "border-border"
       } ${
-        draggedIndex === index - 1 ? "opacity-50 border-dashed border-gray-400" : ""
+        draggedIndex === index - 1 ? "opacity-50 border-dashed border-border" : ""
       }`}
     >
       {/* Hidden File Input */}
@@ -207,17 +207,17 @@ export function AutoListPostCard({
       {/* Top Bar: Drag handle & Index pill & Validation Badge & Action Menu */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <div className="text-gray-400 cursor-grab active:cursor-grabbing hover:text-gray-600">
+          <div className="text-muted-foreground cursor-grab active:cursor-grabbing hover:text-foreground">
             <GripVertical size={16} />
           </div>
-          <div className="border border-gray-300 rounded-full px-2.5 py-0.5 bg-white text-[10px] font-bold text-gray-700 shadow-sm min-w-[24px] text-center">
+          <div className="border border-border rounded-full px-2.5 py-0.5 bg-card text-[10px] font-bold text-foreground shadow-sm min-w-[24px] text-center">
             {index}
           </div>
         </div>
 
         <div className="flex items-center gap-2">
           {validationErrors.length > 0 && (
-            <div className="flex items-center gap-1.5 px-2.5 py-0.5 bg-red-100 border border-red-200 text-red-700 rounded-full text-[10px] font-extrabold font-sans">
+            <div className="flex items-center gap-1.5 px-2.5 py-0.5 bg-red-500/10 border border-red-500/20 text-red-500 rounded-full text-[10px] font-extrabold font-sans">
               <AlertCircle size={12} className="text-red-500 shrink-0" />
               <span>{validationErrors.length} {validationErrors.length === 1 ? 'Error' : 'Errors'}</span>
             </div>
@@ -228,46 +228,46 @@ export function AutoListPostCard({
             <DropdownMenuTrigger asChild>
               <button 
                 type="button" 
-                className="p-1 rounded-lg hover:bg-gray-200/80 text-gray-500 hover:text-gray-800 transition-colors cursor-pointer outline-none"
+                className="p-1 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors cursor-pointer outline-none"
                 onClick={(e) => e.stopPropagation()}
               >
                 <MoreVertical size={16} />
               </button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-72 p-1.5 bg-white rounded-xl shadow-xl border border-gray-100 font-sans z-50">
+            <DropdownMenuContent align="end" className="w-72 p-1.5 bg-card rounded-xl shadow-xl border border-border font-sans z-50 text-foreground">
               {/* Copy link */}
               <DropdownMenuItem 
                 onClick={() => {
                   navigator.clipboard.writeText(caption);
                   toast.success("Post content copied to clipboard!");
                 }}
-                className="flex items-center gap-3 px-3 py-2 text-xs font-semibold text-gray-700 hover:bg-gray-50 rounded-lg cursor-pointer transition-colors"
+                className="flex items-center gap-3 px-3 py-2 text-xs font-semibold text-foreground hover:bg-muted rounded-lg cursor-pointer transition-colors"
               >
-                <Link2 size={16} className="text-gray-600 shrink-0" />
+                <Link2 size={16} className="text-muted-foreground shrink-0" />
                 <span>Copy link</span>
               </DropdownMenuItem>
 
               {/* Send to review (Highlighted / Premium style like screenshot) */}
               <DropdownMenuItem 
                 onClick={() => toast.info("Sent to review")}
-                className="flex items-center gap-3 px-3 py-2 text-xs font-semibold text-gray-500 bg-amber-50/60 hover:bg-amber-50 rounded-lg cursor-pointer transition-colors"
+                className="flex items-center gap-3 px-3 py-2 text-xs font-semibold text-muted-foreground bg-amber-500/10 hover:bg-amber-500/20 rounded-lg cursor-pointer transition-colors"
               >
-                <div className="w-5 h-5 rounded-full bg-amber-300/60 flex items-center justify-center shrink-0">
-                  <Crown size={12} className="text-amber-800" />
+                <div className="w-5 h-5 rounded-full bg-amber-500/20 flex items-center justify-center shrink-0">
+                  <Crown size={12} className="text-amber-500" />
                 </div>
-                <span className="text-gray-400">Send to review</span>
+                <span className="text-muted-foreground">Send to review</span>
               </DropdownMenuItem>
 
               {/* Duplicate in another brand */}
               <DropdownMenuItem 
                 onClick={() => toast.info("Duplicate in another brand")}
-                className="flex flex-col items-start gap-0.5 px-3 py-2 text-xs text-gray-700 hover:bg-gray-50 rounded-lg cursor-pointer transition-colors"
+                className="flex flex-col items-start gap-0.5 px-3 py-2 text-xs text-foreground hover:bg-muted rounded-lg cursor-pointer transition-colors"
               >
-                <div className="flex items-center gap-3 font-semibold text-gray-800">
-                  <Building2 size={16} className="text-gray-600 shrink-0" />
+                <div className="flex items-center gap-3 font-semibold text-foreground">
+                  <Building2 size={16} className="text-muted-foreground shrink-0" />
                   <span>Duplicate in another brand</span>
                 </div>
-                <p className="text-[10px] text-gray-400 pl-7 leading-tight">
+                <p className="text-[10px] text-muted-foreground pl-7 leading-tight">
                   Copy to other brands with a simple day and time setup
                 </p>
               </DropdownMenuItem>
@@ -275,13 +275,13 @@ export function AutoListPostCard({
               {/* Duplicate in another brand (advanced) */}
               <DropdownMenuItem 
                 onClick={() => toast.info("Duplicate in another brand (advanced)")}
-                className="flex flex-col items-start gap-0.5 px-3 py-2 text-xs text-gray-700 hover:bg-gray-50 rounded-lg cursor-pointer transition-colors"
+                className="flex flex-col items-start gap-0.5 px-3 py-2 text-xs text-foreground hover:bg-muted rounded-lg cursor-pointer transition-colors"
               >
-                <div className="flex items-center gap-3 font-semibold text-gray-800">
-                  <Sparkles size={16} className="text-gray-600 shrink-0" />
+                <div className="flex items-center gap-3 font-semibold text-foreground">
+                  <Sparkles size={16} className="text-muted-foreground shrink-0" />
                   <span>Duplicate in another brand (advanced)</span>
                 </div>
-                <p className="text-[10px] text-gray-400 pl-7 leading-tight">
+                <p className="text-[10px] text-muted-foreground pl-7 leading-tight">
                   Copy to other brands and schedule cadency, duration, and best times
                 </p>
               </DropdownMenuItem>
@@ -289,7 +289,7 @@ export function AutoListPostCard({
               {/* Delete */}
               <DropdownMenuItem 
                 onClick={() => onDelete(post.id)}
-                className="flex items-center gap-3 px-3 py-2 text-xs font-semibold text-red-600 hover:bg-red-50 rounded-lg cursor-pointer transition-colors mt-0.5 border-t border-gray-100"
+                className="flex items-center gap-3 px-3 py-2 text-xs font-semibold text-red-500 hover:bg-red-500/10 rounded-lg cursor-pointer transition-colors mt-0.5 border-t border-border"
               >
                 <Trash2 size={16} className="text-red-500 shrink-0" />
                 <span>Delete</span>
@@ -300,7 +300,7 @@ export function AutoListPostCard({
       </div>
 
       {/* Editor Box */}
-      <div className="bg-white border border-gray-200 rounded-xl p-3 space-y-3 flex flex-col min-h-[140px] justify-between shadow-inner focus-within:border-black transition-colors duration-200 relative">
+      <div className="bg-card border border-border rounded-xl p-3 space-y-3 flex flex-col min-h-[140px] justify-between shadow-inner focus-within:border-foreground transition-colors duration-200 relative">
         <textarea
           ref={textareaRef}
           value={caption}
@@ -308,7 +308,7 @@ export function AutoListPostCard({
           onBlur={handleBlur}
           placeholder="Write what you want to share..."
           rows={4}
-          className="w-full bg-white border-none outline-none focus:ring-0 resize-none text-xs font-semibold text-gray-800 placeholder-gray-400/80 p-0 leading-relaxed"
+          className="w-full bg-card border-none outline-none focus:ring-0 resize-none text-xs font-semibold text-foreground placeholder:text-muted-foreground p-0 leading-relaxed"
         />
 
         {/* Validation Errors Panel inside Post Card */}
@@ -336,7 +336,7 @@ export function AutoListPostCard({
               const isVideo = isVideoPath(url);
 
               return (
-                <div key={idx} className="relative w-16 h-16 rounded-xl overflow-hidden border border-gray-200 shadow-sm shrink-0 group/media bg-gray-900 transition-all hover:shadow-md">
+                <div key={idx} className="relative w-16 h-16 rounded-xl overflow-hidden border border-border shadow-sm shrink-0 group/media bg-gray-900 transition-all hover:shadow-md">
                   {isVideo ? (
                     <div className="w-full h-full relative">
                       <video 
@@ -358,7 +358,7 @@ export function AutoListPostCard({
                       onError={(e) => {
                         e.target.onerror = null;
                         e.target.src = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="%239ca3af" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>';
-                        e.target.className = "w-full h-full object-center p-3 bg-gray-100";
+                        e.target.className = "w-full h-full object-center p-3 bg-muted";
                       }}
                     />
                   )}
@@ -375,7 +375,7 @@ export function AutoListPostCard({
                           setEditingMediaIndex(idx);
                           setEditingImageUrl(fullUrl);
                         }}
-                        className="w-6 h-6 rounded-full bg-white hover:bg-gray-100 text-gray-800 flex items-center justify-center shadow-md transition-all hover:scale-110 cursor-pointer"
+                        className="w-6 h-6 rounded-full bg-card hover:bg-muted text-foreground flex items-center justify-center shadow-md transition-all hover:scale-110 cursor-pointer"
                       >
                         <Pencil size={11} />
                       </button>
@@ -400,7 +400,7 @@ export function AutoListPostCard({
         )}
 
         {/* Inner Footer: Attachment tools & Character count + Platform Icon */}
-        <div className="flex items-center justify-between pt-1 text-gray-400 relative">
+        <div className="flex items-center justify-between pt-1 text-muted-foreground relative">
           {/* Left tools (Matches image order and styles) */}
           <div className="flex items-center gap-4">
             {/* Media Button */}
@@ -411,11 +411,11 @@ export function AutoListPostCard({
                   e.preventDefault();
                   setActivePopover(activePopover === 'media' ? null : 'media');
                 }}
-                className={`hover:text-gray-700 transition-colors cursor-pointer p-0.5 relative ${activePopover === 'media' ? 'text-black font-extrabold' : ''}`}
+                className={`hover:text-foreground transition-colors cursor-pointer p-0.5 relative ${activePopover === 'media' ? 'text-black font-extrabold' : ''}`}
                 title="Attach media"
               >
                 <Image size={15} />
-                <span className="absolute -top-1 -right-1 text-[7px] bg-white rounded-full border border-gray-200 w-2.5 h-2.5 flex items-center justify-center font-bold text-gray-500 shadow-sm leading-none">+</span>
+                <span className="absolute -top-1 -right-1 text-[7px] bg-card rounded-full border border-border w-2.5 h-2.5 flex items-center justify-center font-bold text-muted-foreground shadow-sm leading-none">+</span>
               </button>
               {activePopover === 'media' && (
                 <MediaDropdown 
@@ -447,7 +447,7 @@ export function AutoListPostCard({
                   e.preventDefault();
                   setActivePopover(activePopover === 'emoji' ? null : 'emoji');
                 }}
-                className={`hover:text-gray-700 transition-colors cursor-pointer p-0.5 ${activePopover === 'emoji' ? 'text-black' : ''}`}
+                className={`hover:text-foreground transition-colors cursor-pointer p-0.5 ${activePopover === 'emoji' ? 'text-black' : ''}`}
                 title="Add emoji"
               >
                 <Smile size={15} />
@@ -467,7 +467,7 @@ export function AutoListPostCard({
             <button 
               type="button"
               onClick={() => setShowFirstCommentModal(true)}
-              className={`hover:text-gray-700 transition-colors cursor-pointer p-0.5 ${post.firstComment ? 'text-[#a855f7] bg-purple-50 rounded-lg' : ''}`}
+              className={`hover:text-foreground transition-colors cursor-pointer p-0.5 ${post.firstComment ? 'text-[#a855f7] bg-purple-50 rounded-lg' : ''}`}
               title="Add first comment"
             >
               <MessageSquare size={15} />
@@ -481,7 +481,7 @@ export function AutoListPostCard({
                   e.preventDefault();
                   setActivePopover(activePopover === 'utm' ? null : 'utm');
                 }}
-                className={`hover:text-gray-700 transition-colors cursor-pointer p-0.5 ${activePopover === 'utm' ? 'text-black' : ''}`}
+                className={`hover:text-foreground transition-colors cursor-pointer p-0.5 ${activePopover === 'utm' ? 'text-black' : ''}`}
                 title="Campaign link generator"
               >
                 <Link2 size={15} />
@@ -501,7 +501,7 @@ export function AutoListPostCard({
             <button 
               type="button"
               onClick={() => toast.info("Translation feature coming soon")}
-              className="hover:text-gray-700 transition-colors cursor-pointer p-0.5" 
+              className="hover:text-foreground transition-colors cursor-pointer p-0.5" 
               title="Translate"
             >
               <Languages size={15} />
@@ -511,7 +511,7 @@ export function AutoListPostCard({
             <button 
               type="button" 
               onClick={() => fileInputRef.current?.click()}
-              className="hover:text-gray-700 transition-colors cursor-pointer p-0.5" 
+              className="hover:text-foreground transition-colors cursor-pointer p-0.5" 
               title="Add document"
             >
               <FileText size={15} />
@@ -519,7 +519,7 @@ export function AutoListPostCard({
           </div>
 
           {/* Right counter or Save action */}
-          <div className="flex items-center gap-2.5 text-[10px] font-bold text-gray-400">
+          <div className="flex items-center gap-2.5 text-[10px] font-bold text-muted-foreground">
             {caption !== (post.caption || "") && (
               <button 
                 type="button"
@@ -552,13 +552,13 @@ export function AutoListPostCard({
 
       {/* Bottom Bar: On switch & Trash delete */}
       <div className="flex items-center justify-end gap-3 text-xs">
-        <div className="flex items-center gap-1.5 font-semibold text-gray-600">
+        <div className="flex items-center gap-1.5 font-semibold text-muted-foreground">
           <Switch 
             checked={post.status !== 'PAUSED'} 
             onCheckedChange={(checked) => onToggleStatus(post.id, checked ? 'DRAFT' : 'PAUSED')} 
             className="scale-90"
           />
-          <span className="text-[11px] font-bold text-gray-500">{post.status !== 'PAUSED' ? 'On' : 'Off'}</span>
+          <span className="text-[11px] font-bold text-muted-foreground">{post.status !== 'PAUSED' ? 'On' : 'Off'}</span>
         </div>
         
         <button 
@@ -567,7 +567,7 @@ export function AutoListPostCard({
             e.preventDefault();
             onDelete(post.id);
           }}
-          className="text-gray-400 hover:text-red-500 transition-colors cursor-pointer p-1"
+          className="text-muted-foreground hover:text-red-500 transition-colors cursor-pointer p-1"
           title="Delete post"
         >
           <Trash2 size={16} />

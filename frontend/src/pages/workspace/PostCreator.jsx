@@ -484,7 +484,7 @@ export function PostCreatorPage() {
               <div className="w-7 h-7 rounded-lg bg-black flex items-center justify-center">
                 <svg className="w-4 h-4 text-white fill-white" viewBox="0 0 24 24"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>
               </div>
-              <h1 className="text-[15px] font-black text-gray-900 tracking-tight font-sans">
+              <h1 className="text-[15px] font-black text-foreground tracking-tight font-sans">
                 {isLibrary 
                   ? (editingPost ? t("planner:postCreator.header.editTemplate") : t("planner:postCreator.header.createTemplate")) 
                   : (editingPost ? t("planner:postCreator.header.editPost") : t("planner:postCreator.header.createPost"))}
@@ -493,24 +493,24 @@ export function PostCreatorPage() {
             {!editingPost && !isLibrary && (
               <button 
                 onClick={handleOpenTemplatePicker}
-                className="flex items-center gap-1.5 px-3 py-1.5 bg-white text-purple-700 hover:bg-purple-50 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all shadow-sm border border-purple-200 cursor-pointer font-sans"
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-card text-purple-700 hover:bg-purple-50 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all shadow-sm border border-purple-200 cursor-pointer font-sans"
               >
                 <Diamond size={11} />
                 {t("planner:postCreator.header.loadTemplate")}
               </button>
             )}
           </div>
-          <button onClick={closePostCreator} data-testid="post-creator-close-btn" className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/80 hover:bg-white border border-gray-200 text-gray-500 hover:text-black transition-all group cursor-pointer font-sans shadow-sm">
+          <button onClick={closePostCreator} data-testid="post-creator-close-btn" className="flex items-center gap-2 px-4 py-2 rounded-xl bg-card/80 hover:bg-card border border-border text-muted-foreground hover:text-black transition-all group cursor-pointer font-sans shadow-sm">
             <X size={16} className="group-hover:rotate-90 transition-transform duration-300" />
             <span className="text-[11px] font-bold uppercase tracking-widest">{t("planner:postCreator.header.close")}</span>
           </button>
         </div>
 
         {/* Main Unified Workspace Card */}
-        <div className="flex-1 bg-white rounded-[24px] border border-gray-200/80 shadow-xl flex overflow-hidden min-h-0">
+        <div className="flex-1 bg-card rounded-[24px] border border-border/80 shadow-xl flex overflow-hidden min-h-0">
 
           {/* Cột 1: COMPOSE (Bên trái) */}
-          <div className="flex-[1.15] flex flex-col min-h-0 overflow-hidden border-r border-gray-100">
+          <div className="flex-[1.15] flex flex-col min-h-0 overflow-hidden border-r border-border">
             <ComposerHeader />
             <ComposerBody />
             <ComposerErrorPanel />
@@ -518,7 +518,7 @@ export function PostCreatorPage() {
           </div>
 
           {/* Cột 2: PREVIEW / NOTES (Bên phải) */}
-          <div className="flex-[0.85] flex flex-col min-h-0 overflow-hidden bg-white">
+          <div className="flex-[0.85] flex flex-col min-h-0 overflow-hidden bg-card">
             {isNotesOpen ? (
               <NotesPanel />
             ) : (
@@ -800,15 +800,15 @@ export function PostCreatorPage() {
         />
         {showTemplatePicker && (
           <div className="fixed inset-0 z-[3000] flex items-center justify-center bg-black/40 backdrop-blur-sm animate-in fade-in duration-200">
-            <div className="bg-white rounded-[32px] w-full max-w-lg shadow-[0_20px_50px_rgba(0,0,0,0.15)] border border-gray-100 overflow-hidden animate-in zoom-in-95 duration-200">
-              <div className="px-6 py-5 border-b border-gray-100 flex items-center justify-between">
+            <div className="bg-card rounded-[32px] w-full max-w-lg shadow-[0_20px_50px_rgba(0,0,0,0.15)] border border-border overflow-hidden animate-in zoom-in-95 duration-200">
+              <div className="px-6 py-5 border-b border-border flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <Diamond size={16} className="text-purple-600" />
-                  <h3 className="font-bold text-[#0A0A0A] text-xs uppercase tracking-wider font-sans">{t("planner:postCreator.header.loadTemplate")}</h3>
+                  <h3 className="font-bold text-foreground text-xs uppercase tracking-wider font-sans">{t("planner:postCreator.header.loadTemplate")}</h3>
                 </div>
                 <button 
                   onClick={() => setShowTemplatePicker(false)}
-                  className="text-gray-400 hover:text-black transition-colors cursor-pointer"
+                  className="text-muted-foreground hover:text-black transition-colors cursor-pointer"
                 >
                   <X size={18} />
                 </button>
@@ -816,14 +816,14 @@ export function PostCreatorPage() {
               
               <div className="p-6 max-h-[400px] overflow-y-auto space-y-3 scrollbar-thin">
                 {loadingTemplates ? (
-                  <div className="py-12 flex flex-col items-center justify-center gap-2 text-gray-400">
+                  <div className="py-12 flex flex-col items-center justify-center gap-2 text-muted-foreground">
                     <Loader2 className="animate-spin" size={24} />
                     <span className="text-[10px] font-bold uppercase tracking-wider font-sans">{t("planner:postCreator.templatesPicker.loading")}</span>
                   </div>
                 ) : templates.length === 0 ? (
-                  <div className="py-12 text-center text-gray-400 space-y-2">
+                  <div className="py-12 text-center text-muted-foreground space-y-2">
                     <p className="text-[10px] font-bold uppercase tracking-wider font-sans">{t("planner:postCreator.templatesPicker.noTemplates")}</p>
-                    <p className="text-[11px] text-gray-400 font-medium font-sans">{t("planner:postCreator.templatesPicker.noTemplatesDesc")}</p>
+                    <p className="text-[11px] text-muted-foreground font-medium font-sans">{t("planner:postCreator.templatesPicker.noTemplatesDesc")}</p>
                   </div>
                 ) : (
                   templates.map((tpl) => (
@@ -833,9 +833,9 @@ export function PostCreatorPage() {
                         loadTemplate(tpl);
                         setShowTemplatePicker(false);
                       }}
-                      className="w-full text-left p-4 rounded-2xl border border-gray-100 hover:border-purple-300 hover:bg-purple-50/20 transition-all flex items-center gap-4 group cursor-pointer font-sans"
+                      className="w-full text-left p-4 rounded-2xl border border-border hover:border-purple-300 hover:bg-purple-50/20 transition-all flex items-center gap-4 group cursor-pointer font-sans"
                     >
-                      <div className="w-12 h-12 rounded-xl bg-gray-50 flex items-center justify-center overflow-hidden shrink-0 border border-gray-100">
+                      <div className="w-12 h-12 rounded-xl bg-muted flex items-center justify-center overflow-hidden shrink-0 border border-border">
                         {tpl.thumbnail ? (
                           <img src={tpl.thumbnail} className="w-full h-full object-cover" />
                         ) : (
@@ -843,12 +843,12 @@ export function PostCreatorPage() {
                         )}
                       </div>
                       <div className="flex-1 min-w-0">
-                        <h4 className="font-bold text-xs text-gray-900 group-hover:text-purple-700 transition-colors truncate uppercase tracking-tight">{tpl.title}</h4>
-                        <p className="text-[11px] text-gray-400 line-clamp-1 mt-0.5 font-medium">{tpl.caption || t("planner:postCreator.templatesPicker.noCaption")}</p>
+                        <h4 className="font-bold text-xs text-foreground group-hover:text-purple-700 transition-colors truncate uppercase tracking-tight">{tpl.title}</h4>
+                        <p className="text-[11px] text-muted-foreground line-clamp-1 mt-0.5 font-medium">{tpl.caption || t("planner:postCreator.templatesPicker.noCaption")}</p>
                       </div>
                       <div className="flex gap-1 shrink-0">
                         {tpl.platforms?.map(plt => (
-                          <span key={plt} className="text-[9px] font-black bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded uppercase tracking-tighter">
+                          <span key={plt} className="text-[9px] font-black bg-muted text-muted-foreground px-1.5 py-0.5 rounded uppercase tracking-tighter">
                             {plt.toLowerCase()}
                           </span>
                         ))}
@@ -864,12 +864,12 @@ export function PostCreatorPage() {
         {/* Select Reviewers Modal */}
         {showReviewersModal && (
           <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[100] p-4 animate-in fade-in duration-200">
-            <div className="bg-white rounded-3xl shadow-[0_20px_50px_rgba(0,0,0,0.15)] border border-gray-100 w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200 p-6 space-y-6 text-left">
+            <div className="bg-card rounded-3xl shadow-[0_20px_50px_rgba(0,0,0,0.15)] border border-border w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200 p-6 space-y-6 text-left">
               <div className="flex items-center justify-between">
-                <h3 className="text-base font-bold text-[#0A0A0A] tracking-tight font-sans">{t("planner:postCreator.composer.sections.selectReviewers")}</h3>
+                <h3 className="text-base font-bold text-foreground tracking-tight font-sans">{t("planner:postCreator.composer.sections.selectReviewers")}</h3>
                 <button 
                   onClick={() => setShowReviewersModal(false)}
-                  className="text-gray-400 hover:text-black transition-colors cursor-pointer"
+                  className="text-muted-foreground hover:text-black transition-colors cursor-pointer"
                 >
                   <X size={18} />
                 </button>
@@ -881,14 +881,14 @@ export function PostCreatorPage() {
                   placeholder={t("planner:postCreator.composer.sections.searchUser")}
                   value={reviewerSearchQuery}
                   onChange={(e) => setReviewerSearchQuery(e.target.value)}
-                  className="w-full pl-4 pr-10 py-3 bg-gray-50 border border-transparent rounded-2xl text-[12px] font-bold text-[#0A0A0A] outline-none focus:bg-white focus:border-gray-200 transition-all placeholder-gray-400 font-sans"
+                  className="w-full pl-4 pr-10 py-3 bg-muted border border-transparent rounded-2xl text-[12px] font-bold text-foreground outline-none focus:bg-card focus:border-border transition-all placeholder-gray-400 font-sans"
                 />
-                <div className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400">
+                <div className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground">
                   <Search size={14} />
                 </div>
               </div>
 
-              <div className="flex items-center justify-between text-[11px] font-black uppercase tracking-wider text-gray-400">
+              <div className="flex items-center justify-between text-[11px] font-black uppercase tracking-wider text-muted-foreground">
                 <span className="font-sans">{t("planner:postCreator.composer.sections.reviewers")}</span>
                 <button 
                   type="button" 
@@ -908,7 +908,7 @@ export function PostCreatorPage() {
 
               <div className="space-y-3 max-h-60 overflow-y-auto pr-1.5 scrollbar-thin">
                 {potentialReviewers.length === 0 ? (
-                  <div className="py-8 text-center text-gray-400 text-[11px] font-bold uppercase tracking-wider font-sans">
+                  <div className="py-8 text-center text-muted-foreground text-[11px] font-bold uppercase tracking-wider font-sans">
                     Không có người duyệt khả dụng
                   </div>
                 ) : (
@@ -933,26 +933,26 @@ export function PostCreatorPage() {
                         <div 
                           key={rev.id}
                           onClick={handleToggle}
-                          className="flex items-center justify-between p-3.5 bg-white border border-gray-100 hover:border-gray-200 rounded-2xl transition-all cursor-pointer group font-sans"
+                          className="flex items-center justify-between p-3.5 bg-card border border-border hover:border-border rounded-2xl transition-all cursor-pointer group font-sans"
                         >
                           <div className="flex items-center gap-3.5">
                             {rev.avatarUrl ? (
-                              <img src={rev.avatarUrl} alt={rev.name} className="w-8 h-8 rounded-xl object-cover border border-gray-100" />
+                              <img src={rev.avatarUrl} alt={rev.name} className="w-8 h-8 rounded-xl object-cover border border-border" />
                             ) : (
                               <div className={`w-8 h-8 rounded-xl flex items-center justify-center text-[10px] font-black uppercase tracking-widest ${badgeStyle}`}>
                                 {initials}
                               </div>
                             )}
                             <div>
-                              <div className="text-[11px] font-bold text-[#0A0A0A] group-hover:text-black transition-colors">{rev.name}</div>
-                              <div className="text-[9px] text-gray-400 font-bold uppercase tracking-wider mt-0.5">{rev.role}</div>
+                              <div className="text-[11px] font-bold text-foreground group-hover:text-black transition-colors">{rev.name}</div>
+                              <div className="text-[9px] text-muted-foreground font-bold uppercase tracking-wider mt-0.5">{rev.role}</div>
                             </div>
                           </div>
                           <div
                             className={`w-5 h-5 rounded-full border flex items-center justify-center transition-all ${
                               isChecked 
                                 ? 'border-[#10B981] bg-[#10B981] text-white' 
-                                : 'border-gray-300 bg-white'
+                                : 'border-gray-300 bg-card'
                             }`}
                           >
                             {isChecked && <Check size={10} strokeWidth={4} />}
@@ -963,8 +963,8 @@ export function PostCreatorPage() {
                 )}
               </div>
 
-              <div className="space-y-3 pt-4 border-t border-gray-100">
-                <div className="text-[10px] font-black uppercase tracking-wider text-gray-400 font-sans">{t("planner:postCreator.composer.sections.policyLabel")}</div>
+              <div className="space-y-3 pt-4 border-t border-border">
+                <div className="text-[10px] font-black uppercase tracking-wider text-muted-foreground font-sans">{t("planner:postCreator.composer.sections.policyLabel")}</div>
                 <div className="space-y-2.5">
                   {[
                     { id: 'NO_APPROVAL', label: t("planner:postCreator.composer.sections.policyNone") },
@@ -981,11 +981,11 @@ export function PostCreatorPage() {
                         <div className={`w-4 h-4 rounded-full border flex items-center justify-center transition-all ${
                           isSelected 
                             ? 'border-[#0A0A0A] bg-[#0A0A0A]' 
-                            : 'border-gray-300 bg-white'
+                            : 'border-gray-300 bg-card'
                         }`}>
-                          {isSelected && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
+                          {isSelected && <div className="w-1.5 h-1.5 rounded-full bg-card" />}
                         </div>
-                        <span className="text-[11px] font-bold text-gray-600 group-hover:text-black transition-colors">{opt.label}</span>
+                        <span className="text-[11px] font-bold text-muted-foreground group-hover:text-black transition-colors">{opt.label}</span>
                       </div>
                     );
                   })}
@@ -1006,11 +1006,11 @@ export function PostCreatorPage() {
 
         {blockedProductId && (
           <div className="fixed inset-0 z-[3000] flex items-center justify-center bg-black/60 backdrop-blur-sm">
-            <div className="bg-white rounded-3xl p-8 max-w-md w-full shadow-2xl text-center relative overflow-hidden animate-in zoom-in-95 duration-200 mx-4">
+            <div className="bg-card rounded-3xl p-8 max-w-md w-full shadow-2xl text-center relative overflow-hidden animate-in zoom-in-95 duration-200 mx-4">
               <button 
                 type="button"
                 onClick={() => setBlockedProductId(null)}
-                className="absolute top-4 right-4 text-gray-400 hover:text-black transition-colors cursor-pointer font-sans"
+                className="absolute top-4 right-4 text-muted-foreground hover:text-black transition-colors cursor-pointer font-sans"
               >
                 <X size={20} />
               </button>
@@ -1019,10 +1019,10 @@ export function PostCreatorPage() {
                 <Lock size={26} className="animate-pulse" />
               </div>
               
-              <h3 className="text-xl font-bold text-gray-900 mb-2 font-sans">
+              <h3 className="text-xl font-bold text-foreground mb-2 font-sans">
                 {FEATURE_GATE_REGISTRY[blockedProductId]?.title || "Feature Locked"}
               </h3>
-              <p className="text-sm text-gray-500 mb-6 leading-relaxed font-sans">
+              <p className="text-sm text-muted-foreground mb-6 leading-relaxed font-sans">
                 {FEATURE_GATE_REGISTRY[blockedProductId]?.description || "This channel/feature is not available on your current plan. Please upgrade."}
               </p>
               

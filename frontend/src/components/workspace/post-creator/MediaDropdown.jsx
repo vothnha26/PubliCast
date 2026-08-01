@@ -15,9 +15,9 @@ export function MediaDropdown({ onClose, onSelectImage, onSelectVideo, onSelectD
   }, []);
 
   const menuItems = [
-    { id: 'image', label: 'Add image', icon: <ImageIcon size={16} className="text-gray-500" />, onClick: onSelectImage },
-    { id: 'video', label: 'Add video', icon: <PlayCircle size={16} className="text-gray-500" />, onClick: onSelectVideo },
-    { id: 'library', label: 'From Media Library', icon: <Folder size={16} className="text-gray-500" />, onClick: onSelectLibrary },
+    { id: 'image', label: 'Add image', icon: <ImageIcon size={16} className="text-muted-foreground" />, onClick: onSelectImage },
+    { id: 'video', label: 'Add video', icon: <PlayCircle size={16} className="text-muted-foreground" />, onClick: onSelectVideo },
+    { id: 'library', label: 'From Media Library', icon: <Folder size={16} className="text-muted-foreground" />, onClick: onSelectLibrary },
     { isSeparator: true },
     { id: 'drive', label: 'Google Drive', onClick: onSelectDrive, icon: (
       <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none">
@@ -28,17 +28,17 @@ export function MediaDropdown({ onClose, onSelectImage, onSelectVideo, onSelectD
     )},
     { isSeparator: true },
     { id: 'stock_img', label: 'Stock images & videos', icon: <ImageIcon size={16} className="text-blue-600" />, onClick: onSelectStock },
-    { id: 'gifs', label: 'GIFs gallery', icon: <Folder size={16} className="text-gray-500" />, hasSub: true },
+    { id: 'gifs', label: 'GIFs gallery', icon: <Folder size={16} className="text-muted-foreground" />, hasSub: true },
   ];
 
   return (
     <div 
       ref={containerRef}
-      className={`absolute left-0 w-56 bg-white rounded-2xl shadow-2xl border border-gray-100 py-2 z-50 animate-in fade-in text-left ${positionClass}`}
+      className={`absolute left-0 w-56 bg-card rounded-2xl shadow-2xl border border-border py-2 z-50 animate-in fade-in text-left ${positionClass}`}
     >
       {menuItems.map((item, idx) => {
         if (item.isSeparator) {
-          return <div key={idx} className="h-px bg-gray-100 my-1" />;
+          return <div key={idx} className="h-px bg-muted my-1" />;
         }
         return (
           <button
@@ -48,13 +48,13 @@ export function MediaDropdown({ onClose, onSelectImage, onSelectVideo, onSelectD
               if (item.onClick) item.onClick();
               onClose();
             }}
-            className="w-full flex items-center justify-between px-4 py-2 hover:bg-gray-50 transition-all text-left cursor-pointer"
+            className="w-full flex items-center justify-between px-4 py-2 hover:bg-muted transition-all text-left cursor-pointer"
           >
             <div className="flex items-center gap-3">
               {item.icon}
-              <span className="text-[11px] font-bold text-gray-700">{item.label}</span>
+              <span className="text-[11px] font-bold text-foreground">{item.label}</span>
             </div>
-            {item.hasSub && <ChevronRight size={12} className="text-gray-400" />}
+            {item.hasSub && <ChevronRight size={12} className="text-muted-foreground" />}
           </button>
         );
       })}

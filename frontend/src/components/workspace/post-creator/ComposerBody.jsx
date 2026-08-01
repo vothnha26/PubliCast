@@ -272,7 +272,7 @@ export function ComposerBody() {
         )}
 
         {/* Text Area Card */}
-        <div className="border border-gray-200 rounded-[24px] overflow-hidden focus-within:border-black transition-all shadow-sm bg-white relative">
+        <div className="border border-border rounded-[24px] overflow-hidden focus-within:border-black transition-all shadow-sm bg-card relative">
           <input type="file" ref={fileInputRef} accept="video/*,image/*" onChange={handleVideoChange} className="hidden" data-testid="post-file-input" />
           
 
@@ -282,15 +282,15 @@ export function ComposerBody() {
 
           {/* Locked state: tab platform chưa customize */}
           {isLockedPlatformTab ? (
-            <div className="mx-5 my-4 border-2 border-dashed border-gray-200 rounded-2xl p-6 flex flex-col items-center gap-3 bg-gray-50/50 animate-in fade-in">
-              <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center">
-                <Lock size={16} className="text-gray-400" />
+            <div className="mx-5 my-4 border-2 border-dashed border-border rounded-2xl p-6 flex flex-col items-center gap-3 bg-muted/50 animate-in fade-in">
+              <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center">
+                <Lock size={16} className="text-muted-foreground" />
               </div>
               <div className="text-center">
-                <p className="text-[11px] font-black text-gray-500 uppercase tracking-wider font-sans">
+                <p className="text-[11px] font-black text-muted-foreground uppercase tracking-wider font-sans">
                   Đang dùng nội dung chung
                 </p>
-                <p className="text-[10px] text-gray-400 mt-0.5 font-sans">
+                <p className="text-[10px] text-muted-foreground mt-0.5 font-sans">
                   Bấm bên dưới để chỉnh nội dung riêng cho nền tảng này
                 </p>
               </div>
@@ -327,11 +327,11 @@ export function ComposerBody() {
           )}
 
           {!isCustomTab && (!effectivePostMedia || effectivePostMedia.length === 0) && (videoFile || uploadedVideoPath) && !isImageFile && (
-            <div className="px-6 py-3 border-t border-gray-50 bg-gray-50/50 flex items-center justify-between animate-in fade-in slide-in-from-top-1">
-              <div className="flex items-center gap-2 text-xs font-bold text-gray-700">
+            <div className="px-6 py-3 border-t border-gray-50 bg-muted/50 flex items-center justify-between animate-in fade-in slide-in-from-top-1">
+              <div className="flex items-center gap-2 text-xs font-bold text-foreground">
                 <Youtube className="text-red-500 fill-red-500 font-sans" size={16} />
                 <span className="truncate max-w-[300px] font-sans">{videoFile ? videoFile.name : uploadedVideoPath.split('/').pop()}</span>
-                {videoFile && <span className="text-[10px] text-gray-400 font-semibold uppercase font-sans">({(videoFile.size / (1024 * 1024)).toFixed(2)} MB)</span>}
+                {videoFile && <span className="text-[10px] text-muted-foreground font-semibold uppercase font-sans">({(videoFile.size / (1024 * 1024)).toFixed(2)} MB)</span>}
                 {isUploadingVideo && <span className="text-[10px] text-blue-500 animate-pulse font-bold uppercase font-sans">{t("planner:postCreator.composer.uploading")}</span>}
               </div>
               <div className="flex items-center gap-3">
@@ -344,7 +344,7 @@ export function ComposerBody() {
                 >
                   {t("planner:postCreator.composer.editVideo")}
                 </button>
-                <button onClick={handleRemoveVideo} className="text-[10px] font-black text-gray-400 hover:text-red-500 uppercase tracking-widest transition-colors cursor-pointer font-sans">{t("planner:postCreator.composer.remove")}</button>
+                <button onClick={handleRemoveVideo} className="text-[10px] font-black text-muted-foreground hover:text-red-500 uppercase tracking-widest transition-colors cursor-pointer font-sans">{t("planner:postCreator.composer.remove")}</button>
               </div>
             </div>
           )}
@@ -367,13 +367,13 @@ export function ComposerBody() {
 
               {/* Multiple thumbnails for standard posts */}
               {effectivePostMedia && effectivePostMedia.length > 0 ? (
-                <div className="px-6 pb-4 bg-white flex flex-wrap gap-4 animate-in fade-in duration-300">
+                <div className="px-6 pb-4 bg-card flex flex-wrap gap-4 animate-in fade-in duration-300">
                   {effectivePostMedia.map((item, index) => {
                     const isItemVid = isVideoPath(item.previewUrl || item.path, item.file);
                     const isSpoilerActive = !!spoilersMap[index];
                     return (
                       <div key={index} className="relative group">
-                        <div className="w-16 h-16 rounded-2xl overflow-hidden border border-gray-100 shadow-md bg-gray-50 flex items-center justify-center relative">
+                        <div className="w-16 h-16 rounded-2xl overflow-hidden border border-border shadow-md bg-muted flex items-center justify-center relative">
                           {isItemVid ? (
                             <>
                           <video 
@@ -382,7 +382,7 @@ export function ComposerBody() {
                             className="w-full h-full object-cover" 
                           />
                               <div className="absolute inset-0 bg-black/30 flex items-center justify-center">
-                                <div className="w-6 h-6 rounded-full bg-white/80 flex items-center justify-center">
+                                <div className="w-6 h-6 rounded-full bg-card/80 flex items-center justify-center">
                                   <div className="w-0 h-0 border-y-4 border-y-transparent border-l-6 border-l-black ml-0.5" />
                                 </div>
                               </div>
@@ -414,7 +414,7 @@ export function ComposerBody() {
 
                         {/* Popover Menu tùy chỉnh */}
                         {activeMediaMenuIndex === index && (
-                          <div className="absolute bottom-full left-0 mb-2 min-w-[220px] w-max bg-white rounded-2xl shadow-2xl border border-gray-100 py-2 z-50 text-left text-xs font-sans text-gray-700 animate-in fade-in slide-in-from-bottom-1">
+                          <div className="absolute bottom-full left-0 mb-2 min-w-[220px] w-max bg-card rounded-2xl shadow-2xl border border-border py-2 z-50 text-left text-xs font-sans text-foreground animate-in fade-in slide-in-from-bottom-1">
                             {isItemVid ? (
                               /* Video Menu: Edit video, Add alt text, Upload video thumbnail, Remove */
                               <>
@@ -425,9 +425,9 @@ export function ComposerBody() {
                                     setEditingPostMediaIndex(index);
                                     setShowVideoEditor(true);
                                   }}
-                                  className="w-full flex items-center gap-2.5 px-4 py-2 hover:bg-gray-50 transition-all cursor-pointer font-bold text-gray-700 whitespace-nowrap font-sans"
+                                  className="w-full flex items-center gap-2.5 px-4 py-2 hover:bg-muted transition-all cursor-pointer font-bold text-foreground whitespace-nowrap font-sans"
                                 >
-                                  <Edit size={14} className="text-gray-500" />
+                                  <Edit size={14} className="text-muted-foreground" />
                                   {t("planner:postCreator.composer.editVideo")}
                                 </button>
                                 <button
@@ -437,9 +437,9 @@ export function ComposerBody() {
                                     setEditingPostMediaIndex(index);
                                     setShowAltTextModal(true);
                                   }}
-                                  className="w-full flex items-center gap-2.5 px-4 py-2 hover:bg-gray-50 transition-all cursor-pointer font-bold text-gray-700 whitespace-nowrap font-sans"
+                                  className="w-full flex items-center gap-2.5 px-4 py-2 hover:bg-muted transition-all cursor-pointer font-bold text-foreground whitespace-nowrap font-sans"
                                 >
-                                  <Type size={14} className="text-gray-500" />
+                                  <Type size={14} className="text-muted-foreground" />
                                   {t("planner:postCreator.composer.imageMenu.altText")}
                                 </button>
                                 <button
@@ -448,12 +448,12 @@ export function ComposerBody() {
                                     setActiveMediaMenuIndex(null);
                                     handleThumbnailUpload();
                                   }}
-                                  className="w-full flex items-center gap-2.5 px-4 py-2 hover:bg-gray-50 transition-all cursor-pointer font-bold text-gray-700 whitespace-nowrap font-sans"
+                                  className="w-full flex items-center gap-2.5 px-4 py-2 hover:bg-muted transition-all cursor-pointer font-bold text-foreground whitespace-nowrap font-sans"
                                 >
-                                  <ImageIcon size={14} className="text-gray-500" />
+                                  <ImageIcon size={14} className="text-muted-foreground" />
                                   Upload video thumbnail
                                 </button>
-                                <div className="h-px bg-gray-100 my-1" />
+                                <div className="h-px bg-muted my-1" />
                                 <button
                                   type="button"
                                   onClick={() => {
@@ -476,21 +476,21 @@ export function ComposerBody() {
                                     setEditingPostMediaIndex(index);
                                     setShowImageEditor(true);
                                   }}
-                                  className="w-full flex items-center gap-2.5 px-4 py-2 hover:bg-gray-50 transition-all cursor-pointer font-bold text-gray-700 whitespace-nowrap font-sans"
+                                  className="w-full flex items-center gap-2.5 px-4 py-2 hover:bg-muted transition-all cursor-pointer font-bold text-foreground whitespace-nowrap font-sans"
                                 >
-                                  <Edit size={14} className="text-gray-500" />
+                                  <Edit size={14} className="text-muted-foreground" />
                                   {t("planner:postCreator.composer.imageMenu.edit")}
                                 </button>
                                 <div 
                                   onClick={() => handleToggleSpoiler(index)}
-                                  className="w-full flex items-center justify-between px-4 py-2 hover:bg-gray-50 transition-all cursor-pointer font-bold text-gray-700 whitespace-nowrap font-sans"
+                                  className="w-full flex items-center justify-between px-4 py-2 hover:bg-muted transition-all cursor-pointer font-bold text-foreground whitespace-nowrap font-sans"
                                 >
                                   <div className="flex items-center gap-2.5">
-                                    <EyeOff size={14} className="text-gray-500" />
+                                    <EyeOff size={14} className="text-muted-foreground" />
                                     <span>Spoiler</span>
                                   </div>
                                   <div className={`w-8 h-4.5 rounded-full transition-colors relative ml-4 ${isSpoilerActive ? 'bg-gray-900' : 'bg-gray-200'}`}>
-                                    <div className={`w-3.5 h-3.5 rounded-full bg-white absolute top-0.5 transition-transform ${isSpoilerActive ? 'translate-x-4' : 'translate-x-0.5'}`} />
+                                    <div className={`w-3.5 h-3.5 rounded-full bg-card absolute top-0.5 transition-transform ${isSpoilerActive ? 'translate-x-4' : 'translate-x-0.5'}`} />
                                   </div>
                                 </div>
                                 <button
@@ -500,12 +500,12 @@ export function ComposerBody() {
                                     setEditingPostMediaIndex(index);
                                     setShowAltTextModal(true);
                                   }}
-                                  className="w-full flex items-center gap-2.5 px-4 py-2 hover:bg-gray-50 transition-all cursor-pointer font-bold text-gray-700 whitespace-nowrap font-sans"
+                                  className="w-full flex items-center gap-2.5 px-4 py-2 hover:bg-muted transition-all cursor-pointer font-bold text-foreground whitespace-nowrap font-sans"
                                 >
-                                  <Type size={14} className="text-gray-500" />
+                                  <Type size={14} className="text-muted-foreground" />
                                   {t("planner:postCreator.composer.imageMenu.altText")}
                                 </button>
-                                <div className="h-px bg-gray-100 my-1" />
+                                <div className="h-px bg-muted my-1" />
                                 <button
                                   type="button"
                                   onClick={() => {
@@ -529,9 +529,9 @@ export function ComposerBody() {
 
               {/* Single Thumbnail Image / Video display */}
               {(!effectivePostMedia || effectivePostMedia.length === 0) && videoFileUrl && (
-                <div className="px-6 pb-4 bg-white flex flex-wrap gap-3 animate-in fade-in duration-300">
+                <div className="px-6 pb-4 bg-card flex flex-wrap gap-3 animate-in fade-in duration-300">
                   <div className="relative">
-                    <div className="w-16 h-16 rounded-2xl overflow-hidden border border-gray-100 shadow-md relative">
+                    <div className="w-16 h-16 rounded-2xl overflow-hidden border border-border shadow-md relative">
                       {isImageFile ? (
                         <>
                           <img
@@ -555,7 +555,7 @@ export function ComposerBody() {
                             className="w-full h-full object-cover" 
                           />
                           <div className="absolute inset-0 bg-black/30 flex items-center justify-center">
-                            <div className="w-6 h-6 rounded-full bg-white/80 flex items-center justify-center">
+                            <div className="w-6 h-6 rounded-full bg-card/80 flex items-center justify-center">
                               <div className="w-0 h-0 border-y-4 border-y-transparent border-l-6 border-l-black ml-0.5" />
                             </div>
                           </div>
@@ -572,38 +572,38 @@ export function ComposerBody() {
                     </button>
 
                     {showImageMenu && (
-                      <div className="absolute bottom-full left-0 mb-2 min-w-[220px] w-max bg-white rounded-2xl shadow-2xl border border-gray-100 py-2 z-50 text-left text-xs font-sans text-gray-700 animate-in fade-in slide-in-from-bottom-1">
+                      <div className="absolute bottom-full left-0 mb-2 min-w-[220px] w-max bg-card rounded-2xl shadow-2xl border border-border py-2 z-50 text-left text-xs font-sans text-foreground animate-in fade-in slide-in-from-bottom-1">
                         {isImageFile ? (
                           <>
                             <button 
                               type="button" 
                               onClick={() => { setShowImageMenu(false); setShowImageEditor(true); }}
-                              className="w-full flex items-center gap-2.5 px-4 py-2 hover:bg-gray-50 transition-all cursor-pointer font-bold text-gray-700 whitespace-nowrap font-sans"
+                              className="w-full flex items-center gap-2.5 px-4 py-2 hover:bg-muted transition-all cursor-pointer font-bold text-foreground whitespace-nowrap font-sans"
                             >
-                              <Edit size={14} className="text-gray-500" />
+                              <Edit size={14} className="text-muted-foreground" />
                               {t("planner:postCreator.composer.imageMenu.edit")}
                             </button>
                             <div 
                               onClick={() => handleToggleSpoiler('single')}
-                              className="w-full flex items-center justify-between px-4 py-2 hover:bg-gray-50 transition-all cursor-pointer font-bold text-gray-700 whitespace-nowrap font-sans"
+                              className="w-full flex items-center justify-between px-4 py-2 hover:bg-muted transition-all cursor-pointer font-bold text-foreground whitespace-nowrap font-sans"
                             >
                               <div className="flex items-center gap-2.5">
-                                <EyeOff size={14} className="text-gray-500" />
+                                <EyeOff size={14} className="text-muted-foreground" />
                                 <span>Spoiler</span>
                               </div>
                               <div className={`w-8 h-4.5 rounded-full transition-colors relative ml-4 ${spoilersMap['single'] ? 'bg-gray-900' : 'bg-gray-200'}`}>
-                                <div className={`w-3.5 h-3.5 rounded-full bg-white absolute top-0.5 transition-transform ${spoilersMap['single'] ? 'translate-x-4' : 'translate-x-0.5'}`} />
+                                <div className={`w-3.5 h-3.5 rounded-full bg-card absolute top-0.5 transition-transform ${spoilersMap['single'] ? 'translate-x-4' : 'translate-x-0.5'}`} />
                               </div>
                             </div>
                             <button 
                               type="button" 
                               onClick={() => { setShowImageMenu(false); setShowAltTextModal(true); }}
-                              className="w-full flex items-center gap-2.5 px-4 py-2 hover:bg-gray-50 transition-all cursor-pointer font-bold text-gray-700 whitespace-nowrap font-sans"
+                              className="w-full flex items-center gap-2.5 px-4 py-2 hover:bg-muted transition-all cursor-pointer font-bold text-foreground whitespace-nowrap font-sans"
                             >
-                              <Type size={14} className="text-gray-500" />
+                              <Type size={14} className="text-muted-foreground" />
                               {t("planner:postCreator.composer.imageMenu.altText")}
                             </button>
-                            <div className="h-px bg-gray-100 my-1" />
+                            <div className="h-px bg-muted my-1" />
                             <button 
                               type="button" 
                               onClick={() => {
@@ -621,28 +621,28 @@ export function ComposerBody() {
                             <button 
                               type="button" 
                               onClick={() => { setShowImageMenu(false); setShowVideoEditor(true); }}
-                              className="w-full flex items-center gap-2.5 px-4 py-2 hover:bg-gray-50 transition-all cursor-pointer font-bold text-gray-700 whitespace-nowrap font-sans"
+                              className="w-full flex items-center gap-2.5 px-4 py-2 hover:bg-muted transition-all cursor-pointer font-bold text-foreground whitespace-nowrap font-sans"
                             >
-                              <Edit size={14} className="text-gray-500" />
+                              <Edit size={14} className="text-muted-foreground" />
                               {t("planner:postCreator.composer.editVideo")}
                             </button>
                             <button 
                               type="button" 
                               onClick={() => { setShowImageMenu(false); setShowAltTextModal(true); }}
-                              className="w-full flex items-center gap-2.5 px-4 py-2 hover:bg-gray-50 transition-all cursor-pointer font-bold text-gray-700 whitespace-nowrap font-sans"
+                              className="w-full flex items-center gap-2.5 px-4 py-2 hover:bg-muted transition-all cursor-pointer font-bold text-foreground whitespace-nowrap font-sans"
                             >
-                              <Type size={14} className="text-gray-500" />
+                              <Type size={14} className="text-muted-foreground" />
                               {t("planner:postCreator.composer.imageMenu.altText")}
                             </button>
                             <button 
                               type="button" 
                               onClick={() => { setShowImageMenu(false); handleThumbnailUpload(); }}
-                              className="w-full flex items-center gap-2.5 px-4 py-2 hover:bg-gray-50 transition-all cursor-pointer font-bold text-gray-700 whitespace-nowrap font-sans"
+                              className="w-full flex items-center gap-2.5 px-4 py-2 hover:bg-muted transition-all cursor-pointer font-bold text-foreground whitespace-nowrap font-sans"
                             >
-                              <ImageIcon size={14} className="text-gray-500" />
+                              <ImageIcon size={14} className="text-muted-foreground" />
                               Upload video thumbnail
                             </button>
-                            <div className="h-px bg-gray-100 my-1" />
+                            <div className="h-px bg-muted my-1" />
                             <button 
                               type="button" 
                               onClick={() => {
@@ -665,17 +665,17 @@ export function ComposerBody() {
           )}
 
           {/* Toolbar & Character Limit */}
-          <div className="px-6 py-4 flex items-center justify-between bg-white border-t border-gray-150">
+          <div className="px-6 py-4 flex items-center justify-between bg-card border-t border-gray-150">
             <div className="flex items-center gap-4">
               {/* Media Button */}
               <div className="relative">
                 <button 
                   type="button"
                   onClick={() => setActivePopover(activePopover === 'media' ? null : 'media')}
-                  className={`text-gray-400 hover:text-black transition-colors relative p-1.5 rounded-lg cursor-pointer ${activePopover === 'media' ? 'bg-gray-100 text-black' : ''}`}
+                  className={`text-muted-foreground hover:text-black transition-colors relative p-1.5 rounded-lg cursor-pointer ${activePopover === 'media' ? 'bg-muted text-black' : ''}`}
                 >
                   <ImageIcon size={18} />
-                  <Plus size={8} className="absolute -top-0.5 -right-0.5 bg-white rounded-full border border-gray-200" strokeWidth={4} />
+                  <Plus size={8} className="absolute -top-0.5 -right-0.5 bg-card rounded-full border border-border" strokeWidth={4} />
                 </button>
                 {activePopover === 'media' && (
                   <MediaDropdown 
@@ -701,7 +701,7 @@ export function ComposerBody() {
                 <button 
                   type="button"
                   onClick={() => setActivePopover(activePopover === 'emoji' ? null : 'emoji')}
-                  className={`text-gray-400 hover:text-black transition-colors p-1.5 rounded-lg cursor-pointer ${activePopover === 'emoji' ? 'bg-gray-100 text-black' : ''}`}
+                  className={`text-muted-foreground hover:text-black transition-colors p-1.5 rounded-lg cursor-pointer ${activePopover === 'emoji' ? 'bg-muted text-black' : ''}`}
                 >
                   <Smile size={18} />
                 </button>
@@ -720,7 +720,7 @@ export function ComposerBody() {
               <button 
                 type="button"
                 onClick={() => setShowFirstCommentModal(true)}
-                className={`text-gray-400 hover:text-black transition-colors p-1.5 rounded-lg cursor-pointer ${youtubeFirstComment || globalFirstComment ? 'text-black bg-purple-50' : ''}`}
+                className={`text-muted-foreground hover:text-black transition-colors p-1.5 rounded-lg cursor-pointer ${youtubeFirstComment || globalFirstComment ? 'text-black bg-purple-50' : ''}`}
                 title={t("planner:postCreator.composer.toolbar.firstComment")}
               >
                 <MessageSquare size={18} />
@@ -730,7 +730,7 @@ export function ComposerBody() {
               <button 
                 type="button"
                 onClick={() => toast.info(t("planner:postCreator.composer.toolbar.locationComingSoon"))}
-                className="text-gray-400 hover:text-black transition-colors p-1.5 rounded-lg cursor-pointer"
+                className="text-muted-foreground hover:text-black transition-colors p-1.5 rounded-lg cursor-pointer"
                 title={t("planner:postCreator.composer.toolbar.addLocation")}
               >
                 <MapPin size={18} />
@@ -741,7 +741,7 @@ export function ComposerBody() {
                 <button 
                   type="button"
                   onClick={() => setActivePopover(activePopover === 'utm' ? null : 'utm')}
-                  className={`text-gray-400 hover:text-black transition-colors p-1.5 rounded-lg cursor-pointer ${activePopover === 'utm' ? 'bg-gray-100 text-black' : ''}`}
+                  className={`text-muted-foreground hover:text-black transition-colors p-1.5 rounded-lg cursor-pointer ${activePopover === 'utm' ? 'bg-muted text-black' : ''}`}
                   title={t("planner:postCreator.composer.toolbar.utmLink")}
                 >
                   <Link2 size={18} />
@@ -762,7 +762,7 @@ export function ComposerBody() {
                 <button 
                   type="button"
                   onClick={() => setActivePopover(activePopover === 'hashtag' ? null : 'hashtag')}
-                  className={`text-gray-400 hover:text-black transition-colors p-1.5 rounded-lg cursor-pointer ${activePopover === 'hashtag' ? 'bg-gray-100 text-black' : ''}`}
+                  className={`text-muted-foreground hover:text-black transition-colors p-1.5 rounded-lg cursor-pointer ${activePopover === 'hashtag' ? 'bg-muted text-black' : ''}`}
                   title={t("planner:postCreator.composer.toolbar.hashtags")}
                 >
                   <Search size={18} />
@@ -782,7 +782,7 @@ export function ComposerBody() {
                   setIsLibrary(!isLibrary);
                   toast.success(isLibrary ? t("planner:postCreator.composer.toolbar.templateDisabled") : t("planner:postCreator.composer.toolbar.templateEnabled"));
                 }}
-                className={`text-gray-400 hover:text-black transition-colors p-1.5 rounded-lg cursor-pointer ${isLibrary ? 'text-purple-600 bg-purple-50' : ''}`}
+                className={`text-muted-foreground hover:text-black transition-colors p-1.5 rounded-lg cursor-pointer ${isLibrary ? 'text-purple-600 bg-purple-50' : ''}`}
                 title={t("planner:postCreator.composer.toolbar.saveAsTemplate")}
               >
                 <Folder size={18} />
@@ -792,7 +792,7 @@ export function ComposerBody() {
               <button 
                 type="button"
                 onClick={() => setShowAICopilot(!showAICopilot)}
-                className={`text-gray-400 hover:text-black transition-colors p-1.5 rounded-lg cursor-pointer ${showAICopilot ? 'text-purple-600 bg-purple-50' : ''}`}
+                className={`text-muted-foreground hover:text-black transition-colors p-1.5 rounded-lg cursor-pointer ${showAICopilot ? 'text-purple-600 bg-purple-50' : ''}`}
                 title={t("planner:postCreator.composer.toolbar.aiCopilot")}
               >
                 <Sparkles size={18} className={showAICopilot ? "animate-pulse" : ""} />
@@ -836,13 +836,13 @@ export function ComposerBody() {
                   const currentTextLength = activeCaptionValue ? activeCaptionValue.length : 0;
                   const isExceeded = currentTextLength > maxLimit;
                   return (
-                    <span className={`text-[11px] font-bold transition-colors tracking-wide font-sans ${isExceeded ? 'text-red-500 font-extrabold animate-pulse' : 'text-gray-400 group-hover:text-gray-600'}`}>
+                    <span className={`text-[11px] font-bold transition-colors tracking-wide font-sans ${isExceeded ? 'text-red-500 font-extrabold animate-pulse' : 'text-muted-foreground group-hover:text-muted-foreground'}`}>
                       {currentTextLength} / {maxLimit}
                     </span>
                   );
                 })()}
-                <div className="absolute bottom-full right-0 mb-3 w-56 p-3 bg-white rounded-xl shadow-xl border border-gray-100 hidden group-hover:block animate-in fade-in slide-in-from-bottom-1 z-50">
-                  <p className="text-[10px] text-gray-500 leading-normal font-sans">
+                <div className="absolute bottom-full right-0 mb-3 w-56 p-3 bg-card rounded-xl shadow-xl border border-border hidden group-hover:block animate-in fade-in slide-in-from-bottom-1 z-50">
+                  <p className="text-[10px] text-muted-foreground leading-normal font-sans">
                     {t("planner:postCreator.composer.characterLimitDesc", {
                       platform: (isEditByNetwork && activeNetworkTab && activeNetworkTab !== NETWORK_TAB_TEMPLATE) ? activeNetworkTab : activePlatform
                     })}
@@ -953,13 +953,13 @@ export function ComposerBody() {
             </div>
 
             <div className="space-y-1.5 pt-2 border-t border-amber-200/40">
-              <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest font-sans">{t("planner:postCreator.composer.approval.noteLabel")}</label>
+              <label className="block text-[10px] font-black text-muted-foreground uppercase tracking-widest font-sans">{t("planner:postCreator.composer.approval.noteLabel")}</label>
               <input
                 type="text"
                 placeholder={t("planner:postCreator.composer.approval.notePlaceholder")}
                 value={requesterNote}
                 onChange={(e) => setRequesterNote(e.target.value)}
-                className="w-full px-4 py-3 bg-white border border-gray-200 rounded-2xl text-[11px] font-bold text-gray-700 outline-none focus:border-black transition-all font-sans"
+                className="w-full px-4 py-3 bg-card border border-border rounded-2xl text-[11px] font-bold text-foreground outline-none focus:border-black transition-all font-sans"
               />
             </div>
           </div>

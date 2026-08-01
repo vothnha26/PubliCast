@@ -243,7 +243,7 @@ export function MediaUploadModal({
 
   return (
     <div className="fixed inset-0 z-[3000] flex items-center justify-center bg-black/60 backdrop-blur-sm animate-in fade-in duration-300">
-      <div className="relative bg-white rounded-3xl shadow-2xl max-w-[560px] w-full mx-4 overflow-hidden animate-in zoom-in-95 duration-300">
+      <div className="relative bg-card rounded-3xl shadow-2xl max-w-[560px] w-full mx-4 overflow-hidden animate-in zoom-in-95 duration-300">
         
         {/* Close Button */}
         <button 
@@ -255,7 +255,7 @@ export function MediaUploadModal({
 
         {/* Modal Title */}
         <div className="pt-6 px-6 pb-4">
-          <h2 className="text-xl font-bold text-gray-800">Media upload</h2>
+          <h2 className="text-xl font-bold text-foreground">Media upload</h2>
         </div>
 
         {/* Custom Tab Header */}
@@ -271,7 +271,7 @@ export function MediaUploadModal({
               onClick={() => setActiveTab(tab.id)}
               className={`flex items-center gap-2 px-5 py-2.5 text-xs font-bold rounded-t-xl transition-all cursor-pointer ${
                 activeTab === tab.id
-                  ? "bg-white text-gray-800"
+                  ? "bg-card text-foreground"
                   : "text-white/80 hover:text-white"
               }`}
             >
@@ -295,7 +295,7 @@ export function MediaUploadModal({
                 className={`border-2 border-dashed rounded-2xl p-6 flex flex-col items-center justify-center text-center cursor-pointer transition-all min-h-[140px] ${
                   dragActive 
                     ? "border-[#2D1D35] bg-purple-50/30" 
-                    : "border-gray-200 hover:border-gray-300"
+                    : "border-border hover:border-gray-300"
                 }`}
               >
                 <input 
@@ -308,22 +308,22 @@ export function MediaUploadModal({
                 />
                 
                 <div className="space-y-2">
-                  <div className="w-10 h-10 rounded-full bg-gray-50 flex items-center justify-center text-gray-400 mx-auto">
+                  <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center text-muted-foreground mx-auto">
                     <Upload size={20} />
                   </div>
-                  <p className="text-xs font-bold text-gray-500">
+                  <p className="text-xs font-bold text-muted-foreground">
                     {resolveMediaPromptText(mediaTypeFilter)}
                   </p>
                 </div>
               </div>
 
               {multiple && selectedFiles.length > 0 && (
-                <div className="border border-gray-100 rounded-2xl p-4 bg-gray-50/50 space-y-2 max-h-[180px] overflow-y-auto pr-1 scrollbar-thin">
-                  <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">
+                <div className="border border-border rounded-2xl p-4 bg-muted/50 space-y-2 max-h-[180px] overflow-y-auto pr-1 scrollbar-thin">
+                  <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">
                     Selected Files ({selectedFiles.length})
                   </p>
                   {selectedFiles.map((file, index) => (
-                    <div key={index} className="flex items-center justify-between p-2.5 bg-white border border-gray-100 rounded-xl shadow-sm text-xs font-bold text-gray-700">
+                    <div key={index} className="flex items-center justify-between p-2.5 bg-card border border-border rounded-xl shadow-sm text-xs font-bold text-foreground">
                       <div className="flex items-center gap-2 truncate max-w-[320px]">
                         {file.type.startsWith("image/") ? (
                           <ImageIcon size={14} className="text-purple-600" />
@@ -331,7 +331,7 @@ export function MediaUploadModal({
                           <Video size={14} className="text-blue-500" />
                         )}
                         <span className="truncate">{file.name}</span>
-                        <span className="text-[9px] text-gray-400 font-semibold uppercase">({(file.size / (1024 * 1024)).toFixed(2)} MB)</span>
+                        <span className="text-[9px] text-muted-foreground font-semibold uppercase">({(file.size / (1024 * 1024)).toFixed(2)} MB)</span>
                       </div>
                       <button 
                         type="button"
@@ -339,7 +339,7 @@ export function MediaUploadModal({
                           e.stopPropagation();
                           setSelectedFiles(prev => prev.filter((_, i) => i !== index));
                         }}
-                        className="text-gray-400 hover:text-red-500 transition-colors p-1"
+                        className="text-muted-foreground hover:text-red-500 transition-colors p-1"
                       >
                         <X size={14} />
                       </button>
@@ -349,7 +349,7 @@ export function MediaUploadModal({
               )}
 
               {!multiple && selectedFile && (
-                <div className="space-y-3 p-4 border border-gray-100 rounded-2xl bg-gray-50/50 flex flex-col items-center">
+                <div className="space-y-3 p-4 border border-border rounded-2xl bg-muted/50 flex flex-col items-center">
                   <div className="w-12 h-12 rounded-full bg-purple-100 flex items-center justify-center text-[#2D1D35] mx-auto">
                     {selectedFile.type.startsWith("image/") ? (
                       <ImageIcon size={24} />
@@ -358,10 +358,10 @@ export function MediaUploadModal({
                     )}
                   </div>
                   <div>
-                    <p className="text-xs font-bold text-gray-700 truncate max-w-[280px] mx-auto">
+                    <p className="text-xs font-bold text-foreground truncate max-w-[280px] mx-auto">
                       {selectedFile.name}
                     </p>
-                    <p className="text-[10px] text-gray-400 font-medium">
+                    <p className="text-[10px] text-muted-foreground font-medium">
                       {(selectedFile.size / (1024 * 1024)).toFixed(2)} MB
                     </p>
                   </div>
@@ -379,19 +379,19 @@ export function MediaUploadModal({
               {/* Library Toolbar */}
               <div className="flex items-center gap-3">
                  <div className="relative flex-1">
-                   <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                   <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
                    <input 
                      placeholder="Search library..."
                      value={searchTerm}
                      onChange={(e) => setSearchTerm(e.target.value)}
-                     className="w-full pl-9 pr-4 py-2 bg-gray-50 border border-gray-100 rounded-xl text-xs font-medium focus:bg-white focus:border-purple-200 outline-none transition-all"
+                     className="w-full pl-9 pr-4 py-2 bg-muted border border-border rounded-xl text-xs font-medium focus:bg-card focus:border-purple-200 outline-none transition-all"
                    />
                  </div>
               </div>
 
               {/* Breadcrumbs for folder navigation */}
               {filters.folderId && (
-                <div className="flex items-center gap-1.5 text-[10px] font-bold text-gray-400">
+                <div className="flex items-center gap-1.5 text-[10px] font-bold text-muted-foreground">
                    <button 
                      onClick={() => updateFilters({ folderId: null })}
                      className="hover:text-purple-600 transition-colors cursor-pointer"
@@ -399,7 +399,7 @@ export function MediaUploadModal({
                      Media Library
                    </button>
                    <ChevronLeft size={10} className="rotate-180" />
-                   <span className="text-gray-800">Folder</span>
+                   <span className="text-foreground">Folder</span>
                 </div>
               )}
 
@@ -408,8 +408,8 @@ export function MediaUploadModal({
                    <Loader2 size={24} className="animate-spin text-purple-600" />
                 </div>
               ) : libraryFiles.length === 0 && folders.length === 0 ? (
-                <div className="text-center py-20 bg-gray-50/50 rounded-2xl border border-dashed border-gray-200">
-                   <p className="text-xs text-gray-400 font-bold uppercase tracking-widest">No results found</p>
+                <div className="text-center py-20 bg-muted/50 rounded-2xl border border-dashed border-border">
+                   <p className="text-xs text-muted-foreground font-bold uppercase tracking-widest">No results found</p>
                 </div>
               ) : (
                 <div className="grid grid-cols-4 gap-3 max-h-[340px] overflow-y-auto p-1 scrollbar-thin pr-2">
@@ -418,12 +418,12 @@ export function MediaUploadModal({
                      <button
                        key={folder.id}
                        onClick={() => updateFilters({ folderId: folder.id })}
-                       className="aspect-square rounded-2xl bg-white border border-gray-100 p-3 flex flex-col items-center justify-center gap-2 hover:border-purple-200 hover:shadow-md transition-all group cursor-pointer"
+                       className="aspect-square rounded-2xl bg-card border border-border p-3 flex flex-col items-center justify-center gap-2 hover:border-purple-200 hover:shadow-md transition-all group cursor-pointer"
                      >
                         <div className="w-10 h-10 bg-yellow-50 rounded-xl flex items-center justify-center text-yellow-500 group-hover:scale-110 transition-transform">
                            <Folder size={20} fill="currentColor" fillOpacity={0.2} />
                         </div>
-                        <span className="text-[10px] font-bold text-gray-700 truncate w-full text-center">{folder.name}</span>
+                        <span className="text-[10px] font-bold text-foreground truncate w-full text-center">{folder.name}</span>
                      </button>
                    ))}
 
@@ -438,13 +438,13 @@ export function MediaUploadModal({
                          key={file.id}
                          onClick={() => handleSelectLibraryItem(file)}
                          className={`aspect-square rounded-2xl overflow-hidden border-2 transition-all relative group ${
-                           isSelected ? 'border-purple-600 ring-4 ring-purple-100' : 'border-transparent hover:border-gray-200'
+                           isSelected ? 'border-purple-600 ring-4 ring-purple-100' : 'border-transparent hover:border-border'
                          }`}
                        >
                           {file.thumbnail ? (
                             <img src={file.thumbnail} alt="" className="w-full h-full object-cover" />
                           ) : (
-                            <div className="w-full h-full bg-gray-50 flex items-center justify-center text-3xl">
+                            <div className="w-full h-full bg-muted flex items-center justify-center text-3xl">
                                {file.emoji}
                             </div>
                           )}
@@ -477,7 +477,7 @@ export function MediaUploadModal({
           {activeTab === "url" && (
             <div className="space-y-4">
               <div className="space-y-2">
-                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block">
+                <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest block">
                   {multiple ? "Media URL Links (one per line)" : "Media URL Link"}
                 </label>
                 <div className="relative">
@@ -486,7 +486,7 @@ export function MediaUploadModal({
                       value={fileUrlsInput}
                       onChange={(e) => setFileUrlsInput(e.target.value)}
                       placeholder="https://example.com/image1.jpg&#10;https://example.com/image2.jpg"
-                      className="w-full px-4 py-3 bg-white border border-gray-200 rounded-2xl text-xs font-semibold focus:border-black outline-none resize-none min-h-[100px]"
+                      className="w-full px-4 py-3 bg-card border border-border rounded-2xl text-xs font-semibold focus:border-black outline-none resize-none min-h-[100px]"
                     />
                   ) : (
                     <input
@@ -494,11 +494,11 @@ export function MediaUploadModal({
                       value={fileUrlInput}
                       onChange={(e) => setFileUrlInput(e.target.value)}
                       placeholder="https://example.com/image.jpg"
-                      className="w-full px-4 py-3 bg-white border border-gray-200 rounded-2xl text-xs font-semibold focus:border-black outline-none"
+                      className="w-full px-4 py-3 bg-card border border-border rounded-2xl text-xs font-semibold focus:border-black outline-none"
                     />
                   )}
                 </div>
-                <p className="text-[10px] text-gray-400 font-medium leading-normal">
+                <p className="text-[10px] text-muted-foreground font-medium leading-normal">
                   {multiple 
                     ? "Provide direct URLs to photos (.png, .jpg) or videos (.mp4), each on a separate line."
                     : "Provide a direct URL to a photo (.png, .jpg) or video (.mp4)."}
@@ -513,10 +513,10 @@ export function MediaUploadModal({
         {isUploading && (
           <div className="px-6 pb-3 -mt-2">
             <div className="flex items-center justify-between mb-1.5">
-              <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Uploading...</span>
-              <span className="text-[10px] font-black text-gray-600">{uploadProgress}%</span>
+              <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Uploading...</span>
+              <span className="text-[10px] font-black text-muted-foreground">{uploadProgress}%</span>
             </div>
-            <div className="w-full h-1.5 bg-gray-100 rounded-full overflow-hidden">
+            <div className="w-full h-1.5 bg-muted rounded-full overflow-hidden">
               <div
                 className="h-full bg-[#2D1D35] rounded-full transition-[width] duration-200 ease-out"
                 style={{ width: `${uploadProgress}%` }}
@@ -526,12 +526,12 @@ export function MediaUploadModal({
         )}
 
         {/* Modal Footer */}
-        <div className="px-6 py-4 bg-gray-50 flex items-center justify-between border-t border-gray-100">
+        <div className="px-6 py-4 bg-muted flex items-center justify-between border-t border-border">
           <button
             type="button"
             onClick={onClose}
             disabled={isUploading}
-            className="px-5 py-2.5 text-xs font-bold text-gray-500 hover:text-black border border-gray-200 rounded-xl bg-white hover:bg-gray-50 transition-all cursor-pointer disabled:opacity-50"
+            className="px-5 py-2.5 text-xs font-bold text-muted-foreground hover:text-black border border-border rounded-xl bg-card hover:bg-muted transition-all cursor-pointer disabled:opacity-50"
           >
             Cancel
           </button>

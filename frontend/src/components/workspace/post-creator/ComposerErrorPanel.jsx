@@ -67,7 +67,7 @@ export function ComposerErrorPanel() {
           {errors.map((err, idx) => {
             const parsed = parseValidationError(err);
             return (
-              <div key={idx} className="flex items-center gap-2 text-[11px] font-medium text-gray-700 font-sans">
+              <div key={idx} className="flex items-center gap-2 text-[11px] font-medium text-foreground font-sans">
                 {renderErrorIcon(parsed.platform)}
                 <span>{parsed.message}</span>
               </div>

@@ -84,27 +84,27 @@ export default function StockMediaPicker({ brandId, onSelectMedia, onClose }) {
 
   return (
     <div className="fixed inset-0 z-50 bg-black/65 backdrop-blur-md flex items-center justify-center p-4">
-      <div className="bg-white dark:bg-gray-900 rounded-2xl max-w-5xl w-full p-6 max-h-[90vh] flex flex-col shadow-2xl border border-gray-200 dark:border-gray-800">
+      <div className="bg-card dark:bg-gray-900 rounded-2xl max-w-5xl w-full p-6 max-h-[90vh] flex flex-col shadow-2xl border border-border dark:border-gray-800">
         
         {/* Header */}
-        <div className="flex justify-between items-center pb-4 border-b border-gray-100 dark:border-gray-800 mb-4">
+        <div className="flex justify-between items-center pb-4 border-b border-border dark:border-gray-800 mb-4">
           <div className="flex items-center gap-3">
             <span className="p-2.5 bg-gradient-to-br from-blue-500 to-indigo-600 text-white rounded-xl shadow-md">
               <ImageIcon className="w-5 h-5" />
             </span>
             <div>
-              <h2 className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
+              <h2 className="text-lg font-bold text-foreground dark:text-white flex items-center gap-2">
                 Stock Media Library
                 <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-blue-100 dark:bg-blue-950 text-blue-600 dark:text-blue-400">
                   ToS Compliant & XSS-Safe
                 </span>
               </h2>
-              <p className="text-xs text-gray-500">Free high-resolution photos & videos from Unsplash & Pexels</p>
+              <p className="text-xs text-muted-foreground">Free high-resolution photos & videos from Unsplash & Pexels</p>
             </div>
           </div>
           <button 
             onClick={onClose}
-            className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 transition"
+            className="p-2 text-muted-foreground hover:text-muted-foreground dark:hover:text-gray-200 rounded-xl hover:bg-muted dark:hover:bg-gray-800 transition"
           >
             <X className="w-5 h-5" />
           </button>
@@ -115,7 +115,7 @@ export default function StockMediaPicker({ brandId, onSelectMedia, onClose }) {
           <select 
             value={provider} 
             onChange={(e) => handleProviderChange(e.target.value)} 
-            className="px-3.5 py-2.5 border rounded-xl bg-white dark:bg-gray-800 text-sm font-medium border-gray-200 dark:border-gray-700 text-gray-800 dark:text-gray-200 focus:ring-2 focus:ring-blue-500 outline-none"
+            className="px-3.5 py-2.5 border rounded-xl bg-card dark:bg-gray-800 text-sm font-medium border-border dark:border-gray-700 text-foreground dark:text-gray-200 focus:ring-2 focus:ring-blue-500 outline-none"
           >
             <option value={STOCK_PROVIDERS.UNSPLASH}>Unsplash (Photos)</option>
             <option value={STOCK_PROVIDERS.PEXELS}>Pexels (Photos & Videos)</option>
@@ -125,7 +125,7 @@ export default function StockMediaPicker({ brandId, onSelectMedia, onClose }) {
             <select 
               value={mediaType} 
               onChange={(e) => handleMediaTypeChange(e.target.value)} 
-              className="px-3.5 py-2.5 border rounded-xl bg-white dark:bg-gray-800 text-sm font-medium border-gray-200 dark:border-gray-700 text-gray-800 dark:text-gray-200 focus:ring-2 focus:ring-blue-500 outline-none"
+              className="px-3.5 py-2.5 border rounded-xl bg-card dark:bg-gray-800 text-sm font-medium border-border dark:border-gray-700 text-foreground dark:text-gray-200 focus:ring-2 focus:ring-blue-500 outline-none"
             >
               <option value={STOCK_MEDIA_TYPES.PHOTO}>Photos</option>
               <option value={STOCK_MEDIA_TYPES.VIDEO}>Videos</option>
@@ -138,9 +138,9 @@ export default function StockMediaPicker({ brandId, onSelectMedia, onClose }) {
               placeholder="Search high-res photos, wallpapers, tech, nature..."
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              className="w-full pl-10 pr-4 py-2.5 border rounded-xl text-sm bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none"
+              className="w-full pl-10 pr-4 py-2.5 border rounded-xl text-sm bg-card dark:bg-gray-800 border-border dark:border-gray-700 text-foreground dark:text-white focus:ring-2 focus:ring-blue-500 outline-none"
             />
-            <Search className="w-4 h-4 absolute left-3.5 top-3.5 text-gray-400" />
+            <Search className="w-4 h-4 absolute left-3.5 top-3.5 text-muted-foreground" />
           </div>
 
           <button 
@@ -157,7 +157,7 @@ export default function StockMediaPicker({ brandId, onSelectMedia, onClose }) {
           {loading ? (
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 animate-pulse">
               {[...Array(8)].map((_, i) => (
-                <div key={i} className="rounded-xl overflow-hidden bg-gray-200 dark:bg-gray-800 h-48 border border-gray-200 dark:border-gray-700 flex flex-col justify-between p-3">
+                <div key={i} className="rounded-xl overflow-hidden bg-gray-200 dark:bg-gray-800 h-48 border border-border dark:border-gray-700 flex flex-col justify-between p-3">
                   <div className="w-16 h-4 bg-gray-300 dark:bg-gray-700 rounded" />
                   <div className="w-full h-3 bg-gray-300 dark:bg-gray-700 rounded" />
                 </div>
@@ -168,7 +168,7 @@ export default function StockMediaPicker({ brandId, onSelectMedia, onClose }) {
               {results.map((item) => (
                 <div 
                   key={item.externalId} 
-                  className="group relative rounded-xl overflow-hidden bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-800 flex flex-col hover:shadow-lg transition duration-200"
+                  className="group relative rounded-xl overflow-hidden bg-muted dark:bg-gray-800 border border-border dark:border-gray-800 flex flex-col hover:shadow-lg transition duration-200"
                 >
                   <div className="relative aspect-[4/3] w-full overflow-hidden bg-gray-200 dark:bg-gray-700">
                     <img 
@@ -216,7 +216,7 @@ export default function StockMediaPicker({ brandId, onSelectMedia, onClose }) {
                   </div>
 
                   {/* Attribution: rendered as safe JSX — no dangerouslySetInnerHTML */}
-                  <div className="p-2.5 text-[11px] text-gray-500 dark:text-gray-400 bg-white dark:bg-gray-900 border-t border-gray-100 dark:border-gray-800 truncate">
+                  <div className="p-2.5 text-[11px] text-muted-foreground dark:text-muted-foreground bg-card dark:bg-gray-900 border-t border-border dark:border-gray-800 truncate">
                     {parseAttributionHtml(item.attributionHtml).map((seg, i) =>
                       seg.type === 'link' ? (
                         <a
@@ -224,7 +224,7 @@ export default function StockMediaPicker({ brandId, onSelectMedia, onClose }) {
                           href={seg.href}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="underline hover:text-gray-700 dark:hover:text-gray-200"
+                          className="underline hover:text-foreground dark:hover:text-gray-200"
                         >
                           {seg.text}
                         </a>
@@ -237,35 +237,35 @@ export default function StockMediaPicker({ brandId, onSelectMedia, onClose }) {
               ))}
             </div>
           ) : hasSearched ? (
-            <div className="flex flex-col items-center justify-center h-64 text-gray-400">
+            <div className="flex flex-col items-center justify-center h-64 text-muted-foreground">
               <p className="text-sm font-medium">No results found for "{query}"</p>
-              <p className="text-xs text-gray-500 mt-1">Try searching with different keywords or switch provider.</p>
+              <p className="text-xs text-muted-foreground mt-1">Try searching with different keywords or switch provider.</p>
             </div>
           ) : (
-            <div className="flex flex-col items-center justify-center h-64 text-gray-400">
+            <div className="flex flex-col items-center justify-center h-64 text-muted-foreground">
               <Search className="w-10 h-10 mb-2 opacity-30" />
               <p className="text-sm font-medium">Search for photos & videos</p>
-              <p className="text-xs text-gray-500 mt-1">Type keywords like "business", "technology", "nature" above</p>
+              <p className="text-xs text-muted-foreground mt-1">Type keywords like "business", "technology", "nature" above</p>
             </div>
           )}
         </div>
 
         {/* Footer Pagination */}
         {results.length > 0 && (
-          <div className="flex justify-between items-center pt-4 border-t border-gray-100 dark:border-gray-800 mt-4 text-xs text-gray-500">
+          <div className="flex justify-between items-center pt-4 border-t border-border dark:border-gray-800 mt-4 text-xs text-muted-foreground">
             <span>Page {page}</span>
             <div className="flex gap-2">
               <button 
                 disabled={page <= 1 || loading}
                 onClick={(e) => handleSearch(e, page - 1)}
-                className="px-3.5 py-1.5 border rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-40 font-medium"
+                className="px-3.5 py-1.5 border rounded-lg hover:bg-muted dark:hover:bg-gray-800 disabled:opacity-40 font-medium"
               >
                 Previous
               </button>
               <button 
                 disabled={loading}
                 onClick={(e) => handleSearch(e, page + 1)}
-                className="px-3.5 py-1.5 border rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 font-medium"
+                className="px-3.5 py-1.5 border rounded-lg hover:bg-muted dark:hover:bg-gray-800 font-medium"
               >
                 Next
               </button>

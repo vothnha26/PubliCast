@@ -183,24 +183,24 @@ export function DataIntegrationWizard({ isOpen, onClose, onRefreshData }) {
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 font-sans">
-      <div className="bg-white border border-gray-100 rounded-3xl w-full max-w-2xl overflow-hidden shadow-2xl flex flex-col max-h-[90vh] animate-in zoom-in-95 duration-200">
+      <div className="bg-card border border-border rounded-3xl w-full max-w-2xl overflow-hidden shadow-2xl flex flex-col max-h-[90vh] animate-in zoom-in-95 duration-200">
         
         {/* Header */}
-        <div className="px-6 py-5 border-b border-gray-100 flex items-center justify-between bg-gray-50/50">
+        <div className="px-6 py-5 border-b border-border flex items-center justify-between bg-muted/50">
           <div>
-            <h3 className="text-base font-black text-gray-900">{t('wizard.title')}</h3>
-            <p className="text-[11px] text-gray-400 font-medium">{t('wizard.subtitle')}</p>
+            <h3 className="text-base font-black text-foreground">{t('wizard.title')}</h3>
+            <p className="text-[11px] text-muted-foreground font-medium">{t('wizard.subtitle')}</p>
           </div>
           <button 
             onClick={onClose} 
-            className="p-1.5 hover:bg-gray-100 rounded-xl text-gray-400 hover:text-gray-700 transition-colors border-none bg-transparent cursor-pointer"
+            className="p-1.5 hover:bg-muted rounded-xl text-muted-foreground hover:text-foreground transition-colors border-none bg-transparent cursor-pointer"
           >
             <X size={18} />
           </button>
         </div>
 
         {/* Steps Breadcrumbs indicator */}
-        <div className="px-8 py-4 border-b border-gray-50 flex items-center justify-center gap-10 bg-white">
+        <div className="px-8 py-4 border-b border-border flex items-center justify-center gap-10 bg-card">
           {[
             { num: 1, label: t('wizard.steps.setup') },
             { num: 2, label: action === INTEGRATION_ACTIONS.IMPORT ? t('wizard.steps.validate') : t('wizard.steps.filter') },
@@ -209,13 +209,13 @@ export function DataIntegrationWizard({ isOpen, onClose, onRefreshData }) {
             <div key={s.num} className="flex items-center gap-2">
               <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold transition-colors ${
                 step >= s.num 
-                  ? 'bg-black text-white' 
-                  : 'bg-gray-100 text-gray-400'
+                  ? 'bg-foreground text-background' 
+                  : 'bg-muted text-muted-foreground'
               }`}>
                 {step > s.num ? <Check size={12} className="stroke-[3]" /> : s.num}
               </div>
               <span className={`text-xs font-bold ${
-                step >= s.num ? 'text-gray-900' : 'text-gray-400'
+                step >= s.num ? 'text-foreground' : 'text-muted-foreground'
               }`}>{s.label}</span>
             </div>
           ))}
@@ -235,14 +235,14 @@ export function DataIntegrationWizard({ isOpen, onClose, onRefreshData }) {
                   className={`p-5 rounded-2xl border text-left flex flex-col gap-2 transition-all cursor-pointer ${
                     action === INTEGRATION_ACTIONS.IMPORT 
                       ? 'border-black bg-black/[0.02] ring-1 ring-black' 
-                      : 'border-gray-100 bg-white hover:border-gray-200'
+                      : 'border-border bg-card hover:border-border'
                   }`}
                 >
                   <div className="w-8 h-8 rounded-xl bg-green-50 text-green-600 flex items-center justify-center">
                     <Upload size={18} />
                   </div>
-                  <span className="text-xs font-black text-gray-900">{t('wizard.actions.importTitle')}</span>
-                  <span className="text-[10px] text-gray-400 font-medium leading-relaxed">{t('wizard.actions.importDesc')}</span>
+                  <span className="text-xs font-black text-foreground">{t('wizard.actions.importTitle')}</span>
+                  <span className="text-[10px] text-muted-foreground font-medium leading-relaxed">{t('wizard.actions.importDesc')}</span>
                 </button>
 
                 <button
@@ -251,20 +251,20 @@ export function DataIntegrationWizard({ isOpen, onClose, onRefreshData }) {
                   className={`p-5 rounded-2xl border text-left flex flex-col gap-2 transition-all cursor-pointer ${
                     action === INTEGRATION_ACTIONS.EXPORT 
                       ? 'border-black bg-black/[0.02] ring-1 ring-black' 
-                      : 'border-gray-100 bg-white hover:border-gray-200'
+                      : 'border-border bg-card hover:border-border'
                   }`}
                 >
                   <div className="w-8 h-8 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
                     <Download size={18} />
                   </div>
-                  <span className="text-xs font-black text-gray-900">{t('wizard.actions.exportTitle')}</span>
-                  <span className="text-[10px] text-gray-400 font-medium leading-relaxed">{t('wizard.actions.exportDesc')}</span>
+                  <span className="text-xs font-black text-foreground">{t('wizard.actions.exportTitle')}</span>
+                  <span className="text-[10px] text-muted-foreground font-medium leading-relaxed">{t('wizard.actions.exportDesc')}</span>
                 </button>
               </div>
 
               {/* Chọn định dạng */}
               <div className="space-y-2">
-                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{t('wizard.formats.sectionLabel')}</label>
+                <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">{t('wizard.formats.sectionLabel')}</label>
                 <div className="flex gap-3">
                   <button
                     type="button"
@@ -272,7 +272,7 @@ export function DataIntegrationWizard({ isOpen, onClose, onRefreshData }) {
                     className={`px-4 py-3 rounded-xl border flex items-center gap-2.5 text-xs font-bold transition-all flex-1 justify-center cursor-pointer ${
                       format === INTEGRATION_FORMATS.CSV 
                         ? 'border-black bg-black text-white' 
-                        : 'border-gray-200 bg-white hover:bg-gray-55 text-gray-700'
+                        : 'border-border bg-card hover:bg-gray-55 text-foreground'
                     }`}
                   >
                     <FileSpreadsheet size={16} />
@@ -285,7 +285,7 @@ export function DataIntegrationWizard({ isOpen, onClose, onRefreshData }) {
                     className={`px-4 py-3 rounded-xl border flex items-center gap-2.5 text-xs font-bold transition-all flex-1 justify-center cursor-pointer ${
                       format === INTEGRATION_FORMATS.ICS 
                         ? 'border-black bg-black text-white' 
-                        : 'border-gray-200 bg-white hover:bg-gray-55 text-gray-700'
+                        : 'border-border bg-card hover:bg-gray-55 text-foreground'
                     }`}
                   >
                     <FileCode size={16} />
@@ -297,12 +297,12 @@ export function DataIntegrationWizard({ isOpen, onClose, onRefreshData }) {
               {/* Tải tệp tin lên (chỉ hiển thị khi là IMPORT) */}
               {action === INTEGRATION_ACTIONS.IMPORT && (
                 <div className="space-y-2">
-                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{t('wizard.upload.sectionLabel')}</label>
+                  <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">{t('wizard.upload.sectionLabel')}</label>
                   <div 
                     onDragOver={handleDragOver}
                     onDrop={handleDrop}
                     onClick={() => fileInputRef.current?.click()}
-                    className="border-2 border-dashed border-gray-200 hover:border-gray-300 bg-gray-50/30 rounded-2xl p-8 flex flex-col items-center justify-center gap-2 cursor-pointer transition-all hover:bg-gray-50/50 group"
+                    className="border-2 border-dashed border-border hover:border-gray-300 bg-muted/30 rounded-2xl p-8 flex flex-col items-center justify-center gap-2 cursor-pointer transition-all hover:bg-muted/50 group"
                   >
                     <input 
                       type="file" 
@@ -311,9 +311,9 @@ export function DataIntegrationWizard({ isOpen, onClose, onRefreshData }) {
                       accept={format === INTEGRATION_FORMATS.CSV ? '.csv' : '.ics'}
                       className="hidden" 
                     />
-                    <Upload size={24} className="text-gray-400 group-hover:text-black transition-colors" />
-                    <span className="text-xs font-bold text-gray-700">{t('wizard.upload.dragHint')}</span>
-                    <span className="text-[10px] text-gray-400 font-medium">{t('wizard.upload.formatHint', { ext: format.toLowerCase() })}</span>
+                    <Upload size={24} className="text-muted-foreground group-hover:text-black transition-colors" />
+                    <span className="text-xs font-bold text-foreground">{t('wizard.upload.dragHint')}</span>
+                    <span className="text-[10px] text-muted-foreground font-medium">{t('wizard.upload.formatHint', { ext: format.toLowerCase() })}</span>
                   </div>
 
                   {selectedFile && (
@@ -333,10 +333,10 @@ export function DataIntegrationWizard({ isOpen, onClose, onRefreshData }) {
               {action === INTEGRATION_ACTIONS.IMPORT ? (
                 // Phân tích và kiểm tra file (IMPORT)
                 <div className="space-y-4">
-                  <div className="flex items-center gap-3 bg-gray-50/60 p-4 rounded-2xl border border-gray-100">
+                  <div className="flex items-center gap-3 bg-muted/60 p-4 rounded-2xl border border-border">
                     <div className="flex-1">
-                      <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{t('wizard.validation.fileStatus')}</span>
-                      <h4 className="text-xs font-black text-gray-900 mt-0.5">{selectedFile?.name}</h4>
+                      <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">{t('wizard.validation.fileStatus')}</span>
+                      <h4 className="text-xs font-black text-foreground mt-0.5">{selectedFile?.name}</h4>
                     </div>
                     <div className="flex gap-2">
                       <span className="px-3 py-1 bg-green-50 text-green-700 border border-green-100 rounded-full text-[10px] font-bold flex items-center gap-1">
@@ -355,11 +355,11 @@ export function DataIntegrationWizard({ isOpen, onClose, onRefreshData }) {
                   {/* Hiển thị lỗi phân tích nếu có */}
                   {parsingResult?.errors && parsingResult.errors.length > 0 && (
                     <div className="space-y-2">
-                      <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{t('wizard.validation.errorList')}</label>
+                      <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">{t('wizard.validation.errorList')}</label>
                       <div className="max-h-[180px] overflow-y-auto border border-yellow-100 bg-yellow-50/30 rounded-xl divide-y divide-yellow-100/50">
                         {parsingResult.errors.map((err, idx) => (
                           <div key={idx} className="p-3 text-[11px] flex flex-col gap-0.5">
-                            <span className="font-bold text-gray-800">
+                            <span className="font-bold text-foreground">
                               {t('wizard.validation.errorRow', { row: err.row, title: err.title })}
                             </span>
                             <span className="text-red-500 font-medium">{err.error}</span>
@@ -377,31 +377,31 @@ export function DataIntegrationWizard({ isOpen, onClose, onRefreshData }) {
               ) : (
                 // Cấu hình lọc khoảng ngày (EXPORT)
                 <div className="space-y-4">
-                  <h4 className="text-xs font-black text-gray-900">{t('wizard.dateRange.title')}</h4>
+                  <h4 className="text-xs font-black text-foreground">{t('wizard.dateRange.title')}</h4>
                   
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-1.5 text-left">
-                      <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{t('wizard.dateRange.fromLabel')}</label>
+                      <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">{t('wizard.dateRange.fromLabel')}</label>
                       <input 
                         type="date" 
                         value={startDate}
                         onChange={(e) => setStartDate(e.target.value)}
-                        className="w-full bg-white border border-gray-200 rounded-xl p-3 text-xs font-bold outline-none focus:border-black focus:ring-1 focus:ring-black transition-all"
+                        className="w-full bg-card border border-border rounded-xl p-3 text-xs font-bold outline-none focus:border-black focus:ring-1 focus:ring-black transition-all"
                       />
                     </div>
 
                     <div className="space-y-1.5 text-left">
-                      <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{t('wizard.dateRange.toLabel')}</label>
+                      <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">{t('wizard.dateRange.toLabel')}</label>
                       <input 
                         type="date" 
                         value={endDate}
                         onChange={(e) => setEndDate(e.target.value)}
-                        className="w-full bg-white border border-gray-200 rounded-xl p-3 text-xs font-bold outline-none focus:border-black focus:ring-1 focus:ring-black transition-all"
+                        className="w-full bg-card border border-border rounded-xl p-3 text-xs font-bold outline-none focus:border-black focus:ring-1 focus:ring-black transition-all"
                       />
                     </div>
                   </div>
 
-                  <div className="bg-gray-50 border border-gray-100 p-4 rounded-2xl text-gray-500 text-[11px] leading-relaxed font-medium">
+                  <div className="bg-muted border border-border p-4 rounded-2xl text-muted-foreground text-[11px] leading-relaxed font-medium">
                     {t('wizard.dateRange.hint')}
                   </div>
                 </div>
@@ -416,16 +416,16 @@ export function DataIntegrationWizard({ isOpen, onClose, onRefreshData }) {
                 // Bảng xem trước danh sách bài viết sẽ Import
                 <div className="space-y-3">
                   <div className="flex justify-between items-center">
-                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">
+                    <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">
                       {t('wizard.previewImport.label', { n: parsingResult?.items.length })}
                     </label>
-                    <span className="text-[10px] font-bold text-gray-400">{t('wizard.previewImport.sublabel')}</span>
+                    <span className="text-[10px] font-bold text-muted-foreground">{t('wizard.previewImport.sublabel')}</span>
                   </div>
                   
-                  <div className="border border-gray-100 rounded-2xl overflow-hidden max-h-[300px] overflow-y-auto">
+                  <div className="border border-border rounded-2xl overflow-hidden max-h-[300px] overflow-y-auto">
                     <table className="w-full text-left border-collapse">
                       <thead>
-                        <tr className="bg-gray-50 border-b border-gray-100 text-[9px] font-black text-gray-400 uppercase tracking-wider">
+                        <tr className="bg-muted border-b border-border text-[9px] font-black text-muted-foreground uppercase tracking-wider">
                           <th className="p-3 w-10 text-center">{t('wizard.previewImport.colIndex')}</th>
                           <th className="p-3 w-14">{t('wizard.previewImport.colMedia')}</th>
                           <th className="p-3">{t('wizard.previewImport.colPost')}</th>
@@ -433,12 +433,12 @@ export function DataIntegrationWizard({ isOpen, onClose, onRefreshData }) {
                           <th className="p-3 w-36">{t('wizard.previewImport.colScheduled')}</th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-gray-50 text-[11px] font-bold text-gray-700">
+                      <tbody className="divide-y divide-gray-50 text-[11px] font-bold text-foreground">
                         {parsingResult?.items.map((item, idx) => (
-                          <tr key={idx} className="hover:bg-gray-50/50 transition-colors">
-                            <td className="p-3 text-center text-gray-400">{item.rowIndex}</td>
+                          <tr key={idx} className="hover:bg-muted/50 transition-colors">
+                            <td className="p-3 text-center text-muted-foreground">{item.rowIndex}</td>
                             <td className="p-3">
-                              <div className="w-9 h-9 rounded-lg overflow-hidden shrink-0 border border-gray-100">
+                              <div className="w-9 h-9 rounded-lg overflow-hidden shrink-0 border border-border">
                                 <PostMediaThumbnail 
                                   thumbnail={item.rawPayload.thumbnail || (item.mediaUrls.length > 0 ? item.mediaUrls[0] : null)}
                                   mediaUrls={item.mediaUrls}
@@ -451,7 +451,7 @@ export function DataIntegrationWizard({ isOpen, onClose, onRefreshData }) {
                                 {item.title || item.caption || t('wizard.previewImport.noMedia')}
                               </div>
                               {item.caption && (
-                                <div className="text-[9px] text-gray-400 font-medium truncate max-w-[200px]">
+                                <div className="text-[9px] text-muted-foreground font-medium truncate max-w-[200px]">
                                   {item.caption}
                                 </div>
                               )}
@@ -459,13 +459,13 @@ export function DataIntegrationWizard({ isOpen, onClose, onRefreshData }) {
                             <td className="p-3">
                               <div className="flex flex-wrap gap-1">
                                 {String(item.targetPlatforms).split(',').map((plt) => (
-                                  <div key={plt} className="w-4 h-4 rounded-full bg-gray-50 border border-gray-100 flex items-center justify-center shrink-0 shadow-sm" title={plt}>
+                                  <div key={plt} className="w-4 h-4 rounded-full bg-muted border border-border flex items-center justify-center shrink-0 shadow-sm" title={plt}>
                                     <PlatformIcon platform={plt} size={10} />
                                   </div>
                                 ))}
                               </div>
                             </td>
-                            <td className="p-3 text-[10px] text-gray-500 font-medium">
+                            <td className="p-3 text-[10px] text-muted-foreground font-medium">
                               {item.scheduledAt 
                                 ? new Date(item.scheduledAt).toLocaleString(t('common:langLocale') || 'vi-VN', { dateStyle: 'short', timeStyle: 'short' })
                                 : t('wizard.previewImport.draft')}
@@ -479,22 +479,22 @@ export function DataIntegrationWizard({ isOpen, onClose, onRefreshData }) {
               ) : (
                 // Xem trước cấu hình trước khi Xuất
                 <div className="space-y-4">
-                  <div className="bg-gray-50/60 border border-gray-100 rounded-2xl p-5 space-y-3">
+                  <div className="bg-muted/60 border border-border rounded-2xl p-5 space-y-3">
                     <div className="flex justify-between items-center text-xs">
-                      <span className="font-medium text-gray-400">{t('wizard.previewExport.action')}</span>
-                      <span className="font-black text-gray-900">{t('wizard.previewExport.actionValue')}</span>
+                      <span className="font-medium text-muted-foreground">{t('wizard.previewExport.action')}</span>
+                      <span className="font-black text-foreground">{t('wizard.previewExport.actionValue')}</span>
                     </div>
 
                     <div className="flex justify-between items-center text-xs">
-                      <span className="font-medium text-gray-400">{t('wizard.previewExport.format')}</span>
-                      <span className="font-black text-gray-900">
+                      <span className="font-medium text-muted-foreground">{t('wizard.previewExport.format')}</span>
+                      <span className="font-black text-foreground">
                         {format === INTEGRATION_FORMATS.CSV ? t('wizard.formats.csvLabel') : t('wizard.formats.icsLabel')}
                       </span>
                     </div>
 
                     <div className="flex justify-between items-center text-xs">
-                      <span className="font-medium text-gray-400">{t('wizard.previewExport.dateRange')}</span>
-                      <span className="font-black text-gray-900">{startDate} → {endDate}</span>
+                      <span className="font-medium text-muted-foreground">{t('wizard.previewExport.dateRange')}</span>
+                      <span className="font-black text-foreground">{startDate} → {endDate}</span>
                     </div>
                   </div>
 
@@ -509,14 +509,14 @@ export function DataIntegrationWizard({ isOpen, onClose, onRefreshData }) {
         </div>
 
         {/* Footer actions */}
-        <div className="px-6 py-5 border-t border-gray-100 flex justify-between bg-gray-50/50">
+        <div className="px-6 py-5 border-t border-border flex justify-between bg-muted/50">
           <div>
             {step > 1 && (
               <button
                 type="button"
                 onClick={handlePrevStep}
                 disabled={isProcessing}
-                className="px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-xs font-bold text-gray-700 hover:bg-gray-50 flex items-center gap-1.5 transition-all cursor-pointer disabled:opacity-50"
+                className="px-4 py-2.5 bg-card border border-border rounded-xl text-xs font-bold text-foreground hover:bg-muted flex items-center gap-1.5 transition-all cursor-pointer disabled:opacity-50"
               >
                 <ChevronLeft size={14} />
                 <span>{t('wizard.buttons.back')}</span>
@@ -529,7 +529,7 @@ export function DataIntegrationWizard({ isOpen, onClose, onRefreshData }) {
               type="button"
               onClick={onClose}
               disabled={isProcessing}
-              className="px-4 py-2.5 bg-white border border-gray-200 hover:border-gray-300 rounded-xl text-xs font-bold text-gray-500 hover:text-gray-700 transition-all cursor-pointer disabled:opacity-50"
+              className="px-4 py-2.5 bg-card border border-border hover:border-gray-300 rounded-xl text-xs font-bold text-muted-foreground hover:text-foreground transition-all cursor-pointer disabled:opacity-50"
             >
               {t('wizard.buttons.cancel')}
             </button>

@@ -13,10 +13,10 @@ export function AutoListToolbar({
   return (
     <div className="space-y-4 text-left">
       {/* Title */}
-      <h3 className="text-sm font-bold text-gray-800 tracking-tight">Content of the autolist</h3>
+      <h3 className="text-sm font-bold text-foreground tracking-tight">Content of the autolist</h3>
       
       {/* Plain Text Button Group */}
-      <div className="flex items-center gap-6 flex-wrap text-xs text-gray-600 font-medium">
+      <div className="flex items-center gap-6 flex-wrap text-xs text-muted-foreground font-medium">
         <button 
           type="button"
           onClick={(e) => {
@@ -25,7 +25,7 @@ export function AutoListToolbar({
           }}
           className="flex items-center gap-1.5 hover:text-black transition-colors cursor-pointer"
         >
-          <Plus size={14} className="text-gray-400" /> Insert post
+          <Plus size={14} className="text-muted-foreground" /> Insert post
         </button>
 
         <button 
@@ -36,7 +36,7 @@ export function AutoListToolbar({
           }}
           className="flex items-center gap-1.5 hover:text-black transition-colors cursor-pointer"
         >
-          <Plus size={14} className="text-gray-400" /> Add posts with AI
+          <Plus size={14} className="text-muted-foreground" /> Add posts with AI
         </button>
 
         <button 
@@ -47,7 +47,7 @@ export function AutoListToolbar({
           }}
           className="flex items-center gap-1.5 hover:text-black transition-colors cursor-pointer"
         >
-          <FileUp size={14} className="text-gray-400" /> Add from file (CSV)
+          <FileUp size={14} className="text-muted-foreground" /> Add from file (CSV)
         </button>
 
         <button 
@@ -58,7 +58,7 @@ export function AutoListToolbar({
           }}
           className="flex items-center gap-1.5 hover:text-black transition-colors cursor-pointer relative"
         >
-          <Download size={14} className="text-gray-400" /> Download CSV
+          <Download size={14} className="text-muted-foreground" /> Download CSV
           <span className="w-2.5 h-2.5 rounded-full bg-[#EAB308] border border-white inline-block shadow-sm ml-0.5" title="Premium feature" />
         </button>
 
@@ -83,7 +83,7 @@ export function AutoListToolbar({
           }}
           className="flex items-center gap-1.5 hover:text-black transition-colors cursor-pointer"
         >
-          <Rss size={14} className="text-gray-400" /> Linked RSS feed
+          <Rss size={14} className="text-muted-foreground" /> Linked RSS feed
         </button>
       </div>
     </div>

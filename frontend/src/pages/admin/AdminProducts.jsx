@@ -9,7 +9,7 @@ function MatrixCell({ exists, module, platform, onAdd, onDisable }) {
       <div 
         id={`cell-add-${module.id}-${platform.id}`}
         onClick={() => onAdd(module, platform)}
-        className="h-12 border border-dashed border-gray-100 rounded-xl flex items-center justify-center cursor-pointer hover:bg-gray-50 hover:border-gray-300 transition-all group"
+        className="h-12 border border-dashed border-border rounded-xl flex items-center justify-center cursor-pointer hover:bg-muted hover:border-gray-300 transition-all group"
       >
         <Plus size={14} className="text-gray-300 group-hover:text-black" />
       </div>
@@ -17,9 +17,9 @@ function MatrixCell({ exists, module, platform, onAdd, onDisable }) {
   }
 
   return (
-    <div className="h-12 bg-white border border-[#0A0A0A] rounded-xl flex flex-col items-center justify-center shadow-sm relative overflow-hidden group">
+    <div className="h-12 bg-card border border-[#0A0A0A] rounded-xl flex flex-col items-center justify-center shadow-sm relative overflow-hidden group">
       <div className="absolute top-1 right-1 w-1.5 h-1.5 rounded-full bg-green-500" />
-      <span className="text-[10px] font-black text-[#0A0A0A] uppercase tracking-tighter">Active</span>
+      <span className="text-[10px] font-black text-foreground uppercase tracking-tighter">Active</span>
       <div className="hidden group-hover:flex absolute inset-0 bg-black/90 items-center justify-center gap-3 animate-in fade-in duration-150">
          <button id={`cell-delete-${module.id}-${platform.id}`} onClick={() => onDisable(module, platform)} className="text-white hover:text-red-400"><Trash2 size={12} /></button>
       </div>
@@ -47,16 +47,16 @@ function PlatformModal({ isOpen, onClose, onSave }) {
 
   return (
     <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
-       <div className="bg-white rounded-[32px] w-full max-w-md shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
-          <div className="flex justify-between items-center px-8 py-6 border-b border-gray-100">
-             <h3 className="text-xl font-bold text-[#0A0A0A]">Add New Platform</h3>
-             <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-full transition-all text-gray-400 hover:text-black"><X size={24} /></button>
+       <div className="bg-card rounded-[32px] w-full max-w-md shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+          <div className="flex justify-between items-center px-8 py-6 border-b border-border">
+             <h3 className="text-xl font-bold text-foreground">Add New Platform</h3>
+             <button onClick={onClose} className="p-2 hover:bg-muted rounded-full transition-all text-muted-foreground hover:text-black"><X size={24} /></button>
           </div>
           <div className="p-8 space-y-6 overflow-y-auto">
              <div className="flex flex-col items-center gap-4">
                 <div 
                   onClick={() => fileInputRef.current?.click()}
-                  className="w-24 h-24 rounded-3xl bg-gray-50 border-2 border-dashed border-gray-200 flex flex-col items-center justify-center cursor-pointer hover:bg-gray-100 hover:border-gray-300 transition-all relative overflow-hidden group"
+                  className="w-24 h-24 rounded-3xl bg-muted border-2 border-dashed border-border flex flex-col items-center justify-center cursor-pointer hover:bg-muted hover:border-gray-300 transition-all relative overflow-hidden group"
                 >
                    {image ? (
                      <>
@@ -68,36 +68,36 @@ function PlatformModal({ isOpen, onClose, onSave }) {
                    ) : (
                      <>
                        <ImageIcon size={24} className="text-gray-300 mb-1" />
-                       <span className="text-[10px] font-bold text-gray-400 uppercase">Upload Icon</span>
+                       <span className="text-[10px] font-bold text-muted-foreground uppercase">Upload Icon</span>
                      </>
                    )}
                 </div>
                 <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleFileChange} />
-                <p className="text-[10px] text-gray-400 text-center uppercase tracking-widest font-bold">Square PNG/SVG recommended</p>
+                <p className="text-[10px] text-muted-foreground text-center uppercase tracking-widest font-bold">Square PNG/SVG recommended</p>
              </div>
 
              <div className="space-y-4">
                 <div>
-                   <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1 block">Platform Name</label>
-                   <input id="input-platform-name" placeholder="e.g. Threads" value={name} onChange={(e) => setName(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-black outline-none text-sm font-medium" />
+                   <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-1 block">Platform Name</label>
+                   <input id="input-platform-name" placeholder="e.g. Threads" value={name} onChange={(e) => setName(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-border focus:border-black outline-none text-sm font-medium" />
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                    <div>
-                      <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1 block">Platform ID</label>
-                      <input id="input-platform-id" placeholder="TH" value={id} onChange={(e) => setId(e.target.value.toUpperCase())} className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-black outline-none text-sm font-mono" maxLength={3} />
+                      <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-1 block">Platform ID</label>
+                      <input id="input-platform-id" placeholder="TH" value={id} onChange={(e) => setId(e.target.value.toUpperCase())} className="w-full px-4 py-3 rounded-xl border border-border focus:border-black outline-none text-sm font-mono" maxLength={3} />
                    </div>
                    <div>
-                      <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1 block">Brand Color</label>
+                      <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-1 block">Brand Color</label>
                       <div className="flex items-center gap-2">
                          <input type="color" value={color} onChange={(e) => setColor(e.target.value)} className="w-10 h-10 rounded-lg cursor-pointer border-none bg-transparent" />
-                         <span className="text-xs font-mono text-gray-500 uppercase">{color}</span>
+                         <span className="text-xs font-mono text-muted-foreground uppercase">{color}</span>
                       </div>
                    </div>
                 </div>
              </div>
           </div>
-          <div className="px-8 py-6 bg-gray-50 flex gap-3 border-t border-gray-100">
-             <button onClick={onClose} className="flex-1 py-3 rounded-2xl border border-gray-200 bg-white text-sm font-bold text-gray-600">Cancel</button>
+          <div className="px-8 py-6 bg-muted flex gap-3 border-t border-border">
+             <button onClick={onClose} className="flex-1 py-3 rounded-2xl border border-border bg-card text-sm font-bold text-muted-foreground">Cancel</button>
              <button id="btn-submit-platform" onClick={() => { onSave({ id, name, color, image }); onClose(); }} className="flex-1 py-3 rounded-2xl bg-[#0A0A0A] text-white text-sm font-bold shadow-lg hover:bg-gray-800 transition-all">Add Platform</button>
           </div>
        </div>
@@ -113,23 +113,23 @@ function ModuleModal({ isOpen, onClose, onSave }) {
 
   return (
     <div id="modal-module" className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
-       <div className="bg-white rounded-[32px] w-full max-w-md shadow-2xl overflow-hidden p-8">
+       <div className="bg-card rounded-[32px] w-full max-w-md shadow-2xl overflow-hidden p-8">
           <div className="flex justify-between items-center mb-6">
-             <h3 className="text-xl font-bold text-[#0A0A0A]">Add New Module</h3>
-             <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-full transition-all text-gray-400 hover:text-black"><X size={24} /></button>
+             <h3 className="text-xl font-bold text-foreground">Add New Module</h3>
+             <button onClick={onClose} className="p-2 hover:bg-muted rounded-full transition-all text-muted-foreground hover:text-black"><X size={24} /></button>
           </div>
           <div className="space-y-4 mb-8">
              <div>
-                <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1 block">Module Name</label>
-                <input id="input-module-name" placeholder="e.g. Reporting" value={name} onChange={(e) => setName(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-black outline-none text-sm" />
+                <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-1 block">Module Name</label>
+                <input id="input-module-name" placeholder="e.g. Reporting" value={name} onChange={(e) => setName(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-border focus:border-black outline-none text-sm" />
              </div>
              <div>
-                <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1 block">Description</label>
-                <textarea id="input-module-desc" placeholder="e.g. Automated PDF report generation" value={desc} onChange={(e) => setDesc(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-black outline-none text-sm h-24 resize-none" />
+                <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-1 block">Description</label>
+                <textarea id="input-module-desc" placeholder="e.g. Automated PDF report generation" value={desc} onChange={(e) => setDesc(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-border focus:border-black outline-none text-sm h-24 resize-none" />
              </div>
           </div>
           <div className="flex gap-3">
-             <button onClick={onClose} className="flex-1 py-3 rounded-2xl border border-gray-200 bg-white text-sm font-bold text-gray-600">Cancel</button>
+             <button onClick={onClose} className="flex-1 py-3 rounded-2xl border border-border bg-card text-sm font-bold text-muted-foreground">Cancel</button>
              <button id="btn-submit-module" onClick={() => { onSave({ id: `M${Math.floor(Math.random()*100)}`, name, description: desc, icon: <Layers size={18} /> }); onClose(); }} className="flex-1 py-3 rounded-2xl bg-[#0A0A0A] text-white text-sm font-bold shadow-lg hover:bg-gray-800 transition-all">Add Module</button>
           </div>
        </div>
@@ -256,23 +256,23 @@ export function AdminProducts() {
   }
 
   return (
-    <div className="flex-1 overflow-y-auto bg-[#F8F8F7]" style={{ padding: "40px 60px" }}>
+    <div className="flex-1 overflow-y-auto bg-background" style={{ padding: "40px 60px" }}>
       {/* Header */}
       <div className="flex items-start justify-between mb-10">
         <div className="flex gap-5">
-           <div className="w-14 h-14 rounded-2xl bg-white flex items-center justify-center shadow-sm border border-gray-100 text-[#0A0A0A]">
+           <div className="w-14 h-14 rounded-2xl bg-card flex items-center justify-center shadow-sm border border-border text-foreground">
               <Layers size={28} />
            </div>
            <div>
-             <h1 className="text-2xl font-bold text-[#0A0A0A]">Product Matrix Admin</h1>
-             <p className="text-gray-500 mt-1">Cross-reference Modules and Platforms to define base products.</p>
+             <h1 className="text-2xl font-bold text-foreground">Product Matrix Admin</h1>
+             <p className="text-muted-foreground mt-1">Cross-reference Modules and Platforms to define base products.</p>
            </div>
         </div>
         <div className="flex gap-3">
            <button 
              id="btn-manage-modules"
              onClick={() => setShowModuleModal(true)}
-             className="px-5 py-2.5 bg-white border border-gray-200 rounded-xl text-sm font-bold hover:bg-gray-50 transition-colors"
+             className="px-5 py-2.5 bg-card border border-border rounded-xl text-sm font-bold hover:bg-muted transition-colors"
            >
              Manage Modules
            </button>
@@ -287,12 +287,12 @@ export function AdminProducts() {
       </div>
 
       {/* The Matrix */}
-      <div className="bg-white rounded-[32px] border border-gray-100 shadow-sm p-8 overflow-x-auto">
+      <div className="bg-card rounded-[32px] border border-border shadow-sm p-8 overflow-x-auto">
         <table className="w-full border-separate border-spacing-3">
            <thead>
               <tr>
                  <th className="p-0 min-w-[200px]">
-                    <div className="h-12 bg-gray-50 rounded-xl border border-gray-100 flex items-center justify-center text-[10px] font-black text-gray-400 uppercase tracking-widest">
+                    <div className="h-12 bg-muted rounded-xl border border-border flex items-center justify-center text-[10px] font-black text-muted-foreground uppercase tracking-widest">
                        Module \ Platform
                     </div>
                  </th>
@@ -306,7 +306,7 @@ export function AdminProducts() {
                               <span className="text-[10px] text-white font-bold">{p.id}</span>
                            </div>
                          )}
-                         <span className="text-[10px] font-bold text-[#0A0A0A]">{p.name}</span>
+                         <span className="text-[10px] font-bold text-foreground">{p.name}</span>
                       </div>
                    </th>
                  ))}
@@ -316,9 +316,9 @@ export function AdminProducts() {
               {modules.map(m => (
                 <tr key={m.id}>
                    <td className="p-0">
-                      <div className="h-12 bg-white border border-gray-100 rounded-xl flex items-center gap-3 px-4 shadow-sm">
-                         <div className="text-gray-400">{getModuleIcon(m.name)}</div>
-                         <span className="text-xs font-bold text-[#0A0A0A]">{m.name}</span>
+                      <div className="h-12 bg-card border border-border rounded-xl flex items-center gap-3 px-4 shadow-sm">
+                         <div className="text-muted-foreground">{getModuleIcon(m.name)}</div>
+                         <span className="text-xs font-bold text-foreground">{m.name}</span>
                       </div>
                    </td>
                    {platforms.map(p => {
@@ -344,37 +344,37 @@ export function AdminProducts() {
       {/* Legend */}
       <div className="mt-8 flex gap-6 px-4">
          <div className="flex items-center gap-2">
-            <div className="w-3 h-3 bg-white border border-[#0A0A0A] rounded shadow-sm" />
-            <span className="text-xs text-gray-500 font-medium">Core Feature Created</span>
+            <div className="w-3 h-3 bg-card border border-[#0A0A0A] rounded shadow-sm" />
+            <span className="text-xs text-muted-foreground font-medium">Core Feature Created</span>
          </div>
          <div className="flex items-center gap-2">
-            <div className="w-3 h-3 border border-dashed border-gray-200 rounded" />
-            <span className="text-xs text-gray-500 font-medium">Feature Unavailable</span>
+            <div className="w-3 h-3 border border-dashed border-border rounded" />
+            <span className="text-xs text-muted-foreground font-medium">Feature Unavailable</span>
          </div>
       </div>
 
       {/* Add Product Modal (Matrix Cell Action) */}
       {showAddModal && (
         <div id="modal-matrix-add" className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
-           <div className="bg-white rounded-[32px] w-full max-w-md shadow-2xl overflow-hidden p-8 animate-in zoom-in-95 duration-200">
+           <div className="bg-card rounded-[32px] w-full max-w-md shadow-2xl overflow-hidden p-8 animate-in zoom-in-95 duration-200">
               <div className="text-center mb-8">
-                 <div className="w-16 h-16 rounded-3xl bg-gray-50 flex items-center justify-center mx-auto mb-4 border border-gray-100 shadow-inner text-gray-400">
+                 <div className="w-16 h-16 rounded-3xl bg-muted flex items-center justify-center mx-auto mb-4 border border-border shadow-inner text-muted-foreground">
                     {getModuleIcon(activeSelection.module.name)}
                  </div>
-                 <h3 className="text-xl font-black text-[#0A0A0A]">Enable {activeSelection.module.name}</h3>
-                 <p className="text-sm text-gray-500 mt-1">Activate this module for <b>{activeSelection.platform.name}</b></p>
+                 <h3 className="text-xl font-black text-foreground">Enable {activeSelection.module.name}</h3>
+                 <p className="text-sm text-muted-foreground mt-1">Activate this module for <b>{activeSelection.platform.name}</b></p>
               </div>
 
               <div className="space-y-4 mb-8">
-                 <div className="p-4 rounded-2xl bg-gray-50 border border-gray-100">
-                    <div className="text-[10px] font-bold text-gray-400 uppercase mb-1">Generated ID</div>
-                    <div className="text-sm font-mono text-[#0A0A0A]">SKU-{activeSelection.platform.id}-{activeSelection.module.id}-AUTO</div>
+                 <div className="p-4 rounded-2xl bg-muted border border-border">
+                    <div className="text-[10px] font-bold text-muted-foreground uppercase mb-1">Generated ID</div>
+                    <div className="text-sm font-mono text-foreground">SKU-{activeSelection.platform.id}-{activeSelection.module.id}-AUTO</div>
                  </div>
-                 <p className="text-xs text-gray-400 leading-relaxed px-2">Once enabled, this product will be available for bundling in your Subscription Plans.</p>
+                 <p className="text-xs text-muted-foreground leading-relaxed px-2">Once enabled, this product will be available for bundling in your Subscription Plans.</p>
               </div>
 
               <div className="flex gap-3">
-                 <button id="btn-cancel-matrix" onClick={() => setShowAddModal(false)} className="flex-1 py-3 rounded-2xl border border-gray-200 bg-white text-sm font-bold text-gray-600">Cancel</button>
+                 <button id="btn-cancel-matrix" onClick={() => setShowAddModal(false)} className="flex-1 py-3 rounded-2xl border border-border bg-card text-sm font-bold text-muted-foreground">Cancel</button>
                  <button id="btn-submit-matrix" onClick={saveProductMatrix} className="flex-1 py-3 rounded-2xl bg-[#0A0A0A] text-white text-sm font-bold shadow-lg hover:bg-gray-800 transition-all">Enable Module</button>
               </div>
            </div>

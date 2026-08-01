@@ -491,10 +491,10 @@ export function SettingsPage() {
   };
 
   return (
-    <div className="flex-1 flex flex-col overflow-hidden bg-[#F8F8F7] p-8 font-sans">
+    <div className="flex-1 flex flex-col overflow-hidden bg-background p-8 font-sans">
       {/* Top horizontal navigation instead of a vertical sidebar */}
-      <div className="bg-white rounded-2xl border border-gray-100 p-4 mb-6 shadow-sm flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-        <h1 className="text-lg font-extrabold text-[#0A0A0A] tracking-tight pl-2">{t("title")}</h1>
+      <div className="bg-card rounded-2xl border border-border p-4 mb-6 shadow-sm flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+        <h1 className="text-lg font-extrabold text-foreground tracking-tight pl-2">{t("title")}</h1>
         
         <div className="flex flex-wrap gap-1 bg-gray-55/60 p-1 rounded-xl">
           {[
@@ -517,7 +517,7 @@ export function SettingsPage() {
                 className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-xs font-bold transition-all ${
                   isTabActive 
                     ? "bg-slate-900 text-white shadow-sm" 
-                    : "text-gray-500 hover:text-gray-800 hover:bg-gray-100/50"
+                    : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
                 }`}
               >
                 <Icon size={14} />
@@ -529,15 +529,15 @@ export function SettingsPage() {
       </div>
 
       {/* Main Settings Panel */}
-      <div className="flex-1 overflow-y-auto bg-white rounded-3xl border border-gray-150 p-8 shadow-sm">
+      <div className="flex-1 overflow-y-auto bg-card rounded-3xl border border-gray-150 p-8 shadow-sm">
         {activeTab === "account" && (
           <div className="space-y-10 animate-in fade-in duration-300">
             <div>
               <div className="flex items-center gap-2 mb-2">
-                 <User size={18} className="text-gray-400" />
-                 <h2 className="text-lg font-bold text-[#0A0A0A]">{t("profile.title")}</h2>
+                 <User size={18} className="text-muted-foreground" />
+                 <h2 className="text-lg font-bold text-foreground">{t("profile.title")}</h2>
               </div>
-              <p className="text-sm text-gray-500 leading-relaxed">
+              <p className="text-sm text-muted-foreground leading-relaxed">
                  {t("profile.subtitle")}
               </p>
             </div>
@@ -545,18 +545,18 @@ export function SettingsPage() {
             <section className="space-y-6 max-w-xl">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-1.5">
-                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{t("profile.fullName")}</label>
+                  <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">{t("profile.fullName")}</label>
                   <input 
                     type="text" 
                     value={fullName}
                     onChange={(e) => setFullName(e.target.value)}
                     data-testid="profile-fullname-input"
-                    className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-black outline-none text-sm font-medium" 
+                    className="w-full px-4 py-3 rounded-xl border border-border focus:border-black outline-none text-sm font-medium" 
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{t("profile.email")}</label>
-                  <input value={email} disabled className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-55 text-gray-450 text-sm font-medium" />
+                  <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">{t("profile.email")}</label>
+                  <input value={email} disabled className="w-full px-4 py-3 rounded-xl border border-border bg-gray-55 text-gray-450 text-sm font-medium" />
                 </div>
               </div>
 
@@ -564,30 +564,30 @@ export function SettingsPage() {
                  <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
                        <CheckCircle2 size={18} className="text-green-600" />
-                       <span className="text-sm font-bold text-[#0A0A0A]">{t("profile.metricsReport")}</span>
+                       <span className="text-sm font-bold text-foreground">{t("profile.metricsReport")}</span>
                     </div>
                     <div 
                       onClick={() => setReceiveSummary(!receiveSummary)}
                       data-testid="toggle-monthly-summary"
                       className={`w-10 h-6 rounded-full flex items-center p-1 cursor-pointer transition-all ${receiveSummary ? 'bg-green-600' : 'bg-gray-300'}`}
                     >
-                      <div className={`w-4 h-4 bg-white rounded-full shadow-sm transform transition-all ${receiveSummary ? 'translate-x-4' : 'translate-x-0'}`} />
+                      <div className={`w-4 h-4 bg-card rounded-full shadow-sm transform transition-all ${receiveSummary ? 'translate-x-4' : 'translate-x-0'}`} />
                     </div>
                  </div>
-                 <p className="text-[11px] text-gray-500 leading-relaxed font-medium">
+                 <p className="text-[11px] text-muted-foreground leading-relaxed font-medium">
                     {t("profile.metricsReportDesc")}
                  </p>
 
                  <div className="space-y-1.5 pt-2">
-                   <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{t("profile.alternativeEmail")}</label>
+                   <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">{t("profile.alternativeEmail")}</label>
                    <input 
                      type="email" 
                      placeholder={t("profile.alternativeEmail")}
                      value={customSummaryEmail}
                      onChange={(e) => setCustomSummaryEmail(e.target.value)}
-                     className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-black outline-none text-sm font-medium" 
+                     className="w-full px-4 py-3 rounded-xl border border-border focus:border-black outline-none text-sm font-medium" 
                    />
-                   <p className="text-[10px] text-gray-400 italic">{t("profile.alternativeEmailDesc", { email })}</p>
+                   <p className="text-[10px] text-muted-foreground italic">{t("profile.alternativeEmailDesc", { email })}</p>
                  </div>
               </div>
 
@@ -683,24 +683,24 @@ export function SettingsPage() {
           <div className="space-y-10 animate-in fade-in duration-300">
             <div>
               <div className="flex items-center gap-2 mb-2">
-                 <Shield size={18} className="text-gray-400" />
-                 <h2 className="text-lg font-bold text-[#0A0A0A]">{t("security.title")}</h2>
+                 <Shield size={18} className="text-muted-foreground" />
+                 <h2 className="text-lg font-bold text-foreground">{t("security.title")}</h2>
               </div>
-              <p className="text-sm text-gray-500 leading-relaxed">
+              <p className="text-sm text-muted-foreground leading-relaxed">
                  {t("security.subtitle")}
               </p>
             </div>
 
             <div className="space-y-6 max-w-md">
               <div className="space-y-1.5">
-                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{t("profile.email")}</label>
-                <input value={email} disabled className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 text-gray-400 text-sm font-medium" />
+                <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">{t("profile.email")}</label>
+                <input value={email} disabled className="w-full px-4 py-3 rounded-xl border border-border bg-muted text-muted-foreground text-sm font-medium" />
               </div>
 
               {accounts.some(acc => acc.provider === 'LOCAL') && (
                 <div className="space-y-1.5">
                   <div className="flex items-center justify-between">
-                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{t("security.currentPassword")}</label>
+                    <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">{t("security.currentPassword")}</label>
                     <Link 
                       to={`/forgot-password?email=${encodeURIComponent(email)}`}
                       className="text-[10px] font-bold text-blue-600 hover:underline hover:text-blue-700 transition-colors"
@@ -709,35 +709,35 @@ export function SettingsPage() {
                     </Link>
                   </div>
                   <div className="relative">
-                    <Lock size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                    <Lock size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
                     <input 
                       type="password" 
                       placeholder={t("security.currentPasswordPlaceholder")} 
                       value={currentPassword}
                       onChange={(e) => setCurrentPassword(e.target.value)}
                       data-testid="profile-current-password-input"
-                      className="w-full pl-10 pr-4 py-3 rounded-xl border border-gray-200 focus:border-black outline-none text-sm font-medium" 
+                      className="w-full pl-10 pr-4 py-3 rounded-xl border border-border focus:border-black outline-none text-sm font-medium" 
                     />
                   </div>
                 </div>
               )}
 
               <div className="space-y-1.5">
-                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">
+                <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">
                   {accounts.some(acc => acc.provider === 'LOCAL') ? t("security.newPassword") : t("security.setupNewPassword")}
                 </label>
                 <div className="relative">
-                  <Lock size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                  <Lock size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
                   <input 
                     type="password" 
                     placeholder={accounts.some(acc => acc.provider === 'LOCAL') ? t("security.newPasswordPlaceholder") : t("security.createNewPasswordPlaceholder")} 
                     value={newPassword}
                     onChange={(e) => setNewPassword(e.target.value)}
                     data-testid="profile-new-password-input"
-                    className="w-full pl-10 pr-4 py-3 rounded-xl border border-gray-200 focus:border-black outline-none text-sm font-medium" 
+                    className="w-full pl-10 pr-4 py-3 rounded-xl border border-border focus:border-black outline-none text-sm font-medium" 
                   />
                 </div>
-                <p className="text-[10px] text-gray-400 italic">
+                <p className="text-[10px] text-muted-foreground italic">
                   {accounts.some(acc => acc.provider === 'LOCAL') 
                     ? t("security.passwordHint")
                     : t("security.googleHint")
@@ -749,7 +749,7 @@ export function SettingsPage() {
                  <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
                        <Smartphone size={18} className="text-blue-600" />
-                       <span className="text-sm font-bold text-[#0A0A0A]">{t("security.twoFactor")}</span>
+                       <span className="text-sm font-bold text-foreground">{t("security.twoFactor")}</span>
                     </div>
                     <button 
                       onClick={handleToggle2FA}
@@ -759,7 +759,7 @@ export function SettingsPage() {
                       {is2FALoading ? (
                         <Loader2 size={12} className="animate-spin text-white mx-auto" />
                       ) : (
-                        <div className={`w-4 h-4 bg-white rounded-full shadow-sm transform transition-all ${twoFactor ? 'translate-x-4' : 'translate-x-0'}`} />
+                        <div className={`w-4 h-4 bg-card rounded-full shadow-sm transform transition-all ${twoFactor ? 'translate-x-4' : 'translate-x-0'}`} />
                       )}
                     </button>
                  </div>
@@ -780,15 +780,15 @@ export function SettingsPage() {
             </div>
 
             {/* Linked Accounts Section */}
-            <div className="pt-8 border-t border-gray-100 space-y-6">
+            <div className="pt-8 border-t border-border space-y-6">
               <div>
-                <h3 className="text-sm font-bold text-[#0A0A0A]">{t("security.linkedAccounts")}</h3>
-                <p className="text-xs text-gray-500 mt-1">{t("security.linkedAccountsDesc")}</p>
+                <h3 className="text-sm font-bold text-foreground">{t("security.linkedAccounts")}</h3>
+                <p className="text-xs text-muted-foreground mt-1">{t("security.linkedAccountsDesc")}</p>
               </div>
 
               <div className="space-y-3 max-w-xl">
                 {/* Google OAuth Method */}
-                <div className="flex items-center justify-between p-4 rounded-2xl border border-gray-100 bg-white shadow-sm">
+                <div className="flex items-center justify-between p-4 rounded-2xl border border-border bg-card shadow-sm">
                   <div className="flex items-center gap-3">
                     <div className="p-2.5 bg-red-50 rounded-xl">
                       <svg className="w-[18px] h-[18px]" viewBox="0 0 24 24">
@@ -799,8 +799,8 @@ export function SettingsPage() {
                       </svg>
                     </div>
                     <div>
-                      <div className="text-sm font-bold text-[#0A0A0A]">{t("security.googleAccount")}</div>
-                      <div className="text-xs text-gray-400 font-medium mt-0.5">
+                      <div className="text-sm font-bold text-foreground">{t("security.googleAccount")}</div>
+                      <div className="text-xs text-muted-foreground font-medium mt-0.5">
                         {accounts.some(acc => acc.provider === "GOOGLE") 
                           ? t("security.linked", { id: accounts.find(acc => acc.provider === "GOOGLE")?.providerId || "N/A" })
                           : t("security.notLinked")
@@ -819,7 +819,7 @@ export function SettingsPage() {
                   ) : (
                     <button
                       onClick={handleLinkGoogle}
-                      className="px-4 py-2 bg-white text-gray-700 border border-gray-200 hover:bg-gray-55 text-xs font-bold rounded-xl transition-all active:scale-95 flex items-center gap-1.5"
+                      className="px-4 py-2 bg-card text-foreground border border-border hover:bg-gray-55 text-xs font-bold rounded-xl transition-all active:scale-95 flex items-center gap-1.5"
                     >
                       <Plus size={14} /> {t("security.linkNowBtn")}
                     </button>
@@ -835,8 +835,8 @@ export function SettingsPage() {
           <div className="space-y-6 animate-in fade-in duration-300">
              <div className="flex items-center justify-between">
                 <div>
-                   <h2 className="text-lg font-bold text-[#0A0A0A]">{t("support.title")}</h2>
-                   <p className="text-sm text-gray-500 mt-1">{t("support.subtitle")}</p>
+                   <h2 className="text-lg font-bold text-foreground">{t("support.title")}</h2>
+                   <p className="text-sm text-muted-foreground mt-1">{t("support.subtitle")}</p>
                 </div>
                 {selectedTicket && (
                   <button 
@@ -850,31 +850,31 @@ export function SettingsPage() {
 
              <div className="grid grid-cols-1 md:grid-cols-12 gap-6 min-h-[500px]">
                 {/* Left ticket list */}
-                <div className="md:col-span-4 bg-white rounded-3xl border border-gray-150 p-4 space-y-2 max-h-[500px] overflow-y-auto">
+                <div className="md:col-span-4 bg-card rounded-3xl border border-gray-150 p-4 space-y-2 max-h-[500px] overflow-y-auto">
                    <button
                      onClick={() => setSelectedTicket(null)}
                      className={`w-full text-left p-3.5 rounded-2xl border transition-all flex items-center gap-3 ${
                        !selectedTicket 
                          ? "bg-pink-50/50 border-pink-200 shadow-sm" 
-                         : "border-gray-100 hover:bg-slate-50/50"
+                         : "border-border hover:bg-slate-50/50"
                      }`}
                    >
                      <div className="p-2 bg-pink-500 text-white rounded-xl">
                         <MessageCircle size={16} />
                      </div>
                      <div>
-                       <div className="text-xs font-bold text-[#0A0A0A]">{t("support.liveChat")}</div>
-                       <div className="text-[9px] text-gray-400 mt-0.5">{t("support.liveChatDesc")}</div>
+                       <div className="text-xs font-bold text-foreground">{t("support.liveChat")}</div>
+                       <div className="text-[9px] text-muted-foreground mt-0.5">{t("support.liveChatDesc")}</div>
                      </div>
                    </button>
                    
-                   <div className="h-px bg-gray-100 my-2" />
+                   <div className="h-px bg-muted my-2" />
                    
-                   <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-2 mb-2">{t("support.closedSessions")}</h3>
+                   <h3 className="text-[10px] font-black text-muted-foreground uppercase tracking-widest px-2 mb-2">{t("support.closedSessions")}</h3>
                    {loadingTickets ? (
-                     <div className="flex items-center justify-center p-8"><Loader2 className="animate-spin text-gray-400" size={20} /></div>
+                     <div className="flex items-center justify-center p-8"><Loader2 className="animate-spin text-muted-foreground" size={20} /></div>
                    ) : tickets.length === 0 ? (
-                     <div className="text-xs text-gray-400 text-center py-8">{t("support.noSessions")}</div>
+                     <div className="text-xs text-muted-foreground text-center py-8">{t("support.noSessions")}</div>
                    ) : (
                      tickets.map((ticketItem) => (
                        <button
@@ -887,33 +887,33 @@ export function SettingsPage() {
                          }`}
                        >
                          <div className="min-w-0">
-                           <div className="text-xs font-bold text-[#0A0A0A] truncate">{ticketItem.subject}</div>
-                           <div className="text-[9px] text-gray-400 mt-0.5 font-mono">ID: {ticketItem.id.substring(0, 8)}</div>
+                           <div className="text-xs font-bold text-foreground truncate">{ticketItem.subject}</div>
+                           <div className="text-[9px] text-muted-foreground mt-0.5 font-mono">ID: {ticketItem.id.substring(0, 8)}</div>
                          </div>
-                         <ChevronRight size={14} className="text-gray-400 shrink-0" />
+                         <ChevronRight size={14} className="text-muted-foreground shrink-0" />
                        </button>
                      ))
                    )}
                 </div>
 
                 {/* Right ticket messages box */}
-                <div className="md:col-span-8 bg-white rounded-3xl border border-gray-150 overflow-hidden flex flex-col h-[500px] shadow-sm">
+                <div className="md:col-span-8 bg-card rounded-3xl border border-gray-150 overflow-hidden flex flex-col h-[500px] shadow-sm">
                    {selectedTicket ? (
                      <>
                        {/* Box Header */}
                        <div className="bg-[#2D1D35]/5 p-4 border-b border-gray-150 flex items-center justify-between">
                          <div>
-                           <div className="text-xs font-bold text-[#0A0A0A]">{selectedTicket.subject}</div>
-                           <div className="text-[9px] text-gray-400 mt-0.5">
+                           <div className="text-xs font-bold text-foreground">{selectedTicket.subject}</div>
+                           <div className="text-[9px] text-muted-foreground mt-0.5">
                              {t("support.status")}: <span className="text-green-600 font-bold uppercase">{selectedTicket.status}</span> · {t("support.closedDate", { date: new Date(selectedTicket.updatedAt).toLocaleDateString() })}
                            </div>
                          </div>
                        </div>
                        
                        {/* Messages content (Read-only view) */}
-                       <div className="flex-1 overflow-y-auto p-6 space-y-4 bg-gray-50/20">
+                       <div className="flex-1 overflow-y-auto p-6 space-y-4 bg-muted/20">
                          {loadingMessages ? (
-                           <div className="flex items-center justify-center h-full"><Loader2 className="animate-spin text-gray-400" size={24} /></div>
+                           <div className="flex items-center justify-center h-full"><Loader2 className="animate-spin text-muted-foreground" size={24} /></div>
                          ) : (
                            ticketMessages.map((msg) => {
                              const isUser = msg.senderId === selectedTicket.userId;
@@ -922,10 +922,10 @@ export function SettingsPage() {
                                  <div className={`max-w-[80%] p-3.5 rounded-2xl text-xs leading-relaxed ${
                                    isUser 
                                      ? 'bg-[#2D1D35] text-white rounded-tr-none shadow-sm' 
-                                     : 'bg-white text-gray-700 shadow-sm border border-gray-150 rounded-tl-none'
+                                     : 'bg-card text-foreground shadow-sm border border-gray-150 rounded-tl-none'
                                  }`}>
                                    <div>{msg.content}</div>
-                                   <div className={`text-[8px] mt-1.5 font-medium ${isUser ? 'text-white/40' : 'text-gray-400'}`}>
+                                   <div className={`text-[8px] mt-1.5 font-medium ${isUser ? 'text-white/40' : 'text-muted-foreground'}`}>
                                      {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                    </div>
                                  </div>
@@ -936,7 +936,7 @@ export function SettingsPage() {
                        </div>
                        
                        {/* Disabled Input Info footer */}
-                       <div className="p-4 bg-gray-55 border-t border-gray-150 text-center text-[10px] text-gray-400 font-bold tracking-wider uppercase">
+                       <div className="p-4 bg-gray-55 border-t border-gray-150 text-center text-[10px] text-muted-foreground font-bold tracking-wider uppercase">
                          {t("support.archiveHint")}
                        </div>
                      </>
@@ -945,13 +945,13 @@ export function SettingsPage() {
                        {/* Active chat window box header */}
                        <div className="bg-pink-500/5 p-4 border-b border-gray-150 flex items-center justify-between">
                          <div>
-                           <div className="text-xs font-bold text-[#0A0A0A]">{t("support.liveChatTitle")}</div>
-                           <div className="text-[9px] text-gray-400 mt-0.5">{t("support.liveChatSubtitle")}</div>
+                           <div className="text-xs font-bold text-foreground">{t("support.liveChatTitle")}</div>
+                           <div className="text-[9px] text-muted-foreground mt-0.5">{t("support.liveChatSubtitle")}</div>
                          </div>
                        </div>
                        
                        {/* Messages list (Real-time live session simulation) */}
-                       <div className="flex-1 overflow-y-auto p-6 space-y-4 bg-gray-50/20">
+                       <div className="flex-1 overflow-y-auto p-6 space-y-4 bg-muted/20">
                          {activeSupportMessages.map((msg, i) => (
                            <div key={msg.id || i} data-testid="chat-message" className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                               <div className={`max-w-[80%] p-3.5 rounded-2xl text-xs leading-relaxed ${
@@ -959,11 +959,11 @@ export function SettingsPage() {
                                   ? 'bg-[#2D1D35] text-white rounded-tr-none shadow-sm' 
                                   : msg.role === 'system'
                                     ? 'bg-amber-50 text-amber-800 text-[10px] text-center mx-auto rounded-xl border border-amber-200'
-                                    : 'bg-white text-gray-700 shadow-sm border border-gray-150 rounded-tl-none'
+                                    : 'bg-card text-foreground shadow-sm border border-gray-150 rounded-tl-none'
                               }`}>
                                  <div>{msg.text}</div>
                                  {msg.role !== 'system' && (
-                                   <div className={`text-[8px] mt-1.5 font-medium ${msg.role === 'user' ? 'text-white/45' : 'text-gray-400'}`}>{msg.time}</div>
+                                   <div className={`text-[8px] mt-1.5 font-medium ${msg.role === 'user' ? 'text-white/45' : 'text-muted-foreground'}`}>{msg.time}</div>
                                  )}
                               </div>
                            </div>
@@ -972,7 +972,7 @@ export function SettingsPage() {
                        </div>
                        
                        {/* Input Form area */}
-                       <div className="p-4 bg-white border-t border-gray-150">
+                       <div className="p-4 bg-card border-t border-gray-150">
                           <div className="flex gap-2">
                              <input 
                                value={activeSupportInput}
@@ -980,7 +980,7 @@ export function SettingsPage() {
                                onKeyDown={(e) => e.key === 'Enter' && handleSendSupportMessage()}
                                placeholder={t("support.inputPlaceholder")} 
                                data-testid="support-chat-input"
-                               className="flex-1 px-4 py-2.5 bg-gray-55 border border-gray-100 rounded-xl focus:bg-white focus:border-black outline-none text-sm transition-all font-medium" 
+                               className="flex-1 px-4 py-2.5 bg-gray-55 border border-border rounded-xl focus:bg-card focus:border-black outline-none text-sm transition-all font-medium" 
                              />
                              <button 
                                onClick={handleSendSupportMessage} 
@@ -1002,7 +1002,7 @@ export function SettingsPage() {
           <div className="space-y-8 animate-in fade-in duration-300">
              {loadingBilling ? (
                <div className="flex items-center justify-center p-20">
-                 <Loader2 className="animate-spin text-gray-400" size={32} />
+                 <Loader2 className="animate-spin text-muted-foreground" size={32} />
                </div>
              ) : (
                <>
@@ -1010,22 +1010,22 @@ export function SettingsPage() {
                  <div className="bg-slate-50 border border-slate-100 rounded-3xl p-6 flex flex-col md:flex-row md:items-center justify-between gap-6">
                    <div className="space-y-2">
                      <div className="flex items-center gap-2">
-                       <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{t("billing.currentPlan")}</span>
+                       <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">{t("billing.currentPlan")}</span>
                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
                          currentPlan?.status === 'ACTIVE' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
                        }`}>
                          {currentPlan ? t("billing.planStatus", { status: currentPlan.status }) : t("billing.unregistered")}
                        </span>
                      </div>
-                      <h3 className="text-xl font-extrabold text-[#0A0A0A]">
+                      <h3 className="text-xl font-extrabold text-foreground">
                         {currentPlan?.planName ? currentPlan.planName.charAt(0) + currentPlan.planName.slice(1).toLowerCase() : t("billing.freePlan")}
                       </h3>
                       
                       {/* Usage Tracker */}
                       <div className="pt-2 pb-2 max-w-sm space-y-2">
-                        <div className="flex justify-between text-xs font-bold text-gray-700">
+                        <div className="flex justify-between text-xs font-bold text-foreground">
                           <span>{t("billing.postsUsed")}</span>
-                          <span className="text-gray-900 font-extrabold">
+                          <span className="text-foreground font-extrabold">
                             {t("billing.postsQuota", { used: currentPlan?.postsUsedThisMonth || 0, max: currentPlan?.limits?.maxPostsPerMonth || 10 })}
                           </span>
                         </div>
@@ -1035,16 +1035,16 @@ export function SettingsPage() {
                             style={{ width: `${Math.min(((currentPlan?.postsUsedThisMonth || 0) / (currentPlan?.limits?.maxPostsPerMonth || 10)) * 100, 100)}%` }} 
                           />
                         </div>
-                        <p className="text-[10px] text-gray-400 font-medium italic">
+                        <p className="text-[10px] text-muted-foreground font-medium italic">
                           {t("billing.postsQuotaHint")}
                         </p>
                       </div>
                      {currentPlan?.periodEnd ? (
-                       <p className="text-xs text-gray-500 font-medium">
+                       <p className="text-xs text-muted-foreground font-medium">
                          {t("billing.expirationDate", { date: new Date(currentPlan.periodEnd).toLocaleDateString(language === 'vi' ? 'vi-VN' : 'en-US', { year: 'numeric', month: 'long', day: 'numeric' }) })}
                        </p>
                      ) : (
-                       <p className="text-xs text-gray-500 font-medium">
+                       <p className="text-xs text-muted-foreground font-medium">
                          {t("billing.promoHint")}
                        </p>
                      )}
@@ -1062,25 +1062,25 @@ export function SettingsPage() {
                  {/* Payment History Section */}
                  <div className="space-y-4">
                    <div>
-                     <h3 className="text-sm font-bold text-[#0A0A0A]">{t("billing.transactionHistory")}</h3>
-                     <p className="text-xs text-gray-400 mt-1">{t("billing.transactionHistoryDesc")}</p>
+                     <h3 className="text-sm font-bold text-foreground">{t("billing.transactionHistory")}</h3>
+                     <p className="text-xs text-muted-foreground mt-1">{t("billing.transactionHistoryDesc")}</p>
                    </div>
 
                    {paymentHistory.length === 0 ? (
                      <div className="p-10 border border-gray-150 rounded-3xl flex flex-col items-center justify-center text-center bg-gray-55/30">
                        <CreditCard size={32} className="text-gray-300 mb-2" />
-                       <p className="text-xs text-gray-400 font-medium">{t("billing.noTransactions")}</p>
+                       <p className="text-xs text-muted-foreground font-medium">{t("billing.noTransactions")}</p>
                      </div>
                    ) : (
-                     <div className="border border-gray-100 rounded-2xl overflow-hidden shadow-sm bg-white">
+                     <div className="border border-border rounded-2xl overflow-hidden shadow-sm bg-card">
                        <table className="w-full border-collapse text-left">
                          <thead>
-                           <tr className="bg-slate-50 border-b border-gray-100">
-                             <th className="p-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">{t("billing.colTxCode")}</th>
-                             <th className="p-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">{t("billing.colProduct")}</th>
-                             <th className="p-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">{t("billing.colAmount")}</th>
-                             <th className="p-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">{t("billing.colTime")}</th>
-                             <th className="p-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">{t("billing.colStatus")}</th>
+                           <tr className="bg-slate-50 border-b border-border">
+                             <th className="p-4 text-[10px] font-black text-muted-foreground uppercase tracking-widest">{t("billing.colTxCode")}</th>
+                             <th className="p-4 text-[10px] font-black text-muted-foreground uppercase tracking-widest">{t("billing.colProduct")}</th>
+                             <th className="p-4 text-[10px] font-black text-muted-foreground uppercase tracking-widest">{t("billing.colAmount")}</th>
+                             <th className="p-4 text-[10px] font-black text-muted-foreground uppercase tracking-widest">{t("billing.colTime")}</th>
+                             <th className="p-4 text-[10px] font-black text-muted-foreground uppercase tracking-widest">{t("billing.colStatus")}</th>
                            </tr>
                          </thead>
                          <tbody>
@@ -1097,7 +1097,7 @@ export function SettingsPage() {
                                statusClass = 'bg-green-100 text-green-700';
                              } else if (isExpired) {
                                statusLabel = t("billing.statusExpired");
-                               statusClass = 'bg-gray-100 text-gray-600';
+                               statusClass = 'bg-muted text-muted-foreground';
                              } else if (isCancelled) {
                                statusLabel = t("billing.statusCancelled");
                                statusClass = 'bg-red-100 text-red-700';
@@ -1113,11 +1113,11 @@ export function SettingsPage() {
                                  : t("billing.fallbackProduct");
 
                              return (
-                               <tr key={history.id} className="border-b border-gray-100 hover:bg-slate-50/40 transition-colors">
-                                 <td className="p-4 text-xs font-mono text-gray-600 font-bold">{history.transactionCode}</td>
-                                 <td className="p-4 text-xs font-medium text-gray-700">{productName}</td>
-                                 <td className="p-4 text-xs font-bold text-gray-900">{Number(history.amount).toLocaleString(language === 'vi' ? 'vi-VN' : 'en-US')} {language === 'vi' ? 'VND' : 'VND'}</td>
-                                 <td className="p-4 text-xs text-gray-500 font-medium font-sans">
+                               <tr key={history.id} className="border-b border-border hover:bg-slate-50/40 transition-colors">
+                                 <td className="p-4 text-xs font-mono text-muted-foreground font-bold">{history.transactionCode}</td>
+                                 <td className="p-4 text-xs font-medium text-foreground">{productName}</td>
+                                 <td className="p-4 text-xs font-bold text-foreground">{Number(history.amount).toLocaleString(language === 'vi' ? 'vi-VN' : 'en-US')} {language === 'vi' ? 'VND' : 'VND'}</td>
+                                 <td className="p-4 text-xs text-muted-foreground font-medium font-sans">
                                    {new Date(history.createdAt).toLocaleString(language === 'vi' ? 'vi-VN' : 'en-US')}
                                  </td>
                                  <td className="p-4">
@@ -1152,7 +1152,7 @@ export function SettingsPage() {
       {/* 2FA Modal */}
       {show2FAModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
-          <div className="bg-white rounded-3xl border border-gray-150 p-8 max-w-md w-full shadow-2xl space-y-6 transform transition-all scale-100 animate-in zoom-in-95 duration-200">
+          <div className="bg-card rounded-3xl border border-gray-150 p-8 max-w-md w-full shadow-2xl space-y-6 transform transition-all scale-100 animate-in zoom-in-95 duration-200">
             {modalType === "enable" && (
               <div className="space-y-6">
                 <div className="flex items-center gap-3">
@@ -1160,35 +1160,35 @@ export function SettingsPage() {
                     <Shield size={24} />
                   </div>
                   <div>
-                    <h3 className="text-lg font-extrabold text-[#0A0A0A]">Kích hoạt bảo mật 2 lớp</h3>
-                    <p className="text-xs text-gray-500 mt-0.5">Quét mã QR dưới đây bằng Google Authenticator hoặc ứng dụng TOTP khác.</p>
+                    <h3 className="text-lg font-extrabold text-foreground">Kích hoạt bảo mật 2 lớp</h3>
+                    <p className="text-xs text-muted-foreground mt-0.5">Quét mã QR dưới đây bằng Google Authenticator hoặc ứng dụng TOTP khác.</p>
                   </div>
                 </div>
 
-                <div className="flex flex-col items-center justify-center p-4 bg-gray-55 rounded-2xl border border-gray-100">
+                <div className="flex flex-col items-center justify-center p-4 bg-gray-55 rounded-2xl border border-border">
                   {qrCodeUrl ? (
                     <img src={qrCodeUrl} alt="Mã QR 2FA" className="w-48 h-48" />
                   ) : (
                     <div className="w-48 h-48 flex items-center justify-center">
-                      <Loader2 className="animate-spin text-gray-400" size={24} />
+                      <Loader2 className="animate-spin text-muted-foreground" size={24} />
                     </div>
                   )}
                   <div className="text-center mt-3 space-y-1">
-                    <div className="text-[10px] font-black text-gray-400 uppercase tracking-wider">Secret Key (nhập thủ công)</div>
-                    <code className="text-xs font-bold bg-white px-3 py-1.5 rounded-lg border border-gray-150 select-all tracking-wider text-[#0A0A0A] block">{secretKey}</code>
+                    <div className="text-[10px] font-black text-muted-foreground uppercase tracking-wider">Secret Key (nhập thủ công)</div>
+                    <code className="text-xs font-bold bg-card px-3 py-1.5 rounded-lg border border-gray-150 select-all tracking-wider text-foreground block">{secretKey}</code>
                   </div>
                 </div>
 
                 <form onSubmit={handleConfirmEnable2FA} className="space-y-4">
                   <div className="space-y-1.5">
-                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block">Mã xác thực 6 số</label>
+                    <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest block">Mã xác thực 6 số</label>
                     <input 
                       type="text" 
                       placeholder="000000" 
                       maxLength={6}
                       value={otpCode}
                       onChange={(e) => setOtpCode(e.target.value)}
-                      className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-black outline-none text-center text-lg font-bold tracking-widest"
+                      className="w-full px-4 py-3 rounded-xl border border-border focus:border-black outline-none text-center text-lg font-bold tracking-widest"
                       required
                     />
                   </div>
@@ -1197,7 +1197,7 @@ export function SettingsPage() {
                     <button
                       type="button"
                       onClick={() => setShow2FAModal(false)}
-                      className="flex-1 py-3 border border-gray-200 hover:bg-gray-55 text-gray-750 text-xs font-bold rounded-xl transition-all cursor-pointer bg-white"
+                      className="flex-1 py-3 border border-border hover:bg-gray-55 text-gray-750 text-xs font-bold rounded-xl transition-all cursor-pointer bg-card"
                     >
                       Hủy bỏ
                     </button>
@@ -1221,21 +1221,21 @@ export function SettingsPage() {
                     <AlertTriangle size={24} />
                   </div>
                   <div>
-                    <h3 className="text-lg font-extrabold text-[#0A0A0A]">Tắt bảo mật 2 lớp</h3>
-                    <p className="text-xs text-gray-500 mt-0.5">Xác nhận bằng mã OTP 6 số từ ứng dụng Authenticator của bạn.</p>
+                    <h3 className="text-lg font-extrabold text-foreground">Tắt bảo mật 2 lớp</h3>
+                    <p className="text-xs text-muted-foreground mt-0.5">Xác nhận bằng mã OTP 6 số từ ứng dụng Authenticator của bạn.</p>
                   </div>
                 </div>
 
                 <form onSubmit={handleConfirmDisable2FA} className="space-y-4">
                   <div className="space-y-1.5">
-                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block">Mã xác thực 6 số</label>
+                    <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest block">Mã xác thực 6 số</label>
                     <input 
                       type="text" 
                       placeholder="000000" 
                       maxLength={6}
                       value={otpCode}
                       onChange={(e) => setOtpCode(e.target.value)}
-                      className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-black outline-none text-center text-lg font-bold tracking-widest"
+                      className="w-full px-4 py-3 rounded-xl border border-border focus:border-black outline-none text-center text-lg font-bold tracking-widest"
                       required
                     />
                   </div>
@@ -1244,7 +1244,7 @@ export function SettingsPage() {
                     <button
                       type="button"
                       onClick={() => setShow2FAModal(false)}
-                      className="flex-1 py-3 border border-gray-200 hover:bg-gray-55 text-gray-755 text-xs font-bold rounded-xl transition-all cursor-pointer bg-white"
+                      className="flex-1 py-3 border border-border hover:bg-gray-55 text-gray-755 text-xs font-bold rounded-xl transition-all cursor-pointer bg-card"
                     >
                       Hủy bỏ
                     </button>
@@ -1268,14 +1268,14 @@ export function SettingsPage() {
                     <CheckCircle2 size={24} />
                   </div>
                   <div>
-                    <h3 className="text-lg font-extrabold text-[#0A0A0A]">Lưu mã dự phòng (Backup Codes)</h3>
-                    <p className="text-xs text-gray-500 mt-0.5">Lưu lại 10 mã dự phòng này ở nơi an toàn. Mỗi mã chỉ dùng được một lần để đăng nhập khi mất điện thoại.</p>
+                    <h3 className="text-lg font-extrabold text-foreground">Lưu mã dự phòng (Backup Codes)</h3>
+                    <p className="text-xs text-muted-foreground mt-0.5">Lưu lại 10 mã dự phòng này ở nơi an toàn. Mỗi mã chỉ dùng được một lần để đăng nhập khi mất điện thoại.</p>
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-2 p-4 bg-gray-55 rounded-2xl border border-gray-100 font-mono text-center">
+                <div className="grid grid-cols-2 gap-2 p-4 bg-gray-55 rounded-2xl border border-border font-mono text-center">
                   {backupCodes.map((code, index) => (
-                    <div key={index} className="bg-white border border-gray-150 rounded-lg py-2 text-sm font-bold text-gray-700 select-all">
+                    <div key={index} className="bg-card border border-gray-150 rounded-lg py-2 text-sm font-bold text-foreground select-all">
                       {code}
                     </div>
                   ))}

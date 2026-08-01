@@ -139,64 +139,64 @@ export function AutoListTimingCard({
     <div className="space-y-6 text-left">
       <div className="flex items-center justify-between">
         <div>
-          <h3 className="text-sm font-bold text-gray-800">Timing Cadence</h3>
-          <p className="text-[11px] font-semibold text-gray-400 mt-0.5">{timezone}</p>
+          <h3 className="text-sm font-bold text-foreground">Timing Cadence</h3>
+          <p className="text-[11px] font-semibold text-muted-foreground mt-0.5">{timezone}</p>
         </div>
-        <div className="flex bg-gray-100 p-1 rounded-xl shadow-inner text-[10px] font-black uppercase tracking-wider">
+        <div className="flex bg-muted p-1 rounded-xl shadow-inner text-[10px] font-black uppercase tracking-wider">
           <button 
             type="button"
             onClick={() => setScheduleType('INTERVAL')}
-            className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${scheduleType === 'INTERVAL' ? 'bg-white text-black shadow-sm' : 'text-gray-400 hover:text-gray-600'}`}
+            className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${scheduleType === 'INTERVAL' ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
           >
             Interval
           </button>
           <button 
             type="button"
             onClick={() => setScheduleType('SPECIFIC')}
-            className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${scheduleType === 'SPECIFIC' ? 'bg-white text-black shadow-sm' : 'text-gray-400 hover:text-gray-600'}`}
+            className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${scheduleType === 'SPECIFIC' ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
           >
             Specific Times
           </button>
         </div>
       </div>
 
-      <div className="p-5 border border-gray-100 rounded-2xl bg-gray-50/30 space-y-6">
+      <div className="p-5 border border-border rounded-2xl bg-muted/20 space-y-6">
         {scheduleType === 'INTERVAL' ? (
           <div className="space-y-6">
             <div className="space-y-2">
-              <span className="block text-[9px] font-black text-gray-400 uppercase tracking-widest">Thời gian giãn cách (Publish Interval)</span>
+              <span className="block text-[9px] font-black text-muted-foreground uppercase tracking-widest">Thời gian giãn cách (Publish Interval)</span>
               <div className="flex items-center gap-2 max-w-xs">
                 <input
                   type="number"
                   min="1"
                   value={val}
                   onChange={handleValChange}
-                  className="w-24 px-4 py-2 bg-white border border-gray-200 rounded-xl text-xs font-bold focus:border-black outline-none shadow-sm transition-all"
+                  className="w-24 px-4 py-2 bg-card border border-border text-foreground rounded-xl text-xs font-bold focus:border-foreground outline-none shadow-sm transition-all"
                   placeholder="Giá trị"
                 />
                 <div className="relative flex-1">
                   <select 
                     value={unit}
                     onChange={handleUnitChange}
-                    className="w-full px-4 py-2 bg-white border border-gray-200 rounded-xl text-xs font-bold focus:border-black outline-none shadow-sm appearance-none cursor-pointer pr-8"
+                    className="w-full px-4 py-2 bg-card border border-border text-foreground rounded-xl text-xs font-bold focus:border-foreground outline-none shadow-sm appearance-none cursor-pointer pr-8"
                   >
                     <option value="m">Phút</option>
                     <option value="h">Giờ</option>
                     <option value="d">Ngày</option>
                   </select>
-                  <ChevronDown size={14} className="absolute right-3 top-2.5 text-gray-400 pointer-events-none" />
+                  <ChevronDown size={14} className="absolute right-3 top-2.5 text-muted-foreground pointer-events-none" />
                 </div>
               </div>
-              <p className="text-[11px] text-gray-400 font-semibold mt-1">
+              <p className="text-[11px] text-muted-foreground font-semibold mt-1">
                 ⚙️ Bài viết trong hàng đợi sẽ được đăng cách nhau mỗi{" "}
-                <span className="text-black font-bold">
+                <span className="text-foreground font-bold">
                   {val || 0} {unit === 'm' ? 'phút' : unit === 'h' ? 'giờ' : 'ngày'}
                 </span>
               </p>
             </div>
 
             <div className="space-y-2">
-              <span className="block text-[9px] font-black text-gray-400 uppercase tracking-widest">Active Posting Days</span>
+              <span className="block text-[9px] font-black text-muted-foreground uppercase tracking-widest">Active Posting Days</span>
               <div className="flex items-center gap-1.5 flex-wrap">
                 {DAYS.map(day => (
                   <button
@@ -205,8 +205,8 @@ export function AutoListTimingCard({
                     onClick={() => onToggleIntervalDay && onToggleIntervalDay(day)}
                     className={`w-9 h-9 rounded-xl text-[10px] font-black transition-all border cursor-pointer ${
                       selectedDays.includes(day) 
-                        ? 'bg-black text-white border-transparent shadow-sm' 
-                        : 'bg-white text-gray-400 border-gray-100 hover:border-gray-300'
+                        ? 'bg-foreground text-background border-transparent shadow-sm' 
+                        : 'bg-card text-muted-foreground border-border hover:border-foreground/30'
                     }`}
                   >
                     {day}
@@ -217,10 +217,10 @@ export function AutoListTimingCard({
           </div>
         ) : (
           <div className="space-y-4">
-            <span className="block text-[9px] font-black text-gray-400 uppercase tracking-widest">Specific Posting Times</span>
+            <span className="block text-[9px] font-black text-muted-foreground uppercase tracking-widest">Specific Posting Times</span>
             <div className="space-y-3">
               {specificTimes.length === 0 ? (
-                <div className="p-4 text-center border border-dashed border-gray-200 rounded-2xl text-xs text-gray-400 font-medium">
+                <div className="p-4 text-center border border-dashed border-border rounded-2xl text-xs text-muted-foreground font-medium">
                   No timing slots configured. Click Add to create one.
                 </div>
               ) : (
@@ -235,7 +235,7 @@ export function AutoListTimingCard({
                         <select
                           value={hour}
                           onChange={(e) => handleTimeChange(idx, 'hour', parseInt(e.target.value))}
-                          className="bg-white border border-gray-200 rounded-xl px-3 py-2 text-xs font-bold text-gray-800 outline-none cursor-pointer appearance-none pr-7 shadow-sm transition-all focus:border-black"
+                          className="bg-card border border-border rounded-xl px-3 py-2 text-xs font-bold text-foreground outline-none cursor-pointer appearance-none pr-7 shadow-sm transition-all focus:border-foreground"
                           style={{ 
                             backgroundImage: `url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%239CA3AF' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 12 15 18 9'></polyline></svg>")`, 
                             backgroundRepeat: 'no-repeat', 
@@ -248,12 +248,12 @@ export function AutoListTimingCard({
                           ))}
                         </select>
 
-                        <span className="text-gray-400 font-bold text-xs">:</span>
+                        <span className="text-muted-foreground font-bold text-xs">:</span>
 
                         <select
                           value={minute}
                           onChange={(e) => handleTimeChange(idx, 'minute', e.target.value)}
-                          className="bg-white border border-gray-200 rounded-xl px-3 py-2 text-xs font-bold text-gray-800 outline-none cursor-pointer appearance-none pr-7 shadow-sm transition-all focus:border-black"
+                          className="bg-card border border-border rounded-xl px-3 py-2 text-xs font-bold text-foreground outline-none cursor-pointer appearance-none pr-7 shadow-sm transition-all focus:border-foreground"
                           style={{ 
                             backgroundImage: `url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%239CA3AF' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 12 15 18 9'></polyline></svg>")`, 
                             backgroundRepeat: 'no-repeat', 
@@ -267,14 +267,14 @@ export function AutoListTimingCard({
                         </select>
 
                         {/* AM/PM toggle selector */}
-                        <div className="flex bg-gray-100 p-1 rounded-xl shadow-inner text-[10px] font-black uppercase tracking-wider">
+                        <div className="flex bg-muted p-1 rounded-xl shadow-inner text-[10px] font-black uppercase tracking-wider">
                           <button
                             type="button"
                             onClick={() => handleTimeChange(idx, 'ampm', 'AM')}
                             className={`px-3 py-1 rounded-lg transition-all cursor-pointer ${
                               ampm === 'AM' 
-                                ? 'bg-black text-white shadow-sm font-bold' 
-                                : 'text-gray-400 hover:text-gray-600'
+                                ? 'bg-foreground text-background shadow-sm font-bold' 
+                                : 'text-muted-foreground hover:text-foreground'
                             }`}
                           >
                             AM
@@ -284,8 +284,8 @@ export function AutoListTimingCard({
                             onClick={() => handleTimeChange(idx, 'ampm', 'PM')}
                             className={`px-3 py-1 rounded-lg transition-all cursor-pointer ${
                               ampm === 'PM' 
-                                ? 'bg-black text-white shadow-sm font-bold' 
-                                : 'text-gray-400 hover:text-gray-600'
+                                ? 'bg-foreground text-background shadow-sm font-bold' 
+                                : 'text-muted-foreground hover:text-foreground'
                             }`}
                           >
                             PM
@@ -294,7 +294,7 @@ export function AutoListTimingCard({
                       </div>
 
                       {/* 2. Days selector for this specific time slot */}
-                      <div className="flex gap-1 items-center bg-white p-1 border border-gray-200 rounded-xl shadow-sm">
+                      <div className="flex gap-1 items-center bg-card p-1 border border-border rounded-xl shadow-sm">
                         {DAYS.map(day => {
                           const isActive = activeDays.includes(day);
                           return (
@@ -305,7 +305,7 @@ export function AutoListTimingCard({
                               className={`w-7 h-7 rounded-lg text-[9px] font-black transition-all border cursor-pointer flex items-center justify-center ${
                                 isActive 
                                   ? 'bg-[#4F46E5] text-white border-transparent shadow-sm' 
-                                  : 'bg-transparent text-gray-400 border-transparent hover:bg-gray-50'
+                                  : 'bg-transparent text-muted-foreground border-transparent hover:bg-muted'
                               }`}
                             >
                               {day}
@@ -318,7 +318,7 @@ export function AutoListTimingCard({
                       <button
                         type="button"
                         onClick={() => handleRemoveTimeSlot(idx)}
-                        className="w-9 h-9 bg-gray-100 hover:bg-red-100 hover:text-red-600 text-gray-400 rounded-xl flex items-center justify-center transition-all cursor-pointer hover:scale-105 active:scale-95 shrink-0"
+                        className="w-9 h-9 bg-muted hover:bg-rose-500/10 hover:text-rose-500 text-muted-foreground rounded-xl flex items-center justify-center transition-all cursor-pointer hover:scale-105 active:scale-95 shrink-0"
                         title="Remove slot"
                       >
                         <Trash2 size={14} />
@@ -333,7 +333,7 @@ export function AutoListTimingCard({
                 <button
                   type="button"
                   onClick={handleAddNewTimeSlot}
-                  className="flex items-center gap-1.5 px-4 py-2 bg-white border border-gray-200 hover:bg-gray-50 text-gray-600 hover:text-black rounded-xl text-xs font-bold transition-all cursor-pointer shadow-sm active:scale-95"
+                  className="flex items-center gap-1.5 px-4 py-2 bg-card border border-border hover:bg-muted text-foreground rounded-xl text-xs font-bold transition-all cursor-pointer shadow-sm active:scale-95"
                 >
                   <Plus size={14} /> Add new slot
                 </button>

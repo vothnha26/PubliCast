@@ -103,9 +103,9 @@ export function PreviewBody() {
   if (showMediaViewer) {
     return (
       <div className="flex-1 overflow-y-auto px-6 py-8 flex flex-col items-center justify-center space-y-6 bg-transparent scrollbar-thin animate-in fade-in duration-300">
-        <div className="w-full max-w-md bg-white rounded-2xl shadow-xl border border-gray-100 p-5 space-y-5 text-left font-sans">
+        <div className="w-full max-w-md bg-card rounded-2xl shadow-xl border border-border p-5 space-y-5 text-left font-sans">
           {/* Main Media Preview Frame */}
-          <div className="w-full aspect-video bg-black rounded-xl overflow-hidden relative flex items-center justify-center border border-gray-200 shadow-inner">
+          <div className="w-full aspect-video bg-black rounded-xl overflow-hidden relative flex items-center justify-center border border-border shadow-inner">
             {effectiveVideoFileUrl ? (
               isVideo ? (
                 <video 
@@ -122,24 +122,24 @@ export function PreviewBody() {
                 />
               )
             ) : (
-              <div className="flex flex-col items-center justify-center text-gray-400 space-y-2 p-6 text-center">
+              <div className="flex flex-col items-center justify-center text-muted-foreground space-y-2 p-6 text-center">
                 <Play size={28} className="text-gray-300" />
-                <span className="text-xs font-semibold uppercase tracking-wider text-gray-400">No Media Uploaded</span>
-                <p className="text-[10px] text-gray-400/80">Upload a video or photo to use the media viewer tools.</p>
+                <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">No Media Uploaded</span>
+                <p className="text-[10px] text-muted-foreground/80">Upload a video or photo to use the media viewer tools.</p>
               </div>
             )}
           </div>
 
 
           {/* Media Viewer Action Menu Buttons */}
-          <div className="space-y-2 border-t border-gray-100 pt-3">
+          <div className="space-y-2 border-t border-border pt-3">
             {/* Button 1: Add Alt Text */}
             <button
               type="button"
               onClick={() => setShowAltInput(!showAltInput)}
-              className="w-full flex items-center gap-3 px-4 py-2.5 rounded-xl hover:bg-gray-50 text-gray-800 font-bold text-xs transition-colors cursor-pointer border border-transparent hover:border-gray-200"
+              className="w-full flex items-center gap-3 px-4 py-2.5 rounded-xl hover:bg-muted text-foreground font-bold text-xs transition-colors cursor-pointer border border-transparent hover:border-border"
             >
-              <Type size={16} className="text-gray-600 shrink-0" />
+              <Type size={16} className="text-muted-foreground shrink-0" />
               <span>Add alt text</span>
               {altText && (
                 <span className="ml-auto text-[10px] text-emerald-600 font-semibold bg-emerald-50 px-2 py-0.5 rounded-md flex items-center gap-1">
@@ -150,8 +150,8 @@ export function PreviewBody() {
 
             {/* Expandable Alt Text Input Drawer */}
             {showAltInput && (
-              <div className="p-3 bg-gray-50 rounded-xl border border-gray-200 space-y-2 animate-in slide-in-from-top-2 duration-200">
-                <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider block">
+              <div className="p-3 bg-muted rounded-xl border border-border space-y-2 animate-in slide-in-from-top-2 duration-200">
+                <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block">
                   Media Alt Text (SEO & Accessibility)
                 </label>
                 <textarea
@@ -159,7 +159,7 @@ export function PreviewBody() {
                   onChange={(e) => setAltText(e.target.value)}
                   placeholder="Describe this media for visually impaired users..."
                   rows={2}
-                  className="w-full p-2.5 text-xs bg-white rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-black/10 resize-none font-sans"
+                  className="w-full p-2.5 text-xs bg-card rounded-lg border border-border focus:outline-none focus:ring-2 focus:ring-black/10 resize-none font-sans"
                 />
               </div>
             )}
@@ -168,9 +168,9 @@ export function PreviewBody() {
             <button
               type="button"
               onClick={handleThumbnailUpload}
-              className="w-full flex items-center gap-3 px-4 py-2.5 rounded-xl hover:bg-gray-50 text-gray-800 font-bold text-xs transition-colors cursor-pointer border border-transparent hover:border-gray-200"
+              className="w-full flex items-center gap-3 px-4 py-2.5 rounded-xl hover:bg-muted text-foreground font-bold text-xs transition-colors cursor-pointer border border-transparent hover:border-border"
             >
-              <ImageIcon size={16} className="text-gray-600 shrink-0" />
+              <ImageIcon size={16} className="text-muted-foreground shrink-0" />
               <span>Upload video thumbnail</span>
               {mediaThumbnailUrl && (
                 <span className="ml-auto text-[10px] text-emerald-600 font-semibold bg-emerald-50 px-2 py-0.5 rounded-md flex items-center gap-1">

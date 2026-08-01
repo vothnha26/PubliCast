@@ -103,16 +103,16 @@ export function ReportEditorModal({
             type="button"
             onClick={() => setSelectedWidgets((prev) => ({ ...prev, [section.key]: !prev[section.key] }))}
             className={`text-left rounded-xl border p-4 transition-all ${
-              checked ? "border-black ring-1 ring-black bg-white shadow-sm" : "border-gray-200 bg-white hover:shadow-sm"
+              checked ? "border-black ring-1 ring-black bg-card shadow-sm" : "border-border bg-card hover:shadow-sm"
             }`}
           >
             <div className="flex items-start justify-between gap-3">
               <div>
-                <div className="text-[11px] font-extrabold text-gray-900 tracking-tight">{section.title}</div>
-                <div className="text-[10px] text-gray-400 mt-1 leading-relaxed">{section.description}</div>
+                <div className="text-[11px] font-extrabold text-foreground tracking-tight">{section.title}</div>
+                <div className="text-[10px] text-muted-foreground mt-1 leading-relaxed">{section.description}</div>
               </div>
-              <div className={`mt-0.5 w-4.5 h-4.5 rounded-full border flex items-center justify-center ${checked ? "border-black bg-black" : "border-gray-300 bg-white"}`}>
-                {checked && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
+              <div className={`mt-0.5 w-4.5 h-4.5 rounded-full border flex items-center justify-center ${checked ? "border-black bg-black" : "border-gray-300 bg-card"}`}>
+                {checked && <div className="w-1.5 h-1.5 rounded-full bg-card" />}
               </div>
             </div>
           </button>
@@ -127,16 +127,16 @@ export function ReportEditorModal({
     <div className="fixed inset-0 bg-[#000]/60 z-50 flex flex-col animate-in fade-in duration-300">
       
       {/* Editor Header Bar */}
-      <div className="bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">
+      <div className="bg-card border-b border-border px-6 py-4 flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className="flex items-center border border-gray-300 rounded-xl px-3 py-1 bg-gray-50">
+          <div className="flex items-center border border-gray-300 rounded-xl px-3 py-1 bg-muted">
             <input 
               type="text" 
               value={templateName} 
               onChange={(e) => setTemplateName(e.target.value)} 
-              className="font-bold text-gray-800 outline-none w-48 text-sm bg-transparent"
+              className="font-bold text-foreground outline-none w-48 text-sm bg-transparent"
             />
-            <Edit2 size={14} className="text-gray-400 ml-1" />
+            <Edit2 size={14} className="text-muted-foreground ml-1" />
           </div>
         </div>
 
@@ -145,28 +145,28 @@ export function ReportEditorModal({
           <button 
             onClick={() => setEditorStep(1)}
             className={`flex items-center gap-2 text-sm font-semibold pb-1 border-b-2 transition-all ${
-              editorStep === 1 ? "border-black text-black" : "border-transparent text-gray-400 hover:text-gray-600"
+              editorStep === 1 ? "border-black text-black" : "border-transparent text-muted-foreground hover:text-muted-foreground"
             }`}
           >
-            <span className="w-5 h-5 rounded-full bg-gray-100 flex items-center justify-center text-xs">1</span>
+            <span className="w-5 h-5 rounded-full bg-muted flex items-center justify-center text-xs">1</span>
             Pages & Sections
           </button>
           <button 
             onClick={() => setEditorStep(2)}
             className={`flex items-center gap-2 text-sm font-semibold pb-1 border-b-2 transition-all ${
-              editorStep === 2 ? "border-black text-black" : "border-transparent text-gray-400 hover:text-gray-600"
+              editorStep === 2 ? "border-black text-black" : "border-transparent text-muted-foreground hover:text-muted-foreground"
             }`}
           >
-            <span className="w-5 h-5 rounded-full bg-gray-100 flex items-center justify-center text-xs">2</span>
+            <span className="w-5 h-5 rounded-full bg-muted flex items-center justify-center text-xs">2</span>
             Background & Logo
           </button>
           <button 
             onClick={() => setEditorStep(3)}
             className={`flex items-center gap-2 text-sm font-semibold pb-1 border-b-2 transition-all ${
-              editorStep === 3 ? "border-black text-black" : "border-transparent text-gray-400 hover:text-gray-600"
+              editorStep === 3 ? "border-black text-black" : "border-transparent text-muted-foreground hover:text-muted-foreground"
             }`}
           >
-            <span className="w-5 h-5 rounded-full bg-gray-100 flex items-center justify-center text-xs">3</span>
+            <span className="w-5 h-5 rounded-full bg-muted flex items-center justify-center text-xs">3</span>
             Colors & Preview
           </button>
         </div>
@@ -176,7 +176,7 @@ export function ReportEditorModal({
           <button 
             onClick={() => setEditorStep(prev => Math.max(1, prev - 1))}
             disabled={editorStep === 1}
-            className="flex items-center gap-1.5 border border-gray-300 hover:bg-gray-50 text-gray-700 text-xs font-bold px-3.5 py-2 rounded-xl transition-all disabled:opacity-40"
+            className="flex items-center gap-1.5 border border-gray-300 hover:bg-muted text-foreground text-xs font-bold px-3.5 py-2 rounded-xl transition-all disabled:opacity-40"
           >
             <ChevronLeft size={14} />
             PREV
@@ -196,7 +196,7 @@ export function ReportEditorModal({
           </button>
           <button 
             onClick={onClose}
-            className="text-gray-400 hover:text-black p-1.5 rounded-lg ml-2"
+            className="text-muted-foreground hover:text-black p-1.5 rounded-lg ml-2"
           >
             <X size={20} />
           </button>
@@ -204,7 +204,7 @@ export function ReportEditorModal({
       </div>
 
       {/* Editor Body */}
-      <div className="flex-1 overflow-y-auto bg-gray-50 p-6">
+      <div className="flex-1 overflow-y-auto bg-muted p-6">
         
         {/* STEP 1: Pages & Sections */}
         {editorStep === 1 && (
@@ -213,7 +213,7 @@ export function ReportEditorModal({
               <div className="space-y-6">
                 
                 {/* Horizontal network tabs */}
-                <div className="flex flex-wrap items-center gap-3 bg-white p-3.5 rounded-2xl border border-gray-200 shadow-sm">
+                <div className="flex flex-wrap items-center gap-3 bg-card p-3.5 rounded-2xl border border-border shadow-sm">
                   {[
                     { id: "summary", label: "Summary", color: "bg-black" },
                     { id: "facebook", label: "Facebook", color: "bg-blue-600", platform: "Facebook" },
@@ -225,7 +225,7 @@ export function ReportEditorModal({
                       key={tab.id}
                       onClick={() => setEditorTab(tab.id)}
                       className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all ${
-                        editorTab === tab.id ? `${tab.color} text-white` : "hover:bg-gray-50 text-gray-600"
+                        editorTab === tab.id ? `${tab.color} text-white` : "hover:bg-muted text-muted-foreground"
                       }`}
                     >
                       {tab.platform ? <PlatformIcon platform={tab.platform} size={14} /> : <Layers size={14} />}
@@ -234,28 +234,28 @@ export function ReportEditorModal({
                   ))}
                 </div>
 
-                <div className="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm">
+                <div className="bg-card rounded-2xl p-6 border border-border shadow-sm">
                   {/* TAB: Summary */}
                   {editorTab === "summary" && (
                     <div className="space-y-6">
-                      <div className="flex items-center justify-between pb-4 border-b border-gray-100">
-                        <span className="font-bold text-gray-800 text-sm">Summary Widgets (Các mẫu tổng quan)</span>
+                      <div className="flex items-center justify-between pb-4 border-b border-border">
+                        <span className="font-bold text-foreground text-sm">Summary Widgets (Các mẫu tổng quan)</span>
                       </div>
 
                       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
                         {/* Followers */}
                         <div 
                           onClick={() => setSelectedWidgets(prev => ({ ...prev, followers: !prev.followers }))}
-                          className={`relative bg-white rounded-xl border hover:shadow-md transition-all cursor-pointer overflow-hidden p-3.5 aspect-[1.414/1] flex flex-col justify-between select-none ${
-                            selectedWidgets.followers ? "border-black ring-1 ring-black shadow-sm" : "border-gray-200"
+                          className={`relative bg-card rounded-xl border hover:shadow-md transition-all cursor-pointer overflow-hidden p-3.5 aspect-[1.414/1] flex flex-col justify-between select-none ${
+                            selectedWidgets.followers ? "border-black ring-1 ring-black shadow-sm" : "border-border"
                           }`}
                         >
                           <div className="absolute left-0 top-0 bottom-0 w-1" style={{ backgroundColor: selectedColor }} />
-                          <div className="absolute top-2.5 right-2.5 w-4.5 h-4.5 rounded-full flex items-center justify-center bg-gray-50 border border-gray-200">
+                          <div className="absolute top-2.5 right-2.5 w-4.5 h-4.5 rounded-full flex items-center justify-center bg-muted border border-border">
                             {selectedWidgets.followers && <div className="w-2.5 h-2.5 bg-black rounded-full" />}
                           </div>
                           <div className="pl-2 space-y-2">
-                            <div className="text-[10px] font-extrabold text-gray-800 tracking-tight">Followers</div>
+                            <div className="text-[10px] font-extrabold text-foreground tracking-tight">Followers</div>
                             <div className="flex gap-1">
                               <span className="text-[7px] text-white px-1 py-0.5 rounded font-bold bg-[#3B82F6]">113K</span>
                               <span className="text-[7px] text-white px-1 py-0.5 rounded font-bold bg-[#EC4899]">5.2K</span>
@@ -266,7 +266,7 @@ export function ReportEditorModal({
                               <path d="M 0,30 Q 25,10 50,22 T 100,5 L 100,35 L 0,35 Z" fill={selectedColor} fillOpacity="0.08" />
                             </svg>
                           </div>
-                          <div className="flex justify-between items-center pl-2 pt-1 border-t border-gray-100 text-[6px] text-gray-400 font-mono">
+                          <div className="flex justify-between items-center pl-2 pt-1 border-t border-border text-[6px] text-muted-foreground font-mono">
                             <span>publicast</span>
                             <Maximize2 size={8} />
                           </div>
@@ -275,16 +275,16 @@ export function ReportEditorModal({
                         {/* Post impressions */}
                         <div 
                           onClick={() => setSelectedWidgets(prev => ({ ...prev, postImpressions: !prev.postImpressions }))}
-                          className={`relative bg-white rounded-xl border hover:shadow-md transition-all cursor-pointer overflow-hidden p-3.5 aspect-[1.414/1] flex flex-col justify-between select-none ${
-                            selectedWidgets.postImpressions ? "border-black ring-1 ring-black shadow-sm" : "border-gray-200"
+                          className={`relative bg-card rounded-xl border hover:shadow-md transition-all cursor-pointer overflow-hidden p-3.5 aspect-[1.414/1] flex flex-col justify-between select-none ${
+                            selectedWidgets.postImpressions ? "border-black ring-1 ring-black shadow-sm" : "border-border"
                           }`}
                         >
                           <div className="absolute left-0 top-0 bottom-0 w-1" style={{ backgroundColor: selectedColor }} />
-                          <div className="absolute top-2.5 right-2.5 w-4.5 h-4.5 rounded-full flex items-center justify-center bg-gray-50 border border-gray-200">
+                          <div className="absolute top-2.5 right-2.5 w-4.5 h-4.5 rounded-full flex items-center justify-center bg-muted border border-border">
                             {selectedWidgets.postImpressions && <div className="w-2.5 h-2.5 bg-black rounded-full" />}
                           </div>
                           <div className="pl-2 space-y-2">
-                            <div className="text-[10px] font-extrabold text-gray-800 tracking-tight">Post impressions</div>
+                            <div className="text-[10px] font-extrabold text-foreground tracking-tight">Post impressions</div>
                             <div className="flex gap-1.5">
                               <span className="text-[7px] text-white px-1 py-0.5 rounded font-bold bg-[#F59E0B]">6.4M</span>
                             </div>
@@ -295,7 +295,7 @@ export function ReportEditorModal({
                               <rect x="35" y="5" width="5" height="30" rx="1" fill={selectedColor} />
                             </svg>
                           </div>
-                          <div className="flex justify-between items-center pl-2 pt-1 border-t border-gray-100 text-[6px] text-gray-400 font-mono">
+                          <div className="flex justify-between items-center pl-2 pt-1 border-t border-border text-[6px] text-muted-foreground font-mono">
                             <span>publicast</span>
                             <Maximize2 size={8} />
                           </div>
@@ -307,29 +307,29 @@ export function ReportEditorModal({
                             if (e.target.tagName === "SELECT" || e.target.tagName === "INPUT") return;
                             setSelectedWidgets(prev => ({ ...prev, rankingOfPosts: !prev.rankingOfPosts }));
                           }}
-                          className={`relative bg-white rounded-xl border hover:shadow-md transition-all cursor-pointer overflow-hidden p-3.5 aspect-[1.414/1] flex flex-col justify-between select-none ${
-                            selectedWidgets.rankingOfPosts ? "border-black ring-1 ring-black shadow-sm" : "border-gray-200"
+                          className={`relative bg-card rounded-xl border hover:shadow-md transition-all cursor-pointer overflow-hidden p-3.5 aspect-[1.414/1] flex flex-col justify-between select-none ${
+                            selectedWidgets.rankingOfPosts ? "border-black ring-1 ring-black shadow-sm" : "border-border"
                           }`}
                         >
                           <div className="absolute left-0 top-0 bottom-0 w-1" style={{ backgroundColor: selectedColor }} />
-                          <div className="absolute top-2.5 right-2.5 w-4.5 h-4.5 rounded-full flex items-center justify-center bg-gray-50 border border-gray-200">
+                          <div className="absolute top-2.5 right-2.5 w-4.5 h-4.5 rounded-full flex items-center justify-center bg-muted border border-border">
                             {selectedWidgets.rankingOfPosts && <div className="w-2.5 h-2.5 bg-black rounded-full" />}
                           </div>
                           <div className="pl-2 space-y-2">
-                            <div className="text-[10px] font-extrabold text-gray-800 tracking-tight">Ranking of posts</div>
+                            <div className="text-[10px] font-extrabold text-foreground tracking-tight">Ranking of posts</div>
                             <div className="space-y-1">
-                              <div className="flex items-center justify-between text-[6px] border-b border-gray-100 pb-0.5">
-                                <span className="font-bold text-gray-700 truncate w-32">Bài viết viral trên FB...</span>
-                                <span className="font-mono text-gray-500 font-bold text-right">12.4K view</span>
+                              <div className="flex items-center justify-between text-[6px] border-b border-border pb-0.5">
+                                <span className="font-bold text-foreground truncate w-32">Bài viết viral trên FB...</span>
+                                <span className="font-mono text-muted-foreground font-bold text-right">12.4K view</span>
                               </div>
                             </div>
                             <div className="space-y-1 pt-1.5 border-t border-gray-50">
                               <div className="flex justify-between items-center">
-                                <span className="text-[8px] text-gray-400 font-bold">Sort by</span>
+                                <span className="text-[8px] text-muted-foreground font-bold">Sort by</span>
                                 <select 
                                   value={postsSortBy} 
                                   onChange={(e) => setPostsSortBy(e.target.value)}
-                                  className="text-[8px] bg-white border border-gray-200 rounded px-1 py-0.5 text-gray-700 font-bold outline-none"
+                                  className="text-[8px] bg-card border border-border rounded px-1 py-0.5 text-foreground font-bold outline-none"
                                 >
                                   <option>Impressions</option>
                                   <option>Engagement</option>
@@ -337,7 +337,7 @@ export function ReportEditorModal({
                               </div>
                             </div>
                           </div>
-                          <div className="flex justify-between items-center pl-2 pt-1 border-t border-gray-100 text-[6px] text-gray-400 font-mono">
+                          <div className="flex justify-between items-center pl-2 pt-1 border-t border-border text-[6px] text-muted-foreground font-mono">
                             <span>publicast</span>
                             <Maximize2 size={8} />
                           </div>
@@ -349,8 +349,8 @@ export function ReportEditorModal({
                   {/* TAB: Facebook */}
                   {editorTab === "facebook" && (
                     <div className="space-y-6">
-                      <div className="flex items-center justify-between pb-4 border-b border-gray-100">
-                        <span className="font-bold text-gray-800 text-sm">Facebook Dashboard Widgets (Overview + Posts + Stories + Competitors)</span>
+                      <div className="flex items-center justify-between pb-4 border-b border-border">
+                        <span className="font-bold text-foreground text-sm">Facebook Dashboard Widgets (Overview + Posts + Stories + Competitors)</span>
                       </div>
                       {renderSectionList([
                         { key: "fbGrowth", title: "Overview", description: "Followers, views, page visits, content" },
@@ -367,8 +367,8 @@ export function ReportEditorModal({
                   {/* TAB: Instagram */}
                   {editorTab === "instagram" && (
                     <div className="space-y-6">
-                      <div className="flex items-center justify-between pb-4 border-b border-gray-100">
-                        <span className="font-bold text-gray-800 text-sm">Instagram Dashboard Widgets (Community + Account + Competitors)</span>
+                      <div className="flex items-center justify-between pb-4 border-b border-border">
+                        <span className="font-bold text-foreground text-sm">Instagram Dashboard Widgets (Community + Account + Competitors)</span>
                       </div>
                       {renderSectionList([
                         { key: "igGrowth", title: "Community", description: "Followers, following, total content" },
@@ -380,8 +380,8 @@ export function ReportEditorModal({
                   {/* TAB: YouTube */}
                   {editorTab === "youtube" && (
                     <div className="space-y-6">
-                      <div className="flex items-center justify-between pb-4 border-b border-gray-100">
-                        <span className="font-bold text-gray-800 text-sm">YouTube Dashboard Widgets (Community + Demographics + Published + Viewed + Competitors)</span>
+                      <div className="flex items-center justify-between pb-4 border-b border-border">
+                        <span className="font-bold text-foreground text-sm">YouTube Dashboard Widgets (Community + Demographics + Published + Viewed + Competitors)</span>
                       </div>
                       {renderSectionList([
                         { key: "ytGrowth", title: "Community", description: "Subscribers, views, videos" },
@@ -393,8 +393,8 @@ export function ReportEditorModal({
                   {/* TAB: TikTok */}
                   {editorTab === "tiktok" && (
                     <div className="space-y-6">
-                      <div className="flex items-center justify-between pb-4 border-b border-gray-100">
-                        <span className="font-bold text-gray-800 text-sm">TikTok Dashboard Widgets (Community + Posts)</span>
+                      <div className="flex items-center justify-between pb-4 border-b border-border">
+                        <span className="font-bold text-foreground text-sm">TikTok Dashboard Widgets (Community + Posts)</span>
                       </div>
                       {renderSectionList([
                         { key: "ttGrowth", title: "Community", description: "Followers over time" },
@@ -413,10 +413,10 @@ export function ReportEditorModal({
               {/* RIGHT: Live A4 Preview của tab đang chọn */}
               <div className="sticky top-6 space-y-3">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-gray-500 uppercase tracking-wider">Live Preview</span>
-                  <span className="text-[10px] font-mono text-gray-400 bg-gray-100 px-2 py-0.5 rounded-lg capitalize">{editorTab}</span>
+                  <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Live Preview</span>
+                  <span className="text-[10px] font-mono text-muted-foreground bg-muted px-2 py-0.5 rounded-lg capitalize">{editorTab}</span>
                 </div>
-                <div className="rounded-2xl overflow-hidden border border-gray-200 shadow-sm bg-white">
+                <div className="rounded-2xl overflow-hidden border border-border shadow-sm bg-card">
                   <A4PageRenderer
                     pageType={editorTab}
                     pageIndex={1}
@@ -431,7 +431,7 @@ export function ReportEditorModal({
                     brandName={brandName}
                   />
                 </div>
-                <p className="text-[10px] text-gray-400 text-center">Xem trước trang báo cáo theo widget đã chọn</p>
+                <p className="text-[10px] text-muted-foreground text-center">Xem trước trang báo cáo theo widget đã chọn</p>
               </div>
 
             </div>
@@ -444,29 +444,29 @@ export function ReportEditorModal({
             <div className="grid grid-cols-4 gap-4">
               
               {/* Logo Card */}
-              <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
+              <div className="bg-card rounded-2xl border border-border shadow-sm overflow-hidden">
                 <div className="flex justify-between items-center px-4 pt-4 pb-2">
-                  <span className="text-sm font-bold text-gray-800">Logo</span>
-                  <span className="text-[10px] text-gray-400 font-mono">600x86px</span>
+                  <span className="text-sm font-bold text-foreground">Logo</span>
+                  <span className="text-[10px] text-muted-foreground font-mono">600x86px</span>
                 </div>
                 <div className="px-4 pb-4">
                   <input type="file" id="logo-upload-modal" accept="image/*" className="hidden" onChange={handleLogoUpload} />
                   <label
                     htmlFor="logo-upload-modal"
-                    className="flex flex-col items-center justify-center border-2 border-dashed border-gray-200 rounded-xl cursor-pointer hover:border-gray-400 hover:bg-gray-50 transition-all group"
+                    className="flex flex-col items-center justify-center border-2 border-dashed border-border rounded-xl cursor-pointer hover:border-gray-400 hover:bg-muted transition-all group"
                     style={{ minHeight: "120px" }}
                   >
                     {logoUrl ? (
                       <div className="relative w-full flex items-center justify-center p-3" style={{ minHeight: "120px" }}>
                         <img src={logoUrl} alt="Logo" className="max-h-16 max-w-full object-contain" />
                         <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 bg-black/5 rounded-xl transition-all">
-                          <span className="text-[10px] font-bold text-gray-700 bg-white px-2 py-1 rounded-lg shadow-sm">Thay đổi</span>
+                          <span className="text-[10px] font-bold text-foreground bg-card px-2 py-1 rounded-lg shadow-sm">Thay đổi</span>
                         </div>
                       </div>
                     ) : (
                       <div className="flex flex-col items-center gap-2 text-center px-3 py-4">
-                        <Upload size={18} className="text-gray-400" />
-                        <span className="text-[10px] text-gray-400 leading-relaxed">Click to select or drag logo here.</span>
+                        <Upload size={18} className="text-muted-foreground" />
+                        <span className="text-[10px] text-muted-foreground leading-relaxed">Click to select or drag logo here.</span>
                       </div>
                     )}
                   </label>
@@ -474,16 +474,16 @@ export function ReportEditorModal({
               </div>
 
               {/* Cover Background Card */}
-              <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
+              <div className="bg-card rounded-2xl border border-border shadow-sm overflow-hidden">
                 <div className="flex justify-between items-center px-4 pt-4 pb-2">
-                  <span className="text-sm font-bold text-gray-800">Cover background</span>
-                  <span className="text-[10px] text-gray-400 font-mono">842x595px</span>
+                  <span className="text-sm font-bold text-foreground">Cover background</span>
+                  <span className="text-[10px] text-muted-foreground font-mono">842x595px</span>
                 </div>
                 <div className="px-4 pb-4">
                   <input type="file" id="cover-upload-modal" accept="image/*" className="hidden" onChange={handleCoverUpload} />
                   <label
                     htmlFor="cover-upload-modal"
-                    className="flex flex-col items-center justify-center border-2 border-dashed border-gray-200 rounded-xl cursor-pointer hover:border-gray-400 hover:bg-gray-50 transition-all group overflow-hidden"
+                    className="flex flex-col items-center justify-center border-2 border-dashed border-border rounded-xl cursor-pointer hover:border-gray-400 hover:bg-muted transition-all group overflow-hidden"
                     style={{ minHeight: "120px" }}
                   >
                     {coverBackgroundUrl ? (
@@ -495,8 +495,8 @@ export function ReportEditorModal({
                       </div>
                     ) : (
                       <div className="flex flex-col items-center gap-2 text-center px-3 py-4">
-                        <Upload size={18} className="text-gray-400" />
-                        <span className="text-[10px] text-gray-400">Click to select cover background image.</span>
+                        <Upload size={18} className="text-muted-foreground" />
+                        <span className="text-[10px] text-muted-foreground">Click to select cover background image.</span>
                       </div>
                     )}
                   </label>
@@ -504,16 +504,16 @@ export function ReportEditorModal({
               </div>
 
               {/* Body Background Card */}
-              <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
+              <div className="bg-card rounded-2xl border border-border shadow-sm overflow-hidden">
                 <div className="flex justify-between items-center px-4 pt-4 pb-2">
-                  <span className="text-sm font-bold text-gray-800">Body background</span>
-                  <span className="text-[10px] text-gray-400 font-mono">842x595px</span>
+                  <span className="text-sm font-bold text-foreground">Body background</span>
+                  <span className="text-[10px] text-muted-foreground font-mono">842x595px</span>
                 </div>
                 <div className="px-4 pb-4">
                   <input type="file" id="body-upload-modal" accept="image/*" className="hidden" onChange={handleBodyUpload} />
                   <label
                     htmlFor="body-upload-modal"
-                    className="flex flex-col items-center justify-center border-2 border-dashed border-gray-200 rounded-xl cursor-pointer hover:border-gray-400 hover:bg-gray-50 transition-all group overflow-hidden"
+                    className="flex flex-col items-center justify-center border-2 border-dashed border-border rounded-xl cursor-pointer hover:border-gray-400 hover:bg-muted transition-all group overflow-hidden"
                     style={{ minHeight: "120px" }}
                   >
                     {bodyBackgroundUrl ? (
@@ -525,8 +525,8 @@ export function ReportEditorModal({
                       </div>
                     ) : (
                       <div className="flex flex-col items-center gap-2 text-center px-3 py-4">
-                        <Upload size={18} className="text-gray-400" />
-                        <span className="text-[10px] text-gray-400">Click to select body background image.</span>
+                        <Upload size={18} className="text-muted-foreground" />
+                        <span className="text-[10px] text-muted-foreground">Click to select body background image.</span>
                       </div>
                     )}
                   </label>
@@ -534,10 +534,10 @@ export function ReportEditorModal({
               </div>
 
               {/* Title Card */}
-              <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
+              <div className="bg-card rounded-2xl border border-border shadow-sm overflow-hidden">
                 <div className="flex justify-between items-center px-4 pt-4 pb-2">
-                  <span className="text-sm font-bold text-gray-800">Title</span>
-                  <span className="text-[10px] text-gray-400 font-mono">Max 50 characters</span>
+                  <span className="text-sm font-bold text-foreground">Title</span>
+                  <span className="text-[10px] text-muted-foreground font-mono">Max 50 characters</span>
                 </div>
                 <div className="px-4 pb-4 flex flex-col gap-2" style={{ minHeight: "120px" }}>
                   <input
@@ -545,23 +545,23 @@ export function ReportEditorModal({
                     maxLength={50}
                     value={reportTitle}
                     onChange={(e) => setReportTitle(e.target.value)}
-                    className="w-full px-3 py-2.5 bg-white border border-gray-300 rounded-xl text-sm font-semibold text-gray-800 focus:border-gray-500 outline-none transition-colors mt-1"
+                    className="w-full px-3 py-2.5 bg-card border border-gray-300 rounded-xl text-sm font-semibold text-foreground focus:border-gray-500 outline-none transition-colors mt-1"
                     placeholder="Social Media Insights"
                   />
-                  <span className="text-[10px] text-gray-400 font-mono">{reportTitle.length}/50 characters</span>
+                  <span className="text-[10px] text-muted-foreground font-mono">{reportTitle.length}/50 characters</span>
                 </div>
               </div>
 
             </div>
 
             <div className="flex items-center gap-3">
-              <span className="text-sm font-bold text-gray-700">Preview</span>
+              <span className="text-sm font-bold text-foreground">Preview</span>
               <div className="flex-1 h-px bg-gray-200" />
             </div>
 
             {/* 2-page preview side-by-side */}
-            <div className="grid grid-cols-2 gap-4 bg-white p-4 rounded-3xl border border-gray-100 shadow-sm">
-              <div className="rounded-2xl overflow-hidden border border-gray-200 shadow-sm">
+            <div className="grid grid-cols-2 gap-4 bg-card p-4 rounded-3xl border border-border shadow-sm">
+              <div className="rounded-2xl overflow-hidden border border-border shadow-sm">
                 <A4PageRenderer
                   pageType="cover"
                   pageIndex={1}
@@ -577,7 +577,7 @@ export function ReportEditorModal({
                   brandName={brandName}
                 />
               </div>
-              <div className="rounded-2xl overflow-hidden border border-gray-200 shadow-sm">
+              <div className="rounded-2xl overflow-hidden border border-border shadow-sm">
                 {(() => {
                   const contentPage = enabledPages.find(p => p !== "cover");
                   return contentPage ? (
@@ -595,9 +595,9 @@ export function ReportEditorModal({
                       brandName={brandName}
                     />
                   ) : (
-                    <div className="w-full aspect-[1.414/1] bg-gray-50 flex flex-col items-center justify-center gap-2 rounded-xl">
+                    <div className="w-full aspect-[1.414/1] bg-muted flex flex-col items-center justify-center gap-2 rounded-xl">
                       <Layers size={24} className="text-gray-300" />
-                      <span className="text-xs text-gray-400">Bật widget ở Step 1 để xem trước</span>
+                      <span className="text-xs text-muted-foreground">Bật widget ở Step 1 để xem trước</span>
                     </div>
                   );
                 })()}
@@ -611,10 +611,10 @@ export function ReportEditorModal({
           <div className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-8">
             
             {/* Left Color Selector */}
-            <div className="lg:col-span-1 bg-white rounded-2xl p-6 border border-gray-200 shadow-sm space-y-6">
+            <div className="lg:col-span-1 bg-card rounded-2xl p-6 border border-border shadow-sm space-y-6">
               <div>
-                <h3 className="font-bold text-gray-800 text-base mb-1">Pick your colors</h3>
-                <p className="text-xs text-gray-400">Chọn màu sắc chủ đạo đại diện cho báo cáo</p>
+                <h3 className="font-bold text-foreground text-base mb-1">Pick your colors</h3>
+                <p className="text-xs text-muted-foreground">Chọn màu sắc chủ đạo đại diện cho báo cáo</p>
               </div>
 
               {/* Colors Grid */}
@@ -624,12 +624,12 @@ export function ReportEditorModal({
                     key={cHex}
                     onClick={() => setSelectedColor(cHex)}
                     className={`w-full aspect-square rounded-xl flex flex-col justify-end p-2 transition-all border relative ${
-                      selectedColor === cHex ? "ring-2 ring-black ring-offset-2 scale-95" : "border-gray-200"
+                      selectedColor === cHex ? "ring-2 ring-black ring-offset-2 scale-95" : "border-border"
                     }`}
                     style={{ backgroundColor: cHex }}
                   >
                     {selectedColor === cHex && (
-                      <div className="absolute top-2 right-2 w-4 h-4 bg-white rounded-full flex items-center justify-center shadow">
+                      <div className="absolute top-2 right-2 w-4 h-4 bg-card rounded-full flex items-center justify-center shadow">
                         <Check size={10} className="text-black" />
                       </div>
                     )}
@@ -644,31 +644,31 @@ export function ReportEditorModal({
             {/* Right Interactive Live Preview */}
             <div className="lg:col-span-2 space-y-4">
               <div className="flex justify-between items-center">
-                <span className="text-xs font-bold text-gray-500 uppercase tracking-wider">Xem trước nội dung kết xuất (A4 Live Preview)</span>
-                <div className="flex items-center gap-2 bg-white px-3 py-1 rounded-xl border border-gray-200 shadow-sm">
+                <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Xem trước nội dung kết xuất (A4 Live Preview)</span>
+                <div className="flex items-center gap-2 bg-card px-3 py-1 rounded-xl border border-border shadow-sm">
                   <button 
                     type="button"
                     disabled={editorPreviewPage === 1}
                     onClick={() => setEditorPreviewPage(prev => Math.max(1, prev - 1))}
-                    className="text-gray-400 hover:text-black disabled:opacity-30 transition-opacity"
+                    className="text-muted-foreground hover:text-black disabled:opacity-30 transition-opacity"
                   >
                     <ChevronLeft size={14} />
                   </button>
-                  <span className="text-xs font-mono font-bold text-gray-700">
+                  <span className="text-xs font-mono font-bold text-foreground">
                     {editorPreviewPage} / {enabledPages.length}
                   </span>
                   <button 
                     type="button"
                     disabled={editorPreviewPage === enabledPages.length}
                     onClick={() => setEditorPreviewPage(prev => Math.min(enabledPages.length, prev + 1))}
-                    className="text-gray-400 hover:text-black disabled:opacity-30 transition-opacity"
+                    className="text-muted-foreground hover:text-black disabled:opacity-30 transition-opacity"
                   >
                     <ChevronRight size={14} />
                   </button>
                 </div>
               </div>
 
-              <div className="bg-white rounded-2xl border border-gray-200 shadow-lg overflow-hidden relative">
+              <div className="bg-card rounded-2xl border border-border shadow-lg overflow-hidden relative">
                 <A4PageRenderer
                   pageType={enabledPages[editorPreviewPage - 1]}
                   pageIndex={editorPreviewPage}

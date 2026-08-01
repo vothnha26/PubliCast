@@ -44,7 +44,7 @@ export function TwitchPreview({
 
         {/* Title Preview Section */}
         <div className="space-y-1 bg-[#0e0e10] p-3 rounded-xl border border-gray-800/80">
-          <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider flex items-center gap-1">
+          <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-1">
             <Tv size={11} className="text-purple-400" /> Broadcast Title Preview
           </span>
           <h3 className="text-sm font-bold text-gray-100 leading-snug break-words">{displayTitle}</h3>
@@ -52,7 +52,7 @@ export function TwitchPreview({
 
         {/* Twitch Chat Preview Mock */}
         <div className="space-y-2 pt-2 border-t border-gray-800">
-          <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider flex items-center gap-1">
+          <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-1">
             <MessageSquare size={11} className="text-purple-400" /> Chat Message Preview
           </span>
           <div className="bg-[#0e0e10] rounded-xl p-2.5 space-y-2 text-xs font-mono border border-gray-800/80">

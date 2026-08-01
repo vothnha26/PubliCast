@@ -38,9 +38,9 @@ export default function ResizePanel() {
             type="number"
             value={widthVal}
             onChange={(e) => applyChange('width', e.target.value)}
-            className="w-16 bg-transparent text-sm font-semibold text-gray-800 text-center focus:outline-none"
+            className="w-16 bg-transparent text-sm font-semibold text-foreground text-center focus:outline-none"
           />
-          <span className="text-xs font-bold text-gray-500">W</span>
+          <span className="text-xs font-bold text-muted-foreground">W</span>
         </div>
 
         {/* Lock Aspect Ratio Toggle Button */}
@@ -48,7 +48,7 @@ export default function ResizePanel() {
           type="button"
           onClick={() => setIsAspectLocked((prev) => !prev)}
           className={`p-2 rounded-xl transition cursor-pointer ${
-            isAspectLocked ? 'text-black bg-gray-200/80 shadow-sm' : 'text-gray-400 hover:text-black hover:bg-gray-100'
+            isAspectLocked ? 'text-black bg-gray-200/80 shadow-sm' : 'text-muted-foreground hover:text-black hover:bg-muted'
           }`}
           title={isAspectLocked ? 'Đang khóa tỉ lệ khung hình' : 'Tỉ lệ khung hình tự do'}
         >
@@ -61,9 +61,9 @@ export default function ResizePanel() {
             type="number"
             value={heightVal}
             onChange={(e) => applyChange('height', e.target.value)}
-            className="w-16 bg-transparent text-sm font-semibold text-gray-800 text-center focus:outline-none"
+            className="w-16 bg-transparent text-sm font-semibold text-foreground text-center focus:outline-none"
           />
-          <span className="text-xs font-bold text-gray-500">H</span>
+          <span className="text-xs font-bold text-muted-foreground">H</span>
         </div>
       </div>
     </div>

@@ -114,7 +114,7 @@ export function ResetPasswordPage() {
   };
 
   return (
-    <div className="flex h-screen w-full bg-white overflow-hidden font-sans">
+    <div className="flex h-screen w-full bg-background text-foreground overflow-hidden font-sans">
       <LeftPanel />
 
       <div className="flex-1 flex flex-col justify-center px-8 md:px-16 lg:px-24 py-12 overflow-y-auto">
@@ -122,29 +122,29 @@ export function ResetPasswordPage() {
           
           {isValidating ? (
             <div className="flex flex-col items-center justify-center space-y-4">
-              <Loader2 size={36} className="animate-spin text-gray-900" />
-              <p className="text-sm text-gray-500">Đang xác thực liên kết...</p>
+              <Loader2 size={36} className="animate-spin text-foreground" />
+              <p className="text-sm text-muted-foreground">Đang xác thực liên kết...</p>
             </div>
           ) : !isTokenValid ? (
             <div className="text-center animate-in zoom-in-95 duration-300">
-              <div className="w-16 h-16 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-6">
-                <AlertCircle size={32} className="text-red-600" />
+              <div className="w-16 h-16 bg-red-500/10 rounded-full flex items-center justify-center mx-auto mb-6">
+                <AlertCircle size={32} className="text-red-500" />
               </div>
-              <h3 style={{ fontSize: 22, fontWeight: 500, color: "#0A0A0A", marginBottom: 12 }}>Đường dẫn không hợp lệ</h3>
-              <p style={{ fontSize: 14, color: "#6B7280", lineHeight: 1.6, marginBottom: 32 }}>
+              <h3 className="text-xl font-medium text-foreground mb-3">Đường dẫn không hợp lệ</h3>
+              <p className="text-sm text-muted-foreground leading-relaxed mb-8">
                 Liên kết khôi phục mật khẩu này đã hết hạn hoặc không hợp lệ. Vui lòng yêu cầu một liên kết khôi phục mật khẩu mới.
               </p>
               
               <div className="space-y-4">
                 <button 
                   onClick={() => navigate("/forgot-password")}
-                  className="w-full py-3 bg-[#0A0A0A] text-white rounded-xl text-sm font-bold hover:bg-gray-800 transition-all flex items-center justify-center gap-2"
+                  className="w-full py-3 bg-foreground text-background rounded-xl text-sm font-bold hover:opacity-90 transition-all flex items-center justify-center gap-2 cursor-pointer"
                 >
                   Yêu cầu liên kết mới
                 </button>
                 <button 
                   onClick={() => navigate("/login")}
-                  className="w-full py-3 border border-gray-200 rounded-xl text-sm font-bold text-gray-600 hover:bg-gray-50 hover:text-black transition-all flex items-center justify-center gap-2"
+                  className="w-full py-3 border border-border bg-card rounded-xl text-sm font-bold text-foreground hover:bg-muted transition-all flex items-center justify-center gap-2 cursor-pointer"
                 >
                   Quay lại đăng nhập
                 </button>
@@ -152,40 +152,40 @@ export function ResetPasswordPage() {
             </div>
           ) : (
             <div className="animate-in fade-in slide-in-from-bottom-2 duration-300">
-              <h3 style={{ fontSize: 24, fontWeight: 500, color: "#0A0A0A", marginBottom: 8 }}>Đặt lại mật khẩu</h3>
-              <p style={{ fontSize: 14, color: "#6B7280", marginBottom: 32 }}>
-                Đang thiết lập mật khẩu mới cho tài khoản: <strong className="text-gray-900">{email}</strong>
+              <h3 className="text-2xl font-medium text-foreground mb-2">Đặt lại mật khẩu</h3>
+              <p className="text-sm text-muted-foreground mb-8">
+                Đang thiết lập mật khẩu mới cho tài khoản: <strong className="text-foreground">{email}</strong>
               </p>
 
               <form onSubmit={handleSubmit} className="space-y-6">
                 <div>
-                  <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Mật khẩu mới</label>
+                  <label className="block text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">Mật khẩu mới</label>
                   <div className="relative">
-                    <Lock size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                    <Lock size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
                     <input 
                       type={showPass ? "text" : "password"} 
                       required
                       placeholder="Min. 8 characters" 
                       value={newPassword}
                       onChange={(e) => setNewPassword(e.target.value)}
-                      className="w-full pl-10 pr-10 py-3 rounded-xl border border-gray-200 focus:border-[#0A0A0A] outline-none text-sm transition-all" 
+                      className="w-full pl-10 pr-10 py-3 rounded-xl border border-border bg-card text-foreground focus:border-foreground outline-none text-sm transition-all" 
                     />
-                    <button type="button" onClick={() => setShowPass(!showPass)} style={{ position: "absolute", right: 14, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", color: "#9CA3AF" }}>
+                    <button type="button" onClick={() => setShowPass(!showPass)} className="absolute right-3.5 top-1/2 -translate-y-1/2 bg-transparent border-none cursor-pointer text-muted-foreground hover:text-foreground">
                       {showPass ? <EyeOff size={16} /> : <Eye size={16} />}
                     </button>
                   </div>
                 </div>
                 <div>
-                  <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Xác nhận mật khẩu</label>
+                  <label className="block text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">Xác nhận mật khẩu</label>
                   <div className="relative">
-                    <Lock size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                    <Lock size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
                     <input 
                       type={showPass ? "text" : "password"} 
                       required
                       placeholder="••••••••" 
                       value={confirmPassword}
                       onChange={(e) => setConfirmPassword(e.target.value)}
-                      className="w-full pl-10 pr-10 py-3 rounded-xl border border-gray-200 focus:border-[#0A0A0A] outline-none text-sm transition-all" 
+                      className="w-full pl-10 pr-10 py-3 rounded-xl border border-border bg-card text-foreground focus:border-foreground outline-none text-sm transition-all" 
                     />
                   </div>
                 </div>
@@ -193,7 +193,7 @@ export function ResetPasswordPage() {
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="w-full py-3 bg-[#0A0A0A] text-white rounded-xl text-sm font-bold hover:bg-gray-800 transition-all shadow-lg flex items-center justify-center gap-2"
+                  className="w-full py-3 bg-foreground text-background rounded-xl text-sm font-bold hover:opacity-90 transition-all shadow-lg flex items-center justify-center gap-2 cursor-pointer"
                 >
                   {isSubmitting ? <Loader2 size={16} className="animate-spin" /> : "Đặt lại mật khẩu"}
                 </button>

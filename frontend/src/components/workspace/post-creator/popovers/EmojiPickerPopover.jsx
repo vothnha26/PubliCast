@@ -21,15 +21,15 @@ export function EmojiPickerPopover({ onSelectEmoji, onClose }) {
   }).filter(cat => cat.emojis.length > 0);
 
   return (
-    <div className="absolute bottom-full left-0 mb-2 w-72 bg-white rounded-3xl shadow-2xl border border-gray-100 p-4 z-50 animate-in fade-in slide-in-from-bottom-2 text-left">
+    <div className="absolute bottom-full left-0 mb-2 w-72 bg-card rounded-3xl shadow-2xl border border-border p-4 z-50 animate-in fade-in slide-in-from-bottom-2 text-left">
       {/* Category Tabs */}
-      <div className="flex justify-between border-b border-gray-100 pb-2 mb-3">
+      <div className="flex justify-between border-b border-border pb-2 mb-3">
         {EMOJI_CATEGORIES.map(cat => (
           <button
             key={cat.id}
             type="button"
             onClick={() => setActiveCategory(cat.id)}
-            className={`text-sm p-1 rounded-lg transition-all cursor-pointer ${activeCategory === cat.id ? 'bg-purple-50 scale-110' : 'hover:bg-gray-50'}`}
+            className={`text-sm p-1 rounded-lg transition-all cursor-pointer ${activeCategory === cat.id ? 'bg-purple-50 scale-110' : 'hover:bg-muted'}`}
           >
             {cat.label}
           </button>
@@ -43,9 +43,9 @@ export function EmojiPickerPopover({ onSelectEmoji, onClose }) {
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           placeholder="Search"
-          className="w-full pl-8 pr-3 py-1.5 bg-gray-50 rounded-xl text-xs outline-none focus:bg-gray-100 border border-transparent focus:border-gray-200 transition-all font-medium text-gray-700"
+          className="w-full pl-8 pr-3 py-1.5 bg-muted rounded-xl text-xs outline-none focus:bg-muted border border-transparent focus:border-border transition-all font-medium text-foreground"
         />
-        <Search size={12} className="absolute left-3 top-2.5 text-gray-400" />
+        <Search size={12} className="absolute left-3 top-2.5 text-muted-foreground" />
       </div>
 
       {/* Emojis list */}
@@ -54,14 +54,14 @@ export function EmojiPickerPopover({ onSelectEmoji, onClose }) {
           if (searchQuery || activeCategory === cat.id) {
             return (
               <div key={cat.id} className="space-y-1.5">
-                <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">{cat.title}</h4>
+                <h4 className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">{cat.title}</h4>
                 <div className="grid grid-cols-7 gap-1">
                   {cat.emojis.map((emoji, eIdx) => (
                     <button
                       key={eIdx}
                       type="button"
                       onClick={() => onSelectEmoji(emoji)}
-                      className="text-lg hover:bg-gray-100 p-1 rounded-xl active:scale-90 transition-transform duration-700 cursor-pointer"
+                      className="text-lg hover:bg-muted p-1 rounded-xl active:scale-90 transition-transform duration-700 cursor-pointer"
                     >
                       {emoji}
                     </button>
@@ -78,7 +78,7 @@ export function EmojiPickerPopover({ onSelectEmoji, onClose }) {
       <div className="border-t border-gray-50 pt-3 mt-3 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <span className="text-xl">🏢</span>
-          <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Pick an emoji</span>
+          <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Pick an emoji</span>
         </div>
         <div className="w-2 h-2 rounded-full bg-yellow-400" />
       </div>

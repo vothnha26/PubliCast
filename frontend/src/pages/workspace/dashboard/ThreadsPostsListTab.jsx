@@ -21,16 +21,16 @@ export function ThreadsPostsListTab({
       renderCell: (item) => (
         <div className="flex items-center gap-4">
           {item.mediaUrl ? (
-            <div className="w-12 h-12 bg-gray-100 rounded-lg overflow-hidden relative shadow-sm border border-gray-100 shrink-0">
+            <div className="w-12 h-12 bg-muted rounded-lg overflow-hidden relative shadow-sm border border-border shrink-0">
               <img src={item.mediaUrl} className="w-full h-full object-cover" />
             </div>
           ) : (
-            <div className="w-12 h-12 bg-gray-50 rounded-lg flex items-center justify-center text-gray-800 font-black text-sm shrink-0 border border-gray-200">
+            <div className="w-12 h-12 bg-muted rounded-lg flex items-center justify-center text-foreground font-black text-sm shrink-0 border border-border">
               T
             </div>
           )}
           <div className="flex flex-col">
-            <span className="text-sm font-bold text-[#0A0A0A] line-clamp-2 max-w-[280px]">
+            <span className="text-sm font-bold text-foreground line-clamp-2 max-w-[280px]">
               {item.message || "No content message"}
             </span>
           </div>
@@ -41,10 +41,10 @@ export function ThreadsPostsListTab({
       header: "Date",
       renderCell: (item) => (
         <div className="flex flex-col">
-          <span className="text-xs font-bold text-[#0A0A0A]">
+          <span className="text-xs font-bold text-foreground">
             {new Date(item.date).toLocaleDateString()}
           </span>
-          <span className="text-[10px] text-gray-400">
+          <span className="text-[10px] text-muted-foreground">
             {new Date(item.date).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
           </span>
         </div>
@@ -52,11 +52,11 @@ export function ThreadsPostsListTab({
     },
     {
       header: "Reach",
-      renderCell: (item) => <span className="text-xs font-bold text-gray-800">{(item.reach || 0).toLocaleString()}</span>
+      renderCell: (item) => <span className="text-xs font-bold text-foreground">{(item.reach || 0).toLocaleString()}</span>
     },
     {
       header: "Views",
-      renderCell: (item) => <span className="text-xs font-bold text-gray-800">{(item.views || 0).toLocaleString()}</span>
+      renderCell: (item) => <span className="text-xs font-bold text-foreground">{(item.views || 0).toLocaleString()}</span>
     },
     {
       header: "Engagement",
@@ -68,15 +68,15 @@ export function ThreadsPostsListTab({
     },
     {
       header: "Likes",
-      renderCell: (item) => <span className="text-xs text-gray-500 font-semibold">{(item.reactions || 0).toLocaleString()}</span>
+      renderCell: (item) => <span className="text-xs text-muted-foreground font-semibold">{(item.reactions || 0).toLocaleString()}</span>
     },
     {
       header: "Replies",
-      renderCell: (item) => <span className="text-xs text-gray-500 font-semibold">{(item.comments || 0).toLocaleString()}</span>
+      renderCell: (item) => <span className="text-xs text-muted-foreground font-semibold">{(item.comments || 0).toLocaleString()}</span>
     },
     {
       header: "Reposts",
-      renderCell: (item) => <span className="text-xs text-gray-500 font-semibold">{(item.shares || 0).toLocaleString()}</span>
+      renderCell: (item) => <span className="text-xs text-muted-foreground font-semibold">{(item.shares || 0).toLocaleString()}</span>
     }
   ];
 

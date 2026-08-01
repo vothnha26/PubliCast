@@ -31,26 +31,26 @@ export const ConversationItem = ({ conv, activeConv, onSelect, onUpdateStatus })
   return (
     <div
       onClick={() => onSelect(conv)}
-      className={`p-4 border-b border-gray-50 cursor-pointer hover:bg-[#F8F8F7] transition-all relative group ${activeConv?.id === conv.id ? "bg-[#F8F8F7]" : ""}`}
+      className={`p-4 border-b border-border cursor-pointer hover:bg-muted/50 transition-all relative group ${activeConv?.id === conv.id ? "bg-muted/50" : ""}`}
     >
       <div className="flex items-start gap-4">
         {/* Avatar Stack */}
         <div className="relative shrink-0 w-12 h-12">
           {conv.participants && conv.participants.length > 1 ? (
             <>
-              <div className="w-9 h-9 rounded-full overflow-hidden border-2 border-white shadow-sm bg-gray-50 absolute top-0 left-0 z-10 flex">
+              <div className="w-9 h-9 rounded-full overflow-hidden border-2 border-background shadow-sm bg-muted absolute top-0 left-0 z-10 flex">
                 <SafeAvatar src={conv.participants[0].avatar} name={conv.participants[0].name} className="w-full h-full object-cover" />
               </div>
-              <div className="w-9 h-9 rounded-full overflow-hidden border-2 border-white shadow-sm bg-[#4A3AFF] absolute bottom-0 right-0 z-0 flex items-center justify-center text-[10px] font-bold text-white">
+              <div className="w-9 h-9 rounded-full overflow-hidden border-2 border-background shadow-sm bg-[#4A3AFF] absolute bottom-0 right-0 z-0 flex items-center justify-center text-[10px] font-bold text-white">
                 <SafeAvatar src={conv.participants[1].avatar} name={conv.participants[1].name} className="w-full h-full object-cover" />
               </div>
             </>
           ) : (
-            <div className="w-12 h-12 rounded-full overflow-hidden border border-gray-100 bg-gray-50 flex">
+            <div className="w-12 h-12 rounded-full overflow-hidden border border-border bg-muted flex">
               <SafeAvatar src={conv.avatar} name={conv.user} className="w-full h-full object-cover" />
             </div>
           )}
-          <div className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-white shadow-sm border border-gray-100 flex items-center justify-center z-20">
+          <div className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-card shadow-sm border border-border flex items-center justify-center z-20">
             {conv.platform?.toLowerCase() === "facebook" ? (
               <Facebook className="text-[#1877F2] fill-[#1877F2]" size={10} />
             ) : conv.platform?.toLowerCase() === "instagram" ? (
@@ -63,12 +63,12 @@ export const ConversationItem = ({ conv, activeConv, onSelect, onUpdateStatus })
 
         <div className="flex-1 min-w-0">
           <div className="flex items-center justify-between gap-2">
-            <span className="text-[12px] font-bold text-[#0A0A0A] truncate leading-tight">{conv.user}</span>
-            <span className="text-[10px] text-gray-400 font-medium whitespace-nowrap">{conv.time}</span>
+            <span className="text-[12px] font-bold text-foreground truncate leading-tight">{conv.user}</span>
+            <span className="text-[10px] text-muted-foreground font-medium whitespace-nowrap">{conv.time}</span>
           </div>
           <div className="flex items-start gap-1.5 mt-1">
-            <MessageSquare size={13} className="text-gray-300 mt-0.5 shrink-0" />
-            <p className="text-[11px] text-gray-500 line-clamp-2 leading-normal flex-1">{conv.preview}</p>
+            <MessageSquare size={13} className="text-muted-foreground mt-0.5 shrink-0" />
+            <p className="text-[11px] text-muted-foreground line-clamp-2 leading-normal flex-1">{conv.preview}</p>
           </div>
         </div>
 
@@ -77,20 +77,20 @@ export const ConversationItem = ({ conv, activeConv, onSelect, onUpdateStatus })
           {!conv.unread && (
             <button 
               onClick={(e) => { e.stopPropagation(); onUpdateStatus(conv.id, 'UNREAD'); }}
-              className="text-gray-300 hover:text-gray-500"
+              className="text-muted-foreground hover:text-foreground"
             >
               <EyeOff size={14} />
             </button>
           )}
           <button 
             onClick={(e) => { e.stopPropagation(); onUpdateStatus(conv.id, 'RESOLVED'); }}
-            className="text-gray-300 hover:text-green-500"
+            className="text-muted-foreground hover:text-green-500"
           >
             <CheckCircle size={14} />
           </button>
         </div>
       </div>
-      {conv.unread && <div className="absolute top-1/2 -translate-y-1/2 left-0 w-1 h-8 bg-black rounded-r-full" />}
+      {conv.unread && <div className="absolute top-1/2 -translate-y-1/2 left-0 w-1 h-8 bg-primary rounded-r-full" />}
     </div>
   );
 };

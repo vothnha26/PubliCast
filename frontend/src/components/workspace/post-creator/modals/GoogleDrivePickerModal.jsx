@@ -65,9 +65,9 @@ export function GoogleDrivePickerModal({ isOpen, onClose, activeBrand, onSelectF
   return (
     <div className="fixed inset-0 z-[3000] flex items-center justify-center px-4">
       <div className="absolute inset-0 bg-[#0A0A0A]/40 backdrop-blur-sm" onClick={onClose} />
-      <div className="bg-white w-full max-w-2xl rounded-[32px] shadow-2xl relative overflow-hidden flex flex-col h-[600px] animate-in zoom-in-95 duration-200">
+      <div className="bg-card w-full max-w-2xl rounded-[32px] shadow-2xl relative overflow-hidden flex flex-col h-[600px] animate-in zoom-in-95 duration-200">
         {/* Header */}
-        <div className="px-8 py-6 border-b border-gray-100 flex items-center justify-between bg-white shrink-0">
+        <div className="px-8 py-6 border-b border-border flex items-center justify-between bg-card shrink-0">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-2xl bg-blue-50 flex items-center justify-center">
               <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none">
@@ -77,17 +77,17 @@ export function GoogleDrivePickerModal({ isOpen, onClose, activeBrand, onSelectF
               </svg>
             </div>
             <div>
-              <h2 className="text-lg font-black text-[#0A0A0A] uppercase tracking-tight leading-none">Google Drive</h2>
-              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-1">Select a video, image, or PDF to import</p>
+              <h2 className="text-lg font-black text-foreground uppercase tracking-tight leading-none">Google Drive</h2>
+              <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mt-1">Select a video, image, or PDF to import</p>
             </div>
           </div>
-          <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-full transition-all text-gray-400 hover:text-black">
+          <button onClick={onClose} className="p-2 hover:bg-muted rounded-full transition-all text-muted-foreground hover:text-black">
             <X size={20} />
           </button>
         </div>
 
         {/* Toolbar */}
-        <div className="px-8 py-4 border-b border-gray-50 flex flex-col gap-3 bg-gray-50/30">
+        <div className="px-8 py-4 border-b border-gray-50 flex flex-col gap-3 bg-muted/30">
           <div className="flex items-center gap-4">
             <div className="flex-1 relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-300" size={16} />
@@ -96,12 +96,12 @@ export function GoogleDrivePickerModal({ isOpen, onClose, activeBrand, onSelectF
                 placeholder="Search files in your drive..." 
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 bg-white border border-gray-200 rounded-xl text-xs font-bold focus:border-black outline-none shadow-sm transition-all"
+                className="w-full pl-10 pr-4 py-2 bg-card border border-border rounded-xl text-xs font-bold focus:border-black outline-none shadow-sm transition-all"
               />
             </div>
             <button 
               onClick={fetchFiles}
-              className="p-2.5 bg-white border border-gray-200 rounded-xl text-gray-500 hover:text-black hover:shadow-sm transition-all cursor-pointer"
+              className="p-2.5 bg-card border border-border rounded-xl text-muted-foreground hover:text-black hover:shadow-sm transition-all cursor-pointer"
             >
               <RefreshCw size={16} className={loading ? "animate-spin" : ""} />
             </button>
@@ -121,7 +121,7 @@ export function GoogleDrivePickerModal({ isOpen, onClose, activeBrand, onSelectF
                   className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all cursor-pointer border ${
                     fileTypeFilter === tab.id
                       ? 'bg-black text-white border-black shadow-sm'
-                      : 'bg-white text-gray-500 border-gray-200 hover:text-black hover:bg-gray-55'
+                      : 'bg-card text-muted-foreground border-border hover:text-black hover:bg-gray-55'
                   }`}
                 >
                   {tab.label}
@@ -138,14 +138,14 @@ export function GoogleDrivePickerModal({ isOpen, onClose, activeBrand, onSelectF
             {viewMode === 'files' ? (
               <button 
                 onClick={() => setViewMode('categories')}
-                className="flex items-center gap-1.5 text-[11px] font-black text-gray-400 hover:text-black uppercase tracking-widest transition-colors"
+                className="flex items-center gap-1.5 text-[11px] font-black text-muted-foreground hover:text-black uppercase tracking-widest transition-colors"
               >
                 <ChevronLeft size={14} />
                 <span>Home / {FOLDERS.find(f => f.id === selectedFolder)?.label}</span>
               </button>
             ) : (
-              <div className="flex items-center gap-1.5 text-[11px] font-black text-gray-800 uppercase tracking-widest">
-                <Home size={14} className="text-gray-400" />
+              <div className="flex items-center gap-1.5 text-[11px] font-black text-foreground uppercase tracking-widest">
+                <Home size={14} className="text-muted-foreground" />
                 <span>Home Explorer</span>
               </div>
             )}
@@ -155,7 +155,7 @@ export function GoogleDrivePickerModal({ isOpen, onClose, activeBrand, onSelectF
             {loading ? (
               <div className="h-full flex flex-col items-center justify-center">
                 <Loader2 className="animate-spin text-black mb-4" size={32} />
-                <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Loading cloud storage...</span>
+                <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Loading cloud storage...</span>
               </div>
             ) : !connected ? (
               <div className="h-full flex flex-col items-center justify-center text-center max-w-sm mx-auto">
@@ -164,8 +164,8 @@ export function GoogleDrivePickerModal({ isOpen, onClose, activeBrand, onSelectF
                     <path d="M19.43 12.98L12 21.36L4.57 12.98L6.87 9.17H17.13L19.43 12.98Z" fill="#4CAF50" />
                   </svg>
                 </div>
-                <h3 className="text-base font-black text-gray-800 uppercase mb-2">Drive Disconnected</h3>
-                <p className="text-xs text-gray-400 font-bold leading-relaxed mb-6">Your Google account session has expired or was disconnected. Please reconnect from settings.</p>
+                <h3 className="text-base font-black text-foreground uppercase mb-2">Drive Disconnected</h3>
+                <p className="text-xs text-muted-foreground font-bold leading-relaxed mb-6">Your Google account session has expired or was disconnected. Please reconnect from settings.</p>
                 <button
                   onClick={async () => {
                     try {
@@ -193,19 +193,19 @@ export function GoogleDrivePickerModal({ isOpen, onClose, activeBrand, onSelectF
                       setSelectedFolder(folder.id);
                       setViewMode('files');
                     }}
-                    className="group border border-gray-100 hover:border-black rounded-[24px] p-8 flex flex-col items-center gap-4 hover:shadow-xl hover:shadow-black/5 transition-all bg-white active:scale-95 duration-200"
+                    className="group border border-border hover:border-black rounded-[24px] p-8 flex flex-col items-center gap-4 hover:shadow-xl hover:shadow-black/5 transition-all bg-card active:scale-95 duration-200"
                   >
-                    <div className="w-16 h-16 rounded-full bg-gray-50 flex items-center justify-center group-hover:bg-black group-hover:text-white transition-colors duration-300">
+                    <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center group-hover:bg-black group-hover:text-white transition-colors duration-300">
                       {folder.icon}
                     </div>
-                    <span className="text-[11px] font-black text-gray-500 group-hover:text-black uppercase tracking-widest">{folder.label}</span>
+                    <span className="text-[11px] font-black text-muted-foreground group-hover:text-black uppercase tracking-widest">{folder.label}</span>
                   </button>
                 ))}
               </div>
             ) : filteredFiles.length === 0 ? (
               <div className="h-full flex flex-col items-center justify-center text-center">
                 <FileText size={48} className="text-gray-100 mb-4" />
-                <p className="text-sm font-bold text-gray-400">No matching files found in this folder.</p>
+                <p className="text-sm font-bold text-muted-foreground">No matching files found in this folder.</p>
               </div>
             ) : (
               <div className="grid grid-cols-2 gap-4">
@@ -213,9 +213,9 @@ export function GoogleDrivePickerModal({ isOpen, onClose, activeBrand, onSelectF
                   <div 
                     key={file.id}
                     onClick={() => onSelectFile(file)}
-                    className="flex items-center gap-4 p-4 bg-white border border-gray-100 hover:border-black rounded-2xl transition-all cursor-pointer group active:scale-[0.98]"
+                    className="flex items-center gap-4 p-4 bg-card border border-border hover:border-black rounded-2xl transition-all cursor-pointer group active:scale-[0.98]"
                   >
-                    <div className="w-16 h-16 bg-gray-50 rounded-xl overflow-hidden shrink-0 relative flex items-center justify-center border border-gray-50">
+                    <div className="w-16 h-16 bg-muted rounded-xl overflow-hidden shrink-0 relative flex items-center justify-center border border-gray-50">
                       {file.thumbnailLink ? (
                         <img 
                           src={file.thumbnailLink} 
@@ -239,8 +239,8 @@ export function GoogleDrivePickerModal({ isOpen, onClose, activeBrand, onSelectF
                       </div>
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-xs font-black text-gray-800 truncate mb-1 uppercase tracking-tight">{file.name}</p>
-                      <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">
+                      <p className="text-xs font-black text-foreground truncate mb-1 uppercase tracking-tight">{file.name}</p>
+                      <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest">
                         {(parseInt(file.size || '0') / (1024 * 1024)).toFixed(1)} MB • {new Date(file.createdTime).toLocaleDateString()}
                       </p>
                     </div>
@@ -252,12 +252,12 @@ export function GoogleDrivePickerModal({ isOpen, onClose, activeBrand, onSelectF
         </div>
 
         {/* Footer */}
-        <div className="p-6 bg-gray-50/50 border-t border-gray-100 flex items-center justify-between shrink-0">
-          <p className="text-[10px] text-gray-400 font-bold uppercase tracking-tighter max-w-[300px]">
+        <div className="p-6 bg-muted/50 border-t border-border flex items-center justify-between shrink-0">
+          <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-tighter max-w-[300px]">
             * Supports importing Videos, Images, and PDF documents from your Google Drive.
           </p>
           <div className="flex gap-3">
-             <button onClick={onClose} className="px-6 py-2.5 rounded-xl border border-gray-200 text-[11px] font-black uppercase tracking-widest text-gray-500 hover:bg-white hover:text-black transition-all">Cancel</button>
+             <button onClick={onClose} className="px-6 py-2.5 rounded-xl border border-border text-[11px] font-black uppercase tracking-widest text-muted-foreground hover:bg-card hover:text-black transition-all">Cancel</button>
           </div>
         </div>
       </div>

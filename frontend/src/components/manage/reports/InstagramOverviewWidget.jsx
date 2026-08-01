@@ -12,20 +12,20 @@ export function InstagramOverviewWidget({
   if (previewLoading || !previewData || !channel) {
     return (
       <div className="w-full h-full flex flex-col justify-between p-2">
-        <div className="flex flex-col items-center justify-center gap-2 text-center py-4 bg-gray-50 border border-dashed border-gray-200 rounded-xl">
-          <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center animate-bounce">
-            <Calendar size={16} className="text-gray-400" />
+        <div className="flex flex-col items-center justify-center gap-2 text-center py-4 bg-muted border border-dashed border-border rounded-xl">
+          <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center animate-bounce">
+            <Calendar size={16} className="text-muted-foreground" />
           </div>
-          <span className="text-xs font-bold text-gray-500">INSTAGRAM PERFORMANCE — Đang tải...</span>
+          <span className="text-xs font-bold text-muted-foreground">INSTAGRAM PERFORMANCE — Đang tải...</span>
         </div>
         <div className="grid grid-cols-4 gap-3 my-3">
           {[...Array(4)].map((_, i) => (
-            <div key={i} className="h-10 bg-gray-100 rounded-lg animate-pulse" />
+            <div key={i} className="h-10 bg-muted rounded-lg animate-pulse" />
           ))}
         </div>
         <div className="grid grid-cols-5 gap-3 h-24">
-          <div className="col-span-2 bg-gray-100 rounded-lg animate-pulse" />
-          <div className="col-span-3 bg-gray-100 rounded-lg animate-pulse" />
+          <div className="col-span-2 bg-muted rounded-lg animate-pulse" />
+          <div className="col-span-3 bg-muted rounded-lg animate-pulse" />
         </div>
       </div>
     );
@@ -63,34 +63,34 @@ export function InstagramOverviewWidget({
     <div className="w-full h-full flex flex-col justify-between overflow-hidden">
       {/* KPI Cards */}
       <div className="grid grid-cols-4 gap-3 mb-2.5">
-        <div className="p-2 bg-gradient-to-br from-white to-gray-50/50 border border-gray-100 rounded-xl shadow-sm hover:shadow transition-all duration-300">
-          <span className="text-[6.5px] text-gray-400 font-extrabold uppercase tracking-wider block">Người theo dõi</span>
+        <div className="p-2 bg-gradient-to-br from-white to-gray-50/50 border border-border rounded-xl shadow-sm hover:shadow transition-all duration-300">
+          <span className="text-[6.5px] text-muted-foreground font-extrabold uppercase tracking-wider block">Người theo dõi</span>
           <div className="text-xs font-black text-pink-600 font-mono mt-0.5">
             {formatNumber(channel.followers)}
           </div>
         </div>
-        <div className="p-2 bg-gradient-to-br from-white to-gray-50/50 border border-gray-100 rounded-xl shadow-sm hover:shadow transition-all duration-300">
-          <span className="text-[6.5px] text-gray-400 font-extrabold uppercase tracking-wider block">Lượt tiếp cận</span>
-          <div className="text-xs font-black text-gray-800 font-mono mt-0.5">
+        <div className="p-2 bg-gradient-to-br from-white to-gray-50/50 border border-border rounded-xl shadow-sm hover:shadow transition-all duration-300">
+          <span className="text-[6.5px] text-muted-foreground font-extrabold uppercase tracking-wider block">Lượt tiếp cận</span>
+          <div className="text-xs font-black text-foreground font-mono mt-0.5">
             {formatNumber(channel.reach)}
           </div>
         </div>
-        <div className="p-2 bg-gradient-to-br from-white to-gray-50/50 border border-gray-100 rounded-xl shadow-sm hover:shadow transition-all duration-300">
-          <span className="text-[6.5px] text-gray-400 font-extrabold uppercase tracking-wider block">Lượt hiển thị</span>
-          <div className="text-xs font-black text-gray-800 font-mono mt-0.5">
+        <div className="p-2 bg-gradient-to-br from-white to-gray-50/50 border border-border rounded-xl shadow-sm hover:shadow transition-all duration-300">
+          <span className="text-[6.5px] text-muted-foreground font-extrabold uppercase tracking-wider block">Lượt hiển thị</span>
+          <div className="text-xs font-black text-foreground font-mono mt-0.5">
             {formatNumber(channel.impressions)}
           </div>
         </div>
-        <div className="p-2 bg-gradient-to-br from-white to-gray-50/50 border border-gray-100 rounded-xl shadow-sm hover:shadow transition-all duration-300">
-          <span className="text-[6.5px] text-gray-400 font-extrabold uppercase tracking-wider block">Bài đăng</span>
-          <div className="text-xs font-black text-gray-800 font-mono mt-0.5">{channel.postsCount}</div>
+        <div className="p-2 bg-gradient-to-br from-white to-gray-50/50 border border-border rounded-xl shadow-sm hover:shadow transition-all duration-300">
+          <span className="text-[6.5px] text-muted-foreground font-extrabold uppercase tracking-wider block">Bài đăng</span>
+          <div className="text-xs font-black text-foreground font-mono mt-0.5">{channel.postsCount}</div>
         </div>
       </div>
 
       <div className="grid grid-cols-5 gap-3 items-stretch flex-1 min-h-0">
         {/* Interaction Donut Chart */}
-        <div className="col-span-2 bg-gradient-to-br from-white to-gray-55/30 border border-gray-100 rounded-xl p-2 flex flex-col justify-between shadow-sm">
-          <span className="text-[7px] font-extrabold text-gray-500 uppercase tracking-wider mb-1 block">Cơ cấu tương tác</span>
+        <div className="col-span-2 bg-gradient-to-br from-white to-gray-55/30 border border-border rounded-xl p-2 flex flex-col justify-between shadow-sm">
+          <span className="text-[7px] font-extrabold text-muted-foreground uppercase tracking-wider mb-1 block">Cơ cấu tương tác</span>
           <div className="flex-1 flex items-center justify-center min-h-0 relative">
             <ResponsiveContainer width="95%" height="95%">
               <PieChart>
@@ -122,15 +122,15 @@ export function InstagramOverviewWidget({
             
             {/* Center label */}
             <div className="absolute flex flex-col items-center justify-center pointer-events-none">
-              <span className="text-[5px] text-gray-400 font-extrabold uppercase">Likes</span>
-              <span className="text-[8px] font-black text-gray-700">
+              <span className="text-[5px] text-muted-foreground font-extrabold uppercase">Likes</span>
+              <span className="text-[8px] font-black text-foreground">
                 {likesVal > 0 ? `${((likesVal / totalEng) * 100).toFixed(0)}%` : "0%"}
               </span>
             </div>
           </div>
           
           {/* Custom Legend */}
-          <div className="grid grid-cols-2 gap-1 text-[5px] font-bold text-gray-500 font-mono mt-1 px-1">
+          <div className="grid grid-cols-2 gap-1 text-[5px] font-bold text-muted-foreground font-mono mt-1 px-1">
             {donutData.map((item, idx) => (
               <div key={idx} className="flex items-center gap-1 truncate">
                 <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: COLORS[idx % COLORS.length] }} />
@@ -141,18 +141,18 @@ export function InstagramOverviewWidget({
         </div>
 
         {/* Top Posts List */}
-        <div className="col-span-3 bg-gradient-to-br from-white to-gray-50/30 border border-gray-100 rounded-xl p-3 flex flex-col justify-between shadow-sm">
-          <span className="text-[7px] font-extrabold text-gray-500 uppercase tracking-wider mb-2 block">
+        <div className="col-span-3 bg-gradient-to-br from-white to-gray-50/30 border border-border rounded-xl p-3 flex flex-col justify-between shadow-sm">
+          <span className="text-[7px] font-extrabold text-muted-foreground uppercase tracking-wider mb-2 block">
             Bài viết tốt nhất (Top Posts)
           </span>
           <div className="space-y-2 overflow-y-auto max-h-[110px] pr-1">
             {topPosts.length > 0 ? topPosts.map((post, idx) => (
               <div 
                 key={post.id || idx} 
-                className="border-b border-gray-100 pb-1.5 last:border-b-0 last:pb-0 hover:bg-gray-50/50 p-1 rounded transition-all duration-200"
+                className="border-b border-border pb-1.5 last:border-b-0 last:pb-0 hover:bg-muted/50 p-1 rounded transition-all duration-200"
               >
-                <p className="text-[7px] text-gray-700 font-bold truncate line-clamp-1 w-full">{post.title}</p>
-                <div className="flex justify-between items-center text-[6px] text-gray-400 font-mono mt-1">
+                <p className="text-[7px] text-foreground font-bold truncate line-clamp-1 w-full">{post.title}</p>
+                <div className="flex justify-between items-center text-[6px] text-muted-foreground font-mono mt-1">
                   <span>Likes: {post.likes} · Comments: {post.comments}</span>
                   <span className="text-pink-500 font-extrabold">{post.engagementRate}% Engagement</span>
                 </div>

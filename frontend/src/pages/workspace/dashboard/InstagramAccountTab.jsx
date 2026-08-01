@@ -97,7 +97,7 @@ export function InstagramAccountTab({
     {
       key: "interactions",
       label: "Interactions",
-      color: "bg-[#A7F3D0] text-gray-900",
+      color: "bg-[#A7F3D0] text-foreground",
       chartColor: "#A7F3D0",
       type: "line",
       value: totalInteractionsCount > 0 ? totalInteractionsCount : "2"
@@ -133,7 +133,7 @@ export function InstagramAccountTab({
     {
       key: "likes",
       label: "Likes",
-      color: "bg-[#A7F3D0] text-gray-900",
+      color: "bg-[#A7F3D0] text-foreground",
       chartColor: "#A7F3D0",
       type: "line",
       value: totalLikesCount > 0 ? totalLikesCount : "-"
@@ -188,7 +188,7 @@ export function InstagramAccountTab({
       renderCell: (item) => (
         <div className="flex items-center gap-4">
           {item.mediaUrl ? (
-            <div className="w-12 h-12 bg-gray-100 rounded-lg overflow-hidden relative shadow-sm border border-gray-100 shrink-0">
+            <div className="w-12 h-12 bg-muted rounded-lg overflow-hidden relative shadow-sm border border-border shrink-0">
               <img src={item.mediaUrl} className="w-full h-full object-cover" alt="IG Post" />
             </div>
           ) : (
@@ -197,7 +197,7 @@ export function InstagramAccountTab({
             </div>
           )}
           <div className="flex flex-col">
-            <span className="text-sm font-bold text-[#0A0A0A] line-clamp-2 max-w-[280px]">
+            <span className="text-sm font-bold text-foreground line-clamp-2 max-w-[280px]">
               {item.message || "No caption message"}
             </span>
           </div>
@@ -208,10 +208,10 @@ export function InstagramAccountTab({
       header: "Date",
       renderCell: (item) => (
         <div className="flex flex-col">
-          <span className="text-xs font-bold text-[#0A0A0A]">
+          <span className="text-xs font-bold text-foreground">
             {new Date(item.date).toLocaleDateString()}
           </span>
-          <span className="text-[10px] text-gray-400">
+          <span className="text-[10px] text-muted-foreground">
             {new Date(item.date).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
           </span>
         </div>
@@ -219,23 +219,23 @@ export function InstagramAccountTab({
     },
     {
       header: "Organic Reach",
-      renderCell: (item) => <span className="text-xs font-bold text-gray-800">{(item.reach || 0).toLocaleString()}</span>,
+      renderCell: (item) => <span className="text-xs font-bold text-foreground">{(item.reach || 0).toLocaleString()}</span>,
     },
     {
       header: "Organic Views",
-      renderCell: (item) => <span className="text-xs font-bold text-gray-800">{(item.views || 0).toLocaleString()}</span>,
+      renderCell: (item) => <span className="text-xs font-bold text-foreground">{(item.views || 0).toLocaleString()}</span>,
     },
     {
       header: "Organic Interactions",
-      renderCell: (item) => <span className="text-xs font-bold text-gray-800">{(item.reactions || 0) + (item.comments || 0)}</span>,
+      renderCell: (item) => <span className="text-xs font-bold text-foreground">{(item.reactions || 0) + (item.comments || 0)}</span>,
     },
     {
       header: "Organic Likes",
-      renderCell: (item) => <span className="text-xs text-gray-500 font-semibold">{(item.reactions || 0).toLocaleString()}</span>,
+      renderCell: (item) => <span className="text-xs text-muted-foreground font-semibold">{(item.reactions || 0).toLocaleString()}</span>,
     },
     {
       header: "Organic Comments",
-      renderCell: (item) => <span className="text-xs text-gray-500 font-semibold">{(item.comments || 0).toLocaleString()}</span>,
+      renderCell: (item) => <span className="text-xs text-muted-foreground font-semibold">{(item.comments || 0).toLocaleString()}</span>,
     },
     {
       header: "Organic Engagement",
@@ -250,11 +250,11 @@ export function InstagramAccountTab({
   return (
     <div className="space-y-6">
       {/* Profile Info Header */}
-      <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm flex flex-col md:flex-row gap-6 items-start md:items-center justify-between">
+      <div className="bg-card p-6 rounded-3xl border border-border shadow-sm flex flex-col md:flex-row gap-6 items-start md:items-center justify-between">
         <div className="flex items-center gap-5">
           {/* Profile Picture with IG-style gradient border */}
           <div className="p-[3px] rounded-full bg-gradient-to-tr from-[#FCAF45] via-[#E1306C] to-[#C13584]">
-            <div className="w-20 h-20 rounded-full bg-white p-[2px]">
+            <div className="w-20 h-20 rounded-full bg-card p-[2px]">
               <img
                 src={metrics?.profilePictureUrl || "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=100&auto=format&fit=crop&q=60"}
                 alt="Profile"
@@ -265,16 +265,16 @@ export function InstagramAccountTab({
           </div>
           <div className="space-y-1">
             <div className="flex items-center gap-2">
-              <h2 className="text-xl font-bold text-[#0A0A0A]">{metrics?.displayName || "Instagram Account"}</h2>
-              <span className="text-xs font-semibold px-2 py-0.5 bg-gray-100 text-gray-600 rounded-full">@{metrics?.username}</span>
+              <h2 className="text-xl font-bold text-foreground">{metrics?.displayName || "Instagram Account"}</h2>
+              <span className="text-xs font-semibold px-2 py-0.5 bg-muted text-muted-foreground rounded-full">@{metrics?.username}</span>
             </div>
-            <p className="text-sm text-gray-500 max-w-xl">{biography}</p>
+            <p className="text-sm text-muted-foreground max-w-xl">{biography}</p>
             {website && (
               <a
                 href={website}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-1.5 text-xs font-bold text-[#C13584] hover:underline"
+                className="inline-flex items-center gap-1.5 text-xs font-bold text-[#C13584] dark:text-pink-400 hover:underline"
               >
                 <ExternalLink size={12} />
                 {website}
@@ -284,27 +284,27 @@ export function InstagramAccountTab({
         </div>
 
         {/* Stats Summary Bubble */}
-        <div className="flex gap-8 items-center bg-gray-50/50 px-6 py-4 rounded-2xl border border-gray-100/50 self-stretch md:self-auto justify-around">
+        <div className="flex gap-8 items-center bg-muted/50 px-6 py-4 rounded-2xl border border-border/50 self-stretch md:self-auto justify-around">
           <div className="text-center">
-            <span className="text-xs text-gray-400 font-medium">Followers</span>
-            <p className="text-lg font-bold text-[#0A0A0A]">{followersCount.toLocaleString()}</p>
+            <span className="text-xs text-muted-foreground font-medium">Followers</span>
+            <p className="text-lg font-bold text-foreground">{followersCount.toLocaleString()}</p>
           </div>
-          <div className="w-px h-8 bg-gray-200" />
+          <div className="w-px h-8 bg-border" />
           <div className="text-center">
-            <span className="text-xs text-gray-400 font-medium">Following</span>
-            <p className="text-lg font-bold text-[#0A0A0A]">{followingCount.toLocaleString()}</p>
+            <span className="text-xs text-muted-foreground font-medium">Following</span>
+            <p className="text-lg font-bold text-foreground">{followingCount.toLocaleString()}</p>
           </div>
-          <div className="w-px h-8 bg-gray-200" />
+          <div className="w-px h-8 bg-border" />
           <div className="text-center">
-            <span className="text-xs text-gray-400 font-medium">Posts</span>
-            <p className="text-lg font-bold text-[#0A0A0A]">{totalPosts.toLocaleString()}</p>
+            <span className="text-xs text-muted-foreground font-medium">Posts</span>
+            <p className="text-lg font-bold text-foreground">{totalPosts.toLocaleString()}</p>
           </div>
         </div>
       </div>
 
       {/* Posts published in period Section */}
       <div className="space-y-6 pt-2">
-        <h2 className="text-lg font-bold text-[#0A0A0A] tracking-tight">Posts published in period</h2>
+        <h2 className="text-lg font-bold text-foreground tracking-tight">Posts published in period</h2>
 
         <GenericDashboardTab
           title="Organic Summary"
@@ -327,12 +327,12 @@ export function InstagramAccountTab({
       {/* Types & Views Row */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Types Card */}
-        <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm flex flex-col justify-between min-h-[220px]">
+        <div className="bg-card p-6 rounded-3xl border border-border shadow-sm flex flex-col justify-between min-h-[220px]">
           <div className="flex justify-between items-center mb-4">
-            <h3 className="text-base font-bold text-[#0A0A0A]">Types</h3>
+            <h3 className="text-base font-bold text-foreground">Types</h3>
             <button
               onClick={() => setShowTypesTable(!showTypesTable)}
-              className="text-xs font-semibold text-gray-500 hover:text-gray-900 transition-colors flex items-center gap-1"
+              className="text-xs font-semibold text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1"
             >
               {showTypesTable ? "View chart" : "View table"}
             </button>
@@ -356,16 +356,16 @@ export function InstagramAccountTab({
                         <Cell key={`cell-${index}`} fill={entry.color} />
                       ))}
                     </Pie>
-                    <Tooltip />
+                    <Tooltip contentStyle={{ borderRadius: 12, border: "1px solid var(--border)", background: "var(--card)", color: "var(--foreground)" }} />
                   </PieChart>
                 </ResponsiveContainer>
               </div>
               <div className="flex flex-col gap-2">
                 {typesData.map((item) => (
-                  <div key={item.name} className="flex items-center gap-2 text-xs font-medium text-gray-700">
+                  <div key={item.name} className="flex items-center gap-2 text-xs font-medium text-foreground">
                     <span className="w-3 h-3 rounded-sm shrink-0" style={{ backgroundColor: item.color }} />
                     <span>{item.name}</span>
-                    <span className="text-gray-400 font-bold ml-1">({item.value})</span>
+                    <span className="text-muted-foreground font-bold ml-1">({item.value})</span>
                   </div>
                 ))}
               </div>
@@ -374,16 +374,16 @@ export function InstagramAccountTab({
             <div className="overflow-x-auto">
               <table className="w-full text-xs text-left">
                 <thead>
-                  <tr className="border-b text-gray-400 font-bold">
+                  <tr className="border-b border-border text-muted-foreground font-bold">
                     <th className="py-2">Type</th>
                     <th className="py-2 text-right">Count</th>
                   </tr>
                 </thead>
                 <tbody>
                   {typesData.map((item) => (
-                    <tr key={item.name} className="border-b border-gray-50">
-                      <td className="py-2 font-semibold text-gray-700">{item.name}</td>
-                      <td className="py-2 text-right font-bold text-gray-900">{item.value}</td>
+                    <tr key={item.name} className="border-b border-border">
+                      <td className="py-2 font-semibold text-foreground">{item.name}</td>
+                      <td className="py-2 text-right font-bold text-foreground">{item.value}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -393,9 +393,9 @@ export function InstagramAccountTab({
         </div>
 
         {/* Views Card */}
-        <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm flex flex-col justify-between min-h-[220px]">
-          <h3 className="text-base font-bold text-[#0A0A0A] mb-4">Views</h3>
-          <div className="bg-[#FEF3C7] border border-[#FDE68A] text-[#92400E] p-4 rounded-xl text-xs font-medium flex items-center gap-2 my-auto">
+        <div className="bg-card p-6 rounded-3xl border border-border shadow-sm flex flex-col justify-between min-h-[220px]">
+          <h3 className="text-base font-bold text-foreground mb-4">Views</h3>
+          <div className="bg-amber-500/10 border border-amber-500/20 text-amber-700 dark:text-amber-400 p-4 rounded-xl text-xs font-medium flex items-center gap-2 my-auto">
             <span className="w-2 h-2 rounded-full bg-amber-500 shrink-0" />
             Views data is not available for the current period.
           </div>
