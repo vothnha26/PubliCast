@@ -28,19 +28,19 @@ export function ExportOptionsModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-md animate-in fade-in duration-200">
-      <div className="bg-slate-50 w-full max-w-4xl h-[90vh] rounded-3xl border border-gray-200 dark:border-slate-800 shadow-[0_25px_60px_rgba(0,0,0,0.3)] flex flex-col overflow-hidden m-4">
+      <div className="bg-slate-50 w-full max-w-4xl h-[90vh] rounded-3xl border border-border dark:border-slate-800 shadow-[0_25px_60px_rgba(0,0,0,0.3)] flex flex-col overflow-hidden m-4">
         
         {/* Modal Header */}
-        <div className="flex justify-between items-center bg-white dark:bg-slate-900 px-6 py-4 border-b border-gray-150 dark:border-slate-800">
+        <div className="flex justify-between items-center bg-card dark:bg-slate-900 px-6 py-4 border-b border-gray-150 dark:border-slate-800">
           <div className="flex items-center gap-2.5">
             <div className="p-2 rounded-xl bg-blue-50 dark:bg-slate-850 text-blue-600">
               <Eye size={18} />
             </div>
             <div>
-              <h3 className="text-sm font-black text-gray-900 dark:text-white tracking-tight">
+              <h3 className="text-sm font-black text-foreground dark:text-white tracking-tight">
                 Trực Quan Hóa Báo Cáo A4 (Live Viewport)
               </h3>
-              <p className="text-[10px] text-gray-400 dark:text-gray-500 font-semibold">
+              <p className="text-[10px] text-muted-foreground dark:text-muted-foreground font-semibold">
                 Xem trước chất lượng cao định dạng trang A4 trước khi in ấn
               </p>
             </div>
@@ -48,23 +48,23 @@ export function ExportOptionsModal({
 
           {/* Pagination controls & Close button */}
           <div className="flex items-center gap-4">
-            <div className="flex items-center gap-1.5 bg-gray-50 dark:bg-slate-850 p-1 rounded-xl border border-gray-100 dark:border-slate-800">
+            <div className="flex items-center gap-1.5 bg-muted dark:bg-slate-850 p-1 rounded-xl border border-border dark:border-slate-800">
               <button 
                 type="button"
                 disabled={previewPage === 1}
                 onClick={() => setPreviewPage(Math.max(1, previewPage - 1))}
-                className="p-1.5 rounded-lg text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-slate-800 disabled:opacity-30 transition-all cursor-pointer"
+                className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground dark:hover:text-white hover:bg-muted dark:hover:bg-slate-800 disabled:opacity-30 transition-all cursor-pointer"
               >
                 <ChevronLeft size={14} />
               </button>
-              <span className="text-[11px] font-bold font-mono text-gray-700 dark:text-gray-300 px-3 min-w-[50px] text-center">
+              <span className="text-[11px] font-bold font-mono text-foreground dark:text-gray-300 px-3 min-w-[50px] text-center">
                 {previewPage} / {enabledPages.length}
               </span>
               <button 
                 type="button"
                 disabled={previewPage === enabledPages.length}
                 onClick={() => setPreviewPage(Math.min(enabledPages.length, previewPage + 1))}
-                className="p-1.5 rounded-lg text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-slate-800 disabled:opacity-30 transition-all cursor-pointer"
+                className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground dark:hover:text-white hover:bg-muted dark:hover:bg-slate-800 disabled:opacity-30 transition-all cursor-pointer"
               >
                 <ChevronRight size={14} />
               </button>
@@ -72,7 +72,7 @@ export function ExportOptionsModal({
 
             <button 
               onClick={onClose}
-              className="p-2 rounded-xl bg-gray-50 dark:bg-slate-850 hover:bg-red-50 dark:hover:bg-red-950/30 hover:text-red-500 text-gray-500 transition-all cursor-pointer border border-gray-100 dark:border-slate-800"
+              className="p-2 rounded-xl bg-muted dark:bg-slate-850 hover:bg-red-50 dark:hover:bg-red-950/30 hover:text-red-500 text-muted-foreground transition-all cursor-pointer border border-border dark:border-slate-800"
             >
               <X size={16} />
             </button>
@@ -81,14 +81,14 @@ export function ExportOptionsModal({
 
         {/* Modal Body Container */}
         <div className="flex-1 overflow-y-auto p-8 flex justify-center items-start dark:bg-slate-950">
-          <div className="bg-white dark:bg-slate-900 shadow-[0_10px_45px_rgba(0,0,0,0.15)] rounded-2xl border border-gray-200/80 dark:border-slate-800 overflow-hidden relative w-[210mm] min-h-[297mm]">
+          <div className="bg-card dark:bg-slate-900 shadow-[0_10px_45px_rgba(0,0,0,0.15)] rounded-2xl border border-border/80 dark:border-slate-800 overflow-hidden relative w-[210mm] min-h-[297mm]">
             <div className="absolute top-0 inset-x-0 h-1.5 bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-600" />
             {renderA4Page(enabledPages[previewPage - 1], previewPage, enabledPages.length)}
           </div>
         </div>
 
         {/* Modal Footer */}
-        <div className="bg-white dark:bg-slate-900 px-6 py-3.5 border-t border-gray-150 dark:border-slate-800 flex items-center justify-between text-xs text-gray-400">
+        <div className="bg-card dark:bg-slate-900 px-6 py-3.5 border-t border-gray-150 dark:border-slate-800 flex items-center justify-between text-xs text-muted-foreground">
           <span className="font-semibold text-emerald-600 flex items-center gap-1.5">
             <CheckCircle2 size={14} />
             Trình hiển thị tự động cập nhật thời gian thực
@@ -146,8 +146,8 @@ export function AutomationSchedulingPanel({
   };
 
   return (
-    <div className="bg-white dark:bg-slate-900 rounded-2xl p-5 border border-gray-200 dark:border-slate-800 shadow-sm space-y-4">
-      <h4 className="font-bold text-gray-800 dark:text-white text-sm border-b border-gray-100 dark:border-slate-800 pb-3">
+    <div className="bg-card dark:bg-slate-900 rounded-2xl p-5 border border-border dark:border-slate-800 shadow-sm space-y-4">
+      <h4 className="font-bold text-foreground dark:text-white text-sm border-b border-border dark:border-slate-800 pb-3">
         Automation & Scheduling
       </h4>
       <div className="space-y-4">
@@ -158,7 +158,7 @@ export function AutomationSchedulingPanel({
             onChange={(e) => setReceiveEmail(e.target.checked)}
             className="w-4.5 h-4.5 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
           />
-          <span className="text-xs font-bold text-gray-700 dark:text-gray-300">
+          <span className="text-xs font-bold text-foreground dark:text-gray-300">
             Tự động gửi báo cáo qua Email
           </span>
         </label>
@@ -174,7 +174,7 @@ export function AutomationSchedulingPanel({
                 <select
                   value={dayOfMonth}
                   onChange={(e) => setDayOfMonth(e.target.value === "last" ? "last" : parseInt(e.target.value))}
-                  className="w-full bg-gray-50 dark:bg-slate-950 border border-gray-200 dark:border-slate-850 rounded-xl px-3 py-2 text-xs font-semibold outline-none focus:border-gray-400 dark:text-gray-200 cursor-pointer"
+                  className="w-full bg-muted dark:bg-slate-950 border border-border dark:border-slate-850 rounded-xl px-3 py-2 text-xs font-semibold outline-none focus:border-gray-400 dark:text-gray-200 cursor-pointer"
                 >
                   {Array.from({ length: 28 }, (_, i) => i + 1).map((day) => (
                     <option key={day} value={day}>Ngày {day}</option>
@@ -189,7 +189,7 @@ export function AutomationSchedulingPanel({
                 <select
                   value={format}
                   onChange={(e) => setFormat(e.target.value)}
-                  className="w-full bg-gray-50 dark:bg-slate-950 border border-gray-200 dark:border-slate-850 rounded-xl px-3 py-2 text-xs font-semibold outline-none focus:border-gray-400 dark:text-gray-200 cursor-pointer"
+                  className="w-full bg-muted dark:bg-slate-950 border border-border dark:border-slate-850 rounded-xl px-3 py-2 text-xs font-semibold outline-none focus:border-gray-400 dark:text-gray-200 cursor-pointer"
                 >
                   <option value="PDF">PDF Report</option>
                   <option value="Excel">Excel Sheet</option>
@@ -206,7 +206,7 @@ export function AutomationSchedulingPanel({
                 {["Facebook", "YouTube", "Instagram", "TikTok", "Telegram"].map((plat) => {
                   const isChecked = platforms.includes(plat);
                   return (
-                    <label key={plat} className="flex items-center gap-1.5 cursor-pointer select-none bg-gray-50 dark:bg-slate-950 hover:bg-gray-100 dark:hover:bg-slate-850 border border-gray-200 dark:border-slate-850 rounded-lg p-1.5 transition-all">
+                    <label key={plat} className="flex items-center gap-1.5 cursor-pointer select-none bg-muted dark:bg-slate-950 hover:bg-muted dark:hover:bg-slate-850 border border-border dark:border-slate-850 rounded-lg p-1.5 transition-all">
                       <input
                         type="checkbox"
                         checked={isChecked}
@@ -219,7 +219,7 @@ export function AutomationSchedulingPanel({
                         }}
                         className="w-3.5 h-3.5 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
                       />
-                      <span className="text-[10px] font-semibold text-gray-700 dark:text-gray-300">{plat}</span>
+                      <span className="text-[10px] font-semibold text-foreground dark:text-gray-300">{plat}</span>
                     </label>
                   );
                 })}
@@ -235,20 +235,20 @@ export function AutomationSchedulingPanel({
                   <button
                     type="button"
                     onClick={() => setIsMembersDropdownOpen(!isMembersDropdownOpen)}
-                    className="w-full bg-gray-50 dark:bg-slate-950 border border-gray-200 dark:border-slate-850 rounded-xl px-3 py-2.5 text-xs font-semibold text-left flex items-center justify-between hover:bg-gray-100 dark:hover:bg-slate-800 transition-all outline-none"
+                    className="w-full bg-muted dark:bg-slate-950 border border-border dark:border-slate-850 rounded-xl px-3 py-2.5 text-xs font-semibold text-left flex items-center justify-between hover:bg-muted dark:hover:bg-slate-800 transition-all outline-none"
                   >
-                    <span className="text-gray-600 dark:text-gray-400">
+                    <span className="text-muted-foreground dark:text-muted-foreground">
                       {membersLoading ? "Đang tải thành viên..." : "Bấm để chọn thành viên..."}
                     </span>
-                    <ChevronRight size={14} className="text-gray-400 transform rotate-90" />
+                    <ChevronRight size={14} className="text-muted-foreground transform rotate-90" />
                   </button>
 
                   {isMembersDropdownOpen && (
                     <>
                       <div className="fixed inset-0 z-40" onClick={() => setIsMembersDropdownOpen(false)} />
-                      <div className="absolute left-0 right-0 mt-1 bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 rounded-xl shadow-lg z-50 max-h-48 overflow-y-auto p-1.5 space-y-1">
+                      <div className="absolute left-0 right-0 mt-1 bg-card dark:bg-slate-900 border border-border dark:border-slate-800 rounded-xl shadow-lg z-50 max-h-48 overflow-y-auto p-1.5 space-y-1">
                         {brandMembers.length === 0 ? (
-                          <p className="text-[10px] text-gray-400 text-center py-2 uppercase font-bold tracking-wider">
+                          <p className="text-[10px] text-muted-foreground text-center py-2 uppercase font-bold tracking-wider">
                             Không có thành viên nào
                           </p>
                         ) : (
@@ -264,7 +264,7 @@ export function AutomationSchedulingPanel({
                                   }
                                   setIsMembersDropdownOpen(false);
                                 }}
-                                className="w-full text-left px-2.5 py-1.5 hover:bg-gray-50 dark:hover:bg-slate-850 rounded-lg flex items-center justify-between transition-all group"
+                                className="w-full text-left px-2.5 py-1.5 hover:bg-muted dark:hover:bg-slate-850 rounded-lg flex items-center justify-between transition-all group"
                               >
                                 <div className="flex items-center gap-2">
                                   <div className="w-6 h-6 rounded-lg bg-gray-900 text-white flex items-center justify-center text-[10px] font-bold overflow-hidden">
@@ -275,7 +275,7 @@ export function AutomationSchedulingPanel({
                                     )}
                                   </div>
                                   <div>
-                                    <div className="text-[11px] font-bold text-gray-800 dark:text-gray-200">{member.name}</div>
+                                    <div className="text-[11px] font-bold text-foreground dark:text-gray-200">{member.name}</div>
                                     <div className="text-[9px] text-gray-450">{member.email}</div>
                                   </div>
                                 </div>
@@ -284,7 +284,7 @@ export function AutomationSchedulingPanel({
                                     Đã thêm
                                   </span>
                                 ) : (
-                                  <Plus size={12} className="text-gray-400 group-hover:text-black dark:group-hover:text-white transition-colors" />
+                                  <Plus size={12} className="text-muted-foreground group-hover:text-black dark:group-hover:text-white transition-colors" />
                                 )}
                               </button>
                             );
@@ -307,12 +307,12 @@ export function AutomationSchedulingPanel({
                     placeholder="example@mail.com"
                     value={newEmailInput}
                     onChange={(e) => setNewEmailInput(e.target.value)}
-                    className="flex-1 bg-gray-50 dark:bg-slate-950 border border-gray-200 dark:border-slate-850 rounded-xl px-3 py-2 text-xs font-semibold outline-none focus:border-gray-400 dark:text-gray-200"
+                    className="flex-1 bg-muted dark:bg-slate-950 border border-border dark:border-slate-850 rounded-xl px-3 py-2 text-xs font-semibold outline-none focus:border-gray-400 dark:text-gray-200"
                   />
                   <button 
                     type="button"
                     onClick={handleAddEmail}
-                    className="bg-gray-100 dark:bg-slate-800 hover:bg-gray-200 dark:hover:bg-slate-700 text-gray-700 dark:text-gray-300 text-xs font-bold px-3 rounded-xl transition-all cursor-pointer"
+                    className="bg-muted dark:bg-slate-800 hover:bg-gray-200 dark:hover:bg-slate-700 text-foreground dark:text-gray-300 text-xs font-bold px-3 rounded-xl transition-all cursor-pointer"
                   >
                     Add
                   </button>
@@ -339,17 +339,17 @@ export function AutomationSchedulingPanel({
                 rows={3}
                 value={emailText}
                 onChange={(e) => setEmailText(e.target.value)}
-                className="w-full bg-gray-50 dark:bg-slate-950 border border-gray-200 dark:border-slate-850 rounded-xl px-3 py-2 text-xs font-semibold outline-none focus:border-gray-400 resize-none dark:text-gray-200"
+                className="w-full bg-muted dark:bg-slate-950 border border-border dark:border-slate-850 rounded-xl px-3 py-2 text-xs font-semibold outline-none focus:border-gray-400 resize-none dark:text-gray-200"
                 placeholder="Hi, here is your monthly analytics report..."
               />
             </div>
 
             {/* Action buttons */}
-            <div className="flex gap-2 pt-2 border-t border-gray-100 dark:border-slate-800">
+            <div className="flex gap-2 pt-2 border-t border-border dark:border-slate-800">
               <button
                 type="button"
                 onClick={onSendTestReport}
-                className="flex-1 bg-gray-100 dark:bg-slate-800 hover:bg-gray-200 dark:hover:bg-slate-700 text-gray-700 dark:text-gray-300 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer active:scale-95 text-center"
+                className="flex-1 bg-muted dark:bg-slate-800 hover:bg-gray-200 dark:hover:bg-slate-700 text-foreground dark:text-gray-300 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer active:scale-95 text-center"
               >
                 Gửi thử nghiệm
               </button>
@@ -377,13 +377,13 @@ export function PdfHistoryPanel({
   onDownload
 }) {
   return (
-    <div className="bg-white dark:bg-slate-900 rounded-2xl p-5 border border-gray-200 dark:border-slate-800 shadow-sm space-y-3">
-      <h4 className="font-bold text-gray-800 dark:text-white text-sm border-b border-gray-100 dark:border-slate-800 pb-3">
+    <div className="bg-card dark:bg-slate-900 rounded-2xl p-5 border border-border dark:border-slate-800 shadow-sm space-y-3">
+      <h4 className="font-bold text-foreground dark:text-white text-sm border-b border-border dark:border-slate-800 pb-3">
         Generated PDF History
       </h4>
       <div className="space-y-2 max-h-[160px] overflow-y-auto pr-1">
         {reports.length === 0 ? (
-          <p className="text-xs text-gray-400 text-center py-4">Chưa có bản ghi báo cáo nào được tạo.</p>
+          <p className="text-xs text-muted-foreground text-center py-4">Chưa có bản ghi báo cáo nào được tạo.</p>
         ) : (
           reports.map(rep => {
             const isPdf = rep.format === 'PDF';
@@ -392,14 +392,14 @@ export function PdfHistoryPanel({
             const formatLabel = isPdf ? "PDF" : (isXlsx ? "EXCEL" : "CSV");
 
             return (
-              <div key={rep.id} className="flex justify-between items-center bg-gray-50 dark:bg-slate-950 p-2.5 rounded-xl border border-gray-150 dark:border-slate-850">
+              <div key={rep.id} className="flex justify-between items-center bg-muted dark:bg-slate-950 p-2.5 rounded-xl border border-gray-150 dark:border-slate-850">
                 <div className="flex items-center gap-2 truncate">
                   <FileText size={16} className={isPdf ? "text-red-500" : "text-emerald-600"} />
                   <div className="truncate">
-                    <p className="text-xs font-bold text-gray-700 dark:text-gray-300 truncate max-w-[130px]">
+                    <p className="text-xs font-bold text-foreground dark:text-gray-300 truncate max-w-[130px]">
                       {rep.title || "Báo cáo phân tích"}
                     </p>
-                    <p className="text-[9px] text-gray-400 dark:text-gray-500 font-semibold">
+                    <p className="text-[9px] text-muted-foreground dark:text-muted-foreground font-semibold">
                       {new Date(rep.createdAt).toLocaleDateString()} • <span className="uppercase">{formatLabel}</span>
                     </p>
                   </div>

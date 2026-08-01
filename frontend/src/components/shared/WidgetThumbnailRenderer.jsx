@@ -144,11 +144,11 @@ export const WidgetThumbnailRenderer = {
       <div className="space-y-1.5 py-0.5">
         {items.map((item, idx) => (
           <div key={idx} className="space-y-0.5">
-            <div className="flex justify-between items-center text-[5.5px] font-mono text-gray-400">
+            <div className="flex justify-between items-center text-[5.5px] font-mono text-muted-foreground">
               <span className="truncate w-14 font-semibold">{item.name}</span>
               <span className="font-bold">{item.val}</span>
             </div>
-            <div className="h-1 bg-gray-100 rounded-full overflow-hidden">
+            <div className="h-1 bg-muted rounded-full overflow-hidden">
               <div className="h-full rounded-full" style={{ width: item.val, backgroundColor: color }} />
             </div>
           </div>

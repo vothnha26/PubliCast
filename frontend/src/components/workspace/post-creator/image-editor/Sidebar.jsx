@@ -14,7 +14,7 @@ export const SIDEBAR_TABS = [
 
 export function Sidebar({ activeTab, setActiveTab, setActiveStickerId, setActiveCensureId }) {
   return (
-    <div className="w-[180px] border-r border-gray-100 bg-white flex flex-col p-4 space-y-1.5 shrink-0 select-none">
+    <div className="w-[180px] border-r border-border bg-card flex flex-col p-4 space-y-1.5 shrink-0 select-none">
       {SIDEBAR_TABS.map((tab) => (
         <button
           key={tab.id}
@@ -25,8 +25,8 @@ export function Sidebar({ activeTab, setActiveTab, setActiveStickerId, setActive
           }}
           className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-[11px] font-bold tracking-wide transition-all cursor-pointer text-left ${
             activeTab === tab.id 
-              ? 'bg-gray-100 text-black font-extrabold shadow-sm' 
-              : 'text-gray-400 hover:text-gray-700 hover:bg-gray-50'
+              ? 'bg-muted text-black font-extrabold shadow-sm' 
+              : 'text-muted-foreground hover:text-foreground hover:bg-muted'
           }`}
         >
           {tab.icon}

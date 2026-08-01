@@ -32,23 +32,23 @@ export function SummaryOverviewWidget({
   if (previewLoading || !previewData) {
     return (
       <div className="w-full h-full flex flex-col justify-between p-2">
-        <div className="flex flex-col items-center justify-center gap-2 text-center py-4 bg-gray-50 border border-dashed border-gray-200 rounded-xl">
-          <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center animate-bounce">
-            <Calendar size={16} className="text-gray-400" />
+        <div className="flex flex-col items-center justify-center gap-2 text-center py-4 bg-muted border border-dashed border-border rounded-xl">
+          <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center animate-bounce">
+            <Calendar size={16} className="text-muted-foreground" />
           </div>
-          <span className="text-xs font-bold text-gray-500">TỔNG QUAN ĐA KÊNH — Đang tải dữ liệu...</span>
-          <span className="text-[10px] text-gray-400 max-w-[200px] leading-relaxed">
+          <span className="text-xs font-bold text-muted-foreground">TỔNG QUAN ĐA KÊNH — Đang tải dữ liệu...</span>
+          <span className="text-[10px] text-muted-foreground max-w-[200px] leading-relaxed">
             Hệ thống đang tải số liệu phân tích từ các kênh đã kết nối.
           </span>
         </div>
         <div className="grid grid-cols-4 gap-3 my-4">
           {[...Array(4)].map((_, i) => (
-            <div key={i} className="h-12 bg-gray-100 rounded-lg animate-pulse" />
+            <div key={i} className="h-12 bg-muted rounded-lg animate-pulse" />
           ))}
         </div>
         <div className="grid grid-cols-5 gap-3 h-24">
-          <div className="col-span-2 bg-gray-100 rounded-lg animate-pulse" />
-          <div className="col-span-3 bg-gray-100 rounded-lg animate-pulse" />
+          <div className="col-span-2 bg-muted rounded-lg animate-pulse" />
+          <div className="col-span-3 bg-muted rounded-lg animate-pulse" />
         </div>
       </div>
     );
@@ -71,58 +71,58 @@ export function SummaryOverviewWidget({
       {/* KPI Cards */}
       <div className="grid grid-cols-4 gap-3 mb-3">
         <div 
-          className="p-2.5 bg-gradient-to-br from-white to-gray-50/50 border border-gray-100 rounded-xl shadow-sm hover:shadow transition-all duration-300" 
+          className="p-2.5 bg-gradient-to-br from-white to-gray-50/50 border border-border rounded-xl shadow-sm hover:shadow transition-all duration-300" 
           style={{ borderLeft: `4px solid ${color}` }}
         >
-          <div className="text-[7px] text-gray-400 font-extrabold uppercase tracking-wider">Tiếp cận (Reach)</div>
+          <div className="text-[7px] text-muted-foreground font-extrabold uppercase tracking-wider">Tiếp cận (Reach)</div>
           <div className="text-sm font-black text-gray-850 font-mono mt-0.5">
             {formatNumber(overview.reach)}
           </div>
         </div>
         <div 
-          className="p-2.5 bg-gradient-to-br from-white to-gray-50/50 border border-gray-100 rounded-xl shadow-sm hover:shadow transition-all duration-300" 
+          className="p-2.5 bg-gradient-to-br from-white to-gray-50/50 border border-border rounded-xl shadow-sm hover:shadow transition-all duration-300" 
           style={{ borderLeft: `4px solid #52C79F` }}
         >
-          <div className="text-[7px] text-gray-400 font-extrabold uppercase tracking-wider">Hiển thị (Impressions)</div>
+          <div className="text-[7px] text-muted-foreground font-extrabold uppercase tracking-wider">Hiển thị (Impressions)</div>
           <div className="text-sm font-black text-gray-850 font-mono mt-0.5">
             {formatNumber(overview.impressions)}
           </div>
         </div>
         <div 
-          className="p-2.5 bg-gradient-to-br from-white to-gray-50/50 border border-gray-100 rounded-xl shadow-sm hover:shadow transition-all duration-300" 
+          className="p-2.5 bg-gradient-to-br from-white to-gray-50/50 border border-border rounded-xl shadow-sm hover:shadow transition-all duration-300" 
           style={{ borderLeft: `4px solid #E6A735` }}
         >
-          <div className="text-[7px] text-gray-400 font-extrabold uppercase tracking-wider">Tương tác (Engagements)</div>
+          <div className="text-[7px] text-muted-foreground font-extrabold uppercase tracking-wider">Tương tác (Engagements)</div>
           <div className="text-sm font-black text-gray-850 font-mono mt-0.5">
             {formatNumber(overview.engagements)}
           </div>
         </div>
         <div 
-          className="p-2.5 bg-gradient-to-br from-white to-gray-50/50 border border-gray-100 rounded-xl shadow-sm hover:shadow transition-all duration-300" 
+          className="p-2.5 bg-gradient-to-br from-white to-gray-50/50 border border-border rounded-xl shadow-sm hover:shadow transition-all duration-300" 
           style={{ borderLeft: `4px solid #C65880` }}
         >
-          <div className="text-[7px] text-gray-400 font-extrabold uppercase tracking-wider">Tỷ lệ tương tác</div>
+          <div className="text-[7px] text-muted-foreground font-extrabold uppercase tracking-wider">Tỷ lệ tương tác</div>
           <div className="text-sm font-black text-gray-850 font-mono mt-0.5">{overview.engagementRate}%</div>
         </div>
       </div>
 
       <div className="grid grid-cols-5 gap-3 items-stretch flex-1 min-h-0">
         {/* Active Channels List */}
-        <div className="col-span-2 bg-gradient-to-br from-white to-gray-50/30 border border-gray-100 rounded-xl p-3 flex flex-col justify-between shadow-sm">
-          <span className="text-[7.5px] font-extrabold text-gray-500 uppercase tracking-wider mb-2 block">
+        <div className="col-span-2 bg-gradient-to-br from-white to-gray-50/30 border border-border rounded-xl p-3 flex flex-col justify-between shadow-sm">
+          <span className="text-[7.5px] font-extrabold text-muted-foreground uppercase tracking-wider mb-2 block">
             Kênh hoạt động ({channels.length})
           </span>
           <div className="space-y-2 overflow-y-auto max-h-[105px] pr-1 scrollbar-thin">
             {channels.map((ch, idx) => (
               <div 
                 key={idx} 
-                className="flex justify-between items-center text-[7.5px] p-1.5 rounded-lg bg-gray-50/80 hover:bg-white hover:shadow-sm border border-transparent hover:border-gray-100 transition-all duration-200"
+                className="flex justify-between items-center text-[7.5px] p-1.5 rounded-lg bg-muted/80 hover:bg-card hover:shadow-sm border border-transparent hover:border-border transition-all duration-200"
               >
                 <div className="flex items-center gap-1.5 truncate">
                   <PlatformIcon platform={ch.platform} size={11} />
-                  <span className="font-extrabold text-gray-700 truncate w-20">{ch.displayName}</span>
+                  <span className="font-extrabold text-foreground truncate w-20">{ch.displayName}</span>
                 </div>
-                <span className="font-mono font-black text-gray-500">
+                <span className="font-mono font-black text-muted-foreground">
                   {formatNumber(ch.followers)}
                 </span>
               </div>
@@ -131,8 +131,8 @@ export function SummaryOverviewWidget({
         </div>
 
         {/* Interaction Trend Recharts Area Chart */}
-        <div className="col-span-3 bg-gradient-to-br from-white to-gray-50/30 border border-gray-100 rounded-xl p-3 flex flex-col shadow-sm">
-          <span className="text-[7.5px] font-extrabold text-gray-500 uppercase tracking-wider mb-2 block">
+        <div className="col-span-3 bg-gradient-to-br from-white to-gray-50/30 border border-border rounded-xl p-3 flex flex-col shadow-sm">
+          <span className="text-[7.5px] font-extrabold text-muted-foreground uppercase tracking-wider mb-2 block">
             Xu hướng tương tác (30 ngày)
           </span>
           <div className="flex-1 w-full min-h-0">

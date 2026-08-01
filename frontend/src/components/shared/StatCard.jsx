@@ -10,7 +10,7 @@ export function StatCard({
 }) {
   return (
     <div
-      className={`flex flex-col bg-white border border-gray-100 rounded-2xl p-4 shadow-sm ${className}`}
+      className={`flex flex-col bg-card border border-border rounded-2xl p-4 shadow-sm ${className}`}
       style={{ minWidth: 0, width: "100%" }}
     >
       <div style={{ fontSize: 11, color: "#6B7280", marginBottom: 6, minWidth: 0 }} className="font-bold uppercase tracking-wider">{label}</div>

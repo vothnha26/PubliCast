@@ -158,23 +158,23 @@ export function ComposerHeader() {
         <button 
           type="button"
           onClick={() => setShowTypeDropdown(!showTypeDropdown)}
-          className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-50 border border-gray-200 hover:bg-gray-100 rounded-xl transition-all text-[10px] font-black text-gray-600 uppercase tracking-wider cursor-pointer font-sans shadow-sm"
+          className="flex items-center gap-1.5 px-3 py-1.5 bg-muted border border-border hover:bg-muted rounded-xl transition-all text-[10px] font-black text-muted-foreground uppercase tracking-wider cursor-pointer font-sans shadow-sm"
         >
           {activeType}
-          <ChevronDown size={12} className="text-gray-500" />
+          <ChevronDown size={12} className="text-muted-foreground" />
         </button>
 
         {showTypeDropdown && (
-          <div className="absolute top-full left-0 mt-1 w-64 bg-white rounded-2xl shadow-2xl border border-gray-100 py-1.5 z-50 animate-in fade-in slide-in-from-top-1">
+          <div className="absolute top-full left-0 mt-1 w-64 bg-card rounded-2xl shadow-2xl border border-border py-1.5 z-50 animate-in fade-in slide-in-from-top-1">
             {activeConfig.supportedTypes.map((typeOption) => {
-              let icon = <LayoutGrid size={16} className="text-gray-600" />;
+              let icon = <LayoutGrid size={16} className="text-muted-foreground" />;
               let subtitle = t("planner:postCreator.composer.publishType.standard");
               
               if (typeOption.id === 'reel') {
-                icon = <Film size={16} className="text-gray-600" />;
+                icon = <Film size={16} className="text-muted-foreground" />;
                 subtitle = t("planner:postCreator.composer.publishType.reel");
               } else if (typeOption.id === 'story') {
-                icon = <PlusCircle size={16} className="text-gray-600" />;
+                icon = <PlusCircle size={16} className="text-muted-foreground" />;
                 subtitle = t("planner:postCreator.composer.publishType.story");
               } else if (typeOption.id === 'short') {
                 icon = <ShortsIcon size={14} className="text-[#FF0000]" />;
@@ -198,20 +198,20 @@ export function ComposerHeader() {
                     setType(typeOption.id);
                     setShowTypeDropdown(false);
                   }}
-                  className={`w-full flex items-center justify-between px-4 py-2 hover:bg-gray-50 transition-all text-left cursor-pointer ${
-                    activeType === typeOption.id ? 'bg-gray-100/80' : ''
+                  className={`w-full flex items-center justify-between px-4 py-2 hover:bg-muted transition-all text-left cursor-pointer ${
+                    activeType === typeOption.id ? 'bg-muted/80' : ''
                   }`}
                 >
                   <div className="flex items-center gap-3">
-                    <div className="p-1 bg-gray-100 rounded text-gray-600">
+                    <div className="p-1 bg-muted rounded text-muted-foreground">
                       {icon}
                     </div>
                     <div>
-                      <div className="text-xs font-bold text-gray-800 capitalize font-sans">{typeOption.label}</div>
-                      <div className="text-[10px] text-gray-400 font-medium font-sans">{subtitle}</div>
+                      <div className="text-xs font-bold text-foreground capitalize font-sans">{typeOption.label}</div>
+                      <div className="text-[10px] text-muted-foreground font-medium font-sans">{subtitle}</div>
                     </div>
                   </div>
-                  {activeType === typeOption.id && <Check size={14} className="text-gray-800" />}
+                  {activeType === typeOption.id && <Check size={14} className="text-foreground" />}
                 </button>
               );
             })}
@@ -231,7 +231,7 @@ export function ComposerHeader() {
   const getPlatformAccess = (platformId) => accessRightsStrategyMap[platformId] ?? true;
 
   return (
-    <div className="shrink-0 px-8 py-5 border-b border-gray-100 flex items-center justify-between bg-white z-10">
+    <div className="shrink-0 px-8 py-5 border-b border-border flex items-center justify-between bg-card z-10">
       <div className="flex items-center gap-6">
         {/* Platform Icons Toolbar */}
         <div className="flex items-center gap-4">
@@ -255,17 +255,17 @@ export function ComposerHeader() {
                         ? isActive
                           ? p.activeBgClass
                           : p.inactiveBgClass
-                        : 'text-gray-400 hover:text-gray-600 hover:bg-gray-50'
+                        : 'text-muted-foreground hover:text-muted-foreground hover:bg-muted'
                   }`}
                 >
                   <PlatformIcon platform={p.id} size={16} variant="flat" className={isSelected && isActive ? 'text-white' : ''} />
                   {isSelected && isActive && p.hasTypeDropdown && (
-                    <span className="absolute -bottom-1 -right-1 bg-white border border-gray-200 rounded-md p-0.5 text-gray-700 shadow-sm flex items-center justify-center">
+                    <span className="absolute -bottom-1 -right-1 bg-card border border-border rounded-md p-0.5 text-foreground shadow-sm flex items-center justify-center">
                       <LayoutGrid size={8} strokeWidth={3} />
                     </span>
                   )}
                   {!hasAccess && !lockInfo.isFullyLocked && (
-                    <span className="absolute -top-1 -right-1 bg-white border border-purple-100 text-purple-600 rounded-full p-0.5 shadow-sm">
+                    <span className="absolute -top-1 -right-1 bg-card border border-purple-100 text-purple-600 rounded-full p-0.5 shadow-sm">
                       <Lock size={7} strokeWidth={3} />
                     </span>
                   )}
@@ -281,7 +281,7 @@ export function ComposerHeader() {
           })}
 
           {/* Plus Add Button */}
-          <button type="button" className="w-8 h-8 rounded-full bg-gray-50 border border-dashed border-gray-200 flex items-center justify-center text-gray-400 hover:border-gray-400 hover:text-gray-600 transition-all cursor-pointer">
+          <button type="button" className="w-8 h-8 rounded-full bg-muted border border-dashed border-border flex items-center justify-center text-muted-foreground hover:border-gray-400 hover:text-muted-foreground transition-all cursor-pointer">
             <Plus size={16} />
           </button>
         </div>
@@ -295,7 +295,7 @@ export function ComposerHeader() {
           className={`flex items-center gap-1.5 px-3 py-1.5 border rounded-xl transition-all cursor-pointer font-sans shadow-sm text-[11px] font-bold uppercase tracking-wider ${
             isEditByNetwork
               ? "bg-gray-900 text-white border-gray-900"
-              : "bg-white text-gray-500 border-gray-200 hover:bg-gray-50"
+              : "bg-card text-muted-foreground border-border hover:bg-muted"
           }`}
         >
           <Settings size={13} />
@@ -310,7 +310,7 @@ export function ComposerHeader() {
         <button 
           type="button"
           onClick={() => setIsNotesOpen(true)}
-          className="flex items-center gap-1.5 px-3 py-1.5 border border-gray-200 bg-white hover:bg-gray-50 text-gray-600 rounded-xl transition-all cursor-pointer font-sans shadow-sm relative"
+          className="flex items-center gap-1.5 px-3 py-1.5 border border-border bg-card hover:bg-muted text-muted-foreground rounded-xl transition-all cursor-pointer font-sans shadow-sm relative"
         >
           <FileText size={14} />
           <span className="text-[11px] font-bold uppercase tracking-wider font-sans">{t("planner:postCreator.header.notes")}</span>

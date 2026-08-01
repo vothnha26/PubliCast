@@ -61,7 +61,7 @@ function PublishingVisual() {
       <div className="flex items-center justify-between mb-4">
         <span style={{ fontSize: 12, fontWeight: 500, color: "#fff" }}>Publishing Monitor</span>
         <span className="flex items-center gap-1.5 px-2 py-1 rounded" style={{ fontSize: 9, backgroundColor: "#16A34A", color: "#fff" }}>
-          <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" /> SYNC ACTIVE
+          <span className="w-1.5 h-1.5 rounded-full bg-card animate-pulse" /> SYNC ACTIVE
         </span>
       </div>
       <div className="space-y-3">
@@ -99,7 +99,7 @@ function PlannerVisual() {
   };
 
   return (
-    <div className="bg-white rounded-xl p-5" style={{ border: "0.5px solid #E5E7EB" }}>
+    <div className="bg-card rounded-xl p-5" style={{ border: "0.5px solid #E5E7EB" }}>
       <div className="flex items-center justify-between mb-4">
         <span style={{ fontSize: 12, fontWeight: 500, color: "#0A0A0A" }}>May 2026</span>
         <div className="flex gap-1">
@@ -127,7 +127,7 @@ function PlannerVisual() {
 
 function AnalyticsVisual() {
   return (
-    <div className="bg-white rounded-xl p-5" style={{ border: "0.5px solid #E5E7EB" }}>
+    <div className="bg-card rounded-xl p-5" style={{ border: "0.5px solid #E5E7EB" }}>
       <div className="flex items-center justify-between mb-4">
         <span style={{ fontSize: 12, fontWeight: 500, color: "#0A0A0A" }}>Performance</span>
         <span style={{ fontSize: 10, color: "#9CA3AF" }}>Last 30 days</span>

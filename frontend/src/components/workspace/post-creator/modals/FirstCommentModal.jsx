@@ -14,7 +14,7 @@ export function FirstCommentModal({ value, onAccept, onCancel }) {
 
   return (
     <div className="fixed inset-0 z-[3000] flex items-center justify-center bg-black/40 backdrop-blur-sm animate-in fade-in duration-300">
-      <div className="bg-white rounded-3xl shadow-2xl border border-gray-100 max-w-[500px] w-full p-6 relative animate-in zoom-in-95 duration-300 text-left">
+      <div className="bg-card rounded-3xl shadow-2xl border border-border max-w-[500px] w-full p-6 relative animate-in zoom-in-95 duration-300 text-left">
         {/* Close Button */}
         <button 
           type="button"
@@ -26,29 +26,29 @@ export function FirstCommentModal({ value, onAccept, onCancel }) {
 
         {/* Header */}
         <div className="space-y-1 mb-5">
-          <h2 className="text-base font-extrabold text-gray-800">Add first comment</h2>
-          <p className="text-xs text-gray-400 font-semibold uppercase tracking-wider">Add the first comment to your post.</p>
+          <h2 className="text-base font-extrabold text-foreground">Add first comment</h2>
+          <p className="text-xs text-muted-foreground font-semibold uppercase tracking-wider">Add the first comment to your post.</p>
         </div>
 
         {/* Textarea Box */}
-        <div className="border border-gray-200 rounded-2xl overflow-hidden focus-within:border-black transition-all bg-white relative">
+        <div className="border border-border rounded-2xl overflow-hidden focus-within:border-black transition-all bg-card relative">
           <textarea
             value={commentText}
             onChange={(e) => setCommentText(e.target.value)}
-            className="w-full p-4 text-xs font-semibold leading-relaxed outline-none min-h-[140px] resize-none text-gray-700"
+            className="w-full p-4 text-xs font-semibold leading-relaxed outline-none min-h-[140px] resize-none text-foreground"
             placeholder="Write the first comment that will be published on your post..."
           />
           
-          <div className="px-4 py-3 flex items-center justify-between border-t border-gray-50 bg-white">
+          <div className="px-4 py-3 flex items-center justify-between border-t border-gray-50 bg-card">
             <div className="flex items-center gap-3 relative">
               <button 
                 type="button"
                 onClick={() => setShowEmoji(!showEmoji)} 
-                className="text-gray-400 hover:text-black transition-colors cursor-pointer"
+                className="text-muted-foreground hover:text-black transition-colors cursor-pointer"
               >
                 <Smile size={16} />
               </button>
-              <button type="button" className="text-gray-400 hover:text-black transition-colors cursor-pointer">
+              <button type="button" className="text-muted-foreground hover:text-black transition-colors cursor-pointer">
                 <Folder size={16} />
               </button>
               
@@ -69,7 +69,7 @@ export function FirstCommentModal({ value, onAccept, onCancel }) {
           <button 
             type="button"
             onClick={onCancel}
-            className="px-5 py-2 border border-gray-200 hover:bg-gray-50 rounded-xl text-xs font-bold text-gray-600 transition-colors uppercase tracking-widest cursor-pointer"
+            className="px-5 py-2 border border-border hover:bg-muted rounded-xl text-xs font-bold text-muted-foreground transition-colors uppercase tracking-widest cursor-pointer"
           >
             Cancel
           </button>

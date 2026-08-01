@@ -418,7 +418,7 @@ export function ConnectionsGrid({ className = "", brand, onDisconnect }) {
              {/* Network Label */}
              <div className="flex items-center gap-2 px-1">
                 {net.icon}
-                <span className="text-[15px] font-bold text-[#0A0A0A]">{net.name}</span>
+                <span className="text-[15px] font-bold text-foreground">{net.name}</span>
              </div>
 
              {/* Connection Button */}
@@ -463,17 +463,17 @@ export function ConnectionsGrid({ className = "", brand, onDisconnect }) {
       {/* Telegram Modal */}
       {showTelegramModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-white dark:bg-[#1a1a1a] rounded-[24px] p-6 max-w-md w-full shadow-2xl border border-gray-100 dark:border-gray-800 animate-in zoom-in-95 duration-200 text-left">
+          <div className="bg-card dark:bg-[#1a1a1a] rounded-[24px] p-6 max-w-md w-full shadow-2xl border border-border dark:border-gray-800 animate-in zoom-in-95 duration-200 text-left">
             <div className="flex items-center justify-between mb-6">
               <div className="flex items-center gap-2.5">
                 <div className="w-9 h-9 rounded-xl bg-[#0088cc] flex items-center justify-center text-white">
                   <Send size={18} className="fill-current" />
                 </div>
-                <h3 className="text-lg font-bold text-gray-900 dark:text-white">Connect Telegram Channel</h3>
+                <h3 className="text-lg font-bold text-foreground dark:text-white">Connect Telegram Channel</h3>
               </div>
               <button 
                 onClick={() => setShowTelegramModal(false)}
-                className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 p-1.5 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full transition-all"
+                className="text-muted-foreground hover:text-muted-foreground dark:hover:text-gray-300 p-1.5 hover:bg-muted dark:hover:bg-gray-800 rounded-full transition-all"
               >
                 <X size={18} />
               </button>
@@ -481,26 +481,26 @@ export function ConnectionsGrid({ className = "", brand, onDisconnect }) {
 
             <form onSubmit={submitTelegramConnection} className="space-y-4">
               <div>
-                <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5 uppercase tracking-wider">Bot Token</label>
+                <label className="block text-xs font-bold text-foreground dark:text-gray-300 mb-1.5 uppercase tracking-wider">Bot Token</label>
                 <input 
                   type="text"
                   required
                   placeholder="e.g. 123456:ABC-DEF1234ghIkl-zyx57W2v1u1"
                   value={botToken}
                   onChange={(e) => setBotToken(e.target.value)}
-                  className="w-full h-11 px-4 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#0088cc] transition-all"
+                  className="w-full h-11 px-4 rounded-xl border border-border dark:border-gray-700 bg-muted dark:bg-gray-800 text-sm text-foreground dark:text-white focus:outline-none focus:ring-2 focus:ring-[#0088cc] transition-all"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5 uppercase tracking-wider">Chat ID (Channel or Group)</label>
+                <label className="block text-xs font-bold text-foreground dark:text-gray-300 mb-1.5 uppercase tracking-wider">Chat ID (Channel or Group)</label>
                 <input 
                   type="text"
                   required
                   placeholder="e.g. @mychannel or -100123456789"
                   value={chatId}
                   onChange={(e) => setChatId(e.target.value)}
-                  className="w-full h-11 px-4 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#0088cc] transition-all"
+                  className="w-full h-11 px-4 rounded-xl border border-border dark:border-gray-700 bg-muted dark:bg-gray-800 text-sm text-foreground dark:text-white focus:outline-none focus:ring-2 focus:ring-[#0088cc] transition-all"
                 />
               </div>
 
@@ -515,7 +515,7 @@ export function ConnectionsGrid({ className = "", brand, onDisconnect }) {
                 <button
                   type="button"
                   onClick={() => setShowTelegramModal(false)}
-                  className="flex-1 h-11 rounded-xl text-sm font-semibold text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-all border border-gray-200 dark:border-gray-700 cursor-pointer"
+                  className="flex-1 h-11 rounded-xl text-sm font-semibold text-foreground dark:text-gray-300 hover:bg-muted dark:hover:bg-gray-800 transition-all border border-border dark:border-gray-700 cursor-pointer"
                 >
                   Cancel
                 </button>

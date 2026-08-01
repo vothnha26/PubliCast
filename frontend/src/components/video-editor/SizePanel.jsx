@@ -27,7 +27,7 @@ export default function SizePanel() {
           </div>
 
           {/* Degree Indicator */}
-          <span className="text-xs font-mono font-bold text-gray-800 bg-gray-100 px-2 py-0.5 rounded-full border border-gray-200">
+          <span className="text-xs font-mono font-bold text-foreground bg-muted px-2 py-0.5 rounded-full border border-border">
             {rotation > 0 ? `+${rotation}°` : `${rotation}°`}
           </span>
         </div>
@@ -44,20 +44,20 @@ export default function SizePanel() {
             />
           </div>
 
-          <span className="text-xs font-mono font-bold text-gray-800 bg-gray-100 px-2 py-0.5 rounded-full border border-gray-200">
+          <span className="text-xs font-mono font-bold text-foreground bg-muted px-2 py-0.5 rounded-full border border-border">
             {scaleVal}%
           </span>
         </div>
       )}
 
       {/* Sub-tab Pill: Rotation vs Scale */}
-      <div className="flex items-center justify-center bg-gray-100 p-0.5 rounded-full border border-gray-200 text-xs font-semibold">
+      <div className="flex items-center justify-center bg-muted p-0.5 rounded-full border border-border text-xs font-semibold">
         <button
           onClick={() => setActiveSizeSubTab('rotation')}
           className={`px-4 py-1 rounded-full transition cursor-pointer ${
             activeSizeSubTab === 'rotation'
               ? 'bg-gray-300 text-black font-extrabold shadow-sm'
-              : 'text-gray-500 hover:text-gray-800'
+              : 'text-muted-foreground hover:text-foreground'
           }`}
         >
           Rotation
@@ -68,7 +68,7 @@ export default function SizePanel() {
           className={`px-4 py-1 rounded-full transition cursor-pointer ${
             activeSizeSubTab === 'scale'
               ? 'bg-gray-300 text-black font-extrabold shadow-sm'
-              : 'text-gray-500 hover:text-gray-800'
+              : 'text-muted-foreground hover:text-foreground'
           }`}
         >
           Scale
@@ -76,7 +76,7 @@ export default function SizePanel() {
       </div>
 
       {/* Resolution Indicator Text (bottom right) */}
-      <div className="absolute right-4 bottom-2 text-xs font-mono font-semibold text-gray-600">
+      <div className="absolute right-4 bottom-2 text-xs font-mono font-semibold text-muted-foreground">
         {videoDimensions.width || 576} × {videoDimensions.height || 1024}
       </div>
     </div>

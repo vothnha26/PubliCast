@@ -64,11 +64,11 @@ export default function DrawPanel() {
   return (
     <div className="w-full flex flex-col items-center justify-center gap-3 py-1 select-none font-sans relative">
       {/* Coming Soon Overlay — Draw-on-video canvas is not yet implemented */}
-      <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-white/85 backdrop-blur-[2px] rounded-xl pointer-events-none">
-        <div className="flex flex-col items-center gap-2 px-4 py-3 bg-white border border-gray-100 rounded-2xl shadow-md">
+      <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-card/85 backdrop-blur-[2px] rounded-xl pointer-events-none">
+        <div className="flex flex-col items-center gap-2 px-4 py-3 bg-card border border-border rounded-2xl shadow-md">
           <span className="text-lg">✏️</span>
-          <span className="text-xs font-extrabold text-gray-800 uppercase tracking-widest">Draw — Coming Soon</span>
-          <span className="text-[10px] text-gray-400 text-center max-w-[200px] leading-tight">
+          <span className="text-xs font-extrabold text-foreground uppercase tracking-widest">Draw — Coming Soon</span>
+          <span className="text-[10px] text-muted-foreground text-center max-w-[200px] leading-tight">
             Canvas vẽ trên video đang được phát triển. Hiện tại bạn có thể sử dụng tính năng Draw trong Image Editor.
           </span>
         </div>
@@ -78,8 +78,8 @@ export default function DrawPanel() {
       <div className="flex items-center justify-center gap-8 py-1">
         {/* Color Picker Group */}
         <div className="flex flex-col items-center gap-1">
-          <span className="text-[11px] text-gray-500 font-medium">color</span>
-          <div className="relative flex items-center justify-center w-8 h-8 rounded-full border-2 border-gray-200 shadow-sm cursor-pointer overflow-hidden hover:scale-105 transition">
+          <span className="text-[11px] text-muted-foreground font-medium">color</span>
+          <div className="relative flex items-center justify-center w-8 h-8 rounded-full border-2 border-border shadow-sm cursor-pointer overflow-hidden hover:scale-105 transition">
             <input
               type="color"
               value={color}
@@ -91,26 +91,26 @@ export default function DrawPanel() {
               className="w-7 h-7 rounded-full flex items-center justify-center border-2 border-white shadow-inner"
               style={{ backgroundColor: color }}
             >
-              <div className="w-2.5 h-2.5 bg-white rounded-full" />
+              <div className="w-2.5 h-2.5 bg-card rounded-full" />
             </div>
           </div>
         </div>
 
         {/* Line Width Dropdown Group */}
         <div className="flex flex-col items-center gap-1 relative" ref={dropdownRef}>
-          <span className="text-[11px] text-gray-500 font-medium">line width</span>
+          <span className="text-[11px] text-muted-foreground font-medium">line width</span>
           <button
             type="button"
             onClick={() => setIsLineWidthOpen(!isLineWidthOpen)}
-            className="flex items-center gap-2 px-4 py-1 bg-white border border-gray-200 rounded-full shadow-sm text-xs font-semibold text-gray-800 hover:border-gray-300 transition cursor-pointer"
+            className="flex items-center gap-2 px-4 py-1 bg-card border border-border rounded-full shadow-sm text-xs font-semibold text-foreground hover:border-gray-300 transition cursor-pointer"
           >
             <span>{selectedLineWidth.label}</span>
-            <ChevronDown size={14} className="text-gray-600" />
+            <ChevronDown size={14} className="text-muted-foreground" />
           </button>
 
           {/* Line Width Dropdown Menu */}
           {isLineWidthOpen && (
-            <div className="absolute bottom-full mb-2 w-44 bg-white rounded-2xl border border-gray-200 shadow-2xl overflow-hidden py-1.5 z-50 animate-in fade-in zoom-in-95 duration-150">
+            <div className="absolute bottom-full mb-2 w-44 bg-card rounded-2xl border border-border shadow-2xl overflow-hidden py-1.5 z-50 animate-in fade-in zoom-in-95 duration-150">
               {LINE_WIDTH_OPTIONS.map((opt) => {
                 const isSelected = selectedLineWidth.id === opt.id;
                 return (
@@ -124,7 +124,7 @@ export default function DrawPanel() {
                     className={`w-full text-left px-5 py-2 text-xs font-semibold transition cursor-pointer ${
                       isSelected
                         ? 'bg-gray-300 text-black font-extrabold'
-                        : 'hover:bg-gray-100 text-gray-700'
+                        : 'hover:bg-muted text-foreground'
                     }`}
                   >
                     {opt.label}
@@ -140,7 +140,7 @@ export default function DrawPanel() {
       <div className="relative w-full flex items-center justify-center px-4 mt-1">
         <button
           onClick={() => scrollByAmount(-200)}
-          className="w-7 h-7 rounded-full bg-white border border-gray-200 shadow-sm flex items-center justify-center text-gray-500 hover:text-black hover:bg-gray-100 shrink-0 transition cursor-pointer z-10 mr-1"
+          className="w-7 h-7 rounded-full bg-card border border-border shadow-sm flex items-center justify-center text-muted-foreground hover:text-black hover:bg-muted shrink-0 transition cursor-pointer z-10 mr-1"
           title="Cuộn sang trái"
         >
           <ChevronLeft size={16} />
@@ -161,7 +161,7 @@ export default function DrawPanel() {
                 className={`flex items-center gap-1.5 px-4 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition cursor-pointer shrink-0 border ${
                   isSelected
                     ? 'bg-gray-300 text-black border-transparent font-extrabold shadow-sm'
-                    : 'bg-gray-50 text-gray-600 border-gray-200 hover:text-black hover:bg-gray-100'
+                    : 'bg-muted text-muted-foreground border-border hover:text-black hover:bg-muted'
                 }`}
               >
                 <Icon size={14} strokeWidth={2} />
@@ -173,7 +173,7 @@ export default function DrawPanel() {
 
         <button
           onClick={() => scrollByAmount(200)}
-          className="w-7 h-7 rounded-full bg-white border border-gray-200 shadow-sm flex items-center justify-center text-gray-500 hover:text-black hover:bg-gray-100 shrink-0 transition cursor-pointer z-10 ml-1"
+          className="w-7 h-7 rounded-full bg-card border border-border shadow-sm flex items-center justify-center text-muted-foreground hover:text-black hover:bg-muted shrink-0 transition cursor-pointer z-10 ml-1"
           title="Cuộn sang phải"
         >
           <ChevronRight size={16} />

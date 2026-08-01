@@ -6,7 +6,7 @@ export function BrandTableOverlay({ isOpen, onClose, onSelect, brands = [] }) {
 
   return (
     <div className="fixed inset-0 z-[2000] flex items-center justify-center bg-black/40 backdrop-blur-sm animate-in fade-in duration-200 p-6">
-      <div className="w-full max-w-6xl bg-white rounded-2xl shadow-2xl overflow-hidden flex flex-col relative animate-in zoom-in-95 duration-300">
+      <div className="w-full max-w-6xl bg-card rounded-2xl shadow-2xl overflow-hidden flex flex-col relative animate-in zoom-in-95 duration-300">
         
         {/* Close Button (Matching Image) */}
         <button 
@@ -18,18 +18,18 @@ export function BrandTableOverlay({ isOpen, onClose, onSelect, brands = [] }) {
 
         {/* Header */}
         <div className="px-10 pt-10 pb-6">
-           <h2 className="text-2xl font-bold text-[#0A0A0A] mb-8">Brands</h2>
+           <h2 className="text-2xl font-bold text-foreground mb-8">Brands</h2>
            
            {/* Search Bar */}
            <div className="relative mb-8">
               <input 
                 placeholder="Search" 
-                className="w-full pl-4 pr-10 py-3.5 rounded-xl border border-gray-200 focus:border-gray-400 outline-none text-sm transition-all shadow-sm" 
+                className="w-full pl-4 pr-10 py-3.5 rounded-xl border border-border focus:border-gray-400 outline-none text-sm transition-all shadow-sm" 
               />
            </div>
 
            {/* Table Headers */}
-           <div className="grid grid-cols-12 px-6 py-4 text-[13px] font-bold text-gray-400">
+           <div className="grid grid-cols-12 px-6 py-4 text-[13px] font-bold text-muted-foreground">
               <div className="col-span-4 flex items-center gap-1.5 cursor-pointer hover:text-black transition-colors">
                 Name <ArrowUp size={14} />
               </div>
@@ -43,14 +43,14 @@ export function BrandTableOverlay({ isOpen, onClose, onSelect, brands = [] }) {
            {/* Table Rows */}
            <div className="space-y-3">
               {brands.length === 0 ? (
-                <div className="text-center py-10 text-gray-400 text-sm font-medium">No brands available</div>
+                <div className="text-center py-10 text-muted-foreground text-sm font-medium">No brands available</div>
               ) : brands.map((brand) => (
-                <div key={brand.id} className="grid grid-cols-12 items-center px-6 py-4 rounded-xl border border-gray-100 bg-white shadow-sm hover:border-gray-200 transition-all group">
+                <div key={brand.id} className="grid grid-cols-12 items-center px-6 py-4 rounded-xl border border-border bg-card shadow-sm hover:border-border transition-all group">
                    <div className="col-span-4 flex items-center gap-4">
                       <div className="w-10 h-10 rounded-lg flex items-center justify-center text-white font-bold text-lg shadow-sm" style={{ backgroundColor: '#E1306C' }}>
                          {brand.name.charAt(0)}
                       </div>
-                      <span className="text-sm font-bold text-[#0A0A0A]">{brand.name}</span>
+                      <span className="text-sm font-bold text-foreground">{brand.name}</span>
                    </div>
                    
                    <div className="col-span-2 flex items-center gap-2">
@@ -58,17 +58,17 @@ export function BrandTableOverlay({ isOpen, onClose, onSelect, brands = [] }) {
                       {brand.socialAccounts?.some(sa => sa.platform === 'FACEBOOK') && <Facebook size={18} className="text-blue-600" />}
                    </div>
 
-                   <div className="col-span-4 text-xs text-gray-500 font-medium">
+                   <div className="col-span-4 text-xs text-muted-foreground font-medium">
                       {brand.owner?.email || 'N/A'}
                    </div>
 
                    <div className="col-span-2 flex items-center justify-end gap-5">
-                      <button className="p-2 text-gray-400 hover:text-black transition-colors">
+                      <button className="p-2 text-muted-foreground hover:text-black transition-colors">
                          <ExternalLink size={18} />
                       </button>
                       <button 
                         onClick={() => { onSelect(brand.name); onClose(); }}
-                        className="px-6 py-1.5 rounded-xl border border-gray-300 text-sm font-bold text-gray-700 hover:bg-gray-50 transition-all shadow-sm"
+                        className="px-6 py-1.5 rounded-xl border border-gray-300 text-sm font-bold text-foreground hover:bg-muted transition-all shadow-sm"
                       >
                          Select
                       </button>

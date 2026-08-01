@@ -55,18 +55,18 @@ export function ComposerFooter() {
   const editablePublishOptions = getEditPublishOptions();
 
   return (
-    <div className="shrink-0 px-8 py-5 border-t border-gray-100 bg-white flex items-center justify-between z-10">
-      <button onClick={closePostCreator} data-testid="post-creator-cancel-btn" className="px-6 py-2.5 rounded-xl border border-gray-200 text-xs font-bold text-gray-500 hover:bg-gray-50 hover:text-black transition-all cursor-pointer font-sans">{t("planner:postCreator.footer.cancel")}</button>
+    <div className="shrink-0 px-8 py-5 border-t border-border bg-card flex items-center justify-between z-10">
+      <button onClick={closePostCreator} data-testid="post-creator-cancel-btn" className="px-6 py-2.5 rounded-xl border border-border text-xs font-bold text-muted-foreground hover:bg-muted hover:text-black transition-all cursor-pointer font-sans">{t("planner:postCreator.footer.cancel")}</button>
       
       <div className="flex items-center gap-4">
         {!isLibrary && ['schedule', 'review'].includes(selectedPublishId) && (
-          <div className="flex items-center gap-3 bg-white border border-gray-200 rounded-2xl px-5 py-2.5 hover:bg-gray-50 transition-all relative">
-            <Calendar size={18} className="text-gray-400" />
+          <div className="flex items-center gap-3 bg-card border border-border rounded-2xl px-5 py-2.5 hover:bg-muted transition-all relative">
+            <Calendar size={18} className="text-muted-foreground" />
             <input 
               type="datetime-local" data-testid="post-scheduled-date-input" 
               value={scheduledDate}
               onChange={(e) => setScheduledDate(e.target.value)}
-              className="text-[11px] font-bold text-gray-600 uppercase tracking-widest outline-none bg-transparent cursor-pointer border-none p-0 font-sans"
+              className="text-[11px] font-bold text-muted-foreground uppercase tracking-widest outline-none bg-transparent cursor-pointer border-none p-0 font-sans"
             />
           </div>
         )}
@@ -81,7 +81,7 @@ export function ComposerFooter() {
             className={`px-8 py-3 rounded-2xl text-[11px] font-bold uppercase tracking-widest transition-all disabled:opacity-50 cursor-pointer font-sans ${
               hasCreatePermission
                 ? "bg-[#0A0A0A] text-white hover:bg-black"
-                : "bg-gray-200 text-gray-400 cursor-not-allowed"
+                : "bg-gray-200 text-muted-foreground cursor-not-allowed"
             }`}
           >
             {isCreating ? <Loader2 size={16} className="animate-spin" /> : t("planner:postCreator.footer.saveTemplate")}
@@ -97,7 +97,7 @@ export function ComposerFooter() {
               className={`px-8 py-3 rounded-l-2xl text-[11px] font-bold uppercase tracking-widest transition-all disabled:opacity-50 cursor-pointer font-sans ${
                 hasCreatePermission
                   ? "bg-[#0A0A0A] text-white hover:bg-zinc-800"
-                  : "bg-gray-200 text-gray-400 cursor-not-allowed"
+                  : "bg-gray-200 text-muted-foreground cursor-not-allowed"
               }`}
             >
               {isCreating ? (
@@ -119,24 +119,24 @@ export function ComposerFooter() {
                 className={`px-3 py-3 rounded-r-2xl border-l border-zinc-800 transition-all ${
                   hasCreatePermission
                     ? "bg-[#0A0A0A] text-white hover:bg-zinc-800 cursor-pointer"
-                    : "bg-gray-300 text-gray-400 cursor-not-allowed"
+                    : "bg-gray-300 text-muted-foreground cursor-not-allowed"
                 }`}
               >
                 <ChevronDown size={18} />
               </button>
               {showPublishMenu && hasCreatePermission && (
-                <div className="absolute bottom-full right-0 mb-4 w-64 bg-white rounded-3xl shadow-[0_20px_50px_rgba(0,0,0,0.15)] border border-gray-100 py-3 z-50 animate-in slide-in-from-bottom-2">
+                <div className="absolute bottom-full right-0 mb-4 w-64 bg-card rounded-3xl shadow-[0_20px_50px_rgba(0,0,0,0.15)] border border-border py-3 z-50 animate-in slide-in-from-bottom-2">
                   {editablePublishOptions.length === 0 ? (
-                    <div className="px-6 py-3 text-[10px] text-gray-400 font-bold text-center font-sans">
+                    <div className="px-6 py-3 text-[10px] text-muted-foreground font-bold text-center font-sans">
                       {t("planner:postCreator.footer.publishedState")}
                     </div>
                   ) : editablePublishOptions.map((opt) => (
-                    <button key={opt.id} onClick={() => { setSelectedPublishId(opt.id); setShowPublishMenu(false); }} data-testid={`publish-option-${opt.id}`} className={`w-full flex items-center justify-between px-6 py-3 hover:bg-gray-50 transition-all text-left cursor-pointer ${selectedPublishId === opt.id ? 'bg-gray-50' : ''}`}>
+                    <button key={opt.id} onClick={() => { setSelectedPublishId(opt.id); setShowPublishMenu(false); }} data-testid={`publish-option-${opt.id}`} className={`w-full flex items-center justify-between px-6 py-3 hover:bg-muted transition-all text-left cursor-pointer ${selectedPublishId === opt.id ? 'bg-muted' : ''}`}>
                       <div>
-                        <div className="text-[10px] font-black text-gray-800 uppercase tracking-widest font-sans">{t(`planner:postCreator.footer.publishOptions.${opt.id}.label`)}</div>
-                        <div className="text-[9px] text-gray-400 font-bold font-sans">{t(`planner:postCreator.footer.publishOptions.${opt.id}.sub`)}</div>
+                        <div className="text-[10px] font-black text-foreground uppercase tracking-widest font-sans">{t(`planner:postCreator.footer.publishOptions.${opt.id}.label`)}</div>
+                        <div className="text-[9px] text-muted-foreground font-bold font-sans">{t(`planner:postCreator.footer.publishOptions.${opt.id}.sub`)}</div>
                       </div>
-                      {selectedPublishId === opt.id && <Check size={14} className="text-gray-800 shrink-0" />}
+                      {selectedPublishId === opt.id && <Check size={14} className="text-foreground shrink-0" />}
                     </button>
                   ))}
                 </div>

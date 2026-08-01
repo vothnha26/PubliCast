@@ -65,7 +65,7 @@ export function Viewport({
 
         {/* Center Focus Selection Indicator (Only show in size tab) */}
         {activeTab === 'size' && (
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-12 h-12 rounded-full bg-white/90 shadow-lg flex items-center justify-center text-black z-30 border border-gray-100 pointer-events-none">
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-12 h-12 rounded-full bg-card/90 shadow-lg flex items-center justify-center text-black z-30 border border-border pointer-events-none">
             <Focus size={20} />
           </div>
         )}
@@ -74,14 +74,14 @@ export function Viewport({
         {textPosition && activeTab === 'draw' && activeDrawTool === 'text' && (
           <div 
             style={{ left: `${textPosition.x}px`, top: `${textPosition.y}px` }}
-            className="absolute z-50 bg-white border border-gray-200 p-2 shadow-lg rounded-xl flex items-center gap-1.5"
+            className="absolute z-50 bg-card border border-border p-2 shadow-lg rounded-xl flex items-center gap-1.5"
           >
             <input 
               type="text" 
               placeholder="Enter text..." 
               value={textInputVal}
               onChange={(e) => setTextInputVal(e.target.value)}
-              className="px-2 py-1 text-xs border border-gray-100 rounded-lg focus:outline-none focus:border-black font-bold"
+              className="px-2 py-1 text-xs border border-border rounded-lg focus:outline-none focus:border-black font-bold"
             />
             <button 
               onClick={handleAddText}
@@ -91,7 +91,7 @@ export function Viewport({
             </button>
             <button 
               onClick={() => setTextPosition(null)}
-              className="p-1 bg-gray-100 text-gray-500 hover:bg-gray-200 rounded-lg"
+              className="p-1 bg-muted text-muted-foreground hover:bg-gray-200 rounded-lg"
             >
               <X size={12} />
             </button>
@@ -127,7 +127,7 @@ export function Viewport({
                   fontSize: `${st.size}px`
                 }}
                 className={`pointer-events-auto select-none cursor-move absolute flex items-center justify-center p-1 border ${
-                  activeStickerId === st.id ? 'border-dashed border-black bg-white/40 rounded-lg' : 'border-transparent'
+                  activeStickerId === st.id ? 'border-dashed border-black bg-card/40 rounded-lg' : 'border-transparent'
                 }`}
               >
                 <span>{st.emoji}</span>

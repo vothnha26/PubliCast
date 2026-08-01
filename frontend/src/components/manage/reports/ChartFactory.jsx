@@ -23,13 +23,13 @@ import { CHART_TYPES } from "./constants";
 const CustomTooltip = ({ active, payload, label }) => {
   if (active && payload && payload.length) {
     return (
-      <div className="bg-white dark:bg-slate-900 border border-gray-150 dark:border-slate-800 p-2.5 rounded-xl shadow-xl backdrop-blur-md">
-        <p className="text-[10px] font-bold text-gray-450 dark:text-gray-400 font-mono mb-1">{label}</p>
+      <div className="bg-card dark:bg-slate-900 border border-gray-150 dark:border-slate-800 p-2.5 rounded-xl shadow-xl backdrop-blur-md">
+        <p className="text-[10px] font-bold text-gray-450 dark:text-muted-foreground font-mono mb-1">{label}</p>
         <div className="space-y-1">
           {payload.map((item, idx) => (
             <div key={idx} className="flex items-center gap-2">
               <span className="w-2 h-2 rounded-full" style={{ backgroundColor: item.color || item.fill }} />
-              <span className="text-[11px] font-bold text-gray-800 dark:text-gray-200">
+              <span className="text-[11px] font-bold text-foreground dark:text-gray-200">
                 {item.name}: {typeof item.value === "number" ? item.value.toLocaleString() : item.value}
               </span>
             </div>
@@ -48,8 +48,8 @@ const CustomTooltip = ({ active, payload, label }) => {
 export function ChartFactory({ type, data, config, color = "#5C90A8", height = 200 }) {
   if (!data || !Array.isArray(data) || data.length === 0) {
     return (
-      <div className="w-full flex items-center justify-center bg-gray-50 dark:bg-slate-900 rounded-2xl border border-dashed border-gray-200 dark:border-slate-800" style={{ height }}>
-        <span className="text-xs text-gray-400 font-bold uppercase tracking-wider">Không có dữ liệu biểu đồ</span>
+      <div className="w-full flex items-center justify-center bg-muted dark:bg-slate-900 rounded-2xl border border-dashed border-border dark:border-slate-800" style={{ height }}>
+        <span className="text-xs text-muted-foreground font-bold uppercase tracking-wider">Không có dữ liệu biểu đồ</span>
       </div>
     );
   }

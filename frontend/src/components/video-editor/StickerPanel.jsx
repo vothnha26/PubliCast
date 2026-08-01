@@ -99,7 +99,7 @@ export default function StickerPanel() {
         {activeSubTab !== 'select-image' && (
           <button
             onClick={() => scrollByAmount(-200)}
-            className="w-7 h-7 rounded-full bg-white border border-gray-200 shadow-sm flex items-center justify-center text-gray-500 hover:text-black hover:bg-gray-100 shrink-0 transition cursor-pointer z-10 mr-1"
+            className="w-7 h-7 rounded-full bg-card border border-border shadow-sm flex items-center justify-center text-muted-foreground hover:text-black hover:bg-muted shrink-0 transition cursor-pointer z-10 mr-1"
             title="Cuộn sang trái"
           >
             <ChevronLeft size={16} />
@@ -117,7 +117,7 @@ export default function StickerPanel() {
                 <button
                   key={logo.id}
                   onClick={() => handleAddSticker(logo.name, true, logo.bgColor)}
-                  className="w-10 h-10 rounded-full bg-white border border-gray-200 shadow-sm flex items-center justify-center hover:scale-110 transition cursor-pointer hover:shadow-md shrink-0"
+                  className="w-10 h-10 rounded-full bg-card border border-border shadow-sm flex items-center justify-center hover:scale-110 transition cursor-pointer hover:shadow-md shrink-0"
                   title={`Thêm logo ${logo.name}`}
                 >
                   {logo.svg}
@@ -132,7 +132,7 @@ export default function StickerPanel() {
                 <button
                   key={idx}
                   onClick={() => handleAddSticker(emoji)}
-                  className="w-10 h-10 rounded-full bg-gray-50 border border-gray-200 text-xl flex items-center justify-center hover:scale-125 transition cursor-pointer shrink-0"
+                  className="w-10 h-10 rounded-full bg-muted border border-border text-xl flex items-center justify-center hover:scale-125 transition cursor-pointer shrink-0"
                   title="Thêm Emoji"
                 >
                   {emoji}
@@ -143,7 +143,7 @@ export default function StickerPanel() {
 
           {activeSubTab === 'select-image' && (
             <div className="flex items-center justify-center py-1">
-              <label className="flex items-center gap-2 px-5 py-2 rounded-full border border-dashed border-gray-300 bg-gray-50 hover:bg-gray-100 text-gray-700 text-xs font-semibold cursor-pointer transition">
+              <label className="flex items-center gap-2 px-5 py-2 rounded-full border border-dashed border-gray-300 bg-muted hover:bg-muted text-foreground text-xs font-semibold cursor-pointer transition">
                 <Upload size={14} />
                 <span>Tải ảnh nhãn dán từ máy tính</span>
                 <input type="file" accept="image/*" onChange={handleImageUpload} className="hidden" />
@@ -156,7 +156,7 @@ export default function StickerPanel() {
         {activeSubTab !== 'select-image' && (
           <button
             onClick={() => scrollByAmount(200)}
-            className="w-7 h-7 rounded-full bg-white border border-gray-200 shadow-sm flex items-center justify-center text-gray-500 hover:text-black hover:bg-gray-100 shrink-0 transition cursor-pointer z-10 ml-1"
+            className="w-7 h-7 rounded-full bg-card border border-border shadow-sm flex items-center justify-center text-muted-foreground hover:text-black hover:bg-muted shrink-0 transition cursor-pointer z-10 ml-1"
             title="Cuộn sang phải"
           >
             <ChevronRight size={16} />
@@ -165,11 +165,11 @@ export default function StickerPanel() {
       </div>
 
       {/* Sub-tab Pill: Select Image / Emojis / Logos */}
-      <div className="flex items-center justify-center bg-gray-100 p-0.5 rounded-full border border-gray-200 text-xs font-semibold">
+      <div className="flex items-center justify-center bg-muted p-0.5 rounded-full border border-border text-xs font-semibold">
         <label className={`flex items-center gap-1.5 px-4 py-1 rounded-full transition cursor-pointer ${
           activeSubTab === 'select-image'
             ? 'bg-gray-300 text-black font-extrabold shadow-sm'
-            : 'text-gray-500 hover:text-gray-800'
+            : 'text-muted-foreground hover:text-foreground'
         }`}>
           <ImageIcon size={13} />
           <span>Select Image</span>
@@ -187,7 +187,7 @@ export default function StickerPanel() {
           className={`px-4 py-1 rounded-full transition cursor-pointer ${
             activeSubTab === 'emojis'
               ? 'bg-gray-300 text-black font-extrabold shadow-sm'
-              : 'text-gray-500 hover:text-gray-800'
+              : 'text-muted-foreground hover:text-foreground'
           }`}
         >
           Emojis
@@ -198,7 +198,7 @@ export default function StickerPanel() {
           className={`px-4 py-1 rounded-full transition cursor-pointer ${
             activeSubTab === 'logos'
               ? 'bg-gray-300 text-black font-extrabold shadow-sm'
-              : 'text-gray-500 hover:text-gray-800'
+              : 'text-muted-foreground hover:text-foreground'
           }`}
         >
           Logos

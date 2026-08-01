@@ -124,34 +124,34 @@ export function SubredditSelector({ brandId, value = {}, onChange }) {
 
       {/* Target Subreddit Selection */}
       <div className="space-y-2">
-        <label className="text-xs font-semibold text-gray-700 block">Subreddit đích</label>
+        <label className="text-xs font-semibold text-foreground block">Subreddit đích</label>
         <div className="relative">
-          <Search className="w-4 h-4 absolute left-3 top-2.5 text-gray-400" />
+          <Search className="w-4 h-4 absolute left-3 top-2.5 text-muted-foreground" />
           <input
             type="text"
             value={searchQuery || subreddit}
             onChange={(e) => handleSearchSubreddits(e.target.value)}
             placeholder="Tìm hoặc nhập tên subreddit (vd: askreddit, technology)..."
-            className="w-full pl-9 pr-3 py-2 text-xs rounded-xl border border-gray-200 bg-white focus:outline-none focus:ring-2 focus:ring-orange-400"
+            className="w-full pl-9 pr-3 py-2 text-xs rounded-xl border border-border bg-card focus:outline-none focus:ring-2 focus:ring-orange-400"
           />
         </div>
 
-        {loadingSubs && <p className="text-[10px] text-gray-400">Đang tìm subreddit...</p>}
+        {loadingSubs && <p className="text-[10px] text-muted-foreground">Đang tìm subreddit...</p>}
 
         {subredditsList.length > 0 && (
-          <div className="max-h-36 overflow-y-auto bg-white border border-gray-100 rounded-xl p-1 shadow-sm space-y-1">
+          <div className="max-h-36 overflow-y-auto bg-card border border-border rounded-xl p-1 shadow-sm space-y-1">
             {subredditsList.map((sub) => (
               <button
                 key={sub.name}
                 type="button"
                 onClick={() => handleSelectSubreddit(sub.name)}
                 className={`w-full text-left px-3 py-1.5 rounded-lg text-xs flex items-center justify-between hover:bg-orange-50 ${
-                  subreddit === sub.name ? "bg-orange-100/80 font-bold text-orange-900" : "text-gray-700"
+                  subreddit === sub.name ? "bg-orange-100/80 font-bold text-orange-900" : "text-foreground"
                 }`}
               >
                 <span>r/{sub.name}</span>
                 {sub.subscribers && (
-                  <span className="text-[10px] text-gray-400">{sub.subscribers.toLocaleString()} members</span>
+                  <span className="text-[10px] text-muted-foreground">{sub.subscribers.toLocaleString()} members</span>
                 )}
               </button>
             ))}
@@ -162,12 +162,12 @@ export function SubredditSelector({ brandId, value = {}, onChange }) {
       {/* Link Flair Selection */}
       {subreddit && (
         <div className="space-y-1.5">
-          <label className="text-xs font-semibold text-gray-700 block">Link Flair (Thẻ bài viết)</label>
+          <label className="text-xs font-semibold text-foreground block">Link Flair (Thẻ bài viết)</label>
           <select
             value={flairId}
             onChange={handleFlairChange}
             disabled={loadingFlairs}
-            className="w-full text-xs py-2 px-3 rounded-xl border border-gray-200 bg-white focus:outline-none focus:ring-2 focus:ring-orange-400"
+            className="w-full text-xs py-2 px-3 rounded-xl border border-border bg-card focus:outline-none focus:ring-2 focus:ring-orange-400"
           >
             <option value="">-- Không chọn Flair --</option>
             {flairsList.map((flair) => (
@@ -181,7 +181,7 @@ export function SubredditSelector({ brandId, value = {}, onChange }) {
 
       {/* Tags: NSFW & Spoiler */}
       <div className="flex items-center gap-6 pt-1">
-        <label className="flex items-center gap-2 text-xs font-semibold text-gray-700 cursor-pointer select-none">
+        <label className="flex items-center gap-2 text-xs font-semibold text-foreground cursor-pointer select-none">
           <input
             type="checkbox"
             checked={isNsfw}
@@ -192,7 +192,7 @@ export function SubredditSelector({ brandId, value = {}, onChange }) {
           <span>Gắn thẻ NSFW (18+)</span>
         </label>
 
-        <label className="flex items-center gap-2 text-xs font-semibold text-gray-700 cursor-pointer select-none">
+        <label className="flex items-center gap-2 text-xs font-semibold text-foreground cursor-pointer select-none">
           <input
             type="checkbox"
             checked={isSpoiler}

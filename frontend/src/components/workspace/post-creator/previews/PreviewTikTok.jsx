@@ -216,7 +216,7 @@ export function PreviewTikTok({
         {/* Spinning CD Disk Icon */}
         <div className="w-9 h-9 rounded-full bg-black/60 border border-white/20 flex items-center justify-center animate-spin duration-3000 mt-1">
           <div className="w-5 h-5 rounded-full bg-gradient-to-tr from-gray-700 to-black flex items-center justify-center">
-            <div className="w-1.5 h-1.5 rounded-full bg-white" />
+            <div className="w-1.5 h-1.5 rounded-full bg-card" />
           </div>
         </div>
       </div>
@@ -249,7 +249,7 @@ export function PreviewTikTok({
           <div className="relative w-9 h-6 flex items-center justify-center">
             <div className="absolute inset-0 bg-[#FE2C55] rounded-lg -translate-x-0.5" />
             <div className="absolute inset-0 bg-[#25F4EE] rounded-lg translate-x-0.5" />
-            <div className="absolute inset-0 bg-white rounded-lg flex items-center justify-center text-black">
+            <div className="absolute inset-0 bg-card rounded-lg flex items-center justify-center text-black">
               <Plus size={14} strokeWidth={3} />
             </div>
           </div>
