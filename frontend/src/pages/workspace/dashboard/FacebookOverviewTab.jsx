@@ -3,7 +3,7 @@ import { GenericDashboardTab } from "./GenericDashboardTab";
 
 function SectionLabel({ children }) {
   return (
-    <h3 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-4">
+    <h3 className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-4">
       {children}
     </h3>
   );
@@ -29,7 +29,7 @@ export function FacebookOverviewTab({ realData = {} }) {
     {
       key: "followers",
       label: "Followers",
-      color: "bg-[#86EFAC] text-gray-900",
+      color: "bg-[#86EFAC] text-foreground",
       chartColor: "#4ADE80",
       type: "area",
       value: periodFollowers,
@@ -45,7 +45,7 @@ export function FacebookOverviewTab({ realData = {} }) {
     {
       key: "pageVisits",
       label: "Page visits",
-      color: "bg-[#A7F3D0] text-gray-900",
+      color: "bg-[#A7F3D0] text-foreground",
       chartColor: "#34D399",
       type: "line",
       value: periodPageVisits,
@@ -53,7 +53,7 @@ export function FacebookOverviewTab({ realData = {} }) {
     {
       key: "totalContent",
       label: "Total contents",
-      color: "bg-[#FEF08A] text-gray-900",
+      color: "bg-[#FEF08A] text-foreground",
       chartColor: "#EAB308",
       type: "bar",
       yAxisId: "right",
@@ -90,7 +90,7 @@ export function FacebookOverviewTab({ realData = {} }) {
     {
       key: "totalContent",
       label: "Total content",
-      color: "bg-[#FEF08A] text-gray-900",
+      color: "bg-[#FEF08A] text-foreground",
       chartColor: "#EAB308",
       type: "bar",
       yAxisId: "right",

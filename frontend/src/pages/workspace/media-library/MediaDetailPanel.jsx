@@ -29,22 +29,22 @@ export function MediaDetailPanel({ detail, setDetail, onDelete, onRename }) {
 
   return (
     <div
-      className="flex flex-col bg-white border-l border-gray-100 shadow-2xl animate-in slide-in-from-right duration-300"
+      className="flex flex-col bg-card border-l border-border shadow-2xl animate-in slide-in-from-right duration-300"
       style={{ flex: "0 0 320px" }}
     >
       <div className="flex items-center justify-between px-5 py-4 border-bottom border-gray-55">
-        <h3 className="text-xs font-black uppercase tracking-widest text-gray-400">{t("detailPanel.title")}</h3>
+        <h3 className="text-xs font-black uppercase tracking-widest text-muted-foreground">{t("detailPanel.title")}</h3>
         <button
           onClick={() => setDetail(null)}
-          className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer"
+          className="p-1.5 hover:bg-muted rounded-lg transition-colors cursor-pointer"
         >
-          <X size={16} className="text-gray-400" />
+          <X size={16} className="text-muted-foreground" />
         </button>
       </div>
 
       <div className="flex-1 overflow-y-auto p-5 space-y-6 scrollbar-thin">
         {/* Preview Area */}
-        <div className="aspect-square rounded-2xl bg-gray-50 border border-gray-100 overflow-hidden flex items-center justify-center relative group">
+        <div className="aspect-square rounded-2xl bg-muted border border-border overflow-hidden flex items-center justify-center relative group">
           {detail.type === 'video' ? (
             <video 
               src={detail.url} 
@@ -63,15 +63,15 @@ export function MediaDetailPanel({ detail, setDetail, onDelete, onRename }) {
             href={detail.url} 
             target="_blank" 
             rel="noreferrer"
-            className="absolute bottom-3 right-3 p-2 bg-white/90 backdrop-blur shadow-sm rounded-xl opacity-0 group-hover:opacity-100 transition-opacity hover:bg-white z-10"
+            className="absolute bottom-3 right-3 p-2 bg-card/90 backdrop-blur shadow-sm rounded-xl opacity-0 group-hover:opacity-100 transition-opacity hover:bg-card z-10"
           >
-             <Maximize2 size={14} className="text-gray-600" />
+             <Maximize2 size={14} className="text-muted-foreground" />
           </a>
         </div>
 
         {/* Info List */}
         <div className="space-y-4">
-           <div className="p-3 bg-gray-50 rounded-xl border border-gray-100">
+           <div className="p-3 bg-muted rounded-xl border border-border">
               <input 
                 value={fileName}
                 onChange={(e) => setFileName(e.target.value)}
@@ -81,29 +81,29 @@ export function MediaDetailPanel({ detail, setDetail, onDelete, onRename }) {
                   }
                 }}
                 onBlur={handleRename}
-                className="w-full bg-transparent border-none text-xs font-bold text-gray-800 focus:ring-0 outline-none"
+                className="w-full bg-transparent border-none text-xs font-bold text-foreground focus:ring-0 outline-none"
               />
            </div>
-           <span className="text-[9px] text-gray-400 block px-1 -mt-2">
+           <span className="text-[9px] text-muted-foreground block px-1 -mt-2">
              {t("detailPanel.hintRename", { defaultValue: "Press Enter or click outside to save" })}
            </span>
 
            <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1">
-                 <span className="text-[10px] font-black uppercase tracking-tighter text-gray-400">{t("detailPanel.type")}</span>
-                 <div className="text-xs font-bold text-gray-700 capitalize">{detail.type}</div>
+                 <span className="text-[10px] font-black uppercase tracking-tighter text-muted-foreground">{t("detailPanel.type")}</span>
+                 <div className="text-xs font-bold text-foreground capitalize">{detail.type}</div>
               </div>
               <div className="space-y-1">
-                 <span className="text-[10px] font-black uppercase tracking-tighter text-gray-400">{t("detailPanel.size")}</span>
-                 <div className="text-xs font-bold text-gray-700">{detail.size}</div>
+                 <span className="text-[10px] font-black uppercase tracking-tighter text-muted-foreground">{t("detailPanel.size")}</span>
+                 <div className="text-xs font-bold text-foreground">{detail.size}</div>
               </div>
               <div className="space-y-1">
-                 <span className="text-[10px] font-black uppercase tracking-tighter text-gray-400">{t("detailPanel.dimensions")}</span>
-                 <div className="text-xs font-bold text-gray-700">{detail.dim || '—'}</div>
+                 <span className="text-[10px] font-black uppercase tracking-tighter text-muted-foreground">{t("detailPanel.dimensions")}</span>
+                 <div className="text-xs font-bold text-foreground">{detail.dim || '—'}</div>
               </div>
               <div className="space-y-1">
-                 <span className="text-[10px] font-black uppercase tracking-tighter text-gray-400">{t("detailPanel.uploaded", { defaultValue: "Uploaded" })}</span>
-                 <div className="text-xs font-bold text-gray-700">{detail.date}</div>
+                 <span className="text-[10px] font-black uppercase tracking-tighter text-muted-foreground">{t("detailPanel.uploaded", { defaultValue: "Uploaded" })}</span>
+                 <div className="text-xs font-bold text-foreground">{detail.date}</div>
               </div>
            </div>
         </div>
@@ -125,7 +125,7 @@ export function MediaDetailPanel({ detail, setDetail, onDelete, onRename }) {
             )}
             {hasDeletePermission && (
               <button
-                className="w-full py-3 bg-white hover:bg-red-50 text-red-500 text-[11px] font-black uppercase tracking-widest rounded-xl border border-red-100 transition-all flex items-center justify-center gap-2 cursor-pointer"
+                className="w-full py-3 bg-card hover:bg-red-50 text-red-500 text-[11px] font-black uppercase tracking-widest rounded-xl border border-red-100 transition-all flex items-center justify-center gap-2 cursor-pointer"
                 onClick={async () => {
                   const isConfirmed = await confirm({
                     title: t("detailPanel.deleteConfirm", { defaultValue: "Delete File?" }),

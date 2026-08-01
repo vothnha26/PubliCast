@@ -18,7 +18,7 @@ export function FacebookInteractionsTab({ realData = {} }) {
     {
       key: "comments",
       label: "Comments",
-      color: "bg-[#4ADE80] text-gray-900",
+      color: "bg-[#4ADE80] text-foreground",
       chartColor: "#4ADE80",
       type: "line",
       value: interactions.comments || 0
@@ -72,8 +72,8 @@ export function FacebookInteractionsTab({ realData = {} }) {
       {/* Breakdown Section: Pie Charts */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
         {/* Types breakdown */}
-        <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm flex flex-col items-center">
-          <h4 className="text-sm font-bold text-[#0A0A0A] mb-4 self-start">Types</h4>
+        <div className="bg-card p-6 rounded-3xl border border-border shadow-sm flex flex-col items-center">
+          <h4 className="text-sm font-bold text-foreground mb-4 self-start">Types</h4>
           <div className="w-full h-48 flex items-center justify-around">
             <ResponsiveContainer width="50%" height="100%">
               <PieChart>
@@ -90,14 +90,14 @@ export function FacebookInteractionsTab({ realData = {} }) {
                     <Cell key={`cell-${index}`} fill={entry.color} />
                   ))}
                 </Pie>
-                <Tooltip />
+                <Tooltip contentStyle={{ borderRadius: 12, border: "1px solid var(--border)", background: "var(--card)", color: "var(--foreground)" }} />
               </PieChart>
             </ResponsiveContainer>
             <div className="flex flex-col gap-2">
               {typesData.map((t, idx) => (
                 <div key={idx} className="flex items-center gap-2">
                   <div className="w-3 h-3 rounded-full" style={{ backgroundColor: t.color }} />
-                  <span className="text-xs font-bold text-gray-700">{t.name}: {t.value}%</span>
+                  <span className="text-xs font-bold text-muted-foreground">{t.name}: {t.value}%</span>
                 </div>
               ))}
             </div>
@@ -105,8 +105,8 @@ export function FacebookInteractionsTab({ realData = {} }) {
         </div>
 
         {/* Views breakdown */}
-        <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm flex flex-col items-center">
-          <h4 className="text-sm font-bold text-[#0A0A0A] mb-4 self-start">Views</h4>
+        <div className="bg-card p-6 rounded-3xl border border-border shadow-sm flex flex-col items-center">
+          <h4 className="text-sm font-bold text-foreground mb-4 self-start">Views</h4>
           {viewsData ? (
             <div className="w-full h-48 flex items-center justify-around">
               <ResponsiveContainer width="50%" height="100%">
@@ -124,20 +124,20 @@ export function FacebookInteractionsTab({ realData = {} }) {
                       <Cell key={`cell-${index}`} fill={entry.color} />
                     ))}
                   </Pie>
-                  <Tooltip />
+                  <Tooltip contentStyle={{ borderRadius: 12, border: "1px solid var(--border)", background: "var(--card)", color: "var(--foreground)" }} />
                 </PieChart>
               </ResponsiveContainer>
               <div className="flex flex-col gap-2">
                 {viewsData.map((v, idx) => (
                   <div key={idx} className="flex items-center gap-2">
                     <div className="w-3 h-3 rounded-full" style={{ backgroundColor: v.color }} />
-                    <span className="text-xs font-bold text-gray-700">{v.name}: {v.value}%</span>
+                    <span className="text-xs font-bold text-muted-foreground">{v.name}: {v.value}%</span>
                   </div>
                 ))}
               </div>
             </div>
           ) : (
-            <div className="w-full h-48 flex items-center justify-center text-sm text-gray-400">
+            <div className="w-full h-48 flex items-center justify-center text-sm text-muted-foreground">
               Không có dữ liệu
             </div>
           )}

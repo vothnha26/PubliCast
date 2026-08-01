@@ -154,7 +154,7 @@ export function MediaLibraryPage() {
               setSearchTerm("");
               clearFilters();
             }}
-            className="cursor-pointer text-xs text-gray-500 hover:text-black transition-colors"
+            className="cursor-pointer text-xs text-muted-foreground hover:text-black transition-colors"
             style={{ fontSize: 12, fontWeight: 500, background: "none", border: "none", outline: "none" }}
           >
             {t("clearFilters")}
@@ -166,7 +166,7 @@ export function MediaLibraryPage() {
         <div className="flex items-center gap-2">
           <button
             onClick={handleCreateFolder}
-            className="flex items-center gap-2 cursor-pointer px-4 py-2 bg-white border border-gray-200 rounded-xl text-xs font-bold text-gray-700 hover:bg-gray-50 transition-all"
+            className="flex items-center gap-2 cursor-pointer px-4 py-2 bg-card border border-border rounded-xl text-xs font-bold text-foreground hover:bg-muted transition-all"
           >
             <Folder size={14} className="text-yellow-500" />
             {t("newFolder")}
@@ -198,7 +198,7 @@ export function MediaLibraryPage() {
 
       {/* Breadcrumbs */}
       {filters.folderId && (
-        <div className="px-6 py-2 flex items-center gap-2 text-[11px] font-bold text-gray-400 bg-gray-50/50">
+        <div className="px-6 py-2 flex items-center gap-2 text-[11px] font-bold text-muted-foreground bg-muted/50">
            <button 
              onClick={() => updateFilters({ folderId: null })}
              className="hover:text-black cursor-pointer"
@@ -206,7 +206,7 @@ export function MediaLibraryPage() {
              {t("breadcrumbMediaLibrary")}
            </button>
            <span>/</span>
-           <span className="text-gray-900">{t("breadcrumbFolder")}</span>
+           <span className="text-foreground">{t("breadcrumbFolder")}</span>
         </div>
       )}
 
@@ -244,22 +244,22 @@ export function MediaLibraryPage() {
       </div>
 
       {/* Pagination Footer */}
-      <div className="px-6 py-3 border-t border-gray-100 flex items-center justify-between bg-white">
-        <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
+      <div className="px-6 py-3 border-t border-border flex items-center justify-between bg-card">
+        <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
           {t("showingFiles", { count: filteredMedia.length, total: totalEntries })}
         </span>
         <div className="flex items-center gap-2">
           <button
             disabled={currentPage <= 1 || loading}
             onClick={() => updateFilters({ page: currentPage - 1 })}
-            className="px-4 py-2 border rounded-xl text-[10px] font-bold text-gray-500 hover:bg-gray-50 disabled:opacity-50"
+            className="px-4 py-2 border rounded-xl text-[10px] font-bold text-muted-foreground hover:bg-muted disabled:opacity-50"
           >
             {t("previous")}
           </button>
           <button
             disabled={currentPage >= totalPages || loading}
             onClick={() => updateFilters({ page: currentPage + 1 })}
-            className="px-4 py-2 border rounded-xl text-[10px] font-bold text-gray-500 hover:bg-gray-50 disabled:opacity-50"
+            className="px-4 py-2 border rounded-xl text-[10px] font-bold text-muted-foreground hover:bg-muted disabled:opacity-50"
           >
             {t("next")}
           </button>

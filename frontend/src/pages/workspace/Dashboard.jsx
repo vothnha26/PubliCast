@@ -33,8 +33,8 @@ const PLATFORM_COLORS = {
 const STATUS_CONFIG = {
   [POST_STATUS.DRAFT]: {
     label: "Bản nháp",
-    colorClass: "bg-gray-100 text-gray-700 border-gray-200",
-    icon: <FileText size={12} className="text-gray-500" />
+    colorClass: "bg-muted text-foreground border-border",
+    icon: <FileText size={12} className="text-muted-foreground" />
   },
   [POST_STATUS.PUBLISHED]: {
     label: "Đã đăng",
@@ -276,45 +276,44 @@ export function DashboardPage() {
   if (loading) {
     return (
       <div
-        className="flex-1 overflow-y-auto bg-[#F8F8F7] animate-pulse"
-        style={{ padding: "24px 32px", display: "flex", flexDirection: "column", gap: 20 }}
+        className="flex-1 overflow-y-auto bg-background text-foreground animate-pulse p-6 flex flex-col gap-5"
       >
         {/* Stat Cards Row Skeleton */}
         <div className="grid grid-cols-4 gap-4">
           {[1, 2, 3, 4].map((n) => (
-            <div key={n} className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm h-[110px] space-y-3">
-              <div className="w-20 h-3 bg-gray-100 rounded" />
-              <div className="w-28 h-6 bg-gray-200 rounded" />
+            <div key={n} className="bg-card p-6 rounded-2xl border border-border shadow-sm h-[110px] space-y-3">
+              <div className="w-20 h-3 bg-muted rounded" />
+              <div className="w-28 h-6 bg-muted/80 rounded" />
             </div>
           ))}
         </div>
 
         {/* Weekly Viewers Chart Skeleton */}
-        <div className="bg-white border border-gray-100 rounded-2xl p-6 shadow-sm h-[200px] space-y-4">
+        <div className="bg-card border border-border rounded-2xl p-6 shadow-sm h-[200px] space-y-4">
           <div className="flex justify-between">
-            <div className="w-32 h-4 bg-gray-100 rounded" />
-            <div className="w-20 h-4 bg-gray-100 rounded" />
+            <div className="w-32 h-4 bg-muted rounded" />
+            <div className="w-20 h-4 bg-muted rounded" />
           </div>
-          <div className="w-full h-[120px] bg-gray-50/50 rounded-xl" />
+          <div className="w-full h-[120px] bg-muted/50 rounded-xl" />
         </div>
 
         {/* Two Column Skeleton */}
         <div className="grid grid-cols-12 gap-6">
-          <div className="col-span-7 bg-white border border-gray-100 rounded-3xl p-6 shadow-sm h-[320px] space-y-4">
+          <div className="col-span-7 bg-card border border-border rounded-3xl p-6 shadow-sm h-[320px] space-y-4">
             <div className="flex justify-between">
-              <div className="w-24 h-4 bg-gray-100/80 rounded" />
-              <div className="w-16 h-4 bg-gray-100/80 rounded" />
+              <div className="w-24 h-4 bg-muted/80 rounded" />
+              <div className="w-16 h-4 bg-muted/80 rounded" />
             </div>
             {[1, 2, 3].map((n) => (
-              <div key={n} className="border border-gray-50 rounded-2xl h-16 bg-gray-50/30" />
+              <div key={n} className="border border-border rounded-2xl h-16 bg-muted/30" />
             ))}
           </div>
 
           <div className="col-span-5 flex flex-col gap-6">
-            <div className="bg-white border border-gray-100 rounded-3xl p-6 shadow-sm h-[200px] space-y-3">
-              <div className="w-32 h-4 bg-gray-100 rounded" />
+            <div className="bg-card border border-border rounded-3xl p-6 shadow-sm h-[200px] space-y-3">
+              <div className="w-32 h-4 bg-muted rounded" />
               {[1, 2, 3].map((n) => (
-                <div key={n} className="w-full h-4 bg-gray-50/50 rounded" />
+                <div key={n} className="w-full h-4 bg-muted/50 rounded" />
               ))}
             </div>
           </div>
@@ -325,8 +324,7 @@ export function DashboardPage() {
 
   return (
     <div
-      className="flex-1 overflow-y-auto font-sans"
-      style={{ background: "#F8F8F7", padding: "24px 32px", display: "flex", flexDirection: "column", gap: 20 }}
+      className="flex-1 overflow-y-auto font-sans bg-background text-foreground p-6 flex flex-col gap-5"
     >
       {/* Stat Cards Row */}
       <div className="grid grid-cols-4 gap-4">
@@ -355,24 +353,24 @@ export function DashboardPage() {
       </div>
 
       {/* Weekly Viewers Chart */}
-      <div className="bg-white border border-gray-100 rounded-2xl p-6 shadow-sm">
+      <div className="bg-card border border-border rounded-2xl p-6 shadow-sm">
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-2">
-             <TrendingUp size={16} className="text-gray-400" />
-             <span className="text-sm font-bold text-[#0A0A0A] uppercase tracking-wider">{t("charts.audienceTrend")}</span>
+             <TrendingUp size={16} className="text-muted-foreground" />
+             <span className="text-sm font-bold text-foreground uppercase tracking-wider">{t("charts.audienceTrend")}</span>
           </div>
-          <span onClick={() => navigate("/analytics")} className="text-xs font-bold text-blue-600 cursor-pointer hover:underline">{t("charts.viewDetails")}</span>
+          <span onClick={() => navigate("/analytics")} className="text-xs font-bold text-blue-600 dark:text-blue-400 cursor-pointer hover:underline">{t("charts.viewDetails")}</span>
         </div>
         <ResponsiveContainer width="100%" height={140}>
           <LineChart data={weeklyData}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#F0F0EF" vertical={false} />
-            <XAxis dataKey="day" tick={{ fontSize: 10, fill: "#9CA3AF", fontWeight: 700 }} axisLine={false} tickLine={false} />
-            <YAxis tick={{ fontSize: 10, fill: "#9CA3AF", fontWeight: 700 }} axisLine={false} tickLine={false} />
+            <CartesianGrid strokeDasharray="3 3" stroke="var(--border, #E5E7EB)" vertical={false} />
+            <XAxis dataKey="day" tick={{ fontSize: 10, fill: "var(--muted-foreground, #9CA3AF)", fontWeight: 700 }} axisLine={false} tickLine={false} />
+            <YAxis tick={{ fontSize: 10, fill: "var(--muted-foreground, #9CA3AF)", fontWeight: 700 }} axisLine={false} tickLine={false} />
             <Tooltip
-              contentStyle={{ background: "#0A0A0A", border: "none", borderRadius: 12, fontSize: 11, color: "#FFF", boxShadow: "0 10px 15px -3px rgba(0,0,0,0.1)" }}
-              cursor={{ stroke: "#E5E7EB" }}
+              contentStyle={{ background: "var(--card, #0A0A0A)", border: "1px solid var(--border, #333)", borderRadius: 12, fontSize: 11, color: "var(--foreground, #FFF)", boxShadow: "0 10px 15px -3px rgba(0,0,0,0.1)" }}
+              cursor={{ stroke: "var(--border, #E5E7EB)" }}
             />
-            <Line type="monotone" dataKey="viewers" stroke="#0A0A0A" strokeWidth={3} dot={false} />
+            <Line type="monotone" dataKey="viewers" stroke="var(--foreground, #0A0A0A)" strokeWidth={3} dot={false} />
           </LineChart>
         </ResponsiveContainer>
       </div>
@@ -380,9 +378,9 @@ export function DashboardPage() {
       {/* Two Column */}
       <div className="grid grid-cols-12 gap-6">
         {/* Recent Posts Queue (Cột trái) */}
-        <div className="col-span-7 bg-white border border-gray-100 rounded-3xl p-6 shadow-sm flex flex-col gap-5 min-h-[350px]">
+        <div className="col-span-7 bg-card border border-border rounded-3xl p-6 shadow-sm flex flex-col gap-5 min-h-[350px]">
           <div className="flex items-center justify-between">
-            <span className="text-sm font-bold text-[#0A0A0A] uppercase tracking-wider">{t("recentQueue.title")}</span>
+            <span className="text-sm font-bold text-foreground uppercase tracking-wider">{t("recentQueue.title")}</span>
             <div className="flex items-center gap-3">
               <button
                 onClick={() => openPostCreator()}
@@ -393,7 +391,7 @@ export function DashboardPage() {
               </button>
               <button
                 onClick={() => navigate("/planner")}
-                className="text-xs font-bold text-blue-600 hover:underline bg-transparent border-none cursor-pointer"
+                className="text-xs font-bold text-blue-600 dark:text-blue-400 hover:underline bg-transparent border-none cursor-pointer"
               >
                 {t("recentQueue.scheduleLink")}
               </button>
@@ -401,13 +399,13 @@ export function DashboardPage() {
           </div>
 
           {recentPosts.length === 0 ? (
-            <div className="flex-1 flex flex-col items-center justify-center text-center p-6 border border-dashed border-gray-200 rounded-2xl bg-gray-50/50">
-              <FileText size={40} className="text-gray-300 mb-3" />
-              <p className="text-xs font-semibold text-gray-500 mb-1">{t("recentQueue.emptyTitle")}</p>
-              <p className="text-[11px] text-gray-400 max-w-[280px] mb-4">{t("recentQueue.emptySubtitle")}</p>
+            <div className="flex-1 flex flex-col items-center justify-center text-center p-6 border border-dashed border-border rounded-2xl bg-muted/50">
+              <FileText size={40} className="text-muted-foreground opacity-50 mb-3" />
+              <p className="text-xs font-semibold text-foreground mb-1">{t("recentQueue.emptyTitle")}</p>
+              <p className="text-[11px] text-muted-foreground max-w-[280px] mb-4">{t("recentQueue.emptySubtitle")}</p>
               <button
                 onClick={() => openPostCreator()}
-                className="text-xs font-bold text-purple-600 hover:text-purple-700 bg-purple-50 px-4 py-2 rounded-lg border-none cursor-pointer transition-colors"
+                className="text-xs font-bold text-purple-600 dark:text-purple-400 hover:text-purple-700 bg-purple-500/10 px-4 py-2 rounded-lg border-none cursor-pointer transition-colors"
               >
                 {t("recentQueue.createNow")}
               </button>
@@ -421,30 +419,30 @@ export function DashboardPage() {
                 return (
                   <div
                     key={post.id}
-                    className="flex items-center justify-between p-3.5 border border-gray-100 hover:border-gray-200 rounded-2xl bg-white hover:shadow-sm transition-all group cursor-pointer"
+                    className="flex items-center justify-between p-3.5 border border-border hover:border-border rounded-2xl bg-card hover:bg-muted/50 shadow-sm transition-all group cursor-pointer"
                     onClick={() => navigate("/planner")}
                   >
                     <div className="flex items-center gap-3.5 min-w-0 flex-1">
                       {/* Thumbnail or Icon */}
-                      <div className="w-12 h-12 rounded-xl bg-gray-50 border border-gray-100 flex items-center justify-center overflow-hidden shrink-0">
+                      <div className="w-12 h-12 rounded-xl bg-muted border border-border flex items-center justify-center overflow-hidden shrink-0">
                         {post.thumbnail ? (
                           <img src={post.thumbnail} alt={post.title} className="w-full h-full object-cover" />
                         ) : (
-                          <FileText size={18} className="text-gray-400" />
+                          <FileText size={18} className="text-muted-foreground" />
                         )}
                       </div>
                       <div className="min-w-0 flex-1">
-                        <h4 className="text-xs font-bold text-gray-800 truncate group-hover:text-purple-700 transition-colors mb-1.5">
+                        <h4 className="text-xs font-bold text-foreground truncate group-hover:text-purple-600 dark:group-hover:text-purple-400 transition-colors mb-1.5">
                           {post.title || t("recentQueue.untitled")}
                         </h4>
                         <div className="flex items-center gap-2">
-                          <span className="text-[10px] text-gray-400 font-medium">
+                          <span className="text-[10px] text-muted-foreground font-medium">
                             {post.scheduledAt 
                               ? t("recentQueue.scheduledAt", { date: new Date(post.scheduledAt).toLocaleDateString(t("common:langLocale")) }) 
                               : t("recentQueue.createdAt", { date: new Date(post.createdAt).toLocaleDateString(t("common:langLocale")) })
                             }
                           </span>
-                          <span className="text-[10px] text-gray-300">•</span>
+                          <span className="text-[10px] text-muted-foreground">•</span>
                           {/* Target platforms */}
                           <div className="flex items-center gap-1">
                             {post.platforms?.map((plat) => (
@@ -460,7 +458,7 @@ export function DashboardPage() {
                         {statusInfo.icon}
                         <span>{t(`status.${statusUpper.toLowerCase()}`)}</span>
                       </div>
-                      <ChevronRight size={14} className="text-gray-300 group-hover:text-gray-500 transition-colors" />
+                      <ChevronRight size={14} className="text-muted-foreground group-hover:text-foreground transition-colors" />
                     </div>
                   </div>
                 );
@@ -472,12 +470,12 @@ export function DashboardPage() {
         {/* Platform Status and Reach (Cột phải) */}
         <div className="col-span-5 flex flex-col gap-6">
           {/* Platform Connections Status */}
-          <div className="bg-[#0A0A0A] rounded-3xl p-6 shadow-xl flex flex-col">
+          <div className="bg-card border border-border rounded-3xl p-6 shadow-xl flex flex-col">
             <div className="flex items-center justify-between mb-5">
-              <span className="text-sm font-bold text-white uppercase tracking-widest">{t("connections.title")}</span>
+              <span className="text-sm font-bold text-foreground uppercase tracking-widest">{t("connections.title")}</span>
               <button 
                 onClick={() => navigate("/manage/connections")}
-                className="text-[10px] font-black text-gray-400 hover:text-white uppercase tracking-wider bg-white/5 hover:bg-white/10 px-2.5 py-1 rounded-md border-none cursor-pointer transition-colors"
+                className="text-[10px] font-black text-muted-foreground hover:text-foreground uppercase tracking-wider bg-muted hover:bg-muted/80 px-2.5 py-1 rounded-md border-none cursor-pointer transition-colors"
               >
                 {t("connections.manage")}
               </button>
@@ -489,10 +487,10 @@ export function DashboardPage() {
                 return (
                   <div
                     key={platform.name}
-                    className={`flex items-center gap-3 py-3 ${i < arr.length - 1 ? "border-b border-white/5" : ""}`}
+                    className={`flex items-center gap-3 py-3 ${i < arr.length - 1 ? "border-b border-border" : ""}`}
                   >
                     <PlatformIcon platform={platform.name} size={18} />
-                    <span className="text-xs font-bold text-gray-200 flex-1">{platform.label}</span>
+                    <span className="text-xs font-bold text-foreground flex-1">{platform.label}</span>
                     {connected ? (
                       <span className="text-[9px] font-extrabold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded uppercase tracking-wider">
                         {t("connections.connected")}
@@ -500,7 +498,7 @@ export function DashboardPage() {
                     ) : (
                       <button
                         onClick={() => navigate("/manage/connections")}
-                        className="text-[9px] font-extrabold text-gray-400 hover:text-white bg-white/5 hover:bg-white/10 border-none px-2 py-0.5 rounded uppercase tracking-wider cursor-pointer transition-colors"
+                        className="text-[9px] font-extrabold text-muted-foreground hover:text-foreground bg-muted hover:bg-muted/80 border-none px-2 py-0.5 rounded uppercase tracking-wider cursor-pointer transition-colors"
                       >
                         {t("connections.connect")}
                       </button>
@@ -512,14 +510,14 @@ export function DashboardPage() {
           </div>
 
           {/* Reach by Network */}
-          <div className="bg-white border border-gray-100 rounded-3xl p-6 shadow-sm flex-1">
-            <div className="text-sm font-bold text-[#0A0A0A] uppercase tracking-wider mb-6">{t("connections.reachByNetwork")}</div>
+          <div className="bg-card border border-border rounded-3xl p-6 shadow-sm flex-1">
+            <div className="text-sm font-bold text-foreground uppercase tracking-wider mb-6">{t("connections.reachByNetwork")}</div>
             <div className="flex flex-col gap-4.5">
               {viewersByPlatform.map((item) => (
                 <div key={item.platform} className="flex items-center gap-3">
                   <PlatformIcon platform={item.platform} size={16} />
-                  <span className="text-[10px] font-bold text-gray-400 w-16 shrink-0 uppercase">{item.platform}</span>
-                  <div className="flex-1 h-1.5 rounded-full bg-gray-50 overflow-hidden">
+                  <span className="text-[10px] font-bold text-muted-foreground w-16 shrink-0 uppercase">{item.platform}</span>
+                  <div className="flex-1 h-1.5 rounded-full bg-muted overflow-hidden">
                     <div
                       className="h-full rounded-full transition-all duration-1000"
                       style={{
@@ -527,7 +525,7 @@ export function DashboardPage() {
                         background: PLATFORM_COLORS[item.platform] || "#888" }}
                     />
                   </div>
-                  <span className="text-[10px] font-black text-[#0A0A0A] w-12 text-right shrink-0">
+                  <span className="text-[10px] font-black text-foreground w-12 text-right shrink-0">
                     {item.viewers.toLocaleString()}
                   </span>
                 </div>

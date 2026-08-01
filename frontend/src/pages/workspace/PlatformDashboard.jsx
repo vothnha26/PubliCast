@@ -190,9 +190,9 @@ export function PlatformDashboardPage() {
 
   if (loading) {
     return (
-      <div className="flex-1 overflow-y-auto bg-[#F8F8F7] animate-pulse">
+      <div className="flex-1 overflow-y-auto bg-background animate-pulse">
         {/* Sub-Navigation (Tabs) Skeleton */}
-        <div className="sticky top-0 z-20 bg-white flex items-center justify-between px-6 border-b border-gray-100" style={{ height: 48 }}>
+        <div className="sticky top-0 z-20 bg-card flex items-center justify-between px-6 border-b border-border" style={{ height: 48 }}>
           <div className="flex gap-8 h-full">
             {[1, 2, 3, 4, 5].map((n) => (
               <div key={n} className="h-full flex items-center">
@@ -200,7 +200,7 @@ export function PlatformDashboardPage() {
               </div>
             ))}
           </div>
-          <div className="w-32 h-6 bg-gray-100 rounded-lg" />
+          <div className="w-32 h-6 bg-muted rounded-lg" />
         </div>
 
         <div className="p-6 max-w-[1400px] mx-auto space-y-6 pb-12">
@@ -216,20 +216,20 @@ export function PlatformDashboardPage() {
           {/* Metrics card skeleton */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
             {[1, 2, 3, 4].map((n) => (
-              <div key={n} className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm h-28 space-y-3">
-                <div className="w-20 h-3 bg-gray-100/80 rounded" />
+              <div key={n} className="bg-card p-6 rounded-3xl border border-border shadow-sm h-28 space-y-3">
+                <div className="w-20 h-3 bg-muted/80 rounded" />
                 <div className="w-24 h-6 bg-gray-200/80 rounded" />
               </div>
             ))}
           </div>
 
           {/* Chart skeleton */}
-          <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm h-[350px] space-y-4">
+          <div className="bg-card p-6 rounded-3xl border border-border shadow-sm h-[350px] space-y-4">
             <div className="flex justify-between">
-              <div className="w-48 h-4 bg-gray-100 rounded" />
-              <div className="w-24 h-4 bg-gray-100 rounded" />
+              <div className="w-48 h-4 bg-muted rounded" />
+              <div className="w-24 h-4 bg-muted rounded" />
             </div>
-            <div className="w-full h-[250px] bg-gray-50/50 rounded-2xl" />
+            <div className="w-full h-[250px] bg-muted/50 rounded-2xl" />
           </div>
         </div>
       </div>
@@ -237,19 +237,17 @@ export function PlatformDashboardPage() {
   }
 
   return (
-    <div className="flex-1 overflow-y-auto bg-[#F8F8F7]">
+    <div className="flex-1 overflow-y-auto bg-background">
       {/* Sub-Navigation (Tabs) */}
-      <div className="sticky top-0 z-20 bg-white/80 backdrop-blur-md flex items-center justify-between px-6 border-b border-gray-100" style={{ height: 48 }}>
+      <div className="sticky top-0 z-20 bg-background/80 backdrop-blur-md flex items-center justify-between px-6 border-b border-border" style={{ height: 48 }}>
         <div className="flex gap-8 h-full">
           {tabs.map((tab) => (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className="h-full flex items-center text-[10px] font-bold tracking-wider transition-all relative"
-              style={{ 
-                color: activeTab === tab.id ? "#0A0A0A" : "#9CA3AF",
-                borderBottom: activeTab === tab.id ? "2px solid #D9F99D" : "none" 
-              }}
+              className={`h-full flex items-center text-[10px] font-bold tracking-wider transition-all relative ${
+                activeTab === tab.id ? 'text-foreground border-b-2 border-lime-300' : 'text-muted-foreground'
+              }`}
             >
               {t(`tabs.${tab.id}`, tab.label)}
             </button>
@@ -262,7 +260,7 @@ export function PlatformDashboardPage() {
            <button 
              onClick={() => !isPlatformLocked && handleRefresh()}
              disabled={isRefreshing || isPlatformLocked}
-             className="p-2 hover:bg-gray-100 rounded-lg transition-colors text-gray-500 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+             className="p-2 hover:bg-muted rounded-lg transition-colors text-muted-foreground disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
              title={isPlatformLocked ? "Không thể đồng bộ dữ liệu vì nền tảng đang bị khóa" : "Làm mới dữ liệu (Đồng bộ từ API)"}
            >
              {isRefreshing ? (
@@ -274,7 +272,7 @@ export function PlatformDashboardPage() {
 
            <button 
              onClick={() => setIsExportModalOpen(true)}
-             className="p-2 hover:bg-gray-100 rounded-lg transition-colors text-gray-500"
+             className="p-2 hover:bg-muted rounded-lg transition-colors text-muted-foreground"
             >
              <Download size={16} />
            </button>
@@ -389,12 +387,12 @@ export function PlatformDashboardPage() {
         )}
 
         <div className="flex items-center justify-between">
-           <h2 className="text-xl font-bold text-[#0A0A0A] capitalize tracking-tight">
+           <h2 className="text-xl font-bold text-foreground capitalize tracking-tight">
              {activeTab === 'posts_list' ? 'List of Posts' : activeTab}
            </h2>
            
-           <div className="flex items-center gap-3 bg-white px-3 py-1.5 rounded-xl border border-gray-100 shadow-sm">
-              <div className="w-6 h-6 rounded-lg overflow-hidden border border-gray-100">
+           <div className="flex items-center gap-3 bg-card px-3 py-1.5 rounded-xl border border-border shadow-sm">
+              <div className="w-6 h-6 rounded-lg overflow-hidden border border-border">
                 <img 
                   src={metrics?.profilePictureUrl} 
                   alt="Avatar" 
@@ -406,7 +404,7 @@ export function PlatformDashboardPage() {
                   className="w-full h-full object-cover" 
                 />
               </div>
-              <span className="text-[11px] font-bold text-gray-700">{metrics?.displayName}</span>
+              <span className="text-[11px] font-bold text-foreground">{metrics?.displayName}</span>
               <div 
                 className="w-5 h-5 rounded-md flex items-center justify-center"
                 style={{ backgroundColor: config.color }}
@@ -429,18 +427,18 @@ export function PlatformDashboardPage() {
             <div className="absolute top-0 right-0 w-32 h-32 bg-[#D9F99D]/10 rounded-full -mr-16 -mt-16 blur-3xl" />
             <div className="flex gap-4 items-center relative z-10">
                 <div className="w-10 h-10 rounded-full bg-[#D9F99D] flex items-center justify-center shrink-0 shadow-lg shadow-[#D9F99D]/20">
-                  <Diamond size={20} className="text-[#0A0A0A]" />
+                  <Diamond size={20} className="text-foreground" />
                 </div>
                 <div>
                   <h3 className="text-sm font-bold text-white">Unlock Full Potential</h3>
-                  <p className="text-[11px] text-gray-400">Upgrade to learn more about your competitors' strategy and unlock 2 years of historical data.</p>
+                  <p className="text-[11px] text-muted-foreground">Upgrade to learn more about your competitors' strategy and unlock 2 years of historical data.</p>
                 </div>
             </div>
             <div className="flex items-center gap-4 relative z-10">
-                <button onClick={() => navigate("/pricing")} className="px-5 py-2 bg-[#D9F99D] text-[#0A0A0A] rounded-xl text-xs font-bold hover:scale-105 transition-all shadow-md">
+                <button onClick={() => navigate("/pricing")} className="px-5 py-2 bg-[#D9F99D] text-foreground rounded-xl text-xs font-bold hover:scale-105 transition-all shadow-md">
                   Upgrade Now
                 </button>
-                <button onClick={() => setShowInfo(false)} className="p-1.5 text-gray-500 hover:text-white transition-colors">
+                <button onClick={() => setShowInfo(false)} className="p-1.5 text-muted-foreground hover:text-white transition-colors">
                   <X size={16} />
                 </button>
             </div>
@@ -448,12 +446,12 @@ export function PlatformDashboardPage() {
         )}
 
         {!metrics ? (
-          <div className="h-96 flex flex-col items-center justify-center text-center bg-white border border-gray-100 rounded-3xl shadow-sm px-6">
-             <div className="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center mb-6">
+          <div className="h-96 flex flex-col items-center justify-center text-center bg-card border border-border rounded-3xl shadow-sm px-6">
+             <div className="w-20 h-20 bg-muted rounded-full flex items-center justify-center mb-6">
                 <div style={{ color: config.color }}>{config.icon}</div>
              </div>
-             <h3 className="text-xl font-bold text-[#0A0A0A]">{config.name} account not connected</h3>
-             <p className="text-sm text-gray-500 mt-2 mb-8 max-w-sm">Connect your {config.name} account to see real-time analytics, demographics, and video performance.</p>
+             <h3 className="text-xl font-bold text-foreground">{config.name} account not connected</h3>
+             <p className="text-sm text-muted-foreground mt-2 mb-8 max-w-sm">Connect your {config.name} account to see real-time analytics, demographics, and video performance.</p>
              <button 
                onClick={() => !isPlatformLocked && openConnections(activeBrand?.id)}
                disabled={isPlatformLocked}
@@ -513,7 +511,7 @@ export function PlatformDashboardPage() {
                     {
                       key: "following",
                       label: "Following",
-                      color: "bg-[#A7F3D0] text-gray-900",
+                      color: "bg-[#A7F3D0] text-foreground",
                       chartColor: "#A7F3D0",
                       type: "line",
                       value: followingCount
@@ -664,7 +662,7 @@ export function PlatformDashboardPage() {
                     {
                       key: "views",
                       label: "Views",
-                      color: "bg-[#A7F3D0] text-gray-900",
+                      color: "bg-[#A7F3D0] text-foreground",
                       chartColor: "#A7F3D0",
                       type: "line",
                       value: stats?.views || 0
@@ -769,7 +767,7 @@ export function PlatformDashboardPage() {
                     {
                       key: "views",
                       label: "Views",
-                      color: "bg-[#A7F3D0] text-gray-900",
+                      color: "bg-[#A7F3D0] text-foreground",
                       chartColor: "#A7F3D0",
                       type: "line",
                       value: stats?.views || 0
@@ -889,7 +887,7 @@ export function PlatformDashboardPage() {
                       {
                         key: "views",
                         label: "Video views",
-                        color: "bg-[#86EFAC] text-gray-900",
+                        color: "bg-[#86EFAC] text-foreground",
                         chartColor: "#86EFAC",
                         type: "line",
                         value: totalPeriodViews || 0
@@ -1025,10 +1023,10 @@ export function PlatformDashboardPage() {
 
 
       <Dialog open={isExportModalOpen} onOpenChange={setIsExportModalOpen}>
-        <DialogContent className="sm:max-w-[400px] rounded-3xl p-6 bg-white border border-gray-100 shadow-xl">
+        <DialogContent className="sm:max-w-[400px] rounded-3xl p-6 bg-card border border-border shadow-xl">
           <DialogHeader>
-            <DialogTitle className="text-lg font-bold text-[#0A0A0A] tracking-tight">Xuất báo cáo kênh {config.name}</DialogTitle>
-            <DialogDescription className="text-xs text-gray-400">Chọn định dạng báo cáo bạn muốn tải xuống.</DialogDescription>
+            <DialogTitle className="text-lg font-bold text-foreground tracking-tight">Xuất báo cáo kênh {config.name}</DialogTitle>
+            <DialogDescription className="text-xs text-muted-foreground">Chọn định dạng báo cáo bạn muốn tải xuống.</DialogDescription>
           </DialogHeader>
           <div className="grid grid-cols-2 gap-4 py-4">
             <button
@@ -1036,26 +1034,26 @@ export function PlatformDashboardPage() {
                 handleExportCSV();
                 setIsExportModalOpen(false);
               }}
-              className="flex flex-col items-center gap-3 p-5 rounded-2xl border border-gray-100 hover:border-gray-900 bg-white hover:bg-gray-50/50 transition-all text-center group cursor-pointer"
+              className="flex flex-col items-center gap-3 p-5 rounded-2xl border border-border hover:border-gray-900 bg-card hover:bg-muted/50 transition-all text-center group cursor-pointer"
             >
               <div className="w-12 h-12 rounded-xl bg-green-50 flex items-center justify-center text-green-600 font-bold text-sm group-hover:scale-105 transition-transform">
                 CSV
               </div>
-              <div className="text-xs font-bold text-[#0A0A0A]">Tải file CSV</div>
-              <div className="text-[9px] text-gray-400">Dữ liệu bảng tính chi tiết cho tab {activeTab}</div>
+              <div className="text-xs font-bold text-foreground">Tải file CSV</div>
+              <div className="text-[9px] text-muted-foreground">Dữ liệu bảng tính chi tiết cho tab {activeTab}</div>
             </button>
             <button
               onClick={() => {
                 toast.info("Tính năng xuất PDF đang được phát triển.");
                 setIsExportModalOpen(false);
               }}
-              className="flex flex-col items-center gap-3 p-5 rounded-2xl border border-gray-100 hover:border-gray-900 bg-white hover:bg-gray-50/50 transition-all text-center group cursor-pointer"
+              className="flex flex-col items-center gap-3 p-5 rounded-2xl border border-border hover:border-gray-900 bg-card hover:bg-muted/50 transition-all text-center group cursor-pointer"
             >
               <div className="w-12 h-12 rounded-xl bg-purple-50 flex items-center justify-center text-purple-600 font-bold text-sm group-hover:scale-105 transition-transform">
                 PDF
               </div>
-              <div className="text-xs font-bold text-[#0A0A0A]">Tải file PDF</div>
-              <div className="text-[9px] text-gray-400">Báo cáo trực quan kèm biểu đồ đồ họa</div>
+              <div className="text-xs font-bold text-foreground">Tải file PDF</div>
+              <div className="text-[9px] text-muted-foreground">Báo cáo trực quan kèm biểu đồ đồ họa</div>
             </button>
           </div>
         </DialogContent>

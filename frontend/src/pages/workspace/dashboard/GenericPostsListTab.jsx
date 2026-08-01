@@ -236,20 +236,20 @@ export function GenericPostsListTab({
   }, [pageSize]);
 
   return (
-    <div className="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden flex flex-col transition-all">
+    <div className="bg-card rounded-3xl border border-border shadow-sm overflow-hidden flex flex-col transition-all">
       {/* Thanh công cụ và tìm kiếm */}
-      <div className="px-6 py-4 border-b border-gray-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-gray-50/30">
+      <div className="px-6 py-4 border-b border-border flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-muted/30">
         <div className="flex items-center gap-4">
-          <h3 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Danh sách bài đăng</h3>
+          <h3 className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Danh sách bài đăng</h3>
           <div className="relative">
             <input
               type="text"
               placeholder={searchPlaceholder}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-8 pr-4 py-1.5 text-xs bg-white border border-gray-200 rounded-full w-64 focus:outline-none focus:ring-2 focus:ring-[#2D1D35]/10 transition-all font-medium text-gray-700"
+              className="pl-8 pr-4 py-1.5 text-xs bg-background border border-border rounded-full w-64 focus:outline-none focus:ring-2 focus:ring-primary/10 transition-all font-medium text-foreground"
             />
-            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
           </div>
         </div>
       </div>
@@ -258,15 +258,15 @@ export function GenericPostsListTab({
       <div className="overflow-x-auto">
         <table className="w-full min-w-[900px] border-collapse">
           <thead>
-            <tr className="bg-white border-b border-gray-100">
+            <tr className="bg-card border-b border-border">
               {/* Checkbox Header */}
               <th className="w-12 pl-6 py-4 text-left">
                 <div 
                   onClick={handleSelectAll}
                   className={`w-4 h-4 rounded border flex items-center justify-center cursor-pointer transition-all ${
                     selectedIds.size > 0 && selectedIds.size === filteredPosts.length 
-                      ? "bg-[#2D1D35] border-[#2D1D35] text-white" 
-                      : "border-gray-300 hover:border-gray-400 bg-white"
+                      ? "bg-primary border-primary text-primary-foreground" 
+                      : "border-border hover:border-muted-foreground bg-card"
                   }`}
                 >
                   {selectedIds.size > 0 && selectedIds.size === filteredPosts.length && (
@@ -276,13 +276,13 @@ export function GenericPostsListTab({
               </th>
               
               {/* Post Header */}
-              <th className="text-left px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest min-w-[280px]">Posts</th>
+              <th className="text-left px-6 py-4 text-[10px] font-bold text-muted-foreground uppercase tracking-widest min-w-[280px]">Posts</th>
               
               {/* Type Header */}
-              <th className="text-center px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest w-16">Type</th>
+              <th className="text-center px-6 py-4 text-[10px] font-bold text-muted-foreground uppercase tracking-widest w-16">Type</th>
               
               {/* Date Header */}
-              <th className="text-left px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest w-32">Date</th>
+              <th className="text-left px-6 py-4 text-[10px] font-bold text-muted-foreground uppercase tracking-widest w-32">Date</th>
               
               {/* Metric Headers with Sortable */}
               {["views", "likes", "comments", "shares"].map((metric) => {
@@ -290,15 +290,15 @@ export function GenericPostsListTab({
                 return (
                   <th
                     key={metric}
-                    className="text-right px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest cursor-pointer select-none hover:text-gray-600 transition-colors w-24"
+                    className="text-right px-6 py-4 text-[10px] font-bold text-muted-foreground uppercase tracking-widest cursor-pointer select-none hover:text-foreground transition-colors w-24"
                     onClick={() => handleSort(metric)}
                   >
                     <span className="inline-flex items-center gap-1 justify-end w-full">
                       <span className="capitalize">{metric}</span>
                       {isSortActive ? (
-                        sortConfig.dir === "asc" ? <ChevronUp size={11} className="text-black" /> : <ChevronDown size={11} className="text-black" />
+                        sortConfig.dir === "asc" ? <ChevronUp size={11} className="text-foreground" /> : <ChevronDown size={11} className="text-foreground" />
                       ) : (
-                        <ChevronsUpDown size={11} className="text-gray-300" />
+                        <ChevronsUpDown size={11} className="text-muted-foreground" />
                       )}
                     </span>
                   </th>
@@ -306,42 +306,42 @@ export function GenericPostsListTab({
               })}
 
               {/* Duration Header */}
-              <th className="text-center px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest w-24">Duration</th>
+              <th className="text-center px-6 py-4 text-[10px] font-bold text-muted-foreground uppercase tracking-widest w-24">Duration</th>
             </tr>
           </thead>
 
           {isLoading ? (
-            <tbody className="divide-y divide-gray-50">
+            <tbody className="divide-y divide-border">
               {[1, 2, 3].map((n) => (
                 <tr key={n} className="animate-pulse">
-                  <td className="pl-6 py-4"><div className="w-4 h-4 bg-gray-100 rounded" /></td>
+                  <td className="pl-6 py-4"><div className="w-4 h-4 bg-muted rounded" /></td>
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-3">
-                      <div className="w-12 h-12 bg-gray-100 rounded-lg shrink-0" />
-                      <div className="w-36 h-3 bg-gray-100 rounded" />
+                      <div className="w-12 h-12 bg-muted rounded-lg shrink-0" />
+                      <div className="w-36 h-3 bg-muted rounded" />
                     </div>
                   </td>
-                  <td className="px-6 py-4 text-center"><div className="w-8 h-4 bg-gray-50 rounded mx-auto" /></td>
-                  <td className="px-6 py-4"><div className="w-16 h-3 bg-gray-100 rounded" /></td>
-                  <td className="px-6 py-4"><div className="w-12 h-3 bg-gray-100 rounded ml-auto" /></td>
-                  <td className="px-6 py-4"><div className="w-10 h-3 bg-gray-100 rounded ml-auto" /></td>
-                  <td className="px-6 py-4"><div className="w-10 h-3 bg-gray-100 rounded ml-auto" /></td>
-                  <td className="px-6 py-4"><div className="w-10 h-3 bg-gray-100 rounded ml-auto" /></td>
-                  <td className="px-6 py-4 text-center"><div className="w-8 h-3 bg-gray-50 rounded mx-auto" /></td>
+                  <td className="px-6 py-4 text-center"><div className="w-8 h-4 bg-muted/60 rounded mx-auto" /></td>
+                  <td className="px-6 py-4"><div className="w-16 h-3 bg-muted rounded" /></td>
+                  <td className="px-6 py-4"><div className="w-12 h-3 bg-muted rounded ml-auto" /></td>
+                  <td className="px-6 py-4"><div className="w-10 h-3 bg-muted rounded ml-auto" /></td>
+                  <td className="px-6 py-4"><div className="w-10 h-3 bg-muted rounded ml-auto" /></td>
+                  <td className="px-6 py-4"><div className="w-10 h-3 bg-muted rounded ml-auto" /></td>
+                  <td className="px-6 py-4 text-center"><div className="w-8 h-3 bg-muted/60 rounded mx-auto" /></td>
                 </tr>
               ))}
             </tbody>
           ) : (
-            <tbody className="divide-y divide-gray-50">
+            <tbody className="divide-y divide-border">
               {pagedPosts.length === 0 ? (
                 <tr>
                   <td colSpan={9} className="px-6 py-12 text-center">
                     <div className="flex flex-col items-center justify-center max-w-sm mx-auto space-y-2">
-                      <div className="w-12 h-12 rounded-full bg-gray-50 flex items-center justify-center border border-gray-100 text-gray-400 mb-2">
+                      <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center border border-border text-muted-foreground mb-2">
                         <PlayCircle size={20} />
                       </div>
-                      <h4 className="text-xs font-bold text-gray-900">{emptyStateTitle}</h4>
-                      <p className="text-[10px] text-gray-400 leading-relaxed">{emptyStateDescription}</p>
+                      <h4 className="text-xs font-bold text-foreground">{emptyStateTitle}</h4>
+                      <p className="text-[10px] text-muted-foreground leading-relaxed">{emptyStateDescription}</p>
                     </div>
                   </td>
                 </tr>
@@ -357,7 +357,7 @@ export function GenericPostsListTab({
                   return (
                     <tr
                       key={post.id || idx}
-                      className={`hover:bg-[#F8F8F7]/50 transition-colors group border-b border-gray-50`}
+                      className={`hover:bg-muted/50 transition-colors group border-b border-border`}
                     >
                       {/* Checkbox Cell */}
                       <td className="pl-6 py-4" onClick={(e) => e.stopPropagation()}>
@@ -365,8 +365,8 @@ export function GenericPostsListTab({
                           onClick={(e) => handleSelectRow(post.id, e)}
                           className={`w-4 h-4 rounded border flex items-center justify-center cursor-pointer transition-all ${
                             isChecked 
-                              ? "bg-[#2D1D35] border-[#2D1D35] text-white" 
-                              : "border-gray-300 hover:border-gray-400 bg-white"
+                              ? "bg-primary border-primary text-primary-foreground" 
+                              : "border-border hover:border-muted-foreground bg-card"
                           }`}
                         >
                           {isChecked && <Check size={10} className="stroke-[3]" />}
@@ -378,16 +378,16 @@ export function GenericPostsListTab({
                         <div className="flex items-center justify-between gap-4">
                           <div className="flex items-center gap-3 min-w-0">
                             {thumbnail ? (
-                              <div className="w-12 h-12 rounded-xl overflow-hidden border border-gray-100 shadow-sm shrink-0 bg-gray-50 relative">
+                              <div className="w-12 h-12 rounded-xl overflow-hidden border border-border shadow-sm shrink-0 bg-muted relative">
                                 <img src={thumbnail} className="w-full h-full object-cover" alt="Post" />
                               </div>
                             ) : (
-                              <div className="w-12 h-12 rounded-xl bg-gray-50 border border-gray-100 flex items-center justify-center text-gray-400 shrink-0 shadow-sm">
+                              <div className="w-12 h-12 rounded-xl bg-muted border border-border flex items-center justify-center text-muted-foreground shrink-0 shadow-sm">
                                 {postType === "video" ? <Film size={16} /> : <ImageIcon size={16} />}
                               </div>
                             )}
                             <div className="flex flex-col min-w-0">
-                              <span className="text-xs font-semibold text-[#0A0A0A] line-clamp-2 leading-relaxed max-w-[260px]">
+                              <span className="text-xs font-semibold text-foreground line-clamp-2 leading-relaxed max-w-[260px]">
                                 {postText}
                               </span>
                               {getPostUrl(post) !== "#" && (
@@ -396,7 +396,7 @@ export function GenericPostsListTab({
                                   target="_blank"
                                   rel="noopener noreferrer"
                                   onClick={(e) => e.stopPropagation()}
-                                  className="inline-flex items-center gap-1 mt-1 text-[10px] font-bold text-blue-500 hover:text-blue-700 hover:underline w-fit transition-colors"
+                                  className="inline-flex items-center gap-1 mt-1 text-[10px] font-bold text-blue-500 hover:text-blue-700 dark:text-blue-400 hover:underline w-fit transition-colors"
                                 >
                                   <ExternalLink size={10} />
                                   <span>Xem bài đăng</span>
@@ -406,19 +406,19 @@ export function GenericPostsListTab({
                           </div>
 
                           {/* Quick action bar y hệt như hình ảnh thiết kế (star, graph, status badge, 3-dot) */}
-                          <div className="flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity bg-white/95 px-2.5 py-1.5 rounded-full border border-gray-100 shadow-lg shrink-0" onClick={(e) => e.stopPropagation()}>
+                          <div className="flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity bg-card/95 px-2.5 py-1.5 rounded-full border border-border shadow-lg shrink-0" onClick={(e) => e.stopPropagation()}>
                             {/* Star button */}
                             <button
                               onClick={(e) => toggleStar(post.id, e)}
-                              className="p-1 hover:bg-gray-100 rounded-lg text-gray-400 hover:text-amber-500 transition-colors border-none bg-transparent cursor-pointer"
+                              className="p-1 hover:bg-muted rounded-lg text-muted-foreground hover:text-amber-500 transition-colors border-none bg-transparent cursor-pointer"
                               title={isStarred ? "Bỏ yêu thích" : "Đánh dấu yêu thích"}
                             >
                               <Star size={13} className={isStarred ? "text-amber-500 fill-amber-500" : ""} />
                             </button>
 
                             {/* Green Badge */}
-                            <div className="bg-[#E8FAD0] text-[#4D7C0F] border border-[#D9F99D] text-[9px] font-extrabold px-1.5 py-0.5 rounded-full flex items-center gap-1">
-                              <div className="w-1 h-1 rounded-full bg-[#4D7C0F] animate-pulse" />
+                            <div className="bg-[#E8FAD0] dark:bg-lime-950/60 text-[#4D7C0F] dark:text-lime-400 border border-[#D9F99D] dark:border-lime-800 text-[9px] font-extrabold px-1.5 py-0.5 rounded-full flex items-center gap-1">
+                              <div className="w-1 h-1 rounded-full bg-[#4D7C0F] dark:bg-lime-400 animate-pulse" />
                               <span>Live</span>
                             </div>
 
@@ -428,7 +428,7 @@ export function GenericPostsListTab({
                               target="_blank"
                               rel="noopener noreferrer"
                               onClick={(e) => e.stopPropagation()}
-                              className="p-1 hover:bg-gray-100 rounded-lg text-gray-400 hover:text-blue-500 transition-colors border-none bg-transparent cursor-pointer"
+                              className="p-1 hover:bg-muted rounded-lg text-muted-foreground hover:text-blue-500 transition-colors border-none bg-transparent cursor-pointer"
                               title="Xem trực tiếp trên nền tảng"
                             >
                               <ExternalLink size={13} />
@@ -436,7 +436,7 @@ export function GenericPostsListTab({
 
                             {/* More button */}
                             <button
-                              className="p-1 hover:bg-gray-100 rounded-lg text-gray-400 hover:text-gray-700 transition-colors border-none bg-transparent cursor-pointer"
+                              className="p-1 hover:bg-muted rounded-lg text-muted-foreground hover:text-foreground transition-colors border-none bg-transparent cursor-pointer"
                             >
                               <MoreVertical size={13} />
                             </button>
@@ -446,13 +446,13 @@ export function GenericPostsListTab({
 
                       {/* Type Cell */}
                       <td className="px-6 py-4 text-center">
-                        <div className="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-gray-50 border border-gray-100 text-gray-500 shadow-sm">
+                        <div className="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-muted border border-border text-muted-foreground shadow-sm">
                           {postType === "video" ? (
-                            <Film size={14} className="text-indigo-500" />
+                            <Film size={14} className="text-indigo-500 dark:text-indigo-400" />
                           ) : postType === "carousel" ? (
-                            <Layers size={14} className="text-amber-500" />
+                            <Layers size={14} className="text-amber-500 dark:text-amber-400" />
                           ) : (
-                            <ImageIcon size={14} className="text-emerald-500" />
+                            <ImageIcon size={14} className="text-emerald-500 dark:text-emerald-400" />
                           )}
                         </div>
                       </td>
@@ -460,31 +460,31 @@ export function GenericPostsListTab({
                       {/* Date Cell */}
                       <td className="px-6 py-4">
                         <div className="flex flex-col">
-                          <span className="text-[11px] font-bold text-gray-800">
+                          <span className="text-[11px] font-bold text-foreground">
                             {pubDate.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
                           </span>
-                          <span className="text-[9px] text-gray-400 font-bold uppercase mt-0.5">
+                          <span className="text-[9px] text-muted-foreground font-bold uppercase mt-0.5">
                             {pubDate.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}
                           </span>
                         </div>
                       </td>
 
                       {/* Metrics Cells */}
-                      <td className="px-6 py-4 text-right text-xs font-bold text-gray-900">
+                      <td className="px-6 py-4 text-right text-xs font-bold text-foreground">
                         {formatMetricNumber(post.views)}
                       </td>
-                      <td className="px-6 py-4 text-right text-xs font-bold text-gray-900">
+                      <td className="px-6 py-4 text-right text-xs font-bold text-foreground">
                         {formatMetricNumber(post.likes)}
                       </td>
-                      <td className="px-6 py-4 text-right text-xs font-bold text-gray-900">
+                      <td className="px-6 py-4 text-right text-xs font-bold text-foreground">
                         {formatMetricNumber(post.comments)}
                       </td>
-                      <td className="px-6 py-4 text-right text-xs font-bold text-[#2D1D35]">
+                      <td className="px-6 py-4 text-right text-xs font-bold text-foreground">
                         {formatMetricNumber(post.shares)}
                       </td>
 
                       {/* Duration Cell */}
-                      <td className="px-6 py-4 text-center text-xs font-bold text-gray-500">
+                      <td className="px-6 py-4 text-center text-xs font-bold text-muted-foreground">
                         {formatDuration(post.duration)}
                       </td>
                     </tr>
@@ -497,17 +497,17 @@ export function GenericPostsListTab({
       </div>
 
       {/* Bộ phân trang Premium Circle Design y hệt như hình 1 */}
-      <div className="px-6 py-4 bg-gray-50/30 flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-t border-gray-100 select-none">
+      <div className="px-6 py-4 bg-muted/30 flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-t border-border select-none">
         <div className="flex items-center gap-6">
-          <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
+          <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
             {footerMessage || `Hiển thị ${pagedPosts.length}/${filteredPosts.length} bài viết`}
           </span>
-          <div className="flex items-center gap-2 border-l border-gray-200 pl-6">
-            <span className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">Số dòng hiển thị:</span>
+          <div className="flex items-center gap-2 border-l border-border pl-6">
+            <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-tight">Số dòng hiển thị:</span>
             <select
               value={pageSize}
               onChange={(e) => setPageSize(e.target.value)}
-              className="text-[10px] font-bold bg-white border border-gray-200 rounded-lg px-2.5 py-1 focus:outline-none cursor-pointer text-gray-700 shadow-sm"
+              className="text-[10px] font-bold bg-card border border-border rounded-lg px-2.5 py-1 focus:outline-none cursor-pointer text-foreground shadow-sm"
             >
               <option value="5">5</option>
               <option value="10">10</option>
@@ -521,7 +521,7 @@ export function GenericPostsListTab({
         {(!isServerPaged ? totalPages > 1 : (prevPageToken || nextPageToken)) && (
           <div className="flex items-center gap-4">
             {/* Range text */}
-            <span className="text-[11px] font-extrabold text-gray-500">
+            <span className="text-[11px] font-extrabold text-muted-foreground">
               {isServerPaged ? (
                 "Phân trang nền tảng"
               ) : (
@@ -534,7 +534,7 @@ export function GenericPostsListTab({
               <button
                 disabled={isServerPaged ? !prevPageToken : currentPage === 1}
                 onClick={() => isServerPaged ? fetchPublishedVideos(null) : setCurrentPage(1)}
-                className="w-7 h-7 rounded-full bg-white border border-gray-200 flex items-center justify-center text-gray-500 hover:bg-gray-100 hover:text-black transition-all disabled:opacity-30 disabled:hover:bg-white disabled:cursor-not-allowed cursor-pointer shadow-sm"
+                className="w-7 h-7 rounded-full bg-card border border-border flex items-center justify-center text-muted-foreground hover:bg-muted hover:text-foreground transition-all disabled:opacity-30 disabled:hover:bg-card disabled:cursor-not-allowed cursor-pointer shadow-sm"
               >
                 <ChevronsLeft size={13} />
               </button>
@@ -543,7 +543,7 @@ export function GenericPostsListTab({
               <button
                 disabled={isServerPaged ? !prevPageToken : currentPage === 1}
                 onClick={() => isServerPaged ? fetchPublishedVideos(prevPageToken) : setCurrentPage(prev => Math.max(prev - 1, 1))}
-                className="w-7 h-7 rounded-full bg-white border border-gray-200 flex items-center justify-center text-gray-500 hover:bg-gray-100 hover:text-black transition-all disabled:opacity-30 disabled:hover:bg-white disabled:cursor-not-allowed cursor-pointer shadow-sm"
+                className="w-7 h-7 rounded-full bg-card border border-border flex items-center justify-center text-muted-foreground hover:bg-muted hover:text-foreground transition-all disabled:opacity-30 disabled:hover:bg-card disabled:cursor-not-allowed cursor-pointer shadow-sm"
               >
                 <ChevronLeft size={13} />
               </button>
@@ -552,7 +552,7 @@ export function GenericPostsListTab({
               <button
                 disabled={isServerPaged ? !nextPageToken : currentPage === totalPages}
                 onClick={() => isServerPaged ? fetchPublishedVideos(nextPageToken) : setCurrentPage(prev => Math.min(prev + 1, totalPages))}
-                className="w-7 h-7 rounded-full bg-white border border-gray-200 flex items-center justify-center text-gray-500 hover:bg-gray-100 hover:text-black transition-all disabled:opacity-30 disabled:hover:bg-white disabled:cursor-not-allowed cursor-pointer shadow-sm"
+                className="w-7 h-7 rounded-full bg-card border border-border flex items-center justify-center text-muted-foreground hover:bg-muted hover:text-foreground transition-all disabled:opacity-30 disabled:hover:bg-card disabled:cursor-not-allowed cursor-pointer shadow-sm"
               >
                 <ChevronRight size={13} />
               </button>
@@ -561,7 +561,7 @@ export function GenericPostsListTab({
               <button
                 disabled={isServerPaged ? !nextPageToken : currentPage === totalPages}
                 onClick={() => isServerPaged ? fetchPublishedVideos(nextPageToken) : setCurrentPage(totalPages)}
-                className="w-7 h-7 rounded-full bg-white border border-gray-200 flex items-center justify-center text-gray-500 hover:bg-gray-100 hover:text-black transition-all disabled:opacity-30 disabled:hover:bg-white disabled:cursor-not-allowed cursor-pointer shadow-sm"
+                className="w-7 h-7 rounded-full bg-card border border-border flex items-center justify-center text-muted-foreground hover:bg-muted hover:text-foreground transition-all disabled:opacity-30 disabled:hover:bg-card disabled:cursor-not-allowed cursor-pointer shadow-sm"
               >
                 <ChevronsRight size={13} />
               </button>
