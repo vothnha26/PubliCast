@@ -48,7 +48,7 @@ function DashboardMockup() {
         <div className="bg-white flex items-center justify-between px-4 py-3" style={{ borderBottom: "0.5px solid #E5E7EB" }}>
           <div className="flex items-center gap-3">
             <div className="w-5 h-5 bg-[#0A0A0A] rounded-md" />
-            <span style={{ fontSize: 12, color: "#0A0A0A", fontWeight: 500 }}>StreamHub</span>
+            <span style={{ fontSize: 12, color: "#0A0A0A", fontWeight: 500 }}>PubliCast</span>
             <span style={{ fontSize: 10, color: "#9CA3AF" }}>/ Dashboard</span>
           </div>
           <div className="flex items-center gap-2">
