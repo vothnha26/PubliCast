@@ -1,110 +1,101 @@
-const inboxController = require('../../controllers/social/inbox.controller');
+const inboxService = require('../../services/social/inbox.service');
+const asyncHandler = require('../../utils/async-handler');
 const { v2Success } = require('../../utils/response.helper');
 
 /**
  * Inbox Controller V2 - Enforces Standardized Envelope Responses: { message, data }
  */
 class InboxControllerV2 {
-  async getInboxItems(req, res, next) {
-    try {
-      const result = await inboxController.getInboxItems(req, res, next);
-      // If controller already handled response, return
-      if (res.headersSent) return;
-      return v2Success(res, result, 'Inbox items fetched successfully.');
-    } catch (err) {
-      next(err);
-    }
-  }
+  getInboxItems = asyncHandler(async (req, res) => {
+    const { brandId } = req.query;
+    if (!brandId) return res.status(400).json({ message: 'brandId is required' });
 
-  async getConversationThread(req, res, next) {
-    try {
-      const result = await inboxController.getConversationThread(req, res, next);
-      if (res.headersSent) return;
-      return v2Success(res, result, 'Conversation thread fetched successfully.');
-    } catch (err) {
-      next(err);
-    }
-  }
+    const result = await inboxService.getInboxItems(req.query, brandId);
+    return v2Success(res, result, 'Inbox items fetched successfully.');
+  });
 
-  async syncInbox(req, res, next) {
-    try {
-      const result = await inboxController.syncInbox(req, res, next);
-      if (res.headersSent) return;
-      return v2Success(res, result, 'Inbox synchronized successfully.');
-    } catch (err) {
-      next(err);
-    }
-  }
+  getConversationThread = asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    const result = await inboxService.getConversationThread(id, req.user.id);
+    return v2Success(res, result, 'Conversation thread fetched successfully.');
+  });
 
-  async replyToItem(req, res, next) {
-    try {
-      const result = await inboxController.replyToItem(req, res, next);
-      if (res.headersSent) return;
-      return v2Success(res, result, 'Reply sent successfully.');
-    } catch (err) {
-      next(err);
-    }
-  }
+  syncInbox = asyncHandler(async (req, res) => {
+    const { brandId, platform } = req.body;
+    if (!brandId) return res.status(400).json({ message: 'brandId is required' });
 
-  async updateStatus(req, res, next) {
-    try {
-      const result = await inboxController.updateStatus(req, res, next);
-      if (res.headersSent) return;
-      return v2Success(res, result, 'Inbox status updated.');
-    } catch (err) {
-      next(err);
-    }
-  }
+    const result = await inboxService.syncPlatformComments(brandId, platform);
+    return v2Success(res, result, 'Inbox synchronized successfully.');
+  });
 
-  async updateMetadata(req, res, next) {
-    try {
-      const result = await inboxController.updateMetadata(req, res, next);
-      if (res.headersSent) return;
-      return v2Success(res, result, 'Metadata updated.');
-    } catch (err) {
-      next(err);
+  replyToItem = asyncHandler(async (req, res) => {
+    const { brandId, itemId, text } = req.body;
+    if (!brandId || !itemId || !text) {
+      return res.status(400).json({ message: 'brandId, itemId, and text are required' });
     }
-  }
 
-  async updateReply(req, res, next) {
-    try {
-      const result = await inboxController.updateReply(req, res, next);
-      if (res.headersSent) return;
-      return v2Success(res, result, 'Reply updated successfully.');
-    } catch (err) {
-      next(err);
-    }
-  }
+    const result = await inboxService.replyToItem(brandId, itemId, text, req.user.id);
+    return v2Success(res, result, 'Reply sent successfully.');
+  });
 
-  async deleteReply(req, res, next) {
-    try {
-      const result = await inboxController.deleteReply(req, res, next);
-      if (res.headersSent) return;
-      return v2Success(res, result, 'Reply deleted successfully.');
-    } catch (err) {
-      next(err);
-    }
-  }
+  updateStatus = asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    const { status } = req.body;
+    if (!status) return res.status(400).json({ message: 'status is required' });
 
-  async getAutoReplySettings(req, res, next) {
-    try {
-      const result = await inboxController.getAutoReplySettings(req, res, next);
-      if (res.headersSent) return;
-      return v2Success(res, result, 'Auto reply settings fetched.');
-    } catch (err) {
-      next(err);
-    }
-  }
+    const result = await inboxService.updateItemStatus(id, status, req.user.id);
+    return v2Success(res, result, 'Inbox status updated.');
+  });
 
-  async saveAutoReplySettings(req, res, next) {
-    try {
-      const result = await inboxController.saveAutoReplySettings(req, res, next);
-      if (res.headersSent) return;
-      return v2Success(res, result, 'Auto reply settings saved.');
-    } catch (err) {
-      next(err);
+  updateMetadata = asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    const { tags, internalNotes } = req.body;
+
+    const result = await inboxService.updateItemMetadata(id, { tags, internalNotes }, req.user.id);
+    return v2Success(res, result, 'Metadata updated.');
+  });
+
+  updateReply = asyncHandler(async (req, res) => {
+    const { replyId } = req.params;
+    const { brandId, text } = req.body;
+    if (!brandId || !text) {
+      return res.status(400).json({ message: 'brandId and text are required' });
     }
-  }
+
+    const result = await inboxService.updateReply(brandId, replyId, text, req.user.id);
+    return v2Success(res, result, 'Reply updated successfully.');
+  });
+
+  deleteReply = asyncHandler(async (req, res) => {
+    const { replyId } = req.params;
+    const { brandId } = req.body;
+    if (!brandId) {
+      return res.status(400).json({ message: 'brandId is required' });
+    }
+
+    await inboxService.deleteReply(brandId, replyId, req.user.id);
+    return v2Success(res, null, 'Reply deleted successfully.');
+  });
+
+  getAutoReplySettings = asyncHandler(async (req, res) => {
+    const { socialAccountId } = req.params;
+    if (!socialAccountId) {
+      return res.status(400).json({ message: 'socialAccountId is required' });
+    }
+
+    const settings = await inboxService.getAutoReplySettings(socialAccountId, req.user.id);
+    return v2Success(res, settings, 'Auto reply settings fetched.');
+  });
+
+  saveAutoReplySettings = asyncHandler(async (req, res) => {
+    const { socialAccountId } = req.params;
+    if (!socialAccountId) {
+      return res.status(400).json({ message: 'socialAccountId is required' });
+    }
+
+    const settings = await inboxService.saveAutoReplySettings(socialAccountId, req.body, req.user.id);
+    return v2Success(res, settings, 'Auto reply settings updated.');
+  });
 }
 
 module.exports = new InboxControllerV2();
