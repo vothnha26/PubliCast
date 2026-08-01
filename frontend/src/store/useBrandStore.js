@@ -11,10 +11,12 @@ export const useBrandStore = create((set, get) => ({
   defaultBrandId: null,
   loading: false,
 
+  // Không còn gate theo `isAuthenticated` — gọi song song với /profile lúc
+  // app mount thay vì chờ profile trả về xong mới bắt đầu (phá waterfall
+  // profile → brands). Nếu chưa đăng nhập, request sẽ 401; interceptor của
+  // apiV2 đã tự xử lý refresh/SESSION_EXPIRED, ở đây chỉ cần im lặng bỏ qua
+  // thay vì hiện toast lỗi (đây không phải lỗi thật, chỉ là chưa có session).
   fetchBrands: async (selectId = null) => {
-    const isAuthenticated = useAuthStore.getState().isAuthenticated;
-    if (!isAuthenticated) return;
-
     set({ loading: true });
     try {
       const brands = await brandService.getBrands();
@@ -41,8 +43,12 @@ export const useBrandStore = create((set, get) => ({
         localStorage.removeItem(STORAGE_KEYS.ACTIVE_BRAND_ID);
       }
     } catch (error) {
-      console.error('Failed to fetch brands:', error);
-      toast.error('Không thể tải danh sách thương hiệu');
+      if (error.status === 401 || error.status === 403) {
+        set({ brands: [], activeBrand: null });
+      } else {
+        console.error('Failed to fetch brands:', error);
+        toast.error('Không thể tải danh sách thương hiệu');
+      }
     } finally {
       set({ loading: false });
     }
