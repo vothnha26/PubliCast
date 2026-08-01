@@ -212,14 +212,14 @@ export function BrandSettingsPage() {
              {/* Main Selection Bar */}
              <div 
                onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-               className={`bg-[#E5E5E5] border border-gray-300 rounded-xl p-3 flex items-center justify-between shadow-sm cursor-pointer hover:border-gray-400 transition-all ${isDropdownOpen ? 'rounded-b-none border-b-transparent' : ''}`}
+               className={`bg-muted border border-border rounded-xl p-3 flex items-center justify-between shadow-sm cursor-pointer hover:border-foreground/30 transition-all ${isDropdownOpen ? 'rounded-b-none border-b-transparent' : ''}`}
              >
                 <div className="flex items-center gap-3">
                    <div className="w-10 h-10 rounded-lg bg-[#E1306C] flex items-center justify-center text-white font-bold text-lg shadow-sm">
                       {selectedBrand.name.charAt(0)}
                    </div>
                    <div>
-                      <div className="text-sm font-bold text-[#0A0A0A]">{selectedBrand.name}</div>
+                      <div className="text-sm font-bold text-foreground">{selectedBrand.name}</div>
                       <div className="flex items-center gap-1 mt-0.5">
                         {selectedBrand.socialAccounts?.some(sa => sa.platform === 'YOUTUBE') && <Youtube size={12} className="text-red-600" />}
                       </div>
