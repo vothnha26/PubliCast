@@ -23,8 +23,7 @@
     "test:reports": "mocha reports.spec.js --timeout 120000",
     "test:theme": "mocha theme.spec.js --timeout 60000",
     "test:auto-reply": "mocha auto_reply.spec.js --timeout 60000",
-    "test:calendar-export": "mocha calendar_export.spec.js --timeout 120000",
-    "test:livestream-chat": "node test_livestream_chat.spec.js"
+    "test:calendar-export": "mocha calendar_export.spec.js --timeout 120000"
   },
   "dependencies": {
     "chai": "^4.3.7",
