@@ -96,6 +96,7 @@ model Brand {
   ownerId                String
   subscriptionId         String    @unique
   isActive               Boolean   @default(true)
+  onboardingCompleted    Boolean   @default(false)
   createdAt              DateTime  @default(now())
   updatedAt              DateTime  @updatedAt
   deletedAt              DateTime?

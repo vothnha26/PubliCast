@@ -55,7 +55,19 @@ class BrandService {
       throw error;
     }
 
-    return await brandRepository.update(brandId, updateData);
+    // onboardingCompleted is a system flag, not client-settable — it flips
+    // to true the moment the owner renames the brand away from the signup
+    // placeholder, which is what the onboarding wizard's Finalize step does.
+    const finalUpdateData = { ...updateData };
+    if (
+      !brand.onboardingCompleted &&
+      updateData.name &&
+      updateData.name !== WORKSPACE_DEFAULTS.BRAND_NAME
+    ) {
+      finalUpdateData.onboardingCompleted = true;
+    }
+
+    return await brandRepository.update(brandId, finalUpdateData);
   }
 
   async deleteBrand(brandId, userId) {

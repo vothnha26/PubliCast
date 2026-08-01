@@ -208,6 +208,7 @@ class BrandRepository {
         timezone: data.timezone,
         defaultLanguage: data.defaultLanguage,
         logoUrl: data.logoUrl,
+        ...(data.onboardingCompleted !== undefined && { onboardingCompleted: data.onboardingCompleted }),
         updatedAt: new Date()
       }
     });

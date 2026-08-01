@@ -1,9 +1,13 @@
 import { useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { 
-  X, Check, ChevronRight, ChevronLeft, Globe, 
-  Plus, Users, Image as ImageIcon, Upload, Sparkles, Diamond
+import {
+  X, Check, ChevronRight, ChevronLeft, Globe,
+  Plus, Users, Image as ImageIcon, Upload, Sparkles, Diamond, Loader2
 } from "lucide-react";
+import { toast } from "sonner";
+import { useAuth } from "../../context/AuthContext";
+import { useBrand } from "../../context/BrandContext";
+import profileService from "../../services/profile.service";
 
 export function CreateWorkplacePage() {
   const [step, setStep] = useState(1);
@@ -13,8 +17,11 @@ export function CreateWorkplacePage() {
     logo: null,
     emails: ""
   });
+  const [isSaving, setIsSaving] = useState(false);
   const fileInputRef = useRef(null);
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const { activeBrand, updateBrand } = useBrand();
 
   const handleFileChange = (e) => {
     const file = e.target.files[0];
@@ -27,6 +34,29 @@ export function CreateWorkplacePage() {
 
   const nextStep = () => setStep(prev => Math.min(prev + 1, 4));
   const prevStep = () => setStep(prev => Math.max(prev - 1, 1));
+
+  // Đổi tên brand mặc định ("New Workspace" tạo lúc signup) thành tên user
+  // nhập ở bước 1, thay vì để nó là placeholder mãi mãi hoặc tạo brand thứ 2
+  // dư thừa. Cùng cơ chế OnboardingModal (đã bị thay thế) từng dùng.
+  const handleFinalize = async () => {
+    if (!activeBrand) {
+      toast.error("Không tìm thấy thương hiệu để cập nhật");
+      return;
+    }
+    setIsSaving(true);
+    try {
+      await profileService.editProfile({
+        fullName: user?.fullName,
+        industry: formData.industry,
+      });
+      await updateBrand(activeBrand.id, { name: formData.name.trim() });
+      nextStep();
+    } catch (err) {
+      toast.error("Không thể lưu thông tin thiết lập");
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-background overflow-y-auto">
@@ -175,9 +205,9 @@ export function CreateWorkplacePage() {
                 </div>
 
                 <div className="flex gap-3">
-                   <button onClick={prevStep} className="flex-1 py-4 border border-border rounded-2xl font-bold text-sm text-muted-foreground hover:bg-muted cursor-pointer">Back</button>
-                   <button onClick={nextStep} className="flex-[2] py-4 bg-foreground text-background rounded-2xl font-bold text-sm shadow-xl flex items-center justify-center gap-2 hover:bg-foreground/90 cursor-pointer">
-                      <Sparkles size={18} /> Finalize Workplace
+                   <button onClick={prevStep} disabled={isSaving} className="flex-1 py-4 border border-border rounded-2xl font-bold text-sm text-muted-foreground hover:bg-muted cursor-pointer disabled:opacity-50">Back</button>
+                   <button onClick={handleFinalize} disabled={isSaving || !formData.name} className="flex-[2] py-4 bg-foreground text-background rounded-2xl font-bold text-sm shadow-xl flex items-center justify-center gap-2 hover:bg-foreground/90 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed">
+                      {isSaving ? <Loader2 size={18} className="animate-spin" /> : <><Sparkles size={18} /> Finalize Workplace</>}
                    </button>
                 </div>
              </div>
