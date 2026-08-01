@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import socialService from '../../services/social.service';
 import { QUERY_KEYS } from '../../constants/query-keys.constants';
+import { CACHE_CONFIG } from '../../constants/cache-config.constants';
 
 /**
  * Custom Hook: Fetch & Cache Brand Aggregated Metrics
@@ -20,7 +21,7 @@ export function useMetricsQuery(brandId, startDate, endDate, force = false) {
       return res.data || res;
     },
     enabled: Boolean(brandId),
-    staleTime: 60 * 1000, // 60s: Return 0ms instantly when switching tabs within 1 min
-    gcTime: 5 * 60 * 1000, // Keep in RAM for 5 mins
+    staleTime: CACHE_CONFIG.METRICS_STALE_TIME_MS,
+    gcTime: CACHE_CONFIG.DEFAULT_GC_TIME_MS,
   });
 }
