@@ -60,18 +60,6 @@ export function ConnectionsGrid({ className = "", brand, onDisconnect }) {
       toast.error("Please select a brand first");
       return;
     }
-    const status = getStatus("google_drive");
-    if (status.connected) {
-      try {
-        await socialService.disconnectGoogleDriveAccount(brand.id);
-        toast.success("Google Drive disconnected");
-        if (onDisconnect) onDisconnect();
-        else window.location.reload();
-      } catch (error) {
-        toast.error(error.message || "Failed to disconnect Google Drive");
-      }
-      return;
-    }
     try {
       const response = await socialService.getGoogleDriveAuthUrl(brand.id);
       if (response.url) {
@@ -85,18 +73,6 @@ export function ConnectionsGrid({ className = "", brand, onDisconnect }) {
   const handleConnectTelegram = async () => {
     if (!brand) {
       toast.error("Please select a brand first");
-      return;
-    }
-    const status = getStatus("telegram");
-    if (status.connected) {
-      try {
-        await socialService.disconnectTelegramAccount(brand.id);
-        toast.success("Telegram channel disconnected");
-        if (onDisconnect) onDisconnect();
-        else window.location.reload();
-      } catch (error) {
-        toast.error(error.message || "Failed to disconnect Telegram");
-      }
       return;
     }
     setBotToken("");
@@ -129,18 +105,6 @@ export function ConnectionsGrid({ className = "", brand, onDisconnect }) {
       toast.error("Please select a brand first");
       return;
     }
-    const status = getStatus("bluesky");
-    if (status.connected) {
-      try {
-        await socialService.disconnectBlueskyAccount(brand.id);
-        toast.success("Bluesky account disconnected");
-        if (onDisconnect) onDisconnect();
-        else window.location.reload();
-      } catch (error) {
-        toast.error(error.message || "Failed to disconnect Bluesky");
-      }
-      return;
-    }
     try {
       const response = await socialService.getBlueskyAuthUrl(brand.id);
       if (response.url) {
@@ -154,18 +118,6 @@ export function ConnectionsGrid({ className = "", brand, onDisconnect }) {
   const handleConnectYouTube = async () => {
     if (!brand) {
       toast.error("Please select a brand first");
-      return;
-    }
-    const status = getStatus("youtube");
-    if (status.connected) {
-      try {
-        await socialService.disconnectGoogleAccount(brand.id);
-        toast.success("YouTube channel disconnected");
-        if (onDisconnect) onDisconnect();
-        else window.location.reload();
-      } catch (error) {
-        toast.error(error.message || "Failed to disconnect YouTube");
-      }
       return;
     }
     try {
@@ -183,18 +135,6 @@ export function ConnectionsGrid({ className = "", brand, onDisconnect }) {
       toast.error("Please select a brand first");
       return;
     }
-    const status = getStatus("facebook");
-    if (status.connected) {
-      try {
-        await socialService.disconnectFacebookAccount(brand.id);
-        toast.success("Facebook page disconnected");
-        if (onDisconnect) onDisconnect();
-        else window.location.reload();
-      } catch (error) {
-        toast.error(error.message || "Failed to disconnect Facebook");
-      }
-      return;
-    }
     try {
       const response = await socialService.getFacebookAuthUrl(brand.id);
       if (response.url) {
@@ -208,18 +148,6 @@ export function ConnectionsGrid({ className = "", brand, onDisconnect }) {
   const handleConnectTikTok = async () => {
     if (!brand) {
       toast.error("Please select a brand first");
-      return;
-    }
-    const status = getStatus("tiktok");
-    if (status.connected) {
-      try {
-        await socialService.disconnectTikTokAccount(brand.id);
-        toast.success("TikTok account disconnected");
-        if (onDisconnect) onDisconnect();
-        else window.location.reload();
-      } catch (error) {
-        toast.error(error.message || "Failed to disconnect TikTok");
-      }
       return;
     }
     try {
@@ -237,18 +165,6 @@ export function ConnectionsGrid({ className = "", brand, onDisconnect }) {
       toast.error("Please select a brand first");
       return;
     }
-    const status = getStatus("instagram");
-    if (status.connected) {
-      try {
-        await socialService.disconnectInstagramAccount(brand.id);
-        toast.success("Instagram account disconnected");
-        if (onDisconnect) onDisconnect();
-        else window.location.reload();
-      } catch (error) {
-        toast.error(error.message || "Failed to disconnect Instagram");
-      }
-      return;
-    }
     try {
       const response = await socialService.getInstagramAuthUrl(brand.id);
       if (response.url) {
@@ -262,18 +178,6 @@ export function ConnectionsGrid({ className = "", brand, onDisconnect }) {
   const handleConnectThreads = async () => {
     if (!brand) {
       toast.error("Please select a brand first");
-      return;
-    }
-    const status = getStatus("threads");
-    if (status.connected) {
-      try {
-        await socialService.disconnectThreadsAccount(brand.id);
-        toast.success("Threads account disconnected");
-        if (onDisconnect) onDisconnect();
-        else window.location.reload();
-      } catch (error) {
-        toast.error(error.message || "Failed to disconnect Threads");
-      }
       return;
     }
     try {
@@ -291,18 +195,6 @@ export function ConnectionsGrid({ className = "", brand, onDisconnect }) {
       toast.error("Please select a brand first");
       return;
     }
-    const status = getStatus("twitch");
-    if (status.connected) {
-      try {
-        await socialService.disconnectTwitchAccount(brand.id);
-        toast.success("Twitch channel disconnected");
-        if (onDisconnect) onDisconnect();
-        else window.location.reload();
-      } catch (error) {
-        toast.error(error.message || "Failed to disconnect Twitch");
-      }
-      return;
-    }
     try {
       const response = await socialService.getTwitchAuthUrl(brand.id);
       if (response.url) {
@@ -318,18 +210,6 @@ export function ConnectionsGrid({ className = "", brand, onDisconnect }) {
       toast.error("Please select a brand first");
       return;
     }
-    const status = getStatus("reddit");
-    if (status.connected) {
-      try {
-        await socialService.disconnectRedditAccount(brand.id);
-        toast.success("Reddit account disconnected");
-        if (onDisconnect) onDisconnect();
-        else window.location.reload();
-      } catch (error) {
-        toast.error(error.message || "Failed to disconnect Reddit");
-      }
-      return;
-    }
     try {
       const response = await socialService.getRedditAuthUrl(brand.id);
       if (response.url) {
@@ -341,7 +221,7 @@ export function ConnectionsGrid({ className = "", brand, onDisconnect }) {
   };
 
   const getStatus = (platformId) => {
-    if (!brand || !brand.socialAccounts) return { connected: false };
+    if (!brand || !brand.socialAccounts) return { connected: false, count: 0 };
     const mapping = {
       "facebook": "FACEBOOK",
       "instagram": "INSTAGRAM",
@@ -356,10 +236,11 @@ export function ConnectionsGrid({ className = "", brand, onDisconnect }) {
       "google_drive": "GOOGLE_DRIVE"
     };
     const platform = mapping[platformId];
-    const account = brand.socialAccounts.find(sa => sa.platform === platform);
+    const accounts = brand.socialAccounts.filter(sa => sa.platform === platform);
     return {
-      connected: !!account,
-      handle: account?.username || account?.displayName
+      connected: accounts.length > 0,
+      count: accounts.length,
+      handle: accounts[0]?.username || accounts[0]?.displayName
     };
   };
 
@@ -441,8 +322,10 @@ export function ConnectionsGrid({ className = "", brand, onDisconnect }) {
                    <div className="flex-1 min-w-0 pr-4">
                       {net.connected ? (
                          <div className="flex flex-col items-start text-left">
-                            <span className={`text-[10px] font-black uppercase tracking-widest ${net.btnTextColor || 'text-white'}`}>CONNECTED {net.handle ? `(${net.handle})` : ''}</span>
-                            <span className={`text-[11px] font-bold underline mt-1 opacity-90 hover:opacity-100 ${net.btnTextColor ? 'text-red-600' : 'text-white'}`}>Disconnect</span>
+                            <span className={`text-[10px] font-black uppercase tracking-widest ${net.btnTextColor || 'text-white'}`}>
+                               {net.count} {net.count === 1 ? "account connected" : "accounts connected"}
+                            </span>
+                            <span className={`text-[11px] font-bold underline mt-1 opacity-90 hover:opacity-100 ${net.btnTextColor || 'text-white'}`}>Connect another</span>
                          </div>
                       ) : (
                          <span className="text-[11px] font-black text-left leading-snug uppercase tracking-[1px]">

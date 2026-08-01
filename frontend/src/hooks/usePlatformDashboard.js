@@ -6,9 +6,9 @@ import { useBrand } from "../context/BrandContext";
 import socialService from "../services/social.service";
 import postService from "../services/post.service";
 import { useLatestRequestId } from "./useLatestRequestId";
-import { FALLBACK_DEMOGRAPHICS, EMPTY_ANALYTICS_DATA } from "@/mocks/dashboardFallback";
 import { getPlatformPostUrl } from "../utils/postUrlHelper";
 import { PLATFORM_DEFAULT_TAB } from "../constants/platforms";
+import { parseAnalyticsData } from "../utils/parseAnalyticsData";
 
 const getPlatformTabDefault = (plat) => {
   const norm = plat?.toLowerCase();
@@ -423,156 +423,11 @@ export function usePlatformDashboard(platform) {
 
   // Memoized: parses/reshapes the raw analytics JSON, so without useMemo this
   // ran on every render of any consumer (e.g. an unrelated UI toggle), even
-  // when metrics/platform/dateRange hadn't changed (#91 L15).
-  const realData = useMemo(() => {
-    if (!metrics?.analytics?.[0]?.socialAnalytics?.audienceDemographicsJson) {
-      if (platform === "instagram") {
-        return {
-          demographics: { gender: [], age: [], countries: [], trafficSource: [] },
-          balance: [],
-          growth: [],
-          clicks: [],
-          postsPeriod: [],
-          interactions: {},
-          summary: {}
-        };
-      }
-      return EMPTY_ANALYTICS_DATA;
-    }
-    try {
-      const raw = JSON.parse(metrics.analytics[0].socialAnalytics.audienceDemographicsJson);
-      
-      if (platform === "facebook" || platform === "tiktok" || platform === "instagram") {
-        // Lọc theo dateRange đang chọn để chart hiển thị đúng khoảng thời gian
-        const fromStr = dateRange.from ? format(dateRange.from, 'yyyy-MM-dd') : null;
-        const toStr = dateRange.to ? format(dateRange.to, 'yyyy-MM-dd') : null;
-        const filterByRange = (arr) => {
-          if (!arr?.length || !fromStr || !toStr) return arr || [];
-          return arr.filter(item => item.date >= fromStr && item.date <= toStr);
-        };
-
-        return {
-          demographics: { gender: [], age: [], countries: [], trafficSource: [] },
-          balance: filterByRange(raw.balance || []),
-          growth: filterByRange(raw.growth || []).map(g => ({
-            ...g,
-            value: g.views || 0,
-            new: g.acquired || (raw.balance?.find(b => b.date === g.date)?.acquired) || 0,
-            lost: g.lost || (raw.balance?.find(b => b.date === g.date)?.lost) || 0,
-            videos: g.totalContent || 0
-          })),
-          clicks: filterByRange(raw.clicks || []),
-          postsPeriod: filterByRange(raw.postsPeriod || []),
-          interactions: raw.interactions || {},
-          summary: raw.summary || {},
-          stories: raw.stories || []
-        };
-      }
-      
-      const ageMap = {};
-      const genderMap = { Male: 0, Female: 0 };
-      (raw.demographics || [])
-        .filter(row => Array.isArray(row) && row.length >= 3)
-        .forEach(([age, gender, percentage]) => {
-          ageMap[age] = (ageMap[age] || 0) + percentage;
-          if (gender === 'male') genderMap.Male += percentage;
-          if (gender === 'female') genderMap.Female += percentage;
-        });
- 
-      let age = Object.entries(ageMap).map(([name, value]) => ({
-        name: name.replace('age', ''),
-        value: Math.round(value)
-      }));
-      let gender = [
-        { name: 'Male', value: Math.round(genderMap.Male), color: '#818CF8' },
-        { name: 'Female', value: Math.round(genderMap.Female), color: '#F472B6' }
-      ];
-
-      if (genderMap.Male === 0 && genderMap.Female === 0) {
-        gender = [];
-      }
- 
-      const totalTrafficViews = (raw.trafficSource || []).reduce((a, b) => a + (Array.isArray(b) ? (b[1] || 0) : 0), 0) || 1;
-      let trafficSource = (raw.trafficSource || [])
-        .filter(row => Array.isArray(row) && row.length >= 2)
-        .map(([source, views, time]) => ({
-          name: source ? source.replace('insightTrafficSourceType', '').replace(/_/g, ' ') : 'Unknown',
-          value: views || 0,
-          percentage: `${Math.round(((views || 0) / totalTrafficViews) * 100)}%`,
-          color: '#818CF8'
-        }));
- 
-      const totalGeoViews = (raw.geographic || []).reduce((a, b) => a + (Array.isArray(b) ? (b[1] || 0) : 0), 0) || 1;
-      const COUNTRY_MAP = {
-        VN: { name: 'Vietnam', flag: '🇻🇳' },
-        US: { name: 'United States', flag: '🇺🇸' },
-        IN: { name: 'India', flag: '🇮🇳' },
-        JP: { name: 'Japan', flag: '🇯🇵' },
-        GB: { name: 'United Kingdom', flag: '🇬🇧' },
-        DE: { name: 'Germany', flag: '🇩🇪' },
-        FR: { name: 'France', flag: '🇫🇷' },
-        BR: { name: 'Brazil', flag: '🇧🇷' }
-      };
-
-      let countries = (raw.geographic || [])
-        .filter(row => Array.isArray(row) && row.length >= 2)
-        .map(([code, views]) => {
-          const mapped = COUNTRY_MAP[code] || { name: code, flag: '📍' };
-          return {
-            name: mapped.name,
-            value: Math.round(((views || 0) / totalGeoViews) * 100),
-            flag: mapped.flag,
-            progress: Math.round(((views || 0) / totalGeoViews) * 100)
-          };
-        });
-
-      const growth = (raw.growth || [])
-        .map((row) => {
-          // If it's the new object format from backend
-          if (typeof row === 'object' && !Array.isArray(row)) {
-            return {
-              date: row.date,
-              name: row.date ? row.date.split('-').slice(1).join('/') : 'Unknown',
-              value: row.views || 0,
-              new: row.subscribersGained || 0,
-              lost: row.subscribersLost || 0,
-              videos: row.totalContent || 0
-            };
-          }
-          // Fallback for array format (old or different API)
-          if (Array.isArray(row) && row.length >= 4) {
-            const [day, views, gained, lost] = row;
-            return {
-              date: day,
-              name: day ? day.split('-').slice(1).join('/') : 'Unknown',
-              value: views || 0,
-              new: gained || 0,
-              lost: lost || 0,
-              videos: 0
-            };
-          }
-          return null;
-        })
-        .filter(Boolean);
-
-      return {
-        demographics: { age, gender, countries, trafficSource },
-        balance: growth,
-        growth: growth
-      };
-    } catch (e) {
-      console.error("Error parsing analytics data:", e);
-      return {
-        demographics: { gender: [], age: [], countries: [], trafficSource: [] },
-        balance: [],
-        growth: [],
-        clicks: [],
-        postsPeriod: [],
-        interactions: {},
-        summary: {}
-      };
-    }
-  }, [metrics, platform, dateRange]);
+  // when metrics/platform/dateRange hadn't changed (#91 L15). Logic lives in
+  // parseAnalyticsData (frontend/src/utils/parseAnalyticsData.js), shared
+  // with useChannelInsights so both the old platform-grouped dashboard and
+  // the new per-channel Insights tab stay in sync instead of drifting apart.
+  const realData = useMemo(() => parseAnalyticsData(metrics, platform, dateRange), [metrics, platform, dateRange]);
 
   // Memoized alongside realData (#91 L15) — depends on the same inputs plus
   // realData itself, so it only recomputes when one of them actually changes.

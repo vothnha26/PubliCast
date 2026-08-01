@@ -35,6 +35,7 @@ import { InviteFlow } from "./pages/auth/InviteFlow";
 // Workspace Pages
 import { DashboardPage } from "./pages/workspace/Dashboard";
 import { PlatformDashboardPage } from "./pages/workspace/PlatformDashboard";
+import { ChannelDetailPage } from "./pages/workspace/ChannelDetail";
 import { MediaLibraryPage } from "./pages/workspace/MediaLibrary";
 import { SettingsPage } from "./pages/workspace/Settings";
 import { PricingPage } from "./pages/workspace/Pricing";
@@ -158,6 +159,7 @@ export default function App() {
                 {/* Protected Workspace Routes */}
                 <Route path="/dashboard" element={<ProtectedRoute allowedRoles={CLIENT_ROLES}><DashboardPage /></ProtectedRoute>} />
                 <Route path="/dashboard/:platform" element={<ProtectedRoute allowedRoles={CLIENT_ROLES}><PlatformDashboardPage /></ProtectedRoute>} />
+                <Route path="/channels/:socialAccountId/:tab" element={<ProtectedRoute allowedRoles={CLIENT_ROLES}><ChannelDetailPage /></ProtectedRoute>} />
 
                 <Route path="/scheduler" element={<Navigate to="/dashboard" replace />} />
                 <Route path="/live" element={<Navigate to="/dashboard" replace />} />
