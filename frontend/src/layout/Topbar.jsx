@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate, Link, useLocation } from "react-router-dom";
 import {
   BarChart2, MessageSquare, Calendar, Link2, Megaphone, Zap, Image,
-  Menu, ChevronDown, Sparkles, Radio, X, Diamond, Globe, Scissors,
+  Menu, ChevronDown, Sparkles, Radio, X, Diamond, Globe,
   Settings, LogOut, HelpCircle, Gift, ChevronRight, Bell, Search,
   MessageCircle, Check, Star
 } from "lucide-react";
@@ -309,7 +309,6 @@ export function Topbar() {
               { icon: <Calendar size={18} />, path: "/planner", label: t("nav.planner") },
               { icon: <Link2 size={18} />, path: "/smartlinks", label: t("nav.smartlinks") },
               { icon: <Zap size={18} />, path: "/ai", label: t("nav.ai") },
-              { icon: <Scissors size={18} />, path: "/manage/highlight-studio", label: "AI Highlight Studio", isNew: true },
             ].map((tool, i) => {
               const isActive = currentPath === tool.path;
               return (

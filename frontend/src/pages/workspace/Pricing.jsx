@@ -16,12 +16,6 @@ const COMPARISON_ROWS = [
     { label: "Post scheduling", vals: [true, true, true, true] },
     { label: "Media library", vals: [false, true, true, true] },
   ]},
-  { section: "Livestream", rows: [
-    { label: "Platforms", vals: ["—", "2", "5", "10"] },
-    { label: "Streaming quality", vals: ["—", "720p", "1080p", "4K"] },
-    { label: "Stream analytics", vals: [false, false, true, true] },
-    { label: "Multi-stream", vals: [false, true, true, true] },
-  ]},
   { section: "Team & Approval", rows: [
     { label: "Users", vals: ["1", "3", "10", "50"] },
     { label: "Custom roles", vals: [false, false, true, true] },
@@ -181,7 +175,7 @@ export function PricingPage() {
       {/* Header */}
       <div className="text-center mb-8">
         <h2 style={{ fontSize: 24, fontWeight: 500, color: "#0A0A0A", marginBottom: 8 }}>Choose Your Plan</h2>
-        <p style={{ fontSize: 15, color: "#6B7280", marginBottom: 20 }}>Scale your social media and livestream management</p>
+        <p style={{ fontSize: 15, color: "#6B7280", marginBottom: 20 }}>Scale your social media management</p>
 
         {/* Billing toggle */}
         <div className="flex items-center justify-center gap-3">

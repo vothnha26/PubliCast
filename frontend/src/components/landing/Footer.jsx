@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom";
 
 const footerLinks = {
-  Product: ["Planner", "Livestream", "Analytics", "Inbox", "SmartLinks", "Ads", "Reports"],
+  Product: ["Planner", "Automation", "Analytics", "Inbox", "SmartLinks", "Ads", "Reports"],
   Company: ["About", "Blog", "Careers", "Press", "Partners", "Agencies"],
   Support: ["Help Center", "Tutorials", "Status", "API Docs", "Contact"],
 };
@@ -24,7 +24,7 @@ export function Footer() {
               <span style={{ fontSize: 15, fontWeight: 500, color: "#fff" }}>StreamHub</span>
             </Link>
             <p style={{ fontSize: 13, color: "#777", lineHeight: 1.6, marginBottom: 20 }}>
-              The all-in-one social media management and multi-platform livestream tool.
+              The all-in-one social media management and scheduling platform.
             </p>
             {/* Social icons */}
             <div className="flex gap-3">

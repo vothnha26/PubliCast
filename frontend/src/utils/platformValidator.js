@@ -45,7 +45,7 @@ export function validatePostPayload(platformKey, payload = {}) {
     if (hasMedia) {
       errors.push({
         field: 'media',
-        message: 'Twitch does not support media attachments for scheduled posts. Use Livestream Chat or Stream Title instead.'
+        message: 'Twitch does not support media attachments for scheduled posts.'
       });
     }
     if (title && title.length > 140) {

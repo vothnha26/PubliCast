@@ -223,7 +223,7 @@ export function OnboardingModal({ isOpen, onClose }) {
             </div>
             <div>
               <h3 style={{ fontSize: 28, fontWeight: 500, color: "#0A0A0A", marginBottom: 12 }}>You're all set! 🎉</h3>
-              <p style={{ fontSize: 16, color: "#6B7280", lineHeight: 1.6, maxWidth: 400 }}>Your workspace is ready. Let's schedule your first post or livestream.</p>
+              <p style={{ fontSize: 16, color: "#6B7280", lineHeight: 1.6, maxWidth: 400 }}>Your workspace is ready. Let's schedule your first post.</p>
             </div>
             <div className="flex flex-col w-full gap-3 mt-6">
               <button onClick={onClose}

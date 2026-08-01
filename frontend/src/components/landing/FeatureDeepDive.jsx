@@ -49,19 +49,19 @@ function FeatureBlock({ pill, headline, body, checks, cta, visual, imageRight })
   );
 }
 
-function LivestreamVisual() {
+function PublishingVisual() {
   const platforms = [
-    { name: "YouTube", abbr: "YT", color: "#FF0000", viewers: "1,204" },
-    { name: "Facebook", abbr: "FB", color: "#1877F2", viewers: "842" },
-    { name: "TikTok", abbr: "TK", color: "#000", viewers: "3,612" },
-    { name: "Twitch", abbr: "TW", color: "#9146FF", viewers: "528" },
+    { name: "YouTube", abbr: "YT", color: "#FF0000", status: "Published" },
+    { name: "Facebook", abbr: "FB", color: "#1877F2", status: "Published" },
+    { name: "TikTok", abbr: "TK", color: "#000", status: "Scheduled" },
+    { name: "Instagram", abbr: "IG", color: "#E1306C", status: "Published" },
   ];
   return (
     <div className="bg-[#0A0A0A] rounded-xl p-6" style={{ border: "0.5px solid #1E1E1E" }}>
       <div className="flex items-center justify-between mb-4">
-        <span style={{ fontSize: 12, fontWeight: 500, color: "#fff" }}>Live Monitor</span>
-        <span className="flex items-center gap-1.5 px-2 py-1 rounded" style={{ fontSize: 9, backgroundColor: "#DC2626", color: "#fff" }}>
-          <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" /> LIVE
+        <span style={{ fontSize: 12, fontWeight: 500, color: "#fff" }}>Publishing Monitor</span>
+        <span className="flex items-center gap-1.5 px-2 py-1 rounded" style={{ fontSize: 9, backgroundColor: "#16A34A", color: "#fff" }}>
+          <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" /> SYNC ACTIVE
         </span>
       </div>
       <div className="space-y-3">
@@ -73,12 +73,11 @@ function LivestreamVisual() {
               </div>
               <div>
                 <div style={{ fontSize: 11, fontWeight: 500, color: "#DDD" }}>{p.name}</div>
-                <div style={{ fontSize: 10, color: "#666" }}>720p · 4500 kbps</div>
+                <div style={{ fontSize: 10, color: "#666" }}>Auto-scheduled</div>
               </div>
             </div>
             <div className="text-right">
-              <div style={{ fontSize: 13, fontWeight: 500, color: "#fff" }}>{p.viewers}</div>
-              <div style={{ fontSize: 10, color: "#16A34A" }}>↑ viewers</div>
+              <div style={{ fontSize: 12, fontWeight: 500, color: "#fff" }}>{p.status}</div>
             </div>
           </div>
         ))}
@@ -94,7 +93,7 @@ function PlannerVisual() {
     Tue: [],
     Wed: ["📘 Facebook update"],
     Thu: ["🎵 TikTok reel", "📸 Instagram story"],
-    Fri: ["📡 Live stream"],
+    Fri: ["📘 Facebook story"],
     Sat: ["📊 Thread"],
     Sun: [],
   };
@@ -159,23 +158,23 @@ export function FeatureDeepDive() {
     <section className="py-20" style={{ fontFamily: "'DM Sans', sans-serif" }}>
       <div className="max-w-[1100px] mx-auto px-6">
         <FeatureBlock
-          pill="LIVESTREAM"
-          headline="Go live on every platform — simultaneously"
-          body="Stop juggling multiple streaming software tools. StreamHub sends your stream to YouTube, Facebook, TikTok, Instagram, and Twitch in one setup. Manage chat, monitor quality, and control everything from one screen."
+          pill="PUBLISHING"
+          headline="Publish on every platform — simultaneously"
+          body="Stop juggling multiple social media apps. StreamHub schedules and publishes your posts to YouTube, Facebook, TikTok, Instagram, and Threads in one setup. Control everything from one screen."
           checks={[
-            "Multi-platform RTMP routing",
-            "Real-time viewer count per platform",
-            "Unified live chat moderation",
-            "Stream health monitoring (bitrate, FPS, latency)",
+            "Multi-platform auto-posting",
+            "Platform-specific caption tuning",
+            "Unified media library",
+            "Publishing status monitoring",
           ]}
-          cta="Explore Livestream"
-          visual={<LivestreamVisual />}
+          cta="Explore Publishing"
+          visual={<PublishingVisual />}
           imageRight={true}
         />
         <FeatureBlock
           pill="PLANNER"
           headline="Plan a month of content in minutes"
-          body="Drag, drop, schedule. See all your posts and streams in one calendar. Submit for approval, reschedule on the fly, and publish at the perfect time automatically."
+          body="Drag, drop, schedule. See all your posts in one calendar. Submit for approval, reschedule on the fly, and publish at the perfect time automatically."
           checks={[
             "Monthly calendar view",
             "Best time to post AI suggestions",
@@ -189,9 +188,9 @@ export function FeatureDeepDive() {
         <FeatureBlock
           pill="ANALYTICS"
           headline="Data that actually tells you something"
-          body="Track your social growth, livestream performance, and ad campaigns in one unified dashboard. Compare competitors, generate reports, and share results with clients in one click."
+          body="Track your social growth and ad campaigns in one unified dashboard. Compare competitors, generate reports, and share results with clients in one click."
           checks={[
-            "Social + livestream combined analytics",
+            "Social media performance analytics",
             "Competitor benchmarking",
             "PDF/CSV report export",
             "Scheduled report delivery",

@@ -106,7 +106,7 @@ export const PLATFORM_VALIDATION_MESSAGES = {
   },
 
   TWITCH: {
-    NO_MEDIA_SUPPORT: "Twitch does not support media attachments for scheduled posts. Use Livestream Chat or Stream Title instead.",
+    NO_MEDIA_SUPPORT: "Twitch does not support media attachments for scheduled posts.",
     STREAM_TITLE_MAX_LIMIT: (count) => `Stream title must be ${PLATFORM_LIMIT_THRESHOLDS.TWITCH.STREAM_TITLE_MAX_LENGTH} characters or less. (Current: ${count})`,
     CHAT_MAX_LIMIT: (count) => `Chat message must be ${PLATFORM_LIMIT_THRESHOLDS.TWITCH.CHAT_MAX_LENGTH} characters or less. (Current: ${count})`
   }

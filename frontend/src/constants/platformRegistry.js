@@ -186,9 +186,9 @@ export const PLATFORM_CONFIGS = {
   [PLATFORMS.TWITCH]: {
     id: PLATFORMS.TWITCH,
     name: 'Twitch',
-    defaultType: 'live',
+    defaultType: 'post',
     supportedTypes: [
-      { id: 'live', label: 'Livestream Chat' }
+      { id: 'post', label: 'Broadcast' }
     ],
     getPostType: () => POST_TYPE.VIDEO,
     validationRules: {

@@ -245,10 +245,10 @@ export function LoginPage({ initialScreen = "login" }) {
     return (
       <div className="flex h-screen w-full bg-white overflow-hidden">
         <LeftPanel
-          tagline="Manage your social media and livestreams — all in one place"
+          tagline="Manage your social media — all in one place"
           features={[
             "Schedule posts across 7+ platforms simultaneously",
-            "Go live on YouTube, Facebook, TikTok & more at once",
+            "Publish & analyze content on YouTube, Facebook, TikTok & more",
             "Collaborate with your team using role-based permissions",
           ]}
           trustedText="Trusted by 150,000+ creators"

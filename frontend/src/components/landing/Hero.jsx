@@ -156,7 +156,7 @@ export function Hero() {
       <div className="max-w-[760px] mx-auto px-4">
         {/* Announcement pill */}
         <div className="inline-flex items-center bg-[#0A0A0A] text-white mb-8" style={{ borderRadius: 6, padding: "4px 12px", fontSize: 11, fontWeight: 500 }}>
-          ✦ NEW — Multi-Platform Livestream is here &nbsp;→
+          ✦ NEW — Smart Social Media Scheduler & Analytics &nbsp;→
         </div>
 
         {/* Headline */}
@@ -164,7 +164,7 @@ export function Hero() {
           className="text-center mb-5"
           style={{ fontSize: 52, fontWeight: 500, color: "#0A0A0A", letterSpacing: -1, lineHeight: 1.15 }}
         >
-          Plan, stream, and grow —<br />all in one workspace
+          Plan, schedule, and grow —<br />all in one workspace
         </h1>
 
         {/* Subheading */}
@@ -172,7 +172,7 @@ export function Hero() {
           className="mx-auto mb-8"
           style={{ fontSize: 16, color: "#6B7280", maxWidth: 520, lineHeight: 1.6 }}
         >
-          Schedule posts, go live on every platform simultaneously, and track what's actually working. Built for creators, teams, and agencies.
+          Schedule posts, automate publishing on every platform, and track what's actually working. Built for creators, teams, and agencies.
         </p>
 
         {/* CTA Row */}
