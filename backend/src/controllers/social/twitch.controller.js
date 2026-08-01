@@ -111,11 +111,15 @@ class TwitchController {
 
   async disconnectTwitchAccount(req, res, next) {
     try {
-      const { brandId } = req.body;
+      const { brandId, socialAccountId } = req.body;
       if (!brandId) {
         return res.status(400).json({ status: 'error', message: 'brandId is required' });
       }
-      await socialAccountRepository.deleteManyByBrandAndPlatform(brandId, PLATFORMS.TWITCH);
+      if (socialAccountId) {
+        await socialAccountRepository.deleteByIdAndBrand(brandId, socialAccountId);
+      } else {
+        await socialAccountRepository.deleteManyByBrandAndPlatform(brandId, PLATFORMS.TWITCH);
+      }
       return res.json({ status: 'success', message: 'Twitch account disconnected successfully' });
     } catch (err) {
       next(err);

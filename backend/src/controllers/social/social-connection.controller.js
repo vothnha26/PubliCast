@@ -8,75 +8,85 @@ const socialAccountRepository = require('../../repositories/social/social-accoun
 
 class SocialConnectionController {
   disconnectGoogleAccount = asyncHandler(async (req, res) => {
-    const { brandId } = req.body;
+    const { brandId, socialAccountId } = req.body;
     if (!brandId) return res.status(400).json({ message: 'brandId is required' });
 
-    await socialService.disconnectAccount(brandId, PLATFORMS.YOUTUBE);
+    await socialService.disconnectAccount(brandId, PLATFORMS.YOUTUBE, socialAccountId);
     res.json({ success: true, message: 'Google account disconnected successfully' });
   });
 
   disconnectGoogleDriveAccount = asyncHandler(async (req, res) => {
-    const { brandId } = req.body;
+    const { brandId, socialAccountId } = req.body;
     if (!brandId) return res.status(400).json({ message: 'brandId is required' });
 
-    await socialService.disconnectAccount(brandId, PLATFORMS.GOOGLE_DRIVE);
+    await socialService.disconnectAccount(brandId, PLATFORMS.GOOGLE_DRIVE, socialAccountId);
     res.json({ success: true, message: 'Google Drive account disconnected successfully' });
   });
 
   disconnectFacebookAccount = asyncHandler(async (req, res) => {
-    const { brandId } = req.body;
+    const { brandId, socialAccountId } = req.body;
     if (!brandId) return res.status(400).json({ message: 'brandId is required' });
 
-    await socialService.disconnectAccount(brandId, PLATFORMS.FACEBOOK);
+    await socialService.disconnectAccount(brandId, PLATFORMS.FACEBOOK, socialAccountId);
     res.json({ success: true, message: 'Facebook page disconnected successfully' });
   });
 
   disconnectTikTokAccount = asyncHandler(async (req, res) => {
-    const { brandId } = req.body;
+    const { brandId, socialAccountId } = req.body;
     if (!brandId) return res.status(400).json({ message: 'brandId is required' });
 
-    await socialService.disconnectAccount(brandId, PLATFORMS.TIKTOK);
+    await socialService.disconnectAccount(brandId, PLATFORMS.TIKTOK, socialAccountId);
     res.json({ success: true, message: 'TikTok account disconnected successfully' });
   });
 
   disconnectInstagramAccount = asyncHandler(async (req, res) => {
-    const { brandId } = req.body;
+    const { brandId, socialAccountId } = req.body;
     if (!brandId) return res.status(400).json({ message: 'brandId is required' });
 
-    await socialService.disconnectAccount(brandId, PLATFORMS.INSTAGRAM);
+    await socialService.disconnectAccount(brandId, PLATFORMS.INSTAGRAM, socialAccountId);
     res.json({ success: true, message: 'Instagram account disconnected successfully' });
   });
 
   disconnectTelegramAccount = asyncHandler(async (req, res) => {
-    const { brandId } = req.body;
+    const { brandId, socialAccountId } = req.body;
     if (!brandId) return res.status(400).json({ message: 'brandId is required' });
 
-    await socialService.disconnectAccount(brandId, PLATFORMS.TELEGRAM);
+    await socialService.disconnectAccount(brandId, PLATFORMS.TELEGRAM, socialAccountId);
     res.json({ success: true, message: 'Telegram account disconnected successfully' });
   });
 
   disconnectThreadsAccount = asyncHandler(async (req, res) => {
-    const { brandId } = req.body;
+    const { brandId, socialAccountId } = req.body;
     if (!brandId) return res.status(400).json({ message: 'brandId is required' });
 
-    await socialService.disconnectAccount(brandId, PLATFORMS.THREADS);
+    await socialService.disconnectAccount(brandId, PLATFORMS.THREADS, socialAccountId);
     res.json({ success: true, message: 'Threads account disconnected successfully' });
   });
 
   disconnectBlueskyAccount = asyncHandler(async (req, res) => {
-    const { brandId } = req.body;
+    const { brandId, socialAccountId } = req.body;
     if (!brandId) return res.status(400).json({ message: 'brandId is required' });
 
-    await socialService.disconnectAccount(brandId, PLATFORMS.BLUESKY);
+    await socialService.disconnectAccount(brandId, PLATFORMS.BLUESKY, socialAccountId);
     res.json({ success: true, message: 'Bluesky account disconnected successfully' });
   });
 
   disconnectTwitchAccount = asyncHandler(async (req, res) => {
-    const { brandId } = req.body;
+    const { brandId, socialAccountId } = req.body;
     if (!brandId) return res.status(400).json({ message: 'brandId is required' });
 
-    await socialService.disconnectAccount(brandId, PLATFORMS.TWITCH);
+    await socialService.disconnectAccount(brandId, PLATFORMS.TWITCH, socialAccountId);
     res.json({ success: true, message: 'Twitch account disconnected successfully' });
+  });
+
+  setDefaultAccount = asyncHandler(async (req, res) => {
+    const { brandId, socialAccountId } = req.body;
+    if (!brandId || !socialAccountId) {
+      return res.status(400).json({ message: 'brandId and socialAccountId are required' });
+    }
+
+    const account = await socialService.setDefaultAccount(brandId, socialAccountId);
+    res.json({ success: true, message: 'Default account updated successfully', data: account });
   });
 
   reassignSocialAccount = asyncHandler(async (req, res) => {

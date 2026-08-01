@@ -329,14 +329,17 @@ class ThreadsService extends BaseSocialService {
     }, PLATFORMS.THREADS, { enqueueSync: false });
   }
 
-  async getPublishedVideos(brandId, pageToken = null, limit = 10) {
+  async getPublishedVideos(brandId, pageToken = null, limit = 10, socialAccountId = null) {
     try {
       const account = await require('../../../repositories/social/social-account.repository').findByBrandAndPlatform(brandId, PLATFORMS.THREADS);
       if (!account || account.length === 0) {
         return { data: [], nextPageToken: null, prevPageToken: null };
       }
 
-      const activeAccount = account[0];
+      // socialAccountId picks a specific Threads account when the brand has
+      // more than one connected; omitted, falls back to the first one
+      // (correct as long as the brand only has one, still the common case).
+      const activeAccount = (socialAccountId && account.find(acc => acc.id === socialAccountId)) || account[0];
       const pageId = activeAccount.platformAccountId;
       const accessToken = activeAccount.accessToken;
 

@@ -31,7 +31,22 @@ router.use(verifyAuth);
  *         name: brandId
  *         required: true
  *         schema: { type: string }
- *     responses:
+ *         description: Brand ID owning the posts
+ *       - in: query
+ *         name: socialAccountId
+ *         required: false
+ *         schema: { type: string }
+ *         description: Filter posts specifically for a social account ID
+ *       - in: query
+ *         name: platform
+ *         required: false
+ *         schema: { type: string }
+ *         description: Filter posts by social platform (e.g. YOUTUBE, FACEBOOK)
+ *       - in: query
+ *         name: status
+ *         required: false
+ *         schema: { type: string }
+ *         description: Filter posts by status (DRAFT, SCHEDULED, PUBLISHED, etc.)
  *       200:
  *         description: Posts list fetched
  *         content:

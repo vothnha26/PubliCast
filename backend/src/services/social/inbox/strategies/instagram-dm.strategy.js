@@ -58,8 +58,8 @@ class InstagramDMSyncStrategy extends BaseSyncStrategy {
     return item.platform === PLATFORMS.INSTAGRAM && item.type === INBOX_TYPES.DIRECT_MESSAGE;
   }
 
-  async reply(brandId, parentPlatformItemId, text) {
-    const { account, pageId, pageAccessToken } = await this._getAccountAndToken(brandId);
+  async reply(brandId, parentPlatformItemId, text, socialAccountId = null) {
+    const { account, pageId, pageAccessToken } = await this._getAccountAndToken(brandId, socialAccountId);
     
     let recipientPsid = null;
     const parentInDb = await inboxRepository.findInboxItemByPlatformId(parentPlatformItemId);
@@ -97,7 +97,13 @@ class InstagramDMSyncStrategy extends BaseSyncStrategy {
     });
   }
 
-  async _getAccountAndToken(brandId) {
+  // socialAccountId picks a specific IG account when the brand has more than
+  // one connected; omitted, falls back to the first one (correct as long as
+  // the brand only has one, still the common case). The Facebook Page
+  // lookup (needed for the pageId used by the Graph API conversations
+  // endpoint) is unaffected — reply routing only needs to pick the right IG
+  // identity, not a specific FB page.
+  async _getAccountAndToken(brandId, socialAccountId = null) {
     // Try to find Instagram account first
     let socialAccount = await socialAccountRepository.findByBrandAndPlatform(brandId, PLATFORMS.INSTAGRAM);
     let pageId = null;
@@ -105,7 +111,7 @@ class InstagramDMSyncStrategy extends BaseSyncStrategy {
     let account = null;
 
     if (socialAccount && socialAccount.length > 0) {
-      account = socialAccount[0];
+      account = (socialAccountId && socialAccount.find(acc => acc.id === socialAccountId)) || socialAccount[0];
       pageAccessToken = account.accessToken;
       const fbAccount = await socialAccountRepository.findByBrandAndPlatform(brandId, PLATFORMS.FACEBOOK);
       if (fbAccount && fbAccount.length > 0) {

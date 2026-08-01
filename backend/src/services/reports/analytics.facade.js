@@ -8,18 +8,23 @@ class AnalyticsFacade {
    * @param {Date} dateTo 
    * @param {string[]} platforms - Array of platforms, e.g. ["Facebook", "YouTube"]
    */
-  async getAggregatedData(brandId, dateFrom, dateTo, platforms) {
+  async getAggregatedData(brandId, dateFrom, dateTo, platforms, socialAccountId = null) {
     // 1. Fetch Brand Info
     const brand = await prisma.brand.findUnique({
       where: { id: brandId }
     });
 
     // 2. Fetch connected SocialAccounts of the Brand
+    const socialAccountWhere = { 
+      brandId,
+      isConnected: true
+    };
+    if (socialAccountId) {
+      socialAccountWhere.id = socialAccountId;
+    }
+
     const socialAccounts = await prisma.socialAccount.findMany({
-      where: { 
-        brandId,
-        isConnected: true
-      },
+      where: socialAccountWhere,
       include: {
         youtubeChannel: true,
         facebookPage: true,

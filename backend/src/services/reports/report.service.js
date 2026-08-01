@@ -290,9 +290,9 @@ class ReportService {
    * @param {string} dateRange
    * @param {string[]} platforms
    */
-  async getPreviewData(brandId, dateRange, platforms) {
+  async getPreviewData(brandId, dateRange, platforms, socialAccountId) {
     const { dateFrom, dateTo } = this.parseDateRange(dateRange);
-    return await analyticsFacade.getAggregatedData(brandId, dateFrom, dateTo, platforms);
+    return await analyticsFacade.getAggregatedData(brandId, dateFrom, dateTo, platforms, socialAccountId);
   }
 
   /**

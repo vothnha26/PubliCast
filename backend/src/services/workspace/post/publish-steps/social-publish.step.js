@@ -29,9 +29,12 @@ class SocialPublishStep extends BaseStep {
         // when the composer's "edit by network" was actually turned on for
         // this platform (useTemplate === false). Otherwise every platform
         // shares the post's own caption/mediaUrls, same as before overrides
-        // existed.
+        // existed. socialAccountId is independent of useOverride though — it
+        // identifies WHICH account to publish to when the brand has more
+        // than one of this platform, whether or not the caption was edited.
         const override = networkOverrides[platform];
         const useOverride = override && override.useTemplate === false;
+        const socialAccountId = override?.socialAccountId || null;
         const effectiveCaption = useOverride && override.caption != null ? override.caption : post.caption;
         const effectiveMediaUrls = useOverride && override.mediaUrls
           ? splitMediaUrls(override.mediaUrls)
@@ -56,6 +59,7 @@ class SocialPublishStep extends BaseStep {
           mediaUrls: effectiveMediaUrls,
           type: post.type,
           platformPostId: platformPostId,
+          socialAccountId,
           options: {
             ...options,
             ...(effectiveThreadPosts ? { threadPosts: effectiveThreadPosts } : {}),

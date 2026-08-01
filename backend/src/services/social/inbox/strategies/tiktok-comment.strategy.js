@@ -79,11 +79,11 @@ class TiktokCommentSyncStrategy extends BaseSyncStrategy {
     return (item.platform === 'TIKTOK' || item.platform === 'tiktok') && item.type === INBOX_TYPES.COMMENT;
   }
 
-  async reply(brandId, parentPlatformItemId, text) {
+  async reply(brandId, parentPlatformItemId, text, socialAccountId = null) {
     const socialAccount = await socialAccountRepository.findByBrandAndPlatform(brandId, 'TIKTOK');
     if (!socialAccount || socialAccount.length === 0) throw new Error('TikTok account not connected');
 
-    const account = socialAccount[0];
+    const account = (socialAccountId && socialAccount.find(acc => acc.id === socialAccountId)) || socialAccount[0];
     const inbox = await inboxRepository.findOrCreateInbox(brandId);
     const parentInDb = await inboxRepository.findInboxItemByPlatformId(parentPlatformItemId);
 

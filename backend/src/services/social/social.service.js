@@ -152,12 +152,20 @@ class SocialService {
   }
 
   /**
-   * Disconnect a social account from a brand
+   * Disconnect a social account from a brand. If socialAccountId is given,
+   * only that one account is removed — otherwise every account of the
+   * platform is removed (legacy behavior, still correct for brands with a
+   * single account per platform, which is the common case today).
    */
-  async disconnectAccount(brandId, platform) {
+  async disconnectAccount(brandId, platform, socialAccountId = null) {
     if (platform && platform.toUpperCase() === PLATFORMS.YOUTUBE) {
       try {
-        const youtubeAccount = await socialAccountRepository.findByBrandAndPlatformFirst(brandId, PLATFORMS.YOUTUBE);
+        // When a socialAccountId is given, unsubscribe exactly that channel —
+        // findByBrandAndPlatformFirst would pick an arbitrary one otherwise,
+        // wrong when the brand has multiple YouTube channels.
+        const youtubeAccount = socialAccountId
+          ? await socialAccountRepository.findById(socialAccountId)
+          : await socialAccountRepository.findByBrandAndPlatformFirst(brandId, PLATFORMS.YOUTUBE);
         const isMockAccount = youtubeAccount && (
           (youtubeAccount.accessToken && youtubeAccount.accessToken.startsWith('mock-')) ||
           (youtubeAccount.platformAccountId && youtubeAccount.platformAccountId.startsWith('mock-'))
@@ -181,10 +189,30 @@ class SocialService {
       }
     }
 
-    const result = await socialAccountRepository.deleteManyByBrandAndPlatform(brandId, platform);
+    const result = socialAccountId
+      ? await socialAccountRepository.deleteByIdAndBrand(brandId, socialAccountId)
+      : await socialAccountRepository.deleteManyByBrandAndPlatform(brandId, platform);
     await this._notifyPlatformDisconnected(brandId, platform);
 
     return result;
+  }
+
+  /**
+   * Mark one account as the default for its platform within a brand — a
+   * display-only hint (pre-checked by default in the post composer), not
+   * enforced anywhere else. Scoped to brandId so a caller can't flip the
+   * default flag on another brand's account.
+   */
+  async setDefaultAccount(brandId, socialAccountId) {
+    const account = await socialAccountRepository.findById(socialAccountId);
+    if (!account || account.brandId !== brandId) {
+      const error = new Error('Social account not found');
+      error.statusCode = 404;
+      throw error;
+    }
+
+    await socialAccountRepository.setDefault(brandId, account.platform, socialAccountId);
+    return socialAccountRepository.findById(socialAccountId);
   }
 
   async _notifyPlatformDisconnected(brandId, platform) {
