@@ -16,7 +16,7 @@ const platforms = [
 
 export function Platforms() {
   return (
-    <section className="bg-white py-20" style={{ fontFamily: "'DM Sans', sans-serif" }}>
+    <section className="bg-card py-20" style={{ fontFamily: "'DM Sans', sans-serif" }}>
       <div className="max-w-[700px] mx-auto px-6 text-center">
         <p style={{ fontSize: 10, fontWeight: 500, color: "#9CA3AF", textTransform: "uppercase", letterSpacing: "0.8px", marginBottom: 24 }}>
           WORKS WITH YOUR PLATFORMS

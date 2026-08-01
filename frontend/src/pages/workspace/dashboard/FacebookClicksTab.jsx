@@ -12,7 +12,7 @@ export function FacebookClicksTab({ realData = {} }) {
     {
       key: "totalClicks",
       label: "Clicks",
-      color: "bg-[#86EFAC] text-gray-900",
+      color: "bg-[#86EFAC] text-foreground",
       chartColor: "#4ADE80",
       type: "area",
       value: totalClicks
@@ -20,7 +20,7 @@ export function FacebookClicksTab({ realData = {} }) {
     {
       key: "pageVisits",
       label: "Page visits",
-      color: "bg-[#E9D5FF] text-gray-900",
+      color: "bg-[#E9D5FF] text-foreground",
       chartColor: "#A855F7",
       type: "line",
       value: totalPageVisits
@@ -28,7 +28,7 @@ export function FacebookClicksTab({ realData = {} }) {
     {
       key: "totalContent",
       label: "Total content",
-      color: "bg-[#FEF08A] text-gray-900",
+      color: "bg-[#FEF08A] text-foreground",
       chartColor: "#EAB308",
       type: "bar",
       yAxisId: "right",

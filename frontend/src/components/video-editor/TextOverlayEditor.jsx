@@ -53,7 +53,7 @@ export default function TextOverlayEditor() {
     <div className="space-y-6">
       {/* Create New Text Overlay */}
       <div className="space-y-4 bg-gray-900/30 border border-gray-800 p-4 rounded-xl">
-        <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider">Thêm chữ mới</h3>
+        <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Thêm chữ mới</h3>
         <div className="flex gap-2">
           <input
             type="text"
@@ -73,7 +73,7 @@ export default function TextOverlayEditor() {
 
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className="text-[10px] text-gray-500 block mb-1">Màu chữ:</label>
+            <label className="text-[10px] text-muted-foreground block mb-1">Màu chữ:</label>
             <div className="flex items-center gap-2 bg-gray-850 p-2 rounded-lg border border-gray-800">
               <input
                 type="color"
@@ -81,12 +81,12 @@ export default function TextOverlayEditor() {
                 onChange={(e) => setColor(e.target.value)}
                 className="w-6 h-6 bg-transparent border-0 cursor-pointer rounded"
               />
-              <span className="text-[10px] font-mono uppercase text-gray-400">{color}</span>
+              <span className="text-[10px] font-mono uppercase text-muted-foreground">{color}</span>
             </div>
           </div>
 
           <div>
-            <label className="text-[10px] text-gray-500 block mb-1">Cỡ chữ (px):</label>
+            <label className="text-[10px] text-muted-foreground block mb-1">Cỡ chữ (px):</label>
             <input
               type="number"
               min="10"
@@ -117,7 +117,7 @@ export default function TextOverlayEditor() {
 
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="text-[10px] text-gray-500 block mb-1">Đổi màu:</label>
+                <label className="text-[10px] text-muted-foreground block mb-1">Đổi màu:</label>
                 <input
                   type="color"
                   value={activeOverlay.color}
@@ -127,7 +127,7 @@ export default function TextOverlayEditor() {
               </div>
 
               <div>
-                <label className="text-[10px] text-gray-500 block mb-1">Đổi cỡ (px):</label>
+                <label className="text-[10px] text-muted-foreground block mb-1">Đổi cỡ (px):</label>
                 <input
                   type="number"
                   min="10"
@@ -147,7 +147,7 @@ export default function TextOverlayEditor() {
         <h3 className="text-sm font-semibold text-white">Danh sách chữ đã thêm ({textOverlays.length})</h3>
 
         {textOverlays.length === 0 ? (
-          <div className="text-center text-gray-500 text-xs py-8">
+          <div className="text-center text-muted-foreground text-xs py-8">
             Chưa có chữ nào được thêm vào video.
           </div>
         ) : (
@@ -166,13 +166,13 @@ export default function TextOverlayEditor() {
                   <span className="text-xs truncate max-w-[180px] font-semibold">{overlay.text}</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className="text-[10px] text-gray-500 font-mono">{overlay.size}px</span>
+                  <span className="text-[10px] text-muted-foreground font-mono">{overlay.size}px</span>
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
                       handleDeleteText(overlay.id);
                     }}
-                    className="p-1 hover:bg-red-500/10 text-gray-500 hover:text-red-400 rounded transition"
+                    className="p-1 hover:bg-red-500/10 text-muted-foreground hover:text-red-400 rounded transition"
                   >
                     <Trash2 className="w-3.5 h-3.5" />
                   </button>

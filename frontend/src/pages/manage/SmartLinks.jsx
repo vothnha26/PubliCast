@@ -60,15 +60,15 @@ const renderSocialIcon = (platform, size = 15) => {
 // 10 Bio-Link themes matching the grid in screenshot 4
 const THEMES = [
   { id: "midnight", name: "Midnight Black", bg: "bg-slate-950", text: "text-white", buttonBg: "bg-slate-900/80 hover:bg-slate-800/80 border border-slate-800", buttonText: "text-white", border: "border-slate-800", previewBg: "from-slate-900 to-slate-950" },
-  { id: "sunset", name: "Sunset Orange", bg: "bg-gradient-to-tr from-amber-500 to-rose-500", text: "text-white", buttonBg: "bg-white/10 hover:bg-white/20 backdrop-blur-sm", buttonText: "text-white", border: "border-white/10", previewBg: "from-amber-500 to-rose-500" },
-  { id: "mint", name: "Mint Glassmorphism", bg: "bg-gradient-to-tr from-teal-50 to-emerald-100", text: "text-slate-800", buttonBg: "bg-white/70 hover:bg-white/90 shadow-sm border border-emerald-200/50", buttonText: "text-slate-850", border: "border-emerald-200", previewBg: "from-teal-50 to-emerald-100" },
+  { id: "sunset", name: "Sunset Orange", bg: "bg-gradient-to-tr from-amber-500 to-rose-500", text: "text-white", buttonBg: "bg-card/10 hover:bg-card/20 backdrop-blur-sm", buttonText: "text-white", border: "border-white/10", previewBg: "from-amber-500 to-rose-500" },
+  { id: "mint", name: "Mint Glassmorphism", bg: "bg-gradient-to-tr from-teal-50 to-emerald-100", text: "text-slate-800", buttonBg: "bg-card/70 hover:bg-card/90 shadow-sm border border-emerald-200/50", buttonText: "text-slate-850", border: "border-emerald-200", previewBg: "from-teal-50 to-emerald-100" },
   { id: "cyberpunk", name: "Cyberpunk Neon", bg: "bg-[#0c0f1d]", text: "text-[#00ffcc]", buttonBg: "bg-slate-900/80 hover:bg-slate-850/80 border border-[#ff0055] shadow-[0_0_8px_rgba(255,0,85,0.4)]", buttonText: "text-[#00ffcc]", border: "border-[#ff0055]", previewBg: "from-[#0c0f1d] to-[#151933]" },
-  { id: "ocean", name: "Ocean Breeze", bg: "bg-gradient-to-tr from-blue-600 to-cyan-500", text: "text-white", buttonBg: "bg-white/15 hover:bg-white/25 backdrop-blur-sm border border-white/20", buttonText: "text-white", border: "border-white/20", previewBg: "from-blue-600 to-cyan-500" },
-  { id: "lavender", name: "Lavender Dream", bg: "bg-gradient-to-tr from-purple-500 to-indigo-500", text: "text-white", buttonBg: "bg-white/20 hover:bg-white/30 backdrop-blur-sm", buttonText: "text-white", border: "border-white/10", previewBg: "from-purple-500 to-indigo-500" },
-  { id: "minimal", name: "Minimal Gray", bg: "bg-slate-100", text: "text-slate-800", buttonBg: "bg-white hover:bg-slate-50 border border-slate-200 shadow-sm", buttonText: "text-slate-850", border: "border-slate-200", previewBg: "from-slate-100 to-slate-200" },
-  { id: "warm", name: "Warm Sandy", bg: "bg-gradient-to-tr from-amber-100 to-orange-100", text: "text-amber-900", buttonBg: "bg-white/80 hover:bg-white border border-amber-200/50 shadow-sm", buttonText: "text-amber-950", border: "border-amber-200", previewBg: "from-amber-100 to-orange-100" },
-  { id: "confetti", name: "Confetti Celebration", bg: "bg-white bg-[radial-gradient(#e5e7eb_1px,transparent_1px)] [background-size:16px_16px]", text: "text-slate-800", buttonBg: "bg-slate-800 hover:bg-slate-700 text-white", buttonText: "text-white", border: "border-slate-800", previewBg: "from-white to-slate-50" },
-  { id: "forest", name: "Emerald Forest", bg: "bg-gradient-to-tr from-green-700 to-emerald-600", text: "text-white", buttonBg: "bg-white/10 hover:bg-white/20 border border-white/10", buttonText: "text-white", border: "border-white/10", previewBg: "from-green-700 to-emerald-600" }
+  { id: "ocean", name: "Ocean Breeze", bg: "bg-gradient-to-tr from-blue-600 to-cyan-500", text: "text-white", buttonBg: "bg-card/15 hover:bg-card/25 backdrop-blur-sm border border-white/20", buttonText: "text-white", border: "border-white/20", previewBg: "from-blue-600 to-cyan-500" },
+  { id: "lavender", name: "Lavender Dream", bg: "bg-gradient-to-tr from-purple-500 to-indigo-500", text: "text-white", buttonBg: "bg-card/20 hover:bg-card/30 backdrop-blur-sm", buttonText: "text-white", border: "border-white/10", previewBg: "from-purple-500 to-indigo-500" },
+  { id: "minimal", name: "Minimal Gray", bg: "bg-slate-100", text: "text-slate-800", buttonBg: "bg-card hover:bg-slate-50 border border-slate-200 shadow-sm", buttonText: "text-slate-850", border: "border-slate-200", previewBg: "from-slate-100 to-slate-200" },
+  { id: "warm", name: "Warm Sandy", bg: "bg-gradient-to-tr from-amber-100 to-orange-100", text: "text-amber-900", buttonBg: "bg-card/80 hover:bg-card border border-amber-200/50 shadow-sm", buttonText: "text-amber-950", border: "border-amber-200", previewBg: "from-amber-100 to-orange-100" },
+  { id: "confetti", name: "Confetti Celebration", bg: "bg-card bg-[radial-gradient(#e5e7eb_1px,transparent_1px)] [background-size:16px_16px]", text: "text-slate-800", buttonBg: "bg-slate-800 hover:bg-slate-700 text-white", buttonText: "text-white", border: "border-slate-800", previewBg: "from-white to-slate-50" },
+  { id: "forest", name: "Emerald Forest", bg: "bg-gradient-to-tr from-green-700 to-emerald-600", text: "text-white", buttonBg: "bg-card/10 hover:bg-card/20 border border-white/10", buttonText: "text-white", border: "border-white/10", previewBg: "from-green-700 to-emerald-600" }
 ];
 
 export function SmartLinksPage() {
@@ -653,21 +653,21 @@ export function SmartLinksPage() {
 
   if (isFeatureLocked) {
     return (
-      <div className="flex-1 flex flex-col items-center justify-center p-8 bg-[#F3F4F6]">
-        <div className="bg-white rounded-3xl p-8 max-w-lg w-full text-center border border-slate-200 shadow-xl space-y-6 animate-in zoom-in-95 duration-200">
+      <div className="flex-1 flex flex-col items-center justify-center p-8 bg-background">
+        <div className="bg-card rounded-3xl p-8 max-w-lg w-full text-center border border-border shadow-xl space-y-6 animate-in zoom-in-95 duration-200">
           <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-amber-500 to-orange-400 text-white flex items-center justify-center mx-auto shadow-lg shadow-amber-500/20">
             <Link2 size={32} />
           </div>
           <div className="space-y-2">
-            <h2 className="text-xl font-extrabold text-slate-900">Yêu cầu nâng cấp gói dịch vụ</h2>
-            <p className="text-sm text-slate-500 leading-relaxed">
-              Tính năng <span className="font-bold text-slate-800">SmartLinks (Link-in-Bio & URL Shortener)</span> là tính năng nâng cao dành riêng cho tài khoản gói <span className="font-bold text-slate-800">PRO</span> hoặc <span className="font-bold text-slate-800">AGENCY</span>. Vui lòng nâng cấp gói để mở khóa và trải nghiệm.
+            <h2 className="text-xl font-extrabold text-foreground">Yêu cầu nâng cấp gói dịch vụ</h2>
+            <p className="text-sm text-muted-foreground leading-relaxed">
+              Tính năng <span className="font-bold text-foreground">SmartLinks (Link-in-Bio & URL Shortener)</span> là tính năng nâng cao dành riêng cho tài khoản gói <span className="font-bold text-foreground">PRO</span> hoặc <span className="font-bold text-foreground">AGENCY</span>. Vui lòng nâng cấp gói để mở khóa và trải nghiệm.
             </p>
           </div>
           <div className="pt-2 flex flex-col sm:flex-row gap-3">
             <button
               onClick={() => window.location.href = '/workspace/settings?tab=billing'}
-              className="w-full py-3 px-6 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-sm shadow-md transition-all cursor-pointer"
+              className="w-full py-3 px-6 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-sm shadow-md transition-all cursor-pointer"
             >
               Nâng cấp gói ngay 🚀
             </button>
@@ -678,10 +678,10 @@ export function SmartLinksPage() {
   }
 
   return (
-    <div className="flex-1 flex flex-col overflow-y-auto bg-[#F3F4F6] p-6 space-y-6">
+    <div className="flex-1 flex flex-col overflow-y-auto bg-background p-6 space-y-6">
       
       {/* Metricool Header top bar */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center bg-white p-4 rounded-2xl border border-slate-200 shadow-sm gap-4">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center bg-card p-4 rounded-2xl border border-border shadow-sm gap-4">
         <div className="flex items-center gap-3">
           {/* Custom Select dropdown */}
           <div className="relative shrink-0">
@@ -694,7 +694,7 @@ export function SmartLinksPage() {
                   applySmartLinkData(found);
                 }
               }}
-              className="appearance-none bg-[#F9FAFB] border border-slate-300 rounded-xl px-4 py-2.5 pr-10 text-sm font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-400 cursor-pointer shadow-sm max-w-[260px] truncate"
+              className="appearance-none bg-muted border border-border rounded-xl px-4 py-2.5 pr-10 text-sm font-semibold text-foreground focus:outline-none focus:ring-2 focus:ring-ring cursor-pointer shadow-sm max-w-[260px] truncate"
             >
               {smartLinksList.map(s => (
                 <option key={s.id} value={s.id}>
@@ -702,7 +702,7 @@ export function SmartLinksPage() {
                 </option>
               ))}
             </select>
-            <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-slate-500">
+            <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-muted-foreground">
               <ChevronRight size={16} className="rotate-90" />
             </div>
           </div>
@@ -711,28 +711,28 @@ export function SmartLinksPage() {
             <button 
               onClick={handleCreateNewSmartLink}
               title="Tạo SmartLink mới"
-              className="flex items-center gap-1.5 bg-[#F3F4F6] hover:bg-slate-200 text-slate-700 text-xs font-bold px-3 py-2 rounded-lg transition-colors uppercase border border-slate-200 cursor-pointer active:scale-95"
+              className="flex items-center gap-1.5 bg-muted hover:bg-muted/80 text-foreground text-xs font-bold px-3 py-2 rounded-lg transition-colors uppercase border border-border cursor-pointer active:scale-95"
             >
               <Plus size={14} /> {t("header.newBtn")}
             </button>
             <button 
               onClick={handleOpenRenameModal}
               title="Đổi tên & Đường dẫn (Slug) SmartLink này"
-              className="flex items-center gap-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-bold px-3 py-2 rounded-lg transition-colors uppercase border border-indigo-200 cursor-pointer active:scale-95"
+              className="flex items-center gap-1.5 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 text-xs font-bold px-3 py-2 rounded-lg transition-colors uppercase border border-indigo-500/20 cursor-pointer active:scale-95"
             >
               <Edit3 size={14} /> ĐỔI TÊN
             </button>
             <button 
               onClick={handleCloneSmartLink}
               title="Nhân bản SmartLink này"
-              className="flex items-center gap-1.5 bg-[#F3F4F6] hover:bg-slate-200 text-slate-700 text-xs font-bold px-3 py-2 rounded-lg transition-colors uppercase border border-slate-200 cursor-pointer active:scale-95"
+              className="flex items-center gap-1.5 bg-muted hover:bg-muted/80 text-foreground text-xs font-bold px-3 py-2 rounded-lg transition-colors uppercase border border-border cursor-pointer active:scale-95"
             >
               <Copy size={14} /> {t("header.cloneBtn")}
             </button>
             <button 
               onClick={handleDeleteSmartLink}
               title="Xóa SmartLink này"
-              className="flex items-center gap-1.5 bg-red-50 hover:bg-red-100 text-red-650 text-xs font-bold px-3 py-2 rounded-lg transition-colors uppercase border border-red-100 cursor-pointer active:scale-95"
+              className="flex items-center gap-1.5 bg-red-500/10 hover:bg-red-500/20 text-red-600 dark:text-red-400 text-xs font-bold px-3 py-2 rounded-lg transition-colors uppercase border border-red-500/20 cursor-pointer active:scale-95"
             >
               <Trash2 size={14} /> {t("header.deleteBtn")}
             </button>
@@ -745,14 +745,14 @@ export function SmartLinksPage() {
               fetchSmartLinksList(smartLinkId);
               toast.info(t("toasts.resetSuccess"));
             }}
-            className="flex items-center gap-1.5 bg-white border border-slate-350 hover:bg-slate-50 text-slate-700 text-sm font-semibold px-4 py-2 rounded-xl transition-all shadow-sm active:scale-95 uppercase cursor-pointer"
+            className="flex items-center gap-1.5 bg-card border border-border hover:bg-muted text-foreground text-sm font-semibold px-4 py-2 rounded-xl transition-all shadow-sm active:scale-95 uppercase cursor-pointer"
           >
             <RotateCcw size={15} /> {t("header.resetBtn")}
           </button>
           <button
             onClick={handleSaveChanges}
             disabled={saving}
-            className="flex items-center gap-1.5 bg-[#4F5B66] hover:bg-[#3d4750] text-white text-sm font-semibold px-6 py-2 rounded-xl transition-all shadow-md active:scale-95 disabled:opacity-50 uppercase"
+            className="flex items-center gap-1.5 bg-primary hover:bg-primary/90 text-primary-foreground text-sm font-semibold px-6 py-2 rounded-xl transition-all shadow-md active:scale-95 disabled:opacity-50 uppercase cursor-pointer"
           >
             {saving ? <Loader2 size={15} className="animate-spin" /> : <Save size={15} />}
             {t("header.saveBtn")}
@@ -761,48 +761,48 @@ export function SmartLinksPage() {
       </div>
 
       {/* Quick Overview & Click Stats Banner */}
-      <div className="bg-white rounded-2xl border border-slate-200 p-4 shadow-sm grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div className="flex items-center gap-3 border-r border-slate-100 pr-4">
-          <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
+      <div className="bg-card rounded-2xl border border-border p-4 shadow-sm grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="flex items-center gap-3 border-r border-border pr-4">
+          <div className="w-10 h-10 rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0">
             <Eye size={18} />
           </div>
           <div>
-            <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Tổng Lượt Xem</div>
-            <div className="text-lg font-black text-slate-800">{analyticsSummary?.visits || 0}</div>
+            <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Tổng Lượt Xem</div>
+            <div className="text-lg font-black text-foreground">{analyticsSummary?.visits || 0}</div>
           </div>
         </div>
 
-        <div className="flex items-center gap-3 border-r border-slate-100 pr-4">
-          <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
+        <div className="flex items-center gap-3 border-r border-border pr-4">
+          <div className="w-10 h-10 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
             <MousePointerClick size={18} />
           </div>
           <div>
-            <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Tổng Lượt Click</div>
-            <div className="text-lg font-black text-slate-800">{totalClicksCount || analyticsSummary?.buttonClicks || 0}</div>
+            <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Tổng Lượt Click</div>
+            <div className="text-lg font-black text-foreground">{totalClicksCount || analyticsSummary?.buttonClicks || 0}</div>
           </div>
         </div>
 
-        <div className="flex items-center gap-3 border-r border-slate-100 pr-4">
-          <div className="w-10 h-10 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center shrink-0">
+        <div className="flex items-center gap-3 border-r border-border pr-4">
+          <div className="w-10 h-10 rounded-xl bg-purple-500/10 text-purple-600 dark:text-purple-400 flex items-center justify-center shrink-0">
             <BarChart3 size={18} />
           </div>
           <div>
-            <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Tỷ Lệ Click (CTR)</div>
-            <div className="text-lg font-black text-slate-800">{analyticsSummary?.ctr !== undefined ? `${analyticsSummary.ctr}%` : '0.0%'}</div>
+            <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Tỷ Lệ Click (CTR)</div>
+            <div className="text-lg font-black text-foreground">{analyticsSummary?.ctr !== undefined ? `${analyticsSummary.ctr}%` : '0.0%'}</div>
           </div>
         </div>
 
         <div className="flex items-center justify-between gap-2">
           <div className="truncate">
-            <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Link Công Khai</div>
-            <div className="text-xs font-mono font-bold text-slate-700 truncate">{window.location.origin}/s/{slug}</div>
+            <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Link Công Khai</div>
+            <div className="text-xs font-mono font-bold text-foreground truncate">{window.location.origin}/s/{slug}</div>
           </div>
           <button
             onClick={handleCopyLink}
-            className="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors shrink-0 cursor-pointer"
+            className="p-2 rounded-xl bg-muted hover:bg-muted/80 text-foreground transition-colors shrink-0 cursor-pointer"
             title="Sao chép link công khai"
           >
-            {copied ? <CopyCheck size={16} className="text-emerald-600" /> : <Copy size={16} />}
+            {copied ? <CopyCheck size={16} className="text-emerald-500" /> : <Copy size={16} />}
           </button>
         </div>
       </div>
@@ -814,23 +814,23 @@ export function SmartLinksPage() {
         <div className="lg:col-span-8 flex flex-col gap-6">
           
           {/* Main Tab Level: SETTINGS | ANALYTICS */}
-          <div className="flex border-b border-slate-200 bg-white px-6 pt-4 rounded-t-2xl shadow-sm">
+          <div className="flex border-b border-border bg-card px-6 pt-4 rounded-t-2xl shadow-sm">
             <button
               onClick={() => setActiveTab("settings")}
-              className={`pb-3 text-sm font-bold uppercase tracking-wider border-b-2 transition-all mr-8 ${
+              className={`pb-3 text-sm font-bold uppercase tracking-wider border-b-2 transition-all mr-8 cursor-pointer ${
                 activeTab === "settings" 
-                  ? "border-[#4F5B66] text-[#4F5B66]" 
-                  : "border-transparent text-slate-400 hover:text-slate-600"
+                  ? "border-primary text-primary font-bold" 
+                  : "border-transparent text-muted-foreground hover:text-foreground"
               }`}
             >
               {t("tabs.settings")}
             </button>
             <button
               onClick={() => setActiveTab("analytics")}
-              className={`pb-3 text-sm font-bold uppercase tracking-wider border-b-2 transition-all ${
+              className={`pb-3 text-sm font-bold uppercase tracking-wider border-b-2 transition-all cursor-pointer ${
                 activeTab === "analytics" 
-                  ? "border-[#4F5B66] text-[#4F5B66]" 
-                  : "border-transparent text-slate-400 hover:text-slate-600"
+                  ? "border-primary text-primary font-bold" 
+                  : "border-transparent text-muted-foreground hover:text-foreground"
               }`}
             >
               {t("tabs.analytics")}
@@ -839,56 +839,56 @@ export function SmartLinksPage() {
 
           {/* TAB CONTENT: SETTINGS */}
           {activeTab === "settings" && (
-            <div className="bg-white rounded-b-2xl border-x border-b border-slate-200 p-6 space-y-6 shadow-sm mt-[-24px]">
+            <div className="bg-card rounded-b-2xl border-x border-b border-border p-6 space-y-6 shadow-sm mt-[-24px]">
               
               {/* General Section */}
               <div className="space-y-4">
-                <h3 className="text-sm font-bold text-slate-700">{t("general.sectionTitle")}</h3>
+                <h3 className="text-sm font-bold text-foreground">{t("general.sectionTitle")}</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-1">
-                    <label className="text-xs font-bold text-slate-500">{t("general.nameLabel")}</label>
+                    <label className="text-xs font-bold text-muted-foreground">{t("general.nameLabel")}</label>
                     <input
                       type="text"
                       value={profileName}
                       onChange={(e) => setProfileName(e.target.value)}
-                      className="w-full px-3 py-2 rounded-xl border border-slate-300 text-sm text-slate-800 focus:border-slate-455 outline-none transition-all"
+                      className="w-full px-3 py-2 rounded-xl border border-border bg-card text-sm text-foreground focus:border-ring outline-none transition-all"
                     />
                   </div>
                   <div className="space-y-1">
-                    <label className="text-xs font-bold text-slate-500">{t("general.urlLabel")}</label>
+                    <label className="text-xs font-bold text-muted-foreground">{t("general.urlLabel")}</label>
                     <div className="flex gap-2">
                       <div className="relative flex-1 flex items-center">
-                        <span className="absolute left-3 text-xs text-slate-455 font-mono">https://mtr.bio/</span>
+                        <span className="absolute left-3 text-xs text-muted-foreground font-mono">https://mtr.bio/</span>
                         <input
                           type="text"
                           value={slug}
                           onChange={(e) => setSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ""))}
-                          className="w-full pl-28 pr-3 py-2 rounded-xl border border-slate-300 text-sm font-mono text-slate-800 focus:border-slate-455 outline-none transition-all"
+                          className="w-full pl-28 pr-3 py-2 rounded-xl border border-border bg-card text-sm font-mono text-foreground focus:border-ring outline-none transition-all"
                         />
                       </div>
                       <button 
                         onClick={handleCopyLink}
-                        className="bg-slate-100 hover:bg-slate-200 border border-slate-300 text-slate-700 text-xs font-bold px-4 py-2 rounded-xl transition-all flex items-center gap-1.5 active:scale-95"
+                        className="bg-muted hover:bg-muted/80 border border-border text-foreground text-xs font-bold px-4 py-2 rounded-xl transition-all flex items-center gap-1.5 active:scale-95 cursor-pointer"
                       >
-                        {copied ? <CopyCheck size={14} className="text-emerald-600" /> : <Copy size={14} />}
+                        {copied ? <CopyCheck size={14} className="text-emerald-500" /> : <Copy size={14} />}
                         {t("general.copyBtn")}
                       </button>
                     </div>
                   </div>
                   <div className="md:col-span-2 space-y-1">
-                    <label className="text-xs font-bold text-slate-500">{t("media.bioLabel")}</label>
+                    <label className="text-xs font-bold text-muted-foreground">{t("media.bioLabel")}</label>
                     <textarea
                       placeholder={t("media.bioPlaceholder")}
                       value={profileBio}
                       onChange={(e) => setProfileBio(e.target.value)}
-                      className="w-full px-3 py-2 rounded-xl border border-slate-300 text-sm text-slate-800 focus:border-slate-455 outline-none transition-all min-h-[80px]"
+                      className="w-full px-3 py-2 rounded-xl border border-border bg-card text-sm text-foreground focus:border-ring outline-none transition-all min-h-[80px]"
                     />
                   </div>
                 </div>
               </div>
 
               {/* Subtabs Menu: BUTTONS | MEDIA | APPEARANCE */}
-              <div className="flex bg-slate-50 p-1.5 rounded-xl border border-slate-200">
+              <div className="flex bg-muted p-1.5 rounded-xl border border-border">
                 {[
                   { id: "buttons", name: t("subtabs.buttons") },
                   { id: "media", name: t("subtabs.media") },
@@ -897,10 +897,10 @@ export function SmartLinksPage() {
                   <button
                     key={sTab.id}
                     onClick={() => setActiveSubTab(sTab.id)}
-                    className={`flex-1 text-center py-2 text-xs font-bold uppercase tracking-wider rounded-lg transition-all ${
+                    className={`flex-1 text-center py-2 text-xs font-bold uppercase tracking-wider rounded-lg transition-all cursor-pointer ${
                       activeSubTab === sTab.id 
-                        ? "bg-white text-slate-800 shadow-sm border border-slate-200/50" 
-                        : "text-slate-550 hover:bg-slate-100"
+                        ? "bg-card text-foreground shadow-sm border border-border" 
+                        : "text-muted-foreground hover:bg-muted/80"
                     }`}
                   >
                     {sTab.name}
@@ -915,13 +915,13 @@ export function SmartLinksPage() {
                   <div className="flex gap-4">
                     <button 
                       onClick={() => setIsAddOpen(true)}
-                      className="flex-1 flex items-center justify-center gap-2 border border-slate-300 hover:bg-slate-55 rounded-2xl py-3 text-xs font-bold text-slate-750 transition-all shadow-sm active:scale-98 cursor-pointer"
+                      className="flex-1 flex items-center justify-center gap-2 border border-border hover:bg-muted rounded-2xl py-3 text-xs font-bold text-foreground transition-all shadow-sm active:scale-98 cursor-pointer"
                     >
                       <Link2 size={15} /> {t("buttons.addButton")}
                     </button>
                     <button 
                       onClick={() => toast.info(t("toasts.sectionComingSoon"))}
-                      className="flex-1 flex items-center justify-center gap-2 border border-slate-300 hover:bg-slate-55 rounded-2xl py-3 text-xs font-bold text-slate-750 transition-all shadow-sm active:scale-98 cursor-pointer"
+                      className="flex-1 flex items-center justify-center gap-2 border border-border hover:bg-muted rounded-2xl py-3 text-xs font-bold text-foreground transition-all shadow-sm active:scale-98 cursor-pointer"
                     >
                       <FileText size={15} /> {t("buttons.addSection")}
                     </button>
@@ -932,25 +932,25 @@ export function SmartLinksPage() {
                     {links.map((link, index) => (
                       <div 
                         key={link.id}
-                        className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm relative flex gap-3 transition-all hover:border-slate-350"
+                        className="bg-card border border-border rounded-2xl p-4 shadow-sm relative flex gap-3 transition-all hover:border-border"
                       >
                         {/* 6 dot drag handle */}
-                        <div className="flex flex-col justify-center items-center cursor-grab active:cursor-grabbing text-slate-400 shrink-0 select-none px-1">
+                        <div className="flex flex-col justify-center items-center cursor-grab active:cursor-grabbing text-muted-foreground shrink-0 select-none px-1">
                           <div className="grid grid-cols-2 gap-1 w-3">
-                            <span className="w-1 h-1 bg-slate-400 rounded-full" />
-                            <span className="w-1 h-1 bg-slate-400 rounded-full" />
-                            <span className="w-1 h-1 bg-slate-400 rounded-full" />
-                            <span className="w-1 h-1 bg-slate-400 rounded-full" />
-                            <span className="w-1 h-1 bg-slate-400 rounded-full" />
-                            <span className="w-1 h-1 bg-slate-400 rounded-full" />
+                            <span className="w-1 h-1 bg-muted-foreground rounded-full" />
+                            <span className="w-1 h-1 bg-muted-foreground rounded-full" />
+                            <span className="w-1 h-1 bg-muted-foreground rounded-full" />
+                            <span className="w-1 h-1 bg-muted-foreground rounded-full" />
+                            <span className="w-1 h-1 bg-muted-foreground rounded-full" />
+                            <span className="w-1 h-1 bg-muted-foreground rounded-full" />
                           </div>
                         </div>
 
                         {/* Editor inputs fields */}
                         <div className="flex-1 space-y-3">
                           <div className="flex items-center justify-between gap-2">
-                            <label className="text-[10px] font-bold text-slate-400 uppercase">{t("buttons.textLabel")}</label>
-                            <span className="inline-flex items-center gap-1 text-[11px] font-extrabold text-emerald-700 bg-emerald-50 border border-emerald-200/60 px-2.5 py-0.5 rounded-full shadow-2xs">
+                            <label className="text-[10px] font-bold text-muted-foreground uppercase">{t("buttons.textLabel")}</label>
+                            <span className="inline-flex items-center gap-1 text-[11px] font-extrabold text-emerald-600 bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-0.5 rounded-full shadow-2xs">
                               <MousePointerClick size={12} /> {link.clicks || 0} clicks
                             </span>
                           </div>
@@ -961,7 +961,7 @@ export function SmartLinksPage() {
                                 type="text"
                                 value={link.title}
                                 onChange={(e) => updateLinkField(link.id, "title", e.target.value)}
-                                className="w-full px-3 py-1.5 rounded-xl border border-slate-200 text-sm text-slate-800 focus:border-slate-400 outline-none font-semibold"
+                                className="w-full px-3 py-1.5 rounded-xl border border-border bg-card text-sm text-foreground focus:border-ring outline-none font-semibold"
                                 placeholder="Tiêu đề nút..."
                               />
                             </div>
@@ -970,22 +970,22 @@ export function SmartLinksPage() {
                                 type="text"
                                 value={link.url}
                                 onChange={(e) => updateLinkField(link.id, "url", e.target.value)}
-                                className="w-full px-3 py-1.5 rounded-xl border border-slate-200 text-sm text-slate-800 focus:border-slate-400 outline-none font-mono text-xs"
+                                className="w-full px-3 py-1.5 rounded-xl border border-border bg-card text-sm text-foreground focus:border-ring outline-none font-mono text-xs"
                                 placeholder="https://..."
                               />
                             </div>
                           </div>
 
                           {/* Action & Style Picker Row */}
-                          <div className="flex flex-wrap items-center justify-between gap-4 pt-2 border-t border-slate-100">
+                          <div className="flex flex-wrap items-center justify-between gap-4 pt-2 border-t border-border">
                             
                             {/* Color customization buttons */}
                             <div className="flex items-center gap-4">
                               
                               {/* Text Color */}
-                              <label className="flex items-center gap-1.5 cursor-pointer text-xs font-bold text-slate-500">
+                              <label className="flex items-center gap-1.5 cursor-pointer text-xs font-bold text-muted-foreground">
                                 <span 
-                                  className="w-4 h-4 rounded-full border border-slate-300 shadow-sm block" 
+                                  className="w-4 h-4 rounded-full border border-border shadow-sm block" 
                                   style={{ backgroundColor: link.textColor || "#FFFFFF" }}
                                 />
                                 {t("buttons.textColorLabel")}
@@ -998,9 +998,9 @@ export function SmartLinksPage() {
                               </label>
 
                               {/* Bg Color */}
-                              <label className="flex items-center gap-1.5 cursor-pointer text-xs font-bold text-slate-500">
+                              <label className="flex items-center gap-1.5 cursor-pointer text-xs font-bold text-muted-foreground">
                                 <span 
-                                  className="w-4 h-4 rounded-full border border-slate-300 shadow-sm block" 
+                                  className="w-4 h-4 rounded-full border border-border shadow-sm block" 
                                   style={{ backgroundColor: link.bgColor || "#E65C9C" }}
                                 />
                                 {t("buttons.bgColorLabel")}
@@ -1013,9 +1013,9 @@ export function SmartLinksPage() {
                               </label>
 
                               {/* Border Color */}
-                              <label className="flex items-center gap-1.5 cursor-pointer text-xs font-bold text-slate-500">
+                              <label className="flex items-center gap-1.5 cursor-pointer text-xs font-bold text-muted-foreground">
                                 <span 
-                                  className="w-4 h-4 rounded-full border border-slate-300 shadow-sm block" 
+                                  className="w-4 h-4 rounded-full border border-border shadow-sm block" 
                                   style={{ backgroundColor: link.borderColor || "#E65C9C" }}
                                 />
                                 {t("buttons.borderColorLabel")}
@@ -1034,15 +1034,15 @@ export function SmartLinksPage() {
                               
                               {/* Disable label & Switch */}
                               <div className="flex items-center gap-2">
-                                <span className="text-xs text-slate-450 font-bold">{t("buttons.disableLabel")}</span>
+                                <span className="text-xs text-muted-foreground font-bold">{t("buttons.disableLabel")}</span>
                                 <button
                                   type="button"
                                   onClick={() => handleToggleLink(link.id)}
                                   className={`w-9 h-5 rounded-full p-0.5 transition-colors duration-200 ${
-                                    !link.isActive ? "bg-red-400" : "bg-[#D1D5DB]"
+                                    !link.isActive ? "bg-red-400" : "bg-muted"
                                   }`}
                                 >
-                                  <div className={`w-4 h-4 bg-white rounded-full shadow-sm transform transition-transform duration-200 ${
+                                  <div className={`w-4 h-4 bg-card rounded-full shadow-sm transform transition-transform duration-200 ${
                                     !link.isActive ? "translate-x-4" : "translate-x-0"
                                   }`} />
                                 </button>
@@ -1051,13 +1051,13 @@ export function SmartLinksPage() {
                               {/* Clone */}
                               <button 
                                 onClick={() => handleCloneLink(link)}
-                                className="flex items-center gap-1 text-slate-500 hover:text-slate-800 text-xs font-bold border border-slate-200 px-2 py-1 rounded-lg hover:bg-slate-50 transition-all cursor-pointer"
+                                className="flex items-center gap-1 text-muted-foreground hover:text-foreground text-xs font-bold border border-border px-2 py-1 rounded-lg hover:bg-muted transition-all cursor-pointer"
                                 type="button"
                               >
                                 {t("buttons.cloneBtn")}
                               </button>
 
-                              <label className="flex items-center gap-1 text-slate-500 hover:text-slate-800 text-xs font-bold border border-slate-200 px-2 py-1 rounded-lg hover:bg-slate-50 transition-all cursor-pointer">
+                              <label className="flex items-center gap-1 text-muted-foreground hover:text-foreground text-xs font-bold border border-border px-2 py-1 rounded-lg hover:bg-muted transition-all cursor-pointer">
                                 {t("buttons.iconBtn")}
                                 <input
                                   type="file"
@@ -1070,7 +1070,7 @@ export function SmartLinksPage() {
                               {/* Delete (Trash) */}
                               <button 
                                 onClick={() => handleDeleteLink(link.id)}
-                                className="text-slate-400 hover:text-red-500 p-1.5 rounded-lg hover:bg-red-50 transition-colors cursor-pointer"
+                                className="text-muted-foreground hover:text-red-500 p-1.5 rounded-lg hover:bg-red-500/10 transition-colors cursor-pointer"
                                 type="button"
                               >
                                 <Trash2 size={15} />
@@ -1085,15 +1085,15 @@ export function SmartLinksPage() {
                   </div>
 
                   {/* Add Icon Section (Matching screenshot 2) */}
-                  <div className="border-t border-slate-100 pt-6 space-y-4">
-                    <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider">{t("buttons.addIconTitle")}</h4>
+                  <div className="border-t border-border pt-6 space-y-4">
+                    <h4 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">{t("buttons.addIconTitle")}</h4>
                     
                     <div className="space-y-3">
                       {socialIcons.map((sIcon) => (
-                        <div key={sIcon.id} className="flex items-center gap-3 bg-[#F9FAFB] p-3 rounded-xl border border-slate-200">
+                        <div key={sIcon.id} className="flex items-center gap-3 bg-muted/50 p-3 rounded-xl border border-border">
                           
                           {/* Platform Logo */}
-                          <div className="text-slate-700 shrink-0 w-8 h-8 rounded-lg bg-white flex items-center justify-center border border-slate-200 shadow-sm">
+                          <div className="text-foreground shrink-0 w-8 h-8 rounded-lg bg-card flex items-center justify-center border border-border shadow-sm">
                             {renderSocialIcon(sIcon.platform, 16)}
                           </div>
 
@@ -1104,7 +1104,7 @@ export function SmartLinksPage() {
                               const updated = socialIcons.map(si => si.id === sIcon.id ? { ...si, platform: e.target.value } : si);
                               setSocialIcons(updated);
                             }}
-                            className="bg-white border border-slate-250 rounded-lg px-2.5 py-1.5 text-xs font-bold text-slate-700 outline-none"
+                            className="bg-card border border-border rounded-lg px-2.5 py-1.5 text-xs font-bold text-foreground outline-none"
                           >
                             <option value="twitter">Twitter / X</option>
                             <option value="instagram">Instagram</option>
@@ -1127,7 +1127,7 @@ export function SmartLinksPage() {
                               const updated = socialIcons.map(si => si.id === sIcon.id ? { ...si, url: e.target.value } : si);
                               setSocialIcons(updated);
                             }}
-                            className="flex-1 px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs text-slate-800 outline-none font-mono"
+                            className="flex-1 px-3 py-1.5 bg-card border border-border rounded-lg text-xs text-foreground outline-none font-mono"
                             placeholder="https://..."
                           />
 
@@ -1137,7 +1137,7 @@ export function SmartLinksPage() {
                               setSocialIcons(prev => prev.filter(si => si.id !== sIcon.id));
                               toast.info(t("toasts.deleteLink"));
                             }}
-                            className="text-slate-400 hover:text-red-500 p-1.5 rounded-lg transition-colors cursor-pointer"
+                            className="text-muted-foreground hover:text-red-500 p-1.5 rounded-lg transition-colors cursor-pointer"
                           >
                             <Trash2 size={14} />
                           </button>
@@ -1151,7 +1151,7 @@ export function SmartLinksPage() {
                         setSocialIcons(prev => [...prev, newIcon]);
                         toast.success(t("toasts.addLinkSuccess"));
                       }}
-                      className="w-full flex items-center justify-center gap-1.5 border border-dashed border-slate-300 hover:bg-slate-50 py-2.5 rounded-xl text-xs font-bold text-slate-550 transition-all cursor-pointer"
+                      className="w-full flex items-center justify-center gap-1.5 border border-dashed border-border hover:bg-muted py-2.5 rounded-xl text-xs font-bold text-muted-foreground transition-all cursor-pointer"
                     >
                       <Plus size={14} /> {t("icons.addBtn")}
                     </button>
@@ -1165,24 +1165,24 @@ export function SmartLinksPage() {
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <button 
                       onClick={() => toast.info(t("toasts.driveComingSoon"))}
-                      className="flex flex-col items-center justify-center p-6 border border-slate-200 bg-slate-50 hover:bg-slate-100 rounded-2xl transition-all gap-2 group cursor-pointer"
+                      className="flex flex-col items-center justify-center p-6 border border-border bg-muted hover:bg-muted/80 rounded-2xl transition-all gap-2 group cursor-pointer"
                     >
-                      <span className="p-3 bg-white text-blue-500 rounded-full shadow-sm group-hover:scale-105 transition-transform"><Image size={20} /></span>
-                      <span className="text-xs font-bold text-slate-700">{t("media.addMediaBtn")} (Image)</span>
+                      <span className="p-3 bg-card text-blue-500 rounded-full shadow-sm group-hover:scale-105 transition-transform"><Image size={20} /></span>
+                      <span className="text-xs font-bold text-foreground">{t("media.addMediaBtn")} (Image)</span>
                     </button>
                     <button 
                       onClick={() => toast.info(t("toasts.videoComingSoon"))}
-                      className="flex flex-col items-center justify-center p-6 border border-slate-200 bg-slate-50 hover:bg-slate-100 rounded-2xl transition-all gap-2 group cursor-pointer"
+                      className="flex flex-col items-center justify-center p-6 border border-border bg-muted hover:bg-muted/80 rounded-2xl transition-all gap-2 group cursor-pointer"
                     >
-                      <span className="p-3 bg-white text-purple-500 rounded-full shadow-sm group-hover:scale-105 transition-transform"><Video size={20} /></span>
-                      <span className="text-xs font-bold text-slate-700">{t("media.addMediaBtn")} (Video)</span>
+                      <span className="p-3 bg-card text-purple-500 rounded-full shadow-sm group-hover:scale-105 transition-transform"><Video size={20} /></span>
+                      <span className="text-xs font-bold text-foreground">{t("media.addMediaBtn")} (Video)</span>
                     </button>
                     <button 
                       onClick={() => toast.info(t("toasts.igComingSoon"))}
-                      className="flex flex-col items-center justify-center p-6 border border-slate-200 bg-slate-50 hover:bg-slate-100 rounded-2xl transition-all gap-2 group cursor-pointer"
+                      className="flex flex-col items-center justify-center p-6 border border-border bg-muted hover:bg-muted/80 rounded-2xl transition-all gap-2 group cursor-pointer"
                     >
-                      <span className="p-3 bg-white text-pink-550 rounded-full shadow-sm group-hover:scale-105 transition-transform"><Instagram size={20} /></span>
-                      <span className="text-xs font-bold text-slate-700">{t("media.addMediaBtn")} (Instagram)</span>
+                      <span className="p-3 bg-card text-pink-500 rounded-full shadow-sm group-hover:scale-105 transition-transform"><Instagram size={20} /></span>
+                      <span className="text-xs font-bold text-foreground">{t("media.addMediaBtn")} (Instagram)</span>
                     </button>
                   </div>
                 </div>
@@ -1191,7 +1191,7 @@ export function SmartLinksPage() {
               {/* SUBTAB CONTENT: APPEARANCE (Matching screenshot 4) */}
               {activeSubTab === "appearance" && (
                 <div className="space-y-4">
-                  <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider">{t("appearance.sectionTitle")}</h4>
+                  <h4 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">{t("appearance.sectionTitle")}</h4>
                   <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
                     {THEMES.map((theme) => (
                       <button
@@ -1202,21 +1202,21 @@ export function SmartLinksPage() {
                         }}
                         className={`flex flex-col items-center text-center p-2 rounded-xl border-2 transition-all cursor-pointer ${
                           activeTheme.id === theme.id 
-                            ? "border-slate-800 bg-slate-50 shadow-sm scale-102" 
-                            : "border-slate-200 hover:bg-slate-50/50"
+                            ? "border-primary bg-muted shadow-sm scale-102" 
+                            : "border-border hover:bg-muted/50"
                         }`}
                       >
                         {/* Theme simulated phone icon */}
                         <div className={`w-16 h-28 rounded-xl bg-gradient-to-b ${theme.previewBg} p-2 flex flex-col justify-between items-center overflow-hidden border shadow-sm`}>
-                          <div className="w-4 h-4 bg-white/20 rounded-full" />
+                          <div className="w-4 h-4 bg-card/20 rounded-full" />
                           <div className="w-full space-y-1">
-                            <div className="w-full h-2.5 bg-white/40 rounded-sm" />
-                            <div className="w-full h-2.5 bg-white/40 rounded-sm" />
-                            <div className="w-full h-2.5 bg-white/40 rounded-sm" />
+                            <div className="w-full h-2.5 bg-card/40 rounded-sm" />
+                            <div className="w-full h-2.5 bg-card/40 rounded-sm" />
+                            <div className="w-full h-2.5 bg-card/40 rounded-sm" />
                           </div>
-                          <div className="w-8 h-1 bg-white/10 rounded-full" />
+                          <div className="w-8 h-1 bg-card/10 rounded-full" />
                         </div>
-                        <span className="text-[10px] font-bold text-slate-700 mt-2 block truncate w-full">{theme.name}</span>
+                        <span className="text-[10px] font-bold text-foreground mt-2 block truncate w-full">{theme.name}</span>
                       </button>
                     ))}
                   </div>
@@ -1243,7 +1243,7 @@ export function SmartLinksPage() {
 
         {/* Right Mobile Preview Column (4 Cols) */}
         <div className="lg:col-span-4 flex flex-col items-center justify-center sticky top-6">
-          <span className="text-xs font-bold text-slate-450 uppercase tracking-wider mb-2 select-none flex items-center gap-1.5">
+          <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2 select-none flex items-center gap-1.5">
             <Eye size={13} /> Live Preview
           </span>
           
@@ -1260,7 +1260,7 @@ export function SmartLinksPage() {
                 href={`/s/${slug}`} 
                 target="_blank" 
                 rel="noreferrer"
-                className="absolute top-8 right-6 z-30 bg-white/95 hover:bg-white text-slate-800 text-[10px] font-bold px-3 py-1.5 rounded-full shadow-md flex items-center gap-1 transition-all active:scale-95 border border-slate-200"
+                className="absolute top-8 right-6 z-30 bg-card hover:bg-card/90 text-foreground text-[10px] font-bold px-3 py-1.5 rounded-full shadow-md flex items-center gap-1 transition-all active:scale-95 border border-border"
               >
                 <Globe size={11} /> VIEW LIVE
               </a>
@@ -1273,7 +1273,7 @@ export function SmartLinksPage() {
               <div className="flex flex-col items-center text-center mt-6 mb-6">
                 
                 {/* Logo / Profile Avatar */}
-                <label className="w-16 h-16 rounded-full bg-white flex items-center justify-center shadow-md mb-3 border border-slate-100 overflow-hidden shrink-0 cursor-pointer relative group">
+                <label className="w-16 h-16 rounded-full bg-card flex items-center justify-center shadow-md mb-3 border border-border overflow-hidden shrink-0 cursor-pointer relative group">
                   {!avatarError && avatarUrl ? (
                     <img 
                       src={avatarUrl} 
@@ -1355,7 +1355,7 @@ export function SmartLinksPage() {
                       href={sIcon.url.startsWith("http") ? sIcon.url : `https://${sIcon.url}`} 
                       target="_blank" 
                       rel="noreferrer"
-                      className="w-8 h-8 rounded-full bg-white/10 backdrop-blur-sm hover:bg-white/20 flex items-center justify-center transition-all border border-white/5"
+                      className="w-8 h-8 rounded-full bg-card/10 backdrop-blur-sm hover:bg-card/20 flex items-center justify-center transition-all border border-white/5"
                       title={sIcon.platform}
                     >
                       {renderSocialIcon(sIcon.platform, 14)}
@@ -1379,40 +1379,40 @@ export function SmartLinksPage() {
       {/* Modal: Add Link */}
       {isAddOpen && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 animate-in fade-in duration-200">
-          <div className="bg-white rounded-3xl w-full max-w-md p-6 relative shadow-2xl border border-slate-200 mx-4">
+          <div className="bg-card rounded-3xl w-full max-w-md p-6 relative shadow-2xl border border-border mx-4">
             
             <button 
               onClick={() => setIsAddOpen(false)}
-              className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 transition-colors cursor-pointer"
+              className="absolute top-4 right-4 text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
             >
               <X size={20} />
             </button>
 
-            <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2 mb-4">
+            <h3 className="text-lg font-bold text-foreground flex items-center gap-2 mb-4">
               <Plus className="text-emerald-500 w-5 h-5" />
               {t("addLink.title")}
             </h3>
 
             <form onSubmit={handleAddLink} className="space-y-4">
               <div>
-                <label className="block text-xs font-bold text-slate-500 uppercase mb-1.5">{t("addLink.titleLabel")}</label>
+                <label className="block text-xs font-bold text-muted-foreground uppercase mb-1.5">{t("addLink.titleLabel")}</label>
                 <input
                   type="text"
                   placeholder={t("addLink.titlePlaceholder")}
                   value={newTitle}
                   onChange={(e) => setNewTitle(e.target.value)}
-                  className="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm text-slate-800 focus:border-slate-400 outline-none transition-colors"
+                  className="w-full px-3 py-2.5 rounded-xl border border-border bg-card text-sm text-foreground focus:border-ring outline-none transition-colors"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-500 uppercase mb-1.5">{t("addLink.urlLabel")}</label>
+                <label className="block text-xs font-bold text-muted-foreground uppercase mb-1.5">{t("addLink.urlLabel")}</label>
                 <input
                   type="text"
                   placeholder={t("addLink.urlPlaceholder")}
                   value={newUrl}
                   onChange={(e) => newSetUrl(e.target.value)}
-                  className="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm text-slate-800 focus:border-slate-400 outline-none transition-colors"
+                  className="w-full px-3 py-2.5 rounded-xl border border-border bg-card text-sm text-foreground focus:border-ring outline-none transition-colors"
                 />
               </div>
 
@@ -1420,13 +1420,13 @@ export function SmartLinksPage() {
                 <button
                   type="button"
                   onClick={() => setIsAddOpen(false)}
-                  className="px-4 py-2.5 rounded-xl text-sm font-semibold border border-slate-200 hover:bg-slate-50 transition-colors"
+                  className="px-4 py-2.5 rounded-xl text-sm font-semibold border border-border hover:bg-muted transition-colors cursor-pointer text-muted-foreground"
                 >
                   {t("addLink.cancelBtn")}
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2.5 rounded-xl text-sm font-semibold bg-[#4F5B66] hover:bg-[#3d4750] text-white transition-all shadow-sm"
+                  className="px-4 py-2.5 rounded-xl text-sm font-semibold bg-primary text-primary-foreground hover:bg-primary/90 transition-all shadow-sm cursor-pointer"
                 >
                   {t("addLink.addBtn")}
                 </button>
@@ -1439,19 +1439,19 @@ export function SmartLinksPage() {
 
       {/* Modal Đổi tên SmartLink */}
       {isRenameOpen && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-150">
-          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-100 space-y-5 animate-in zoom-in-95 duration-150">
-            <div className="flex justify-between items-center pb-3 border-b border-slate-100">
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-150">
+          <div className="bg-card rounded-3xl max-w-md w-full p-6 shadow-2xl border border-border space-y-5 animate-in zoom-in-95 duration-150">
+            <div className="flex justify-between items-center pb-3 border-b border-border">
               <div className="flex items-center gap-2.5">
-                <div className="w-9 h-9 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center">
+                <div className="w-9 h-9 rounded-xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 flex items-center justify-center">
                   <Edit3 size={18} />
                 </div>
-                <h3 className="text-lg font-bold text-slate-800">Đổi tên SmartLink</h3>
+                <h3 className="text-lg font-bold text-foreground">Đổi tên SmartLink</h3>
               </div>
               <button 
                 type="button"
                 onClick={() => setIsRenameOpen(false)}
-                className="text-slate-400 hover:text-slate-600 p-1 rounded-lg hover:bg-slate-100 transition-colors"
+                className="text-muted-foreground hover:text-foreground p-1 rounded-lg hover:bg-muted transition-colors cursor-pointer"
               >
                 <X size={18} />
               </button>
@@ -1459,7 +1459,7 @@ export function SmartLinksPage() {
 
             <form onSubmit={handleSaveRename} className="space-y-4">
               <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1.5">
+                <label className="block text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1.5">
                   Tên trang SmartLink (Page Title)
                 </label>
                 <input
@@ -1467,13 +1467,13 @@ export function SmartLinksPage() {
                   value={renameTitle}
                   onChange={(e) => setRenameTitle(e.target.value)}
                   placeholder="Ví dụ: Trang chính, Chiến dịch Mùa Hè..."
-                  className="w-full bg-slate-50 border border-slate-200 focus:border-indigo-500 focus:bg-white rounded-xl px-4 py-2.5 text-sm font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-100 transition-all"
+                  className="w-full bg-muted border border-border focus:border-ring focus:bg-card rounded-xl px-4 py-2.5 text-sm font-semibold text-foreground focus:outline-none focus:ring-2 focus:ring-ring transition-all"
                   required
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1.5">
+                <label className="block text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1.5">
                   Đường dẫn URL (Slug)
                 </label>
                 <input
@@ -1481,26 +1481,26 @@ export function SmartLinksPage() {
                   value={renameSlug}
                   onChange={(e) => setRenameSlug(e.target.value)}
                   placeholder="slug-custom"
-                  className="w-full bg-slate-50 border border-slate-200 focus:border-indigo-500 focus:bg-white rounded-xl px-4 py-2.5 text-sm font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-100 transition-all"
+                  className="w-full bg-muted border border-border focus:border-ring focus:bg-card rounded-xl px-4 py-2.5 text-sm font-semibold text-foreground focus:outline-none focus:ring-2 focus:ring-ring transition-all"
                   required
                 />
-                <p className="text-[11px] text-slate-400 mt-1">
-                  Slug xem công khai: <span className="font-semibold text-indigo-600">{renameSlug || 'slug'}</span>
+                <p className="text-[11px] text-muted-foreground mt-1">
+                  Slug xem công khai: <span className="font-semibold text-indigo-600 dark:text-indigo-400">{renameSlug || 'slug'}</span>
                 </p>
               </div>
 
-              <div className="pt-3 flex items-center justify-end gap-2 border-t border-slate-100">
+              <div className="pt-3 flex items-center justify-end gap-2 border-t border-border">
                 <button
                   type="button"
                   onClick={() => setIsRenameOpen(false)}
-                  className="px-4 py-2 rounded-xl border border-slate-200 text-slate-600 text-sm font-bold hover:bg-slate-50 transition-colors"
+                  className="px-4 py-2 rounded-xl border border-border text-muted-foreground text-sm font-bold hover:bg-muted transition-colors cursor-pointer"
                 >
                   Hủy
                 </button>
                 <button
                   type="submit"
                   disabled={renaming}
-                  className="flex items-center gap-1.5 px-5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-bold transition-all shadow-md active:scale-95 disabled:opacity-50"
+                  className="flex items-center gap-1.5 px-5 py-2 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground text-sm font-bold transition-all shadow-md active:scale-95 disabled:opacity-50 cursor-pointer"
                 >
                   {renaming ? <Loader2 size={15} className="animate-spin" /> : <Save size={15} />}
                   Lưu thay đổi

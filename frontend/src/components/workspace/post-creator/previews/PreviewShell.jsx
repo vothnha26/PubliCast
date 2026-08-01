@@ -71,7 +71,7 @@ export function PreviewShell({
           </div>
         ) : (
           <div className="absolute inset-0 z-0 bg-gradient-to-b from-[#111827] via-[#1F2937] to-[#030712] flex flex-col items-center justify-center p-6 text-center">
-            <div className="w-14 h-14 rounded-full bg-white/10 flex items-center justify-center text-white/40 mb-3 animate-pulse border border-white/10">
+            <div className="w-14 h-14 rounded-full bg-card/10 flex items-center justify-center text-white/40 mb-3 animate-pulse border border-white/10">
               {fallbackIcon || <Play size={28} className="fill-current ml-1 text-white/60" />}
             </div>
             <p className="text-[10px] font-bold text-white/50 uppercase tracking-widest">{fallbackLabel}</p>
@@ -92,8 +92,8 @@ export function PreviewShell({
 
   // Card layout (Standard feeds)
   const cardWidth = previewDevice === 'mobile' ? 'w-[300px]' : 'w-full max-w-[460px]';
-  const cardBg = dark ? 'bg-[#0f0f0f] text-white' : 'bg-white text-gray-900';
-  const borderColor = dark ? 'border-gray-800' : 'border-gray-100';
+  const cardBg = dark ? 'bg-[#0f0f0f] text-white' : 'bg-card text-foreground';
+  const borderColor = dark ? 'border-gray-800' : 'border-border';
 
   return (
     <div className={`${cardWidth} ${cardBg} rounded-3xl overflow-hidden shadow-2xl font-sans border ${borderColor} flex flex-col mx-auto animate-in fade-in duration-300 text-left`}>
@@ -118,12 +118,12 @@ export function PreviewShell({
           )}
         </div>
       ) : (
-        <div className={`${aspectRatioClass} bg-gray-50 flex flex-col items-center justify-center text-center p-6 text-gray-400 border-y ${borderColor}`}>
-          <div className="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center mb-2.5 border border-gray-200">
-            {fallbackIcon || <Play size={20} className="text-gray-400" />}
+        <div className={`${aspectRatioClass} bg-muted flex flex-col items-center justify-center text-center p-6 text-muted-foreground border-y ${borderColor}`}>
+          <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center mb-2.5 border border-border">
+            {fallbackIcon || <Play size={20} className="text-muted-foreground" />}
           </div>
-          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{fallbackLabel}</p>
-          <p className="text-[8px] text-gray-400/80 mt-0.5 max-w-[170px] leading-normal font-medium">Select photo or video to preview your post.</p>
+          <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">{fallbackLabel}</p>
+          <p className="text-[8px] text-muted-foreground/80 mt-0.5 max-w-[170px] leading-normal font-medium">Select photo or video to preview your post.</p>
         </div>
       )}
 

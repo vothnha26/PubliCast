@@ -48,7 +48,7 @@ function GrowthBadge({ value }) {
 }
 
 // ─── Stat mini card ──────────────────────────────────────────────────────────
-function StatCell({ label, value, color = "text-[#0A0A0A]" }) {
+function StatCell({ label, value, color = "text-foreground" }) {
   return (
     <td className="px-4 py-4 text-center">
       <span className={`text-sm font-black ${color}`}>{value ?? "--"}</span>
@@ -62,20 +62,20 @@ function SkeletonRow() {
     <tr className="animate-pulse">
       <td className="px-6 py-4">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-full bg-gray-100" />
+          <div className="w-10 h-10 rounded-full bg-muted" />
           <div className="space-y-2">
-            <div className="w-28 h-3 bg-gray-100 rounded" />
-            <div className="w-20 h-2 bg-gray-50 rounded" />
+            <div className="w-28 h-3 bg-muted rounded" />
+            <div className="w-20 h-2 bg-muted rounded" />
           </div>
         </div>
       </td>
       {[1, 2, 3, 4, 5].map((n) => (
         <td key={n} className="px-4 py-4">
-          <div className="w-16 h-4 bg-gray-100 rounded mx-auto" />
+          <div className="w-16 h-4 bg-muted rounded mx-auto" />
         </td>
       ))}
       <td className="px-4 py-4 text-right">
-        <div className="inline-block w-8 h-8 bg-gray-100 rounded-lg" />
+        <div className="inline-block w-8 h-8 bg-muted rounded-lg" />
       </td>
     </tr>
   );
@@ -129,7 +129,7 @@ export function FacebookCompetitorsTab({
     <div className="space-y-6">
       {/* ── Header row ──────────────────────────────────────────────────── */}
       <div className="flex items-center justify-between">
-        <h3 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
+        <h3 className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
           List of competitors
         </h3>
 
@@ -174,13 +174,13 @@ export function FacebookCompetitorsTab({
                 {searchResults.map((page) => (
                   <div
                     key={page.pageId || page.id}
-                    className="flex items-center justify-between p-2 hover:bg-gray-50 rounded-lg border border-gray-100"
+                    className="flex items-center justify-between p-2 hover:bg-muted rounded-lg border border-border"
                   >
                     <div className="flex items-center gap-3">
                       {page.thumbnail ? (
                         <img
                           src={page.thumbnail}
-                          className="w-8 h-8 rounded-full border border-gray-100"
+                          className="w-8 h-8 rounded-full border border-border"
                           alt=""
                         />
                       ) : (
@@ -209,15 +209,15 @@ export function FacebookCompetitorsTab({
       </div>
 
       {/* ── Competitors Table ──────────────────────────────────────────── */}
-      <div className="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-visible">
+      <div className="bg-card rounded-3xl border border-border shadow-sm overflow-visible">
         <div className="overflow-x-auto">
           <table className="w-full min-w-[900px]">
-            <thead className="bg-gray-50/50">
+            <thead className="bg-muted/50">
               <tr>
                 {HEADERS.map((h, i) => (
                   <th
                     key={i}
-                    className={`px-4 py-4 text-[9px] font-bold text-gray-400 uppercase tracking-widest ${
+                    className={`px-4 py-4 text-[9px] font-bold text-muted-foreground uppercase tracking-widest ${
                       h === "" ? "text-right" : i === 0 ? "text-left" : "text-center"
                     }`}
                   >
@@ -228,18 +228,18 @@ export function FacebookCompetitorsTab({
             </thead>
 
             {isCompetitorLoading ? (
-              <tbody className="divide-y divide-gray-50">
+              <tbody className="divide-y divide-border">
                 {[1, 2, 3].map((n) => (
                   <SkeletonRow key={n} />
                 ))}
               </tbody>
             ) : (
-              <tbody className="divide-y divide-gray-50">
+              <tbody className="divide-y divide-border">
                 {competitors.length === 0 ? (
                   <tr>
                     <td
                       colSpan={HEADERS.length}
-                      className="px-6 py-12 text-center text-gray-400 text-xs"
+                      className="px-6 py-12 text-center text-muted-foreground text-xs"
                     >
                       No Facebook competitors added yet.
                     </td>
@@ -248,7 +248,7 @@ export function FacebookCompetitorsTab({
                   competitors.map((comp, i) => (
                     <tr
                       key={comp.id || i}
-                      className="hover:bg-[#F8F8F7]/50 transition-colors"
+                      className="hover:bg-muted/50 transition-colors"
                     >
                       {/* Competitor info */}
                       <td className="px-6 py-4">
@@ -256,20 +256,20 @@ export function FacebookCompetitorsTab({
                           {comp.competitorAvatarUrl ? (
                             <img
                               src={comp.competitorAvatarUrl}
-                              className="w-10 h-10 rounded-full border border-gray-100 object-cover"
+                              className="w-10 h-10 rounded-full border border-border object-cover"
                               referrerPolicy="no-referrer"
                               alt=""
                             />
                           ) : (
-                            <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-black">
+                            <div className="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-950 flex items-center justify-center text-blue-600 dark:text-blue-400 font-black">
                               f
                             </div>
                           )}
                           <div className="flex flex-col min-w-0">
-                            <span className="text-sm font-bold text-[#0A0A0A] truncate max-w-[160px]">
+                            <span className="text-sm font-bold text-foreground truncate max-w-[160px]">
                               {comp.competitorDisplayName || comp.competitorHandle}
                             </span>
-                            <span className="text-[10px] font-medium text-gray-400">
+                            <span className="text-[10px] font-medium text-muted-foreground">
                               {comp.competitorHandle}
                             </span>
                             <GrowthBadge value={comp.followersGrowth} />
@@ -279,7 +279,7 @@ export function FacebookCompetitorsTab({
 
                       {/* Followers */}
                       <td className="px-4 py-4 text-center">
-                        <span className="text-sm font-black text-[#0A0A0A]">
+                        <span className="text-sm font-black text-foreground">
                           {formatNumber(comp.followersCount)}
                         </span>
                       </td>
@@ -289,10 +289,10 @@ export function FacebookCompetitorsTab({
                         <span
                           className={`text-sm font-bold ${
                             comp.avgEngagementRate > 3
-                              ? "text-green-600"
+                              ? "text-green-600 dark:text-green-400"
                               : comp.avgEngagementRate > 1
                               ? "text-amber-500"
-                              : "text-gray-400"
+                              : "text-muted-foreground"
                           }`}
                         >
                           {comp.avgEngagementRate != null
@@ -303,7 +303,7 @@ export function FacebookCompetitorsTab({
 
                       {/* Avg Reach */}
                       <td className="px-4 py-4 text-center">
-                        <span className="text-xs font-bold text-gray-700">
+                        <span className="text-xs font-bold text-foreground">
                           {comp.avgReach != null
                             ? formatNumber(Math.round(comp.avgReach))
                             : "--"}
@@ -312,7 +312,7 @@ export function FacebookCompetitorsTab({
 
                       {/* Posts/week */}
                       <td className="px-4 py-4 text-center">
-                        <span className="text-xs font-bold text-gray-700">
+                        <span className="text-xs font-bold text-foreground">
                           {comp.postsPerWeek != null
                             ? comp.postsPerWeek.toFixed(1)
                             : "--"}
@@ -322,17 +322,17 @@ export function FacebookCompetitorsTab({
                       {/* Top Post Type */}
                       <td className="px-4 py-4 text-center">
                         {comp.topPostType ? (
-                          <span className="px-2 py-1 rounded-full text-[9px] font-bold uppercase bg-indigo-50 text-indigo-600">
+                          <span className="px-2 py-1 rounded-full text-[9px] font-bold uppercase bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-400">
                             {comp.topPostType}
                           </span>
                         ) : (
-                          <span className="text-gray-300 text-xs">--</span>
+                          <span className="text-muted-foreground text-xs">--</span>
                         )}
                       </td>
 
                       {/* Added At */}
                       <td className="px-4 py-4 text-center">
-                        <span className="text-[10px] font-medium text-gray-400">
+                        <span className="text-[10px] font-medium text-muted-foreground">
                           {new Date(comp.addedAt).toLocaleDateString()}
                         </span>
                       </td>
@@ -343,39 +343,39 @@ export function FacebookCompetitorsTab({
                            <button
                              onClick={() => !isPlatformLocked && toggleFavorite(comp.id)}
                              disabled={isPlatformLocked}
-                             className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                             className="p-1.5 hover:bg-muted rounded-lg transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                            >
                              <Star
                                size={15}
                                className={
                                  favorites[comp.id]
                                    ? "fill-yellow-400 stroke-yellow-400"
-                                   : "text-gray-300 hover:text-yellow-400"
+                                   : "text-muted-foreground hover:text-yellow-400"
                                }
                              />
                            </button>
 
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
-                              <button className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer border-none bg-transparent focus:outline-none">
+                              <button className="p-1.5 hover:bg-muted rounded-lg transition-colors cursor-pointer border-none bg-transparent focus:outline-none">
                                 <MoreVertical
                                   size={15}
-                                  className="text-gray-400 hover:text-[#0A0A0A]"
+                                  className="text-muted-foreground hover:text-foreground"
                                 />
                               </button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent
                               align="end"
-                              className="w-48 bg-white border border-gray-100 rounded-2xl shadow-xl py-2 z-50"
+                              className="w-48 bg-card border border-border rounded-2xl shadow-xl py-2 z-50"
                             >
                               <DropdownMenuItem
                                 onClick={() => openFacebookPage(comp)}
-                                className="px-4 py-2 flex items-center gap-2.5 text-xs text-gray-700 hover:bg-gray-50 font-medium cursor-pointer"
+                                className="px-4 py-2 flex items-center gap-2.5 text-xs text-foreground hover:bg-muted font-medium cursor-pointer"
                               >
-                                <ExternalLink size={13} className="text-gray-400" />
+                                <ExternalLink size={13} className="text-muted-foreground" />
                                 Visit Facebook page
                               </DropdownMenuItem>
-                              <DropdownMenuSeparator className="bg-gray-100 my-1" />
+                              <DropdownMenuSeparator className="bg-border my-1" />
                                <DropdownMenuItem
                                  disabled={isPlatformLocked}
                                  onClick={async () => {
@@ -390,7 +390,7 @@ export function FacebookCompetitorsTab({
                                    });
                                    if (ok) handleDeleteCompetitor(comp.id);
                                  }}
-                                 className="px-4 py-2 flex items-center gap-2.5 text-xs text-red-600 hover:bg-red-50 font-medium cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                                 className="px-4 py-2 flex items-center gap-2.5 text-xs text-red-600 dark:text-red-400 hover:bg-red-500/10 font-medium cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                                >
                                  <Trash2 size={13} className="text-red-400" />
                                  Delete competitor

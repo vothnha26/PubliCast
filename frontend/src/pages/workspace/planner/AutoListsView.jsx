@@ -83,12 +83,12 @@ export function AutoListsView() {
       {/* View Header */}
       <div className="flex items-center justify-between">
         <div className="space-y-1 text-left">
-          <h2 className="text-xl font-bold text-[#0A0A0A] tracking-tight">{t("autolists.title")}</h2>
-          <p className="text-xs text-gray-400 font-medium">{t("autolists.subtitle")}</p>
+          <h2 className="text-xl font-bold text-foreground tracking-tight">{t("autolists.title")}</h2>
+          <p className="text-xs text-muted-foreground font-medium">{t("autolists.subtitle")}</p>
         </div>
         <button 
           onClick={() => navigate("/planner/autolist/new")}
-          className="flex items-center gap-2 px-5 py-2.5 bg-[#0A0A0A] text-white rounded-xl text-[12px] font-bold hover:scale-105 active:scale-95 transition-all shadow-lg cursor-pointer"
+          className="flex items-center gap-2 px-5 py-2.5 bg-[#0A0A0A] dark:bg-lime-400 text-white dark:text-black rounded-xl text-[12px] font-bold hover:scale-105 active:scale-95 transition-all shadow-lg cursor-pointer"
         >
           <Plus size={16} /> {t("autolists.createBtn")}
         </button>
@@ -98,20 +98,20 @@ export function AutoListsView() {
       {loading ? (
         <div className="grid grid-cols-1 gap-4 animate-pulse">
            {[1, 2].map((n) => (
-             <div key={n} className="bg-white border border-gray-100 rounded-3xl p-6 shadow-sm h-32 space-y-4">
+             <div key={n} className="bg-card border border-border rounded-3xl p-6 shadow-sm h-32 space-y-4">
                 <div className="flex justify-between items-center">
                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-2xl bg-gray-100" />
+                      <div className="w-10 h-10 rounded-2xl bg-muted" />
                       <div className="space-y-2">
-                         <div className="w-24 h-4 bg-gray-100 rounded" />
-                         <div className="w-32 h-2.5 bg-gray-50 rounded" />
+                         <div className="w-24 h-4 bg-muted rounded" />
+                         <div className="w-32 h-2.5 bg-muted rounded" />
                       </div>
                    </div>
-                   <div className="w-12 h-6 bg-gray-100 rounded-full" />
+                   <div className="w-12 h-6 bg-muted rounded-full" />
                 </div>
                 <div className="flex gap-4">
-                   <div className="w-20 h-4 bg-gray-50 rounded" />
-                   <div className="w-24 h-4 bg-gray-50 rounded" />
+                   <div className="w-20 h-4 bg-muted rounded" />
+                   <div className="w-24 h-4 bg-muted rounded" />
                 </div>
              </div>
            ))}

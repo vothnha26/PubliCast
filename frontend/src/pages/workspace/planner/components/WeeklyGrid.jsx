@@ -146,11 +146,11 @@ export function WeeklyGrid({
   }, [rowHeight]);
 
   return (
-    <div className="w-full h-full bg-white border border-gray-200 rounded-3xl shadow-sm overflow-hidden flex flex-col">
+    <div className="w-full h-full bg-card border border-border rounded-3xl shadow-sm overflow-hidden flex flex-col">
       {/* Days Header */}
-      <div className="flex border-b border-gray-200 bg-white shrink-0 no-print">
+      <div className="flex border-b border-border bg-card shrink-0 no-print">
         {/* Time column spacer */}
-        <div className="w-20 shrink-0 border-r border-gray-200 bg-gray-50/20" />
+        <div className="w-20 shrink-0 border-r border-border bg-muted/20" />
         
         {days.map((day, idx) => {
           const dayEvents = eventsByDate[day.full] || [];
@@ -158,7 +158,7 @@ export function WeeklyGrid({
           return (
             <div 
               key={idx} 
-              className="flex-1 py-3 flex flex-col items-center justify-center border-l border-gray-200 first:border-l-0 gap-1.5 min-h-[70px]"
+              className="flex-1 py-3 flex flex-col items-center justify-center border-l border-border first:border-l-0 gap-1.5 min-h-[70px]"
             >
               {day.isToday ? (
                 <div className="px-4 py-2 bg-[#10B981] text-white rounded-lg text-xs font-black uppercase tracking-wider shadow-sm animate-in zoom-in-95 duration-200">
@@ -167,8 +167,8 @@ export function WeeklyGrid({
               ) : (
                 <div className={`text-[11px] font-bold uppercase tracking-wider transition-colors cursor-pointer py-1.5 ${
                   day.isSelected 
-                    ? "text-[#0A0A0A] border-b-2 border-[#0A0A0A] font-black" 
-                    : "text-gray-400 hover:text-black"
+                    ? "text-foreground border-b-2 border-foreground font-black" 
+                    : "text-muted-foreground hover:text-foreground"
                 }`}>
                   {day.shortName} {day.month}/{day.date}
                 </div>
@@ -188,7 +188,7 @@ export function WeeklyGrid({
                           onCellClick(eventDate, 9);
                         }
                       }}
-                      className="px-1.5 py-0.5 bg-rose-50 text-rose-700 border border-rose-100 rounded text-[9px] font-black tracking-tight truncate flex items-center justify-center gap-1 shadow-sm hover:bg-rose-100 transition-colors cursor-pointer"
+                      className="px-1.5 py-0.5 bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20 rounded text-[9px] font-black tracking-tight truncate flex items-center justify-center gap-1 shadow-sm hover:bg-rose-500/20 transition-colors cursor-pointer"
                       title={event.description || event.title}
                     >
                       <span className="shrink-0">📅</span>
@@ -214,16 +214,16 @@ export function WeeklyGrid({
             className="absolute left-20 right-0 h-px bg-red-500 z-30 pointer-events-none"
             style={{ top: `${timeLineOffset}px` }}
           >
-            <div className="absolute -left-1.5 -top-1.5 w-3 h-3 bg-red-500 rounded-full border-2 border-white shadow-sm" />
+            <div className="absolute -left-1.5 -top-1.5 w-3 h-3 bg-red-500 rounded-full border-2 border-background shadow-sm" />
           </div>
         )}
 
         {/* 24 Hour Rows */}
         {hours.map((hour, hIdx) => (
-          <div key={hIdx} className="flex border-b border-gray-200/80 group/row" style={{ minHeight: `${rowHeight}px` }}>
+          <div key={hIdx} className="flex border-b border-border group/row" style={{ minHeight: `${rowHeight}px` }}>
             {/* Time label cell */}
-            <div className="w-20 shrink-0 flex items-start justify-center pt-3.5 border-r border-gray-200/80 bg-gray-50/20 no-print">
-              <span className="text-[9px] font-extrabold text-gray-500 uppercase tracking-tighter">
+            <div className="w-20 shrink-0 flex items-start justify-center pt-3.5 border-r border-border bg-muted/20 no-print">
+              <span className="text-[9px] font-extrabold text-muted-foreground uppercase tracking-tighter">
                 {hour.label}
               </span>
             </div>
@@ -255,11 +255,11 @@ export function WeeklyGrid({
                       }
                     }
                   }}
-                  className="flex-1 border-l border-gray-200/80 first:border-l-0 transition-all hover:bg-gray-50/80 cursor-pointer p-1.5 relative flex flex-col justify-start min-w-[100px] group/hcell"
+                  className="flex-1 border-l border-border first:border-l-0 transition-all hover:bg-muted/50 cursor-pointer p-1.5 relative flex flex-col justify-start min-w-[100px] group/hcell"
                 >
                   {/* Quick Add '+' indicator on cell hover */}
                   <div className="absolute top-1.5 right-1.5 opacity-0 group-hover/hcell:opacity-100 transition-opacity z-20 pointer-events-none">
-                    <div className="w-4 h-4 bg-[#0A0A0A] text-white rounded-full flex items-center justify-center text-[10px] font-black shadow-sm">
+                    <div className="w-4 h-4 bg-foreground text-background rounded-full flex items-center justify-center text-[10px] font-black shadow-sm">
                       +
                     </div>
                   </div>
@@ -272,7 +272,6 @@ export function WeeklyGrid({
                         : '';
                       
                       const hasMedia = post.mediaUrls && post.mediaUrls.length > 0;
-                      const thumbUrl = buildMediaUrl(post.thumbnail);
                       const isFailed = post.status?.toUpperCase() === 'FAILED';
 
                       const platform = post.platforms?.[0]?.toUpperCase() || 'YOUTUBE';
@@ -285,13 +284,13 @@ export function WeeklyGrid({
                             if (onPostClick) onPostClick(post);
                           }}
                           style={{ borderLeftColor: PLATFORM_COLORS[platform] || '#9CA3AF' }}
-                          className="bg-white border border-gray-100 hover:border-gray-200/80 rounded-md p-2.5 shadow-[0_1.5px_3px_rgba(0,0,0,0.03)] hover:shadow-[0_4px_8px_rgba(0,0,0,0.06)] transition-all border-l-[3.5px] text-left flex flex-col space-y-1.5 w-full group/card"
+                          className="bg-card border border-border hover:border-foreground/30 rounded-md p-2.5 shadow-sm transition-all border-l-[3.5px] text-left flex flex-col space-y-1.5 w-full group/card"
                         >
                           {/* Top Header Row */}
                           <div className="flex items-center justify-between relative">
                             {renderPlatformIcon(platform, "w-3.5 h-3.5")}
                             <div className="flex items-center gap-1.5">
-                              <span className="text-[10px] font-bold text-gray-700 uppercase tracking-tight group-hover/card:hidden">
+                              <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-tight group-hover/card:hidden">
                                 {displayTime}
                               </span>
                               <button 
@@ -300,7 +299,7 @@ export function WeeklyGrid({
                                   if (onDuplicateClick) onDuplicateClick(post);
                                 }}
                                 title="Nhân bản bài viết"
-                                className="hidden group-hover/card:flex items-center justify-center p-0.5 hover:bg-gray-100 rounded text-indigo-600 transition-colors cursor-pointer border-none shadow-none"
+                                className="hidden group-hover/card:flex items-center justify-center p-0.5 hover:bg-muted rounded text-indigo-500 transition-colors cursor-pointer border-none shadow-none"
                               >
                                 <span className="text-[10px]">🔂</span>
                               </button>
@@ -311,8 +310,8 @@ export function WeeklyGrid({
                           <div className="flex-1">
                             <p className={`text-[11px] font-medium leading-normal ${
                               isFailed 
-                                ? "line-through decoration-red-500 decoration-1 text-gray-400" 
-                                : "text-gray-700"
+                                ? "line-through decoration-red-500 decoration-1 text-muted-foreground" 
+                                : "text-foreground"
                             } line-clamp-3`}>
                               {post.caption || post.title || "Untitled Post"}
                             </p>
@@ -321,7 +320,7 @@ export function WeeklyGrid({
                           {/* Media Preview/Thumbnail */}
                           {hasMedia && (
                             <div className="mt-1 flex items-center">
-                              <div className="w-10 h-10 rounded-md overflow-hidden shrink-0 border border-gray-100 relative">
+                              <div className="w-10 h-10 rounded-md overflow-hidden shrink-0 border border-border relative">
                                 <PostMediaThumbnail 
                                   thumbnail={post.thumbnail}
                                   mediaUrls={post.mediaUrls}
@@ -339,11 +338,11 @@ export function WeeklyGrid({
 
                           {/* Multi-platform target list */}
                           {post.platforms && post.platforms.length > 1 && (
-                            <div className="flex -space-x-1.5 items-center pt-1 mt-1 border-t border-gray-50">
+                            <div className="flex -space-x-1.5 items-center pt-1 mt-1 border-t border-border">
                               {post.platforms.map((plt, pIdx) => (
                                 <div 
                                   key={pIdx} 
-                                  className="w-4 h-4 rounded-full bg-white border border-gray-100 flex items-center justify-center shrink-0 shadow-sm"
+                                  className="w-4 h-4 rounded-full bg-card border border-border flex items-center justify-center shrink-0 shadow-sm"
                                   title={plt}
                                 >
                                   {renderPlatformIcon(plt, "w-2.5 h-2.5")}

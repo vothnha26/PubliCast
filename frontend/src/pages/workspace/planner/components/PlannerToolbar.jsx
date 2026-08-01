@@ -152,40 +152,40 @@ export function PlannerToolbar({
         <div className="flex flex-wrap items-center gap-2.5">
           {/* Search Input */}
           <div className="relative min-w-[180px] max-w-xs group">
-            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-zinc-500 group-focus-within:text-gray-900 dark:group-focus-within:text-white transition-colors" />
+            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground group-focus-within:text-foreground transition-colors" />
             <input 
               type="text" 
               placeholder={t('toolbar.searchPlaceholder')}
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-800 rounded-xl py-2 pl-9 pr-3 text-xs font-medium outline-none focus:border-gray-900 dark:focus:border-white focus:ring-1 focus:ring-gray-900 dark:focus:ring-white transition-all text-gray-700 dark:text-zinc-200 placeholder:text-gray-400 dark:placeholder:text-zinc-500 h-10"
+              className="w-full bg-card border border-border rounded-xl py-2 pl-9 pr-3 text-xs font-medium outline-none focus:border-foreground transition-all text-foreground h-10"
             />
           </div>
 
           {/* Integrated Date Navigation & View Mode Anchor Point */}
-          <div className="flex items-center gap-1.5 bg-gray-50/80 dark:bg-zinc-900/80 p-1 border border-gray-200/80 dark:border-zinc-800 rounded-xl shrink-0">
+          <div className="flex items-center gap-1.5 bg-muted/50 p-1 border border-border rounded-xl shrink-0">
             {/* This Week Button */}
             <button 
               onClick={onTodayWeek}
-              className="px-3 h-8 bg-white dark:bg-zinc-800 border border-gray-200/80 dark:border-zinc-700 rounded-lg text-xs font-bold text-gray-700 dark:text-zinc-200 hover:bg-gray-100 dark:hover:bg-zinc-700 active:scale-95 transition-all cursor-pointer shadow-2xs shrink-0"
+              className="px-3 h-8 bg-card border border-border rounded-lg text-xs font-bold text-foreground hover:bg-muted active:scale-95 transition-all cursor-pointer shadow-2xs shrink-0"
             >
               {t('toolbar.thisWeek')}
             </button>
 
             {/* Date Navigation group */}
-            <div className="flex items-center bg-white dark:bg-zinc-800 border border-gray-200/80 dark:border-zinc-700 rounded-lg overflow-visible relative shadow-2xs h-8">
+            <div className="flex items-center bg-card border border-border rounded-lg overflow-visible relative shadow-2xs h-8">
               <button 
                 onClick={onPrevWeek}
-                className="px-2 h-full hover:bg-gray-50 dark:hover:bg-zinc-700 text-gray-500 dark:text-zinc-400 hover:text-gray-900 dark:hover:text-white transition-colors cursor-pointer border-none bg-transparent"
+                className="px-2 h-full hover:bg-muted text-muted-foreground hover:text-foreground transition-colors cursor-pointer border-none bg-transparent"
               >
                 <ChevronLeft size={15} />
               </button>
               
               <button 
                 onClick={() => setIsDatePickerOpen(!isDatePickerOpen)}
-                className="px-2.5 h-full flex items-center gap-1.5 text-xs font-extrabold text-gray-800 dark:text-zinc-200 hover:bg-gray-50 dark:hover:bg-zinc-700 transition-all border-l border-r border-gray-100 dark:border-zinc-700 cursor-pointer bg-transparent"
+                className="px-2.5 h-full flex items-center gap-1.5 text-xs font-extrabold text-foreground hover:bg-muted transition-all border-l border-r border-border cursor-pointer bg-transparent"
               >
-                <CalendarIcon size={13} className="text-gray-400 dark:text-zinc-400" />
+                <CalendarIcon size={13} className="text-muted-foreground" />
                 <span>{formatDateDisplay(selectedDate, calendarViewMode)}</span>
               </button>
 
@@ -198,14 +198,14 @@ export function PlannerToolbar({
 
               <button 
                 onClick={onNextWeek}
-                className="px-2 h-full hover:bg-gray-50 dark:hover:bg-zinc-700 text-gray-500 dark:text-zinc-400 hover:text-gray-900 dark:hover:text-white transition-colors cursor-pointer border-none bg-transparent"
+                className="px-2 h-full hover:bg-muted text-muted-foreground hover:text-foreground transition-colors cursor-pointer border-none bg-transparent"
               >
                 <ChevronRight size={15} />
               </button>
             </div>
 
             {/* View Mode Quick Switcher Pills (Day / Week / Month) */}
-            <div className="flex items-center bg-gray-200/70 dark:bg-zinc-800 p-0.5 rounded-lg shrink-0">
+            <div className="flex items-center bg-muted p-0.5 rounded-lg shrink-0">
               {[
                 { label: t('toolbar.views.day', { defaultValue: 'Day' }), value: 'DAY' },
                 { label: t('toolbar.views.week', { defaultValue: 'Week' }), value: 'WEEK' },
@@ -216,8 +216,8 @@ export function PlannerToolbar({
                   onClick={() => onCalendarViewModeChange && onCalendarViewModeChange(opt.value)}
                   className={`px-2.5 py-1 text-[11px] font-extrabold rounded-md transition-all cursor-pointer border-none ${
                     calendarViewMode === opt.value
-                      ? 'bg-[#0A0A0A] dark:bg-white text-white dark:text-black shadow-2xs'
-                      : 'text-gray-600 dark:text-zinc-400 hover:text-gray-900 dark:hover:text-white bg-transparent'
+                      ? 'bg-foreground text-background shadow-2xs'
+                      : 'text-muted-foreground hover:text-foreground bg-transparent'
                   }`}
                 >
                   {opt.label}
@@ -232,8 +232,8 @@ export function PlannerToolbar({
               onClick={() => setIsFilterMenuOpen(!isFilterMenuOpen)}
               className={`w-10 h-10 flex items-center justify-center border rounded-xl transition-all cursor-pointer shadow-sm ${
                 isFilterMenuOpen || filterStatus !== 'ALL' || filterType !== 'ALL'
-                  ? "bg-[#0A0A0A] dark:bg-white border-[#0A0A0A] dark:border-white text-white dark:text-black" 
-                  : "bg-white dark:bg-zinc-900 border-gray-200 dark:border-zinc-800 text-gray-400 dark:text-zinc-500 hover:text-gray-700 dark:hover:text-zinc-200 hover:bg-gray-50 dark:hover:bg-zinc-800"
+                  ? "bg-foreground text-background border-foreground" 
+                  : "bg-card border-border text-muted-foreground hover:text-foreground hover:bg-muted"
               }`}
             >
               <Filter size={16} />
@@ -248,9 +248,9 @@ export function PlannerToolbar({
                 />
                 
                 {/* Filter Dropdown */}
-                <div className="absolute left-0 mt-2 w-56 bg-white dark:bg-zinc-900 rounded-2xl border border-gray-100 dark:border-zinc-800 shadow-xl py-3 z-50 text-left animate-in fade-in slide-in-from-top-3 duration-200 font-medium">
-                  <div className="px-4 pb-1.5 border-b border-gray-100 dark:border-zinc-800 mb-1.5">
-                    <span className="text-[9px] font-black text-gray-400 dark:text-zinc-500 uppercase tracking-widest">{t('toolbar.filterStatusLabel')}</span>
+                <div className="absolute left-0 mt-2 w-56 bg-card rounded-2xl border border-border shadow-xl py-3 z-50 text-left animate-in fade-in slide-in-from-top-3 duration-200 font-medium text-foreground">
+                  <div className="px-4 pb-1.5 border-b border-border mb-1.5">
+                    <span className="text-[9px] font-black text-muted-foreground uppercase tracking-widest">{t('toolbar.filterStatusLabel')}</span>
                   </div>
                   {[
                     { label: t('toolbar.statuses.all'), value: "ALL" },
@@ -266,17 +266,17 @@ export function PlannerToolbar({
                         if (onFilterStatusChange) onFilterStatusChange(opt.value);
                         setIsFilterMenuOpen(false);
                       }}
-                      className="w-full px-4 py-2 text-xs font-bold text-gray-700 dark:text-zinc-300 hover:bg-gray-50 dark:hover:bg-zinc-800 flex items-center justify-between cursor-pointer border-none bg-transparent"
+                      className="w-full px-4 py-2 text-xs font-bold text-foreground hover:bg-muted flex items-center justify-between cursor-pointer border-none bg-transparent"
                     >
                       <span>{opt.label}</span>
                       {filterStatus === opt.value && <Check size={12} className="text-green-500" />}
                     </button>
                   ))}
 
-                  <div className="my-2 border-t border-gray-100 dark:border-zinc-800" />
+                  <div className="my-2 border-t border-border" />
                   
                   <div className="px-4 pb-1.5 mb-1">
-                    <span className="text-[9px] font-black text-gray-400 dark:text-zinc-500 uppercase tracking-widest">{t('toolbar.filterTypeLabel')}</span>
+                    <span className="text-[9px] font-black text-muted-foreground uppercase tracking-widest">{t('toolbar.filterTypeLabel')}</span>
                   </div>
                   {[
                     { label: t('toolbar.types.all'), value: "ALL" },
@@ -290,7 +290,7 @@ export function PlannerToolbar({
                         if (onFilterTypeChange) onFilterTypeChange(opt.value);
                         setIsFilterMenuOpen(false);
                       }}
-                      className="w-full px-4 py-2 text-xs font-bold text-gray-700 dark:text-zinc-300 hover:bg-gray-50 dark:hover:bg-zinc-800 flex items-center justify-between cursor-pointer border-none bg-transparent"
+                      className="w-full px-4 py-2 text-xs font-bold text-foreground hover:bg-muted flex items-center justify-between cursor-pointer border-none bg-transparent"
                     >
                       <span>{opt.label}</span>
                       {filterType === opt.value && <Check size={12} className="text-green-500" />}
@@ -311,8 +311,8 @@ export function PlannerToolbar({
             title="Drive & Media Library"
             className={`w-10 h-10 flex items-center justify-center border rounded-xl transition-all cursor-pointer shadow-sm ${
               showSidebar 
-                ? "bg-[#0A0A0A] border-[#0A0A0A] text-white hover:bg-black" 
-                : "bg-[#F3EFE9] border-gray-200/50 text-gray-700 hover:bg-[#EAE5DF]"
+                ? "bg-foreground text-background border-foreground" 
+                : "bg-card border-border text-foreground hover:bg-muted"
             }`}
           >
             <Image size={18} />
@@ -324,8 +324,8 @@ export function PlannerToolbar({
               onClick={() => setIsMoreMenuOpen(!isMoreMenuOpen)}
               className={`w-10 h-10 flex items-center justify-center border rounded-xl transition-all cursor-pointer shadow-sm ${
                 isMoreMenuOpen 
-                  ? "bg-[#0A0A0A] border-[#0A0A0A] text-white" 
-                  : "bg-white border-gray-200 text-gray-400 hover:text-gray-700 hover:bg-gray-50"
+                  ? "bg-foreground text-background border-foreground" 
+                  : "bg-card border-border text-muted-foreground hover:text-foreground hover:bg-muted"
               }`}
             >
               <MoreVertical size={16} />
@@ -340,20 +340,20 @@ export function PlannerToolbar({
                 />
                 
                 {/* Floating Menu Container */}
-                <div className="absolute right-0 mt-2 w-64 bg-white rounded-2xl border border-gray-100 shadow-xl py-2.5 z-50 text-left animate-in fade-in slide-in-from-top-3 duration-200 font-medium">
+                <div className="absolute right-0 mt-2 w-64 bg-card text-foreground rounded-2xl border border-border shadow-xl py-2.5 z-50 text-left animate-in fade-in slide-in-from-top-3 duration-200 font-medium">
                   
                   {/* 1. Calendar Zoom */}
                   <div className="relative group/sub">
-                    <button className="w-full px-4 py-2 text-xs font-bold text-gray-700 hover:bg-gray-50 flex items-center justify-between group cursor-pointer transition-colors border-none bg-transparent">
+                    <button className="w-full px-4 py-2 text-xs font-bold text-foreground hover:bg-muted flex items-center justify-between group cursor-pointer transition-colors border-none bg-transparent">
                       <div className="flex items-center gap-3">
-                        <ZoomIn size={14} className="text-gray-400 group-hover:text-gray-700" />
+                        <ZoomIn size={14} className="text-muted-foreground group-hover:text-foreground" />
                         <span>{t('toolbar.calendarZoom')}</span>
                       </div>
-                      <ChevronRight size={12} className="text-gray-400" />
+                      <ChevronRight size={12} className="text-muted-foreground" />
                     </button>
                     {/* Submenu for Zoom */}
                     <div className="absolute left-full top-0 pl-1.5 hidden group-hover/sub:block animate-in fade-in slide-in-from-left-2 duration-150 z-50">
-                      <div className="bg-white rounded-2xl border border-gray-100 shadow-xl py-2 w-48 text-left">
+                      <div className="bg-card rounded-2xl border border-border shadow-xl py-2 w-48 text-left text-foreground">
                         {[
                           { label: t('toolbar.zooms.small'), value: 80 },
                           { label: t('toolbar.zooms.medium'), value: 100 },
@@ -366,7 +366,7 @@ export function PlannerToolbar({
                               toast.success(t('toolbar.toasts.zoomLevelSet', { size: opt.value }));
                               setIsMoreMenuOpen(false);
                             }}
-                            className="w-full px-4 py-2 text-[11px] font-bold text-gray-700 hover:bg-gray-50 flex items-center justify-between cursor-pointer border-none bg-transparent"
+                            className="w-full px-4 py-2 text-[11px] font-bold text-foreground hover:bg-muted flex items-center justify-between cursor-pointer border-none bg-transparent"
                           >
                             <span>{opt.label}</span>
                             {rowHeight === opt.value && <Check size={12} className="text-green-500" />}
@@ -378,16 +378,16 @@ export function PlannerToolbar({
 
                   {/* 2. Calendar View */}
                   <div className="relative group/sub">
-                    <button className="w-full px-4 py-2 text-xs font-bold text-gray-700 hover:bg-gray-50 flex items-center justify-between group cursor-pointer transition-colors border-none bg-transparent">
+                    <button className="w-full px-4 py-2 text-xs font-bold text-foreground hover:bg-muted flex items-center justify-between group cursor-pointer transition-colors border-none bg-transparent">
                       <div className="flex items-center gap-3">
-                        <CalendarIcon size={14} className="text-gray-400 group-hover:text-gray-700" />
+                        <CalendarIcon size={14} className="text-muted-foreground group-hover:text-foreground" />
                         <span>{t('toolbar.calendarView')}</span>
                       </div>
-                      <ChevronRight size={12} className="text-gray-400" />
+                      <ChevronRight size={12} className="text-muted-foreground" />
                     </button>
                     {/* Submenu for Views */}
                     <div className="absolute left-full top-0 pl-1.5 hidden group-hover/sub:block animate-in fade-in slide-in-from-left-2 duration-150 z-50">
-                      <div className="bg-white rounded-2xl border border-gray-100 shadow-xl py-2 w-48 text-left">
+                      <div className="bg-card rounded-2xl border border-border shadow-xl py-2 w-48 text-left text-foreground">
                         {[
                           { label: t('toolbar.views.day'), value: "DAY" },
                           { label: t('toolbar.views.week'), value: "WEEK" },
@@ -400,7 +400,7 @@ export function PlannerToolbar({
                               setIsMoreMenuOpen(false);
                               toast.success(t('toolbar.toasts.switchedTo', { view: opt.label }));
                             }}
-                            className="w-full px-4 py-2 text-[11px] font-bold text-gray-700 hover:bg-gray-50 flex items-center justify-between cursor-pointer border-none bg-transparent"
+                            className="w-full px-4 py-2 text-[11px] font-bold text-foreground hover:bg-muted flex items-center justify-between cursor-pointer border-none bg-transparent"
                           >
                             <span>{opt.label}</span>
                             {calendarViewMode === opt.value && <Check size={12} className="text-green-500 shrink-0" />}
@@ -412,16 +412,16 @@ export function PlannerToolbar({
 
                   {/* 3. Social Calendars */}
                   <div className="relative group/sub">
-                    <button className="w-full px-4 py-2 text-xs font-bold text-gray-700 hover:bg-gray-50 flex items-center justify-between group cursor-pointer transition-colors border-none bg-transparent">
+                    <button className="w-full px-4 py-2 text-xs font-bold text-foreground hover:bg-muted flex items-center justify-between group cursor-pointer transition-colors border-none bg-transparent">
                       <div className="flex items-center gap-3">
-                        <Layers size={14} className="text-gray-400 group-hover:text-gray-700" />
+                        <Layers size={14} className="text-muted-foreground group-hover:text-foreground" />
                         <span>{t('toolbar.socialCalendars')}</span>
                       </div>
-                      <ChevronRight size={12} className="text-gray-400" />
+                      <ChevronRight size={12} className="text-muted-foreground" />
                     </button>
                     {/* Submenu for Social Channels toggling */}
                     <div className="absolute left-full top-0 pl-1.5 hidden group-hover/sub:block animate-in fade-in slide-in-from-left-2 duration-150 z-50">
-                      <div className="bg-white rounded-2xl border border-gray-100 shadow-xl py-2 w-48 text-left">
+                      <div className="bg-card rounded-2xl border border-border shadow-xl py-2 w-48 text-left text-foreground">
                         {[
                           { label: "YouTube", key: "YOUTUBE" },
                           { label: "Facebook", key: "FACEBOOK" },
@@ -436,7 +436,7 @@ export function PlannerToolbar({
                               e.preventDefault();
                               togglePlatform(platform.key);
                             }}
-                            className="w-full px-4 py-2 text-[11px] font-bold text-gray-700 hover:bg-gray-50 flex items-center justify-between cursor-pointer border-none bg-transparent"
+                            className="w-full px-4 py-2 text-[11px] font-bold text-foreground hover:bg-muted flex items-center justify-between cursor-pointer border-none bg-transparent"
                           >
                             <span>{platform.label}</span>
                             {visiblePlatforms[platform.key] !== false && <Check size={12} className="text-green-500 shrink-0" />}
@@ -446,7 +446,7 @@ export function PlannerToolbar({
                     </div>
                   </div>
 
-                  <div className="my-1 border-t border-gray-100" />
+                  <div className="my-1 border-t border-border" />
 
                    <AccessGuard feature="IMPORT_CSV">
                     <button 
@@ -454,14 +454,14 @@ export function PlannerToolbar({
                         setIsWizardOpen(true);
                         setIsMoreMenuOpen(false);
                       }}
-                      className="w-full px-4 py-2 text-xs font-bold flex items-center gap-3 group transition-colors border-none bg-transparent text-gray-700 hover:bg-gray-50 cursor-pointer"
+                      className="w-full px-4 py-2 text-xs font-bold flex items-center gap-3 group transition-colors border-none bg-transparent text-foreground hover:bg-muted cursor-pointer"
                     >
-                      <RefreshCw size={14} className="text-gray-400 group-hover:text-gray-700" />
+                      <RefreshCw size={14} className="text-muted-foreground group-hover:text-foreground" />
                       <span>{t('toolbar.syncImportExport')}</span>
                     </button>
                    </AccessGuard>
 
-                  <div className="my-1 border-t border-gray-100" />
+                  <div className="my-1 border-t border-border" />
 
                   {/* 6. Preview feed */}
                   <button 
@@ -469,9 +469,9 @@ export function PlannerToolbar({
                       setIsPreviewFeedOpen(true);
                       setIsMoreMenuOpen(false);
                     }}
-                    className="w-full px-4 py-2 text-xs font-bold text-gray-700 hover:bg-gray-50 flex items-center gap-3 group cursor-pointer transition-colors border-none bg-transparent"
+                    className="w-full px-4 py-2 text-xs font-bold text-foreground hover:bg-muted flex items-center gap-3 group cursor-pointer transition-colors border-none bg-transparent"
                   >
-                    <Instagram size={14} className="text-gray-400 group-hover:text-gray-700" />
+                    <Instagram size={14} className="text-muted-foreground group-hover:text-foreground" />
                     <span>{t('toolbar.previewFeed')}</span>
                   </button>
 
@@ -481,9 +481,9 @@ export function PlannerToolbar({
                       navigate("/settings?tab=account");
                       setIsMoreMenuOpen(false);
                     }}
-                    className="w-full px-4 py-2 text-xs font-bold text-gray-700 hover:bg-gray-50 flex items-center gap-3 group cursor-pointer transition-colors border-none bg-transparent"
+                    className="w-full px-4 py-2 text-xs font-bold text-foreground hover:bg-muted flex items-center gap-3 group cursor-pointer transition-colors border-none bg-transparent"
                   >
-                    <Settings size={14} className="text-gray-400 group-hover:text-gray-700" />
+                    <Settings size={14} className="text-muted-foreground group-hover:text-foreground" />
                     <span>{t('toolbar.notifications')}</span>
                   </button>
 
@@ -496,7 +496,7 @@ export function PlannerToolbar({
           <AccessGuard feature="CREATE_POSTS">
             <button 
               onClick={onCreatePostClick} data-testid="planner-create-post-btn"
-              className="flex items-center gap-2 px-4.5 h-10 rounded-full text-xs font-bold bg-[#0A0A0A] hover:bg-[#1A1A1A] text-white hover:scale-[1.02] active:scale-[0.98] cursor-pointer transition-all shadow-md shrink-0"
+              className="flex items-center gap-2 px-4.5 h-10 rounded-full text-xs font-bold bg-foreground text-background hover:opacity-90 hover:scale-[1.02] active:scale-[0.98] cursor-pointer transition-all shadow-md shrink-0"
             >
               <Plus size={16} />
               <span>{t('toolbar.createPost')}</span>
@@ -509,51 +509,50 @@ export function PlannerToolbar({
       {/* Feed Preview Dialog */}
       {isPreviewFeedOpen && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[9999] flex items-center justify-center p-4 animate-in fade-in duration-200">
-          <div className="bg-white rounded-3xl max-w-sm w-full overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200 flex flex-col relative h-[650px] border border-gray-100">
+          <div className="bg-card text-foreground rounded-3xl max-w-sm w-full overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200 flex flex-col relative h-[650px] border border-border">
             {/* Modal Header */}
-            <div className="p-4 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
-              <span className="text-xs font-black text-gray-800 uppercase tracking-wider">{t('toolbar.feedPreviewTitle')}</span>
+            <div className="p-4 border-b border-border flex justify-between items-center bg-muted/50">
+              <span className="text-xs font-black text-foreground uppercase tracking-wider">{t('toolbar.feedPreviewTitle')}</span>
               <button 
                 onClick={() => setIsPreviewFeedOpen(false)}
-                className="text-xs font-bold text-gray-400 hover:text-black hover:bg-gray-100 px-3 py-1 rounded-xl transition-all cursor-pointer border-none bg-transparent"
+                className="text-xs font-bold text-muted-foreground hover:text-foreground hover:bg-muted px-3 py-1 rounded-xl transition-all cursor-pointer border-none bg-transparent"
               >
                 {t('toolbar.close')}
               </button>
             </div>
 
             {/* Instagram Phone mock container */}
-            <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-white flex flex-col">
+            <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-card flex flex-col">
               {/* Instagram header profile info mock */}
-              <div className="flex items-center gap-3 pb-2 border-b border-gray-100">
+              <div className="flex items-center gap-3 pb-2 border-b border-border">
                 <div className="w-12 h-12 rounded-full bg-gradient-to-tr from-amber-500 to-fuchsia-600 p-[2px]">
-                  <div className="w-full h-full rounded-full bg-white p-[2px]">
-                    <div className="w-full h-full rounded-full bg-gray-200 flex items-center justify-center font-bold text-xs text-gray-700 uppercase">
+                  <div className="w-full h-full rounded-full bg-card p-[2px]">
+                    <div className="w-full h-full rounded-full bg-muted flex items-center justify-center font-bold text-xs text-foreground uppercase">
                       {activeBrand?.name ? activeBrand.name.substring(0, 2).toUpperCase() : 'PC'}
                     </div>
                   </div>
                 </div>
                 <div>
-                  <h5 className="text-[11px] font-black text-[#0A0A0A] leading-tight">
+                  <h5 className="text-[11px] font-black text-foreground leading-tight">
                     {activeBrand?.name ? activeBrand.name.toLowerCase().replace(/\s+/g, '_') : 'publicast_creator'}
                   </h5>
-                  <p className="text-[9px] text-gray-400 font-bold uppercase tracking-widest">{t('toolbar.feedMockup')}</p>
+                  <p className="text-[9px] text-muted-foreground font-bold uppercase tracking-widest">{t('toolbar.feedMockup')}</p>
                 </div>
               </div>
 
               {/* Feed Grid (3 columns) */}
               <div className="grid grid-cols-3 gap-1">
                 {postData.length === 0 ? (
-                  <div className="col-span-3 py-12 text-center flex flex-col items-center justify-center text-gray-300">
+                  <div className="col-span-3 py-12 text-center flex flex-col items-center justify-center text-muted-foreground">
                     <Instagram size={36} className="mb-2 stroke-[1.5]" />
-                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{t('toolbar.noScheduledPosts')}</p>
+                    <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">{t('toolbar.noScheduledPosts')}</p>
                   </div>
                 ) : (
                   postData.map(post => {
-                    const hasMedia = post.mediaUrls && post.mediaUrls.length > 0;
                     return (
                       <div 
                         key={post.id} 
-                        className="aspect-square bg-gray-50 border border-gray-100/50 relative overflow-hidden group cursor-pointer rounded-md"
+                        className="aspect-square bg-muted border border-border relative overflow-hidden group cursor-pointer rounded-md"
                         title={post.caption || post.title}
                       >
                         <PostMediaThumbnail 

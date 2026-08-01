@@ -143,7 +143,7 @@ export default function VideoPreviewArea() {
   const transformStyle = `scale(${zoomLevel / 100 * (scaleVal / 100)}) rotate(${rotation}deg) scaleX(${flipH ? -1 : 1}) scaleY(${flipV ? -1 : 1})`;
 
   return (
-    <div className="relative w-full h-full flex items-center justify-center bg-white select-none">
+    <div className="relative w-full h-full flex items-center justify-center bg-card select-none">
       <div
         className="relative shadow-md rounded-xl overflow-visible bg-black transition-transform duration-150"
         style={{ transform: transformStyle }}
@@ -187,10 +187,10 @@ export default function VideoPreviewArea() {
           </div>
         )}
 
-        <div className="absolute bottom-3 left-1/2 -translate-x-1/2 bg-white/80 backdrop-blur-sm border border-gray-200 rounded-full flex items-center gap-1.5 px-2.5 py-1.5 shadow-lg z-40">
+        <div className="absolute bottom-3 left-1/2 -translate-x-1/2 bg-card/80 backdrop-blur-sm border border-border rounded-full flex items-center gap-1.5 px-2.5 py-1.5 shadow-lg z-40">
           <button
             onClick={togglePlay}
-            className="w-7 h-7 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center text-gray-800 cursor-pointer transition"
+            className="w-7 h-7 rounded-full bg-muted hover:bg-gray-200 flex items-center justify-center text-foreground cursor-pointer transition"
           >
             {isPlaying
               ? <Pause size={13} className="fill-gray-800" />
@@ -199,14 +199,14 @@ export default function VideoPreviewArea() {
 
           <button
             onClick={toggleMute}
-            className="w-7 h-7 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center text-gray-700 cursor-pointer transition"
+            className="w-7 h-7 rounded-full bg-muted hover:bg-gray-200 flex items-center justify-center text-foreground cursor-pointer transition"
           >
             {isMuted ? <VolumeX size={13} /> : <Volume2 size={13} />}
           </button>
 
           <button
             onClick={handleSplit}
-            className="flex items-center gap-1 pl-2 pr-3 py-1 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-700 text-[11px] font-semibold cursor-pointer transition"
+            className="flex items-center gap-1 pl-2 pr-3 py-1 rounded-full bg-muted hover:bg-gray-200 text-foreground text-[11px] font-semibold cursor-pointer transition"
           >
             <Scissors size={12} />
             <span>Split</span>

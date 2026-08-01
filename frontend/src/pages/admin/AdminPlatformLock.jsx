@@ -86,23 +86,23 @@ export function AdminPlatformLock() {
   };
 
   return (
-    <div className="flex-1 overflow-y-auto bg-[#F8F8F7]" style={{ padding: "40px 60px" }}>
+    <div className="flex-1 overflow-y-auto bg-background" style={{ padding: "40px 60px" }}>
       {/* Header */}
       <div className="flex items-start justify-between mb-10">
         <div className="flex gap-5">
-           <div className="w-14 h-14 rounded-2xl bg-white flex items-center justify-center shadow-sm border border-gray-100 text-[#DC2626]">
+           <div className="w-14 h-14 rounded-2xl bg-card flex items-center justify-center shadow-sm border border-border text-[#DC2626]">
               <Lock size={28} />
            </div>
            <div>
-              <h1 className="text-2xl font-bold text-[#0A0A0A]">Platform Availability & Governance</h1>
-              <p className="text-gray-500 mt-1">Quản lý trạng thái khóa hoạt động các nền tảng mạng xã hội trên toàn hệ thống.</p>
+              <h1 className="text-2xl font-bold text-foreground">Platform Availability & Governance</h1>
+              <p className="text-muted-foreground mt-1">Quản lý trạng thái khóa hoạt động các nền tảng mạng xã hội trên toàn hệ thống.</p>
            </div>
         </div>
         <div>
           <button 
             onClick={fetchLimits}
             disabled={loading}
-            className="flex items-center gap-2 px-5 py-2.5 bg-white border border-gray-200 rounded-xl text-xs font-bold text-gray-600 hover:bg-gray-50 transition-all disabled:opacity-50"
+            className="flex items-center gap-2 px-5 py-2.5 bg-card border border-border rounded-xl text-xs font-bold text-muted-foreground hover:bg-muted transition-all disabled:opacity-50"
           >
             <RefreshCw size={14} className={loading ? "animate-spin" : ""} /> Tải Lại
           </button>
@@ -124,10 +124,10 @@ export function AdminPlatformLock() {
       </div>
 
       {/* Grid Platform limits */}
-      <div className="bg-white rounded-[40px] border border-gray-100 shadow-sm overflow-hidden">
+      <div className="bg-card rounded-[40px] border border-border shadow-sm overflow-hidden">
         <table className="w-full text-left">
            <thead>
-              <tr className="bg-gray-50/50 text-[10px] font-bold text-gray-400 uppercase tracking-widest border-b border-gray-50">
+              <tr className="bg-muted/50 text-[10px] font-bold text-muted-foreground uppercase tracking-widest border-b border-gray-50">
                  <th className="px-8 py-4">Nền tảng</th>
                  <th className="px-8 py-4">Phân loại đăng</th>
                  <th className="px-8 py-4">Giới hạn tệp tin</th>
@@ -142,7 +142,7 @@ export function AdminPlatformLock() {
                   <td colSpan={6} className="px-8 py-20 text-center">
                     <div className="flex flex-col items-center justify-center">
                       <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-[#0A0A0A] mb-3" />
-                      <span className="text-xs text-gray-400 font-bold uppercase tracking-widest">Đang tải danh sách...</span>
+                      <span className="text-xs text-muted-foreground font-bold uppercase tracking-widest">Đang tải danh sách...</span>
                     </div>
                   </td>
                 </tr>
@@ -151,7 +151,7 @@ export function AdminPlatformLock() {
                   <td colSpan={6} className="px-8 py-10 text-center">
                     <div className="flex flex-col items-center justify-center">
                       <ShieldAlert size={28} className="text-gray-300 mb-2" />
-                      <span className="text-xs text-gray-400 font-bold uppercase tracking-widest">Không có cấu hình nào</span>
+                      <span className="text-xs text-muted-foreground font-bold uppercase tracking-widest">Không có cấu hình nào</span>
                     </div>
                   </td>
                 </tr>
@@ -161,21 +161,21 @@ export function AdminPlatformLock() {
                   <tr key={limit.id} className="hover:bg-gray-55/30 transition-colors">
                      <td className="px-8 py-5">
                         <div className="flex items-center gap-3">
-                           <div className="w-10 h-10 rounded-xl bg-gray-50 border border-gray-100 flex items-center justify-center text-lg font-bold">
+                           <div className="w-10 h-10 rounded-xl bg-muted border border-border flex items-center justify-center text-lg font-bold">
                               {limit.platform[0]}
                            </div>
                            <div>
-                              <div className="text-sm font-bold text-[#0A0A0A]">{limit.platform}</div>
-                              <div className="text-[10px] text-gray-400 font-semibold tracking-wide uppercase">ID: {limit.id.substring(0, 8)}</div>
+                              <div className="text-sm font-bold text-foreground">{limit.platform}</div>
+                              <div className="text-[10px] text-muted-foreground font-semibold tracking-wide uppercase">ID: {limit.id.substring(0, 8)}</div>
                            </div>
                         </div>
                      </td>
                      <td className="px-8 py-5">
-                        <span className="px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-tighter bg-gray-100 text-gray-700 border border-gray-200">
+                        <span className="px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-tighter bg-muted text-foreground border border-border">
                            {limit.subType}
                         </span>
                      </td>
-                     <td className="px-8 py-5 text-xs text-gray-600 font-mono">
+                     <td className="px-8 py-5 text-xs text-muted-foreground font-mono">
                         {limit.maxFileSizeMb ? `${limit.maxFileSizeMb} MB` : 'N/A'}
                      </td>
                      <td className="px-8 py-5">
@@ -192,7 +192,7 @@ export function AdminPlatformLock() {
                             {limit.lockReason || "Không có lý do cụ thể"}
                           </div>
                         ) : (
-                          <span className="text-xs text-gray-400 font-medium">—</span>
+                          <span className="text-xs text-muted-foreground font-medium">—</span>
                         )}
                      </td>
                      <td className="px-8 py-5 text-right">
@@ -225,10 +225,10 @@ export function AdminPlatformLock() {
       {/* Lock Reason Dialog Modal */}
       {isModalOpen && (
         <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
-           <div className="bg-white rounded-[32px] w-full max-w-md shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
-              <div className="flex justify-between items-center px-8 py-6 border-b border-gray-100">
-                 <h3 className="text-xl font-bold text-[#0A0A0A]">Khóa Nền Tảng</h3>
-                 <button onClick={() => setIsModalOpen(false)} className="p-2 hover:bg-gray-100 rounded-full transition-all text-gray-400 hover:text-black">
+           <div className="bg-card rounded-[32px] w-full max-w-md shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+              <div className="flex justify-between items-center px-8 py-6 border-b border-border">
+                 <h3 className="text-xl font-bold text-foreground">Khóa Nền Tảng</h3>
+                 <button onClick={() => setIsModalOpen(false)} className="p-2 hover:bg-muted rounded-full transition-all text-muted-foreground hover:text-black">
                    <X size={24} />
                  </button>
               </div>
@@ -242,22 +242,22 @@ export function AdminPlatformLock() {
                    </div>
 
                    <div className="space-y-2">
-                      <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1 block">Lý do tạm khóa</label>
+                      <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-1 block">Lý do tạm khóa</label>
                       <textarea 
                         rows={3}
                         required
                         value={lockReason} 
                         onChange={(e) => setLockReason(e.target.value)} 
-                        className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-black outline-none text-sm font-medium resize-none"
+                        className="w-full px-4 py-3 rounded-xl border border-border focus:border-black outline-none text-sm font-medium resize-none"
                         placeholder="Ví dụ: API YouTube đang bảo trì đột xuất bởi Google..."
                       />
                    </div>
                 </div>
-                <div className="px-8 py-6 bg-gray-50 flex gap-3 border-t border-gray-100">
+                <div className="px-8 py-6 bg-muted flex gap-3 border-t border-border">
                    <button 
                      type="button" 
                      onClick={() => setIsModalOpen(false)} 
-                     className="flex-1 py-3 rounded-2xl border border-gray-200 bg-white text-sm font-bold text-gray-650"
+                     className="flex-1 py-3 rounded-2xl border border-border bg-card text-sm font-bold text-gray-650"
                    >
                      Hủy
                    </button>

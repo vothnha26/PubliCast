@@ -21,8 +21,8 @@ import smartLinkService from "../../services/smartlink.service";
 
 const THEMES = [
   { id: "midnight", name: "Midnight Black", bg: "bg-slate-950", text: "text-white", buttonBg: "bg-slate-800 hover:bg-slate-700", buttonText: "text-white", border: "border-slate-800" },
-  { id: "sunset", name: "Sunset Orange", bg: "bg-gradient-to-tr from-amber-500 to-rose-500", text: "text-white", buttonBg: "bg-white/10 hover:bg-white/20 backdrop-blur-sm", buttonText: "text-white", border: "border-white/10" },
-  { id: "mint", name: "Mint Glassmorphism", bg: "bg-gradient-to-tr from-teal-50 to-emerald-100", text: "text-slate-800", buttonBg: "bg-white/70 hover:bg-white/90 shadow-sm border border-emerald-200/50", buttonText: "text-slate-800", border: "border-emerald-200" },
+  { id: "sunset", name: "Sunset Orange", bg: "bg-gradient-to-tr from-amber-500 to-rose-500", text: "text-white", buttonBg: "bg-card/10 hover:bg-card/20 backdrop-blur-sm", buttonText: "text-white", border: "border-white/10" },
+  { id: "mint", name: "Mint Glassmorphism", bg: "bg-gradient-to-tr from-teal-50 to-emerald-100", text: "text-slate-800", buttonBg: "bg-card/70 hover:bg-card/90 shadow-sm border border-emerald-200/50", buttonText: "text-slate-800", border: "border-emerald-200" },
   { id: "cyberpunk", name: "Cyberpunk Neon", bg: "bg-[#0c0f1d]", text: "text-[#00ffcc]", buttonBg: "bg-slate-900 hover:bg-slate-850 border border-[#ff0055] shadow-[0_0_8px_rgba(255,0,85,0.4)]", buttonText: "text-[#00ffcc]", border: "border-[#ff0055]" }
 ];
 
@@ -142,7 +142,7 @@ export function PublicSmartLinksPage() {
       
       {/* Profile Area */}
       <div className="flex flex-col items-center text-center max-w-sm mb-12">
-        <div className="w-24 h-24 rounded-full bg-white flex items-center justify-center shadow-xl mb-4 border border-slate-200 overflow-hidden shrink-0 transform hover:scale-105 transition-transform duration-300">
+        <div className="w-24 h-24 rounded-full bg-card flex items-center justify-center shadow-xl mb-4 border border-slate-200 overflow-hidden shrink-0 transform hover:scale-105 transition-transform duration-300">
           {!avatarError && data.profileImageUrl ? (
             <img 
               src={data.profileImageUrl} 
@@ -227,7 +227,7 @@ export function PublicSmartLinksPage() {
               href={sIcon.url.startsWith("http") ? sIcon.url : `https://${sIcon.url}`} 
               target="_blank" 
               rel="noreferrer" 
-              className="w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition-all border border-white/5"
+              className="w-9 h-9 rounded-full bg-card/10 hover:bg-card/20 flex items-center justify-center transition-all border border-white/5"
               title={sIcon.platform}
             >
               {renderSocialIcon(sIcon.platform, 15)}

@@ -24,7 +24,7 @@ export function ErrorPage({ type }) {
               The page you're looking for doesn't exist or has moved. Check the URL or go back to where you came from.
             </p>
             <div className="flex gap-3 justify-center mb-8">
-              <button onClick={() => window.history.back()} className="px-5 py-2.5 rounded-lg hover:bg-[#F8F8F7] transition-colors cursor-pointer" style={{ fontSize: 14, border: "0.5px solid #E5E7EB", color: "#0A0A0A" }}>
+              <button onClick={() => window.history.back()} className="px-5 py-2.5 rounded-lg hover:bg-background transition-colors cursor-pointer" style={{ fontSize: 14, border: "0.5px solid #E5E7EB", color: "#0A0A0A" }}>
                 ← Go Back
               </button>
               <button onClick={() => navigate("/dashboard")} className="px-5 py-2.5 rounded-lg bg-[#0A0A0A] text-white hover:bg-[#1E1E1E] transition-colors cursor-pointer" style={{ fontSize: 14 }}>
@@ -102,7 +102,7 @@ export function ErrorPages() {
       <h1 style={{ fontSize: 15, fontWeight: 500, color: "#0A0A0A" }}>Error Pages Preview</h1>
       <div className="grid grid-cols-3 gap-4">
         {["404", "500", "offline"].map((type) => (
-          <div key={type} className="bg-white rounded-xl overflow-hidden" style={{ border: "0.5px solid #E5E7EB", height: 400 }}>
+          <div key={type} className="bg-card rounded-xl overflow-hidden" style={{ border: "0.5px solid #E5E7EB", height: 400 }}>
             <div className="px-4 py-2" style={{ borderBottom: "0.5px solid #E5E7EB", backgroundColor: "#F8F8F7" }}>
               <span style={{ fontSize: 11, color: "#9CA3AF" }}>Error {type}</span>
             </div>

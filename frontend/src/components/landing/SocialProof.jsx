@@ -3,7 +3,7 @@ export function SocialProof() {
 
   return (
     <div
-      className="bg-white py-5"
+      className="bg-card py-5"
       style={{
         borderTop: "0.5px solid #E5E7EB",
         borderBottom: "0.5px solid #E5E7EB",

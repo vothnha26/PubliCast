@@ -761,7 +761,7 @@ class PostService {
     const scheduledPostIds = posts.filter(p => p.status === POST_STATUS.SCHEDULED).map(p => p.id);
 
     const result = await prisma.$transaction(async (tx) => {
-      const deleted = await postRepository.deleteMany({ id: { in: ids }, brandId }, tx);
+      const deleted = await postRepository.updateMany({ id: { in: ids }, brandId }, { isDeleted: true, deletedAt: new Date() }, tx);
 
       for (const postId of scheduledPostIds) {
         await outboxEventRepository.create(OUTBOX_EVENT_TYPES.POST_PUBLISH_REMOVE, postId, { postId }, {}, tx);

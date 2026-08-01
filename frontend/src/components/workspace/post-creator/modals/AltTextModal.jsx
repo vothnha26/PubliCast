@@ -69,18 +69,18 @@ export function AltTextModal({
 
   return (
     <div className="fixed inset-0 z-[3000] flex items-center justify-center bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="w-full max-w-[650px] bg-white rounded-3xl shadow-2xl border border-gray-100 overflow-hidden flex flex-col p-6 relative animate-in zoom-in-95 duration-200">
+      <div className="w-full max-w-[650px] bg-card rounded-3xl shadow-2xl border border-border overflow-hidden flex flex-col p-6 relative animate-in zoom-in-95 duration-200">
         
         {/* Top Header */}
         <div className="flex items-center justify-between pb-1">
-          <h3 className="text-base font-bold text-gray-900">Add alt text</h3>
+          <h3 className="text-base font-bold text-foreground">Add alt text</h3>
           
-          <div className="flex items-center gap-1.5 text-xs text-gray-500 font-semibold mr-8">
-            <span>Available AI credits: <strong className="text-gray-900">{aiCredits} of 5</strong>.</span>
-            <Info size={14} className="text-gray-400 cursor-help" />
+          <div className="flex items-center gap-1.5 text-xs text-muted-foreground font-semibold mr-8">
+            <span>Available AI credits: <strong className="text-foreground">{aiCredits} of 5</strong>.</span>
+            <Info size={14} className="text-muted-foreground cursor-help" />
           </div>
 
-          <button onClick={onClose} className="p-1 rounded-full hover:bg-gray-100 text-gray-400 hover:text-black transition-all cursor-pointer">
+          <button onClick={onClose} className="p-1 rounded-full hover:bg-muted text-muted-foreground hover:text-black transition-all cursor-pointer">
             <X size={18} />
           </button>
         </div>
@@ -88,7 +88,7 @@ export function AltTextModal({
         {/* Modal Content */}
         <div className="flex gap-6 mt-6">
           {/* Left Panel: Preview */}
-          <div className="w-[180px] h-[240px] rounded-2xl overflow-hidden bg-gray-50 border border-gray-100 shrink-0 shadow-sm relative flex items-center justify-center">
+          <div className="w-[180px] h-[240px] rounded-2xl overflow-hidden bg-muted border border-border shrink-0 shadow-sm relative flex items-center justify-center">
             {imageUrl ? (
               <img
                 src={imageUrl}
@@ -97,7 +97,7 @@ export function AltTextModal({
                 alt="Alt text thumbnail preview"
               />
             ) : (
-              <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">No Image</span>
+              <span className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider">No Image</span>
             )}
           </div>
 
@@ -107,7 +107,7 @@ export function AltTextModal({
               value={altText}
               onChange={(e) => setAltText(e.target.value.substring(0, 500))}
               placeholder="Write an alt text or press the AI icon to generate one"
-              className="w-full flex-1 p-4 bg-gray-50 border border-gray-100 focus:border-gray-200 focus:bg-white rounded-2xl text-xs font-semibold text-gray-800 placeholder-gray-400 resize-none outline-none transition-all scrollbar-thin"
+              className="w-full flex-1 p-4 bg-muted border border-border focus:border-border focus:bg-card rounded-2xl text-xs font-semibold text-foreground placeholder-gray-400 resize-none outline-none transition-all scrollbar-thin"
             />
             
             <div className="flex items-center justify-between mt-3 px-1">
@@ -115,11 +115,11 @@ export function AltTextModal({
                 type="button"
                 onClick={handleAiGenerate}
                 disabled={isGenerating}
-                className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-50 hover:bg-gray-100 disabled:opacity-50 rounded-xl transition-all text-[11px] font-bold text-gray-600 cursor-pointer"
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-muted hover:bg-muted disabled:opacity-50 rounded-xl transition-all text-[11px] font-bold text-muted-foreground cursor-pointer"
               >
                 {isGenerating ? (
                   <>
-                    <Loader2 size={13} className="text-gray-500 animate-spin" />
+                    <Loader2 size={13} className="text-muted-foreground animate-spin" />
                     <span>Generating...</span>
                   </>
                 ) : (
@@ -130,14 +130,14 @@ export function AltTextModal({
                 )}
               </button>
 
-              <span className="text-[10px] font-bold text-gray-400">{altText.length} / 500</span>
+              <span className="text-[10px] font-bold text-muted-foreground">{altText.length} / 500</span>
             </div>
           </div>
         </div>
 
         {/* Footer */}
-        <div className="border-t border-gray-100 pt-5 mt-6 flex items-center justify-between">
-          <div className="flex items-center gap-2 text-[11px] font-bold text-gray-500">
+        <div className="border-t border-border pt-5 mt-6 flex items-center justify-between">
+          <div className="flex items-center gap-2 text-[11px] font-bold text-muted-foreground">
             <span>This text will apply to:</span>
             <div className="w-5 h-5 rounded-full bg-[#1877F2] flex items-center justify-center text-white">
               <svg className="w-3 h-3 fill-current" viewBox="0 0 24 24">

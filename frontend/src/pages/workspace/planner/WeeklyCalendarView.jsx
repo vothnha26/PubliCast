@@ -341,7 +341,7 @@ export function WeeklyCalendarView() {
           />
           
           {/* Slide-over Drawer Panel */}
-          <div className="relative w-screen max-w-sm bg-white shadow-2xl z-10 flex flex-col h-full border-l border-gray-200 animate-in slide-in-from-right duration-300">
+          <div className="relative w-screen max-w-sm bg-card shadow-2xl z-10 flex flex-col h-full border-l border-border animate-in slide-in-from-right duration-300">
             <SidebarIntegrations activeBrand={activeBrand} onClose={() => setShowSidebar(false)} />
           </div>
         </div>

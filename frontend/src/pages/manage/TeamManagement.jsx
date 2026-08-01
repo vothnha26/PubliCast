@@ -152,25 +152,25 @@ export function TeamManagementPage() {
   };
 
   return (
-    <div className="flex-1 flex flex-col overflow-hidden" style={{ background: "#F8F8F7" }}>
+    <div className="flex-1 flex flex-col overflow-hidden bg-background">
       {/* Sub-header */}
-      <div className="flex items-center justify-between px-8 py-6 bg-white border-b border-gray-100">
+      <div className="flex items-center justify-between px-8 py-6 bg-card border-b border-border">
         <div>
-          <h1 className="text-xl font-bold text-[#0A0A0A] tracking-tight">{t("team.title")}</h1>
-          <p className="text-[11px] font-bold text-gray-400 uppercase tracking-widest mt-1">{t("team.subtitle")}</p>
+          <h1 className="text-xl font-bold text-foreground tracking-tight">{t("team.title")}</h1>
+          <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-widest mt-1">{t("team.subtitle")}</p>
         </div>
         <div className="flex items-center gap-2">
           {activeTab === "roles" ? (
             <button 
               onClick={() => { setSelectedRole(null); setIsRoleCreateEditOpen(true); }}
-              className="flex items-center gap-2 px-4 py-2.5 bg-[#0A0A0A] text-white rounded-xl text-xs font-bold hover:bg-gray-900 transition-all shadow-sm active:scale-95"
+              className="flex items-center gap-2 px-4 py-2.5 bg-foreground text-background rounded-xl text-xs font-bold hover:bg-foreground/90 transition-all shadow-sm active:scale-95 cursor-pointer"
             >
               <Plus size={14} /> {t("team.addCustomRole")}
             </button>
           ) : (
             <button 
               onClick={() => setIsInviteOpen(true)}
-              className="flex items-center gap-2 px-4 py-2.5 bg-[#0A0A0A] text-white rounded-xl text-xs font-bold hover:bg-gray-900 transition-all shadow-sm active:scale-95"
+              className="flex items-center gap-2 px-4 py-2.5 bg-foreground text-background rounded-xl text-xs font-bold hover:bg-foreground/90 transition-all shadow-sm active:scale-95 cursor-pointer"
             >
               <UserPlus size={14} /> {t("team.inviteMember")}
             </button>
@@ -179,19 +179,19 @@ export function TeamManagementPage() {
       </div>
 
       {/* Tabs */}
-      <div className="flex px-8 bg-white border-b border-gray-100">
+      <div className="flex px-8 bg-card border-b border-border">
         <button 
           onClick={() => setActiveTab("members")}
-          className={`py-4 px-6 text-xs font-bold uppercase tracking-wider border-b-2 transition-all ${
-            activeTab === "members" ? "border-black text-black" : "border-transparent text-gray-400 hover:text-gray-600"
+          className={`py-4 px-6 text-xs font-bold uppercase tracking-wider border-b-2 transition-all cursor-pointer ${
+            activeTab === "members" ? "border-foreground text-foreground" : "border-transparent text-muted-foreground hover:text-foreground"
           }`}
         >
           {t("team.tabMembers", { count: members.length })}
         </button>
         <button 
           onClick={() => setActiveTab("roles")}
-          className={`py-4 px-6 text-xs font-bold uppercase tracking-wider border-b-2 transition-all ${
-            activeTab === "roles" ? "border-black text-black" : "border-transparent text-gray-400 hover:text-gray-600"
+          className={`py-4 px-6 text-xs font-bold uppercase tracking-wider border-b-2 transition-all cursor-pointer ${
+            activeTab === "roles" ? "border-foreground text-foreground" : "border-transparent text-muted-foreground hover:text-foreground"
           }`}
         >
           {t("team.tabRoles", { count: roles.length })}
@@ -201,15 +201,15 @@ export function TeamManagementPage() {
       {activeTab === "members" && (
         <>
           {/* Filter Bar */}
-          <div className="flex items-center gap-3 px-8 py-4 bg-white/50 backdrop-blur-sm border-b border-gray-100 flex-wrap">
+          <div className="flex items-center gap-3 px-8 py-4 bg-card/50 backdrop-blur-sm border-b border-border flex-wrap">
             <div className="relative flex-1 min-w-[240px] max-w-md">
-              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
               <input
                 type="text"
                 placeholder={t("team.searchPlaceholder")}
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 bg-white border border-gray-200 rounded-xl text-xs outline-none focus:border-black transition-all"
+                className="w-full pl-10 pr-4 py-2 bg-background border border-border rounded-xl text-xs outline-none focus:border-foreground text-foreground transition-all"
               />
             </div>
             
@@ -218,8 +218,8 @@ export function TeamManagementPage() {
                 <button
                   key={r}
                   onClick={() => updateFilters({ role: r })}
-                  className={`px-4 py-2 rounded-xl text-[10px] font-bold uppercase tracking-widest transition-all ${
-                    (filters.role || "All") === r ? "bg-[#0A0A0A] text-white shadow-md" : "bg-white text-gray-400 border border-gray-200 hover:bg-gray-50"
+                  className={`px-4 py-2 rounded-xl text-[10px] font-bold uppercase tracking-widest transition-all cursor-pointer ${
+                    (filters.role || "All") === r ? "bg-foreground text-background shadow-md" : "bg-card text-muted-foreground border border-border hover:bg-muted"
                   }`}
                 >
                   {r}
@@ -230,7 +230,7 @@ export function TeamManagementPage() {
             {(filters.search || filters.role !== "All") && (
               <button 
                 onClick={clearFilters}
-                className="text-[10px] font-bold text-gray-400 uppercase tracking-widest hover:text-black transition-colors"
+                className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest hover:text-foreground transition-colors cursor-pointer"
               >
                 {t("team.clearFilters")}
               </button>
@@ -240,46 +240,46 @@ export function TeamManagementPage() {
           {/* Members Table */}
           <div className="flex-1 overflow-y-auto px-8 py-6">
             {loading ? (
-              <div className="flex items-center justify-center py-24 bg-white border border-gray-100 rounded-3xl shadow-sm">
-                <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-[#0A0A0A]" />
+              <div className="flex items-center justify-center py-24 bg-card border border-border rounded-3xl shadow-sm">
+                <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-foreground" />
               </div>
             ) : members.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-24 bg-white border border-gray-100 rounded-3xl shadow-sm gap-4">
-                <div className="w-12 h-12 bg-gray-50 rounded-2xl flex items-center justify-center text-gray-300">
+              <div className="flex flex-col items-center justify-center py-24 bg-card border border-border rounded-3xl shadow-sm gap-4">
+                <div className="w-12 h-12 bg-muted rounded-2xl flex items-center justify-center text-muted-foreground">
                   <User size={24} />
                 </div>
                 <div className="text-center">
-                  <h3 className="text-sm font-bold text-[#0A0A0A]">{t("team.noMembers")}</h3>
-                  <p className="text-[10px] text-gray-400 uppercase font-bold tracking-widest mt-1">{t("team.noMembersSubtitle")}</p>
+                  <h3 className="text-sm font-bold text-foreground">{t("team.noMembers")}</h3>
+                  <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-widest mt-1">{t("team.noMembersSubtitle")}</p>
                 </div>
                 <button 
                   onClick={clearFilters}
-                  className="mt-2 px-4 py-2 border border-gray-200 rounded-xl text-[10px] font-bold text-gray-500 hover:bg-gray-50 transition-all uppercase tracking-widest"
+                  className="mt-2 px-4 py-2 border border-border rounded-xl text-[10px] font-bold text-muted-foreground hover:bg-muted transition-all uppercase tracking-widest cursor-pointer"
                 >
                   {t("team.resetFilters")}
                 </button>
               </div>
             ) : (
-              <div className="bg-white border border-gray-100 rounded-3xl shadow-sm overflow-hidden">
+              <div className="bg-card border border-border rounded-3xl shadow-sm overflow-hidden">
                 <table className="w-full border-collapse">
                   <thead>
-                    <tr className="bg-gray-50/50 border-b border-gray-100">
+                    <tr className="bg-muted/50 border-b border-border">
                       {[t("team.colMember"), t("team.colRole"), t("team.colStatus"), t("team.colJoined"), t("team.colInvitedBy"), ""].map((h, idx) => (
-                        <th key={idx} className="px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest text-left">{h}</th>
+                        <th key={idx} className="px-6 py-4 text-[10px] font-bold text-muted-foreground uppercase tracking-widest text-left">{h}</th>
                       ))}
                     </tr>
                   </thead>
                   <tbody>
                     {members.map((member) => (
-                      <tr key={member.id} className="border-b border-gray-50 hover:bg-gray-50/30 transition-all group">
+                      <tr key={member.id} className="border-b border-border hover:bg-muted/30 transition-all group">
                         <td className="px-6 py-4">
                           <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-2xl bg-[#0A0A0A] flex items-center justify-center text-white font-bold text-xs shadow-sm overflow-hidden">
+                            <div className="w-10 h-10 rounded-2xl bg-muted border border-border flex items-center justify-center text-foreground font-bold text-xs shadow-sm overflow-hidden">
                               {member.avatar ? <img src={member.avatar} alt="" className="w-full h-full object-cover" /> : member.name.charAt(0)}
                             </div>
                             <div>
-                              <div className="text-[12px] font-bold text-[#0A0A0A]">{member.name}</div>
-                              <div className="text-[10px] text-gray-400 font-medium">{member.email}</div>
+                              <div className="text-[12px] font-bold text-foreground">{member.name}</div>
+                              <div className="text-[10px] text-muted-foreground font-medium">{member.email}</div>
                             </div>
                           </div>
                         </td>
@@ -288,27 +288,27 @@ export function TeamManagementPage() {
                             {member.customRole ? (
                               <>
                                 <span className="w-2.5 h-2.5 rounded-full shadow-sm" style={{ backgroundColor: member.customRole.colorHex }} />
-                                <span className="text-[11px] font-bold text-[#0A0A0A]">{member.customRole.name}</span>
+                                <span className="text-[11px] font-bold text-foreground">{member.customRole.name}</span>
                               </>
                             ) : (
                               <>
-                                <div className={`p-1.5 rounded-lg ${member.role === SYSTEM_ROLES.OWNER ? 'bg-purple-50 text-purple-600' : 'bg-gray-50 text-gray-600'}`}>
+                                <div className={`p-1.5 rounded-lg ${member.role === SYSTEM_ROLES.OWNER ? 'bg-purple-500/10 text-purple-500' : 'bg-muted text-muted-foreground'}`}>
                                   {member.role === SYSTEM_ROLES.OWNER || member.role === SYSTEM_ROLES.ADMIN ? <Shield size={12} /> : <User size={12} />}
                                 </div>
-                                <span className="text-[11px] font-bold text-[#0A0A0A]">{t("team." + member.role.toLowerCase())}</span>
+                                <span className="text-[11px] font-bold text-foreground">{t("team." + member.role.toLowerCase())}</span>
                               </>
                             )}
                           </div>
                         </td>
                         <td className="px-6 py-4">
                           <span className={`px-2.5 py-1 rounded-full text-[9px] font-bold uppercase tracking-wider ${
-                            member.status === MEMBER_STATUS.ACTIVE ? 'bg-green-50 text-green-600' : 'bg-orange-50 text-orange-600'
+                            member.status === MEMBER_STATUS.ACTIVE ? 'bg-emerald-500/10 text-emerald-500' : 'bg-amber-500/10 text-amber-500'
                           }`}>
                             {t("team." + member.status.toLowerCase())}
                           </span>
                         </td>
-                        <td className="px-6 py-4 text-[11px] text-gray-500 font-medium">{member.joinedDate}</td>
-                        <td className="px-6 py-4 text-[11px] text-gray-500 font-medium">{member.invitedBy}</td>
+                        <td className="px-6 py-4 text-[11px] text-muted-foreground font-medium">{member.joinedDate}</td>
+                        <td className="px-6 py-4 text-[11px] text-muted-foreground font-medium">{member.invitedBy}</td>
                         <td className="px-6 py-4 text-right">
                           {member.role !== SYSTEM_ROLES.OWNER && (
                             <div className="flex items-center justify-end gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -316,7 +316,7 @@ export function TeamManagementPage() {
                                 <button
                                   onClick={() => handleResendInvite(member)}
                                   disabled={resendingId === member.id}
-                                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[10px] font-bold text-orange-600 bg-orange-50 hover:bg-orange-100 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[10px] font-bold text-amber-500 bg-amber-500/10 hover:bg-amber-500/20 disabled:opacity-50 disabled:cursor-not-allowed transition-all cursor-pointer"
                                   title={t("team.resendInviteTitle")}
                                 >
                                   {resendingId === member.id
@@ -327,7 +327,7 @@ export function TeamManagementPage() {
                               )}
                               <button 
                                 onClick={() => { setSelectedMember(member); setIsRoleOpen(true); }}
-                                className="p-2 text-gray-300 hover:text-black hover:bg-white rounded-xl transition-all"
+                                className="p-2 text-muted-foreground hover:text-foreground hover:bg-muted rounded-xl transition-all cursor-pointer"
                                 title={t("team.manageMember")}
                               >
                                 <MoreHorizontal size={16} />
@@ -348,21 +348,21 @@ export function TeamManagementPage() {
       {activeTab === "roles" && (
         <div className="flex-1 overflow-y-auto px-8 py-6">
           {rolesLoading ? (
-            <div className="flex items-center justify-center py-24 bg-white border border-gray-100 rounded-3xl shadow-sm">
-              <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-[#0A0A0A]" />
+            <div className="flex items-center justify-center py-24 bg-card border border-border rounded-3xl shadow-sm">
+              <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-foreground" />
             </div>
           ) : roles.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-24 bg-white border border-gray-100 rounded-3xl shadow-sm gap-4">
-              <div className="w-12 h-12 bg-gray-50 rounded-2xl flex items-center justify-center text-gray-300">
+            <div className="flex flex-col items-center justify-center py-24 bg-card border border-border rounded-3xl shadow-sm gap-4">
+              <div className="w-12 h-12 bg-muted rounded-2xl flex items-center justify-center text-muted-foreground">
                 <Settings size={24} />
               </div>
               <div className="text-center">
-                <h3 className="text-sm font-bold text-[#0A0A0A]">{t("team.noCustomRoles")}</h3>
-                <p className="text-[10px] text-gray-400 uppercase font-bold tracking-widest mt-1">{t("team.noCustomRolesSubtitle")}</p>
+                <h3 className="text-sm font-bold text-foreground">{t("team.noCustomRoles")}</h3>
+                <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-widest mt-1">{t("team.noCustomRolesSubtitle")}</p>
               </div>
               <button 
                 onClick={() => { setSelectedRole(null); setIsRoleCreateEditOpen(true); }}
-                className="mt-2 px-4 py-2 bg-[#0A0A0A] text-white rounded-xl text-[10px] font-bold transition-all uppercase tracking-widest"
+                className="mt-2 px-4 py-2 bg-foreground text-background rounded-xl text-[10px] font-bold transition-all uppercase tracking-widest hover:bg-foreground/90 cursor-pointer"
               >
                 {t("team.createCustomRole")}
               </button>
@@ -370,25 +370,25 @@ export function TeamManagementPage() {
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {roles.map((role) => (
-                <div key={role.id} className="bg-white border border-gray-100 rounded-3xl p-6 shadow-sm flex flex-col justify-between hover:shadow-md transition-all duration-300 relative group">
+                <div key={role.id} className="bg-card border border-border rounded-3xl p-6 shadow-sm flex flex-col justify-between hover:shadow-md transition-all duration-300 relative group">
                   <div>
                     {/* Role Header */}
                     <div className="flex items-start justify-between">
                       <div className="flex items-center gap-2.5">
-                        <span className="w-3.5 h-3.5 rounded-full border border-white shadow-sm" style={{ backgroundColor: role.colorHex }} />
-                        <h3 className="text-sm font-bold text-[#0A0A0A]">{role.name}</h3>
+                        <span className="w-3.5 h-3.5 rounded-full border border-card shadow-sm" style={{ backgroundColor: role.colorHex }} />
+                        <h3 className="text-sm font-bold text-foreground">{role.name}</h3>
                       </div>
                       <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                         <button 
                           onClick={() => { setSelectedRole(role); setIsRoleCreateEditOpen(true); }}
-                          className="p-1.5 hover:bg-gray-50 rounded-lg text-gray-400 hover:text-black transition-colors"
+                          className="p-1.5 hover:bg-muted rounded-lg text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
                           title={t("team.editRole")}
                         >
                           <Edit2 size={12} />
                         </button>
                         <button 
                           onClick={() => handleDeleteRole(role.id)}
-                          className="p-1.5 hover:bg-red-50 rounded-lg text-gray-400 hover:text-red-600 transition-colors"
+                          className="p-1.5 hover:bg-red-500/10 rounded-lg text-muted-foreground hover:text-red-500 transition-colors cursor-pointer"
                           title={t("team.deleteRole")}
                         >
                           <Trash2 size={12} />
@@ -396,27 +396,27 @@ export function TeamManagementPage() {
                       </div>
                     </div>
 
-                    <p className="text-[11px] text-gray-400 font-medium mt-2 line-clamp-2">{role.description || t("team.noDescription")}</p>
+                    <p className="text-[11px] text-muted-foreground font-medium mt-2 line-clamp-2">{role.description || t("team.noDescription")}</p>
                     
                     {/* Role Counts */}
-                    <div className="mt-4 flex items-center gap-1.5 text-[10px] text-gray-500 font-bold uppercase tracking-wider">
+                    <div className="mt-4 flex items-center gap-1.5 text-[10px] text-muted-foreground font-bold uppercase tracking-wider">
                       <User size={10} /> {t("team.roleAssignedMembers", { count: role._count?.teamMembers || 0 })}
                     </div>
 
                     {/* Permissions Preview */}
-                    <div className="mt-5 border-t border-gray-50 pt-4 space-y-2">
-                      <div className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">{t("team.activePermissions")}</div>
+                    <div className="mt-5 border-t border-border pt-4 space-y-2">
+                      <div className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest">{t("team.activePermissions")}</div>
                       <div className="flex flex-wrap gap-1.5 pt-1">
                         {role.permissions?.filter(p => p.isAllowed).map(p => {
                           const sys = systemPermissions.find(s => s.key === p.permissionKey);
                           return (
-                            <span key={p.id} className="px-2 py-1 bg-gray-50 text-gray-600 rounded-lg text-[9px] font-semibold border border-gray-100">
+                            <span key={p.id} className="px-2 py-1 bg-muted text-foreground rounded-lg text-[9px] font-semibold border border-border">
                               {sys ? sys.label.split(" (")[0] : p.permissionKey}
                             </span>
                           );
                         })}
                         {role.permissions?.filter(p => p.isAllowed).length === 0 && (
-                          <span className="text-[10px] text-gray-400 italic">{t("team.noActivePermissions")}</span>
+                          <span className="text-[10px] text-muted-foreground italic">{t("team.noActivePermissions")}</span>
                         )}
                       </div>
                     </div>
@@ -566,26 +566,26 @@ function InviteModal({ isOpen, onClose, activeBrandId, customRoles = [], onInvit
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
-      <div className="absolute inset-0 bg-[#0A0A0A]/40 backdrop-blur-sm" onClick={onClose} />
-      <div className="bg-white w-full max-w-lg rounded-3xl shadow-2xl relative overflow-hidden animate-in fade-in zoom-in duration-200">
-        <div className="px-8 py-6 border-b border-gray-100 flex items-center justify-between">
-          <h2 className="text-lg font-bold text-[#0A0A0A]">{t("team.inviteModalTitle")}</h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-black"><X size={20} /></button>
+      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
+      <div className="bg-card border border-border w-full max-w-lg rounded-3xl shadow-2xl relative overflow-hidden animate-in fade-in zoom-in duration-200">
+        <div className="px-8 py-6 border-b border-border flex items-center justify-between">
+          <h2 className="text-lg font-bold text-foreground">{t("team.inviteModalTitle")}</h2>
+          <button onClick={onClose} className="text-muted-foreground hover:text-foreground cursor-pointer"><X size={20} /></button>
         </div>
         <div className="p-8 space-y-6">
           <div className="space-y-2">
             <div className="flex justify-between items-center">
-              <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{t("team.emailList")}</label>
-              <span className="text-[9px] text-gray-400">{t("team.emailHint")}</span>
+              <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">{t("team.emailList")}</label>
+              <span className="text-[9px] text-muted-foreground">{t("team.emailHint")}</span>
             </div>
             <div 
               onClick={() => inputRef.current?.focus()}
-              className="w-full px-4 py-3 bg-gray-50 border border-transparent rounded-2xl flex flex-wrap gap-2 cursor-text focus-within:bg-white focus-within:border-black focus-within:ring-1 focus-within:ring-black/10 transition-all min-h-[96px] overflow-y-auto max-h-40"
+              className="w-full px-4 py-3 bg-muted border border-border rounded-2xl flex flex-wrap gap-2 cursor-text focus-within:border-foreground transition-all min-h-[96px] overflow-y-auto max-h-40"
             >
               {emails.map((email, idx) => (
                 <div 
                   key={idx} 
-                  className="bg-gray-100 text-gray-800 text-[11px] font-bold py-1 px-2.5 rounded-xl flex items-center gap-1 border border-gray-200"
+                  className="bg-card text-foreground text-[11px] font-bold py-1 px-2.5 rounded-xl flex items-center gap-1 border border-border"
                 >
                   <span>{email}</span>
                   <button 
@@ -594,7 +594,7 @@ function InviteModal({ isOpen, onClose, activeBrandId, customRoles = [], onInvit
                       e.stopPropagation();
                       removeEmailTag(idx);
                     }}
-                    className="text-gray-400 hover:text-red-500 hover:bg-gray-200 rounded-full p-0.5 transition-colors cursor-pointer"
+                    className="text-muted-foreground hover:text-red-500 hover:bg-muted rounded-full p-0.5 transition-colors cursor-pointer"
                   >
                     <X size={10} />
                   </button>
@@ -609,13 +609,13 @@ function InviteModal({ isOpen, onClose, activeBrandId, customRoles = [], onInvit
                 onPaste={handlePaste}
                 onBlur={() => addEmailTag(inputValue)}
                 placeholder={emails.length === 0 ? "colleague1@company.com" : ""}
-                className="flex-1 min-w-[120px] text-xs outline-none bg-transparent py-1 font-medium placeholder-gray-400"
+                className="flex-1 min-w-[120px] text-xs outline-none bg-transparent py-1 font-medium text-foreground placeholder:text-muted-foreground"
               />
             </div>
           </div>
 
           <div className="space-y-2">
-            <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{t("team.inviteRole")}</label>
+            <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">{t("team.inviteRole")}</label>
             <div className="grid grid-cols-2 gap-3 max-h-60 overflow-y-auto pr-1">
               {/* Static default options */}
               {ASSIGNABLE_ROLES.map((r) => (
@@ -623,12 +623,12 @@ function InviteModal({ isOpen, onClose, activeBrandId, customRoles = [], onInvit
                   key={r} 
                   type="button"
                   onClick={() => setRole(r)}
-                  className={`p-4 border rounded-2xl text-left transition-all flex flex-col justify-between ${
-                    role === r ? 'border-black bg-gray-50/50' : 'border-gray-100 hover:border-gray-300'
+                  className={`p-4 border rounded-2xl text-left transition-all flex flex-col justify-between cursor-pointer ${
+                    role === r ? 'border-foreground bg-muted/50' : 'border-border hover:border-foreground/40'
                   }`}
                 >
-                  <div className="text-[11px] font-bold text-[#0A0A0A]">{t("team." + r.toLowerCase())}</div>
-                  <div className="text-[9px] text-gray-400 mt-1">
+                  <div className="text-[11px] font-bold text-foreground">{t("team." + r.toLowerCase())}</div>
+                  <div className="text-[9px] text-muted-foreground mt-1">
                     {r === 'Admin' ? t("team.adminDesc") : r === 'Analyst' ? t("team.analystDesc") : t("team.memberDesc")}
                   </div>
                 </button>
@@ -639,15 +639,15 @@ function InviteModal({ isOpen, onClose, activeBrandId, customRoles = [], onInvit
                   key={cr.id} 
                   type="button"
                   onClick={() => setRole(cr.id)}
-                  className={`p-4 border rounded-2xl text-left transition-all flex flex-col justify-between ${
-                    role === cr.id ? 'border-black bg-gray-50/50' : 'border-gray-100 hover:border-gray-300'
+                  className={`p-4 border rounded-2xl text-left transition-all flex flex-col justify-between cursor-pointer ${
+                    role === cr.id ? 'border-foreground bg-muted/50' : 'border-border hover:border-foreground/40'
                   }`}
                 >
                   <div className="flex items-center gap-1.5">
-                    <span className="w-2.5 h-2.5 rounded-full border border-white shadow-sm" style={{ backgroundColor: cr.colorHex }} />
-                    <div className="text-[11px] font-bold text-[#0A0A0A]">{cr.name}</div>
+                    <span className="w-2.5 h-2.5 rounded-full border border-card shadow-sm" style={{ backgroundColor: cr.colorHex }} />
+                    <div className="text-[11px] font-bold text-foreground">{cr.name}</div>
                   </div>
-                  <div className="text-[9px] text-gray-400 mt-1 line-clamp-1">{cr.description || t("team.customRoleDesc")}</div>
+                  <div className="text-[9px] text-muted-foreground mt-1 line-clamp-1">{cr.description || t("team.customRoleDesc")}</div>
                 </button>
               ))}
             </div>
@@ -656,7 +656,7 @@ function InviteModal({ isOpen, onClose, activeBrandId, customRoles = [], onInvit
           <button 
             onClick={handleInvite}
             disabled={isSubmitting}
-            className="w-full py-4 bg-[#0A0A0A] text-white rounded-2xl text-xs font-bold hover:shadow-lg transition-all active:scale-[0.98] flex items-center justify-center gap-2"
+            className="w-full py-4 bg-foreground text-background rounded-2xl text-xs font-bold hover:bg-foreground/90 transition-all active:scale-[0.98] flex items-center justify-center gap-2 cursor-pointer"
           >
             {isSubmitting ? (
               <>
@@ -720,22 +720,22 @@ function RoleModal({ isOpen, onClose, member, customRoles = [], onSuccess }) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
-      <div className="absolute inset-0 bg-[#0A0A0A]/40 backdrop-blur-sm" onClick={onClose} />
-      <div className="bg-white w-full max-w-md rounded-3xl shadow-2xl relative overflow-hidden animate-in fade-in zoom-in duration-200">
-        <div className="px-8 py-6 border-b border-gray-100 flex items-center justify-between">
-          <h2 className="text-lg font-bold text-[#0A0A0A]">{t("team.manageRoleModalTitle")}</h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-black"><X size={20} /></button>
+      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
+      <div className="bg-card border border-border w-full max-w-md rounded-3xl shadow-2xl relative overflow-hidden animate-in fade-in zoom-in duration-200">
+        <div className="px-8 py-6 border-b border-border flex items-center justify-between">
+          <h2 className="text-lg font-bold text-foreground">{t("team.manageRoleModalTitle")}</h2>
+          <button onClick={onClose} className="text-muted-foreground hover:text-foreground cursor-pointer"><X size={20} /></button>
         </div>
         <div className="p-8 space-y-6">
           <div className="flex items-center gap-4">
-             <div className="w-12 h-12 rounded-2xl bg-[#0A0A0A] flex items-center justify-center text-white font-bold">{member.name?.charAt(0)}</div>
+             <div className="w-12 h-12 rounded-2xl bg-muted border border-border flex items-center justify-center text-foreground font-bold">{member.name?.charAt(0)}</div>
              <div>
-                <div className="text-sm font-bold text-[#0A0A0A]">{member.name}</div>
-                <div className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">{t("team." + member.role.toLowerCase())}</div>
+                <div className="text-sm font-bold text-foreground">{member.name}</div>
+                <div className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest">{t("team." + member.role.toLowerCase())}</div>
              </div>
           </div>
           <div className="space-y-2">
-             <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest font-sans">{t("team.selectRole")}</label>
+             <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest font-sans">{t("team.selectRole")}</label>
              <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
                 {/* Default roles */}
                 {ASSIGNABLE_ROLES.map((r) => (
@@ -743,12 +743,12 @@ function RoleModal({ isOpen, onClose, member, customRoles = [], onSuccess }) {
                      key={r} 
                      disabled={isUpdating}
                      onClick={() => handleUpdateRole(r)}
-                     className={`w-full p-4 border rounded-2xl text-left flex items-center justify-between transition-all ${
-                       currentRoleValue === r ? 'border-black bg-gray-50' : 'border-gray-100 hover:border-gray-300'
+                     className={`w-full p-4 border rounded-2xl text-left flex items-center justify-between transition-all cursor-pointer ${
+                       currentRoleValue === r ? 'border-foreground bg-muted' : 'border-border hover:border-foreground/40'
                      }`}
                    >
-                      <span className="text-[11px] font-bold text-[#0A0A0A]">{t("team." + r.toLowerCase())}</span>
-                      {currentRoleValue === r && <Check size={14} />}
+                      <span className="text-[11px] font-bold text-foreground">{t("team." + r.toLowerCase())}</span>
+                      {currentRoleValue === r && <Check size={14} className="text-foreground" />}
                    </button>
                 ))}
                 {/* Custom roles */}
@@ -757,15 +757,15 @@ function RoleModal({ isOpen, onClose, member, customRoles = [], onSuccess }) {
                      key={cr.id} 
                      disabled={isUpdating}
                      onClick={() => handleUpdateRole(cr.id)}
-                     className={`w-full p-4 border rounded-2xl text-left flex items-center justify-between transition-all ${
-                       currentRoleValue === cr.id ? 'border-black bg-gray-50' : 'border-gray-100 hover:border-gray-300'
+                     className={`w-full p-4 border rounded-2xl text-left flex items-center justify-between transition-all cursor-pointer ${
+                       currentRoleValue === cr.id ? 'border-foreground bg-muted' : 'border-border hover:border-foreground/40'
                      }`}
                    >
                       <div className="flex items-center gap-2">
-                        <span className="w-2.5 h-2.5 rounded-full border border-white shadow-sm" style={{ backgroundColor: cr.colorHex }} />
-                        <span className="text-[11px] font-bold text-[#0A0A0A]">{cr.name}</span>
+                        <span className="w-2.5 h-2.5 rounded-full border border-card shadow-sm" style={{ backgroundColor: cr.colorHex }} />
+                        <span className="text-[11px] font-bold text-foreground">{cr.name}</span>
                       </div>
-                      {currentRoleValue === cr.id && <Check size={14} />}
+                      {currentRoleValue === cr.id && <Check size={14} className="text-foreground" />}
                    </button>
                 ))}
              </div>
@@ -774,7 +774,7 @@ function RoleModal({ isOpen, onClose, member, customRoles = [], onSuccess }) {
             <button 
               onClick={handleRemoveMember}
               disabled={isRemoving}
-              className="w-full py-4 border border-red-100 text-red-600 rounded-2xl text-xs font-bold hover:bg-red-50 transition-all flex items-center justify-center gap-2"
+              className="w-full py-4 border border-red-500/20 text-red-500 rounded-2xl text-xs font-bold hover:bg-red-500/10 transition-all flex items-center justify-center gap-2 cursor-pointer"
             >
               {isRemoving ? <Loader2 className="animate-spin" size={14} /> : t("team.removeMember")}
             </button>
@@ -851,40 +851,40 @@ function RoleCreateEditModal({ isOpen, onClose, activeBrandId, role, onSuccess, 
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
-      <div className="absolute inset-0 bg-[#0A0A0A]/40 backdrop-blur-sm" onClick={onClose} />
-      <div className="bg-white w-full max-w-2xl rounded-3xl shadow-2xl relative overflow-hidden animate-in fade-in zoom-in duration-200">
-        <div className="px-8 py-6 border-b border-gray-100 flex items-center justify-between">
-          <h2 className="text-lg font-bold text-[#0A0A0A]">{isEdit ? t("team.editRoleModalTitle") : t("team.createRoleModalTitle")}</h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-black"><X size={20} /></button>
+      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
+      <div className="bg-card border border-border w-full max-w-2xl rounded-3xl shadow-2xl relative overflow-hidden animate-in fade-in zoom-in duration-200">
+        <div className="px-8 py-6 border-b border-border flex items-center justify-between">
+          <h2 className="text-lg font-bold text-foreground">{isEdit ? t("team.editRoleModalTitle") : t("team.createRoleModalTitle")}</h2>
+          <button onClick={onClose} className="text-muted-foreground hover:text-foreground cursor-pointer"><X size={20} /></button>
         </div>
         
         <div className="p-8 space-y-6 max-h-[75vh] overflow-y-auto">
           {/* Form details */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-2">
-              <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{t("team.roleName")}</label>
+              <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">{t("team.roleName")}</label>
               <input 
                 type="text" 
                 placeholder={t("team.roleNamePlaceholder")}
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 maxLength={50}
-                className="w-full px-4 py-3 bg-gray-50 border border-transparent rounded-2xl text-xs outline-none focus:bg-white focus:border-black transition-all font-medium"
+                className="w-full px-4 py-3 bg-muted border border-border text-foreground rounded-2xl text-xs outline-none focus:border-foreground transition-all font-medium placeholder:text-muted-foreground"
               />
             </div>
             
             <div className="space-y-2">
-              <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{t("team.roleColor")}</label>
+              <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">{t("team.roleColor")}</label>
               <div className="flex items-center gap-2 py-1.5">
                 {PRESET_COLORS.map(c => (
                   <button 
                     key={c}
                     type="button"
                     onClick={() => setColorHex(c)}
-                    className="w-7 h-7 rounded-full border-2 transition-transform duration-150 active:scale-90 relative flex items-center justify-center shadow-sm"
-                    style={{ backgroundColor: c, borderColor: colorHex === c ? "#0A0A0A" : "transparent" }}
+                    className="w-7 h-7 rounded-full border-2 transition-transform duration-150 active:scale-90 relative flex items-center justify-center shadow-sm cursor-pointer"
+                    style={{ backgroundColor: c, borderColor: colorHex === c ? "var(--foreground)" : "transparent" }}
                   >
-                    {colorHex === c && <Check size={12} className={c === "#0A0A0A" ? "text-white" : "text-[#0A0A0A]"} />}
+                    {colorHex === c && <Check size={12} className={c === "#0A0A0A" ? "text-white" : "text-slate-900"} />}
                   </button>
                 ))}
               </div>
@@ -892,23 +892,23 @@ function RoleCreateEditModal({ isOpen, onClose, activeBrandId, role, onSuccess, 
           </div>
 
           <div className="space-y-2">
-            <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{t("team.roleDescription")}</label>
+            <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">{t("team.roleDescription")}</label>
             <input 
               type="text" 
               placeholder={t("team.roleDescriptionPlaceholder")}
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              className="w-full px-4 py-3 bg-gray-50 border border-transparent rounded-2xl text-xs outline-none focus:bg-white focus:border-black transition-all font-medium"
+              className="w-full px-4 py-3 bg-muted border border-border text-foreground rounded-2xl text-xs outline-none focus:border-foreground transition-all font-medium placeholder:text-muted-foreground"
             />
           </div>
 
           {/* Permissions checkbox grid */}
           <div className="space-y-6 pt-2">
-            <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest block border-b border-gray-100 pb-2">{t("team.rolePermissionsTitle")}</label>
+            <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest block border-b border-border pb-2">{t("team.rolePermissionsTitle")}</label>
             
             {/* Nhóm Content & Media */}
             <div className="space-y-3">
-              <h3 className="text-[11px] font-bold text-gray-500 uppercase tracking-wider">{t("team.groupContent")}</h3>
+              <h3 className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">{t("team.groupContent")}</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {systemPermissions.filter(p => p.category === "content" || p.category === "posts").map(p => {
                   const isActive = permissions[p.key];
@@ -917,18 +917,18 @@ function RoleCreateEditModal({ isOpen, onClose, activeBrandId, role, onSuccess, 
                       key={p.key}
                       type="button"
                       onClick={() => togglePermission(p.key)}
-                      className={`p-4 border rounded-2xl text-left transition-all duration-200 flex items-start justify-between gap-4 ${
-                        isActive ? "border-black bg-gray-50/50 shadow-sm" : "border-gray-100 hover:border-gray-200"
+                      className={`p-4 border rounded-2xl text-left transition-all duration-200 flex items-start justify-between gap-4 cursor-pointer ${
+                        isActive ? "border-foreground bg-muted shadow-sm" : "border-border hover:border-foreground/30"
                       }`}
                     >
                       <div className="space-y-1">
-                        <div className="text-[11px] font-bold text-[#0A0A0A]">{p.label}</div>
-                        <div className="text-[9px] text-gray-400 leading-normal">{p.desc}</div>
+                        <div className="text-[11px] font-bold text-foreground">{p.label}</div>
+                        <div className="text-[9px] text-muted-foreground leading-normal">{p.desc}</div>
                       </div>
                       <div className={`w-9 h-5 rounded-full p-0.5 transition-all duration-300 ${
-                        isActive ? "bg-black" : "bg-gray-200"
+                        isActive ? "bg-foreground" : "bg-muted"
                       }`}>
-                        <div className={`w-4 h-4 rounded-full bg-white shadow-sm transform transition-all duration-300 ${
+                        <div className={`w-4 h-4 rounded-full bg-card shadow-sm transform transition-all duration-300 ${
                           isActive ? "translate-x-4" : "translate-x-0"
                         }`} />
                       </div>
@@ -940,7 +940,7 @@ function RoleCreateEditModal({ isOpen, onClose, activeBrandId, role, onSuccess, 
 
             {/* Nhóm Management & Settings */}
             <div className="space-y-3">
-              <h3 className="text-[11px] font-bold text-gray-500 uppercase tracking-wider">{t("team.groupManagement")}</h3>
+              <h3 className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">{t("team.groupManagement")}</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {systemPermissions.filter(p => p.category === "management").map(p => {
                   const isActive = permissions[p.key];
@@ -949,18 +949,18 @@ function RoleCreateEditModal({ isOpen, onClose, activeBrandId, role, onSuccess, 
                       key={p.key}
                       type="button"
                       onClick={() => togglePermission(p.key)}
-                      className={`p-4 border rounded-2xl text-left transition-all duration-200 flex items-start justify-between gap-4 ${
-                        isActive ? "border-black bg-gray-50/50 shadow-sm" : "border-gray-100 hover:border-gray-200"
+                      className={`p-4 border rounded-2xl text-left transition-all duration-200 flex items-start justify-between gap-4 cursor-pointer ${
+                        isActive ? "border-foreground bg-muted shadow-sm" : "border-border hover:border-foreground/30"
                       }`}
                     >
                       <div className="space-y-1">
-                        <div className="text-[11px] font-bold text-[#0A0A0A]">{p.label}</div>
-                        <div className="text-[9px] text-gray-400 leading-normal">{p.desc}</div>
+                        <div className="text-[11px] font-bold text-foreground">{p.label}</div>
+                        <div className="text-[9px] text-muted-foreground leading-normal">{p.desc}</div>
                       </div>
                       <div className={`w-9 h-5 rounded-full p-0.5 transition-all duration-300 ${
-                        isActive ? "bg-black" : "bg-gray-200"
+                        isActive ? "bg-foreground" : "bg-muted"
                       }`}>
-                        <div className={`w-4 h-4 rounded-full bg-white shadow-sm transform transition-all duration-300 ${
+                        <div className={`w-4 h-4 rounded-full bg-card shadow-sm transform transition-all duration-300 ${
                           isActive ? "translate-x-4" : "translate-x-0"
                         }`} />
                       </div>
@@ -974,7 +974,7 @@ function RoleCreateEditModal({ isOpen, onClose, activeBrandId, role, onSuccess, 
           <button 
             onClick={handleSave}
             disabled={isSubmitting}
-            className="w-full py-4 bg-[#0A0A0A] text-white rounded-2xl text-xs font-bold hover:shadow-lg transition-all active:scale-[0.98] flex items-center justify-center gap-2 mt-4"
+            className="w-full py-4 bg-foreground text-background rounded-2xl text-xs font-bold hover:bg-foreground/90 transition-all active:scale-[0.98] flex items-center justify-center gap-2 mt-4 cursor-pointer"
           >
             {isSubmitting ? (
               <>

@@ -125,8 +125,8 @@ export function PreviewFacebook({
         {/* Top Indicators & Profile */}
         <div className="px-3 pt-3 space-y-2 w-full pointer-events-auto">
           {/* Progress bar line */}
-          <div className="w-full h-[2px] bg-white/30 rounded-full overflow-hidden">
-            <div className="w-1/3 h-full bg-white rounded-full animate-pulse" />
+          <div className="w-full h-[2px] bg-card/30 rounded-full overflow-hidden">
+            <div className="w-1/3 h-full bg-card rounded-full animate-pulse" />
           </div>
 
           <div className="flex items-center justify-between">
@@ -174,31 +174,31 @@ export function PreviewFacebook({
             {pageName.charAt(0).toUpperCase()}
           </div>
           <div className="text-left">
-            <span className="block text-xs font-bold text-gray-900 leading-tight hover:underline cursor-pointer">
+            <span className="block text-xs font-bold text-foreground leading-tight hover:underline cursor-pointer">
               {pageName}
             </span>
-            <div className="flex items-center gap-1 text-[9px] font-bold text-gray-400 uppercase tracking-tight mt-0.5">
+            <div className="flex items-center gap-1 text-[9px] font-bold text-muted-foreground uppercase tracking-tight mt-0.5">
               <span>Just now</span>
               <span>·</span>
-              <Globe size={10} className="text-gray-400" />
+              <Globe size={10} className="text-muted-foreground" />
             </div>
           </div>
         </div>
-        <button className="text-gray-400 hover:text-gray-600 p-1.5 hover:bg-gray-50 rounded-full transition-all">
+        <button className="text-muted-foreground hover:text-muted-foreground p-1.5 hover:bg-muted rounded-full transition-all">
           <MoreHorizontal size={16} />
         </button>
       </div>
 
       {/* Body Details Slot */}
       <div className="px-4 pb-4 space-y-3.5 text-left">
-        <p className="text-[11px] font-medium leading-relaxed text-gray-800 whitespace-pre-wrap px-0.5">
+        <p className="text-[11px] font-medium leading-relaxed text-foreground whitespace-pre-wrap px-0.5">
           {displayCaption}
         </p>
 
         {/* Media area is handled by PreviewShell */}
 
         {/* Analytics Action Counts Bar */}
-        <div className="flex items-center justify-between text-[10px] text-gray-500 font-bold border-b border-gray-100 pb-2.5 px-0.5">
+        <div className="flex items-center justify-between text-[10px] text-muted-foreground font-bold border-b border-border pb-2.5 px-0.5">
           <div className="flex items-center gap-1">
             <div className="flex -space-x-1">
               <div className="w-4 h-4 rounded-full bg-[#1877F2] flex items-center justify-center text-white ring-1 ring-white">
@@ -215,16 +215,16 @@ export function PreviewFacebook({
         </div>
 
         {/* Interactivity Buttons */}
-        <div className="flex items-center justify-between pt-0.5 px-1 text-gray-500">
-          <button className="flex items-center gap-1.5 hover:bg-gray-50 px-3 py-2 rounded-xl transition-all cursor-pointer group text-[10px] font-black uppercase tracking-wider">
+        <div className="flex items-center justify-between pt-0.5 px-1 text-muted-foreground">
+          <button className="flex items-center gap-1.5 hover:bg-muted px-3 py-2 rounded-xl transition-all cursor-pointer group text-[10px] font-black uppercase tracking-wider">
             <ThumbsUp size={14} className="group-hover:scale-110 transition-transform group-hover:text-[#1877F2]" />
             <span>Like</span>
           </button>
-          <button className="flex items-center gap-1.5 hover:bg-gray-50 px-3 py-2 rounded-xl transition-all cursor-pointer group text-[10px] font-black uppercase tracking-wider">
+          <button className="flex items-center gap-1.5 hover:bg-muted px-3 py-2 rounded-xl transition-all cursor-pointer group text-[10px] font-black uppercase tracking-wider">
             <MessageSquare size={14} className="group-hover:scale-110 transition-transform" />
             <span>Comment</span>
           </button>
-          <button className="flex items-center gap-1.5 hover:bg-gray-50 px-3 py-2 rounded-xl transition-all cursor-pointer group text-[10px] font-black uppercase tracking-wider">
+          <button className="flex items-center gap-1.5 hover:bg-muted px-3 py-2 rounded-xl transition-all cursor-pointer group text-[10px] font-black uppercase tracking-wider">
             <Share2 size={14} className="group-hover:scale-110 transition-transform" />
             <span>Share</span>
           </button>

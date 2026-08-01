@@ -13,9 +13,9 @@ export function ImportOverlay({ isOpen, titleKey, messageKey }) {
 
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[9999] flex flex-col items-center justify-center animate-in fade-in duration-200">
-      <div className="bg-white rounded-3xl p-8 max-w-sm w-full text-center shadow-2xl flex flex-col items-center space-y-4 animate-in zoom-in-95 duration-200">
+      <div className="bg-card border border-border rounded-3xl p-8 max-w-sm w-full text-center shadow-2xl flex flex-col items-center space-y-4 animate-in zoom-in-95 duration-200">
         <div className="relative">
-          <div className="w-16 h-16 rounded-full border-4 border-red-100 border-t-red-500 animate-spin" />
+          <div className="w-16 h-16 rounded-full border-4 border-red-500/20 border-t-red-500 animate-spin" />
           <div className="absolute inset-0 flex items-center justify-center">
             <svg className="w-6 h-6 text-red-500 animate-pulse" viewBox="0 0 24 24" fill="currentColor">
               <path d="M19.43 12.98L12 21.36L4.57 12.98L6.87 9.17H17.13L19.43 12.98Z" fill="#4CAF50" />
@@ -24,8 +24,8 @@ export function ImportOverlay({ isOpen, titleKey, messageKey }) {
             </svg>
           </div>
         </div>
-        <h4 className="text-sm font-black text-gray-800 uppercase tracking-wide">{title}</h4>
-        <p className="text-xs text-gray-400 font-bold leading-normal">
+        <h4 className="text-sm font-black text-foreground uppercase tracking-wide">{title}</h4>
+        <p className="text-xs text-muted-foreground font-bold leading-normal">
           {message}
         </p>
       </div>

@@ -19,8 +19,8 @@ export function AudienceDemographicsWidget({
   // Render loading skeleton
   if (isLoading) {
     return (
-      <div className="bg-white dark:bg-slate-900 border border-gray-150 dark:border-slate-800 rounded-3xl p-6 space-y-4 shadow-sm">
-        <div className="flex justify-between items-center pb-3 border-b border-gray-100 dark:border-slate-800 animate-pulse">
+      <div className="bg-card dark:bg-slate-900 border border-gray-150 dark:border-slate-800 rounded-3xl p-6 space-y-4 shadow-sm">
+        <div className="flex justify-between items-center pb-3 border-b border-border dark:border-slate-800 animate-pulse">
           <div className="w-48 h-5 bg-gray-200 dark:bg-slate-800 rounded" />
           <div className="w-16 h-3 bg-gray-200 dark:bg-slate-800 rounded" />
         </div>
@@ -67,14 +67,14 @@ export function AudienceDemographicsWidget({
   ];
 
   return (
-    <div className="bg-white dark:bg-slate-900 border border-gray-150 dark:border-slate-800 rounded-3xl p-6 space-y-4 shadow-sm hover:shadow-md transition-shadow">
+    <div className="bg-card dark:bg-slate-900 border border-gray-150 dark:border-slate-800 rounded-3xl p-6 space-y-4 shadow-sm hover:shadow-md transition-shadow">
       {/* Widget Header */}
-      <div className="flex justify-between items-center pb-3 border-b border-gray-100 dark:border-slate-800">
-        <h3 className="text-xs font-extrabold text-gray-800 dark:text-white uppercase tracking-wider flex items-center gap-1.5">
+      <div className="flex justify-between items-center pb-3 border-b border-border dark:border-slate-800">
+        <h3 className="text-xs font-extrabold text-foreground dark:text-white uppercase tracking-wider flex items-center gap-1.5">
           <Palette size={14} className="text-pink-500" />
           Cơ cấu tương tác thực tế (Instagram breakdown)
         </h3>
-        <span className="text-[9px] font-mono text-gray-400 dark:text-gray-500 font-bold">
+        <span className="text-[9px] font-mono text-muted-foreground dark:text-muted-foreground font-bold">
           {period}
         </span>
       </div>
@@ -90,24 +90,24 @@ export function AudienceDemographicsWidget({
           />
           {/* Absolute text in the middle of Doughnut chart */}
           <div className="absolute flex flex-col items-center justify-center">
-            <span className="text-[8px] text-gray-450 dark:text-gray-500 font-bold uppercase tracking-wider">
+            <span className="text-[8px] text-gray-450 dark:text-muted-foreground font-bold uppercase tracking-wider">
               Tương Tác
             </span>
-            <span className="text-xs font-black text-gray-700 dark:text-white font-mono">
+            <span className="text-xs font-black text-foreground dark:text-white font-mono">
               {totalIgEng >= 1000 ? `${(totalIgEng / 1000).toFixed(1)}K` : totalIgEng.toLocaleString()}
             </span>
           </div>
         </div>
 
         {/* Legend Grid */}
-        <div className="flex flex-col gap-1.5 text-[10px] font-bold text-gray-600 dark:text-gray-400 font-mono">
+        <div className="flex flex-col gap-1.5 text-[10px] font-bold text-muted-foreground dark:text-muted-foreground font-mono">
           {doughnutData.map((item, idx) => (
             <div key={idx} className="flex items-center gap-2">
               <span className="w-2 h-2 rounded-full" style={{ backgroundColor: item.color }} />
               <span>
                 {item.name}: {item.percentage.toFixed(0)}%
               </span>
-              <span className="text-gray-400 dark:text-gray-500 font-normal">
+              <span className="text-muted-foreground dark:text-muted-foreground font-normal">
                 ({item.value.toLocaleString()})
               </span>
             </div>

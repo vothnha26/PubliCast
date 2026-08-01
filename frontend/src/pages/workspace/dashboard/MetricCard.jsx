@@ -4,7 +4,7 @@ export function MetricCard({ isActive, color, value, label, trend, trendValue, o
   return (
     <div 
       onClick={onClick}
-      className={`px-5 py-3 rounded-2xl ${isActive ? color : "bg-gray-100 border border-gray-200 text-gray-400"} flex flex-col items-center min-w-[110px] shadow-sm cursor-pointer select-none transition-all duration-200 hover:scale-105 ${!isActive ? 'opacity-40' : ''}`}
+      className={`px-5 py-3 rounded-2xl ${isActive ? color : "bg-muted border border-border text-muted-foreground"} flex flex-col items-center min-w-[110px] shadow-sm cursor-pointer select-none transition-all duration-200 hover:scale-105 ${!isActive ? 'opacity-40' : ''}`}
     >
        <div className="flex items-center gap-1">
           <span className="text-xl font-bold">{value}</span>

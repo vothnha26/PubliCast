@@ -60,7 +60,7 @@ export function NetworkTabSwitcher() {
   const isUsingTemplate = currentPlatformData?.useTemplate ?? true;
 
   return (
-    <div className="px-5 pt-3 pb-0 flex flex-col gap-2 border-b border-gray-100">
+    <div className="px-5 pt-3 pb-0 flex flex-col gap-2 border-b border-border">
       {/* Row: tabs */}
       <div className="flex items-center gap-1 flex-wrap">
         {/* Tab: Cài đặt chung */}
@@ -71,7 +71,7 @@ export function NetworkTabSwitcher() {
           className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider font-sans transition-all cursor-pointer ${
             activeNetworkTab === NETWORK_TAB_TEMPLATE
               ? "bg-gray-900 text-white shadow-sm"
-              : "bg-gray-100 text-gray-500 hover:bg-gray-200"
+              : "bg-muted text-muted-foreground hover:bg-gray-200"
           }`}
         >
           <Globe size={11} />
@@ -97,7 +97,7 @@ export function NetworkTabSwitcher() {
               className={`relative flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider font-sans transition-all cursor-pointer ${
                 isActive
                   ? "text-white shadow-sm"
-                  : "bg-gray-100 text-gray-500 hover:bg-gray-200"
+                  : "bg-muted text-muted-foreground hover:bg-gray-200"
               }`}
               style={
                 isActive ? { backgroundColor: color } : {}
@@ -141,7 +141,7 @@ export function NetworkTabSwitcher() {
               }
               className="w-3.5 h-3.5 accent-gray-800 cursor-pointer rounded"
             />
-            <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider font-sans group-hover:text-gray-700 transition-colors">
+            <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider font-sans group-hover:text-foreground transition-colors">
               Dùng nội dung chung
             </span>
           </label>
@@ -166,12 +166,12 @@ export function NetworkTabSwitcher() {
                 className={`flex items-center gap-1 pl-2 pr-1.5 py-1 rounded-full text-[10px] font-black font-sans transition-all cursor-pointer ${
                   isActive
                     ? 'bg-gray-900 text-white shadow-sm'
-                    : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+                    : 'bg-muted text-muted-foreground hover:bg-gray-200'
                 }`}
               >
                 <span
                   className={`w-4 h-4 rounded-full flex items-center justify-center text-[9px] font-black shrink-0 ${
-                    isActive ? 'bg-white/20 text-white' : 'bg-gray-300 text-gray-600'
+                    isActive ? 'bg-card/20 text-white' : 'bg-gray-300 text-muted-foreground'
                   }`}
                 >
                   {index + 1}
@@ -188,8 +188,8 @@ export function NetworkTabSwitcher() {
                     }}
                     className={`ml-0.5 w-3.5 h-3.5 rounded-full flex items-center justify-center text-[11px] leading-none transition-all cursor-pointer ${
                       isActive
-                        ? 'hover:bg-white/20 text-white/80 hover:text-white'
-                        : 'hover:bg-gray-300 text-gray-400 hover:text-gray-700'
+                        ? 'hover:bg-card/20 text-white/80 hover:text-white'
+                        : 'hover:bg-gray-300 text-muted-foreground hover:text-foreground'
                     }`}
                   >
                     ×
@@ -204,7 +204,7 @@ export function NetworkTabSwitcher() {
             type="button"
             onClick={addThreadPost}
             title="Thêm bài viết vào chuỗi Threads"
-            className="w-6 h-6 rounded-full flex items-center justify-center text-[16px] leading-none text-gray-500 hover:text-gray-900 hover:bg-gray-100 transition-all cursor-pointer font-sans"
+            className="w-6 h-6 rounded-full flex items-center justify-center text-[16px] leading-none text-muted-foreground hover:text-foreground hover:bg-muted transition-all cursor-pointer font-sans"
           >
             +
           </button>

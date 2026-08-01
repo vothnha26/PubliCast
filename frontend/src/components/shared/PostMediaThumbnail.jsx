@@ -31,7 +31,7 @@ export function PostMediaThumbnail({ thumbnail, mediaUrls, className = "w-full h
 
   if (!mediaSrc || hasError) {
     return (
-      <div className={`bg-gray-50 flex items-center justify-center text-gray-300 ${className}`}>
+      <div className={`bg-muted flex items-center justify-center text-gray-300 ${className}`}>
         <ImageIcon size={16} className="stroke-[1.5]" />
       </div>
     );
