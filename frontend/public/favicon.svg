@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="none">
+  <defs>
+    <linearGradient id="brand-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#6366F1" />
+      <stop offset="50%" stop-color="#8B5CF6" />
+      <stop offset="100%" stop-color="#EC4899" />
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="128" fill="url(#brand-grad)" />
+  <!-- Broadcast Signal Waves -->
+  <path d="M160 352 C120 300 120 212 160 160" stroke="#FFFFFF" stroke-width="36" stroke-linecap="round" fill="none" opacity="0.9"/>
+  <path d="M352 352 C392 300 392 212 352 160" stroke="#FFFFFF" stroke-width="36" stroke-linecap="round" fill="none" opacity="0.9"/>
+  <path d="M200 312 C176 276 176 236 200 200" stroke="#FFFFFF" stroke-width="28" stroke-linecap="round" fill="none" opacity="0.95"/>
+  <path d="M312 312 C336 276 336 236 312 200" stroke="#FFFFFF" stroke-width="28" stroke-linecap="round" fill="none" opacity="0.95"/>
+  <!-- Center Play / Broadcast Icon -->
+  <circle cx="256" cy="256" r="36" fill="#FFFFFF" />
+</svg>
