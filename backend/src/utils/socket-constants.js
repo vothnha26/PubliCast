@@ -29,7 +29,20 @@ const SOCKET_EVENTS = {
   // Real-time System Notification Events
   NOTIFICATION_CREATED: 'notification_created',
   NOTIFICATION_READ: 'notification_read',
-  NOTIFICATIONS_READ_ALL: 'notifications_read_all'
+  NOTIFICATIONS_READ_ALL: 'notifications_read_all',
+
+  // Real-time Hybrid Cache Invalidation Event
+  DATA_INVALIDATE: 'data_invalidate'
+};
+
+const CACHE_SCOPES = {
+  METRICS: 'metrics',
+  POSTS: 'posts',
+  INBOX: 'inbox',
+  CONNECTIONS: 'connections',
+  SMART_LINKS: 'smart_links',
+  COMPETITORS: 'competitors',
+  BILLING: 'billing'
 };
 
 const ROOM_PREFIXES = {
@@ -47,5 +60,6 @@ const MESSAGE_TYPES = {
 module.exports = {
   SOCKET_EVENTS,
   ROOM_PREFIXES,
-  MESSAGE_TYPES
+  MESSAGE_TYPES,
+  CACHE_SCOPES
 };

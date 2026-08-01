@@ -7,10 +7,20 @@ import { SupportChat } from "./components/app/SupportChat";
 import { PostCreatorPage } from "./pages/workspace/PostCreator";
 import { ConnectionsOverlay } from "./components/shared/ConnectionsOverlay";
 import { GlobalConfirmDialog } from "./components/shared/GlobalConfirmDialog";
-import { useAuthStore } from "./store/useAuthStore";
-import ProtectedRoute from "./components/ProtectedRoute";
-import { FeatureGate } from "./components/shared/FeatureGate";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { PRODUCT_IDS } from "./constants/products";
+
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 60 * 1000, // 60s
+      gcTime: 5 * 60 * 1000, // 5 mins
+      refetchOnWindowFocus: false,
+      retry: 1
+    }
+  }
+});
+export { queryClient };
 
 // Auth Pages
 import { LoginPage } from "./pages/auth/Login";
@@ -110,101 +120,103 @@ export default function App() {
   const isStaff = currentPath.startsWith("/staff");
 
   return (
-    <div className="w-full h-screen flex flex-col overflow-hidden" style={{ fontFamily: "'DM Sans', sans-serif" }}>
-      {/* Topbar ALWAYS on top across full width (except landing/login/admin/staff) */}
-      {!isNoLayout && !isSuperadmin && !isStaff && <Topbar />}
+    <QueryClientProvider client={queryClient}>
+      <div className="w-full h-screen flex flex-col overflow-hidden" style={{ fontFamily: "'DM Sans', sans-serif" }}>
+        {/* Topbar ALWAYS on top across full width (except landing/login/admin/staff) */}
+        {!isNoLayout && !isSuperadmin && !isStaff && <Topbar />}
 
-      <div className="flex flex-1 overflow-hidden">
-        {/* Sidebar below Topbar */}
-        {!isNoLayout && !isStaff && (
-          <>
-            {isSuperadmin ? <SidebarAdmin /> : <SidebarWorkspace />}
-          </>
-        )}
+        <div className="flex flex-1 overflow-hidden">
+          {/* Sidebar below Topbar */}
+          {!isNoLayout && !isStaff && (
+            <>
+              {isSuperadmin ? <SidebarAdmin /> : <SidebarWorkspace />}
+            </>
+          )}
 
-        <div className="flex-1 flex flex-col overflow-hidden bg-[#F8F8F7]">
-          {/* Green accent line between Topbar and Content (Metricool style) */}
-          {!isNoLayout && !isSuperadmin && <div style={{ height: 2, background: "#D9F99D", width: "100%" }} />}
-          
-          <div className={`flex-1 ${isNoLayout ? "overflow-auto" : "flex flex-col min-h-0 overflow-hidden"}`}>
-            <Routes>
-              <Route path="/" element={<LandingPage />} />
-              <Route path="/login" element={isAuthenticated ? <Navigate to={getRedirectPath()} /> : <LoginPage initialScreen="login" />} />
-              <Route path="/signup" element={isAuthenticated ? <Navigate to={getRedirectPath()} /> : <LoginPage initialScreen="signup" />} />
-              <Route path="/register" element={isAuthenticated ? <Navigate to={getRedirectPath()} /> : <LoginPage initialScreen="signup" />} />
-              <Route path="/register/verify-otp" element={<LoginPage initialScreen="verify-otp" />} />
-              <Route path="/verify-otp" element={<Navigate to="/register/verify-otp" replace />} />
-              {/* Onboarding used to be this dedicated route — now a modal shown
-                  from the Dashboard itself (see OnboardingModal). Redirect
-                  any stale bookmarks/links instead of a bare 404. */}
-              <Route path="/start" element={<Navigate to="/dashboard" replace />} />
-              <Route path="/forgot-password" element={<ForgotPasswordPage />} />
-              <Route path="/reset-password" element={<ResetPasswordPage />} />
-              
-              {/* Protected Workspace Routes */}
-              <Route path="/dashboard" element={<ProtectedRoute allowedRoles={CLIENT_ROLES}><DashboardPage /></ProtectedRoute>} />
-              <Route path="/dashboard/:platform" element={<ProtectedRoute allowedRoles={CLIENT_ROLES}><PlatformDashboardPage /></ProtectedRoute>} />
+          <div className="flex-1 flex flex-col overflow-hidden bg-[#F8F8F7]">
+            {/* Green accent line between Topbar and Content (Metricool style) */}
+            {!isNoLayout && !isSuperadmin && <div style={{ height: 2, background: "#D9F99D", width: "100%" }} />}
+            
+            <div className={`flex-1 ${isNoLayout ? "overflow-auto" : "flex flex-col min-h-0 overflow-hidden"}`}>
+              <Routes>
+                <Route path="/" element={<LandingPage />} />
+                <Route path="/login" element={isAuthenticated ? <Navigate to={getRedirectPath()} /> : <LoginPage initialScreen="login" />} />
+                <Route path="/signup" element={isAuthenticated ? <Navigate to={getRedirectPath()} /> : <LoginPage initialScreen="signup" />} />
+                <Route path="/register" element={isAuthenticated ? <Navigate to={getRedirectPath()} /> : <LoginPage initialScreen="signup" />} />
+                <Route path="/register/verify-otp" element={<LoginPage initialScreen="verify-otp" />} />
+                <Route path="/verify-otp" element={<Navigate to="/register/verify-otp" replace />} />
+                {/* Onboarding used to be this dedicated route — now a modal shown
+                    from the Dashboard itself (see OnboardingModal). Redirect
+                    any stale bookmarks/links instead of a bare 404. */}
+                <Route path="/start" element={<Navigate to="/dashboard" replace />} />
+                <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+                <Route path="/reset-password" element={<ResetPasswordPage />} />
+                
+                {/* Protected Workspace Routes */}
+                <Route path="/dashboard" element={<ProtectedRoute allowedRoles={CLIENT_ROLES}><DashboardPage /></ProtectedRoute>} />
+                <Route path="/dashboard/:platform" element={<ProtectedRoute allowedRoles={CLIENT_ROLES}><PlatformDashboardPage /></ProtectedRoute>} />
 
-              <Route path="/scheduler" element={<Navigate to="/dashboard" replace />} />
-              <Route path="/live" element={<Navigate to="/dashboard" replace />} />
-              <Route path="/live/setup" element={<Navigate to="/dashboard" replace />} />
-              <Route path="/analytics" element={<Navigate to="/media-library" replace />} />
-              <Route path="/planner" element={<ProtectedRoute allowedRoles={CLIENT_ROLES}><PlannerLayout /></ProtectedRoute>}>
-                <Route index element={<Navigate to="calendar" replace />} />
-                <Route path="calendar" element={<WeeklyCalendarView />} />
-                <Route path="list" element={<ListView />} />
-                <Route path="library" element={<PostsLibraryView />} />
-                <Route path="autolists" element={<AutoListsView />} />
-                <Route path="autolist/:id" element={<AutoListEdit />} />
-                <Route path="history" element={<HistoryView />} />
-              </Route>
-              <Route path="/media-library" element={<ProtectedRoute allowedRoles={CLIENT_ROLES}><MediaLibraryPage /></ProtectedRoute>} />
-              <Route path="/smartlinks" element={<ProtectedRoute allowedRoles={CLIENT_ROLES}><FeatureGate productId={PRODUCT_IDS.CUSTOM_LINKS}><SmartLinksPage /></FeatureGate></ProtectedRoute>} />
-              <Route path="/ai" element={<ProtectedRoute allowedRoles={CLIENT_ROLES}><FeatureGate productId={PRODUCT_IDS.AI_CONTENT_ENGINE}><AIAssistant /></FeatureGate></ProtectedRoute>} />
-              <Route path="/hashtags" element={<ProtectedRoute allowedRoles={CLIENT_ROLES}><HashtagManager /></ProtectedRoute>} />
-              <Route path="/errors" element={<ProtectedRoute allowedRoles={CLIENT_ROLES}><ErrorPages /></ProtectedRoute>} />
-              <Route path="/notifications" element={<ProtectedRoute allowedRoles={CLIENT_ROLES}><NotificationsPage /></ProtectedRoute>} />
-              
-              {/* Protected Manage Routes */}
-              <Route path="/manage/inbox" element={<ProtectedRoute allowedRoles={CLIENT_ROLES}><FeatureGate productId={PRODUCT_IDS.UNIFIED_INBOX}><InboxPage /></FeatureGate></ProtectedRoute>} />
-              <Route path="/manage/team" element={<ProtectedRoute allowedRoles={CLIENT_ROLES}><TeamManagementPage /></ProtectedRoute>} />
-              <Route path="/manage/workplace/new" element={<ProtectedRoute allowedRoles={CLIENT_ROLES}><CreateWorkplacePage /></ProtectedRoute>} />
-              <Route path="/manage/reports" element={<ProtectedRoute allowedRoles={CLIENT_ROLES}><ReportsPage /></ProtectedRoute>} />
-              <Route path="/manage/tasks" element={<ProtectedRoute allowedRoles={CLIENT_ROLES}><MyTasksPage /></ProtectedRoute>} />
-              <Route path="/manage/competitors" element={<ProtectedRoute allowedRoles={CLIENT_ROLES}><CompetitorsPage /></ProtectedRoute>} />
-              <Route path="/manage/connections" element={<ProtectedRoute allowedRoles={CLIENT_ROLES}><BrandSettingsPage /></ProtectedRoute>} />
-              
-              {/* Protected Admin Routes */}
-              <Route path="/admin/pricing" element={<ProtectedRoute allowedRoles={['ADMIN']}><AdminPricing /></ProtectedRoute>} />
-              <Route path="/admin/users" element={<ProtectedRoute allowedRoles={['ADMIN']}><AdminUsers /></ProtectedRoute>} />
-              <Route path="/admin/products" element={<ProtectedRoute allowedRoles={['ADMIN']}><AdminProducts /></ProtectedRoute>} />
-              <Route path="/admin/audit" element={<ProtectedRoute allowedRoles={['ADMIN']}><AuditLog /></ProtectedRoute>} />
-              <Route path="/admin/revenue" element={<ProtectedRoute allowedRoles={['ADMIN']}><RevenueDashboard /></ProtectedRoute>} />
-              <Route path="/admin/platform-lock" element={<ProtectedRoute allowedRoles={['ADMIN']}><AdminPlatformLock /></ProtectedRoute>} />
- 
-              {/* Protected Staff Routes */}
-              <Route path="/staff/chats" element={<ProtectedRoute allowedRoles={['STAFF']}><StaffChatPage /></ProtectedRoute>} />
- 
-              {/* Protected Common App Routes */}
-              <Route path="/settings" element={<ProtectedRoute allowedRoles={CLIENT_ROLES}><SettingsPage /></ProtectedRoute>} />
-              <Route path="/pricing" element={<ProtectedRoute allowedRoles={CLIENT_ROLES}><PricingPage /></ProtectedRoute>} />
-              <Route path="/history" element={<Navigate to="/dashboard" replace />} />
-              <Route path="/connect" element={<ProtectedRoute allowedRoles={CLIENT_ROLES}><ConnectPlatformsPage /></ProtectedRoute>} />
-              <Route path="/invite" element={<InviteFlow />} />
-              <Route path="/s/:slug" element={<PublicSmartLinksPage />} />
-              
-              <Route path="*" element={<Navigate to="/" />} />
-            </Routes>
+                <Route path="/scheduler" element={<Navigate to="/dashboard" replace />} />
+                <Route path="/live" element={<Navigate to="/dashboard" replace />} />
+                <Route path="/live/setup" element={<Navigate to="/dashboard" replace />} />
+                <Route path="/analytics" element={<Navigate to="/media-library" replace />} />
+                <Route path="/planner" element={<ProtectedRoute allowedRoles={CLIENT_ROLES}><PlannerLayout /></ProtectedRoute>}>
+                  <Route index element={<Navigate to="calendar" replace />} />
+                  <Route path="calendar" element={<WeeklyCalendarView />} />
+                  <Route path="list" element={<ListView />} />
+                  <Route path="library" element={<PostsLibraryView />} />
+                  <Route path="autolists" element={<AutoListsView />} />
+                  <Route path="autolist/:id" element={<AutoListEdit />} />
+                  <Route path="history" element={<HistoryView />} />
+                </Route>
+                <Route path="/media-library" element={<ProtectedRoute allowedRoles={CLIENT_ROLES}><MediaLibraryPage /></ProtectedRoute>} />
+                <Route path="/smartlinks" element={<ProtectedRoute allowedRoles={CLIENT_ROLES}><FeatureGate productId={PRODUCT_IDS.CUSTOM_LINKS}><SmartLinksPage /></FeatureGate></ProtectedRoute>} />
+                <Route path="/ai" element={<ProtectedRoute allowedRoles={CLIENT_ROLES}><FeatureGate productId={PRODUCT_IDS.AI_CONTENT_ENGINE}><AIAssistant /></FeatureGate></ProtectedRoute>} />
+                <Route path="/hashtags" element={<ProtectedRoute allowedRoles={CLIENT_ROLES}><HashtagManager /></ProtectedRoute>} />
+                <Route path="/errors" element={<ProtectedRoute allowedRoles={CLIENT_ROLES}><ErrorPages /></ProtectedRoute>} />
+                <Route path="/notifications" element={<ProtectedRoute allowedRoles={CLIENT_ROLES}><NotificationsPage /></ProtectedRoute>} />
+                
+                {/* Protected Manage Routes */}
+                <Route path="/manage/inbox" element={<ProtectedRoute allowedRoles={CLIENT_ROLES}><FeatureGate productId={PRODUCT_IDS.UNIFIED_INBOX}><InboxPage /></FeatureGate></ProtectedRoute>} />
+                <Route path="/manage/team" element={<ProtectedRoute allowedRoles={CLIENT_ROLES}><TeamManagementPage /></ProtectedRoute>} />
+                <Route path="/manage/workplace/new" element={<ProtectedRoute allowedRoles={CLIENT_ROLES}><CreateWorkplacePage /></ProtectedRoute>} />
+                <Route path="/manage/reports" element={<ProtectedRoute allowedRoles={CLIENT_ROLES}><ReportsPage /></ProtectedRoute>} />
+                <Route path="/manage/tasks" element={<ProtectedRoute allowedRoles={CLIENT_ROLES}><MyTasksPage /></ProtectedRoute>} />
+                <Route path="/manage/competitors" element={<ProtectedRoute allowedRoles={CLIENT_ROLES}><CompetitorsPage /></ProtectedRoute>} />
+                <Route path="/manage/connections" element={<ProtectedRoute allowedRoles={CLIENT_ROLES}><BrandSettingsPage /></ProtectedRoute>} />
+                
+                {/* Protected Admin Routes */}
+                <Route path="/admin/pricing" element={<ProtectedRoute allowedRoles={['ADMIN']}><AdminPricing /></ProtectedRoute>} />
+                <Route path="/admin/users" element={<ProtectedRoute allowedRoles={['ADMIN']}><AdminUsers /></ProtectedRoute>} />
+                <Route path="/admin/products" element={<ProtectedRoute allowedRoles={['ADMIN']}><AdminProducts /></ProtectedRoute>} />
+                <Route path="/admin/audit" element={<ProtectedRoute allowedRoles={['ADMIN']}><AuditLog /></ProtectedRoute>} />
+                <Route path="/admin/revenue" element={<ProtectedRoute allowedRoles={['ADMIN']}><RevenueDashboard /></ProtectedRoute>} />
+                <Route path="/admin/platform-lock" element={<ProtectedRoute allowedRoles={['ADMIN']}><AdminPlatformLock /></ProtectedRoute>} />
+   
+                {/* Protected Staff Routes */}
+                <Route path="/staff/chats" element={<ProtectedRoute allowedRoles={['STAFF']}><StaffChatPage /></ProtectedRoute>} />
+   
+                {/* Protected Common App Routes */}
+                <Route path="/settings" element={<ProtectedRoute allowedRoles={CLIENT_ROLES}><SettingsPage /></ProtectedRoute>} />
+                <Route path="/pricing" element={<ProtectedRoute allowedRoles={CLIENT_ROLES}><PricingPage /></ProtectedRoute>} />
+                <Route path="/history" element={<Navigate to="/dashboard" replace />} />
+                <Route path="/connect" element={<ProtectedRoute allowedRoles={CLIENT_ROLES}><ConnectPlatformsPage /></ProtectedRoute>} />
+                <Route path="/invite" element={<InviteFlow />} />
+                <Route path="/s/:slug" element={<PublicSmartLinksPage />} />
+                
+                <Route path="*" element={<Navigate to="/" />} />
+              </Routes>
+            </div>
           </div>
         </div>
-      </div>
 
-      {/* Global Overlays */}
-      <PostCreatorPage />
-      <ConnectionsOverlay />
-      <GlobalConfirmDialog />
-      <UpsellModal />
-      {!isNoLayout && !isSuperadmin && !isStaff && <SupportChat />}
-    </div>
+        {/* Global Overlays */}
+        <PostCreatorPage />
+        <ConnectionsOverlay />
+        <GlobalConfirmDialog />
+        <UpsellModal />
+        {!isNoLayout && !isSuperadmin && !isStaff && <SupportChat />}
+      </div>
+    </QueryClientProvider>
   );
 }

@@ -77,7 +77,12 @@ class SocialService {
         } catch (err) {
           console.warn(`[SocialService] Background metrics sync error for ${account.platform}:`, err.message);
         }
-      })).catch(() => {});
+      })).then(() => {
+        // Notify connected client browsers via Socket to invalidate & refetch fresh metrics
+        const socketInvalidationService = require('../core/socket-invalidation.service');
+        const { CACHE_SCOPES } = require('../../utils/socket-constants');
+        socketInvalidationService.invalidateBrandScope(brandId, CACHE_SCOPES.METRICS);
+      }).catch(() => {});
 
       return accounts;
     }
