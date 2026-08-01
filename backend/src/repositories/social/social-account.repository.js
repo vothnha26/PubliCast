@@ -1,5 +1,5 @@
 const prisma = require('../../config/prisma');
-const { PLATFORMS, ANALYTICS } = require('../../utils/constants');
+const { PLATFORMS, ANALYTICS, PRISMA_TIMEOUTS } = require('../../utils/constants');
 const { encrypt, decrypt } = require('../../utils/encryption');
 const { OUTBOX_EVENT_TYPES } = require('../../constants/outbox.constants');
 const outboxEventRepository = require('../core/outbox-event.repository');
@@ -121,7 +121,7 @@ class SocialAccountRepository {
       }
 
       return this.findById(account.id, tx);
-    });
+    }, { timeout: PRISMA_TIMEOUTS.INTERACTIVE_TRANSACTION_MS });
   }
 
   /** Xem ghi chú options.enqueueSync ở upsertFacebookAccount phía trên. */
@@ -211,7 +211,7 @@ class SocialAccountRepository {
       }
 
       return this.findById(account.id, tx);
-    });
+    }, { timeout: PRISMA_TIMEOUTS.INTERACTIVE_TRANSACTION_MS });
   }
 
   async saveTikTokAnalytics(brandId, socialAccountId, analyticsData, startDate, endDate, client = prisma) {
@@ -397,7 +397,7 @@ class SocialAccountRepository {
       }
 
       return this.findById(account.id, tx);
-    });
+    }, { timeout: PRISMA_TIMEOUTS.INTERACTIVE_TRANSACTION_MS });
   }
 
   async saveYouTubeAnalytics(brandId, socialAccountId, analyticsData, startDate, endDate, client = prisma) {
@@ -571,7 +571,7 @@ class SocialAccountRepository {
       }
 
       return this.findById(account.id, tx);
-    });
+    }, { timeout: PRISMA_TIMEOUTS.INTERACTIVE_TRANSACTION_MS });
   }
 
   async saveInstagramAnalytics(brandId, socialAccountId, analyticsData, startDate, endDate, client = prisma) {
