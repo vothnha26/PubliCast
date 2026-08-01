@@ -44,6 +44,28 @@ class SocialService {
         });
     };
 
+    // Optimization: When not forcing a fresh sync (normal dashboard page load),
+    // return existing database records instantly (<100ms) and trigger live API sync asynchronously
+    // in the background. This eliminates the 10+ second skeleton loading delay.
+    if (!force) {
+      // Trigger background sync non-blocking
+      Promise.all(accounts.map(async (account) => {
+        try {
+          const service = socialPlatformFactory.getService(account.platform);
+          await withTimeout(
+            service.syncChannelMetrics(account.id, startDate, endDate, false),
+            60000,
+            account
+          );
+        } catch (err) {
+          console.warn(`[SocialService] Background metrics sync error for ${account.platform}:`, err.message);
+        }
+      })).catch(() => {});
+
+      // Return instant DB accounts immediately
+      return accounts;
+    }
+
     return await Promise.all(accounts.map(async (account) => {
       try {
         const service = socialPlatformFactory.getService(account.platform);
