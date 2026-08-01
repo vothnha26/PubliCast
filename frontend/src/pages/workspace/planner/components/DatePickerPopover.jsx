@@ -59,28 +59,28 @@ export function DatePickerPopover({ isOpen, onClose, selectedDate, onSelectDate 
 
   return (
     <div 
-      className="absolute top-full mt-2 left-1/2 -translate-x-1/2 bg-white border border-gray-100 rounded-3xl p-5 shadow-2xl z-50 w-[280px] animate-in fade-in duration-200"
+      className="absolute top-full mt-2 left-1/2 -translate-x-1/2 bg-card border border-border rounded-3xl p-5 shadow-2xl z-50 w-[280px] animate-in fade-in duration-200"
       onClick={(e) => e.stopPropagation()}
     >
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
         <button 
           onClick={handlePrevMonth}
-          className="p-1 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer text-gray-500"
+          className="p-1 hover:bg-muted rounded-lg transition-colors cursor-pointer text-muted-foreground hover:text-foreground"
         >
           <ChevronLeft size={16} />
         </button>
-        <span className="text-xs font-bold text-[#0A0A0A]">{monthNames[month]} {year}</span>
+        <span className="text-xs font-bold text-foreground">{monthNames[month]} {year}</span>
         <button 
           onClick={handleNextMonth}
-          className="p-1 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer text-gray-500"
+          className="p-1 hover:bg-muted rounded-lg transition-colors cursor-pointer text-muted-foreground hover:text-foreground"
         >
           <ChevronRight size={16} />
         </button>
       </div>
 
       {/* Week Days Label */}
-      <div className="grid grid-cols-7 text-center text-[10px] font-bold text-gray-400 mb-2">
+      <div className="grid grid-cols-7 text-center text-[10px] font-bold text-muted-foreground mb-2">
         {["S", "M", "T", "W", "T", "F", "S"].map((day, idx) => (
           <div key={idx} className="h-6 flex items-center justify-center">{day}</div>
         ))}
@@ -105,8 +105,8 @@ export function DatePickerPopover({ isOpen, onClose, selectedDate, onSelectDate 
               }}
               className={`h-7 w-7 mx-auto rounded-full flex items-center justify-center text-xs font-bold transition-all cursor-pointer ${
                 active 
-                  ? "bg-[#1C1917] text-white" 
-                  : "text-gray-700 hover:bg-gray-100"
+                  ? "bg-foreground text-background" 
+                  : "text-foreground hover:bg-muted"
               }`}
             >
               {dateObj.getDate()}

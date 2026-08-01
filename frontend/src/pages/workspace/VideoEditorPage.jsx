@@ -188,7 +188,7 @@ function VideoEditorContent() {
         <div className="absolute inset-0 bg-black/90 backdrop-blur-md flex flex-col items-center justify-center z-50">
           <Loader2 className="animate-spin text-lime-400 w-16 h-16 mb-4" />
           <h2 className="text-xl font-bold text-white mb-2">Đang xử lý video...</h2>
-          <p className="text-sm text-gray-400 max-w-sm text-center">
+          <p className="text-sm text-muted-foreground max-w-sm text-center">
             FFmpeg đang tiến hành cắt, crop tỉ lệ khung hình và chèn nhạc nền. Vui lòng không tắt trình duyệt hoặc tải lại trang!
           </p>
         </div>
@@ -209,7 +209,7 @@ function VideoEditorContent() {
           </button>
           <div>
             <h1 className="text-lg font-bold text-white">Trình chỉnh sửa Video chuyên nghiệp</h1>
-            <p className="text-xs text-gray-400">Tùy chỉnh timeline, crop tỉ lệ thông minh và chèn nhạc nền</p>
+            <p className="text-xs text-muted-foreground">Tùy chỉnh timeline, crop tỉ lệ thông minh và chèn nhạc nền</p>
           </div>
         </div>
 
@@ -238,7 +238,7 @@ function VideoEditorContent() {
               className={`flex-1 py-3.5 flex flex-col items-center justify-center gap-1.5 border-b-2 text-xs font-semibold transition ${
                 activeTab === VIDEO_EDITOR_TABS.TRIM
                   ? 'border-lime-400 text-lime-400 bg-lime-400/5'
-                  : 'border-transparent text-gray-400 hover:text-gray-200'
+                  : 'border-transparent text-muted-foreground hover:text-gray-200'
               }`}
             >
               <Scissors className="w-4 h-4" />
@@ -249,7 +249,7 @@ function VideoEditorContent() {
               className={`flex-1 py-3.5 flex flex-col items-center justify-center gap-1.5 border-b-2 text-xs font-semibold transition ${
                 activeTab === VIDEO_EDITOR_TABS.TEXT
                   ? 'border-lime-400 text-lime-400 bg-lime-400/5'
-                  : 'border-transparent text-gray-400 hover:text-gray-200'
+                  : 'border-transparent text-muted-foreground hover:text-gray-200'
               }`}
             >
               <Type className="w-4 h-4" />
@@ -260,7 +260,7 @@ function VideoEditorContent() {
               className={`flex-1 py-3.5 flex flex-col items-center justify-center gap-1.5 border-b-2 text-xs font-semibold transition ${
                 activeTab === VIDEO_EDITOR_TABS.SUBTITLES
                   ? 'border-lime-400 text-lime-400 bg-lime-400/5'
-                  : 'border-transparent text-gray-400 hover:text-gray-200'
+                  : 'border-transparent text-muted-foreground hover:text-gray-200'
               }`}
             >
               <Languages className="w-4 h-4" />
@@ -271,7 +271,7 @@ function VideoEditorContent() {
               className={`flex-1 py-3.5 flex flex-col items-center justify-center gap-1.5 border-b-2 text-xs font-semibold transition ${
                 activeTab === VIDEO_EDITOR_TABS.FILTER
                   ? 'border-lime-400 text-lime-400 bg-lime-400/5'
-                  : 'border-transparent text-gray-400 hover:text-gray-200'
+                  : 'border-transparent text-muted-foreground hover:text-gray-200'
               }`}
             >
               <Palette className="w-4 h-4" />
@@ -282,7 +282,7 @@ function VideoEditorContent() {
               className={`flex-1 py-3.5 flex flex-col items-center justify-center gap-1.5 border-b-2 text-xs font-semibold transition ${
                 activeTab === VIDEO_EDITOR_TABS.FINETUNE
                   ? 'border-lime-400 text-lime-400 bg-lime-400/5'
-                  : 'border-transparent text-gray-400 hover:text-gray-200'
+                  : 'border-transparent text-muted-foreground hover:text-gray-200'
               }`}
             >
               <Sliders className="w-4 h-4" />
@@ -293,7 +293,7 @@ function VideoEditorContent() {
               className={`flex-1 py-3.5 flex flex-col items-center justify-center gap-1.5 border-b-2 text-xs font-semibold transition ${
                 activeTab === VIDEO_EDITOR_TABS.RESIZE
                   ? 'border-lime-400 text-lime-400 bg-lime-400/5'
-                  : 'border-transparent text-gray-400 hover:text-gray-200'
+                  : 'border-transparent text-muted-foreground hover:text-gray-200'
               }`}
             >
               <Maximize2 className="w-4 h-4" />
@@ -315,7 +315,7 @@ function VideoEditorContent() {
                         className={`py-3 px-4 rounded-xl border text-xs font-medium transition ${
                           aspectRatio === ratio
                             ? 'border-lime-400 bg-lime-400/5 text-lime-400'
-                            : 'border-gray-800 hover:border-gray-700 bg-gray-900/50 text-gray-400'
+                            : 'border-gray-800 hover:border-gray-700 bg-gray-900/50 text-muted-foreground'
                         }`}
                       >
                         {ratio === ASPECT_RATIOS.ORIGINAL ? 'Mặc định (Original)' : ratio}

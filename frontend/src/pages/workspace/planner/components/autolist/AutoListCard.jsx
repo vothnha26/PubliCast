@@ -7,10 +7,10 @@ import { PlatformIcon } from "../../../../../components/shared/PlatformIcon";
 
 const PLATFORM_BADGES = {
   YOUTUBE: { icon: <Youtube size={11} />, color: "bg-red-50 text-red-600 border-red-100/80", label: "YouTube" },
-  TIKTOK: { icon: <PlayCircle size={11} />, color: "bg-gray-50 text-gray-900 border-gray-200", label: "TikTok" },
+  TIKTOK: { icon: <PlayCircle size={11} />, color: "bg-muted text-foreground border-border", label: "TikTok" },
   INSTAGRAM: { icon: <Instagram size={11} />, color: "bg-pink-50 text-pink-600 border-pink-100/80", label: "Instagram" },
   FACEBOOK: { icon: <Facebook size={11} />, color: "bg-blue-50 text-blue-600 border-blue-100/80", label: "Facebook" },
-  THREADS: { icon: <PlatformIcon platform="Threads" size={11} variant="flat" />, color: "bg-gray-50 text-gray-800 border-gray-200", label: "Threads" },
+  THREADS: { icon: <PlatformIcon platform="Threads" size={11} variant="flat" />, color: "bg-muted text-foreground border-border", label: "Threads" },
   BLUESKY: { icon: <PlatformIcon platform="Bluesky" size={11} variant="flat" />, color: "bg-sky-50 text-sky-600 border-sky-100/80", label: "Bluesky" },
 };
 
@@ -52,19 +52,19 @@ export function AutoListCard({ list, onToggle, onRefresh, onDelete, onNavigate }
   };
 
   return (
-    <div className={`bg-white/90 backdrop-blur-md border border-gray-100 rounded-3xl p-6 shadow-sm flex items-center gap-6 hover:shadow-md hover:-translate-y-0.5 transition-all duration-300 group text-left ${leftBorderClass}`}>
+    <div className={`bg-card/90 backdrop-blur-md border border-border rounded-3xl p-6 shadow-sm flex items-center gap-6 hover:shadow-md hover:-translate-y-0.5 transition-all duration-300 group text-left ${leftBorderClass}`}>
       {/* Circular Progress */}
       <div className="relative w-16 h-16 shrink-0">
         <svg className="w-full h-full -rotate-90">
-          <circle cx="32" cy="32" r={radius} fill="transparent" stroke="#F3F4F6" strokeWidth="5" />
+          <circle cx="32" cy="32" r={radius} fill="transparent" stroke="currentColor" className="text-muted/40" strokeWidth="5" />
           <circle 
             cx="32" cy="32" r={radius} fill="transparent" 
-            stroke={list.isActive ? "url(#activeGradient)" : "#E5E7EB"} 
+            stroke={list.isActive ? "url(#activeGradient)" : "currentColor"} 
             strokeWidth="5" 
             strokeDasharray={circumference} 
             strokeDashoffset={strokeDashoffset} 
             strokeLinecap="round"
-            className="transition-all duration-500 ease-out"
+            className={`transition-all duration-500 ease-out ${!list.isActive ? "text-muted-foreground/30" : ""}`}
           />
           <defs>
             <linearGradient id="activeGradient" x1="0%" y1="0%" x2="100%" y2="100%">
@@ -74,25 +74,25 @@ export function AutoListCard({ list, onToggle, onRefresh, onDelete, onNavigate }
           </defs>
         </svg>
         <div className="absolute inset-0 flex items-center justify-center">
-          <span className="text-[11px] font-black text-gray-700">{progress}%</span>
+          <span className="text-[11px] font-black text-foreground">{progress}%</span>
         </div>
       </div>
 
       {/* Info Container */}
       <div className="flex-1 min-w-0 space-y-2">
         <div className="flex items-center gap-2.5 flex-wrap">
-          <h3 className="text-base font-bold text-[#0A0A0A] truncate leading-snug group-hover:text-black transition-colors">{list.name}</h3>
+          <h3 className="text-base font-bold text-foreground truncate leading-snug group-hover:text-foreground transition-colors">{list.name}</h3>
           
           <span className={`px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider transition-all duration-300 border ${
             list.isActive 
               ? "bg-[#D9F99D]/40 text-[#4D7C0F] border-[#D9F99D]/60" 
-              : "bg-gray-100 text-gray-500 border-gray-250"
+              : "bg-muted text-muted-foreground border-border"
           }`}>
             {list.isActive ? t("autolists.card.active") : t("autolists.card.paused")}
           </span>
 
           {list.loopEnabled && (
-            <span className="px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-indigo-50 text-indigo-700 border border-indigo-100 flex items-center gap-1 shadow-sm shrink-0">
+            <span className="px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20 flex items-center gap-1 shadow-sm shrink-0">
               <RefreshCw size={10} className="text-indigo-500 animate-spin-slow" />
               {t("autolists.card.loop")}
             </span>
@@ -115,14 +115,14 @@ export function AutoListCard({ list, onToggle, onRefresh, onDelete, onNavigate }
           </div>
         )}
 
-        <div className="flex items-center gap-4 text-gray-400 text-xs pt-0.5">
+        <div className="flex items-center gap-4 text-muted-foreground text-xs pt-0.5">
           <div className="flex items-center gap-1.5 font-semibold">
-            <Layers size={13} className="text-gray-400 group-hover:text-gray-600 transition-colors" />
+            <Layers size={13} className="text-muted-foreground group-hover:text-foreground transition-colors" />
             <span>{list.publishedPostsCount} / {list.totalPostsCount} {t("autolists.card.active") === "Active" ? "posts" : "bài đăng"}</span>
           </div>
-          <div className="w-px h-3 bg-gray-200" />
+          <div className="w-px h-3 bg-border" />
           <div className="flex items-center gap-1.5 font-semibold">
-            <Clock size={13} className="text-gray-400 group-hover:text-gray-600 transition-colors" />
+            <Clock size={13} className="text-muted-foreground group-hover:text-foreground transition-colors" />
             <span>
               {list.scheduleType === 'INTERVAL' 
                 ? t("autolists.card.everyInterval", { interval: formatInterval(list.intervalMinutes) })
@@ -139,8 +139,8 @@ export function AutoListCard({ list, onToggle, onRefresh, onDelete, onNavigate }
           onClick={() => onToggle(list.id)}
           className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all duration-300 shadow-sm border cursor-pointer ${
             list.isActive 
-              ? "bg-white text-gray-700 hover:bg-gray-50 border-gray-150" 
-              : "bg-gray-900 text-white hover:bg-black border-transparent"
+              ? "bg-card text-foreground hover:bg-muted border-border" 
+              : "bg-foreground text-background hover:opacity-90 border-transparent"
           }`}
           title={list.isActive ? t("autolists.card.pauseBtn") : t("autolists.card.activateBtn")}
         >
@@ -149,7 +149,7 @@ export function AutoListCard({ list, onToggle, onRefresh, onDelete, onNavigate }
         
         <button 
           onClick={() => onRefresh && onRefresh(list.id)}
-          className="w-10 h-10 rounded-xl bg-white border border-gray-150 flex items-center justify-center text-gray-500 hover:text-black hover:border-gray-300 transition-all duration-300 cursor-pointer shadow-sm active:scale-95"
+          className="w-10 h-10 rounded-xl bg-card border border-border flex items-center justify-center text-muted-foreground hover:text-foreground hover:border-foreground/30 transition-all duration-300 cursor-pointer shadow-sm active:scale-95"
           title={t("autolists.card.refreshTitle")}
         >
           <RefreshCw size={16} />
@@ -158,7 +158,7 @@ export function AutoListCard({ list, onToggle, onRefresh, onDelete, onNavigate }
         {onDelete && (
           <button 
             onClick={() => onDelete(list.id)}
-            className="w-10 h-10 rounded-xl bg-white border border-red-100 hover:bg-red-50 flex items-center justify-center text-red-500 hover:text-red-600 transition-all duration-300 cursor-pointer shadow-sm active:scale-95"
+            className="w-10 h-10 rounded-xl bg-card border border-rose-500/20 hover:bg-rose-500/10 flex items-center justify-center text-rose-500 hover:text-rose-600 transition-all duration-300 cursor-pointer shadow-sm active:scale-95"
             title={t("autolists.card.deleteTitle")}
           >
             <Trash2 size={16} />
@@ -167,7 +167,7 @@ export function AutoListCard({ list, onToggle, onRefresh, onDelete, onNavigate }
 
         <button 
           onClick={() => onNavigate(list.id)}
-          className="w-10 h-10 rounded-xl bg-gray-50 hover:bg-gray-900 border border-gray-150 hover:border-transparent flex items-center justify-center text-gray-400 hover:text-white transition-all duration-300 cursor-pointer shadow-sm"
+          className="w-10 h-10 rounded-xl bg-muted hover:bg-foreground border border-border hover:border-transparent flex items-center justify-center text-muted-foreground hover:text-background transition-all duration-300 cursor-pointer shadow-sm"
           title={t("autolists.card.configTitle")}
         >
           <ChevronRight size={18} />

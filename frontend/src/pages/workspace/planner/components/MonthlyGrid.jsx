@@ -17,7 +17,7 @@ const PLATFORM_COLORS = {
 const STATUS_COLORS = {
   published: "bg-green-50 text-green-700 border-green-100",
   scheduled: "bg-blue-50 text-blue-700 border-blue-100",
-  draft: "bg-gray-50 text-gray-500 border-gray-100",
+  draft: "bg-muted text-muted-foreground border-border",
   rejected: "bg-red-50 text-red-700 border-red-100",
   pending_approval: "bg-amber-50 text-amber-700 border-amber-100",
   approved: "bg-emerald-50 text-emerald-700 border-emerald-100",
@@ -121,18 +121,18 @@ export function MonthlyGrid({
   };
 
   return (
-    <div className="w-full h-full bg-white border border-gray-200 rounded-3xl shadow-sm overflow-hidden flex flex-col min-h-[500px]">
+    <div className="w-full h-full bg-card border border-border rounded-3xl shadow-sm overflow-hidden flex flex-col min-h-[500px]">
       {/* Weekday headers */}
-      <div className="grid grid-cols-7 border-b border-gray-200 bg-gray-50/40 py-3 text-center no-print">
+      <div className="grid grid-cols-7 border-b border-border bg-muted/40 py-3 text-center no-print">
         {weekdayNames.map((dayName, idx) => (
-          <div key={idx} className="text-[11px] font-black text-gray-500 uppercase tracking-wider">
+          <div key={idx} className="text-[11px] font-black text-muted-foreground uppercase tracking-wider">
             {dayName.slice(0, 3)}
           </div>
         ))}
       </div>
 
       {/* 42 Days Grid */}
-      <div className="grid grid-cols-7 flex-1 divide-x divide-y divide-gray-200 bg-gray-50/20 overflow-y-auto">
+      <div className="grid grid-cols-7 flex-1 divide-x divide-y divide-border bg-muted/20 overflow-y-auto">
         {daysInMonthGrid.map((day, idx) => {
           const cellPosts = postsByDate[day.fullStr] || [];
           const cellEvents = eventsByDate[day.fullStr] || [];
@@ -141,15 +141,15 @@ export function MonthlyGrid({
             <div
               key={idx}
               onClick={() => handleDateClick(day.raw)}
-              className={`min-h-[125px] p-2 flex flex-col gap-1 transition-all hover:bg-gray-100/70 cursor-pointer relative group/cell ${
-                day.isCurrentMonth ? "bg-white text-gray-800" : "bg-gray-50/50 text-gray-400"
+              className={`min-h-[125px] p-2 flex flex-col gap-1 transition-all hover:bg-muted/70 cursor-pointer relative group/cell ${
+                day.isCurrentMonth ? "bg-card text-foreground" : "bg-muted/50 text-muted-foreground"
               }`}
             >
               {/* Quick Add '+' button indicator on cell hover */}
               <div 
                 className="absolute top-2 right-2 opacity-0 group-hover/cell:opacity-100 transition-all duration-200 z-20 pointer-events-none"
               >
-                <div className="w-5 h-5 bg-[#0A0A0A] text-white rounded-full flex items-center justify-center shadow-md text-xs font-black">
+                <div className="w-5 h-5 bg-foreground text-background rounded-full flex items-center justify-center shadow-md text-xs font-black">
                   +
                 </div>
               </div>
@@ -159,12 +159,12 @@ export function MonthlyGrid({
                 <span className={`text-[11px] font-black w-6 h-6 flex items-center justify-center rounded-full ${
                   day.isToday 
                     ? "bg-[#10B981] text-white shadow-sm" 
-                    : day.isCurrentMonth ? "text-gray-700" : "text-gray-400"
+                    : day.isCurrentMonth ? "text-foreground" : "text-muted-foreground"
                 }`}>
                   {day.date}
                 </span>
                 {(cellPosts.length > 0 || cellEvents.length > 0) && (
-                  <span className="text-[9px] font-bold text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded-full shrink-0">
+                  <span className="text-[9px] font-bold text-muted-foreground bg-muted px-1.5 py-0.5 rounded-full shrink-0">
                     {cellPosts.length + cellEvents.length} items
                   </span>
                 )}
@@ -185,7 +185,7 @@ export function MonthlyGrid({
                           onCellClick(eventDate, 9);
                         }
                       }}
-                      className="px-1.5 py-0.5 bg-rose-50 text-rose-700 border border-rose-100 rounded text-[9px] font-black tracking-tight truncate flex items-center gap-1 shadow-sm hover:bg-rose-100 transition-colors"
+                      className="px-1.5 py-0.5 bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20 rounded text-[9px] font-black tracking-tight truncate flex items-center gap-1 shadow-sm hover:bg-rose-500/20 transition-colors"
                       title={event.description || event.title}
                     >
                       <span className="shrink-0 text-[10px]">📅</span>
@@ -202,7 +202,7 @@ export function MonthlyGrid({
                     key={post.id}
                     onClick={(e) => handlePostClick(e, post)}
                     className={`flex items-center gap-1.5 px-2 py-1 border rounded-lg text-[10px] font-bold truncate transition-all hover:scale-[1.02] active:scale-[0.98] cursor-pointer shadow-sm group/mcard ${
-                      STATUS_COLORS[post.status?.toLowerCase()] || 'bg-white border-gray-100 text-gray-700'
+                      STATUS_COLORS[post.status?.toLowerCase()] || 'bg-card border-border text-foreground'
                     }`}
                     title={`${post.title || post.caption || "Untitled"} (${format(new Date(post.scheduledAt || post.createdAt), 'h:mma')})`}
                   >
@@ -225,7 +225,7 @@ export function MonthlyGrid({
                         if (onDuplicateClick) onDuplicateClick(post);
                       }}
                       title="Nhân bản bài viết"
-                      className="hidden group-hover/mcard:flex items-center justify-center p-0.5 hover:bg-gray-100 rounded text-indigo-600 transition-colors cursor-pointer border-none shadow-none shrink-0"
+                      className="hidden group-hover/mcard:flex items-center justify-center p-0.5 hover:bg-muted rounded text-indigo-500 transition-colors cursor-pointer border-none shadow-none shrink-0"
                     >
                       <span className="text-[9px]">🔂</span>
                     </button>
