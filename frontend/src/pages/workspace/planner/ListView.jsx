@@ -37,7 +37,7 @@ const getPostLink = (platform, platformPostId) => {
   return getPlatformPostUrl({ targetPlatforms: [platform], platformPostId });
 };
 
-export function ListView() {
+export function ListView({ socialAccountId } = {}) {
   const { t } = useTranslation("planner");
   const confirm = useConfirm();
   const { hasPermission } = useBrandPermission();
@@ -57,7 +57,7 @@ export function ListView() {
     if (url) {
       window.open(url, "_blank", "noopener,noreferrer");
     } else {
-      openPostCreator({ post });
+      openPostCreator({ post, defaultSocialAccountId: socialAccountId });
     }
   };
 
@@ -85,7 +85,10 @@ export function ListView() {
     if (!activeBrand) return;
     setLoading(true);
     try {
-      const res = await postService.getPosts(activeBrand.id, filters);
+      const res = await postService.getPosts(activeBrand.id, {
+        ...filters,
+        ...(socialAccountId ? { socialAccountId } : {})
+      });
       setPosts(res?.posts || res || []);
       setMeta(res?.meta || { total: 0, page: 1, totalPages: 1 });
     } catch (e) {
@@ -97,7 +100,7 @@ export function ListView() {
 
   useEffect(() => {
     fetchPosts();
-  }, [activeBrand, searchParamsString, isOpen]);
+  }, [activeBrand, searchParamsString, isOpen, socialAccountId]);
 
   const toggleSelect = (id) => {
     setSelected(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
@@ -364,15 +367,24 @@ export function ListView() {
                     </AccessGuard>
                 </div>
              )}
-             <div className="w-px h-6 bg-border mx-2" />
-             <AccessGuard feature="CREATE_POSTS">
-               <button 
-                 onClick={openPostCreator}
-                 className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-[12px] font-bold bg-[#0A0A0A] dark:bg-lime-400 text-white dark:text-black hover:scale-105 active:scale-95 cursor-pointer transition-all shadow-lg"
-               >
-                  <Plus size={16} /> {t("listView.createPostBtn")}
-               </button>
-             </AccessGuard>
+             {/* "New Post" is omitted here when scoped to a single channel —
+                 ChannelPublishTab's header already has one create button
+                 that locks to this account; a second one here duplicated it
+                 and (before defaultSocialAccountId was threaded through)
+                 didn't even lock to the channel, letting posts fan out. */}
+             {!socialAccountId && (
+               <>
+                 <div className="w-px h-6 bg-border mx-2" />
+                 <AccessGuard feature="CREATE_POSTS">
+                   <button
+                     onClick={() => openPostCreator({ defaultSocialAccountId: socialAccountId })}
+                     className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-[12px] font-bold bg-[#0A0A0A] dark:bg-lime-400 text-white dark:text-black hover:scale-105 active:scale-95 cursor-pointer transition-all shadow-lg"
+                   >
+                      <Plus size={16} /> {t("listView.createPostBtn")}
+                   </button>
+                 </AccessGuard>
+               </>
+             )}
           </div>
       </div>
 
@@ -489,7 +501,7 @@ export function ListView() {
                          if (post.status?.toLowerCase() === 'published') {
                            openPostAnalytics(post);
                          } else {
-                           openPostCreator({ post });
+                           openPostCreator({ post, defaultSocialAccountId: socialAccountId });
                          }
                        }}>
                           <div className="flex items-center gap-4">
@@ -695,7 +707,7 @@ export function ListView() {
                                         if (post.status?.toLowerCase() === "published") {
                                           openPostAnalytics(post);
                                         } else {
-                                          openPostCreator({ post });
+                                          openPostCreator({ post, defaultSocialAccountId: socialAccountId });
                                         }
                                         setActiveMenuId(null);
                                       }}
@@ -710,9 +722,10 @@ export function ListView() {
                                      <button 
                                        onClick={(e) => {
                                          e.stopPropagation();
-                                         openPostCreator({ 
-                                           template: post, 
-                                           defaultScheduledAt: post.scheduledAt ? new Date(post.scheduledAt) : null 
+                                         openPostCreator({
+                                           template: post,
+                                           defaultScheduledAt: post.scheduledAt ? new Date(post.scheduledAt) : null,
+                                           defaultSocialAccountId: socialAccountId
                                          });
                                          setActiveMenuId(null);
                                        }}

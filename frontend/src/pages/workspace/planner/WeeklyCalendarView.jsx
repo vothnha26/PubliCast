@@ -21,10 +21,11 @@ import { CalendarSkeleton } from "./components/CalendarSkeleton";
 
 import { useBrandPermission } from "../../../hooks/useBrandPermission";
 
-export function WeeklyCalendarView() {
+export function WeeklyCalendarView({ socialAccountId, platform } = {}) {
   const { t } = useTranslation("planner");
   const { hasPermission } = useBrandPermission();
   const hasCreatePermission = hasPermission('CREATE_POSTS');
+  const channelContext = socialAccountId ? { socialAccountId, platform } : null;
 
   const [searchTerm, setSearchTerm] = useState("");
   const { openPostCreator, isOpen } = usePostCreator();
@@ -35,10 +36,10 @@ export function WeeklyCalendarView() {
       if (url) {
         window.open(url, "_blank", "noopener,noreferrer");
       } else {
-        openPostCreator({ post });
+        openPostCreator({ post, defaultSocialAccountId: socialAccountId });
       }
     } else {
-      openPostCreator({ post });
+      openPostCreator({ post, defaultSocialAccountId: socialAccountId });
     }
   };
 
@@ -49,7 +50,8 @@ export function WeeklyCalendarView() {
     }
     openPostCreator({
       template: post,
-      defaultScheduledAt: post.scheduledAt ? new Date(post.scheduledAt) : null
+      defaultScheduledAt: post.scheduledAt ? new Date(post.scheduledAt) : null,
+      defaultSocialAccountId: socialAccountId
     });
   };
 
@@ -161,7 +163,12 @@ export function WeeklyCalendarView() {
 
     try {
       const [posts, events] = await Promise.all([
-        postService.getPosts(activeBrand.id, { startDate: startDateStr, endDate: endDateStr, limit: 100 }),
+        postService.getPosts(activeBrand.id, {
+          startDate: startDateStr,
+          endDate: endDateStr,
+          limit: 100,
+          ...(socialAccountId ? { socialAccountId } : {})
+        }),
         postService.getCalendarEvents(activeBrand.id, startDateStr, endDateStr)
       ]);
       // A slower in-flight request resolving after a newer one (e.g. rapid
@@ -178,7 +185,7 @@ export function WeeklyCalendarView() {
 
   useEffect(() => {
     fetchPosts();
-  }, [activeBrand, selectedDate, isOpen, calendarViewMode]);
+  }, [activeBrand, selectedDate, isOpen, calendarViewMode, socialAccountId]);
 
   // Search/status/type filtering shared between Week view (further grouped
   // below into groupedPosts) and Month view — MonthlyGrid previously only
@@ -263,7 +270,11 @@ export function WeeklyCalendarView() {
     // Open post creator at specific date and hour
     const scheduledDate = new Date(date);
     scheduledDate.setHours(hour, 0, 0, 0);
-    openPostCreator({ defaultScheduledAt: scheduledDate });
+    openPostCreator({ defaultScheduledAt: scheduledDate, defaultSocialAccountId: socialAccountId });
+  };
+
+  const handleCreatePostClick = () => {
+    openPostCreator({ defaultSocialAccountId: socialAccountId });
   };
 
   return (
@@ -280,7 +291,8 @@ export function WeeklyCalendarView() {
         onPrevWeek={handlePrevWeek}
         onNextWeek={handleNextWeek}
         onTodayWeek={handleTodayWeek}
-        onCreatePostClick={openPostCreator}
+        onCreatePostClick={handleCreatePostClick}
+        channelContext={channelContext}
         showSidebar={showSidebar}
         onToggleSidebar={() => setShowSidebar(prev => !prev)}
         rowHeight={rowHeight}
