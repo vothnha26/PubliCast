@@ -6,7 +6,7 @@ import {
 } from "lucide-react";
 import { useFilters } from "../../hooks/useFilters";
 import { useDebounce } from "../../hooks/useDebounce";
-import apiService from "../../services/api";
+import inboxService from "../../services/inbox.service";
 import { useBrand } from "../../context/BrandContext";
 import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
@@ -116,9 +116,9 @@ export function InboxPage() {
     const requestId = ++inboxRequestIdRef.current;
     setLoading(true);
     try {
-      const response = await apiService.get(`/inbox?brandId=${activeBrand.id}&${searchParamsString}`);
+      const response = await inboxService.getInbox(activeBrand.id, searchParamsString);
       if (requestId !== inboxRequestIdRef.current) return; // a newer fetchInbox call already landed
-      setInboxData(response.data);
+      setInboxData(response || { data: [], meta: {} });
     } catch (error) {
       console.error("Inbox load error:", error);
     } finally {
@@ -180,10 +180,10 @@ export function InboxPage() {
     setThreadLoading(true);
     setVideoContext(null);
     try {
-      const response = await apiService.get(`/inbox/${activeConv.id}`);
+      const response = await inboxService.getThread(activeConv.id);
       if (requestId !== threadRequestIdRef.current) return; // a newer fetchThread call already landed
-      setThread(response.data.thread);
-      setVideoContext(response.data.videoContext);
+      setThread(response?.thread || []);
+      setVideoContext(response?.videoContext || null);
 
       if (activeConv.unread) {
         handleUpdateStatus(activeConv.id, 'READ');
@@ -204,14 +204,14 @@ export function InboxPage() {
     setIsSyncing(true);
     try {
       const platform = platformFilter.toUpperCase();
-      await apiService.post('/inbox/sync', { brandId: activeBrand.id, platform });
+      await inboxService.syncInbox(activeBrand.id, platform);
       toast.success(t("inbox.syncSuccess"));
       await fetchInbox();
       if (activeConv) {
         await fetchThread();
       }
     } catch (e) {
-      toast.error(t("inbox.syncFailed") + (e.response?.data?.message || e.message));
+      toast.error(t("inbox.syncFailed") + (e.message || ""));
     } finally {
       setIsSyncing(false);
     }
@@ -219,7 +219,7 @@ export function InboxPage() {
 
   const handleUpdateStatus = async (itemId, newStatus) => {
     try {
-      await apiService.patch(`/inbox/${itemId}/status`, { status: newStatus });
+      await inboxService.updateInboxStatus(itemId, newStatus);
       setInboxData(prev => ({
         ...prev,
         data: prev.data.map(item => 
@@ -238,7 +238,7 @@ export function InboxPage() {
     if (!replyText || !activeConv || !activeBrand) return;
     setIsReplying(true);
     try {
-      await apiService.post('/inbox/reply', {
+      await inboxService.replyInbox({
         brandId: activeBrand.id,
         itemId: activeConv.id,
         text: replyText
@@ -248,7 +248,7 @@ export function InboxPage() {
       await fetchThread();
       await fetchInbox();
     } catch (e) {
-      toast.error(t("inbox.replyFailed") + (e.response?.data?.message || e.message));
+      toast.error(t("inbox.replyFailed") + (e.message || ""));
     } finally {
       setIsReplying(false);
     }
@@ -257,7 +257,7 @@ export function InboxPage() {
   const handleUpdateReply = async (replyId, newText) => {
     if (!newText || !activeBrand) return;
     try {
-      await apiService.patch(`/inbox/replies/${replyId}`, {
+      await inboxService.updateInboxReply(replyId, {
         brandId: activeBrand.id,
         text: newText
       });
@@ -266,7 +266,7 @@ export function InboxPage() {
       setEditingText("");
       await fetchThread();
     } catch (e) {
-      toast.error(t("inbox.updateReplyFailed") + (e.response?.data?.message || e.message));
+      toast.error(t("inbox.updateReplyFailed") + (e.message || ""));
     }
   };
 
@@ -276,13 +276,11 @@ export function InboxPage() {
     if (!isConfirmed) return;
 
     try {
-      await apiService.delete(`/inbox/replies/${replyId}`, {
-        data: { brandId: activeBrand.id }
-      });
+      await inboxService.deleteInboxReply(replyId, activeBrand.id);
       toast.success(t("inbox.deleteReplySuccess"));
       await fetchThread();
     } catch (e) {
-      toast.error(t("inbox.deleteReplyFailed") + (e.response?.data?.message || e.message));
+      toast.error(t("inbox.deleteReplyFailed") + (e.message || ""));
     }
   };
 
@@ -294,9 +292,10 @@ export function InboxPage() {
       const fetchSettings = async () => {
         setLoadingSettings(true);
         try {
-          const res = await apiService.get(`/inbox/auto-reply/settings/${selectedSocialAccountId}`);
-          if (res.data && res.data.data) {
-            const { isActive, mode, keywordsConfig, aiPrompt } = res.data.data;
+          const res = await inboxService.getAutoReplySettings(selectedSocialAccountId);
+          const data = res || {};
+          if (data) {
+            const { isActive, mode, keywordsConfig, aiPrompt } = data;
             setAutoReplyActive(isActive);
             setAutoReplyMode(mode || "KEYWORD");
             setKeywordsList(keywordsConfig || []);
@@ -319,7 +318,7 @@ export function InboxPage() {
     }
     setSavingSettings(true);
     try {
-      await apiService.post(`/inbox/auto-reply/settings/${selectedSocialAccountId}`, {
+      await inboxService.saveAutoReplySettings(selectedSocialAccountId, {
         isActive: autoReplyActive,
         mode: autoReplyMode,
         keywordsConfig: keywordsList,
@@ -328,7 +327,7 @@ export function InboxPage() {
       toast.success(t("inbox.settingsSuccess"));
       setIsAutoReplyOpen(false);
     } catch (err) {
-      toast.error(t("inbox.settingsFailed") + (err.response?.data?.message || err.message));
+      toast.error(t("inbox.settingsFailed") + (err.message || ""));
     } finally {
       setSavingSettings(false);
     }

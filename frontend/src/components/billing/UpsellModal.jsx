@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import apiService from '../../services/api';
+import billingService from '../../services/billing.service';
 import PaymentModal from './PaymentModal';
 import './UpsellModal.css';
 
@@ -19,8 +19,8 @@ const UpsellModal = () => {
 
       // Fetch available addons
       try {
-        const res = await apiService.get('/billing/subscriptions/addons');
-        setAddons(res.data?.data || []);
+        const res = await billingService.getAddons();
+        setAddons(res || []);
       } catch (err) {
         console.error('Failed to load addons', err);
       }
@@ -37,11 +37,6 @@ const UpsellModal = () => {
 
   const handleBuyAddon = async (addon) => {
     try {
-      // Assuming brandId is available or passed in context.
-      // For simplicity, we can extract it from the current URL or state, 
-      // but in a real app it should be globally available.
-      // We will fallback to a default or ask user to provide it.
-      // Here we assume local storage or global state has it.
       const currentBrand = JSON.parse(localStorage.getItem('currentBrand'));
       
       if (!currentBrand?.id) {
@@ -49,13 +44,13 @@ const UpsellModal = () => {
         return;
       }
 
-      const res = await apiService.post('/billing/subscriptions/addons/initiate', {
+      const res = await billingService.initiateAddon({
         addonId: addon.id,
         brandId: currentBrand.id,
         quantity: 1
       });
 
-      setPaymentData(res.data.data);
+      setPaymentData(res);
     } catch (err) {
       alert("Không thể khởi tạo thanh toán Addon");
     }

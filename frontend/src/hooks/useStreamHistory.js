@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useFilters } from "./useFilters";
 import { useDebounce } from "./useDebounce";
 import { useLatestRequestId } from "./useLatestRequestId";
-import apiService from "../services/api";
+import livestreamService from "../services/livestream.service";
 import { toast } from "sonner";
 
 export function useStreamHistory() {
@@ -44,9 +44,9 @@ export function useStreamHistory() {
       const requestId = streamRequest.start();
       setLoading(true);
       try {
-        const response = await apiService.get(`/livestreams/history?${searchParamsString}`);
+        const response = await livestreamService.getHistory(searchParamsString);
         if (!streamRequest.isLatest(requestId)) return;
-        setStreamData(response.data);
+        setStreamData(response || { data: [], meta: { total: 0, page: 1, limit: 10, totalPages: 1 } });
       } catch (error) {
         if (!streamRequest.isLatest(requestId)) return;
         toast.error(error.message || "Failed to load stream history");

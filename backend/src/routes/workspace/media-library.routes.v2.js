@@ -95,6 +95,21 @@ router.post('/upload', (req, res, next) => {
 }, checkPermission(PERMISSION_KEYS.MANAGE_MEDIA), mediaLibraryController.uploadMedia);
 
 /**
+ * Middleware dynamically selecting permission check for /save-direct:
+ * If saveToLibrary === false, requires CREATE_POSTS permission.
+ * Otherwise (default/true), requires MANAGE_MEDIA permission.
+ */
+const checkSaveDirectPermission = (req, res, next) => {
+  const saveToLibrary = req.body?.saveToLibrary;
+  const permissionKey = (saveToLibrary === false || saveToLibrary === 'false')
+    ? PERMISSION_KEYS.CREATE_POSTS
+    : PERMISSION_KEYS.MANAGE_MEDIA;
+  return checkPermission(permissionKey)(req, res, next);
+};
+
+router.post('/save-direct', checkSaveDirectPermission, mediaLibraryController.saveDirectMedia);
+
+/**
  * @openapi
  * /v2/media/{id}:
  *   delete:
@@ -115,5 +130,6 @@ router.post('/upload', (req, res, next) => {
  *               $ref: '#/components/schemas/V2EnvelopeResponse'
  */
 router.delete('/:id', checkPermission(PERMISSION_KEYS.MANAGE_MEDIA), mediaLibraryController.deleteMedia);
+router.patch('/:id/rename', checkPermission(PERMISSION_KEYS.MANAGE_MEDIA), mediaLibraryController.renameMedia);
 
 module.exports = router;

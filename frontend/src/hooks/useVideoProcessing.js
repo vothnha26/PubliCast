@@ -1,8 +1,8 @@
 import { useState, useRef, useEffect } from 'react';
 import { toast } from 'sonner';
-import apiService from '../services/api';
+import videoEditorService from '../services/videoEditor.service';
 import socketClient from '../services/socket';
-import { VIDEO_SOCKET_EVENTS, VIDEO_API_ROUTES } from '../constants/video-editor';
+import { VIDEO_SOCKET_EVENTS } from '../constants/video-editor';
 
 export function useVideoProcessing() {
   const [isProcessing, setIsProcessing] = useState(false);
@@ -27,31 +27,28 @@ export function useVideoProcessing() {
     toast.loading("Đang đẩy video vào hàng đợi xử lý...", { id: "video-edit-toast" });
 
     try {
-      const res = await apiService.post(VIDEO_API_ROUTES.TRIM, params);
-      if (res.status === 202 && Array.isArray(res.data.segments) && res.data.segments.length > 0) {
-        const segments = res.data.segments;
+      const res = await videoEditorService.trim(params);
+      if (Array.isArray(res?.segments) && res.segments.length > 0) {
+        const segments = res.segments;
         segmentResultsRef.current = new Map(
           segments.map((s) => [s.taskId, { status: 'PROCESSING', videoUrl: null, error: null }])
         );
         setSegmentTasks(segments);
         toast.loading(`Đang tách video thành ${segments.length} đoạn và xử lý ở chế độ chạy ngầm...`, { id: "video-edit-toast" });
-      } else if (res.status === 202) {
-        const { taskId } = res.data;
+      } else if (res?.taskId) {
+        const { taskId } = res;
         setCurrentTaskId(taskId);
         toast.loading("Video đang được xử lý ở chế độ chạy ngầm...", { id: "video-edit-toast" });
       } else {
-        // Phòng trường hợp backend trả về status khác 202 (không rơi vào nhánh
-        // catch vì không phải lỗi HTTP) — tránh isProcessing bị kẹt mãi ở true
-        // mà không có taskId để polling/socket theo dõi.
-        console.warn("[useVideoProcessing] Unexpected response status:", res.status, res.data);
+        console.warn("[useVideoProcessing] Unexpected response format:", res);
         setIsProcessing(false);
         toast.error("Phản hồi không hợp lệ từ máy chủ khi xử lý video.", { id: "video-edit-toast" });
-        if (onError) onError(new Error(`Unexpected response status: ${res.status}`));
+        if (onError) onError(new Error("Unexpected response format"));
       }
     } catch (err) {
       console.error("[useVideoProcessing] ❌ Error triggering processing:", err.message);
       setIsProcessing(false);
-      toast.error(err.response?.data?.message || "Lỗi gửi yêu cầu xử lý video.", { id: "video-edit-toast" });
+      toast.error(err.message || "Lỗi gửi yêu cầu xử lý video.", { id: "video-edit-toast" });
       if (onError) onError(err);
     }
   };
@@ -98,23 +95,26 @@ export function useVideoProcessing() {
 
     const checkStatus = async () => {
       try {
-        const res = await apiService.get(VIDEO_API_ROUTES.STATUS(currentTaskId));
-        if (res.data.status === "SUCCESS") {
+        const data = await videoEditorService.getStatus(currentTaskId);
+        const taskStatus = data?.status || data?.data?.status;
+        const videoUrl = data?.videoUrl || data?.data?.videoUrl;
+        const error = data?.error || data?.data?.error;
+        if (taskStatus === "SUCCESS") {
           console.log("⚡ [Polling] Task completed successfully via status check");
           cleanup();
           setIsProcessing(false);
           setCurrentTaskId(null);
           if (onSuccessRef.current) {
-            onSuccessRef.current(res.data.videoUrl, settingsRef.current);
+            onSuccessRef.current(videoUrl, settingsRef.current);
           }
-        } else if (res.data.status === "FAILED") {
-          console.error("⚡ [Polling] Task failed via status check:", res.data.error);
+        } else if (taskStatus === "FAILED") {
+          console.error("⚡ [Polling] Task failed via status check:", error);
           cleanup();
           setIsProcessing(false);
           setCurrentTaskId(null);
-          toast.error(`Lỗi xử lý video: ${res.data.error}`, { id: "video-edit-toast" });
+          toast.error(`Lỗi xử lý video: ${error}`, { id: "video-edit-toast" });
           if (onErrorRef.current) {
-            onErrorRef.current(new Error(res.data.error));
+            onErrorRef.current(new Error(error));
           }
         }
       } catch (err) {
@@ -156,12 +156,15 @@ export function useVideoProcessing() {
       try {
         await Promise.all(
           pending.map(async (s) => {
-            const res = await apiService.get(VIDEO_API_ROUTES.STATUS(s.taskId));
-            if (res.data.status === 'SUCCESS' || res.data.status === 'FAILED') {
+            const data = await videoEditorService.getStatus(s.taskId);
+            const status = data?.status || data?.data?.status;
+            const videoUrl = data?.videoUrl || data?.data?.videoUrl;
+            const error = data?.error || data?.data?.error;
+            if (status === 'SUCCESS' || status === 'FAILED') {
               results.set(s.taskId, {
-                status: res.data.status,
-                videoUrl: res.data.videoUrl || null,
-                error: res.data.error || null
+                status,
+                videoUrl: videoUrl || null,
+                error: error || null
               });
             }
           })

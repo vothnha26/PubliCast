@@ -92,7 +92,8 @@ export function AutoListEdit() {
     try {
       // Load connected platforms
       const metricsRes = await socialService.getMetrics(activeBrand.id);
-      const platforms = (metricsRes.data || []).map(m => ({
+      const metricsList = metricsRes || [];
+      const platforms = metricsList.map(m => ({
         id: m.platform,
         name: m.platform.charAt(0) + m.platform.slice(1).toLowerCase(),
         icon: PLATFORM_ICONS[m.platform] || <PlayCircle size={18} />
@@ -102,8 +103,8 @@ export function AutoListEdit() {
       // Load list details if editing
       if (!isNew) {
         const listRes = await autoListService.getAutoListDetails(id);
-        if (listRes.data) {
-          const list = listRes.data;
+        const list = listRes?.data || listRes;
+        if (list) {
           setName(list.name);
           setRepeat(!!list.loopEnabled);
           setScheduleType(list.scheduleType);

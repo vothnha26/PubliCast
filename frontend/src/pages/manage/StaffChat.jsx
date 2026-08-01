@@ -4,7 +4,8 @@ import {
   Paperclip, File, Image as ImageIcon, Download, Loader2
 } from "lucide-react";
 import { toast } from "sonner";
-import apiService from "../../services/api";
+import ticketService from "../../services/ticket.service";
+import mediaService from "../../services/media.service";
 import socketClient from "../../services/socket";
 import { useBrand } from "../../context/BrandContext";
 import { useAuthStore } from "../../store/useAuthStore";
@@ -36,9 +37,9 @@ export function StaffChatPage() {
     try {
       // Staff should see all tickets across all brands to allow support chat functionality
       const isStaff = user?.role === 'STAFF' || user?.role === 'ADMIN';
-      const url = (activeBrand && !isStaff) ? `/tickets?brandId=${activeBrand.id}` : `/tickets`;
-      const res = await apiService.get(url);
-      const tickets = res.data.data || [];
+      const targetBrandId = (activeBrand && !isStaff) ? activeBrand.id : null;
+      const res = await ticketService.getAllTickets(targetBrandId);
+      const tickets = res || [];
       const formatted = tickets.map(t => ({
         id: t.id,
         brandId: t.brandId,
@@ -68,8 +69,8 @@ export function StaffChatPage() {
   // Fetch messages for selected ticket
   const fetchMessages = async (ticketId) => {
     try {
-      const res = await apiService.get(`/tickets/${ticketId}`);
-      const ticket = res.data.data;
+      const res = await ticketService.getTicketDetails(ticketId);
+      const ticket = res || {};
       if (ticket && ticket.messages) {
         const formatted = ticket.messages.map(m => ({
           id: m.id,
@@ -179,8 +180,8 @@ export function StaffChatPage() {
   const handleClaimTicket = async () => {
     if (!activeChat) return;
     try {
-      const res = await apiService.put(`/tickets/${activeChat.id}/assign`);
-      const updatedTicket = res.data.data;
+      const res = await ticketService.assignTicket(activeChat.id);
+      const updatedTicket = res || {};
       if (updatedTicket) {
         setActiveChat(prev => prev && prev.id === updatedTicket.id ? {
           ...prev,
@@ -257,14 +258,12 @@ export function StaffChatPage() {
 
     setIsUploading(true);
     try {
-      const formData = new FormData();
-      formData.append("file", file);
-      formData.append("brandId", targetBrandId);
-      
-      const res = await apiService.post("/media/upload", formData, {
-        headers: { 'Content-Type': 'multipart/form-data' }
+      const res = await mediaService.saveDirect(targetBrandId, null, {
+        filename: file.name,
+        size: file.size,
+        type: file.type
       });
-      const url = res.data.data?.url;
+      const url = res?.url;
       if (url) {
         handleSendAttachment(file.name, url);
         toast.success("Đã gửi tệp đính kèm!");
@@ -350,7 +349,7 @@ export function StaffChatPage() {
                    <button className="p-2 hover:bg-gray-50 rounded-lg text-gray-400 transition-colors"><Video size={18} /></button>
                    <button 
                      onClick={async () => {
-                       await apiService.put(`/tickets/${activeChat.id}/status`, { status: 'RESOLVED' });
+                       await ticketService.resolveTicket(activeChat.id);
                        toast.success("Đã đóng ticket hỗ trợ thành công!");
                        fetchTickets();
                      }}

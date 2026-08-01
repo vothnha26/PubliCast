@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { Sparkles, X, Check, Copy, RefreshCw, MessageSquare, Info, ChevronDown, ThumbsUp, ThumbsDown, ChevronRight, RotateCcw } from "lucide-react";
 import { toast } from "sonner";
-import apiService from "../../../../services/api";
+import aiService from "../../../../services/ai.service";
 import { useBrand } from "../../../../context/BrandContext";
 import { PlatformIcon } from "../../../shared/PlatformIcon";
 
@@ -91,11 +91,12 @@ export function AICopilotPopover({ caption, onUpdateCaption, activePlatform, onC
 
   const loadSettings = async () => {
     try {
-      const res = await apiService.get(`/ai/settings?brandId=${activeBrand.id}`);
-      setCreditsLimit(res.data.creditsLimit ? Math.min(res.data.creditsLimit, 10) : 10);
-      setCreditsUsed(res.data.creditsUsed || 0);
-      if (res.data.defaultTone) setTone(res.data.defaultTone);
-      if (res.data.defaultLanguage) setLanguage(res.data.defaultLanguage);
+      const res = await aiService.getSettings(activeBrand.id);
+      const data = res || {};
+      setCreditsLimit(data.creditsLimit ? Math.min(data.creditsLimit, 10) : 10);
+      setCreditsUsed(data.creditsUsed || 0);
+      if (data.defaultTone) setTone(data.defaultTone);
+      if (data.defaultLanguage) setLanguage(data.defaultLanguage);
     } catch (err) {
       console.error("Failed to load AI settings:", err);
     }
@@ -189,23 +190,21 @@ export function AICopilotPopover({ caption, onUpdateCaption, activePlatform, onC
     const platformToUse = effectivePlatform === "any" ? (activePlatform || "facebook") : effectivePlatform;
 
     try {
-      const res = await apiService.post(`/ai/generate?brandId=${activeBrand.id}`, {
+      const res = await aiService.generateContent(activeBrand.id, {
         prompt: finalPrompt,
         tone: effectiveTone,
         platform: platformToUse.toLowerCase(),
         language: language,
         genre: format
-      }, {
-        timeout: 60000
       });
 
       let generatedText = "";
-      let tags = res.data.suggestedHashtags || [];
+      let tags = res.suggestedHashtags || [];
 
       if (mode === "hashtag") {
         generatedText = tags.join(" ");
       } else {
-        generatedText = res.data.platformSpecificAdjustments?.[platformToUse.toLowerCase()] || res.data.caption;
+        generatedText = res.platformSpecificAdjustments?.[platformToUse.toLowerCase()] || res.caption;
       }
 
       // Append AI Response Message to Thread
@@ -218,8 +217,8 @@ export function AICopilotPopover({ caption, onUpdateCaption, activePlatform, onC
       };
 
       setChatHistory(prev => [...prev, aiMsgObj]);
-      setCreditsUsed(res.data.creditsUsed || 0);
-      setCreditsLimit(res.data.creditsLimit ? Math.min(res.data.creditsLimit, 10) : 10);
+      setCreditsUsed(res.creditsUsed || 0);
+      setCreditsLimit(res.creditsLimit ? Math.min(res.creditsLimit, 10) : 10);
       toast.success("Tạo/Tối ưu nội dung AI thành công!");
     } catch (err) {
       console.error(err);

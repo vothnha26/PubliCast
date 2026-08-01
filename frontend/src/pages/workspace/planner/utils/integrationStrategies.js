@@ -1,5 +1,5 @@
 import postService from '@/services/post.service';
-import apiService from '@/services/api';
+import calendarService from '@/services/calendar.service';
 import { 
   parseCSVRow, 
   detectCSVFormat, 
@@ -146,12 +146,9 @@ export const CsvIntegrationStrategy = {
   executeExport: async (brandId, options) => {
     // Gọi API của server để xuất dữ liệu CSV
     const { startDate, endDate } = options;
-    const res = await apiService.get(`/posts/export-csv`, {
-      params: { brandId, startDate, endDate },
-      responseType: 'blob'
-    });
+    const res = await calendarService.exportCsv(brandId, startDate, endDate);
     return {
-      blob: res.data,
+      blob: res.data || res,
       filename: `publicast_export_${brandId}_${startDate}_to_${endDate}.csv`
     };
   }
@@ -294,16 +291,8 @@ export const IcsIntegrationStrategy = {
   },
 
   executeImport: async (brandId, items, onProgressRow, parsedResult) => {
-    // Đối với ICS, chúng ta gửi trực tiếp file thô lên backend qua FormData
-    const formData = new FormData();
-    formData.append('file', parsedResult.rawFile);
-    formData.append('brandId', brandId);
-
-    const res = await apiService.post('/calendar-events/import-ics', formData, {
-      headers: { 'Content-Type': 'multipart/form-data' }
-    });
-
-    const importedCount = Array.isArray(res.data) ? res.data.length : 0;
+    const res = await calendarService.importIcs(brandId, parsedResult.rawFile);
+    const importedCount = Array.isArray(res?.data || res) ? (res?.data || res).length : 0;
     return {
       successCount: importedCount,
       failCount: 0,
@@ -313,12 +302,9 @@ export const IcsIntegrationStrategy = {
 
   executeExport: async (brandId, options) => {
     const { startDate, endDate } = options;
-    const res = await apiService.get(`/calendar-events/export-ics`, {
-      params: { brandId, startDate, endDate },
-      responseType: 'blob'
-    });
+    const res = await calendarService.exportIcs(brandId, startDate, endDate);
     return {
-      blob: res.data,
+      blob: res.data || res,
       filename: `publicast_calendar_${brandId}_${startDate}_to_${endDate}.ics`
     };
   }

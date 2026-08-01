@@ -50,6 +50,7 @@ const upload = multer({ storage });
  *             schema:
  *               $ref: '#/components/schemas/V2EnvelopeResponse'
  */
+router.get('/', verifyAuth, authorizeAny, profileControllerV2.getUserProfile);
 router.get('/me', verifyAuth, authorizeAny, profileControllerV2.getUserProfile);
 
 /**

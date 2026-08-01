@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import apiService from '../services/api';
+import socialService from '../services/social.service';
 
 const INITIAL_INTERVAL_MS = 5000;
 const MAX_INTERVAL_MS = 30000;
@@ -38,12 +38,8 @@ export function useReelCopyrightStatus(brandId, videoId, socialAccountId = null)
 
     try {
       setError(null);
-      const url = `/facebook/reels/${videoId}/copyright-check?brandId=${brandId}` + 
-        (socialAccountId ? `&socialAccountId=${socialAccountId}` : '');
-        
-      const response = await apiService.get(url);
-      const data = response.data?.data || {};
-      const checkInfo = data.copyright_check_information || {};
+      const data = await socialService.getReelCopyrightStatus(brandId, videoId, socialAccountId);
+      const checkInfo = data?.copyright_check_information || data?.data?.copyright_check_information || {};
       const statusInfo = checkInfo.status || {};
 
       if (statusInfo.status === 'complete') {

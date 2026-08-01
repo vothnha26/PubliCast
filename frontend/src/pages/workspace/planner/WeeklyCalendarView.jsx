@@ -1,7 +1,7 @@
 import * as React from "react";
 import { useState, useEffect, useMemo } from "react";
 import { usePostCreator } from "../../../context/PostCreatorContext";
-import apiService from "../../../services/api";
+
 import { useBrand } from "../../../context/BrandContext";
 import { useGoogleDriveImport } from "../../../hooks/useGoogleDriveImport";
 import { toast } from "sonner";
@@ -99,8 +99,8 @@ export function WeeklyCalendarView() {
         };
         const startStr = toLocalDateStr(startOfMonth);
         const endStr = toLocalDateStr(endOfMonth);
-        const res = await apiService.get(`/posts?brandId=${activeBrand.id}&startDate=${startStr}&endDate=${endStr}&limit=1`);
-        setMonthlyPostCount(res.data.meta?.total || 0);
+        const res = await postService.getPosts(activeBrand.id, { startDate: startStr, endDate: endStr, limit: 1 });
+        setMonthlyPostCount(res.meta?.total || 0);
       } catch (e) {
         console.error("Failed to fetch monthly post count:", e);
       }
@@ -160,15 +160,15 @@ export function WeeklyCalendarView() {
     }
 
     try {
-      const [postsRes, eventsRes] = await Promise.all([
-        apiService.get(`/posts?brandId=${activeBrand.id}&startDate=${startDateStr}&endDate=${endDateStr}&limit=100`),
-        apiService.get(`/calendar-events?brandId=${activeBrand.id}&startDate=${startDateStr}&endDate=${endDateStr}`)
+      const [posts, events] = await Promise.all([
+        postService.getPosts(activeBrand.id, { startDate: startDateStr, endDate: endDateStr, limit: 100 }),
+        postService.getCalendarEvents(activeBrand.id, startDateStr, endDateStr)
       ]);
       // A slower in-flight request resolving after a newer one (e.g. rapid
       // Prev/Next clicks) must not overwrite the grid with stale week data (#88 M4).
       if (!postsRequest.isLatest(requestId)) return;
-      setPostData(postsRes.data.data || []);
-      setEventsData(eventsRes.data.data || []);
+      setPostData(posts || []);
+      setEventsData(events || []);
     } catch (e) {
       if (postsRequest.isLatest(requestId)) toast.error(t("weeklyCalendar.loadCalendarFail"));
     } finally {

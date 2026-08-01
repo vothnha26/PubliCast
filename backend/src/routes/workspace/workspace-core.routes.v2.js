@@ -2,10 +2,21 @@ const express = require('express');
 const brandController = require('../../controllers/workspace/brand.controller');
 const teamController = require('../../controllers/workspace/team.controller');
 const roleController = require('../../controllers/workspace/role.controller');
-const aiController = require('../../controllers/workspace/ai.controller');
+const permissionController = require('../../controllers/workspace/permission.controller');
+const approvalWorkflowController = require('../../controllers/workspace/approval-workflow.controller');
 const { verifyAuth } = require('../../middlewares/auth.middleware');
+const { requireBrandMember } = require('../../middlewares/permission.middleware');
+const checkPermission = require('../../middlewares/permission.middleware');
+const { authorizeAdmin } = require('../../middlewares/authorization.middleware');
+const { PERMISSION_KEYS } = require('../../utils/constants');
 
 const router = express.Router();
+
+// Public routes (used during invitation acceptance) — must be registered
+// before router.use(verifyAuth) below, same as team.routes.js v1.
+router.get('/team/invitations/validate', teamController.validateInvitation);
+router.post('/team/invitations/accept', teamController.acceptInvitation);
+
 router.use(verifyAuth);
 
 /**
@@ -115,6 +126,16 @@ router.delete('/brands/:id', brandController.deleteBrand);
  *               $ref: '#/components/schemas/V2EnvelopeResponse'
  */
 router.get('/teams', teamController.getTeamMembers);
+router.get('/team', requireBrandMember, teamController.getTeamMembers);
+router.post('/team/invite', teamController.inviteMember);
+router.put('/team/:id/role', teamController.updateMemberRole);
+router.post('/team/:id/resend-invite', teamController.resendInvitation);
+router.delete('/team/:id', teamController.removeMember);
+
+// ── Permissions V2 ──
+router.get('/permissions', permissionController.getPermissions);
+router.post('/permissions', authorizeAdmin, permissionController.createPermission);
+router.delete('/permissions/:key', authorizeAdmin, permissionController.deletePermission);
 
 // ── Roles V2 ──
 /**
@@ -138,32 +159,123 @@ router.get('/teams', teamController.getTeamMembers);
  *               $ref: '#/components/schemas/V2EnvelopeResponse'
  */
 router.get('/roles', roleController.getRoles);
+router.get('/brands/:brandId/roles', roleController.getRoles);
+router.post('/brands/:brandId/roles', checkPermission(PERMISSION_KEYS.MANAGE_ROLES), roleController.createRole);
+router.put('/brands/:brandId/roles/:id', checkPermission(PERMISSION_KEYS.MANAGE_ROLES), roleController.updateRole);
+router.delete('/brands/:brandId/roles/:id', checkPermission(PERMISSION_KEYS.MANAGE_ROLES), roleController.deleteRole);
 
-// ── AI Assistant V2 ──
+// ── Approval Workflows V2 ──
 /**
  * @openapi
- * /v2/workspace/ai/generate:
- *   post:
- *     summary: Generate post content caption using AI
+ * /v2/workspace/brands/{brandId}/workflows/reviewers:
+ *   get:
+ *     summary: Get potential reviewers for a brand's approval workflows
  *     tags: [Workspace Core V2]
  *     security: [{ cookieAuth: [] }]
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required: [prompt]
- *             properties:
- *               prompt: { type: string }
+ *     parameters:
+ *       - in: path
+ *         name: brandId
+ *         required: true
+ *         schema: { type: string }
  *     responses:
  *       200:
- *         description: AI caption generated
+ *         description: Potential reviewers list
  *         content:
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/V2EnvelopeResponse'
  */
-router.post('/ai/generate', aiController.generateContent);
+router.get('/brands/:brandId/workflows/reviewers', approvalWorkflowController.getPotentialReviewers);
+
+/**
+ * @openapi
+ * /v2/workspace/brands/{brandId}/workflows:
+ *   get:
+ *     summary: Get approval workflows for brand
+ *     tags: [Workspace Core V2]
+ *     security: [{ cookieAuth: [] }]
+ *     parameters:
+ *       - in: path
+ *         name: brandId
+ *         required: true
+ *         schema: { type: string }
+ *     responses:
+ *       200:
+ *         description: Approval workflows list
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/V2EnvelopeResponse'
+ *   post:
+ *     summary: Create an approval workflow for brand
+ *     tags: [Workspace Core V2]
+ *     security: [{ cookieAuth: [] }]
+ *     parameters:
+ *       - in: path
+ *         name: brandId
+ *         required: true
+ *         schema: { type: string }
+ *     responses:
+ *       201:
+ *         description: Approval workflow created
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/V2EnvelopeResponse'
+ */
+router.get('/brands/:brandId/workflows', approvalWorkflowController.getWorkflows);
+router.post('/brands/:brandId/workflows', approvalWorkflowController.createWorkflow);
+
+/**
+ * @openapi
+ * /v2/workspace/brands/{brandId}/workflows/{id}/review:
+ *   post:
+ *     summary: Submit a review decision for a workflow
+ *     tags: [Workspace Core V2]
+ *     security: [{ cookieAuth: [] }]
+ *     parameters:
+ *       - in: path
+ *         name: brandId
+ *         required: true
+ *         schema: { type: string }
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string }
+ *     responses:
+ *       200:
+ *         description: Workflow review submitted
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/V2EnvelopeResponse'
+ */
+router.post('/brands/:brandId/workflows/:id/review', approvalWorkflowController.reviewWorkflow);
+
+/**
+ * @openapi
+ * /v2/workspace/brands/{brandId}/workflows/{id}/reassign:
+ *   put:
+ *     summary: Reassign reviewers for a workflow
+ *     tags: [Workspace Core V2]
+ *     security: [{ cookieAuth: [] }]
+ *     parameters:
+ *       - in: path
+ *         name: brandId
+ *         required: true
+ *         schema: { type: string }
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string }
+ *     responses:
+ *       200:
+ *         description: Workflow reassigned
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/V2EnvelopeResponse'
+ */
+router.put('/brands/:brandId/workflows/:id/reassign', approvalWorkflowController.reassignWorkflow);
 
 module.exports = router;

@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { Send, Paperclip, X, Sparkles, Settings, RefreshCw, Layers, Check, Copy, Bookmark, BookOpen, UserCheck, ChevronRight, History, Clock, PanelRightClose, PanelRightOpen, SlidersHorizontal, Coins, MessageSquare, ChevronDown, ChevronUp, Calendar } from "lucide-react";
 import { toast } from "sonner";
-import apiService from "../../services/api";
+import aiService from "../../services/ai.service";
 import { useBrand } from "../../context/BrandContext";
 import { usePostCreator } from "../../context/PostCreatorContext";
 import { useSearchParams } from "react-router-dom";
@@ -77,7 +77,7 @@ function AiMessageBubble({ msg, activeBrand, autoLists, openPostCreator }) {
         isLibrary: isLibrary
       };
 
-      await apiService.post(`/ai/quick-post?brandId=${activeBrand.id}`, payload);
+      await aiService.quickPost(activeBrand.id, payload);
       
       if (isLibrary) {
         toast.success("Đã lưu bài viết vào Thư viện mẫu thành công!");
@@ -528,11 +528,11 @@ function HistoryCardItem({ item, toneLabels, supportedFormats, setInput, setTone
     if (!activeBrand?.id) return;
     setIsLoadingHistory(true);
     try {
-      const res = await apiService.get(`/ai/history?brandId=${activeBrand.id}&page=${page}&limit=10`);
-      setHistoryItems(res.data.items || []);
-      setHistoryTotal(res.data.total || 0);
-      setHistoryPage(res.data.page || 1);
-      setHistoryTotalPages(res.data.totalPages || 1);
+      const res = await aiService.getHistory(activeBrand.id, page, 10);
+      setHistoryItems(res.items || []);
+      setHistoryTotal(res.total || 0);
+      setHistoryPage(res.page || 1);
+      setHistoryTotalPages(res.totalPages || 1);
     } catch (err) {
       console.error("Failed to load AI history:", err);
       toast.error("Không thể tải lịch sử sáng tạo AI.");
@@ -601,8 +601,7 @@ function HistoryCardItem({ item, toneLabels, supportedFormats, setInput, setTone
 
   const loadConfig = async () => {
     try {
-      const res = await apiService.get("/ai/config");
-      const config = res.data;
+      const config = await aiService.getConfig();
       setSupportedTones(config.supportedTones || []);
       setSupportedLanguages(config.supportedLanguages || []);
       if (config.supportedFormats && config.supportedFormats.length > 0) {
@@ -622,8 +621,7 @@ function HistoryCardItem({ item, toneLabels, supportedFormats, setInput, setTone
 
   const loadSettings = async () => {
     try {
-      const res = await apiService.get(`/ai/settings?brandId=${activeBrand.id}`);
-      const data = res.data;
+      const data = await aiService.getSettings(activeBrand.id);
       setBrandVoiceContext(data.brandVoiceContext || "");
       setTargetAudience(data.targetAudience || "");
       setTargetPlatforms(data.targetPlatforms || "");
@@ -657,8 +655,8 @@ function HistoryCardItem({ item, toneLabels, supportedFormats, setInput, setTone
 
   const loadAutoLists = async () => {
     try {
-      const res = await apiService.get(`/auto-lists?brandId=${activeBrand.id}`);
-      setAutoLists(res.data?.data || []);
+      const res = await aiService.getAutoLists(activeBrand.id);
+      setAutoLists(res || []);
     } catch (err) {
       console.error("Failed to load auto-lists:", err);
     }
@@ -668,7 +666,7 @@ function HistoryCardItem({ item, toneLabels, supportedFormats, setInput, setTone
     if (!activeBrand?.id) return;
     setIsSavingVoice(true);
     try {
-      await apiService.put(`/ai/settings?brandId=${activeBrand.id}`, {
+      await aiService.updateSettings(activeBrand.id, {
         brandVoiceContext,
         targetAudience,
         targetPlatforms,
@@ -737,7 +735,7 @@ function HistoryCardItem({ item, toneLabels, supportedFormats, setInput, setTone
       // Send comma-separated list of selected platforms
       const platformsString = selectedPlatforms.join(",");
 
-      const res = await apiService.post(`/ai/generate?brandId=${activeBrand.id}`, {
+      const res = await aiService.generateContent(activeBrand.id, {
         prompt: currentPrompt,
         tone: tone,
         platform: platformsString,
@@ -745,21 +743,19 @@ function HistoryCardItem({ item, toneLabels, supportedFormats, setInput, setTone
         language,
         genre: styleToUse,
         situation
-      }, {
-        timeout: 60000 // Tăng timeout lên 60 giây cho các cuộc gọi AI dài
       });
 
       const aiMsg = {
         role: "ai",
-        content: res.data.caption,
-        hashtags: res.data.suggestedHashtags || [],
-        adjustments: res.data.platformSpecificAdjustments || {},
+        content: res.caption,
+        hashtags: res.suggestedHashtags || [],
+        adjustments: res.platformSpecificAdjustments || {},
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
       };
 
       setMessages((prev) => [...prev, aiMsg]);
-      setCreditsUsed(res.data.creditsUsed);
-      setCreditsLimit(res.data.creditsLimit);
+      setCreditsUsed(res.creditsUsed);
+      setCreditsLimit(res.creditsLimit);
       loadHistory(1);
     } catch (err) {
       console.error(err);

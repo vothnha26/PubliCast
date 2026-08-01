@@ -26,8 +26,8 @@ export function AutoListsView() {
     if (!activeBrand) return;
     setLoading(true);
     try {
-      const res = await autoListService.getAutoLists(activeBrand.id);
-      setLists(res.data || []);
+      const listsData = await autoListService.getAutoLists(activeBrand.id);
+      setLists(listsData || []);
     } catch (e) {
       toast.error(t("autolists.toasts.loadFail"));
     } finally {

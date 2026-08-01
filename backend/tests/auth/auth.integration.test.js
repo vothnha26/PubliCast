@@ -2,6 +2,16 @@ const request = require('supertest');
 const app = require('../../src/app');
 const authService = require('../../src/services/auth/auth.service');
 
+// Mock rate limiters to allow requests through during tests
+jest.mock('../../src/middlewares/rate-limit.middleware', () => (req, res, next) => next());
+jest.mock('../../src/middlewares/login-rate-limit.middleware', () => ({
+  middleware: () => (req, res, next) => next()
+}));
+jest.mock('../../src/middlewares/password-reset-rate-limit.middleware', () => ({
+  forgotPasswordRateLimiter: (req, res, next) => next(),
+  resetPasswordRateLimiter: (req, res, next) => next()
+}));
+
 // Mock Redis config to prevent connection attempts during tests
 jest.mock('../../src/config/redis', () => ({
   on: jest.fn(),

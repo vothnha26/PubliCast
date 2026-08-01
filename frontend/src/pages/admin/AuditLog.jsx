@@ -7,7 +7,7 @@ import {
 import { StatCard } from "../../components/shared/StatCard";
 import { useFilters } from "../../hooks/useFilters";
 import { useDebounce } from "../../hooks/useDebounce";
-import apiService from "../../services/api";
+import adminService from "../../services/admin.service";
 import { toast } from "sonner";
 
 const categoryColors = {
@@ -54,8 +54,8 @@ export function AuditLog() {
     const fetchLogs = async () => {
       setLoading(true);
       try {
-        const response = await apiService.get(`/admin/audit-logs?${searchParamsString}`);
-        setLogData(response.data);
+        const response = await adminService.getAuditLogs(searchParamsString);
+        setLogData(response || { data: [], meta: { total: 0, page: 1, limit: 5, totalPages: 1 } });
       } catch (error) {
         toast.error(error.message || "Failed to load audit logs from server");
       } finally {

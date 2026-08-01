@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { 
   ShieldAlert, Lock, Unlock, AlertTriangle, Edit3, X, Check, Loader2, RefreshCw, Smartphone, Tv
 } from "lucide-react";
-import apiService from "../../services/api";
+import adminService from "../../services/admin.service";
 import { toast } from "sonner";
 
 export function AdminPlatformLock() {
@@ -20,10 +20,10 @@ export function AdminPlatformLock() {
     setLoading(true);
     try {
       // Admin limits endpoint
-      const response = await apiService.get("/admin/platform-limits");
-      setLimits(response.data?.data || []);
+      const response = await adminService.getPlatformLimits();
+      setLimits(response || []);
     } catch (error) {
-      toast.error(error.response?.data?.message || "Không thể tải cấu hình nền tảng");
+      toast.error(error.message || "Không thể tải cấu hình nền tảng");
     } finally {
       setLoading(false);
     }
@@ -39,7 +39,7 @@ export function AdminPlatformLock() {
       // Unlock immediately
       setTogglingId(limit.id);
       try {
-        const response = await apiService.patch(`/admin/platform-limits/${limit.id}/lock`, {
+        await adminService.updatePlatformLimitLock(limit.id, {
           isLocked: false
         });
         toast.success(`Đã mở khóa nền tảng ${limit.platform} (${limit.subType})`);
@@ -47,7 +47,7 @@ export function AdminPlatformLock() {
         // Update local state
         setLimits(prev => prev.map(item => item.id === limit.id ? { ...item, isLocked: false, lockReason: null } : item));
       } catch (error) {
-        toast.error(error.response?.data?.message || "Không thể mở khóa nền tảng");
+        toast.error(error.message || "Không thể mở khóa nền tảng");
       } finally {
         setTogglingId(null);
       }
@@ -68,7 +68,7 @@ export function AdminPlatformLock() {
     setIsModalOpen(false);
 
     try {
-      const response = await apiService.patch(`/admin/platform-limits/${selectedLimit.id}/lock`, {
+      await adminService.updatePlatformLimitLock(selectedLimit.id, {
         isLocked: true,
         lockReason: lockReason.trim()
       });
@@ -78,7 +78,7 @@ export function AdminPlatformLock() {
       // Update local state
       setLimits(prev => prev.map(item => item.id === selectedLimit.id ? { ...item, isLocked: true, lockReason: lockReason.trim() } : item));
     } catch (error) {
-      toast.error(error.response?.data?.message || "Không thể khóa nền tảng");
+      toast.error(error.message || "Không thể khóa nền tảng");
     } finally {
       setTogglingId(null);
       setSelectedLimit(null);

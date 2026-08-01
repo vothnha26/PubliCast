@@ -1,82 +1,79 @@
-import apiService from './api';
+import { apiV2 } from './api';
 
 class AuthService {
   async getGoogleLoginUrl() {
-    const response = await apiService.get('/auth/google');
-    return response.data;
+    const data = await apiV2.get('/auth/google');
+    return data;
   }
 
   async login(payload) {
-    // Auth is established via the HttpOnly cookies the backend sets on this
-    // response (see api.js's withCredentials) — the backend never returns a
-    // raw token in the body here, so there was nothing to store client-side.
-    const response = await apiService.post('/auth/login', payload);
-    return response.data;
+    // Auth is established via the HttpOnly cookies the backend sets on this response.
+    // apiV2 automatically unwraps the { message, data } response envelope.
+    const data = await apiV2.post('/auth/login', payload);
+    return data;
   }
 
   async register(payload) {
-    const response = await apiService.post('/auth/register', payload);
-    return response.data;
+    const data = await apiV2.post('/auth/register', payload);
+    return data;
   }
 
   async verifyOTP(payload) {
-    const response = await apiService.post('/auth/verify-otp', payload);
-    return response.data;
+    const data = await apiV2.post('/auth/verify-otp', payload);
+    return data;
   }
 
   async resendOTP(email) {
-    const response = await apiService.post('/auth/resend-otp', { email });
-    return response.data;
+    const data = await apiV2.post('/auth/resend-otp', { email });
+    return data;
   }
 
   async forgotPassword(email) {
-    const response = await apiService.post('/auth/forgot-password', { email });
-    return response.data;
+    const data = await apiV2.post('/auth/forgot-password', { email });
+    return data;
   }
 
   async resetPassword(payload) {
-    const response = await apiService.post('/auth/reset-password', payload);
-    return response.data;
+    const data = await apiV2.post('/auth/reset-password', payload);
+    return data;
   }
 
   async verifyResetToken(token) {
-    const response = await apiService.get(`/auth/verify-reset-token?token=${encodeURIComponent(token)}`);
-    return response.data;
+    const data = await apiV2.get(`/auth/verify-reset-token?token=${encodeURIComponent(token)}`);
+    return data;
   }
 
   async setup2FA() {
-    const response = await apiService.post('/auth/2fa/setup');
-    return response.data;
+    const data = await apiV2.post('/auth/2fa/setup');
+    return data;
   }
 
   async verify2FA(code) {
-    const response = await apiService.post('/auth/2fa/verify', { code });
-    return response.data;
+    const data = await apiV2.post('/auth/2fa/verify', { code });
+    return data;
   }
 
   async disable2FA(code) {
-    const response = await apiService.post('/auth/2fa/disable', { code });
-    return response.data;
+    const data = await apiV2.post('/auth/2fa/disable', { code });
+    return data;
   }
 
   async loginVerify2FA(payload) {
-    const response = await apiService.post('/auth/2fa/login-verify', payload);
-    return response.data;
+    const data = await apiV2.post('/auth/2fa/login-verify', payload);
+    return data;
   }
 
   async logout() {
     try {
-      await apiService.post('/auth/logout');
+      await apiV2.post('/auth/logout');
     } catch (error) {
       console.warn('Backend logout failed:', error.message);
     }
   }
 
   async refreshToken() {
-    // Backend sets a fresh accessToken cookie on this response; nothing to
-    // store client-side.
-    const response = await apiService.post('/auth/refresh');
-    return response.data;
+    const data = await apiV2.post('/auth/refresh');
+    return data;
   }
 }
 

@@ -4,7 +4,7 @@ import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recha
 import { X, Plus, Hash, Layers, BarChart2, Compass, Trash2, Globe, Sparkles, AlertCircle } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
-import apiService from "../../services/api";
+import hashtagService from "../../services/hashtag.service";
 import { useBrand } from "../../context/BrandContext";
 import { useConfirm } from "@/hooks/useConfirm";
 
@@ -44,9 +44,9 @@ export function HashtagManager() {
     if (!activeBrand?.id) return;
     if (!silent) setLoading(true);
     try {
-      const res = await apiService.get(`/hashtags?brandId=${activeBrand.id}`);
-      setHashtagSets(res.data.sets || []);
-      setTrackedHashtags(res.data.trackers || []);
+      const res = await hashtagService.getHashtags(activeBrand.id);
+      setHashtagSets(res.sets || []);
+      setTrackedHashtags(res.trackers || []);
     } catch (err) {
       toast.error(t("toasts.loadError"));
       console.error(err);
@@ -67,8 +67,8 @@ export function HashtagManager() {
       if (cat === "Instagram") platformParam = "INSTAGRAM";
       if (cat === "TikTok") platformParam = "TIKTOK";
 
-      const res = await apiService.get(`/hashtags/trending?platform=${platformParam}&limit=20`);
-      setTrendingHashtags(res.data.trending || []);
+      const res = await hashtagService.getTrendingHashtags(platformParam);
+      setTrendingHashtags(res.trending || []);
     } catch (err) {
       setTrendingError(t("toasts.trendingError"));
       console.error(err);
@@ -110,7 +110,7 @@ export function HashtagManager() {
         hashtags: setTags,
         targetPlatforms
       };
-      await apiService.post("/hashtags/sets", payload);
+      await hashtagService.createSet(payload);
       toast.success(t("toasts.createSuccess"));
       setIsCreateOpen(false);
       setSetName("");
@@ -130,7 +130,7 @@ export function HashtagManager() {
         hashtags: selectedSet.tags,
         targetPlatforms: selectedSet.targetPlatforms
       };
-      await apiService.put(`/hashtags/sets/${selectedSet.id}`, payload);
+      await hashtagService.updateSet(selectedSet.id, payload);
       toast.success(t("toasts.updateSuccess"));
       setSelectedSet(null);
       loadData(true);
@@ -149,7 +149,7 @@ export function HashtagManager() {
     });
     if (!isConfirmed) return;
     try {
-      await apiService.delete(`/hashtags/sets/${setId}`);
+      await hashtagService.deleteSet(setId);
       toast.success(t("toasts.deleteSuccess"));
       loadData(true);
     } catch (error) {
@@ -179,7 +179,7 @@ export function HashtagManager() {
   // Stop tracking a tag
   const handleUntrackTag = async (trackerId) => {
     try {
-      await apiService.delete(`/hashtags/track/${trackerId}`);
+      await hashtagService.deleteTracker(trackerId);
       toast.success(t("toasts.untrackSuccess"));
       loadData(true);
     } catch (error) {
@@ -192,8 +192,8 @@ export function HashtagManager() {
   const handleRefreshTag = async (trackerId) => {
     setRefreshingTagId(trackerId);
     try {
-      const res = await apiService.post(`/hashtags/track/${trackerId}/refresh`);
-      toast.success(res.data.message);
+      const res = await hashtagService.refreshTracker(trackerId);
+      toast.success(res.message);
       loadData(true);
     } catch (error) {
       toast.error(t("toasts.refreshError"));
@@ -206,7 +206,7 @@ export function HashtagManager() {
   const handleTrackNewTag = async (tagText) => {
     if (!activeBrand?.id) return;
     try {
-      await apiService.post("/hashtags/track", {
+      await hashtagService.trackHashtag({
         brandId: activeBrand.id,
         hashtag: tagText,
         platform: "INSTAGRAM"

@@ -1,4 +1,4 @@
-import apiService from "./api";
+import { apiV2 } from "./api";
 import CloudinaryResumableUploader from "../utils/cloudinaryUploader";
 
 /**
@@ -15,8 +15,8 @@ export async function uploadMediaFile(file, brandId, onProgress) {
   const folder = isVideo ? 'publicast/videos' : 'publicast/images';
 
   // 1. Request upload signature from backend
-  const sigRes = await apiService.get(`/media/signature?folder=${folder}`);
-  const { signature, timestamp, apiKey, cloudName } = sigRes.data.data;
+  const sigData = await apiV2.get(`/media/signature?folder=${folder}`);
+  const { signature, timestamp, apiKey, cloudName } = sigData;
 
   // 2. Direct upload to Cloudinary using resumable uploader
   const uploader = new CloudinaryResumableUploader(
@@ -33,12 +33,11 @@ export async function uploadMediaFile(file, brandId, onProgress) {
   const uploadData = await uploader.upload(file, signature, timestamp);
 
   // 3. Register uploaded media in backend DB
-  const saveRes = await apiService.post("/media/save-direct", {
+  const savedMedia = await apiV2.post("/media/save-direct", {
     brandId,
     fileInfo: uploadData,
     saveToLibrary: false
   });
 
-  const savedMedia = saveRes.data?.data || saveRes.data;
   return savedMedia?.url || uploadData.secure_url;
 }

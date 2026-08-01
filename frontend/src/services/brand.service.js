@@ -1,24 +1,24 @@
-import apiService from './api';
+import { apiV2 } from './api';
 
 class BrandService {
   async getBrands() {
-    const response = await apiService.get('/brands');
-    return response.data;
+    const data = await apiV2.get('/workspace/brands');
+    return data;
   }
 
   async createBrand(brandData) {
-    const response = await apiService.post('/brands', brandData);
-    return response.data;
+    const data = await apiV2.post('/workspace/brands', brandData);
+    return data;
   }
 
   async updateBrand(id, brandData) {
-    const response = await apiService.put(`/brands/${id}`, brandData);
-    return response.data;
+    const data = await apiV2.put(`/workspace/brands/${id}`, brandData);
+    return data;
   }
 
   async deleteBrand(id) {
-    const response = await apiService.delete(`/brands/${id}`);
-    return response.data;
+    const data = await apiV2.delete(`/workspace/brands/${id}`);
+    return data;
   }
 }
 

@@ -21,8 +21,7 @@ import { MediaDropdown } from "@/components/workspace/post-creator/MediaDropdown
 import { GoogleDrivePickerModal } from "@/components/workspace/post-creator/modals/GoogleDrivePickerModal";
 import { ImageEditorModal } from "@/components/workspace/post-creator/modals/ImageEditorModal";
 import { toast } from "sonner";
-import apiService from "@/services/api";
-import CloudinaryResumableUploader from "@/utils/cloudinaryUploader";
+import { uploadMediaFile } from "@/services/mediaUpload.service";
 import { buildMediaUrl, isVideoPath } from "@/utils/url";
 import { useFeatureGate } from "@/hooks/useFeatureGate";
 import { PlatformIcon } from "@/components/shared/PlatformIcon";
@@ -122,39 +121,10 @@ export function AutoListPostCard({
     try {
       const uploadedUrls = [];
       for (const file of files) {
-        const isVideo = file.type.startsWith('video/');
-        const folder = isVideo ? 'publicast/videos' : 'publicast/images';
-
-        // 1. Get signature from backend
-        const sigRes = await apiService.get(`/media/signature?folder=${folder}`);
-        const { signature, timestamp, apiKey, cloudName } = sigRes.data.data;
-
         toast.loading(`Uploading ${file.name}... 0%`, { id: toastId });
-
-        // 2. Resumable Direct Upload to Cloudinary — bypasses the backend
-        // entirely (no more 15s axios timeout on large video files, and no
-        // 100MB multer cap), same flow as MediaUploadModal.jsx.
-        const uploader = new CloudinaryResumableUploader(
-          cloudName,
-          apiKey,
-          folder,
-          (percent) => {
-            toast.loading(`Uploading ${file.name}... ${percent}%`, { id: toastId });
-          }
-        );
-
-        const uploadData = await uploader.upload(file, signature, timestamp);
-
-        // 3. Save info to backend — saveToLibrary:false, this is a post
-        // attachment, not a Media Library upload.
-        const saveRes = await apiService.post("/media/save-direct", {
-          brandId: activeBrand?.id,
-          fileInfo: uploadData,
-          saveToLibrary: false
+        const finalUrl = await uploadMediaFile(file, activeBrand?.id, (percent) => {
+          toast.loading(`Uploading ${file.name}... ${percent}%`, { id: toastId });
         });
-
-        const savedMedia = saveRes.data?.data || saveRes.data;
-        const finalUrl = savedMedia?.url || uploadData.secure_url;
         if (finalUrl) {
           uploadedUrls.push(finalUrl);
         }

@@ -17,8 +17,8 @@ export const useBrandStore = create((set, get) => ({
 
     set({ loading: true });
     try {
-      const res = await brandService.getBrands();
-      const brandList = res.data || [];
+      const brands = await brandService.getBrands();
+      const brandList = brands || [];
       set({ brands: brandList });
 
       if (brandList.length > 0) {
@@ -65,16 +65,16 @@ export const useBrandStore = create((set, get) => ({
 
   createBrand: async (brandData) => {
     try {
-      const res = await brandService.createBrand(brandData);
+      const createdBrand = await brandService.createBrand(brandData);
       toast.success("Tạo thương hiệu mới thành công!");
-      if (res.data && res.data.id) {
-        await get().fetchBrands(res.data.id);
+      if (createdBrand && createdBrand.id) {
+        await get().fetchBrands(createdBrand.id);
       } else {
         await get().fetchBrands();
       }
-      return res.data;
+      return createdBrand;
     } catch (error) {
-      const msg = error.response?.data?.message || "Tạo thương hiệu thất bại";
+      const msg = error.response?.data?.message || error.message || "Tạo thương hiệu thất bại";
       toast.error(msg);
       throw error;
     }
@@ -82,12 +82,12 @@ export const useBrandStore = create((set, get) => ({
 
   updateBrand: async (id, brandData) => {
     try {
-      const res = await brandService.updateBrand(id, brandData);
+      const updatedBrand = await brandService.updateBrand(id, brandData);
       toast.success("Cập nhật thông tin thương hiệu thành công!");
       await get().fetchBrands(get().activeBrand?.id);
-      return res.data;
+      return updatedBrand;
     } catch (error) {
-      const msg = error.response?.data?.message || "Cập nhật thương hiệu thất bại";
+      const msg = error.response?.data?.message || error.message || "Cập nhật thương hiệu thất bại";
       toast.error(msg);
       throw error;
     }

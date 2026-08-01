@@ -55,6 +55,11 @@ router.use(verifyAuth);
  */
 router.get('/reports', checkPermission('VIEW_ANALYTICS'), reportController.getReports);
 router.post('/reports', checkPermission('VIEW_ANALYTICS'), reportController.generateReport);
+router.get('/reports/schedule-config', checkPermission('VIEW_ANALYTICS'), reportController.getScheduleConfig);
+router.post('/reports/schedule-config', checkPermission('VIEW_ANALYTICS'), reportController.saveScheduleConfig);
+router.post('/reports/send-test', checkPermission('VIEW_ANALYTICS'), reportController.sendTestReport);
+router.get('/reports/:id/download', checkPermission('VIEW_ANALYTICS'), reportController.downloadReport);
+router.delete('/reports/:id', checkPermission('VIEW_ANALYTICS'), reportController.deleteReport);
 
 /**
  * @openapi

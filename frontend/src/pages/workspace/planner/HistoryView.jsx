@@ -36,7 +36,7 @@ export function HistoryView() {
         search: debouncedSearch
       });
       if (!historyRequest.isLatest(requestId)) return;
-      setPosts(res.data || []);
+      setPosts(res?.posts || res || []);
       setSelected([]);
     } catch (e) {
       if (historyRequest.isLatest(requestId)) toast.error(t("historyView.toasts.loadFail"));

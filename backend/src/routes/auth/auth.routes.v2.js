@@ -1,5 +1,6 @@
 const express = require('express');
 const authControllerV2 = require('../../controllers/auth/auth.controller.v2');
+const authController = require('../../controllers/auth/auth.controller');
 const authRateLimiter = require('../../middlewares/rate-limit.middleware');
 const loginRateLimiter = require('../../middlewares/login-rate-limit.middleware');
 const { forgotPasswordRateLimiter, resetPasswordRateLimiter } = require('../../middlewares/password-reset-rate-limit.middleware');
@@ -52,6 +53,8 @@ const router = express.Router();
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  */
+router.get('/google', authController.googleLogin);
+
 router.post('/register', authRateLimiter, registerValidation, authControllerV2.register);
 
 /**

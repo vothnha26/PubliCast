@@ -4,7 +4,7 @@ import { Diamond, ClipboardCheck, Loader2, Calendar, Check, X, Search, ExternalL
 import { useBrand } from "../../context/BrandContext";
 import { useAuth } from "../../context/AuthContext";
 import { usePostCreator } from "../../context/PostCreatorContext";
-import apiService from "../../services/api";
+import workflowService from "../../services/workflow.service";
 import { toast } from "sonner";
 import { PlatformRegistry } from "./PlatformStrategies";
 
@@ -39,8 +39,8 @@ export function MyTasksPage() {
     if (!selectedBrandId) return;
     setLoading(true);
     try {
-      const response = await apiService.get(`/brands/${selectedBrandId}/workflows`);
-      setWorkflows(response.data.data || []);
+      const response = await workflowService.getWorkflows(selectedBrandId);
+      setWorkflows(response || []);
     } catch (error) {
       toast.error(error.message || "Failed to load tasks");
     } finally {
@@ -67,7 +67,7 @@ export function MyTasksPage() {
       const targetWf = workflows.find(w => w.id === workflowId);
       if (!targetWf) return;
       
-      await apiService.post(`/brands/${targetWf.brandId}/workflows/${workflowId}/review`, {
+      await workflowService.reviewWorkflow(targetWf.brandId, workflowId, {
         action,
         comment: comment || undefined
       });
@@ -77,7 +77,7 @@ export function MyTasksPage() {
         setPreviewWorkflow(null);
       }
     } catch (error) {
-      toast.error(error.response?.data?.message || "Không thể xử lý phản hồi");
+      toast.error(error.message || "Không thể xử lý phản hồi");
     }
   };
 

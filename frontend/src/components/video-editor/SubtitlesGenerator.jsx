@@ -4,7 +4,7 @@ import { useVideoEditor } from '../../context/VideoEditorContext';
 import { VIDEO_API_ROUTES } from '../../constants/video-editor';
 import { usePostCreatorStore } from '../../store/usePostCreatorStore';
 import { useBrand } from '../../context/BrandContext';
-import apiService from '../../services/api';
+import videoEditorService from '../../services/videoEditor.service';
 import { toast } from 'sonner';
 
 export default function SubtitlesGenerator() {
@@ -26,12 +26,8 @@ export default function SubtitlesGenerator() {
     toast.loading('Đang khởi chạy AI Transcribe nhận diện giọng nói...', { id: 'subtitle-toast' });
     
     try {
-      const res = await apiService.post(
-        VIDEO_API_ROUTES.TRANSCRIBE,
-        { videoUrl, brandId },
-        { timeout: 300000 }
-      );
-      setSubtitles(res.data.subtitles || []);
+      const res = await videoEditorService.transcribe(videoUrl, brandId);
+      setSubtitles(res?.subtitles || res?.data?.subtitles || []);
       toast.success('Sinh phụ đề AI thành công!', { id: 'subtitle-toast' });
     } catch (err) {
       console.error('[AI Subtitles] ❌ Error:', err.message);

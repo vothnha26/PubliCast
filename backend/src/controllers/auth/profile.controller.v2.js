@@ -54,6 +54,9 @@ class ProfileControllerV2 {
   async changePassword(req, res, next) {
     try {
       const { currentPassword, newPassword } = req.body;
+      if (!newPassword || newPassword.length < 8) {
+        return res.status(400).json({ message: 'Mật khẩu mới phải có ít nhất 8 ký tự.' });
+      }
       const result = await profileService.changePassword(req.user.id, currentPassword, newPassword);
       return v2Success(res, result, 'Password changed successfully.');
     } catch (err) {

@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useFilters } from "./useFilters";
 import { useDebounce } from "./useDebounce";
 import { useLatestRequestId } from "./useLatestRequestId";
-import apiService from "../services/api";
+import mediaService from "../services/media.service";
 import { toast } from "sonner";
 import CloudinaryResumableUploader from "../utils/cloudinaryUploader";
 import { useBrand } from "../context/BrandContext";
@@ -56,8 +56,8 @@ export function useMediaLibrary() {
     if (!activeBrand) return;
     setLoadingFolders(true);
     try {
-      const res = await apiService.get(`/media-folders?brandId=${activeBrand.id}${currentFolderId ? `&parentId=${currentFolderId}` : ""}`);
-      setFolders(res.data.data);
+      const res = await mediaService.getFolders(activeBrand.id, currentFolderId);
+      setFolders(res || []);
     } catch (err) {
       console.error("Failed to fetch folders", err);
     } finally {
@@ -75,9 +75,9 @@ export function useMediaLibrary() {
     const requestId = mediaRequest.start();
     setLoading(true);
     try {
-      const response = await apiService.get(`/media?brandId=${activeBrand.id}&${searchParamsString}`);
+      const response = await mediaService.getMedia(activeBrand.id, searchParamsString);
       if (!mediaRequest.isLatest(requestId)) return;
-      setMediaData(response.data);
+      setMediaData(response || { data: [], meta: { total: 0, page: 1, limit: 20, totalPages: 1 } });
     } catch (error) {
       if (!mediaRequest.isLatest(requestId)) return;
       toast.error(error.message || "Failed to load media files");
@@ -93,11 +93,7 @@ export function useMediaLibrary() {
   const createFolder = async (name) => {
     if (!activeBrand) return;
     try {
-      await apiService.post("/media-folders", {
-        name,
-        brandId: activeBrand.id,
-        parentId: currentFolderId
-      });
+      await mediaService.createFolder(activeBrand.id, name, currentFolderId);
       toast.success("Folder created successfully");
       fetchFolders();
     } catch (error) {
@@ -118,8 +114,8 @@ export function useMediaLibrary() {
         // 1. Get signature from backend
         const isVideo = file.type.startsWith('video/');
         const folder = isVideo ? 'publicast/videos' : 'publicast/images';
-        const sigRes = await apiService.get(`/media/signature?folder=${folder}`);
-        const { signature, timestamp, apiKey, cloudName } = sigRes.data.data;
+        const sigRes = await mediaService.getSignature(folder);
+        const { signature, timestamp, apiKey, cloudName } = sigRes;
 
         toast.loading(`Uploading ${file.name}... 0%`, { id: toastId });
 
@@ -136,11 +132,7 @@ export function useMediaLibrary() {
         const uploadData = await uploader.upload(file, signature, timestamp);
 
         // 3. Save info to our backend
-        await apiService.post("/media/save-direct", {
-          brandId: activeBrand.id,
-          folderId: currentFolderId,
-          fileInfo: uploadData
-        });
+        await mediaService.saveDirect(activeBrand.id, currentFolderId, uploadData);
       }
       toast.success("All files uploaded successfully", { id: toastId });
       fetchMedia(); // Refresh list
@@ -157,15 +149,11 @@ export function useMediaLibrary() {
   const deleteFile = async (id) => {
     if (!activeBrand) return;
     try {
-      await apiService.delete(`/media/${id}`, { data: { brandId: activeBrand.id } });
+      await mediaService.deleteFile(id, activeBrand.id);
       toast.success("File deleted successfully");
       if (detail?.id === id) setDetail(null);
       await fetchMedia();
     } catch (error) {
-      // Real backend errors surface here — e.g. 409 when the file is still
-      // referenced by a Post, or 500 if Cloudinary deletion actually failed.
-      // No optimistic pre-delete/rollback: the list only changes once we know
-      // the delete truly succeeded.
       toast.error(error.message || "Delete failed");
     }
   };
@@ -178,7 +166,7 @@ export function useMediaLibrary() {
 
     for (const id of idsToDelete) {
       try {
-        await apiService.delete(`/media/${id}`, { data: { brandId: activeBrand.id } });
+        await mediaService.deleteFile(id, activeBrand.id);
       } catch (error) {
         failures.push({ id, message: error.message });
       }
@@ -202,16 +190,13 @@ export function useMediaLibrary() {
       // Optimistic UI update
       setMediaData(prev => ({
         ...prev,
-        data: prev.data.map(item => item.id === id ? { ...item, name: newName } : item)
+        data: (prev.data || []).map(item => item.id === id ? { ...item, name: newName } : item)
       }));
       if (detail && detail.id === id) {
         setDetail(prev => ({ ...prev, name: newName }));
       }
       
-      await apiService.patch(`/media/${id}/rename`, {
-        brandId: activeBrand.id,
-        filename: newName
-      });
+      await mediaService.renameFile(id, activeBrand.id, newName);
       
       toast.success("File renamed successfully");
       await fetchMedia();

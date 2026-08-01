@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { getFullImageUrl, processCanvas } from "./utils";
-import apiService from "../../../../services/api";
+import { uploadMediaFile } from "../../../../services/mediaUpload.service";
 import { usePostCreatorStore } from "../../../../store/usePostCreatorStore";
 
 export function useImageEditor({ imageUrl, currentTransform, brandId, onSave, onClose }) {
@@ -698,16 +698,9 @@ const isPointNearLine = (cursorPt, line, threshold = 25) => {
             }
 
             const file = new File([blob], "edited_image.jpg", { type: "image/jpeg" });
-            const formData = new FormData();
-            formData.append("video", file);
 
             try {
-              const res = await apiService.post(`/posts/upload?brandId=${brandId}`, formData, {
-                headers: {
-                  "Content-Type": "multipart/form-data"
-                }
-              });
-              const path = res.data.videoUrl;
+              const path = await uploadMediaFile(file, brandId);
 
               // Track saved image asset in current session for rollback
               const trackUploadedAsset = usePostCreatorStore.getState().trackUploadedAsset;
