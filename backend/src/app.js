@@ -34,14 +34,12 @@ const inboxRoutes = require('./routes/social/inbox.routes');
 const inboxRoutesV2 = require('./routes/social/inbox.routes.v2');
 
 // Routes - Workspace Domain
-// const livestreamRoutes = require('./routes/workspace/livestream.routes');
 const postRoutes = require('./routes/workspace/post.routes');
 const postRoutesV2 = require('./routes/workspace/post.routes.v2');
 const contentExtrasRoutesV2 = require('./routes/workspace/content-extras.routes.v2');
 const mediaLibraryRoutes = require('./routes/workspace/media-library.routes');
 const mediaLibraryRoutesV2 = require('./routes/workspace/media-library.routes.v2');
 const mediaFolderRoutesV2 = require('./routes/workspace/media-folder.routes.v2');
-const highlightRoutesV2 = require('./routes/workspace/highlight.routes.v2');
 const adminRoutesV2 = require('./routes/admin/admin.routes.v2');
 const workspaceCoreRoutesV2 = require('./routes/workspace/workspace-core.routes.v2');
 const aiRoutesV2 = require('./routes/workspace/ai.routes.v2');
@@ -189,11 +187,6 @@ app.use('/oauth', authRoutes);
 app.use('/api', profileRoutes);
 app.use('/api/admin/pricing', pricingRoutes);
 app.use('/api/admin/audit-logs', auditLogRoutes);
-app.use('/api/search', searchRoutes);
-const livestreamRoutes = require('./routes/workspace/livestream.routes');
-app.use('/api/livestreams', livestreamRoutes);
-const highlightRoutes = require('./routes/workspace/highlight.routes');
-app.use('/api/highlights', highlightRoutes);
 const ticketRoutes = require('./routes/workspace/ticket.routes');
 
 app.use('/api/posts', postRoutes);
@@ -223,7 +216,6 @@ app.use('/api/v2/posts', postRoutesV2);
 app.use('/api/v2/content-extras', contentExtrasRoutesV2);
 app.use('/api/v2/media', mediaLibraryRoutesV2);
 app.use('/api/v2/media-folders', mediaFolderRoutesV2);
-app.use('/api/v2/highlights', highlightRoutesV2);
 app.use('/api/v2/admin', adminRoutesV2);
 app.use('/api/v2/workspace', workspaceCoreRoutesV2);
 app.use('/api/v2/ai', aiRoutesV2);

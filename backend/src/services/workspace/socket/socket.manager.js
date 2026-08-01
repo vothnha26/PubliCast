@@ -76,14 +76,6 @@ class SocketManager {
   }
 
   /**
-   * Emit event directly to a livestream room
-   */
-  emitToLivestreamRoom(livestreamId, event, data) {
-    const room = `${ROOM_PREFIXES.LIVESTREAM}${livestreamId}`;
-    this.emitToRoom(room, event, data);
-  }
-
-  /**
    * Emit event directly to a specific user across all their active devices/connections
    */
   emitToUser(userId, event, data) {
@@ -95,17 +87,6 @@ class SocketManager {
    * Private handler for socket connection
    */
   _handleConnection(socket) {
-    // Overlay sockets (#173, OBS Browser Source) carry a narrow-scope token
-    // for a single livestream instead of a full user session — they have no
-    // socket.user and must only ever be allowed to join/leave that one room.
-    if (socket.overlayLivestreamId) {
-      console.log(`🔌 [SocketManager] Overlay client connected for livestream ${socket.overlayLivestreamId} | socketId: ${socket.id}`);
-      socket.on(SOCKET_EVENTS.JOIN_LIVESTREAM, (payload) => this._handleJoinLivestream(socket, payload));
-      socket.on(SOCKET_EVENTS.LEAVE_LIVESTREAM, (payload) => this._handleLeaveLivestream(socket, payload));
-      socket.on(SOCKET_EVENTS.DISCONNECT, () => this._handleDisconnect(socket));
-      return;
-    }
-
     const userId = socket.user.id;
     const socketId = socket.id;
 
@@ -124,8 +105,6 @@ class SocketManager {
     // Setup event listeners
     socket.on(SOCKET_EVENTS.JOIN_ROOM, (payload) => this._handleJoinRoom(socket, payload));
     socket.on(SOCKET_EVENTS.LEAVE_ROOM, (payload) => this._handleLeaveRoom(socket, payload));
-    socket.on(SOCKET_EVENTS.JOIN_LIVESTREAM, (payload) => this._handleJoinLivestream(socket, payload));
-    socket.on(SOCKET_EVENTS.LEAVE_LIVESTREAM, (payload) => this._handleLeaveLivestream(socket, payload));
     socket.on(SOCKET_EVENTS.SEND_MESSAGE, (payload) => this._handleSendMessage(socket, payload));
     socket.on(SOCKET_EVENTS.DISCONNECT, () => this._handleDisconnect(socket));
   }
@@ -198,102 +177,7 @@ class SocketManager {
     }
   }
 
-  /**
-   * Handle joining livestream chat room
-   */
-  async _handleJoinLivestream(socket, payload) {
-    try {
-      const { livestreamId } = payload;
-      if (!livestreamId) {
-        throw new Error('livestreamId is required to join livestream room');
-      }
 
-      // Overlay sockets (#173) are pre-scoped to exactly one livestream by
-      // their token — skip the brand-membership check (they have no user)
-      // and refuse to join any other livestream's room.
-      if (socket.overlayLivestreamId) {
-        if (socket.overlayLivestreamId !== livestreamId) {
-          throw new Error('Overlay token không hợp lệ cho livestream này.');
-        }
-        const overlayRoom = `${ROOM_PREFIXES.LIVESTREAM}${livestreamId}`;
-        socket.join(overlayRoom);
-        socket.emit(SOCKET_EVENTS.JOINED_ROOM, { room: overlayRoom, livestreamId });
-        console.log(`👤 [SocketManager] Overlay client joined livestream room ${overlayRoom}`);
-        return;
-      }
-
-      // Check if livestream exists
-      const livestream = await prisma.livestream.findUnique({
-        where: { id: livestreamId }
-      });
-
-      if (!livestream) {
-        throw new Error('Livestream not found');
-      }
-
-      // Previously only existence was checked — any authenticated socket
-      // could join another brand's livestream room and, worse, trigger
-      // YouTube live-chat polling for a brand they have no relation to (#73).
-      const hasAccess = await authorizationFacade.checkBrandAccess(socket.user.id, livestream.brandId);
-      if (!hasAccess) {
-        throw new Error('Bạn không có quyền truy cập livestream này.');
-      }
-
-      const room = `${ROOM_PREFIXES.LIVESTREAM}${livestreamId}`;
-      socket.join(room);
-      socket.emit(SOCKET_EVENTS.JOINED_ROOM, { room, livestreamId });
-      console.log(`👤 [SocketManager] User ${socket.user.name} joined livestream room ${room}`);
-
-      // Start Polling YouTube Live Chat if the target platform contains YOUTUBE
-      const targetPlatforms = livestream.targetPlatforms || '';
-      if (targetPlatforms.toUpperCase().includes('YOUTUBE')) {
-        const youtubePollingManager = require('../../social/youtube/youtube-polling.manager');
-        youtubePollingManager.startPolling(livestreamId, livestream.brandId, this);
-      }
-    } catch (err) {
-      console.error('❌ [SocketManager] Join livestream error:', err.message);
-      socket.emit(SOCKET_EVENTS.ERROR, { message: err.message });
-    }
-  }
-
-  /**
-   * Handle leaving livestream chat room
-   */
-  async _handleLeaveLivestream(socket, payload) {
-    try {
-      const { livestreamId } = payload;
-      if (!livestreamId) return;
-
-      const room = `${ROOM_PREFIXES.LIVESTREAM}${livestreamId}`;
-      socket.leave(room);
-      socket.emit(SOCKET_EVENTS.LEFT_ROOM, { room, livestreamId });
-      const who = socket.overlayLivestreamId ? 'Overlay client' : `User ${socket.user.name}`;
-      console.log(`👤 [SocketManager] ${who} left livestream room ${room}`);
-
-      // Check if room is empty to stop polling
-      this._checkAndStopYoutubePolling(livestreamId);
-    } catch (err) {
-      console.error('❌ [SocketManager] Leave livestream error:', err.message);
-    }
-  }
-
-  /**
-   * Stop polling if no clients are left in the room
-   */
-  _checkAndStopYoutubePolling(livestreamId) {
-    if (!this.io) return;
-    const room = `${ROOM_PREFIXES.LIVESTREAM}${livestreamId}`;
-    const clients = this.io.sockets.adapter.rooms.get(room);
-    if (!clients || clients.size === 0) {
-      console.log(`🔌 [SocketManager] Room ${room} is empty. Stopping YouTube polling...`);
-      try {
-        const youtubePollingManager = require('../../social/youtube/youtube-polling.manager');
-        youtubePollingManager.stopPolling(livestreamId);
-      } catch (err) {
-        console.error('❌ [SocketManager] Error stopping YouTube polling:', err.message);
-      }
-    }
-  }
 
   /**
    * Process and save incoming ticket messages, then broadcast
@@ -402,13 +286,7 @@ class SocketManager {
    */
   _handleDisconnect(socket) {
     const socketId = socket.id;
-
-    // Get rooms the socket was in before disconnect
-    const rooms = Array.from(socket.rooms || []);
-
-    if (socket.overlayLivestreamId) {
-      console.log(`🔌 [SocketManager] Overlay client disconnected | socketId: ${socketId}`);
-    } else {
+    if (socket.user) {
       const userId = socket.user.id;
       if (this.userSockets.has(userId)) {
         const sockets = this.userSockets.get(userId);
@@ -419,14 +297,6 @@ class SocketManager {
       }
       console.log(`🔌 [SocketManager] Client disconnected: ${socket.user.name} | socketId: ${socketId}`);
     }
-
-    // Check all livestream rooms the disconnected socket belonged to
-    rooms.forEach(room => {
-      if (room.startsWith(ROOM_PREFIXES.LIVESTREAM)) {
-        const livestreamId = room.replace(ROOM_PREFIXES.LIVESTREAM, '');
-        setTimeout(() => this._checkAndStopYoutubePolling(livestreamId), 100);
-      }
-    });
   }
 }
 

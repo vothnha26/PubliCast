@@ -85,8 +85,6 @@ async function _countUsage(limitField, brandId, userId) {
       return subscriptionRepository.countPostsThisMonth(brandId);
     case 'maxTeamSeats':
       return subscriptionRepository.countTeamSeats(brandId);
-    case 'maxLivePlatforms':
-      return 0; // Placeholder - implement when Livestream backend is built
     default:
       logger.warn('[checkLimit] Unknown limitField', { limitField });
       return 0;
