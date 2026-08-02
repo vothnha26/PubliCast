@@ -15,8 +15,8 @@ router.use(verifyAuth);
 /**
  * @openapi
  * tags:
- *   name: Workspace Posts V2
- *   description: Post Creation, Scheduling & Editing management (v2 Envelope API)
+ *   - name: Workspace Posts V2
+ *     description: Post Creation, Scheduling & Editing management (v2 Envelope API)
  */
 
 /**
@@ -24,28 +24,34 @@ router.use(verifyAuth);
  * /v2/posts:
  *   get:
  *     summary: Fetch posts list for a brand with filters
- *     tags: [Workspace Posts V2]
- *     security: [{ cookieAuth: [] }]
+ *     tags:
+ *       - Workspace Posts V2
+ *     security:
+ *       - cookieAuth: []
  *     parameters:
  *       - in: query
  *         name: brandId
  *         required: true
- *         schema: { type: string }
+ *         schema:
+ *           type: string
  *         description: Brand ID owning the posts
  *       - in: query
  *         name: socialAccountId
  *         required: false
- *         schema: { type: string }
+ *         schema:
+ *           type: string
  *         description: Filter posts specifically for a social account ID
  *       - in: query
  *         name: platform
  *         required: false
- *         schema: { type: string }
+ *         schema:
+ *           type: string
  *         description: Filter posts by social platform (e.g. YOUTUBE, FACEBOOK)
  *       - in: query
  *         name: status
  *         required: false
- *         schema: { type: string }
+ *         schema:
+ *           type: string
  *         description: Filter posts by status (DRAFT, SCHEDULED, PUBLISHED, etc.)
  *       200:
  *         description: Posts list fetched
@@ -55,19 +61,26 @@ router.use(verifyAuth);
  *               $ref: '#/components/schemas/V2EnvelopeResponse'
  *   post:
  *     summary: Create a new post (Supports per-platform networkOverrides)
- *     tags: [Workspace Posts V2]
- *     security: [{ cookieAuth: [] }]
+ *     tags:
+ *       - Workspace Posts V2
+ *     security:
+ *       - cookieAuth: []
  *     requestBody:
  *       required: true
  *       content:
  *         application/json:
  *           schema:
  *             type: object
- *             required: [brandId, caption]
+ *             required:
+ *               - brandId
+ *               - caption
  *             properties:
- *               brandId: { type: string }
- *               caption: { type: string }
- *               networkOverrides: { type: object }
+ *               brandId:
+ *                 type: string
+ *               caption:
+ *                 type: string
+ *               networkOverrides:
+ *                 type: object
  *     responses:
  *       201:
  *         description: Post created
@@ -84,8 +97,10 @@ router.post('/', checkPermission(PERMISSION_KEYS.CREATE_POSTS), postControllerV2
  * /v2/posts/platform-limits:
  *   get:
  *     summary: Get social platform limits configurations
- *     tags: [Workspace Posts V2]
- *     security: [{ cookieAuth: [] }]
+ *     tags:
+ *       - Workspace Posts V2
+ *     security:
+ *       - cookieAuth: []
  *     responses:
  *       200:
  *         description: Platform limits list
@@ -101,8 +116,10 @@ router.get('/platform-limits', postControllerV2.getPlatformLimitsV2);
  * /v2/posts/upload:
  *   post:
  *     summary: Upload media asset for post
- *     tags: [Workspace Posts V2]
- *     security: [{ cookieAuth: [] }]
+ *     tags:
+ *       - Workspace Posts V2
+ *     security:
+ *       - cookieAuth: []
  *     requestBody:
  *       required: true
  *       content:
@@ -140,19 +157,23 @@ router.post('/upload', checkPermission(PERMISSION_KEYS.CREATE_POSTS), resolvePos
  * /v2/posts/bulk-approve:
  *   post:
  *     summary: Bulk approve pending posts
- *     tags: [Workspace Posts V2]
- *     security: [{ cookieAuth: [] }]
+ *     tags:
+ *       - Workspace Posts V2
+ *     security:
+ *       - cookieAuth: []
  *     requestBody:
  *       required: true
  *       content:
  *         application/json:
  *           schema:
  *             type: object
- *             required: [postIds]
+ *             required:
+ *               - postIds
  *             properties:
  *               postIds:
  *                 type: array
- *                 items: { type: string }
+ *                 items:
+ *                   type: string
  *     responses:
  *       200:
  *         description: Posts approved
@@ -168,19 +189,23 @@ router.post('/bulk-approve', checkPermission(PERMISSION_KEYS.APPROVE_POSTS), pos
  * /v2/posts/bulk:
  *   delete:
  *     summary: Bulk delete posts
- *     tags: [Workspace Posts V2]
- *     security: [{ cookieAuth: [] }]
+ *     tags:
+ *       - Workspace Posts V2
+ *     security:
+ *       - cookieAuth: []
  *     requestBody:
  *       required: true
  *       content:
  *         application/json:
  *           schema:
  *             type: object
- *             required: [postIds]
+ *             required:
+ *               - postIds
  *             properties:
  *               postIds:
  *                 type: array
- *                 items: { type: string }
+ *                 items:
+ *                   type: string
  *     responses:
  *       200:
  *         description: Posts deleted
@@ -198,8 +223,10 @@ router.delete('/trash', checkPermission(PERMISSION_KEYS.DELETE_POSTS), postContr
  * /v2/posts/trim:
  *   post:
  *     summary: Trim video file asset
- *     tags: [Workspace Posts V2]
- *     security: [{ cookieAuth: [] }]
+ *     tags:
+ *       - Workspace Posts V2
+ *     security:
+ *       - cookieAuth: []
  *     responses:
  *       200:
  *         description: Video trim task started
@@ -217,8 +244,10 @@ router.post('/transcribe', checkPermission(PERMISSION_KEYS.CREATE_POSTS), postCo
  * /v2/posts/music:
  *   get:
  *     summary: Get available background music tracks
- *     tags: [Workspace Posts V2]
- *     security: [{ cookieAuth: [] }]
+ *     tags:
+ *       - Workspace Posts V2
+ *     security:
+ *       - cookieAuth: []
  *     responses:
  *       200:
  *         description: Music tracks list
@@ -234,13 +263,16 @@ router.get('/music', postController.getMusicTracks);
  * /v2/posts/{id}:
  *   put:
  *     summary: Update an existing post by ID
- *     tags: [Workspace Posts V2]
- *     security: [{ cookieAuth: [] }]
+ *     tags:
+ *       - Workspace Posts V2
+ *     security:
+ *       - cookieAuth: []
  *     parameters:
  *       - in: path
  *         name: id
  *         required: true
- *         schema: { type: string }
+ *         schema:
+ *           type: string
  *     responses:
  *       200:
  *         description: Post updated
