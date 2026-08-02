@@ -4,6 +4,7 @@ import { useBrand } from "../../context/BrandContext";
 import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
 import socketClient from "../../services/socket";
+import { INBOX_TAB } from "../../constants/inbox";
 
 /**
  * Single-account variant of the unified inbox (frontend/src/pages/manage/Inbox.jsx).
@@ -14,18 +15,38 @@ export function useChannelCommunity(socialAccountId) {
   const { t } = useTranslation(["manage", "common"]);
   const { activeBrand } = useBrand();
 
-  const [tabFilter, setTabFilter] = useState("Unresolved");
+  const [tabFilter, setTabFilter] = useState(INBOX_TAB.ALL);
   const [searchTerm, setSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
 
   const [inboxData, setInboxData] = useState({ data: [], meta: {} });
+  const [fetchedPosts, setFetchedPosts] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [postsLoading, setPostsLoading] = useState(false);
   const [activeConv, setActiveConv] = useState(null);
   const [thread, setThread] = useState([]);
   const [videoContext, setVideoContext] = useState(null);
   const [threadLoading, setThreadLoading] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
   const [isReplying, setIsReplying] = useState(false);
+  const [isPostingNewComment, setIsPostingNewComment] = useState(false);
+
+  // Fetch all posts (including posts with 0 comments)
+  useEffect(() => {
+    if (!activeBrand || !socialAccountId) return;
+    const loadPosts = async () => {
+      setPostsLoading(true);
+      try {
+        const response = await inboxService.getInboxPosts(activeBrand.id, `socialAccountId=${socialAccountId}`);
+        setFetchedPosts(response?.data || response?.posts || (Array.isArray(response) ? response : []));
+      } catch (err) {
+        console.error("Failed to load channel posts:", err);
+      } finally {
+        setPostsLoading(false);
+      }
+    };
+    loadPosts();
+  }, [activeBrand?.id, socialAccountId]);
 
   // Monotonically-increasing request ids so a stale in-flight response can't
   // overwrite fresher data — same pattern as InboxPage (#112 K7).
@@ -60,6 +81,11 @@ export function useChannelCommunity(socialAccountId) {
 
   const fetchThread = async (conv = activeConv) => {
     if (!conv) return;
+    // Synthetic posts (0-comment posts sourced directly from the platform
+    // API) have no matching InboxItem row — getThread's strict findById
+    // lookup would 404. handleSelectPost already fetches whatever
+    // thread/videoContext exists via getCommentsByPost.
+    if (conv.isSyntheticPost) return;
     const requestId = ++threadRequestIdRef.current;
     setThreadLoading(true);
     setVideoContext(null);
@@ -154,13 +180,31 @@ export function useChannelCommunity(socialAccountId) {
     }
   };
 
-  const handleReply = async (replyText) => {
+  const handleReply = async (replyText, attachmentUrl) => {
     if (!replyText || !activeConv || !activeBrand) return;
     setIsReplying(true);
     try {
-      await inboxService.replyInbox({ brandId: activeBrand.id, itemId: activeConv.id, text: replyText });
-      toast.success(t("inbox.replySuccess"));
-      await fetchThread();
+      if (activeConv.isSyntheticPost) {
+        // 0-comment post — there's no existing InboxItem to reply to, so
+        // post a brand-new top-level comment directly on the platform post.
+        await inboxService.postNewComment({
+          brandId: activeBrand.id,
+          postId: activeConv.id,
+          platform: activeConv.platform,
+          text: replyText,
+          socialAccountId: activeConv.socialAccountId || undefined,
+          attachmentUrl
+        });
+        toast.success(t("inbox.replySuccess"));
+        setActiveConv((prev) => (prev ? { ...prev, isSyntheticPost: false } : prev));
+        const response = await inboxService.getCommentsByPost(activeBrand.id, activeConv.id);
+        if (response?.thread) setThread(response.thread);
+        if (response?.videoContext) setVideoContext(response.videoContext);
+      } else {
+        await inboxService.replyInbox({ brandId: activeBrand.id, itemId: activeConv.id, text: replyText, attachmentUrl });
+        toast.success(t("inbox.replySuccess"));
+        await fetchThread();
+      }
       await fetchInbox();
       return true;
     } catch (e) {
@@ -168,6 +212,38 @@ export function useChannelCommunity(socialAccountId) {
       return false;
     } finally {
       setIsReplying(false);
+    }
+  };
+
+  // Posts a new top-level comment on the post that's currently open, even
+  // when it already has other comments — separate from handleReply, which
+  // always targets a specific existing comment (reply-to-X semantics).
+  const handlePostNewComment = async (text, attachmentUrl) => {
+    if (!text || !activeConv || !activeBrand) return;
+    const postId = activeConv.relatedPostId || activeConv.videoContext?.id || activeConv.id;
+    const platform = activeConv.platform;
+    if (!postId || !platform) return;
+    setIsPostingNewComment(true);
+    try {
+      await inboxService.postNewComment({
+        brandId: activeBrand.id,
+        postId,
+        platform,
+        text,
+        socialAccountId: activeConv.socialAccountId || undefined,
+        attachmentUrl
+      });
+      toast.success(t("inbox.replySuccess"));
+      const response = await inboxService.getCommentsByPost(activeBrand.id, postId);
+      if (response?.thread) setThread(response.thread);
+      if (response?.videoContext) setVideoContext(response.videoContext);
+      await fetchInbox();
+      return true;
+    } catch (e) {
+      toast.error(t("inbox.replyFailed") + (e.message || ""));
+      return false;
+    } finally {
+      setIsPostingNewComment(false);
     }
   };
 
@@ -197,11 +273,12 @@ export function useChannelCommunity(socialAccountId) {
     tabFilter, setTabFilter,
     searchTerm, setSearchTerm,
     currentPage, setCurrentPage,
-    inboxData, loading,
+    inboxData, fetchedPosts, loading, postsLoading,
     activeConv, setActiveConv,
     thread, videoContext, threadLoading,
     isSyncing, isReplying,
-    handleSync, handleUpdateStatus, handleReply, handleUpdateReply, handleDeleteReply,
+    isPostingNewComment,
+    handleSync, handleUpdateStatus, handleReply, handlePostNewComment, handleUpdateReply, handleDeleteReply,
     refetch: fetchInbox,
   };
 }

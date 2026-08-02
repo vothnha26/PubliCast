@@ -108,6 +108,38 @@ describe('InboxService Unit Tests', () => {
     replies: []
   };
 
+  describe('INBOX_000 - _resolvePlatformPostId (regression: JSON platformPostId map used as a literal ID)', () => {
+    it('should extract the real platform post ID from a JSON platformPostId map', () => {
+      // A Facebook-only Post's platformPostId is stored as JSON
+      // (see UpdatePostStatusStep), e.g. {"FACEBOOK":"1780531234_9998887777"}
+      // — using the raw column value directly as a post's "id" treated this
+      // JSON text itself as the ID, which never matched the real Facebook
+      // post ID that synced comments are keyed by (relatedPostId).
+      const post = {
+        platformPostId: JSON.stringify({ FACEBOOK: '1780531234_9998887777' }),
+        targetPlatforms: 'FACEBOOK'
+      };
+      expect(inboxService._resolvePlatformPostId(post)).toBe('1780531234_9998887777');
+    });
+
+    it('should pick the ID matching targetPlatforms when the map has multiple platforms', () => {
+      const post = {
+        platformPostId: JSON.stringify({ FACEBOOK: 'fb-post-1', INSTAGRAM: 'ig-post-1' }),
+        targetPlatforms: 'INSTAGRAM'
+      };
+      expect(inboxService._resolvePlatformPostId(post)).toBe('ig-post-1');
+    });
+
+    it('should treat a legacy plain-string platformPostId (YouTube) as the ID directly', () => {
+      const post = { platformPostId: 'dQw4w9WgXcQ', targetPlatforms: 'YOUTUBE' };
+      expect(inboxService._resolvePlatformPostId(post)).toBe('dQw4w9WgXcQ');
+    });
+
+    it('should return null when platformPostId is not set', () => {
+      expect(inboxService._resolvePlatformPostId({ platformPostId: null, targetPlatforms: 'FACEBOOK' })).toBeNull();
+    });
+  });
+
   describe('INBOX_001 - getInboxItems (Filters & Pagination)', () => {
     it('should query inboxRepository with pagination details', async () => {
       inboxRepository.findManyAndCount.mockResolvedValue({
@@ -162,6 +194,112 @@ describe('InboxService Unit Tests', () => {
       ).rejects.toEqual({ status: 404, message: 'Item not found' });
     });
 
+  });
+
+  describe('INBOX_002b - getCommentsByPost', () => {
+    it('should return the thread for every top-level comment on the post, not just the first', async () => {
+      const commentA = {
+        ...mockInboxItem,
+        id: 'item-A',
+        content: 'Bình luận đầu tiên',
+        authorName: 'User A',
+        relatedPostId: 'post-1',
+        replies: []
+      };
+      const commentB = {
+        ...mockInboxItem,
+        id: 'item-B',
+        content: 'Bình luận thứ hai',
+        authorName: 'User B',
+        relatedPostId: 'post-1',
+        replies: []
+      };
+      const commentC = {
+        ...mockInboxItem,
+        id: 'item-C',
+        content: 'Bình luận thứ ba',
+        authorName: 'User C',
+        relatedPostId: 'post-1',
+        replies: []
+      };
+
+      inboxRepository.findManyAndCount.mockResolvedValue({
+        items: [commentA, commentB, commentC],
+        total: 3
+      });
+
+      // getConversationThread(item.id) re-fetches each item individually
+      // via findById — mock all three so the flattened thread includes each.
+      inboxRepository.findById.mockImplementation((id) => {
+        return Promise.resolve([commentA, commentB, commentC].find(c => c.id === id));
+      });
+      socialAccountRepository.findByBrandAndPlatformFirst.mockResolvedValue({
+        platformAccountId: 'my-fb-page-id'
+      });
+
+      const result = await inboxService.getCommentsByPost('brand-abc', 'post-1');
+
+      expect(result.data).toHaveLength(3);
+      expect(result.thread).toHaveLength(3);
+      expect(result.thread.map(t => t.author)).toEqual(['User A', 'User B', 'User C']);
+    });
+
+    it('should include each top-level comment together with its own replies', async () => {
+      const commentA = {
+        ...mockInboxItem,
+        id: 'item-A',
+        content: 'Bình luận đầu tiên',
+        authorName: 'User A',
+        relatedPostId: 'post-1',
+        replies: [
+          {
+            id: 'reply-A1',
+            content: 'Cảm ơn bạn đã quan tâm',
+            authorName: 'PubliCast Agent',
+            platformCreatedAt: new Date(),
+            repliedByUserId: 'agent-1'
+          }
+        ]
+      };
+      const commentB = {
+        ...mockInboxItem,
+        id: 'item-B',
+        content: 'Bình luận thứ hai',
+        authorName: 'User B',
+        relatedPostId: 'post-1',
+        replies: []
+      };
+
+      inboxRepository.findManyAndCount.mockResolvedValue({
+        items: [commentA, commentB],
+        total: 2
+      });
+      inboxRepository.findById.mockImplementation((id) => {
+        return Promise.resolve([commentA, commentB].find(c => c.id === id));
+      });
+      socialAccountRepository.findByBrandAndPlatformFirst.mockResolvedValue({
+        platformAccountId: 'my-fb-page-id'
+      });
+
+      const result = await inboxService.getCommentsByPost('brand-abc', 'post-1');
+
+      // commentA's own message + its 1 reply, then commentB's own message
+      expect(result.thread).toHaveLength(3);
+      expect(result.thread.map(t => t.author)).toEqual(['User A', 'PubliCast Agent', 'User B']);
+    });
+
+    it('should return empty data/thread when the post has no comments', async () => {
+      inboxRepository.findManyAndCount.mockResolvedValue({ items: [], total: 0 });
+
+      const result = await inboxService.getCommentsByPost('brand-abc', 'post-empty');
+
+      expect(result.data).toEqual([]);
+      expect(result.thread).toEqual([]);
+      expect(result.videoContext).toBeNull();
+    });
+  });
+
+  describe('INBOX_002c - getConversationThread edge cases', () => {
     it('should throw status 403 when user has no access to the item brand', async () => {
       inboxRepository.findById.mockResolvedValue(mockInboxItem);
       authorizationFacade.checkBrandAccess.mockResolvedValue(false);

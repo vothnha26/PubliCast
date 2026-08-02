@@ -14,6 +14,25 @@ class InboxControllerV2 {
     return v2Success(res, result, 'Inbox items fetched successfully.');
   });
 
+  getInboxPosts = asyncHandler(async (req, res) => {
+    const { brandId } = req.query;
+    if (!brandId) return res.status(400).json({ message: 'brandId is required' });
+
+    const result = await inboxService.getInboxPosts(brandId, req.query);
+    return v2Success(res, result, 'Inbox posts fetched successfully.');
+  });
+
+  getCommentsByPost = asyncHandler(async (req, res) => {
+    const { brandId } = req.query;
+    const { postId } = req.params;
+    if (!brandId || !postId) {
+      return res.status(400).json({ message: 'brandId and postId are required' });
+    }
+
+    const result = await inboxService.getCommentsByPost(brandId, postId, req.query);
+    return v2Success(res, result, 'Post comments fetched successfully.');
+  });
+
   getConversationThread = asyncHandler(async (req, res) => {
     const { id } = req.params;
     const result = await inboxService.getConversationThread(id, req.user.id);
@@ -29,13 +48,23 @@ class InboxControllerV2 {
   });
 
   replyToItem = asyncHandler(async (req, res) => {
-    const { brandId, itemId, text } = req.body;
+    const { brandId, itemId, text, attachmentUrl } = req.body;
     if (!brandId || !itemId || !text) {
       return res.status(400).json({ message: 'brandId, itemId, and text are required' });
     }
 
-    const result = await inboxService.replyToItem(brandId, itemId, text, req.user.id);
+    const result = await inboxService.replyToItem(brandId, itemId, text, req.user.id, attachmentUrl);
     return v2Success(res, result, 'Reply sent successfully.');
+  });
+
+  postNewComment = asyncHandler(async (req, res) => {
+    const { brandId, postId, platform, text, socialAccountId, attachmentUrl } = req.body;
+    if (!brandId || !postId || !platform || !text) {
+      return res.status(400).json({ message: 'brandId, postId, platform, and text are required' });
+    }
+
+    const result = await inboxService.postNewComment(brandId, postId, platform, text, req.user.id, socialAccountId, attachmentUrl);
+    return v2Success(res, result, 'Comment posted successfully.');
   });
 
   updateStatus = asyncHandler(async (req, res) => {

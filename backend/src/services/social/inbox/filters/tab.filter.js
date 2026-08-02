@@ -8,6 +8,10 @@ class InboxTabFilter extends BaseFilter {
       where.status = INBOX_STATUS.UNREAD;
     } else if (tab === 'Unresolved') {
       where.status = { in: [INBOX_STATUS.UNREAD, INBOX_STATUS.READ, INBOX_STATUS.OPEN] };
+    } else if (tab === 'Resolved') {
+      where.status = INBOX_STATUS.RESOLVED;
+    } else if (tab === 'Replied') {
+      where.repliedByUserId = { not: null };
     } else if (tab === 'Comments') {
       where.type = INBOX_TYPES.COMMENT;
     } else if (tab === 'DMs') {
