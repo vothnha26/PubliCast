@@ -79,8 +79,12 @@ class RedditController {
 
   async disconnect(req, res, next) {
     try {
-      const { brandId } = req.body;
-      await socialAccountRepository.deleteManyByBrandAndPlatform(brandId, PLATFORMS.REDDIT);
+      const { brandId, socialAccountId } = req.body;
+      if (socialAccountId) {
+        await socialAccountRepository.deleteByIdAndBrand(brandId, socialAccountId);
+      } else {
+        await socialAccountRepository.deleteManyByBrandAndPlatform(brandId, PLATFORMS.REDDIT);
+      }
       return res.json({ success: true, message: 'Disconnected Reddit account successfully' });
     } catch (error) {
       next(error);

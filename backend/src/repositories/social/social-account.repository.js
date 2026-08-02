@@ -1090,9 +1090,13 @@ class SocialAccountRepository {
     });
   }
 
-  async findByBrandAndPlatformFirst(brandId, platform) {
+  // socialAccountId picks a specific account when the brand has more than
+  // one of this platform; omitted, falls back to findFirst's natural order
+  // (correct as long as the brand only has one, still the common case).
+  async findByBrandAndPlatformFirst(brandId, platform, socialAccountId = null) {
     const where = { brandId };
     if (platform) where.platform = platform;
+    if (socialAccountId) where.id = socialAccountId;
 
     const account = await prisma.socialAccount.findFirst({
       where,
@@ -1179,6 +1183,30 @@ class SocialAccountRepository {
     return prisma.socialAccount.deleteMany({
       where: { brandId, platform }
     });
+  }
+
+  // Scoped by brandId (not just id) so a caller can never delete another
+  // brand's account by passing a foreign socialAccountId.
+  async deleteByIdAndBrand(brandId, socialAccountId) {
+    return prisma.socialAccount.deleteMany({
+      where: { id: socialAccountId, brandId }
+    });
+  }
+
+  // At most one account per (brandId, platform) should have isDefault=true —
+  // enforced here (not a DB constraint, see schema comment) by clearing any
+  // existing default for that brand+platform before setting the new one.
+  async setDefault(brandId, platform, socialAccountId) {
+    return prisma.$transaction([
+      prisma.socialAccount.updateMany({
+        where: { brandId, platform, isDefault: true },
+        data: { isDefault: false }
+      }),
+      prisma.socialAccount.update({
+        where: { id: socialAccountId },
+        data: { isDefault: true }
+      })
+    ]);
   }
 }
 

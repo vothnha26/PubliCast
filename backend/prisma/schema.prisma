@@ -96,6 +96,7 @@ model Brand {
   ownerId                String
   subscriptionId         String    @unique
   isActive               Boolean   @default(true)
+  onboardingCompleted    Boolean   @default(false)
   createdAt              DateTime  @default(now())
   updatedAt              DateTime  @updatedAt
   deletedAt              DateTime?
@@ -508,6 +509,13 @@ model SocialAccount {
   tokenExpiresAt    DateTime?
   scopes            String       @db.Text
   isConnected       Boolean      @default(true)
+  // Display-only hint: pre-checked by default in the post composer when a
+  // brand has multiple accounts of the same platform. Not enforced anywhere
+  // else (not used for auto-reply routing, dashboard summaries, etc). At
+  // most one account per (brandId, platform) should have this true; enforced
+  // in application code, not the DB, since Prisma/MySQL can't express a
+  // partial unique index here.
+  isDefault         Boolean      @default(false)
   connectedAt       DateTime
   lastSyncAt        DateTime?
   syncStatus        SyncStatus   @default(PENDING)
@@ -526,6 +534,7 @@ model SocialAccount {
   redditAccount    RedditAccount?
   twitchAccount    TwitchAccount?
   autoReplySetting AutoReplySetting?
+  postNetworkOverrides PostNetworkOverride[]
 
   // Facebook dedicated metrics
   facebookOverviewMetrics FacebookOverviewMetric[] @relation("FacebookOverviewMetricAccount")
@@ -771,28 +780,35 @@ model Post {
   @@map("posts")
 }
 
-// Per-platform caption/media override for a Post whose composer had "edit by
-// network" customization enabled for that platform. Absence of a row for a
-// given (postId, platform) — or a row with useTemplate=true — means publish
-// falls back to the shared Post.caption/mediaUrls, exactly as before this
-// model existed; this table only ever adds an optional override layer, it
-// never replaces Post as the single calendar/approval unit.
+// Per-platform (and, when a brand has multiple accounts of that platform,
+// per-account) caption/media override for a Post whose composer had "edit by
+// network" customization enabled. socialAccountId is null for brands with a
+// single account of the platform (the common case today) — the row then
+// applies to that one implicit account. When a brand has multiple accounts
+// of the same platform, one row per selected account may exist, each with
+// its own socialAccountId, so captions can be edited independently per
+// channel; a row with useTemplate=true (or its absence) means publish falls
+// back to the shared Post.caption/mediaUrls, exactly as before this model
+// existed — this table only ever adds an optional override layer, it never
+// replaces Post as the single calendar/approval unit.
 model PostNetworkOverride {
-  id          String       @id @default(uuid())
-  postId      String
-  platform    PlatformType
-  useTemplate Boolean      @default(true)
-  caption     String?      @db.Text
-  mediaUrls   String?      @db.Text
+  id              String        @id @default(uuid())
+  postId          String
+  platform        PlatformType
+  socialAccountId String?
+  useTemplate     Boolean       @default(true)
+  caption         String?       @db.Text
+  mediaUrls       String?       @db.Text
   // THREADS only: JSON array of {text, mediaUrls} for the reply chain,
   // parallel to draft.networkCustom.THREADS.threadPosts on the frontend.
-  threadPosts String?      @db.Text
-  createdAt   DateTime     @default(now())
-  updatedAt   DateTime     @updatedAt
+  threadPosts     String?       @db.Text
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
 
-  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+  post          Post           @relation(fields: [postId], references: [id], onDelete: Cascade)
+  socialAccount SocialAccount? @relation(fields: [socialAccountId], references: [id], onDelete: Cascade)
 
-  @@unique([postId, platform])
+  @@unique([postId, platform, socialAccountId])
   @@map("post_network_overrides")
 }
 

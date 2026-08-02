@@ -95,7 +95,13 @@ export function PlannerToolbar({
   onFilterTypeChange,
   calendarViewMode = 'WEEK',
   onCalendarViewModeChange,
-  onImportIcsClick
+  onImportIcsClick,
+  // Set when the calendar is scoped to a single channel (ChannelPublishTab)
+  // — hides controls that only make sense across multiple accounts/platforms
+  // (the platform visibility toggle) and the "New Post" button, since the
+  // channel page already has its own create button that locks to this
+  // account.
+  channelContext = null
 }) {
   const { t } = useTranslation(['planner', 'common']);
   const navigate = useNavigate();
@@ -410,41 +416,43 @@ export function PlannerToolbar({
                     </div>
                   </div>
 
-                  {/* 3. Social Calendars */}
-                  <div className="relative group/sub">
-                    <button className="w-full px-4 py-2 text-xs font-bold text-foreground hover:bg-muted flex items-center justify-between group cursor-pointer transition-colors border-none bg-transparent">
-                      <div className="flex items-center gap-3">
-                        <Layers size={14} className="text-muted-foreground group-hover:text-foreground" />
-                        <span>{t('toolbar.socialCalendars')}</span>
-                      </div>
-                      <ChevronRight size={12} className="text-muted-foreground" />
-                    </button>
-                    {/* Submenu for Social Channels toggling */}
-                    <div className="absolute left-full top-0 pl-1.5 hidden group-hover/sub:block animate-in fade-in slide-in-from-left-2 duration-150 z-50">
-                      <div className="bg-card rounded-2xl border border-border shadow-xl py-2 w-48 text-left text-foreground">
-                        {[
-                          { label: "YouTube", key: "YOUTUBE" },
-                          { label: "Facebook", key: "FACEBOOK" },
-                          { label: "TikTok", key: "TIKTOK" },
-                          { label: "Instagram", key: "INSTAGRAM" },
-                          { label: "X / Twitter", key: "X" }
-                        ].map(platform => (
-                          <button
-                            key={platform.key}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              e.preventDefault();
-                              togglePlatform(platform.key);
-                            }}
-                            className="w-full px-4 py-2 text-[11px] font-bold text-foreground hover:bg-muted flex items-center justify-between cursor-pointer border-none bg-transparent"
-                          >
-                            <span>{platform.label}</span>
-                            {visiblePlatforms[platform.key] !== false && <Check size={12} className="text-green-500 shrink-0" />}
-                          </button>
-                        ))}
+                  {/* 3. Social Calendars — meaningless when scoped to a single channel account */}
+                  {!channelContext && (
+                    <div className="relative group/sub">
+                      <button className="w-full px-4 py-2 text-xs font-bold text-foreground hover:bg-muted flex items-center justify-between group cursor-pointer transition-colors border-none bg-transparent">
+                        <div className="flex items-center gap-3">
+                          <Layers size={14} className="text-muted-foreground group-hover:text-foreground" />
+                          <span>{t('toolbar.socialCalendars')}</span>
+                        </div>
+                        <ChevronRight size={12} className="text-muted-foreground" />
+                      </button>
+                      {/* Submenu for Social Channels toggling */}
+                      <div className="absolute left-full top-0 pl-1.5 hidden group-hover/sub:block animate-in fade-in slide-in-from-left-2 duration-150 z-50">
+                        <div className="bg-card rounded-2xl border border-border shadow-xl py-2 w-48 text-left text-foreground">
+                          {[
+                            { label: "YouTube", key: "YOUTUBE" },
+                            { label: "Facebook", key: "FACEBOOK" },
+                            { label: "TikTok", key: "TIKTOK" },
+                            { label: "Instagram", key: "INSTAGRAM" },
+                            { label: "X / Twitter", key: "X" }
+                          ].map(platform => (
+                            <button
+                              key={platform.key}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                e.preventDefault();
+                                togglePlatform(platform.key);
+                              }}
+                              className="w-full px-4 py-2 text-[11px] font-bold text-foreground hover:bg-muted flex items-center justify-between cursor-pointer border-none bg-transparent"
+                            >
+                              <span>{platform.label}</span>
+                              {visiblePlatforms[platform.key] !== false && <Check size={12} className="text-green-500 shrink-0" />}
+                            </button>
+                          ))}
+                        </div>
                       </div>
                     </div>
-                  </div>
+                  )}
 
                   <div className="my-1 border-t border-border" />
 
@@ -492,16 +500,20 @@ export function PlannerToolbar({
             )}
           </div>
 
-          {/* Create Post Action Button */}
-          <AccessGuard feature="CREATE_POSTS">
-            <button 
-              onClick={onCreatePostClick} data-testid="planner-create-post-btn"
-              className="flex items-center gap-2 px-4.5 h-10 rounded-full text-xs font-bold bg-foreground text-background hover:opacity-90 hover:scale-[1.02] active:scale-[0.98] cursor-pointer transition-all shadow-md shrink-0"
-            >
-              <Plus size={16} />
-              <span>{t('toolbar.createPost')}</span>
-            </button>
-          </AccessGuard>
+          {/* Create Post Action Button — omitted when scoped to a single
+              channel; ChannelPublishTab's own header button is the sole
+              entry point there so posts always lock to that account. */}
+          {!channelContext && (
+            <AccessGuard feature="CREATE_POSTS">
+              <button
+                onClick={onCreatePostClick} data-testid="planner-create-post-btn"
+                className="flex items-center gap-2 px-4.5 h-10 rounded-full text-xs font-bold bg-foreground text-background hover:opacity-90 hover:scale-[1.02] active:scale-[0.98] cursor-pointer transition-all shadow-md shrink-0"
+              >
+                <Plus size={16} />
+                <span>{t('toolbar.createPost')}</span>
+              </button>
+            </AccessGuard>
+          )}
         </div>
       </div>
 

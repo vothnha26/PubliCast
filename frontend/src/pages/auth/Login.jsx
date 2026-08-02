@@ -196,9 +196,9 @@ export function LoginPage({ initialScreen = "login" }) {
       await verifyOTP(email, otp);
       localStorage.removeItem(STORAGE_KEYS.IS_VERIFYING_OTP);
       localStorage.removeItem(STORAGE_KEYS.PENDING_VERIFY_EMAIL);
-      // Sau khi verify thành công, vào thẳng Dashboard — Onboarding giờ hiển
-      // thị dưới dạng modal trên Dashboard (xem OnboardingModal), tự mở khi
-      // phát hiện brand vẫn còn tên mặc định lúc đăng ký.
+      // Sau khi verify thành công, vào thẳng Dashboard — Dashboard tự redirect
+      // sang /manage/workplace/new khi phát hiện brand vẫn còn tên mặc định
+      // lúc đăng ký.
       navigate("/dashboard");
     } catch (err) {
       // Error handled by AuthContext

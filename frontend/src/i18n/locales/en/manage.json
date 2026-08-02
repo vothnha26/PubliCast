@@ -6,9 +6,12 @@
     "autoReplySettings": "Auto-Reply Settings",
     "selectConversationPrompt": "Please select a conversation on the left to begin",
     "loadingSettings": "Loading settings...",
+    "commentSyncUnsupported": "Comment sync for {{platform}} isn't available yet — the post list still shows normally, but comments won't appear here.",
     "tabs": {
       "unresolved": "Unresolved",
       "unread": "Unread",
+      "replied": "Replied",
+      "resolved": "Resolved",
       "all": "All"
     },
     "pagination": {
@@ -17,6 +20,9 @@
       "pageOf": "Page {{current}} of {{total}}"
     },
     "noConversations": "No {{tab}} conversations found.",
+    "noCommentsYetTitle": "No comments yet",
+    "noCommentsYetSubtitle": "Be the first to comment on this post.",
+    "newCommentPlaceholder": "Write a new comment...",
     "selectConversation": "Please select a conversation on the left to begin",
     "privateMessage": "PRIVATE MESSAGE",
     "comment": "COMMENT",

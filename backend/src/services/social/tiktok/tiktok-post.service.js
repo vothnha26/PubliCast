@@ -5,7 +5,7 @@ const { PLATFORMS, POST_STATUS } = require('../../../utils/constants');
 
 class TikTokPostService {
   async publishPost(brandId, postData) {
-    const socialAccount = await socialAccountRepository.findByBrandAndPlatformFirst(brandId, PLATFORMS.TIKTOK);
+    const socialAccount = await socialAccountRepository.findByBrandAndPlatformFirst(brandId, PLATFORMS.TIKTOK, postData.socialAccountId);
     if (!socialAccount) throw new Error('TikTok account not connected');
 
     if (socialAccount.accessToken && (socialAccount.accessToken.startsWith('mock-') || socialAccount.accessToken.includes('mock') || socialAccount.accessToken.startsWith('tt_mock'))) {

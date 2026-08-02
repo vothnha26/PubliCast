@@ -58,8 +58,8 @@ class FacebookDMSyncStrategy extends BaseSyncStrategy {
     return item.platform === PLATFORMS.FACEBOOK && item.type === INBOX_TYPES.DIRECT_MESSAGE;
   }
 
-  async reply(brandId, parentPlatformItemId, text) {
-    const { account, pageId, pageAccessToken } = await this._getAccountAndToken(brandId);
+  async reply(brandId, parentPlatformItemId, text, socialAccountId = null) {
+    const { account, pageId, pageAccessToken } = await this._getAccountAndToken(brandId, socialAccountId);
     
     let recipientPsid = null;
     const parentInDb = await inboxRepository.findInboxItemByPlatformId(parentPlatformItemId);
@@ -97,11 +97,14 @@ class FacebookDMSyncStrategy extends BaseSyncStrategy {
     });
   }
 
-  async _getAccountAndToken(brandId) {
+  // socialAccountId picks a specific page when the brand has more than one
+  // Facebook page connected; omitted, falls back to the first one (correct
+  // as long as the brand only has one, still the common case).
+  async _getAccountAndToken(brandId, socialAccountId = null) {
     const socialAccount = await socialAccountRepository.findByBrandAndPlatform(brandId, PLATFORMS.FACEBOOK);
     if (!socialAccount || socialAccount.length === 0) throw new Error('Facebook account not connected');
-    
-    const account = socialAccount[0];
+
+    const account = (socialAccountId && socialAccount.find(acc => acc.id === socialAccountId)) || socialAccount[0];
     return {
       account,
       pageId: account.platformAccountId,

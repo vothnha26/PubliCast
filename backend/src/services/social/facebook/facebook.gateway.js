@@ -151,7 +151,7 @@ class FacebookGateway {
   }
 
   async getPageFeed(pageId, pageAccessToken, pageToken = null, limit = 10) {
-    const fields = 'id,message,story,created_time,full_picture,attachments{media,type},shares,comments.summary(true),reactions.summary(true)';
+    const fields = 'id,message,story,created_time,full_picture,permalink_url,attachments{media,type},shares,comments.summary(true),reactions.summary(true)';
     let url = `${this.graphBaseUrl}/${pageId}/feed?fields=${fields}&limit=${limit}&access_token=${pageAccessToken}`;
     if (pageToken) {
       url += `&after=${pageToken}`;
@@ -191,19 +191,25 @@ class FacebookGateway {
   }
 
   async getPostInsights(postId, pageAccessToken) {
-    const metrics = 'post_total_media_view_unique,post_media_view,post_clicks_by_type';
-    const url = `${this.graphBaseUrl}/${postId}/insights?metric=${metrics}&access_token=${pageAccessToken}`;
-    const res = await fetch(url);
-    if (!res.ok) {
-      const errData = await res.json().catch(() => ({}));
-      throw new FacebookInsightsError(
-        errData.error?.message || `Failed to fetch Facebook post insights for ${postId}`,
-        { code: errData.error?.code ?? null, status: res.status, postId }
-      );
+    const tryMetrics = async (metricsStr) => {
+      const url = `${this.graphBaseUrl}/${postId}/insights?metric=${metricsStr}&access_token=${pageAccessToken}`;
+      const res = await fetch(url);
+      if (res.ok) {
+        const data = await res.json();
+        return data.data || [];
+      }
+      return null;
+    };
+
+    let data = await tryMetrics('post_impressions_unique,post_impressions,post_clicks_by_type');
+    if (!data) {
+      data = await tryMetrics('post_total_media_view_unique,post_media_view,post_clicks_by_type');
+    }
+    if (!data) {
+      data = await tryMetrics('post_impressions_unique,post_impressions');
     }
 
-    const data = await res.json();
-    return data.data || [];
+    return data || [];
   }
 
   async getPostReactionsBreakdown(postId, pageAccessToken) {
@@ -281,8 +287,11 @@ class FacebookGateway {
     return data.data || [];
   }
 
-  async replyToComment(commentId, text, pageAccessToken) {
-    const url = `${this.graphBaseUrl}/${commentId}/comments?message=${encodeURIComponent(text)}&access_token=${pageAccessToken}`;
+  async replyToComment(commentId, text, pageAccessToken, attachmentUrl = null) {
+    let url = `${this.graphBaseUrl}/${commentId}/comments?message=${encodeURIComponent(text)}&access_token=${pageAccessToken}`;
+    if (attachmentUrl) {
+      url += `&attachment_url=${encodeURIComponent(attachmentUrl)}`;
+    }
     const res = await fetch(url, { method: 'POST' });
     if (!res.ok) {
       const errData = await res.json().catch(() => ({}));
@@ -291,8 +300,11 @@ class FacebookGateway {
     return res.json();
   }
 
-  async createComment(postId, text, pageAccessToken) {
-    const url = `${this.graphBaseUrl}/${postId}/comments?message=${encodeURIComponent(text)}&access_token=${pageAccessToken}`;
+  async createComment(postId, text, pageAccessToken, attachmentUrl = null) {
+    let url = `${this.graphBaseUrl}/${postId}/comments?message=${encodeURIComponent(text)}&access_token=${pageAccessToken}`;
+    if (attachmentUrl) {
+      url += `&attachment_url=${encodeURIComponent(attachmentUrl)}`;
+    }
     const res = await fetch(url, { method: 'POST' });
     if (!res.ok) {
       const errData = await res.json().catch(() => ({}));

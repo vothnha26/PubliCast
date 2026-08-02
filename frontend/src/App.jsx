@@ -35,6 +35,7 @@ import { InviteFlow } from "./pages/auth/InviteFlow";
 // Workspace Pages
 import { DashboardPage } from "./pages/workspace/Dashboard";
 import { PlatformDashboardPage } from "./pages/workspace/PlatformDashboard";
+import { ChannelDetailPage } from "./pages/workspace/ChannelDetail";
 import { MediaLibraryPage } from "./pages/workspace/MediaLibrary";
 import { SettingsPage } from "./pages/workspace/Settings";
 import { PricingPage } from "./pages/workspace/Pricing";
@@ -148,9 +149,9 @@ export default function App() {
                 <Route path="/register" element={isAuthenticated ? <Navigate to={getRedirectPath()} /> : <LoginPage initialScreen="signup" />} />
                 <Route path="/register/verify-otp" element={<LoginPage initialScreen="verify-otp" />} />
                 <Route path="/verify-otp" element={<Navigate to="/register/verify-otp" replace />} />
-                {/* Onboarding used to be this dedicated route — now a modal shown
-                    from the Dashboard itself (see OnboardingModal). Redirect
-                    any stale bookmarks/links instead of a bare 404. */}
+                {/* Onboarding is now /manage/workplace/new, reached via a redirect
+                    from the Dashboard itself. Redirect any stale bookmarks/links
+                    to /start instead of a bare 404. */}
                 <Route path="/start" element={<Navigate to="/dashboard" replace />} />
                 <Route path="/forgot-password" element={<ForgotPasswordPage />} />
                 <Route path="/reset-password" element={<ResetPasswordPage />} />
@@ -158,6 +159,7 @@ export default function App() {
                 {/* Protected Workspace Routes */}
                 <Route path="/dashboard" element={<ProtectedRoute allowedRoles={CLIENT_ROLES}><DashboardPage /></ProtectedRoute>} />
                 <Route path="/dashboard/:platform" element={<ProtectedRoute allowedRoles={CLIENT_ROLES}><PlatformDashboardPage /></ProtectedRoute>} />
+                <Route path="/channels/:socialAccountId/:tab" element={<ProtectedRoute allowedRoles={CLIENT_ROLES}><ChannelDetailPage /></ProtectedRoute>} />
 
                 <Route path="/scheduler" element={<Navigate to="/dashboard" replace />} />
                 <Route path="/live" element={<Navigate to="/dashboard" replace />} />

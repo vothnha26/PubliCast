@@ -34,6 +34,8 @@ const INSIGHTS_STRATEGIES = {
         result.linkClicks = types['link clicks'] || 0;
       }
     }
+    if (!result.reach && result.views) result.reach = result.views;
+    if (!result.views && result.reach) result.views = result.reach;
     return result;
   }
 };
@@ -117,7 +119,7 @@ class FacebookPostService {
     }
   }
   async publishPost(brandId, postData) {
-    const { platformPostId, scheduledAt, type, mediaUrls = [] } = postData;
+    const { platformPostId, scheduledAt, type, mediaUrls = [], socialAccountId } = postData;
     console.log(`\n[Facebook] ▶ publishPost | brandId=${brandId} | type=${type} | mediaUrls=${JSON.stringify(mediaUrls)}`);
 
     // Short-circuit
@@ -126,7 +128,7 @@ class FacebookPostService {
       return { platformVideoId: platformPostId, publishedAt: null };
     }
 
-    const { pageId, pageAccessToken } = await this._getAccountCredentials(brandId);
+    const { pageId, pageAccessToken } = await this._getAccountCredentials(brandId, socialAccountId);
     console.log(`[Facebook] Credentials OK | pageId=${pageId} | tokenPrefix=${pageAccessToken?.substring(0, 10)}...`);
 
     if (pageAccessToken && (pageAccessToken.startsWith('mock-') || pageAccessToken.includes('mock') || pageAccessToken.startsWith('fb_mock'))) {
@@ -202,8 +204,8 @@ class FacebookPostService {
     return await facebookGateway.updatePostMessage(platformPostId, caption || '', pageAccessToken);
   }
 
-  async deletePost(brandId, platformPostId) {
-    const { pageAccessToken } = await this._getAccountCredentials(brandId);
+  async deletePost(brandId, platformPostId, socialAccountId = null) {
+    const { pageAccessToken } = await this._getAccountCredentials(brandId, socialAccountId);
 
     if (pageAccessToken && pageAccessToken.startsWith('mock-')) {
       return { success: true, mock: true };
@@ -312,7 +314,34 @@ class FacebookPostService {
     return result;
   }
 
+  /**
+   * Lightweight post lookup for inbox thread headers (title/thumbnail/real
+   * Facebook permalink) — unlike getPostDetails/getPostAnalytics this makes
+   * a single Graph API call with no insights/reactions/caching, since the
+   * inbox thread view only needs enough to render a header and a working
+   * "view on Facebook" link, not analytics.
+   */
+  async getVideoDetails(brandId, platformPostId, socialAccountId = null) {
+    const { pageAccessToken } = await this._getAccountCredentials(brandId, socialAccountId);
+    if (pageAccessToken && pageAccessToken.startsWith('mock-')) {
+      return {
+        id: platformPostId,
+        title: 'Facebook Post',
+        thumbnailUrl: null,
+        channelTitle: 'Facebook',
+        postUrl: `https://www.facebook.com/${platformPostId}`
+      };
+    }
 
+    const post = await facebookGateway.getPostDetails(platformPostId, pageAccessToken);
+    return {
+      id: post.id,
+      title: (post.message || post.story || 'Facebook Post').slice(0, 60),
+      thumbnailUrl: post.full_picture || null,
+      channelTitle: 'Facebook',
+      postUrl: post.permalink_url || `https://www.facebook.com/${platformPostId}`
+    };
+  }
 
   async _getPageDemographicsCached(brandId, pageId, pageAccessToken) {
     const cacheKey = `fb:page-demographics:${brandId}`;
@@ -363,7 +392,15 @@ class FacebookPostService {
   async _getAccountCredentials(brandId, socialAccountId = null) {
     let account;
     if (socialAccountId) {
+      // findById looks up by raw ID with no brand scoping — unlike the
+      // findByBrandAndPlatform branch below (which already filters by
+      // brandId at the query level), a caller-supplied socialAccountId
+      // could belong to a different brand than the one the caller is
+      // authorized for, so verify ownership explicitly (IDOR guard).
       account = await socialAccountRepository.findById(socialAccountId);
+      if (!account || (brandId && String(account.brandId) !== String(brandId))) {
+        throw new Error('Facebook account not connected for this brand');
+      }
     } else {
       const socialAccount = await socialAccountRepository.findByBrandAndPlatform(brandId, PLATFORMS.FACEBOOK);
       if (!socialAccount || socialAccount.length === 0) {
@@ -371,7 +408,7 @@ class FacebookPostService {
       }
       account = socialAccount[0];
     }
-    
+
     if (!account) {
       throw new Error('Facebook account not connected for this brand');
     }
@@ -406,10 +443,11 @@ class FacebookPostService {
       const counts = this._extractPostCounts(post);
       const postType = isReel ? 'REEL' : this._determinePostType(post);
 
-      const reach = insightsResult.reach || 0;
-      const views = insightsResult.views || 0;
+      const reach = insightsResult.reach || insightsResult.views || 0;
+      const views = insightsResult.views || insightsResult.reach || 0;
       const clicks = insightsResult.clicks || 0;
-      const engagement = reach ? parseFloat((((counts.reactions + counts.comments + counts.shares + clicks) / reach) * 100).toFixed(2)) : 0;
+      const baseCount = reach || views;
+      const engagement = baseCount ? parseFloat((((counts.reactions + counts.comments + counts.shares + clicks) / baseCount) * 100).toFixed(2)) : 0;
 
       return {
         id: post.id,
@@ -417,6 +455,7 @@ class FacebookPostService {
         type: postType,
         platform: 'facebook',
         mediaUrl: post.full_picture || '',
+        postUrl: post.permalink_url || `https://www.facebook.com/${post.id}`,
         date: post.created_time,
         status: POST_STATUS.PUBLISHED,
         reach,
@@ -450,6 +489,8 @@ class FacebookPostService {
         result.linkClicks = types['link clicks'] || 0;
       }
     }
+    if (!result.reach && result.views) result.reach = result.views;
+    if (!result.views && result.reach) result.views = result.reach;
     return result;
   }
 
@@ -480,6 +521,7 @@ class FacebookPostService {
       type: postType,
       platform: 'facebook',
       mediaUrl: post.full_picture || '',
+      postUrl: post.permalink_url || `https://www.facebook.com/${post.id}`,
       date: post.created_time,
       status: POST_STATUS.PUBLISHED,
       reach: 0,

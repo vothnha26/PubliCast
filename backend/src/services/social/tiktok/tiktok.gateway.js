@@ -249,13 +249,20 @@ class TikTokGateway {
    */
   async getVideoList(accessToken, cursor = 0, maxCount = 20) {
     const fields = [
-      'id', 'create_time', 'cover_image_url', 'share_url', 
-      'video_description', 'duration', 'title', 
+      'id', 'create_time', 'cover_image_url', 'share_url',
+      'video_description', 'duration', 'title',
       'like_count', 'comment_count', 'share_count', 'view_count'
     ].join(',');
-    
+
     const url = `${this.apiBaseUrl}/v2/video/list/?fields=${fields}`;
-    
+
+    // TikTok's video/list endpoint rejects max_count outside [1, 20]
+    // (invalid_params) — callers upstream (e.g. inbox.service.js's
+    // cross-platform post fetch, which uses one shared limit=50 for every
+    // platform) can't know that per-platform cap, so enforce it here at the
+    // API boundary instead of silently failing every TikTok fetch.
+    const clampedMaxCount = Math.min(Math.max(1, parseInt(maxCount) || 20), 20);
+
     const res = await fetch(url, {
       method: 'POST',
       headers: {
@@ -263,7 +270,7 @@ class TikTokGateway {
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        max_count: maxCount,
+        max_count: clampedMaxCount,
         cursor: cursor
       })
     });
@@ -279,6 +286,55 @@ class TikTokGateway {
     }
 
     return data.data; // returns { videos: [...], cursor: number, has_more: boolean }
+  }
+
+  /**
+   * Query Video Comments / Comment Replies from TikTok Research API v2
+   */
+  async getVideoComments(accessToken, { videoId = null, commentId = null, maxCount = 10, cursor = 0 } = {}) {
+    if (!videoId && !commentId) {
+      throw new Error('Either videoId or commentId must be provided to query TikTok comments');
+    }
+
+    const fields = [
+      'id', 'video_id', 'text', 'like_count',
+      'reply_count', 'parent_comment_id', 'create_time'
+    ].join(',');
+
+    const url = `${this.apiBaseUrl}/v2/research/video/comment/list/?fields=${encodeURIComponent(fields)}`;
+
+    const body = {
+      max_count: Math.min(Math.max(1, parseInt(maxCount) || 10), 100),
+      cursor: parseInt(cursor) || 0
+    };
+
+    if (videoId) {
+      body.video_id = typeof videoId === 'number' ? videoId : (Number(videoId) || videoId);
+    } else {
+      body.comment_id = typeof commentId === 'number' ? commentId : (Number(commentId) || commentId);
+    }
+
+    console.log(`[TikTok Gateway] Querying video comments (${videoId ? `video_id: ${videoId}` : `comment_id: ${commentId}`})...`);
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(body)
+    });
+
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      console.error('[TikTok Gateway] Query Comments Failed:', JSON.stringify(data));
+      const errMsg = data.error?.message || data.message || 'Failed to fetch TikTok comments';
+      const err = new Error(errMsg);
+      err.status = res.status;
+      err.code = data.error?.code;
+      throw err;
+    }
+
+    return data.data; // returns { comments: [...], cursor: number, has_more: boolean }
   }
 
   // ============= Private Helper Methods =============

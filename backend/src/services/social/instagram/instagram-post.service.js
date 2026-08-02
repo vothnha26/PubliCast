@@ -24,13 +24,13 @@ class InstagramPostService {
       });
   }
 
-  async getPublishedPosts(brandId, pageToken = null, limit = 10) {
-    const cacheKey = `${brandId}_${pageToken || 'first'}_${limit}`;
+  async getPublishedPosts(brandId, pageToken = null, limit = 10, socialAccountId = null) {
+    const cacheKey = `${brandId}_${socialAccountId || 'default'}_${pageToken || 'first'}_${limit}`;
     const cached = postCache.get(cacheKey);
     if (cached && cached.expiry > Date.now()) return cached.data;
 
     try {
-      const { igAccountId, accessToken } = await this._getAccountCredentials(brandId);
+      const { igAccountId, accessToken } = await this._getAccountCredentials(brandId, socialAccountId);
       
       if (accessToken && accessToken.startsWith('mock-')) {
         return { data: [], nextPageToken: null, prevPageToken: null };
@@ -67,7 +67,7 @@ class InstagramPostService {
   }
 
   async publishPost(brandId, postData) {
-    const { platformPostId, scheduledAt, type, mediaUrls = [] } = postData;
+    const { platformPostId, scheduledAt, type, mediaUrls = [], socialAccountId } = postData;
     console.log(`\n[Instagram] ▶ publishPost | brandId=${brandId} | type=${type} | mediaUrls=${JSON.stringify(mediaUrls)}`);
 
     // Short-circuit
@@ -76,7 +76,7 @@ class InstagramPostService {
       return { platformVideoId: platformPostId, publishedAt: null };
     }
 
-    const { igAccountId, accessToken } = await this._getAccountCredentials(brandId);
+    const { igAccountId, accessToken } = await this._getAccountCredentials(brandId, socialAccountId);
     console.log(`[Instagram] Credentials OK | igAccountId=${igAccountId} | tokenPrefix=${accessToken?.substring(0, 10)}...`);
 
     if (accessToken && (accessToken.startsWith('mock-') || accessToken.includes('mock') || accessToken.startsWith('ig_mock') || accessToken.includes('fb_mock'))) {
@@ -145,14 +145,18 @@ class InstagramPostService {
 
   // ============= Private Helper Methods =============
 
-  async _getAccountCredentials(brandId) {
+  // socialAccountId picks a specific IG account when the brand has more than
+  // one connected; omitted, falls back to the first one (correct as long as
+  // the brand only has one, still the common case).
+  async _getAccountCredentials(brandId, socialAccountId = null) {
     const socialAccount = await socialAccountRepository.findByBrandAndPlatform(brandId, PLATFORMS.INSTAGRAM);
     if (!socialAccount || socialAccount.length === 0) {
       throw new Error('Instagram account not connected for this brand');
     }
+    const account = (socialAccountId && socialAccount.find(acc => acc.id === socialAccountId)) || socialAccount[0];
     return {
-      igAccountId: socialAccount[0].platformAccountId,
-      accessToken: socialAccount[0].accessToken
+      igAccountId: account.platformAccountId,
+      accessToken: account.accessToken
     };
   }
 
@@ -187,6 +191,7 @@ class InstagramPostService {
         // media" and is the actual preview image). IMAGE/CAROUSEL posts have
         // no thumbnail_url at all, so fall back to media_url for those.
         thumbnailUrl: post.thumbnail_url || post.media_url || '',
+        postUrl: post.permalink || null,
         date: post.timestamp,
         status: POST_STATUS.PUBLISHED,
         reach,
@@ -233,6 +238,7 @@ class InstagramPostService {
       type: this._determinePostType(post),
       mediaUrl: post.media_url || post.thumbnail_url || '',
       thumbnailUrl: post.thumbnail_url || post.media_url || '',
+      postUrl: post.permalink || null,
       date: post.timestamp,
       status: POST_STATUS.PUBLISHED,
       reach: 0,

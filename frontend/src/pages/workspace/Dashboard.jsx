@@ -13,10 +13,8 @@ import { useBrand } from "../../context/BrandContext";
 import socialService from "../../services/social.service";
 import postService from "../../services/post.service";
 import { POST_STATUS } from "../../constants/postStatus";
-import { DEFAULT_BRAND_NAME } from "../../constants/workspace";
 import { useTranslation } from "react-i18next";
 import { usePostCreator } from "../../context/PostCreatorContext";
-import { OnboardingModal } from "../../components/shared/OnboardingModal";
 
 const PLATFORM_COLORS = {
   YouTube: "#FF0000",
@@ -110,7 +108,6 @@ export function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const { activeBrand } = useBrand();
   const { openPostCreator } = usePostCreator();
-  const [showOnboarding, setShowOnboarding] = useState(false);
 
   useEffect(() => {
     const params = new URLSearchParams(location.search);
@@ -120,16 +117,16 @@ export function DashboardPage() {
     }
   }, [location, navigate, t]);
 
-  // Onboarding used to be a dedicated full-page route (/start) reached only
-  // right after signup — replaced with a modal here so a user landing on
-  // the dashboard for the first time (their default brand still has its
-  // signup-time placeholder name) can complete setup without leaving the
-  // real app shell.
+  // Một brand mới tạo có onboardingCompleted=false cho tới khi user hoàn tất
+  // setup — đưa họ sang trang onboarding thay vì hiện Dashboard rỗng. Trang
+  // /manage/workplace/new set cờ này true khi Finalize (qua updateBrand).
+  // Dùng cờ thật thay vì so activeBrand.name === "New Workspace" — so tên
+  // vỡ nếu user chọn đặt tên brand thật trùng đúng placeholder mặc định.
   useEffect(() => {
-    if (activeBrand && activeBrand.name === DEFAULT_BRAND_NAME) {
-      setShowOnboarding(true);
+    if (activeBrand && !activeBrand.onboardingCompleted) {
+      navigate("/manage/workplace/new", { replace: true });
     }
-  }, [activeBrand]);
+  }, [activeBrand, navigate]);
 
   useEffect(() => {
     const loadData = async () => {
@@ -534,8 +531,6 @@ export function DashboardPage() {
           </div>
         </div>
       </div>
-
-      <OnboardingModal isOpen={showOnboarding} onClose={() => setShowOnboarding(false)} />
     </div>
   );
 }

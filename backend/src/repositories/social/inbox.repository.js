@@ -35,8 +35,15 @@ class InboxRepository {
   }
 
   async findById(id) {
-    return prisma.inboxItem.findUnique({
-      where: { id },
+    if (!id) return null;
+    return prisma.inboxItem.findFirst({
+      where: {
+        OR: [
+          { id },
+          { platformItemId: id },
+          { relatedPostId: id }
+        ]
+      },
       include: {
         inbox: true,
         assignedUser: { select: { id: true, name: true, avatarUrl: true } },
@@ -49,8 +56,25 @@ class InboxRepository {
   }
 
   async updateStatus(id, status) {
-    return prisma.inboxItem.update({
-      where: { id },
+    const existingItems = await prisma.inboxItem.findMany({
+      where: {
+        OR: [
+          { id },
+          { platformItemId: id },
+          { relatedPostId: id }
+        ]
+      },
+      select: { id: true }
+    });
+
+    if (existingItems.length === 0) {
+      return { count: 0 };
+    }
+
+    const itemIds = existingItems.map(item => item.id);
+
+    return prisma.inboxItem.updateMany({
+      where: { id: { in: itemIds } },
       data: { status }
     });
   }
@@ -59,8 +83,23 @@ class InboxRepository {
     if (data.authorAvatarUrl && data.authorAvatarUrl.length > 190) {
       data.authorAvatarUrl = data.authorAvatarUrl.substring(0, 190);
     }
+    const existing = await prisma.inboxItem.findFirst({
+      where: {
+        OR: [
+          { id },
+          { platformItemId: id },
+          { relatedPostId: id }
+        ]
+      },
+      select: { id: true }
+    });
+
+    if (!existing) {
+      return null;
+    }
+
     return prisma.inboxItem.update({
-      where: { id },
+      where: { id: existing.id },
       data
     });
   }

@@ -23,6 +23,7 @@ const PostPlatformFilter = require('./post/filters/platform.filter');
 const PostDateRangeFilter = require('./post/filters/date-range.filter');
 const PostLibraryFilter = require('./post/filters/library.filter');
 const PostDeletedFilter = require('./post/filters/deleted.filter');
+const PostSocialAccountFilter = require('./post/filters/social-account.filter');
 
 const Pipeline = require('../../core/pipeline/pipeline.executor');
 const FetchPostStep = require('./post/publish-steps/fetch-post.step');
@@ -37,7 +38,8 @@ class PostService {
   constructor() {
     this.queryPipeline = new QueryPipeline([
       new PostStatusFilter(), new PostSearchFilter(), new PostPlatformFilter(),
-      new PostDateRangeFilter(), new PostLibraryFilter(), new PostDeletedFilter()
+      new PostDateRangeFilter(), new PostLibraryFilter(), new PostDeletedFilter(),
+      new PostSocialAccountFilter()
     ]);
 
     this.publishPipeline = new Pipeline([
@@ -209,16 +211,20 @@ class PostService {
   }
 
   /**
-   * Validates and upserts per-platform caption/media overrides for a post
+   * Validates and upserts per-platform (and, for brands with multiple
+   * accounts of a platform, per-account) caption/media overrides for a post
    * (see PostNetworkOverride in schema.prisma). Called inside the same
    * transaction that creates/updates the Post — an override is meaningless
    * without the post it belongs to, so they're never written independently.
    *
-   * networkOverrides: [{ platform, useTemplate, caption?, mediaUrls?, threadPosts? }]
-   * targetPlatforms: the post's own target platform list (already-split array),
-   * used to reject overrides for platforms the post isn't even publishing to.
+   * networkOverrides: [{ platform, socialAccountId?, useTemplate, caption?, mediaUrls?, threadPosts? }]
+   * socialAccountId is omitted/null for brands with a single account of the
+   * platform (the common case) — the row then applies to that one implicit
+   * account. targetPlatforms: the post's own target platform list
+   * (already-split array), used to reject overrides for platforms the post
+   * isn't even publishing to.
    */
-  async upsertNetworkOverrides(postId, networkOverrides, targetPlatforms, tx) {
+  async upsertNetworkOverrides(postId, networkOverrides, targetPlatforms, tx, brandId) {
     if (!Array.isArray(networkOverrides) || networkOverrides.length === 0) return;
 
     const targetSet = new Set(targetPlatforms.map((p) => p.trim().toUpperCase()));
@@ -236,14 +242,27 @@ class PostService {
         throw error;
       }
 
+      const socialAccountId = override.socialAccountId || null;
+      if (socialAccountId) {
+        // Reject an account that doesn't belong to this brand/platform up
+        // front, rather than letting the FK constraint fail obscurely later.
+        const account = await tx.socialAccount.findUnique({ where: { id: socialAccountId } });
+        if (!account || account.brandId !== brandId || account.platform !== platform) {
+          const error = new Error(`socialAccountId "${socialAccountId}" is not a valid ${platform} account for this brand.`);
+          error.statusCode = 400;
+          throw error;
+        }
+      }
+
       const mediaUrls = Array.isArray(override.mediaUrls) ? override.mediaUrls.filter(Boolean) : [];
       const threadPosts = Array.isArray(override.threadPosts) ? override.threadPosts : undefined;
 
       await tx.postNetworkOverride.upsert({
-        where: { postId_platform: { postId, platform } },
+        where: { postId_platform_socialAccountId: { postId, platform, socialAccountId } },
         create: {
           postId,
           platform,
+          socialAccountId,
           useTemplate: override.useTemplate !== false,
           caption: override.caption ?? null,
           mediaUrls: mediaUrls.length > 0 ? mediaUrls.join(SEPARATORS.COMMA) : null,
@@ -381,7 +400,7 @@ class PostService {
         const targetPlatformsArr = Array.isArray(postData.targetPlatforms)
           ? postData.targetPlatforms
           : (postData.targetPlatforms || '').split(SEPARATORS.COMMA).filter(Boolean);
-        await this.upsertNetworkOverrides(created.id, postData.networkOverrides, targetPlatformsArr, tx);
+        await this.upsertNetworkOverrides(created.id, postData.networkOverrides, targetPlatformsArr, tx, brandId);
       }
 
       // Job publish + domain event chỉ được ghi vào outbox trong CÙNG transaction với
@@ -577,7 +596,7 @@ class PostService {
         const targetPlatformsArr = updated.targetPlatforms
           ? updated.targetPlatforms.split(SEPARATORS.COMMA).filter(Boolean)
           : [];
-        await this.upsertNetworkOverrides(updated.id, postData.networkOverrides, targetPlatformsArr, tx);
+        await this.upsertNetworkOverrides(updated.id, postData.networkOverrides, targetPlatformsArr, tx, brandId);
       }
 
       // Job publish + domain event ghi vào outbox trong CÙNG transaction với việc
@@ -741,7 +760,12 @@ class PostService {
                 console.log(`[Post Service] Found deletePost for ${platform}. Invoking service.deletePost...`);
                 const platformId = this._getPlatformPostId(post, platform);
                 if (platformId) {
-                  await service.deletePost(brandId, platformId);
+                  // socialAccountId comes from the override row saved for
+                  // this platform when the post was published — the one
+                  // source of truth for which account it actually went to
+                  // (see PostNetworkOverride in schema.prisma).
+                  const override = (post.networkOverrides || []).find(o => o.platform === platform);
+                  await service.deletePost(brandId, platformId, override?.socialAccountId || null);
                   console.log(`[Post Service] Successfully deleted post on ${platform}`);
                 } else {
                   console.log(`[Post Service] No platform post ID found for ${platform}`);
@@ -866,6 +890,7 @@ class PostService {
       platformPostId,
       networkOverrides: (p.networkOverrides || []).map((o) => ({
         platform: o.platform,
+        socialAccountId: o.socialAccountId,
         useTemplate: o.useTemplate,
         caption: o.caption,
         mediaUrls: o.mediaUrls ? splitMediaUrls(o.mediaUrls) : [],
@@ -969,7 +994,8 @@ class PostService {
           const platformId = this._getPlatformPostId(post, platform);
           if (platformId) {
             console.log(`[PostService] Invoking deletePost on ${platform} for ID: ${platformId}`);
-            await service.deletePost(post.brandId, platformId);
+            const override = (post.networkOverrides || []).find(o => o.platform === platform);
+            await service.deletePost(post.brandId, platformId, override?.socialAccountId || null);
           }
         }
       } catch (err) {

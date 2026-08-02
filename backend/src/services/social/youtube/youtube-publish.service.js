@@ -14,7 +14,7 @@ class YouTubePublishService {
    * Đăng tải video lên YouTube qua quy trình đa bước đã được mô-đun hóa
    */
   async publishPost(brandId, postData) {
-    const { options = {}, platformPostId } = postData;
+    const { options = {}, platformPostId, socialAccountId } = postData;
 
     if (platformPostId) {
       console.log(`[YouTube Publish] Video already uploaded via Native Scheduling. ID: ${platformPostId}`);
@@ -27,7 +27,7 @@ class YouTubePublishService {
     }
 
     // 1. Chuẩn bị thông tin tài khoản và Auth
-    const { account, auth } = await this._getAuthContext(brandId);
+    const { account, auth } = await this._getAuthContext(brandId, socialAccountId);
 
     if (account.accessToken && (account.accessToken.startsWith('mock-') || account.accessToken.includes('mock') || account.accessToken.startsWith('yt_mock'))) {
       console.log(`[YouTube] Mock publishing detected for mock token. Returning simulated success.`);
@@ -67,12 +67,16 @@ class YouTubePublishService {
 
   // ============= Private Helper Methods =============
 
-  async _getAuthContext(brandId) {
+  // socialAccountId picks a specific channel when the brand has more than
+  // one YouTube account connected; omitted, it falls back to the previous
+  // behavior (first non-mock account) — correct as long as the brand only
+  // has one real account, which is still the common case.
+  async _getAuthContext(brandId, socialAccountId = null) {
     const socialAccount = await socialAccountRepository.findByBrandAndPlatform(brandId, PLATFORMS.YOUTUBE);
     if (!socialAccount || socialAccount.length === 0) {
       throw new Error('YouTube account not connected for this brand');
     }
-    const account = socialAccount.find(acc => 
+    const account = (socialAccountId && socialAccount.find(acc => acc.id === socialAccountId)) || socialAccount.find(acc =>
       !(acc.accessToken && acc.accessToken.startsWith('mock-')) &&
       !(acc.platformAccountId && acc.platformAccountId.startsWith('mock-'))
     ) || socialAccount[0];
@@ -299,8 +303,8 @@ class YouTubePublishService {
     throw new Error(`YouTube video processing status poll timed out for ID: ${videoId}`);
   }
 
-  async deletePost(brandId, platformPostId) {
-    const { auth } = await this._getAuthContext(brandId);
+  async deletePost(brandId, platformPostId, socialAccountId = null) {
+    const { auth } = await this._getAuthContext(brandId, socialAccountId);
     if (platformPostId && platformPostId.startsWith('mock-')) {
       return { success: true };
     }

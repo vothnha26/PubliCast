@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { 
   Search, RefreshCw, Youtube, Facebook, Instagram, Filter, MoreHorizontal, 
   Loader2, MessageSquare, AlertCircle, EyeOff, CheckCircle, ExternalLink, Check,
@@ -11,45 +11,57 @@ import { useBrand } from "../../context/BrandContext";
 import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
 import socketClient from "../../services/socket";
+import { INBOX_VIEW_MODE, INBOX_TAB, INBOX_TABS_ORDER, INBOX_ITEM_TYPE, POST_COMMENT_FILTER } from "../../constants/inbox";
 
 // SOLID Components
 import { ConversationItem, SafeAvatar } from "../../components/inbox/ConversationItem";
 import { VideoContextCard } from "../../components/inbox/VideoContextCard";
 import { ReplyComposer } from "../../components/inbox/ReplyComposer";
+import { InlineCommentThread } from "../../components/inbox/InlineCommentThread";
+import { ChannelFilterDropdown } from "../../components/inbox/ChannelFilterDropdown";
+import { InboxHeader } from "../../components/inbox/InboxHeader";
+import { PostsGridSidebar } from "../../components/inbox/PostsGridSidebar";
+import { ListeningEmptyState } from "../../components/inbox/ListeningEmptyState";
+import { ThreadDetailView } from "../../components/inbox/ThreadDetailView";
+import { HelpCircle, Languages } from "lucide-react";
 
 export function InboxPage() {
   const { t, i18n } = useTranslation(["manage", "common"]);
   const { activeBrand } = useBrand();
   const { filters, updateFilters, clearFilters, searchParamsString } = useFilters({
-    tab: "Unresolved",
+    tab: INBOX_TAB.ALL,
     platform: "YouTube",
     search: ""
   });
 
-  const tabFilter = filters.tab || "Unresolved";
+  const tabFilter = filters.tab || INBOX_TAB.ALL;
   const platformFilter = filters.platform || "YouTube";
   const currentPage = parseInt(filters.page || "1", 10);
   const [searchTerm, setSearchTerm] = useState(filters.search || "");
-  const debouncedSearch = useDebounce(searchTerm, 300);
+  const debouncedSearch = useDebounce(searchTerm, 400);
 
+  const [viewMode, setViewMode] = useState(INBOX_VIEW_MODE.BY_POST);
+  const [postCommentFilter, setPostCommentFilter] = useState(POST_COMMENT_FILTER.ALL);
+  const [isPostsPanelCollapsed, setIsPostsPanelCollapsed] = useState(false);
+  const [fetchedPosts, setFetchedPosts] = useState([]);
   const [inboxData, setInboxData] = useState({ data: [], meta: {} });
-  const [loading, setLoading] = useState(false);
   const [activeConv, setActiveConv] = useState(null);
   const [thread, setThread] = useState([]);
-  // Monotonically-increasing request ids so an in-flight fetchInbox/fetchThread
-  // call that resolves after a newer one (fast filter/brand switch, or a
-  // realtime socket event firing fetchInbox mid-flight) discards its stale
-  // response instead of overwriting fresher data (#112 K7).
-  const inboxRequestIdRef = useRef(0);
-  const threadRequestIdRef = useRef(0);
   const [videoContext, setVideoContext] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [postsLoading, setPostsLoading] = useState(true);
   const [threadLoading, setThreadLoading] = useState(false);
   const [replyText, setReplyText] = useState("");
-  const [isSyncing, setIsSyncing] = useState(false);
   const [isReplying, setIsReplying] = useState(false);
-  const [isFilterMenuOpen, setIsFilterMenuOpen] = useState(false);
+  const [newCommentText, setNewCommentText] = useState("");
+  const [isPostingNewComment, setIsPostingNewComment] = useState(false);
   const [editingReplyId, setEditingReplyId] = useState(null);
   const [editingText, setEditingText] = useState("");
+  const [isSyncing, setIsSyncing] = useState(false);
+
+  const inboxRequestIdRef = useRef(0);
+  const threadRequestIdRef = useRef(0);
+  const [isFilterMenuOpen, setIsFilterMenuOpen] = useState(false);
 
   // Auto-Reply States
   const [isAutoReplyOpen, setIsAutoReplyOpen] = useState(false);
@@ -126,8 +138,28 @@ export function InboxPage() {
     }
   };
 
+  // Fetch distinct posts (drives PostsGridSidebar's thumbnails) via the
+  // dedicated /inbox/posts endpoint — this goes through the backend's
+  // _resolveRealThumbnail fallback chain (TrackedVideo -> DB Post media ->
+  // InboxItem media), which the ad-hoc postsList built from inboxData.data
+  // below does not have. Without this, fetchedPosts stayed permanently []
+  // and PostsGridSidebar fell back to a blank placeholder for every post.
+  const fetchPosts = async () => {
+    if (!activeBrand) return;
+    setPostsLoading(true);
+    try {
+      const response = await inboxService.getInboxPosts(activeBrand.id, searchParamsString);
+      setFetchedPosts(response?.data || []);
+    } catch (error) {
+      console.error("Inbox posts load error:", error);
+    } finally {
+      setPostsLoading(false);
+    }
+  };
+
   useEffect(() => {
     fetchInbox();
+    fetchPosts();
   }, [searchParamsString, activeBrand]);
 
   // Real-time Webhook updates via Socket.io
@@ -176,6 +208,12 @@ export function InboxPage() {
   // Fetch thread for active conversation
   const fetchThread = async () => {
     if (!activeConv) return;
+    // Synthetic posts (real published content with zero synced comments —
+    // see handleSelectPost) have no matching InboxItem row, so getThread's
+    // strict findById(activeConv.id) lookup would always 404. handleSelectPost
+    // already fetches whatever thread/videoContext exists via
+    // getCommentsByPost, so there's nothing more to load here.
+    if (activeConv.isSyntheticPost) return;
     const requestId = ++threadRequestIdRef.current;
     setThreadLoading(true);
     setVideoContext(null);
@@ -219,38 +257,98 @@ export function InboxPage() {
 
   const handleUpdateStatus = async (itemId, newStatus) => {
     try {
-      await inboxService.updateInboxStatus(itemId, newStatus);
-      setInboxData(prev => ({
-        ...prev,
-        data: prev.data.map(item => 
-          item.id === itemId ? { ...item, status: newStatus.toLowerCase(), unread: newStatus === 'UNREAD' } : item
-        )
-      }));
-      if (activeConv?.id === itemId) {
-        setActiveConv(prev => ({ ...prev, status: newStatus.toLowerCase(), unread: newStatus === 'UNREAD' }));
+      if (activeConv?.id === itemId && activeConv?.isSyntheticPost) {
+        setActiveConv(prev => prev ? ({ ...prev, status: newStatus.toLowerCase(), unread: newStatus === 'UNREAD' }) : null);
+        return;
       }
+      await inboxService.updateInboxStatus(itemId, newStatus);
+      if (activeConv?.id === itemId || activeConv?.platformItemId === itemId || activeConv?.relatedPostId === itemId) {
+        setActiveConv(prev => prev ? ({ ...prev, status: newStatus.toLowerCase(), unread: newStatus === 'UNREAD' }) : null);
+      }
+      await fetchInbox();
+      await fetchPosts();
     } catch (e) {
       toast.error(t("inbox.updateStatusFailed"));
     }
   };
 
-  const handleReply = async () => {
+  const handleReply = async (attachmentUrl) => {
     if (!replyText || !activeConv || !activeBrand) return;
     setIsReplying(true);
     try {
-      await inboxService.replyInbox({
-        brandId: activeBrand.id,
-        itemId: activeConv.id,
-        text: replyText
-      });
-      toast.success(t("inbox.replySuccess"));
-      setReplyText("");
-      await fetchThread();
+      if (activeConv.isSyntheticPost) {
+        // 0-comment post — there's no existing InboxItem to reply to, so
+        // post a brand-new top-level comment directly on the platform post.
+        await inboxService.postNewComment({
+          brandId: activeBrand.id,
+          postId: activeConv.id,
+          platform: activeConv.platform,
+          text: replyText,
+          socialAccountId: activeConv.socialAccountId || undefined,
+          attachmentUrl
+        });
+        toast.success(t("inbox.replySuccess"));
+        setReplyText("");
+        // The post now has a real InboxItem — clear isSyntheticPost so
+        // fetchThread (which otherwise skips synthetic posts) resumes
+        // working normally for this conversation going forward.
+        setActiveConv(prev => (prev ? { ...prev, isSyntheticPost: false } : prev));
+        const response = await inboxService.getCommentsByPost(activeBrand.id, activeConv.id);
+        if (response?.thread) setThread(response.thread);
+        if (response?.videoContext) setVideoContext(response.videoContext);
+      } else {
+        await inboxService.replyInbox({
+          brandId: activeBrand.id,
+          itemId: activeConv.id,
+          text: replyText,
+          attachmentUrl
+        });
+        toast.success(t("inbox.replySuccess"));
+        setReplyText("");
+        await fetchThread();
+      }
       await fetchInbox();
+      await fetchPosts();
     } catch (e) {
       toast.error(t("inbox.replyFailed") + (e.message || ""));
     } finally {
       setIsReplying(false);
+    }
+  };
+
+  // Posts a new top-level comment on the post that's currently open, even
+  // when it already has other comments — separate from handleReply, which
+  // always targets a specific existing comment (reply-to-X semantics).
+  const handlePostNewComment = async (attachmentUrl) => {
+    if (!newCommentText || !currentActiveConv || !activeBrand) return;
+    const postId = currentActiveConv.relatedPostId || currentActiveConv.videoContext?.id || currentActiveConv.id;
+    const platform = currentActiveConv.platform;
+    if (!postId || !platform) return;
+    setIsPostingNewComment(true);
+    try {
+      await inboxService.postNewComment({
+        brandId: activeBrand.id,
+        postId,
+        platform,
+        text: newCommentText,
+        socialAccountId: currentActiveConv.socialAccountId || undefined,
+        attachmentUrl
+      });
+      toast.success(t("inbox.replySuccess"));
+      setNewCommentText("");
+      // fetchThread only refetches the single existing comment thread
+      // currently open — getCommentsByPost is what actually reloads the
+      // full comment list for the post, which is what needs to include the
+      // just-posted new top-level comment.
+      const response = await inboxService.getCommentsByPost(activeBrand.id, postId);
+      if (response?.thread) setThread(response.thread);
+      if (response?.videoContext) setVideoContext(response.videoContext);
+      await fetchInbox();
+      await fetchPosts();
+    } catch (e) {
+      toast.error(t("inbox.replyFailed") + (e.message || ""));
+    } finally {
+      setIsPostingNewComment(false);
     }
   };
 
@@ -349,321 +447,436 @@ export function InboxPage() {
     setKeywordsList(keywordsList.filter((_, i) => i !== index));
   };
 
+  const selectedAccountIds = useMemo(() => {
+    const raw = filters.channels || filters.socialAccountId;
+    return raw ? raw.split(",").filter(Boolean) : [];
+  }, [filters.channels, filters.socialAccountId]);
+
+  const handleSelectAccounts = (newAccountIds) => {
+    const joined = newAccountIds && newAccountIds.length > 0 ? newAccountIds.join(",") : null;
+    updateFilters({
+      channels: joined,
+      socialAccountId: joined
+    });
+  };
+
+  // Derive unique posts for 'by_post' view (Combining all published channel posts + synced inbox items)
+  const postsList = useMemo(() => {
+    const postsMap = new Map();
+
+    // 1. Add all channel / DB posts (including 0 comments)
+    if (Array.isArray(fetchedPosts)) {
+      fetchedPosts.forEach((post, index) => {
+        const key = post.id || post.videoId || post.videoContext?.id;
+        if (key && !postsMap.has(key)) {
+          let thumb = post.thumbnailUrl || post.mediaUrl || post.videoContext?.thumbnailUrl;
+          if (thumb && (thumb.includes('dicebear') || thumb.includes('avataaars') || thumb === post.avatar)) {
+            thumb = null;
+          }
+          let ytId = post.videoContext?.id || post.videoId;
+          if (!ytId && typeof key === 'string' && /^[a-zA-Z0-9_-]{11}$/.test(key)) {
+            ytId = key;
+          }
+          if (!thumb && ytId) {
+            thumb = `https://i.ytimg.com/vi/${ytId}/hqdefault.jpg`;
+          }
+
+          postsMap.set(key, {
+            id: key,
+            title: post.title || post.videoContext?.title || `Bài viết #${index + 1}`,
+            thumbnailUrl: thumb,
+            mediaUrl: thumb,
+            videoContext: post.videoContext || {
+              id: key,
+              title: post.title || `Bài viết #${index + 1}`,
+              thumbnailUrl: thumb,
+              channelTitle: post.channelTitle || "Social Channel"
+            },
+            platform: post.platform || null,
+            socialAccountId: post.socialAccountId || null,
+            commentCount: post.commentCount || 0,
+            unreadCount: post.unreadCount || 0,
+            rawItem: post.rawItem || null,
+          });
+        }
+      });
+    }
+
+    // 2. Add / Update from synced inbox items
+    if (inboxData.data && inboxData.data.length > 0) {
+      inboxData.data.forEach((item, index) => {
+        // item.relatedPostId is the actual YouTube video ID a comment/reply
+        // belongs to (set by youtube-comment.strategy.js from
+        // comment.snippet.videoId). item.platformItemId is the comment's
+        // own ID — it happens to also be an 11-char string for YouTube, so
+        // using it here as a stand-in for the video ID silently built a
+        // thumbnail URL for the wrong (nonexistent) video, which then
+        // failed to load and left the sidebar showing a blank placeholder.
+        let ytId = item.videoContext?.id;
+        if (!ytId && item.relatedPostId && typeof item.relatedPostId === 'string' && /^[a-zA-Z0-9_-]{11}$/.test(item.relatedPostId)) {
+          ytId = item.relatedPostId;
+        }
+        const key = ytId || item.relatedPostId || item.platformItemId || item.id;
+
+        if (!postsMap.has(key)) {
+          let thumb = item.videoContext?.thumbnailUrl || item.videoContext?.thumbnail || item.mediaUrl || item.thumbnailUrl || item.postMediaUrl;
+          if (thumb && (thumb.includes('dicebear') || thumb.includes('avataaars') || thumb === item.avatar)) {
+            thumb = null;
+          }
+          if (!thumb && ytId) {
+            thumb = `https://i.ytimg.com/vi/${ytId}/hqdefault.jpg`;
+          }
+
+          const title = item.videoContext?.title || `Bài viết #${index + 1} (${item.platform || "Social"})`;
+
+          postsMap.set(key, {
+            id: key,
+            title,
+            thumbnailUrl: thumb,
+            mediaUrl: thumb,
+            videoContext: item.videoContext || {
+              id: key,
+              title,
+              thumbnailUrl: thumb,
+              channelTitle: `${item.platform || "Social"} Channel`
+            },
+            commentCount: 1,
+            unreadCount: item.unread ? 1 : 0,
+            rawItem: item,
+          });
+        } else {
+          const existing = postsMap.get(key);
+          existing.commentCount = (existing.commentCount || 0) + 1;
+          if (item.unread) existing.unreadCount = (existing.unreadCount || 0) + 1;
+        }
+      });
+    }
+
+    return Array.from(postsMap.values());
+  }, [fetchedPosts, inboxData.data]);
+
+  const filteredPostsList = useMemo(() => {
+    let result = postsList;
+
+    if (selectedAccountIds.length > 0) {
+      result = result.filter(p => p.socialAccountId && selectedAccountIds.includes(p.socialAccountId));
+    }
+
+    if (postCommentFilter === "has") result = result.filter(p => (p.commentCount || 0) > 0);
+    if (postCommentFilter === "none") result = result.filter(p => !(p.commentCount > 0));
+
+    const activeFilter = filters.type || tabFilter;
+    if (activeFilter === INBOX_ITEM_TYPE.UNREAD || activeFilter === INBOX_TAB.UNREAD) {
+      result = result.filter(p => (p.unreadCount || 0) > 0);
+    }
+
+    return result;
+  }, [postsList, postCommentFilter, tabFilter, filters.type, selectedAccountIds]);
+
+  const activePostId = useMemo(() => {
+    if (!activeConv) return postsList[0]?.id || null;
+    return activeConv.videoContext?.id || activeConv.platformItemId || activeConv.id;
+  }, [activeConv, postsList]);
+
+  const currentActiveConv = useMemo(() => {
+    if (activeConv) return activeConv;
+    if (inboxData.data && inboxData.data.length > 0) return inboxData.data[0];
+    return null;
+  }, [activeConv, inboxData.data]);
+
+  const displayThread = useMemo(() => {
+    if (thread && thread.length > 0) return thread;
+    // Synthetic posts (0 real comments) have nothing genuine to fabricate a
+    // comment from — ThreadDetailView shows its own empty state for these
+    // via activeConv.isSyntheticPost, so leave thread empty here too.
+    if (currentActiveConv && !currentActiveConv.isSyntheticPost) {
+      return [{
+        id: currentActiveConv.id,
+        author: currentActiveConv.user || currentActiveConv.author || "User",
+        avatar: currentActiveConv.avatar,
+        text: currentActiveConv.preview || currentActiveConv.content || currentActiveConv.text || "",
+        time: currentActiveConv.time || "",
+        from: "user"
+      }];
+    }
+    return [];
+  }, [thread, currentActiveConv]);
+
+  const handleSelectPost = async (post) => {
+    if (post.rawItem) {
+      setActiveConv(post.rawItem);
+    } else {
+      // No rawItem means this post has no synced InboxItem yet (e.g. a real
+      // published video/post with zero comments, sourced directly from the
+      // platform API rather than from the InboxItem table). id here is the
+      // platform's own post/video ID, not an InboxItem row ID, so
+      // fetchThread's InboxItem.findById(activeConv.id) lookup would always
+      // 404 — isSyntheticPost tells fetchThread to skip that call and rely
+      // on the getCommentsByPost fetch below instead, which already handles
+      // "no comments yet" gracefully.
+      setActiveConv({
+        id: post.id,
+        user: post.title || "Post User",
+        avatar: post.thumbnailUrl,
+        platform: post.platform || "Social Media",
+        socialAccountId: post.socialAccountId || null,
+        videoContext: post.videoContext,
+        unread: post.unreadCount > 0,
+        status: "unresolved",
+        isSyntheticPost: true
+      });
+    }
+
+    if (activeBrand && post.id) {
+      try {
+        const response = await inboxService.getCommentsByPost(activeBrand.id, post.id);
+        // Always set thread (even to []) for the newly-selected post — a
+        // guard that only set it when non-empty left the PREVIOUS post's
+        // comments on screen whenever the new post genuinely had zero
+        // comments, which also meant displayComments' fake-comment fallback
+        // never got a chance to run for real 0-comment posts.
+        setThread(response?.thread || []);
+        setVideoContext(response?.videoContext || null);
+      } catch (e) {
+        console.error("Failed to fetch comments for post:", e);
+      }
+    }
+  };
+
   return (
-    <div className="h-[calc(100vh-70px)] w-full flex overflow-hidden bg-background p-4 gap-4">
-      {/* Sidebar (List) */}
-      <div className="w-[380px] bg-card rounded-2xl border border-border shadow-sm flex flex-col overflow-hidden">
-        <div className="p-4 flex items-center justify-between gap-4 relative border-b border-border">
-            <div className="flex gap-2">
-              <button
-                onClick={() => updateFilters({ platform: "YouTube" })}
-                className={`w-9 h-9 rounded-xl flex items-center justify-center transition-all ${
-                  platformFilter.toLowerCase() === "youtube"
-                    ? "bg-red-500/10 border border-red-500/20 shadow-sm"
-                    : "opacity-40 hover:opacity-80"
-                }`}
-              >
-                <Youtube className="text-[#FF0000] fill-[#FF0000]" size={20} />
-              </button>
-              <button
-                onClick={() => updateFilters({ platform: "Facebook" })}
-                className={`w-9 h-9 rounded-xl flex items-center justify-center transition-all ${
-                  platformFilter.toLowerCase() === "facebook"
-                    ? "bg-blue-500/10 border border-blue-500/20 shadow-sm"
-                    : "opacity-40 hover:opacity-80"
-                }`}
-              >
-                <Facebook className="text-[#1877F2] fill-[#1877F2]" size={20} />
-              </button>
-              <button
-                onClick={() => updateFilters({ platform: "Instagram", guildId: null, socialAccountId: null })}
-                className={`w-9 h-9 rounded-xl flex items-center justify-center transition-all ${
-                  platformFilter.toLowerCase() === "instagram"
-                    ? "bg-pink-500/10 border border-pink-500/20 shadow-sm"
-                    : "opacity-40 hover:opacity-80"
-                }`}
-              >
-                <Instagram className="text-[#E1306C]" size={20} />
-              </button>
-            </div>
-           <div className="flex items-center gap-2">
-             {(platformFilter.toLowerCase() === "facebook" || platformFilter.toLowerCase() === "instagram") && (
-               <button 
-                 onClick={() => setIsAutoReplyOpen(true)}
-                 title={t("inbox.autoReplySettings")}
-                 className="p-1.5 hover:bg-muted rounded-full text-muted-foreground cursor-pointer"
-               >
-                 <Settings size={18} />
-               </button>
-             )}
-             <button onClick={handleSync} disabled={isSyncing} className="p-1.5 hover:bg-muted rounded-full text-muted-foreground"><RefreshCw size={18} className={isSyncing ? "animate-spin" : ""} /></button>
-             <button className="w-8 h-8 rounded-lg flex items-center justify-center text-muted-foreground hover:bg-muted text-xl font-light">+</button>
-           </div>
-        </div>
+    <div className="h-[calc(100vh-70px)] w-full flex flex-col overflow-hidden bg-background">
+      {/* 1. Top Navigation Header */}
+      <InboxHeader
+        activeBrand={activeBrand}
+        selectedAccountIds={selectedAccountIds}
+        onSelectAccounts={handleSelectAccounts}
+        viewMode={viewMode}
+        onViewModeChange={setViewMode}
+        filterType={filters.type || INBOX_ITEM_TYPE.ALL}
+        onFilterTypeChange={(type) => updateFilters({ type: type === INBOX_ITEM_TYPE.ALL ? null : type })}
+        totalUnread={inboxData.data?.filter(i => i.unread)?.length || 0}
+        postCommentFilter={postCommentFilter}
+        onPostCommentFilterChange={setPostCommentFilter}
+      />
 
-        <div className="p-4 pb-2 flex gap-2">
-           <div className="relative flex-1 group">
-              <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-              <input type="text" placeholder={t("inbox.searchConversation")} value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="w-full bg-muted/50 border border-border text-foreground placeholder:text-muted-foreground rounded-xl py-2.5 pl-10 pr-4 text-xs focus:outline-none" />
-           </div>
-            <div className="relative">
-              <button 
-                onClick={() => setIsFilterMenuOpen(prev => !prev)}
-                className={`w-11 h-11 rounded-xl border flex items-center justify-center text-muted-foreground hover:bg-muted cursor-pointer transition-colors ${
-                  isFilterMenuOpen || filters.type ? "border-foreground bg-muted text-foreground" : "border-border"
-                }`}
-              >
-                <Filter size={18} />
-              </button>
-              
-              {isFilterMenuOpen && (
-                <>
-                  <div 
-                    className="fixed inset-0 z-40 cursor-default" 
-                    onClick={() => setIsFilterMenuOpen(false)} 
-                  />
-                  <div className="absolute right-0 mt-2 w-64 bg-card rounded-2xl border border-border shadow-xl py-2.5 z-50 text-left animate-in fade-in slide-in-from-top-3 duration-200 font-medium">
-                    <div className="px-4 py-1.5 text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
-                      {t("inbox.filterByType")}
-                    </div>
-                    
-                    <button
-                      onClick={() => {
-                        updateFilters({ type: null });
-                        setIsFilterMenuOpen(false);
-                      }}
-                      className="w-full px-4 py-2.5 text-xs font-bold text-foreground hover:bg-muted flex items-center justify-between cursor-pointer border-none bg-transparent"
-                    >
-                      <span>{t("inbox.allMessages")}</span>
-                      {(!filters.type || filters.type === 'all') && <Check size={12} className="text-green-500" />}
-                    </button>
+      {/* 2. Main Workspace Body */}
+      <div className="flex-1 flex overflow-hidden p-4 gap-4 relative">
+        {viewMode === INBOX_VIEW_MODE.BY_POST ? (
+          <>
+            {/* Left Panel: Posts Grid (Reels/Shorts thumbnails) */}
+            <PostsGridSidebar
+              posts={filteredPostsList}
+              activePostId={activePostId}
+              onSelectPost={handleSelectPost}
+              loading={loading || postsLoading}
+              collapsed={isPostsPanelCollapsed}
+              onToggleCollapsed={setIsPostsPanelCollapsed}
+            />
 
-                    <button
-                      onClick={() => {
-                        updateFilters({ type: "DIRECT_MESSAGE" });
-                        setIsFilterMenuOpen(false);
-                      }}
-                      className="w-full px-4 py-2.5 text-xs font-bold text-foreground hover:bg-muted flex items-center justify-between cursor-pointer border-none bg-transparent"
-                    >
-                      <span>{t("inbox.privateMessages")}</span>
-                      <div className="flex items-center gap-1.5">
-                        <Facebook className="text-[#1877F2] fill-[#1877F2]" size={14} />
-                        <Instagram className="text-[#E1306C]" size={14} />
-                        <MessageSquare className="text-[#5865F2] fill-[#5865F2]" size={14} />
-                        {filters.type === "DIRECT_MESSAGE" && <Check size={12} className="text-green-500 ml-1" />}
-                      </div>
-                    </button>
-
-                    <button
-                      onClick={() => {
-                        updateFilters({ type: "COMMENT" });
-                        setIsFilterMenuOpen(false);
-                      }}
-                      className="w-full px-4 py-2.5 text-xs font-bold text-foreground hover:bg-muted flex items-center justify-between cursor-pointer border-none bg-transparent"
-                    >
-                      <span>{t("inbox.comments")}</span>
-                      <div className="flex items-center gap-1.5">
-                        <Facebook className="text-[#1877F2] fill-[#1877F2]" size={14} />
-                        <Youtube className="text-[#FF0000] fill-[#FF0000]" size={14} />
-                        <Instagram className="text-[#E1306C]" size={14} />
-                        <MessageSquare className="text-[#5865F2] fill-[#5865F2]" size={14} />
-                        {filters.type === "COMMENT" && <Check size={12} className="text-green-500 ml-1" />}
-                      </div>
-                    </button>
-                  </div>
-                </>
-              )}
-            </div>
-        </div>
-
-        <div className="flex px-2 border-b border-border">
-           {["Unresolved", "Unread", "All"].map(tVal => (
-             <button key={tVal} onClick={() => updateFilters({ tab: tVal })} className={`flex-1 py-3 text-[11px] font-bold uppercase tracking-widest relative ${tabFilter === tVal ? "text-foreground" : "text-muted-foreground"}`}>
-               {t(`inbox.tabs.${tVal.toLowerCase()}`)}
-               {tabFilter === tVal && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-foreground" />}
-             </button>
-           ))}
-           <button className="px-4 text-muted-foreground hover:text-foreground"><MoreHorizontal size={18} /></button>
-        </div>
-
-        <div className="flex-1 overflow-y-auto scrollbar-thin">
-           {loading ? (
-             <div className="h-40 flex flex-col items-center justify-center gap-3"><Loader2 className="animate-spin text-muted-foreground" size={32} /></div>
-           ) : inboxData.data?.length === 0 ? (
-             <div className="p-12 text-center flex flex-col items-center gap-4">
-                <div className="w-16 h-16 bg-muted rounded-3xl flex items-center justify-center text-muted-foreground"><MessageSquare size={32} /></div>
-                <p className="text-[11px] font-bold text-muted-foreground uppercase">{t("inbox.noConversations", { tab: t(`inbox.tabs.${tabFilter.toLowerCase()}`).toLowerCase() })}</p>
-             </div>
-           ) : (
-             inboxData.data.map(conv => (
-               <ConversationItem key={conv.id} conv={conv} activeConv={activeConv} onSelect={setActiveConv} onUpdateStatus={handleUpdateStatus} />
-             ))
-           )}
-        </div>
-
-        {/* Pagination Footer */}
-        {inboxData.meta && inboxData.meta.totalPages > 1 && (
-          <div className="px-4 py-3 border-t border-border flex items-center justify-between bg-card text-[11px] font-bold text-muted-foreground">
-            <button
-              onClick={() => updateFilters({ page: currentPage - 1 })}
-              disabled={currentPage <= 1}
-              className="px-2.5 py-1.5 rounded-lg border border-border disabled:opacity-40 hover:bg-muted transition-colors"
-            >
-              {t("inbox.pagination.previous")}
-            </button>
-            <span>
-              {t("inbox.pagination.pageOf", { current: currentPage, total: inboxData.meta.totalPages })}
-            </span>
-            <button
-              onClick={() => updateFilters({ page: currentPage + 1 })}
-              disabled={currentPage >= inboxData.meta.totalPages}
-              className="px-2.5 py-1.5 rounded-lg border border-border disabled:opacity-40 hover:bg-muted transition-colors"
-            >
-              {t("inbox.pagination.next")}
-            </button>
-          </div>
-        )}
-      </div>
-
-      {/* Main Content (Thread) */}
-      <div className="flex-1 bg-card rounded-2xl border border-border shadow-sm flex flex-col overflow-hidden relative">
-         {!activeConv ? (
-           <div className="flex-1 flex flex-col items-center justify-center p-12 text-center animate-in fade-in duration-500">
-              <div className="relative mb-8">
-                 <div className="w-64 h-64 bg-muted/40 rounded-[60px] rotate-12 flex items-center justify-center">
-                    <div className="w-48 h-48 bg-card rounded-[50px] -rotate-12 flex items-center justify-center border border-border shadow-sm">
-                       <div className="w-20 h-20 rounded-full bg-muted flex items-center justify-center text-muted-foreground"><AlertCircle size={48} strokeWidth={1.5} /></div>
-                    </div>
+            {/* Shared Center/Main Area: Video/Post Preview + Thread */}
+            <ThreadDetailView
+              activeConv={currentActiveConv}
+              videoContext={videoContext}
+              thread={displayThread}
+              threadLoading={threadLoading}
+              activeBrand={activeBrand}
+              replyText={replyText}
+              setReplyText={setReplyText}
+              onReply={handleReply}
+              isReplying={isReplying}
+              onUpdateStatus={handleUpdateStatus}
+              newCommentText={newCommentText}
+              setNewCommentText={setNewCommentText}
+              onPostNewComment={handlePostNewComment}
+              isPostingNewComment={isPostingNewComment}
+            />
+          </>
+        ) : (
+          /* ListView (Traditional 2-column Inbox) */
+          <>
+            {/* Sidebar (List) */}
+            <div className="w-[380px] bg-card rounded-2xl border border-border shadow-sm flex flex-col overflow-hidden">
+              <div className="p-3.5 border-b border-border flex items-center justify-between gap-2">
+                 <div className="relative flex-1 group">
+                    <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                    <input type="text" placeholder={t("inbox.searchConversation")} value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="w-full bg-muted/50 border border-border text-foreground placeholder:text-muted-foreground rounded-xl py-2 pl-9 pr-3 text-xs focus:outline-none focus:ring-1 focus:ring-emerald-500/50" />
+                 </div>
+                 <div className="flex items-center gap-1">
+                   {(platformFilter.toLowerCase() === "facebook" || platformFilter.toLowerCase() === "instagram") && (
+                     <button 
+                       onClick={() => setIsAutoReplyOpen(true)}
+                       title={t("inbox.autoReplySettings")}
+                       className="p-2 hover:bg-muted rounded-xl text-muted-foreground cursor-pointer"
+                     >
+                       <Settings size={16} />
+                     </button>
+                   )}
+                   <button onClick={handleSync} disabled={isSyncing} className="p-2 hover:bg-muted rounded-xl text-muted-foreground cursor-pointer"><RefreshCw size={16} className={isSyncing ? "animate-spin" : ""} /></button>
                  </div>
               </div>
-              <h3 className="text-[15px] font-bold text-muted-foreground uppercase tracking-[0.1em]">{t("inbox.selectConversationPrompt")}</h3>
-           </div>
-         ) : (
-           <>
-             <div className="px-6 py-4 border-b border-border flex items-center justify-between bg-card">
-                <div className="flex items-center gap-3">
-                   <div className="relative shrink-0 w-10 h-10">
-                      {activeConv.participants?.length > 1 ? (
-                        <>
-                           <div className="w-7 h-7 rounded-full overflow-hidden border-2 border-background shadow-sm bg-muted absolute top-0 left-0 z-10 flex">
-                              <SafeAvatar src={activeConv.participants[0].avatar} name={activeConv.participants[0].name} className="w-full h-full object-cover" />
-                           </div>
-                           <div className="w-7 h-7 rounded-full overflow-hidden border-2 border-background shadow-sm bg-[#4A3AFF] absolute bottom-0 right-0 z-0 flex items-center justify-center text-[8px] font-bold text-white">
-                              <SafeAvatar src={activeConv.participants[1].avatar} name={activeConv.participants[1].name} className="w-full h-full object-cover" />
-                           </div>
-                        </>
-                      ) : (
-                        <div className="w-10 h-10 rounded-full overflow-hidden border border-border bg-muted flex">
-                           <SafeAvatar src={activeConv.avatar} name={activeConv.user} className="w-full h-full object-cover" />
-                        </div>
-                      )}
-                      <div className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full bg-card flex items-center justify-center shadow-sm z-20">
-                          {activeConv.platform?.toLowerCase() === "facebook" ? (
-                            <Facebook className="text-[#1877F2] fill-[#1877F2]" size={8} />
-                          ) : activeConv.platform?.toLowerCase() === "instagram" ? (
-                            <Instagram className="text-[#E1306C]" size={8} />
-                          ) : (
-                            <Youtube className="text-[#FF0000] fill-[#FF0000]" size={8} />
-                          )}
+
+              <div className="flex px-2 border-b border-border">
+                 {INBOX_TABS_ORDER.map(tVal => (
+                   <button key={tVal} onClick={() => updateFilters({ tab: tVal })} className={`flex-1 py-3 text-[11px] font-bold uppercase tracking-widest relative ${tabFilter === tVal ? "text-foreground" : "text-muted-foreground"}`}>
+                     {t(`inbox.tabs.${tVal.toLowerCase()}`)}
+                     {tabFilter === tVal && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-foreground" />}
+                   </button>
+                 ))}
+                 <button className="px-4 text-muted-foreground hover:text-foreground"><MoreHorizontal size={18} /></button>
+              </div>
+
+              <div className="flex-1 overflow-y-auto scrollbar-thin">
+                 {loading ? (
+                   <div className="h-40 flex flex-col items-center justify-center gap-3"><Loader2 className="animate-spin text-muted-foreground" size={32} /></div>
+                 ) : inboxData.data?.length === 0 ? (
+                   <div className="p-12 text-center flex flex-col items-center gap-4">
+                      <div className="w-16 h-16 bg-muted rounded-3xl flex items-center justify-center text-muted-foreground"><MessageSquare size={32} /></div>
+                      <p className="text-[11px] font-bold text-muted-foreground uppercase">{t("inbox.noConversations", { tab: t(`inbox.tabs.${tabFilter.toLowerCase()}`).toLowerCase() })}</p>
+                   </div>
+                 ) : (
+                   inboxData.data.map(conv => (
+                     <ConversationItem key={conv.id} conv={conv} activeConv={activeConv} onSelect={setActiveConv} onUpdateStatus={handleUpdateStatus} />
+                   ))
+                 )}
+              </div>
+
+              {/* Pagination Footer */}
+              {inboxData.meta && inboxData.meta.totalPages > 1 && (
+                <div className="px-4 py-3 border-t border-border flex items-center justify-between bg-card text-[11px] font-bold text-muted-foreground">
+                  <button
+                    onClick={() => updateFilters({ page: currentPage - 1 })}
+                    disabled={currentPage <= 1}
+                    className="px-2.5 py-1.5 rounded-lg border border-border disabled:opacity-40 hover:bg-muted transition-colors"
+                  >
+                    {t("inbox.pagination.previous")}
+                  </button>
+                  <span>
+                    {t("inbox.pagination.pageOf", { current: currentPage, total: inboxData.meta.totalPages })}
+                  </span>
+                  <button
+                    onClick={() => updateFilters({ page: currentPage + 1 })}
+                    disabled={currentPage >= inboxData.meta.totalPages}
+                    className="px-2.5 py-1.5 rounded-lg border border-border disabled:opacity-40 hover:bg-muted transition-colors"
+                  >
+                    {t("inbox.pagination.next")}
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* Main Content (Thread) */}
+            <div className="flex-1 bg-card rounded-2xl border border-border shadow-sm flex flex-col overflow-hidden relative">
+               {!activeConv ? (
+                 <div className="flex-1 flex flex-col items-center justify-center p-12 text-center animate-in fade-in duration-500">
+                    <div className="relative mb-8">
+                       <div className="w-64 h-64 bg-muted/40 rounded-[60px] rotate-12 flex items-center justify-center">
+                          <div className="w-48 h-48 bg-card rounded-[50px] -rotate-12 flex items-center justify-center border border-border shadow-sm">
+                             <div className="w-20 h-20 rounded-full bg-muted flex items-center justify-center text-muted-foreground"><AlertCircle size={48} strokeWidth={1.5} /></div>
+                          </div>
                        </div>
                     </div>
-                    <div>
-                      <h4 className="text-[13px] font-bold text-foreground">{activeConv.user}</h4>
-                      <div className="flex items-center gap-1"><MessageSquare className="text-muted-foreground" size={10} /><span className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest">{activeConv.type === 'direct_message' ? t("inbox.privateMessages").toUpperCase() : t("inbox.comments").toUpperCase()}</span></div>
-                   </div>
-                </div>
-                <div className="flex items-center gap-2">
-                   <button onClick={() => handleUpdateStatus(activeConv.id, activeConv.unread ? 'READ' : 'UNREAD')} className={`p-2 transition-colors ${activeConv.unread ? "text-foreground" : "text-muted-foreground hover:text-foreground"}`}><EyeOff size={18} /></button>
-                   <button onClick={() => handleUpdateStatus(activeConv.id, 'RESOLVED')} className={`p-2 transition-colors ${activeConv.status === 'resolved' ? "text-green-500" : "text-muted-foreground hover:text-green-500"}`}><CheckCircle size={18} /></button>
-                   <div className="w-px h-4 bg-border mx-1" />
-                   {videoContext && (
-                     <a href={`https://www.youtube.com/watch?v=${videoContext.id}`} target="_blank" rel="noopener noreferrer" className="p-2 text-muted-foreground hover:bg-muted rounded-lg transition-all"><ExternalLink size={16} /></a>
-                   )}
-                </div>
-             </div>
- 
-             <div className="flex-1 overflow-y-auto p-8 flex flex-col gap-8 scrollbar-thin bg-background">
-                {threadLoading ? (
-                  <div className="flex-1 flex items-center justify-center"><Loader2 className="animate-spin text-muted-foreground" size={40} /></div>
-                ) : (
-                  <>
-                    <VideoContextCard videoContext={videoContext} activeConv={activeConv} />
-                    <div className="flex flex-col gap-8">
-                      {thread.map((msg, i) => (
-                        <div key={i} className={`flex items-start gap-4 w-full group/msg ${msg.from === "me" ? "flex-row-reverse" : ""}`}>
-                           <div className="w-10 h-10 rounded-full overflow-hidden shrink-0 border-2 border-background shadow-sm bg-muted flex items-center justify-center">
-                              {msg.from === "me" ? (
-                                <div className="w-full h-full bg-[#FF4F9A] flex items-center justify-center text-white text-[11px] font-bold">{activeBrand?.name?.charAt(0) || "C"}</div>
-                              ) : (
-                                <SafeAvatar src={msg.avatar} name={msg.author} className="w-full h-full object-cover" />
-                              )}
-                           </div>
-                           
-                           {/* Hover edit/delete action controls */}
-                           {msg.from === "me" && editingReplyId !== msg.id && (
-                             <div className="opacity-0 group-hover/msg:opacity-100 transition-opacity flex gap-2 self-center mr-2">
-                               <button 
-                                 onClick={() => { 
-                                   setEditingReplyId(msg.id); 
-                                   setEditingText(msg.text); 
-                                 }} 
-                                 className="text-[10px] font-bold text-muted-foreground hover:text-foreground transition-all bg-card border border-border px-2 py-1 rounded-lg shadow-sm cursor-pointer"
-                               >
-                                 ✏️ {t("common:edit")}
-                               </button>
-                               <button 
-                                 onClick={() => handleDeleteReply(msg.id)} 
-                                 className="text-[10px] font-bold text-red-400 hover:text-red-600 transition-all bg-card border border-border px-2 py-1 rounded-lg shadow-sm cursor-pointer"
-                               >
-                                 🗑️ {t("common:delete")}
-                               </button>
-                             </div>
-                           )}
-
-                           <div className={`max-w-[70%] space-y-1.5 flex flex-col ${msg.from === "me" ? "items-end" : "items-start"}`}>
-                              {editingReplyId === msg.id ? (
-                                <div className="w-full flex flex-col gap-2 bg-amber-500/10 border border-amber-500/20 p-3 rounded-2xl rounded-tr-none">
-                                  <textarea
-                                    value={editingText}
-                                    onChange={(e) => setEditingText(e.target.value)}
-                                    className="w-full bg-card border border-border text-foreground rounded-xl p-2 text-xs focus:outline-none focus:ring-1 focus:ring-amber-400"
-                                    rows={2}
-                                  />
-                                  <div className="flex justify-end gap-2">
-                                    <button 
-                                      onClick={() => setEditingReplyId(null)} 
-                                      className="px-2.5 py-1 bg-card border border-border rounded-lg text-[10px] font-bold text-muted-foreground hover:bg-muted cursor-pointer"
-                                    >
-                                      {t("common:cancel")}
-                                    </button>
-                                    <button 
-                                      onClick={() => handleUpdateReply(msg.id, editingText)} 
-                                      className="px-2.5 py-1 bg-primary text-primary-foreground rounded-lg text-[10px] font-bold hover:scale-105 transition-all cursor-pointer"
-                                    >
-                                      {t("common:save")}
-                                    </button>
-                                  </div>
-                                </div>
-                              ) : (
-                                <div className={`px-5 py-3 text-[13px] leading-relaxed shadow-sm whitespace-pre-wrap ${msg.from === "me" ? "bg-amber-500/10 text-amber-700 dark:text-amber-300 rounded-2xl rounded-tr-none border border-amber-500/20 self-end" : "bg-indigo-500/10 text-indigo-950 dark:text-indigo-200 rounded-2xl rounded-tl-none border border-indigo-500/20 self-start"}`}>{msg.text}</div>
-                              )}
-                              
-                              <div className={`flex items-center gap-1.5 px-1 ${msg.from === "me" ? "flex-row-reverse" : ""}`}>
-                                 <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest">{msg.from === "me" ? t("inbox.managerRole") : msg.author}</span>
-                                 <span className="text-[14px] text-muted-foreground leading-none">·</span>
-                                 <span className="text-[9px] font-bold text-muted-foreground uppercase">{msg.time}</span>
+                    <h3 className="text-[15px] font-bold text-muted-foreground uppercase tracking-[0.1em]">{t("inbox.selectConversationPrompt")}</h3>
+                 </div>
+               ) : (
+                 <>
+                   <div className="px-6 py-4 border-b border-border flex items-center justify-between bg-card">
+                      <div className="flex items-center gap-3">
+                         <div className="relative shrink-0 w-10 h-10">
+                            {activeConv.participants?.length > 1 ? (
+                              <>
+                                 <div className="w-7 h-7 rounded-full overflow-hidden border-2 border-background shadow-sm bg-muted absolute top-0 left-0 z-10 flex">
+                                    <SafeAvatar src={activeConv.participants[0].avatar} name={activeConv.participants[0].name} className="w-full h-full object-cover" />
+                                 </div>
+                                 <div className="w-7 h-7 rounded-full overflow-hidden border-2 border-background shadow-sm bg-[#4A3AFF] absolute bottom-0 right-0 z-0 flex items-center justify-center text-[8px] font-bold text-white">
+                                    <SafeAvatar src={activeConv.participants[1].avatar} name={activeConv.participants[1].name} className="w-full h-full object-cover" />
+                                 </div>
+                              </>
+                            ) : (
+                              <div className="w-10 h-10 rounded-full overflow-hidden border border-border bg-muted flex">
+                                 <SafeAvatar src={activeConv.avatar} name={activeConv.user} className="w-full h-full object-cover" />
                               </div>
-                           </div>
-                        </div>
-                      ))}
-                    </div>
-                  </>
-                )}
-             </div>
+                            )}
+                            <div className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full bg-card flex items-center justify-center shadow-sm z-20">
+                                {activeConv.platform?.toLowerCase() === "facebook" ? (
+                                  <Facebook className="text-[#1877F2] fill-[#1877F2]" size={8} />
+                                ) : activeConv.platform?.toLowerCase() === "instagram" ? (
+                                  <Instagram className="text-[#E1306C]" size={8} />
+                                ) : (
+                                  <Youtube className="text-[#FF0000] fill-[#FF0000]" size={8} />
+                                )}
+                             </div>
+                          </div>
+                          <div>
+                            <h4 className="text-[13px] font-bold text-foreground">{activeConv.user}</h4>
+                            <div className="flex items-center gap-1"><MessageSquare className="text-muted-foreground" size={10} /><span className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest">{activeConv.type === 'direct_message' ? t("inbox.privateMessages").toUpperCase() : t("inbox.comments").toUpperCase()}</span></div>
+                         </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                         <button onClick={() => handleUpdateStatus(activeConv.id, activeConv.unread ? 'READ' : 'UNREAD')} className={`p-2 transition-colors ${activeConv.unread ? "text-foreground" : "text-muted-foreground hover:text-foreground"}`}><EyeOff size={18} /></button>
+                         <button onClick={() => handleUpdateStatus(activeConv.id, 'RESOLVED')} className={`p-2 transition-colors ${activeConv.status === 'resolved' ? "text-green-500" : "text-muted-foreground hover:text-green-500"}`}><CheckCircle size={18} /></button>
+                         <div className="w-px h-4 bg-border mx-1" />
+                         {videoContext && (
+                           <a href={`https://www.youtube.com/watch?v=${videoContext.id}`} target="_blank" rel="noopener noreferrer" className="p-2 text-muted-foreground hover:bg-muted rounded-lg transition-all"><ExternalLink size={16} /></a>
+                         )}
+                      </div>
+                   </div>
 
-             <ReplyComposer replyText={replyText} setReplyText={setReplyText} onReply={handleReply} isReplying={isReplying} />
-           </>
-         )}
+                   <div className="flex-1 overflow-y-auto p-8 flex flex-col gap-8 scrollbar-thin bg-background">
+                      {threadLoading ? (
+                        <div className="flex-1 flex items-center justify-center"><Loader2 className="animate-spin text-muted-foreground" size={40} /></div>
+                      ) : (
+                        <>
+                          <VideoContextCard videoContext={videoContext} activeConv={activeConv} />
+                          <div className="flex flex-col gap-8">
+                            {thread.map((msg, i) => (
+                              <div key={i} className={`flex items-start gap-4 w-full group/msg ${msg.from === "me" ? "flex-row-reverse" : ""}`}>
+                                 <div className="w-10 h-10 rounded-full overflow-hidden shrink-0 border-2 border-background shadow-sm bg-muted flex items-center justify-center">
+                                    {msg.from === "me" ? (
+                                      <div className="w-full h-full bg-[#FF4F9A] flex items-center justify-center text-white text-[11px] font-bold">{activeBrand?.name?.charAt(0) || "C"}</div>
+                                    ) : (
+                                      <SafeAvatar src={msg.avatar} name={msg.author} className="w-full h-full object-cover" />
+                                    )}
+                                 </div>
+
+                                 <div className={`max-w-[70%] space-y-1.5 flex flex-col ${msg.from === "me" ? "items-end" : "items-start"}`}>
+                                    <div className={`px-5 py-3 text-[13px] leading-relaxed shadow-sm whitespace-pre-wrap ${msg.from === "me" ? "bg-amber-500/10 text-amber-700 dark:text-amber-300 rounded-2xl rounded-tr-none border border-amber-500/20 self-end" : "bg-indigo-500/10 text-indigo-950 dark:text-indigo-200 rounded-2xl rounded-tl-none border border-indigo-500/20 self-start"}`}>{msg.text}</div>
+                                    <div className={`flex items-center gap-1.5 px-1 ${msg.from === "me" ? "flex-row-reverse" : ""}`}>
+                                       <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest">{msg.from === "me" ? t("inbox.managerRole") : msg.author}</span>
+                                       <span className="text-[14px] text-muted-foreground leading-none">·</span>
+                                       <span className="text-[9px] font-bold text-muted-foreground uppercase">{msg.time}</span>
+                                    </div>
+                                 </div>
+                              </div>
+                            ))}
+                          </div>
+                        </>
+                      )}
+                   </div>
+
+                   <ReplyComposer replyText={replyText} setReplyText={setReplyText} onReply={handleReply} isReplying={isReplying} platform={activeConv?.platform} />
+                 </>
+               )}
+            </div>
+          </>
+        )}
+
+        {/* Floating Action Controls on Right Margin */}
+        <div className="fixed right-3 bottom-6 flex flex-col gap-3 z-30 select-none">
+          <button
+            type="button"
+            title="Translate"
+            className="w-10 h-10 rounded-2xl bg-card border border-border shadow-lg flex items-center justify-center text-foreground hover:bg-muted transition-transform hover:scale-105 cursor-pointer"
+          >
+            <Languages size={18} />
+          </button>
+          <button
+            type="button"
+            title="Help & Support"
+            className="w-10 h-10 rounded-full bg-slate-900 text-white border border-slate-700 shadow-xl flex items-center justify-center hover:bg-slate-800 transition-transform hover:scale-105 cursor-pointer"
+          >
+            <HelpCircle size={20} />
+          </button>
+        </div>
       </div>
 
       {/* Auto-Reply Settings Modal */}

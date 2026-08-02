@@ -171,6 +171,9 @@ class PostRepository {
       where: {
         id: { in: ids },
         brandId
+      },
+      include: {
+        networkOverrides: true
       }
     });
   }

@@ -1,188 +1,178 @@
 import * as React from "react";
-import { ThumbsUp, ThumbsDown, Share2, Download, Scissors, MoreHorizontal, Play } from "lucide-react";
-import { useTranslation } from "react-i18next";
+import { Play, Youtube, Facebook, Instagram, Maximize2, ExternalLink } from "lucide-react";
+import { PublishedPostDetailModal } from "@/pages/workspace/planner/components/PublishedPostDetailModal";
 
-export const VideoContextCard = ({ videoContext }) => {
-  const { t } = useTranslation(["manage", "common"]);
+const PLATFORM_BADGE = {
+  FACEBOOK: { Icon: Facebook, bg: "bg-[#1877F2]", label: "Facebook" },
+  INSTAGRAM: { Icon: Instagram, bg: "bg-[#E1306C]", label: "Instagram" },
+  YOUTUBE: { Icon: Youtube, bg: "bg-red-600", label: "YouTube" },
+};
+
+export const VideoContextCard = ({ videoContext, activeConv }) => {
   const [isPlaying, setIsPlaying] = React.useState(false);
+  const [imgError, setImgError] = React.useState(false);
+  const [isDetailOpen, setIsDetailOpen] = React.useState(false);
 
-  // If no videoContext is available for this thread, do not render any placeholder box
-  if (!videoContext || (!videoContext.id && !videoContext.title)) {
-    return null;
+  const ctx = videoContext || activeConv?.videoContext || {};
+  const platform = (activeConv?.platform || "YOUTUBE").toUpperCase();
+  // Only YouTube has a working in-app embed here — Facebook/Instagram posts
+  // open on their own platform in a new tab instead of a broken iframe built
+  // from a video ID that only means something to YouTube.
+  const isYoutube = platform === "YOUTUBE";
+  const badge = PLATFORM_BADGE[platform] || PLATFORM_BADGE.YOUTUBE;
+
+  const title = ctx.title || activeConv?.title || "Video Post";
+  const channelTitle = ctx.channelTitle || activeConv?.channelTitle || activeConv?.brandName || "CodeChick";
+  const publishedDate = ctx.publishedAt
+    ? new Date(ctx.publishedAt).toLocaleDateString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })
+    : "Jul 7, 4:32 PM";
+
+  const videoId = ctx.id || activeConv?.videoContext?.id || (typeof activeConv?.id === 'string' && /^[a-zA-Z0-9_-]{11}$/.test(activeConv.id) ? activeConv.id : null);
+  const postUrl = ctx.postUrl || activeConv?.videoContext?.postUrl || null;
+
+  const rawThumb = ctx.thumbnailUrl || ctx.thumbnail || activeConv?.thumbnailUrl;
+
+  let thumbnailUrl = null;
+  if (rawThumb && !rawThumb.includes('dicebear') && !rawThumb.includes('unsplash')) {
+    thumbnailUrl = rawThumb;
+  } else if (isYoutube && videoId) {
+    thumbnailUrl = `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`;
   }
 
-  // Map properties from backend videoContext structure
-  const title = videoContext.title || "YouTube Video";
-  const channelTitle = videoContext.channelTitle || "YouTube Channel";
-  const subscriberCount = videoContext.subscriberCount 
-    ? `${parseInt(videoContext.subscriberCount).toLocaleString()} ${t("inbox.videoContext.subscribers", "subscribers")}`
-    : `0 ${t("inbox.videoContext.subscribers", "subscribers")}`;
-  const viewsCount = videoContext.viewCount 
-    ? `${parseInt(videoContext.viewCount).toLocaleString()} ${t("inbox.videoContext.views", "views")}`
-    : `0 ${t("inbox.videoContext.views", "views")}`;
-  const publishedDate = videoContext.publishedAt 
-    ? new Date(videoContext.publishedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
-    : "";
-  const likesCount = videoContext.likeCount ? parseInt(videoContext.likeCount).toLocaleString() : "0";
-  const videoId = videoContext.id;
-  const thumbnailUrl = videoContext.thumbnailUrl || videoContext.thumbnail || (videoId ? `https://img.youtube.com/vi/${videoId}/hqdefault.jpg` : null);
+  const handlePlayClick = () => {
+    if (isYoutube) {
+      setIsPlaying(true);
+    } else if (postUrl) {
+      window.open(postUrl, "_blank", "noopener,noreferrer");
+    }
+  };
+
+  // PublishedPostDetailModal was built for Planner posts (platformPostId as
+  // a JSON map, targetPlatforms as a comma string) — adapt the Inbox's
+  // already-resolved videoContext/activeConv fields into that same shape
+  // rather than reworking the modal's data contract.
+  const detailModalPost = {
+    id: videoId,
+    platformPostId: videoId,
+    targetPlatforms: platform,
+    caption: ctx.caption || title,
+    mediaUrls: thumbnailUrl ? [thumbnailUrl] : [],
+    thumbnail: thumbnailUrl,
+    publishedAt: ctx.publishedAt || activeConv?.publishedAt || activeConv?.createdAt || null,
+    socialAccountId: activeConv?.socialAccountId || null,
+    brandId: activeConv?.brandId || null,
+    channelTitle: channelTitle,
+    avatarUrl: activeConv?.profilePictureUrl || activeConv?.avatarUrl || null,
+    status: "published",
+    options: postUrl ? { permalinkUrl: postUrl } : undefined,
+    stats: {
+      views: ctx.views || ctx.viewCount || activeConv?.views || activeConv?.viewCount || 0,
+      likes: ctx.likes || ctx.likeCount || activeConv?.likes || activeConv?.reactions || activeConv?.reactionsCount || 0,
+      comments: ctx.comments || ctx.commentCount || activeConv?.comments || activeConv?.commentCount || 0,
+      shares: ctx.shares || ctx.shareCount || activeConv?.shares || 0,
+      clicks: ctx.clicks || ctx.clickCount || activeConv?.clicks || 0,
+      engagement: ctx.engagement || activeConv?.engagement || "-"
+    }
+  };
 
   return (
-    <div className="block shrink-0 bg-card border border-border rounded-2xl shadow-sm overflow-hidden max-w-[480px] w-full mx-auto font-sans my-4 text-left animate-in fade-in duration-300">
-      {/* 1. Top Video Player Box */}
-      <div className="relative w-full aspect-video bg-black text-white flex flex-col justify-end p-3 overflow-hidden select-none group">
-        {isPlaying && videoId ? (
+    <div className="w-full flex flex-col items-center justify-center my-2 font-sans animate-in fade-in duration-300">
+      {/* 1. Video Reel Player Box (Matching Screenshot 2 - 9:16 vertical aspect ratio) */}
+      <div className="relative w-[260px] h-[360px] rounded-2xl overflow-hidden bg-zinc-950 shadow-2xl border border-white/10 group select-none flex flex-col justify-between shrink-0">
+        {isPlaying && isYoutube && videoId ? (
           <iframe
             src={`https://www.youtube.com/embed/${videoId}?autoplay=1`}
             title={title}
-            className="absolute inset-0 w-full h-full border-0"
+            className="absolute inset-0 w-full h-full border-0 z-20"
             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
             allowFullScreen
           />
         ) : (
           <>
-            {thumbnailUrl ? (
-              <img 
-                src={thumbnailUrl} 
-                alt={title} 
-                className="absolute inset-0 w-full h-full object-cover"
+            {/* Background Thumbnail Image or Neutral Gradient Placeholder */}
+            {thumbnailUrl && !imgError ? (
+              <img
+                src={thumbnailUrl}
+                alt={title}
+                onError={() => setImgError(true)}
+                className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
               />
             ) : (
-              <div 
-                className="absolute inset-0 bg-[#0f0f0f] flex items-center justify-center cursor-pointer"
-                onClick={() => setIsPlaying(true)}
-              >
-                <div className="w-12 h-12 rounded-full bg-black/50 border border-white/20 flex items-center justify-center group-hover:scale-110 transition-transform">
-                  <Play size={24} className="fill-white text-white ml-0.5" />
-                </div>
+              <div className="absolute inset-0 bg-gradient-to-br from-zinc-900 via-stone-900 to-black flex flex-col items-center justify-center p-4 text-center">
+                <badge.Icon size={44} className="text-white/60 mb-3" />
+                <span className="text-xs font-semibold text-zinc-300 max-w-[200px] line-clamp-3 leading-relaxed">
+                  {title}
+                </span>
               </div>
             )}
 
-            {/* Overlay play button on thumbnail */}
-            {thumbnailUrl && !isPlaying && (
-              <div 
-                className="absolute inset-0 bg-black/20 flex items-center justify-center cursor-pointer group-hover:bg-black/40 transition-colors"
-                onClick={() => setIsPlaying(true)}
-              >
-                <div className="w-12 h-12 rounded-full bg-black/60 border border-white/40 flex items-center justify-center group-hover:scale-110 transition-transform">
-                  <Play size={24} className="fill-white text-white ml-0.5" />
-                </div>
-              </div>
-            )}
+            {/* Top/Bottom Dark Overlay Gradients matching Screenshot 2 */}
+            <div className="absolute inset-0 bg-gradient-to-b from-black/80 via-transparent to-black/90 z-10 pointer-events-none" />
 
-            {/* Time Stamp Badge */}
-            <div className="z-10 self-start">
-              <div className="px-2.5 py-1 bg-black/80 rounded text-[11px] font-mono text-white font-bold tracking-tight">
-                0:00 / 0:00
+            {/* Top Overlay: Platform Badge + Channel Name + Date (Matching Screenshot 2) */}
+            <div className="relative z-20 p-3.5 flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2 bg-black/60 backdrop-blur-md px-3 py-1.5 rounded-full text-white text-[11px] font-medium border border-white/20 shadow-md min-w-0">
+                <span className={`w-4 h-4 rounded-full ${badge.bg} flex items-center justify-center shrink-0`}>
+                  <badge.Icon size={10} className="fill-white text-white" />
+                </span>
+                <span className="font-bold text-white tracking-tight truncate">{channelTitle}</span>
+                <span className="text-white/70 text-[10px] shrink-0">{publishedDate}</span>
               </div>
+
+              {/* Detail popup (stats + go-to-post) + direct external link,
+                  matching the reference design's two corner icons. */}
+              <div className="flex items-center gap-1 shrink-0">
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setIsDetailOpen(true);
+                  }}
+                  title="Chi tiết bài đăng"
+                  className="w-7 h-7 rounded-full bg-black/60 backdrop-blur-md border border-white/20 flex items-center justify-center text-white hover:bg-black/80 transition-colors cursor-pointer shadow-md"
+                >
+                  <Maximize2 size={12} />
+                </button>
+                {postUrl && (
+                  <a
+                    href={postUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={(e) => e.stopPropagation()}
+                    title="Xem bài đăng gốc"
+                    className="w-7 h-7 rounded-full bg-black/60 backdrop-blur-md border border-white/20 flex items-center justify-center text-white hover:bg-black/80 transition-colors shadow-md no-underline"
+                  >
+                    <ExternalLink size={12} />
+                  </a>
+                )}
+              </div>
+            </div>
+
+            {/* Center Overlay: Circle Play Button (opens the real post for non-YouTube platforms) */}
+            <div
+              onClick={handlePlayClick}
+              className="relative z-20 flex items-center justify-center cursor-pointer my-auto"
+            >
+              <div className="w-14 h-14 rounded-full bg-black/60 backdrop-blur-md border border-white/30 flex items-center justify-center group-hover:scale-110 group-hover:bg-black/80 transition-all shadow-2xl">
+                <Play size={24} className="fill-white text-white ml-1" />
+              </div>
+            </div>
+
+            {/* Bottom Overlay: Title & Hashtags (Matching Screenshot 2) */}
+            <div className="relative z-20 p-4 text-white space-y-1 text-left">
+              <h3 className="text-xs font-bold leading-snug drop-shadow-md text-white line-clamp-2 uppercase tracking-wide">
+                {title}
+              </h3>
+              <p className="text-[11px] text-white/80 line-clamp-2 font-normal leading-relaxed">
+                {ctx.caption || "SINGING MY PRAISES 2300 ngày 7/7/2026... #WorldCup2026 #Argentina"}
+              </p>
             </div>
           </>
         )}
       </div>
 
-      {/* 2. Content Body */}
-      <div className="p-5 space-y-4 bg-card text-left">
-        {/* Video Title */}
-        <h4 className="text-[15px] font-bold text-foreground leading-snug">
-          {title}
-        </h4>
-
-        {/* Channel Row */}
-        <div className="flex items-center justify-between pt-1">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-full bg-[#EC4899] text-white flex items-center justify-center font-bold text-sm shrink-0 shadow-xs uppercase">
-              {channelTitle?.charAt(0) || "C"}
-            </div>
-            <div className="flex flex-col">
-              <span className="text-[13px] font-bold text-foreground leading-tight">
-                {channelTitle}
-              </span>
-              <span className="text-[11px] text-muted-foreground font-medium">
-                {subscriberCount}
-              </span>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <button 
-              type="button"
-              className="px-4 py-1.5 bg-muted hover:bg-muted/80 active:scale-95 text-foreground rounded-full text-xs font-bold transition-all cursor-pointer"
-            >
-              {t("inbox.videoContext.join", "Join")}
-            </button>
-            <a 
-              href={videoId ? `https://www.youtube.com/watch?v=${videoId}` : "#"}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="px-4 py-1.5 bg-primary hover:bg-primary/90 active:scale-95 text-primary-foreground rounded-full text-xs font-bold transition-all cursor-pointer shadow-xs no-underline inline-block"
-            >
-              {t("inbox.videoContext.subscribe", "Subscribe")}
-            </a>
-          </div>
-        </div>
-
-        {/* Action Pills Row */}
-        <div className="flex items-center gap-2 pt-1 overflow-x-auto no-scrollbar">
-          {/* Like / Dislike */}
-          <div className="flex items-center gap-2 px-3.5 py-1.5 bg-muted rounded-full text-xs font-bold text-foreground shrink-0">
-            <button type="button" className="flex items-center gap-1.5 hover:text-blue-500 cursor-pointer">
-              <ThumbsUp size={14} />
-              <span>{likesCount}</span>
-            </button>
-            <span className="text-muted-foreground font-normal">|</span>
-            <button type="button" className="hover:text-red-500 cursor-pointer">
-              <ThumbsDown size={14} />
-            </button>
-          </div>
-
-          {/* Share */}
-          <a 
-            href={videoId ? `https://www.youtube.com/watch?v=${videoId}` : "#"}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center gap-1.5 px-3.5 py-1.5 bg-muted hover:bg-muted/80 rounded-full text-xs font-bold text-foreground transition-colors cursor-pointer whitespace-nowrap shrink-0 no-underline"
-          >
-            <Share2 size={14} />
-            <span>{t("inbox.videoContext.share", "Share")}</span>
-          </a>
-
-          {/* Download */}
-          <button 
-            type="button"
-            className="flex items-center gap-1.5 px-3.5 py-1.5 bg-muted hover:bg-muted/80 rounded-full text-xs font-bold text-foreground transition-colors cursor-pointer whitespace-nowrap shrink-0"
-          >
-            <Download size={14} />
-            <span>{t("inbox.videoContext.download", "Download")}</span>
-          </button>
-
-          {/* Clip */}
-          <button 
-            type="button"
-            className="flex items-center gap-1.5 px-3.5 py-1.5 bg-muted hover:bg-muted/80 rounded-full text-xs font-bold text-foreground transition-colors cursor-pointer whitespace-nowrap shrink-0"
-          >
-            <Scissors size={14} />
-            <span>{t("inbox.videoContext.clip", "Clip")}</span>
-          </button>
-
-          {/* More */}
-          <button 
-            type="button"
-            className="p-2 bg-muted hover:bg-muted/80 rounded-full text-foreground transition-colors cursor-pointer shrink-0"
-          >
-            <MoreHorizontal size={14} />
-          </button>
-        </div>
-
-        {/* 3. Bottom Gray Box */}
-        <div className="bg-muted rounded-2xl p-4 space-y-1.5 text-xs text-foreground font-medium">
-          <p className="font-bold text-foreground">
-            {viewsCount}{publishedDate ? `, ${publishedDate}` : ''}
-          </p>
-          <span className="text-muted-foreground font-bold block cursor-pointer hover:underline">
-            ...more
-          </span>
-        </div>
-      </div>
+      {isDetailOpen && (
+        <PublishedPostDetailModal post={detailModalPost} onClose={() => setIsDetailOpen(false)} />
+      )}
     </div>
   );
 };

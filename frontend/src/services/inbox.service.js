@@ -6,6 +6,16 @@ class InboxService {
     return data;
   }
 
+  async getInboxPosts(brandId, searchParamsString = '') {
+    const data = await apiV2.get(`/social/inbox/posts?brandId=${brandId}&${searchParamsString}`);
+    return data;
+  }
+
+  async getCommentsByPost(brandId, postId, searchParamsString = '') {
+    const data = await apiV2.get(`/social/inbox/posts/${postId}/comments?brandId=${brandId}&${searchParamsString}`);
+    return data;
+  }
+
   async getThread(itemId) {
     const data = await apiV2.get(`/social/inbox/${itemId}`);
     return data;
@@ -23,6 +33,11 @@ class InboxService {
 
   async replyInbox(payload) {
     const data = await apiV2.post('/social/inbox/reply', payload);
+    return data;
+  }
+
+  async postNewComment(payload) {
+    const data = await apiV2.post('/social/inbox/comment', payload);
     return data;
   }
 

@@ -75,6 +75,9 @@ export function ComposerHeader() {
   const { t } = useTranslation(["planner", "common"]);
   const {
     selectedPlatforms,
+    selectedAccountIds,
+    isLockedToAccount,
+    toggleAccount,
     togglePlatform,
     activePlatform,
     setActivePlatform,
@@ -95,6 +98,8 @@ export function ComposerHeader() {
 
   const [showTypeDropdown, setShowTypeDropdown] = useState(false);
 
+  const connectedAccounts = activeBrand?.socialAccounts?.filter(sa => sa.isConnected) || [];
+
   // Hardcoded access variables to match PostCreator.jsx
   const hasFacebookAccess = true;
   const hasTiktokAccess = true;
@@ -103,7 +108,6 @@ export function ComposerHeader() {
 
   const isPlatformConnected = (platformId) => {
     if (!activeBrand || !activeBrand.socialAccounts) return false;
-    // Twitch has no post-publishing API (stream-only platform), so it must never appear as a selectable Post Creator target
     if (platformId === PLATFORMS.TWITCH) return false;
     const targetApiKey = PLATFORM_API_KEY[platformId];
     if (!targetApiKey) return false;
@@ -113,6 +117,9 @@ export function ComposerHeader() {
   };
 
   const shouldShowPlatform = (platformId) => {
+    // Locked to one channel account — only its own platform button is
+    // relevant; other connected platforms on the brand have no bearing here.
+    if (isLockedToAccount) return selectedPlatforms.includes(platformId);
     return isPlatformConnected(platformId) || selectedPlatforms.includes(platformId);
   };
 
@@ -231,96 +238,165 @@ export function ComposerHeader() {
   const getPlatformAccess = (platformId) => accessRightsStrategyMap[platformId] ?? true;
 
   return (
-    <div className="shrink-0 px-8 py-5 border-b border-border flex items-center justify-between bg-card z-10">
-      <div className="flex items-center gap-6">
-        {/* Platform Icons Toolbar */}
-        <div className="flex items-center gap-4">
-          {SUPPORTED_PLATFORM_BUTTONS.filter(p => shouldShowPlatform(p.id)).map((p) => {
-            const isSelected = selectedPlatforms.includes(p.id);
-            const isActive = activePlatform === p.id;
-            const lockInfo = getPlatformLockInfo(p.id);
-            const hasAccess = getPlatformAccess(p.id);
+    <div className="shrink-0 px-8 py-4 border-b border-border flex flex-col gap-3 bg-card z-10">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-6">
+          {/* Platform Icons Toolbar */}
+          <div className="flex items-center gap-4">
+            {SUPPORTED_PLATFORM_BUTTONS.filter(p => shouldShowPlatform(p.id)).map((p) => {
+              const isSelected = selectedPlatforms.includes(p.id);
+              const isActive = activePlatform === p.id;
+              const lockInfo = getPlatformLockInfo(p.id);
+              const hasAccess = getPlatformAccess(p.id);
 
-            return (
-              <div key={p.id} className="flex items-center gap-2 relative">
-                <button
-                  type="button"
-                  title={lockInfo.isFullyLocked ? `${p.label} hiện đang bị khóa: ${lockInfo.reason}` : p.label}
-                  data-testid={`platform-select-${p.id}`}
-                  onClick={() => handlePlatformClick(p.id, hasAccess, p.productId)}
-                  className={`w-9 h-9 rounded-full flex items-center justify-center transition-all cursor-pointer relative ${
-                    lockInfo.isFullyLocked
-                      ? 'bg-red-50 text-red-400 border border-red-200 opacity-60 cursor-not-allowed'
-                      : isSelected
-                        ? isActive
-                          ? p.activeBgClass
-                          : p.inactiveBgClass
-                        : 'text-muted-foreground hover:text-muted-foreground hover:bg-muted'
-                  }`}
-                >
-                  <PlatformIcon platform={p.id} size={16} variant="flat" className={isSelected && isActive ? 'text-white' : ''} />
-                  {isSelected && isActive && p.hasTypeDropdown && (
-                    <span className="absolute -bottom-1 -right-1 bg-card border border-border rounded-md p-0.5 text-foreground shadow-sm flex items-center justify-center">
-                      <LayoutGrid size={8} strokeWidth={3} />
-                    </span>
-                  )}
-                  {!hasAccess && !lockInfo.isFullyLocked && (
-                    <span className="absolute -top-1 -right-1 bg-card border border-purple-100 text-purple-600 rounded-full p-0.5 shadow-sm">
-                      <Lock size={7} strokeWidth={3} />
-                    </span>
-                  )}
-                  {lockInfo.isFullyLocked && (
-                    <span className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full p-0.5 shadow-sm border border-white">
-                      <Lock size={7} strokeWidth={3} />
-                    </span>
-                  )}
-                </button>
-                {isSelected && isActive && p.hasTypeDropdown && renderTypeDropdown()}
-              </div>
-            );
-          })}
+              return (
+                <div key={p.id} className="flex items-center gap-2 relative">
+                  <button
+                    type="button"
+                    title={
+                      isLockedToAccount
+                        ? `Đang đăng riêng cho kênh này (${p.label})`
+                        : lockInfo.isFullyLocked
+                          ? `${p.label} hiện đang bị khóa: ${lockInfo.reason}`
+                          : p.label
+                    }
+                    data-testid={`platform-select-${p.id}`}
+                    onClick={() => !isLockedToAccount && handlePlatformClick(p.id, hasAccess, p.productId)}
+                    disabled={isLockedToAccount}
+                    className={`w-9 h-9 rounded-full flex items-center justify-center transition-all relative ${
+                      isLockedToAccount
+                        ? `${isActive ? p.activeBgClass : p.inactiveBgClass} cursor-default`
+                        : lockInfo.isFullyLocked
+                          ? 'bg-red-50 text-red-400 border border-red-200 opacity-60 cursor-not-allowed'
+                          : isSelected
+                            ? isActive
+                              ? `${p.activeBgClass} cursor-pointer`
+                              : `${p.inactiveBgClass} cursor-pointer`
+                            : 'text-muted-foreground hover:text-muted-foreground hover:bg-muted cursor-pointer'
+                    }`}
+                  >
+                    <PlatformIcon platform={p.id} size={16} variant="flat" className={isSelected && isActive ? 'text-white' : ''} />
+                    {isSelected && isActive && p.hasTypeDropdown && (
+                      <span className="absolute -bottom-1 -right-1 bg-card border border-border rounded-md p-0.5 text-foreground shadow-sm flex items-center justify-center">
+                        <LayoutGrid size={8} strokeWidth={3} />
+                      </span>
+                    )}
+                    {!hasAccess && !lockInfo.isFullyLocked && (
+                      <span className="absolute -top-1 -right-1 bg-card border border-purple-100 text-purple-600 rounded-full p-0.5 shadow-sm">
+                        <Lock size={7} strokeWidth={3} />
+                      </span>
+                    )}
+                    {lockInfo.isFullyLocked && (
+                      <span className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full p-0.5 shadow-sm border border-white">
+                        <Lock size={7} strokeWidth={3} />
+                      </span>
+                    )}
+                  </button>
+                  {isSelected && isActive && p.hasTypeDropdown && renderTypeDropdown()}
+                </div>
+              );
+            })}
 
-          {/* Plus Add Button */}
-          <button type="button" className="w-8 h-8 rounded-full bg-muted border border-dashed border-border flex items-center justify-center text-muted-foreground hover:border-gray-400 hover:text-muted-foreground transition-all cursor-pointer">
-            <Plus size={16} />
+            {/* Plus Add Button — hidden when locked to a single channel account */}
+            {!isLockedToAccount && (
+              <button type="button" className="w-8 h-8 rounded-full bg-muted border border-dashed border-border flex items-center justify-center text-muted-foreground hover:border-gray-400 hover:text-muted-foreground transition-all cursor-pointer">
+                <Plus size={16} />
+              </button>
+            )}
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2">
+          {/* Toggle: Cài đặt theo mạng */}
+          <button
+            type="button"
+            onClick={() => setIsEditByNetwork(!isEditByNetwork)}
+            title={isEditByNetwork ? "Tắt cài đặt theo mạng" : "Bật cài đặt theo mạng (Custom nội dung riêng theo platform)"}
+            className={`flex items-center gap-1.5 px-3 py-1.5 border rounded-xl transition-all cursor-pointer font-sans shadow-sm text-[11px] font-bold uppercase tracking-wider ${
+              isEditByNetwork
+                ? "bg-gray-900 text-white border-gray-900"
+                : "bg-card text-muted-foreground border-border hover:bg-muted"
+            }`}
+          >
+            <Settings size={13} />
+            <span className="hidden sm:inline">Theo mạng</span>
+            {isEditByNetwork && (
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shrink-0" />
+            )}
+          </button>
+
+          {/* Notes button */}
+          <button 
+            type="button"
+            onClick={() => setIsNotesOpen(true)}
+            className="flex items-center gap-1.5 px-3 py-1.5 border border-border bg-card hover:bg-muted text-muted-foreground rounded-xl transition-all cursor-pointer font-sans shadow-sm relative"
+          >
+            <FileText size={14} />
+            <span className="text-[11px] font-bold uppercase tracking-wider font-sans">{t("planner:postCreator.header.notes")}</span>
+            {notes && notes.length > 0 && (
+              <span className="absolute -top-1 -right-1 bg-black text-white text-[8px] font-black w-4 h-4 rounded-full flex items-center justify-center border border-white animate-scale-in">
+                {notes.length}
+              </span>
+            )}
           </button>
         </div>
       </div>
-      <div className="flex items-center gap-2">
-        {/* Toggle: Cài đặt theo mạng */}
-        <button
-          type="button"
-          onClick={() => setIsEditByNetwork(!isEditByNetwork)}
-          title={isEditByNetwork ? "Tắt cài đặt theo mạng" : "Bật cài đặt theo mạng (Custom nội dung riêng theo platform)"}
-          className={`flex items-center gap-1.5 px-3 py-1.5 border rounded-xl transition-all cursor-pointer font-sans shadow-sm text-[11px] font-bold uppercase tracking-wider ${
-            isEditByNetwork
-              ? "bg-gray-900 text-white border-gray-900"
-              : "bg-card text-muted-foreground border-border hover:bg-muted"
-          }`}
-        >
-          <Settings size={13} />
-          <span className="hidden sm:inline">Theo mạng</span>
-          {/* Indicator dot khi bật */}
-          {isEditByNetwork && (
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shrink-0" />
-          )}
-        </button>
 
-        {/* Notes button */}
-        <button 
-          type="button"
-          onClick={() => setIsNotesOpen(true)}
-          className="flex items-center gap-1.5 px-3 py-1.5 border border-border bg-card hover:bg-muted text-muted-foreground rounded-xl transition-all cursor-pointer font-sans shadow-sm relative"
-        >
-          <FileText size={14} />
-          <span className="text-[11px] font-bold uppercase tracking-wider font-sans">{t("planner:postCreator.header.notes")}</span>
-          {notes && notes.length > 0 && (
-            <span className="absolute -top-1 -right-1 bg-black text-white text-[8px] font-black w-4 h-4 rounded-full flex items-center justify-center border border-white animate-scale-in">
-              {notes.length}
-            </span>
-          )}
-        </button>
-      </div>
+      {/* Per-Account Selection Bar — replaced by a fixed label when locked to a single channel account */}
+      {isLockedToAccount ? (
+        (() => {
+          const lockedAccount = connectedAccounts.find((sa) => selectedAccountIds.includes(sa.id));
+          if (!lockedAccount) return null;
+          const platformKey = (lockedAccount.platform || "").toLowerCase();
+          return (
+            <div className="flex items-center gap-2 pt-1.5 border-t border-gray-100">
+              <span className="text-[10px] font-black uppercase text-muted-foreground tracking-wider mr-1">Đăng riêng cho kênh:</span>
+              <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold border bg-slate-900 text-white border-slate-900 shadow-sm">
+                {lockedAccount.avatarUrl ? (
+                  <img src={lockedAccount.avatarUrl} alt={lockedAccount.accountName} className="w-4 h-4 rounded-full object-cover shrink-0" />
+                ) : (
+                  <PlatformIcon platform={platformKey} size={13} className="shrink-0" />
+                )}
+                <span className="truncate max-w-[160px] font-sans text-[11px]">{lockedAccount.accountName || platformKey}</span>
+                <Lock size={10} className="shrink-0 opacity-70" />
+              </div>
+            </div>
+          );
+        })()
+      ) : connectedAccounts.length > 0 && (
+        <div className="flex items-center gap-2 pt-1.5 border-t border-gray-100 flex-wrap">
+          <span className="text-[10px] font-black uppercase text-muted-foreground tracking-wider mr-1">Tài khoản đăng:</span>
+          {connectedAccounts.map((sa) => {
+            const isSelected = selectedAccountIds.includes(sa.id);
+            const platformKey = (sa.platform || "").toLowerCase();
+            return (
+              <button
+                key={sa.id}
+                type="button"
+                onClick={() => toggleAccount(sa.id)}
+                title={`Đăng bài lên: ${sa.accountName || platformKey}`}
+                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold transition-all cursor-pointer border ${
+                  isSelected
+                    ? "bg-slate-900 text-white border-slate-900 shadow-sm"
+                    : "bg-muted text-muted-foreground border-border hover:bg-gray-200"
+                }`}
+              >
+                {sa.avatarUrl ? (
+                  <img src={sa.avatarUrl} alt={sa.accountName} className="w-4 h-4 rounded-full object-cover shrink-0" />
+                ) : (
+                  <PlatformIcon platform={platformKey} size={13} className="shrink-0" />
+                )}
+                <span className="truncate max-w-[120px] font-sans text-[11px]">{sa.accountName || platformKey}</span>
+                <div className={`w-3.5 h-3.5 rounded-full flex items-center justify-center text-[9px] shrink-0 ${
+                  isSelected ? "bg-white text-slate-900 font-extrabold" : "border border-gray-300"
+                }`}>
+                  {isSelected ? "✓" : ""}
+                </div>
+              </button>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
