@@ -4,15 +4,16 @@
  * @param {Object} post - The post object from state/API
  * @returns {string|null} The direct platform post URL, or fallback platform URL, or null
  */
-export function getPlatformPostUrl(post) {
-  if (!post) return null;
+/**
+ * Resolve which platform a post targets and its real platform-side post ID.
+ * post.platformPostId is either a legacy plain string (YouTube-only posts)
+ * or a JSON map of { PLATFORM: id } for multi-platform posts.
+ *
+ * @returns {{ platform: string, platformPostId: string|null }}
+ */
+export function resolvePlatformTarget(post) {
+  if (!post) return { platform: '', platformPostId: null };
 
-  // 1. Direct permalink in metadata/options if available
-  const options = typeof post.options === 'string' ? safeJsonParse(post.options) : post.options;
-  if (options?.permalinkUrl) return options.permalinkUrl;
-  if (post.permalinkUrl) return post.permalinkUrl;
-
-  // 2. Extract platform and platformPostId
   const platforms = Array.isArray(post.platforms)
     ? post.platforms
     : post.targetPlatforms
@@ -34,6 +35,20 @@ export function getPlatformPostUrl(post) {
   } else if (platformPostId && typeof platformPostId === 'object') {
     platformPostId = platformPostId[firstPlatform] || Object.values(platformPostId)[0];
   }
+
+  return { platform: firstPlatform, platformPostId: platformPostId ? String(platformPostId).trim() : null };
+}
+
+export function getPlatformPostUrl(post) {
+  if (!post) return null;
+
+  // 1. Direct permalink in metadata/options if available
+  const options = typeof post.options === 'string' ? safeJsonParse(post.options) : post.options;
+  if (options?.permalinkUrl) return options.permalinkUrl;
+  if (post.permalinkUrl) return post.permalinkUrl;
+
+  // 2. Extract platform and platformPostId
+  const { platform: firstPlatform, platformPostId } = resolvePlatformTarget(post);
 
   // 3. Platform-specific URL patterns
   if (platformPostId) {

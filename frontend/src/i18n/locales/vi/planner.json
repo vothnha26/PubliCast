@@ -1,5 +1,22 @@
 {
   "title": "Lịch biểu nội dung",
+  "postDetail": {
+    "publishedOn": "Đã đăng lúc",
+    "close": "Đóng",
+    "reactions": "Cảm xúc",
+    "comments": "Bình luận",
+    "engRate": "Tương tác",
+    "views": "Lượt xem",
+    "impressions": "Lượt hiển thị",
+    "shares": "Chia sẻ",
+    "clicks": "Lượt nhấp",
+    "reach": "Lượt tiếp cận",
+    "custom": "Tùy chỉnh",
+    "openInsights": "Mở trang thống kê",
+    "statsUnavailable": "Thống kê chưa khả dụng cho nền tảng này.",
+    "publishedVia": "Đăng qua",
+    "goToPost": "Xem bài đăng"
+  },
   "tabs": {
     "calendar": "Lịch",
     "list": "Danh sách",
