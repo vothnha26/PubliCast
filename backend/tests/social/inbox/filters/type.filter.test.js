@@ -35,6 +35,24 @@ describe('InboxTypeFilter Unit Tests', () => {
     expect(where.type).toBeUndefined();
   });
 
+  test('should map RESOLVED type parameter to where.status = RESOLVED', () => {
+    const where = {};
+    filter.apply(where, { type: 'RESOLVED' });
+    expect(where.status).toBe(INBOX_STATUS.RESOLVED);
+    expect(where.type).toBeUndefined();
+  });
+
+  test('should map REPLIED type parameter to where.OR containing reply checks', () => {
+    const where = {};
+    filter.apply(where, { type: 'REPLIED' });
+    expect(where.OR).toBeDefined();
+    expect(where.OR).toEqual([
+      { repliedByUserId: { not: null } },
+      { replies: { some: {} } }
+    ]);
+    expect(where.type).toBeUndefined();
+  });
+
   test('should ignore invalid type strings to prevent Prisma enum errors', () => {
     const where = {};
     filter.apply(where, { type: 'INVALID_TYPE_XYZ' });
