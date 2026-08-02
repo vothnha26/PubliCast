@@ -269,6 +269,7 @@ router.get('/instagram/url', verifyAuth, oauthController.getInstagramAuthUrl);
 router.get('/instagram/audio-search', verifyAuth, requireBrandMember, instagramController.searchAudio);
 router.get('/tiktok/url', verifyAuth, oauthController.getTikTokAuthUrl);
 router.get('/tiktok/published-videos', verifyAuth, requireBrandMember, tiktokController.getTikTokPublishedVideos);
+router.get('/tiktok/comments', verifyAuth, requireBrandMember, tiktokController.getTikTokComments);
 router.get('/threads/url', verifyAuth, oauthController.getThreadsAuthUrl);
 router.post('/threads/disconnect', verifyAuth, requireManageConnections, socialConnectionController.disconnectThreadsAccount);
 
@@ -288,6 +289,7 @@ router.get('/twitch/stream-status', verifyAuth, requireBrandMember, twitchContro
 
 // ── Bluesky V2 ──
 router.get('/bluesky/url', verifyAuth, blueskyController.getBlueskyAuthUrl);
+router.get('/bluesky/comments', verifyAuth, requireBrandMember, blueskyController.getBlueskyComments);
 router.post('/bluesky/disconnect', verifyAuth, requireManageConnections, socialConnectionController.disconnectBlueskyAccount);
 
 // ── Telegram V2 ──

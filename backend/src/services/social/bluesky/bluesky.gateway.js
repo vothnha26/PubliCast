@@ -178,10 +178,16 @@ class BlueskyGateway {
     return res.data;
   }
 
+  async getPostThread(agent, { uri, depth = 6, parentHeight = 80 } = {}) {
+    if (!uri) throw new Error('Post URI is required to fetch Bluesky thread');
+    const res = await agent.getPostThread({ uri, depth, parentHeight });
+    return res.data?.thread;
+  }
+
   async getPostMetrics(agent, uri) {
-    const res = await agent.getPostThread({ uri });
-    if (res.data.thread?.$type === BLUESKY_CONSTANTS.RECORD_TYPES.THREAD_VIEW_POST) {
-      const post = res.data.thread.post;
+    const thread = await this.getPostThread(agent, { uri, depth: 0, parentHeight: 0 });
+    if (thread?.$type === BLUESKY_CONSTANTS.RECORD_TYPES.THREAD_VIEW_POST) {
+      const post = thread.post;
       return {
         likes: post.likeCount || 0,
         reposts: post.repostCount || 0,

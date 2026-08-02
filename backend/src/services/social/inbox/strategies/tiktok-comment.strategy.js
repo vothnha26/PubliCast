@@ -9,70 +9,15 @@ class TiktokCommentSyncStrategy extends BaseSyncStrategy {
   }
 
   async sync(brandId, inbox) {
-    const socialAccount = await socialAccountRepository.findByBrandAndPlatform(brandId, 'TIKTOK');
-    if (!socialAccount || socialAccount.length === 0) return [];
-
-    const account = socialAccount[0];
-    
-    // Tạo realistic mock TikTok comments để hiển thị lên UI
-    const mockComments = [
-      {
-        id: `tt_comment_1_${brandId}`,
-        text: 'Video này xu hướng quá! Có chương trình khuyến mãi nào không shop?',
-        author: 'tiktok_dancer_99',
-        avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=100&q=80',
-        videoId: 'v_tiktok_123',
-        createdAt: new Date(Date.now() - 3600000 * 2) // 2h trước
-      },
-      {
-        id: `tt_comment_2_${brandId}`,
-        text: 'Sản phẩm bên mình dùng rất tốt nha mọi người, đã mua lần thứ 2 rồi.',
-        author: 'review_chat_luong',
-        avatar: 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?auto=format&fit=crop&w=100&q=80',
-        videoId: 'v_tiktok_456',
-        createdAt: new Date(Date.now() - 3600000 * 5) // 5h trước
-      },
-      {
-        id: `tt_comment_3_${brandId}`,
-        text: 'Shop rep inbox tư vấn em với ạ, muốn mua sỉ.',
-        author: 'kho_si_sg',
-        avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=100&q=80',
-        videoId: 'v_tiktok_123',
-        createdAt: new Date(Date.now() - 3600000 * 12) // 12h trước
-      }
-    ];
-
-    const inboxItems = [];
-    for (const comment of mockComments) {
-      const item = await inboxRepository.upsertInboxItem(
-        { platformItemId: comment.id },
-        {
-          content: comment.text,
-          authorName: comment.author,
-          authorAvatarUrl: comment.avatar,
-          syncedAt: new Date(),
-          socialAccountId: account.id
-        },
-        {
-          inboxId: inbox.id,
-          platform: 'TIKTOK',
-          type: INBOX_TYPES.COMMENT,
-          platformItemId: comment.id,
-          authorId: `author_${comment.author}`,
-          authorName: comment.author,
-          authorAvatarUrl: comment.avatar,
-          content: comment.text,
-          relatedPostId: comment.videoId,
-          platformCreatedAt: comment.createdAt,
-          syncedAt: new Date(),
-          status: INBOX_STATUS.UNREAD,
-          socialAccountId: account.id
-        }
-      );
-      inboxItems.push(item);
-    }
-
-    return inboxItems;
+    // Comment sync is disabled: fetching comments requires TikTok's
+    // Research API (/v2/research/video/comment/list/), a separate product
+    // from the Content Posting API this app is actually approved for.
+    // Every call returns access_token_invalid regardless of token
+    // freshness — not a bug, TikTok simply hasn't granted this app that
+    // scope. Video/post listing (tiktok-video.service.js) is unaffected
+    // and keeps working normally; only comment sync is off until Research
+    // API access is granted.
+    return [];
   }
 
   supportsReply(item) {

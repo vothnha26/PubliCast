@@ -165,6 +165,24 @@ class BlueskyController {
     }
   });
 
+  getBlueskyComments = asyncHandler(async (req, res) => {
+    const { brandId, uri, depth, parentHeight, socialAccountId } = req.query;
+    if (!brandId) {
+      return res.status(400).json({ message: 'brandId is required' });
+    }
+    if (!uri) {
+      return res.status(400).json({ message: 'Post URI (uri) is required' });
+    }
+
+    const data = await blueskyService.getPostComments(brandId, {
+      uri,
+      depth: depth ? parseInt(depth) : 6,
+      parentHeight: parentHeight ? parseInt(parentHeight) : 80,
+      socialAccountId
+    });
+
+    return res.json(data);
+  });
 }
 
 module.exports = new BlueskyController();

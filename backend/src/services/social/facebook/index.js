@@ -58,8 +58,13 @@ class FacebookService extends BaseSocialService {
     return null;
   }
 
-  async getVideoDetails(brandId, videoId) {
-    return null;
+  async getVideoDetails(brandId, videoId, socialAccountId = null) {
+    try {
+      return await facebookPost.getVideoDetails(brandId, videoId, socialAccountId);
+    } catch (e) {
+      console.error(`[FacebookService] getVideoDetails failed for post ${videoId}:`, e.message);
+      return null;
+    }
   }
 
   async searchChannel(brandId, query) {

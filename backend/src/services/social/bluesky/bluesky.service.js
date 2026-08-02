@@ -310,6 +310,133 @@ class BlueskyService extends BaseSocialService {
     return blueskyGateway.deleteRepost(agent, repostUri);
   }
 
+  async getPostComments(brandId, { uri, depth = 6, parentHeight = 80, socialAccountId = null } = {}) {
+    if (!uri) throw new Error('Post URI is required to fetch Bluesky thread/comments');
+
+    let account;
+    if (socialAccountId && String(socialAccountId).startsWith('mock')) {
+      account = { id: socialAccountId, accessToken: socialAccountId, platformAccountId: socialAccountId };
+    } else {
+      account = await this._getAccount(brandId, socialAccountId);
+    }
+
+    if (!account) {
+      return { comments: [], rootPost: null };
+    }
+
+    if (account.accessToken && String(account.accessToken).startsWith('mock')) {
+      return this._getMockComments(uri);
+    }
+
+    const agent = await this._getAuthenticatedAgent(account);
+    const thread = await blueskyGateway.getPostThread(agent, { uri, depth, parentHeight });
+
+    if (!thread || thread.$type !== BLUESKY_CONSTANTS.RECORD_TYPES.THREAD_VIEW_POST) {
+      return { comments: [], rootPost: null };
+    }
+
+    const comments = [];
+    this._extractThreadReplies(thread, comments);
+
+    const rootPost = thread.post ? {
+      id: thread.post.uri,
+      uri: thread.post.uri,
+      cid: thread.post.cid,
+      text: thread.post.record?.text || '',
+      authorName: thread.post.author?.displayName || thread.post.author?.handle,
+      authorHandle: thread.post.author?.handle,
+      authorAvatar: thread.post.author?.avatar,
+      likeCount: thread.post.likeCount || 0,
+      replyCount: thread.post.replyCount || 0,
+      repostCount: thread.post.repostCount || 0,
+      quoteCount: thread.post.quoteCount || 0,
+      createdAt: thread.post.record?.createdAt || thread.post.indexedAt,
+      platform: PLATFORMS.BLUESKY
+    } : null;
+
+    return { comments, rootPost };
+  }
+
+  async _getAccount(brandId, socialAccountId = null) {
+    if (socialAccountId) {
+      // findById looks up by raw ID with no brand scoping — unlike
+      // findByBrandAndPlatformFirst below (which already filters by
+      // brandId at the query level), a caller-supplied socialAccountId
+      // could belong to a different brand than the one the caller is
+      // authorized for, so verify ownership explicitly (IDOR guard).
+      const account = await socialAccountRepository.findById(socialAccountId);
+      if (account && brandId && String(account.brandId) !== String(brandId)) {
+        throw new Error('Social account does not belong to this brand');
+      }
+      return account;
+    }
+
+    return socialAccountRepository.findByBrandAndPlatformFirst(brandId, PLATFORMS.BLUESKY);
+  }
+
+  _extractThreadReplies(threadNode, results = [], parentUri = null) {
+    if (!threadNode || !threadNode.replies || !Array.isArray(threadNode.replies)) return;
+
+    for (const item of threadNode.replies) {
+      if (item?.$type === BLUESKY_CONSTANTS.RECORD_TYPES.THREAD_VIEW_POST || item?.post) {
+        const post = item.post;
+        if (post) {
+          results.push({
+            id: post.uri,
+            uri: post.uri,
+            cid: post.cid,
+            videoId: post.uri,
+            parentCommentId: parentUri || post.record?.reply?.parent?.uri || null,
+            text: post.record?.text || '',
+            likeCount: post.likeCount || 0,
+            replyCount: post.replyCount || 0,
+            repostCount: post.repostCount || 0,
+            quoteCount: post.quoteCount || 0,
+            authorName: post.author?.displayName || post.author?.handle || 'Bluesky User',
+            authorHandle: post.author?.handle,
+            authorAvatar: post.author?.avatar,
+            createdAt: post.record?.createdAt || post.indexedAt,
+            platform: PLATFORMS.BLUESKY
+          });
+
+          if (item.replies && item.replies.length > 0) {
+            this._extractThreadReplies(item, results, post.uri);
+          }
+        }
+      }
+    }
+  }
+
+  _getMockComments(uri) {
+    return {
+      comments: [
+        {
+          id: `${uri}-reply-1`,
+          uri: `${uri}-reply-1`,
+          cid: "bafyreicjclx66vstawgvawlzrk5sdbjemxmhfheq7guvenfcf7h6kfope4",
+          parentCommentId: null,
+          text: "Love this AT Protocol post! 🦋",
+          likeCount: 5,
+          replyCount: 1,
+          repostCount: 2,
+          quoteCount: 0,
+          authorName: "Alice (bsky)",
+          authorHandle: "alice.bsky.social",
+          authorAvatar: "https://bsky.app/avatar.png",
+          createdAt: new Date().toISOString(),
+          platform: PLATFORMS.BLUESKY
+        }
+      ],
+      rootPost: {
+        id: uri,
+        uri: uri,
+        text: "Sample Bluesky AT Protocol Post",
+        authorName: "PubliCast Admin",
+        platform: PLATFORMS.BLUESKY
+      }
+    };
+  }
+
   // Stubs for BaseSocialService contract compliance
   async getChannelInfo() { return null; }
   async getPublishedVideos() { return []; }

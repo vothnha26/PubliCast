@@ -82,6 +82,7 @@ router.post('/tiktok/disconnect', verifyAuth, requireManageConnections, socialCo
 router.post('/threads/disconnect', verifyAuth, requireManageConnections, socialConnectionController.disconnectThreadsAccount);
 router.get('/bluesky/client-metadata.json', blueskyController.getClientMetadata);
 router.get('/bluesky/url', verifyAuth, blueskyController.getBlueskyAuthUrl);
+router.get('/bluesky/comments', verifyAuth, requireBrandMember, blueskyController.getBlueskyComments);
 router.get('/bluesky/callback', blueskyController.blueskyCallback);
 router.post('/bluesky/disconnect', verifyAuth, requireManageConnections, socialConnectionController.disconnectBlueskyAccount);
 router.post('/telegram/connect', verifyAuth, requireManageConnections, telegramController.connectTelegram);
@@ -91,6 +92,7 @@ router.post('/telegram/disconnect', verifyAuth, requireManageConnections, social
 // single-brandId middleware — see reassignSocialAccount in social-connection.controller.js.
 router.post('/reassign', verifyAuth, socialConnectionController.reassignSocialAccount);
 router.get('/tiktok/published-videos', verifyAuth, requireBrandMember, tiktokController.getTikTokPublishedVideos);
+router.get('/tiktok/comments', verifyAuth, requireBrandMember, tiktokController.getTikTokComments);
 router.get('/instagram/published-posts', verifyAuth, requireBrandMember, instagramController.getInstagramPublishedPosts);
 router.get('/instagram/audio-search', verifyAuth, requireBrandMember, instagramController.searchAudio);
 router.get('/threads/published-posts', verifyAuth, requireBrandMember, threadsController.getThreadsPublishedPosts);
