@@ -40,7 +40,8 @@ class InboxRepository {
       where: {
         OR: [
           { id },
-          { platformItemId: id }
+          { platformItemId: id },
+          { relatedPostId: id }
         ]
       },
       include: {
@@ -55,20 +56,25 @@ class InboxRepository {
   }
 
   async updateStatus(id, status) {
-    const existing = await prisma.inboxItem.findFirst({
+    const existingItems = await prisma.inboxItem.findMany({
       where: {
         OR: [
           { id },
-          { platformItemId: id }
+          { platformItemId: id },
+          { relatedPostId: id }
         ]
       },
       select: { id: true }
     });
 
-    const targetId = existing ? existing.id : id;
+    if (existingItems.length === 0) {
+      return { count: 0 };
+    }
 
-    return prisma.inboxItem.update({
-      where: { id: targetId },
+    const itemIds = existingItems.map(item => item.id);
+
+    return prisma.inboxItem.updateMany({
+      where: { id: { in: itemIds } },
       data: { status }
     });
   }
@@ -81,16 +87,19 @@ class InboxRepository {
       where: {
         OR: [
           { id },
-          { platformItemId: id }
+          { platformItemId: id },
+          { relatedPostId: id }
         ]
       },
       select: { id: true }
     });
 
-    const targetId = existing ? existing.id : id;
+    if (!existing) {
+      return null;
+    }
 
     return prisma.inboxItem.update({
-      where: { id: targetId },
+      where: { id: existing.id },
       data
     });
   }

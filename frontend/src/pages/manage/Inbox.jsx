@@ -257,16 +257,16 @@ export function InboxPage() {
 
   const handleUpdateStatus = async (itemId, newStatus) => {
     try {
-      await inboxService.updateInboxStatus(itemId, newStatus);
-      setInboxData(prev => ({
-        ...prev,
-        data: prev.data.map(item => 
-          item.id === itemId ? { ...item, status: newStatus.toLowerCase(), unread: newStatus === 'UNREAD' } : item
-        )
-      }));
-      if (activeConv?.id === itemId) {
-        setActiveConv(prev => ({ ...prev, status: newStatus.toLowerCase(), unread: newStatus === 'UNREAD' }));
+      if (activeConv?.id === itemId && activeConv?.isSyntheticPost) {
+        setActiveConv(prev => prev ? ({ ...prev, status: newStatus.toLowerCase(), unread: newStatus === 'UNREAD' }) : null);
+        return;
       }
+      await inboxService.updateInboxStatus(itemId, newStatus);
+      if (activeConv?.id === itemId || activeConv?.platformItemId === itemId || activeConv?.relatedPostId === itemId) {
+        setActiveConv(prev => prev ? ({ ...prev, status: newStatus.toLowerCase(), unread: newStatus === 'UNREAD' }) : null);
+      }
+      await fetchInbox();
+      await fetchPosts();
     } catch (e) {
       toast.error(t("inbox.updateStatusFailed"));
     }
@@ -448,15 +448,16 @@ export function InboxPage() {
   };
 
   const selectedAccountIds = useMemo(() => {
-    return filters.socialAccountId ? filters.socialAccountId.split(",").filter(Boolean) : [];
-  }, [filters.socialAccountId]);
+    const raw = filters.channels || filters.socialAccountId;
+    return raw ? raw.split(",").filter(Boolean) : [];
+  }, [filters.channels, filters.socialAccountId]);
 
   const handleSelectAccounts = (newAccountIds) => {
-    if (!newAccountIds || newAccountIds.length === 0) {
-      updateFilters({ socialAccountId: null });
-    } else {
-      updateFilters({ socialAccountId: newAccountIds.join(",") });
-    }
+    const joined = newAccountIds && newAccountIds.length > 0 ? newAccountIds.join(",") : null;
+    updateFilters({
+      channels: joined,
+      socialAccountId: joined
+    });
   };
 
   // Derive unique posts for 'by_post' view (Combining all published channel posts + synced inbox items)
@@ -555,10 +556,22 @@ export function InboxPage() {
   }, [fetchedPosts, inboxData.data]);
 
   const filteredPostsList = useMemo(() => {
-    if (postCommentFilter === "has") return postsList.filter(p => (p.commentCount || 0) > 0);
-    if (postCommentFilter === "none") return postsList.filter(p => !(p.commentCount > 0));
-    return postsList;
-  }, [postsList, postCommentFilter]);
+    let result = postsList;
+
+    if (selectedAccountIds.length > 0) {
+      result = result.filter(p => p.socialAccountId && selectedAccountIds.includes(p.socialAccountId));
+    }
+
+    if (postCommentFilter === "has") result = result.filter(p => (p.commentCount || 0) > 0);
+    if (postCommentFilter === "none") result = result.filter(p => !(p.commentCount > 0));
+
+    const activeFilter = filters.type || tabFilter;
+    if (activeFilter === INBOX_ITEM_TYPE.UNREAD || activeFilter === INBOX_TAB.UNREAD) {
+      result = result.filter(p => (p.unreadCount || 0) > 0);
+    }
+
+    return result;
+  }, [postsList, postCommentFilter, tabFilter, filters.type, selectedAccountIds]);
 
   const activePostId = useMemo(() => {
     if (!activeConv) return postsList[0]?.id || null;

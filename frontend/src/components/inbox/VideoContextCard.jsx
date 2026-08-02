@@ -58,16 +58,20 @@ export const VideoContextCard = ({ videoContext, activeConv }) => {
     caption: ctx.caption || title,
     mediaUrls: thumbnailUrl ? [thumbnailUrl] : [],
     thumbnail: thumbnailUrl,
-    publishedAt: ctx.publishedAt || null,
+    publishedAt: ctx.publishedAt || activeConv?.publishedAt || activeConv?.createdAt || null,
     socialAccountId: activeConv?.socialAccountId || null,
+    brandId: activeConv?.brandId || null,
+    channelTitle: channelTitle,
+    avatarUrl: activeConv?.profilePictureUrl || activeConv?.avatarUrl || null,
     status: "published",
     options: postUrl ? { permalinkUrl: postUrl } : undefined,
     stats: {
-      views: ctx.views || ctx.viewCount || activeConv?.views,
-      likes: ctx.likes || ctx.likeCount || activeConv?.likes || ctx.reactions,
-      comments: ctx.comments || ctx.commentCount || activeConv?.comments || activeConv?.commentCount,
-      shares: ctx.shares || ctx.shareCount || activeConv?.shares,
-      engagement: ctx.engagement || activeConv?.engagement
+      views: ctx.views || ctx.viewCount || activeConv?.views || activeConv?.viewCount || 0,
+      likes: ctx.likes || ctx.likeCount || activeConv?.likes || activeConv?.reactions || activeConv?.reactionsCount || 0,
+      comments: ctx.comments || ctx.commentCount || activeConv?.comments || activeConv?.commentCount || 0,
+      shares: ctx.shares || ctx.shareCount || activeConv?.shares || 0,
+      clicks: ctx.clicks || ctx.clickCount || activeConv?.clicks || 0,
+      engagement: ctx.engagement || activeConv?.engagement || "-"
     }
   };
 

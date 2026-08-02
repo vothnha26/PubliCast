@@ -37,26 +37,26 @@ export function ChannelFilterDropdown({
       onSelectAccounts([]);
     } else {
       // Chọn toàn bộ ID
-      onSelectAccounts(connectedAccounts.map((sa) => sa.id));
+      onSelectAccounts([]);
     }
   };
 
   const handleToggleAccount = (accountId) => {
-    let nextSelected;
-    if (isAllSelected) {
-      // Currently at "All" (every channel implicitly checked) — clicking one
-      // channel should uncheck just that one, keeping the rest checked, same
-      // as a normal checkbox. Previously this collapsed the selection down
-      // to only the clicked channel, unchecking every other one instead.
-      nextSelected = connectedAccounts.map((sa) => sa.id).filter((id) => id !== accountId);
-    } else if (selectedAccountIds.includes(accountId)) {
-      nextSelected = selectedAccountIds.filter((id) => id !== accountId);
-    } else {
-      nextSelected = [...selectedAccountIds, accountId];
+    let currentSelected = selectedAccountIds;
+
+    // Nếu đang ở trạng thái chọn tất cả (isAllSelected), nhấp vào 1 kênh tức là người dùng muốn BỎ CHỌN kênh đó
+    if (isAllSelected || currentSelected.length === 0) {
+      currentSelected = connectedAccounts.map((sa) => sa.id);
     }
 
-    // Nếu chọn tất cả lại thì đưa về mảng rỗng đại diện cho ALL
-    if (nextSelected.length === connectedAccounts.length) {
+    let nextSelected;
+    if (currentSelected.includes(accountId)) {
+      nextSelected = currentSelected.filter((id) => id !== accountId);
+    } else {
+      nextSelected = [...currentSelected, accountId];
+    }
+
+    if (nextSelected.length === 0 || nextSelected.length === connectedAccounts.length) {
       onSelectAccounts([]);
     } else {
       onSelectAccounts(nextSelected);
@@ -110,7 +110,7 @@ export function ChannelFilterDropdown({
                 onClick={handleToggleSelectAll}
                 className="text-[11px] font-bold text-emerald-500 hover:text-emerald-400 hover:underline cursor-pointer bg-transparent border-none p-0"
               >
-                {isAllSelected ? "Deselect all" : "Select all"}
+                {isAllSelected ? "Select all" : "Select all"}
               </button>
             </div>
 
@@ -162,7 +162,7 @@ export function ChannelFilterDropdown({
                       <div
                         className={`w-4 h-4 rounded border flex items-center justify-center transition-all shrink-0 ${
                           isChecked
-                            ? "bg-slate-900 border-slate-900 text-white"
+                            ? "bg-slate-900 border-slate-900 text-white dark:bg-emerald-600 dark:border-emerald-600"
                             : "border-gray-400 bg-transparent"
                         }`}
                       >

@@ -34,6 +34,8 @@ const INSIGHTS_STRATEGIES = {
         result.linkClicks = types['link clicks'] || 0;
       }
     }
+    if (!result.reach && result.views) result.reach = result.views;
+    if (!result.views && result.reach) result.views = result.reach;
     return result;
   }
 };
@@ -441,10 +443,11 @@ class FacebookPostService {
       const counts = this._extractPostCounts(post);
       const postType = isReel ? 'REEL' : this._determinePostType(post);
 
-      const reach = insightsResult.reach || 0;
-      const views = insightsResult.views || 0;
+      const reach = insightsResult.reach || insightsResult.views || 0;
+      const views = insightsResult.views || insightsResult.reach || 0;
       const clicks = insightsResult.clicks || 0;
-      const engagement = reach ? parseFloat((((counts.reactions + counts.comments + counts.shares + clicks) / reach) * 100).toFixed(2)) : 0;
+      const baseCount = reach || views;
+      const engagement = baseCount ? parseFloat((((counts.reactions + counts.comments + counts.shares + clicks) / baseCount) * 100).toFixed(2)) : 0;
 
       return {
         id: post.id,
@@ -486,6 +489,8 @@ class FacebookPostService {
         result.linkClicks = types['link clicks'] || 0;
       }
     }
+    if (!result.reach && result.views) result.reach = result.views;
+    if (!result.views && result.reach) result.views = result.reach;
     return result;
   }
 

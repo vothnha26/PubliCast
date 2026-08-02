@@ -202,6 +202,9 @@ class InboxService {
         publishedAt: v.publishedAt || null,
         postUrl: `https://www.youtube.com/watch?v=${v.id}`,
         socialAccountId,
+        views: parseInt(v.views || 0, 10),
+        likes: parseInt(v.likes || 0, 10),
+        comments: parseInt(v.comments || 0, 10),
       })),
       FACEBOOK: (res, socialAccountId) => (res?.data || []).map(p => ({
         id: p.id,
@@ -211,6 +214,12 @@ class InboxService {
         publishedAt: p.date || null,
         postUrl: p.postUrl || `https://www.facebook.com/${p.id}`,
         socialAccountId,
+        views: parseInt(p.video_views || p.views || 0, 10),
+        likes: parseInt(p.reactions?.summary?.total_count || p.reactions || p.likes || 0, 10),
+        comments: parseInt(p.comments?.summary?.total_count || p.comments || 0, 10),
+        shares: parseInt(p.shares?.count || p.shares || 0, 10),
+        clicks: parseInt(p.clicks || 0, 10),
+        reach: parseInt(p.reach || p.impressions || 0, 10),
       })),
       INSTAGRAM: (res, socialAccountId) => (res?.data || []).map(p => ({
         id: p.id,
@@ -220,6 +229,8 @@ class InboxService {
         publishedAt: p.date || null,
         postUrl: p.postUrl || null,
         socialAccountId,
+        likes: parseInt(p.like_count || p.likes || 0, 10),
+        comments: parseInt(p.comments_count || p.comments || 0, 10),
       })),
       TIKTOK: (res, socialAccountId) => (res?.videos || []).map(v => ({
         id: v.id,
@@ -229,6 +240,10 @@ class InboxService {
         publishedAt: v.publishedAt || null,
         postUrl: v.shareUrl || null,
         socialAccountId,
+        views: parseInt(v.view_count || v.views || 0, 10),
+        likes: parseInt(v.like_count || v.likes || 0, 10),
+        comments: parseInt(v.comment_count || v.comments || 0, 10),
+        shares: parseInt(v.share_count || v.shares || 0, 10),
       })),
     };
 
@@ -343,7 +358,7 @@ class InboxService {
         where: {
           brandId,
           isDeleted: false,
-          status: { in: ['PUBLISHED', 'SENT'] },
+          status: 'PUBLISHED',
           ...(scopedPlatforms.length > 0
             ? { OR: scopedPlatforms.map(p => ({ targetPlatforms: { contains: p } })) }
             : {})
@@ -462,12 +477,22 @@ class InboxService {
             title: post.title,
             thumbnailUrl: post.thumbnailUrl,
             channelTitle: `${post.platform} Channel`,
-            postUrl: post.postUrl || null
+            postUrl: post.postUrl || null,
+            views: post.views || 0,
+            likes: post.likes || 0,
+            comments: post.comments || 0,
+            shares: post.shares || 0,
+            clicks: post.clicks || 0,
           },
           platform: post.platform,
           socialAccountId: post.socialAccountId || null,
-          commentCount: 0,
+          commentCount: post.comments || 0,
           unreadCount: 0,
+          views: post.views || 0,
+          likes: post.likes || 0,
+          comments: post.comments || 0,
+          shares: post.shares || 0,
+          clicks: post.clicks || 0,
           latestCommentAt: post.publishedAt || null,
           rawItem: null,
         });
@@ -761,6 +786,10 @@ class InboxService {
   }
 
   async updateItemStatus(itemId, status, userId) {
+    const item = await inboxRepository.findById(itemId);
+    if (!item) {
+      return { id: itemId, status: status.toLowerCase() };
+    }
     await this._getAuthorizedItem(itemId, userId);
     return await inboxRepository.updateStatus(itemId, status.toUpperCase());
   }

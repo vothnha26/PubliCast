@@ -309,6 +309,97 @@ class SocialService {
     const data = await apiV2.get(`/social/reddit/subreddits/${subreddit}/flairs?brandId=${brandId}`);
     return data;
   }
+
+  async getFacebookPostDetails(brandId, postId, socialAccountId = null) {
+    try {
+      if (!brandId) return null;
+      const res = await this.getFacebookPublishedPosts(brandId, null, 50, socialAccountId);
+      const posts = res?.data || res?.posts || (Array.isArray(res) ? res : []);
+      
+      const cleanId = (id) => {
+        if (!id) return "";
+        const str = String(id).trim();
+        const parts = str.split("_");
+        return parts[parts.length - 1] || parts[0];
+      };
+
+      const targetId = cleanId(postId);
+
+      const matched = posts.find(p => {
+        if (!p) return false;
+        if (p.id === postId || p.platformItemId === postId || p.postId === postId) return true;
+        const pClean = cleanId(p.id);
+        if (pClean && targetId && pClean === targetId) return true;
+        if (p.id && postId && (String(p.id).includes(String(postId)) || String(postId).includes(String(p.id)))) return true;
+        return false;
+      });
+
+      if (matched) {
+        const reactions = matched.reactions?.summary?.total_count ?? matched.reactions ?? matched.likes ?? 0;
+        const comments = matched.comments?.summary?.total_count ?? matched.comments ?? 0;
+        const shares = matched.shares?.count ?? matched.shares ?? 0;
+        const impressions = matched.impressions || matched.views || matched.reach || matched.insights?.impressions || 0;
+        const views = matched.views || matched.reach || matched.video_views || 0;
+        const clicks = matched.clicks || matched.insights?.clicks || 0;
+        const baseImpressions = impressions || views;
+        const rawEng = matched.engagement ?? matched.engagement_rate;
+        const engagement = (rawEng !== undefined && rawEng !== null && rawEng !== 0 && rawEng !== "0") ? rawEng : (baseImpressions > 0 ? (((reactions + comments + shares + clicks) / baseImpressions) * 100).toFixed(1) : 0);
+
+        return {
+          reactions,
+          comments,
+          shares,
+          impressions: baseImpressions,
+          views,
+          clicks,
+          engagement
+        };
+      }
+    } catch (err) {
+      console.warn('[SocialService] getFacebookPostDetails failed:', err.message);
+    }
+    return null;
+  }
+
+  async getYoutubeVideoDetails(brandId, videoId, socialAccountId = null) {
+    try {
+      if (!brandId || !videoId) return null;
+      // 1. Fetch from channel's published videos (YouTube Data API)
+      const res = await this.getPublishedVideos(brandId, null, 50, socialAccountId);
+      const videos = res?.videos || (Array.isArray(res) ? res : []);
+      const matched = videos.find(v => v.id === videoId || v.videoId === videoId);
+      if (matched) {
+        const views = parseInt(matched.views || 0, 10);
+        const likes = parseInt(matched.likes || 0, 10);
+        const comments = parseInt(matched.comments || 0, 10);
+        return {
+          reactions: likes,
+          comments,
+          views,
+          engagement: matched.engagementRate || (views > 0 ? (((likes + comments) / views) * 100).toFixed(1) : 0)
+        };
+      }
+
+      // 2. Fallback to tracked videos if available
+      const trackedRes = await this.getTrackedVideos(brandId);
+      const trackedList = trackedRes?.data || (Array.isArray(trackedRes) ? trackedRes : []);
+      const matchedTracked = trackedList.find(v => v.videoId === videoId || v.id === videoId);
+      if (matchedTracked) {
+        const views = parseInt(matchedTracked.lastViews || 0, 10);
+        const likes = parseInt(matchedTracked.lastLikes || 0, 10);
+        const comments = parseInt(matchedTracked.lastComments || 0, 10);
+        return {
+          reactions: likes,
+          comments,
+          views,
+          engagement: views > 0 ? (((likes + comments) / views) * 100).toFixed(1) : 0
+        };
+      }
+    } catch (err) {
+      console.warn('[SocialService] getYoutubeVideoDetails failed:', err.message);
+    }
+    return null;
+  }
 }
 
 const socialService = new SocialService();
