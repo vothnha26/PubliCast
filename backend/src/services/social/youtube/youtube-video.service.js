@@ -75,15 +75,53 @@ class YouTubeVideoService {
 
   async getVideoDetails(brandId, videoId) {
     const { auth } = await this._getAuthContext(brandId, true);
-    if (!auth) return null;
+    const isYouTubeId = typeof videoId === 'string' && /^[a-zA-Z0-9_-]{11}$/.test(videoId);
 
-    const response = await youtubeGateway.getVideosList(auth, videoId);
-    if (!response.data.items || response.data.items.length === 0) return null;
+    if (!auth) {
+      if (isYouTubeId) {
+        return {
+          id: videoId,
+          title: `YouTube Video (${videoId})`,
+          thumbnailUrl: `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`,
+          channelTitle: "YouTube",
+          publishedAt: new Date().toISOString()
+        };
+      }
+      return null;
+    }
 
-    const video = response.data.items[0];
-    const channelRes = await youtubeGateway.getChannelList(auth, false, video.snippet.channelId);
+    try {
+      const response = await youtubeGateway.getVideosList(auth, videoId);
+      if (!response.data.items || response.data.items.length === 0) {
+        if (isYouTubeId) {
+          return {
+            id: videoId,
+            title: `YouTube Video (${videoId})`,
+            thumbnailUrl: `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`,
+            channelTitle: "YouTube",
+            publishedAt: new Date().toISOString()
+          };
+        }
+        return null;
+      }
 
-    return this._formatVideoDetails(video, channelRes.data.items?.[0]);
+      const video = response.data.items[0];
+      const channelRes = await youtubeGateway.getChannelList(auth, false, video.snippet.channelId);
+
+      return this._formatVideoDetails(video, channelRes.data.items?.[0]);
+    } catch (err) {
+      console.error(`[YouTubeVideoService] getVideoDetails error for video ${videoId}:`, err.message || err);
+      if (isYouTubeId) {
+        return {
+          id: videoId,
+          title: `YouTube Video (${videoId})`,
+          thumbnailUrl: `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`,
+          channelTitle: "YouTube",
+          publishedAt: new Date().toISOString()
+        };
+      }
+      return null;
+    }
   }
 
   async searchChannel(brandId, query) {
@@ -215,6 +253,14 @@ class YouTubeVideoService {
     if (!account) {
       if (optional) return { auth: null, account: null };
       throw new Error('YouTube account not connected');
+    }
+
+    if (
+      (account.accessToken && account.accessToken.startsWith('mock-')) ||
+      (account.platformAccountId && account.platformAccountId.startsWith('mock-'))
+    ) {
+      if (optional) return { auth: null, account };
+      throw new Error('YouTube account is using a mock credentials token');
     }
 
     const auth = googleOAuthService.createClient();

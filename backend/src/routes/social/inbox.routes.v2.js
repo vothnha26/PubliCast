@@ -38,6 +38,8 @@ router.use(verifyAuth);
  *               $ref: '#/components/schemas/V2EnvelopeResponse'
  */
 router.get('/', checkBrandAccess, featureGate, inboxControllerV2.getInboxItems);
+router.get('/posts', checkBrandAccess, featureGate, inboxControllerV2.getInboxPosts);
+router.get('/posts/:postId/comments', checkBrandAccess, featureGate, inboxControllerV2.getCommentsByPost);
 
 /**
  * @openapi
@@ -114,6 +116,36 @@ router.post('/sync', checkBrandAccess, featureGate, inboxControllerV2.syncInbox)
  *               $ref: '#/components/schemas/V2EnvelopeResponse'
  */
 router.post('/reply', checkBrandAccess, featureGate, inboxControllerV2.replyToItem);
+
+/**
+ * @openapi
+ * /v2/social/inbox/comment:
+ *   post:
+ *     summary: Post a brand-new top-level comment on a post/video with no existing comments
+ *     tags: [Social Inbox V2]
+ *     security: [{ cookieAuth: [] }]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [brandId, postId, platform, text]
+ *             properties:
+ *               brandId: { type: string }
+ *               postId: { type: string }
+ *               platform: { type: string }
+ *               text: { type: string }
+ *               socialAccountId: { type: string }
+ *     responses:
+ *       200:
+ *         description: Comment posted
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/V2EnvelopeResponse'
+ */
+router.post('/comment', checkBrandAccess, featureGate, inboxControllerV2.postNewComment);
 
 /**
  * @openapi

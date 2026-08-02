@@ -76,6 +76,38 @@ class YoutubeCommentSyncStrategy extends BaseSyncStrategy {
     });
   }
 
+  supportsNewComment(platform) {
+    return platform.toUpperCase() === PLATFORMS.YOUTUBE;
+  }
+
+  // Posts a brand-new top-level comment directly on a video (no existing
+  // InboxItem/thread needed) — for videos with 0 synced comments, which
+  // reply() can't handle since it always targets an existing comment id.
+  async createComment(brandId, videoId, text, socialAccountId = null) {
+    const { account, auth } = await this._getAccountAndAuth(brandId, socialAccountId);
+    const response = await youtubeGateway.insertCommentThread(auth, videoId, text);
+    const newThread = response.data;
+    const newComment = newThread.snippet.topLevelComment;
+
+    const inbox = await inboxRepository.findOrCreateInbox(brandId);
+
+    return inboxRepository.createInboxItem({
+      inboxId: inbox.id,
+      platform: PLATFORMS.YOUTUBE,
+      type: INBOX_TYPES.COMMENT,
+      platformItemId: newComment.id,
+      authorId: account.platformAccountId,
+      authorName: account.displayName,
+      authorAvatarUrl: account.profilePictureUrl,
+      content: newComment.snippet.textDisplay,
+      relatedPostId: videoId,
+      platformCreatedAt: new Date(newComment.snippet.publishedAt),
+      syncedAt: new Date(),
+      status: INBOX_STATUS.READ,
+      socialAccountId: account.id
+    });
+  }
+
   // socialAccountId picks a specific channel when the brand has more than
   // one YouTube channel connected; omitted, falls back to the first non-mock
   // account (correct as long as the brand only has one real account, still

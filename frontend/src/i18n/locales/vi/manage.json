@@ -6,9 +6,12 @@
     "autoReplySettings": "Cấu hình tự động phản hồi",
     "selectConversationPrompt": "Vui lòng chọn một cuộc hội thoại ở bên trái để bắt đầu",
     "loadingSettings": "Đang tải cấu hình...",
+    "commentSyncUnsupported": "Đồng bộ bình luận cho {{platform}} chưa khả dụng — danh sách bài viết vẫn hiển thị bình thường, nhưng bình luận sẽ chưa xuất hiện ở đây.",
     "tabs": {
       "unresolved": "Chưa giải quyết",
       "unread": "Chưa đọc",
+      "replied": "Đã trả lời",
+      "resolved": "Đã giải quyết",
       "all": "Tất cả"
     },
     "pagination": {
@@ -17,6 +20,9 @@
       "pageOf": "Trang {{current}} / {{total}}"
     },
     "noConversations": "Không tìm thấy cuộc hội thoại {{tab}} nào.",
+    "noCommentsYetTitle": "Chưa có bình luận nào",
+    "noCommentsYetSubtitle": "Hãy là người đầu tiên bình luận trên bài viết này.",
+    "newCommentPlaceholder": "Viết bình luận mới...",
     "selectConversation": "Vui lòng chọn một cuộc hội thoại ở bên trái để bắt đầu",
     "privateMessage": "TIN NHẮN RIÊNG",
     "comment": "BÌNH LUẬN",
