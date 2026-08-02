@@ -1,6 +1,6 @@
 import * as React from "react";
 import { Play, Youtube, Facebook, Instagram, Maximize2, ExternalLink } from "lucide-react";
-import { PublishedPostDetailModal } from "../../pages/workspace/planner/components/PublishedPostDetailModal";
+import { PublishedPostDetailModal } from "@/pages/workspace/planner/components/PublishedPostDetailModal";
 
 const PLATFORM_BADGE = {
   FACEBOOK: { Icon: Facebook, bg: "bg-[#1877F2]", label: "Facebook" },
