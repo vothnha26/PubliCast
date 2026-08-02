@@ -57,6 +57,10 @@ const server = app.listen(PORT, async () => {
   const reportSchedulerService = require('./services/reports/report-scheduler.service');
   reportSchedulerService.start();
 
+  // Start Periodic Inbox Sync Scheduler (15-minute fallback cycle)
+  const inboxSyncSchedulerService = require('./services/social/inbox-sync-scheduler.service');
+  inboxSyncSchedulerService.start();
+
   // Start Outbox Dispatcher (polls outbox_events, delivers side-effects with retry)
   const outboxDispatcherService = require('./services/core/outbox-dispatcher.service');
   outboxDispatcherService.start();
@@ -72,6 +76,14 @@ const server = app.listen(PORT, async () => {
 // ── Graceful Shutdown ───────────────────────────────────────────────────────
 async function shutdown(signal) {
   logger.info(`Received ${signal}. Shutting down gracefully...`);
+
+  // Stop periodic inbox sync scheduler
+  try {
+    const inboxSyncSchedulerService = require('./services/social/inbox-sync-scheduler.service');
+    inboxSyncSchedulerService.stop();
+  } catch (err) {
+    logger.error('Error stopping inbox sync scheduler', err);
+  }
 
   // Stop token refresh scheduler
   try {
