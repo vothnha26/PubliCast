@@ -14,8 +14,29 @@ async function loginAs(driver, role) {
   
   // Navigate to login page
   await driver.get(`${process.env.BASE_URL || 'http://localhost:5173'}/login`);
+
+  // Check if already authenticated (auto-redirected) or needs login credentials
+  try {
+    const state = await driver.wait(async () => {
+      const currentUrl = await driver.getCurrentUrl();
+      if (currentUrl.includes('/dashboard') || currentUrl.includes('/start') || currentUrl.includes('/manage/connections')) {
+        return 'LOGGED_IN';
+      }
+      const inputs = await driver.findElements(By.id('email'));
+      if (inputs.length > 0) return 'NEEDS_LOGIN';
+      return false;
+    }, 10000);
+
+    if (state === 'LOGGED_IN') {
+      console.log(`✅ [loginAs] Đã đăng nhập sẵn (chuyển hướng sang protected route).`);
+      return;
+    }
+  } catch (e) {
+    // Fallback to standard wait
+  }
+
   await driver.wait(until.elementLocated(By.id('email')), 30000);
-  
+
   // Fill credentials
   await driver.findElement(By.id('email')).sendKeys(email);
   await driver.sleep(500);
