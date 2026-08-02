@@ -112,37 +112,4 @@ function safeJsonParse(jsonStr) {
   }
 }
 
-/**
- * Utility to extract target platform and platformPostId from a post object.
- *
- * @param {Object} post - The post object from state/API
- * @returns {{ platform: string, platformPostId: string|null }}
- */
-export function resolvePlatformTarget(post) {
-  if (!post) return { platform: 'YOUTUBE', platformPostId: null };
-
-  const platforms = Array.isArray(post.platforms)
-    ? post.platforms
-    : post.targetPlatforms
-    ? (Array.isArray(post.targetPlatforms) ? post.targetPlatforms : String(post.targetPlatforms).split(','))
-    : [];
-
-  const platform = (platforms[0] || post.platform || 'YOUTUBE').trim().toUpperCase();
-
-  let platformPostId = post.platformPostId;
-  if (typeof platformPostId === 'string') {
-    try {
-      const parsed = JSON.parse(platformPostId);
-      if (parsed && typeof parsed === 'object') {
-        platformPostId = parsed[platform] || Object.values(parsed)[0];
-      }
-    } catch (_) {
-      // Keep as string if plain text ID
-    }
-  } else if (platformPostId && typeof platformPostId === 'object') {
-    platformPostId = platformPostId[platform] || Object.values(platformPostId)[0];
-  }
-
-  return { platform, platformPostId: platformPostId ? String(platformPostId).trim() : null };
-}
 
