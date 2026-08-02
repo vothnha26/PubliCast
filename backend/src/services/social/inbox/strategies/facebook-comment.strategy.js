@@ -35,10 +35,10 @@ class FacebookCommentSyncStrategy extends BaseSyncStrategy {
     return item.platform === PLATFORMS.FACEBOOK && item.type === INBOX_TYPES.COMMENT;
   }
 
-  async reply(brandId, parentPlatformItemId, text, socialAccountId = null) {
+  async reply(brandId, parentPlatformItemId, text, socialAccountId = null, attachmentUrl = null) {
     const { account, pageAccessToken } = await this._getAccountAndToken(brandId, socialAccountId);
-    const response = await facebookGateway.replyToComment(parentPlatformItemId, text, pageAccessToken);
-    
+    const response = await facebookGateway.replyToComment(parentPlatformItemId, text, pageAccessToken, attachmentUrl);
+
     const inbox = await inboxRepository.findOrCreateInbox(brandId);
     const parentInDb = await inboxRepository.findInboxItemByPlatformId(parentPlatformItemId);
 
@@ -52,7 +52,39 @@ class FacebookCommentSyncStrategy extends BaseSyncStrategy {
       authorName: account.displayName,
       authorAvatarUrl: account.profilePictureUrl,
       content: text,
+      mediaUrls: attachmentUrl || null,
       relatedPostId: parentInDb?.relatedPostId,
+      platformCreatedAt: new Date(),
+      syncedAt: new Date(),
+      status: INBOX_STATUS.READ,
+      socialAccountId: account.id
+    });
+  }
+
+  supportsNewComment(platform) {
+    return platform.toUpperCase() === PLATFORMS.FACEBOOK;
+  }
+
+  // Posts a brand-new top-level comment directly on a post (no existing
+  // InboxItem/thread needed) — for posts with 0 synced comments, which
+  // reply() can't handle since it always targets an existing comment id.
+  async createComment(brandId, postId, text, socialAccountId = null, attachmentUrl = null) {
+    const { account, pageAccessToken } = await this._getAccountAndToken(brandId, socialAccountId);
+    const response = await facebookGateway.createComment(postId, text, pageAccessToken, attachmentUrl);
+
+    const inbox = await inboxRepository.findOrCreateInbox(brandId);
+
+    return inboxRepository.createInboxItem({
+      inboxId: inbox.id,
+      platform: PLATFORMS.FACEBOOK,
+      type: INBOX_TYPES.COMMENT,
+      platformItemId: response.id,
+      authorId: account.platformAccountId,
+      authorName: account.displayName,
+      authorAvatarUrl: account.profilePictureUrl,
+      content: text,
+      mediaUrls: attachmentUrl || null,
+      relatedPostId: postId,
       platformCreatedAt: new Date(),
       syncedAt: new Date(),
       status: INBOX_STATUS.READ,

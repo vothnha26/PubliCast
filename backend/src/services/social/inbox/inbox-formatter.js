@@ -5,6 +5,15 @@ class InboxFormatter {
     const participants = this.aggregateParticipants(item);
     return {
       id: item.id,
+      // platformItemId/relatedPostId identify which post/video this comment
+      // or DM belongs to (relatedPostId is the real YouTube video ID for
+      // YouTube comments — see youtube-comment.strategy.js). Without these,
+      // frontend code that groups inbox items by post (Inbox.jsx's
+      // postsList) has no shared key to group on and falls back to item.id,
+      // splitting every single comment into its own separate "post" entry.
+      platformItemId: item.platformItemId,
+      relatedPostId: item.relatedPostId,
+      videoContext: item.videoContext || null,
       platform: this.formatPlatformName(item.platform),
       user: this.formatDisplayName(participants),
       participants: participants.slice(0, 3),
@@ -47,7 +56,10 @@ class InboxFormatter {
       text: msg.content,
       time: new Date(msg.platformCreatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       author: msg.authorName,
-      avatar: msg.authorAvatarUrl
+      avatar: msg.authorAvatarUrl,
+      // Lets the UI nest a reply under the top-level comment it answers
+      // instead of rendering it as its own independent comment card.
+      parentItemId: msg.parentItemId || null
     };
   }
 
