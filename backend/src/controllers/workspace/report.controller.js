@@ -89,13 +89,13 @@ class ReportController {
    * Get live preview analytics data for interactive templates
    */
   getPreviewData = asyncHandler(async (req, res) => {
-    const { brandId, dateRange, platforms } = req.query;
+    const { brandId, dateRange, platforms, socialAccountId } = req.query;
     if (!brandId) {
       return res.status(400).json({ message: 'brandId là bắt buộc.' });
     }
 
     const platformList = platforms ? platforms.split(',') : ['Facebook', 'YouTube'];
-    const data = await reportService.getPreviewData(brandId, dateRange || '30 ngày qua', platformList);
+    const data = await reportService.getPreviewData(brandId, dateRange || '30 ngày qua', platformList, socialAccountId);
     res.json({ data });
   });
 

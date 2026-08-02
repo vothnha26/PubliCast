@@ -50,8 +50,8 @@ class YoutubeCommentSyncStrategy extends BaseSyncStrategy {
     return item.platform === PLATFORMS.YOUTUBE && item.type === INBOX_TYPES.COMMENT;
   }
 
-  async reply(brandId, parentPlatformItemId, text) {
-    const { account, auth } = await this._getAccountAndAuth(brandId);
+  async reply(brandId, parentPlatformItemId, text, socialAccountId = null) {
+    const { account, auth } = await this._getAccountAndAuth(brandId, socialAccountId);
     const response = await youtubeGateway.insertCommentReply(auth, parentPlatformItemId, text);
     const newComment = response.data;
 
@@ -76,11 +76,15 @@ class YoutubeCommentSyncStrategy extends BaseSyncStrategy {
     });
   }
 
-  async _getAccountAndAuth(brandId) {
+  // socialAccountId picks a specific channel when the brand has more than
+  // one YouTube channel connected; omitted, falls back to the first non-mock
+  // account (correct as long as the brand only has one real account, still
+  // the common case).
+  async _getAccountAndAuth(brandId, socialAccountId = null) {
     const socialAccount = await socialAccountRepository.findByBrandAndPlatform(brandId, PLATFORMS.YOUTUBE);
     if (!socialAccount || socialAccount.length === 0) throw new Error('YouTube account not connected');
 
-    const account = socialAccount.find(acc => 
+    const account = (socialAccountId && socialAccount.find(acc => acc.id === socialAccountId)) || socialAccount.find(acc =>
       !(acc.accessToken && acc.accessToken.startsWith('mock-')) &&
       !(acc.platformAccountId && acc.platformAccountId.startsWith('mock-'))
     ) || socialAccount[0];
@@ -149,13 +153,13 @@ class YoutubeCommentSyncStrategy extends BaseSyncStrategy {
     }
   }
 
-  async updateReply(brandId, platformItemId, text) {
-    const { auth } = await this._getAccountAndAuth(brandId);
+  async updateReply(brandId, platformItemId, text, socialAccountId = null) {
+    const { auth } = await this._getAccountAndAuth(brandId, socialAccountId);
     return await youtubeGateway.updateComment(auth, platformItemId, text);
   }
 
-  async deleteReply(brandId, platformItemId) {
-    const { auth } = await this._getAccountAndAuth(brandId);
+  async deleteReply(brandId, platformItemId, socialAccountId = null) {
+    const { auth } = await this._getAccountAndAuth(brandId, socialAccountId);
     return await youtubeGateway.deleteComment(auth, platformItemId);
   }
 }

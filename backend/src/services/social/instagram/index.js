@@ -123,8 +123,8 @@ class InstagramService extends BaseSocialService {
   }
 
   // --- Posts & Feed ---
-  async getPublishedVideos(brandId, pageToken = null, limit = 10) {
-    return instagramPost.getPublishedPosts(brandId, pageToken, limit);
+  async getPublishedVideos(brandId, pageToken = null, limit = 10, socialAccountId = null) {
+    return instagramPost.getPublishedPosts(brandId, pageToken, limit, socialAccountId);
   }
 
   async publishPost(brandId, postData) {

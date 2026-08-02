@@ -117,7 +117,7 @@ class FacebookPostService {
     }
   }
   async publishPost(brandId, postData) {
-    const { platformPostId, scheduledAt, type, mediaUrls = [] } = postData;
+    const { platformPostId, scheduledAt, type, mediaUrls = [], socialAccountId } = postData;
     console.log(`\n[Facebook] ▶ publishPost | brandId=${brandId} | type=${type} | mediaUrls=${JSON.stringify(mediaUrls)}`);
 
     // Short-circuit
@@ -126,7 +126,7 @@ class FacebookPostService {
       return { platformVideoId: platformPostId, publishedAt: null };
     }
 
-    const { pageId, pageAccessToken } = await this._getAccountCredentials(brandId);
+    const { pageId, pageAccessToken } = await this._getAccountCredentials(brandId, socialAccountId);
     console.log(`[Facebook] Credentials OK | pageId=${pageId} | tokenPrefix=${pageAccessToken?.substring(0, 10)}...`);
 
     if (pageAccessToken && (pageAccessToken.startsWith('mock-') || pageAccessToken.includes('mock') || pageAccessToken.startsWith('fb_mock'))) {
@@ -202,8 +202,8 @@ class FacebookPostService {
     return await facebookGateway.updatePostMessage(platformPostId, caption || '', pageAccessToken);
   }
 
-  async deletePost(brandId, platformPostId) {
-    const { pageAccessToken } = await this._getAccountCredentials(brandId);
+  async deletePost(brandId, platformPostId, socialAccountId = null) {
+    const { pageAccessToken } = await this._getAccountCredentials(brandId, socialAccountId);
 
     if (pageAccessToken && pageAccessToken.startsWith('mock-')) {
       return { success: true, mock: true };

@@ -23,9 +23,11 @@ class ReportService {
     return data;
   }
 
-  async getPreviewData(brandId, dateRange, platforms) {
+  async getPreviewData(brandId, dateRange, platforms, socialAccountId) {
+    const params = { brandId, dateRange, platforms };
+    if (socialAccountId) params.socialAccountId = socialAccountId;
     const data = await apiV2.get(`/analytics-support/reports/preview-data`, {
-      params: { brandId, dateRange, platforms }
+      params
     });
     return data;
   }

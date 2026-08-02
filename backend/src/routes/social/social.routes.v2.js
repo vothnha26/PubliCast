@@ -230,6 +230,35 @@ router.post('/google/drive/download', verifyAuth, requireBrandMember, requireFea
 router.post('/google/disconnect', verifyAuth, requireManageConnections, socialConnectionController.disconnectGoogleAccount);
 router.post('/google-drive/disconnect', verifyAuth, requireManageConnections, socialConnectionController.disconnectGoogleDriveAccount);
 
+/**
+ * @openapi
+ * /v2/social/accounts/set-default:
+ *   post:
+ *     summary: Mark one connected account as the default for its platform
+ *     description: >
+ *       Display-only hint pre-checked by default in the post composer when a
+ *       brand has multiple accounts of the same platform. Not enforced
+ *       anywhere else.
+ *     tags: [Social V2]
+ *     security: [{ cookieAuth: [] }]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [brandId, socialAccountId]
+ *             properties:
+ *               brandId: { type: string }
+ *               socialAccountId: { type: string }
+ *     responses:
+ *       200:
+ *         description: Updated social account
+ *       404:
+ *         description: Social account not found for this brand
+ */
+router.post('/accounts/set-default', verifyAuth, requireManageConnections, socialConnectionController.setDefaultAccount);
+
 // ── OAuth Auth URLs V2 ──
 router.get('/google/url', verifyAuth, oauthController.getGoogleAuthUrl);
 router.get('/google-drive/auth-url', verifyAuth, oauthController.getGoogleDriveAuthUrl);

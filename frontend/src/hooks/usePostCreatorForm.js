@@ -41,6 +41,7 @@ export function usePostCreatorForm() {
     editingPost, 
     templatePost,
     defaultScheduledAt,
+    defaultSocialAccountId,
     isLibrary: initialIsLibrary,
     videoFile, 
     setVideoFile,
@@ -63,6 +64,7 @@ export function usePostCreatorForm() {
   const [title, setTitle] = useState("");
   const [altText, setAltText] = useState("");
   const [selectedPlatforms, setSelectedPlatforms] = useState([DEFAULT_PLATFORM]);
+  const [selectedAccountIds, setSelectedAccountIds] = useState([]);
   const [activePlatform, setActivePlatform] = useState(DEFAULT_PLATFORM);
   const [platformLimits, setPlatformLimits] = useState([]);
   const [previewDevice, setPreviewDevice] = useState("mobile");
@@ -352,6 +354,77 @@ export function usePostCreatorForm() {
       console.warn("Failed to load video metadata");
     };
   }, [videoFileUrl, videoFile]);
+
+  // Khởi tạo mặc định tài khoản đăng khi mở composer
+  useEffect(() => {
+    if (activeBrand?.socialAccounts && isOpen) {
+      const platformMap = {
+        FACEBOOK: "facebook",
+        INSTAGRAM: "instagram",
+        YOUTUBE: "youtube",
+        TIKTOK: "tiktok",
+        TELEGRAM: "telegram",
+        THREADS: "threads",
+        BLUESKY: "bluesky",
+        REDDIT: "reddit"
+      };
+
+      if (defaultSocialAccountId) {
+        const targetAcc = activeBrand.socialAccounts.find((sa) => sa.id === defaultSocialAccountId);
+        if (targetAcc) {
+          setSelectedAccountIds([targetAcc.id]);
+          const platformKey = platformMap[targetAcc.platform];
+          if (platformKey) {
+            setSelectedPlatforms([platformKey]);
+            setActivePlatform(platformKey);
+          }
+          return;
+        }
+      }
+
+      const connected = activeBrand.socialAccounts.filter((sa) => sa.isConnected);
+      if (connected.length > 0) {
+        setSelectedAccountIds(connected.map((sa) => sa.id));
+      }
+    }
+  }, [activeBrand, isOpen, defaultSocialAccountId]);
+
+  const toggleAccount = (accountId) => {
+    setSelectedAccountIds((prev) => {
+      let next;
+      if (prev.includes(accountId)) {
+        if (prev.length === 1) {
+          toast.warning("Bắt buộc phải chọn ít nhất 1 tài khoản");
+          return prev;
+        }
+        next = prev.filter((id) => id !== accountId);
+      } else {
+        next = [...prev, accountId];
+      }
+
+      if (activeBrand?.socialAccounts) {
+        const platformMap = {
+          FACEBOOK: "facebook",
+          INSTAGRAM: "instagram",
+          YOUTUBE: "youtube",
+          TIKTOK: "tiktok",
+          TELEGRAM: "telegram",
+          THREADS: "threads",
+          BLUESKY: "bluesky",
+          REDDIT: "reddit"
+        };
+        const selectedAccs = activeBrand.socialAccounts.filter((sa) => next.includes(sa.id));
+        const newPlatforms = Array.from(new Set(selectedAccs.map((sa) => platformMap[sa.platform]).filter(Boolean)));
+        if (newPlatforms.length > 0) {
+          setSelectedPlatforms(newPlatforms);
+          if (!newPlatforms.includes(activePlatform)) {
+            setActivePlatform(newPlatforms[0]);
+          }
+        }
+      }
+      return next;
+    });
+  };
 
   const togglePlatform = (platform) => {
     setSelectedPlatforms((prev) => {
@@ -1122,6 +1195,11 @@ export function usePostCreatorForm() {
           if (entry?.useTemplate !== false) return;
           const apiKey = PLATFORM_API_KEY[platform];
           if (!apiKey) return; // bỏ qua platform không có API key hợp lệ
+
+          const accountsForPlatform = activeBrand?.socialAccounts?.filter(
+            sa => (sa.platform || '').toLowerCase() === apiKey.toLowerCase() && selectedAccountIds.includes(sa.id)
+          ) || [];
+
           const formattedMediaUrls = (entry.mediaUrls || [])
             .map((item) => (typeof item === 'string' ? item : item.path || item.previewUrl))
             .filter(Boolean);
@@ -1140,24 +1218,52 @@ export function usePostCreatorForm() {
             const firstPostText = typeof validPosts[0] === 'string' ? validPosts[0] : (validPosts[0].text || '');
             const firstPostMedia = typeof validPosts[0] === 'string' ? [] : (validPosts[0].mediaUrls || []);
 
-            overrides.push({
-              platform: apiKey,
-              useTemplate: false,
-              caption: firstPostText,
-              mediaUrls: formatPostMedia(firstPostMedia),
-              threadPosts: validPosts.map((p) => ({
-                text: typeof p === 'string' ? p : (p.text || ''),
-                mediaUrls: formatPostMedia(typeof p === 'string' ? [] : p.mediaUrls),
-              })),
-            });
+            if (accountsForPlatform.length > 0) {
+              accountsForPlatform.forEach((acc) => {
+                overrides.push({
+                  platform: apiKey,
+                  socialAccountId: acc.id,
+                  useTemplate: false,
+                  caption: firstPostText,
+                  mediaUrls: formatPostMedia(firstPostMedia),
+                  threadPosts: validPosts.map((p) => ({
+                    text: typeof p === 'string' ? p : (p.text || ''),
+                    mediaUrls: formatPostMedia(typeof p === 'string' ? [] : p.mediaUrls),
+                  })),
+                });
+              });
+            } else {
+              overrides.push({
+                platform: apiKey,
+                useTemplate: false,
+                caption: firstPostText,
+                mediaUrls: formatPostMedia(firstPostMedia),
+                threadPosts: validPosts.map((p) => ({
+                  text: typeof p === 'string' ? p : (p.text || ''),
+                  mediaUrls: formatPostMedia(typeof p === 'string' ? [] : p.mediaUrls),
+                })),
+              });
+            }
           } else {
             if (!entry.caption && formattedMediaUrls.length === 0) return;
-            overrides.push({
-              platform: apiKey,
-              useTemplate: false,
-              caption: entry.caption || '',
-              mediaUrls: formattedMediaUrls,
-            });
+            if (accountsForPlatform.length > 0) {
+              accountsForPlatform.forEach((acc) => {
+                overrides.push({
+                  platform: apiKey,
+                  socialAccountId: acc.id,
+                  useTemplate: false,
+                  caption: entry.caption || '',
+                  mediaUrls: formattedMediaUrls,
+                });
+              });
+            } else {
+              overrides.push({
+                platform: apiKey,
+                useTemplate: false,
+                caption: entry.caption || '',
+                mediaUrls: formattedMediaUrls,
+              });
+            }
           }
         });
         return overrides;
@@ -1251,6 +1357,15 @@ export function usePostCreatorForm() {
     title,
     setTitle,
     selectedPlatforms,
+    setSelectedPlatforms,
+    selectedAccountIds,
+    setSelectedAccountIds,
+    // Set when the composer is opened from a single channel's Publish tab
+    // (ChannelPublishTab) — the UI locks to this one account and hides the
+    // multi-account/platform pickers so the post can't accidentally fan out
+    // to other channels.
+    isLockedToAccount: Boolean(defaultSocialAccountId),
+    toggleAccount,
     togglePlatform,
     activePlatform,
     setActivePlatform,

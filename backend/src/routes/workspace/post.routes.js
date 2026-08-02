@@ -11,8 +11,36 @@ const router = express.Router();
 router.use(verifyAuth);
 
 /**
- * GET /api/posts
- * Fetch all posts with filters
+ * @openapi
+ * /posts:
+ *   get:
+ *     summary: Fetch posts list for a brand with filters (v1)
+ *     tags: [Workspace Posts]
+ *     security: [{ cookieAuth: [] }]
+ *     parameters:
+ *       - in: query
+ *         name: brandId
+ *         required: true
+ *         schema: { type: string }
+ *         description: Brand ID owning the posts
+ *       - in: query
+ *         name: socialAccountId
+ *         required: false
+ *         schema: { type: string }
+ *         description: Filter posts specifically for a social account ID
+ *       - in: query
+ *         name: platform
+ *         required: false
+ *         schema: { type: string }
+ *         description: Filter posts by social platform (e.g. YOUTUBE, FACEBOOK)
+ *       - in: query
+ *         name: status
+ *         required: false
+ *         schema: { type: string }
+ *         description: Filter posts by status (DRAFT, SCHEDULED, PUBLISHED, etc.)
+ *     responses:
+ *       200:
+ *         description: Posts list fetched
  */
 router.get('/', checkBrandAccess, postController.getPosts);
 

@@ -194,7 +194,10 @@ class InboxService {
       throw new Error(`No reply strategy found for platform ${item.platform} and type ${item.type}`);
     }
 
-    const reply = await strategy.reply(brandId, item.platformItemId, text);
+    // item.socialAccountId is whichever account synced this comment/DM in —
+    // routing the reply through that exact account (not an arbitrary pick)
+    // matters once a brand has more than one account of the platform.
+    const reply = await strategy.reply(brandId, item.platformItemId, text, item.socialAccountId);
     
     // Update parent conversation to reflect the reply (update snippet text, sorting time and mark as READ)
     await inboxRepository.updateInboxItem(itemId, {
@@ -214,7 +217,7 @@ class InboxService {
       throw new Error(`No strategy found to update reply for platform ${reply.platform}`);
     }
 
-    await strategy.updateReply(brandId, reply.platformItemId, text);
+    await strategy.updateReply(brandId, reply.platformItemId, text, reply.socialAccountId);
     return await inboxRepository.updateInboxItem(replyId, { content: text });
   }
 
@@ -226,7 +229,7 @@ class InboxService {
       throw new Error(`No strategy found to delete reply for platform ${reply.platform}`);
     }
 
-    await strategy.deleteReply(brandId, reply.platformItemId);
+    await strategy.deleteReply(brandId, reply.platformItemId, reply.socialAccountId);
     return await inboxRepository.deleteInboxItem(replyId);
   }
 

@@ -35,8 +35,8 @@ class FacebookCommentSyncStrategy extends BaseSyncStrategy {
     return item.platform === PLATFORMS.FACEBOOK && item.type === INBOX_TYPES.COMMENT;
   }
 
-  async reply(brandId, parentPlatformItemId, text) {
-    const { account, pageAccessToken } = await this._getAccountAndToken(brandId);
+  async reply(brandId, parentPlatformItemId, text, socialAccountId = null) {
+    const { account, pageAccessToken } = await this._getAccountAndToken(brandId, socialAccountId);
     const response = await facebookGateway.replyToComment(parentPlatformItemId, text, pageAccessToken);
     
     const inbox = await inboxRepository.findOrCreateInbox(brandId);
@@ -60,11 +60,15 @@ class FacebookCommentSyncStrategy extends BaseSyncStrategy {
     });
   }
 
-  async _getAccountAndToken(brandId) {
+  // socialAccountId picks a specific page when the brand has more than one
+  // Facebook page connected; omitted, filterRealAccount picks the first
+  // non-mock account (correct as long as the brand only has one, still the
+  // common case).
+  async _getAccountAndToken(brandId, socialAccountId = null) {
     const socialAccounts = await socialAccountRepository.findByBrandAndPlatform(brandId, PLATFORMS.FACEBOOK);
-    const account = filterRealAccount(socialAccounts);
+    const account = (socialAccountId && socialAccounts.find(acc => acc.id === socialAccountId)) || filterRealAccount(socialAccounts);
     if (!account) throw new Error('Facebook account not connected');
-    
+
     return {
       account,
       pageId: account.platformAccountId,
@@ -72,13 +76,13 @@ class FacebookCommentSyncStrategy extends BaseSyncStrategy {
     };
   }
 
-  async updateReply(brandId, platformItemId, text) {
-    const { pageAccessToken } = await this._getAccountAndToken(brandId);
+  async updateReply(brandId, platformItemId, text, socialAccountId = null) {
+    const { pageAccessToken } = await this._getAccountAndToken(brandId, socialAccountId);
     return await facebookGateway.updateComment(platformItemId, text, pageAccessToken);
   }
 
-  async deleteReply(brandId, platformItemId) {
-    const { pageAccessToken } = await this._getAccountAndToken(brandId);
+  async deleteReply(brandId, platformItemId, socialAccountId = null) {
+    const { pageAccessToken } = await this._getAccountAndToken(brandId, socialAccountId);
     return await facebookGateway.deleteComment(platformItemId, pageAccessToken);
   }
 }
