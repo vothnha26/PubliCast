@@ -2,6 +2,7 @@ const BaseSocialService = require('../base-social.service');
 const tiktokAnalytics = require('./tiktok-analytics.service');
 const tiktokPost = require('./tiktok-post.service');
 const tiktokVideo = require('./tiktok-video.service');
+const tiktokComment = require('./tiktok-comment.service');
 
 class TikTokService extends BaseSocialService {
   /**
@@ -24,6 +25,10 @@ class TikTokService extends BaseSocialService {
 
   async getPublishedVideos(brandId, pageToken = null, limit = 10, socialAccountId = null) {
     return tiktokVideo.getPublishedVideos(brandId, pageToken, limit, socialAccountId);
+  }
+
+  async getVideoComments(brandId, params = {}) {
+    return tiktokComment.getVideoComments(brandId, params);
   }
 
   async getAnalyticsReport(auth, startDate, endDate, currentFollowers) {

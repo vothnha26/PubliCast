@@ -151,7 +151,7 @@ class FacebookGateway {
   }
 
   async getPageFeed(pageId, pageAccessToken, pageToken = null, limit = 10) {
-    const fields = 'id,message,story,created_time,full_picture,attachments{media,type},shares,comments.summary(true),reactions.summary(true)';
+    const fields = 'id,message,story,created_time,full_picture,permalink_url,attachments{media,type},shares,comments.summary(true),reactions.summary(true)';
     let url = `${this.graphBaseUrl}/${pageId}/feed?fields=${fields}&limit=${limit}&access_token=${pageAccessToken}`;
     if (pageToken) {
       url += `&after=${pageToken}`;
@@ -281,8 +281,11 @@ class FacebookGateway {
     return data.data || [];
   }
 
-  async replyToComment(commentId, text, pageAccessToken) {
-    const url = `${this.graphBaseUrl}/${commentId}/comments?message=${encodeURIComponent(text)}&access_token=${pageAccessToken}`;
+  async replyToComment(commentId, text, pageAccessToken, attachmentUrl = null) {
+    let url = `${this.graphBaseUrl}/${commentId}/comments?message=${encodeURIComponent(text)}&access_token=${pageAccessToken}`;
+    if (attachmentUrl) {
+      url += `&attachment_url=${encodeURIComponent(attachmentUrl)}`;
+    }
     const res = await fetch(url, { method: 'POST' });
     if (!res.ok) {
       const errData = await res.json().catch(() => ({}));
@@ -291,8 +294,11 @@ class FacebookGateway {
     return res.json();
   }
 
-  async createComment(postId, text, pageAccessToken) {
-    const url = `${this.graphBaseUrl}/${postId}/comments?message=${encodeURIComponent(text)}&access_token=${pageAccessToken}`;
+  async createComment(postId, text, pageAccessToken, attachmentUrl = null) {
+    let url = `${this.graphBaseUrl}/${postId}/comments?message=${encodeURIComponent(text)}&access_token=${pageAccessToken}`;
+    if (attachmentUrl) {
+      url += `&attachment_url=${encodeURIComponent(attachmentUrl)}`;
+    }
     const res = await fetch(url, { method: 'POST' });
     if (!res.ok) {
       const errData = await res.json().catch(() => ({}));

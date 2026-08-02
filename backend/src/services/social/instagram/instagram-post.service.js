@@ -191,6 +191,7 @@ class InstagramPostService {
         // media" and is the actual preview image). IMAGE/CAROUSEL posts have
         // no thumbnail_url at all, so fall back to media_url for those.
         thumbnailUrl: post.thumbnail_url || post.media_url || '',
+        postUrl: post.permalink || null,
         date: post.timestamp,
         status: POST_STATUS.PUBLISHED,
         reach,
@@ -237,6 +238,7 @@ class InstagramPostService {
       type: this._determinePostType(post),
       mediaUrl: post.media_url || post.thumbnail_url || '',
       thumbnailUrl: post.thumbnail_url || post.media_url || '',
+      postUrl: post.permalink || null,
       date: post.timestamp,
       status: POST_STATUS.PUBLISHED,
       reach: 0,
