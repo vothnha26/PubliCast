@@ -53,6 +53,7 @@ router.use(verifyAuth);
  *         schema:
  *           type: string
  *         description: Filter posts by status (DRAFT, SCHEDULED, PUBLISHED, etc.)
+ *     responses:
  *       200:
  *         description: Posts list fetched
  *         content:
