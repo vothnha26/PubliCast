@@ -191,19 +191,25 @@ class FacebookGateway {
   }
 
   async getPostInsights(postId, pageAccessToken) {
-    const metrics = 'post_total_media_view_unique,post_media_view,post_clicks_by_type';
-    const url = `${this.graphBaseUrl}/${postId}/insights?metric=${metrics}&access_token=${pageAccessToken}`;
-    const res = await fetch(url);
-    if (!res.ok) {
-      const errData = await res.json().catch(() => ({}));
-      throw new FacebookInsightsError(
-        errData.error?.message || `Failed to fetch Facebook post insights for ${postId}`,
-        { code: errData.error?.code ?? null, status: res.status, postId }
-      );
+    const tryMetrics = async (metricsStr) => {
+      const url = `${this.graphBaseUrl}/${postId}/insights?metric=${metricsStr}&access_token=${pageAccessToken}`;
+      const res = await fetch(url);
+      if (res.ok) {
+        const data = await res.json();
+        return data.data || [];
+      }
+      return null;
+    };
+
+    let data = await tryMetrics('post_impressions_unique,post_impressions,post_clicks_by_type');
+    if (!data) {
+      data = await tryMetrics('post_total_media_view_unique,post_media_view,post_clicks_by_type');
+    }
+    if (!data) {
+      data = await tryMetrics('post_impressions_unique,post_impressions');
     }
 
-    const data = await res.json();
-    return data.data || [];
+    return data || [];
   }
 
   async getPostReactionsBreakdown(postId, pageAccessToken) {
