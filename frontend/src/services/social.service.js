@@ -174,6 +174,19 @@ class SocialService {
     return data;
   }
 
+  async getTikTokComments(brandId, { videoId = null, commentId = null, maxCount = 10, cursor = 0, socialAccountId = null } = {}) {
+    const params = new URLSearchParams({
+      brandId,
+      ...(videoId ? { videoId } : {}),
+      ...(commentId ? { commentId } : {}),
+      ...(maxCount ? { maxCount } : {}),
+      ...(cursor ? { cursor } : {}),
+      ...(socialAccountId ? { socialAccountId } : {})
+    }).toString();
+    const data = await apiV2.get(`/social/tiktok/comments?${params}`);
+    return data;
+  }
+
   async disconnectTikTokAccount(brandId, socialAccountId = null) {
     const data = await apiV2.post('/social/tiktok/disconnect', { brandId, socialAccountId });
     return data;
@@ -251,6 +264,18 @@ class SocialService {
   // --- Bluesky ---
   async getBlueskyAuthUrl(brandId) {
     const data = await apiV2.get(`/social/bluesky/url?brandId=${brandId}`);
+    return data;
+  }
+
+  async getBlueskyComments(brandId, { uri, depth = 6, parentHeight = 80, socialAccountId = null } = {}) {
+    const params = new URLSearchParams({
+      brandId,
+      uri,
+      ...(depth ? { depth } : {}),
+      ...(parentHeight ? { parentHeight } : {}),
+      ...(socialAccountId ? { socialAccountId } : {})
+    }).toString();
+    const data = await apiV2.get(`/social/bluesky/comments?${params}`);
     return data;
   }
 

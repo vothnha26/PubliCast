@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useMemo } from 'react';
+import { BarChart3 } from 'lucide-react';
 import { buildMediaUrl } from '@/utils/url';
 import { PlatformIcon } from '@/components/shared/PlatformIcon';
 import { PostMediaThumbnail } from '@/components/shared/PostMediaThumbnail';
@@ -29,6 +30,7 @@ export function WeeklyGrid({
   onCellClick,
   onPostClick,
   onDuplicateClick,
+  onDetailClick,
   onCellDrop,
   rowHeight = 100,
   eventsData = [],
@@ -293,7 +295,19 @@ export function WeeklyGrid({
                               <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-tight group-hover/card:hidden">
                                 {displayTime}
                               </span>
-                              <button 
+                              {post.status?.toLowerCase() === "published" && onDetailClick && (
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    onDetailClick(post);
+                                  }}
+                                  title="Chi tiết bài đăng"
+                                  className="hidden group-hover/card:flex items-center justify-center p-0.5 hover:bg-muted rounded text-emerald-600 transition-colors cursor-pointer border-none shadow-none bg-transparent"
+                                >
+                                  <BarChart3 size={11} />
+                                </button>
+                              )}
+                              <button
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   if (onDuplicateClick) onDuplicateClick(post);

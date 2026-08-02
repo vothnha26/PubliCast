@@ -18,6 +18,7 @@ import { SidebarIntegrations } from "./components/SidebarIntegrations";
 import { ImportOverlay } from "./components/ImportOverlay";
 import { MonthlyGrid } from "./components/MonthlyGrid";
 import { CalendarSkeleton } from "./components/CalendarSkeleton";
+import { PublishedPostDetailModal } from "./components/PublishedPostDetailModal";
 
 import { useBrandPermission } from "../../../hooks/useBrandPermission";
 
@@ -29,12 +30,16 @@ export function WeeklyCalendarView({ socialAccountId, platform } = {}) {
 
   const [searchTerm, setSearchTerm] = useState("");
   const { openPostCreator, isOpen } = usePostCreator();
+  // Post whose detail popup (stats + go-to-post) is currently open.
+  const [detailPost, setDetailPost] = useState(null);
 
   const handlePostClick = (post) => {
     if (post.status?.toLowerCase() === "published") {
-      const url = getPlatformPostUrl(post);
-      if (url) {
-        window.open(url, "_blank", "noopener,noreferrer");
+      // Open the in-app detail popup (stats + "Go to post" link) instead of
+      // bouncing straight out to the platform in a new tab — the external
+      // link still lives inside the popup for one more click.
+      if (getPlatformPostUrl(post)) {
+        setDetailPost(post);
       } else {
         openPostCreator({ post, defaultSocialAccountId: socialAccountId });
       }
@@ -324,6 +329,7 @@ export function WeeklyCalendarView({ socialAccountId, platform } = {}) {
               onCellClick={handleCellClick}
               onPostClick={handlePostClick}
               onDuplicateClick={handleDuplicatePost}
+              onDetailClick={setDetailPost}
               visiblePlatforms={visiblePlatforms}
             />
           ) : (
@@ -334,6 +340,7 @@ export function WeeklyCalendarView({ socialAccountId, platform } = {}) {
               onCellClick={handleCellClick}
               onPostClick={handlePostClick}
               onDuplicateClick={handleDuplicatePost}
+              onDetailClick={setDetailPost}
               onCellDrop={importFromDrive}
               rowHeight={rowHeight}
               eventsData={eventsData}
@@ -361,6 +368,11 @@ export function WeeklyCalendarView({ socialAccountId, platform } = {}) {
 
       {/* Google Drive Import Backdrop Overlay */}
       <ImportOverlay isOpen={isImporting} />
+
+      {/* Published post detail popup (stats + go-to-post) */}
+      {detailPost && (
+        <PublishedPostDetailModal post={detailPost} onClose={() => setDetailPost(null)} />
+      )}
     </div>
   );
 }

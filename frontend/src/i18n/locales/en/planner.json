@@ -1,5 +1,22 @@
 {
   "title": "Content Planner",
+  "postDetail": {
+    "publishedOn": "Published on",
+    "close": "Close",
+    "reactions": "Reactions",
+    "comments": "Comments",
+    "engRate": "Eng. Rate",
+    "views": "Views",
+    "impressions": "Impressions",
+    "shares": "Shares",
+    "clicks": "Clicks",
+    "reach": "Reach",
+    "custom": "Custom",
+    "openInsights": "Open insights",
+    "statsUnavailable": "Stats are not available for this platform yet.",
+    "publishedVia": "Published via",
+    "goToPost": "Go to post"
+  },
   "tabs": {
     "calendar": "Calendar",
     "list": "List",

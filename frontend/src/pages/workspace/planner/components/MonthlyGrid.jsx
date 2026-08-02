@@ -1,5 +1,6 @@
 import React, { useMemo } from 'react';
 import { format } from 'date-fns';
+import { BarChart3 } from 'lucide-react';
 import { buildMediaUrl } from '@/utils/url';
 import { PlatformIcon } from '@/components/shared/PlatformIcon';
 
@@ -39,6 +40,7 @@ export function MonthlyGrid({
   onCellClick,
   onPostClick,
   onDuplicateClick,
+  onDetailClick,
   visiblePlatforms = {}
 }) {
   const weekdayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
@@ -219,7 +221,19 @@ export function MonthlyGrid({
                     <span className="text-[8px] opacity-75 font-black uppercase font-mono tracking-tight shrink-0 group-hover/mcard:hidden">
                       {format(new Date(post.scheduledAt || post.createdAt), 'h:mma')}
                     </span>
-                    <button 
+                    {post.status?.toLowerCase() === "published" && onDetailClick && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onDetailClick(post);
+                        }}
+                        title="Chi tiết bài đăng"
+                        className="hidden group-hover/mcard:flex items-center justify-center p-0.5 hover:bg-muted rounded text-emerald-600 transition-colors cursor-pointer border-none shadow-none shrink-0 bg-transparent"
+                      >
+                        <BarChart3 size={10} />
+                      </button>
+                    )}
+                    <button
                       onClick={(e) => {
                         e.stopPropagation();
                         if (onDuplicateClick) onDuplicateClick(post);

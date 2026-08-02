@@ -48,6 +48,8 @@ export const INBOX_ITEM_TYPE = {
   COMMENT: 'COMMENT',
   DIRECT_MESSAGE: 'DIRECT_MESSAGE',
   UNREAD: 'UNREAD',
+  REPLIED: 'REPLIED',
+  RESOLVED: 'RESOLVED',
 };
 
 export const INBOX_ITEM_TYPE_OPTIONS = [
@@ -55,4 +57,7 @@ export const INBOX_ITEM_TYPE_OPTIONS = [
   { id: INBOX_ITEM_TYPE.COMMENT, label: 'Comments' },
   { id: INBOX_ITEM_TYPE.DIRECT_MESSAGE, label: 'Direct Messages' },
   { id: INBOX_ITEM_TYPE.UNREAD, label: 'Unread' },
+  { id: INBOX_ITEM_TYPE.REPLIED, label: 'Replied' },
+  { id: INBOX_ITEM_TYPE.RESOLVED, label: 'Resolved' },
 ];
+
