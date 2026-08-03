@@ -2,12 +2,13 @@ const request = require('supertest');
 const app = require('../../src/app');
 
 // Mock Auth Middleware
-jest.mock('../../src/middlewares/auth.middleware', () => ({
-  verifyAuth: (req, res, next) => {
+jest.mock('../../src/middlewares/auth.middleware', () => {
+  const verifyAuth = (req, res, next) => {
     req.user = { id: 'test-user-id', email: 'user@publicast.com', name: 'Test User' };
     next();
-  }
-}));
+  };
+  return { verifyAuth, verifyAuthFromQuery: verifyAuth };
+});
 
 describe('Trending Hashtag API Tests', () => {
   it('should return trending hashtags for INSTAGRAM', async () => {

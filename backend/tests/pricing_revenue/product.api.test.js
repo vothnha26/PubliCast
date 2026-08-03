@@ -10,12 +10,13 @@ jest.mock('../../src/config/redis', () => ({
 let mockUser = { id: 'admin-123', email: 'admin@publicast.com', role: 'ADMIN' };
 
 // Mock Auth Middleware
-jest.mock('../../src/middlewares/auth.middleware', () => ({
-  verifyAuth: (req, res, next) => {
+jest.mock('../../src/middlewares/auth.middleware', () => {
+  const verifyAuth = (req, res, next) => {
     req.user = mockUser;
     next();
-  }
-}));
+  };
+  return { verifyAuth, verifyAuthFromQuery: verifyAuth };
+});
 
 // Mock Authorization Middleware
 jest.mock('../../src/middlewares/authorization.middleware', () => ({

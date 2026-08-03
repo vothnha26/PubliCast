@@ -10,12 +10,13 @@ jest.mock('otplib', () => ({
 }));
 
 // Mock Auth Middleware
-jest.mock('../../src/middlewares/auth.middleware', () => ({
-  verifyAuth: (req, res, next) => {
+jest.mock('../../src/middlewares/auth.middleware', () => {
+  const verifyAuth = (req, res, next) => {
     req.user = { id: 'operator-id', email: 'owner@publicast.com' };
     next();
-  }
-}));
+  };
+  return { verifyAuth, verifyAuthFromQuery: verifyAuth };
+});
 
 // Mock Prisma
 jest.mock('../../src/config/prisma', () => {

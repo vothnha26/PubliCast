@@ -13,12 +13,13 @@
 const request = require('supertest');
 const express = require('express');
 
-jest.mock('../../src/middlewares/auth.middleware', () => ({
-  verifyAuth: (req, res, next) => {
+jest.mock('../../src/middlewares/auth.middleware', () => {
+  const verifyAuth = (req, res, next) => {
     req.user = { id: 'user-1' };
     next();
-  }
-}));
+  };
+  return { verifyAuth, verifyAuthFromQuery: verifyAuth };
+});
 jest.mock('../../src/services/auth/authorization.facade', () => ({
   checkBrandAccess: jest.fn(),
   checkPermission: jest.fn()

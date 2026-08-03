@@ -60,12 +60,13 @@ jest.mock('../../src/services/auth/authorization.facade', () => mockAuthorizatio
 
 // 4. Mock middlewares
 let mockCurrentUser = { id: 'mock-user-id' };
-jest.mock('../../src/middlewares/auth.middleware', () => ({
-  verifyAuth: (req, res, next) => {
+jest.mock('../../src/middlewares/auth.middleware', () => {
+  const verifyAuth = (req, res, next) => {
     req.user = mockCurrentUser;
     next();
-  }
-}));
+  };
+  return { verifyAuth, verifyAuthFromQuery: verifyAuth };
+});
 
 jest.mock('../../src/middlewares/permission.middleware', () => {
   const middleware = jest.fn(() => (req, res, next) => next());

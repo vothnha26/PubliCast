@@ -160,11 +160,22 @@ router.post('/logout', verifyAuth, authControllerV2.logout);
  *     tags: [Auth V2]
  *     responses:
  *       200:
- *         description: Access token refreshed successfully
+ *         description: Access token refreshed successfully (sets new HTTP-only accessToken/refreshToken cookies)
  *         content:
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/V2EnvelopeResponse'
+ *       401:
+ *         description: >
+ *           Session expired, please log in again. Returned for any refresh
+ *           failure (missing/expired/invalid refresh token, token/user
+ *           mismatch, revoked session, inactive user) — the message is
+ *           intentionally generic so it doesn't reveal which of these
+ *           occurred.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
  */
 router.post('/refresh', authControllerV2.refreshToken);
 
