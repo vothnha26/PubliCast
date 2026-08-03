@@ -43,7 +43,7 @@ class SocialService {
 
   async getPublishedVideos(brandId, pageToken = null, limit = 10, socialAccountId = null) {
     const url = `/social/youtube/published-videos?brandId=${encodeURIComponent(brandId)}${pageToken ? `&pageToken=${encodeURIComponent(pageToken)}` : ''}${limit ? `&limit=${encodeURIComponent(limit)}` : ''}${socialAccountId ? `&socialAccountId=${encodeURIComponent(socialAccountId)}` : ''}`;
-    const data = await apiV2.get(url);
+    const data = await apiV2.get(url, { timeout: 60000 });
     return data;
   }
 
