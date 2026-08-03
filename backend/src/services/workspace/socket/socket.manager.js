@@ -84,6 +84,14 @@ class SocketManager {
   }
 
   /**
+   * Broadcast an event to everyone currently viewing a given brand
+   */
+  broadcastToBrandRoom(brandId, event, data) {
+    const brandRoom = `${ROOM_PREFIXES.BRAND}${brandId}`;
+    this.emitToRoom(brandRoom, event, data);
+  }
+
+  /**
    * Private handler for socket connection
    */
   _handleConnection(socket) {
