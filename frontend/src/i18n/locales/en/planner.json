@@ -152,6 +152,7 @@
     "repostNow": "Repost now",
     "detailStats": "Detailed stats",
     "showingResults": "Showing {{count}} of {{total}} posts (Page {{page}}/{{totalPages}})",
+    "perPage": "Per page",
     "prevBtn": "Prev",
     "nextBtn": "Next",
     "reviewerPanel": {

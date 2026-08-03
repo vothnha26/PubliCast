@@ -1,5 +1,5 @@
 import { useState, useRef } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import {
   X, Check, ChevronRight, ChevronLeft, Globe,
   Plus, Users, Image as ImageIcon, Upload, Sparkles, Diamond, Loader2
@@ -20,8 +20,18 @@ export function CreateWorkplacePage() {
   const [isSaving, setIsSaving] = useState(false);
   const fileInputRef = useRef(null);
   const navigate = useNavigate();
+  const location = useLocation();
   const { user } = useAuth();
-  const { activeBrand, updateBrand } = useBrand();
+  const { activeBrand, updateBrand, createBrand } = useBrand();
+
+  // Only trust a same-origin in-app path passed via router state (set by
+  // Topbar's "Create Workplace" link) — never navigate to something an
+  // external source could control. Falls back to /dashboard for entry
+  // points with no meaningful "back" (first-time onboarding redirect,
+  // direct URL visit).
+  const closeTarget = (typeof location.state?.from === "string" && location.state.from.startsWith("/"))
+    ? location.state.from
+    : "/dashboard";
 
   const handleFileChange = (e) => {
     const file = e.target.files[0];
@@ -35,21 +45,28 @@ export function CreateWorkplacePage() {
   const nextStep = () => setStep(prev => Math.min(prev + 1, 4));
   const prevStep = () => setStep(prev => Math.max(prev - 1, 1));
 
-  // Đổi tên brand mặc định ("New Workspace" tạo lúc signup) thành tên user
-  // nhập ở bước 1, thay vì để nó là placeholder mãi mãi hoặc tạo brand thứ 2
-  // dư thừa. Cùng cơ chế OnboardingModal (đã bị thay thế) từng dùng.
+  // Two entry points share this page (see Topbar's "Create Workplace" link
+  // and Dashboard's onboardingCompleted=false redirect):
+  //  - First-time onboarding: activeBrand exists but still has the
+  //    placeholder name/onboardingCompleted=false — rename it in place
+  //    rather than creating a redundant second brand.
+  //  - "Create new workplace" from the Topbar once onboarding is already
+  //    done: must create an actual new brand, not overwrite the one the
+  //    user is currently in.
+  const isOnboarding = activeBrand && !activeBrand.onboardingCompleted;
+
   const handleFinalize = async () => {
-    if (!activeBrand) {
-      toast.error("Không tìm thấy thương hiệu để cập nhật");
-      return;
-    }
     setIsSaving(true);
     try {
-      await profileService.editProfile({
-        fullName: user?.fullName,
-        industry: formData.industry,
-      });
-      await updateBrand(activeBrand.id, { name: formData.name.trim() });
+      if (isOnboarding) {
+        await profileService.editProfile({
+          fullName: user?.fullName,
+          industry: formData.industry,
+        });
+        await updateBrand(activeBrand.id, { name: formData.name.trim() });
+      } else {
+        await createBrand({ name: formData.name.trim(), industry: formData.industry });
+      }
       nextStep();
     } catch (err) {
       toast.error("Không thể lưu thông tin thiết lập");
@@ -74,7 +91,7 @@ export function CreateWorkplacePage() {
            ))}
         </div>
 
-        <button onClick={() => navigate("/dashboard")} className="p-2 hover:bg-muted rounded-full transition-colors text-muted-foreground cursor-pointer">
+        <button onClick={() => navigate(closeTarget)} className="p-2 hover:bg-muted rounded-full transition-colors text-muted-foreground cursor-pointer">
            <X size={20} />
         </button>
       </div>
