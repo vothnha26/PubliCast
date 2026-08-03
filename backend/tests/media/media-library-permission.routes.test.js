@@ -9,12 +9,13 @@ jest.mock('otplib', () => ({
 }));
 
 // Mock auth so req.user is controllable per test.
-jest.mock('../../src/middlewares/auth.middleware', () => ({
-  verifyAuth: (req, res, next) => {
+jest.mock('../../src/middlewares/auth.middleware', () => {
+  const verifyAuth = (req, res, next) => {
     req.user = { id: 'caller-user-id', email: 'caller@publicast.com', role: 'USER' };
     next();
-  }
-}));
+  };
+  return { verifyAuth, verifyAuthFromQuery: verifyAuth };
+});
 
 jest.mock('../../src/services/auth/authorization.facade');
 jest.mock('../../src/services/workspace/media-library.service');

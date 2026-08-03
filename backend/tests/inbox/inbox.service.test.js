@@ -415,7 +415,9 @@ describe('InboxService Unit Tests', () => {
       const result = await inboxService.updateReply('brand-abc', 'reply-123', 'Updated Content', 'user-1');
 
       expect(inboxRepository.findById).toHaveBeenCalledWith('reply-123');
-      expect(activeStrategy.updateReply).toHaveBeenCalledWith('brand-abc', 'fb_comment_456', 'Updated Content');
+      // 4th arg is reply.socialAccountId, undefined on this mock item — see
+      // multi-account-per-platform support in inbox.service.js#updateReply.
+      expect(activeStrategy.updateReply).toHaveBeenCalledWith('brand-abc', 'fb_comment_456', 'Updated Content', undefined);
       expect(inboxRepository.updateInboxItem).toHaveBeenCalledWith('reply-123', { content: 'Updated Content' });
       expect(result.content).toBe('Updated Content');
     });
@@ -450,7 +452,7 @@ describe('InboxService Unit Tests', () => {
       const result = await inboxService.deleteReply('brand-abc', 'reply-123', 'user-1');
 
       expect(inboxRepository.findById).toHaveBeenCalledWith('reply-123');
-      expect(activeStrategy.deleteReply).toHaveBeenCalledWith('brand-abc', 'fb_comment_456');
+      expect(activeStrategy.deleteReply).toHaveBeenCalledWith('brand-abc', 'fb_comment_456', undefined);
       expect(inboxRepository.deleteInboxItem).toHaveBeenCalledWith('reply-123');
       expect(result).toBe(true);
     });

@@ -11,6 +11,7 @@ import { CreateBrandModal } from "../../components/shared/CreateBrandModal";
 import { useBrand } from "../../context/BrandContext";
 import { toast } from "sonner";
 import socialService from "../../services/social.service";
+import aiService from "../../services/ai.service";
 import { useConfirm } from "@/hooks/useConfirm";
 import { useTranslation } from "react-i18next";
 
@@ -22,7 +23,7 @@ export function BrandSettingsPage() {
   const [activeTab, setActiveTab] = useState("brand-settings");
   
   const { brands, createBrand, updateBrand, deleteBrand, activeBrand, selectBrand, loading, refreshBrands } = useBrand();
-  
+
   const [selectedBrand, setSelectedBrand] = useState(null);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [isTableOverlayOpen, setIsTableOverlayOpen] = useState(false);
@@ -31,6 +32,14 @@ export function BrandSettingsPage() {
   const [isUpdating, setIsUpdating] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [conflictData, setConflictData] = useState(null);
+
+  // AI Model Configuration tab — which already-configured provider
+  // (OpenAI/Gemini) this brand's AI generations use. null/"" = follow the
+  // app-wide default. Never collects a brand-supplied API key.
+  const [aiProviderInput, setAiProviderInput] = useState("");
+  const [aiModelInput, setAiModelInput] = useState("");
+  const [isAiSettingsLoading, setIsAiSettingsLoading] = useState(false);
+  const [isAiSettingsSaving, setIsAiSettingsSaving] = useState(false);
 
   const allowedBrandsLimit = brands.reduce((max, b) => {
     const planName = b.currentPlan?.name;
@@ -108,6 +117,54 @@ export function BrandSettingsPage() {
     navigate(`${location.pathname}${query}`);
   };
 
+  useEffect(() => {
+    if (activeTab !== "ai-configuration" || !activeBrand) return;
+    let isMounted = true;
+    setIsAiSettingsLoading(true);
+    aiService.getSettings(activeBrand.id)
+      .then((settings) => {
+        if (!isMounted) return;
+        setAiProviderInput(settings?.aiProvider || "");
+        setAiModelInput(settings?.aiModel || "");
+      })
+      .catch((err) => {
+        console.error("Failed to load AI settings:", err);
+        toast.error(t("brand.aiLoadFailed", "Không thể tải cấu hình AI"));
+      })
+      .finally(() => {
+        if (isMounted) setIsAiSettingsLoading(false);
+      });
+    return () => { isMounted = false; };
+  }, [activeTab, activeBrand?.id]);
+
+  const handleSaveAiSettings = async () => {
+    if (!activeBrand) return;
+    setIsAiSettingsSaving(true);
+    try {
+      await aiService.updateSettings(activeBrand.id, {
+        aiProvider: aiProviderInput || null,
+        aiModel: aiModelInput || null
+      });
+      toast.success(t("brand.aiSaveSuccess", "Đã lưu cấu hình AI"));
+    } catch (err) {
+      toast.error(err.message || t("brand.aiSaveFailed", "Không thể lưu cấu hình AI"));
+    } finally {
+      setIsAiSettingsSaving(false);
+    }
+  };
+
+  const handleCreateBrand = async (brandData) => {
+    try {
+      const newBrand = await createBrand(brandData);
+      if (newBrand) {
+        setSelectedBrand({ ...newBrand });
+        selectBrand(newBrand.id);
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
   const handleSaveBrand = async () => {
     if (!selectedBrand || !selectedBrand.name.trim()) return;
     setIsUpdating(true);
@@ -141,18 +198,6 @@ export function BrandSettingsPage() {
       console.error(e);
     } finally {
       setIsDeleting(false);
-    }
-  };
-
-  const handleCreateBrand = async (brandData) => {
-    try {
-      const newBrand = await createBrand(brandData);
-      if (newBrand) {
-        setSelectedBrand({ ...newBrand });
-        selectBrand(newBrand.id);
-      }
-    } catch (e) {
-      console.error(e);
     }
   };
 
@@ -192,7 +237,7 @@ export function BrandSettingsPage() {
             <span className="text-xs text-muted-foreground font-medium">{brands.length > 0 ? t("brand.brandsCount", { count: brands.length }) : t("brand.noBrandsCount")}</span>
             <HelpCircle size={14} className="text-muted-foreground/50 ml-1" />
           </div>
-          <button 
+          <button
             onClick={() => {
               if (isLimitReached) {
                 setIsLimitModalOpen(true);
@@ -352,7 +397,60 @@ export function BrandSettingsPage() {
         )}
 
         {activeTab === "ai-configuration" && (
-           <div className="h-64 border-2 border-dashed border-gray-100 rounded-3xl flex items-center justify-center text-gray-300 font-medium">{t("brand.aiConfiguring")}</div>
+           <div className="space-y-8 animate-in fade-in duration-300 max-w-xl">
+              <div>
+                 <h3 className="text-lg font-bold text-foreground mb-2">{t("brand.aiProviderTitle", "Nhà cung cấp AI")}</h3>
+                 <p className="text-sm text-muted-foreground mb-4">
+                    {t("brand.aiProviderDesc", "Chọn model AI được dùng khi tạo nội dung cho thương hiệu này. Để trống để dùng mặc định của hệ thống.")}
+                 </p>
+              </div>
+
+              {isAiSettingsLoading ? (
+                 <div className="h-32 flex items-center justify-center text-muted-foreground">
+                    <Loader2 className="animate-spin" size={20} />
+                 </div>
+              ) : (
+                 <div className="space-y-6">
+                    <div className="space-y-1.5">
+                       <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">{t("brand.aiProviderLabel", "Nhà cung cấp")}</label>
+                       <select
+                         value={aiProviderInput}
+                         onChange={(e) => setAiProviderInput(e.target.value)}
+                         className="w-full px-4 py-3 rounded-xl border border-border bg-background text-foreground focus:border-foreground outline-none text-sm font-medium cursor-pointer"
+                       >
+                          <option value="">{t("brand.aiProviderDefault", "Mặc định hệ thống")}</option>
+                          <option value="GEMINI">Gemini</option>
+                          <option value="OPENAI">OpenAI</option>
+                       </select>
+                    </div>
+
+                    <div className="space-y-1.5">
+                       <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">{t("brand.aiModelLabel", "Model (tuỳ chọn)")}</label>
+                       <input
+                         placeholder={t("brand.aiModelPlaceholder", "vd: gpt-4o-mini, gemini-2.5-flash")}
+                         value={aiModelInput}
+                         onChange={(e) => setAiModelInput(e.target.value)}
+                         className="w-full px-4 py-3 rounded-xl border border-border bg-background text-foreground focus:border-foreground outline-none text-sm font-medium"
+                       />
+                       <p className="text-xs text-muted-foreground">
+                          {t("brand.aiModelDesc", "Để trống để dùng model mặc định của nhà cung cấp đã chọn.")}
+                       </p>
+                    </div>
+
+                    <div className="border-t border-border pt-6 flex justify-end">
+                       <button
+                         type="button"
+                         onClick={handleSaveAiSettings}
+                         disabled={isAiSettingsSaving}
+                         className="px-6 py-3 bg-[#2D1D35] hover:bg-[#3D2D45] text-white rounded-xl text-xs font-bold transition-all cursor-pointer shadow-md disabled:opacity-50 flex items-center gap-1.5"
+                       >
+                          {isAiSettingsSaving && <Loader2 className="animate-spin" size={12} />}
+                          {t("brand.saveChanges")}
+                       </button>
+                    </div>
+                 </div>
+              )}
+           </div>
         )}
       </div>
 
@@ -371,7 +469,7 @@ export function BrandSettingsPage() {
       />
 
       {/* Create Brand Modal */}
-      <CreateBrandModal 
+      <CreateBrandModal
         isOpen={isCreateModalOpen}
         onClose={() => setIsCreateModalOpen(false)}
         onCreate={handleCreateBrand}

@@ -47,6 +47,11 @@ const prisma = require('../../../config/prisma');
 const DistributedLockService = require('../distributed-lock.service');
 
 const POST_INSIGHTS_CACHE_TTL_SEC = 5 * 60; // 5 minutes
+// getVideoDetails() read-through cache: Inbox preview was calling the Graph
+// API on every click, including once per top-level comment sharing the same
+// post (N+1) — same bug class already fixed for YouTube via TrackedVideo.
+// title/thumbnail don't need to be fresher than this.
+const VIDEO_DETAILS_CACHE_TTL_MS = 60 * 60 * 1000; // 1 hour
 const PAGE_DEMOGRAPHICS_CACHE_TTL_SEC = 60 * 60; // 1 hour
 
 const COLD_START_POLL_INTERVAL_MS = 200;
@@ -322,6 +327,19 @@ class FacebookPostService {
    * "view on Facebook" link, not analytics.
    */
   async getVideoDetails(brandId, platformPostId, socialAccountId = null) {
+    const cached = await prisma.facebookPostMetric.findFirst({
+      where: { brandId, platformPostId }
+    });
+    if (cached && Date.now() - cached.fetchedAt.getTime() < VIDEO_DETAILS_CACHE_TTL_MS) {
+      return {
+        id: platformPostId,
+        title: (cached.captionSnippet || 'Facebook Post').slice(0, 60),
+        thumbnailUrl: cached.thumbnailUrl || null,
+        channelTitle: 'Facebook',
+        postUrl: `https://www.facebook.com/${platformPostId}`
+      };
+    }
+
     const { pageAccessToken } = await this._getAccountCredentials(brandId, socialAccountId);
     if (pageAccessToken && pageAccessToken.startsWith('mock-')) {
       return {

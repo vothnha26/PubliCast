@@ -148,7 +148,13 @@ describe('Notification integration hooks', () => {
       socialPlatformFactory.getService.mockReturnValue(platformService);
       notificationService.create.mockResolvedValue({});
 
+      // force=false (default) returns the cached/DB snapshot immediately and
+      // fires the live sync + failure notification in the background,
+      // fire-and-forget (see getAggregatedMetrics' "Optimization" comment in
+      // social.service.js) — awaiting the call alone races ahead of that
+      // background Promise.all. Wait a tick for it to settle before asserting.
       const result = await socialService.getAggregatedMetrics('brand-1', '2026-05-01', '2026-05-30');
+      await new Promise((resolve) => setImmediate(resolve));
 
       expect(result).toEqual([account]);
       expect(notificationService.create).toHaveBeenCalledWith(expect.objectContaining({

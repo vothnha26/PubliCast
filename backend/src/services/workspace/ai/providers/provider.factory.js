@@ -3,8 +3,15 @@ const OpenAiProvider = require('./openai.provider');
 const GeminiProvider = require('./gemini.provider');
 
 class AiProviderFactory {
-  static getProvider() {
-    const providerEnv = (process.env.AI_PROVIDER || 'MOCK').toUpperCase();
+  /**
+   * @param {string|null} brandProviderOverride - AIAssistant.aiProvider for
+   *   the requesting brand ('OPENAI'/'GEMINI'), if the brand chose to use a
+   *   different already-configured provider than the app-wide default. Only
+   *   picks between providers the platform already holds API keys for —
+   *   never a brand-supplied key.
+   */
+  static getProvider(brandProviderOverride = null) {
+    const providerEnv = (brandProviderOverride || process.env.AI_PROVIDER || 'MOCK').toUpperCase();
 
     if (providerEnv === 'OPENAI') {
       if (process.env.OPENAI_API_KEY) {

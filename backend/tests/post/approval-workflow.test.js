@@ -11,12 +11,13 @@ jest.mock('otplib', () => ({
 let mockUser = { id: 'operator-id', email: 'operator@publicast.com' };
 
 // Mock Auth Middleware
-jest.mock('../../src/middlewares/auth.middleware', () => ({
-  verifyAuth: (req, res, next) => {
+jest.mock('../../src/middlewares/auth.middleware', () => {
+  const verifyAuth = (req, res, next) => {
     req.user = mockUser;
     next();
-  }
-}));
+  };
+  return { verifyAuth, verifyAuthFromQuery: verifyAuth };
+});
 
 // Mock Authorization Facade
 jest.mock('../../src/services/auth/authorization.facade', () => {

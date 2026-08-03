@@ -3,12 +3,13 @@ const request = require('supertest');
 let mockUser = { id: 'user-123', email: 'user@publicast.com' };
 
 // Mock Auth Middleware
-jest.mock('../../src/middlewares/auth.middleware', () => ({
-  verifyAuth: (req, res, next) => {
+jest.mock('../../src/middlewares/auth.middleware', () => {
+  const verifyAuth = (req, res, next) => {
     req.user = mockUser;
     next();
-  }
-}));
+  };
+  return { verifyAuth, verifyAuthFromQuery: verifyAuth };
+});
 
 // Mock Permission Middleware
 jest.mock('../../src/middlewares/permission.middleware', () => {

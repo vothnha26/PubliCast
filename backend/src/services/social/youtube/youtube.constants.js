@@ -151,6 +151,17 @@ const YOUTUBE_VIDEO_POLLING = Object.freeze({
   MAX_ATTEMPTS: 20
 });
 
+/**
+ * getVideoDetails() read-through cache (TrackedVideo table). View/like/
+ * comment counts don't need to be real-time — the Inbox preview panel was
+ * calling the live API on every click, including once per top-level
+ * comment sharing the same video (N+1). 1 hour keeps counts reasonably
+ * fresh while cutting the vast majority of redundant quota-costing calls.
+ */
+const YOUTUBE_VIDEO_DETAILS_CACHE = Object.freeze({
+  TTL_MS: 60 * 60 * 1000
+});
+
 module.exports = {
   YOUTUBE_API,
   YOUTUBE_MODERATION_STATUS,
@@ -160,5 +171,6 @@ module.exports = {
   YOUTUBE_QUOTA_COSTS,
   YOUTUBE_API_PARTS,
   YOUTUBE_COMMENT_SYNC,
-  YOUTUBE_VIDEO_POLLING
+  YOUTUBE_VIDEO_POLLING,
+  YOUTUBE_VIDEO_DETAILS_CACHE
 };

@@ -152,6 +152,7 @@
     "repostNow": "Đăng lại ngay",
     "detailStats": "Thống kê chi tiết",
     "showingResults": "Hiển thị {{count}} / {{total}} bài viết (Trang {{page}}/{{totalPages}})",
+    "perPage": "Mỗi trang",
     "prevBtn": "Trang trước",
     "nextBtn": "Trang sau",
     "reviewerPanel": {

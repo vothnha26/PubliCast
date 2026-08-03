@@ -35,7 +35,17 @@ async function loginAs(driver, role) {
     // Fallback to standard wait
   }
 
-  await driver.wait(until.elementLocated(By.id('email')), 30000);
+  // The login page occasionally fails to render the email input within the
+  // first navigation (CI/network flakiness, not app logic) — retry the
+  // navigation once before giving up, instead of just waiting longer on a
+  // page load that may never resolve.
+  try {
+    await driver.wait(until.elementLocated(By.id('email')), 30000);
+  } catch (waitErr) {
+    console.log('⚠️ [loginAs] Login page did not render #email in time — retrying navigation once.');
+    await driver.get(`${process.env.BASE_URL || 'http://localhost:5173'}/login`);
+    await driver.wait(until.elementLocated(By.id('email')), 30000);
+  }
 
   // Fill credentials
   await driver.findElement(By.id('email')).sendKeys(email);

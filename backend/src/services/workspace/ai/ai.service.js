@@ -45,15 +45,33 @@ class AiService {
   async updateSettings(brandId, data) {
     await this.getSettings(brandId);
 
+    // aiProvider/aiModel let a brand pick which already-configured provider
+    // (OpenAI/Gemini) its generations use — null means "use the app-wide
+    // AI_PROVIDER env default". This never stores a brand-supplied API key.
+    // Only touch these fields when the caller actually sent them — passing
+    // `undefined` to Prisma's update `data` leaves the column untouched,
+    // whereas an empty-string/"" or unrecognized provider is treated as
+    // "clear the override back to null" (explicit opt-out).
+    const AI_PROVIDERS = ['OPENAI', 'GEMINI'];
+    const updateData = {
+      defaultTone: data.defaultTone,
+      defaultLanguage: data.defaultLanguage,
+      brandVoiceContext: data.brandVoiceContext,
+      targetAudience: data.targetAudience,
+      targetPlatforms: data.targetPlatforms
+    };
+
+    if ('aiProvider' in data) {
+      const normalized = (data.aiProvider || '').toUpperCase();
+      updateData.aiProvider = AI_PROVIDERS.includes(normalized) ? normalized : null;
+    }
+    if ('aiModel' in data) {
+      updateData.aiModel = data.aiModel ? data.aiModel.trim() || null : null;
+    }
+
     return prisma.aIAssistant.update({
       where: { brandId },
-      data: {
-        defaultTone: data.defaultTone,
-        defaultLanguage: data.defaultLanguage,
-        brandVoiceContext: data.brandVoiceContext,
-        targetAudience: data.targetAudience,
-        targetPlatforms: data.targetPlatforms
-      }
+      data: updateData
     });
   }
 
@@ -85,12 +103,13 @@ class AiService {
       targetPlatforms: platform || settings.targetPlatforms
     });
 
-    const provider = AiProviderFactory.getProvider();
+    const provider = AiProviderFactory.getProvider(settings.aiProvider);
     const result = await provider.generate(prompt, {
       tone: toneToUse,
       platform,
       image,
-      systemInstruction
+      systemInstruction,
+      model: settings.aiModel || undefined
     });
 
     const updatedSettings = await prisma.aIAssistant.update({

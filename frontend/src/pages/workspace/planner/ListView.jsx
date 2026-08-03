@@ -387,7 +387,7 @@ export function ListView({ socialAccountId } = {}) {
       </div>
 
       {/* Table Container */}
-      <div className="bg-card border border-border rounded-3xl shadow-sm overflow-hidden flex flex-col min-h-[400px]">
+      <div className="bg-card border border-border rounded-3xl shadow-sm flex flex-col min-h-[400px]">
          {loading ? (
             <table className="w-full text-left">
                <thead>
@@ -758,25 +758,42 @@ export function ListView({ socialAccountId } = {}) {
             </table>
             
             {/* Footer Pagination */}
-            <div className="px-6 py-4 bg-muted/30 border-t border-border flex items-center justify-between">
+            <div className="px-6 py-4 bg-muted/30 border-t border-border flex items-center justify-between gap-4 flex-wrap">
                <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-widest">
-                 {t("listView.showingResults", { count: posts.length, total: meta.total })}
+                 {t("listView.showingResults", { count: posts.length, total: meta.total, page: meta.page, totalPages: meta.totalPages })}
                </span>
-               <div className="flex gap-2">
-                  <button 
-                    disabled={parseInt(filters.page) <= 1}
-                    onClick={() => updateFilters({ page: (parseInt(filters.page) - 1).toString() })}
-                    className="px-4 py-1.5 bg-card border border-border rounded-lg text-[11px] font-bold text-foreground hover:bg-muted transition-all disabled:opacity-30 disabled:cursor-not-allowed shadow-sm cursor-pointer"
-                  >
-                    {t("listView.prevBtn")}
-                  </button>
-                  <button 
-                    disabled={parseInt(filters.page) >= meta.totalPages}
-                    onClick={() => updateFilters({ page: (parseInt(filters.page) + 1).toString() })}
-                    className="px-4 py-1.5 bg-card border border-border rounded-lg text-[11px] font-bold text-foreground hover:bg-muted transition-all disabled:opacity-30 disabled:cursor-not-allowed shadow-sm cursor-pointer"
-                  >
-                    {t("listView.nextBtn")}
-                  </button>
+               <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-1.5">
+                     <label htmlFor="list-page-size" className="text-[11px] font-bold text-muted-foreground uppercase tracking-widest">
+                       {t("listView.perPage", "Mỗi trang")}
+                     </label>
+                     <select
+                       id="list-page-size"
+                       value={filters.limit || "10"}
+                       onChange={(e) => updateFilters({ limit: e.target.value, page: "1" })}
+                       className="bg-card border border-border rounded-lg text-[11px] font-bold text-foreground px-2 py-1.5 cursor-pointer focus:outline-none focus:ring-2 focus:ring-[#D9F99D]/50"
+                     >
+                       {["10", "20", "50", "100"].map((n) => (
+                         <option key={n} value={n}>{n}</option>
+                       ))}
+                     </select>
+                  </div>
+                  <div className="flex gap-2">
+                     <button
+                       disabled={parseInt(filters.page) <= 1}
+                       onClick={() => updateFilters({ page: (parseInt(filters.page) - 1).toString() })}
+                       className="px-4 py-1.5 bg-card border border-border rounded-lg text-[11px] font-bold text-foreground hover:bg-muted transition-all disabled:opacity-30 disabled:cursor-not-allowed shadow-sm cursor-pointer"
+                     >
+                       {t("listView.prevBtn")}
+                     </button>
+                     <button
+                       disabled={parseInt(filters.page) >= meta.totalPages}
+                       onClick={() => updateFilters({ page: (parseInt(filters.page) + 1).toString() })}
+                       className="px-4 py-1.5 bg-card border border-border rounded-lg text-[11px] font-bold text-foreground hover:bg-muted transition-all disabled:opacity-30 disabled:cursor-not-allowed shadow-sm cursor-pointer"
+                     >
+                       {t("listView.nextBtn")}
+                     </button>
+                  </div>
                </div>
             </div>
             </>

@@ -35,7 +35,7 @@ class GeminiProvider extends BaseAiProvider {
     }
 
     try {
-      const url = GEMINI_CONFIG.API_URL_TEMPLATE.replace('{model}', GEMINI_CONFIG.MODEL);
+      const url = GEMINI_CONFIG.API_URL_TEMPLATE.replace('{model}', options.model || GEMINI_CONFIG.MODEL);
 
       const response = await axios.post(url, {
         contents,

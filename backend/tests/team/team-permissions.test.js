@@ -11,12 +11,13 @@ jest.mock('otplib', () => ({
   authenticator: { generate: jest.fn(), verify: jest.fn() }
 }));
 
-jest.mock('../../src/middlewares/auth.middleware', () => ({
-  verifyAuth: (req, res, next) => {
+jest.mock('../../src/middlewares/auth.middleware', () => {
+  const verifyAuth = (req, res, next) => {
     req.user = { id: 'operator-id', email: 'operator@publicast.com' };
     next();
-  }
-}));
+  };
+  return { verifyAuth, verifyAuthFromQuery: verifyAuth };
+});
 
 jest.mock('../../src/config/prisma', () => {
   const mockBrand = { findFirst: jest.fn(), findUnique: jest.fn() };

@@ -34,7 +34,7 @@ class OpenAiProvider extends BaseAiProvider {
 
     try {
       const response = await axios.post(OPENAI_CONFIG.API_URL, {
-        model: OPENAI_CONFIG.MODEL,
+        model: options.model || OPENAI_CONFIG.MODEL,
         messages,
         response_format: { type: 'json_object' },
         temperature: 0.7

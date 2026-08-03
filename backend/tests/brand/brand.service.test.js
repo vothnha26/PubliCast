@@ -148,7 +148,14 @@ describe('BrandService Unit Tests', () => {
 
       expect(result.name).toBe('TechCorp Updated');
       expect(brandRepository.findById).toHaveBeenCalledWith(mockBrandId);
-      expect(brandRepository.update).toHaveBeenCalledWith(mockBrandId, updateData);
+      // mockBrandData has no onboardingCompleted flag (undefined, i.e. not
+      // yet onboarded), and the new name isn't the signup placeholder — the
+      // service auto-flips onboardingCompleted to true on top of the raw
+      // updateData the caller sent (see brand.service.js updateBrand()).
+      expect(brandRepository.update).toHaveBeenCalledWith(mockBrandId, {
+        ...updateData,
+        onboardingCompleted: true
+      });
     });
 
     it('should throw a 404 error if the brand is not found', async () => {

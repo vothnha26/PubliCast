@@ -1,10 +1,17 @@
 const express = require('express');
 const notificationController = require('../../controllers/core/notification.controller');
-const { verifyAuth } = require('../../middlewares/auth.middleware');
+const { verifyAuth, verifyAuthFromQuery } = require('../../middlewares/auth.middleware');
 const { authorize } = require('../../middlewares/authorization.middleware');
 const { USER_ROLES } = require('../../utils/constants');
 
 const router = express.Router();
+
+/**
+ * GET /api/notifications/stream
+ * EventSource can't send an Authorization header, so this route alone
+ * accepts the token via query string.
+ */
+router.get('/stream', verifyAuthFromQuery, notificationController.streamNotifications);
 
 router.use(verifyAuth);
 
@@ -17,11 +24,6 @@ router.get('/', notificationController.getNotifications);
  * POST /api/notifications
  */
 router.post('/', authorize(USER_ROLES.ADMIN, USER_ROLES.OWNER), notificationController.createNotification);
-
-/**
- * GET /api/notifications/stream
- */
-router.get('/stream', notificationController.streamNotifications);
 
 /**
  * POST /api/notifications/:id/read

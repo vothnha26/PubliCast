@@ -40,7 +40,12 @@ export function SidebarWorkspace() {
       });
   }, [activeBrand]);
 
-  const isManageMode = currentPath.startsWith("/manage") || currentPath.startsWith("/hashtags") || currentPath.startsWith("/settings");
+  // /manage/inbox is a daily-use core feature, not a brand-management config
+  // screen — it shouldn't switch the sidebar into the management menu the
+  // way the rest of /manage/* does.
+  const isManageMode = (currentPath.startsWith("/manage") && !currentPath.startsWith("/manage/inbox"))
+    || currentPath.startsWith("/hashtags")
+    || currentPath.startsWith("/settings");
 
   const planName = planInfo?.planName || "FREE";
   const isPremium = planName.toUpperCase() !== "FREE";

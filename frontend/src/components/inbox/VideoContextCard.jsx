@@ -1,5 +1,5 @@
 import * as React from "react";
-import { Play, Youtube, Facebook, Instagram, Maximize2, ExternalLink } from "lucide-react";
+import { Youtube, Facebook, Instagram, Maximize2, ExternalLink } from "lucide-react";
 import { PublishedPostDetailModal } from "@/pages/workspace/planner/components/PublishedPostDetailModal";
 
 const PLATFORM_BADGE = {
@@ -9,15 +9,11 @@ const PLATFORM_BADGE = {
 };
 
 export const VideoContextCard = ({ videoContext, activeConv }) => {
-  const [isPlaying, setIsPlaying] = React.useState(false);
   const [imgError, setImgError] = React.useState(false);
   const [isDetailOpen, setIsDetailOpen] = React.useState(false);
 
   const ctx = videoContext || activeConv?.videoContext || {};
   const platform = (activeConv?.platform || "YOUTUBE").toUpperCase();
-  // Only YouTube has a working in-app embed here — Facebook/Instagram posts
-  // open on their own platform in a new tab instead of a broken iframe built
-  // from a video ID that only means something to YouTube.
   const isYoutube = platform === "YOUTUBE";
   const badge = PLATFORM_BADGE[platform] || PLATFORM_BADGE.YOUTUBE;
 
@@ -39,10 +35,8 @@ export const VideoContextCard = ({ videoContext, activeConv }) => {
     thumbnailUrl = `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`;
   }
 
-  const handlePlayClick = () => {
-    if (isYoutube) {
-      setIsPlaying(true);
-    } else if (postUrl) {
+  const handleThumbnailClick = () => {
+    if (postUrl) {
       window.open(postUrl, "_blank", "noopener,noreferrer");
     }
   };
@@ -78,96 +72,76 @@ export const VideoContextCard = ({ videoContext, activeConv }) => {
   return (
     <div className="w-full flex flex-col items-center justify-center my-2 font-sans animate-in fade-in duration-300">
       {/* 1. Video Reel Player Box (Matching Screenshot 2 - 9:16 vertical aspect ratio) */}
-      <div className="relative w-[260px] h-[360px] rounded-2xl overflow-hidden bg-zinc-950 shadow-2xl border border-white/10 group select-none flex flex-col justify-between shrink-0">
-        {isPlaying && isYoutube && videoId ? (
-          <iframe
-            src={`https://www.youtube.com/embed/${videoId}?autoplay=1`}
-            title={title}
-            className="absolute inset-0 w-full h-full border-0 z-20"
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-            allowFullScreen
-          />
-        ) : (
-          <>
-            {/* Background Thumbnail Image or Neutral Gradient Placeholder */}
-            {thumbnailUrl && !imgError ? (
-              <img
-                src={thumbnailUrl}
-                alt={title}
-                onError={() => setImgError(true)}
-                className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-              />
-            ) : (
-              <div className="absolute inset-0 bg-gradient-to-br from-zinc-900 via-stone-900 to-black flex flex-col items-center justify-center p-4 text-center">
-                <badge.Icon size={44} className="text-white/60 mb-3" />
-                <span className="text-xs font-semibold text-zinc-300 max-w-[200px] line-clamp-3 leading-relaxed">
-                  {title}
-                </span>
-              </div>
-            )}
+      <div className="w-[260px] rounded-2xl overflow-hidden bg-zinc-950 shadow-2xl border border-white/10 select-none shrink-0">
+        {/* Content block: platform badge, channel, date, title, caption */}
+        <div className="p-3.5 space-y-2 text-white">
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2 min-w-0">
+              <span className={`w-4 h-4 rounded-full ${badge.bg} flex items-center justify-center shrink-0`}>
+                <badge.Icon size={10} className="fill-white text-white" />
+              </span>
+              <span className="font-bold text-white text-[11px] tracking-tight truncate">{channelTitle}</span>
+              <span className="text-white/60 text-[10px] shrink-0">{publishedDate}</span>
+            </div>
 
-            {/* Top/Bottom Dark Overlay Gradients matching Screenshot 2 */}
-            <div className="absolute inset-0 bg-gradient-to-b from-black/80 via-transparent to-black/90 z-10 pointer-events-none" />
-
-            {/* Top Overlay: Platform Badge + Channel Name + Date (Matching Screenshot 2) */}
-            <div className="relative z-20 p-3.5 flex items-center justify-between gap-2">
-              <div className="flex items-center gap-2 bg-black/60 backdrop-blur-md px-3 py-1.5 rounded-full text-white text-[11px] font-medium border border-white/20 shadow-md min-w-0">
-                <span className={`w-4 h-4 rounded-full ${badge.bg} flex items-center justify-center shrink-0`}>
-                  <badge.Icon size={10} className="fill-white text-white" />
-                </span>
-                <span className="font-bold text-white tracking-tight truncate">{channelTitle}</span>
-                <span className="text-white/70 text-[10px] shrink-0">{publishedDate}</span>
-              </div>
-
-              {/* Detail popup (stats + go-to-post) + direct external link,
-                  matching the reference design's two corner icons. */}
-              <div className="flex items-center gap-1 shrink-0">
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setIsDetailOpen(true);
-                  }}
-                  title="Chi tiết bài đăng"
-                  className="w-7 h-7 rounded-full bg-black/60 backdrop-blur-md border border-white/20 flex items-center justify-center text-white hover:bg-black/80 transition-colors cursor-pointer shadow-md"
+            {/* Detail popup (stats + go-to-post) + direct external link */}
+            <div className="flex items-center gap-1 shrink-0">
+              <button
+                onClick={() => setIsDetailOpen(true)}
+                title="Chi tiết bài đăng"
+                className="w-7 h-7 rounded-full bg-white/10 border border-white/20 flex items-center justify-center text-white hover:bg-white/20 transition-colors cursor-pointer shadow-md"
+              >
+                <Maximize2 size={12} />
+              </button>
+              {postUrl && (
+                <a
+                  href={postUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  title="Xem bài đăng gốc"
+                  className="w-7 h-7 rounded-full bg-white/10 border border-white/20 flex items-center justify-center text-white hover:bg-white/20 transition-colors shadow-md no-underline"
                 >
-                  <Maximize2 size={12} />
-                </button>
-                {postUrl && (
-                  <a
-                    href={postUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    onClick={(e) => e.stopPropagation()}
-                    title="Xem bài đăng gốc"
-                    className="w-7 h-7 rounded-full bg-black/60 backdrop-blur-md border border-white/20 flex items-center justify-center text-white hover:bg-black/80 transition-colors shadow-md no-underline"
-                  >
-                    <ExternalLink size={12} />
-                  </a>
-                )}
-              </div>
+                  <ExternalLink size={12} />
+                </a>
+              )}
             </div>
+          </div>
 
-            {/* Center Overlay: Circle Play Button (opens the real post for non-YouTube platforms) */}
-            <div
-              onClick={handlePlayClick}
-              className="relative z-20 flex items-center justify-center cursor-pointer my-auto"
-            >
-              <div className="w-14 h-14 rounded-full bg-black/60 backdrop-blur-md border border-white/30 flex items-center justify-center group-hover:scale-110 group-hover:bg-black/80 transition-all shadow-2xl">
-                <Play size={24} className="fill-white text-white ml-1" />
-              </div>
-            </div>
+          <h3 className="text-xs font-bold leading-snug text-white line-clamp-2 uppercase tracking-wide">
+            {title}
+          </h3>
+          {ctx.caption && (
+            <p className="text-[11px] text-white/70 line-clamp-3 font-normal leading-relaxed">
+              {ctx.caption}
+            </p>
+          )}
+        </div>
 
-            {/* Bottom Overlay: Title & Hashtags (Matching Screenshot 2) */}
-            <div className="relative z-20 p-4 text-white space-y-1 text-left">
-              <h3 className="text-xs font-bold leading-snug drop-shadow-md text-white line-clamp-2 uppercase tracking-wide">
-                {title}
-              </h3>
-              <p className="text-[11px] text-white/80 line-clamp-2 font-normal leading-relaxed">
-                {ctx.caption || "SINGING MY PRAISES 2300 ngày 7/7/2026... #WorldCup2026 #Argentina"}
-              </p>
+        {/* Thumbnail block: clicking it opens the original post/video on its platform */}
+        <div
+          onClick={handleThumbnailClick}
+          role={postUrl ? "button" : undefined}
+          title={postUrl ? "Xem bài đăng gốc" : undefined}
+          className={`relative w-full aspect-video bg-zinc-900 ${postUrl ? "cursor-pointer group" : ""}`}
+        >
+          {thumbnailUrl && !imgError ? (
+            <img
+              src={thumbnailUrl}
+              alt={title}
+              onError={() => setImgError(true)}
+              className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+            />
+          ) : (
+            <div className="absolute inset-0 bg-gradient-to-br from-zinc-900 via-stone-900 to-black flex flex-col items-center justify-center p-4 text-center">
+              <badge.Icon size={36} className="text-white/60" />
             </div>
-          </>
-        )}
+          )}
+          {postUrl && (
+            <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center">
+              <ExternalLink size={20} className="text-white opacity-0 group-hover:opacity-100 transition-opacity drop-shadow-md" />
+            </div>
+          )}
+        </div>
       </div>
 
       {isDetailOpen && (
