@@ -690,7 +690,7 @@ const LOCK_CONFIG = {
   },
   INBOX_SYNC_SCHEDULER: {
     KEY: 'lock:inbox-sync-scheduler:periodic-scan',
-    TTL_SEC: 14 * 60          // Lock expires in 14m (for 15m cron cycle)
+    TTL_SEC: 100              // Lock expires in 100s (for 2m testing cycle)
   }
 };
 

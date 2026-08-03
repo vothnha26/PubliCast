@@ -178,13 +178,24 @@ class InboxService {
    *   for these accounts (the "Channels" filter in the Inbox UI). Omitted
    *   or empty means every connected account on the brand.
    */
-  async _fetchAllPlatformPosts(brandId, socialAccountIds = []) {
+  _cleanPlatformString(targetPlatforms) {
+    if (!targetPlatforms) return 'YOUTUBE';
+    const str = String(targetPlatforms).toUpperCase();
+    if (str.includes('YOUTUBE')) return 'YOUTUBE';
+    if (str.includes('FACEBOOK')) return 'FACEBOOK';
+    if (str.includes('INSTAGRAM')) return 'INSTAGRAM';
+    if (str.includes('TIKTOK')) return 'TIKTOK';
+    return 'YOUTUBE';
+  }
+
+  async _fetchAllPlatformPosts(brandId, socialAccountIds = [], platform = null) {
     let socialAccounts = [];
     try {
       socialAccounts = await prisma.socialAccount.findMany({
         where: {
           brandId,
           isConnected: true,
+          ...(platform && platform.toUpperCase() !== 'ALL' ? { platform: platform.toUpperCase() } : {}),
           ...(socialAccountIds.length > 0 ? { id: { in: socialAccountIds } } : {})
         }
       });
@@ -194,7 +205,7 @@ class InboxService {
     }
 
     const normalizers = {
-      YOUTUBE: (res, socialAccountId) => (res?.videos || []).map(v => ({
+      YOUTUBE: (res, socialAccountId) => (res?.videos || []).filter(v => v.privacyStatus !== 'private').map(v => ({
         id: v.id,
         title: v.title || null,
         thumbnailUrl: v.thumbnailUrl || null,
@@ -322,7 +333,7 @@ class InboxService {
    * Queries real DB Posts & TrackedVideos, and aggregates comment statistics.
    */
   async getInboxPosts(brandId, queryParams = {}) {
-    const { page = 1, limit = 20, socialAccountId } = queryParams;
+    const { page = 1, limit = 100, socialAccountId } = queryParams;
     const { skip, take } = this._getPagination(page, limit);
 
     const socialAccountIds = (socialAccountId && socialAccountId !== 'All')
@@ -392,7 +403,7 @@ class InboxService {
     // account was connected) never gets a Post/TrackedVideo row, so it was
     // invisible here even though the channel stats page (which calls these
     // same platform APIs directly) shows it fine.
-    const platformPosts = await this._fetchAllPlatformPosts(brandId, socialAccountIds);
+    const platformPosts = await this._fetchAllPlatformPosts(brandId, socialAccountIds, queryParams.platform);
 
     // 3. Fetch inbox items for comment stats
     const initialWhere = { inbox: { brandId }, parentItemId: null };
@@ -415,6 +426,7 @@ class InboxService {
       const postTitle = post.title || post.caption?.slice(0, 60) || `Bài viết #${idx + 1}`;
       const postKey = this._resolvePlatformPostId(post) || post.id;
       const postUrl = this._buildPlatformPostUrl(post.targetPlatforms, postKey);
+      const normalizedPlatform = this._cleanPlatformString(post.targetPlatforms);
 
       postsMap.set(postKey, {
         id: postKey,
@@ -425,10 +437,10 @@ class InboxService {
           id: postKey,
           title: postTitle,
           thumbnailUrl: thumbnail,
-          channelTitle: post.targetPlatforms || "PubliCast Channel",
+          channelTitle: normalizedPlatform + " Channel",
           postUrl
         },
-        platform: post.targetPlatforms || "Social",
+        platform: normalizedPlatform,
         commentCount: 0,
         unreadCount: 0,
         latestCommentAt: post.createdAt,
@@ -466,7 +478,8 @@ class InboxService {
     // platform's API — fills the gap dbPosts/trackedVideos leave for posts
     // never published through PubliCast or tracked manually.
     platformPosts.forEach((post) => {
-      if (!postsMap.has(post.id)) {
+      const existing = postsMap.get(post.id);
+      if (!existing) {
         postsMap.set(post.id, {
           id: post.id,
           title: post.title,
@@ -496,6 +509,19 @@ class InboxService {
           latestCommentAt: post.publishedAt || null,
           rawItem: null,
         });
+      } else {
+        existing.platform = post.platform || existing.platform;
+        existing.socialAccountId = post.socialAccountId || existing.socialAccountId;
+        if (post.thumbnailUrl && (!existing.thumbnailUrl || existing.thumbnailUrl.includes('dicebear'))) {
+          existing.thumbnailUrl = post.thumbnailUrl;
+          existing.mediaUrl = post.thumbnailUrl;
+          if (existing.videoContext) existing.videoContext.thumbnailUrl = post.thumbnailUrl;
+        }
+        if (existing.videoContext) {
+          existing.videoContext.views = post.views || existing.videoContext.views || 0;
+          existing.videoContext.likes = post.likes || existing.videoContext.likes || 0;
+          existing.videoContext.comments = post.comments || existing.videoContext.comments || 0;
+        }
       }
     });
 
@@ -536,6 +562,11 @@ class InboxService {
     }
 
     const postsList = Array.from(postsMap.values());
+    postsList.sort((a, b) => {
+      const dateA = new Date(a.latestCommentAt || a.publishedAt || a.createdAt || 0).getTime();
+      const dateB = new Date(b.latestCommentAt || b.publishedAt || b.createdAt || 0).getTime();
+      return dateB - dateA;
+    });
     const paginatedPosts = postsList.slice(skip, skip + take);
 
     return {
@@ -638,83 +669,11 @@ class InboxService {
     }
   }
 
-  async _seedMockInboxItems(brandId, platform) {
+  async clearAllInboxItems(brandId) {
     const inbox = await inboxRepository.findOrCreateInbox(brandId);
-    const platformUpper = platform.toUpperCase();
-    
-    const mockUsers = [
-      { name: "Nguyễn Văn Nam", avatar: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100&h=100&fit=crop" },
-      { name: "Trần Thị Mai", avatar: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100&h=100&fit=crop" },
-      { name: "Lê Minh Tuấn", avatar: "https://images.unsplash.com/photo-1599566150163-29194dcaad36?w=100&h=100&fit=crop" },
-      { name: "Phạm Hồng Nhung", avatar: "https://images.unsplash.com/photo-1580489944761-15a19d654956?w=100&h=100&fit=crop" }
-    ];
-
-    const mockMessages = {
-      COMMENT: [
-        "Bài viết này hay quá, mình rất thích cách trình bày của bên bạn!",
-        "Cho mình hỏi video này quay bằng thiết bị gì mà đẹp thế ạ?",
-        "Mong bên bạn ra thêm nhiều nội dung chất lượng như thế này nữa nhé.",
-        "Thông tin rất hữu ích, cảm ơn PubliCast nhiều nhé!"
-      ],
-      DIRECT_MESSAGE: [
-        "Chào bạn, mình muốn hỏi về chi phí hợp tác truyền thông bên bạn.",
-        "Dịch vụ bên mình có hỗ trợ xuất hóa đơn VAT không ạ?",
-        "Mình đã gửi email liên hệ hợp tác, bạn check giúp mình nhé.",
-        "Tư vấn giúp mình gói dịch vụ Marketing cho doanh nghiệp nhỏ với ạ."
-      ]
-    };
-
-    const seededItems = [];
-
-    // Create 3 comments and 2 DMs
-    for (let i = 0; i < 5; i++) {
-      const type = i < 3 ? INBOX_TYPES.COMMENT : INBOX_TYPES.DIRECT_MESSAGE;
-      // Skip DMs for YouTube (YouTube doesn't have DMs)
-      if (platformUpper === 'YOUTUBE' && type === INBOX_TYPES.DIRECT_MESSAGE) {
-        continue;
-      }
-      
-      const user = mockUsers[i % mockUsers.length];
-      const content = mockMessages[type][i % mockMessages[type].length];
-      const platformItemId = `mock_${platform.toLowerCase()}_${type.toLowerCase()}_${Date.now()}_${i}`;
-
-      const item = await inboxRepository.createInboxItem({
-        inboxId: inbox.id,
-        platform: platformUpper,
-        type: type,
-        platformItemId,
-        authorId: `author_${i}`,
-        authorName: user.name,
-        authorAvatarUrl: user.avatar,
-        content,
-        platformCreatedAt: new Date(Date.now() - i * 3600000),
-        syncedAt: new Date(),
-        status: INBOX_STATUS.UNREAD
-      });
-
-      // Add a reply to first item to make thread look rich
-      if (i === 0) {
-        await inboxRepository.createInboxItem({
-          inboxId: inbox.id,
-          platform: platformUpper,
-          type: type,
-          platformItemId: `${platformItemId}_reply`,
-          parentItemId: item.id,
-          authorId: `author_brand`,
-          authorName: "PubliCast Agent",
-          authorAvatarUrl: "",
-          content: "Cảm ơn bạn rất nhiều! Chúng tôi sẽ liên hệ lại ngay nhé.",
-          platformCreatedAt: new Date(Date.now() - i * 3600000 + 600000),
-          syncedAt: new Date(),
-          status: INBOX_STATUS.READ
-        });
-      }
-
-      seededItems.push(item);
-    }
-
-    await inboxRepository.updateInboxLastSync(inbox.id);
-    return seededItems;
+    return await prisma.inboxItem.deleteMany({
+      where: { inboxId: inbox.id }
+    });
   }
 
   async replyToItem(brandId, itemId, text, userId, attachmentUrl = null) {

@@ -104,6 +104,7 @@ class InboxSyncSchedulerService {
 
       for (const platform of platforms) {
         try {
+          // 1. Sync Inbox Comments & Messages
           const syncedItems = await inboxService.syncPlatformComments(brand.id, platform);
           
           if (syncedItems && syncedItems.length > 0) {
@@ -116,6 +117,13 @@ class InboxSyncSchedulerService {
               timestamp: new Date().toISOString()
             });
           }
+
+          // 2. Sync Published Posts & Channel Metrics from Social Platforms
+          const socialService = require('./social.service');
+          await socialService.getAggregatedMetrics(brand.id, null, null, true).catch(err => {
+            logger.warn(`⚠️ [InboxSyncScheduler] Channel metrics & posts sync warning for brand '${brand.name}': ${err.message}`);
+          });
+          logger.info(`✅ [InboxSyncScheduler] Synced published posts & metrics for brand '${brand.name}' (${platform}).`);
         } catch (err) {
           logger.error(`❌ [InboxSyncScheduler] Failed to sync ${platform} for brand '${brand.name}' (${brand.id}):`, err.message);
         }

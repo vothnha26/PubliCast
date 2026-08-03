@@ -52,28 +52,54 @@ class YoutubeCommentSyncStrategy extends BaseSyncStrategy {
 
   async reply(brandId, parentPlatformItemId, text, socialAccountId = null) {
     const { account, auth } = await this._getAccountAndAuth(brandId, socialAccountId);
-    const response = await youtubeGateway.insertCommentReply(auth, parentPlatformItemId, text);
-    const newComment = response.data;
-
-    const inbox = await inboxRepository.findOrCreateInbox(brandId);
+    
+    // 1. Check if parent in DB exists
     const parentInDb = await inboxRepository.findInboxItemByPlatformId(parentPlatformItemId);
+    
+    // 2. YouTube API only allows replying to top-level comments (IDs starting with Ug...)
+    // If user clicked reply on a sub-comment, resolve top-level parent's platformItemId.
+    let targetTopLevelPlatformId = parentPlatformItemId;
+    if (parentInDb && parentInDb.parentItemId) {
+      const topLevelParent = await inboxRepository.findById(parentInDb.parentItemId);
+      if (topLevelParent && topLevelParent.platformItemId) {
+        targetTopLevelPlatformId = topLevelParent.platformItemId;
+      }
+    }
 
-    return inboxRepository.createInboxItem({
-      inboxId: inbox.id,
-      platform: PLATFORMS.YOUTUBE,
-      type: INBOX_TYPES.COMMENT,
-      platformItemId: newComment.id,
-      parentItemId: parentInDb?.id,
-      authorId: account.platformAccountId,
-      authorName: account.displayName,
-      authorAvatarUrl: account.profilePictureUrl,
-      content: newComment.snippet.textDisplay,
-      relatedPostId: parentInDb?.relatedPostId,
-      platformCreatedAt: new Date(newComment.snippet.publishedAt),
-      syncedAt: new Date(),
-      status: INBOX_STATUS.READ,
-      socialAccountId: account.id
-    });
+    // 3. If target is a Video ID (11 chars not starting with Ug), post as top-level comment thread
+    const isVideoId = parentPlatformItemId && parentPlatformItemId.length === 11 && !parentPlatformItemId.startsWith('Ug');
+    if (isVideoId) {
+      return this.createComment(brandId, parentPlatformItemId, text, socialAccountId);
+    }
+
+    try {
+      const response = await youtubeGateway.insertCommentReply(auth, targetTopLevelPlatformId, text);
+      const newComment = response.data;
+
+      const inbox = await inboxRepository.findOrCreateInbox(brandId);
+
+      return inboxRepository.createInboxItem({
+        inboxId: inbox.id,
+        platform: PLATFORMS.YOUTUBE,
+        type: INBOX_TYPES.COMMENT,
+        platformItemId: newComment.id,
+        parentItemId: parentInDb?.id,
+        authorId: account.platformAccountId,
+        authorName: account.displayName,
+        authorAvatarUrl: account.profilePictureUrl,
+        content: newComment.snippet.textDisplay,
+        relatedPostId: parentInDb?.relatedPostId,
+        platformCreatedAt: new Date(newComment.snippet.publishedAt),
+        syncedAt: new Date(),
+        status: INBOX_STATUS.READ,
+        socialAccountId: account.id
+      });
+    } catch (err) {
+      if (err.message && (err.message.includes('insufficient permissions') || err.status === 403)) {
+        throw new Error('Gửi phản hồi thất bại: YouTube yêu cầu tài khoản phải kết nối lại OAuth với đầy đủ quyền Quản lý Kênh, hoặc Video/Bình luận này bị khóa tương tác.');
+      }
+      throw err;
+    }
   }
 
   supportsNewComment(platform) {
@@ -85,27 +111,35 @@ class YoutubeCommentSyncStrategy extends BaseSyncStrategy {
   // reply() can't handle since it always targets an existing comment id.
   async createComment(brandId, videoId, text, socialAccountId = null) {
     const { account, auth } = await this._getAccountAndAuth(brandId, socialAccountId);
-    const response = await youtubeGateway.insertCommentThread(auth, videoId, text);
-    const newThread = response.data;
-    const newComment = newThread.snippet.topLevelComment;
 
-    const inbox = await inboxRepository.findOrCreateInbox(brandId);
+    try {
+      const response = await youtubeGateway.insertCommentThread(auth, videoId, text);
+      const newThread = response.data;
+      const newComment = newThread.snippet.topLevelComment;
 
-    return inboxRepository.createInboxItem({
-      inboxId: inbox.id,
-      platform: PLATFORMS.YOUTUBE,
-      type: INBOX_TYPES.COMMENT,
-      platformItemId: newComment.id,
-      authorId: account.platformAccountId,
-      authorName: account.displayName,
-      authorAvatarUrl: account.profilePictureUrl,
-      content: newComment.snippet.textDisplay,
-      relatedPostId: videoId,
-      platformCreatedAt: new Date(newComment.snippet.publishedAt),
-      syncedAt: new Date(),
-      status: INBOX_STATUS.READ,
-      socialAccountId: account.id
-    });
+      const inbox = await inboxRepository.findOrCreateInbox(brandId);
+
+      return inboxRepository.createInboxItem({
+        inboxId: inbox.id,
+        platform: PLATFORMS.YOUTUBE,
+        type: INBOX_TYPES.COMMENT,
+        platformItemId: newComment.id,
+        authorId: account.platformAccountId,
+        authorName: account.displayName,
+        authorAvatarUrl: account.profilePictureUrl,
+        content: newComment.snippet.textDisplay,
+        relatedPostId: videoId,
+        platformCreatedAt: new Date(newComment.snippet.publishedAt),
+        syncedAt: new Date(),
+        status: INBOX_STATUS.READ,
+        socialAccountId: account.id
+      });
+    } catch (err) {
+      if (err.message && (err.message.includes('insufficient permissions') || err.status === 403)) {
+        throw new Error('Tạo bình luận thất bại: Quyền hạn tài khoản YouTube không đủ (cần kết nối lại tài khoản và tích chọn cấp quyền quản trị Kênh) hoặc Video này bị khóa bình luận.');
+      }
+      throw err;
+    }
   }
 
   // socialAccountId picks a specific channel when the brand has more than

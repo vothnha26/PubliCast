@@ -250,7 +250,7 @@ export const InlineCommentThread = ({
                 </span>
                 <button
                   type="button"
-                  onClick={onReply}
+                  onClick={() => onReply && onReply()}
                   disabled={!replyText.trim() || isReplying}
                   className="p-2 bg-emerald-500 hover:bg-emerald-600 disabled:opacity-40 disabled:hover:bg-emerald-500 text-slate-950 rounded-xl transition-all font-bold cursor-pointer shadow-xs flex items-center justify-center"
                 >
