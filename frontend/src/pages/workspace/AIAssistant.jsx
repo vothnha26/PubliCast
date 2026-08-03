@@ -508,6 +508,11 @@ function HistoryCardItem({ item, toneLabels, supportedFormats, setInput, setTone
   const [targetPlatforms, setTargetPlatforms] = useState("");
   const [defaultTone, setDefaultTone] = useState("PROFESSIONAL");
   const [defaultLanguage, setDefaultLanguage] = useState("vi");
+  // Which provider/model this brand's generations actually use — read from
+  // real settings (set in Brand Settings > AI Configuration) instead of a
+  // hardcoded label, so this reflects reality when the brand overrides it.
+  const [activeAiProvider, setActiveAiProvider] = useState(null);
+  const [activeAiModel, setActiveAiModel] = useState(null);
 
   // Credits States
   const [creditsLimit, setCreditsLimit] = useState(1000);
@@ -630,6 +635,8 @@ function HistoryCardItem({ item, toneLabels, supportedFormats, setInput, setTone
       setLanguage(data.defaultLanguage || "vi");
       setCreditsLimit(data.creditsLimit || 1000);
       setCreditsUsed(data.creditsUsed || 0);
+      setActiveAiProvider(data.aiProvider || null);
+      setActiveAiModel(data.aiModel || null);
 
       // Initialize active tone to default settings
       setTone(data.defaultTone || "PROFESSIONAL");
@@ -863,7 +870,9 @@ function HistoryCardItem({ item, toneLabels, supportedFormats, setInput, setTone
                   </div>
                   <div className="text-[10px] text-muted-foreground flex items-center gap-1 mt-0.5">
                     <span className="inline-block w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping"></span>
-                    Mô hình: Gemini 2.5 Flash / GPT-4o Mini
+                    {activeAiProvider
+                      ? `Mô hình: ${activeAiProvider}${activeAiModel ? ` (${activeAiModel})` : ""}`
+                      : "Mô hình: Mặc định hệ thống"}
                   </div>
                 </div>
               </div>
