@@ -4,6 +4,7 @@ const socialAccountRepository = require('../../../repositories/social/social-acc
 const competitorRepository = require('../../../repositories/social/competitor.repository');
 const { PLATFORMS, SEPARATORS, ANALYTICS, SOCIAL_TECHNICAL, YT_VIDEO_INSIGHTS, REDIS_TTL } = require('../../../utils/constants');
 const { YOUTUBE_QUOTA_THRESHOLD, YOUTUBE_DAILY_QUOTA_LIMIT } = ANALYTICS;
+const logger = require('../../../utils/logger');
 
 let redisClient = null;
 try {
@@ -27,13 +28,17 @@ class YouTubeAnalyticsService {
 
     // Check if token is expired and refresh if necessary
     client.on('tokens', async (tokens) => {
-      if (tokens.refresh_token) {
-        await socialAccountRepository.updateTokens(account.id, tokens);
-      } else if (tokens.access_token) {
-        await socialAccountRepository.updateTokens(account.id, {
-          ...tokens,
-          refresh_token: account.refreshToken
-        });
+      try {
+        if (tokens.refresh_token) {
+          await socialAccountRepository.updateTokens(account.id, tokens);
+        } else if (tokens.access_token) {
+          await socialAccountRepository.updateTokens(account.id, {
+            ...tokens,
+            refresh_token: account.refreshToken
+          });
+        }
+      } catch (err) {
+        logger.warn(`[YouTubeAnalyticsService] Error updating tokens for account ${account.id}: ${err.message}`);
       }
     });
 
