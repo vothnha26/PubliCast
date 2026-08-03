@@ -354,7 +354,8 @@ class YouTubeVideoService {
               targetPlatforms: 'YOUTUBE',
               platformPostId: v.id,
               mediaThumbnailUrls: v.thumbnailUrl || '',
-              publishedAt: v.publishedAt ? new Date(v.publishedAt) : new Date()
+              publishedAt: v.publishedAt ? new Date(v.publishedAt) : new Date(),
+              scheduledAt: v.publishedAt ? new Date(v.publishedAt) : null
             }
           });
         }
