@@ -1,5 +1,11 @@
 {
   "title": "Content Planner",
+  "channelPublish": {
+    "title": "Channel Posts Management",
+    "list": "List",
+    "calendar": "Calendar",
+    "newPost": "New Post"
+  },
   "postDetail": {
     "publishedOn": "Published on",
     "close": "Close",
@@ -143,10 +149,10 @@
     "saveTemplate": "Save as Template",
     "deletePost": "Delete Post",
     "reposting": "Reposting...",
-    "repostNow": "Repost Now",
+    "repostNow": "Repost now",
     "detailStats": "Detailed stats",
-    "showingResults": "Showing {{count}} of {{total}} results",
-    "prevBtn": "Previous",
+    "showingResults": "Showing {{count}} of {{total}} posts (Page {{page}}/{{totalPages}})",
+    "prevBtn": "Prev",
     "nextBtn": "Next",
     "reviewerPanel": {
       "title": "Reviewers",
@@ -175,7 +181,8 @@
       "savingTemplate": "Saving post as template...",
       "saveTemplateSuccess": "Successfully saved post as template!",
       "saveTemplateFail": "Failed to save post as template"
-    }
+    },
+    "perPage": "posts / page"
   },
   "weeklyCalendar": {
     "noPermissionCreate": "You do not have permission to create posts",
@@ -520,10 +527,22 @@
       "update": "Update",
       "saveTemplate": "Save Template",
       "publishOptions": {
-        "draft": { "label": "SAVE AS DRAFT", "sub": "Save and publish at a later time" },
-        "review": { "label": "SEND TO REVIEW", "sub": "Select reviewers" },
-        "schedule": { "label": "SAVE AND SCHEDULE", "sub": "Save changes to this post" },
-        "now": { "label": "PUBLISH NOW", "sub": "Publish with current date and time" }
+        "draft": {
+          "label": "SAVE AS DRAFT",
+          "sub": "Save and publish at a later time"
+        },
+        "review": {
+          "label": "SEND TO REVIEW",
+          "sub": "Select reviewers"
+        },
+        "schedule": {
+          "label": "SAVE AND SCHEDULE",
+          "sub": "Save changes to this post"
+        },
+        "now": {
+          "label": "PUBLISH NOW",
+          "sub": "Publish with current date and time"
+        }
       },
       "publishedState": "Post published — only content can be edited"
     },

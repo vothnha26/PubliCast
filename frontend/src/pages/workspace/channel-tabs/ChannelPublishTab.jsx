@@ -43,7 +43,7 @@ export function ChannelPublishTab({ socialAccountId, platform }) {
               }`}
             >
               <ListIcon size={14} />
-              <span>List</span>
+              <span>{t("channelPublish.list", "Danh sách")}</span>
             </button>
             <button
               onClick={() => setViewMode(PUBLISH_VIEW_MODES.CALENDAR)}
@@ -54,7 +54,7 @@ export function ChannelPublishTab({ socialAccountId, platform }) {
               }`}
             >
               <CalendarIcon size={14} />
-              <span>Calendar</span>
+              <span>{t("channelPublish.calendar", "Lịch")}</span>
             </button>
           </div>
 
@@ -65,7 +65,7 @@ export function ChannelPublishTab({ socialAccountId, platform }) {
               className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold bg-[#0A0A0A] dark:bg-lime-400 text-white dark:text-black hover:scale-105 active:scale-95 cursor-pointer transition-all shadow-md border-none"
             >
               <Plus size={15} />
-              <span>+ New Post</span>
+              <span>{t("channelPublish.newPost", "Bài viết mới")}</span>
             </button>
           )}
         </div>

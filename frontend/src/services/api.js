@@ -159,6 +159,19 @@ apiV2.interceptors.response.use(
     // Standardized V2 Envelope Unwrapping:
     // Backend response format: { message: "...", data: { ... } }
     if (response.data && typeof response.data === 'object' && 'data' in response.data) {
+      if ('meta' in response.data) {
+        const payload = response.data.data;
+        if (Array.isArray(payload)) {
+          payload.meta = response.data.meta;
+          payload.posts = payload;
+          return payload;
+        }
+        return {
+          data: payload,
+          meta: response.data.meta,
+          posts: payload
+        };
+      }
       return response.data.data;
     }
     return response.data;
