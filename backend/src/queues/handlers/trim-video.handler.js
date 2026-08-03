@@ -3,6 +3,7 @@ const socketManager = require('../../services/workspace/socket/socket.manager');
 const redisClient = require('../../config/redis');
 const { TASK_STATUS, SOCKET_EVENTS, REDIS_PREFIXES } = require('../../constants/video-publish.constants');
 const { FFMPEG_DEFAULTS } = require('../../constants/video-editor.constants');
+const logger = require('../../utils/logger');
 
 class TrimVideoHandler {
   async handle(job) {
@@ -26,7 +27,7 @@ class TrimVideoHandler {
     } = job.data;
     const taskId = job.id;
 
-    console.log(`[TrimVideoHandler] 🎬 Processing job ${taskId} for User ${userId}`);
+    logger.debug(`[TrimVideoHandler] 🎬 Processing job ${taskId} for User ${userId}`);
 
     try {
       const trimmedUrl = await videoProcessorFacade.processVideo({
@@ -69,7 +70,7 @@ class TrimVideoHandler {
         keyframes
       });
 
-      console.log(`[TrimVideoHandler] ✅ Successfully processed Video for Job ${taskId}`);
+      logger.debug(`[TrimVideoHandler] ✅ Successfully processed Video for Job ${taskId}`);
       return { videoUrl: trimmedUrl };
     } catch (err) {
       console.error(`[TrimVideoHandler] ❌ Error processing job ${taskId}:`, err.message);

@@ -3,6 +3,7 @@ import { toast } from 'sonner';
 import videoEditorService from '../services/videoEditor.service';
 import socketClient from '../services/socket';
 import { VIDEO_SOCKET_EVENTS } from '../constants/video-editor';
+import logger from '../utils/logger';
 
 export function useVideoProcessing() {
   const [isProcessing, setIsProcessing] = useState(false);
@@ -70,7 +71,7 @@ export function useVideoProcessing() {
 
     const handleSocketSuccess = (data) => {
       if (data.taskId === currentTaskId) {
-        console.log("⚡ [Socket] Received success event for task:", currentTaskId);
+        logger.debug("⚡ [Socket] Received success event for task:", currentTaskId);
         cleanup();
         setIsProcessing(false);
         setCurrentTaskId(null);
@@ -100,7 +101,7 @@ export function useVideoProcessing() {
         const videoUrl = data?.videoUrl || data?.data?.videoUrl;
         const error = data?.error || data?.data?.error;
         if (taskStatus === "SUCCESS") {
-          console.log("⚡ [Polling] Task completed successfully via status check");
+          logger.debug("⚡ [Polling] Task completed successfully via status check");
           cleanup();
           setIsProcessing(false);
           setCurrentTaskId(null);
@@ -123,7 +124,7 @@ export function useVideoProcessing() {
     };
 
     const handleSocketReconnect = () => {
-      console.log("⚡ [Socket Reconnect] Checking task status immediately...");
+      logger.debug("⚡ [Socket Reconnect] Checking task status immediately...");
       checkStatus();
     };
 

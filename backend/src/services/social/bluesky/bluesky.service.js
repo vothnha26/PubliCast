@@ -8,6 +8,7 @@ const { PLATFORMS, QUOTA_TTL_STRATEGY } = require('../../../utils/constants');
 const redisClient = require('../../../config/redis');
 const BLUESKY_CONSTANTS = require('./bluesky.constants');
 const crypto = require('crypto');
+const logger = require('../../../utils/logger');
 
 class BlueskyService extends BaseSocialService {
   constructor() {
@@ -218,14 +219,14 @@ class BlueskyService extends BaseSocialService {
     const firstCommentText = postData.options?.firstComment?.trim() || postData.firstComment?.trim();
     if (firstCommentText) {
       try {
-        console.log(`[Bluesky] Posting first comment: "${firstCommentText}"`);
+        logger.debug(`[Bluesky] Posting first comment: "${firstCommentText}"`);
         // AT Protocol reply bắt buộc cần cả uri + cid cho cả root và parent
         const replyRef = { uri: result.id, cid: result.cid };
         await blueskyGateway.publishPost(agent, {
           text: firstCommentText,
           replyTo: { root: replyRef, parent: replyRef }
         });
-        console.log(`[Bluesky] First comment posted successfully.`);
+        logger.debug(`[Bluesky] First comment posted successfully.`);
       } catch (commentErr) {
         // Không throw — lỗi comment không nên block kết quả publish
         console.error(`[Bluesky] Failed to post first comment:`, commentErr.message);

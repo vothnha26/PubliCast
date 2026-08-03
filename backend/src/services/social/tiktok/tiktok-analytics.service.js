@@ -2,6 +2,7 @@ const tiktokGateway = require('./tiktok.gateway');
 const socialAccountRepository = require('../../../repositories/social/social-account.repository');
 const DistributedLockService = require('../distributed-lock.service');
 const { PLATFORMS, DEFAULT_CONFIG, LOCK_CONFIG } = require('../../../utils/constants');
+const logger = require('../../../utils/logger');
 
 let redisClient = null;
 try {
@@ -159,7 +160,7 @@ class TikTokAnalyticsService {
         return latest;
       }
 
-      console.log(`[TikTok Token Refresh] Token for account ${account.id} is expired or expiring soon. Refreshing...`);
+      logger.debug(`[TikTok Token Refresh] Token for account ${account.id} is expired or expiring soon. Refreshing...`);
       const refreshed = await tiktokGateway.refreshAccessToken(latest.refreshToken);
 
       const accessToken = refreshed.access_token;
@@ -172,7 +173,7 @@ class TikTokAnalyticsService {
         expiry_date: expiryDate
       });
 
-      console.log(`[TikTok Token Refresh] Successfully refreshed token for account ${account.id}`);
+      logger.debug(`[TikTok Token Refresh] Successfully refreshed token for account ${account.id}`);
       return updatedAccount;
     } catch (err) {
       console.error(`[TikTok Token Refresh] Failed to refresh token for account ${account.id}:`, err.message);
@@ -224,7 +225,7 @@ class TikTokAnalyticsService {
       // Force refresh if the token is invalid (even if database metadata said it was valid)
       const isTokenError = error.status === 401 || error.code === 'access_token_invalid';
       if (isTokenError && account.refreshToken) {
-        console.log(`[TikTok Sync] getUserInfo failed with token error. Attempting force refresh...`);
+        logger.debug(`[TikTok Sync] getUserInfo failed with token error. Attempting force refresh...`);
         try {
           const refreshed = await tiktokGateway.refreshAccessToken(account.refreshToken);
           const accessToken = refreshed.access_token;

@@ -1,6 +1,7 @@
 const { ApiClient } = require('@twurple/api');
 const { RefreshingAuthProvider } = require('@twurple/auth');
 const socialAccountRepository = require('../../../repositories/social/social-account.repository');
+const logger = require('../../../utils/logger');
 
 class TwitchGateway {
   constructor() {
@@ -15,7 +16,7 @@ class TwitchGateway {
     });
 
     authProvider.onRefresh(async (userId, newTokenData) => {
-      console.log(`[Twitch] Token refreshed automatically for user: ${userId}`);
+      logger.debug(`[Twitch] Token refreshed automatically for user: ${userId}`);
       if (socialAccountId) {
         await socialAccountRepository.updateTokens(socialAccountId, {
           access_token: newTokenData.accessToken,

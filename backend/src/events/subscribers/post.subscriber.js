@@ -2,6 +2,7 @@ const { eventEmitter, EVENTS } = require('../event-emitter');
 const postService = require('../../services/workspace/post.service');
 const autoListService = require('../../services/workspace/auto-list.service');
 const { POST_STATUS } = require('../../utils/constants');
+const logger = require('../../utils/logger');
 
 /**
  * Handle AutoList recalculation. Dùng chung cho mọi domain event post ảnh hưởng lịch
@@ -12,7 +13,7 @@ const handleAutoListUpdate = async ({ post, autoListId }) => {
   const targetId = autoListId || post?.autoListId;
   if (targetId) {
     try {
-      console.log(`[Event] Recalculating AutoList ${targetId}`);
+      logger.debug(`[Event] Recalculating AutoList ${targetId}`);
       await autoListService.recalculateQueueSchedules(targetId);
     } catch (err) {
       console.error(`[Event Error] AutoList recalculation failed for ${targetId}:`, err.message);
@@ -30,7 +31,7 @@ const handleAutoListUpdate = async ({ post, autoListId }) => {
  */
 async function handlePostCreatedDomainEvent({ post, options }) {
   if (post.status === POST_STATUS.SCHEDULED) {
-    console.log(`[Event] Checking Native Scheduling for post ${post.id}`);
+    logger.debug(`[Event] Checking Native Scheduling for post ${post.id}`);
     await postService._handleNativeScheduling(post, options);
   }
   await handleAutoListUpdate({ post });
@@ -38,7 +39,7 @@ async function handlePostCreatedDomainEvent({ post, options }) {
 
 async function handlePostUpdatedDomainEvent({ post, options, statusChangedToPublished }) {
   if (!statusChangedToPublished && post.status === POST_STATUS.SCHEDULED) {
-    console.log(`[Event] Checking Native Scheduling for updated post ${post.id}`);
+    logger.debug(`[Event] Checking Native Scheduling for updated post ${post.id}`);
     await postService._handleNativeScheduling(post, options);
   }
   await handleAutoListUpdate({ post });

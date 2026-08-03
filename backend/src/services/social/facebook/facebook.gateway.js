@@ -322,7 +322,7 @@ class FacebookGateway {
     if (afterCursor) {
       url += `&after=${afterCursor}`;
     }
-    console.log(`[Facebook Gateway] Calling GET /${pageId}/conversations (Platform: ${platform || 'default'}, After: ${afterCursor || 'none'})`);
+    logger.debug(`[Facebook Gateway] Calling GET /${pageId}/conversations (Platform: ${platform || 'default'}, After: ${afterCursor || 'none'})`);
     const res = await fetch(url);
     if (!res.ok) {
       const errData = await res.json().catch(() => ({}));
@@ -334,7 +334,7 @@ class FacebookGateway {
 
   async getConversationMessages(conversationId, pageAccessToken) {
     const url = `${this.graphBaseUrl}/${conversationId}/messages?fields=message,from,to,created_time&access_token=${pageAccessToken}`;
-    console.log(`[Facebook Gateway] Calling GET /${conversationId}/messages`);
+    logger.debug(`[Facebook Gateway] Calling GET /${conversationId}/messages`);
     const res = await fetch(url);
     if (!res.ok) {
       const errData = await res.json().catch(() => ({}));
@@ -347,7 +347,7 @@ class FacebookGateway {
 
   async sendDirectMessage(recipientPsid, text, pageAccessToken) {
     const url = `${this.graphBaseUrl}/me/messages?access_token=${pageAccessToken}`;
-    console.log(`[Facebook Gateway] Calling POST /me/messages to PSID ${recipientPsid}`);
+    logger.debug(`[Facebook Gateway] Calling POST /me/messages to PSID ${recipientPsid}`);
     const res = await fetch(url, {
       method: 'POST',
       headers: {
@@ -368,7 +368,7 @@ class FacebookGateway {
 
   async getConversationRecipientPsid(conversationId, pageId, pageAccessToken) {
     const url = `${this.graphBaseUrl}/${conversationId}?fields=participants&access_token=${pageAccessToken}`;
-    console.log(`[Facebook Gateway] Calling GET /${conversationId} to get recipient PSID`);
+    logger.debug(`[Facebook Gateway] Calling GET /${conversationId} to get recipient PSID`);
     const res = await fetch(url);
     if (!res.ok) return null;
     const data = await res.json();
@@ -415,7 +415,7 @@ class FacebookGateway {
   }
 
   async createAlbum(pageId, pageAccessToken, name, message) {
-    console.log('[FacebookGateway] Creating album:', { pageId, name, messageLength: message?.length });
+    logger.debug('[FacebookGateway] Creating album:', { pageId, name, messageLength: message?.length });
     const formData = new FormData();
     if (name) formData.append('name', name);
     if (message) formData.append('message', message);
@@ -429,12 +429,12 @@ class FacebookGateway {
       throw new Error(errData.error?.message || 'Failed to create Facebook album');
     }
     const data = await res.json();
-    console.log('[FacebookGateway] Created album response:', data);
+    logger.debug('[FacebookGateway] Created album response:', data);
     return data;
   }
 
   async uploadPhotoToAlbum(albumId, pageAccessToken, mediaUrl, caption) {
-    console.log('[FacebookGateway] Uploading photo to album:', { albumId, mediaUrl, caption });
+    logger.debug('[FacebookGateway] Uploading photo to album:', { albumId, mediaUrl, caption });
     const { buffer, filename } = await this._getMediaBuffer(mediaUrl);
     const formData = new FormData();
     const blob = new Blob([buffer]);
@@ -450,12 +450,12 @@ class FacebookGateway {
       throw new Error(errData.error?.message || 'Failed to upload photo to Facebook album');
     }
     const data = await res.json();
-    console.log('[FacebookGateway] Uploaded photo response:', data);
+    logger.debug('[FacebookGateway] Uploaded photo response:', data);
     return data;
   }
 
   async uploadUnpublishedPhoto(pageId, pageAccessToken, mediaUrl, caption) {
-    console.log('[FacebookGateway] Uploading unpublished photo:', { pageId, mediaUrl, caption });
+    logger.debug('[FacebookGateway] Uploading unpublished photo:', { pageId, mediaUrl, caption });
     const { buffer, filename } = await this._getMediaBuffer(mediaUrl);
     const formData = new FormData();
     const blob = new Blob([buffer]);
@@ -472,12 +472,12 @@ class FacebookGateway {
       throw new Error(errData.error?.message || 'Failed to upload unpublished photo to Facebook');
     }
     const data = await res.json();
-    console.log('[FacebookGateway] Uploaded unpublished photo response:', data);
+    logger.debug('[FacebookGateway] Uploaded unpublished photo response:', data);
     return data;
   }
 
   async publishMultiPhotoPost(pageId, pageAccessToken, photoIds, message, scheduledAt = null) {
-    console.log('[FacebookGateway] Publishing multi-photo post to feed:', { pageId, photoIds, messageLength: message?.length });
+    logger.debug('[FacebookGateway] Publishing multi-photo post to feed:', { pageId, photoIds, messageLength: message?.length });
     const formData = new FormData();
     if (message) formData.append('message', message);
     
@@ -498,12 +498,12 @@ class FacebookGateway {
       throw new Error(errData.error?.message || 'Failed to publish multi-photo post to Facebook');
     }
     const data = await res.json();
-    console.log('[FacebookGateway] Published multi-photo post response:', data);
+    logger.debug('[FacebookGateway] Published multi-photo post response:', data);
     return data;
   }
 
   async publishAlbum(pageId, pageAccessToken, mediaUrls, caption, mediaCaptions = [], scheduledAt = null) {
-    console.log('[FacebookGateway] Publishing album start:', { pageId, mediaUrlsCount: mediaUrls.length, caption });
+    logger.debug('[FacebookGateway] Publishing album start:', { pageId, mediaUrlsCount: mediaUrls.length, caption });
     if (!Array.isArray(mediaUrls) || mediaUrls.length < 2) {
       throw new Error('Facebook album requires at least 2 images');
     }
@@ -516,12 +516,12 @@ class FacebookGateway {
       const photos = [];
       for (let i = 0; i < mediaUrls.length; i += 1) {
         const photoCaption = mediaCaptions[i] || caption || '';
-        console.log(`[FacebookGateway] Uploading photo ${i + 1}/${mediaUrls.length}`);
+        logger.debug(`[FacebookGateway] Uploading photo ${i + 1}/${mediaUrls.length}`);
         const result = await this.uploadPhotoToAlbum(albumId, pageAccessToken, mediaUrls[i], photoCaption);
         photos.push(result);
       }
 
-      console.log('[FacebookGateway] Successfully published all photos to album:', albumId);
+      logger.debug('[FacebookGateway] Successfully published all photos to album:', albumId);
       return { id: albumId, photos };
     } catch (albumError) {
       console.warn('[FacebookGateway] Traditional album creation failed, trying multi-photo post fallback. Error:', albumError.message);
@@ -529,7 +529,7 @@ class FacebookGateway {
       const photoIds = [];
       for (let i = 0; i < mediaUrls.length; i += 1) {
         const photoCaption = mediaCaptions[i] || caption || '';
-        console.log(`[FacebookGateway] [Fallback] Uploading photo ${i + 1}/${mediaUrls.length} as unpublished`);
+        logger.debug(`[FacebookGateway] [Fallback] Uploading photo ${i + 1}/${mediaUrls.length} as unpublished`);
         const result = await this.uploadUnpublishedPhoto(pageId, pageAccessToken, mediaUrls[i], photoCaption);
         photoIds.push(result.id);
       }
@@ -571,7 +571,7 @@ class FacebookGateway {
         if (videoId) {
           await this._pollVideoStatus(videoId, pageAccessToken);
         }
-        console.log(`[FacebookGateway] ✅ Video published successfully via file_url! Video ID: ${videoId || data.id}`);
+        logger.debug(`[FacebookGateway] ✅ Video published successfully via file_url! Video ID: ${videoId || data.id}`);
         return data;
       }
 

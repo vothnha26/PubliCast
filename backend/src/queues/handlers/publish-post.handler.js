@@ -1,13 +1,14 @@
 const postService = require('../../services/workspace/post.service');
 const postRepository = require('../../repositories/workspace/post.repository');
 const { POST_STATUS } = require('../../utils/constants');
+const logger = require('../../utils/logger');
 
 class PublishPostHandler {
   async handle(job) {
     // KHÔNG dùng property 'this.xxx' của class. Mọi biến đều khai báo cục bộ!
     const { postId, retryPlatforms, partialRetryCount } = job.data;
 
-    console.log(`[PublishPostHandler] 📝 Processing job ${job.id} for Post: ${postId}`);
+    logger.debug(`[PublishPostHandler] 📝 Processing job ${job.id} for Post: ${postId}`);
 
     try {
       // 1. Atomically claim the post (status -> PUBLISHING) before doing any
@@ -21,14 +22,14 @@ class PublishPostHandler {
       const validStatuses = [POST_STATUS.SCHEDULED, POST_STATUS.DRAFT, POST_STATUS.RETRYING];
       const claimed = await postRepository.claimForPublishing(postId, validStatuses);
       if (!claimed) {
-        console.log(`[PublishPostHandler] ⏩ Post ${postId} is not in a valid state for publishing (or already being published). Skipping.`);
+        logger.debug(`[PublishPostHandler] ⏩ Post ${postId} is not in a valid state for publishing (or already being published). Skipping.`);
         return;
       }
 
       // 2. Execute the publish pipeline (truyền thêm retryPlatforms/partialRetryCount nếu có)
       await postService.publishToPlatforms(postId, { retryPlatforms, partialRetryCount });
       
-      console.log(`[PublishPostHandler] ✅ Successfully processed Post: ${postId}`);
+      logger.debug(`[PublishPostHandler] ✅ Successfully processed Post: ${postId}`);
     } catch (err) {
       console.error(`[PublishPostHandler] ❌ Error processing job ${job.id}:`, err.message);
 

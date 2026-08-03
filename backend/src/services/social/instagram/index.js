@@ -2,6 +2,7 @@ const BaseSocialService = require('../base-social.service');
 const instagramAnalytics = require('./instagram-analytics.service');
 const instagramPost = require('./instagram-post.service');
 const instagramComment = require('./instagram-comment.service');
+const logger = require('../../../utils/logger');
 
 class InstagramService extends BaseSocialService {
   // --- Analytics & Channel ---
@@ -21,7 +22,7 @@ class InstagramService extends BaseSocialService {
     const permissions = await facebookGateway.getUserPermissions(tokens.access_token).catch(() => []);
     const pages = await facebookGateway.getUserPages(tokens.access_token);
 
-    console.log('[Instagram Connect Diagnostics]', {
+    logger.debug('[Instagram Connect Diagnostics]', {
       permissions,
       pagesCount: pages.length,
       pages: pages.map(p => ({ id: p.id, name: p.name }))

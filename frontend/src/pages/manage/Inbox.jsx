@@ -12,6 +12,7 @@ import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
 import socketClient from "../../services/socket";
 import { INBOX_VIEW_MODE, INBOX_TAB, INBOX_TABS_ORDER, INBOX_ITEM_TYPE, POST_COMMENT_FILTER } from "../../constants/inbox";
+import logger from "../../utils/logger";
 
 // SOLID Components
 import { ConversationItem, SafeAvatar } from "../../components/inbox/ConversationItem";
@@ -178,12 +179,12 @@ export function InboxPage() {
 
     // Join brand room
     socketClient.emit("join_room", { brandId: activeBrand.id });
-    console.log(`🔌 [InboxPage] Joined socket room for brand: ${activeBrand.id}`);
+    logger.debug(`🔌 [InboxPage] Joined socket room for brand: ${activeBrand.id}`);
 
     const handleNewInboxItem = (data) => {
       // Check if new item matches the currently selected platform (ignoring case)
       if (data.platform?.toLowerCase() === platformFilter.toLowerCase()) {
-        console.log("⚡ [InboxPage] Received new inbox item realtime:", data);
+        logger.debug("⚡ [InboxPage] Received new inbox item realtime:", data);
         fetchInbox(false);
 
         // If we are currently viewing this thread, refresh the thread messages
@@ -195,7 +196,7 @@ export function InboxPage() {
 
     const handleInboxItemDeleted = (data) => {
       if (data.platformItemId) {
-        console.log("⚡ [InboxPage] Inbox item deleted realtime:", data);
+        logger.debug("⚡ [InboxPage] Inbox item deleted realtime:", data);
         fetchInbox(false);
         if (activeConv && (activeConv.id === data.id || activeConv.platformItemId === data.platformItemId)) {
           setActiveConv(null);
@@ -211,7 +212,7 @@ export function InboxPage() {
       socketClient.emit("leave_room", { brandId: activeBrand.id });
       socketClient.off("new_inbox_item", handleNewInboxItem);
       socketClient.off("inbox_item_deleted", handleInboxItemDeleted);
-      console.log(`🔌 [InboxPage] Left socket room for brand: ${activeBrand.id}`);
+      logger.debug(`🔌 [InboxPage] Left socket room for brand: ${activeBrand.id}`);
     };
   }, [activeBrand?.id, platformFilter, activeConv?.id]);
 

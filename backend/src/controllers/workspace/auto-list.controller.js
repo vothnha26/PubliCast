@@ -1,5 +1,6 @@
 const autoListService = require('../../services/workspace/auto-list.service');
 const asyncHandler = require('../../utils/async-handler');
+const logger = require('../../utils/logger');
 
 class AutoListController {
   getAutoLists = asyncHandler(async (req, res) => {
@@ -24,7 +25,7 @@ class AutoListController {
 
   updateAutoList = asyncHandler(async (req, res) => {
     const { id } = req.params;
-    console.log(`[updateAutoList] id=${id} | body:`, JSON.stringify(req.body, null, 2));
+    logger.debug(`[updateAutoList] id=${id} | body:`, JSON.stringify(req.body, null, 2));
     const data = await autoListService.updateAutoList(id, req.body, req.user.id);
     res.json({ data });
   });

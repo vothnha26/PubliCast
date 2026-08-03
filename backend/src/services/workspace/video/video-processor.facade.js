@@ -5,6 +5,7 @@ const axios = require('axios');
 const { cloudinary } = require('../../../config/cloudinary');
 const videoFilterPipeline = require('./video-filter.pipeline');
 const { FFMPEG_DEFAULTS, VIDEO_FILE_CONFIG } = require('../../../constants/video-editor.constants');
+const logger = require('../../../utils/logger');
 
 class VideoProcessorFacade {
   /**
@@ -46,7 +47,7 @@ class VideoProcessorFacade {
     flipH = false,
     flipV = false
   }) {
-    console.log(
+    logger.debug(
       `[VideoProcessorFacade] Starting process: videoUrl=${videoUrl}, trim=${startTime}s-${endTime}s, aspectRatio=${aspectRatio}, filterPreset=${filterPreset}, keepAudio=${keepAudio}, keyframesCount=${keyframes?.length || 0}`
     );
 
@@ -120,7 +121,7 @@ class VideoProcessorFacade {
 
   async _resolveFile(fileSource, targetLocalPath) {
     if (fileSource.startsWith('http://') || fileSource.startsWith('https://')) {
-      console.log(`[VideoProcessorFacade] Downloading remote file: ${fileSource} → ${targetLocalPath}`);
+      logger.debug(`[VideoProcessorFacade] Downloading remote file: ${fileSource} → ${targetLocalPath}`);
       const writer = fs.createWriteStream(targetLocalPath);
       const response = await axios({
         url: fileSource,
@@ -292,13 +293,13 @@ class VideoProcessorFacade {
         ];
       }
 
-      console.log(`[VideoProcessorFacade] Executing: ffmpeg ${args.join(' ')}`);
+      logger.debug(`[VideoProcessorFacade] Executing: ffmpeg ${args.join(' ')}`);
       execFile('ffmpeg', args, (error, stdout, stderr) => {
         if (error) {
           console.error(`[VideoProcessorFacade] FFmpeg execution error:`, stderr);
           reject(new Error(`FFmpeg failed to process video: ${error.message}`));
         } else {
-          console.log(`[VideoProcessorFacade] FFmpeg processing complete.`);
+          logger.debug(`[VideoProcessorFacade] FFmpeg processing complete.`);
           resolve();
         }
       });
@@ -337,7 +338,7 @@ class VideoProcessorFacade {
       if (p && fs.existsSync(p)) {
         try {
           fs.unlinkSync(p);
-          console.log(`[VideoProcessorFacade] Cleaned up temp file: ${p}`);
+          logger.debug(`[VideoProcessorFacade] Cleaned up temp file: ${p}`);
         } catch (err) {
           console.warn(`[VideoProcessorFacade] Failed to delete temp file ${p}: ${err.message}`);
         }

@@ -1,5 +1,6 @@
 const { eventEmitter, EVENTS } = require('../event-emitter');
 const autoListService = require('../../services/workspace/auto-list.service');
+const logger = require('../../utils/logger');
 
 /**
  * Initialize AutoList Event Subscribers
@@ -7,7 +8,7 @@ const autoListService = require('../../services/workspace/auto-list.service');
 const initAutoListSubscribers = () => {
   const handleRecalculate = async ({ autoListId }) => {
     try {
-      console.log(`[Event] Recalculating queue for AutoList ${autoListId}`);
+      logger.debug(`[Event] Recalculating queue for AutoList ${autoListId}`);
       await autoListService.recalculateQueueSchedules(autoListId);
     } catch (err) {
       console.error(`[Event Error] AutoList recalculation failed for ${autoListId}:`, err.message);
