@@ -1,4 +1,5 @@
 import { io } from 'socket.io-client';
+import logger from '../utils/logger';
 
 let socketURL = import.meta.env.VITE_SOCKET_URL || import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000';
 // Nếu socket URL lấy từ VITE_API_BASE_URL, nó chứa hậu tố /api gây lỗi Invalid Namespace của Socket.io
@@ -59,7 +60,7 @@ class SocketClient {
     });
 
     this.socket.on('connect', () => {
-      console.log('⚡ [SocketClient] Connected to websocket server');
+      logger.debug('⚡ [SocketClient] Connected to websocket server');
       // Flush anything queued while we were disconnected/connecting.
       const queued = this.pendingEmits;
       this.pendingEmits = [];
@@ -68,7 +69,7 @@ class SocketClient {
 
     // Realtime Hybrid Cache Invalidation Handler
     this.socket.on('data_invalidate', ({ scope, brandId }) => {
-      console.log(`⚡ [SocketClient] Received data_invalidate for scope '${scope}', brandId '${brandId}'`);
+      logger.debug(`⚡ [SocketClient] Received data_invalidate for scope '${scope}', brandId '${brandId}'`);
       if (scope && brandId) {
         import('../App').then(({ queryClient }) => {
           queryClient.invalidateQueries({ queryKey: [scope, brandId] });

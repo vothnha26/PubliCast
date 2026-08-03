@@ -1,5 +1,6 @@
 const nodemailer = require('nodemailer');
 const EmailStrategy = require('./email.strategy');
+const logger = require('../../../utils/logger');
 
 class NodemailerStrategy extends EmailStrategy {
   constructor() {
@@ -38,9 +39,9 @@ class NodemailerStrategy extends EmailStrategy {
     if (process.env.NODE_ENV !== 'test') {
       this.transporter.verify((err) => {
         if (err) {
-          console.error('❌ [EmailService] SMTP connection failed:', err.message);
+          logger.error('[EmailService] SMTP connection failed', err);
         } else {
-          console.log('✅ [EmailService] SMTP server ready');
+          logger.debug('✅ [EmailService] SMTP server ready');
         }
       });
     }
@@ -59,7 +60,7 @@ class NodemailerStrategy extends EmailStrategy {
       return;
     }
 
-    console.log(`📧 [EmailService] Sending email to: ${to} | Subject: ${subject}`);
+    logger.debug(`📧 [EmailService] Sending email to: ${to} | Subject: ${subject}`);
     try {
       const mailOptions = {
         from: `"PubliCast" <${this.senderEmail}>`,
@@ -73,9 +74,9 @@ class NodemailerStrategy extends EmailStrategy {
       }
 
       await this.transporter.sendMail(mailOptions);
-      console.log(`✅ [EmailService] Email sent successfully to: ${to}`);
+      logger.debug(`✅ [EmailService] Email sent successfully to: ${to}`);
     } catch (error) {
-      console.error(`❌ [EmailService] Failed to send email to: ${to} | Error: ${error.message}`);
+      logger.error(`[EmailService] Failed to send email to: ${to}`, error);
       throw error;
     }
   }

@@ -1,4 +1,5 @@
 const BaseSocialService = require('./base-social.service');
+const logger = require('../../utils/logger');
 
 class MockSocialService extends BaseSocialService {
   constructor(platformName) {
@@ -7,16 +8,16 @@ class MockSocialService extends BaseSocialService {
   }
 
   async publishPost(brandId, postData) {
-    console.log('\n==================================================');
-    console.log(`🚀 [SocialPublish/Sandbox] NEW OUTGOING POST DETECTED`);
-    console.log(`Platform:    ${this.platformName}`);
-    console.log(`Brand ID:    ${brandId}`);
-    console.log(`Title:       ${postData.title || '(No Title)'}`);
-    console.log(`Type:        ${postData.type || 'TEXT'}`);
-    console.log(`Media URLs:  ${postData.mediaUrls ? postData.mediaUrls.join(', ') : 'None'}`);
-    console.log('--------------------------------------------------');
-    console.log(`Caption:\n${postData.caption}`);
-    console.log('==================================================\n');
+    logger.debug('\n==================================================');
+    logger.debug(`🚀 [SocialPublish/Sandbox] NEW OUTGOING POST DETECTED`);
+    logger.debug(`Platform:    ${this.platformName}`);
+    logger.debug(`Brand ID:    ${brandId}`);
+    logger.debug(`Title:       ${postData.title || '(No Title)'}`);
+    logger.debug(`Type:        ${postData.type || 'TEXT'}`);
+    logger.debug(`Media URLs:  ${postData.mediaUrls ? postData.mediaUrls.join(', ') : 'None'}`);
+    logger.debug('--------------------------------------------------');
+    logger.debug(`Caption:\n${postData.caption}`);
+    logger.debug('==================================================\n');
 
     return {
       success: true,
@@ -44,7 +45,7 @@ class MockSocialService extends BaseSocialService {
   }
 
   async deletePost(brandId, platformPostId) {
-    console.log(`[SocialPublish/Sandbox] Deleted post ${platformPostId} from brand ${brandId} on ${this.platformName}`);
+    logger.debug(`[SocialPublish/Sandbox] Deleted post ${platformPostId} from brand ${brandId} on ${this.platformName}`);
     return { success: true, message: 'Deleted mock post successfully.' };
   }
 }

@@ -2,6 +2,7 @@ const tiktokGateway = require('./tiktok.gateway');
 const tiktokAnalytics = require('./tiktok-analytics.service');
 const socialAccountRepository = require('../../../repositories/social/social-account.repository');
 const { PLATFORMS, POST_STATUS } = require('../../../utils/constants');
+const logger = require('../../../utils/logger');
 
 class TikTokVideoService {
   async getPublishedVideos(brandId, pageToken = 0, limit = 10, socialAccountId = null) {
@@ -29,7 +30,7 @@ class TikTokVideoService {
         // Force refresh if the token is invalid (even if database metadata said it was valid)
         const isTokenError = error.status === 401 || error.code === 'access_token_invalid';
         if (isTokenError && account.refreshToken) {
-          console.log(`[TikTok Video] getVideoList failed with token error. Attempting force refresh...`);
+          logger.debug(`[TikTok Video] getVideoList failed with token error. Attempting force refresh...`);
           const refreshed = await tiktokGateway.refreshAccessToken(account.refreshToken);
           const accessToken = refreshed.access_token;
           const refreshToken = refreshed.refresh_token || account.refreshToken;

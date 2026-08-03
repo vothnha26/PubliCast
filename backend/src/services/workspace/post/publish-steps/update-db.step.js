@@ -3,6 +3,7 @@ const postRepository = require('../../../../repositories/workspace/post.reposito
 const autoListRepository = require('../../../../repositories/workspace/auto-list.repository');
 const notificationService = require('../../../core/notification.service');
 const { POST_STATUS, NOTIFICATION_TYPES } = require('../../../../utils/constants');
+const logger = require('../../../../utils/logger');
 
 /** Ném ra khi TOÀN BỘ platform publish thất bại (0/N thành công), để
  * publish-post.handler.js re-throw và BullMQ's defaultJobOptions.attempts tự
@@ -59,7 +60,7 @@ class UpdatePostStatusStep extends BaseStep {
 
     if (allSuccessful) {
       const primaryResult = results[0].result;
-      console.log(`[UpdatePostStatusStep] 🎉 Post ${post.id} published successfully on all platforms: ${results.map(r => r.platform).join(', ')}`);
+      logger.debug(`[UpdatePostStatusStep] 🎉 Post ${post.id} published successfully on all platforms: ${results.map(r => r.platform).join(', ')}`);
 
       if (shouldLoop) {
         await this._handleLoopCycle(post, {

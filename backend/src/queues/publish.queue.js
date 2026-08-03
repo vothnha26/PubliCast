@@ -2,6 +2,7 @@ const { Queue } = require('bullmq');
 const { defaultConnection } = require('../config/bullmq');
 
 const { QUEUE_CONFIG } = require('../constants/video-publish.constants');
+const logger = require('../utils/logger');
 const PUBLISH_QUEUE_NAME = QUEUE_CONFIG.PUBLISH.NAME;
 
 /**
@@ -82,7 +83,7 @@ const upsertPublishJob = async (postId, scheduledAt) => {
 
   const { applied } = await safeUpsertPublishJob(jobId, QUEUE_CONFIG.PUBLISH.JOB_PUBLISH, { postId }, { delay });
   if (applied) {
-    console.log(`[BullMQ Queue] 📅 Scheduled post ${postId} in ${Math.round(delay / 1000)}s`);
+    logger.debug(`[BullMQ Queue] 📅 Scheduled post ${postId} in ${Math.round(delay / 1000)}s`);
   }
 };
 
@@ -93,7 +94,7 @@ const upsertPublishJob = async (postId, scheduledAt) => {
 const removePublishJob = async (postId) => {
   const jobId = `publish-post-${postId}`;
   await publishQueue.remove(jobId);
-  console.log(`[BullMQ Queue] 🗑️ Removed scheduled job for post ${postId}`);
+  logger.debug(`[BullMQ Queue] 🗑️ Removed scheduled job for post ${postId}`);
 };
 
 module.exports = {

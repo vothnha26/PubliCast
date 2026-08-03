@@ -5,6 +5,7 @@ const publishPostHandler = require('./handlers/publish-post.handler');
 const { QUEUE_CONFIG } = require('../constants/video-publish.constants');
 const postRepository = require('../repositories/workspace/post.repository');
 const { POST_STATUS } = require('../utils/constants');
+const logger = require('../utils/logger');
 
 /**
  * Worker Engine
@@ -26,7 +27,7 @@ const publishWorker = new Worker(PUBLISH_QUEUE_NAME, async (job) => {
 
 // Event Listeners for logging/monitoring
 publishWorker.on('completed', (job) => {
-  console.log(`[BullMQ Worker] Job ${job.id} completed!`);
+  logger.debug(`[BullMQ Worker] Job ${job.id} completed!`);
 });
 
 // job.attemptsMade/job.opts.attempts are BullMQ-specific — this is the only

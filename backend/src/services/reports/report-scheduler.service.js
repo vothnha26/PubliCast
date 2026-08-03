@@ -4,6 +4,7 @@ const reportRepository = require('../../repositories/workspace/report.repository
 const redisClient = require('../../config/redis');
 const DistributedLockService = require('../social/distributed-lock.service');
 const { LOCK_CONFIG } = require('../../utils/constants');
+const logger = require('../../utils/logger');
 
 const lockService = new DistributedLockService(redisClient);
 
@@ -18,7 +19,7 @@ class ReportSchedulerService {
   start() {
     // Run daily at 08:00 AM
     this.job = cron.schedule('0 8 * * *', async () => {
-      console.log('⏰ [ReportScheduler] Starting daily report schedule scan...');
+      logger.debug('⏰ [ReportScheduler] Starting daily report schedule scan...');
       try {
         await this.runScanWithLock();
       } catch (error) {
@@ -26,7 +27,7 @@ class ReportSchedulerService {
       }
     });
 
-    console.log('✅ [ReportScheduler] Cron service initialized successfully (Running daily at 08:00 AM).');
+    logger.debug('✅ [ReportScheduler] Cron service initialized successfully (Running daily at 08:00 AM).');
   }
 
   /**
@@ -39,7 +40,7 @@ class ReportSchedulerService {
     const { KEY, TTL_SEC } = LOCK_CONFIG.REPORT_SCHEDULER;
     const token = await lockService.acquireLock(KEY, TTL_SEC);
     if (!token) {
-      console.log('ℹ️ [ReportScheduler] Another instance is already running the daily scan, skipping.');
+      logger.debug('ℹ️ [ReportScheduler] Another instance is already running the daily scan, skipping.');
       return;
     }
 
@@ -59,7 +60,7 @@ class ReportSchedulerService {
     const configs = await reportRepository.findAllEnabledScheduleConfigs();
 
     if (configs.length === 0) {
-      console.log('ℹ️ [ReportScheduler] No brand configurations found.');
+      logger.debug('ℹ️ [ReportScheduler] No brand configurations found.');
       return;
     }
 
@@ -71,7 +72,7 @@ class ReportSchedulerService {
     tomorrow.setDate(today.getDate() + 1);
     const isLastDayOfMonth = tomorrow.getDate() === 1;
 
-    console.log(`🔍 [ReportScheduler] Scanning ${configs.length} brand configuration(s). Today is Day ${currentDay} of the month. (Last day: ${isLastDayOfMonth})`);
+    logger.debug(`🔍 [ReportScheduler] Scanning ${configs.length} brand configuration(s). Today is Day ${currentDay} of the month. (Last day: ${isLastDayOfMonth})`);
 
     // Collected and awaited (not fire-and-forget) so the distributed lock in
     // runScanWithLock() stays held for the full duration of email delivery,
@@ -101,7 +102,7 @@ class ReportSchedulerService {
 
         if (isScheduledToday) {
           const brandName = config.brand?.name || brandId;
-          console.log(`✉️ [ReportScheduler] Triggering scheduled report for brandId: ${brandId} (Scheduled Day: ${scheduledDay})`);
+          logger.debug(`✉️ [ReportScheduler] Triggering scheduled report for brandId: ${brandId} (Scheduled Day: ${scheduledDay})`);
 
           const title = `Báo cáo phân tích tự động định kỳ - Thương hiệu ${brandName}`;
 
@@ -114,7 +115,7 @@ class ReportSchedulerService {
             emails: emailsList,
             message: config.emailText || `Xin chào,\n\nĐây là báo cáo phân tích tự động định kỳ tháng trước cho thương hiệu ${brandName}.\n\nTrân trọng.`
           }).then(() => {
-            console.log(`✅ [ReportScheduler] Scheduled report sent successfully for brand: ${brandName}`);
+            logger.debug(`✅ [ReportScheduler] Scheduled report sent successfully for brand: ${brandName}`);
           }).catch(err => {
             console.error(`❌ [ReportScheduler] Failed to send scheduled report for brand ${brandName}:`, err.message);
           });

@@ -30,6 +30,7 @@ const FetchPostStep = require('./post/publish-steps/fetch-post.step');
 const UrlShortenerStep = require('./post/publish-steps/url-shortener.step');
 const SocialPublishStep = require('./post/publish-steps/social-publish.step');
 const UpdatePostStatusStep = require('./post/publish-steps/update-db.step');
+const logger = require('../../utils/logger');
 
 const ALLOWED_SORT_FIELDS = ['createdAt', 'scheduledAt', 'publishedAt', 'title', 'status'];
 const ALLOWED_SORT_ORDERS = ['asc', 'desc'];
@@ -338,7 +339,7 @@ class PostService {
 
     const status = postData.status || POST_STATUS.DRAFT;
     if (status !== POST_STATUS.DRAFT) {
-      console.log('[PostService] Validating post data:', { postData: { title: postData.title, targetPlatforms: postData.targetPlatforms, options: postData.options }, mediaInfo });
+      logger.debug('[PostService] Validating post data:', { postData: { title: postData.title, targetPlatforms: postData.targetPlatforms, options: postData.options }, mediaInfo });
       const validationResult = await validationFacade.validatePost(postData, mediaInfo);
       if (!validationResult.isValid) {
         console.error('[PostService] Validation failed:', validationResult.errors);
@@ -376,7 +377,7 @@ class PostService {
       data.scheduledAt = new Date();
     }
 
-    console.log('[PostService] Final payload to database:', data);
+    logger.debug('[PostService] Final payload to database:', data);
 
     const post = await prisma.$transaction(async (tx) => {
       // Re-check the monthly post limit inside the transaction, behind a row
@@ -394,7 +395,7 @@ class PostService {
       }
 
       const created = await postRepository.create(data, tx);
-      console.log('[PostService] Post successfully created in DB with ID:', created.id);
+      logger.debug('[PostService] Post successfully created in DB with ID:', created.id);
 
       if (postData.networkOverrides) {
         const targetPlatformsArr = Array.isArray(postData.targetPlatforms)
@@ -519,7 +520,7 @@ class PostService {
 
     const targetStatus = postData.status !== undefined ? postData.status : post.status;
     if (targetStatus !== POST_STATUS.DRAFT) {
-      console.log('[PostService] Validating merged post data for update:', { mergedPostData: { title: mergedPostData.title, targetPlatforms: mergedPostData.targetPlatforms, options: mergedPostData.options }, mediaInfo });
+      logger.debug('[PostService] Validating merged post data for update:', { mergedPostData: { title: mergedPostData.title, targetPlatforms: mergedPostData.targetPlatforms, options: mergedPostData.options }, mediaInfo });
       const validationResult = await validationFacade.validatePost(mergedPostData, mediaInfo);
       if (!validationResult.isValid) {
         console.error('[PostService] Validation failed for update:', validationResult.errors);
@@ -703,7 +704,7 @@ class PostService {
       throw error;
     }
 
-    console.log(`[Post Service] Queueing retry job for Post ${postId} on platforms: ${platforms.join(', ')}`);
+    logger.debug(`[Post Service] Queueing retry job for Post ${postId} on platforms: ${platforms.join(', ')}`);
     const { safeUpsertPublishJob } = require('../../queues/publish.queue');
     const jobId = `publish-post-${postId}`;
 
@@ -752,12 +753,12 @@ class PostService {
       for (const post of posts) {
         if ((post.status === POST_STATUS.PUBLISHED || post.status === POST_STATUS.SCHEDULED) && post.platformPostId) {
           const targetPlatforms = post.targetPlatforms ? post.targetPlatforms.split(',').map(p => p.trim().toUpperCase()) : [];
-          console.log(`[Post Service] Attempting social deletion for post: ${post.id}, targetPlatforms: ${targetPlatforms.join(', ')}, platformPostId: ${post.platformPostId}`);
+          logger.debug(`[Post Service] Attempting social deletion for post: ${post.id}, targetPlatforms: ${targetPlatforms.join(', ')}, platformPostId: ${post.platformPostId}`);
           for (const platform of targetPlatforms) {
             try {
               const service = socialPlatformFactory.getService(platform);
               if (service.deletePost) {
-                console.log(`[Post Service] Found deletePost for ${platform}. Invoking service.deletePost...`);
+                logger.debug(`[Post Service] Found deletePost for ${platform}. Invoking service.deletePost...`);
                 const platformId = this._getPlatformPostId(post, platform);
                 if (platformId) {
                   // socialAccountId comes from the override row saved for
@@ -766,12 +767,12 @@ class PostService {
                   // (see PostNetworkOverride in schema.prisma).
                   const override = (post.networkOverrides || []).find(o => o.platform === platform);
                   await service.deletePost(brandId, platformId, override?.socialAccountId || null);
-                  console.log(`[Post Service] Successfully deleted post on ${platform}`);
+                  logger.debug(`[Post Service] Successfully deleted post on ${platform}`);
                 } else {
-                  console.log(`[Post Service] No platform post ID found for ${platform}`);
+                  logger.debug(`[Post Service] No platform post ID found for ${platform}`);
                 }
               } else {
-                console.log(`[Post Service] Platform ${platform} service does not implement deletePost`);
+                logger.debug(`[Post Service] Platform ${platform} service does not implement deletePost`);
               }
             } catch (err) {
               console.error(`[Post Service] Failed to delete post on ${platform}:`, err.message);
@@ -938,7 +939,7 @@ class PostService {
         continue;
       }
 
-      console.log(`[PostService] 🚀 Triggering early Native Scheduling for platform: ${platform}, Post: ${post.id}`);
+      logger.debug(`[PostService] 🚀 Triggering early Native Scheduling for platform: ${platform}, Post: ${post.id}`);
       try {
         const service = socialPlatformFactory.getService(platform);
         if (!service || typeof service.publishPost !== 'function') {
@@ -958,7 +959,7 @@ class PostService {
         const result = await service.publishPost(post.brandId, postData);
 
         if (result && result.platformVideoId) {
-          console.log(`[PostService] ✅ ${platform} Native Scheduling successful! ID: ${result.platformVideoId}`);
+          logger.debug(`[PostService] ✅ ${platform} Native Scheduling successful! ID: ${result.platformVideoId}`);
           platformIdMap[platform] = result.platformVideoId;
           hasChanges = true;
         }
@@ -985,7 +986,7 @@ class PostService {
     const socialPlatformFactory = require('../social/social-platform.factory');
     const targetPlatforms = post.targetPlatforms ? post.targetPlatforms.split(',').map(p => p.trim().toUpperCase()) : [];
     
-    console.log(`[PostService] 🧹 Cleaning up Native Scheduling on platforms for post: ${post.id}`);
+    logger.debug(`[PostService] 🧹 Cleaning up Native Scheduling on platforms for post: ${post.id}`);
     
     for (const platform of targetPlatforms) {
       try {
@@ -993,7 +994,7 @@ class PostService {
         if (service && typeof service.deletePost === 'function') {
           const platformId = this._getPlatformPostId(post, platform);
           if (platformId) {
-            console.log(`[PostService] Invoking deletePost on ${platform} for ID: ${platformId}`);
+            logger.debug(`[PostService] Invoking deletePost on ${platform} for ID: ${platformId}`);
             const override = (post.networkOverrides || []).find(o => o.platform === platform);
             await service.deletePost(post.brandId, platformId, override?.socialAccountId || null);
           }

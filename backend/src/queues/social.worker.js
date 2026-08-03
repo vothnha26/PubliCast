@@ -3,6 +3,7 @@ const { defaultConnection } = require('../config/bullmq');
 const { QUEUE_CONFIG } = require('../constants/video-publish.constants');
 const socialPlatformFactory = require('../services/social/social-platform.factory');
 const socialAccountRepository = require('../repositories/social/social-account.repository');
+const logger = require('../utils/logger');
 
 /**
  * BullMQ Worker for Social Account Data Sync
@@ -11,7 +12,7 @@ const socialWorker = new Worker(QUEUE_CONFIG.SOCIAL.NAME, async (job) => {
   if (job.name === QUEUE_CONFIG.SOCIAL.JOB_SYNC) {
     const { socialAccountId, platform } = job.data;
     
-    console.log(`[Social Worker] Starting job ${job.id} for platform: ${platform}, account: ${socialAccountId}`);
+    logger.debug(`[Social Worker] Starting job ${job.id} for platform: ${platform}, account: ${socialAccountId}`);
     
     // Cập nhật trạng thái đồng bộ sang PARTIAL (Đã có Profile, đang sync Analytics)
     await socialAccountRepository.updateSyncStatus(socialAccountId, 'PARTIAL');
@@ -29,7 +30,7 @@ const socialWorker = new Worker(QUEUE_CONFIG.SOCIAL.NAME, async (job) => {
       await socialAccountRepository.updateSyncStatus(socialAccountId, 'SUCCESS');
       await socialAccountRepository.updateLastSyncAt(socialAccountId);
       
-      console.log(`[Social Worker] Successfully synced metrics for account: ${socialAccountId}`);
+      logger.debug(`[Social Worker] Successfully synced metrics for account: ${socialAccountId}`);
     } catch (err) {
       // Cập nhật trạng thái FAILED
       await socialAccountRepository.updateSyncStatus(socialAccountId, 'FAILED');
@@ -49,7 +50,7 @@ const socialWorker = new Worker(QUEUE_CONFIG.SOCIAL.NAME, async (job) => {
 
 // Event Listeners cho giám sát
 socialWorker.on('completed', (job) => {
-  console.log(`[Social Worker] Job ${job.id} completed!`);
+  logger.debug(`[Social Worker] Job ${job.id} completed!`);
 });
 
 socialWorker.on('failed', (job, err) => {
