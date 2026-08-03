@@ -130,7 +130,7 @@ const v2BaseURL = (baseURL && baseURL.startsWith('http'))
 
 export const apiV2 = axios.create({
   baseURL: v2BaseURL,
-  timeout: 15000,
+  timeout: 60000,
   withCredentials: true,
 });
 

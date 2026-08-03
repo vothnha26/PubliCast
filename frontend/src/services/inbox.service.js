@@ -2,22 +2,22 @@ import { apiV2 } from './api';
 
 class InboxService {
   async getInbox(brandId, searchParamsString = '') {
-    const data = await apiV2.get(`/social/inbox?brandId=${brandId}&${searchParamsString}`);
+    const data = await apiV2.get(`/social/inbox?brandId=${brandId}&${searchParamsString}`, { timeout: 60000 });
     return data;
   }
 
   async getInboxPosts(brandId, searchParamsString = '') {
-    const data = await apiV2.get(`/social/inbox/posts?brandId=${brandId}&${searchParamsString}`);
+    const data = await apiV2.get(`/social/inbox/posts?brandId=${brandId}&${searchParamsString}`, { timeout: 60000 });
     return data;
   }
 
   async getCommentsByPost(brandId, postId, searchParamsString = '') {
-    const data = await apiV2.get(`/social/inbox/posts/${postId}/comments?brandId=${brandId}&${searchParamsString}`);
+    const data = await apiV2.get(`/social/inbox/posts/${postId}/comments?brandId=${brandId}&${searchParamsString}`, { timeout: 60000 });
     return data;
   }
 
   async getThread(itemId) {
-    const data = await apiV2.get(`/social/inbox/${itemId}`);
+    const data = await apiV2.get(`/social/inbox/${itemId}`, { timeout: 60000 });
     return data;
   }
 
