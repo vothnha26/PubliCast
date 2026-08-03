@@ -3,6 +3,7 @@ const { PLATFORMS, ANALYTICS, PRISMA_TIMEOUTS } = require('../../utils/constants
 const { encrypt, decrypt } = require('../../utils/encryption');
 const { OUTBOX_EVENT_TYPES } = require('../../constants/outbox.constants');
 const outboxEventRepository = require('../core/outbox-event.repository');
+const logger = require('../../utils/logger');
 
 class SocialAccountRepository {
   _decryptAccount(account) {
@@ -845,16 +846,24 @@ class SocialAccountRepository {
   }
 
   async updateTokens(id, tokens) {
-    const account = await prisma.socialAccount.update({
-      where: { id },
-      data: {
-        accessToken: encrypt(tokens.access_token),
-        refreshToken: tokens.refresh_token ? encrypt(tokens.refresh_token) : undefined,
-        tokenExpiresAt: tokens.expiry_date ? new Date(tokens.expiry_date) : undefined,
-        updatedAt: new Date()
+    try {
+      const account = await prisma.socialAccount.update({
+        where: { id },
+        data: {
+          accessToken: encrypt(tokens.access_token),
+          refreshToken: tokens.refresh_token ? encrypt(tokens.refresh_token) : undefined,
+          tokenExpiresAt: tokens.expiry_date ? new Date(tokens.expiry_date) : undefined,
+          updatedAt: new Date()
+        }
+      });
+      return this._decryptAccount(account);
+    } catch (err) {
+      if (err.code === 'P2025') {
+        logger.warn(`[SocialAccountRepository.updateTokens] Account ${id} not found for token update (likely deleted or disconnected).`);
+        return null;
       }
-    });
-    return this._decryptAccount(account);
+      throw err;
+    }
   }
 
   /**
