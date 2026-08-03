@@ -1,5 +1,11 @@
 {
   "title": "Lịch biểu nội dung",
+  "channelPublish": {
+    "title": "Quản lý bài đăng kênh",
+    "list": "Danh sách",
+    "calendar": "Lịch",
+    "newPost": "Bài viết mới"
+  },
   "postDetail": {
     "publishedOn": "Đã đăng lúc",
     "close": "Đóng",
@@ -137,17 +143,17 @@
     "noPostsDesc": "Bạn chưa tạo bài viết nào cho bộ lọc này.",
     "clearFilters": "Xóa tất cả bộ lọc",
     "assignBtn": "Phân công",
-    "editPost": "Sửa bài viết",
+    "editPost": "Chỉnh sửa bài viết",
     "viewPost": "Xem bài viết",
     "duplicatePost": "Nhân bản bài viết",
-    "saveTemplate": "Lưu thành Template",
-    "deletePost": "Xóa bài viết",
-    "reposting": "Đang đăng lại...",
+    "saveTemplate": "Lưu thành mẫu",
+    "deletePost": "Xóa bài đăng",
+    "reposting": "Đang đăng...",
     "repostNow": "Đăng lại ngay",
-    "detailStats": "Số liệu chi tiết",
-    "showingResults": "Hiển thị {{count}} trên tổng số {{total}} kết quả",
-    "prevBtn": "Trước",
-    "nextBtn": "Sau",
+    "detailStats": "Thống kê chi tiết",
+    "showingResults": "Hiển thị {{count}} / {{total}} bài viết (Trang {{page}}/{{totalPages}})",
+    "prevBtn": "Trang trước",
+    "nextBtn": "Trang sau",
     "reviewerPanel": {
       "title": "Người duyệt bài",
       "policyLabel": "Chính sách duyệt",
@@ -175,7 +181,8 @@
       "savingTemplate": "Đang lưu bài viết thành template...",
       "saveTemplateSuccess": "Lưu bài viết vào Thư viện thành công!",
       "saveTemplateFail": "Lưu bài viết thất bại."
-    }
+    },
+    "perPage": "Bài / trang"
   },
   "weeklyCalendar": {
     "noPermissionCreate": "Bạn không có quyền tạo bài viết",
@@ -520,10 +527,22 @@
       "update": "Cập nhật",
       "saveTemplate": "Lưu mẫu",
       "publishOptions": {
-        "draft": { "label": "LƯU BẢN NHÁP", "sub": "Lưu và đăng sau" },
-        "review": { "label": "GỬI PHÊ DUYỆT", "sub": "Chọn người duyệt bài" },
-        "schedule": { "label": "LÊN LỊCH ĐĂNG", "sub": "Lưu thay đổi lịch đăng" },
-        "now": { "label": "ĐĂNG BÀI NGAY", "sub": "Đăng bài với thời gian hiện tại" }
+        "draft": {
+          "label": "LƯU BẢN NHÁP",
+          "sub": "Lưu và đăng sau"
+        },
+        "review": {
+          "label": "GỬI PHÊ DUYỆT",
+          "sub": "Chọn người duyệt bài"
+        },
+        "schedule": {
+          "label": "LÊN LỊCH ĐĂNG",
+          "sub": "Lưu thay đổi lịch đăng"
+        },
+        "now": {
+          "label": "ĐĂNG BÀI NGAY",
+          "sub": "Đăng bài với thời gian hiện tại"
+        }
       },
       "publishedState": "Bài đã đăng — chỉ có thể chỉnh nội dung"
     },

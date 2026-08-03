@@ -4,7 +4,7 @@ import {
   Search, Filter, MoreHorizontal, Plus,
   Trash2, CheckCircle, Clock, AlertCircle,
   ExternalLink, Eye, ChevronDown, Youtube, PlayCircle, Loader2, Facebook, Gem, RefreshCw,
-  Users, UserCheck, Edit2, X as XIcon
+  Users, UserCheck, Edit2, X as XIcon, BarChart2, Copy
 } from "lucide-react";
 import { usePostCreator } from "../../../context/PostCreatorContext";
 import { PlatformIcon } from "@/components/shared/PlatformIcon";
@@ -21,6 +21,7 @@ import { buildMediaUrl } from "@/utils/url";
 import { PostMediaThumbnail } from "@/components/shared/PostMediaThumbnail";
 import { useTranslation } from "react-i18next";
 import { getPlatformPostUrl } from "../../../utils/postUrlHelper";
+import { PublishedPostDetailModal } from "./components/PublishedPostDetailModal";
 
 const STATUS_STYLE = {
   published: "bg-green-50 text-green-700 border-green-100",
@@ -50,15 +51,11 @@ export function ListView({ socialAccountId } = {}) {
   const [meta, setMeta] = useState({ total: 0, page: 1, totalPages: 1 });
   const [activeMenuId, setActiveMenuId] = useState(null);
   const [repostingIds, setRepostingIds] = useState([]);
+  const [detailPost, setDetailPost] = useState(null);
   const [reviewerPanel, setReviewerPanel] = useState({ open: false, post: null, availableReviewers: [], selectedIds: [], policy: 'AT_LEAST_ONE', saving: false });
 
   const openPostAnalytics = (post) => {
-    const url = getPlatformPostUrl(post);
-    if (url) {
-      window.open(url, "_blank", "noopener,noreferrer");
-    } else {
-      openPostCreator({ post, defaultSocialAccountId: socialAccountId });
-    }
+    setDetailPost(post);
   };
 
   const { openPostCreator, isOpen } = usePostCreator();
@@ -89,8 +86,9 @@ export function ListView({ socialAccountId } = {}) {
         ...filters,
         ...(socialAccountId ? { socialAccountId } : {})
       });
-      setPosts(res?.posts || res || []);
-      setMeta(res?.meta || { total: 0, page: 1, totalPages: 1 });
+      const postsList = Array.isArray(res) ? res : (res?.posts || res?.data || []);
+      setPosts(postsList);
+      setMeta(res?.meta || { total: postsList.length, page: 1, totalPages: 1 });
     } catch (e) {
       toast.error(t("listView.toasts.loadFail"));
     } finally {
@@ -521,12 +519,16 @@ export function ListView({ socialAccountId } = {}) {
                                 </div>
                              </div>
                              <div className="flex flex-col min-w-0">
-                                <span className="text-[13px] font-bold text-foreground truncate max-w-[250px]">
+                                <span className="text-[13px] font-bold text-foreground truncate max-w-[300px]" title={post.title || post.caption}>
                                   {post.title || post.caption || "Không có tiêu đề"}
                                 </span>
-                                {post.title && post.caption && (
-                                  <span className="text-[11px] text-muted-foreground truncate max-w-[250px]">{post.caption}</span>
-                                )}
+                                <span className="text-[11px] text-muted-foreground truncate max-w-[300px]">
+                                  {post.caption && post.caption !== post.title
+                                    ? post.caption
+                                    : (post.publishedAt || post.scheduledAt || post.createdAt
+                                        ? `${post.status?.toLowerCase() === 'published' ? 'Đã đăng' : 'Lên lịch'}: ${format(new Date(post.publishedAt || post.scheduledAt || post.createdAt), "HH:mm - dd/MM/yyyy")}`
+                                        : "—")}
+                                </span>
                              </div>
                           </div>
                        </td>
@@ -558,10 +560,10 @@ export function ListView({ socialAccountId } = {}) {
                        <td className="px-4 py-5">
                           <div className="flex flex-col">
                              <span className="text-[12px] font-bold text-foreground">
-                               {post.scheduledAt ? format(new Date(post.scheduledAt), "MMM d, yyyy") : "—"}
+                               {(post.scheduledAt || post.publishedAt || post.createdAt) ? format(new Date(post.scheduledAt || post.publishedAt || post.createdAt), "MMM d, yyyy") : "—"}
                              </span>
                              <span className="text-[10px] text-muted-foreground uppercase font-medium">
-                               {post.scheduledAt ? format(new Date(post.scheduledAt), "hh:mm a") : "—"}
+                               {(post.scheduledAt || post.publishedAt || post.createdAt) ? format(new Date(post.scheduledAt || post.publishedAt || post.createdAt), "hh:mm a") : "—"}
                              </span>
                           </div>
                        </td>
@@ -647,18 +649,7 @@ export function ListView({ socialAccountId } = {}) {
                             >
                               <Gem size={14} />
                             </button>
-                            <AccessGuard feature="DELETE_POSTS">
-                             <button
-                               onClick={(e) => {
-                                 e.stopPropagation();
-                                 handleDeletePost(post.id);
-                               }}
-                               className="p-2 text-red-400 hover:text-red-600 hover:bg-red-500/10 rounded-lg transition-all border border-transparent hover:border-red-500/20 cursor-pointer"
-                               title="Delete Post"
-                             >
-                               <Trash2 size={14} />
-                             </button>
-                           </AccessGuard>
+                            
                            
                            <button 
                              onClick={(e) => {
@@ -686,7 +677,7 @@ export function ListView({ socialAccountId } = {}) {
                                        disabled={repostingIds.includes(post.id)}
                                        className="w-full px-4 py-2 text-[11px] font-bold text-indigo-600 dark:text-indigo-400 hover:bg-muted transition-all flex items-center gap-2 cursor-pointer border-b border-border"
                                      >
-                                        <span>🔄</span> {repostingIds.includes(post.id) ? t("listView.reposting") : t("listView.repostNow")}
+                                        <RefreshCw size={13} className="shrink-0" /> {repostingIds.includes(post.id) ? t("listView.reposting") : t("listView.repostNow")}
                                      </button>
                                    )}
                                    {post.status?.toLowerCase() === "published" && (
@@ -698,7 +689,7 @@ export function ListView({ socialAccountId } = {}) {
                                        }}
                                        className="w-full px-4 py-2 text-[11px] font-bold text-indigo-600 dark:text-indigo-400 hover:bg-muted transition-all flex items-center gap-2 cursor-pointer border-b border-border text-left"
                                      >
-                                        <span>📊</span> {t("listView.detailStats")}
+                                        <BarChart2 size={13} className="shrink-0" /> {t("listView.detailStats")}
                                      </button>
                                    )}
                                    <button 
@@ -732,7 +723,7 @@ export function ListView({ socialAccountId } = {}) {
                                        data-testid="post-duplicate-btn"
                                        className="w-full px-4 py-2 text-[11px] font-bold text-indigo-600 dark:text-indigo-400 hover:bg-muted transition-all flex items-center gap-2 cursor-pointer border-t border-border text-left"
                                      >
-                                        <span>🔂</span> {t("listView.duplicatePost")}
+                                        <Copy size={13} className="shrink-0" /> {t("listView.duplicatePost")}
                                      </button>
                                    )}
                                    <button 
@@ -743,7 +734,7 @@ export function ListView({ socialAccountId } = {}) {
                                      }}
                                      className="w-full px-4 py-2 text-[11px] font-bold text-teal-600 dark:text-teal-400 hover:bg-muted transition-all flex items-center gap-2 cursor-pointer border-t border-border"
                                    >
-                                      <span>💎</span> {t("listView.saveTemplate")}
+                                      <Gem size={13} className="shrink-0" /> {t("listView.saveTemplate")}
                                    </button>
                                    <AccessGuard feature="DELETE_POSTS">
                                      <button 
@@ -754,7 +745,7 @@ export function ListView({ socialAccountId } = {}) {
                                        }}
                                        className="w-full px-4 py-2 text-[11px] font-bold text-red-600 hover:bg-muted transition-all flex items-center gap-2 cursor-pointer border-t border-border"
                                      >
-                                        <span>🗑️</span> {t("listView.deletePost")}
+                                        <Trash2 size={13} className="shrink-0" /> {t("listView.deletePost")}
                                      </button>
                                    </AccessGuard>
                                 </div>
@@ -865,6 +856,7 @@ export function ListView({ socialAccountId } = {}) {
         </div>
       </div>
     )}
+    {detailPost && <PublishedPostDetailModal post={detailPost} onClose={() => setDetailPost(null)} />}
     </>
   );
 }

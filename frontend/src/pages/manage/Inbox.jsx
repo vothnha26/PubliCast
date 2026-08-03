@@ -123,10 +123,10 @@ export function InboxPage() {
   }, [filters.search]);
 
   // Fetch conversations
-  const fetchInbox = async () => {
+  const fetchInbox = async (showSkeleton = true) => {
     if (!activeBrand) return;
     const requestId = ++inboxRequestIdRef.current;
-    setLoading(true);
+    if (showSkeleton) setLoading(true);
     try {
       const response = await inboxService.getInbox(activeBrand.id, searchParamsString);
       if (requestId !== inboxRequestIdRef.current) return; // a newer fetchInbox call already landed
@@ -134,7 +134,7 @@ export function InboxPage() {
     } catch (error) {
       console.error("Inbox load error:", error);
     } finally {
-      if (requestId === inboxRequestIdRef.current) setLoading(false);
+      if (requestId === inboxRequestIdRef.current && showSkeleton) setLoading(false);
     }
   };
 
@@ -144,16 +144,16 @@ export function InboxPage() {
   // InboxItem media), which the ad-hoc postsList built from inboxData.data
   // below does not have. Without this, fetchedPosts stayed permanently []
   // and PostsGridSidebar fell back to a blank placeholder for every post.
-  const fetchPosts = async () => {
+  const fetchPosts = async (showSkeleton = true) => {
     if (!activeBrand) return;
-    setPostsLoading(true);
+    if (showSkeleton) setPostsLoading(true);
     try {
       const response = await inboxService.getInboxPosts(activeBrand.id, searchParamsString);
       setFetchedPosts(response?.data || []);
     } catch (error) {
       console.error("Inbox posts load error:", error);
     } finally {
-      setPostsLoading(false);
+      if (showSkeleton) setPostsLoading(false);
     }
   };
 
@@ -174,11 +174,11 @@ export function InboxPage() {
       // Check if new item matches the currently selected platform (ignoring case)
       if (data.platform?.toLowerCase() === platformFilter.toLowerCase()) {
         console.log("⚡ [InboxPage] Received new inbox item realtime:", data);
-        fetchInbox();
+        fetchInbox(false);
 
         // If we are currently viewing this thread, refresh the thread messages
         if (activeConv && (activeConv.id === data.id || activeConv.id === data.parentItemId)) {
-          fetchThread();
+          fetchThread(false);
         }
       }
     };
@@ -186,7 +186,7 @@ export function InboxPage() {
     const handleInboxItemDeleted = (data) => {
       if (data.platformItemId) {
         console.log("⚡ [InboxPage] Inbox item deleted realtime:", data);
-        fetchInbox();
+        fetchInbox(false);
         if (activeConv && (activeConv.id === data.id || activeConv.platformItemId === data.platformItemId)) {
           setActiveConv(null);
           setThread([]);
@@ -206,7 +206,7 @@ export function InboxPage() {
   }, [activeBrand?.id, platformFilter, activeConv?.id]);
 
   // Fetch thread for active conversation
-  const fetchThread = async () => {
+  const fetchThread = async (showSkeleton = true) => {
     if (!activeConv) return;
     // Synthetic posts (real published content with zero synced comments —
     // see handleSelectPost) have no matching InboxItem row, so getThread's
@@ -215,13 +215,15 @@ export function InboxPage() {
     // getCommentsByPost, so there's nothing more to load here.
     if (activeConv.isSyntheticPost) return;
     const requestId = ++threadRequestIdRef.current;
-    setThreadLoading(true);
-    setVideoContext(null);
+    if (showSkeleton) {
+      setThreadLoading(true);
+      setVideoContext(null);
+    }
     try {
       const response = await inboxService.getThread(activeConv.id);
       if (requestId !== threadRequestIdRef.current) return; // a newer fetchThread call already landed
       setThread(response?.thread || []);
-      setVideoContext(response?.videoContext || null);
+      if (response?.videoContext) setVideoContext(response.videoContext);
 
       if (activeConv.unread) {
         handleUpdateStatus(activeConv.id, 'READ');
@@ -229,7 +231,7 @@ export function InboxPage() {
     } catch (error) {
       toast.error(t("inbox.loadThreadFailed"));
     } finally {
-      if (requestId === threadRequestIdRef.current) setThreadLoading(false);
+      if (requestId === threadRequestIdRef.current && showSkeleton) setThreadLoading(false);
     }
   };
 
@@ -244,9 +246,9 @@ export function InboxPage() {
       const platform = platformFilter.toUpperCase();
       await inboxService.syncInbox(activeBrand.id, platform);
       toast.success(t("inbox.syncSuccess"));
-      await fetchInbox();
+      await fetchInbox(false);
       if (activeConv) {
-        await fetchThread();
+        await fetchThread(false);
       }
     } catch (e) {
       toast.error(t("inbox.syncFailed") + (e.message || ""));
@@ -265,8 +267,8 @@ export function InboxPage() {
       if (activeConv?.id === itemId || activeConv?.platformItemId === itemId || activeConv?.relatedPostId === itemId) {
         setActiveConv(prev => prev ? ({ ...prev, status: newStatus.toLowerCase(), unread: newStatus === 'UNREAD' }) : null);
       }
-      await fetchInbox();
-      await fetchPosts();
+      await fetchInbox(false);
+      await fetchPosts(false);
     } catch (e) {
       toast.error(t("inbox.updateStatusFailed"));
     }
@@ -274,6 +276,7 @@ export function InboxPage() {
 
   const handleReply = async (attachmentUrl) => {
     if (!replyText || !activeConv || !activeBrand) return;
+    const cleanAttachmentUrl = typeof attachmentUrl === "string" ? attachmentUrl : undefined;
     setIsReplying(true);
     try {
       if (activeConv.isSyntheticPost) {
@@ -285,7 +288,7 @@ export function InboxPage() {
           platform: activeConv.platform,
           text: replyText,
           socialAccountId: activeConv.socialAccountId || undefined,
-          attachmentUrl
+          attachmentUrl: cleanAttachmentUrl
         });
         toast.success(t("inbox.replySuccess"));
         setReplyText("");
@@ -301,14 +304,14 @@ export function InboxPage() {
           brandId: activeBrand.id,
           itemId: activeConv.id,
           text: replyText,
-          attachmentUrl
+          attachmentUrl: cleanAttachmentUrl
         });
         toast.success(t("inbox.replySuccess"));
         setReplyText("");
-        await fetchThread();
+        await fetchThread(false);
       }
-      await fetchInbox();
-      await fetchPosts();
+      await fetchInbox(false);
+      await fetchPosts(false);
     } catch (e) {
       toast.error(t("inbox.replyFailed") + (e.message || ""));
     } finally {
@@ -321,6 +324,7 @@ export function InboxPage() {
   // always targets a specific existing comment (reply-to-X semantics).
   const handlePostNewComment = async (attachmentUrl) => {
     if (!newCommentText || !currentActiveConv || !activeBrand) return;
+    const cleanAttachmentUrl = typeof attachmentUrl === "string" ? attachmentUrl : undefined;
     const postId = currentActiveConv.relatedPostId || currentActiveConv.videoContext?.id || currentActiveConv.id;
     const platform = currentActiveConv.platform;
     if (!postId || !platform) return;
@@ -332,7 +336,7 @@ export function InboxPage() {
         platform,
         text: newCommentText,
         socialAccountId: currentActiveConv.socialAccountId || undefined,
-        attachmentUrl
+        attachmentUrl: cleanAttachmentUrl
       });
       toast.success(t("inbox.replySuccess"));
       setNewCommentText("");
@@ -343,8 +347,8 @@ export function InboxPage() {
       const response = await inboxService.getCommentsByPost(activeBrand.id, postId);
       if (response?.thread) setThread(response.thread);
       if (response?.videoContext) setVideoContext(response.videoContext);
-      await fetchInbox();
-      await fetchPosts();
+      await fetchInbox(false);
+      await fetchPosts(false);
     } catch (e) {
       toast.error(t("inbox.replyFailed") + (e.message || ""));
     } finally {
@@ -362,7 +366,7 @@ export function InboxPage() {
       toast.success(t("inbox.updateReplySuccess"));
       setEditingReplyId(null);
       setEditingText("");
-      await fetchThread();
+      await fetchThread(false);
     } catch (e) {
       toast.error(t("inbox.updateReplyFailed") + (e.message || ""));
     }
@@ -376,7 +380,7 @@ export function InboxPage() {
     try {
       await inboxService.deleteInboxReply(replyId, activeBrand.id);
       toast.success(t("inbox.deleteReplySuccess"));
-      await fetchThread();
+      await fetchThread(false);
     } catch (e) {
       toast.error(t("inbox.deleteReplyFailed") + (e.message || ""));
     }
@@ -552,14 +556,19 @@ export function InboxPage() {
       });
     }
 
-    return Array.from(postsMap.values());
+    const list = Array.from(postsMap.values());
+    return list.sort((a, b) => {
+      const dateA = new Date(a.latestCommentAt || a.publishedAt || a.rawItem?.createdAt || 0).getTime();
+      const dateB = new Date(b.latestCommentAt || b.publishedAt || b.rawItem?.createdAt || 0).getTime();
+      return dateB - dateA;
+    });
   }, [fetchedPosts, inboxData.data]);
 
   const filteredPostsList = useMemo(() => {
     let result = postsList;
 
     if (selectedAccountIds.length > 0) {
-      result = result.filter(p => p.socialAccountId && selectedAccountIds.includes(p.socialAccountId));
+      result = result.filter(p => !p.socialAccountId || selectedAccountIds.includes(p.socialAccountId));
     }
 
     if (postCommentFilter === "has") result = result.filter(p => (p.commentCount || 0) > 0);

@@ -179,7 +179,8 @@ export function WeeklyCalendarView({ socialAccountId, platform } = {}) {
       // A slower in-flight request resolving after a newer one (e.g. rapid
       // Prev/Next clicks) must not overwrite the grid with stale week data (#88 M4).
       if (!postsRequest.isLatest(requestId)) return;
-      setPostData(posts || []);
+      const postsList = Array.isArray(posts) ? posts : (posts?.data || posts?.posts || []);
+      setPostData(postsList);
       setEventsData(events || []);
     } catch (e) {
       if (postsRequest.isLatest(requestId)) toast.error(t("weeklyCalendar.loadCalendarFail"));
@@ -217,7 +218,7 @@ export function WeeklyCalendarView({ socialAccountId, platform } = {}) {
       return matchesPlatform;
     });
     filtered.forEach(post => {
-      const date = new Date(post.scheduledAt || post.createdAt);
+      const date = new Date(post.publishedAt || post.scheduledAt || post.createdAt);
       const year = date.getFullYear();
       const month = String(date.getMonth() + 1).padStart(2, '0');
       const day = String(date.getDate()).padStart(2, '0');

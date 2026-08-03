@@ -9,6 +9,9 @@ export function PlannerLayout() {
   const tabs = [
     { id: "calendar", label: t("tabs.calendar", { defaultValue: "Calendar" }), path: "calendar" },
     { id: "list", label: t("tabs.list", { defaultValue: "List" }), path: "list" },
+    { id: "library", label: t("tabs.library", { defaultValue: "Posts library" }), path: "library", premium: true },
+    { id: "autolists", label: t("tabs.autolists", { defaultValue: "Autolists" }), path: "autolists" },
+    { id: "history", label: t("tabs.history", { defaultValue: "Deleted posts" }), path: "history" },
   ];
 
   const defaultSystemTz = React.useMemo(() => {

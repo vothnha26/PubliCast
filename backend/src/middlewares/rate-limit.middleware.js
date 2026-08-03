@@ -14,6 +14,7 @@ const authRateLimiter = rateLimit({
   },
   standardHeaders: true,
   legacyHeaders: false,
+  skip: () => process.env.NODE_ENV === 'test',
   store: new RedisStore({
     prefix: 'rl:auth:',
     sendCommand: (...args) => redisClient.sendCommand(args)

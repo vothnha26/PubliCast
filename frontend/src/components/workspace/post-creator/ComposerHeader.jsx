@@ -348,16 +348,18 @@ export function ComposerHeader() {
           const lockedAccount = connectedAccounts.find((sa) => selectedAccountIds.includes(sa.id));
           if (!lockedAccount) return null;
           const platformKey = (lockedAccount.platform || "").toLowerCase();
+          const accountName = lockedAccount.displayName || lockedAccount.username || lockedAccount.accountName || platformKey;
+          const avatarUrl = lockedAccount.avatarUrl || lockedAccount.profilePictureUrl;
           return (
             <div className="flex items-center gap-2 pt-1.5 border-t border-gray-100">
               <span className="text-[10px] font-black uppercase text-muted-foreground tracking-wider mr-1">Đăng riêng cho kênh:</span>
               <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold border bg-slate-900 text-white border-slate-900 shadow-sm">
-                {lockedAccount.avatarUrl ? (
-                  <img src={lockedAccount.avatarUrl} alt={lockedAccount.accountName} className="w-4 h-4 rounded-full object-cover shrink-0" />
+                {avatarUrl ? (
+                  <img src={avatarUrl} alt={accountName} className="w-4 h-4 rounded-full object-cover shrink-0" />
                 ) : (
                   <PlatformIcon platform={platformKey} size={13} className="shrink-0" />
                 )}
-                <span className="truncate max-w-[160px] font-sans text-[11px]">{lockedAccount.accountName || platformKey}</span>
+                <span className="truncate max-w-[160px] font-sans text-[11px]">{accountName}</span>
                 <Lock size={10} className="shrink-0 opacity-70" />
               </div>
             </div>
@@ -369,24 +371,26 @@ export function ComposerHeader() {
           {connectedAccounts.map((sa) => {
             const isSelected = selectedAccountIds.includes(sa.id);
             const platformKey = (sa.platform || "").toLowerCase();
+            const accountName = sa.displayName || sa.username || sa.accountName || platformKey;
+            const avatarUrl = sa.avatarUrl || sa.profilePictureUrl;
             return (
               <button
                 key={sa.id}
                 type="button"
                 onClick={() => toggleAccount(sa.id)}
-                title={`Đăng bài lên: ${sa.accountName || platformKey}`}
+                title={`Đăng bài lên: ${accountName}`}
                 className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold transition-all cursor-pointer border ${
                   isSelected
                     ? "bg-slate-900 text-white border-slate-900 shadow-sm"
                     : "bg-muted text-muted-foreground border-border hover:bg-gray-200"
                 }`}
               >
-                {sa.avatarUrl ? (
-                  <img src={sa.avatarUrl} alt={sa.accountName} className="w-4 h-4 rounded-full object-cover shrink-0" />
+                {avatarUrl ? (
+                  <img src={avatarUrl} alt={accountName} className="w-4 h-4 rounded-full object-cover shrink-0" />
                 ) : (
                   <PlatformIcon platform={platformKey} size={13} className="shrink-0" />
                 )}
-                <span className="truncate max-w-[120px] font-sans text-[11px]">{sa.accountName || platformKey}</span>
+                <span className="truncate max-w-[120px] font-sans text-[11px]">{accountName}</span>
                 <div className={`w-3.5 h-3.5 rounded-full flex items-center justify-center text-[9px] shrink-0 ${
                   isSelected ? "bg-white text-slate-900 font-extrabold" : "border border-gray-300"
                 }`}>
