@@ -97,20 +97,12 @@ describe('Profile & Settings Detailed Suite', function () {
     });
 
     it('TC_PROFILE_03 – Verify Google linked success callback redirection', async function () {
+      this.timeout(90000);
+      await loginAs(driver, 'admin');
       await driver.get(`${BASE_URL}/settings?success=google_linked`);
+      await driver.sleep(1000);
       
-      // Wait for redirect to /settings?tab=access with session auto-recovery for CI environment
-      await driver.wait(async () => {
-        const currentUrl = await driver.getCurrentUrl();
-        if (currentUrl.includes('/login')) {
-          await loginAs(driver, 'admin');
-          await driver.get(`${BASE_URL}/settings?success=google_linked`);
-          return false;
-        }
-        return currentUrl.includes('/settings?tab=access');
-      }, 30000);
-
-      await driver.wait(until.elementLocated(By.css('h1')), 15000);
+      await driver.wait(until.urlContains('tab=access'), 25000);
       expect(await driver.getCurrentUrl()).to.include('/settings?tab=access');
 
       // Verify success toast or Google text exists on page
