@@ -409,6 +409,10 @@ export function SettingsPage() {
       toast.error(language === 'vi' ? "Vui lòng nhập mật khẩu mới!" : "Please enter a new password!");
       return;
     }
+    if (newPassword.length < 8) {
+      toast.error(language === 'vi' ? "Mật khẩu mới phải có ít nhất 8 ký tự!" : "New password must be at least 8 characters!");
+      return;
+    }
 
     setIsUpdatingPassword(true);
     try {

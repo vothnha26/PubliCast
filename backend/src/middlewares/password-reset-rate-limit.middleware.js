@@ -12,6 +12,7 @@ const forgotPasswordRateLimiter = rateLimit({
   },
   standardHeaders: true,
   legacyHeaders: false,
+  skip: () => process.env.NODE_ENV === 'test',
   store: new RedisStore({
     prefix: 'rl:forgot-password:',
     sendCommand: (...args) => redisClient.sendCommand(args)
@@ -26,6 +27,7 @@ const resetPasswordRateLimiter = rateLimit({
   },
   standardHeaders: true,
   legacyHeaders: false,
+  skip: () => process.env.NODE_ENV === 'test',
   store: new RedisStore({
     prefix: 'rl:reset-password:',
     sendCommand: (...args) => redisClient.sendCommand(args)
