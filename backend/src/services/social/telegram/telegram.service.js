@@ -4,6 +4,7 @@ const telegramPublishStrategyFactory = require('./publish-strategies/publish-str
 const socialAccountRepository = require('../../../repositories/social/social-account.repository');
 const { encrypt, decrypt } = require('../../../utils/encryption');
 const prisma = require('../../../config/prisma');
+const logger = require('../../../utils/logger');
 
 class TelegramService extends BaseSocialService {
   /**
@@ -14,7 +15,7 @@ class TelegramService extends BaseSocialService {
       throw new Error('brandId, botToken, and chatId are required');
     }
 
-    console.log(`[Telegram Service] Connecting Telegram channel/group...`);
+    logger.debug(`[Telegram Service] Connecting Telegram channel/group...`);
     const chatInfo = await telegramGateway.getChatInfo(botToken, chatId);
 
     // Mock analytics initial data
@@ -70,7 +71,7 @@ class TelegramService extends BaseSocialService {
     // 2. Lấy strategy phù hợp dựa trên mediaUrl
     const strategy = telegramPublishStrategyFactory.getStrategy(postData.mediaUrl);
     
-    console.log(`[Telegram Service] Publishing post using strategy: ${strategy.constructor.name}`);
+    logger.debug(`[Telegram Service] Publishing post using strategy: ${strategy.constructor.name}`);
     const result = await strategy.publish(chatId, botToken, postData);
 
     // Telegram's sendMessage/sendPhoto/etc always return message_id on a real

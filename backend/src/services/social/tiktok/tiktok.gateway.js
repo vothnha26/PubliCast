@@ -3,6 +3,7 @@ const path = require('path');
 const { API_VERSIONS, TIKTOK_API } = require('../../../utils/constants');
 const { isRemoteUrl } = require('../../../utils/url.utils');
 const { downloadBufferSafely } = require('../../../utils/network-security');
+const logger = require('../../../utils/logger');
 
 // Matches the 100MB upload limit enforced elsewhere (upload.middleware.js).
 const MAX_VIDEO_BYTES = 100 * 1024 * 1024;
@@ -46,7 +47,7 @@ class TikTokGateway {
       params.append('code_verifier', codeVerifier);
     }
 
-    console.log(`[TikTok OAuth] Exchanging code for token...`);
+    logger.debug(`[TikTok OAuth] Exchanging code for token...`);
     const res = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -73,7 +74,7 @@ class TikTokGateway {
     params.append('grant_type', 'refresh_token');
     params.append('refresh_token', refreshToken);
 
-    console.log(`[TikTok OAuth] Refreshing access token...`);
+    logger.debug(`[TikTok OAuth] Refreshing access token...`);
     const res = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -109,7 +110,7 @@ class TikTokGateway {
     
     const url = `${this.apiBaseUrl}/v2/user/info/?fields=${fields}`;
     
-    console.log(`[TikTok OAuth] Fetching user info with stats...`);
+    logger.debug(`[TikTok OAuth] Fetching user info with stats...`);
     const res = await fetch(url, {
       headers: { 'Authorization': `Bearer ${accessToken}` }
     });
@@ -157,7 +158,7 @@ class TikTokGateway {
     const videoBuffer = await this._getVideoBuffer(filePath);
     const videoSize = videoBuffer.length;
 
-    console.log(`[TikTok Gateway] Initializing FILE_UPLOAD for video (${videoSize} bytes)`);
+    logger.debug(`[TikTok Gateway] Initializing FILE_UPLOAD for video (${videoSize} bytes)`);
 
     let privacyLevel = 'PUBLIC_TO_EVERYONE';
 
@@ -165,7 +166,7 @@ class TikTokGateway {
     const creatorInfo = await this.getCreatorInfo(accessToken);
     if (creatorInfo) {
       const allowedPrivacy = creatorInfo.privacy_level_options || [];
-      console.log(`[TikTok Gateway] Creator Info: Max Video Duration: ${creatorInfo.max_video_post_duration_sec}s, Allowed Privacy: ${allowedPrivacy.join(', ')}`);
+      logger.debug(`[TikTok Gateway] Creator Info: Max Video Duration: ${creatorInfo.max_video_post_duration_sec}s, Allowed Privacy: ${allowedPrivacy.join(', ')}`);
       
       if (!allowedPrivacy.includes('PUBLIC_TO_EVERYONE') && allowedPrivacy.includes('SELF_ONLY')) {
         privacyLevel = 'SELF_ONLY';
@@ -224,7 +225,7 @@ class TikTokGateway {
     const { publish_id, upload_url } = initData.data;
 
     // Step 2: Upload Video Binary
-    console.log(`[TikTok Gateway] Uploading binary to ${upload_url}`);
+    logger.debug(`[TikTok Gateway] Uploading binary to ${upload_url}`);
     const uploadRes = await fetch(upload_url, {
       method: 'PUT',
       headers: {
@@ -240,7 +241,7 @@ class TikTokGateway {
       throw new Error('Failed to upload video binary to TikTok');
     }
 
-    console.log(`[TikTok Gateway] Upload successful. Publish ID: ${publish_id} (Privacy: ${privacyLevel})`);
+    logger.debug(`[TikTok Gateway] Upload successful. Publish ID: ${publish_id} (Privacy: ${privacyLevel})`);
     return { publish_id, privacy_level: privacyLevel };
   }
 
@@ -314,7 +315,7 @@ class TikTokGateway {
       body.comment_id = typeof commentId === 'number' ? commentId : (Number(commentId) || commentId);
     }
 
-    console.log(`[TikTok Gateway] Querying video comments (${videoId ? `video_id: ${videoId}` : `comment_id: ${commentId}`})...`);
+    logger.debug(`[TikTok Gateway] Querying video comments (${videoId ? `video_id: ${videoId}` : `comment_id: ${commentId}`})...`);
     const res = await fetch(url, {
       method: 'POST',
       headers: {

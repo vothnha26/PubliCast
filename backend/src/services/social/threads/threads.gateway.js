@@ -1,4 +1,5 @@
 const { API_VERSIONS } = require('../../../utils/constants');
+const logger = require('../../../utils/logger');
 
 class ThreadsGateway {
   constructor() {
@@ -151,7 +152,7 @@ class ThreadsGateway {
 
   async deletePost(mediaId, accessToken) {
     const url = `${this.graphBaseUrl}/${mediaId}?access_token=${accessToken}`;
-    console.log(`[Threads Gateway] Sending DELETE request to URL: ${this.graphBaseUrl}/${mediaId} (token length: ${accessToken ? accessToken.length : 0})`);
+    logger.debug(`[Threads Gateway] Sending DELETE request to URL: ${this.graphBaseUrl}/${mediaId} (token length: ${accessToken ? accessToken.length : 0})`);
     
     const res = await fetch(url, { method: 'DELETE' });
     if (!res.ok) {
@@ -160,7 +161,7 @@ class ThreadsGateway {
       throw new Error(errData.error?.message || 'Failed to delete Threads post');
     }
     const data = await res.json();
-    console.log(`[Threads Gateway] DELETE request succeeded. Response:`, data);
+    logger.debug(`[Threads Gateway] DELETE request succeeded. Response:`, data);
     return data;
   }
 

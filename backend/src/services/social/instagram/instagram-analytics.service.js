@@ -1,6 +1,7 @@
 const instagramGateway = require('./instagram.gateway');
 const socialAccountRepository = require('../../../repositories/social/social-account.repository');
 const { PLATFORMS, DEFAULT_CONFIG, ANALYTICS, SOCIAL_TECHNICAL } = require('../../../utils/constants');
+const logger = require('../../../utils/logger');
 
 class InstagramAnalyticsService {
   _getEmptyChannelInfo(igAccountId, account = null) {
@@ -134,7 +135,7 @@ class InstagramAnalyticsService {
         missingRanges = this._calculateMissingRanges(dailyMap, start, end);
       }
 
-      console.log(`[Instagram Analytics] Smart Sync: Requesting ${missingRanges.length} missing ranges from API for ${igAccountId}`);
+      logger.debug(`[Instagram Analytics] Smart Sync: Requesting ${missingRanges.length} missing ranges from API for ${igAccountId}`);
 
       // Fetch real account insights
       const insights = await instagramGateway.getAccountInsights(igAccountId, accessToken, start, end).catch(() => []);

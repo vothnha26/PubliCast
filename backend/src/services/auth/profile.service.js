@@ -3,6 +3,7 @@ const brandService = require('../../services/workspace/brand.service');
 const brandRepository = require('../../repositories/workspace/brand.repository');
 const tokenService = require('./token.service');
 const { ERROR_MESSAGES } = require('../../utils/constants');
+const logger = require('../../utils/logger');
 
 class ProfileService {
   /**
@@ -20,7 +21,7 @@ class ProfileService {
     const brands = await brandService.getUserBrands(userId);
     if (brands.length === 0) {
       try {
-        console.log(`Auto-creating brand for user ${userId}`);
+        logger.debug(`Auto-creating brand for user ${userId}`);
         await brandService.createDefaultBrand(userId);
       } catch (err) {
         console.error(`Brand auto-creation failed: ${err.message}`);

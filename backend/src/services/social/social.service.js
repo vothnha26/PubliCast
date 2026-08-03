@@ -4,6 +4,7 @@ const googleDriveService = require('./google-drive.service');
 const notificationService = require('../core/notification.service');
 const redisClient = require('../../config/redis');
 const { PLATFORMS, NOTIFICATION_TYPES } = require('../../utils/constants');
+const logger = require('../../utils/logger');
 
 class SocialService {
   /**
@@ -17,7 +18,7 @@ class SocialService {
       try {
         const cachedMetrics = await redisClient.get(cacheKey);
         if (cachedMetrics) {
-          console.log(`[SocialService] Returning Redis cached metrics for brand ${brandId}`);
+          logger.debug(`[SocialService] Returning Redis cached metrics for brand ${brandId}`);
           return JSON.parse(cachedMetrics);
         }
       } catch (cacheErr) {

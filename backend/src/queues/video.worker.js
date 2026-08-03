@@ -5,6 +5,7 @@ const trimVideoHandler = require('./handlers/trim-video.handler');
 const socketManager = require('../services/workspace/socket/socket.manager');
 const redisClient = require('../config/redis');
 const { QUEUE_CONFIG, TASK_STATUS, SOCKET_EVENTS, REDIS_PREFIXES } = require('../constants/video-publish.constants');
+const logger = require('../utils/logger');
 
 /**
  * BullMQ Worker Engine for Video Processing tasks
@@ -24,7 +25,7 @@ const videoWorker = new Worker(VIDEO_QUEUE_NAME, async (job) => {
 
 // Event Listeners cho logging/monitoring
 videoWorker.on('completed', (job) => {
-  console.log(`[Video Worker] Job ${job.id} completed!`);
+  logger.debug(`[Video Worker] Job ${job.id} completed!`);
 });
 
 // job.attemptsMade/job.opts.attempts are BullMQ-specific — this is the only
@@ -38,7 +39,7 @@ videoWorker.on('failed', async (job, err) => {
   const { userId, videoUrl } = job?.data || {};
 
   if (attemptsMade >= maxAttempts) {
-    console.log(`[Video Worker] 🚨 Max attempts (${maxAttempts}) reached for job ${job.id}. Setting status to FAILED.`);
+    logger.debug(`[Video Worker] 🚨 Max attempts (${maxAttempts}) reached for job ${job.id}. Setting status to FAILED.`);
     const taskKey = `${REDIS_PREFIXES.TASK_VIDEO_TRIM}${job.id}`;
     try {
       await redisClient.set(taskKey, JSON.stringify({
@@ -59,7 +60,7 @@ videoWorker.on('failed', async (job, err) => {
       console.error(`[Video Worker] Failed to record/notify FAILED state for job ${job.id}:`, notifyErr.message);
     }
   } else {
-    console.log(`[Video Worker] 🔄 Attempt ${attemptsMade}/${maxAttempts} failed for job ${job.id}. BullMQ will retry automatically.`);
+    logger.debug(`[Video Worker] 🔄 Attempt ${attemptsMade}/${maxAttempts} failed for job ${job.id}. BullMQ will retry automatically.`);
   }
 });
 

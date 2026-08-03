@@ -2,6 +2,7 @@ const tiktokGateway = require('./tiktok.gateway');
 const tiktokAnalytics = require('./tiktok-analytics.service');
 const socialAccountRepository = require('../../../repositories/social/social-account.repository');
 const { PLATFORMS, POST_STATUS } = require('../../../utils/constants');
+const logger = require('../../../utils/logger');
 
 class TikTokPostService {
   async publishPost(brandId, postData) {
@@ -9,7 +10,7 @@ class TikTokPostService {
     if (!socialAccount) throw new Error('TikTok account not connected');
 
     if (socialAccount.accessToken && (socialAccount.accessToken.startsWith('mock-') || socialAccount.accessToken.includes('mock') || socialAccount.accessToken.startsWith('tt_mock'))) {
-      console.log(`[TikTok] Mock publishing detected for mock token. Returning simulated success.`);
+      logger.debug(`[TikTok] Mock publishing detected for mock token. Returning simulated success.`);
       return {
         platformVideoId: `mock-tiktok-post-${Date.now()}`,
         status: POST_STATUS.PUBLISHED,
@@ -33,7 +34,7 @@ class TikTokPostService {
       // Force refresh if the token is invalid (even if database metadata said it was valid)
       const isTokenError = error.status === 401 || error.code === 'access_token_invalid';
       if (isTokenError && account.refreshToken) {
-        console.log(`[TikTok Post] publishPost failed with token error. Attempting force refresh...`);
+        logger.debug(`[TikTok Post] publishPost failed with token error. Attempting force refresh...`);
         try {
           const refreshed = await tiktokGateway.refreshAccessToken(account.refreshToken);
           const accessToken = refreshed.access_token;

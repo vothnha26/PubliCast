@@ -358,7 +358,7 @@ class YouTubeAnalyticsService {
         const youtubePubSubService = require('./youtube-pubsub.service');
         await youtubePubSubService.requestHubSubscription(channelData.channelId, callbackUrl);
       } else {
-        console.log('[YouTube Connect] PUBLIC_WEBHOOK_URL not configured. PubSubHubbub auto-subscription skipped.');
+        logger.debug('[YouTube Connect] PUBLIC_WEBHOOK_URL not configured. PubSubHubbub auto-subscription skipped.');
       }
     } catch (pubSubErr) {
       console.warn('[YouTube Connect] Failed to auto-subscribe to PubSubHubbub Hub:', pubSubErr.message);
@@ -374,7 +374,7 @@ class YouTubeAnalyticsService {
     }
 
     if (account.accessToken && account.accessToken.startsWith('mock-')) {
-      console.log(`[YouTube Analytics] Mock token detected: ${account.accessToken}. Skipping Google API sync.`);
+      logger.debug(`[YouTube Analytics] Mock token detected: ${account.accessToken}. Skipping Google API sync.`);
       return account;
     }
 

@@ -1,5 +1,6 @@
 const axios = require('axios');
 const EmailStrategy = require('./email.strategy');
+const logger = require('../../../utils/logger');
 
 class ResendStrategy extends EmailStrategy {
   constructor() {
@@ -19,7 +20,7 @@ class ResendStrategy extends EmailStrategy {
       return;
     }
 
-    console.log(`📧 [EmailService/Resend] Sending email to: ${to} | Subject: ${subject}`);
+    logger.debug(`📧 [EmailService/Resend] Sending email to: ${to} | Subject: ${subject}`);
 
     try {
       const data = {
@@ -49,10 +50,10 @@ class ResendStrategy extends EmailStrategy {
         }
       });
 
-      console.log(`✅ [EmailService/Resend] Email sent successfully. ID: ${response.data.id}`);
+      logger.debug(`✅ [EmailService/Resend] Email sent successfully. ID: ${response.data.id}`);
     } catch (error) {
       const errMsg = error.response?.data?.message || error.message;
-      console.error(`❌ [EmailService/Resend] Failed to send email to: ${to} | Error: ${errMsg}`);
+      logger.error(`[EmailService/Resend] Failed to send email to: ${to}`, { error: errMsg });
       throw error;
     }
   }

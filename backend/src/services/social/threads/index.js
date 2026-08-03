@@ -1,6 +1,7 @@
 const BaseSocialService = require('../base-social.service');
 const threadsGateway = require('./threads.gateway');
 const { PLATFORMS } = require('../../../utils/constants');
+const logger = require('../../../utils/logger');
 
 class ThreadsService extends BaseSocialService {
   async getChannelInfo(auth, startDate, endDate) {
@@ -411,8 +412,8 @@ class ThreadsService extends BaseSocialService {
       ? postData.options.threadPosts
       : [{ text: postData.caption || '', mediaUrls: postData.mediaUrls || [] }];
 
-    console.log(`\n[Threads] ▶ publishPost | brandId=${brandId} | userId=${account.platformAccountId} | postsInThread=${threadPosts.length}`);
-    console.log(`[Threads] tokenPrefix=${account.accessToken?.substring(0, 10)}...`);
+    logger.debug(`\n[Threads] ▶ publishPost | brandId=${brandId} | userId=${account.platformAccountId} | postsInThread=${threadPosts.length}`);
+    logger.debug(`[Threads] tokenPrefix=${account.accessToken?.substring(0, 10)}...`);
 
     try {
       let rootPostId = null;
@@ -429,7 +430,7 @@ class ThreadsService extends BaseSocialService {
           mediaType = isVideo ? 'VIDEO' : 'IMAGE';
         }
 
-        console.log(`[Threads] Creating media container for post ${i + 1}/${threadPosts.length} | mediaType=${mediaType} | replyToId=${previousPostId || 'none'}`);
+        logger.debug(`[Threads] Creating media container for post ${i + 1}/${threadPosts.length} | mediaType=${mediaType} | replyToId=${previousPostId || 'none'}`);
         const container = await threadsGateway.createMediaContainer(
           account.platformAccountId,
           account.accessToken,
@@ -439,7 +440,7 @@ class ThreadsService extends BaseSocialService {
           whoCanReply,
           previousPostId
         );
-        console.log(`[Threads] Container created | containerId=${container.id}`);
+        logger.debug(`[Threads] Container created | containerId=${container.id}`);
 
         if (mediaType !== 'TEXT') {
           const maxAttempts = 60;
@@ -449,7 +450,7 @@ class ThreadsService extends BaseSocialService {
           for (let attempt = 1; attempt <= maxAttempts; attempt++) {
             const statusData = await threadsGateway.getContainerStatus(account.accessToken, container.id);
             const status = statusData.status;
-            console.log(`[Threads Polling] Attempt ${attempt}/${maxAttempts} | Container: ${container.id} | Status: ${status}`);
+            logger.debug(`[Threads Polling] Attempt ${attempt}/${maxAttempts} | Container: ${container.id} | Status: ${status}`);
 
             if (status === 'FINISHED') {
               isReady = true;
@@ -466,9 +467,9 @@ class ThreadsService extends BaseSocialService {
           }
         }
 
-        console.log(`[Threads] Publishing container ${container.id}...`);
+        logger.debug(`[Threads] Publishing container ${container.id}...`);
         const publishRes = await threadsGateway.publishMediaContainer(account.platformAccountId, account.accessToken, container.id);
-        console.log(`[Threads] ✅ Published post ${i + 1}/${threadPosts.length} | platformPostId=${publishRes.id}`);
+        logger.debug(`[Threads] ✅ Published post ${i + 1}/${threadPosts.length} | platformPostId=${publishRes.id}`);
 
         if (i === 0) rootPostId = publishRes.id;
         previousPostId = publishRes.id;
@@ -477,9 +478,9 @@ class ThreadsService extends BaseSocialService {
       // Post First Comment if published immediately
       if (postData.options?.firstComment?.trim()) {
         try {
-          console.log(`[Threads] Posting first comment: "${postData.options.firstComment.trim()}"`);
+          logger.debug(`[Threads] Posting first comment: "${postData.options.firstComment.trim()}"`);
           await threadsGateway.createComment(account.platformAccountId, account.accessToken, rootPostId, postData.options.firstComment.trim());
-          console.log(`[Threads] First comment posted successfully.`);
+          logger.debug(`[Threads] First comment posted successfully.`);
         } catch (commentErr) {
           console.error(`[Threads] Failed to post first comment:`, commentErr.message);
         }
@@ -500,17 +501,17 @@ class ThreadsService extends BaseSocialService {
   }
 
   async deletePost(brandId, platformPostId) {
-    console.log(`[Threads Service] deletePost triggered for brandId: ${brandId}, platformPostId: ${platformPostId}`);
+    logger.debug(`[Threads Service] deletePost triggered for brandId: ${brandId}, platformPostId: ${platformPostId}`);
     const accounts = await require('../../../repositories/social/social-account.repository').findByBrandAndPlatform(brandId, PLATFORMS.THREADS);
     if (!accounts || accounts.length === 0) {
       console.warn(`[Threads Service] No connected Threads accounts found for brandId: ${brandId}`);
       throw new Error('Threads account not linked');
     }
     const account = accounts[0];
-    console.log(`[Threads Service] Using connected Threads account: @${account.username} (${account.platformAccountId})`);
-    console.log(`[Threads Service] Calling threadsGateway.deletePost with media ID: ${platformPostId}`);
+    logger.debug(`[Threads Service] Using connected Threads account: @${account.username} (${account.platformAccountId})`);
+    logger.debug(`[Threads Service] Calling threadsGateway.deletePost with media ID: ${platformPostId}`);
     const res = await threadsGateway.deletePost(platformPostId, account.accessToken);
-    console.log(`[Threads Service] threadsGateway.deletePost successful response:`, res);
+    logger.debug(`[Threads Service] threadsGateway.deletePost successful response:`, res);
     return res;
   }
 }
