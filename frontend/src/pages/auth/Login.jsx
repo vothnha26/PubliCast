@@ -318,9 +318,6 @@ export function LoginPage({ initialScreen = "login" }) {
                   >
                     <span style={{ fontWeight: 700, fontSize: 16 }}>G</span> {t("login.continueGoogle")}
                   </button>
-                  <button style={{ width: "100%", height: 46, borderRadius: 10, background: "#0A0A0A", color: "#FFF", fontSize: 14, fontWeight: 400, cursor: "pointer", border: "none", display: "flex", alignItems: "center", justifyContent: "center", gap: 10 }}>
-                    <span style={{ fontWeight: 700, fontSize: 16 }}>🍎</span> {t("login.continueApple")}
-                  </button>
                 </div>
 
                 <div style={{ textAlign: "center", fontSize: 14, color: "#6B7280" }}>
