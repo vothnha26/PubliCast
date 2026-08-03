@@ -85,7 +85,9 @@ export function SettingsPage() {
       toast.success(language === 'vi' ? "Liên kết tài khoản Google thành công!" : "Google account linked successfully!");
       setActiveTab("access");
       fetchUserProfile();
-      navigate("/settings?tab=access", { replace: true });
+      setTimeout(() => {
+        navigate("/settings?tab=access", { replace: true });
+      }, 100);
       return;
     }
     
