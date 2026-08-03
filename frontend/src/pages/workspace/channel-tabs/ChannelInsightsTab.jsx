@@ -3,6 +3,7 @@ import { Loader2, RotateCw } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useChannelInsights } from "../../../hooks/channels/useChannelInsights";
 import { DateRangeFilter } from "../../../components/app/DateRangeFilter";
+import { ChannelInsightsSkeleton } from "./ChannelInsightsSkeleton";
 import { GenericDashboardTab } from "../dashboard/GenericDashboardTab";
 import { DemographicsTab } from "../dashboard/DemographicsTab";
 import { PublishedVideosTab } from "../dashboard/PublishedVideosTab";
@@ -97,11 +98,7 @@ export function ChannelInsightsTab({ socialAccountId, platform: platformInput })
       : YT_TABS;
 
   if (loading) {
-    return (
-      <div className="flex-1 flex items-center justify-center p-12">
-        <Loader2 size={24} className="animate-spin text-muted-foreground" />
-      </div>
-    );
+    return <ChannelInsightsSkeleton />;
   }
 
   return (
