@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Routes, Route, useLocation, useNavigate, Navigate } from "react-router-dom";
 import { SidebarWorkspace } from "./layout/SidebarWorkspace";
 import { SidebarAdmin } from "./layout/SidebarAdmin";
@@ -7,6 +7,7 @@ import { SupportChat } from "./components/app/SupportChat";
 import { PostCreatorPage } from "./pages/workspace/PostCreator";
 import { ConnectionsOverlay } from "./components/shared/ConnectionsOverlay";
 import { GlobalConfirmDialog } from "./components/shared/GlobalConfirmDialog";
+import { SplashScreen } from "./components/shared/SplashScreen";
 import { useAuthStore } from "./store/useAuthStore";
 import ProtectedRoute from "./components/ProtectedRoute";
 import { FeatureGate } from "./components/shared/FeatureGate";
@@ -85,6 +86,9 @@ export default function App() {
   const location = useLocation();
   const currentPath = location.pathname;
   const navigate = useNavigate();
+  // Keeps the splash mounted through its own fade-out animation even after
+  // `loading` (checkAuth in flight) has already flipped to false.
+  const [showSplash, setShowSplash] = useState(true);
 
   const getRedirectPath = () => {
     if (!user) return "/dashboard";
@@ -111,11 +115,9 @@ export default function App() {
     return () => window.removeEventListener('SESSION_EXPIRED', handleSessionExpired);
   }, [logout, navigate]);
 
-  if (loading) {
+  if (showSplash) {
     return (
-      <div className="w-full h-screen flex items-center justify-center bg-[#F8F8F7]">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#0A0A0A]"></div>
-      </div>
+      <SplashScreen ready={!loading} onDone={() => setShowSplash(false)} />
     );
   }
 
