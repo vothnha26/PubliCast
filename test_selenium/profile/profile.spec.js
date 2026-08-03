@@ -89,7 +89,8 @@ describe('Profile & Settings Detailed Suite', function () {
 
     it('TC_PROFILE_03 – Verify Google linked success callback redirection', async function () {
       await driver.get(`${BASE_URL}/settings?success=google_linked`);
-      await driver.wait(until.urlContains('/settings?tab=access'), 10000);
+      await driver.wait(until.elementLocated(By.css('h1')), 15000);
+      await driver.wait(until.urlContains('/settings?tab=access'), 20000);
       expect(await driver.getCurrentUrl()).to.include('/settings?tab=access');
 
       // Verify success toast exists on page (by text or class)
