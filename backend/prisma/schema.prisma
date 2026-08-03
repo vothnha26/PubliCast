@@ -1474,6 +1474,12 @@ model AIAssistant {
   targetPlatforms     String?  @db.Text
   usageCountThisMonth Int      @default(0)
   createdAt           DateTime @default(now())
+  // null = use the app-wide AI_PROVIDER/model env default. Brands may
+  // override which already-configured provider (OpenAI/Gemini) their
+  // generations use — this never stores a brand-supplied API key, only a
+  // choice between providers the platform already has credentials for.
+  aiProvider          String?
+  aiModel             String?
 
   brand Brand @relation(fields: [brandId], references: [id], onDelete: Cascade)
 
