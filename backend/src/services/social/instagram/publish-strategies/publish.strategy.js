@@ -1,3 +1,5 @@
+const logger = require('../../../../utils/logger');
+const appConfig = require('../../../../config/app.config');
 class InstagramPublishStrategy {
   async publish(igAccountId, accessToken, postData) {
     throw new Error("Method 'publish()' must be implemented.");
@@ -11,7 +13,7 @@ class InstagramPublishStrategy {
     if (mediaUrl.startsWith('http://') || mediaUrl.startsWith('https://')) {
       return mediaUrl;
     }
-    const baseUrl = process.env.BACKEND_BASE_URL || 'http://localhost:3000';
+    const baseUrl = appConfig.backendBaseUrl;
     const cleanBaseUrl = baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl;
     const cleanMediaUrl = mediaUrl.startsWith('/') ? mediaUrl : `/${mediaUrl}`;
     return `${cleanBaseUrl}${cleanMediaUrl}`;
@@ -24,7 +26,7 @@ class InstagramPublishStrategy {
     for (let attempt = 1; attempt <= maxAttempts; attempt++) {
       const statusData = await instagramGateway.pollContainerStatus(containerId, accessToken);
       const code = statusData.status_code;
-      console.log(`[Instagram Polling] Attempt ${attempt}/${maxAttempts} | Container: ${containerId} | Status: ${code}`);
+      logger.debug(`[Instagram Polling] Attempt ${attempt}/${maxAttempts} | Container: ${containerId} | Status: ${code}`);
       if (code === 'FINISHED') {
         return;
       }

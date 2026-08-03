@@ -1,3 +1,5 @@
+const appConfig = require('../../config/app.config');
+
 /**
  * Lớp cơ sở trừu tượng (Abstract Base Class) định nghĩa giao diện chung cho các Social Platform Services.
  */
@@ -63,7 +65,7 @@ class BaseSocialService {
     if (mediaUrl.startsWith('http://') || mediaUrl.startsWith('https://')) {
       return mediaUrl;
     }
-    const baseUrl = process.env.BACKEND_BASE_URL || 'http://localhost:3000';
+    const baseUrl = appConfig.backendBaseUrl;
     const cleanBaseUrl = baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl;
     const cleanMediaUrl = mediaUrl.startsWith('/') ? mediaUrl : `/${mediaUrl}`;
     return `${cleanBaseUrl}${cleanMediaUrl}`;

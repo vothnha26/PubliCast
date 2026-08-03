@@ -3,6 +3,8 @@
  * Following SOLID principles for better maintainability.
  */
 
+const appConfig = require('../config/app.config');
+
 const PLATFORMS = {
   YOUTUBE: 'YOUTUBE',
   FACEBOOK: 'FACEBOOK',
@@ -365,7 +367,7 @@ const DEFAULT_CONFIG = {
   CURRENCY: 'USD',
   UNTITLED_POST: 'Untitled Post',
   NO_CONTENT: 'No content',
-  FRONTEND_URL: process.env.FRONTEND_URL || 'http://localhost:5173'
+  FRONTEND_URL: appConfig.frontendUrl
 };
 
 const FACEBOOK_API = {
