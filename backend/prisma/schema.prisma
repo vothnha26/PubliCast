@@ -535,6 +535,7 @@ model SocialAccount {
   twitchAccount    TwitchAccount?
   autoReplySetting AutoReplySetting?
   postNetworkOverrides PostNetworkOverride[]
+  postTargets      PostTarget[]
 
   // Facebook dedicated metrics
   facebookOverviewMetrics FacebookOverviewMetric[] @relation("FacebookOverviewMetricAccount")
@@ -774,10 +775,32 @@ model Post {
   approvalWorkflows ApprovalWorkflow[]
 
   networkOverrides       PostNetworkOverride[]
+  targets                PostTarget[]
 
   @@index([brandId])
   @@index([createdByUserId])
   @@map("posts")
+}
+
+// Which SocialAccount(s) a Post is/was published to — the single source of
+// truth for account targeting, independent of PostNetworkOverride (which is
+// content-customization only, and only exists for accounts where the
+// composer's "edit by network" was turned on). One row per targeted account,
+// written whenever a post is created/updated, regardless of whether that
+// account's content was customized. Channel filters, the publish step, and
+// delete-on-platform calls all resolve "which account(s)" from this table.
+model PostTarget {
+  id              String       @id @default(uuid())
+  postId          String
+  platform        PlatformType
+  socialAccountId String
+
+  post          Post          @relation(fields: [postId], references: [id], onDelete: Cascade)
+  socialAccount SocialAccount @relation(fields: [socialAccountId], references: [id], onDelete: Cascade)
+
+  @@unique([postId, socialAccountId])
+  @@index([socialAccountId])
+  @@map("post_targets")
 }
 
 // Per-platform (and, when a brand has multiple accounts of that platform,

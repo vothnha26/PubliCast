@@ -98,12 +98,27 @@ jest.mock('../../src/config/prisma', () => {
     deleteMany: jest.fn()
   };
 
+  const mockPostTarget = {
+    deleteMany: jest.fn().mockResolvedValue({ count: 0 }),
+    createMany: jest.fn().mockResolvedValue({ count: 0 })
+  };
+  const mockSocialAccount = {
+    findFirst: jest.fn().mockResolvedValue(null),
+    findMany: jest.fn().mockResolvedValue([])
+  };
+  const mockMediaLibrary = {
+    updateMany: jest.fn().mockResolvedValue({ count: 0 })
+  };
+
   const mockPrisma = {
     post: mockPost,
     approvalWorkflow: mockApprovalWorkflow,
     brand: mockBrand,
     team: mockTeam,
     workflowReviewer: mockWorkflowReviewer,
+    postTarget: mockPostTarget,
+    socialAccount: mockSocialAccount,
+    mediaLibrary: mockMediaLibrary,
     $queryRaw: jest.fn().mockResolvedValue([]),
     $transaction: jest.fn().mockImplementation((callback) => callback(mockPrisma))
   };

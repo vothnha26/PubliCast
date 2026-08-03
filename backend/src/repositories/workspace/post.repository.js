@@ -69,7 +69,8 @@ class PostRepository {
               }
             }
           },
-          networkOverrides: true
+          networkOverrides: true,
+          targets: true
         }
       }),
       prisma.post.count({ where })
@@ -89,7 +90,8 @@ class PostRepository {
             avatarUrl: true
           }
         },
-        networkOverrides: true
+        networkOverrides: true,
+        targets: true
       }
     });
   }
@@ -173,7 +175,8 @@ class PostRepository {
         brandId
       },
       include: {
-        networkOverrides: true
+        networkOverrides: true,
+        targets: true
       }
     });
   }
