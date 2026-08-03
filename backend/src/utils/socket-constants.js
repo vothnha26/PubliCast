@@ -42,7 +42,8 @@ const CACHE_SCOPES = {
   CONNECTIONS: 'connections',
   SMART_LINKS: 'smart_links',
   COMPETITORS: 'competitors',
-  BILLING: 'billing'
+  BILLING: 'billing',
+  PUBLISHED_VIDEOS: 'published_videos'
 };
 
 const ROOM_PREFIXES = {

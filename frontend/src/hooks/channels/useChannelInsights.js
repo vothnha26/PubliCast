@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import { useBrand } from "../../context/BrandContext";
 import socialService from "../../services/social.service";
 import postService from "../../services/post.service";
+import socketClient from "../../services/socket";
 import { useLatestRequestId } from "../useLatestRequestId";
 import { parseAnalyticsData } from "../../utils/parseAnalyticsData";
 
@@ -156,6 +157,27 @@ export function useChannelInsights(socialAccountId, platformInput) {
   useEffect(() => {
     fetchPublishedVideos();
   }, [fetchPublishedVideos]);
+
+  // Real-time socket listener for cache invalidation
+  useEffect(() => {
+    if (!activeBrand?.id) return;
+    socketClient.emit("join_room", { brandId: activeBrand.id });
+
+    const handleDataInvalidate = (data) => {
+      if (data?.brandId === activeBrand.id) {
+        if (data.scope === "published_videos") {
+          fetchPublishedVideos();
+        } else if (data.scope === "metrics") {
+          loadMetrics();
+        }
+      }
+    };
+
+    socketClient.on("data_invalidate", handleDataInvalidate);
+    return () => {
+      socketClient.off("data_invalidate", handleDataInvalidate);
+    };
+  }, [activeBrand?.id, fetchPublishedVideos, loadMetrics]);
 
   const realData = useMemo(() => parseAnalyticsData(metrics, platform, dateRange), [metrics, platform, dateRange]);
 

@@ -3,13 +3,80 @@ const googleOAuthService = require('../google-oauth.service');
 const socialAccountRepository = require('../../../repositories/social/social-account.repository');
 const trackedVideoRepository = require('../../../repositories/social/tracked-video.repository');
 const prisma = require('../../../config/prisma');
+const redisClient = require('../../../config/redis');
+const socketInvalidationService = require('../../core/socket-invalidation.service');
+const { CACHE_SCOPES } = require('../../../utils/socket-constants');
 const { PLATFORMS, POST_STATUS, SEPARATORS, YOUTUBE_API } = require('../../../utils/constants');
 
 class YouTubeVideoService {
-  async getPublishedVideos(brandId, pageToken = null, limit = 10, socialAccountId = null) {
+  async getPublishedVideos(brandId, pageToken = null, limit = 10, socialAccountId = null, forceSync = false) {
+    const cacheKey = `cache:youtube:videos:${brandId}:${pageToken || 'first'}:${limit}`;
+
+    // 1. Try Redis Cache (< 2ms response time)
+    if (!forceSync && redisClient && redisClient.isOpen) {
+      try {
+        const cachedData = await redisClient.get(cacheKey);
+        if (cachedData) {
+          return JSON.parse(cachedData);
+        }
+      } catch (err) {
+        console.warn('[YouTubeVideoService] Redis get failed:', err.message);
+      }
+    }
+
+    // 2. Try MySQL DB (prisma.post) (< 20ms response time)
+    if (!forceSync) {
+      try {
+        const dbPosts = await prisma.post.findMany({
+          where: {
+            brandId,
+            targetPlatforms: { contains: PLATFORMS.YOUTUBE },
+            status: POST_STATUS.PUBLISHED,
+            isDeleted: false
+          },
+          orderBy: { publishedAt: 'desc' },
+          take: parseInt(limit, 10) || 10
+        });
+
+        if (dbPosts && dbPosts.length > 0) {
+          const videos = dbPosts.map(p => ({
+            id: p.platformPostId || p.id,
+            title: p.title || 'YouTube Video',
+            thumbnailUrl: p.mediaThumbnailUrls || '',
+            publishedAt: p.publishedAt ? p.publishedAt.toISOString() : p.createdAt.toISOString(),
+            views: '0',
+            likes: '0',
+            comments: '0',
+            status: p.status,
+            platform: PLATFORMS.YOUTUBE,
+            postUrl: YOUTUBE_API.videoUrl(p.platformPostId || p.id)
+          }));
+
+          const responsePayload = { videos, nextPageToken: null, prevPageToken: null, fromDb: true };
+
+          if (redisClient && redisClient.isOpen) {
+            redisClient.setEx(cacheKey, 300, JSON.stringify(responsePayload)).catch(() => {});
+          }
+
+          // Trigger non-blocking async background live sync from YouTube API
+          this._triggerBackgroundLiveSync(brandId, pageToken, limit, socialAccountId).catch(err => {
+            console.warn('[YouTubeVideoService] Async background sync error:', err.message);
+          });
+
+          return responsePayload;
+        }
+      } catch (dbErr) {
+        console.warn('[YouTubeVideoService] DB posts lookup failed, falling back to YouTube API:', dbErr.message);
+      }
+    }
+
+    // 3. Cold Start Fallback / Forced Sync: Live YouTube API call
+    return await this._fetchAndPersistLiveYouTubeVideos(brandId, pageToken, limit, socialAccountId, cacheKey);
+  }
+
+  async _fetchAndPersistLiveYouTubeVideos(brandId, pageToken, limit, socialAccountId, cacheKey) {
     try {
       const { auth, account } = await this._getAuthContext(brandId, false, socialAccountId);
-      
       const uploadsId = await this._resolveUploadsPlaylistId(auth, account);
       
       const playlistRes = await youtubeGateway.getPlaylistItems(auth, uploadsId, limit, pageToken);
@@ -21,22 +88,35 @@ class YouTubeVideoService {
       const videoDetails = await youtubeGateway.getVideosList(auth, videoIds);
       const formattedVideos = this._formatVideoList(videoDetails.data.items);
 
-      // Auto-upsert YouTube videos into DB (prisma.post) for offline & inbox correlation
       await this._upsertPublishedVideosToDb(brandId, formattedVideos).catch(err => {
         console.warn('[YouTubeVideoService] Auto-upsert published videos failed:', err.message);
       });
 
-      return {
+      const responsePayload = {
         videos: formattedVideos,
         nextPageToken: playlistRes.data.nextPageToken,
         prevPageToken: playlistRes.data.prevPageToken
       };
+
+      if (cacheKey && redisClient && redisClient.isOpen) {
+        redisClient.setEx(cacheKey, 300, JSON.stringify(responsePayload)).catch(() => {});
+      }
+
+      // Broadcast Socket Invalidation event
+      socketInvalidationService.invalidateBrandScope(brandId, CACHE_SCOPES.PUBLISHED_VIDEOS).catch(() => {});
+
+      return responsePayload;
     } catch (error) {
       if (error.message.includes('YouTube account not connected')) {
         return { videos: [], nextPageToken: null, prevPageToken: null };
       }
       throw error;
     }
+  }
+
+  async _triggerBackgroundLiveSync(brandId, pageToken, limit, socialAccountId) {
+    const cacheKey = `cache:youtube:videos:${brandId}:${pageToken || 'first'}:${limit}`;
+    return this._fetchAndPersistLiveYouTubeVideos(brandId, pageToken, limit, socialAccountId, cacheKey);
   }
   async trackVideo(brandId, videoUrl) {
     const videoId = this.extractVideoId(videoUrl);
