@@ -7,6 +7,7 @@ import {
 import { ConnectionsGrid } from "../../components/shared/ConnectionsGrid";
 import { WorkplaceHeader } from "../../components/shared/WorkplaceHeader";
 import { BrandTableOverlay } from "../../components/shared/BrandTableOverlay";
+import { CreateBrandModal } from "../../components/shared/CreateBrandModal";
 import { useBrand } from "../../context/BrandContext";
 import { toast } from "sonner";
 import socialService from "../../services/social.service";
@@ -21,11 +22,12 @@ export function BrandSettingsPage() {
   const confirm = useConfirm();
   const [activeTab, setActiveTab] = useState("brand-settings");
   
-  const { brands, updateBrand, deleteBrand, activeBrand, selectBrand, loading, refreshBrands } = useBrand();
-  
+  const { brands, createBrand, updateBrand, deleteBrand, activeBrand, selectBrand, loading, refreshBrands } = useBrand();
+
   const [selectedBrand, setSelectedBrand] = useState(null);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [isTableOverlayOpen, setIsTableOverlayOpen] = useState(false);
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isLimitModalOpen, setIsLimitModalOpen] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -151,6 +153,18 @@ export function BrandSettingsPage() {
     }
   };
 
+  const handleCreateBrand = async (brandData) => {
+    try {
+      const newBrand = await createBrand(brandData);
+      if (newBrand) {
+        setSelectedBrand({ ...newBrand });
+        selectBrand(newBrand.id);
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
   const handleSaveBrand = async () => {
     if (!selectedBrand || !selectedBrand.name.trim()) return;
     setIsUpdating(true);
@@ -228,7 +242,7 @@ export function BrandSettingsPage() {
               if (isLimitReached) {
                 setIsLimitModalOpen(true);
               } else {
-                navigate("/manage/workplace/new");
+                setIsCreateModalOpen(true);
               }
             }}
             className="flex items-center gap-2 px-4 py-1.5 bg-[#FEFCE8] border border-[#FEF08A] rounded-lg text-xs font-bold text-[#854D0E] hover:bg-[#FEF9C3] transition-all shadow-sm cursor-pointer add-brand-btn"
@@ -452,6 +466,13 @@ export function BrandSettingsPage() {
             selectBrand(brand.id);
           }
         }}
+      />
+
+      {/* Create Brand Modal */}
+      <CreateBrandModal
+        isOpen={isCreateModalOpen}
+        onClose={() => setIsCreateModalOpen(false)}
+        onCreate={handleCreateBrand}
       />
 
       {/* Limit Reached Modal */}
