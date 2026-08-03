@@ -687,6 +687,10 @@ const LOCK_CONFIG = {
     TTL_SEC: 30,              // Long enough for one refreshAccessToken call + DB write
     POLL_INTERVAL_MS: 200,    // While waiting for the lock winner to finish
     POLL_TIMEOUT_MS: 5000
+  },
+  INBOX_SYNC_SCHEDULER: {
+    KEY: 'lock:inbox-sync-scheduler:periodic-scan',
+    TTL_SEC: 14 * 60          // Lock expires in 14m (for 15m cron cycle)
   }
 };
 
