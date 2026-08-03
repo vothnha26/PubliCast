@@ -614,8 +614,15 @@ class InboxService {
     // returned `thread`, even though `data` above already listed all of
     // them. Flatten every item's thread together so the UI's comment list
     // (which renders `thread`, not `data`) shows the full real comment set.
+    // Every top-level item here commonly shares the same relatedPostId (all
+    // top-level comments on one post/video) — getConversationThread calls
+    // _getVideoContext per item, which without this would re-fetch the same
+    // video's details N times in parallel on every preview open, even with
+    // the DB-level cache (still N redundant DB reads + N live-API races on a
+    // cold cache). Share one in-flight promise per videoId across the batch.
+    const videoContextCache = new Map();
     const threadResults = await Promise.all(
-      items.map(item => this.getConversationThread(item.id, null, brandId))
+      items.map(item => this.getConversationThread(item.id, null, brandId, videoContextCache))
     );
 
     return {
@@ -625,11 +632,11 @@ class InboxService {
     };
   }
 
-  async getConversationThread(itemId, userId, claimedBrandId = null) {
+  async getConversationThread(itemId, userId, claimedBrandId = null, videoContextCache = null) {
     const item = await this._getAuthorizedItem(itemId, userId, claimedBrandId);
 
     const myAccountId = await this._getMyPlatformAccountId(item);
-    const videoContext = await this._getVideoContext(item);
+    const videoContext = await this._getVideoContext(item, videoContextCache);
 
     const thread = [
       inboxFormatter.formatThreadMessage(item, myAccountId),
@@ -808,8 +815,20 @@ class InboxService {
     return sa?.platformAccountId;
   }
 
-  async _getVideoContext(item) {
+  async _getVideoContext(item, videoContextCache = null) {
     if (!item.relatedPostId) return null;
+
+    const cacheKey = `${item.platform}:${item.relatedPostId}`;
+    if (videoContextCache?.has(cacheKey)) {
+      return videoContextCache.get(cacheKey);
+    }
+
+    const promise = this._fetchVideoContext(item);
+    videoContextCache?.set(cacheKey, promise);
+    return promise;
+  }
+
+  async _fetchVideoContext(item) {
     try {
       const service = socialPlatformFactory.getService(item.platform);
       return await service.getVideoDetails(item.inbox.brandId, item.relatedPostId, item.socialAccountId || null);

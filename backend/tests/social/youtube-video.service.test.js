@@ -16,6 +16,10 @@ jest.mock('../../src/config/prisma', () => ({
     deleteMany: jest.fn(),
     createMany: jest.fn()
   },
+  trackedVideo: {
+    findUnique: jest.fn(),
+    upsert: jest.fn()
+  },
   $transaction: jest.fn(ops => Promise.all(ops))
 }));
 jest.mock('../../src/services/social/google-oauth.service', () => ({

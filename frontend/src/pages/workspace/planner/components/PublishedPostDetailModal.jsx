@@ -135,7 +135,12 @@ export function PublishedPostDetailModal({ post, onClose }) {
                 </div>
               )}
               {mediaUrl && (
-                <div className="relative w-full max-h-[300px] rounded-xl overflow-hidden bg-muted/40 border border-border flex items-center justify-center">
+                <div
+                  onClick={() => postUrl && window.open(postUrl, "_blank", "noopener,noreferrer")}
+                  role={postUrl ? "button" : undefined}
+                  title={postUrl ? t("postDetail.goToPost", "Go to post") : undefined}
+                  className={`relative w-full max-h-[300px] rounded-xl overflow-hidden bg-muted/40 border border-border flex items-center justify-center ${postUrl ? "cursor-pointer" : ""}`}
+                >
                   <img src={mediaUrl} alt="Preview" className="w-full max-h-[300px] object-cover" />
                 </div>
               )}
@@ -144,7 +149,12 @@ export function PublishedPostDetailModal({ post, onClose }) {
             /* YouTube / Video Layout: Vertical Thumbnail Left, Caption Right */
             <div className="flex gap-4 items-start">
               {mediaUrl && (
-                <div className="relative w-[180px] h-[240px] rounded-xl overflow-hidden bg-muted/40 border border-border shrink-0 group">
+                <div
+                  onClick={() => postUrl && window.open(postUrl, "_blank", "noopener,noreferrer")}
+                  role={postUrl ? "button" : undefined}
+                  title={postUrl ? t("postDetail.goToPost", "Go to post") : undefined}
+                  className={`relative w-[180px] h-[240px] rounded-xl overflow-hidden bg-muted/40 border border-border shrink-0 group ${postUrl ? "cursor-pointer" : ""}`}
+                >
                   <img src={mediaUrl} alt="Preview" className="w-full h-full object-cover" />
                   <div className="absolute inset-0 bg-black/20 flex items-center justify-center">
                     <div className="w-10 h-10 rounded-full bg-black/60 backdrop-blur-md border border-white/20 flex items-center justify-center text-white group-hover:scale-110 transition-transform">
