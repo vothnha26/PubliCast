@@ -20,6 +20,7 @@ function SettingsDrawer({ isOpen, onClose }) {
   const { t } = useTranslation("topbar");
   const { language } = useLanguage();
   const navigate = useNavigate();
+  const location = useLocation();
   const { openConnections } = useConnections();
   const { logout } = useAuth();
   if (!isOpen) return null;
@@ -65,10 +66,10 @@ function SettingsDrawer({ isOpen, onClose }) {
                     {section.items.map((item, ii) => (
                       <button
                         key={ii}
-                        onClick={() => { 
+                        onClick={() => {
                           if(item.onClick) item.onClick();
-                          else if(item.path) navigate(item.path); 
-                          onClose(); 
+                          else if(item.path) navigate(item.path, { state: { from: location.pathname } });
+                          onClose();
                         }}
                         className="w-full flex items-center gap-3 px-6 py-2.5 hover:bg-[var(--muted)] transition-colors group"
                       >
