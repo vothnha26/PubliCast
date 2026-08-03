@@ -17,12 +17,30 @@ class FetchPostStep extends BaseStep {
     }
     context.platforms = platforms;
 
-    // Map override rows by platform so SocialPublishStep can do an O(1)
-    // lookup per platform instead of scanning the array on every iteration.
+    // Which SocialAccount(s) each platform targets — the source of truth is
+    // PostTarget (see schema.prisma), not networkOverrides (content-only).
+    // A platform with no PostTarget rows (posts created before this table
+    // existed) falls back to a single implicit account (socialAccountId:
+    // null), same as previous behavior.
+    context.targetsByPlatform = {};
+    if (Array.isArray(post.targets)) {
+      for (const target of post.targets) {
+        if (!context.targetsByPlatform[target.platform]) {
+          context.targetsByPlatform[target.platform] = [];
+        }
+        context.targetsByPlatform[target.platform].push(target.socialAccountId);
+      }
+    }
+
+    // Map override rows by "platform:socialAccountId" (socialAccountId
+    // normalized to the string 'null' when absent) so SocialPublishStep can
+    // do an O(1) lookup per (platform, account) pair instead of scanning the
+    // array on every iteration.
     context.networkOverrides = {};
     if (Array.isArray(post.networkOverrides)) {
       for (const override of post.networkOverrides) {
-        context.networkOverrides[override.platform] = override;
+        const key = `${override.platform}:${override.socialAccountId || 'null'}`;
+        context.networkOverrides[key] = override;
       }
     }
 

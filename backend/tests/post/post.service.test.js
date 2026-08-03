@@ -63,7 +63,15 @@ jest.mock('../../src/config/prisma', () => ({
     updateMany: jest.fn().mockResolvedValue({ count: 0 })
   },
   $transaction: jest.fn().mockImplementation((cb) => cb({
-    mediaLibrary: { updateMany: jest.fn().mockResolvedValue({ count: 0 }) }
+    mediaLibrary: { updateMany: jest.fn().mockResolvedValue({ count: 0 }) },
+    postTarget: {
+      deleteMany: jest.fn().mockResolvedValue({ count: 0 }),
+      createMany: jest.fn().mockResolvedValue({ count: 0 })
+    },
+    socialAccount: {
+      findFirst: jest.fn().mockResolvedValue(null),
+      findMany: jest.fn().mockResolvedValue([])
+    }
   }))
 }));
 
