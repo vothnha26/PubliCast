@@ -53,10 +53,10 @@ export function useChannelCommunity(socialAccountId) {
   const inboxRequestIdRef = useRef(0);
   const threadRequestIdRef = useRef(0);
 
-  const fetchInbox = async () => {
+  const fetchInbox = async (showSkeleton = true) => {
     if (!activeBrand || !socialAccountId) return;
     const requestId = ++inboxRequestIdRef.current;
-    setLoading(true);
+    if (showSkeleton) setLoading(true);
     try {
       const params = new URLSearchParams({
         socialAccountId,
@@ -70,7 +70,7 @@ export function useChannelCommunity(socialAccountId) {
     } catch (error) {
       console.error("Channel inbox load error:", error);
     } finally {
-      if (requestId === inboxRequestIdRef.current) setLoading(false);
+      if (requestId === inboxRequestIdRef.current && showSkeleton) setLoading(false);
     }
   };
 
@@ -79,7 +79,7 @@ export function useChannelCommunity(socialAccountId) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeBrand?.id, socialAccountId, tabFilter, currentPage, searchTerm]);
 
-  const fetchThread = async (conv = activeConv) => {
+  const fetchThread = async (showSkeleton = true, conv = activeConv) => {
     if (!conv) return;
     // Synthetic posts (0-comment posts sourced directly from the platform
     // API) have no matching InboxItem row — getThread's strict findById
@@ -87,20 +87,22 @@ export function useChannelCommunity(socialAccountId) {
     // thread/videoContext exists via getCommentsByPost.
     if (conv.isSyntheticPost) return;
     const requestId = ++threadRequestIdRef.current;
-    setThreadLoading(true);
-    setVideoContext(null);
+    if (showSkeleton) {
+      setThreadLoading(true);
+      setVideoContext(null);
+    }
     try {
       const response = await inboxService.getThread(conv.id);
       if (requestId !== threadRequestIdRef.current) return;
       setThread(response?.thread || []);
-      setVideoContext(response?.videoContext || null);
+      if (response?.videoContext) setVideoContext(response.videoContext);
       if (conv.unread) {
         handleUpdateStatus(conv.id, "READ");
       }
     } catch (error) {
       toast.error(t("inbox.loadThreadFailed"));
     } finally {
-      if (requestId === threadRequestIdRef.current) setThreadLoading(false);
+      if (requestId === threadRequestIdRef.current && showSkeleton) setThreadLoading(false);
     }
   };
 
@@ -117,16 +119,16 @@ export function useChannelCommunity(socialAccountId) {
 
     const handleNewInboxItem = (data) => {
       if (data.socialAccountId === socialAccountId) {
-        fetchInbox();
+        fetchInbox(false);
         if (activeConv && (activeConv.id === data.id || activeConv.id === data.parentItemId)) {
-          fetchThread();
+          fetchThread(false);
         }
       }
     };
 
     const handleInboxItemDeleted = (data) => {
       if (data.socialAccountId === socialAccountId) {
-        fetchInbox();
+        fetchInbox(false);
         if (activeConv && (activeConv.id === data.id || activeConv.platformItemId === data.platformItemId)) {
           setActiveConv(null);
           setThread([]);
@@ -154,8 +156,8 @@ export function useChannelCommunity(socialAccountId) {
       // of one account per platform.
       await inboxService.syncInbox(activeBrand.id, platform);
       toast.success(t("inbox.syncSuccess"));
-      await fetchInbox();
-      if (activeConv) await fetchThread();
+      await fetchInbox(false);
+      if (activeConv) await fetchThread(false);
     } catch (e) {
       toast.error(t("inbox.syncFailed") + (e.message || ""));
     } finally {
@@ -182,6 +184,7 @@ export function useChannelCommunity(socialAccountId) {
 
   const handleReply = async (replyText, attachmentUrl) => {
     if (!replyText || !activeConv || !activeBrand) return;
+    const cleanAttachmentUrl = typeof attachmentUrl === "string" ? attachmentUrl : undefined;
     setIsReplying(true);
     try {
       if (activeConv.isSyntheticPost) {
@@ -193,7 +196,7 @@ export function useChannelCommunity(socialAccountId) {
           platform: activeConv.platform,
           text: replyText,
           socialAccountId: activeConv.socialAccountId || undefined,
-          attachmentUrl
+          attachmentUrl: cleanAttachmentUrl
         });
         toast.success(t("inbox.replySuccess"));
         setActiveConv((prev) => (prev ? { ...prev, isSyntheticPost: false } : prev));
@@ -201,11 +204,11 @@ export function useChannelCommunity(socialAccountId) {
         if (response?.thread) setThread(response.thread);
         if (response?.videoContext) setVideoContext(response.videoContext);
       } else {
-        await inboxService.replyInbox({ brandId: activeBrand.id, itemId: activeConv.id, text: replyText, attachmentUrl });
+        await inboxService.replyInbox({ brandId: activeBrand.id, itemId: activeConv.id, text: replyText, attachmentUrl: cleanAttachmentUrl });
         toast.success(t("inbox.replySuccess"));
-        await fetchThread();
+        await fetchThread(false);
       }
-      await fetchInbox();
+      await fetchInbox(false);
       return true;
     } catch (e) {
       toast.error(t("inbox.replyFailed") + (e.message || ""));
@@ -220,6 +223,7 @@ export function useChannelCommunity(socialAccountId) {
   // always targets a specific existing comment (reply-to-X semantics).
   const handlePostNewComment = async (text, attachmentUrl) => {
     if (!text || !activeConv || !activeBrand) return;
+    const cleanAttachmentUrl = typeof attachmentUrl === "string" ? attachmentUrl : undefined;
     const postId = activeConv.relatedPostId || activeConv.videoContext?.id || activeConv.id;
     const platform = activeConv.platform;
     if (!postId || !platform) return;
@@ -231,13 +235,13 @@ export function useChannelCommunity(socialAccountId) {
         platform,
         text,
         socialAccountId: activeConv.socialAccountId || undefined,
-        attachmentUrl
+        attachmentUrl: cleanAttachmentUrl
       });
       toast.success(t("inbox.replySuccess"));
       const response = await inboxService.getCommentsByPost(activeBrand.id, postId);
       if (response?.thread) setThread(response.thread);
       if (response?.videoContext) setVideoContext(response.videoContext);
-      await fetchInbox();
+      await fetchInbox(false);
       return true;
     } catch (e) {
       toast.error(t("inbox.replyFailed") + (e.message || ""));

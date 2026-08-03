@@ -125,6 +125,16 @@ class InboxControllerV2 {
     const settings = await inboxService.saveAutoReplySettings(socialAccountId, req.body, req.user.id);
     return v2Success(res, settings, 'Auto reply settings updated.');
   });
+
+  clearAllInbox = asyncHandler(async (req, res) => {
+    const brandId = req.query.brandId || req.body.brandId;
+    if (!brandId) {
+      return res.status(400).json({ message: 'brandId is required' });
+    }
+
+    const result = await inboxService.clearAllInboxItems(brandId);
+    return v2Success(res, result, 'All inbox items cleared successfully.');
+  });
 }
 
 module.exports = new InboxControllerV2();

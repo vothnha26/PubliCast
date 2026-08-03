@@ -1,6 +1,7 @@
 const inboxSyncSchedulerService = require('../../src/services/social/inbox-sync-scheduler.service');
 const prisma = require('../../src/config/prisma');
 const inboxService = require('../../src/services/social/inbox.service');
+const socialService = require('../../src/services/social/social.service');
 
 describe('InboxSyncSchedulerService Unit Tests', () => {
   afterEach(() => {
@@ -27,6 +28,7 @@ describe('InboxSyncSchedulerService Unit Tests', () => {
 
     jest.spyOn(prisma.brand, 'findMany').mockResolvedValue(mockBrands);
     const syncSpy = jest.spyOn(inboxService, 'syncPlatformComments').mockResolvedValue([{ id: 'item-1' }]);
+    jest.spyOn(socialService, 'getAggregatedMetrics').mockResolvedValue([]);
 
     await inboxSyncSchedulerService.syncAllActiveBrands();
 

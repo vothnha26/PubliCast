@@ -269,8 +269,8 @@ export function WeeklyGrid({
                   {/* Scheduled Posts rendering */}
                   <div className="space-y-1.5 z-10 w-full">
                     {cellPosts.map(post => {
-                      const displayTime = post.scheduledAt 
-                        ? new Date(post.scheduledAt).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }) 
+                      const displayTime = (post.publishedAt || post.scheduledAt) 
+                        ? new Date(post.publishedAt || post.scheduledAt).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }) 
                         : '';
                       
                       const hasMedia = post.mediaUrls && post.mediaUrls.length > 0;

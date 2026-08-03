@@ -32,9 +32,14 @@ class PostDateRangeFilter extends BaseFilter {
         dateFilters.push({
           OR: [
             {
+              publishedAt: { gte: start }
+            },
+            {
+              publishedAt: null,
               scheduledAt: { gte: start }
             },
             {
+              publishedAt: null,
               scheduledAt: null,
               createdAt: { gte: start }
             }
@@ -46,9 +51,14 @@ class PostDateRangeFilter extends BaseFilter {
         dateFilters.push({
           OR: [
             {
+              publishedAt: { lte: end }
+            },
+            {
+              publishedAt: null,
               scheduledAt: { lte: end }
             },
             {
+              publishedAt: null,
               scheduledAt: null,
               createdAt: { lte: end }
             }

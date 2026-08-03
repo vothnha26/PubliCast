@@ -85,7 +85,9 @@ export function SettingsPage() {
       toast.success(language === 'vi' ? "Liên kết tài khoản Google thành công!" : "Google account linked successfully!");
       setActiveTab("access");
       fetchUserProfile();
-      navigate("/settings?tab=access", { replace: true });
+      setTimeout(() => {
+        navigate("/settings?tab=access", { replace: true });
+      }, 100);
       return;
     }
     
@@ -407,6 +409,10 @@ export function SettingsPage() {
     }
     if (!newPassword) {
       toast.error(language === 'vi' ? "Vui lòng nhập mật khẩu mới!" : "Please enter a new password!");
+      return;
+    }
+    if (newPassword.length < 8) {
+      toast.error(language === 'vi' ? "Mật khẩu mới phải có ít nhất 8 ký tự!" : "New password must be at least 8 characters!");
       return;
     }
 

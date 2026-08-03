@@ -66,7 +66,7 @@ export function MonthlyGrid({
       const matchesPlatform = !post.platforms || post.platforms.length === 0 || post.platforms.some(p => visiblePlatforms[p.toUpperCase()] !== false);
       if (!matchesPlatform) return;
 
-      const date = new Date(post.scheduledAt || post.createdAt);
+      const date = new Date(post.publishedAt || post.scheduledAt || post.createdAt);
       const dateStr = format(date, 'yyyy-MM-dd');
       if (!map[dateStr]) map[dateStr] = [];
       map[dateStr].push(post);
@@ -206,7 +206,7 @@ export function MonthlyGrid({
                     className={`flex items-center gap-1.5 px-2 py-1 border rounded-lg text-[10px] font-bold truncate transition-all hover:scale-[1.02] active:scale-[0.98] cursor-pointer shadow-sm group/mcard ${
                       STATUS_COLORS[post.status?.toLowerCase()] || 'bg-card border-border text-foreground'
                     }`}
-                    title={`${post.title || post.caption || "Untitled"} (${format(new Date(post.scheduledAt || post.createdAt), 'h:mma')})`}
+                    title={`${post.title || post.caption || "Untitled"} (${format(new Date(post.publishedAt || post.scheduledAt || post.createdAt), 'h:mma')})`}
                   >
                     {/* Platform icon */}
                     <div className="flex gap-0.5 shrink-0">
@@ -219,7 +219,7 @@ export function MonthlyGrid({
                     
                     <span className="truncate flex-1 font-medium">{post.title || post.caption || "Untitled"}</span>
                     <span className="text-[8px] opacity-75 font-black uppercase font-mono tracking-tight shrink-0 group-hover/mcard:hidden">
-                      {format(new Date(post.scheduledAt || post.createdAt), 'h:mma')}
+                      {format(new Date(post.publishedAt || post.scheduledAt || post.createdAt), 'h:mma')}
                     </span>
                     {post.status?.toLowerCase() === "published" && onDetailClick && (
                       <button

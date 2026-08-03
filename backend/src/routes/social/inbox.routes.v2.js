@@ -88,6 +88,7 @@ router.get('/:id', inboxControllerV2.getConversationThread);
  *               $ref: '#/components/schemas/V2EnvelopeResponse'
  */
 router.post('/sync', checkBrandAccess, featureGate, inboxControllerV2.syncInbox);
+router.delete('/clear', checkBrandAccess, featureGate, inboxControllerV2.clearAllInbox);
 
 /**
  * @openapi

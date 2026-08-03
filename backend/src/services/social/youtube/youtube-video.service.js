@@ -10,28 +10,6 @@ class YouTubeVideoService {
     try {
       const { auth, account } = await this._getAuthContext(brandId, false, socialAccountId);
       
-      if (account && (
-        (account.accessToken && account.accessToken.startsWith('mock-')) ||
-        (account.platformAccountId && account.platformAccountId.startsWith('mock-'))
-      )) {
-        return {
-          videos: [
-            {
-              id: "dQw4w9WgXcQ",
-              title: "Rick Astley - Never Gonna Give You Up (Official Music Video)",
-              thumbnailUrl: "https://img.youtube.com/vi/dQw4w9WgXcQ/0.jpg",
-              publishedAt: "1987-07-27T00:00:00Z",
-              views: "1400000000",
-              likes: "16000000",
-              comments: "3000000",
-              duration: "PT3M33S",
-              status: POST_STATUS.PUBLISHED
-            }
-          ],
-          nextPageToken: null,
-          prevPageToken: null
-        };
-      }
       const uploadsId = await this._resolveUploadsPlaylistId(auth, account);
       
       const playlistRes = await youtubeGateway.getPlaylistItems(auth, uploadsId, limit, pageToken);
@@ -41,9 +19,15 @@ class YouTubeVideoService {
 
       const videoIds = playlistRes.data.items.map(item => item.contentDetails.videoId).join(SEPARATORS.COMMA);
       const videoDetails = await youtubeGateway.getVideosList(auth, videoIds);
+      const formattedVideos = this._formatVideoList(videoDetails.data.items);
+
+      // Auto-upsert YouTube videos into DB (prisma.post) for offline & inbox correlation
+      await this._upsertPublishedVideosToDb(brandId, formattedVideos).catch(err => {
+        console.warn('[YouTubeVideoService] Auto-upsert published videos failed:', err.message);
+      });
 
       return {
-        videos: this._formatVideoList(videoDetails.data.items),
+        videos: formattedVideos,
         nextPageToken: playlistRes.data.nextPageToken,
         prevPageToken: playlistRes.data.prevPageToken
       };
@@ -278,20 +262,23 @@ class YouTubeVideoService {
   }
 
   _formatVideoList(items) {
-    return items.map(v => ({
-      id: v.id,
-      title: v.snippet.title,
-      thumbnailUrl: v.snippet.thumbnails.medium?.url || v.snippet.thumbnails.default.url,
-      publishedAt: v.snippet.publishedAt,
-      views: v.statistics.viewCount,
-      likes: v.statistics.likeCount,
-      comments: v.statistics.commentCount,
-      duration: v.contentDetails.duration,
-      status: POST_STATUS.PUBLISHED,
-      platform: PLATFORMS.YOUTUBE,
-      postUrl: YOUTUBE_API.videoUrl(v.id),
-      madeForKids: v.status?.madeForKids ?? v.status?.selfDeclaredMadeForKids ?? false
-    }));
+    return (items || [])
+      .filter(v => v.status?.privacyStatus !== 'private')
+      .map(v => ({
+        id: v.id,
+        title: v.snippet.title,
+        thumbnailUrl: v.snippet.thumbnails.medium?.url || v.snippet.thumbnails.default.url,
+        publishedAt: v.snippet.publishedAt,
+        views: v.statistics?.viewCount || 0,
+        likes: v.statistics?.likeCount || 0,
+        comments: v.statistics?.commentCount || 0,
+        duration: v.contentDetails?.duration,
+        status: POST_STATUS.PUBLISHED,
+        privacyStatus: v.status?.privacyStatus || 'public',
+        platform: PLATFORMS.YOUTUBE,
+        postUrl: YOUTUBE_API.videoUrl(v.id),
+        madeForKids: v.status?.madeForKids ?? v.status?.selfDeclaredMadeForKids ?? false
+      }));
   }
 
   _formatVideoDetails(video, channel) {
@@ -327,6 +314,55 @@ class YouTubeVideoService {
     const regex = /(?:youtube\.com\/(?:[^/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?/\s]{11})/i;
     const match = url.match(regex);
     return match ? match[1] : null;
+  }
+
+  async _upsertPublishedVideosToDb(brandId, videos) {
+    if (!videos || videos.length === 0) return;
+
+    const brand = await prisma.brand.findUnique({
+      where: { id: brandId },
+      select: { ownerId: true }
+    });
+    if (!brand || !brand.ownerId) return;
+
+    for (const v of videos) {
+      try {
+        const existing = await prisma.post.findFirst({
+          where: { brandId, platformPostId: v.id }
+        });
+
+        if (existing) {
+          await prisma.post.update({
+            where: { id: existing.id },
+            data: {
+              title: v.title || existing.title,
+              caption: v.description || existing.caption,
+              mediaThumbnailUrls: v.thumbnailUrl || existing.mediaThumbnailUrls,
+              publishedAt: v.publishedAt ? new Date(v.publishedAt) : existing.publishedAt,
+              status: POST_STATUS.PUBLISHED
+            }
+          });
+        } else {
+          await prisma.post.create({
+            data: {
+              brandId,
+              createdByUserId: brand.ownerId,
+              title: v.title || 'YouTube Video',
+              caption: v.description || '',
+              type: 'VIDEO',
+              status: POST_STATUS.PUBLISHED,
+              targetPlatforms: 'YOUTUBE',
+              platformPostId: v.id,
+              mediaThumbnailUrls: v.thumbnailUrl || '',
+              publishedAt: v.publishedAt ? new Date(v.publishedAt) : new Date(),
+              scheduledAt: v.publishedAt ? new Date(v.publishedAt) : null
+            }
+          });
+        }
+      } catch (err) {
+        console.warn(`[YouTubeVideoService] Failed to upsert video ${v.id} into post DB:`, err.message);
+      }
+    }
   }
 }
 
