@@ -61,6 +61,10 @@ const server = app.listen(PORT, async () => {
   const inboxSyncSchedulerService = require('./services/social/inbox-sync-scheduler.service');
   inboxSyncSchedulerService.start();
 
+  // Start Periodic Social Metrics Sync Scheduler (hourly published-posts/metrics cycle)
+  const socialMetricsSyncSchedulerService = require('./services/social/social-metrics-sync-scheduler.service');
+  socialMetricsSyncSchedulerService.start();
+
   // Start Outbox Dispatcher (polls outbox_events, delivers side-effects with retry)
   const outboxDispatcherService = require('./services/core/outbox-dispatcher.service');
   outboxDispatcherService.start();
@@ -83,6 +87,14 @@ async function shutdown(signal) {
     inboxSyncSchedulerService.stop();
   } catch (err) {
     logger.error('Error stopping inbox sync scheduler', err);
+  }
+
+  // Stop periodic social metrics sync scheduler
+  try {
+    const socialMetricsSyncSchedulerService = require('./services/social/social-metrics-sync-scheduler.service');
+    socialMetricsSyncSchedulerService.stop();
+  } catch (err) {
+    logger.error('Error stopping social metrics sync scheduler', err);
   }
 
   // Stop token refresh scheduler

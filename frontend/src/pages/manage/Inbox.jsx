@@ -40,6 +40,16 @@ export function InboxPage() {
   const [searchTerm, setSearchTerm] = useState(filters.search || "");
   const debouncedSearch = useDebounce(searchTerm, 400);
 
+  // postId only persists the selected post for reload/share — it isn't a
+  // list filter, so it must not appear in the string that drives
+  // fetchInbox/fetchPosts (selecting a post would otherwise refetch the
+  // entire list every time).
+  const listQueryParamsString = useMemo(() => {
+    const params = new URLSearchParams(searchParamsString);
+    params.delete("postId");
+    return params.toString();
+  }, [searchParamsString]);
+
   const [viewMode, setViewMode] = useState(INBOX_VIEW_MODE.BY_POST);
   const [postCommentFilter, setPostCommentFilter] = useState(POST_COMMENT_FILTER.ALL);
   const [isPostsPanelCollapsed, setIsPostsPanelCollapsed] = useState(false);
@@ -128,7 +138,7 @@ export function InboxPage() {
     const requestId = ++inboxRequestIdRef.current;
     if (showSkeleton) setLoading(true);
     try {
-      const response = await inboxService.getInbox(activeBrand.id, searchParamsString);
+      const response = await inboxService.getInbox(activeBrand.id, listQueryParamsString);
       if (requestId !== inboxRequestIdRef.current) return; // a newer fetchInbox call already landed
       setInboxData(response || { data: [], meta: {} });
     } catch (error) {
@@ -148,7 +158,7 @@ export function InboxPage() {
     if (!activeBrand) return;
     if (showSkeleton) setPostsLoading(true);
     try {
-      const response = await inboxService.getInboxPosts(activeBrand.id, searchParamsString);
+      const response = await inboxService.getInboxPosts(activeBrand.id, listQueryParamsString);
       setFetchedPosts(response?.data || []);
     } catch (error) {
       console.error("Inbox posts load error:", error);
@@ -160,7 +170,7 @@ export function InboxPage() {
   useEffect(() => {
     fetchInbox();
     fetchPosts();
-  }, [searchParamsString, activeBrand]);
+  }, [listQueryParamsString, activeBrand]);
 
   // Real-time Webhook updates via Socket.io
   useEffect(() => {
@@ -650,7 +660,29 @@ export function InboxPage() {
         console.error("Failed to fetch comments for post:", e);
       }
     }
+
+    // Persist selection in the URL so a reload (or a shared link) restores
+    // the same post instead of silently falling back to postsList[0].
+    // resetPage: false — this isn't a list filter, selecting a post
+    // shouldn't jump the (unrelated) pagination back to page 1.
+    updateFilters({ postId: post.id }, { resetPage: false });
   };
+
+  // Restore the previously-selected post from the URL once, after the posts
+  // list has loaded — postsList only exists once fetchedPosts/inboxData.data
+  // resolve, so this can't run any earlier than that.
+  const restoredFromUrlRef = useRef(false);
+  useEffect(() => {
+    if (restoredFromUrlRef.current) return;
+    if (!filters.postId || postsList.length === 0) return;
+
+    restoredFromUrlRef.current = true;
+    const matched = postsList.find((p) => p.id === filters.postId);
+    if (matched) {
+      handleSelectPost(matched);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filters.postId, postsList]);
 
   return (
     <div className="h-[calc(100vh-70px)] w-full flex flex-col overflow-hidden bg-background">

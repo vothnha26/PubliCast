@@ -388,7 +388,8 @@ const {
   YOUTUBE_MODERATION_STATUS,
   YOUTUBE_SEARCH_TYPES,
   YOUTUBE_CONSTRAINTS,
-  YOUTUBE_PUBSUB
+  YOUTUBE_PUBSUB,
+  YOUTUBE_VIDEO_DETAILS_CACHE
 } = require('../services/social/youtube/youtube.constants');
 
 const GOOGLE_SCOPES = {
@@ -691,6 +692,12 @@ const LOCK_CONFIG = {
   INBOX_SYNC_SCHEDULER: {
     KEY: 'lock:inbox-sync-scheduler:periodic-scan',
     TTL_SEC: 100              // Lock expires in 100s (for 2m testing cycle)
+  },
+  SOCIAL_METRICS_SYNC_SCHEDULER: {
+    KEY: 'lock:social-metrics-sync-scheduler:hourly-scan',
+    // Covers one full published-posts/metrics sync pass across every brand —
+    // generous ceiling, same reasoning as REPORT_SCHEDULER.
+    TTL_SEC: 20 * 60
   }
 };
 
@@ -728,6 +735,7 @@ module.exports = {
   FACEBOOK_API,
   TIKTOK_API,
   YOUTUBE_API,
+  YOUTUBE_VIDEO_DETAILS_CACHE,
   GOOGLE_SCOPES,
   GOOGLE_OAUTH_SCOPE_SETS,
   FACEBOOK_SCOPES,

@@ -15,8 +15,10 @@ export function useFilters(defaultFilters = {}) {
     filters[key] = value;
   }
 
-  // Update one or more filter values
-  const updateFilters = useCallback((newFilters) => {
+  // Update one or more filter values. Pass { resetPage: false } for updates
+  // that aren't really "filters" (e.g. persisting a selected item's id) —
+  // otherwise every call resets pagination back to page 1.
+  const updateFilters = useCallback((newFilters, { resetPage = true } = {}) => {
     setSearchParams((prev) => {
       const params = new URLSearchParams(prev);
 
@@ -29,7 +31,7 @@ export function useFilters(defaultFilters = {}) {
       });
 
       // Always reset back to page 1 when filter changes (unless explicitly setting page)
-      if (!('page' in newFilters)) {
+      if (resetPage && !('page' in newFilters)) {
         params.set('page', '1');
       }
 

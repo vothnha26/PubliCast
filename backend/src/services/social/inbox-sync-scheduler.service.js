@@ -4,6 +4,7 @@ const prisma = require('../../config/prisma');
 const redisClient = require('../../config/redis');
 const DistributedLockService = require('./distributed-lock.service');
 const socketManager = require('../workspace/socket/socket.manager');
+const socialPlatformFactory = require('./social-platform.factory');
 const logger = require('../../utils/logger');
 const { LOCK_CONFIG } = require('../../utils/constants');
 
@@ -104,31 +105,58 @@ class InboxSyncSchedulerService {
 
       for (const platform of platforms) {
         try {
-          // 1. Sync Inbox Comments & Messages
+          // Sync Inbox Comments & Messages. Published-posts/channel-metrics
+          // sync used to run here too on this same 15-minute cycle — split
+          // out to SocialMetricsSyncSchedulerService (hourly), since view/
+          // like/comment counts don't need to be that fresh.
           const syncedItems = await inboxService.syncPlatformComments(brand.id, platform);
-          
+
           if (syncedItems && syncedItems.length > 0) {
             logger.info(`✅ [InboxSyncScheduler] Synced ${syncedItems.length} item(s) for brand '${brand.name}' (${platform}).`);
-            
+
             // Broadcast socket notification to connected clients in brand room
             socketManager.broadcastToBrandRoom(brand.id, 'INBOX_UPDATED', {
               platform,
               syncedCount: syncedItems.length,
               timestamp: new Date().toISOString()
             });
-          }
 
-          // 2. Sync Published Posts & Channel Metrics from Social Platforms
-          const socialService = require('./social.service');
-          await socialService.getAggregatedMetrics(brand.id, null, null, true).catch(err => {
-            logger.warn(`⚠️ [InboxSyncScheduler] Channel metrics & posts sync warning for brand '${brand.name}': ${err.message}`);
-          });
-          logger.info(`✅ [InboxSyncScheduler] Synced published posts & metrics for brand '${brand.name}' (${platform}).`);
+            await this._prefetchVideoDetails(brand.id, platform, syncedItems);
+          }
         } catch (err) {
           logger.error(`❌ [InboxSyncScheduler] Failed to sync ${platform} for brand '${brand.name}' (${brand.id}):`, err.message);
         }
       }
     }
+  }
+
+  /**
+   * Warms the video-details cache (TrackedVideo/FacebookPostMetric, read via
+   * each platform's getVideoDetails()) for every video/post that just got a
+   * new comment, so the Inbox preview panel's first open after this sync
+   * already has cached data instead of paying for the live API call itself.
+   * getVideoDetails() has its own TTL read-through check, so calling it here
+   * for a video that's already warm within the hour is a cheap no-op DB read.
+   */
+  async _prefetchVideoDetails(brandId, platform, syncedItems) {
+    const videoIds = [...new Set(syncedItems.map(item => item.relatedPostId).filter(Boolean))];
+    if (videoIds.length === 0) return;
+
+    let service;
+    try {
+      service = socialPlatformFactory.getService(platform);
+    } catch (err) {
+      return; // Unsupported platform — nothing to prefetch.
+    }
+    if (typeof service.getVideoDetails !== 'function') return;
+
+    await Promise.all(
+      videoIds.map(videoId =>
+        service.getVideoDetails(brandId, videoId).catch(err => {
+          logger.warn(`⚠️ [InboxSyncScheduler] Video-details prefetch failed for ${platform} video ${videoId}: ${err.message}`);
+        })
+      )
+    );
   }
 }
 

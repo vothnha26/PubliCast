@@ -34,6 +34,12 @@ class TrackedVideoRepository {
       orderBy: { addedAt: 'desc' }
     });
   }
+
+  async findByBrandAndVideoId(brandId, videoId) {
+    return prisma.trackedVideo.findUnique({
+      where: { brandId_videoId: { brandId, videoId } }
+    });
+  }
 }
 
 module.exports = new TrackedVideoRepository();

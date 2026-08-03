@@ -6,7 +6,7 @@ const prisma = require('../../../config/prisma');
 const redisClient = require('../../../config/redis');
 const socketInvalidationService = require('../../core/socket-invalidation.service');
 const { CACHE_SCOPES } = require('../../../utils/socket-constants');
-const { PLATFORMS, POST_STATUS, SEPARATORS, YOUTUBE_API } = require('../../../utils/constants');
+const { PLATFORMS, POST_STATUS, SEPARATORS, YOUTUBE_API, YOUTUBE_VIDEO_DETAILS_CACHE } = require('../../../utils/constants');
 
 class YouTubeVideoService {
   async getPublishedVideos(brandId, pageToken = null, limit = 10, socialAccountId = null, forceSync = false) {
@@ -138,8 +138,19 @@ class YouTubeVideoService {
   }
 
   async getVideoDetails(brandId, videoId) {
-    const { auth } = await this._getAuthContext(brandId, true);
     const isYouTubeId = typeof videoId === 'string' && /^[a-zA-Z0-9_-]{11}$/.test(videoId);
+
+    // Read-through cache: view/like/comment counts don't need to be
+    // real-time (Inbox preview was hammering the live API on every click,
+    // including N times for the same video across its own comments — see
+    // #inbox-preview-slow). Reuse whatever the last sync wrote within the
+    // last hour instead of calling YouTube again.
+    const cached = await trackedVideoRepository.findByBrandAndVideoId(brandId, videoId);
+    if (cached && cached.lastSyncedAt && Date.now() - cached.lastSyncedAt.getTime() < YOUTUBE_VIDEO_DETAILS_CACHE.TTL_MS) {
+      return this._formatTrackedVideoAsDetails(cached);
+    }
+
+    const { auth } = await this._getAuthContext(brandId, true);
 
     if (!auth) {
       if (isYouTubeId) {
@@ -171,6 +182,10 @@ class YouTubeVideoService {
 
       const video = response.data.items[0];
       const channelRes = await youtubeGateway.getChannelList(auth, false, video.snippet.channelId);
+
+      trackedVideoRepository
+        .upsertTrackedVideo(brandId, videoId, this._prepareTrackedVideoData(video))
+        .catch(err => console.warn('[YouTubeVideoService] Failed to cache video details:', err.message));
 
       return this._formatVideoDetails(video, channelRes.data.items?.[0]);
     } catch (err) {
@@ -374,6 +389,22 @@ class YouTubeVideoService {
       likeCount: video.statistics.likeCount,
       publishedAt: video.snippet.publishedAt,
       madeForKids: video.status?.madeForKids ?? video.status?.selfDeclaredMadeForKids ?? false
+    };
+  }
+
+  _formatTrackedVideoAsDetails(tracked) {
+    return {
+      id: tracked.videoId,
+      title: tracked.title,
+      description: undefined,
+      thumbnailUrl: tracked.thumbnailUrl,
+      channelId: tracked.channelId,
+      channelTitle: tracked.channelName,
+      subscriberCount: undefined,
+      viewCount: tracked.lastViews,
+      likeCount: tracked.lastLikes,
+      publishedAt: tracked.publishedAt ? tracked.publishedAt.toISOString() : undefined,
+      madeForKids: undefined
     };
   }
 
