@@ -178,7 +178,15 @@ describe('Profile & Settings Detailed Suite', function () {
         10000
       );
       await accessTab.click();
-      await driver.sleep(500);
+      // Wait for the tab's actual content (not a fixed sleep) — a fixed
+      // 500ms was occasionally shorter than the tab's real render time
+      // under CI load, leaving the very next test's own element wait to
+      // race against a still-mounting form (root cause of TC_PROFILE_09's
+      // intermittent timeout on profile-current-password-input).
+      await driver.wait(
+        until.elementLocated(By.css('[data-testid="profile-current-password-input"]')),
+        15000
+      );
     });
 
     it('TC_PROFILE_07 – Verify password change fails when current password is empty', async function () {
