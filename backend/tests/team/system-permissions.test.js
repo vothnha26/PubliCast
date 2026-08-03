@@ -13,16 +13,17 @@ const app = require('../../src/app');
 // Mock Auth Middleware. SystemPermission write endpoints require a system-level
 // ADMIN role (see authorizeAdmin in permission.routes.js) — tests opt into a
 // non-admin caller via the x-test-role header to exercise the 403 path.
-jest.mock('../../src/middlewares/auth.middleware', () => ({
-  verifyAuth: (req, res, next) => {
+jest.mock('../../src/middlewares/auth.middleware', () => {
+  const verifyAuth = (req, res, next) => {
     req.user = {
       id: 'admin-user-id',
       email: 'admin@publicast.com',
       role: req.headers['x-test-role'] || 'ADMIN'
     };
     next();
-  }
-}));
+  };
+  return { verifyAuth, verifyAuthFromQuery: verifyAuth };
+});
 
 // Mock Prisma
 jest.mock('../../src/config/prisma', () => {

@@ -11,6 +11,7 @@ const brandService = require('../workspace/brand.service');
 const { eventEmitter, EVENTS } = require('../../events/event-emitter');
 const { USER_STATUS, AUTH_PROVIDERS, ERROR_MESSAGES, DEFAULT_CONFIG } = require('../../utils/constants');
 const redisClient = require('../../config/redis');
+const logger = require('../../utils/logger');
 const { OtpVerificationStrategy, LinkTokenVerificationStrategy, VerificationContext } = require('./verification.strategy');
 const verificationAttemptLimiter = require('../../middlewares/verification-attempt-limiter');
 const {
@@ -245,7 +246,11 @@ class AuthService {
         refreshToken: newRefreshToken
       };
     } catch (error) {
-      const err = new Error(error.message || 'Token refresh failed');
+      // Log the real cause server-side, but never leak JWT/Prisma internals
+      // (e.g. "jwt malformed" vs "User not found or inactive") to the client —
+      // that distinction lets an attacker probe which refresh tokens/users exist.
+      logger.warn('Refresh token failed', { error: error.message });
+      const err = new Error('Session expired, please log in again');
       err.status = 401;
       throw err;
     }
@@ -270,6 +275,11 @@ class AuthService {
 
     if (!profile.email) {
       throw new Error('Google account must have an email');
+    }
+    if (!profile.verified_email) {
+      const err = new Error('Google account email is not verified');
+      err.status = 403;
+      throw err;
     }
 
     const userData = {

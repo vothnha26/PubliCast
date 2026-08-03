@@ -2,26 +2,18 @@ const jwtUtils = require('../utils/jwt.utils');
 const logger = require('../utils/logger');
 
 /**
- * Verify JWT token from cookies or Authorization header.
- * Sets req.user = decoded payload on success.
+ * Verify a token and attach req.user, or respond with the standard auth error.
  */
-const verifyAuth = (req, res, next) => {
+const verifyToken = (token, req, res, next) => {
   try {
-    // Get token from cookie, Authorization header, or query parameters (for SSE/EventSource)
-    const token = req.cookies?.accessToken || 
-                  jwtUtils.extractToken(req.headers.authorization) || 
-                  req.query.token;
-
     if (!token) {
       logger.warn('Auth failed: no token provided', { method: req.method, url: req.url });
       return res.status(401).json({ message: 'Access token required' });
     }
 
-    // Verify token
     const decoded = jwtUtils.verifyAccessToken(token);
     logger.debug('Auth success', { userId: decoded.id, role: decoded.role });
 
-    // Attach user info to request
     req.user = decoded;
     next();
   } catch (error) {
@@ -33,7 +25,32 @@ const verifyAuth = (req, res, next) => {
   }
 };
 
+/**
+ * Verify JWT token from cookies or Authorization header.
+ * Sets req.user = decoded payload on success.
+ */
+const verifyAuth = (req, res, next) => {
+  const token = req.cookies?.accessToken ||
+                jwtUtils.extractToken(req.headers.authorization);
+  verifyToken(token, req, res, next);
+};
+
+/**
+ * Same as verifyAuth but also accepts a ?token= query parameter.
+ * Query strings leak into server/proxy logs, browser history, and the
+ * Referer header, so this must only be mounted on the specific
+ * SSE/EventSource routes that have no way to send an Authorization header —
+ * never as a general-purpose auth middleware.
+ */
+const verifyAuthFromQuery = (req, res, next) => {
+  const token = req.cookies?.accessToken ||
+                jwtUtils.extractToken(req.headers.authorization) ||
+                req.query.token;
+  verifyToken(token, req, res, next);
+};
+
 module.exports = {
-  verifyAuth
+  verifyAuth,
+  verifyAuthFromQuery
 };
 

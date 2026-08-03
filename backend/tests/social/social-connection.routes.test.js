@@ -9,12 +9,13 @@ jest.mock('otplib', () => ({
 }));
 
 // Mock auth so req.user is controllable per test.
-jest.mock('../../src/middlewares/auth.middleware', () => ({
-  verifyAuth: (req, res, next) => {
+jest.mock('../../src/middlewares/auth.middleware', () => {
+  const verifyAuth = (req, res, next) => {
     req.user = { id: 'caller-user-id', email: 'caller@publicast.com', role: 'USER' };
     next();
-  }
-}));
+  };
+  return { verifyAuth, verifyAuthFromQuery: verifyAuth };
+});
 
 jest.mock('../../src/services/auth/authorization.facade');
 jest.mock('../../src/services/social/social.service');
@@ -60,7 +61,10 @@ describe('Social connection routes — permission enforcement', () => {
         .expect(200);
 
       expect(res.body.success).toBe(true);
-      expect(socialService.disconnectAccount).toHaveBeenCalledWith('brand-1', 'FACEBOOK');
+      // Controller always passes socialAccountId (undefined when the caller
+      // doesn't specify one) to support disconnecting a specific account
+      // when a brand has multiple accounts on the same platform.
+      expect(socialService.disconnectAccount).toHaveBeenCalledWith('brand-1', 'FACEBOOK', undefined);
     });
   });
 

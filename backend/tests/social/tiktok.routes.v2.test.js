@@ -5,12 +5,13 @@ jest.mock('../../src/services/social/tiktok', () => ({
   getPublishedVideos: jest.fn()
 }));
 
-jest.mock('../../src/middlewares/auth.middleware', () => ({
-  verifyAuth: (req, res, next) => {
+jest.mock('../../src/middlewares/auth.middleware', () => {
+  const verifyAuth = (req, res, next) => {
     req.user = { id: 'user-1' };
     next();
-  }
-}));
+  };
+  return { verifyAuth, verifyAuthFromQuery: verifyAuth };
+});
 
 jest.mock('../../src/middlewares/permission.middleware', () => {
   const middleware = jest.fn(() => (req, res, next) => next());

@@ -4,12 +4,13 @@ const path = require('path');
 const app = require('../../src/app');
 
 // Mock Auth Middleware
-jest.mock('../../src/middlewares/auth.middleware', () => ({
-  verifyAuth: (req, res, next) => {
+jest.mock('../../src/middlewares/auth.middleware', () => {
+  const verifyAuth = (req, res, next) => {
     req.user = { id: 'test-user-id', email: 'user@publicast.com', name: 'Test User' };
     next();
-  }
-}));
+  };
+  return { verifyAuth, verifyAuthFromQuery: verifyAuth };
+});
 
 // Mock Permission Middleware
 jest.mock('../../src/middlewares/permission.middleware', () => {
