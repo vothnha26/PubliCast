@@ -71,6 +71,12 @@ const POST_INSIGHTS_CACHE_TTL_SEC = 5 * 60; // 5 minutes
 // post (N+1) — same bug class already fixed for YouTube via TrackedVideo.
 // title/thumbnail don't need to be fresher than this.
 const VIDEO_DETAILS_CACHE_TTL_MS = 60 * 60 * 1000; // 1 hour
+// getPublishedPosts()'s DB-first cache (see FacebookPostMetric). Facebook's
+// own docs say most post-insights metrics only refresh once every 24h
+// (developers.facebook.com/docs/graph-api/reference/insights) — re-fetching
+// live more often than that cannot return newer numbers for most metrics,
+// so a live re-fetch is only worth its BUC quota cost once/day.
+const FACEBOOK_POST_METRICS_TTL_MS = 24 * 60 * 60 * 1000;
 const PAGE_DEMOGRAPHICS_CACHE_TTL_SEC = 60 * 60; // 1 hour
 
 const COLD_START_POLL_INTERVAL_MS = 200;
@@ -107,21 +113,33 @@ class FacebookPostService {
     if (cached && cached.expiry > Date.now()) return cached.data;
 
     try {
-      const { pageId, pageAccessToken } = await this._getAccountCredentials(brandId, socialAccountId);
+      const { pageId, pageAccessToken, socialAccountId: resolvedAccountId } = await this._getAccountCredentials(brandId, socialAccountId);
 
       if ((pageAccessToken && pageAccessToken.startsWith('mock-')) || (pageId && pageId.startsWith('mock-')) || pageId === 'fb-page-mock') {
         return { data: [], nextPageToken: null, prevPageToken: null };
       }
 
-      // The initial load (no explicit pageToken) walks pages itself, bounded
-      // by the brand's plan-based history window, instead of returning just
-      // one page — Facebook's feed endpoint has no date-range filter, so
-      // "recent posts" only exists as "keep paging until stale." An
-      // explicit pageToken (manual "next page" click) still fetches exactly
-      // one page.
-      const result = pageToken
-        ? await this._fetchSinglePage(pageId, pageAccessToken, pageToken, limit)
-        : await this._fetchRecentWindow(brandId, pageId, pageAccessToken, limit);
+      // The initial load (no explicit pageToken) is DB-first: Facebook's own
+      // docs say most post-insights metrics only update once every 24h, so
+      // re-fetching live every time a user opens the tab burns BUC quota for
+      // numbers that provably haven't changed (see FACEBOOK_POST_METRICS
+      // cache TTL). Only when the DB has nothing fresh enough for the
+      // brand's plan window does this fall through to the live Batch
+      // Request walk, same as before. An explicit pageToken (manual "next
+      // page" click) always goes live — DB-first is only for the default view.
+      let result;
+      if (pageToken) {
+        result = await this._fetchSinglePage(pageId, pageAccessToken, pageToken, limit);
+      } else {
+        const windowMonths = await this._getHistoryWindowMonths(brandId);
+        result = await this._fetchFromDbCache(brandId, resolvedAccountId, windowMonths);
+        if (!result) {
+          result = await this._fetchRecentWindow(brandId, pageId, pageAccessToken, limit);
+          this._persistPostMetrics(brandId, resolvedAccountId, result.data).catch(err => {
+            console.warn('[FacebookPostService] Failed to persist post metrics cache:', err.message);
+          });
+        }
+      }
 
       postCache.set(cacheKey, { data: result, expiry: Date.now() + CACHE_TTL_MS });
       return result;
@@ -130,6 +148,113 @@ class FacebookPostService {
         return { data: [], nextPageToken: null, prevPageToken: null };
       }
       throw error;
+    }
+  }
+
+  /**
+   * DB-first read path (see FacebookPostMetric in schema.prisma) — returns
+   * null (cache miss, caller falls through to a live fetch) unless the
+   * NEWEST row for this account is fresher than FACEBOOK_POST_METRICS_TTL_MS.
+   * Using only the newest row's freshness (not every row's) means a page
+   * that hasn't published anything new keeps serving cache indefinitely
+   * once it's been fetched live once — correct, since "no new posts" is
+   * itself accurately reflected by the cache.
+   */
+  async _fetchFromDbCache(brandId, socialAccountId, windowMonths) {
+    const cutoff = new Date();
+    cutoff.setMonth(cutoff.getMonth() - windowMonths);
+
+    const rows = await prisma.facebookPostMetric.findMany({
+      where: { brandId, socialAccountId, publishedAt: { gte: cutoff } },
+      orderBy: { publishedAt: 'desc' }
+    });
+    if (rows.length === 0) return null;
+
+    const newestFetch = rows.reduce((max, r) => (r.fetchedAt > max ? r.fetchedAt : max), rows[0].fetchedAt);
+    if (Date.now() - newestFetch.getTime() >= FACEBOOK_POST_METRICS_TTL_MS) return null;
+
+    return {
+      data: rows.map(r => this._formatDbMetricRow(r)),
+      nextPageToken: null,
+      prevPageToken: null
+    };
+  }
+
+  _formatDbMetricRow(row) {
+    const reach = row.reach || row.videoViews || 0;
+    const views = row.videoViews || row.reach || 0;
+    return {
+      id: row.platformPostId,
+      message: row.captionSnippet || DEFAULT_CONFIG.NO_CONTENT,
+      type: row.postType,
+      platform: 'facebook',
+      mediaUrl: row.thumbnailUrl || '',
+      postUrl: `https://www.facebook.com/${row.platformPostId}`,
+      date: row.publishedAt,
+      status: POST_STATUS.PUBLISHED,
+      reach,
+      views,
+      reactions: row.reactions,
+      comments: row.comments,
+      shares: row.shares,
+      clicks: row.linkClicks + row.otherClicks,
+      linkClicks: row.linkClicks,
+      videoViews: row.videoViews,
+      videoTimeWatched: row.avgWatchTimeSeconds ? `${Math.round(row.avgWatchTimeSeconds / 60)}:${String(Math.round(row.avgWatchTimeSeconds % 60)).padStart(2, '0')}` : '0:00',
+      engagement: row.engagementRate,
+      spent: 0
+    };
+  }
+
+  /** Upserts the freshly-enriched page(s) of posts into FacebookPostMetric
+   * so the next getPublishedPosts call for this brand/account can be
+   * DB-first instead of hitting the live Graph API again. Best-effort —
+   * caller doesn't await this on the response path. */
+  async _persistPostMetrics(brandId, socialAccountId, posts) {
+    for (const post of posts) {
+      const postType = post.type === 'REEL' ? 'REEL' : (post.type || 'IMAGE');
+      await prisma.facebookPostMetric.upsert({
+        where: { socialAccountId_platformPostId: { socialAccountId, platformPostId: post.id } },
+        create: {
+          brandId,
+          socialAccountId,
+          platformPostId: post.id,
+          postType,
+          publishedAt: post.date ? new Date(post.date) : null,
+          reach: post.reach || 0,
+          impressions: post.views || 0,
+          videoViews: post.videoViews || 0,
+          avgWatchTimeSeconds: null,
+          likes: post.reactions || 0,
+          comments: post.comments || 0,
+          shares: post.shares || 0,
+          reactions: post.reactions || 0,
+          linkClicks: post.linkClicks || 0,
+          otherClicks: Math.max((post.clicks || 0) - (post.linkClicks || 0), 0),
+          engagementRate: post.engagement || 0,
+          captionSnippet: post.message || null,
+          thumbnailUrl: post.mediaUrl || null
+        },
+        update: {
+          postType,
+          publishedAt: post.date ? new Date(post.date) : null,
+          reach: post.reach || 0,
+          impressions: post.views || 0,
+          videoViews: post.videoViews || 0,
+          likes: post.reactions || 0,
+          comments: post.comments || 0,
+          shares: post.shares || 0,
+          reactions: post.reactions || 0,
+          linkClicks: post.linkClicks || 0,
+          otherClicks: Math.max((post.clicks || 0) - (post.linkClicks || 0), 0),
+          engagementRate: post.engagement || 0,
+          captionSnippet: post.message || null,
+          thumbnailUrl: post.mediaUrl || null,
+          fetchedAt: new Date()
+        }
+      }).catch(err => {
+        console.warn(`[FacebookPostService] Failed to upsert metrics for post ${post.id}:`, err.message);
+      });
     }
   }
 
@@ -513,7 +638,8 @@ class FacebookPostService {
 
     return {
       pageId: account.platformAccountId,
-      pageAccessToken: account.accessToken
+      pageAccessToken: account.accessToken,
+      socialAccountId: account.id
     };
   }
 

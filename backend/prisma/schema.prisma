@@ -117,6 +117,7 @@ model Brand {
   facebookOverviewMetrics FacebookOverviewMetric[]
   facebookPostMetrics     FacebookPostMetric[]
   facebookStoryMetrics    FacebookStoryMetric[]
+  socialPostMetrics       SocialPostMetric[]
   unifiedInbox            UnifiedInbox[]
   reports                 Report[]
   smartLinks              SmartLink[]
@@ -541,6 +542,9 @@ model SocialAccount {
   facebookOverviewMetrics FacebookOverviewMetric[] @relation("FacebookOverviewMetricAccount")
   facebookPostMetrics     FacebookPostMetric[]     @relation("FacebookPostMetricAccount")
   facebookStoryMetrics    FacebookStoryMetric[]    @relation("FacebookStoryMetricAccount")
+
+  // Shared post-metrics cache (Instagram, Threads — see SocialPostMetric)
+  socialPostMetrics SocialPostMetric[]
 
   @@unique([brandId, platform, platformAccountId])
   @@index([brandId])
@@ -1212,6 +1216,51 @@ model FacebookStoryMetric {
   @@index([brandId])
   @@index([socialAccountId])
   @@map("facebook_story_metrics")
+}
+
+// DB-first cache for published-post metrics on platforms whose insights
+// endpoints don't warrant a dedicated per-platform table the way Facebook's
+// richer FacebookPostMetric does (no REEL/STANDARD branching, no separate
+// reactions-breakdown call) — currently Instagram and Threads. `platform`
+// disambiguates within the shared table rather than one model per platform,
+// since both write/read the same shape (see instagram-post.service.js /
+// threads/index.js's getPublishedPosts DB-first path). Mirrors
+// FacebookPostMetric's role: getPublishedPosts reads this before ever
+// hitting the live Graph API, only re-fetching live once fetchedAt is
+// older than that platform's insights-refresh cadence.
+model SocialPostMetric {
+  id              String       @id @default(uuid())
+  brandId         String
+  socialAccountId String
+  platform        PlatformType
+  platformPostId  String
+  postType        String? // platform-specific type string, e.g. IMAGE/VIDEO/CAROUSEL/REEL/STORY — not a shared enum since each platform's set differs
+  publishedAt     DateTime?
+
+  reach       Int @default(0)
+  views       Int @default(0)
+  likes       Int @default(0)
+  comments    Int @default(0)
+  shares      Int @default(0)
+  saves       Int @default(0)
+  clicks      Int @default(0)
+
+  engagementRate Float @default(0)
+
+  captionSnippet String? @db.Text
+  thumbnailUrl   String?
+  postUrl        String?
+
+  fetchedAt DateTime @default(now())
+  createdAt DateTime @default(now())
+
+  brand         Brand         @relation(fields: [brandId], references: [id], onDelete: Cascade)
+  socialAccount SocialAccount @relation(fields: [socialAccountId], references: [id], onDelete: Cascade)
+
+  @@unique([socialAccountId, platformPostId])
+  @@index([brandId])
+  @@index([socialAccountId])
+  @@map("social_post_metrics")
 }
 
 // ============================================
