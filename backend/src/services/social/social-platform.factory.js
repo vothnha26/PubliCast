@@ -11,6 +11,7 @@ const MockSocialService = require('./mock-social.service');
 const createSyncCacheProxy = require('./sync-cache.proxy');
 const appConfig = require('../../config/app.config');
 const { PLATFORMS } = require('../../utils/constants');
+const logger = require('../../utils/logger');
 
 class SocialPlatformFactory {
   constructor() {
@@ -40,7 +41,7 @@ class SocialPlatformFactory {
 
     // Nếu chế độ sandbox được kích hoạt cho việc đăng bài, trả về Mock service
     if (appConfig.sandbox.publish) {
-      console.log(`🔌 [SocialPlatformFactory] Active Sandbox mode: Using MockSocialService for platform: ${platformKey}`);
+      logger.debug(`🔌 [SocialPlatformFactory] Active Sandbox mode: Using MockSocialService for platform: ${platformKey}`);
       return new MockSocialService(platformKey);
     }
 

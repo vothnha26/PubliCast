@@ -1,5 +1,6 @@
 const youtubeService = require('../../services/social/youtube');
 const asyncHandler = require('../../utils/async-handler');
+const logger = require('../../utils/logger');
 
 class YouTubeController {
   trackYouTubeVideo = asyncHandler(async (req, res) => {
@@ -65,13 +66,13 @@ class YouTubeController {
 
   getYouTubePlaylists = asyncHandler(async (req, res) => {
     const { brandId, sync } = req.query;
-    console.log(`=== GET YOUTUBE PLAYLISTS ===`);
-    console.log(`brandId: ${brandId}, sync: ${sync}`);
+    logger.debug(`=== GET YOUTUBE PLAYLISTS ===`);
+    logger.debug(`brandId: ${brandId}, sync: ${sync}`);
     if (!brandId) return res.status(400).json({ message: 'brandId is required' });
     const forceRefresh = sync === 'true' || sync === true;
     try {
       const playlists = await youtubeService.getPlaylists(brandId, forceRefresh);
-      console.log(`Successfully fetched playlists: ${playlists.length} playlists found`);
+      logger.debug(`Successfully fetched playlists: ${playlists.length} playlists found`);
       res.json({ data: playlists });
     } catch (error) {
       console.error("Error fetching YouTube playlists:", error);

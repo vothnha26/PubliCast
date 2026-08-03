@@ -17,6 +17,7 @@ const TeamSearchFilter = require('./team/filters/search.filter');
 const TeamRoleFilter = require('./team/filters/role.filter');
 const TeamStatusFilter = require('./team/filters/status.filter');
 const notificationService = require('../core/notification.service');
+const logger = require('../../utils/logger');
 
 class TeamService {
   constructor() {
@@ -764,7 +765,7 @@ class TeamService {
           }).catch(err => console.error('[TeamService] Failed to notify requester:', err.message));
         }
 
-        console.log(`[TeamService] Removed reviewer ${userId} from workflow ${workflow.id}. Remaining: ${remainingReviewers}. AutoApproved: ${autoApproved}`);
+        logger.debug(`[TeamService] Removed reviewer ${userId} from workflow ${workflow.id}. Remaining: ${remainingReviewers}. AutoApproved: ${autoApproved}`);
       }
     } catch (err) {
       // Không để lỗi này chặn flow chính (kick member / đổi role)

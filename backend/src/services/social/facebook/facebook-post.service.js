@@ -1,5 +1,6 @@
 const facebookGateway = require('./facebook.gateway');
 const facebookReelGateway = require('./facebook-reel.gateway');
+const logger = require('../../../utils/logger');
 
 const INSIGHTS_STRATEGIES = {
   REEL: async (platformPostId, pageAccessToken) => {
@@ -125,19 +126,19 @@ class FacebookPostService {
   }
   async publishPost(brandId, postData) {
     const { platformPostId, scheduledAt, type, mediaUrls = [], socialAccountId } = postData;
-    console.log(`\n[Facebook] ▶ publishPost | brandId=${brandId} | type=${type} | mediaUrls=${JSON.stringify(mediaUrls)}`);
+    logger.debug(`\n[Facebook] ▶ publishPost | brandId=${brandId} | type=${type} | mediaUrls=${JSON.stringify(mediaUrls)}`);
 
     // Short-circuit
     if (platformPostId) {
-      console.log(`[Facebook] Short-circuiting. Post already scheduled with ID: ${platformPostId}`);
+      logger.debug(`[Facebook] Short-circuiting. Post already scheduled with ID: ${platformPostId}`);
       return { platformVideoId: platformPostId, publishedAt: null };
     }
 
     const { pageId, pageAccessToken } = await this._getAccountCredentials(brandId, socialAccountId);
-    console.log(`[Facebook] Credentials OK | pageId=${pageId} | tokenPrefix=${pageAccessToken?.substring(0, 10)}...`);
+    logger.debug(`[Facebook] Credentials OK | pageId=${pageId} | tokenPrefix=${pageAccessToken?.substring(0, 10)}...`);
 
     if (pageAccessToken && (pageAccessToken.startsWith('mock-') || pageAccessToken.includes('mock') || pageAccessToken.startsWith('fb_mock'))) {
-      console.log(`[Facebook] Mock publishing detected for mock token. Returning simulated success.`);
+      logger.debug(`[Facebook] Mock publishing detected for mock token. Returning simulated success.`);
       return {
         platformVideoId: `mock-fb-post-${Date.now()}`,
         publishedAt: scheduledAt ? null : new Date()
@@ -156,14 +157,14 @@ class FacebookPostService {
 
       if (isTimeValid && isTypeSupported) {
         finalScheduledAt = scheduledAt;
-        console.log(`[Facebook] Using Native Scheduling for scheduledAt: ${scheduledAt}`);
+        logger.debug(`[Facebook] Using Native Scheduling for scheduledAt: ${scheduledAt}`);
       } else {
-        console.log(`[Facebook] Falling back to Queue-based scheduling. isTimeValid: ${isTimeValid}, isTypeSupported: ${isTypeSupported}`);
+        logger.debug(`[Facebook] Falling back to Queue-based scheduling. isTimeValid: ${isTimeValid}, isTypeSupported: ${isTypeSupported}`);
       }
     }
 
     const strategy = FacebookPublishStrategyFactory.getStrategy(type, mediaUrl);
-    console.log(`[Facebook] Strategy selected: ${strategy.constructor.name} | mediaUrl=${mediaUrl}`);
+    logger.debug(`[Facebook] Strategy selected: ${strategy.constructor.name} | mediaUrl=${mediaUrl}`);
 
     try {
       const result = await strategy.publish(pageId, pageAccessToken, { 
@@ -172,14 +173,14 @@ class FacebookPostService {
         mediaUrls,
         scheduledAt: finalScheduledAt
       });
-      console.log(`[Facebook] ✅ Published successfully! platformPostId=${result.id}`);
+      logger.debug(`[Facebook] ✅ Published successfully! platformPostId=${result.id}`);
 
       // Post First Comment if published immediately
       if (!finalScheduledAt && postData.options?.firstComment?.trim()) {
         try {
-          console.log(`[Facebook] Posting first comment: "${postData.options.firstComment.trim()}"`);
+          logger.debug(`[Facebook] Posting first comment: "${postData.options.firstComment.trim()}"`);
           await facebookGateway.createComment(result.id, postData.options.firstComment.trim(), pageAccessToken);
-          console.log(`[Facebook] First comment posted successfully.`);
+          logger.debug(`[Facebook] First comment posted successfully.`);
         } catch (commentErr) {
           console.error(`[Facebook] Failed to post first comment:`, commentErr.message);
         }

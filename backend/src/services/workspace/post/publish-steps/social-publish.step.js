@@ -1,6 +1,7 @@
 const BaseStep = require('../../../../core/pipeline/base.step');
 const socialPlatformFactory = require('../../../social/social-platform.factory');
 const { SEPARATORS, splitMediaUrls } = require('../../../../utils/constants');
+const logger = require('../../../../utils/logger');
 
 class SocialPublishStep extends BaseStep {
   async execute(context) {
@@ -51,7 +52,7 @@ class SocialPublishStep extends BaseStep {
           }
         }
 
-        console.log(`[SocialPublishStep] 🚀 Publishing post ${post.id} to platform ${platform}...`);
+        logger.debug(`[SocialPublishStep] 🚀 Publishing post ${post.id} to platform ${platform}...`);
 
         const result = await service.publishPost(brandId, {
           title: post.title,
@@ -66,7 +67,7 @@ class SocialPublishStep extends BaseStep {
           }
         });
         
-        console.log(`[SocialPublishStep] ✅ Successfully published post ${post.id} to platform ${platform}! Result:`, JSON.stringify(result));
+        logger.debug(`[SocialPublishStep] ✅ Successfully published post ${post.id} to platform ${platform}! Result:`, JSON.stringify(result));
         return { platform, success: true, result };
       } catch (error) {
         console.error(`[SocialPublishStep] ❌ Failed to publish post ${post.id} to platform ${platform}:`, error);

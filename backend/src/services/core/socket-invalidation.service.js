@@ -1,6 +1,7 @@
 const socketManager = require('../workspace/socket/socket.manager');
 const { SOCKET_EVENTS, ROOM_PREFIXES, CACHE_SCOPES } = require('../../utils/socket-constants');
 const redisClient = require('../../config/redis');
+const logger = require('../../utils/logger');
 
 /**
  * Service Facade: Manages Realtime Cache Invalidation broadcasting over Socket.io
@@ -43,7 +44,7 @@ class SocketInvalidationService {
     // 2. Broadcast DATA_INVALIDATE event to brand socket room
     const roomName = `${ROOM_PREFIXES.BRAND}${brandId}`;
     socketManager.emitToRoom(roomName, SOCKET_EVENTS.DATA_INVALIDATE, payload);
-    console.log(`[SocketInvalidationService] Broadcasted DATA_INVALIDATE for scope '${scope}' to room '${roomName}'`);
+    logger.debug(`[SocketInvalidationService] Broadcasted DATA_INVALIDATE for scope '${scope}' to room '${roomName}'`);
   }
 }
 

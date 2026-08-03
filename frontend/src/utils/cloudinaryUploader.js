@@ -1,3 +1,5 @@
+import logger from './logger';
+
 /**
  * Cloudinary Resumable Uploader
  * Handles large file uploads by splitting them into chunks.
@@ -46,7 +48,7 @@ class CloudinaryResumableUploader {
       startByte = parseInt(localStorage.getItem(`${fileKey}-start`) || "0");
       activeSignature = localStorage.getItem(`${fileKey}-signature`) || signature;
       activeTimestamp = localStorage.getItem(`${fileKey}-timestamp`) || timestamp;
-      console.log(`Resuming upload for ${file.name} from byte ${startByte}`);
+      logger.debug(`Resuming upload for ${file.name} from byte ${startByte}`);
     }
 
     let lastResponse = null;
