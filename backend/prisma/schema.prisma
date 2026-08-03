@@ -378,6 +378,12 @@ model PlanLimit {
   maxTeamSeats          Int
   allowCustomRoles      Boolean
   allowApprovalWorkflow Boolean
+  // How far back (in months) an on-demand published-post fetch looks for a
+  // brand on this plan — bounds platforms with no native date-range filter
+  // (e.g. TikTok's video/list, which only supports cursor pagination).
+  // Deliberately never nullable/unlimited: an old, prolific channel could
+  // still mean many sequential API calls to walk even on the highest tier.
+  historyWindowMonths   Int           @default(1)
   createdAt             DateTime      @default(now())
 
   plans Plan[]
