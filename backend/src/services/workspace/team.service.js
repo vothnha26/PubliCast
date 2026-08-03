@@ -18,6 +18,7 @@ const TeamRoleFilter = require('./team/filters/role.filter');
 const TeamStatusFilter = require('./team/filters/status.filter');
 const notificationService = require('../core/notification.service');
 const logger = require('../../utils/logger');
+const appConfig = require('../../config/app.config');
 
 class TeamService {
   constructor() {
@@ -141,7 +142,7 @@ class TeamService {
     );
 
     // Send invitation email
-    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+    const frontendUrl = appConfig.frontendUrl;
     const inviteUrl = `${frontendUrl}/invite?token=${token}`;
     const inviter = await userRepository.findById(invitedByUserId);
 
@@ -211,7 +212,7 @@ class TeamService {
     // Update invitedAt to reflect the resend time
     await teamRepository.update(teamId, { invitedAt: new Date(), invitedByUserId: requestedByUserId });
 
-    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+    const frontendUrl = appConfig.frontendUrl;
     const inviteUrl = `${frontendUrl}/invite?token=${token}`;
 
     try {
@@ -352,7 +353,7 @@ class TeamService {
         );
 
         // Send invitation email
-        const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+        const frontendUrl = appConfig.frontendUrl;
         const inviteUrl = `${frontendUrl}/invite?token=${token}`;
         const inviter = await userRepository.findById(invitedByUserId);
 

@@ -1,4 +1,5 @@
 const logger = require('../../../../utils/logger');
+const appConfig = require('../../../../config/app.config');
 class InstagramPublishStrategy {
   async publish(igAccountId, accessToken, postData) {
     throw new Error("Method 'publish()' must be implemented.");
@@ -12,7 +13,7 @@ class InstagramPublishStrategy {
     if (mediaUrl.startsWith('http://') || mediaUrl.startsWith('https://')) {
       return mediaUrl;
     }
-    const baseUrl = process.env.BACKEND_BASE_URL || 'http://localhost:3000';
+    const baseUrl = appConfig.backendBaseUrl;
     const cleanBaseUrl = baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl;
     const cleanMediaUrl = mediaUrl.startsWith('/') ? mediaUrl : `/${mediaUrl}`;
     return `${cleanBaseUrl}${cleanMediaUrl}`;

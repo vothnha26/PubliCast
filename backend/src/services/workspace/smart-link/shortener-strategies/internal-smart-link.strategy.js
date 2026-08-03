@@ -1,6 +1,7 @@
 const BaseShortenerStrategy = require('./base-shortener.strategy');
 const smartLinkRepository = require('../../../../repositories/workspace/smart-link.repository');
 const prisma = require('../../../../config/prisma');
+const appConfig = require('../../../../config/app.config');
 
 class InternalSmartLinkStrategy extends BaseShortenerStrategy {
   async shorten(url, brandId) {
@@ -23,7 +24,7 @@ class InternalSmartLinkStrategy extends BaseShortenerStrategy {
       });
     }
 
-    const baseUrl = process.env.BACKEND_BASE_URL || 'http://localhost:5000';
+    const baseUrl = appConfig.backendBaseUrl;
 
     // Kiểm tra xem URL này đã được rút gọn chưa trong link items của SmartLink
     const existingItem = (smartLink.links || []).find(l => l.url === url);

@@ -25,5 +25,13 @@ module.exports = {
     cloudinary: (process.env.CLOUDINARY_SANDBOX || '').trim() === 'true' || isSandboxGlobal,
   },
 
-  port: parseInt(process.env.PORT, 10) || 3000
+  port: parseInt(process.env.PORT, 10) || 3000,
+
+  // Public URLs — single source of truth so every OAuth callback, email
+  // link, and webhook URL builder falls back to the same dev defaults.
+  // Previously duplicated ad hoc across ~10 call sites, one of which
+  // (internal-smart-link.strategy.js) drifted to the wrong port (5000
+  // instead of the actual PORT default of 3000).
+  frontendUrl: process.env.FRONTEND_URL || 'http://localhost:5173',
+  backendBaseUrl: process.env.BACKEND_BASE_URL || 'http://localhost:3000'
 };
