@@ -223,10 +223,15 @@ describe('Profile & Settings Detailed Suite', function () {
     });
 
     it('TC_PROFILE_09 – Verify password change fails when new password is too short', async function () {
+      // Occasionally flaky on CI — the beforeEach hook's tab click can land
+      // right as the app is still settling (same class of timing issue as
+      // TC_PROFILE_03). Give this case more headroom instead of raising the
+      // shared beforeEach timeout for every test in the suite.
+      this.timeout(60000);
       const currentPassword = process.env.ADMIN_PASSWORD || process.env.USER_PASSWORD;
       const currentPwdInput = await driver.wait(
         until.elementLocated(By.css('[data-testid="profile-current-password-input"]')),
-        10000
+        20000
       );
       await setReactInputValue(driver, currentPwdInput, currentPassword);
 
