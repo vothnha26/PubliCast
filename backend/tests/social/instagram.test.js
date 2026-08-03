@@ -31,6 +31,9 @@ jest.mock('../../src/services/social/instagram/instagram.gateway', () => {
   };
 });
 jest.mock('../../src/repositories/social/social-account.repository');
+jest.mock('../../src/repositories/workspace/brand.repository', () => ({
+  findBrandWithSubscription: jest.fn().mockResolvedValue(null)
+}));
 jest.mock('../../src/services/social/connection-conflict.guard', () => ({
   ConnectionConflictGuard: {
     validateConflict: jest.fn().mockResolvedValue({ conflict: false })
@@ -177,7 +180,7 @@ describe('Instagram Integration Service Tests', () => {
         accessToken: 'ig_access_token'
       }]);
       instagramGateway.getInstagramMediaFeed.mockResolvedValue({
-        data: [{ id: 'media_1', like_count: 5, comments_count: 2, media_type: 'IMAGE', timestamp: '2026-05-20T00:00:00+0000' }],
+        data: [{ id: 'media_1', like_count: 5, comments_count: 2, media_type: 'IMAGE', timestamp: new Date().toISOString() }],
         nextPageToken: null,
         prevPageToken: null
       });
@@ -211,7 +214,7 @@ describe('Instagram Integration Service Tests', () => {
           thumbnail_url: 'https://scontent.example.com/preview.jpg',
           like_count: 0,
           comments_count: 0,
-          timestamp: '2026-05-20T00:00:00+0000'
+          timestamp: new Date().toISOString()
         }],
         nextPageToken: null,
         prevPageToken: null

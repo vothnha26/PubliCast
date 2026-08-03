@@ -1,11 +1,23 @@
 const instagramGateway = require('./instagram.gateway');
 const socialAccountRepository = require('../../../repositories/social/social-account.repository');
+const brandRepository = require('../../../repositories/workspace/brand.repository');
 const { PLATFORMS, POST_STATUS, POST_TYPES, DEFAULT_CONFIG } = require('../../../utils/constants');
 const InstagramPublishStrategyFactory = require('./publish-strategies/publish-strategy.factory');
 const logger = require('../../../utils/logger');
 
 const postCache = new Map();
 const CACHE_TTL_MS = 10 * 60 * 1000; // 10 minutes
+
+// Instagram Graph API has no date-range filter for media, and (unlike
+// Facebook Pages) no batch/multi-id insights endpoint to reduce round-trips
+// — the only lever available is bounding how many pages this walk makes.
+// Kept intentionally lower than TikTok's MAX_PAGE_COUNT since every
+// Instagram post still costs 1 extra insights call each (no batching).
+const MAX_PAGE_COUNT = 5;
+
+// Fallback when a brand has no active subscription — same conservative
+// (FREE-tier) default used by TikTokVideoService.
+const DEFAULT_HISTORY_WINDOW_MONTHS = 1;
 
 class InstagramPostService {
   _withTimeout(promise, ms, fallback) {
@@ -32,30 +44,19 @@ class InstagramPostService {
 
     try {
       const { igAccountId, accessToken } = await this._getAccountCredentials(brandId, socialAccountId);
-      
+
       if (accessToken && accessToken.startsWith('mock-')) {
         return { data: [], nextPageToken: null, prevPageToken: null };
       }
 
-      const feedResult = await this._withTimeout(
-        instagramGateway.getInstagramMediaFeed(igAccountId, accessToken, pageToken, limit),
-        4000,
-        { data: [], nextPageToken: null, prevPageToken: null }
-      );
-
-      const feed = feedResult.data || [];
-      const nextPageToken = feedResult.nextPageToken || null;
-      const prevPageToken = feedResult.prevPageToken || null;
-
-      const postsWithInsights = await Promise.all(
-        feed.map(post => this._enrichPostWithInsights(post, accessToken))
-      );
-
-      const result = {
-        data: postsWithInsights,
-        nextPageToken,
-        prevPageToken
-      };
+      // The initial load (no explicit pageToken) walks pages itself, bounded
+      // by the brand's plan-based history window, instead of returning just
+      // one page — Instagram has no date-range filter, so "recent posts"
+      // only exists as "keep paging until stale." An explicit pageToken
+      // (manual "next page" click) still fetches exactly one page.
+      const result = pageToken
+        ? await this._fetchSinglePage(igAccountId, accessToken, pageToken, limit)
+        : await this._fetchRecentWindow(brandId, igAccountId, accessToken, limit);
 
       postCache.set(cacheKey, { data: result, expiry: Date.now() + CACHE_TTL_MS });
       return result;
@@ -65,6 +66,76 @@ class InstagramPostService {
       }
       throw error;
     }
+  }
+
+  async _fetchSinglePage(igAccountId, accessToken, pageToken, limit) {
+    const feedResult = await this._withTimeout(
+      instagramGateway.getInstagramMediaFeed(igAccountId, accessToken, pageToken, limit),
+      4000,
+      { data: [], nextPageToken: null, prevPageToken: null }
+    );
+
+    const feed = feedResult.data || [];
+    const postsWithInsights = await Promise.all(
+      feed.map(post => this._enrichPostWithInsights(post, accessToken))
+    );
+
+    return {
+      data: postsWithInsights,
+      nextPageToken: feedResult.nextPageToken || null,
+      prevPageToken: feedResult.prevPageToken || null
+    };
+  }
+
+  /** Walks pages from the start, stopping at whichever comes first: a post
+   * older than the brand's plan-based history window, or MAX_PAGE_COUNT. */
+  async _fetchRecentWindow(brandId, igAccountId, accessToken, limit) {
+    const windowMonths = await this._getHistoryWindowMonths(brandId);
+    const recentCutoff = new Date();
+    recentCutoff.setMonth(recentCutoff.getMonth() - windowMonths);
+
+    let pageToken = null;
+    let posts = [];
+    let hasMore = true;
+    let pageCount = 0;
+
+    while (hasMore && pageCount < MAX_PAGE_COUNT) {
+      pageCount += 1;
+      const feedResult = await this._withTimeout(
+        instagramGateway.getInstagramMediaFeed(igAccountId, accessToken, pageToken, limit),
+        4000,
+        { data: [], nextPageToken: null, prevPageToken: null }
+      );
+      const feed = feedResult.data || [];
+      if (feed.length === 0) break;
+
+      // Instagram returns media newest-first, so once one post in a page is
+      // older than the cutoff, every post after it (this page and all
+      // subsequent pages) is guaranteed older too — safe to stop instead of
+      // walking the rest of the account's history.
+      const cutoffIndex = feed.findIndex(p => p.timestamp && new Date(p.timestamp) < recentCutoff);
+      const pageFeed = cutoffIndex === -1 ? feed : feed.slice(0, cutoffIndex);
+
+      const enriched = await Promise.all(
+        pageFeed.map(post => this._enrichPostWithInsights(post, accessToken))
+      );
+      posts = posts.concat(enriched);
+
+      if (cutoffIndex === -1) {
+        hasMore = Boolean(feedResult.nextPageToken);
+        pageToken = feedResult.nextPageToken || null;
+      } else {
+        hasMore = false;
+      }
+    }
+
+    return { data: posts, nextPageToken: null, prevPageToken: null };
+  }
+
+  async _getHistoryWindowMonths(brandId) {
+    const brand = await brandRepository.findBrandWithSubscription(brandId);
+    const planLimit = brand?.subscription?.status === 'ACTIVE' ? brand.subscription.plan?.planLimit : null;
+    return planLimit?.historyWindowMonths || DEFAULT_HISTORY_WINDOW_MONTHS;
   }
 
   async publishPost(brandId, postData) {
