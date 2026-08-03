@@ -8,6 +8,7 @@ const { YOUTUBE_API, YOUTUBE_CONSTRAINTS, YOUTUBE_VIDEO_POLLING } = require('./y
 const { validateImageConstraints } = require('./youtube-media-validator.util');
 const fs = require('fs');
 const path = require('path');
+const logger = require('../../../utils/logger');
 
 class YouTubePublishService {
   /**
@@ -17,7 +18,7 @@ class YouTubePublishService {
     const { options = {}, platformPostId, socialAccountId } = postData;
 
     if (platformPostId) {
-      console.log(`[YouTube Publish] Video already uploaded via Native Scheduling. ID: ${platformPostId}`);
+      logger.debug(`[YouTube Publish] Video already uploaded via Native Scheduling. ID: ${platformPostId}`);
       return {
         platformVideoId: platformPostId,
         videoUrl: YOUTUBE_API.videoUrl(platformPostId),
@@ -30,7 +31,7 @@ class YouTubePublishService {
     const { account, auth } = await this._getAuthContext(brandId, socialAccountId);
 
     if (account.accessToken && (account.accessToken.startsWith('mock-') || account.accessToken.includes('mock') || account.accessToken.startsWith('yt_mock'))) {
-      console.log(`[YouTube] Mock publishing detected for mock token. Returning simulated success.`);
+      logger.debug(`[YouTube] Mock publishing detected for mock token. Returning simulated success.`);
       return {
         platformVideoId: `mock-youtube-video-${Date.now()}`,
         videoUrl: YOUTUBE_API.videoUrl(`mock-youtube-video-${Date.now()}`),
@@ -46,10 +47,10 @@ class YouTubePublishService {
     const metadata = this._prepareMetadata(postData, options);
 
     // 4. Thực hiện Upload chính
-    console.log(`[YouTube Publish] 🚀 Uploading video to YouTube...`);
+    logger.debug(`[YouTube Publish] 🚀 Uploading video to YouTube...`);
     const uploadRes = await youtubeGateway.uploadVideo(auth, videoStream, metadata);
     const videoId = uploadRes.data.id;
-    console.log(`[YouTube Publish] ✅ Video uploaded successfully. ID: ${videoId}`);
+    logger.debug(`[YouTube Publish] ✅ Video uploaded successfully. ID: ${videoId}`);
 
     // 4.5. Polling trạng thái xử lý video bất đồng bộ
     await this._pollProcessingStatus(auth, videoId);
@@ -243,7 +244,7 @@ class YouTubePublishService {
         }
         const imageStream = await this._prepareImageStream(options.youtubeThumbnail);
         await youtubeGateway.setCustomThumbnail(auth, videoId, imageStream, mimeType || 'image/jpeg');
-        console.log(`[YouTube Post-Upload] Successfully set custom thumbnail for video ${videoId}`);
+        logger.debug(`[YouTube Post-Upload] Successfully set custom thumbnail for video ${videoId}`);
       } catch (err) {
         console.error(`[YouTube Post-Upload] Setting custom thumbnail failed: ${err.message}`);
       }
@@ -287,7 +288,7 @@ class YouTubePublishService {
       const processingDetails = videoItem?.processingDetails;
 
       if (!processingDetails || processingDetails.processingStatus === 'succeeded' || processingDetails.processingStatus === 'terminated') {
-        console.log(`[YouTube Publish] Video processing completed for ID: ${videoId} (status: ${processingDetails?.processingStatus || 'none'})`);
+        logger.debug(`[YouTube Publish] Video processing completed for ID: ${videoId} (status: ${processingDetails?.processingStatus || 'none'})`);
         return true;
       }
 
@@ -296,7 +297,7 @@ class YouTubePublishService {
         throw new Error(`YouTube video processing failed: ${reason}`);
       }
 
-      console.log(`[YouTube Publish] Polling video processing status for ${videoId}: ${processingDetails.processingStatus} (attempt ${attempt}/${maxAttempts})`);
+      logger.debug(`[YouTube Publish] Polling video processing status for ${videoId}: ${processingDetails.processingStatus} (attempt ${attempt}/${maxAttempts})`);
       await new Promise(resolve => setTimeout(resolve, pollInterval));
     }
 

@@ -1,3 +1,4 @@
+const logger = require('../../../utils/logger');
 class TelegramGateway {
   constructor() {
     this.apiBaseUrl = 'https://api.telegram.org/bot';
@@ -74,7 +75,7 @@ class TelegramGateway {
    */
   async sendMessage(token, chatId, text, options = {}) {
     if (token.startsWith('mock-')) {
-      console.log(`[Telegram Gateway] [MOCK] Sending message to ${chatId}:`, text);
+      logger.debug(`[Telegram Gateway] [MOCK] Sending message to ${chatId}:`, text);
       return { message_id: `mock-msg-${Date.now()}` };
     }
 
@@ -105,7 +106,7 @@ class TelegramGateway {
    */
   async sendPhoto(token, chatId, photoUrl, caption, options = {}) {
     if (token.startsWith('mock-')) {
-      console.log(`[Telegram Gateway] [MOCK] Sending photo to ${chatId}:`, photoUrl, caption);
+      logger.debug(`[Telegram Gateway] [MOCK] Sending photo to ${chatId}:`, photoUrl, caption);
       return { message_id: `mock-photo-${Date.now()}` };
     }
 
@@ -136,7 +137,7 @@ class TelegramGateway {
    */
   async sendVideo(token, chatId, videoUrl, caption, options = {}) {
     if (token.startsWith('mock-')) {
-      console.log(`[Telegram Gateway] [MOCK] Sending video to ${chatId}:`, videoUrl, caption);
+      logger.debug(`[Telegram Gateway] [MOCK] Sending video to ${chatId}:`, videoUrl, caption);
       return { message_id: `mock-video-${Date.now()}` };
     }
 

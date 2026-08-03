@@ -3,6 +3,7 @@ const asyncHandler = require('../../utils/async-handler');
 const videoProcessorFacade = require('../../services/workspace/video/video-processor.facade');
 const TranscriptionStrategyFactory = require('../../services/workspace/ai/transcription/transcription-strategy.factory');
 const { TASK_STATUS, REDIS_PREFIXES, QUEUE_CONFIG } = require('../../constants/video-publish.constants');
+const logger = require('../../utils/logger');
 
 class PostController {
   /**
@@ -42,8 +43,8 @@ class PostController {
     const { brandId } = req.body;
     if (!brandId) return res.status(400).json({ message: 'brandId is required' });
 
-    console.log("=== CREATE POST ===");
-    console.log("Request Body:", JSON.stringify(req.body, null, 2));
+    logger.debug("=== CREATE POST ===");
+    logger.debug("Request Body:", JSON.stringify(req.body, null, 2));
 
     const userId = req.user.id;
     const post = await postService.createPost(req.body, userId, brandId);
@@ -188,11 +189,11 @@ class PostController {
           return { taskId, status: 'in_progress' };
         }
         if (task.status === TASK_STATUS.FAILED) {
-          console.log(`[Queue Cleanup] Removing failed old job ${taskId} from BullMQ queue...`);
+          logger.debug(`[Queue Cleanup] Removing failed old job ${taskId} from BullMQ queue...`);
           const oldJob = await videoQueue.getJob(taskId);
           if (oldJob) {
             await oldJob.remove();
-            console.log(`[Queue Cleanup] Successfully removed failed old job ${taskId}`);
+            logger.debug(`[Queue Cleanup] Successfully removed failed old job ${taskId}`);
           }
         }
       }

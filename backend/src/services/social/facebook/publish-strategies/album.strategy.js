@@ -1,12 +1,13 @@
 const FacebookPublishStrategy = require('./publish.strategy');
 const facebookGateway = require('../facebook.gateway');
+const logger = require('../../../../utils/logger');
 
 class AlbumPublishStrategy extends FacebookPublishStrategy {
   async publish(pageId, pageAccessToken, postData) {
     const { mediaUrls = [], caption, scheduledAt } = postData;
     const mediaCaptions = postData.mediaCaptions || postData.options?.mediaCaptions || [];
     
-    console.log('[AlbumPublishStrategy] Publishing album with:', {
+    logger.debug('[AlbumPublishStrategy] Publishing album with:', {
       pageId,
       mediaUrlsCount: mediaUrls.length,
       caption,

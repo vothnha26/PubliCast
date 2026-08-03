@@ -137,7 +137,7 @@ async function shutdown(signal) {
       const publishWorker = require('./queues/publish.worker');
       const videoWorker = require('./queues/video.worker');
       const socialWorker = require('./queues/social.worker');
-      console.log('[Shutdown] Closing BullMQ Workers...');
+      logger.debug('[Shutdown] Closing BullMQ Workers...');
       await Promise.all([
         publishWorker.close(),
         videoWorker.close(),

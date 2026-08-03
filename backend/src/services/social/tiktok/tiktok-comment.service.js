@@ -2,6 +2,7 @@ const tiktokGateway = require('./tiktok.gateway');
 const tiktokAnalytics = require('./tiktok-analytics.service');
 const socialAccountRepository = require('../../../repositories/social/social-account.repository');
 const { PLATFORMS } = require('../../../utils/constants');
+const logger = require('../../../utils/logger');
 
 class TikTokCommentService {
   /**
@@ -36,7 +37,7 @@ class TikTokCommentService {
       } catch (error) {
         const isTokenError = error.status === 401 || error.code === 'access_token_invalid';
         if (isTokenError && account.refreshToken) {
-          console.log(`[TikTok Comment] Token error. Attempting force refresh...`);
+          logger.debug(`[TikTok Comment] Token error. Attempting force refresh...`);
           const refreshed = await tiktokGateway.refreshAccessToken(account.refreshToken);
           const accessToken = refreshed.access_token;
           const refreshToken = refreshed.refresh_token || account.refreshToken;

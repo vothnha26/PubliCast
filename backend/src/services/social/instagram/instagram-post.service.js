@@ -2,6 +2,7 @@ const instagramGateway = require('./instagram.gateway');
 const socialAccountRepository = require('../../../repositories/social/social-account.repository');
 const { PLATFORMS, POST_STATUS, POST_TYPES, DEFAULT_CONFIG } = require('../../../utils/constants');
 const InstagramPublishStrategyFactory = require('./publish-strategies/publish-strategy.factory');
+const logger = require('../../../utils/logger');
 
 const postCache = new Map();
 const CACHE_TTL_MS = 10 * 60 * 1000; // 10 minutes
@@ -68,19 +69,19 @@ class InstagramPostService {
 
   async publishPost(brandId, postData) {
     const { platformPostId, scheduledAt, type, mediaUrls = [], socialAccountId } = postData;
-    console.log(`\n[Instagram] ▶ publishPost | brandId=${brandId} | type=${type} | mediaUrls=${JSON.stringify(mediaUrls)}`);
+    logger.debug(`\n[Instagram] ▶ publishPost | brandId=${brandId} | type=${type} | mediaUrls=${JSON.stringify(mediaUrls)}`);
 
     // Short-circuit
     if (platformPostId) {
-      console.log(`[Instagram] Short-circuiting. Post already scheduled with ID: ${platformPostId}`);
+      logger.debug(`[Instagram] Short-circuiting. Post already scheduled with ID: ${platformPostId}`);
       return { platformVideoId: platformPostId, publishedAt: null };
     }
 
     const { igAccountId, accessToken } = await this._getAccountCredentials(brandId, socialAccountId);
-    console.log(`[Instagram] Credentials OK | igAccountId=${igAccountId} | tokenPrefix=${accessToken?.substring(0, 10)}...`);
+    logger.debug(`[Instagram] Credentials OK | igAccountId=${igAccountId} | tokenPrefix=${accessToken?.substring(0, 10)}...`);
 
     if (accessToken && (accessToken.startsWith('mock-') || accessToken.includes('mock') || accessToken.startsWith('ig_mock') || accessToken.includes('fb_mock'))) {
-      console.log(`[Instagram] Mock publishing detected for mock token. Returning simulated success.`);
+      logger.debug(`[Instagram] Mock publishing detected for mock token. Returning simulated success.`);
       return {
         platformVideoId: `mock-ig-post-${Date.now()}`,
         publishedAt: scheduledAt ? null : new Date()
@@ -97,28 +98,28 @@ class InstagramPostService {
 
       if (isTimeValid && isTypeSupported) {
         finalScheduledAt = scheduledAt;
-        console.log(`[Instagram] Using Native Scheduling for scheduledAt: ${scheduledAt}`);
+        logger.debug(`[Instagram] Using Native Scheduling for scheduledAt: ${scheduledAt}`);
       } else {
-        console.log(`[Instagram] Falling back to Queue-based scheduling. isTimeValid: ${isTimeValid}, isTypeSupported: ${isTypeSupported}`);
+        logger.debug(`[Instagram] Falling back to Queue-based scheduling. isTimeValid: ${isTimeValid}, isTypeSupported: ${isTypeSupported}`);
       }
     }
 
     const strategy = InstagramPublishStrategyFactory.getStrategy(type, mediaUrls);
-    console.log(`[Instagram] Strategy selected: ${strategy.constructor.name}`);
+    logger.debug(`[Instagram] Strategy selected: ${strategy.constructor.name}`);
 
     try {
       const result = await strategy.publish(igAccountId, accessToken, {
         ...postData,
         scheduledAt: finalScheduledAt
       });
-      console.log(`[Instagram] ✅ Published successfully! platformPostId=${result.id}`);
+      logger.debug(`[Instagram] ✅ Published successfully! platformPostId=${result.id}`);
 
       // Post First Comment if published immediately
       if (!finalScheduledAt && postData.options?.firstComment?.trim()) {
         try {
-          console.log(`[Instagram] Posting first comment: "${postData.options.firstComment.trim()}"`);
+          logger.debug(`[Instagram] Posting first comment: "${postData.options.firstComment.trim()}"`);
           await instagramGateway.createComment(result.id, postData.options.firstComment.trim(), accessToken);
-          console.log(`[Instagram] First comment posted successfully.`);
+          logger.debug(`[Instagram] First comment posted successfully.`);
         } catch (commentErr) {
           console.error(`[Instagram] Failed to post first comment:`, commentErr.message);
         }
@@ -138,7 +139,7 @@ class InstagramPostService {
   }
 
   async deletePost(brandId, platformPostId) {
-    console.log(`[Instagram Post Service] deletePost triggered for brandId: ${brandId}, platformPostId: ${platformPostId}`);
+    logger.debug(`[Instagram Post Service] deletePost triggered for brandId: ${brandId}, platformPostId: ${platformPostId}`);
     console.warn(`[Instagram Post Service] Instagram Graph API does not support deleting posts via 3rd party apps. Simulating success.`);
     return { success: true, warning: 'Instagram does not support remote deletion via API' };
   }

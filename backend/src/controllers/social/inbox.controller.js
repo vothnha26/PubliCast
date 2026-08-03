@@ -1,5 +1,6 @@
 const inboxService = require('../../services/social/inbox.service');
 const asyncHandler = require('../../utils/async-handler');
+const logger = require('../../utils/logger');
 
 class InboxController {
   /**
@@ -35,7 +36,7 @@ class InboxController {
    */
   syncInbox = asyncHandler(async (req, res) => {
     const { brandId, platform } = req.body;
-    console.log(`[InboxController] Syncing inbox: Brand = ${brandId}, Platform = ${platform}`);
+    logger.debug(`[InboxController] Syncing inbox: Brand = ${brandId}, Platform = ${platform}`);
     if (!brandId) return res.status(400).json({ message: 'brandId is required' });
 
     const result = await inboxService.syncPlatformComments(brandId, platform);
@@ -61,7 +62,7 @@ class InboxController {
   updateStatus = asyncHandler(async (req, res) => {
     const { id } = req.params;
     const { status } = req.body;
-    console.log(`[InboxController] Updating status for ${id} to ${status}`);
+    logger.debug(`[InboxController] Updating status for ${id} to ${status}`);
     
     if (!status) return res.status(400).json({ message: 'status is required' });
 

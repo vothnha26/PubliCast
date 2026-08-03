@@ -4,6 +4,7 @@ const socketAuthMiddleware = require('./socket.auth');
 const messageProcessorFactory = require('./message-strategies/message-processor.factory');
 const prisma = require('../../../config/prisma');
 const authorizationFacade = require('../../auth/authorization.facade');
+const logger = require('../../../utils/logger');
 
 const STAFF_ROLES = ['STAFF', 'ADMIN'];
 
@@ -47,7 +48,7 @@ class SocketManager {
 
         Promise.all([pubClient.connect(), subClient.connect()]).then(() => {
           this.io.adapter(createAdapter(pubClient, subClient));
-          console.log('⚡ [SocketManager] Socket.io Redis Adapter configured successfully');
+          logger.debug('⚡ [SocketManager] Socket.io Redis Adapter configured successfully');
         }).catch(err => {
           console.error('❌ [SocketManager] Failed to connect duplicate clients for Redis Adapter:', err.message);
         });
@@ -64,7 +65,7 @@ class SocketManager {
       this._handleConnection(socket);
     });
 
-    console.log('⚡ [SocketManager] Socket.io Server initialized successfully');
+    logger.debug('⚡ [SocketManager] Socket.io Server initialized successfully');
   }
 
   /**
@@ -108,7 +109,7 @@ class SocketManager {
     }
     this.userSockets.get(userId).add(socketId);
 
-    console.log(`🔌 [SocketManager] Client connected: ${socket.user.name} (${userId}) | socketId: ${socketId}`);
+    logger.debug(`🔌 [SocketManager] Client connected: ${socket.user.name} (${userId}) | socketId: ${socketId}`);
 
     // Setup event listeners
     socket.on(SOCKET_EVENTS.JOIN_ROOM, (payload) => this._handleJoinRoom(socket, payload));
@@ -142,7 +143,7 @@ class SocketManager {
         const room = `${ROOM_PREFIXES.TICKET}${ticketId}`;
         socket.join(room);
         socket.emit(SOCKET_EVENTS.JOINED_ROOM, { room, ticketId });
-        console.log(`👥 [SocketManager] ${socket.user.name} joined room ${room}`);
+        logger.debug(`👥 [SocketManager] ${socket.user.name} joined room ${room}`);
       } catch (err) {
         console.error('❌ [SocketManager] Join ticket room error:', err.message);
         socket.emit(SOCKET_EVENTS.ERROR, { message: err.message });
@@ -303,7 +304,7 @@ class SocketManager {
           this.userSockets.delete(userId);
         }
       }
-      console.log(`🔌 [SocketManager] Client disconnected: ${socket.user.name} | socketId: ${socketId}`);
+      logger.debug(`🔌 [SocketManager] Client disconnected: ${socket.user.name} | socketId: ${socketId}`);
     }
   }
 }

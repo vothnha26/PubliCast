@@ -1,5 +1,6 @@
 const socialAccountRepository = require('../../repositories/social/social-account.repository');
 const { ANALYTICS } = require('../../utils/constants');
+const logger = require('../../utils/logger');
 
 /**
  * Tạo một ES6 Proxy bọc quanh các Social Analytics Service để tối ưu hóa việc gọi API bằng cơ chế Caching.
@@ -20,7 +21,7 @@ function createSyncCacheProxy(realService) {
 
           // Kiểm tra xem có yêu cầu bắt buộc (force refresh) hay không
           if (force) {
-            console.log(`[SyncCacheProxy] Force refresh requested. Skipping cooldown for account ${socialAccountId} (${account.platform})...`);
+            logger.debug(`[SyncCacheProxy] Force refresh requested. Skipping cooldown for account ${socialAccountId} (${account.platform})...`);
             return target.syncChannelMetrics(socialAccountId, startDate, endDate, force);
           }
 
@@ -52,14 +53,14 @@ function createSyncCacheProxy(realService) {
           }
 
           if (!hasCooldownPassed && !isDifferentRange) {
-            console.log(`[SyncCacheProxy] Serving cached data for account ${socialAccountId} (${account.platform}). Range matches: ${cacheRangeStr}. Cooldown active.`);
+            logger.debug(`[SyncCacheProxy] Serving cached data for account ${socialAccountId} (${account.platform}). Range matches: ${cacheRangeStr}. Cooldown active.`);
             return account;
           }
 
           if (isDifferentRange) {
-            console.log(`[SyncCacheProxy] Sync triggered for ${account.platform} (${socialAccountId}). Range mismatch: Requesting ${startDate} to ${endDate}, but Cache has ${cacheRangeStr}`);
+            logger.debug(`[SyncCacheProxy] Sync triggered for ${account.platform} (${socialAccountId}). Range mismatch: Requesting ${startDate} to ${endDate}, but Cache has ${cacheRangeStr}`);
           } else {
-            console.log(`[SyncCacheProxy] Sync triggered for ${account.platform} (${socialAccountId}). Cooldown passed or Force=true.`);
+            logger.debug(`[SyncCacheProxy] Sync triggered for ${account.platform} (${socialAccountId}). Cooldown passed or Force=true.`);
           }
           
           return target.syncChannelMetrics(socialAccountId, startDate, endDate, force);

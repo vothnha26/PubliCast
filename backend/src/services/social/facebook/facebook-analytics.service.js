@@ -1,6 +1,7 @@
 const facebookGateway = require('./facebook.gateway');
 const socialAccountRepository = require('../../../repositories/social/social-account.repository');
 const { PLATFORMS, DEFAULT_CONFIG, ANALYTICS, SOCIAL_TECHNICAL } = require('../../../utils/constants');
+const logger = require('../../../utils/logger');
 
 class FacebookAnalyticsService {
   _getEmptyChannelInfo(pageId, account = null) {
@@ -136,7 +137,7 @@ class FacebookAnalyticsService {
         missingRanges = this._calculateMissingRanges(dailyMap, start, end);
       }
 
-      console.log(`[Facebook Analytics] Smart Sync: Requesting ${missingRanges.length} missing ranges from API for ${pageId}`);
+      logger.debug(`[Facebook Analytics] Smart Sync: Requesting ${missingRanges.length} missing ranges from API for ${pageId}`);
 
       let hasInsightsData = false;
       for (const range of missingRanges) {
@@ -561,7 +562,7 @@ class FacebookAnalyticsService {
     const permissions = await facebookGateway.getUserPermissions(tokens.access_token).catch(() => []);
     const pages = await facebookGateway.getUserPages(tokens.access_token);
 
-    console.log('[Facebook Connect Diagnostics]', {
+    logger.debug('[Facebook Connect Diagnostics]', {
       permissions,
       pagesCount: pages.length,
       pages: pages.map(p => ({ id: p.id, name: p.name }))

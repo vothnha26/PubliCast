@@ -7,6 +7,7 @@ const { AUTOLIST_TYPES, POST_STATUS, PERMISSION_KEYS } = require('../../utils/co
 const { upsertPublishJob, removePublishJob } = require('../../queues/publish.queue');
 const authorizationFacade = require('../auth/authorization.facade');
 const validationFacade = require('./post/validators/validation.facade');
+const logger = require('../../utils/logger');
 
 class AutoListService {
   async getAutoLists(brandId) {
@@ -47,9 +48,9 @@ class AutoListService {
       const fresh = await autoListRepository.findById(id, tx);
       if (!fresh) return; // Already deleted by another request — idempotent.
 
-      console.log(`[deleteAutoList] Found list ${id} with ${fresh.posts ? fresh.posts.length : 0} posts`);
+      logger.debug(`[deleteAutoList] Found list ${id} with ${fresh.posts ? fresh.posts.length : 0} posts`);
       const pendingPosts = (fresh.posts || []).filter(p => p.status === POST_STATUS.SCHEDULED);
-      console.log(`[deleteAutoList] Found ${pendingPosts.length} pending scheduled posts`);
+      logger.debug(`[deleteAutoList] Found ${pendingPosts.length} pending scheduled posts`);
       for (const p of pendingPosts) {
         await removePublishJob(p.id);
       }
@@ -108,7 +109,7 @@ class AutoListService {
 
       // Logic: If Loop is enabled but everything is published or failed, duplicate posts as new DRAFTs to preserve history
       if (unpublishedPosts.length === 0 && autoList.loopEnabled && (autoList.posts || []).length > 0) {
-        console.log(`[AutoList] 🔄 Queue ${autoListId} dry but Loop enabled. Reviving all posts by duplicating...`);
+        logger.debug(`[AutoList] 🔄 Queue ${autoListId} dry but Loop enabled. Reviving all posts by duplicating...`);
 
         const postsToRevive = (autoList.posts || []).filter(p =>
           (p.status === POST_STATUS.PUBLISHED || p.status === POST_STATUS.FAILED || p.status === POST_STATUS.REJECTED) && !p.isDeleted

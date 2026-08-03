@@ -1,6 +1,7 @@
 const FacebookPublishStrategy = require('./publish.strategy');
 const facebookReelGateway = require('../facebook-reel.gateway');
 const { downloadImageSafely } = require('../../../../utils/network-security');
+const logger = require('../../../../utils/logger');
 
 class ReelPublishStrategy extends FacebookPublishStrategy {
   async publish(pageId, pageAccessToken, postData) {
@@ -27,17 +28,17 @@ class ReelPublishStrategy extends FacebookPublishStrategy {
     // 2. Tải & Cập nhật ảnh bìa tùy chỉnh (Best-effort)
     if (options.facebookReelThumbnail) {
       try {
-        console.log(`[ReelPublishStrategy] Downloading custom thumbnail safely from: ${options.facebookReelThumbnail}`);
+        logger.debug(`[ReelPublishStrategy] Downloading custom thumbnail safely from: ${options.facebookReelThumbnail}`);
         const thumbnailBuffer = await downloadImageSafely(options.facebookReelThumbnail);
         
-        console.log(`[ReelPublishStrategy] Uploading thumbnail to Reels video ${videoId}`);
+        logger.debug(`[ReelPublishStrategy] Uploading thumbnail to Reels video ${videoId}`);
         await facebookReelGateway.uploadReelThumbnail(
           videoId,
           pageAccessToken,
           thumbnailBuffer,
           'thumbnail.jpg'
         );
-        console.log('[ReelPublishStrategy] Custom thumbnail uploaded successfully.');
+        logger.debug('[ReelPublishStrategy] Custom thumbnail uploaded successfully.');
       } catch (err) {
         console.error('[ReelPublishStrategy] Failed to upload custom thumbnail:', err.message);
         // Best-effort: Không làm hỏng cả luồng post nếu chỉ lỗi upload thumbnail
@@ -47,13 +48,13 @@ class ReelPublishStrategy extends FacebookPublishStrategy {
     // 3. Mời cộng tác viên (Best-effort)
     if (options.facebookReelCollaboratorId) {
       try {
-        console.log(`[ReelPublishStrategy] Inviting collaborator ${options.facebookReelCollaboratorId} for video ${videoId}`);
+        logger.debug(`[ReelPublishStrategy] Inviting collaborator ${options.facebookReelCollaboratorId} for video ${videoId}`);
         await facebookReelGateway.inviteReelCollaborator(
           videoId,
           options.facebookReelCollaboratorId,
           pageAccessToken
         );
-        console.log('[ReelPublishStrategy] Collaborator invitation sent successfully.');
+        logger.debug('[ReelPublishStrategy] Collaborator invitation sent successfully.');
       } catch (err) {
         console.error('[ReelPublishStrategy] Failed to invite collaborator:', err.message);
         // Best-effort: Không làm hỏng cả luồng post nếu chỉ lỗi mời cộng tác viên

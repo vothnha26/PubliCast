@@ -1,3 +1,4 @@
+const logger = require('../../../../utils/logger');
 class InstagramPublishStrategy {
   async publish(igAccountId, accessToken, postData) {
     throw new Error("Method 'publish()' must be implemented.");
@@ -24,7 +25,7 @@ class InstagramPublishStrategy {
     for (let attempt = 1; attempt <= maxAttempts; attempt++) {
       const statusData = await instagramGateway.pollContainerStatus(containerId, accessToken);
       const code = statusData.status_code;
-      console.log(`[Instagram Polling] Attempt ${attempt}/${maxAttempts} | Container: ${containerId} | Status: ${code}`);
+      logger.debug(`[Instagram Polling] Attempt ${attempt}/${maxAttempts} | Container: ${containerId} | Status: ${code}`);
       if (code === 'FINISHED') {
         return;
       }
