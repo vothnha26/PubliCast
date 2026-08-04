@@ -178,7 +178,10 @@ describe('Profile & Settings Detailed Suite', function () {
         10000
       );
       await accessTab.click();
-      await driver.sleep(500);
+      await driver.wait(
+        until.elementLocated(By.css('[data-testid="profile-current-password-input"]')),
+        15000
+      );
     });
 
     it('TC_PROFILE_07 – Verify password change fails when current password is empty', async function () {
