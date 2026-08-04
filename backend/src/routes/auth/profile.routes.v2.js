@@ -198,4 +198,60 @@ router.put('/change-password', verifyAuth, resetPasswordRateLimiter, profileCont
  */
 router.put('/default-brand', verifyAuth, profileControllerV2.setDefaultBrand);
 
+/**
+ * @openapi
+ * /v2/profile/notification-settings:
+ *   get:
+ *     summary: Get current user's per-category notification preferences
+ *     tags: [Profile V2]
+ *     security: [{ cookieAuth: [] }]
+ *     responses:
+ *       200:
+ *         description: Notification preference toggles
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/V2EnvelopeResponse'
+ */
+router.get('/notification-settings', verifyAuth, authorizeAny, profileControllerV2.getNotificationSettings);
+
+/**
+ * @openapi
+ * /v2/profile/notification-settings:
+ *   put:
+ *     summary: Update notification preference toggles
+ *     description: >
+ *       Accepts a partial object — only boolean fields matching a known
+ *       preference key are applied, everything else is ignored.
+ *       `notificationsEnabled` is the master "unsubscribe from all" switch;
+ *       when false it overrides every other category without needing to
+ *       clear them individually.
+ *     tags: [Profile V2]
+ *     security: [{ cookieAuth: [] }]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               notificationsEnabled: { type: boolean }
+ *               notifyPostFailure: { type: boolean }
+ *               notifyPublishSuccess: { type: boolean }
+ *               notifyChannelDisconnect: { type: boolean }
+ *               notifyCollaboration: { type: boolean }
+ *               notifyBilling: { type: boolean }
+ *               notifyEmptyQueue: { type: boolean }
+ *               notifyDailyRecap: { type: boolean }
+ *               notifyWeeklyReport: { type: boolean }
+ *     responses:
+ *       200:
+ *         description: Updated notification preferences
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/V2EnvelopeResponse'
+ */
+router.put('/notification-settings', verifyAuth, profileControllerV2.updateNotificationSettings);
+
 module.exports = router;
