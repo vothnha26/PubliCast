@@ -1,0 +1,74 @@
+// Help Center Database — separate PostgreSQL instance with pgvector.
+// Deliberately isolated from the main MySQL schema (../schema.prisma):
+// Help Center content/RAG data is global (not brand-scoped) and needs
+// pgvector for embedding similarity search, which MySQL doesn't support.
+//
+// Generate: npm run prisma:generate:help-center
+// Migrate:  npm run prisma:migrate:help-center
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../../node_modules/.prisma/help-center-client"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("HELP_CENTER_DATABASE_URL")
+}
+
+enum HelpArticleStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+model HelpArticle {
+  id          String            @id @default(uuid())
+  title       String
+  slug        String            @unique
+  category    String
+  tags        String[]          @default([])
+  contentJson Json              // TipTap document — source of truth for re-editing
+  contentHtml String            @db.Text // rendered HTML — display + chunking/embedding source
+  status      HelpArticleStatus @default(DRAFT)
+  authorId    String            // logical FK to User.id in the main MySQL DB (cross-database, not enforced)
+  publishedAt DateTime?
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+
+  chunks      HelpArticleChunk[]
+
+  @@index([status])
+  @@index([category])
+}
+
+model HelpArticleChunk {
+  id         String      @id @default(uuid())
+  articleId  String
+  article    HelpArticle @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  chunkIndex Int
+  text       String      @db.Text
+  // pgvector has no native Prisma type — Unsupported() keeps the column
+  // visible to `migrate diff` without generating a Client field. All reads
+  // and writes to `embedding` go through $queryRaw/$executeRaw.
+  embedding  Unsupported("vector(768)")?
+  createdAt  DateTime    @default(now())
+
+  @@index([articleId])
+}
+
+model HelpQuestionLog {
+  id                String   @id @default(uuid())
+  question          String   @db.Text
+  answer            String   @db.Text
+  citedArticleIds   String[] @default([])
+  userId            String?  // logical FK to User.id in the main MySQL DB
+  latencyMs         Int
+  // Semantic cache lookup key — nearest-neighbour search against previously
+  // answered questions, reusing the same pgvector setup as HelpArticleChunk
+  // instead of a separate cache layer (e.g. Redis).
+  questionEmbedding Unsupported("vector(768)")?
+  createdAt         DateTime @default(now())
+
+  @@index([createdAt])
+}
