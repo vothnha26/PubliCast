@@ -137,12 +137,33 @@ class ThreadsService extends BaseSocialService {
       }
     }
 
-    // Fetch and aggregate from real Threads posts feed if insights are empty or null
+    // Fetch and aggregate from real Threads posts feed if insights are empty or null.
+    // Paginate for the full period instead of a single limit=100 page — a
+    // single page silently drops older posts for accounts with a longer
+    // feed within the requested date range, undercounting totalContent and
+    // making the per-load post count drift (same class of bug fixed for
+    // Facebook in #70, and for Instagram alongside this change). Stop once
+    // the feed runs out, a page comes back entirely older than the range's
+    // start date (feed is reverse-chronological), or a safety cap is hit.
     let feedResult = [];
     if (!isMock) {
       try {
-        const res = await threadsGateway.getThreadsMediaFeed(pageId, pageAccessToken, null, 100);
-        feedResult = res.data || [];
+        const MAX_FEED_PAGES = 20;
+        const rangeStartMs = new Date(start).getTime();
+        let feedPageToken = null;
+        for (let page = 0; page < MAX_FEED_PAGES; page++) {
+          const res = await threadsGateway.getThreadsMediaFeed(pageId, pageAccessToken, feedPageToken, 100);
+          const pagePosts = res.data || [];
+          feedResult = feedResult.concat(pagePosts);
+
+          const oldestInPage = pagePosts[pagePosts.length - 1];
+          const pageIsFullyBeforeRange = oldestInPage && new Date(oldestInPage.timestamp).getTime() < rangeStartMs;
+
+          if (!res.nextPageToken || pagePosts.length === 0 || pageIsFullyBeforeRange) {
+            break;
+          }
+          feedPageToken = res.nextPageToken;
+        }
       } catch (feedErr) {
         console.warn('Failed to fetch Threads feed for analytics aggregation:', feedErr.message);
       }
@@ -350,7 +371,7 @@ class ThreadsService extends BaseSocialService {
     }, PLATFORMS.THREADS, { enqueueSync: false });
   }
 
-  async getPublishedVideos(brandId, pageToken = null, limit = 10, socialAccountId = null) {
+  async getPublishedVideos(brandId, pageToken = null, limit = 10, socialAccountId = null, startDate = null, endDate = null) {
     try {
       const account = await require('../../../repositories/social/social-account.repository').findByBrandAndPlatform(brandId, PLATFORMS.THREADS);
       if (!account || account.length === 0) {
@@ -372,19 +393,20 @@ class ThreadsService extends BaseSocialService {
       // SocialPostMetric), only falling through to the live page-walk when
       // the DB has nothing fresh enough for the brand's plan window. An
       // explicit pageToken (manual "next page" click) always goes live.
+      let result;
       if (pageToken) {
-        return await this._fetchThreadsSinglePage(pageId, accessToken, pageToken, limit);
+        result = await this._fetchThreadsSinglePage(pageId, accessToken, pageToken, limit);
+      } else {
+        const windowMonths = await this._getHistoryWindowMonths(brandId);
+        result = await this._fetchThreadsFromDbCache(brandId, activeAccount.id, windowMonths);
+        if (!result) {
+          result = await this._fetchThreadsRecentWindow(brandId, pageId, accessToken, windowMonths, limit);
+          this._persistThreadsPostMetrics(brandId, activeAccount.id, result.data).catch(err => {
+            console.warn('[ThreadsService] Failed to persist post metrics cache:', err.message);
+          });
+        }
       }
-
-      const windowMonths = await this._getHistoryWindowMonths(brandId);
-      let result = await this._fetchThreadsFromDbCache(brandId, activeAccount.id, windowMonths);
-      if (!result) {
-        result = await this._fetchThreadsRecentWindow(brandId, pageId, accessToken, windowMonths, limit);
-        this._persistThreadsPostMetrics(brandId, activeAccount.id, result.data).catch(err => {
-          console.warn('[ThreadsService] Failed to persist post metrics cache:', err.message);
-        });
-      }
-      return result;
+      return { ...result, data: this._filterByDateRange(result.data, startDate, endDate) };
     } catch (error) {
       console.error('Threads getPublishedVideos error:', error);
       return {
@@ -393,6 +415,19 @@ class ThreadsService extends BaseSocialService {
         prevPageToken: null
       };
     }
+  }
+
+  // See FacebookPostService#_filterByDateRange — same display-only
+  // narrowing applied after the DB-first/live fetch resolves.
+  _filterByDateRange(posts, startDate, endDate) {
+    if (!startDate && !endDate) return posts;
+    return (posts || []).filter((post) => {
+      if (!post.date) return true;
+      const postTime = new Date(post.date).getTime();
+      if (startDate && postTime < new Date(startDate).getTime()) return false;
+      if (endDate && postTime > new Date(endDate).getTime() + 24 * 60 * 60 * 1000 - 1) return false;
+      return true;
+    });
   }
 
   _formatThreadsPost(post) {

@@ -1,11 +1,12 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
-import { subDays, eachDayOfInterval, format } from "date-fns";
+import { eachDayOfInterval, format } from "date-fns";
 import { toast } from "sonner";
 import { useBrand } from "../../context/BrandContext";
 import socialService from "../../services/social.service";
 import postService from "../../services/post.service";
 import socketClient from "../../services/socket";
 import { useLatestRequestId } from "../useLatestRequestId";
+import { useDateRangeQuery } from "../useDateRangeQuery";
 import { parseAnalyticsData } from "../../utils/parseAnalyticsData";
 
 const DEFAULT_PAGE_SIZE = 10;
@@ -19,7 +20,7 @@ export function useChannelInsights(socialAccountId, platformInput) {
   const { activeBrand } = useBrand();
   const metricsRequest = useLatestRequestId();
 
-  const [dateRange, setDateRange] = useState({ from: subDays(new Date(), 29), to: new Date() });
+  const [dateRange, setDateRange] = useDateRangeQuery(29);
   const [metrics, setMetrics] = useState(null);
   const [loading, setLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -108,24 +109,26 @@ export function useChannelInsights(socialAccountId, platformInput) {
   const fetchPublishedVideos = useCallback(async (pageToken = null, limit = DEFAULT_PAGE_SIZE) => {
     if (!activeBrand || !socialAccountId) return;
     setIsPublishedLoading(true);
+    const startDate = dateRange.from?.toISOString().slice(0, 10);
+    const endDate = dateRange.to?.toISOString().slice(0, 10);
     try {
       if (platform === "facebook") {
-        const res = await socialService.getFacebookPublishedPosts(activeBrand.id, pageToken, limit, socialAccountId);
+        const res = await socialService.getFacebookPublishedPosts(activeBrand.id, pageToken, limit, socialAccountId, startDate, endDate);
         setPublishedVideos(res || []);
         setNextPageToken(res?.nextPageToken || null);
         setPrevPageToken(res?.prevPageToken || null);
       } else if (platform === "instagram") {
-        const res = await socialService.getInstagramPublishedPosts(activeBrand.id, pageToken, limit, socialAccountId);
+        const res = await socialService.getInstagramPublishedPosts(activeBrand.id, pageToken, limit, socialAccountId, startDate, endDate);
         setPublishedVideos(res || []);
         setNextPageToken(res?.nextPageToken || null);
         setPrevPageToken(res?.prevPageToken || null);
       } else if (platform === "tiktok") {
-        const res = await socialService.getTikTokPublishedVideos(activeBrand.id, pageToken, limit);
+        const res = await socialService.getTikTokPublishedVideos(activeBrand.id, pageToken, limit, socialAccountId, startDate, endDate);
         setPublishedVideos(res?.videos || res || []);
         setNextPageToken(res?.nextPageToken || null);
         setPrevPageToken(res?.prevPageToken || null);
       } else if (platform === "threads") {
-        const res = await socialService.getThreadsPublishedPosts(activeBrand.id, pageToken, limit, socialAccountId);
+        const res = await socialService.getThreadsPublishedPosts(activeBrand.id, pageToken, limit, socialAccountId, startDate, endDate);
         setPublishedVideos(res || []);
         setNextPageToken(res?.nextPageToken || null);
         setPrevPageToken(res?.prevPageToken || null);
@@ -142,17 +145,22 @@ export function useChannelInsights(socialAccountId, platformInput) {
         setNextPageToken(null);
         setPrevPageToken(null);
       } else {
-        const res = await socialService.getPublishedVideos(activeBrand.id, pageToken, limit, socialAccountId);
+        const res = await socialService.getPublishedVideos(activeBrand.id, pageToken, limit, socialAccountId, startDate, endDate);
         setPublishedVideos(res.videos || []);
         setNextPageToken(res.nextPageToken || null);
         setPrevPageToken(res.prevPageToken || null);
       }
     } catch (error) {
       console.error("Failed to fetch channel published content:", error);
+      // 429 already shows a global rate-limit toast via the apiV2 response
+      // interceptor — avoid double-toasting the same error here.
+      if (error?.status !== 429) {
+        toast.error("Không thể tải danh sách bài viết.");
+      }
     } finally {
       setIsPublishedLoading(false);
     }
-  }, [activeBrand?.id, socialAccountId, platform]);
+  }, [activeBrand?.id, socialAccountId, platform, dateRange]);
 
   useEffect(() => {
     fetchPublishedVideos();

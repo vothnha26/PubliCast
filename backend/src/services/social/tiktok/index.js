@@ -23,8 +23,8 @@ class TikTokService extends BaseSocialService {
     return tiktokAnalytics.getChannelInfo(auth, startDate, endDate);
   }
 
-  async getPublishedVideos(brandId, pageToken = null, limit = 10, socialAccountId = null) {
-    return tiktokVideo.getPublishedVideos(brandId, pageToken, limit, socialAccountId);
+  async getPublishedVideos(brandId, pageToken = null, limit = 10, socialAccountId = null, startDate = null, endDate = null) {
+    return tiktokVideo.getPublishedVideos(brandId, pageToken, limit, socialAccountId, startDate, endDate);
   }
 
   async getVideoComments(brandId, params = {}) {

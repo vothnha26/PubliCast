@@ -107,8 +107,8 @@ class FacebookPostService {
       });
   }
 
-  async getPublishedPosts(brandId, pageToken = null, limit = 10, socialAccountId = null) {
-    const cacheKey = `${brandId}_${pageToken || 'first'}_${limit}_${socialAccountId || 'default'}`;
+  async getPublishedPosts(brandId, pageToken = null, limit = 10, socialAccountId = null, startDate = null, endDate = null) {
+    const cacheKey = `${brandId}_${pageToken || 'first'}_${limit}_${socialAccountId || 'default'}_${startDate || ''}_${endDate || ''}`;
     const cached = postCache.get(cacheKey);
     if (cached && cached.expiry > Date.now()) return cached.data;
 
@@ -141,6 +141,8 @@ class FacebookPostService {
         }
       }
 
+      result = { ...result, data: this._filterByDateRange(result.data, startDate, endDate) };
+
       postCache.set(cacheKey, { data: result, expiry: Date.now() + CACHE_TTL_MS });
       return result;
     } catch (error) {
@@ -149,6 +151,21 @@ class FacebookPostService {
       }
       throw error;
     }
+  }
+
+  // Applied after the DB-first/live fetch resolves, on top of the plan's
+  // historyWindowMonths — this is a display-only narrowing (the caller
+  // picked a shorter range in the UI's date picker) and never widens what
+  // the plan already fetched/cached.
+  _filterByDateRange(posts, startDate, endDate) {
+    if (!startDate && !endDate) return posts;
+    return (posts || []).filter((post) => {
+      if (!post.date) return true;
+      const postTime = new Date(post.date).getTime();
+      if (startDate && postTime < new Date(startDate).getTime()) return false;
+      if (endDate && postTime > new Date(endDate).getTime() + 24 * 60 * 60 * 1000 - 1) return false;
+      return true;
+    });
   }
 
   /**

@@ -1,10 +1,11 @@
 import * as React from "react";
 import { format, subDays, startOfMonth, endOfMonth, subMonths, isSameDay } from "date-fns";
-import { Calendar as CalendarIcon, Diamond, ChevronDown } from "lucide-react";
+import { Calendar as CalendarIcon, Diamond, Lock, ChevronDown } from "lucide-react";
 
 import { cn } from "../ui/utils";
 import { Button } from "../ui/button";
 import { Calendar } from "../ui/calendar";
+import { useBrand } from "../../context/BrandContext";
 import {
   Popover,
   PopoverContent,
@@ -12,21 +13,31 @@ import {
   PopoverClose,
 } from "../ui/popover";
 
+// Fallback when the active brand has no active subscription — same
+// conservative (FREE-tier) default the backend uses when clamping.
+const DEFAULT_HISTORY_WINDOW_MONTHS = 1;
+
 export function DateRangeFilter({ className, date, setDate }) {
+  const { activeBrand } = useBrand();
   const [activePresetLabel, setActivePresetLabel] = React.useState("Last 30 days");
 
+  const historyWindowMonths = activeBrand?.subscription?.status === 'ACTIVE'
+    ? (activeBrand.subscription.plan?.planLimit?.historyWindowMonths || DEFAULT_HISTORY_WINDOW_MONTHS)
+    : DEFAULT_HISTORY_WINDOW_MONTHS;
+
   const presets = [
-    { label: "Yesterday", getValue: () => ({ from: subDays(new Date(), 1), to: subDays(new Date(), 1) }), premium: false },
-    { label: "Last week", getValue: () => ({ from: subDays(new Date(), 7), to: new Date() }), premium: false },
-    { label: "Current month", getValue: () => ({ from: startOfMonth(new Date()), to: new Date() }), premium: false },
-    { label: "Last 30 days", getValue: () => ({ from: subDays(new Date(), 30), to: new Date() }), premium: false },
-    { label: "Previous month", getValue: () => ({ from: startOfMonth(subMonths(new Date(), 1)), to: endOfMonth(subMonths(new Date(), 1)) }), premium: true },
-    { label: "Last 3 months", getValue: () => ({ from: subMonths(new Date(), 3), to: new Date() }), premium: true },
-    { label: "Last 6 months", getValue: () => ({ from: subMonths(new Date(), 6), to: new Date() }), premium: true },
-    { label: "Last 12 months", getValue: () => ({ from: subMonths(new Date(), 12), to: new Date() }), premium: true },
-  ];
+    { label: "Yesterday", getValue: () => ({ from: subDays(new Date(), 1), to: subDays(new Date(), 1) }), premium: false, months: 0 },
+    { label: "Last week", getValue: () => ({ from: subDays(new Date(), 7), to: new Date() }), premium: false, months: 0 },
+    { label: "Current month", getValue: () => ({ from: startOfMonth(new Date()), to: new Date() }), premium: false, months: 1 },
+    { label: "Last 30 days", getValue: () => ({ from: subDays(new Date(), 30), to: new Date() }), premium: false, months: 1 },
+    { label: "Previous month", getValue: () => ({ from: startOfMonth(subMonths(new Date(), 1)), to: endOfMonth(subMonths(new Date(), 1)) }), premium: true, months: 2 },
+    { label: "Last 3 months", getValue: () => ({ from: subMonths(new Date(), 3), to: new Date() }), premium: true, months: 3 },
+    { label: "Last 6 months", getValue: () => ({ from: subMonths(new Date(), 6), to: new Date() }), premium: true, months: 6 },
+    { label: "Last 12 months", getValue: () => ({ from: subMonths(new Date(), 12), to: new Date() }), premium: true, months: 12 },
+  ].map((preset) => ({ ...preset, locked: preset.months > historyWindowMonths }));
 
   const handlePresetClick = (preset) => {
+    if (preset.locked) return;
     setActivePresetLabel(preset.label);
     setDate(preset.getValue());
   };
@@ -106,15 +117,21 @@ export function DateRangeFilter({ className, date, setDate }) {
                  <button
                    key={preset.label}
                    onClick={() => handlePresetClick(preset)}
+                   disabled={preset.locked}
+                   title={preset.locked ? `Requires a plan with a longer history window (currently ${historyWindowMonths} month${historyWindowMonths === 1 ? '' : 's'})` : undefined}
                    className={cn(
                      "flex items-center justify-between px-3 py-2 text-[11px] font-bold rounded-xl transition-all text-left group",
-                     isActivePreset(preset) 
-                       ? "bg-[#2D1D35] text-white shadow-lg" 
-                       : "text-gray-600 hover:bg-gray-100"
+                     preset.locked
+                       ? "text-gray-300 cursor-not-allowed"
+                       : isActivePreset(preset)
+                         ? "bg-[#2D1D35] text-white shadow-lg"
+                         : "text-gray-600 hover:bg-gray-100"
                    )}
                  >
                    {preset.label}
-                   {preset.premium && (
+                   {preset.locked ? (
+                     <Lock size={12} className="text-gray-300" />
+                   ) : preset.premium && (
                      <Diamond size={12} className={cn(isActivePreset(preset) ? "text-[#D9F99D] fill-[#D9F99D]" : "text-[#BEF264] fill-[#BEF264] group-hover:scale-110 transition-transform")} />
                    )}
                  </button>
