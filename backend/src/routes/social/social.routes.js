@@ -57,8 +57,6 @@ router.post('/reddit/disconnect', verifyAuth, requireManageConnections, redditCo
 router.get('/twitch/url', verifyAuth, twitchController.getTwitchAuthUrl);
 router.get('/twitch/callback', twitchController.twitchCallback);
 router.post('/twitch/disconnect', verifyAuth, requireManageConnections, twitchController.disconnectTwitchAccount);
-router.post('/twitch/clips/create', verifyAuth, requireBrandMember, twitchController.createClip);
-router.get('/twitch/stream-status', verifyAuth, requireBrandMember, twitchController.getStreamStatus);
 router.post('/reddit/submit', verifyAuth, requireBrandMember, redditController.submitPost);
 
 // Facebook Features

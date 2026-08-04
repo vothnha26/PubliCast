@@ -8,6 +8,7 @@ import socketClient from "../../services/socket";
 import { useLatestRequestId } from "../useLatestRequestId";
 import { useDateRangeQuery } from "../useDateRangeQuery";
 import { parseAnalyticsData } from "../../utils/parseAnalyticsData";
+import { PLATFORMS } from "../../constants/platforms";
 
 const DEFAULT_PAGE_SIZE = 10;
 
@@ -112,37 +113,40 @@ export function useChannelInsights(socialAccountId, platformInput) {
     const startDate = dateRange.from?.toISOString().slice(0, 10);
     const endDate = dateRange.to?.toISOString().slice(0, 10);
     try {
-      if (platform === "facebook") {
+      if (platform === PLATFORMS.FACEBOOK) {
         const res = await socialService.getFacebookPublishedPosts(activeBrand.id, pageToken, limit, socialAccountId, startDate, endDate);
         setPublishedVideos(res || []);
         setNextPageToken(res?.nextPageToken || null);
         setPrevPageToken(res?.prevPageToken || null);
-      } else if (platform === "instagram") {
+      } else if (platform === PLATFORMS.INSTAGRAM) {
         const res = await socialService.getInstagramPublishedPosts(activeBrand.id, pageToken, limit, socialAccountId, startDate, endDate);
         setPublishedVideos(res || []);
         setNextPageToken(res?.nextPageToken || null);
         setPrevPageToken(res?.prevPageToken || null);
-      } else if (platform === "tiktok") {
+      } else if (platform === PLATFORMS.TIKTOK) {
         const res = await socialService.getTikTokPublishedVideos(activeBrand.id, pageToken, limit, socialAccountId, startDate, endDate);
         setPublishedVideos(res?.videos || res || []);
         setNextPageToken(res?.nextPageToken || null);
         setPrevPageToken(res?.prevPageToken || null);
-      } else if (platform === "threads") {
+      } else if (platform === PLATFORMS.THREADS) {
         const res = await socialService.getThreadsPublishedPosts(activeBrand.id, pageToken, limit, socialAccountId, startDate, endDate);
         setPublishedVideos(res || []);
         setNextPageToken(res?.nextPageToken || null);
         setPrevPageToken(res?.prevPageToken || null);
-      } else if (platform === "bluesky") {
-        const posts = await postService.getPosts(activeBrand.id, { platform: "BLUESKY", status: "PUBLISHED", limit });
-        const mapped = (posts || []).map((p) => ({
+      } else if (platform === PLATFORMS.BLUESKY) {
+        const res = await socialService.getBlueskyPublishedPosts(activeBrand.id, pageToken, limit, socialAccountId);
+        const mapped = (res?.data || []).map((p) => ({
           id: p.id,
-          message: p.caption || p.title || "",
-          date: p.publishedAt || p.createdAt,
-          mediaUrl: p.mediaUrls?.[0] || null,
-          reach: 0, views: 0, likes: 0, comments: 0,
+          message: p.message || "",
+          date: p.date,
+          mediaUrl: p.mediaUrl || null,
+          reach: p.reach || 0,
+          views: p.views || 0,
+          likes: p.likes || 0,
+          comments: p.comments || 0,
         }));
         setPublishedVideos(mapped);
-        setNextPageToken(null);
+        setNextPageToken(res?.nextPageToken || null);
         setPrevPageToken(null);
       } else {
         const res = await socialService.getPublishedVideos(activeBrand.id, pageToken, limit, socialAccountId, startDate, endDate);
@@ -191,7 +195,7 @@ export function useChannelInsights(socialAccountId, platformInput) {
 
   const stats = useMemo(() => {
     if (!metrics) return { subscribers: 0, views: 0, videos: 0 };
-    if (platform === "facebook") {
+    if (platform === PLATFORMS.FACEBOOK) {
       if (!metrics.facebookPage) return { subscribers: 0, views: 0, videos: 0 };
       return {
         subscribers: metrics.facebookPage.followersCount,
@@ -199,7 +203,7 @@ export function useChannelInsights(socialAccountId, platformInput) {
         videos: 0,
       };
     }
-    if (platform === "instagram" || platform === "threads") {
+    if (platform === PLATFORMS.INSTAGRAM || platform === PLATFORMS.THREADS) {
       if (!metrics.instagramAccount) return { subscribers: 0, views: 0, videos: 0 };
       return {
         subscribers: metrics.instagramAccount.followersCount,
@@ -208,12 +212,21 @@ export function useChannelInsights(socialAccountId, platformInput) {
         videos: metrics.instagramAccount.mediaCount || 0,
       };
     }
-    if (platform === "tiktok") {
+    if (platform === PLATFORMS.TIKTOK) {
       if (!metrics.tikTokAccount) return { subscribers: 0, views: 0, videos: 0 };
       return {
         subscribers: metrics.tikTokAccount.followersCount,
         views: realData.summary?.views || metrics.tikTokAccount.likesCount,
         videos: metrics.tikTokAccount.videoCount,
+      };
+    }
+    if (platform === PLATFORMS.BLUESKY) {
+      if (!metrics.blueskyAccount) return { subscribers: 0, views: 0, videos: 0 };
+      return {
+        subscribers: metrics.blueskyAccount.followersCount || 0,
+        views: 0,
+        likes: realData.interactions?.likes || 0,
+        videos: metrics.blueskyAccount.postsCount || 0,
       };
     }
     if (!metrics.youtubeChannel) return { subscribers: 0, views: 0, videos: 0 };
@@ -230,7 +243,7 @@ export function useChannelInsights(socialAccountId, platformInput) {
   const communityGrowthData = useMemo(() => {
     if (!dateRange.from || !dateRange.to) return [];
     try {
-      if (platform === "facebook" || platform === "tiktok") {
+      if (platform === PLATFORMS.FACEBOOK || platform === PLATFORMS.TIKTOK || platform === PLATFORMS.BLUESKY) {
         return realData.growth || [];
       }
       const days = eachDayOfInterval({ start: dateRange.from, end: dateRange.to });
@@ -240,7 +253,7 @@ export function useChannelInsights(socialAccountId, platformInput) {
         const searchDate = format(day, "yyyy-MM-dd");
         const realDayData = realData.growth?.find((g) => g.date === searchDate);
 
-        if (platform === "instagram") {
+        if (platform === PLATFORMS.INSTAGRAM) {
           const likesCount = realDayData ? realDayData.likes || 0 : 0;
           const commentsCount = realDayData ? realDayData.comments || 0 : 0;
           const savedCount = realDayData ? realDayData.saved || 0 : 0;

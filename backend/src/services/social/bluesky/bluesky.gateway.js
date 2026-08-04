@@ -184,6 +184,17 @@ class BlueskyGateway {
     return res.data?.thread;
   }
 
+  /**
+   * Real, paginated list of the account's own posts (app.bsky.feed.getAuthorFeed),
+   * each item already carrying like/repost/reply/quote counts — the AT
+   * Protocol equivalent of Instagram's media feed used for per-post insights.
+   */
+  async getAuthorFeed(agent, { actor, limit = 50, cursor, filter = 'posts_no_replies' } = {}) {
+    if (!actor) throw new Error('Actor DID/handle is required to fetch Bluesky author feed');
+    const res = await agent.getAuthorFeed({ actor, limit, cursor, filter });
+    return res.data;
+  }
+
   async getPostMetrics(agent, uri) {
     const thread = await this.getPostThread(agent, { uri, depth: 0, parentHeight: 0 });
     if (thread?.$type === BLUESKY_CONSTANTS.RECORD_TYPES.THREAD_VIEW_POST) {

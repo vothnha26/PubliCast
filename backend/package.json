@@ -24,7 +24,6 @@
     "@socket.io/redis-adapter": "^8.3.0",
     "@twurple/api": "^8.1.4",
     "@twurple/auth": "^8.1.4",
-    "@twurple/eventsub-ws": "^8.1.4",
     "axios": "^1.18.1",
     "bcryptjs": "^3.0.3",
     "bullmq": "^5.77.3",

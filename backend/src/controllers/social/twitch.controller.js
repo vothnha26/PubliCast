@@ -1,4 +1,4 @@
-const { twitchService, twitchClipService, twitchGateway } = require('../../services/social/twitch');
+const { twitchService } = require('../../services/social/twitch');
 const socialAccountRepository = require('../../repositories/social/social-account.repository');
 const { DEFAULT_CONFIG, PLATFORMS } = require('../../utils/constants');
 
@@ -26,84 +26,6 @@ class TwitchController {
 
       const account = await twitchService.connectChannel(brandId, code, callbackUrl);
       return res.json({ status: 'success', data: account });
-    } catch (err) {
-      next(err);
-    }
-  }
-
-  async createClip(req, res, next) {
-    try {
-      const { socialAccountId, broadcasterId, maxAttempts } = req.body;
-
-      let bId = broadcasterId;
-      let accessToken = null;
-      let refreshToken = null;
-
-      if (socialAccountId) {
-        const account = await socialAccountRepository.findById(socialAccountId);
-        if (!account) {
-          return res.status(404).json({ status: 'error', message: 'Twitch account not found' });
-        }
-        bId = account.platformAccountId;
-        accessToken = account.accessToken;
-        refreshToken = account.refreshToken;
-      }
-
-      if (!bId) {
-        return res.status(400).json({ status: 'error', message: 'Broadcaster ID is required' });
-      }
-
-      const authProvider = twitchGateway.createAuthProvider(socialAccountId, {
-        accessToken: accessToken || '',
-        refreshToken: refreshToken || '',
-        expiresIn: 0,
-        obtainingTimestamp: Date.now()
-      });
-
-      const apiClient = twitchGateway.getApiClient(authProvider);
-
-      const clipDetails = await twitchClipService.createAndPollClip(apiClient, bId, maxAttempts || 10);
-      return res.json({ status: 'success', data: clipDetails });
-    } catch (err) {
-      if (err.code === 'STREAM_OFFLINE') {
-        return res.status(400).json({ status: 'error', message: 'Stream must be LIVE to create clips' });
-      }
-      next(err);
-    }
-  }
-
-  async getStreamStatus(req, res, next) {
-    try {
-      const { broadcasterId, socialAccountId } = req.query;
-
-      let bId = broadcasterId;
-      let accessToken = null;
-      let refreshToken = null;
-
-      if (socialAccountId) {
-        const account = await socialAccountRepository.findById(socialAccountId);
-        if (account) {
-          bId = account.platformAccountId;
-          accessToken = account.accessToken;
-          refreshToken = account.refreshToken;
-        }
-      }
-
-      if (!bId) {
-        return res.status(400).json({ status: 'error', message: 'Broadcaster ID is required' });
-      }
-
-      const authProvider = twitchGateway.createAuthProvider(socialAccountId, {
-        accessToken: accessToken || '',
-        refreshToken: refreshToken || '',
-        expiresIn: 0,
-        obtainingTimestamp: Date.now()
-      });
-
-      const apiClient = twitchGateway.getApiClient(authProvider);
-      const status = await twitchGateway.getStreamStatus(apiClient, bId);
-
-      return res.json({ status: 'success', data: status });
     } catch (err) {
       next(err);
     }

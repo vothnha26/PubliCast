@@ -284,6 +284,12 @@ class SocialService {
     return data;
   }
 
+  async getBlueskyPublishedPosts(brandId, pageToken = null, limit = 10, socialAccountId = null) {
+    const url = `/social/bluesky/published-posts?brandId=${brandId}${pageToken ? `&pageToken=${pageToken}` : ''}${limit ? `&limit=${limit}` : ''}${socialAccountId ? `&socialAccountId=${socialAccountId}` : ''}`;
+    const data = await apiV2.get(url);
+    return data;
+  }
+
   // --- Reddit ---
   async getRedditAuthUrl(brandId) {
     const data = await apiV2.get(`/social/reddit/url?brandId=${brandId}`);

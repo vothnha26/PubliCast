@@ -11,10 +11,3 @@ jest.mock('@atproto/api', () => ({ BskyAgent: jest.fn(), RichText: jest.fn() }))
 
 jest.mock('@twurple/api', () => ({ ApiClient: jest.fn() }));
 jest.mock('@twurple/auth', () => ({ RefreshingAuthProvider: jest.fn() }));
-jest.mock('@twurple/eventsub-ws', () => ({
-  EventSubWsListener: jest.fn().mockImplementation(() => ({
-    start: jest.fn(),
-    stop: jest.fn(),
-    onChannelChatMessage: jest.fn()
-  }))
-}));

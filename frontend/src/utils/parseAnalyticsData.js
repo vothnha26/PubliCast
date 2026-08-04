@@ -1,5 +1,6 @@
 import { format } from "date-fns";
 import { EMPTY_ANALYTICS_DATA } from "@/mocks/dashboardFallback";
+import { PLATFORMS } from "../constants/platforms";
 
 const COUNTRY_MAP = {
   VN: { name: "Vietnam", flag: "🇻🇳" },
@@ -25,7 +26,7 @@ const COUNTRY_MAP = {
  */
 export function parseAnalyticsData(metrics, platform, dateRange = {}) {
   if (!metrics?.analytics?.[0]?.socialAnalytics?.audienceDemographicsJson) {
-    if (platform === "instagram") {
+    if (platform === PLATFORMS.INSTAGRAM) {
       return {
         demographics: { gender: [], age: [], countries: [], trafficSource: [] },
         balance: [],
@@ -42,7 +43,24 @@ export function parseAnalyticsData(metrics, platform, dateRange = {}) {
   try {
     const raw = JSON.parse(metrics.analytics[0].socialAnalytics.audienceDemographicsJson);
 
-    if (platform === "facebook" || platform === "tiktok" || platform === "instagram") {
+    if (platform === PLATFORMS.BLUESKY) {
+      const fromStr = dateRange.from ? format(dateRange.from, "yyyy-MM-dd") : null;
+      const toStr = dateRange.to ? format(dateRange.to, "yyyy-MM-dd") : null;
+      const filterByRange = (arr) => {
+        if (!arr?.length || !fromStr || !toStr) return arr || [];
+        return arr.filter((item) => item.date >= fromStr && item.date <= toStr);
+      };
+
+      return {
+        demographics: { gender: [], age: [], countries: [], trafficSource: [] },
+        balance: filterByRange(raw.balance || []),
+        growth: filterByRange(raw.growth || []),
+        interactions: raw.interactions || {},
+        summary: raw.summary || {},
+      };
+    }
+
+    if (platform === PLATFORMS.FACEBOOK || platform === PLATFORMS.TIKTOK || platform === PLATFORMS.INSTAGRAM) {
       const fromStr = dateRange.from ? format(dateRange.from, "yyyy-MM-dd") : null;
       const toStr = dateRange.to ? format(dateRange.to, "yyyy-MM-dd") : null;
       const filterByRange = (arr) => {

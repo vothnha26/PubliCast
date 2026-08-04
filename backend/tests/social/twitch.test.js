@@ -2,111 +2,131 @@
 // can't load).
 const twitchGateway = require('../../src/services/social/twitch/twitch.gateway');
 const twitchService = require('../../src/services/social/twitch/twitch.service');
-const twitchChatService = require('../../src/services/social/twitch/twitch-chat.service');
-const twitchClipService = require('../../src/services/social/twitch/twitch-clip.service');
 const twitchController = require('../../src/controllers/social/twitch.controller');
 const socialAccountRepository = require('../../src/repositories/social/social-account.repository');
+const { PLATFORMS, POST_STATUS } = require('../../src/utils/constants');
 
 jest.mock('../../src/repositories/social/social-account.repository');
+jest.mock('../../src/services/social/twitch/twitch.gateway');
 
 describe('Twitch Integration Suite', () => {
   afterEach(() => {
     jest.clearAllMocks();
   });
 
-  describe('Twitch Service Unit Tests', () => {
-    it('should throw error when calling publishPost because Twitch does not support scheduled posting', async () => {
-      await expect(twitchService.publishPost()).rejects.toThrow(
-        'Twitch does not support scheduled post publishing.'
-      );
-    });
-
-    it('should generate Twitch auth URL with state and required scopes', () => {
+  describe('Twitch Service — getAuthUrl', () => {
+    it('requests channel:manage:broadcast and channel:manage:schedule scopes', () => {
       const url = twitchService.getAuthUrl('brand_123', 'http://localhost/callback');
       expect(url).toContain('https://id.twitch.tv/oauth2/authorize');
-      expect(url).toContain('scope=channel%3Amanage%3Abroadcast%20clips%3Aedit%20chat%3Aread%20user%3Awrite%3Achat');
+      expect(url).toContain('scope=channel%3Amanage%3Abroadcast%20channel%3Amanage%3Aschedule');
       expect(url).toContain('state=brand_123');
     });
   });
 
-  describe('Twitch Gateway Tests', () => {
-    it('should get stream status when live', async () => {
-      const mockApiClient = {
-        streams: {
-          getStreamByUserId: jest.fn().mockResolvedValue({
-            title: 'Valorant Stream',
-            gameName: 'Valorant',
-            viewerCount: 1500,
-            startDate: new Date('2026-07-25T10:00:00Z')
-          })
-        }
-      };
+  describe('Twitch Service — publishPost (Stream Schedule segment)', () => {
+    const mockAccount = {
+      id: 'acc-twitch-1',
+      brandId: 'brand_123',
+      platform: PLATFORMS.TWITCH,
+      platformAccountId: 'broadcaster_1',
+      accessToken: 'token',
+      refreshToken: 'refresh'
+    };
 
-      const status = await twitchGateway.getStreamStatus(mockApiClient, 'broadcaster_1');
-      expect(status.isLive).toBe(true);
-      expect(status.title).toBe('Valorant Stream');
-      expect(status.viewerCount).toBe(1500);
+    beforeEach(() => {
+      socialAccountRepository.findByBrandAndPlatformFirst.mockResolvedValue(mockAccount);
+      twitchGateway.createAuthProvider.mockReturnValue({});
+      twitchGateway.getApiClient.mockReturnValue({});
     });
 
-    it('should return isLive false when stream is offline', async () => {
-      const mockApiClient = {
-        streams: {
-          getStreamByUserId: jest.fn().mockResolvedValue(null)
-        }
-      };
+    it('creates a schedule segment using the post title and scheduledAt', async () => {
+      twitchGateway.createScheduleSegment.mockResolvedValue({
+        id: 'segment-1',
+        startDate: '2026-08-10T18:00:00.000Z'
+      });
 
-      const status = await twitchGateway.getStreamStatus(mockApiClient, 'broadcaster_1');
-      expect(status.isLive).toBe(false);
+      const result = await twitchService.publishPost('brand_123', {
+        title: 'Ranked grind tonight',
+        scheduledAt: '2026-08-10T18:00:00.000Z'
+      });
+
+      expect(twitchGateway.createScheduleSegment).toHaveBeenCalledWith(
+        expect.anything(),
+        'broadcaster_1',
+        { title: 'Ranked grind tonight', startDate: '2026-08-10T18:00:00.000Z' }
+      );
+      expect(result).toEqual({
+        id: 'segment-1',
+        status: POST_STATUS.PUBLISHED,
+        publishedAt: '2026-08-10T18:00:00.000Z'
+      });
     });
 
-    it('should poll clip details successfully when ready', async () => {
-      const mockApiClient = {
-        clips: {
-          getClipById: jest.fn().mockResolvedValue({
-            id: 'Clip123',
-            url: 'https://clips.twitch.tv/Clip123',
-            embedUrl: 'https://clips.twitch.tv/embed?clip=Clip123',
-            title: 'Epic Quadra Kill',
-            thumbnailUrl: 'https://clips-media-assets2.twitch.tv/Clip123-preview.jpg',
-            duration: 30
-          })
-        }
-      };
+    it('falls back to caption when no title is given, truncated to 140 chars', async () => {
+      twitchGateway.createScheduleSegment.mockResolvedValue({ id: 'segment-2', startDate: '2026-08-10T00:00:00.000Z' });
 
-      const clip = await twitchGateway.pollClipDetails(mockApiClient, 'Clip123', 1);
-      expect(clip.id).toBe('Clip123');
-      expect(clip.title).toBe('Epic Quadra Kill');
+      const longCaption = 'x'.repeat(200);
+      await twitchService.publishPost('brand_123', { caption: longCaption });
+
+      const callArgs = twitchGateway.createScheduleSegment.mock.calls[0][2];
+      expect(callArgs.title).toHaveLength(140);
+    });
+
+    it('rejects when neither title nor caption is provided', async () => {
+      await expect(twitchService.publishPost('brand_123', {})).rejects.toThrow(
+        'A title is required to schedule a Twitch broadcast'
+      );
+      expect(twitchGateway.createScheduleSegment).not.toHaveBeenCalled();
+    });
+
+    it('rejects when no Twitch account is connected', async () => {
+      socialAccountRepository.findByBrandAndPlatformFirst.mockResolvedValueOnce(null);
+      await expect(twitchService.publishPost('brand_123', { title: 'x' })).rejects.toThrow(
+        'Twitch account not connected'
+      );
     });
   });
 
-  describe('Twitch Clip Service Tests', () => {
-    it('should throw error STREAM_OFFLINE if stream is offline when creating clip', async () => {
-      const mockApiClient = {
-        streams: {
-          getStreamByUserId: jest.fn().mockResolvedValue(null)
-        }
-      };
+  describe('Twitch Service — updatePublishedPost / deletePost', () => {
+    const mockAccount = {
+      id: 'acc-twitch-1',
+      brandId: 'brand_123',
+      platform: PLATFORMS.TWITCH,
+      platformAccountId: 'broadcaster_1',
+      accessToken: 'token',
+      refreshToken: 'refresh'
+    };
 
-      await expect(
-        twitchClipService.createAndPollClip(mockApiClient, 'broadcaster_1', 1)
-      ).rejects.toThrow('Stream must be LIVE to create clips');
+    beforeEach(() => {
+      socialAccountRepository.findByBrandAndPlatformFirst.mockResolvedValue(mockAccount);
+      twitchGateway.createAuthProvider.mockReturnValue({});
+      twitchGateway.getApiClient.mockReturnValue({});
     });
-  });
 
-  describe('Twitch Chat Service Tests', () => {
-    it('should register chat listener and emit socket messages', () => {
-      const mockSocketServer = {
-        to: jest.fn().mockReturnValue({
-          emit: jest.fn()
-        })
-      };
+    it('updates the schedule segment title and start time', async () => {
+      twitchGateway.updateScheduleSegment.mockResolvedValue({ id: 'segment-1', startDate: '2026-08-11T18:00:00.000Z' });
 
-      const mockApiClient = {};
-      twitchChatService.startChatListener('broadcaster_1', mockApiClient, mockSocketServer);
-      expect(twitchChatService.listeners.has('broadcaster_1')).toBe(true);
+      const result = await twitchService.updatePublishedPost('brand_123', 'segment-1', {
+        title: 'New title',
+        scheduledAt: '2026-08-11T18:00:00.000Z'
+      });
 
-      twitchChatService.stopChatListener('broadcaster_1');
-      expect(twitchChatService.listeners.has('broadcaster_1')).toBe(false);
+      expect(twitchGateway.updateScheduleSegment).toHaveBeenCalledWith(
+        expect.anything(),
+        'broadcaster_1',
+        'segment-1',
+        { title: 'New title', startDate: '2026-08-11T18:00:00.000Z' }
+      );
+      expect(result.id).toBe('segment-1');
+    });
+
+    it('deletes the schedule segment', async () => {
+      twitchGateway.deleteScheduleSegment.mockResolvedValue(undefined);
+
+      const result = await twitchService.deletePost('brand_123', 'segment-1');
+
+      expect(twitchGateway.deleteScheduleSegment).toHaveBeenCalledWith(expect.anything(), 'broadcaster_1', 'segment-1');
+      expect(result).toEqual({ success: true });
     });
   });
 

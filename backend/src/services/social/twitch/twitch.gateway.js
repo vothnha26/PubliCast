@@ -34,38 +34,38 @@ class TwitchGateway {
     return new ApiClient({ authProvider });
   }
 
-  async getStreamStatus(apiClient, broadcasterId) {
-    const stream = await apiClient.streams.getStreamByUserId(broadcasterId);
-    return stream ? {
-      isLive: true,
-      title: stream.title,
-      gameName: stream.gameName,
-      viewerCount: stream.viewerCount,
-      startedAt: stream.startDate
-    } : { isLive: false };
+  /**
+   * "Publishing a post" on Twitch has no analog to a text/media feed post —
+   * Helix's Videos endpoint has no create/upload method (VODs are only
+   * generated from an actual live broadcast). The closest real, honest
+   * equivalent is a Channel Stream Schedule segment: it has its own ID,
+   * a genuine update/delete lifecycle, and is publicly visible on the
+   * channel's "Schedule" tab — unlike a bare channel-info title update.
+   * Requires the `channel:manage:schedule` OAuth scope.
+   */
+  async createScheduleSegment(apiClient, broadcasterId, { title, startDate, timezone = 'UTC', duration, categoryId }) {
+    return apiClient.schedule.createScheduleSegment(broadcasterId, {
+      title,
+      startDate,
+      timezone,
+      isRecurring: false,
+      duration,
+      categoryId
+    });
   }
 
-  async createClip(apiClient, broadcasterId) {
-    const clipId = await apiClient.clips.createClip({ channelId: broadcasterId });
-    return clipId;
+  async updateScheduleSegment(apiClient, broadcasterId, segmentId, { title, startDate, timezone, duration, categoryId }) {
+    return apiClient.schedule.updateScheduleSegment(broadcasterId, segmentId, {
+      title,
+      startDate,
+      timezone,
+      duration,
+      categoryId
+    });
   }
 
-  async pollClipDetails(apiClient, clipId, maxAttempts = 10) {
-    for (let i = 0; i < maxAttempts; i++) {
-      const clip = await apiClient.clips.getClipById(clipId);
-      if (clip && clip.thumbnailUrl && !clip.thumbnailUrl.includes('processing')) {
-        return {
-          id: clip.id,
-          url: clip.url,
-          embedUrl: clip.embedUrl,
-          title: clip.title,
-          thumbnailUrl: clip.thumbnailUrl,
-          duration: clip.duration
-        };
-      }
-      await new Promise(r => setTimeout(r, 3000));
-    }
-    throw new Error('Clip processing timed out');
+  async deleteScheduleSegment(apiClient, broadcasterId, segmentId) {
+    return apiClient.schedule.deleteScheduleSegment(broadcasterId, segmentId);
   }
 }
 
