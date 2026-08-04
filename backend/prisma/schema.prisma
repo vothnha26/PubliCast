@@ -379,6 +379,7 @@ model PlanLimit {
   maxTeamSeats          Int
   allowCustomRoles      Boolean
   allowApprovalWorkflow Boolean
+  historyWindowMonths   Int           @default(1)
   createdAt             DateTime      @default(now())
 
   plans Plan[]
