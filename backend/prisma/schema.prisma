@@ -2000,3 +2000,53 @@ model OutboxEvent {
   @@index([eventType])
   @@map("outbox_events")
 }
+
+// Featured post-content templates (Buffer-style content ideas), shown in the
+// Post Library "Featured Templates" tab. Global/system-owned — no brandId,
+// managed only by ADMIN users, unlike PostTemplate-style per-brand data.
+// Many-to-many with Template: a single idea can be tagged under multiple
+// categories at once (e.g. a template can be both "Reflection" and
+// "Behind the Scenes"), same as Buffer's own template library.
+model TemplateCategory {
+  id        String   @id @default(uuid())
+  name      String   @unique
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  templates TemplateCategoryOnTemplate[]
+
+  @@map("template_categories")
+}
+
+model Template {
+  id          String   @id @default(uuid())
+  emoji       String?
+  title       String
+  // Short prompt shown on the template card (what to write about).
+  description String   @db.Text
+  // Full starter content with {{placeholder}} sections, inserted into the
+  // composer when the user clicks the template — mirrors Buffer's
+  // Description vs Body split in its own template editor.
+  body        String?  @db.Text
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  categories TemplateCategoryOnTemplate[]
+
+  @@map("templates")
+}
+
+model TemplateCategoryOnTemplate {
+  id         String   @id @default(uuid())
+  categoryId String
+  templateId String
+  createdAt  DateTime @default(now())
+
+  category TemplateCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  template Template         @relation(fields: [templateId], references: [id], onDelete: Cascade)
+
+  @@unique([categoryId, templateId])
+  @@index([templateId])
+  @@map("template_category_on_template")
+}

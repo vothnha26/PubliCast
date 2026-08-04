@@ -122,6 +122,19 @@
     "editTemplate": "Edit Template",
     "viewTemplate": "View Template",
     "templateBadge": "Template",
+    "tabs": {
+      "myTemplates": "My Templates",
+      "featuredTemplates": "Featured Templates"
+    },
+    "featured": {
+      "subtitle": "Helpful starting points to plan your next post.",
+      "useThisIdea": "Use this idea",
+      "emptyTitle": "No featured templates yet",
+      "emptyDesc": "Check back soon — new content ideas are added regularly.",
+      "toasts": {
+        "loadFail": "Failed to load featured templates"
+      }
+    },
     "toasts": {
       "loadFail": "Failed to load library posts"
     }

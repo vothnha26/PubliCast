@@ -69,6 +69,7 @@ import { ConnectPlatformsPage } from "./pages/manage/Placeholder";
 import { AdminPricing } from "./pages/admin/AdminPricing";
 import { AdminUsers } from "./pages/admin/AdminUsers";
 import { AdminProducts } from "./pages/admin/AdminProducts";
+import { AdminTemplates } from "./pages/admin/AdminTemplates";
 import { AuditLog } from "./pages/admin/AuditLog";
 import { RevenueDashboard } from "./pages/admin/RevenueDashboard";
 import { AdminPlatformLock } from "./pages/admin/AdminPlatformLock";
@@ -196,6 +197,7 @@ export default function App() {
                 <Route path="/admin/pricing" element={<ProtectedRoute allowedRoles={['ADMIN']}><AdminPricing /></ProtectedRoute>} />
                 <Route path="/admin/users" element={<ProtectedRoute allowedRoles={['ADMIN']}><AdminUsers /></ProtectedRoute>} />
                 <Route path="/admin/products" element={<ProtectedRoute allowedRoles={['ADMIN']}><AdminProducts /></ProtectedRoute>} />
+                <Route path="/admin/templates" element={<ProtectedRoute allowedRoles={['ADMIN']}><AdminTemplates /></ProtectedRoute>} />
                 <Route path="/admin/audit" element={<ProtectedRoute allowedRoles={['ADMIN']}><AuditLog /></ProtectedRoute>} />
                 <Route path="/admin/revenue" element={<ProtectedRoute allowedRoles={['ADMIN']}><RevenueDashboard /></ProtectedRoute>} />
                 <Route path="/admin/platform-lock" element={<ProtectedRoute allowedRoles={['ADMIN']}><AdminPlatformLock /></ProtectedRoute>} />

@@ -69,7 +69,8 @@ export function SidebarWorkspace() {
   // way the rest of /manage/* does.
   const isManageMode = (currentPath.startsWith("/manage") && !currentPath.startsWith("/manage/inbox"))
     || currentPath.startsWith("/hashtags")
-    || currentPath.startsWith("/settings");
+    || currentPath.startsWith("/settings")
+    || currentPath.startsWith("/pricing");
 
   const planName = planInfo?.planName || "FREE";
   const isPremium = planName.toUpperCase() !== "FREE";
