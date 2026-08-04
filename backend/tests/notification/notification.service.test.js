@@ -3,6 +3,7 @@ const notificationRepository = require('../../src/repositories/core/notification
 const brandRepository = require('../../src/repositories/workspace/brand.repository');
 const userRepository = require('../../src/repositories/auth/user.repository');
 const authorizationFacade = require('../../src/services/auth/authorization.facade');
+const prisma = require('../../src/config/prisma');
 
 jest.mock('../../src/repositories/core/notification.repository', () => ({
   create: jest.fn(),
@@ -22,6 +23,11 @@ jest.mock('../../src/repositories/auth/user.repository', () => ({
 
 jest.mock('../../src/services/auth/authorization.facade', () => ({
   checkBrandAccess: jest.fn()
+}));
+
+jest.mock('../../src/config/prisma', () => ({
+  userSettings: { findUnique: jest.fn() },
+  brand: { findUnique: jest.fn() }
 }));
 
 describe('NotificationService', () => {
@@ -270,6 +276,143 @@ describe('NotificationService', () => {
           { isGlobal: true, createdAt: { gte: signupDate } }
         ]
       }, { skip: 0, take: 50 }, 'new-user-1');
+    });
+  });
+
+  describe('preference-gated create', () => {
+    it('creates the notification when the user has no UserSettings row yet (schema defaults apply)', async () => {
+      prisma.userSettings.findUnique.mockResolvedValue(null);
+      notificationRepository.create.mockResolvedValue({
+        id: 'notif-1', userId: 'user-1', title: 'Post published', message: 'msg', type: 'content',
+        isRead: false, isGlobal: false, actionUrl: null, createdAt: new Date(), readReceipts: []
+      });
+
+      const result = await notificationService.create({
+        userId: 'user-1',
+        title: 'Post published',
+        message: 'msg',
+        type: 'content',
+        preferenceKey: 'notifyPublishSuccess'
+      });
+
+      expect(notificationRepository.create).toHaveBeenCalled();
+      expect(result).not.toBeNull();
+    });
+
+    it('skips creation when the user disabled that specific category', async () => {
+      prisma.userSettings.findUnique.mockResolvedValue({
+        notificationsEnabled: true,
+        notifyPublishSuccess: false
+      });
+
+      const result = await notificationService.create({
+        userId: 'user-1',
+        title: 'Post published',
+        message: 'msg',
+        type: 'content',
+        preferenceKey: 'notifyPublishSuccess'
+      });
+
+      expect(notificationRepository.create).not.toHaveBeenCalled();
+      expect(result).toBeNull();
+    });
+
+    it('skips creation when the master notificationsEnabled toggle is off, even if the category itself is on', async () => {
+      prisma.userSettings.findUnique.mockResolvedValue({
+        notificationsEnabled: false,
+        notifyPublishSuccess: true
+      });
+
+      const result = await notificationService.create({
+        userId: 'user-1',
+        title: 'Post published',
+        message: 'msg',
+        type: 'content',
+        preferenceKey: 'notifyPublishSuccess'
+      });
+
+      expect(notificationRepository.create).not.toHaveBeenCalled();
+      expect(result).toBeNull();
+    });
+
+    it('does not check preferences when no preferenceKey is supplied (unfiltered categories like isGlobal pricing broadcasts)', async () => {
+      notificationRepository.create.mockResolvedValue({
+        id: 'notif-1', userId: null, title: 'Pricing changed', message: 'msg', type: 'system',
+        isRead: false, isGlobal: true, actionUrl: null, createdAt: new Date(), readReceipts: []
+      });
+
+      await notificationService.create({
+        title: 'Pricing changed',
+        message: 'msg',
+        type: 'system',
+        isGlobal: true
+      }, { role: 'ADMIN' });
+
+      expect(prisma.userSettings.findUnique).not.toHaveBeenCalled();
+      expect(notificationRepository.create).toHaveBeenCalled();
+    });
+  });
+
+  describe('notifyBrandMembers', () => {
+    it('fans out to the brand owner and every active team member, each filtered by their own preference', async () => {
+      prisma.brand.findUnique.mockResolvedValue({
+        ownerId: 'owner-1',
+        teamMembers: [{ userId: 'member-1' }, { userId: 'member-2' }]
+      });
+      // owner-1 and member-1 have the category on (or no row = defaults on),
+      // member-2 has explicitly opted out.
+      prisma.userSettings.findUnique.mockImplementation(({ where: { userId } }) => {
+        if (userId === 'member-2') {
+          return Promise.resolve({ notificationsEnabled: true, notifyChannelDisconnect: false });
+        }
+        return Promise.resolve(null);
+      });
+      notificationRepository.create.mockResolvedValue({
+        id: 'notif-x', userId: 'x', title: 'Facebook disconnected', message: 'msg', type: 'platform',
+        isRead: false, isGlobal: false, actionUrl: null, createdAt: new Date(), readReceipts: []
+      });
+
+      await notificationService.notifyBrandMembers('brand-1', {
+        type: 'platform',
+        title: 'Facebook disconnected',
+        message: 'msg'
+      }, 'notifyChannelDisconnect');
+
+      const createdUserIds = notificationRepository.create.mock.calls.map((call) => call[0].userId);
+      expect(createdUserIds.sort()).toEqual(['member-1', 'owner-1']);
+    });
+
+    it('does nothing when the brand does not exist', async () => {
+      prisma.brand.findUnique.mockResolvedValue(null);
+
+      await notificationService.notifyBrandMembers('missing-brand', {
+        type: 'platform',
+        title: 'x',
+        message: 'y'
+      }, 'notifyChannelDisconnect');
+
+      expect(notificationRepository.create).not.toHaveBeenCalled();
+    });
+
+    it('only counts ACTIVE team members, not pending/removed ones', async () => {
+      prisma.brand.findUnique.mockResolvedValue({
+        ownerId: 'owner-1',
+        teamMembers: [] // repository query already filters to status: 'ACTIVE'
+      });
+      prisma.userSettings.findUnique.mockResolvedValue(null);
+      notificationRepository.create.mockResolvedValue({
+        id: 'notif-x', userId: 'owner-1', title: 'x', message: 'y', type: 'platform',
+        isRead: false, isGlobal: false, actionUrl: null, createdAt: new Date(), readReceipts: []
+      });
+
+      await notificationService.notifyBrandMembers('brand-1', { type: 'platform', title: 'x', message: 'y' }, 'notifyChannelDisconnect');
+
+      expect(prisma.brand.findUnique).toHaveBeenCalledWith(expect.objectContaining({
+        where: { id: 'brand-1' },
+        select: expect.objectContaining({
+          teamMembers: { where: { status: 'ACTIVE' }, select: { userId: true } }
+        })
+      }));
     });
   });
 });

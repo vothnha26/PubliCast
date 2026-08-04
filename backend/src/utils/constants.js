@@ -710,6 +710,14 @@ const LOCK_CONFIG = {
     // Covers one full published-posts/metrics sync pass across every brand —
     // generous ceiling, same reasoning as REPORT_SCHEDULER.
     TTL_SEC: 20 * 60
+  },
+  EMPTY_QUEUE_SCHEDULER: {
+    KEY: 'lock:empty-queue-scheduler:daily-scan',
+    TTL_SEC: 20 * 60
+  },
+  RECAP_SCHEDULER: {
+    KEY: 'lock:recap-scheduler:scan',
+    TTL_SEC: 20 * 60
   }
 };
 

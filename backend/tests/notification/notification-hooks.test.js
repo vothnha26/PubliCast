@@ -16,7 +16,8 @@ jest.mock('../../src/repositories/workspace/auto-list.repository', () => ({
 }));
 
 jest.mock('../../src/services/core/notification.service', () => ({
-  create: jest.fn()
+  create: jest.fn(),
+  notifyBrandMembers: jest.fn()
 }));
 
 jest.mock('../../src/services/social/social-platform.factory', () => ({
@@ -120,17 +121,16 @@ describe('Notification integration hooks', () => {
   describe('social connection', () => {
     it('creates a platform notification when disconnecting an account', async () => {
       socialAccountRepository.deleteManyByBrandAndPlatform.mockResolvedValue({ count: 1 });
-      notificationService.create.mockResolvedValue({});
+      notificationService.notifyBrandMembers.mockResolvedValue({});
 
       await socialService.disconnectAccount('brand-1', PLATFORMS.YOUTUBE);
 
       expect(socialAccountRepository.deleteManyByBrandAndPlatform).toHaveBeenCalledWith('brand-1', PLATFORMS.YOUTUBE);
-      expect(notificationService.create).toHaveBeenCalledWith(expect.objectContaining({
-        brandId: 'brand-1',
+      expect(notificationService.notifyBrandMembers).toHaveBeenCalledWith('brand-1', expect.objectContaining({
         type: NOTIFICATION_TYPES.PLATFORM,
         title: `${PLATFORMS.YOUTUBE} disconnected`,
         actionUrl: '/manage/connections'
-      }));
+      }), 'notifyChannelDisconnect');
     });
 
     it('creates a platform notification when social metric sync fails', async () => {
@@ -146,7 +146,7 @@ describe('Notification integration hooks', () => {
 
       socialAccountRepository.findByBrandAndPlatform.mockResolvedValue([account]);
       socialPlatformFactory.getService.mockReturnValue(platformService);
-      notificationService.create.mockResolvedValue({});
+      notificationService.notifyBrandMembers.mockResolvedValue({});
 
       // force=false (default) returns the cached/DB snapshot immediately and
       // fires the live sync + failure notification in the background,
@@ -157,12 +157,11 @@ describe('Notification integration hooks', () => {
       await new Promise((resolve) => setImmediate(resolve));
 
       expect(result).toEqual([account]);
-      expect(notificationService.create).toHaveBeenCalledWith(expect.objectContaining({
-        brandId: 'brand-1',
+      expect(notificationService.notifyBrandMembers).toHaveBeenCalledWith('brand-1', expect.objectContaining({
         type: NOTIFICATION_TYPES.PLATFORM,
         title: `${PLATFORMS.FACEBOOK} sync failed`,
         actionUrl: '/manage/connections'
-      }));
+      }), 'notifyChannelDisconnect');
       consoleSpy.mockRestore();
     });
   });

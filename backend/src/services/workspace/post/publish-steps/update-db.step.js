@@ -264,7 +264,8 @@ class UpdatePostStatusStep extends BaseStep {
         type: NOTIFICATION_TYPES.CONTENT,
         title: 'Post published successfully',
         message: `"${post.title}" was published${platforms ? ` to ${platforms}` : ''}.`,
-        actionUrl: '/planner'
+        actionUrl: '/planner',
+        preferenceKey: 'notifyPublishSuccess'
       });
     } catch (err) {
       console.error('[UpdatePostStatusStep] Failed to create publish success notification:', err.message);
@@ -279,7 +280,8 @@ class UpdatePostStatusStep extends BaseStep {
         type: NOTIFICATION_TYPES.CONTENT,
         title: 'Post publishing failed',
         message: `"${post.title}" could not be published. ${failureReason}`,
-        actionUrl: '/planner'
+        actionUrl: '/planner',
+        preferenceKey: 'notifyPostFailure'
       });
     } catch (err) {
       console.error('[UpdatePostStatusStep] Failed to create publish failure notification:', err.message);

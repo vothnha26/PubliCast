@@ -248,13 +248,12 @@ class SocialService {
 
   async _notifyPlatformDisconnected(brandId, platform) {
     try {
-      await notificationService.create({
-        brandId,
+      await notificationService.notifyBrandMembers(brandId, {
         type: NOTIFICATION_TYPES.PLATFORM,
         title: `${platform} disconnected`,
         message: `${platform} has been disconnected. Reconnect it to keep publishing and syncing analytics.`,
         actionUrl: '/manage/connections'
-      });
+      }, 'notifyChannelDisconnect');
     } catch (err) {
       console.error(`[SocialService] Failed to create ${platform} disconnect notification:`, err.message);
     }
@@ -262,13 +261,12 @@ class SocialService {
 
   async _notifyPlatformSyncFailure(account, error) {
     try {
-      await notificationService.create({
-        brandId: account.brandId,
+      await notificationService.notifyBrandMembers(account.brandId, {
         type: NOTIFICATION_TYPES.PLATFORM,
         title: `${account.platform} sync failed`,
         message: `${account.platform} could not sync analytics. ${error.message || 'Reconnect the platform to continue syncing.'}`,
         actionUrl: '/manage/connections'
-      });
+      }, 'notifyChannelDisconnect');
     } catch (err) {
       console.error(`[SocialService] Failed to create ${account.platform} sync failure notification:`, err.message);
     }

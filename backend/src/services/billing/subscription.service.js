@@ -176,13 +176,12 @@ class SubscriptionService {
 
       if (didTransition) {
         try {
-          await notificationService.create({
-            brandId: pending.brandId,
+          await notificationService.notifyBrandMembers(pending.brandId, {
             type: NOTIFICATION_TYPES.SYSTEM,
             title: 'Giao dịch đã hết hạn',
             message: 'Mã QR thanh toán đã hết hạn. Vui lòng thực hiện lại giao dịch.',
             actionUrl: '/settings/billing'
-          });
+          }, 'notifyBilling');
         } catch (notifErr) {
           logger.warn('[SubscriptionService] Failed to create expired QR notification', { error: notifErr.message });
         }
@@ -339,15 +338,14 @@ class SubscriptionService {
     // Notification: thanh toán thành công
     try {
       const isPlan = Boolean(pending.planId);
-      await notificationService.create({
-        brandId: pending.brandId,
+      await notificationService.notifyBrandMembers(pending.brandId, {
         type: NOTIFICATION_TYPES.SYSTEM,
         title: isPlan ? 'Nâng cấp gói thành công' : 'Mua add-on thành công',
         message: isPlan
           ? `Gói ${pending.plan?.name || ''} đã được kích hoạt. Cảm ơn bạn đã sử dụng PubliCast!`
           : `Add-on ${pending.addon?.name || ''} đã được kích hoạt thành công.`,
         actionUrl: '/settings/billing'
-      });
+      }, 'notifyBilling');
     } catch (notifErr) {
       logger.warn('[SubscriptionService] Failed to create payment success notification', { error: notifErr.message });
     }

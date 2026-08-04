@@ -3,8 +3,37 @@
   "tabs": {
     "account": "Personal Profile",
     "security": "Security & Login",
+    "notifications": "Notifications",
     "support": "Support (Chat)",
     "billing": "Payment Gateway"
+  },
+  "notifications": {
+    "title": "Notifications",
+    "subtitle": "Choose which alerts you want to receive. You can turn everything off at once, or fine-tune each category.",
+    "masterToggle": "Enable notifications",
+    "masterToggleDesc": "Turning this off stops every notification below, without changing your individual choices.",
+    "groups": {
+      "activity": "Activity & Alerts",
+      "insights": "Insights & Performance"
+    },
+    "items": {
+      "postFailure": "Post failures",
+      "postFailureDesc": "Get notified when a scheduled post fails to publish.",
+      "publishSuccess": "Published post confirmations",
+      "publishSuccessDesc": "Get notified whenever a post is published successfully.",
+      "channelDisconnect": "Channel connection updates",
+      "channelDisconnectDesc": "Get notified when a channel is disconnected or a sync fails.",
+      "collaboration": "Collaboration",
+      "collaborationDesc": "Get updates about team invites, role changes, and approval requests.",
+      "emptyQueue": "Empty queue alerts",
+      "emptyQueueDesc": "Get notified when a brand has no posts scheduled.",
+      "billing": "Billing and payment reminders",
+      "billingDesc": "Get payment reminders and other billing-related notices.",
+      "dailyRecap": "Daily post recap",
+      "dailyRecapDesc": "A daily summary of what was published today.",
+      "weeklyReport": "Weekly report card",
+      "weeklyReportDesc": "A weekly summary of what was published this week."
+    }
   },
   "profile": {
     "title": "Personal profile",

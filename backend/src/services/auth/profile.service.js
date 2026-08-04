@@ -2,8 +2,23 @@ const userRepository = require('../../repositories/auth/user.repository');
 const brandService = require('../../services/workspace/brand.service');
 const brandRepository = require('../../repositories/workspace/brand.repository');
 const tokenService = require('./token.service');
+const prisma = require('../../config/prisma');
 const { ERROR_MESSAGES } = require('../../utils/constants');
 const logger = require('../../utils/logger');
+
+// Keep in sync with notification.service.js's PREFERENCE_KEYS — this is the
+// full set of per-category toggles a client is allowed to write.
+const NOTIFICATION_PREFERENCE_KEYS = [
+  'notificationsEnabled',
+  'notifyPostFailure',
+  'notifyPublishSuccess',
+  'notifyChannelDisconnect',
+  'notifyCollaboration',
+  'notifyBilling',
+  'notifyEmptyQueue',
+  'notifyDailyRecap',
+  'notifyWeeklyReport'
+];
 
 class ProfileService {
   /**
@@ -256,6 +271,51 @@ class ProfileService {
 
     await userRepository.updateProfile(userId, { defaultBrandId });
     return { message: 'Đã thiết lập thương hiệu mặc định thành công', defaultBrandId };
+  }
+
+  /**
+   * Read the current user's notification preferences. Users without a
+   * UserSettings row yet (created before this feature, or never touched
+   * settings) get the schema's defaults rather than a 404/null — a missing
+   * row is not an error state here.
+   */
+  async getNotificationSettings(userId) {
+    const settings = await prisma.userSettings.findUnique({ where: { userId } });
+    return this._formatNotificationSettings(settings);
+  }
+
+  /**
+   * Upsert only the notification-preference fields — language/timezone
+   * (UserSettings' other columns) are untouched and go through their own
+   * update path elsewhere, not this endpoint.
+   */
+  async updateNotificationSettings(userId, updates) {
+    const data = {};
+    for (const key of NOTIFICATION_PREFERENCE_KEYS) {
+      if (typeof updates?.[key] === 'boolean') {
+        data[key] = updates[key];
+      }
+    }
+
+    const settings = await prisma.userSettings.upsert({
+      where: { userId },
+      create: { userId, ...data },
+      update: data
+    });
+
+    return this._formatNotificationSettings(settings);
+  }
+
+  _formatNotificationSettings(settings) {
+    const result = {};
+    for (const key of NOTIFICATION_PREFERENCE_KEYS) {
+      // Matches the Prisma schema's @default for each column so a missing
+      // row reports the same values a real one would have right after
+      // creation, instead of undefined.
+      const schemaDefault = key === 'notifyDailyRecap' || key === 'notifyWeeklyReport' ? false : true;
+      result[key] = settings ? settings[key] : schemaDefault;
+    }
+    return result;
   }
 }
 
