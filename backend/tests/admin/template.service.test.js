@@ -9,8 +9,13 @@ jest.mock('../../src/repositories/admin/template.repository', () => ({
   deleteTemplate: jest.fn()
 }));
 
+jest.mock('../../src/utils/cloudflare-cache', () => ({
+  purgeUrls: jest.fn().mockResolvedValue(undefined)
+}));
+
 const templateService = require('../../src/services/admin/template.service');
 const templateRepository = require('../../src/repositories/admin/template.repository');
+const cloudflareCache = require('../../src/utils/cloudflare-cache');
 
 describe('TemplateService', () => {
   beforeEach(() => jest.resetAllMocks());
@@ -47,17 +52,19 @@ describe('TemplateService', () => {
 
       expect(templateRepository.createCategory).toHaveBeenCalledWith({ name: 'Tip', sortOrder: undefined });
       expect(result).toEqual({ id: 'cat-1', name: 'Tip', sortOrder: 0 });
+      expect(cloudflareCache.purgeUrls).toHaveBeenCalledWith(['/api/v2/templates']);
     });
   });
 
   describe('deleteCategory', () => {
-    it('deletes the category', async () => {
+    it('deletes the category and purges the CDN cache', async () => {
       templateRepository.deleteCategory.mockResolvedValue({});
 
       const result = await templateService.deleteCategory('cat-1');
 
       expect(templateRepository.deleteCategory).toHaveBeenCalledWith('cat-1');
       expect(result).toEqual({ message: 'Category deleted successfully' });
+      expect(cloudflareCache.purgeUrls).toHaveBeenCalledWith(['/api/v2/templates']);
     });
   });
 
@@ -101,6 +108,7 @@ describe('TemplateService', () => {
         format: 'VIDEO',
         goal: 'ENGAGEMENT'
       });
+      expect(cloudflareCache.purgeUrls).toHaveBeenCalledWith(['/api/v2/templates']);
     });
 
     it('rejects an invalid format value', async () => {
@@ -169,13 +177,14 @@ describe('TemplateService', () => {
   });
 
   describe('deleteTemplate', () => {
-    it('deletes the template', async () => {
+    it('deletes the template and purges the CDN cache', async () => {
       templateRepository.deleteTemplate.mockResolvedValue({});
 
       const result = await templateService.deleteTemplate('tpl-1');
 
       expect(templateRepository.deleteTemplate).toHaveBeenCalledWith('tpl-1');
       expect(result).toEqual({ message: 'Template deleted successfully' });
+      expect(cloudflareCache.purgeUrls).toHaveBeenCalledWith(['/api/v2/templates']);
     });
   });
 });

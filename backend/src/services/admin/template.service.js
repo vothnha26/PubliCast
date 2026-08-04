@@ -1,14 +1,20 @@
 const templateRepository = require('../../repositories/admin/template.repository');
 const { TEMPLATE_FORMAT, TEMPLATE_GOAL } = require('../../utils/constants');
+const cloudflareCache = require('../../utils/cloudflare-cache');
+
+const FEATURED_TEMPLATES_PATH = '/api/v2/templates';
 
 class TemplateService {
   // No server-side cache here — the public read endpoint is cached at the
   // Cloudflare edge via its Cache-Control header (see
-  // controllers/social/template.controller.js), which the admin write
-  // endpoints purge via the CDN's own cache-invalidation API rather than
-  // anything this service needs to know about.
+  // controllers/social/template.controller.js). Writes below purge that
+  // edge cache directly instead of waiting out the header's max-age.
   async getFeaturedTemplates() {
     return templateRepository.findAllCategoriesWithTemplates();
+  }
+
+  async _purgeFeaturedTemplatesCache() {
+    await cloudflareCache.purgeUrls([FEATURED_TEMPLATES_PATH]);
   }
 
   async createCategory({ name, sortOrder }) {
@@ -27,6 +33,7 @@ class TemplateService {
     }
 
     const category = await templateRepository.createCategory({ name: trimmedName, sortOrder });
+    await this._purgeFeaturedTemplatesCache();
     return category;
   }
 
@@ -44,11 +51,13 @@ class TemplateService {
     if (sortOrder !== undefined) data.sortOrder = sortOrder;
 
     const category = await templateRepository.updateCategory(id, data);
+    await this._purgeFeaturedTemplatesCache();
     return category;
   }
 
   async deleteCategory(id) {
     await templateRepository.deleteCategory(id);
+    await this._purgeFeaturedTemplatesCache();
     return { message: 'Category deleted successfully' };
   }
 
@@ -97,6 +106,7 @@ class TemplateService {
       format: format || null,
       goal: goal || null
     });
+    await this._purgeFeaturedTemplatesCache();
     return template;
   }
 
@@ -136,11 +146,13 @@ class TemplateService {
     }
 
     const template = await templateRepository.updateTemplate(id, data);
+    await this._purgeFeaturedTemplatesCache();
     return template;
   }
 
   async deleteTemplate(id) {
     await templateRepository.deleteTemplate(id);
+    await this._purgeFeaturedTemplatesCache();
     return { message: 'Template deleted successfully' };
   }
 }
