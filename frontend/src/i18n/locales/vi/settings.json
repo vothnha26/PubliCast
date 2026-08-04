@@ -3,8 +3,37 @@
   "tabs": {
     "account": "Hồ sơ cá nhân",
     "security": "Bảo mật & Đăng nhập",
+    "notifications": "Thông báo",
     "support": "Hỗ trợ (Chat)",
     "billing": "Cổng thanh toán"
+  },
+  "notifications": {
+    "title": "Thông báo",
+    "subtitle": "Chọn loại thông báo bạn muốn nhận. Bạn có thể tắt tất cả cùng lúc, hoặc tùy chỉnh riêng từng loại.",
+    "masterToggle": "Bật thông báo",
+    "masterToggleDesc": "Tắt mục này sẽ dừng toàn bộ thông báo bên dưới, mà không thay đổi lựa chọn riêng của bạn.",
+    "groups": {
+      "activity": "Hoạt động & Cảnh báo",
+      "insights": "Thống kê & Hiệu suất"
+    },
+    "items": {
+      "postFailure": "Bài viết đăng thất bại",
+      "postFailureDesc": "Nhận thông báo khi bài viết theo lịch không thể đăng.",
+      "publishSuccess": "Xác nhận đăng bài thành công",
+      "publishSuccessDesc": "Nhận thông báo mỗi khi một bài viết được đăng thành công.",
+      "channelDisconnect": "Cập nhật kết nối kênh",
+      "channelDisconnectDesc": "Nhận thông báo khi một kênh bị ngắt kết nối hoặc đồng bộ thất bại.",
+      "collaboration": "Cộng tác",
+      "collaborationDesc": "Nhận cập nhật về lời mời nhóm, thay đổi vai trò và yêu cầu duyệt bài.",
+      "emptyQueue": "Cảnh báo hàng đợi trống",
+      "emptyQueueDesc": "Nhận thông báo khi một thương hiệu không có bài viết nào theo lịch.",
+      "billing": "Nhắc thanh toán và hóa đơn",
+      "billingDesc": "Nhận nhắc nhở thanh toán và các thông báo liên quan đến hóa đơn.",
+      "dailyRecap": "Tóm tắt hàng ngày",
+      "dailyRecapDesc": "Tóm tắt những gì đã được đăng trong ngày.",
+      "weeklyReport": "Báo cáo hàng tuần",
+      "weeklyReportDesc": "Tóm tắt những gì đã được đăng trong tuần."
+    }
   },
   "profile": {
     "title": "Hồ sơ cá nhân",

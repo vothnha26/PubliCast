@@ -1,11 +1,11 @@
 import { useState, useEffect, useRef } from "react";
 import { useLocation, useNavigate, Link } from "react-router-dom";
-import { 
-  User, Shield, CreditCard, Globe, 
+import {
+  User, Shield, CreditCard, Globe,
   Mail, Lock, Smartphone, ExternalLink,
   MessageCircle, Send, Paperclip, CheckCircle2, Search,
   AlertTriangle, Loader2, Plus, FileText, ChevronRight,
-  Sun, Moon
+  Sun, Moon, Bell, BellOff
 } from "lucide-react";
 import profileService from "../../services/profile.service";
 import ticketService from "../../services/ticket.service";
@@ -57,6 +57,11 @@ export function SettingsPage() {
   const [paymentHistory, setPaymentHistory] = useState([]);
   const [loadingBilling, setLoadingBilling] = useState(false);
 
+  // Notification preference toggles
+  const [notificationSettings, setNotificationSettings] = useState(null);
+  const [loadingNotificationSettings, setLoadingNotificationSettings] = useState(false);
+  const [savingNotificationKey, setSavingNotificationKey] = useState(null);
+
   // Support History Tickets State (Closed tickets)
   const [tickets, setTickets] = useState([]);
   const [selectedTicket, setSelectedTicket] = useState(null);
@@ -94,8 +99,52 @@ export function SettingsPage() {
     if (tabParam === "support") setActiveTab("support");
     else if (tabParam === "access") setActiveTab("access");
     else if (tabParam === "billing") setActiveTab("billing");
+    else if (tabParam === "notifications") setActiveTab("notifications");
     else setActiveTab("account");
   }, [location.search, navigate, language]);
+
+  // Fetch notification preferences when the tab is opened
+  const fetchNotificationSettings = async () => {
+    setLoadingNotificationSettings(true);
+    try {
+      const res = await profileService.getNotificationSettings();
+      setNotificationSettings(res?.data || res);
+    } catch (err) {
+      console.error("Error fetching notification settings:", err);
+      toast.error(language === 'vi' ? "Không thể tải cài đặt thông báo" : "Failed to load notification settings");
+    } finally {
+      setLoadingNotificationSettings(false);
+    }
+  };
+
+  useEffect(() => {
+    if (activeTab === "notifications" && !notificationSettings) {
+      fetchNotificationSettings();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab]);
+
+  const toggleNotificationSetting = async (key) => {
+    if (!notificationSettings) return;
+    const previous = notificationSettings;
+    const nextValue = !previous[key];
+
+    // Optimistic update — the toggle is the whole UI, so a round-trip
+    // before it visually flips would feel laggy for what's a single
+    // boolean write.
+    setNotificationSettings({ ...previous, [key]: nextValue });
+    setSavingNotificationKey(key);
+    try {
+      const res = await profileService.updateNotificationSettings({ [key]: nextValue });
+      setNotificationSettings(res?.data || res);
+    } catch (err) {
+      console.error("Error updating notification setting:", err);
+      toast.error(language === 'vi' ? "Không thể cập nhật cài đặt" : "Failed to update setting");
+      setNotificationSettings(previous);
+    } finally {
+      setSavingNotificationKey(null);
+    }
+  };
 
   // Fetch support tickets (History)
   const fetchSupportHistory = async () => {
@@ -506,6 +555,7 @@ export function SettingsPage() {
           {[
             { id: "account", label: t("tabs.account"), icon: User },
             { id: "access", label: t("tabs.security"), icon: Shield },
+            { id: "notifications", label: t("tabs.notifications"), icon: Bell },
             { id: "support", label: t("tabs.support"), icon: MessageCircle },
             { id: "billing", label: t("tabs.billing"), icon: CreditCard },
           ].map((tab) => {
@@ -833,6 +883,110 @@ export function SettingsPage() {
                 </div>
               </div>
             </div>
+          </div>
+        )}
+
+        {activeTab === "notifications" && (
+          <div className="space-y-8 animate-in fade-in duration-300">
+            <div>
+              <div className="flex items-center gap-2 mb-2">
+                <Bell size={18} className="text-muted-foreground" />
+                <h2 className="text-lg font-bold text-foreground">{t("notifications.title")}</h2>
+              </div>
+              <p className="text-sm text-muted-foreground leading-relaxed">
+                {t("notifications.subtitle")}
+              </p>
+            </div>
+
+            {loadingNotificationSettings || !notificationSettings ? (
+              <div className="flex items-center justify-center py-16">
+                <Loader2 size={24} className="animate-spin text-muted-foreground" />
+              </div>
+            ) : (
+              <div className="space-y-6 max-w-2xl">
+                {/* Master toggle — overrides every category below */}
+                <div className="p-6 rounded-2xl bg-slate-50 border border-slate-100 flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    {notificationSettings.notificationsEnabled ? (
+                      <Bell size={20} className="text-foreground" />
+                    ) : (
+                      <BellOff size={20} className="text-muted-foreground" />
+                    )}
+                    <div>
+                      <div className="text-sm font-bold text-foreground">{t("notifications.masterToggle")}</div>
+                      <div className="text-[11px] text-muted-foreground font-medium">{t("notifications.masterToggleDesc")}</div>
+                    </div>
+                  </div>
+                  <div
+                    onClick={() => toggleNotificationSetting('notificationsEnabled')}
+                    data-testid="toggle-notifications-master"
+                    className={`w-10 h-6 rounded-full flex items-center p-1 cursor-pointer transition-all shrink-0 ${
+                      savingNotificationKey === 'notificationsEnabled' ? 'opacity-50' : ''
+                    } ${notificationSettings.notificationsEnabled ? 'bg-green-600' : 'bg-gray-300'}`}
+                  >
+                    <div className={`w-4 h-4 bg-card rounded-full shadow-sm transform transition-all ${notificationSettings.notificationsEnabled ? 'translate-x-4' : 'translate-x-0'}`} />
+                  </div>
+                </div>
+
+                <div className={`space-y-6 transition-opacity ${!notificationSettings.notificationsEnabled ? 'opacity-40 pointer-events-none' : ''}`}>
+                  <div className="space-y-1.5">
+                    <h3 className="text-xs font-black text-muted-foreground uppercase tracking-widest">{t("notifications.groups.activity")}</h3>
+                    <div className="rounded-2xl border border-border divide-y divide-border overflow-hidden">
+                      {[
+                        { key: 'notifyPostFailure', label: t("notifications.items.postFailure"), desc: t("notifications.items.postFailureDesc") },
+                        { key: 'notifyPublishSuccess', label: t("notifications.items.publishSuccess"), desc: t("notifications.items.publishSuccessDesc") },
+                        { key: 'notifyChannelDisconnect', label: t("notifications.items.channelDisconnect"), desc: t("notifications.items.channelDisconnectDesc") },
+                        { key: 'notifyCollaboration', label: t("notifications.items.collaboration"), desc: t("notifications.items.collaborationDesc") },
+                        { key: 'notifyEmptyQueue', label: t("notifications.items.emptyQueue"), desc: t("notifications.items.emptyQueueDesc") },
+                        { key: 'notifyBilling', label: t("notifications.items.billing"), desc: t("notifications.items.billingDesc") },
+                      ].map((item) => (
+                        <div key={item.key} className="p-4 flex items-center justify-between gap-4 bg-card">
+                          <div className="min-w-0">
+                            <div className="text-sm font-bold text-foreground">{item.label}</div>
+                            <div className="text-[11px] text-muted-foreground font-medium">{item.desc}</div>
+                          </div>
+                          <div
+                            onClick={() => toggleNotificationSetting(item.key)}
+                            data-testid={`toggle-${item.key}`}
+                            className={`w-10 h-6 rounded-full flex items-center p-1 cursor-pointer transition-all shrink-0 ${
+                              savingNotificationKey === item.key ? 'opacity-50' : ''
+                            } ${notificationSettings[item.key] ? 'bg-green-600' : 'bg-gray-300'}`}
+                          >
+                            <div className={`w-4 h-4 bg-card rounded-full shadow-sm transform transition-all ${notificationSettings[item.key] ? 'translate-x-4' : 'translate-x-0'}`} />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <h3 className="text-xs font-black text-muted-foreground uppercase tracking-widest">{t("notifications.groups.insights")}</h3>
+                    <div className="rounded-2xl border border-border divide-y divide-border overflow-hidden">
+                      {[
+                        { key: 'notifyDailyRecap', label: t("notifications.items.dailyRecap"), desc: t("notifications.items.dailyRecapDesc") },
+                        { key: 'notifyWeeklyReport', label: t("notifications.items.weeklyReport"), desc: t("notifications.items.weeklyReportDesc") },
+                      ].map((item) => (
+                        <div key={item.key} className="p-4 flex items-center justify-between gap-4 bg-card">
+                          <div className="min-w-0">
+                            <div className="text-sm font-bold text-foreground">{item.label}</div>
+                            <div className="text-[11px] text-muted-foreground font-medium">{item.desc}</div>
+                          </div>
+                          <div
+                            onClick={() => toggleNotificationSetting(item.key)}
+                            data-testid={`toggle-${item.key}`}
+                            className={`w-10 h-6 rounded-full flex items-center p-1 cursor-pointer transition-all shrink-0 ${
+                              savingNotificationKey === item.key ? 'opacity-50' : ''
+                            } ${notificationSettings[item.key] ? 'bg-green-600' : 'bg-gray-300'}`}
+                          >
+                            <div className={`w-4 h-4 bg-card rounded-full shadow-sm transform transition-all ${notificationSettings[item.key] ? 'translate-x-4' : 'translate-x-0'}`} />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         )}
 
