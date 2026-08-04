@@ -57,6 +57,14 @@ const server = app.listen(PORT, async () => {
   const reportSchedulerService = require('./services/reports/report-scheduler.service');
   reportSchedulerService.start();
 
+  // Start Empty Content Queue Alert Scheduler
+  const emptyQueueSchedulerService = require('./services/core/empty-queue-scheduler.service');
+  emptyQueueSchedulerService.start();
+
+  // Start Daily/Weekly In-App Recap Scheduler
+  const recapSchedulerService = require('./services/core/recap-scheduler.service');
+  recapSchedulerService.start();
+
   // Start Periodic Inbox Sync Scheduler (15-minute fallback cycle)
   const inboxSyncSchedulerService = require('./services/social/inbox-sync-scheduler.service');
   inboxSyncSchedulerService.start();
