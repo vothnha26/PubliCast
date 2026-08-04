@@ -63,7 +63,21 @@ model UserSettings {
   userId   String @unique
   language String @default("vi")
   timezone String @default("Asia/Ho_Chi_Minh")
-  user     User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Master toggle — overrides every category switch below when false,
+  // without needing to clear each one individually (mirrors Buffer's
+  // "Unsubscribe from all" behavior).
+  notificationsEnabled     Boolean @default(true)
+  notifyPostFailure        Boolean @default(true)
+  notifyPublishSuccess     Boolean @default(true)
+  notifyChannelDisconnect  Boolean @default(true)
+  notifyCollaboration      Boolean @default(true)
+  notifyBilling            Boolean @default(true)
+  notifyEmptyQueue         Boolean @default(true)
+  notifyDailyRecap         Boolean @default(false)
+  notifyWeeklyReport       Boolean @default(false)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("user_settings")
 }
