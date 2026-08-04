@@ -10,6 +10,15 @@
  */
 jest.mock('../../src/services/social/threads/threads.gateway');
 jest.mock('../../src/repositories/social/social-account.repository');
+jest.mock('../../src/repositories/workspace/brand.repository', () => ({
+  findBrandWithSubscription: jest.fn().mockResolvedValue(null)
+}));
+jest.mock('../../src/config/prisma', () => ({
+  socialPostMetric: {
+    findMany: jest.fn().mockResolvedValue([]),
+    upsert: jest.fn().mockResolvedValue({})
+  }
+}));
 
 const threadsGateway = require('../../src/services/social/threads/threads.gateway');
 const socialAccountRepository = require('../../src/repositories/social/social-account.repository');
@@ -77,7 +86,7 @@ describe('ThreadsService (#97)', () => {
   describe('getPublishedVideos', () => {
     it('does not fabricate per-post views/reach/engagement from likes', async () => {
       socialAccountRepository.findByBrandAndPlatform.mockResolvedValue([
-        { platformAccountId: 'threads-1', accessToken: 'real-token' }
+        { id: 'sa_threads_1', platformAccountId: 'threads-1', accessToken: 'real-token' }
       ]);
       threadsGateway.getThreadsMediaFeed.mockResolvedValue({
         data: [{ id: 'p1', text: 'Hello', like_count: 50, timestamp: new Date().toISOString(), media_type: 'TEXT' }],

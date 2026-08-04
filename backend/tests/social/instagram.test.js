@@ -31,6 +31,15 @@ jest.mock('../../src/services/social/instagram/instagram.gateway', () => {
   };
 });
 jest.mock('../../src/repositories/social/social-account.repository');
+jest.mock('../../src/repositories/workspace/brand.repository', () => ({
+  findBrandWithSubscription: jest.fn().mockResolvedValue(null)
+}));
+jest.mock('../../src/config/prisma', () => ({
+  socialPostMetric: {
+    findMany: jest.fn().mockResolvedValue([]),
+    upsert: jest.fn().mockResolvedValue({})
+  }
+}));
 jest.mock('../../src/services/social/connection-conflict.guard', () => ({
   ConnectionConflictGuard: {
     validateConflict: jest.fn().mockResolvedValue({ conflict: false })
@@ -173,11 +182,11 @@ describe('Instagram Integration Service Tests', () => {
     // supported replacement metric.
     it('enriches published posts using the "views" metric, not the deprecated "impressions" metric', async () => {
       socialAccountRepository.findByBrandAndPlatform.mockResolvedValue([{
-        platformAccountId: 'ig_123',
+        id: 'sa_ig_test', platformAccountId: 'ig_123',
         accessToken: 'ig_access_token'
       }]);
       instagramGateway.getInstagramMediaFeed.mockResolvedValue({
-        data: [{ id: 'media_1', like_count: 5, comments_count: 2, media_type: 'IMAGE', timestamp: '2026-05-20T00:00:00+0000' }],
+        data: [{ id: 'media_1', like_count: 5, comments_count: 2, media_type: 'IMAGE', timestamp: new Date().toISOString() }],
         nextPageToken: null,
         prevPageToken: null
       });
@@ -200,7 +209,7 @@ describe('Instagram Integration Service Tests', () => {
     // surfaced separately as `thumbnailUrl`, not collapsed into `mediaUrl`.
     it('exposes a separate thumbnailUrl distinct from the raw video mediaUrl for VIDEO posts', async () => {
       socialAccountRepository.findByBrandAndPlatform.mockResolvedValue([{
-        platformAccountId: 'ig_123',
+        id: 'sa_ig_test', platformAccountId: 'ig_123',
         accessToken: 'ig_access_token'
       }]);
       instagramGateway.getInstagramMediaFeed.mockResolvedValue({
@@ -211,7 +220,7 @@ describe('Instagram Integration Service Tests', () => {
           thumbnail_url: 'https://scontent.example.com/preview.jpg',
           like_count: 0,
           comments_count: 0,
-          timestamp: '2026-05-20T00:00:00+0000'
+          timestamp: new Date().toISOString()
         }],
         nextPageToken: null,
         prevPageToken: null

@@ -240,6 +240,119 @@ class FacebookGateway {
     };
   }
 
+  /**
+   * Sends a single Graph API Batch Request (POST / with a `batch` JSON
+   * array) — every sub-request is still billed individually against the
+   * Page's BUC rate limit (batching doesn't reduce quota, only round-trips:
+   * https://developers.facebook.com/docs/graph-api/overview/rate-limiting/),
+   * but replacing N sequential HTTP calls with 1 meaningfully cuts latency
+   * when enriching many posts at once. Facebook caps a batch at 50
+   * sub-requests — callers must chunk larger lists themselves.
+   *
+   * @param {string[]} relativeUrls - each entry is a GET path relative to
+   *   the versioned graph root (no leading slash), e.g. "123/insights?metric=x".
+   * @returns {Promise<Array<{code: number, body: any}>>} one parsed entry
+   *   per relativeUrl, in the same order. A sub-request that itself failed
+   *   still returns an entry here (code >= 400) — only a failure of the
+   *   outer batch HTTP call throws.
+   */
+  async _sendBatch(relativeUrls, pageAccessToken) {
+    if (relativeUrls.length === 0) return [];
+    if (relativeUrls.length > 50) {
+      throw new Error(`Facebook batch request supports at most 50 sub-requests, got ${relativeUrls.length}`);
+    }
+
+    const batch = relativeUrls.map(relative_url => ({ method: 'GET', relative_url }));
+    const res = await fetch(this.graphBaseUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        access_token: pageAccessToken,
+        batch: JSON.stringify(batch)
+      })
+    });
+
+    if (!res.ok) {
+      const errData = await res.json().catch(() => ({}));
+      throw new FacebookInsightsError(
+        errData.error?.message || 'Facebook batch request failed',
+        { code: errData.error?.code ?? null, status: res.status }
+      );
+    }
+
+    const results = await res.json();
+    // Each sub-response's `body` is a JSON string, not a parsed object — the
+    // batch endpoint never re-serializes it for you.
+    return results.map(entry => ({
+      code: entry?.code ?? 0,
+      body: entry?.body ? JSON.parse(entry.body) : null
+    }));
+  }
+
+  /**
+   * Batched equivalent of calling getPostInsights (one metric tier only —
+   * callers retry the next tier themselves for whichever posts came back
+   * empty/errored) + getPostReactionsBreakdown for every post in `posts`,
+   * as a single Graph API batch call instead of posts.length * 2 sequential
+   * requests.
+   *
+   * @param {Array<{postId: string, metric: string}>} posts - `metric` is
+   *   the comma-joined metric string for that post's current fallback tier
+   *   (STANDARD posts) or the single Reel metric (REEL posts) — same values
+   *   INSIGHTS_STRATEGIES already used per-post.
+   * @returns {Promise<Map<string, {insights: object[]|null, reactions: object|null}>>}
+   *   insights is the raw `data.data` array (same shape getPostInsights/
+   *   getReelVideoInsights returned) or null if that sub-request errored;
+   *   reactions is the parsed reactions object or null if it errored.
+   */
+  async getBatchPostInsights(posts, pageAccessToken) {
+    const result = new Map();
+    if (posts.length === 0) return result;
+
+    const reactionsFields = 'reactions.type(LIKE).summary(total_count).limit(0).as(like)'
+      + ',reactions.type(LOVE).summary(total_count).limit(0).as(love)'
+      + ',reactions.type(HAHA).summary(total_count).limit(0).as(haha)'
+      + ',reactions.type(WOW).summary(total_count).limit(0).as(wow)'
+      + ',reactions.type(SAD).summary(total_count).limit(0).as(sad)'
+      + ',reactions.type(ANGRY).summary(total_count).limit(0).as(angry)';
+
+    // 2 sub-requests per post (insights + reactions), interleaved so the
+    // response order maps back to `posts` by simple index arithmetic.
+    const relativeUrls = [];
+    for (const { postId, metric } of posts) {
+      relativeUrls.push(`${postId}/insights?metric=${metric}`);
+      relativeUrls.push(`${postId}?fields=${reactionsFields}`);
+    }
+
+    const responses = await this._sendBatch(relativeUrls, pageAccessToken);
+
+    posts.forEach(({ postId }, i) => {
+      const insightsEntry = responses[i * 2];
+      const reactionsEntry = responses[i * 2 + 1];
+
+      const insights = insightsEntry && insightsEntry.code < 400
+        ? (insightsEntry.body?.data || [])
+        : null;
+
+      let reactions = null;
+      if (reactionsEntry && reactionsEntry.code < 400 && reactionsEntry.body) {
+        const b = reactionsEntry.body;
+        reactions = {
+          LIKE: b.like?.summary?.total_count || 0,
+          LOVE: b.love?.summary?.total_count || 0,
+          HAHA: b.haha?.summary?.total_count || 0,
+          WOW: b.wow?.summary?.total_count || 0,
+          SAD: b.sad?.summary?.total_count || 0,
+          ANGRY: b.angry?.summary?.total_count || 0
+        };
+      }
+
+      result.set(postId, { insights, reactions });
+    });
+
+    return result;
+  }
+
   async getPostDetails(postId, pageAccessToken) {
     const fields = 'id,message,story,created_time,full_picture,permalink_url,attachments{media,type},shares,comments.summary(true),reactions.summary(true)';
     const url = `${this.graphBaseUrl}/${postId}?fields=${fields}&access_token=${pageAccessToken}`;

@@ -43,9 +43,32 @@ describe('Profile & Settings Detailed Suite', function () {
   });
 
   beforeEach(async function () {
+    this.timeout(60000);
     // Go to Settings page before each test case
     await driver.get(`${BASE_URL}/settings`);
     await driver.wait(until.elementLocated(By.css('h1')), 15000);
+    // Wait for the profile fetch (fullName/email/accounts) to resolve so
+    // tab-specific fields that depend on it (e.g. the Access tab's
+    // conditionally-rendered current-password input) are ready once a
+    // test switches tabs, instead of racing an in-flight request.
+    // On a slow/cold CI backend the fetch can occasionally exceed the wait
+    // window entirely (same class of flake handled in loginAs()) — reload
+    // once and give it a fresh window before failing the hook.
+    const fullNameInput = await driver.wait(
+      until.elementLocated(By.css('[data-testid="profile-fullname-input"]')),
+      15000
+    );
+    try {
+      await driver.wait(async () => (await fullNameInput.getAttribute('value')) !== '', 25000);
+    } catch (waitErr) {
+      await driver.navigate().refresh();
+      await driver.wait(until.elementLocated(By.css('h1')), 15000);
+      const retriedInput = await driver.wait(
+        until.elementLocated(By.css('[data-testid="profile-fullname-input"]')),
+        15000
+      );
+      await driver.wait(async () => (await retriedInput.getAttribute('value')) !== '', 25000);
+    }
   });
 
   describe('Tab Navigation and Deep Links', function () {
