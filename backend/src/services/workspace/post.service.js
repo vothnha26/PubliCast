@@ -3,7 +3,7 @@ const postRepository = require('../../repositories/workspace/post.repository');
 const brandRepository = require('../../repositories/workspace/brand.repository');
 const subscriptionRepository = require('../../repositories/billing/subscription.repository');
 const socialPlatformFactory = require('../social/social-platform.factory');
-const { POST_STATUS, POST_TYPES, SEPARATORS, WORKSPACE_DEFAULTS, PLATFORMS, PERMISSION_KEYS, DEFAULT_CONFIG, splitMediaUrls } = require('../../utils/constants');
+const { POST_STATUS, POST_TYPES, SEPARATORS, WORKSPACE_DEFAULTS, PLATFORMS, PERMISSION_KEYS, DEFAULT_CONFIG, splitMediaUrls, CHANNEL_GROUP_VISIBILITY } = require('../../utils/constants');
 const { EVENTS } = require('../../events/event-emitter');
 const { OUTBOX_EVENT_TYPES } = require('../../constants/outbox.constants');
 const autoListRepository = require('../../repositories/workspace/auto-list.repository');
@@ -51,12 +51,23 @@ class PostService {
   /**
    * Get filtered posts with pagination
    */
-  async getPosts(queryParams, brandId) {
+  async getPosts(queryParams, brandId, userId = null) {
     const { page = 1, limit = 10, sortBy = 'createdAt', sortOrder = 'desc' } = queryParams;
     const { skip, take } = this._getPagination(page, limit);
     const order = this._getSortOrder(sortBy, sortOrder);
 
     const where = this.queryPipeline.apply({ brandId }, queryParams);
+
+    // Library posts marked PRIVATE are only visible to their own creator —
+    // other brand members' Post Library requests must not see them, same
+    // "existence not leaked" semantics as PRIVATE channel groups.
+    if (where.isLibrary === true && userId) {
+      where.OR = [
+        { libraryVisibility: CHANNEL_GROUP_VISIBILITY.TEAM },
+        { libraryVisibility: CHANNEL_GROUP_VISIBILITY.PRIVATE, createdByUserId: userId }
+      ];
+    }
+
     const { posts, total } = await postRepository.findManyAndCount(where, { skip, take, orderBy: order });
 
     return {
@@ -953,6 +964,7 @@ class PostService {
       mediaUrls: splitMediaUrls(p.mediaUrls),
       altText: p.altText,
       isLibrary: p.isLibrary,
+      libraryVisibility: p.libraryVisibility,
       options,
       approvalInfo,
       platformPostId,
@@ -1157,7 +1169,7 @@ class PostService {
   }
 
   _preparePostData(postData, userId, brandId) {
-    const { title, caption, type = POST_TYPES.VIDEO, status = POST_STATUS.DRAFT, targetPlatforms = [], mediaUrls = [], mediaThumbnailUrls = [], scheduledAt, isLibrary = false, altText = null, autoListId = null, options = {} } = postData;
+    const { title, caption, type = POST_TYPES.VIDEO, status = POST_STATUS.DRAFT, targetPlatforms = [], mediaUrls = [], mediaThumbnailUrls = [], scheduledAt, isLibrary = false, libraryVisibility, altText = null, autoListId = null, options = {} } = postData;
     
     // Normalize paths and Unicode recursively in options and strings
     const normalizedOptions = this._normalizePath(options);
@@ -1187,6 +1199,7 @@ class PostService {
       mediaThumbnailUrls: Array.isArray(finalThumbnailUrls) ? finalThumbnailUrls.join(SEPARATORS.COMMA) : finalThumbnailUrls,
       scheduledAt: scheduledAt ? new Date(scheduledAt) : null,
       altText: cleanAltText, isLibrary: isLibrary === true || isLibrary === 'true',
+      libraryVisibility: Object.values(CHANNEL_GROUP_VISIBILITY).includes(libraryVisibility) ? libraryVisibility : CHANNEL_GROUP_VISIBILITY.TEAM,
       autoListId,
       firstComment: normalizedOptions.firstComment || null,
       metadata: normalizedOptions ? JSON.stringify(normalizedOptions) : null
@@ -1194,7 +1207,7 @@ class PostService {
   }
 
   _prepareUpdateData(postData) {
-    const { title, caption, type, status, targetPlatforms, mediaUrls, mediaThumbnailUrls, scheduledAt, isLibrary, altText, autoListId, firstComment } = postData;
+    const { title, caption, type, status, targetPlatforms, mediaUrls, mediaThumbnailUrls, scheduledAt, isLibrary, libraryVisibility, altText, autoListId, firstComment } = postData;
     const data = {};
     if (title !== undefined) data.title = this._normalizePath(title) || WORKSPACE_DEFAULTS.UNTITLED;
     if (caption !== undefined) data.caption = this._normalizePath(caption);
@@ -1218,6 +1231,9 @@ class PostService {
     }
     if (scheduledAt !== undefined) data.scheduledAt = (scheduledAt && !isNaN(new Date(scheduledAt).getTime())) ? new Date(scheduledAt) : null;
     if (isLibrary !== undefined) data.isLibrary = isLibrary === true || isLibrary === 'true';
+    if (libraryVisibility !== undefined && Object.values(CHANNEL_GROUP_VISIBILITY).includes(libraryVisibility)) {
+      data.libraryVisibility = libraryVisibility;
+    }
     if (altText !== undefined) data.altText = altText;
     if (autoListId !== undefined) data.autoListId = autoListId;
     if (firstComment !== undefined) data.firstComment = firstComment;

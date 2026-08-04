@@ -1,9 +1,9 @@
 import * as React from "react";
 import { useState, useEffect } from "react";
-import { 
-  Search, Filter, Plus, Diamond, 
+import {
+  Search, Filter, Plus, Diamond,
   Grid3X3, List as ListIcon, MoreHorizontal,
-  Youtube, PlayCircle, Instagram, Image as ImageIcon, Loader2, Eye, Facebook, Edit
+  Youtube, PlayCircle, Instagram, Image as ImageIcon, Loader2, Eye, Facebook, Edit, Lock
 } from "lucide-react";
 import { usePostCreator } from "../../../context/PostCreatorContext";
 import postService from "../../../services/post.service";
@@ -14,6 +14,13 @@ import { AccessGuard } from "../../../components/shared/AccessGuard";
 import { buildMediaUrl } from "../../../utils/url";
 import { PlatformIcon } from "@/components/shared/PlatformIcon";
 import { useTranslation } from "react-i18next";
+import { FeaturedTemplatesTab } from "./FeaturedTemplatesTab";
+import { CHANNEL_GROUP_VISIBILITY } from "../../../constants/channelGroupVisibility";
+
+const TABS = [
+  { id: "mine", labelKey: "postsLibrary.tabs.myTemplates", fallback: "My Templates" },
+  { id: "featured", labelKey: "postsLibrary.tabs.featuredTemplates", fallback: "Featured Templates" },
+];
 
 export function PostsLibraryView() {
   const { t } = useTranslation("planner");
@@ -21,6 +28,7 @@ export function PostsLibraryView() {
   const [loading, setLoading] = useState(true);
   const { activeBrand } = useBrand();
   const [searchTerm, setSearchTerm] = useState("");
+  const [activeTab, setActiveTab] = useState("mine");
   const { hasPermission } = useBrandPermission();
   const hasCreatePermission = hasPermission('CREATE_POSTS');
 
@@ -57,30 +65,51 @@ export function PostsLibraryView() {
                <span className="text-[10px] font-bold text-black uppercase tracking-wider">{t("postsLibrary.badge")}</span>
             </div>
          </div>
-         <div className="flex items-center gap-4">
-            <div className="relative group w-64">
-               <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-               <input 
-                 type="text" 
-                 placeholder={t("postsLibrary.searchPlaceholder")} 
-                 value={searchTerm}
-                 onChange={(e) => setSearchTerm(e.target.value)}
-                 className="w-full bg-card border border-border rounded-xl py-2 pl-9 pr-4 text-[11px] text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-[#D9F99D]/50 transition-all"
-               />
-            </div>
-            <AccessGuard feature="CREATE_POSTS">
-              <button 
-                onClick={() => openPostCreator({ isLibrary: true })}
-                className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-[12px] font-bold bg-[#0A0A0A] dark:bg-lime-400 text-white dark:text-black hover:scale-105 active:scale-95 cursor-pointer transition-all shadow-lg"
-              >
-                  <Plus size={16} /> {t("postsLibrary.addTemplateBtn")}
-              </button>
-            </AccessGuard>
-         </div>
+         {activeTab === "mine" && (
+           <div className="flex items-center gap-4">
+              <div className="relative group w-64">
+                 <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                 <input
+                   type="text"
+                   placeholder={t("postsLibrary.searchPlaceholder")}
+                   value={searchTerm}
+                   onChange={(e) => setSearchTerm(e.target.value)}
+                   className="w-full bg-card border border-border rounded-xl py-2 pl-9 pr-4 text-[11px] text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-[#D9F99D]/50 transition-all"
+                 />
+              </div>
+              <AccessGuard feature="CREATE_POSTS">
+                <button
+                  onClick={() => openPostCreator({ isLibrary: true })}
+                  className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-[12px] font-bold bg-[#0A0A0A] dark:bg-lime-400 text-white dark:text-black hover:scale-105 active:scale-95 cursor-pointer transition-all shadow-lg"
+                >
+                    <Plus size={16} /> {t("postsLibrary.addTemplateBtn")}
+                </button>
+              </AccessGuard>
+           </div>
+         )}
       </div>
 
-      {/* Grid */}
-      {loading ? (
+      {/* Tabs */}
+      <div className="flex items-center gap-6 border-b border-border">
+        {TABS.map((tab) => (
+          <button
+            key={tab.id}
+            onClick={() => setActiveTab(tab.id)}
+            className={`pb-3 text-[11px] font-black uppercase tracking-wider transition-all relative cursor-pointer border-none bg-transparent ${
+              activeTab === tab.id ? "text-foreground" : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            {t(tab.labelKey, tab.fallback)}
+            {activeTab === tab.id && (
+              <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#0A0A0A] dark:bg-lime-400 rounded-full" />
+            )}
+          </button>
+        ))}
+      </div>
+
+      {activeTab === "featured" ? (
+        <FeaturedTemplatesTab onDuplicated={fetchLibrary} />
+      ) : loading ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 animate-pulse">
            {[1, 2, 3, 4].map((n) => (
              <div key={n} className="bg-card border border-border rounded-[24px] overflow-hidden shadow-sm h-[290px] space-y-4 flex flex-col">
@@ -170,7 +199,12 @@ export function PostsLibraryView() {
                 </div>
                 <div className="p-5 space-y-3 bg-card">
                    <div className="flex items-start justify-between gap-2">
-                      <h3 className="text-[13px] font-bold text-foreground line-clamp-1 uppercase tracking-tight">{item.title}</h3>
+                      <div className="flex items-center gap-1.5 min-w-0">
+                        <h3 className="text-[13px] font-bold text-foreground line-clamp-1 uppercase tracking-tight">{item.title}</h3>
+                        {item.libraryVisibility === CHANNEL_GROUP_VISIBILITY.PRIVATE && (
+                          <Lock size={11} className="shrink-0 text-muted-foreground" />
+                        )}
+                      </div>
                       <button className="text-muted-foreground hover:text-foreground transition-colors"><MoreHorizontal size={14} /></button>
                    </div>
                    <div className="flex items-center justify-between">

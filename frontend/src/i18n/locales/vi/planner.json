@@ -122,6 +122,23 @@
     "editTemplate": "Chỉnh sửa mẫu",
     "viewTemplate": "Xem mẫu",
     "templateBadge": "Mẫu",
+    "tabs": {
+      "myTemplates": "Mẫu của tôi",
+      "featuredTemplates": "Mẫu gợi ý"
+    },
+    "featured": {
+      "subtitle": "Gợi ý hữu ích để lên ý tưởng cho bài viết tiếp theo của bạn.",
+      "useThisIdea": "Dùng ý tưởng này",
+      "emptyTitle": "Chưa có mẫu gợi ý nào",
+      "emptyDesc": "Quay lại sau — các ý tưởng nội dung mới sẽ được cập nhật thường xuyên.",
+      "searchPlaceholder": "Tìm kiếm mẫu...",
+      "filter": "Bộ lọc",
+      "badge": "Mẫu nổi bật",
+      "pickTitle": "Lựa chọn hàng đầu",
+      "toasts": {
+        "loadFail": "Không thể tải mẫu gợi ý"
+      }
+    },
     "toasts": {
       "loadFail": "Không thể tải danh sách mẫu bài viết"
     }

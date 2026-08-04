@@ -137,6 +137,37 @@ describe('PostService Unit Tests', () => {
         }
       );
     });
+
+    it('adds a PRIVATE-vs-own-creator OR filter when listing library posts for a given user', async () => {
+      postRepository.findManyAndCount.mockResolvedValue({ posts: [], total: 0 });
+
+      await postService.getPosts({ isLibrary: 'true' }, 'brand-abc', 'user-1');
+
+      const [whereArg] = postRepository.findManyAndCount.mock.calls[0];
+      expect(whereArg.isLibrary).toBe(true);
+      expect(whereArg.OR).toEqual([
+        { libraryVisibility: 'TEAM' },
+        { libraryVisibility: 'PRIVATE', createdByUserId: 'user-1' }
+      ]);
+    });
+
+    it('does not add the visibility OR filter for non-library listings', async () => {
+      postRepository.findManyAndCount.mockResolvedValue({ posts: [], total: 0 });
+
+      await postService.getPosts({}, 'brand-abc', 'user-1');
+
+      const [whereArg] = postRepository.findManyAndCount.mock.calls[0];
+      expect(whereArg.OR).toBeUndefined();
+    });
+
+    it('does not add the visibility OR filter when no userId is provided', async () => {
+      postRepository.findManyAndCount.mockResolvedValue({ posts: [], total: 0 });
+
+      await postService.getPosts({ isLibrary: 'true' }, 'brand-abc');
+
+      const [whereArg] = postRepository.findManyAndCount.mock.calls[0];
+      expect(whereArg.OR).toBeUndefined();
+    });
   });
 
   describe('POST_002 - createPost (DRAFT status)', () => {

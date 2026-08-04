@@ -5,6 +5,7 @@ const revenueController = require('../../controllers/admin/revenue.controller');
 const productController = require('../../controllers/admin/product.controller');
 const platformLimitController = require('../../controllers/admin/platform-limit.controller');
 const userController = require('../../controllers/admin/user.controller');
+const templateController = require('../../controllers/admin/template.controller');
 const { verifyAuth } = require('../../middlewares/auth.middleware');
 const { authorize } = require('../../middlewares/authorization.middleware');
 const { validatePlanData } = require('../../middlewares/pricing.validation');
@@ -53,6 +54,15 @@ router.delete('/platform-limits/:id', platformLimitController.deletePlatformLimi
 router.get('/users', userController.listUsers);
 router.patch('/users/:id/status', userController.changeStatus);
 router.patch('/users/:id/role', userController.changeRole);
+
+// ── Featured Templates V2 ──
+router.get('/templates', templateController.getFeaturedTemplates);
+router.post('/templates/categories', templateController.createCategory);
+router.put('/templates/categories/:id', templateController.updateCategory);
+router.delete('/templates/categories/:id', templateController.deleteCategory);
+router.post('/templates', templateController.createTemplate);
+router.put('/templates/:id', templateController.updateTemplate);
+router.delete('/templates/:id', templateController.deleteTemplate);
 
 // ── Audit Logs V2 ──
 router.get('/audit-logs', (req, res, next) => auditLogController.getAuditLogs(req, res, next));
