@@ -161,7 +161,8 @@ class TeamService {
         type: NOTIFICATION_TYPES.TEAM,
         title: `Bạn được mời vào "${brand.name}"`,
         message: `${inviter?.name || 'Ai đó'} đã mời bạn tham gia với vai trò ${role}.`,
-        actionUrl: `/invite?token=${token}`
+        actionUrl: `/invite?token=${token}`,
+        preferenceKey: 'notifyCollaboration'
       });
     } catch (notifErr) {
       // Không để lỗi notification chặn flow mời thành viên
@@ -233,7 +234,8 @@ class TeamService {
         type: NOTIFICATION_TYPES.TEAM,
         title: `Lời mời gia nhập "${brand.name}" đã được gửi lại`,
         message: `${requester?.name || 'Ai đó'} đã gửi lại lời mời. Vui lòng kiểm tra email của bạn.`,
-        actionUrl: `/invite?token=${token}`
+        actionUrl: `/invite?token=${token}`,
+        preferenceKey: 'notifyCollaboration'
       });
     } catch (notifErr) {
       console.error('[TeamService] Failed to create resend notification:', notifErr.message);
@@ -372,7 +374,8 @@ class TeamService {
             type: NOTIFICATION_TYPES.TEAM,
             title: `Bạn được mời vào "${brand.name}"`,
             message: `${inviter?.name || 'Ai đó'} đã mời bạn tham gia với vai trò ${role}.`,
-            actionUrl: `/invite?token=${token}`
+            actionUrl: `/invite?token=${token}`,
+            preferenceKey: 'notifyCollaboration'
           });
         } catch (notifErr) {
           console.error('[TeamService] Failed to create invite notification:', notifErr.message);
@@ -573,7 +576,8 @@ class TeamService {
         type: NOTIFICATION_TYPES.TEAM,
         title: 'Vai trò của bạn đã được cập nhật',
         message: `Vai trò của bạn trong workspace đã được thay đổi thành ${role}.`,
-        actionUrl: '/settings/team'
+        actionUrl: '/settings/team',
+        preferenceKey: 'notifyCollaboration'
       });
     } catch (notifErr) {
       console.error('[TeamService] Failed to create role-update notification:', notifErr.message);
@@ -762,7 +766,8 @@ class TeamService {
             type: NOTIFICATION_TYPES.TEAM,
             title: notifTitle,
             message: notifMessage,
-            actionUrl: `/planner/list`
+            actionUrl: `/planner/list`,
+            preferenceKey: 'notifyCollaboration'
           }).catch(err => console.error('[TeamService] Failed to notify requester:', err.message));
         }
 

@@ -16,7 +16,8 @@ jest.mock('../../src/services/auth/authorization.facade', () => ({
   checkPermission: jest.fn()
 }));
 jest.mock('../../src/services/core/notification.service', () => ({
-  create: jest.fn().mockResolvedValue(undefined)
+  create: jest.fn().mockResolvedValue(undefined),
+  notifyBrandMembers: jest.fn().mockResolvedValue(undefined)
 }));
 jest.mock('../../src/services/billing/payment-gateway/payment-gateway.factory', () => ({
   getGateway: jest.fn(() => ({
@@ -72,7 +73,7 @@ describe('checkPaymentStatus write-on-GET idempotency (#103)', () => {
     const res = await subscriptionService.checkPaymentStatus('TX-1', 'user-1');
 
     expect(res).toEqual({ status: 'EXPIRED' });
-    expect(notificationService.create).toHaveBeenCalledTimes(1);
+    expect(notificationService.notifyBrandMembers).toHaveBeenCalledTimes(1);
   });
 
   it('does not re-send the notification when a concurrent poll already won the transition', async () => {
@@ -82,6 +83,6 @@ describe('checkPaymentStatus write-on-GET idempotency (#103)', () => {
     const res = await subscriptionService.checkPaymentStatus('TX-1', 'user-1');
 
     expect(res).toEqual({ status: 'EXPIRED' });
-    expect(notificationService.create).not.toHaveBeenCalled();
+    expect(notificationService.notifyBrandMembers).not.toHaveBeenCalled();
   });
 });
