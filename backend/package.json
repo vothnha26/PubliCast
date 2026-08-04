@@ -6,11 +6,14 @@
   "scripts": {
     "start": "node src/server.js",
     "dev": "nodemon src/server.js",
-    "postinstall": "prisma generate",
+    "postinstall": "prisma generate && prisma generate --schema=./prisma/help-center/schema.prisma",
     "test": "jest --detectOpenHandles",
     "lint": "eslint \"src/**/*.js\"",
     "lint:fix": "eslint \"src/**/*.js\" --fix",
-    "format:check": "prettier --check \"src/**/*.js\""
+    "format:check": "prettier --check \"src/**/*.js\"",
+    "prisma:generate:help-center": "prisma generate --schema=./prisma/help-center/schema.prisma",
+    "prisma:migrate:help-center": "prisma migrate dev --schema=./prisma/help-center/schema.prisma",
+    "prisma:migrate:help-center:deploy": "prisma migrate deploy --schema=./prisma/help-center/schema.prisma"
   },
   "keywords": [],
   "author": "",

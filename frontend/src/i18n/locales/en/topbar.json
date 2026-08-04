@@ -17,6 +17,15 @@
     "supportChat": "Support Chat",
     "logout": "Logout"
   },
+  "accountMenu": {
+    "planLabel": "{{name}} plan",
+    "upgradePlan": "Upgrade Plan",
+    "settings": "Settings",
+    "channels": "Channels",
+    "billing": "Plans and Billing",
+    "helpSupport": "Help & Support",
+    "logout": "Log out"
+  },
   "brand": {
     "select": "Select Brand",
     "defaultActive": "Default Brand",
@@ -41,7 +50,8 @@
     "approvalTasks": "Approval Requests",
     "hashtagTracker": "Hashtag Tracker",
     "reporting": "Reporting",
-    "competitors": "Competitors"
+    "competitors": "Competitors",
+    "helpCenter": "Help Center"
   },
   "channels": {
     "title": "Channels",

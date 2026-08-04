@@ -21,6 +21,19 @@ services:
     volumes:
       - redis_data:/data
 
+  postgres-helpcenter:
+    image: pgvector/pgvector:pg16
+    container_name: publicast_postgres_helpcenter
+    ports:
+      - '5433:5432'
+    environment:
+      POSTGRES_DB: publicast_help_center
+      POSTGRES_USER: helpcenter_user
+      POSTGRES_PASSWORD: helpcenter_password
+    volumes:
+      - postgres_helpcenter_data:/var/lib/postgresql/data
+
 volumes:
   mysql_data:
   redis_data:
+  postgres_helpcenter_data:

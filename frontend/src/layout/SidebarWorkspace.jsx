@@ -3,12 +3,10 @@ import {
   TrendingUp, Hash, Settings,
   FileText, ClipboardCheck,
   Sun, Moon, Diamond, Users,
-  CreditCard, MessageCircle, LogOut,
   ArrowLeftRight
 } from "lucide-react";
 import { useBrand } from "../context/BrandContext";
 import { useConnections } from "../context/ConnectionsContext";
-import { useAuth } from "../context/AuthContext";
 import { ChannelsList } from "./ChannelsList";
 import { useState, useEffect } from "react";
 import billingService from "../services/billing.service";
@@ -22,24 +20,26 @@ function ShareIcon({ size, className }) {
 
 // Order mirrors the requested reference layout: workplace/brand setup first,
 // then org-level admin (team/billing/tasks). Everything here has its own
-// real destination — Help center/What's new/Affiliation program were
-// dropped (no page ever existed for them, they were dead menu items in the
-// old SettingsDrawer). Language and Account settings were dropped too: both
-// just navigate into different tabs of the same /settings page, which reads
-// as a duplicate entry point sitting next to genuinely distinct pages —
-// Settings is still reachable via quickLinks/the search palette.
+// real destination. What's new/Affiliation program were dropped (no page
+// ever existed for them, they were dead menu items in the old
+// SettingsDrawer) — Help Center now has a real page at /help. Language and
+// Account settings were dropped too: both just navigate into different tabs
+// of the same /settings page, which reads as a duplicate entry point sitting
+// next to genuinely distinct pages — Settings is still reachable via
+// quickLinks/the search palette.
 const MANAGE_ITEMS = [
   { name: "Create Workplace", nameKey: "menu.createWorkplace", icon: <Diamond size={18} />, path: "/manage/workplace/new" },
   { name: "Connections", nameKey: "menu.connections", icon: <ShareIcon size={18} />, isConnections: true },
   { name: "Brand settings", nameKey: "menu.brandSettings", icon: <Settings size={18} />, path: "/manage/connections?tab=brand-settings" },
   { name: "User management", nameKey: "menu.userManagement", icon: <Users size={18} />, path: "/manage/team" },
-  { name: "Plans and billing", nameKey: "menu.billing", icon: <CreditCard size={18} />, path: "/pricing" },
   { name: "My tasks", nameKey: "menu.myTasks", icon: <ClipboardCheck size={18} />, path: "/manage/tasks" },
   { name: "Hashtag Tracker", nameKey: "sidebar.hashtagTracker", icon: <Hash size={18} />, path: "/hashtags" },
   { name: "Reporting", nameKey: "sidebar.reporting", icon: <FileText size={18} />, path: "/manage/reports" },
   { name: "Competitors", nameKey: "sidebar.competitors", icon: <TrendingUp size={18} />, path: "/manage/competitors" },
-  { name: "Support Chat", nameKey: "menu.supportChat", icon: <MessageCircle size={18} />, path: "/settings?tab=support" },
 ];
+// Plans and billing, Help Center, Support Chat, and Logout now live in the
+// AccountMenu dropdown on the Topbar (visible on every page, not just
+// Manage mode) — kept here would just duplicate the same destinations.
 
 export function SidebarWorkspace() {
   const { t } = useTranslation("topbar");
@@ -48,7 +48,6 @@ export function SidebarWorkspace() {
   const currentPath = location.pathname;
   const { activeBrand } = useBrand();
   const { openConnections } = useConnections();
-  const { logout } = useAuth();
   const { theme, setTheme } = useTheme();
 
   const [planInfo, setPlanInfo] = useState(null);
@@ -70,7 +69,8 @@ export function SidebarWorkspace() {
   const isManageMode = (currentPath.startsWith("/manage") && !currentPath.startsWith("/manage/inbox"))
     || currentPath.startsWith("/hashtags")
     || currentPath.startsWith("/settings")
-    || currentPath.startsWith("/pricing");
+    || currentPath.startsWith("/pricing")
+    || currentPath.startsWith("/help");
 
   const planName = planInfo?.planName || "FREE";
   const isPremium = planName.toUpperCase() !== "FREE";
@@ -155,15 +155,6 @@ export function SidebarWorkspace() {
                 </Link>
               );
             })}
-
-            <div className="h-px bg-[var(--sidebar-border)] my-2" />
-            <button
-              onClick={async () => { await logout(); navigate("/login"); }}
-              className="flex items-center gap-3 px-3 py-2 rounded-lg transition-all text-red-500 hover:bg-red-500/10 text-left"
-            >
-              <LogOut size={18} />
-              <span style={{ fontSize: 13, fontWeight: 500 }}>{t("menu.logout")}</span>
-            </button>
           </nav>
         </div>
       ) : (
