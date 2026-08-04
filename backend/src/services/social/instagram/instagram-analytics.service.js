@@ -1,7 +1,6 @@
 const instagramGateway = require('./instagram.gateway');
 const socialAccountRepository = require('../../../repositories/social/social-account.repository');
 const { PLATFORMS, DEFAULT_CONFIG, ANALYTICS, SOCIAL_TECHNICAL } = require('../../../utils/constants');
-const logger = require('../../../utils/logger');
 
 class InstagramAnalyticsService {
   _getEmptyChannelInfo(igAccountId, account = null) {
@@ -65,7 +64,7 @@ class InstagramAnalyticsService {
         throw new Error('No Instagram account is linked to this Facebook page.');
       }
       
-      const analyticsData = await this.getAnalyticsReport(igData.igAccountId, auth.pageAccessToken, startDate, endDate, igData.followersCount, socialAccountId);
+      const analyticsData = await this.getAnalyticsReport(igData.igAccountId, auth.pageAccessToken, startDate, endDate, igData.followersCount);
       
       return {
         ...igData,
@@ -99,7 +98,7 @@ class InstagramAnalyticsService {
     }
   }
 
-  async getAnalyticsReport(igAccountId, accessToken, startDate, endDate, currentFollowersCount, socialAccountId = null) {
+  async getAnalyticsReport(igAccountId, accessToken, startDate, endDate, currentFollowersCount) {
     if (accessToken && accessToken.startsWith('mock-')) {
       return this._getMockAnalyticsReport(startDate, endDate, currentFollowersCount);
     }
@@ -107,35 +106,6 @@ class InstagramAnalyticsService {
     try {
       const { start, end } = this._resolveDates(startDate, endDate);
       const dailyMap = this._initializeDailyMap(start, end);
-
-      let missingRanges = [{ start, end }];
-
-      if (socialAccountId) {
-        const existingAnalytics = await socialAccountRepository.findAnalyticsInRange(socialAccountId, start, end);
-        
-        existingAnalytics.forEach(record => {
-          if (record.socialAnalytics?.audienceDemographicsJson) {
-            try {
-              const data = JSON.parse(record.socialAnalytics.audienceDemographicsJson);
-              const growth = data.growth || [];
-              growth.forEach(day => {
-                if (dailyMap[day.date] && !dailyMap[day.date]._fromDb) {
-                  Object.assign(dailyMap[day.date], day);
-                  if (day.views > 0 || day.pageVisits > 0 || day.acquired > 0 || day.totalClicks > 0) {
-                    dailyMap[day.date]._fromDb = true;
-                  }
-                }
-              });
-            } catch (e) {
-              console.error('[Instagram Analytics] Failed to parse DB JSON:', e);
-            }
-          }
-        });
-
-        missingRanges = this._calculateMissingRanges(dailyMap, start, end);
-      }
-
-      logger.debug(`[Instagram Analytics] Smart Sync: Requesting ${missingRanges.length} missing ranges from API for ${igAccountId}`);
 
       // Fetch real account insights
       const insights = await instagramGateway.getAccountInsights(igAccountId, accessToken, start, end).catch(() => []);
@@ -164,46 +134,44 @@ class InstagramAnalyticsService {
         }
       });
 
-      const feedResult = await instagramGateway.getInstagramMediaFeed(igAccountId, accessToken, null, 100).catch(() => ({ data: [] }));
-      const feedStats = this._processFeed(feedResult.data || [], dailyMap);
+      // Paginate the feed for the full period instead of a single
+      // limit=100 page — a single page silently drops older posts for
+      // accounts with a longer feed within the requested date range,
+      // undercounting totalPostsInPeriod and making the per-load post
+      // count drift depending on how many new posts shifted the window
+      // between calls (same class of bug fixed for Facebook in #70).
+      // Stop once the feed runs out, a page comes back entirely older
+      // than the range's start date (feed is reverse-chronological, so
+      // nothing further back can still be in range), or a safety cap is
+      // hit to avoid an unbounded loop against a misbehaving cursor.
+      const MAX_FEED_PAGES = 20;
+      const rangeStartMs = new Date(start).getTime();
+      let allFeedPosts = [];
+      let feedPageToken = null;
+      for (let page = 0; page < MAX_FEED_PAGES; page++) {
+        const feedResult = await instagramGateway
+          .getInstagramMediaFeed(igAccountId, accessToken, feedPageToken, 100)
+          .catch(() => ({ data: [] }));
+        const pagePosts = feedResult.data || [];
+        allFeedPosts = allFeedPosts.concat(pagePosts);
 
-      const sortedDates = Object.keys(dailyMap).sort().map(d => {
-        const { _fromDb, ...cleanData } = dailyMap[d];
-        return cleanData;
-      });
+        const oldestInPage = pagePosts[pagePosts.length - 1];
+        const pageIsFullyBeforeRange = oldestInPage && new Date(oldestInPage.timestamp).getTime() < rangeStartMs;
+
+        if (!feedResult.nextPageToken || pagePosts.length === 0 || pageIsFullyBeforeRange) {
+          break;
+        }
+        feedPageToken = feedResult.nextPageToken;
+      }
+      const feedStats = this._processFeed(allFeedPosts, dailyMap);
+
+      const sortedDates = Object.keys(dailyMap).sort().map(d => dailyMap[d]);
 
       return this._calculateTotalsAndFormatResponse(sortedDates, currentFollowersCount, feedStats);
     } catch (error) {
       console.error('Error fetching Instagram Analytics:', error);
       throw error;
     }
-  }
-
-  _calculateMissingRanges(dailyMap, start, end) {
-    const sortedDates = Object.keys(dailyMap).sort();
-    const ranges = [];
-    let currentRange = null;
-
-    sortedDates.forEach(dateStr => {
-      if (!dailyMap[dateStr]._fromDb) {
-        if (!currentRange) {
-          currentRange = { start: dateStr, end: dateStr };
-        } else {
-          currentRange.end = dateStr;
-        }
-      } else {
-        if (currentRange) {
-          ranges.push(currentRange);
-          currentRange = null;
-        }
-      }
-    });
-
-    if (currentRange) {
-      ranges.push(currentRange);
-    }
-
-    return ranges;
   }
 
   _resolveDates(startDate, endDate) {
