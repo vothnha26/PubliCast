@@ -17,6 +17,15 @@
     "supportChat": "Trò chuyện hỗ trợ",
     "logout": "Đăng xuất"
   },
+  "accountMenu": {
+    "planLabel": "Gói {{name}}",
+    "upgradePlan": "Nâng cấp gói",
+    "settings": "Cài đặt",
+    "channels": "Kênh",
+    "billing": "Gói cước & Thanh toán",
+    "helpSupport": "Trợ giúp & Hỗ trợ",
+    "logout": "Đăng xuất"
+  },
   "brand": {
     "select": "Chọn thương hiệu",
     "defaultActive": "Thương hiệu mặc định",
@@ -41,7 +50,8 @@
     "approvalTasks": "Yêu cầu duyệt bài",
     "hashtagTracker": "Theo dõi Hashtag",
     "reporting": "Báo cáo",
-    "competitors": "Đối thủ"
+    "competitors": "Đối thủ",
+    "helpCenter": "Trung tâm hỗ trợ"
   },
   "channels": {
     "title": "Kênh",
