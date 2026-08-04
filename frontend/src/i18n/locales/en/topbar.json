@@ -14,14 +14,8 @@
     "userManagement": "User management",
     "billing": "Plans and billing",
     "myTasks": "My tasks",
-    "language": "Language",
-    "accountSettings": "Account settings",
-    "helpCenter": "Help center",
     "supportChat": "Support Chat",
-    "whatsNew": "What's new",
-    "affiliation": "Affiliation program",
-    "logout": "Logout",
-    "legalTerms": "Legal terms"
+    "logout": "Logout"
   },
   "brand": {
     "select": "Select Brand",

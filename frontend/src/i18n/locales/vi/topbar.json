@@ -14,14 +14,8 @@
     "userManagement": "Quản lý thành viên",
     "billing": "Gói cước & Thanh toán",
     "myTasks": "Nhiệm vụ của tôi",
-    "language": "Ngôn ngữ",
-    "accountSettings": "Cài đặt tài khoản",
-    "helpCenter": "Trung tâm trợ giúp",
     "supportChat": "Trò chuyện hỗ trợ",
-    "whatsNew": "Tính năng mới",
-    "affiliation": "Chương trình tiếp thị",
-    "logout": "Đăng xuất",
-    "legalTerms": "Điều khoản pháp lý"
+    "logout": "Đăng xuất"
   },
   "brand": {
     "select": "Chọn thương hiệu",
