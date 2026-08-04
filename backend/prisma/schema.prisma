@@ -140,6 +140,7 @@ model Brand {
   hashtagTrackers         HashtagTracker[]
   hashtagSets             HashtagSet[]
   postingGoals            PostingGoal[]
+  streak                  BrandStreak?
   aiAssistant             AIAssistant?
   reportScheduleConfig    ReportScheduleConfig?
   mediaLibrary            MediaLibrary[]
@@ -1632,6 +1633,19 @@ model PostingGoal {
   @@unique([brandId, period])
   @@index([brandId])
   @@map("posting_goals")
+}
+
+model BrandStreak {
+  id             String    @id @default(uuid())
+  brandId        String    @unique
+  currentStreak  Int       @default(0)
+  longestStreak  Int       @default(0)
+  lastPostedDate DateTime? @db.Date
+  updatedAt      DateTime  @updatedAt
+
+  brand Brand @relation(fields: [brandId], references: [id], onDelete: Cascade)
+
+  @@map("brand_streaks")
 }
 
 model AIAssistant {

@@ -745,6 +745,10 @@ const LOCK_CONFIG = {
   RECAP_SCHEDULER: {
     KEY: 'lock:recap-scheduler:scan',
     TTL_SEC: 20 * 60
+  },
+  STREAK_SCHEDULER: {
+    KEY: 'lock:streak-scheduler:reset',
+    TTL_SEC: 20 * 60
   }
 };
 

@@ -4,6 +4,7 @@ const smartLinkController = require('../../controllers/workspace/smart-link.cont
 const autoListController = require('../../controllers/workspace/auto-list.controller');
 const hashtagController = require('../../controllers/workspace/hashtag.controller');
 const postingGoalController = require('../../controllers/workspace/posting-goal.controller');
+const streakController = require('../../controllers/workspace/streak.controller');
 const calendarEventController = require('../../controllers/workspace/calendar-event.controller');
 const stockController = require('../../controllers/stock.controller');
 const { verifyAuth } = require('../../middlewares/auth.middleware');
@@ -143,6 +144,29 @@ router.post('/hashtags/track/:id/refresh', hashtagController.refreshHashtag);
 router.get('/posting-goals', checkBrandAccess, postingGoalController.getPostingGoals);
 router.put('/posting-goals', checkBrandAccess, postingGoalController.upsertPostingGoal);
 router.delete('/posting-goals/:id', postingGoalController.deletePostingGoal);
+
+// ── Posting Streak V2 ──
+/**
+ * @openapi
+ * /v2/content-extras/streak:
+ *   get:
+ *     summary: Get the brand's current posting streak
+ *     tags: [Workspace Content Extras V2]
+ *     security: [{ cookieAuth: [] }]
+ *     parameters:
+ *       - in: query
+ *         name: brandId
+ *         required: true
+ *         schema: { type: string }
+ *     responses:
+ *       200:
+ *         description: Posting streak
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/V2EnvelopeResponse'
+ */
+router.get('/streak', checkBrandAccess, streakController.getStreak);
 
 // ── Calendar Events V2 ──
 /**

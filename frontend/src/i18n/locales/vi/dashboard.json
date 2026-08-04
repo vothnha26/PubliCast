@@ -18,7 +18,9 @@
     "youtubeNote": "Kênh YouTube",
     "uploadedNote": "Đã tải lên",
     "selectedDelta": "Đang chọn",
-    "unknownBrand": "Không xác định"
+    "unknownBrand": "Không xác định",
+    "postingStreak": "Chuỗi đăng bài",
+    "longestStreak": "Kỷ lục: {{count}}"
   },
   "charts": {
     "audienceTrend": "Xu Hướng Lượng Người Xem",

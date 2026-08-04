@@ -18,7 +18,9 @@
     "youtubeNote": "YouTube Channel",
     "uploadedNote": "Uploaded",
     "selectedDelta": "Selected",
-    "unknownBrand": "Unknown"
+    "unknownBrand": "Unknown",
+    "postingStreak": "Posting Streak",
+    "longestStreak": "Best: {{count}}"
   },
   "charts": {
     "audienceTrend": "Audience Reach Trend",

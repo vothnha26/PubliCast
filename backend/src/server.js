@@ -67,6 +67,10 @@ const server = app.listen(PORT, async () => {
   const recapSchedulerService = require('./services/core/recap-scheduler.service');
   recapSchedulerService.start();
 
+  // Start Daily Posting Streak Reset Scheduler
+  const streakSchedulerService = require('./services/core/streak-scheduler.service');
+  streakSchedulerService.start();
+
   // Start Periodic Inbox Sync Scheduler (15-minute fallback cycle)
   const inboxSyncSchedulerService = require('./services/social/inbox-sync-scheduler.service');
   inboxSyncSchedulerService.start();

@@ -10,6 +10,7 @@ import {
 import { PlatformIcon } from "../../components/shared/PlatformIcon";
 import { StatCard } from "../../components/shared/StatCard";
 import { PostingGoalWidget } from "../../components/shared/PostingGoalWidget";
+import { StreakStatCard } from "../../components/shared/StreakStatCard";
 import { useBrand } from "../../context/BrandContext";
 import socialService from "../../services/social.service";
 import postService from "../../services/post.service";
@@ -277,8 +278,8 @@ export function DashboardPage() {
         className="flex-1 overflow-y-auto bg-background text-foreground animate-pulse p-6 flex flex-col gap-5"
       >
         {/* Stat Cards Row Skeleton */}
-        <div className="grid grid-cols-4 gap-4">
-          {[1, 2, 3, 4].map((n) => (
+        <div className="grid grid-cols-5 gap-4">
+          {[1, 2, 3, 4, 5].map((n) => (
             <div key={n} className="bg-card p-6 rounded-2xl border border-border shadow-sm h-[110px] space-y-3">
               <div className="w-20 h-3 bg-muted rounded" />
               <div className="w-28 h-6 bg-muted/80 rounded" />
@@ -325,7 +326,7 @@ export function DashboardPage() {
       className="flex-1 overflow-y-auto font-sans bg-background text-foreground p-6 flex flex-col gap-5"
     >
       {/* Stat Cards Row */}
-      <div className="grid grid-cols-4 gap-4">
+      <div className="grid grid-cols-5 gap-4">
         <StatCard
           label={t("stats.totalFollowers")}
           value={stats.subscribers.toLocaleString()}
@@ -348,6 +349,7 @@ export function DashboardPage() {
           delta={t("stats.selectedDelta")}
           deltaColor="#16A34A"
         />
+        {activeBrand && <StreakStatCard brandId={activeBrand.id} />}
       </div>
 
       {/* Weekly Viewers Chart */}
