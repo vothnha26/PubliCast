@@ -9,7 +9,7 @@ const { CACHE_SCOPES } = require('../../../utils/socket-constants');
 const { PLATFORMS, POST_STATUS, SEPARATORS, YOUTUBE_API, YOUTUBE_VIDEO_DETAILS_CACHE } = require('../../../utils/constants');
 
 class YouTubeVideoService {
-  async getPublishedVideos(brandId, pageToken = null, limit = 10, socialAccountId = null, forceSync = false) {
+  async getPublishedVideos(brandId, pageToken = null, limit = 10, socialAccountId = null, forceSync = false, startDate = null, endDate = null) {
     const cacheKey = `cache:youtube:videos:${brandId}:${pageToken || 'first'}:${limit}`;
 
     // 1. Try Redis Cache (< 2ms response time)
@@ -17,7 +17,8 @@ class YouTubeVideoService {
       try {
         const cachedData = await redisClient.get(cacheKey);
         if (cachedData) {
-          return JSON.parse(cachedData);
+          const parsed = JSON.parse(cachedData);
+          return { ...parsed, videos: this._filterByDateRange(parsed.videos, startDate, endDate) };
         }
       } catch (err) {
         console.warn('[YouTubeVideoService] Redis get failed:', err.message);
@@ -63,7 +64,7 @@ class YouTubeVideoService {
             console.warn('[YouTubeVideoService] Async background sync error:', err.message);
           });
 
-          return responsePayload;
+          return { ...responsePayload, videos: this._filterByDateRange(responsePayload.videos, startDate, endDate) };
         }
       } catch (dbErr) {
         console.warn('[YouTubeVideoService] DB posts lookup failed, falling back to YouTube API:', dbErr.message);
@@ -71,7 +72,22 @@ class YouTubeVideoService {
     }
 
     // 3. Cold Start Fallback / Forced Sync: Live YouTube API call
-    return await this._fetchAndPersistLiveYouTubeVideos(brandId, pageToken, limit, socialAccountId, cacheKey);
+    const liveResult = await this._fetchAndPersistLiveYouTubeVideos(brandId, pageToken, limit, socialAccountId, cacheKey);
+    return { ...liveResult, videos: this._filterByDateRange(liveResult.videos, startDate, endDate) };
+  }
+
+  // See FacebookPostService#_filterByDateRange (same repo pattern) — a
+  // display-only narrowing on top of whatever page of results was already
+  // fetched/cached, never widening it.
+  _filterByDateRange(videos, startDate, endDate) {
+    if (!startDate && !endDate) return videos;
+    return (videos || []).filter((video) => {
+      if (!video.publishedAt) return true;
+      const videoTime = new Date(video.publishedAt).getTime();
+      if (startDate && videoTime < new Date(startDate).getTime()) return false;
+      if (endDate && videoTime > new Date(endDate).getTime() + 24 * 60 * 60 * 1000 - 1) return false;
+      return true;
+    });
   }
 
   async _fetchAndPersistLiveYouTubeVideos(brandId, pageToken, limit, socialAccountId, cacheKey) {

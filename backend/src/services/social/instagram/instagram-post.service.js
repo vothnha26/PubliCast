@@ -45,8 +45,8 @@ class InstagramPostService {
       });
   }
 
-  async getPublishedPosts(brandId, pageToken = null, limit = 10, socialAccountId = null) {
-    const cacheKey = `${brandId}_${socialAccountId || 'default'}_${pageToken || 'first'}_${limit}`;
+  async getPublishedPosts(brandId, pageToken = null, limit = 10, socialAccountId = null, startDate = null, endDate = null) {
+    const cacheKey = `${brandId}_${socialAccountId || 'default'}_${pageToken || 'first'}_${limit}_${startDate || ''}_${endDate || ''}`;
     const cached = postCache.get(cacheKey);
     if (cached && cached.expiry > Date.now()) return cached.data;
 
@@ -78,6 +78,8 @@ class InstagramPostService {
         }
       }
 
+      result = { ...result, data: this._filterByDateRange(result.data, startDate, endDate) };
+
       postCache.set(cacheKey, { data: result, expiry: Date.now() + CACHE_TTL_MS });
       return result;
     } catch (error) {
@@ -86,6 +88,19 @@ class InstagramPostService {
       }
       throw error;
     }
+  }
+
+  // See FacebookPostService#_filterByDateRange — same display-only
+  // narrowing applied after the DB-first/live fetch resolves.
+  _filterByDateRange(posts, startDate, endDate) {
+    if (!startDate && !endDate) return posts;
+    return (posts || []).filter((post) => {
+      if (!post.date) return true;
+      const postTime = new Date(post.date).getTime();
+      if (startDate && postTime < new Date(startDate).getTime()) return false;
+      if (endDate && postTime > new Date(endDate).getTime() + 24 * 60 * 60 * 1000 - 1) return false;
+      return true;
+    });
   }
 
   /** DB-first read path (see SocialPostMetric in schema.prisma). Mirrors

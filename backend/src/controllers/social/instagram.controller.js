@@ -3,10 +3,10 @@ const asyncHandler = require('../../utils/async-handler');
 
 class InstagramController {
   getInstagramPublishedPosts = asyncHandler(async (req, res) => {
-    const { brandId, pageToken, limit, socialAccountId } = req.query;
+    const { brandId, pageToken, limit, socialAccountId, startDate, endDate } = req.query;
     if (!brandId) return res.status(400).json({ message: 'brandId is required' });
 
-    const result = await instagramService.getPublishedVideos(brandId, pageToken || null, limit ? parseInt(limit) : 10, socialAccountId || null);
+    const result = await instagramService.getPublishedVideos(brandId, pageToken || null, limit ? parseInt(limit) : 10, socialAccountId || null, startDate || null, endDate || null);
     res.json(result);
   });
 
