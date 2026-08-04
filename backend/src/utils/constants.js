@@ -752,6 +752,15 @@ const LOCK_CONFIG = {
   }
 };
 
+// Comment Score: weights a comment above a like/share since it's the
+// highest-effort engagement signal (typing vs. one tap). See
+// utils/comment-score.util.js for the formula that consumes these.
+const COMMENT_SCORE_WEIGHTS = {
+  COMMENT: 3,
+  LIKE: 1,
+  SHARE: 1.5
+};
+
 module.exports = {
   PLATFORMS,
   USER_ROLES,
@@ -815,6 +824,7 @@ module.exports = {
   LOCK_CONFIG,
   STOCK_PROVIDERS,
   STOCK_MEDIA_TYPES,
+  COMMENT_SCORE_WEIGHTS,
   splitMediaUrls
 };
 

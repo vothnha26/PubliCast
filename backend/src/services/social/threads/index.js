@@ -3,6 +3,7 @@ const threadsGateway = require('./threads.gateway');
 const brandRepository = require('../../../repositories/workspace/brand.repository');
 const prisma = require('../../../config/prisma');
 const { PLATFORMS } = require('../../../utils/constants');
+const { computeCommentScore } = require('../../../utils/comment-score.util');
 const logger = require('../../../utils/logger');
 
 // Threads has no date-range filter for media, so — same as Instagram/TikTok
@@ -454,7 +455,8 @@ class ThreadsService extends BaseSocialService {
       comments,
       shares,
       clicks,
-      engagement: null
+      engagement: null,
+      commentScore: computeCommentScore({ comments, likes: reactions, shares, reach: null })
     };
   }
 
@@ -538,7 +540,8 @@ class ThreadsService extends BaseSocialService {
         comments: r.comments,
         shares: r.shares,
         clicks: r.clicks,
-        engagement: null
+        engagement: null,
+        commentScore: computeCommentScore({ comments: r.comments, likes: r.likes, shares: r.shares, reach: null })
       })),
       nextPageToken: null,
       prevPageToken: null

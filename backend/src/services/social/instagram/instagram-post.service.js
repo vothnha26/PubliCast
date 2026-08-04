@@ -3,6 +3,7 @@ const socialAccountRepository = require('../../../repositories/social/social-acc
 const brandRepository = require('../../../repositories/workspace/brand.repository');
 const prisma = require('../../../config/prisma');
 const { PLATFORMS, POST_STATUS, POST_TYPES, DEFAULT_CONFIG } = require('../../../utils/constants');
+const { computeCommentScore } = require('../../../utils/comment-score.util');
 const InstagramPublishStrategyFactory = require('./publish-strategies/publish-strategy.factory');
 const logger = require('../../../utils/logger');
 
@@ -143,9 +144,10 @@ class InstagramPostService {
       shares: row.shares,
       clicks: row.clicks,
       linkClicks: Math.round(row.clicks * 0.2),
-      videoViews: row.postType === 'VIDEO' ? row.views : 0,
-      videoTimeWatched: row.postType === 'VIDEO' ? '0:20' : '0:00',
+      videoViews: row.postType === POST_TYPES.VIDEO ? row.views : 0,
+      videoTimeWatched: row.postType === POST_TYPES.VIDEO ? '0:20' : '0:00',
       engagement: row.engagementRate,
+      commentScore: computeCommentScore({ comments: row.comments, likes: row.likes, shares: row.shares, reach: row.reach }),
       spent: 0
     };
   }
@@ -405,6 +407,7 @@ class InstagramPostService {
         videoViews: post.media_type === 'VIDEO' ? views : 0,
         videoTimeWatched: post.media_type === 'VIDEO' ? '0:20' : '0:00',
         engagement,
+        commentScore: computeCommentScore({ comments, likes: reactions, shares, reach }),
         spent: 0
       };
     } catch (err) {
@@ -452,6 +455,10 @@ class InstagramPostService {
       videoViews: 0,
       videoTimeWatched: '0:00',
       engagement: 0,
+      // reach is 0 here (no insights data in the fallback path), so
+      // computeCommentScore would score 0 regardless — skip the call and
+      // just state that explicitly instead of implying it was computed.
+      commentScore: 0,
       spent: 0
     };
   }
