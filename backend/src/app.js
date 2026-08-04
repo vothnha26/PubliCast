@@ -24,6 +24,7 @@ const revenueRoutes = require('./routes/admin/revenue.routes');
 const productRoutes = require('./routes/admin/product.routes');
 const platformLimitRoutes = require('./routes/admin/platform-limit.routes');
 const userRoutes = require('./routes/admin/user.routes');
+const helpArticleRoutes = require('./routes/admin/help-article.routes');
 
 // Routes - Social Domain
 const socialRoutes = require('./routes/social/social.routes');
@@ -61,6 +62,7 @@ const reportRoutes = require('./routes/workspace/report.routes');
 const hashtagRoutes = require('./routes/workspace/hashtag.routes');
 const adAccountRoutes = require('./routes/workspace/ad-account.routes');
 const calendarEventRoutes = require('./routes/workspace/calendar-event.routes');
+const helpCenterRoutes = require('./routes/workspace/help-center.routes');
 
 
 // Routes - Core Domain
@@ -228,6 +230,8 @@ app.use('/api/v2/billing/subscriptions', billingSubscriptionRoutesV2);
 app.use('/api/v2/system', systemRoutesV2);
 app.use('/api/v2/notifications', notificationRoutesV2);
 app.use('/api/v2/tickets', ticketRoutesV2);
+app.use('/api/v2/admin/help-articles', helpArticleRoutes);
+app.use('/api/v2/help', helpCenterRoutes);
 app.use('/api/brands', brandRoutes);
 app.use('/api/brands/:brandId/roles', roleRoutes);
 app.use('/api/brands/:brandId/workflows', approvalWorkflowRoutes);
