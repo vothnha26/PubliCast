@@ -11,6 +11,7 @@ import { apiV2 } from "../services/api";
 import { openNotificationStream } from "../utils/notification-stream";
 import { useTranslation } from "react-i18next";
 import { useLanguage } from "../context/LanguageContext";
+import { AccountMenu } from "./AccountMenu";
 
 export function Topbar() {
   const { t } = useTranslation("topbar");
@@ -364,6 +365,9 @@ export function Topbar() {
               )}
             </div>
           )}
+
+          {/* Account Menu (Workspace & Manage only) */}
+          {!isSuperadmin && <AccountMenu />}
 
         </div>
       </header>
