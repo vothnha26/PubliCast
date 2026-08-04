@@ -36,12 +36,7 @@ class TikTokVideoService {
         return await this._fetchDateRangeWindow(account, startDate, endDate);
       }
 
-      let response;
-      try {
-        response = await this._getVideoListWithRefresh(account, cursor, maxCount);
-      } catch (error) {
-        throw error;
-      }
+      const response = await this._getVideoListWithRefresh(account, cursor, maxCount);
 
       if (!response || !response.videos) {
         return { videos: [], nextPageToken: null, prevPageToken: null };
