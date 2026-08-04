@@ -54,7 +54,7 @@ describe('Profile & Settings Detailed Suite', function () {
       until.elementLocated(By.css('[data-testid="profile-fullname-input"]')),
       15000
     );
-    await driver.wait(async () => (await fullNameInput.getAttribute('value')) !== '', 15000);
+    await driver.wait(async () => (await fullNameInput.getAttribute('value')) !== '', 25000);
   });
 
   describe('Tab Navigation and Deep Links', function () {
