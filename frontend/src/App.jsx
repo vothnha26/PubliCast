@@ -3,7 +3,7 @@ import { Routes, Route, useLocation, useNavigate, Navigate } from "react-router-
 import { SidebarWorkspace } from "./layout/SidebarWorkspace";
 import { SidebarAdmin } from "./layout/SidebarAdmin";
 import { Topbar } from "./layout/Topbar";
-import { SupportChat } from "./components/app/SupportChat";
+import { HelpChatWidget } from "./components/app/HelpChatWidget";
 import { PostCreatorPage } from "./pages/workspace/PostCreator";
 import { ConnectionsOverlay } from "./components/shared/ConnectionsOverlay";
 import { GlobalConfirmDialog } from "./components/shared/GlobalConfirmDialog";
@@ -42,6 +42,8 @@ import { SettingsPage } from "./pages/workspace/Settings";
 import { PricingPage } from "./pages/workspace/Pricing";
 import { AIAssistant } from "./pages/workspace/AIAssistant";
 import { HashtagManager } from "./pages/workspace/HashtagManager";
+import { HelpCenterPage } from "./pages/workspace/HelpCenter";
+import { HelpArticleDetailPage } from "./pages/workspace/HelpArticleDetail";
 import { ErrorPages } from "./pages/workspace/ErrorPages";
 import { NotificationsPage } from "./pages/workspace/Notifications";
 import { PlannerLayout } from "./pages/workspace/planner/PlannerLayout";
@@ -70,6 +72,7 @@ import { AdminPricing } from "./pages/admin/AdminPricing";
 import { AdminUsers } from "./pages/admin/AdminUsers";
 import { AdminProducts } from "./pages/admin/AdminProducts";
 import { AdminTemplates } from "./pages/admin/AdminTemplates";
+import { AdminHelpArticles } from "./pages/admin/AdminHelpArticles";
 import { AuditLog } from "./pages/admin/AuditLog";
 import { RevenueDashboard } from "./pages/admin/RevenueDashboard";
 import { AdminPlatformLock } from "./pages/admin/AdminPlatformLock";
@@ -181,6 +184,8 @@ export default function App() {
                 <Route path="/smartlinks" element={<ProtectedRoute allowedRoles={CLIENT_ROLES}><FeatureGate productId={PRODUCT_IDS.CUSTOM_LINKS}><SmartLinksPage /></FeatureGate></ProtectedRoute>} />
                 <Route path="/ai" element={<ProtectedRoute allowedRoles={CLIENT_ROLES}><FeatureGate productId={PRODUCT_IDS.AI_CONTENT_ENGINE}><AIAssistant /></FeatureGate></ProtectedRoute>} />
                 <Route path="/hashtags" element={<ProtectedRoute allowedRoles={CLIENT_ROLES}><HashtagManager /></ProtectedRoute>} />
+                <Route path="/help" element={<ProtectedRoute allowedRoles={CLIENT_ROLES}><HelpCenterPage /></ProtectedRoute>} />
+                <Route path="/help/:slug" element={<ProtectedRoute allowedRoles={CLIENT_ROLES}><HelpArticleDetailPage /></ProtectedRoute>} />
                 <Route path="/errors" element={<ProtectedRoute allowedRoles={CLIENT_ROLES}><ErrorPages /></ProtectedRoute>} />
                 <Route path="/notifications" element={<ProtectedRoute allowedRoles={CLIENT_ROLES}><NotificationsPage /></ProtectedRoute>} />
                 
@@ -198,6 +203,7 @@ export default function App() {
                 <Route path="/admin/users" element={<ProtectedRoute allowedRoles={['ADMIN']}><AdminUsers /></ProtectedRoute>} />
                 <Route path="/admin/products" element={<ProtectedRoute allowedRoles={['ADMIN']}><AdminProducts /></ProtectedRoute>} />
                 <Route path="/admin/templates" element={<ProtectedRoute allowedRoles={['ADMIN']}><AdminTemplates /></ProtectedRoute>} />
+                <Route path="/admin/help-articles" element={<ProtectedRoute allowedRoles={['ADMIN']}><AdminHelpArticles /></ProtectedRoute>} />
                 <Route path="/admin/audit" element={<ProtectedRoute allowedRoles={['ADMIN']}><AuditLog /></ProtectedRoute>} />
                 <Route path="/admin/revenue" element={<ProtectedRoute allowedRoles={['ADMIN']}><RevenueDashboard /></ProtectedRoute>} />
                 <Route path="/admin/platform-lock" element={<ProtectedRoute allowedRoles={['ADMIN']}><AdminPlatformLock /></ProtectedRoute>} />
@@ -224,7 +230,7 @@ export default function App() {
         <ConnectionsOverlay />
         <GlobalConfirmDialog />
         <UpsellModal />
-        {!isNoLayout && !isSuperadmin && !isStaff && <SupportChat />}
+        {!isNoLayout && !isSuperadmin && !isStaff && <HelpChatWidget />}
       </div>
     </QueryClientProvider>
   );
