@@ -663,6 +663,16 @@ const QUOTA_TTL_STRATEGY = {
     HOURLY_LIMIT: 5000,
     POINTS: { CREATE: 3, UPDATE: 2, DELETE: 1 },
     DEFAULT_TTL_SEC: 2 * 3600
+  },
+  // TikTok's published-docs rate limit for /v2/video/list/ (and
+  // /v2/user/info/, /v2/video/query/) is 600 requests/minute on a sliding
+  // window, enforced app-wide (not per-brand) — exceeding it returns HTTP
+  // 429 rate_limit_exceeded. MINUTE_LIMIT is kept well under 600 so our own
+  // multi-page cursor walk (tiktok-video.service.js#_fetchRecentWindow)
+  // backs off before actually tripping TikTok's limit, even if several
+  // brands' tabs are open at once.
+  TIKTOK_VIDEO_LIST: {
+    MINUTE_LIMIT: 400
   }
 };
 
