@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { Plus, X, Edit3, Trash2, Sparkles, FolderPlus, Loader2 } from "lucide-react";
 import adminService from "../../services/admin.service";
 import { toast } from "sonner";
+import { TEMPLATE_FORMAT, TEMPLATE_FORMAT_LABELS, TEMPLATE_GOAL, TEMPLATE_GOAL_LABELS } from "../../constants/templateAttributes";
 
 function CategoryModal({ isOpen, onClose, onSave, category }) {
   const [name, setName] = useState("");
@@ -77,6 +78,8 @@ function TemplateModal({ isOpen, onClose, onSave, template, templateCategoryIds,
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [body, setBody] = useState("");
+  const [format, setFormat] = useState("");
+  const [goal, setGoal] = useState("");
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -86,6 +89,8 @@ function TemplateModal({ isOpen, onClose, onSave, template, templateCategoryIds,
     setTitle(template?.title || "");
     setDescription(template?.description || "");
     setBody(template?.body || "");
+    setFormat(template?.format || "");
+    setGoal(template?.goal || "");
   }, [isOpen, template, templateCategoryIds, defaultCategoryId]);
 
   if (!isOpen) return null;
@@ -98,7 +103,7 @@ function TemplateModal({ isOpen, onClose, onSave, template, templateCategoryIds,
     if (!title.trim() || !description.trim() || categoryIds.length === 0) return;
     setSaving(true);
     try {
-      await onSave({ categoryIds, emoji: emoji.trim(), title: title.trim(), description: description.trim(), body: body.trim() });
+      await onSave({ categoryIds, emoji: emoji.trim(), title: title.trim(), description: description.trim(), body: body.trim(), format: format || null, goal: goal || null });
       onClose();
     } catch (err) {
       toast.error(err?.response?.data?.message || err.message || "Failed to save template");
@@ -184,6 +189,34 @@ function TemplateModal({ isOpen, onClose, onSave, template, templateCategoryIds,
               className="w-full px-4 py-3 rounded-xl border border-border focus:border-black outline-none text-sm font-medium resize-none"
             />
             <p className="text-[10px] text-muted-foreground">Full starter content inserted into the composer when a user picks this template. Falls back to the description above if left empty.</p>
+          </div>
+          <div className="flex gap-4">
+            <div className="space-y-1.5 flex-1">
+              <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Format (optional)</label>
+              <select
+                value={format}
+                onChange={(e) => setFormat(e.target.value)}
+                className="w-full px-4 py-3 rounded-xl border border-border focus:border-black outline-none text-sm font-semibold bg-card"
+              >
+                <option value="">—</option>
+                {Object.values(TEMPLATE_FORMAT).map((value) => (
+                  <option key={value} value={value}>{TEMPLATE_FORMAT_LABELS[value]}</option>
+                ))}
+              </select>
+            </div>
+            <div className="space-y-1.5 flex-1">
+              <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Goal (optional)</label>
+              <select
+                value={goal}
+                onChange={(e) => setGoal(e.target.value)}
+                className="w-full px-4 py-3 rounded-xl border border-border focus:border-black outline-none text-sm font-semibold bg-card"
+              >
+                <option value="">—</option>
+                {Object.values(TEMPLATE_GOAL).map((value) => (
+                  <option key={value} value={value}>{TEMPLATE_GOAL_LABELS[value]}</option>
+                ))}
+              </select>
+            </div>
           </div>
           <button
             onClick={handleSave}

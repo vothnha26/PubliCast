@@ -94,6 +94,24 @@ const CHANNEL_GROUP_VISIBILITY = {
   PRIVATE: 'PRIVATE'
 };
 
+// Mirrors the Prisma TemplateFormat/TemplateGoal enums — closed
+// classification sets for Featured Templates, kept as fixed enums (not
+// free text like TemplateCategory.name) so they stay filterable/consistent.
+const TEMPLATE_FORMAT = {
+  IMAGE: 'IMAGE',
+  VIDEO: 'VIDEO',
+  TEXT: 'TEXT',
+  CAROUSEL: 'CAROUSEL'
+};
+
+const TEMPLATE_GOAL = {
+  ENGAGEMENT: 'ENGAGEMENT',
+  BRAND_AWARENESS: 'BRAND_AWARENESS',
+  EDUCATION: 'EDUCATION',
+  COMMUNITY: 'COMMUNITY',
+  SALES: 'SALES'
+};
+
 /**
  * Trạng thái của workflow record trong DB.
  * Phân biệt với REVIEW_ACTION (input từ reviewer).
@@ -739,6 +757,8 @@ module.exports = {
   INBOX_TYPES,
   POST_STATUS,
   CHANNEL_GROUP_VISIBILITY,
+  TEMPLATE_FORMAT,
+  TEMPLATE_GOAL,
   WORKFLOW_STATUS,
   REVIEW_ACTION,
   WORKFLOW_POLICY,

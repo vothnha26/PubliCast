@@ -1,9 +1,9 @@
 import * as React from "react";
 import { useState, useEffect } from "react";
-import { 
-  Search, Filter, Plus, Diamond, 
+import {
+  Search, Filter, Plus, Diamond,
   Grid3X3, List as ListIcon, MoreHorizontal,
-  Youtube, PlayCircle, Instagram, Image as ImageIcon, Loader2, Eye, Facebook, Edit
+  Youtube, PlayCircle, Instagram, Image as ImageIcon, Loader2, Eye, Facebook, Edit, Lock
 } from "lucide-react";
 import { usePostCreator } from "../../../context/PostCreatorContext";
 import postService from "../../../services/post.service";
@@ -15,6 +15,7 @@ import { buildMediaUrl } from "../../../utils/url";
 import { PlatformIcon } from "@/components/shared/PlatformIcon";
 import { useTranslation } from "react-i18next";
 import { FeaturedTemplatesTab } from "./FeaturedTemplatesTab";
+import { CHANNEL_GROUP_VISIBILITY } from "../../../constants/channelGroupVisibility";
 
 const TABS = [
   { id: "mine", labelKey: "postsLibrary.tabs.myTemplates", fallback: "My Templates" },
@@ -107,7 +108,7 @@ export function PostsLibraryView() {
       </div>
 
       {activeTab === "featured" ? (
-        <FeaturedTemplatesTab />
+        <FeaturedTemplatesTab onDuplicated={fetchLibrary} />
       ) : loading ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 animate-pulse">
            {[1, 2, 3, 4].map((n) => (
@@ -198,7 +199,12 @@ export function PostsLibraryView() {
                 </div>
                 <div className="p-5 space-y-3 bg-card">
                    <div className="flex items-start justify-between gap-2">
-                      <h3 className="text-[13px] font-bold text-foreground line-clamp-1 uppercase tracking-tight">{item.title}</h3>
+                      <div className="flex items-center gap-1.5 min-w-0">
+                        <h3 className="text-[13px] font-bold text-foreground line-clamp-1 uppercase tracking-tight">{item.title}</h3>
+                        {item.libraryVisibility === CHANNEL_GROUP_VISIBILITY.PRIVATE && (
+                          <Lock size={11} className="shrink-0 text-muted-foreground" />
+                        )}
+                      </div>
                       <button className="text-muted-foreground hover:text-foreground transition-colors"><MoreHorizontal size={14} /></button>
                    </div>
                    <div className="flex items-center justify-between">

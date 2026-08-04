@@ -131,6 +131,10 @@
       "useThisIdea": "Use this idea",
       "emptyTitle": "No featured templates yet",
       "emptyDesc": "Check back soon — new content ideas are added regularly.",
+      "searchPlaceholder": "Search templates...",
+      "filter": "Filter",
+      "badge": "Featured templates",
+      "pickTitle": "Our top picks",
       "toasts": {
         "loadFail": "Failed to load featured templates"
       }

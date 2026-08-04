@@ -59,13 +59,15 @@ class TemplateRepository {
    * categories" a single round-trip, same pattern as
    * channel-group.repository.js's setMembers.
    */
-  async createTemplate({ categoryIds, emoji, title, description, body }) {
+  async createTemplate({ categoryIds, emoji, title, description, body, format, goal }) {
     return prisma.template.create({
       data: {
         emoji: emoji || null,
         title,
         description,
         body: body || null,
+        format: format || null,
+        goal: goal || null,
         categories: {
           create: categoryIds.map((categoryId) => ({ categoryId }))
         }
@@ -74,12 +76,14 @@ class TemplateRepository {
     });
   }
 
-  async updateTemplate(id, { categoryIds, emoji, title, description, body }) {
+  async updateTemplate(id, { categoryIds, emoji, title, description, body, format, goal }) {
     const data = {};
     if (emoji !== undefined) data.emoji = emoji;
     if (title !== undefined) data.title = title;
     if (description !== undefined) data.description = description;
     if (body !== undefined) data.body = body;
+    if (format !== undefined) data.format = format || null;
+    if (goal !== undefined) data.goal = goal || null;
 
     return prisma.$transaction(async (tx) => {
       if (categoryIds !== undefined) {

@@ -842,6 +842,11 @@ model Post {
   autoListId         String?
   platformPostId     String?
   isLibrary          Boolean    @default(false)
+  // Only meaningful when isLibrary is true — TEAM: visible to every brand
+  // member's Post Library. PRIVATE: only the creator sees it. Mirrors
+  // ChannelGroupVisibility's semantics (see that enum), reused here rather
+  // than duplicated since the meaning is identical.
+  libraryVisibility  ChannelGroupVisibility @default(TEAM)
   isDeleted          Boolean    @default(false)
   deletedAt          DateTime?
   createdAt          DateTime   @default(now())
@@ -2020,21 +2025,41 @@ model TemplateCategory {
 }
 
 model Template {
-  id          String   @id @default(uuid())
+  id          String         @id @default(uuid())
   emoji       String?
   title       String
   // Short prompt shown on the template card (what to write about).
-  description String   @db.Text
+  description String         @db.Text
   // Full starter content with {{placeholder}} sections, inserted into the
   // composer when the user clicks the template — mirrors Buffer's
   // Description vs Body split in its own template editor.
-  body        String?  @db.Text
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  body        String?        @db.Text
+  // Both optional — fixed enums (not free text like TemplateCategory.name)
+  // since they're closed classification sets meant to stay filterable/
+  // consistent, unlike categories which admins can freely create.
+  format      TemplateFormat?
+  goal        TemplateGoal?
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
 
   categories TemplateCategoryOnTemplate[]
 
   @@map("templates")
+}
+
+enum TemplateFormat {
+  IMAGE
+  VIDEO
+  TEXT
+  CAROUSEL
+}
+
+enum TemplateGoal {
+  ENGAGEMENT
+  BRAND_AWARENESS
+  EDUCATION
+  COMMUNITY
+  SALES
 }
 
 model TemplateCategoryOnTemplate {

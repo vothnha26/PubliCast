@@ -9,52 +9,19 @@ jest.mock('../../src/repositories/admin/template.repository', () => ({
   deleteTemplate: jest.fn()
 }));
 
-jest.mock('../../src/config/redis', () => ({
-  isOpen: false,
-  get: jest.fn(),
-  setEx: jest.fn(),
-  del: jest.fn()
-}));
-
 const templateService = require('../../src/services/admin/template.service');
 const templateRepository = require('../../src/repositories/admin/template.repository');
-const redisClient = require('../../src/config/redis');
 
 describe('TemplateService', () => {
   beforeEach(() => jest.resetAllMocks());
 
   describe('getFeaturedTemplates', () => {
-    it('reads from the DB when Redis is not open', async () => {
-      redisClient.isOpen = false;
+    it('reads directly from the DB', async () => {
       templateRepository.findAllCategoriesWithTemplates.mockResolvedValue([{ id: 'cat-1', name: 'Tip', templates: [] }]);
 
       const result = await templateService.getFeaturedTemplates();
 
       expect(templateRepository.findAllCategoriesWithTemplates).toHaveBeenCalled();
-      expect(result).toEqual([{ id: 'cat-1', name: 'Tip', templates: [] }]);
-    });
-
-    it('returns cached data from Redis without hitting the DB when a cache entry exists', async () => {
-      redisClient.isOpen = true;
-      redisClient.get.mockResolvedValue(JSON.stringify([{ id: 'cat-1', name: 'Tip', templates: [] }]));
-
-      const result = await templateService.getFeaturedTemplates();
-
-      expect(redisClient.get).toHaveBeenCalledWith('templates:featured');
-      expect(templateRepository.findAllCategoriesWithTemplates).not.toHaveBeenCalled();
-      expect(result).toEqual([{ id: 'cat-1', name: 'Tip', templates: [] }]);
-    });
-
-    it('falls back to the DB and populates the cache on a cache miss', async () => {
-      redisClient.isOpen = true;
-      redisClient.get.mockResolvedValue(null);
-      templateRepository.findAllCategoriesWithTemplates.mockResolvedValue([{ id: 'cat-1', name: 'Tip', templates: [] }]);
-      redisClient.setEx.mockResolvedValue('OK');
-
-      const result = await templateService.getFeaturedTemplates();
-
-      expect(templateRepository.findAllCategoriesWithTemplates).toHaveBeenCalled();
-      expect(redisClient.setEx).toHaveBeenCalledWith('templates:featured', 3600, JSON.stringify([{ id: 'cat-1', name: 'Tip', templates: [] }]));
       expect(result).toEqual([{ id: 'cat-1', name: 'Tip', templates: [] }]);
     });
   });
@@ -72,30 +39,24 @@ describe('TemplateService', () => {
       expect(templateRepository.createCategory).not.toHaveBeenCalled();
     });
 
-    it('creates the category and invalidates the cache', async () => {
-      redisClient.isOpen = true;
+    it('creates the category', async () => {
       templateRepository.findCategoryByName.mockResolvedValue(null);
       templateRepository.createCategory.mockResolvedValue({ id: 'cat-1', name: 'Tip', sortOrder: 0 });
-      redisClient.del.mockResolvedValue(1);
 
       const result = await templateService.createCategory({ name: '  Tip  ' });
 
       expect(templateRepository.createCategory).toHaveBeenCalledWith({ name: 'Tip', sortOrder: undefined });
-      expect(redisClient.del).toHaveBeenCalledWith('templates:featured');
       expect(result).toEqual({ id: 'cat-1', name: 'Tip', sortOrder: 0 });
     });
   });
 
   describe('deleteCategory', () => {
-    it('deletes the category and invalidates the cache', async () => {
-      redisClient.isOpen = true;
+    it('deletes the category', async () => {
       templateRepository.deleteCategory.mockResolvedValue({});
-      redisClient.del.mockResolvedValue(1);
 
       const result = await templateService.deleteCategory('cat-1');
 
       expect(templateRepository.deleteCategory).toHaveBeenCalledWith('cat-1');
-      expect(redisClient.del).toHaveBeenCalledWith('templates:featured');
       expect(result).toEqual({ message: 'Category deleted successfully' });
     });
   });
@@ -118,17 +79,17 @@ describe('TemplateService', () => {
       expect(templateRepository.createTemplate).not.toHaveBeenCalled();
     });
 
-    it('creates the template tagged under multiple categories with trimmed fields, and invalidates the cache', async () => {
-      redisClient.isOpen = true;
+    it('creates the template tagged under multiple categories with trimmed fields', async () => {
       templateRepository.createTemplate.mockResolvedValue({ id: 'tpl-1' });
-      redisClient.del.mockResolvedValue(1);
 
       await templateService.createTemplate({
         categoryIds: ['cat-1', 'cat-2'],
         emoji: '🛠️',
         title: '  My title  ',
         description: '  My description  ',
-        body: '  Trend: {{finding}}  '
+        body: '  Trend: {{finding}}  ',
+        format: 'VIDEO',
+        goal: 'ENGAGEMENT'
       });
 
       expect(templateRepository.createTemplate).toHaveBeenCalledWith({
@@ -136,13 +97,27 @@ describe('TemplateService', () => {
         emoji: '🛠️',
         title: 'My title',
         description: 'My description',
-        body: 'Trend: {{finding}}'
+        body: 'Trend: {{finding}}',
+        format: 'VIDEO',
+        goal: 'ENGAGEMENT'
       });
-      expect(redisClient.del).toHaveBeenCalledWith('templates:featured');
+    });
+
+    it('rejects an invalid format value', async () => {
+      await expect(templateService.createTemplate({
+        categoryIds: ['cat-1'], title: 'x', description: 'y', format: 'GIF'
+      })).rejects.toMatchObject({ status: 400 });
+      expect(templateRepository.createTemplate).not.toHaveBeenCalled();
+    });
+
+    it('rejects an invalid goal value', async () => {
+      await expect(templateService.createTemplate({
+        categoryIds: ['cat-1'], title: 'x', description: 'y', goal: 'GROWTH'
+      })).rejects.toMatchObject({ status: 400 });
+      expect(templateRepository.createTemplate).not.toHaveBeenCalled();
     });
 
     it('stores a null body when body is omitted', async () => {
-      redisClient.isOpen = false;
       templateRepository.createTemplate.mockResolvedValue({ id: 'tpl-1' });
 
       await templateService.createTemplate({
@@ -169,7 +144,6 @@ describe('TemplateService', () => {
     });
 
     it('updates only the provided fields', async () => {
-      redisClient.isOpen = false;
       templateRepository.updateTemplate.mockResolvedValue({ id: 'tpl-1', title: 'New title' });
 
       await templateService.updateTemplate('tpl-1', { title: 'New title' });
@@ -178,7 +152,6 @@ describe('TemplateService', () => {
     });
 
     it('replaces the category assignment when categoryIds is provided', async () => {
-      redisClient.isOpen = false;
       templateRepository.updateTemplate.mockResolvedValue({ id: 'tpl-1', categories: [] });
 
       await templateService.updateTemplate('tpl-1', { categoryIds: ['cat-1', 'cat-3'] });
@@ -187,7 +160,6 @@ describe('TemplateService', () => {
     });
 
     it('trims and updates the body field', async () => {
-      redisClient.isOpen = false;
       templateRepository.updateTemplate.mockResolvedValue({ id: 'tpl-1' });
 
       await templateService.updateTemplate('tpl-1', { body: '  New body  ' });
@@ -197,10 +169,8 @@ describe('TemplateService', () => {
   });
 
   describe('deleteTemplate', () => {
-    it('deletes the template and invalidates the cache', async () => {
-      redisClient.isOpen = true;
+    it('deletes the template', async () => {
       templateRepository.deleteTemplate.mockResolvedValue({});
-      redisClient.del.mockResolvedValue(1);
 
       const result = await templateService.deleteTemplate('tpl-1');
 

@@ -27,15 +27,15 @@ class AdminTemplateController {
   });
 
   createTemplate = asyncHandler(async (req, res) => {
-    const { categoryIds, emoji, title, description, body } = req.body;
-    const data = await templateService.createTemplate({ categoryIds, emoji, title, description, body });
+    const { categoryIds, emoji, title, description, body, format, goal } = req.body;
+    const data = await templateService.createTemplate({ categoryIds, emoji, title, description, body, format, goal });
     res.status(201).json({ message: 'Template created successfully', data });
   });
 
   updateTemplate = asyncHandler(async (req, res) => {
     const { id } = req.params;
-    const { categoryIds, emoji, title, description, body } = req.body;
-    const data = await templateService.updateTemplate(id, { categoryIds, emoji, title, description, body });
+    const { categoryIds, emoji, title, description, body, format, goal } = req.body;
+    const data = await templateService.updateTemplate(id, { categoryIds, emoji, title, description, body, format, goal });
     res.status(200).json({ message: 'Template updated successfully', data });
   });
 

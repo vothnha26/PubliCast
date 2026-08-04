@@ -1,42 +1,14 @@
 const templateRepository = require('../../repositories/admin/template.repository');
-const redisClient = require('../../config/redis');
-const logger = require('../../utils/logger');
-
-// Featured templates change rarely (admin-curated content ideas) — cache the
-// public read for an hour and purge on every admin write, same pattern as
-// social.service.js's metrics cache.
-const TEMPLATES_CACHE_KEY = 'templates:featured';
-const TEMPLATES_CACHE_TTL_SECONDS = 3600;
+const { TEMPLATE_FORMAT, TEMPLATE_GOAL } = require('../../utils/constants');
 
 class TemplateService {
+  // No server-side cache here — the public read endpoint is cached at the
+  // Cloudflare edge via its Cache-Control header (see
+  // controllers/social/template.controller.js), which the admin write
+  // endpoints purge via the CDN's own cache-invalidation API rather than
+  // anything this service needs to know about.
   async getFeaturedTemplates() {
-    if (redisClient.isOpen) {
-      try {
-        const cached = await redisClient.get(TEMPLATES_CACHE_KEY);
-        if (cached) return JSON.parse(cached);
-      } catch (err) {
-        logger.warn('[TemplateService] Redis read failed, falling back to DB:', err.message);
-      }
-    }
-
-    const categories = await templateRepository.findAllCategoriesWithTemplates();
-
-    if (redisClient.isOpen) {
-      redisClient.setEx(TEMPLATES_CACHE_KEY, TEMPLATES_CACHE_TTL_SECONDS, JSON.stringify(categories)).catch((err) => {
-        logger.warn('[TemplateService] Redis write failed:', err.message);
-      });
-    }
-
-    return categories;
-  }
-
-  async _invalidateCache() {
-    if (!redisClient.isOpen) return;
-    try {
-      await redisClient.del(TEMPLATES_CACHE_KEY);
-    } catch (err) {
-      logger.warn('[TemplateService] Redis cache invalidation failed:', err.message);
-    }
+    return templateRepository.findAllCategoriesWithTemplates();
   }
 
   async createCategory({ name, sortOrder }) {
@@ -55,7 +27,6 @@ class TemplateService {
     }
 
     const category = await templateRepository.createCategory({ name: trimmedName, sortOrder });
-    await this._invalidateCache();
     return category;
   }
 
@@ -73,13 +44,11 @@ class TemplateService {
     if (sortOrder !== undefined) data.sortOrder = sortOrder;
 
     const category = await templateRepository.updateCategory(id, data);
-    await this._invalidateCache();
     return category;
   }
 
   async deleteCategory(id) {
     await templateRepository.deleteCategory(id);
-    await this._invalidateCache();
     return { message: 'Category deleted successfully' };
   }
 
@@ -91,8 +60,26 @@ class TemplateService {
     }
   }
 
-  async createTemplate({ categoryIds, emoji, title, description, body }) {
+  _validateFormat(format) {
+    if (format !== undefined && format !== null && format !== '' && !Object.values(TEMPLATE_FORMAT).includes(format)) {
+      const error = new Error('Invalid format value');
+      error.status = 400;
+      throw error;
+    }
+  }
+
+  _validateGoal(goal) {
+    if (goal !== undefined && goal !== null && goal !== '' && !Object.values(TEMPLATE_GOAL).includes(goal)) {
+      const error = new Error('Invalid goal value');
+      error.status = 400;
+      throw error;
+    }
+  }
+
+  async createTemplate({ categoryIds, emoji, title, description, body, format, goal }) {
     this._validateCategoryIds(categoryIds);
+    this._validateFormat(format);
+    this._validateGoal(goal);
     const trimmedTitle = title?.trim();
     const trimmedDescription = description?.trim();
     if (!trimmedTitle || !trimmedDescription) {
@@ -106,13 +93,14 @@ class TemplateService {
       emoji,
       title: trimmedTitle,
       description: trimmedDescription,
-      body: body?.trim() || null
+      body: body?.trim() || null,
+      format: format || null,
+      goal: goal || null
     });
-    await this._invalidateCache();
     return template;
   }
 
-  async updateTemplate(id, { categoryIds, emoji, title, description, body }) {
+  async updateTemplate(id, { categoryIds, emoji, title, description, body, format, goal }) {
     const data = {};
     if (categoryIds !== undefined) {
       this._validateCategoryIds(categoryIds);
@@ -138,15 +126,21 @@ class TemplateService {
       data.description = trimmedDescription;
     }
     if (body !== undefined) data.body = body?.trim() || null;
+    if (format !== undefined) {
+      this._validateFormat(format);
+      data.format = format || null;
+    }
+    if (goal !== undefined) {
+      this._validateGoal(goal);
+      data.goal = goal || null;
+    }
 
     const template = await templateRepository.updateTemplate(id, data);
-    await this._invalidateCache();
     return template;
   }
 
   async deleteTemplate(id) {
     await templateRepository.deleteTemplate(id);
-    await this._invalidateCache();
     return { message: 'Template deleted successfully' };
   }
 }

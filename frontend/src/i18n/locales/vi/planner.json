@@ -131,6 +131,10 @@
       "useThisIdea": "Dùng ý tưởng này",
       "emptyTitle": "Chưa có mẫu gợi ý nào",
       "emptyDesc": "Quay lại sau — các ý tưởng nội dung mới sẽ được cập nhật thường xuyên.",
+      "searchPlaceholder": "Tìm kiếm mẫu...",
+      "filter": "Bộ lọc",
+      "badge": "Mẫu nổi bật",
+      "pickTitle": "Lựa chọn hàng đầu",
       "toasts": {
         "loadFail": "Không thể tải mẫu gợi ý"
       }
