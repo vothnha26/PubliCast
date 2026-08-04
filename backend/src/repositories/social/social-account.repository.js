@@ -1084,7 +1084,7 @@ class SocialAccountRepository {
   }
 
   async updateBlueskyMetrics(socialAccountId, metricsData) {
-    const { followersCount = 0, followsCount = 0, postsCount = 0, emailConfirmed } = metricsData;
+    const { followersCount = 0, followsCount = 0, postsCount = 0, emailConfirmed, analytics } = metricsData;
     const data = {
       followersCount: parseInt(followersCount) || 0,
       followsCount: parseInt(followsCount) || 0,
@@ -1093,9 +1093,64 @@ class SocialAccountRepository {
     if (emailConfirmed !== undefined) {
       data.emailConfirmed = emailConfirmed;
     }
-    return prisma.blueskyAccount.update({
+
+    const account = await prisma.blueskyAccount.update({
       where: { socialAccountId },
       data
+    });
+
+    if (analytics) {
+      const { startDate, endDate, brandId } = analytics;
+      await this.saveBlueskyAnalytics(brandId, socialAccountId, analytics, startDate, endDate);
+    }
+
+    return account;
+  }
+
+  async saveBlueskyAnalytics(brandId, socialAccountId, analyticsData, startDate, endDate, client = prisma) {
+    const now = new Date();
+
+    const followersTotal = analyticsData.summary?.followers || 0;
+    const followersGain = analyticsData.balance?.reduce((sum, item) => sum + (item.acquired || 0), 0) || 0;
+    const followersLost = analyticsData.balance?.reduce((sum, item) => sum + (item.lost || 0), 0) || 0;
+    const likes = analyticsData.interactions?.likes || 0;
+    const comments = analyticsData.interactions?.replies || 0;
+    const shares = analyticsData.interactions?.reposts || 0;
+    const engagements = likes + comments + shares;
+
+    const analyticsEntry = await client.analytics.create({
+      data: {
+        brandId,
+        socialAccountId,
+        dateFrom: startDate ? new Date(startDate) : new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
+        dateTo: endDate ? new Date(endDate) : now,
+        granularity: ANALYTICS.GRANULARITY.DAILY,
+        fetchedAt: now,
+        analyticsType: ANALYTICS.TYPES.BLUESKY_DETAILED
+      }
+    });
+
+    await client.socialAnalytics.create({
+      data: {
+        analyticsId: analyticsEntry.id,
+        followersTotal,
+        followersGain,
+        followersLost,
+        // Bluesky's public AT Protocol API has no reach/impressions concept
+        // (see bluesky.service.js getAnalyticsReport) — left at 0 rather
+        // than fabricated, unlike engagement counts which ARE real
+        // (fetched per-post via getPostMetrics/getAuthorFeed).
+        impressions: 0,
+        reach: 0,
+        engagements,
+        likes,
+        comments,
+        shares,
+        saves: 0,
+        clicks: 0,
+        engagementRate: 0,
+        audienceDemographicsJson: JSON.stringify(analyticsData)
+      }
     });
   }
 

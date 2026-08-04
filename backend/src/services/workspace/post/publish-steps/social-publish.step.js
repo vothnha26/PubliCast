@@ -66,6 +66,7 @@ class SocialPublishStep extends BaseStep {
           type: post.type,
           platformPostId: platformPostId,
           socialAccountId,
+          scheduledAt: post.scheduledAt,
           options: {
             ...options,
             ...(effectiveThreadPosts ? { threadPosts: effectiveThreadPosts } : {}),

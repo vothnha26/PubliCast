@@ -183,6 +183,19 @@ class BlueskyController {
 
     return res.json(data);
   });
+
+  getBlueskyPublishedPosts = asyncHandler(async (req, res) => {
+    const { brandId, pageToken, limit, socialAccountId } = req.query;
+    if (!brandId) return res.status(400).json({ message: 'brandId is required' });
+
+    const result = await blueskyService.getPublishedVideos(
+      brandId,
+      pageToken || null,
+      limit ? parseInt(limit) : 10,
+      socialAccountId || null
+    );
+    res.json(result);
+  });
 }
 
 module.exports = new BlueskyController();

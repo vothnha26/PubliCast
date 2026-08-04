@@ -45,16 +45,13 @@ describe('Bluesky AT Protocol Thread & Comments API Integration', () => {
   });
 
   describe('BlueskyService.getPostComments', () => {
-    it('should return mock comments for mock account IDs', async () => {
+    it('should return an empty result when the social account does not exist (no mock fallback)', async () => {
       const res = await blueskyService.getPostComments('test-brand', {
         uri: 'at://did:plc:mock/app.bsky.feed.post/100',
-        socialAccountId: 'mock-bluesky-acc'
+        socialAccountId: 'nonexistent-bluesky-acc'
       });
 
-      expect(res.comments).toBeDefined();
-      expect(res.comments.length).toBeGreaterThan(0);
-      expect(res.comments[0].platform).toBe('BLUESKY');
-      expect(res.comments[0].text).toContain('AT Protocol');
+      expect(res).toEqual({ comments: [], rootPost: null });
     });
 
     it('should recursively extract nested replies and format into PubliCast comment schema', () => {

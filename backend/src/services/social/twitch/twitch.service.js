@@ -2,6 +2,7 @@ const axios = require('axios');
 const BaseSocialService = require('../base-social.service');
 const socialAccountRepository = require('../../../repositories/social/social-account.repository');
 const twitchGateway = require('./twitch.gateway');
+const { PLATFORMS, POST_STATUS } = require('../../../utils/constants');
 
 class TwitchService extends BaseSocialService {
   constructor() {
@@ -11,7 +12,10 @@ class TwitchService extends BaseSocialService {
   }
 
   getAuthUrl(brandId, redirectUri) {
-    const scopes = ['channel:manage:broadcast', 'clips:edit', 'chat:read', 'user:write:chat'].join(' ');
+    // channel:manage:schedule is required to create/update/delete Stream
+    // Schedule segments (see publishPost) — the only real "publish a post"
+    // equivalent Twitch's public API supports.
+    const scopes = ['channel:manage:broadcast', 'channel:manage:schedule'].join(' ');
     const state = brandId || '';
     const url = `https://id.twitch.tv/oauth2/authorize?client_id=${this.clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&scope=${encodeURIComponent(scopes)}&state=${encodeURIComponent(state)}`;
     return url;
@@ -63,8 +67,61 @@ class TwitchService extends BaseSocialService {
     return await socialAccountRepository.upsertTwitchAccount(brandId, channelData, tokens);
   }
 
-  async publishPost() {
-    throw new Error('Twitch does not support scheduled post publishing.');
+  _getApiClient(account) {
+    const authProvider = twitchGateway.createAuthProvider(account.id, {
+      accessToken: account.accessToken,
+      refreshToken: account.refreshToken,
+      expiresIn: account.tokenExpiresAt ? Math.floor((new Date(account.tokenExpiresAt) - Date.now()) / 1000) : 0,
+      obtainingTimestamp: Date.now()
+    });
+    return twitchGateway.getApiClient(authProvider);
+  }
+
+  /**
+   * "Publishes" a post as a Twitch Stream Schedule segment — see
+   * twitch.gateway.js createScheduleSegment for why this (not a video
+   * upload or channel-info update) is the honest equivalent here.
+   * No media/long-form caption support: a schedule segment is title +
+   * start time + optional category only.
+   */
+  async publishPost(brandId, postData) {
+    const account = await socialAccountRepository.findByBrandAndPlatformFirst(brandId, PLATFORMS.TWITCH);
+    if (!account) throw new Error('Twitch account not connected');
+
+    const title = (postData.title || postData.caption || '').slice(0, 140);
+    if (!title) throw new Error('A title is required to schedule a Twitch broadcast');
+
+    const startDate = postData.scheduledAt ? new Date(postData.scheduledAt) : new Date();
+
+    const apiClient = this._getApiClient(account);
+    const segment = await twitchGateway.createScheduleSegment(apiClient, account.platformAccountId, {
+      title,
+      startDate: startDate.toISOString()
+    });
+
+    return { id: segment.id, status: POST_STATUS.PUBLISHED, publishedAt: segment.startDate };
+  }
+
+  async updatePublishedPost(brandId, platformPostId, postData) {
+    const account = await socialAccountRepository.findByBrandAndPlatformFirst(brandId, PLATFORMS.TWITCH);
+    if (!account) throw new Error('Twitch account not connected');
+
+    const apiClient = this._getApiClient(account);
+    const data = {};
+    if (postData.title || postData.caption) data.title = (postData.title || postData.caption).slice(0, 140);
+    if (postData.scheduledAt) data.startDate = new Date(postData.scheduledAt).toISOString();
+
+    const segment = await twitchGateway.updateScheduleSegment(apiClient, account.platformAccountId, platformPostId, data);
+    return { id: segment.id, status: POST_STATUS.PUBLISHED, publishedAt: segment.startDate };
+  }
+
+  async deletePost(brandId, platformPostId) {
+    const account = await socialAccountRepository.findByBrandAndPlatformFirst(brandId, PLATFORMS.TWITCH);
+    if (!account) throw new Error('Twitch account not connected');
+
+    const apiClient = this._getApiClient(account);
+    await twitchGateway.deleteScheduleSegment(apiClient, account.platformAccountId, platformPostId);
+    return { success: true };
   }
 
   async syncChannelMetrics(socialAccountId) {
@@ -72,14 +129,7 @@ class TwitchService extends BaseSocialService {
     if (!account || !account.accessToken) return null;
 
     try {
-      const authProvider = twitchGateway.createAuthProvider(socialAccountId, {
-        accessToken: account.accessToken,
-        refreshToken: account.refreshToken,
-        expiresIn: account.tokenExpiresAt ? Math.floor((new Date(account.tokenExpiresAt) - Date.now()) / 1000) : 0,
-        obtainingTimestamp: Date.now()
-      });
-
-      const apiClient = twitchGateway.getApiClient(authProvider);
+      const apiClient = this._getApiClient(account);
       const broadcasterId = account.platformAccountId;
 
       const followers = await apiClient.channels.getChannelFollowerCount(broadcasterId);
@@ -104,7 +154,7 @@ class TwitchService extends BaseSocialService {
     }
   }
 
-  // Stubs for BaseSocialService contract
+  // Stubs for BaseSocialService contract — no real Twitch API equivalent
   async getChannelInfo() { return null; }
   async getPublishedVideos() { return []; }
   async getAnalyticsReport() { return {}; }
@@ -114,8 +164,6 @@ class TwitchService extends BaseSocialService {
   async addCompetitor() { return null; }
   async fetchChannelComments() { return []; }
   async replyToComment() { return null; }
-  async updatePublishedPost() { return null; }
-  async deletePost() { return { success: true }; }
 }
 
 module.exports = new TwitchService();
