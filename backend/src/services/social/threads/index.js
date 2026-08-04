@@ -137,12 +137,33 @@ class ThreadsService extends BaseSocialService {
       }
     }
 
-    // Fetch and aggregate from real Threads posts feed if insights are empty or null
+    // Fetch and aggregate from real Threads posts feed if insights are empty or null.
+    // Paginate for the full period instead of a single limit=100 page — a
+    // single page silently drops older posts for accounts with a longer
+    // feed within the requested date range, undercounting totalContent and
+    // making the per-load post count drift (same class of bug fixed for
+    // Facebook in #70, and for Instagram alongside this change). Stop once
+    // the feed runs out, a page comes back entirely older than the range's
+    // start date (feed is reverse-chronological), or a safety cap is hit.
     let feedResult = [];
     if (!isMock) {
       try {
-        const res = await threadsGateway.getThreadsMediaFeed(pageId, pageAccessToken, null, 100);
-        feedResult = res.data || [];
+        const MAX_FEED_PAGES = 20;
+        const rangeStartMs = new Date(start).getTime();
+        let feedPageToken = null;
+        for (let page = 0; page < MAX_FEED_PAGES; page++) {
+          const res = await threadsGateway.getThreadsMediaFeed(pageId, pageAccessToken, feedPageToken, 100);
+          const pagePosts = res.data || [];
+          feedResult = feedResult.concat(pagePosts);
+
+          const oldestInPage = pagePosts[pagePosts.length - 1];
+          const pageIsFullyBeforeRange = oldestInPage && new Date(oldestInPage.timestamp).getTime() < rangeStartMs;
+
+          if (!res.nextPageToken || pagePosts.length === 0 || pageIsFullyBeforeRange) {
+            break;
+          }
+          feedPageToken = res.nextPageToken;
+        }
       } catch (feedErr) {
         console.warn('Failed to fetch Threads feed for analytics aggregation:', feedErr.message);
       }
