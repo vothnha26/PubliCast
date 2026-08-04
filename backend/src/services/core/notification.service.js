@@ -5,8 +5,24 @@ const NotificationDateRangeFilter = require('./notification/filters/date-range.f
 const brandRepository = require('../../repositories/workspace/brand.repository');
 const userRepository = require('../../repositories/auth/user.repository');
 const authorizationFacade = require('../auth/authorization.facade');
+const prisma = require('../../config/prisma');
 const { NOTIFICATION_TYPES, NOTIFICATION_LABELS, USER_ROLES } = require('../../utils/constants');
 const notificationRealtime = require('./notification.realtime');
+
+// Maps each event-driven notification to the UserSettings boolean that
+// gates it. Only categories with a real per-user toggle appear here —
+// notifications without a preferenceKey (e.g. isGlobal pricing broadcasts)
+// are never filtered.
+const PREFERENCE_KEYS = [
+  'notifyPostFailure',
+  'notifyPublishSuccess',
+  'notifyChannelDisconnect',
+  'notifyCollaboration',
+  'notifyBilling',
+  'notifyEmptyQueue',
+  'notifyDailyRecap',
+  'notifyWeeklyReport'
+];
 
 class NotificationService {
   constructor() {
@@ -46,12 +62,25 @@ class NotificationService {
     };
   }
 
+  /**
+   * @param {object} notificationData - notification fields, plus an optional
+   *   `preferenceKey` (one of PREFERENCE_KEYS) naming which UserSettings
+   *   toggle gates this event. Only checked when `userId` is set — isGlobal
+   *   broadcasts and brand-scoped notifications (no single target user) are
+   *   never filtered here; use notifyBrandMembers for the latter.
+   */
   async create(notificationData, actor = null) {
     if (actor) {
       await this._assertCreatePermission(notificationData, actor);
     }
 
-    const data = this._buildCreateData(notificationData);
+    const { preferenceKey, ...rest } = notificationData || {};
+    if (rest.userId && preferenceKey) {
+      const allowed = await this._isNotificationEnabled(rest.userId, preferenceKey);
+      if (!allowed) return null;
+    }
+
+    const data = this._buildCreateData(rest);
     const notification = await notificationRepository.create(data);
     
     // Broadcast notification via WebSocket SocketManager
@@ -80,6 +109,46 @@ class NotificationService {
 
     notificationRealtime.broadcast('notification.created', { notificationId: notification.id });
     return this._formatNotification(notification);
+  }
+
+  /**
+   * Brand-scoped events (channel disconnected, billing) previously created
+   * a single userId:null notification visible to every brand member —
+   * which meant there was no per-user hook to gate by preference. Fans out
+   * to one create() call per member (owner + active team members) instead,
+   * each filtered independently by that member's own toggle.
+   */
+  async notifyBrandMembers(brandId, notificationData, preferenceKey) {
+    const recipientUserIds = await this._getBrandRecipientUserIds(brandId);
+    await Promise.all(recipientUserIds.map((userId) =>
+      this.create({ ...notificationData, brandId, userId, preferenceKey }).catch((err) => {
+        console.error(`[NotificationService] Failed to notify user ${userId} for brand ${brandId}:`, err.message);
+      })
+    ));
+  }
+
+  async _getBrandRecipientUserIds(brandId) {
+    const brand = await prisma.brand.findUnique({
+      where: { id: brandId },
+      select: {
+        ownerId: true,
+        teamMembers: { where: { status: 'ACTIVE' }, select: { userId: true } }
+      }
+    });
+    if (!brand) return [];
+
+    const ids = new Set([brand.ownerId, ...brand.teamMembers.map((m) => m.userId)]);
+    return [...ids];
+  }
+
+  async _isNotificationEnabled(userId, preferenceKey) {
+    if (!PREFERENCE_KEYS.includes(preferenceKey)) return true;
+
+    const settings = await prisma.userSettings.findUnique({ where: { userId } });
+    if (!settings) return true; // no row yet — schema defaults apply
+
+    if (!settings.notificationsEnabled) return false;
+    return settings[preferenceKey] !== false;
   }
 
   async markAsRead(id, userId, brandId, role) {
