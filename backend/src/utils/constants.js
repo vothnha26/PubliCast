@@ -86,6 +86,14 @@ const POST_STATUS = {
   PAUSED: 'PAUSED'
 };
 
+// Mirrors the Prisma ChannelGroupVisibility enum — TEAM groups are visible
+// to every brand member, PRIVATE only to their creator (never shared, even
+// within an org — same as Buffer's channel groups).
+const CHANNEL_GROUP_VISIBILITY = {
+  TEAM: 'TEAM',
+  PRIVATE: 'PRIVATE'
+};
+
 /**
  * Trạng thái của workflow record trong DB.
  * Phân biệt với REVIEW_ACTION (input từ reviewer).
@@ -729,6 +737,7 @@ module.exports = {
   INBOX_STATUS,
   INBOX_TYPES,
   POST_STATUS,
+  CHANNEL_GROUP_VISIBILITY,
   WORKFLOW_STATUS,
   REVIEW_ACTION,
   WORKFLOW_POLICY,

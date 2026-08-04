@@ -46,6 +46,7 @@ model User {
   auditLogs                AuditLog[]                @relation("AuditLogUser")
   notifications            SystemNotification[]
   notificationReadReceipts NotificationReadReceipt[]
+  createdChannelGroups     ChannelGroup[]
   createdTickets           SupportTicket[]           @relation("TicketCreator")
   assignedTickets          SupportTicket[]           @relation("TicketAssignedAgent")
   ticketMessages           TicketMessage[]           @relation("TicketMessageSender")
@@ -125,6 +126,7 @@ model Brand {
   autoLists               AutoList[]
   approvalWorkflows       ApprovalWorkflow[]
   socialAccounts          SocialAccount[]
+  channelGroups           ChannelGroup[]
   adAccounts              AdAccount[]
   analytics               Analytics[]
   competitorAnalysis      CompetitorAnalysis[]
@@ -566,9 +568,61 @@ model SocialAccount {
   // Shared post-metrics cache (Instagram, Threads — see SocialPostMetric)
   socialPostMetrics SocialPostMetric[]
 
+  channelGroupMembers ChannelGroupMember[]
+
   @@unique([brandId, platform, platformAccountId])
   @@index([brandId])
   @@map("social_accounts")
+}
+
+// User-organizable grouping of channels within a brand (e.g. "Client A",
+// "Video content") — separate from platform type, which is a fixed
+// taxonomy. A channel can belong to multiple groups (many-to-many via
+// ChannelGroupMember), same shape as Team's brand-scoped membership rows.
+//
+// visibility controls who can see the group: TEAM (default) is visible to
+// every brand member, matching how the rest of the app's brand-scoped data
+// works; PRIVATE is visible only to createdByUserId, for a user who wants
+// their own scratch organization without cluttering the shared list.
+model ChannelGroup {
+  id              String              @id @default(uuid())
+  brandId         String
+  createdByUserId String
+  name            String
+  color           String?
+  visibility      ChannelGroupVisibility @default(TEAM)
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+
+  brand       Brand                @relation(fields: [brandId], references: [id], onDelete: Cascade)
+  createdBy   User                 @relation(fields: [createdByUserId], references: [id], onDelete: Cascade)
+  members     ChannelGroupMember[]
+
+  // A name only needs to be unique within whatever the creator can see it
+  // alongside — two different users can each have their own "My Channels"
+  // private group without conflicting.
+  @@unique([brandId, createdByUserId, name])
+  @@index([brandId])
+  @@map("channel_groups")
+}
+
+enum ChannelGroupVisibility {
+  TEAM
+  PRIVATE
+}
+
+model ChannelGroupMember {
+  id              String   @id @default(uuid())
+  channelGroupId  String
+  socialAccountId String
+  createdAt       DateTime @default(now())
+
+  channelGroup  ChannelGroup  @relation(fields: [channelGroupId], references: [id], onDelete: Cascade)
+  socialAccount SocialAccount @relation(fields: [socialAccountId], references: [id], onDelete: Cascade)
+
+  @@unique([channelGroupId, socialAccountId])
+  @@index([socialAccountId])
+  @@map("channel_group_members")
 }
 
 model YouTubeChannel {

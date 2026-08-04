@@ -42,6 +42,7 @@ export function usePostCreatorForm() {
     templatePost,
     defaultScheduledAt,
     defaultSocialAccountId,
+    defaultSocialAccountIds,
     isLibrary: initialIsLibrary,
     videoFile, 
     setVideoFile,
@@ -382,12 +383,25 @@ export function usePostCreatorForm() {
         }
       }
 
+      if (defaultSocialAccountIds?.length > 0) {
+        const targetAccs = activeBrand.socialAccounts.filter((sa) => defaultSocialAccountIds.includes(sa.id));
+        if (targetAccs.length > 0) {
+          setSelectedAccountIds(targetAccs.map((sa) => sa.id));
+          const platformKeys = [...new Set(targetAccs.map((sa) => platformMap[sa.platform]).filter(Boolean))];
+          if (platformKeys.length > 0) {
+            setSelectedPlatforms(platformKeys);
+            setActivePlatform(platformKeys[0]);
+          }
+          return;
+        }
+      }
+
       const connected = activeBrand.socialAccounts.filter((sa) => sa.isConnected);
       if (connected.length > 0) {
         setSelectedAccountIds(connected.map((sa) => sa.id));
       }
     }
-  }, [activeBrand, isOpen, defaultSocialAccountId]);
+  }, [activeBrand, isOpen, defaultSocialAccountId, defaultSocialAccountIds]);
 
   const toggleAccount = (accountId) => {
     setSelectedAccountIds((prev) => {
