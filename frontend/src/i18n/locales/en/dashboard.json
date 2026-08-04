@@ -1,6 +1,12 @@
 {
   "title": "Workspace Dashboard",
   "welcome": "Welcome back, {{name}}!",
+  "postingGoals": {
+    "title": "Posting Goals",
+    "weekly": "This week",
+    "monthly": "This month",
+    "setGoal": "Set goal"
+  },
   "stats": {
     "totalFollowers": "Total Followers",
     "totalViews": "Total Views",

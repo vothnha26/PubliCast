@@ -139,6 +139,7 @@ model Brand {
   smartLinks              SmartLink[]
   hashtagTrackers         HashtagTracker[]
   hashtagSets             HashtagSet[]
+  postingGoals            PostingGoal[]
   aiAssistant             AIAssistant?
   reportScheduleConfig    ReportScheduleConfig?
   mediaLibrary            MediaLibrary[]
@@ -1611,6 +1612,26 @@ model HashtagSet {
 
   @@index([brandId])
   @@map("hashtag_sets")
+}
+
+enum GoalPeriod {
+  WEEKLY
+  MONTHLY
+}
+
+model PostingGoal {
+  id          String     @id @default(uuid())
+  brandId     String
+  period      GoalPeriod
+  targetCount Int
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  brand Brand @relation(fields: [brandId], references: [id], onDelete: Cascade)
+
+  @@unique([brandId, period])
+  @@index([brandId])
+  @@map("posting_goals")
 }
 
 model AIAssistant {

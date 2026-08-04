@@ -9,6 +9,7 @@ import {
 
 import { PlatformIcon } from "../../components/shared/PlatformIcon";
 import { StatCard } from "../../components/shared/StatCard";
+import { PostingGoalWidget } from "../../components/shared/PostingGoalWidget";
 import { useBrand } from "../../context/BrandContext";
 import socialService from "../../services/social.service";
 import postService from "../../services/post.service";
@@ -466,6 +467,9 @@ export function DashboardPage() {
 
         {/* Platform Status and Reach (Cột phải) */}
         <div className="col-span-5 flex flex-col gap-6">
+          {/* Posting Goals */}
+          {activeBrand && <PostingGoalWidget brandId={activeBrand.id} />}
+
           {/* Platform Connections Status */}
           <div className="bg-card border border-border rounded-3xl p-6 shadow-xl flex flex-col">
             <div className="flex items-center justify-between mb-5">
