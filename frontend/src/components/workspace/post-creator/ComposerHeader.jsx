@@ -1,8 +1,8 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import {
   Lock, Instagram, Youtube, Plus, FileText, Globe,
-  ChevronDown, Video, LayoutGrid, Film, PlusCircle, Check, Send, Settings
+  ChevronDown, Video, LayoutGrid, Film, PlusCircle, Check, Send, Settings, Users
 } from "lucide-react";
 import { usePostCreatorFormContext } from "../../../context/PostCreatorFormContext";
 import { PlatformIcon } from "../../shared/PlatformIcon";
@@ -10,6 +10,7 @@ import { ShortsIcon } from "./ShortsIcon";
 import { PRODUCT_IDS } from "../../../constants/products";
 import { PLATFORMS, PLATFORM_API_KEY } from "../../../constants/platforms";
 import { PLATFORM_CONFIGS } from "../../../constants/platformRegistry";
+import channelGroupService from "../../../services/channel-group.service";
 import { toast } from "sonner";
 
 /** Standard UI Configs for Platform Toolbar Buttons (Module Scope) */
@@ -76,6 +77,7 @@ export function ComposerHeader() {
   const {
     selectedPlatforms,
     selectedAccountIds,
+    setSelectedAccountIds,
     isLockedToAccount,
     toggleAccount,
     togglePlatform,
@@ -97,8 +99,27 @@ export function ComposerHeader() {
   } = usePostCreatorFormContext();
 
   const [showTypeDropdown, setShowTypeDropdown] = useState(false);
+  const [channelGroups, setChannelGroups] = useState([]);
+  const [showGroupDropdown, setShowGroupDropdown] = useState(false);
 
   const connectedAccounts = activeBrand?.socialAccounts?.filter(sa => sa.isConnected) || [];
+
+  // Channel groups are a compose-time selection shortcut only — expanding
+  // a group into selectedAccountIds is the entire integration, no
+  // Post-to-group link exists (see ChannelGroupModal/channel-group.service).
+  useEffect(() => {
+    if (!activeBrand?.id) return;
+    channelGroupService.list(activeBrand.id)
+      .then((res) => setChannelGroups(res?.data || res || []))
+      .catch((err) => console.error("Failed to fetch channel groups in composer:", err));
+  }, [activeBrand?.id]);
+
+  const applyChannelGroup = (group) => {
+    const connectedIds = new Set(connectedAccounts.map((sa) => sa.id));
+    const memberIds = group.members.map((m) => m.socialAccountId).filter((id) => connectedIds.has(id));
+    setSelectedAccountIds(memberIds);
+    setShowGroupDropdown(false);
+  };
 
   // Hardcoded access variables to match PostCreator.jsx
   const hasFacebookAccess = true;
@@ -368,6 +389,38 @@ export function ComposerHeader() {
       ) : connectedAccounts.length > 0 && (
         <div className="flex items-center gap-2 pt-1.5 border-t border-gray-100 flex-wrap">
           <span className="text-[10px] font-black uppercase text-muted-foreground tracking-wider mr-1">Tài khoản đăng:</span>
+          {channelGroups.length > 0 && (
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setShowGroupDropdown((v) => !v)}
+                className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold transition-all cursor-pointer border bg-purple-50 text-purple-700 border-purple-200 hover:bg-purple-100"
+              >
+                <Users size={12} className="shrink-0" />
+                <span className="font-sans text-[11px]">Chọn theo nhóm</span>
+                <ChevronDown size={11} className="shrink-0" />
+              </button>
+              {showGroupDropdown && (
+                <>
+                  <div className="fixed inset-0 z-40" onClick={() => setShowGroupDropdown(false)} />
+                  <div className="absolute top-full left-0 mt-1 w-52 bg-card rounded-xl shadow-2xl border border-border py-1.5 z-50 animate-in fade-in slide-in-from-top-1">
+                    {channelGroups.map((group) => (
+                      <button
+                        key={group.id}
+                        type="button"
+                        onClick={() => applyChannelGroup(group)}
+                        className="w-full flex items-center gap-2 px-3 py-2 text-xs font-semibold cursor-pointer border-none bg-transparent text-left hover:bg-muted transition-colors"
+                      >
+                        <span className="w-2 h-2 rounded-full shrink-0" style={{ background: group.color || "var(--muted-foreground)" }} />
+                        <span className="truncate flex-1 font-sans">{group.name}</span>
+                        <span className="text-[10px] text-muted-foreground shrink-0">{group.members.length}</span>
+                      </button>
+                    ))}
+                  </div>
+                </>
+              )}
+            </div>
+          )}
           {connectedAccounts.map((sa) => {
             const isSelected = selectedAccountIds.includes(sa.id);
             const platformKey = (sa.platform || "").toLowerCase();

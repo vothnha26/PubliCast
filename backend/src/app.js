@@ -30,6 +30,7 @@ const socialRoutes = require('./routes/social/social.routes');
 const socialRoutesV2 = require('./routes/social/social.routes.v2');
 const youtubeRoutesV2 = require('./routes/social/youtube.routes.v2');
 const tiktokRoutesV2 = require('./routes/social/tiktok.routes.v2');
+const channelGroupRoutesV2 = require('./routes/social/channel-group.routes.v2');
 const inboxRoutes = require('./routes/social/inbox.routes');
 const inboxRoutesV2 = require('./routes/social/inbox.routes.v2');
 
@@ -212,6 +213,7 @@ app.use('/api/v2/social', socialRoutesV2);
 app.use('/api/v2/social/inbox', inboxRoutesV2);
 app.use('/api/v2/social/youtube', youtubeRoutesV2);
 app.use('/api/v2/social/tiktok', tiktokRoutesV2);
+app.use('/api/v2/social/channel-groups', channelGroupRoutesV2);
 app.use('/api/v2/posts', postRoutesV2);
 app.use('/api/v2/content-extras', contentExtrasRoutesV2);
 app.use('/api/v2/media', mediaLibraryRoutesV2);
