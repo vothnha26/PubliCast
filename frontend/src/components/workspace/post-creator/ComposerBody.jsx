@@ -120,6 +120,8 @@ export function ComposerBody() {
     closePostCreatorTemporarily,
     isEditByNetwork,
     activeNetworkTab,
+    activeNetworkAccountId,
+    selectedAccountIds,
     networkCustom,
     toggleUseTemplate,
     updateNetworkCaption,
@@ -131,25 +133,47 @@ export function ComposerBody() {
   // === Network Tab derived vars ===
   const isThreadsTab = isEditByNetwork && activeNetworkTab === 'threads';
   const isThreadsCustom = isThreadsTab && networkCustom['threads']?.useTemplate === false;
+
+  // Mirrors NetworkTabSwitcher's own accountsForActiveTab/showAccountSubTabs
+  // — when the active platform tab has ≥2 targeted accounts, content is
+  // read from/written to that account's perAccount slot instead of the
+  // platform-level entry directly (composer-audit P0.4).
+  const accountsForActiveTab = (isEditByNetwork && activeNetworkTab !== NETWORK_TAB_TEMPLATE)
+    ? (activeBrand?.socialAccounts || []).filter(
+        sa => (sa.platform || '').toLowerCase() === activeNetworkTab && selectedAccountIds.includes(sa.id)
+      )
+    : [];
+  const hasAccountSubTabs = accountsForActiveTab.length > 1;
+  const effectiveAccountId = hasAccountSubTabs ? activeNetworkAccountId : null;
+  const activePlatformEntry = networkCustom[activeNetworkTab];
+  const activeEntry = effectiveAccountId
+    ? (activePlatformEntry?.perAccount?.[effectiveAccountId] || { useTemplate: true, caption: '', mediaUrls: [] })
+    : activePlatformEntry;
+
   const isCustomTab =
     isEditByNetwork &&
     activeNetworkTab !== NETWORK_TAB_TEMPLATE &&
     activeNetworkTab !== 'threads' &&
-    networkCustom[activeNetworkTab]?.useTemplate === false;
+    activeEntry?.useTemplate === false &&
+    // A platform with sub-tabs but no account selected yet (in-flight state
+    // right before NetworkTabSwitcher's auto-select effect runs) has
+    // nothing to edit — fall through to the shared caption instead of
+    // writing into a phantom undefined-account slot.
+    !(hasAccountSubTabs && !effectiveAccountId);
 
   const activeThreadPost = isThreadsTab
     ? networkCustom['threads']?.threadPosts?.[networkCustom['threads']?.activeThreadIndex || 0]
     : null;
 
   const activeCaptionValue = isCustomTab
-    ? (networkCustom[activeNetworkTab]?.caption || '')
+    ? (activeEntry?.caption || '')
     : isThreadsTab
       ? (typeof activeThreadPost === 'string' ? activeThreadPost : activeThreadPost?.text || '')
       : caption;
 
   const handleCaptionChange = (val) => {
     if (isCustomTab) {
-      updateNetworkCaption(activeNetworkTab, val);
+      updateNetworkCaption(activeNetworkTab, val, effectiveAccountId);
     } else if (isThreadsTab) {
       const threadIndex = networkCustom['threads']?.activeThreadIndex || 0;
       updateThreadPostText(threadIndex, val);
@@ -159,16 +183,16 @@ export function ComposerBody() {
   };
 
   const effectivePostMedia = isCustomTab
-    ? (networkCustom[activeNetworkTab]?.mediaUrls || [])
+    ? (activeEntry?.mediaUrls || [])
     : isThreadsCustom
       ? (typeof activeThreadPost === 'object' ? activeThreadPost?.mediaUrls || [] : [])
       : postMedia;
 
   const handleRemoveMediaItem = (index) => {
     if (isCustomTab) {
-      const current = networkCustom[activeNetworkTab]?.mediaUrls || [];
+      const current = activeEntry?.mediaUrls || [];
       const updated = current.filter((_, i) => i !== index);
-      updateNetworkMedia(activeNetworkTab, updated);
+      updateNetworkMedia(activeNetworkTab, updated, effectiveAccountId);
     } else if (isThreadsCustom) {
       const threadIdx = networkCustom['threads']?.activeThreadIndex || 0;
       const current = (typeof activeThreadPost === 'object' ? activeThreadPost?.mediaUrls : []) || [];
@@ -194,7 +218,8 @@ export function ComposerBody() {
   const isLockedPlatformTab =
     isEditByNetwork &&
     activeNetworkTab !== NETWORK_TAB_TEMPLATE &&
-    networkCustom[activeNetworkTab]?.useTemplate !== false;
+    !(hasAccountSubTabs && !effectiveAccountId) &&
+    activeEntry?.useTemplate !== false;
 
   const isImageFile = videoFile 
     ? videoFile.type.startsWith("image/") 
@@ -896,19 +921,31 @@ export function ComposerBody() {
           )}
         </div>
 
-        {/* Presets Accordion */}
+        {/* Presets Accordion — shows only the preset panel for the platform
+            currently in view, not every selected platform's panel stacked
+            at once (previously up to ~23 fields on screen simultaneously
+            with 4 platforms selected). Reuses whichever tab concept is
+            active: activeNetworkTab when "Theo mạng" is on (so there's a
+            single tab strip driving both caption and presets, not two),
+            otherwise activePlatform from the header platform icons. */}
         <div className="space-y-3">
           {/* Global Presets Accordion */}
           <GlobalPresets />
 
           {/* Dynamic Platform Presets */}
-          {Object.entries(PRESET_REGISTRY).map(([platformKey, registryItem]) => {
-            if (registryItem.shouldRender(selectedPlatforms, { facebookType })) {
-              const PresetComponent = registryItem.Component;
-              return <PresetComponent key={platformKey} />;
-            }
-            return null;
-          })}
+          {(() => {
+            const viewedPlatform = (isEditByNetwork && activeNetworkTab && activeNetworkTab !== NETWORK_TAB_TEMPLATE)
+              ? activeNetworkTab
+              : activePlatform;
+            return Object.entries(PRESET_REGISTRY).map(([platformKey, registryItem]) => {
+              if (platformKey !== viewedPlatform) return null;
+              if (registryItem.shouldRender(selectedPlatforms, { facebookType })) {
+                const PresetComponent = registryItem.Component;
+                return <PresetComponent key={platformKey} />;
+              }
+              return null;
+            });
+          })()}
         </div>
 
         {/* Approval Workflow Settings */}

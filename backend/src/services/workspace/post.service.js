@@ -782,6 +782,27 @@ class PostService {
     const { safeUpsertPublishJob } = require('../../queues/publish.queue');
     const jobId = `publish-post-${postId}`;
 
+    // Expand the caller's platform list into explicit (platform, account)
+    // pairs from PostTarget — a manual "repost" from the UI retries every
+    // account of the chosen platform(s), which is correct for this entry
+    // point (user picked whole platforms to retry, not individual accounts).
+    // A platform with no PostTarget rows (pre-multi-account posts) falls
+    // back to a single implicit account (null), same as previous behavior.
+    const platformSet = new Set(platforms.map(p => p.toUpperCase()));
+    const targetsByRetryPlatform = {};
+    for (const target of post.targets || []) {
+      if (!platformSet.has(target.platform)) continue;
+      if (!targetsByRetryPlatform[target.platform]) targetsByRetryPlatform[target.platform] = [];
+      targetsByRetryPlatform[target.platform].push(target.socialAccountId);
+    }
+    const retryTargets = [];
+    for (const platform of platformSet) {
+      const accountIds = targetsByRetryPlatform[platform]?.length > 0 ? targetsByRetryPlatform[platform] : [null];
+      for (const socialAccountId of accountIds) {
+        retryTargets.push({ platform, socialAccountId });
+      }
+    }
+
     // Đặt trạng thái RETRYING trước khi enqueue — PublishPostHandler.claimForPublishing
     // chỉ chấp nhận SCHEDULED/DRAFT/RETRYING, bài FAILED sẽ bị skip nếu không set trước.
     await postRepository.updateStatus(postId, POST_STATUS.RETRYING);
@@ -793,7 +814,7 @@ class PostService {
     // or coexists once the active job completes (double publish).
     const { applied } = await safeUpsertPublishJob(jobId, QUEUE_CONFIG.PUBLISH.JOB_PUBLISH, {
       postId,
-      retryPlatforms: platforms
+      retryTargets
     }, { delay: 0 });
 
     if (!applied) {
@@ -968,6 +989,15 @@ class PostService {
       options,
       approvalInfo,
       platformPostId,
+      // { [PLATFORM]: string[] } — mirrors the shape upsertPostTargets
+      // accepts, so the composer can round-trip a post's per-platform
+      // account selection straight back into selectedAccountIds on edit
+      // without a separate transform (#composer-audit P0).
+      selectedAccountIds: (p.targets || []).reduce((acc, t) => {
+        if (!acc[t.platform]) acc[t.platform] = [];
+        acc[t.platform].push(t.socialAccountId);
+        return acc;
+      }, {}),
       networkOverrides: (p.networkOverrides || []).map((o) => ({
         platform: o.platform,
         socialAccountId: o.socialAccountId,

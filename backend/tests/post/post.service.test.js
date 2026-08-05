@@ -593,10 +593,12 @@ describe('PostService Unit Tests', () => {
       const result = await postService.retryFailedPlatforms('post-1', ['INSTAGRAM'], 'brand-abc', 'user-1');
 
       expect(result).toEqual({ postId: 'post-1', platforms: ['INSTAGRAM'] });
+      // No PostTarget rows on the mocked post -> falls back to a single
+      // implicit account (null), same as pre-multi-account behavior.
       expect(safeUpsertPublishJob).toHaveBeenCalledWith(
         'publish-post-post-1',
         QUEUE_CONFIG.PUBLISH.JOB_PUBLISH,
-        { postId: 'post-1', retryPlatforms: ['INSTAGRAM'] },
+        { postId: 'post-1', retryTargets: [{ platform: 'INSTAGRAM', socialAccountId: null }] },
         { delay: 0 }
       );
     });

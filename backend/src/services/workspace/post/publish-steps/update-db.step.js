@@ -5,6 +5,7 @@ const notificationService = require('../../../core/notification.service');
 const streakService = require('../../streak.service');
 const { POST_STATUS, NOTIFICATION_TYPES } = require('../../../../utils/constants');
 const logger = require('../../../../utils/logger');
+const { parsePlatformPostId, setIdForAccount } = require('../platform-post-id.util');
 
 /** Ném ra khi TOÀN BỘ platform publish thất bại (0/N thành công), để
  * publish-post.handler.js re-throw và BullMQ's defaultJobOptions.attempts tự
@@ -40,21 +41,18 @@ class UpdatePostStatusStep extends BaseStep {
 
     // Build platformIdMap for successful publications, merged with any IDs
     // already persisted on the post. A partial-retry's `results` only covers
-    // the platforms retried this round (see fetch-post.step.js narrowing
-    // context.platforms to retryPlatforms), so writing platformIdMap alone
-    // would erase IDs from platforms that succeeded in an earlier round (#61).
-    let existingPlatformIdMap = {};
-    if (post.platformPostId) {
-      try {
-        existingPlatformIdMap = JSON.parse(post.platformPostId);
-      } catch {
-        existingPlatformIdMap = {};
-      }
-    }
-    const platformIdMap = { ...existingPlatformIdMap };
+    // the (platform, account) pairs retried this round (see fetch-post.step.js
+    // narrowing context.platforms/targetsByPlatform to the retry scope), so
+    // writing platformIdMap alone would erase IDs from targets that succeeded
+    // in an earlier round (#61). Each result now carries its own
+    // socialAccountId (see SocialPublishStep's fan-out), so setIdForAccount
+    // writes into the per-account shape instead of one result silently
+    // clobbering another result for the same platform but a different account.
+    let platformIdMap = parsePlatformPostId(post.platformPostId);
     results.forEach(r => {
       if (r.success && r.result) {
-        platformIdMap[r.platform] = r.result.platformVideoId || r.result.id;
+        const id = r.result.platformVideoId || r.result.id;
+        platformIdMap = setIdForAccount(platformIdMap, r.platform, r.socialAccountId, id);
       }
     });
     const platformPostIdStr = Object.keys(platformIdMap).length > 0 ? JSON.stringify(platformIdMap) : null;
@@ -128,7 +126,11 @@ class UpdatePostStatusStep extends BaseStep {
 
         const successCount = results.filter(r => r.success).length;
         const allFailed = successCount === 0;
-        const failedPlatforms = results.filter(r => !r.success).map(r => r.platform);
+        // Scoped to the exact (platform, account) pairs that failed — a
+        // platform with 2/3 accounts succeeding must not have those 2
+        // re-attempted on retry, only the 1 that actually failed.
+        const failedTargets = results.filter(r => !r.success).map(r => ({ platform: r.platform, socialAccountId: r.socialAccountId }));
+        const failedPlatforms = [...new Set(failedTargets.map(t => t.platform))];
 
         if (allFailed) {
           // 0/N succeeded — safe to let BullMQ retry the whole job.
@@ -138,9 +140,10 @@ class UpdatePostStatusStep extends BaseStep {
           );
         } else {
           // Partial — do NOT throw (BullMQ would re-run the whole job and
-          // re-publish the platforms that already succeeded). Self-enqueue a
-          // scoped retry job targeting only the failed platforms instead.
-          await this._enqueuePartialRetry(post.id, failedPlatforms, options?.partialRetryCount || 0);
+          // re-publish the targets that already succeeded). Self-enqueue a
+          // scoped retry job targeting only the failed (platform, account)
+          // pairs instead.
+          await this._enqueuePartialRetry(post.id, failedTargets, options?.partialRetryCount || 0);
         }
         return;
       }
@@ -171,13 +174,13 @@ class UpdatePostStatusStep extends BaseStep {
   }
 
   /**
-   * Enqueues a new BullMQ job scoped to only the platforms that failed this
-   * round, reusing the exact pattern already used by
+   * Enqueues a new BullMQ job scoped to only the (platform, account) pairs
+   * that failed this round, reusing the exact pattern already used by
    * postService.retryFailedPlatforms — remove the existing job, add a new one
-   * with retryPlatforms set. Capped by MAX_PUBLISH_ATTEMPTS (same constant
+   * with retryTargets set. Capped by MAX_PUBLISH_ATTEMPTS (same constant
    * BullMQ's own attempts uses) to avoid an unbounded retry loop.
    */
-  async _enqueuePartialRetry(postId, failedPlatforms, partialRetryCount = 0) {
+  async _enqueuePartialRetry(postId, failedTargets, partialRetryCount = 0) {
     const { publishQueue } = require('../../../../queues/publish.queue');
     const { QUEUE_CONFIG } = require('../../../../constants/video-publish.constants');
     const maxAttempts = QUEUE_CONFIG.PUBLISH.MAX_PUBLISH_ATTEMPTS;
@@ -191,7 +194,7 @@ class UpdatePostStatusStep extends BaseStep {
     if (partialRetryCount >= maxAttempts) {
       // Out of chances — this is now truly final.
       await postRepository.update(postId, { status: POST_STATUS.FAILED });
-      console.warn(`[UpdatePostStatusStep] Post ${postId} exceeded max partial-retry attempts (${maxAttempts}) for platforms ${failedPlatforms.join(', ')}.`);
+      console.warn(`[UpdatePostStatusStep] Post ${postId} exceeded max partial-retry attempts (${maxAttempts}) for targets ${JSON.stringify(failedTargets)}.`);
       return;
     }
 
@@ -206,7 +209,7 @@ class UpdatePostStatusStep extends BaseStep {
     await publishQueue.remove(jobId);
     await publishQueue.add(QUEUE_CONFIG.PUBLISH.JOB_PUBLISH, {
       postId,
-      retryPlatforms: failedPlatforms,
+      retryTargets: failedTargets,
       partialRetryCount: partialRetryCount + 1
     }, { jobId, delay: 5000 });
   }

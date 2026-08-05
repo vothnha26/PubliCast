@@ -2,43 +2,43 @@ const BaseStep = require('../../../../core/pipeline/base.step');
 const socialPlatformFactory = require('../../../social/social-platform.factory');
 const { SEPARATORS, splitMediaUrls } = require('../../../../utils/constants');
 const logger = require('../../../../utils/logger');
+const { parsePlatformPostId, getIdForAccount } = require('../platform-post-id.util');
 
 class SocialPublishStep extends BaseStep {
   async execute(context) {
     const { post, platforms, options, brandId, networkOverrides = {}, targetsByPlatform = {} } = context;
     context.results = [];
 
-    const publishPromises = platforms.map(async (platform) => {
+    // Fan out to every targeted account per platform, not just the first
+    // (targetsByPlatform[platform][0]) — a post selecting 3 YouTube channels
+    // previously published to only one, silently dropping the other 2 with
+    // no error surfaced anywhere. Each (platform, account) pair now gets its
+    // own independent publish call and result entry; downstream consumers
+    // (UpdatePostStatusStep) already treat `results` as a flat list of
+    // pass/fail outcomes, so no change needed there for basic success/fail
+    // aggregation.
+    const publishTargets = platforms.flatMap((platform) => {
+      const accountIds = targetsByPlatform[platform]?.length > 0 ? targetsByPlatform[platform] : [null];
+      return accountIds.map((socialAccountId) => ({ platform, socialAccountId }));
+    });
+
+    const platformIdMap = parsePlatformPostId(post.platformPostId);
+
+    const publishPromises = publishTargets.map(async ({ platform, socialAccountId }) => {
       try {
         const service = socialPlatformFactory.getService(platform);
 
-        let platformPostId = null;
-        if (post.platformPostId) {
-          try {
-            const platformIdMap = JSON.parse(post.platformPostId);
-            if (platformIdMap && typeof platformIdMap === 'object') {
-              platformPostId = platformIdMap[platform] || null;
-            } else {
-              platformPostId = platform === 'YOUTUBE' ? post.platformPostId : null;
-            }
-          } catch (e) {
-            platformPostId = platform === 'YOUTUBE' ? post.platformPostId : null;
-          }
-        }
+        // Per-account lookup (see platform-post-id.util.js) — a legacy
+        // per-platform id still matches every account of that platform, so
+        // a post published before accountId-scoping existed keeps its
+        // "already published, don't re-upload" short-circuit intact.
+        const platformPostId = getIdForAccount(platformIdMap, platform, socialAccountId);
 
-        // Account to publish to: the first PostTarget row for this platform
-        // (see PostTarget in schema.prisma) — the source of truth for
-        // targeting. NOTE: a post may target multiple accounts of the same
-        // platform, but this step still only publishes to one per platform;
-        // true multi-account fan-out (independent publish/retry per account)
-        // is tracked as separate follow-up work.
-        const socialAccountId = targetsByPlatform[platform]?.[0] || null;
-
-        // Per-platform override (see PostNetworkOverride): only takes effect
-        // when the composer's "edit by network" was actually turned on for
-        // this platform (useTemplate === false). Otherwise every platform
-        // shares the post's own caption/mediaUrls, same as before overrides
-        // existed.
+        // Per-platform-per-account override (see PostNetworkOverride): only
+        // takes effect when the composer's "edit by network" was actually
+        // turned on for this platform (useTemplate === false). Otherwise
+        // every account shares the post's own caption/mediaUrls, same as
+        // before overrides existed.
         const override = networkOverrides[`${platform}:${socialAccountId || 'null'}`];
         const useOverride = override && override.useTemplate === false;
         const effectiveCaption = useOverride && override.caption != null ? override.caption : post.caption;
@@ -57,7 +57,7 @@ class SocialPublishStep extends BaseStep {
           }
         }
 
-        logger.debug(`[SocialPublishStep] 🚀 Publishing post ${post.id} to platform ${platform}...`);
+        logger.debug(`[SocialPublishStep] 🚀 Publishing post ${post.id} to platform ${platform} (account: ${socialAccountId || 'default'})...`);
 
         const result = await service.publishPost(brandId, {
           title: post.title,
@@ -72,12 +72,12 @@ class SocialPublishStep extends BaseStep {
             ...(effectiveThreadPosts ? { threadPosts: effectiveThreadPosts } : {}),
           }
         });
-        
-        logger.debug(`[SocialPublishStep] ✅ Successfully published post ${post.id} to platform ${platform}! Result:`, JSON.stringify(result));
-        return { platform, success: true, result };
+
+        logger.debug(`[SocialPublishStep] ✅ Successfully published post ${post.id} to platform ${platform} (account: ${socialAccountId || 'default'})! Result:`, JSON.stringify(result));
+        return { platform, socialAccountId, success: true, result };
       } catch (error) {
-        console.error(`[SocialPublishStep] ❌ Failed to publish post ${post.id} to platform ${platform}:`, error);
-        return { platform, success: false, error: error.message };
+        console.error(`[SocialPublishStep] ❌ Failed to publish post ${post.id} to platform ${platform} (account: ${socialAccountId || 'default'}):`, error);
+        return { platform, socialAccountId, success: false, error: error.message };
       }
     });
 

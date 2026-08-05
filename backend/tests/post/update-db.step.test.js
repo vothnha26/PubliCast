@@ -85,7 +85,7 @@ describe('UpdatePostStatusStep', () => {
     expect(publishQueue.remove).toHaveBeenCalledWith('publish-post-post-1');
     expect(publishQueue.add).toHaveBeenCalledWith(
       'publish-post',
-      { postId: 'post-1', retryPlatforms: ['INSTAGRAM'], partialRetryCount: 1 },
+      { postId: 'post-1', retryTargets: [{ platform: 'INSTAGRAM', socialAccountId: undefined }], partialRetryCount: 1 },
       { jobId: 'publish-post-post-1', delay: 5000 }
     );
     // Persisted to the DB (#107 I7) — the publish-reconciler sweeper reads
@@ -107,13 +107,16 @@ describe('UpdatePostStatusStep', () => {
 
   it('merges platformPostId across retry rounds instead of overwriting it (#61)', async () => {
     // Simulates round 2 of a partial-retry: only IG is in this round's
-    // results (fetch-post.step.js narrows context.platforms to
-    // retryPlatforms), but the post already carries FB's id from round 1.
+    // results (fetch-post.step.js narrows context.platforms/targetsByPlatform
+    // to the retry scope), but the post already carries FB's id from round 1
+    // under the legacy per-platform shape. setIdForAccount upgrades FB's
+    // entry to the per-account shape only if FB is touched again — since
+    // this round only writes IG, FB's legacy string entry is preserved as-is.
     const postWithPriorId = { ...post, platformPostId: JSON.stringify({ FACEBOOK: 'fb-1' }) };
     const context = {
       post: postWithPriorId,
       results: [
-        { platform: 'INSTAGRAM', success: true, result: { id: 'ig-1', publishedAt: new Date() } }
+        { platform: 'INSTAGRAM', socialAccountId: null, success: true, result: { id: 'ig-1', publishedAt: new Date() } }
       ],
       options: { partialRetryCount: 1 }
     };
@@ -122,7 +125,7 @@ describe('UpdatePostStatusStep', () => {
 
     expect(postRepository.update).toHaveBeenCalledWith('post-1', expect.objectContaining({
       status: 'PUBLISHED',
-      platformPostId: JSON.stringify({ FACEBOOK: 'fb-1', INSTAGRAM: 'ig-1' })
+      platformPostId: JSON.stringify({ FACEBOOK: 'fb-1', INSTAGRAM: { null: 'ig-1' } })
     }));
   });
 

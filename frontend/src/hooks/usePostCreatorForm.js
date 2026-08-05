@@ -130,6 +130,11 @@ export function usePostCreatorForm() {
   const [isEditByNetwork, setIsEditByNetwork] = useState(false);
   const [activeNetworkTab, setActiveNetworkTab] = useState(NETWORK_TAB_TEMPLATE);
   const [networkCustom, setNetworkCustom] = useState(() => buildDefaultNetworkCustom());
+  // Which account's sub-tab is active within the current network platform
+  // tab, when that platform has ≥2 selected accounts (see NetworkTabSwitcher's
+  // account sub-tabs, mirroring its existing Threads-post sub-tab pattern).
+  // null means "not viewing a specific account" (single-account platform).
+  const [activeNetworkAccountId, setActiveNetworkAccountId] = useState(null);
 
   // Video metadata states for format validation
   const [videoDuration, setVideoDuration] = useState(0);
@@ -190,6 +195,7 @@ export function usePostCreatorForm() {
       setThreadsWhoCanReply(backup.threadsWhoCanReply ?? "everyone");
       setIsEditByNetwork(backup.isEditByNetwork ?? false);
       setActiveNetworkTab(backup.activeNetworkTab ?? NETWORK_TAB_TEMPLATE);
+      setActiveNetworkAccountId(backup.activeNetworkAccountId ?? null);
       setNetworkCustom(backup.networkCustom ?? buildDefaultNetworkCustom());
       setSelectedReviewerId(backup.selectedReviewerId ?? "");
       setSelectedReviewerIds(backup.selectedReviewerIds ?? []);
@@ -272,6 +278,7 @@ export function usePostCreatorForm() {
       threadsWhoCanReply,
       isEditByNetwork,
       activeNetworkTab,
+      activeNetworkAccountId,
       networkCustom,
       selectedReviewerId,
       selectedReviewerIds,
@@ -461,12 +468,35 @@ export function usePostCreatorForm() {
     });
   };
 
-  // Bật/tắt chế độ chỉnh nội dung riêng cho 1 nền tảng (Cài đặt theo mạng).
+  // A platform's networkCustom entry either holds content directly
+  // (single-account platforms — unchanged from before) or, when the
+  // platform has ≥2 selected accounts, an entry.perAccount map keyed by
+  // socialAccountId so each account can have its own caption/media instead
+  // of all of them silently sharing entry.caption (composer-audit P0.4).
+  // These two helpers centralize that "read/write the right slot" branch so
+  // toggleUseTemplate/updateNetworkCaption/updateNetworkMedia don't each
+  // duplicate it.
+  const getNetworkEntrySlot = (entry, accountId) => {
+    if (!accountId) return entry || { useTemplate: true, caption: "", mediaUrls: [] };
+    return entry?.perAccount?.[accountId] || { useTemplate: true, caption: "", mediaUrls: [] };
+  };
+
+  const setNetworkEntrySlot = (entry, accountId, slot) => {
+    if (!accountId) return { ...entry, ...slot };
+    return {
+      ...entry,
+      perAccount: { ...(entry?.perAccount || {}), [accountId]: { ...getNetworkEntrySlot(entry, accountId), ...slot } },
+    };
+  };
+
+  // Bật/tắt chế độ chỉnh nội dung riêng cho 1 nền tảng (Cài đặt theo mạng),
+  // hoặc cho 1 account cụ thể trong platform đó khi accountId được truyền.
   // Lần đầu customize (caption/mediaUrls đang rỗng) sẽ seed từ caption/postMedia chung
   // để user không phải gõ lại từ đầu.
-  const toggleUseTemplate = (platformId, value) => {
+  const toggleUseTemplate = (platformId, value, accountId = null) => {
     setNetworkCustom((prev) => {
-      const current = prev[platformId] || { useTemplate: true, caption: "", mediaUrls: [] };
+      const entry = prev[platformId] || { useTemplate: true, caption: "", mediaUrls: [] };
+      const current = getNetworkEntrySlot(entry, accountId);
       const newUseTemplate = value !== undefined ? value : !current.useTemplate;
 
       const isThreads = platformId === PLATFORMS.THREADS;
@@ -491,22 +521,22 @@ export function usePostCreatorForm() {
 
       return {
         ...prev,
-        [platformId]: { ...seeded, useTemplate: newUseTemplate },
+        [platformId]: setNetworkEntrySlot(entry, accountId, { ...seeded, useTemplate: newUseTemplate }),
       };
     });
   };
 
-  const updateNetworkCaption = (platformId, value) => {
+  const updateNetworkCaption = (platformId, value, accountId = null) => {
     setNetworkCustom((prev) => ({
       ...prev,
-      [platformId]: { ...(prev[platformId] || { useTemplate: false, caption: "", mediaUrls: [] }), caption: value },
+      [platformId]: setNetworkEntrySlot(prev[platformId], accountId, { useTemplate: false, caption: value }),
     }));
   };
 
-  const updateNetworkMedia = (platformId, mediaUrls) => {
+  const updateNetworkMedia = (platformId, mediaUrls, accountId = null) => {
     setNetworkCustom((prev) => ({
       ...prev,
-      [platformId]: { ...(prev[platformId] || { useTemplate: false, caption: "", mediaUrls: [] }), mediaUrls },
+      [platformId]: setNetworkEntrySlot(prev[platformId], accountId, { useTemplate: false, mediaUrls }),
     }));
   };
 
@@ -570,6 +600,7 @@ export function usePostCreatorForm() {
 
   const setNetworkTab = (tabId) => {
     setActiveNetworkTab(tabId);
+    setActiveNetworkAccountId(null);
   };
 
   const connectedPlatforms = activeBrand?.socialAccounts
@@ -795,6 +826,13 @@ export function usePostCreatorForm() {
         setSelectedPlatforms(loadedPlatforms);
         setActivePlatform(loadedPlatforms[0] || DEFAULT_PLATFORM);
 
+        // Flatten the { [PLATFORM]: string[] } the backend round-trips back
+        // (see _formatPostResponse) into the flat array this hook's state
+        // uses — without this, opening an existing post left the account
+        // picker showing whatever was selected the last time the composer
+        // was open for a *different* post (#composer-audit P0).
+        setSelectedAccountIds(Object.values(editingPost.selectedAccountIds || {}).flat());
+
         setScheduledDate(editingPost.scheduledAt ? toLocalDatetimeString(editingPost.scheduledAt) : toLocalDatetimeString(new Date()));
         setIsLibrary(editingPost.isLibrary || false);
         
@@ -927,7 +965,14 @@ export function usePostCreatorForm() {
         setCaption("");
         setTitle("");
         
-        const connected = activeBrand?.socialAccounts
+        // selectedPlatforms is a set of PLATFORMS (one entry per platform),
+        // not accounts — a brand with 2 YouTube channels must still produce
+        // a single 'youtube' entry here, or downstream consumers keyed by
+        // platform (NetworkTabSwitcher's tabs, PRESET_REGISTRY rendering in
+        // ComposerBody) get duplicate React keys / duplicate panels for the
+        // same platform. Which specific account(s) are targeted is a
+        // separate concern, tracked by selectedAccountIds.
+        const connected = [...new Set(activeBrand?.socialAccounts
           ?.filter(sa => sa.isConnected)
           ?.map(sa => {
             const mapping = {
@@ -940,7 +985,7 @@ export function usePostCreatorForm() {
             };
             return mapping[sa.platform];
           })
-          ?.filter(Boolean) || [];
+          ?.filter(Boolean) || [])];
         const initialPlatform = connected.includes(DEFAULT_PLATFORM)
           ? DEFAULT_PLATFORM
           : (connected[0] || DEFAULT_PLATFORM);
@@ -1166,6 +1211,20 @@ export function usePostCreatorForm() {
         ? albumMedia.map(item => item.caption || "")
         : [];
 
+      // Groups the flat selectedAccountIds by platform into the shape
+      // upsertPostTargets expects ({ [PLATFORM]: string[] }) — without this,
+      // the account picker's choice never reached the backend and every
+      // post silently fell back to each platform's default/earliest-connected
+      // account, ignoring which specific channel the user picked (#composer-audit P0).
+      const selectedAccountIdsByPlatform = {};
+      (activeBrand?.socialAccounts || []).forEach(sa => {
+        if (!selectedAccountIds.includes(sa.id)) return;
+        const platformKey = (sa.platform || '').toUpperCase();
+        if (!platformKey) return;
+        if (!selectedAccountIdsByPlatform[platformKey]) selectedAccountIdsByPlatform[platformKey] = [];
+        selectedAccountIdsByPlatform[platformKey].push(sa.id);
+      });
+
       const payload = {
         brandId: activeBrand.id,
         title: title || (activePlatform === 'facebook' && facebookType === 'reel' ? facebookTitle : youtubeTitle) || (caption ? Array.from(caption).slice(0, 50).join('') : "New Post"),
@@ -1175,6 +1234,7 @@ export function usePostCreatorForm() {
         isLibrary,
         altText,
         targetPlatforms: selectedPlatforms.filter(p => connectedPlatforms.includes(p)).map(p => p.toUpperCase()),
+        selectedAccountIds: selectedAccountIdsByPlatform,
         scheduledAt: ['schedule', 'review'].includes(selectedPublishId) ? (scheduledDate ? new Date(scheduledDate).toISOString() : null) : null,
         mediaUrls: postMediaUrls,
         mediaThumbnailUrls: mediaThumbnailUrl ? [mediaThumbnailUrl] : [],
@@ -1216,6 +1276,10 @@ export function usePostCreatorForm() {
         }
       };
 
+      const formatOverrideMediaUrls = (mediaUrls) => (mediaUrls || [])
+        .map((item) => (typeof item === 'string' ? item : item.path || item.previewUrl))
+        .filter(Boolean);
+
       const buildNetworkOverrides = () => {
         const overrides = [];
         Object.entries(networkCustom).forEach(([platform, entry]) => {
@@ -1228,63 +1292,78 @@ export function usePostCreatorForm() {
             sa => (sa.platform || '').toLowerCase() === apiKey.toLowerCase() && selectedAccountIds.includes(sa.id)
           ) || [];
 
+          // With ≥2 accounts, each may have its own perAccount slot (see
+          // getNetworkEntrySlot) — falls back to the shared `entry` for any
+          // account that was never individually customized, so turning on
+          // "Theo mạng" for a platform still seeds every account with
+          // something instead of an empty override (composer-audit P0.4).
+          const effectiveEntryFor = (accountId) =>
+            accountsForPlatform.length > 1 && entry.perAccount?.[accountId]
+              ? entry.perAccount[accountId]
+              : entry;
+
           const formattedMediaUrls = (entry.mediaUrls || [])
             .map((item) => (typeof item === 'string' ? item : item.path || item.previewUrl))
             .filter(Boolean);
 
           if (platform === PLATFORMS.THREADS) {
-            const validPosts = (entry.threadPosts || []).filter((p) => {
+            const getValidPosts = (e) => (e.threadPosts || []).filter((p) => {
               const txt = typeof p === 'string' ? p : p?.text;
               const media = typeof p === 'string' ? [] : (p?.mediaUrls || []);
               return (txt && txt.trim()) || media.length > 0;
             });
-            if (validPosts.length === 0) return;
-            const formatPostMedia = (mediaUrls) => (mediaUrls || [])
-              .map((item) => (typeof item === 'string' ? item : item.path || item.previewUrl))
-              .filter(Boolean);
-
-            const firstPostText = typeof validPosts[0] === 'string' ? validPosts[0] : (validPosts[0].text || '');
-            const firstPostMedia = typeof validPosts[0] === 'string' ? [] : (validPosts[0].mediaUrls || []);
 
             if (accountsForPlatform.length > 0) {
               accountsForPlatform.forEach((acc) => {
+                const accEntry = effectiveEntryFor(acc.id);
+                const validPosts = getValidPosts(accEntry);
+                if (validPosts.length === 0) return;
+                const firstPostText = typeof validPosts[0] === 'string' ? validPosts[0] : (validPosts[0].text || '');
+                const firstPostMedia = typeof validPosts[0] === 'string' ? [] : (validPosts[0].mediaUrls || []);
                 overrides.push({
                   platform: apiKey,
                   socialAccountId: acc.id,
                   useTemplate: false,
                   caption: firstPostText,
-                  mediaUrls: formatPostMedia(firstPostMedia),
+                  mediaUrls: formatOverrideMediaUrls(firstPostMedia),
                   threadPosts: validPosts.map((p) => ({
                     text: typeof p === 'string' ? p : (p.text || ''),
-                    mediaUrls: formatPostMedia(typeof p === 'string' ? [] : p.mediaUrls),
+                    mediaUrls: formatOverrideMediaUrls(typeof p === 'string' ? [] : p.mediaUrls),
                   })),
                 });
               });
             } else {
+              const validPosts = getValidPosts(entry);
+              if (validPosts.length === 0) return;
+              const firstPostText = typeof validPosts[0] === 'string' ? validPosts[0] : (validPosts[0].text || '');
+              const firstPostMedia = typeof validPosts[0] === 'string' ? [] : (validPosts[0].mediaUrls || []);
               overrides.push({
                 platform: apiKey,
                 useTemplate: false,
                 caption: firstPostText,
-                mediaUrls: formatPostMedia(firstPostMedia),
+                mediaUrls: formatOverrideMediaUrls(firstPostMedia),
                 threadPosts: validPosts.map((p) => ({
                   text: typeof p === 'string' ? p : (p.text || ''),
-                  mediaUrls: formatPostMedia(typeof p === 'string' ? [] : p.mediaUrls),
+                  mediaUrls: formatOverrideMediaUrls(typeof p === 'string' ? [] : p.mediaUrls),
                 })),
               });
             }
           } else {
-            if (!entry.caption && formattedMediaUrls.length === 0) return;
             if (accountsForPlatform.length > 0) {
               accountsForPlatform.forEach((acc) => {
+                const accEntry = effectiveEntryFor(acc.id);
+                const accMediaUrls = formatOverrideMediaUrls(accEntry.mediaUrls);
+                if (!accEntry.caption && accMediaUrls.length === 0) return;
                 overrides.push({
                   platform: apiKey,
                   socialAccountId: acc.id,
                   useTemplate: false,
-                  caption: entry.caption || '',
-                  mediaUrls: formattedMediaUrls,
+                  caption: accEntry.caption || '',
+                  mediaUrls: accMediaUrls,
                 });
               });
             } else {
+              if (!entry.caption && formattedMediaUrls.length === 0) return;
               overrides.push({
                 platform: apiKey,
                 useTemplate: false,
@@ -1537,6 +1616,8 @@ export function usePostCreatorForm() {
     setIsEditByNetwork,
     activeNetworkTab,
     setNetworkTab,
+    activeNetworkAccountId,
+    setActiveNetworkAccountId,
     networkCustom,
     toggleUseTemplate,
     updateNetworkCaption,

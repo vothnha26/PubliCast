@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { Settings, Globe } from "lucide-react";
 import { usePostCreatorFormContext } from "../../../context/PostCreatorFormContext";
 import { PlatformIcon } from "../../shared/PlatformIcon";
@@ -37,7 +37,11 @@ export function NetworkTabSwitcher() {
   const {
     activeNetworkTab,
     setNetworkTab,
+    activeNetworkAccountId,
+    setActiveNetworkAccountId,
     selectedPlatforms,
+    selectedAccountIds,
+    activeBrand,
     networkCustom,
     toggleUseTemplate,
     addThreadPost,
@@ -53,9 +57,37 @@ export function NetworkTabSwitcher() {
   const isCustomPlatformTab =
     activeNetworkTab !== NETWORK_TAB_TEMPLATE;
 
-  const currentPlatformData = isCustomPlatformTab
+  // Accounts belonging to the active platform tab that are actually
+  // targeted by this post — when there are ≥2, an account sub-tab row lets
+  // the user pick which one's content they're editing (mirrors the Threads
+  // post sub-tabs below). A single account needs no sub-tab: the platform
+  // entry itself is that account's content.
+  const accountsForActiveTab = isCustomPlatformTab
+    ? (activeBrand?.socialAccounts || []).filter(
+        sa => (sa.platform || '').toLowerCase() === activeNetworkTab && selectedAccountIds.includes(sa.id)
+      )
+    : [];
+  const showAccountSubTabs = accountsForActiveTab.length > 1;
+
+  // Auto-select the first account whenever the sub-tab row appears with
+  // nothing chosen yet — without this, the "shared content" checkbox above
+  // starts disabled (no account in view to toggle) until the user manually
+  // clicks a sub-tab, which isn't obvious the first time.
+  useEffect(() => {
+    if (showAccountSubTabs && !accountsForActiveTab.some(acc => acc.id === activeNetworkAccountId)) {
+      setActiveNetworkAccountId(accountsForActiveTab[0].id);
+    }
+  }, [showAccountSubTabs, activeNetworkTab, accountsForActiveTab.map(a => a.id).join(',')]);
+
+  const currentPlatformEntry = isCustomPlatformTab
     ? networkCustom[activeNetworkTab]
     : null;
+  // When viewing a specific account's sub-tab, its own perAccount slot
+  // drives the "using shared content" checkbox below — otherwise (no
+  // sub-tabs, or viewing the platform as a whole) the platform-level entry does.
+  const currentPlatformData = (showAccountSubTabs && activeNetworkAccountId)
+    ? (currentPlatformEntry?.perAccount?.[activeNetworkAccountId] || { useTemplate: true })
+    : currentPlatformEntry;
 
   const isUsingTemplate = currentPlatformData?.useTemplate ?? true;
 
@@ -129,6 +161,43 @@ export function NetworkTabSwitcher() {
         })}
       </div>
 
+      {/* Sub-tabs: account, khi platform đang xem có ≥2 kênh được chọn cho
+          bài này — mỗi kênh có thể có nội dung riêng thay vì dùng chung
+          entry của cả platform (composer-audit P0.4). */}
+      {showAccountSubTabs && (
+        <div className="flex items-center gap-1.5 pb-1 flex-wrap">
+          {accountsForActiveTab.map((acc) => {
+            const isActive = activeNetworkAccountId === acc.id;
+            const accName = acc.displayName || acc.username || acc.accountName || acc.id;
+            const isAccCustomized = currentPlatformEntry?.perAccount?.[acc.id]?.useTemplate === false;
+            return (
+              <button
+                key={acc.id}
+                type="button"
+                onClick={() => setActiveNetworkAccountId(acc.id)}
+                title={accName}
+                className={`relative flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold font-sans transition-all cursor-pointer ${
+                  isActive
+                    ? 'bg-gray-900 text-white shadow-sm'
+                    : 'bg-muted text-muted-foreground hover:bg-gray-200'
+                }`}
+              >
+                {acc.avatarUrl ? (
+                  <img src={acc.avatarUrl} alt={accName} className="w-4 h-4 rounded-full object-cover shrink-0" />
+                ) : null}
+                <span className="truncate max-w-[100px]">{accName}</span>
+                {isAccCustomized && (
+                  <span
+                    className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-emerald-500 border-2 border-white shadow-sm"
+                    title="Đang dùng nội dung riêng"
+                  />
+                )}
+              </button>
+            );
+          })}
+        </div>
+      )}
+
       {/* Row: checkbox "Dùng nội dung chung" — chỉ hiện khi đang ở tab platform */}
       {isCustomPlatformTab && (
         <div className="flex items-center gap-2 pb-2">
@@ -137,12 +206,13 @@ export function NetworkTabSwitcher() {
               type="checkbox"
               checked={isUsingTemplate}
               onChange={(e) =>
-                toggleUseTemplate(activeNetworkTab, e.target.checked)
+                toggleUseTemplate(activeNetworkTab, e.target.checked, showAccountSubTabs ? activeNetworkAccountId : null)
               }
-              className="w-3.5 h-3.5 accent-gray-800 cursor-pointer rounded"
+              disabled={showAccountSubTabs && !activeNetworkAccountId}
+              className="w-3.5 h-3.5 accent-gray-800 cursor-pointer rounded disabled:cursor-not-allowed disabled:opacity-40"
             />
             <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider font-sans group-hover:text-foreground transition-colors">
-              Dùng nội dung chung
+              {showAccountSubTabs ? 'Dùng nội dung chung cho kênh này' : 'Dùng nội dung chung'}
             </span>
           </label>
           {!isUsingTemplate && (

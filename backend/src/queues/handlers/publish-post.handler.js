@@ -6,7 +6,7 @@ const logger = require('../../utils/logger');
 class PublishPostHandler {
   async handle(job) {
     // KHÔNG dùng property 'this.xxx' của class. Mọi biến đều khai báo cục bộ!
-    const { postId, retryPlatforms, partialRetryCount } = job.data;
+    const { postId, retryTargets, retryPlatforms, partialRetryCount } = job.data;
 
     logger.debug(`[PublishPostHandler] 📝 Processing job ${job.id} for Post: ${postId}`);
 
@@ -26,8 +26,8 @@ class PublishPostHandler {
         return;
       }
 
-      // 2. Execute the publish pipeline (truyền thêm retryPlatforms/partialRetryCount nếu có)
-      await postService.publishToPlatforms(postId, { retryPlatforms, partialRetryCount });
+      // 2. Execute the publish pipeline (truyền thêm retryTargets/retryPlatforms/partialRetryCount nếu có)
+      await postService.publishToPlatforms(postId, { retryTargets, retryPlatforms, partialRetryCount });
       
       logger.debug(`[PublishPostHandler] ✅ Successfully processed Post: ${postId}`);
     } catch (err) {

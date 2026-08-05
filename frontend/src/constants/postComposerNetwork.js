@@ -47,10 +47,39 @@ const normalizeMediaItem = (item) => {
   };
 };
 
+const buildEntryFromOverride = (platform, override, formattedMediaUrls) => {
+  if (platform === PLATFORMS.THREADS) {
+    const threadPosts = safeParseArray(override.threadPosts);
+    return {
+      useTemplate: override.useTemplate !== false,
+      activeThreadIndex: 0,
+      threadPosts: threadPosts.length > 0
+        ? threadPosts.map((p) => ({
+            text: typeof p === 'string' ? p : (p?.text || ''),
+            mediaUrls: (Array.isArray(p?.mediaUrls) ? p.mediaUrls : []).map(normalizeMediaItem),
+          }))
+        : [{ text: override.caption || '', mediaUrls: formattedMediaUrls }],
+      mediaUrls: formattedMediaUrls,
+    };
+  }
+  return {
+    useTemplate: override.useTemplate !== false,
+    caption: override.caption || '',
+    mediaUrls: formattedMediaUrls,
+  };
+};
+
 /**
  * Map mảng networkOverrides trả về từ backend (post.networkOverrides, mỗi phần tử
- * { platform: 'FACEBOOK', useTemplate, caption, mediaUrls, threadPosts }) sang
- * object networkCustom keyed theo platform id lowercase dùng trong form state.
+ * { platform: 'FACEBOOK', socialAccountId, useTemplate, caption, mediaUrls, threadPosts })
+ * sang object networkCustom keyed theo platform id lowercase dùng trong form state.
+ *
+ * A platform can have multiple override rows (one per account, when that
+ * platform has ≥2 selected accounts) — each is kept in entry.perAccount
+ * keyed by socialAccountId instead of the last row silently overwriting the
+ * others (composer-audit P0.4). entry itself (top-level, no accountId) still
+ * gets set to *a* row so single-account platforms and any UI reading the
+ * platform-level entry directly keep working unchanged.
  */
 export const mapNetworkOverridesToCustom = (networkOverrides) => {
   const result = buildDefaultNetworkCustom();
@@ -59,26 +88,11 @@ export const mapNetworkOverridesToCustom = (networkOverrides) => {
     const platform = API_KEY_TO_PLATFORM[override.platform] || override.platform.toLowerCase();
     const rawMediaUrls = safeParseArray(override.mediaUrls);
     const formattedMediaUrls = rawMediaUrls.map(normalizeMediaItem);
+    const entry = buildEntryFromOverride(platform, override, formattedMediaUrls);
 
-    if (platform === PLATFORMS.THREADS) {
-      const threadPosts = safeParseArray(override.threadPosts);
-      result[platform] = {
-        useTemplate: override.useTemplate !== false,
-        activeThreadIndex: 0,
-        threadPosts: threadPosts.length > 0
-          ? threadPosts.map((p) => ({
-              text: typeof p === 'string' ? p : (p?.text || ''),
-              mediaUrls: (Array.isArray(p?.mediaUrls) ? p.mediaUrls : []).map(normalizeMediaItem),
-            }))
-          : [{ text: override.caption || '', mediaUrls: formattedMediaUrls }],
-        mediaUrls: formattedMediaUrls,
-      };
-    } else {
-      result[platform] = {
-        useTemplate: override.useTemplate !== false,
-        caption: override.caption || '',
-        mediaUrls: formattedMediaUrls,
-      };
+    result[platform] = { ...result[platform], ...entry };
+    if (override.socialAccountId) {
+      result[platform].perAccount = { ...(result[platform].perAccount || {}), [override.socialAccountId]: entry };
     }
   });
   return result;

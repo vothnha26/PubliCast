@@ -1,4 +1,5 @@
 const prisma = require('../../config/prisma');
+const { getFirstIdForPlatform } = require('../workspace/post/platform-post-id.util');
 
 class AnalyticsFacade {
   /**
@@ -277,18 +278,25 @@ class AnalyticsFacade {
         platforms = post.targetPlatforms.split(',').map(p => p.trim().toUpperCase()).filter(Boolean);
       }
       for (const platformUpper of platforms) {
-        const isDuplicate = allPlatformPosts.some(ap => ap.platform === platformUpper && (ap.id === post.platformPostId || ap.id === post.id));
-        if (isDuplicate) continue;
-
+        // A representative id is enough here — this only needs "the metric
+        // row for this post+platform", not full per-account fidelity, so
+        // getFirstIdForPlatform's "first account found" is fine even though
+        // platformPostId is now shaped per-account (see platform-post-id.util.js).
+        // Resolved before the dedup check below so the comparison against
+        // ap.id (a plain platform video/post id from the live API fetch
+        // above) uses the actual id, not the raw JSON map string.
         let currentPlatformPostId = post.platformPostId;
         if (post.platformPostId && post.platformPostId.startsWith('{')) {
           try {
-            const map = JSON.parse(post.platformPostId);
-            currentPlatformPostId = map[platformUpper] || null;
+            currentPlatformPostId = getFirstIdForPlatform(JSON.parse(post.platformPostId), platformUpper) || null;
           } catch (e) {
             // ignore
           }
         }
+
+        const isDuplicate = allPlatformPosts.some(ap => ap.platform === platformUpper && (ap.id === currentPlatformPostId || ap.id === post.id));
+        if (isDuplicate) continue;
+
         postPlatformPairs.push({ post, platformUpper, currentPlatformPostId });
       }
     }

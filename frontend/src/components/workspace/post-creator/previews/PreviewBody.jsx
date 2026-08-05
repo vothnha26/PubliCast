@@ -35,7 +35,12 @@ export function PreviewBody() {
     setIsUploadingThumbnail,
     setShowUploadModal,
     setUploadModalTab,
-    setMediaTypeFilter
+    setMediaTypeFilter,
+    isEditByNetwork,
+    activeNetworkTab,
+    activeNetworkAccountId,
+    selectedAccountIds,
+    activeBrand
   } = usePostCreatorFormContext();
 
   const [showAltInput, setShowAltInput] = useState(false);
@@ -47,7 +52,20 @@ export function PreviewBody() {
     setShowUploadModal(true);
   };
 
-  const platformCustom = networkCustom?.[activePlatform];
+  // Mirrors ComposerBody's own account-slot resolution — when "Theo mạng"
+  // is on and the account sub-tabs are showing (platform has ≥2 targeted
+  // accounts), preview the account actually being edited instead of always
+  // the platform-level entry, so what's shown here matches what the
+  // caption/media inputs are writing to.
+  const platformEntry = networkCustom?.[activePlatform];
+  const accountsForPreviewTab = (isEditByNetwork && activeNetworkTab === activePlatform)
+    ? (activeBrand?.socialAccounts || []).filter(
+        sa => (sa.platform || '').toLowerCase() === activePlatform && selectedAccountIds.includes(sa.id)
+      )
+    : [];
+  const platformCustom = accountsForPreviewTab.length > 1 && activeNetworkAccountId
+    ? (platformEntry?.perAccount?.[activeNetworkAccountId] || platformEntry)
+    : platformEntry;
   const isPlatformCustomized = platformCustom?.useTemplate === false;
   const isThreadsPlatform = activePlatform === 'threads';
 
