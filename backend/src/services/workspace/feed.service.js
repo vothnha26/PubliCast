@@ -80,6 +80,15 @@ class FeedService {
 
     const feed = await parser.parseURL(feedSource.url);
 
+    // The name defaults to the raw URL at creation time (see
+    // createCustomFeedSource) since we don't know the feed's real title
+    // until it's been fetched. Backfill it here, but only while the name
+    // still equals the URL — once a user (or admin) picks a real name we
+    // must not overwrite it on the next scheduled refresh.
+    if (feed.title && feedSource.name === feedSource.url) {
+      await prisma.feedSource.update({ where: { id: feedSourceId }, data: { name: feed.title } });
+    }
+
     const rows = (feed.items || [])
       .map((item) => {
         const guid = extractGuid(item);

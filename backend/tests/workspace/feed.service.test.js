@@ -3,6 +3,7 @@ jest.mock('../../src/config/prisma', () => ({
     findMany: jest.fn(),
     create: jest.fn(),
     findUnique: jest.fn(),
+    update: jest.fn(),
     delete: jest.fn()
   },
   feedEntry: {
@@ -160,6 +161,27 @@ describe('feed.service', () => {
       mockParseURL.mockRejectedValue(new Error('ENOTFOUND'));
 
       await expect(feedService.refreshFeedSource('feed-1')).rejects.toThrow('ENOTFOUND');
+    });
+
+    it('backfills the feed name from the parsed title when the name still equals the raw URL', async () => {
+      prisma.feedSource.findUnique.mockResolvedValue({ id: 'feed-1', url: 'https://techcrunch.com/feed/', name: 'https://techcrunch.com/feed/' });
+      mockParseURL.mockResolvedValue({ title: 'TechCrunch', items: [] });
+
+      await feedService.refreshFeedSource('feed-1');
+
+      expect(prisma.feedSource.update).toHaveBeenCalledWith({
+        where: { id: 'feed-1' },
+        data: { name: 'TechCrunch' }
+      });
+    });
+
+    it('does not overwrite a name the user (or admin) already customized', async () => {
+      prisma.feedSource.findUnique.mockResolvedValue({ id: 'feed-1', url: 'https://techcrunch.com/feed/', name: 'My Favorite Tech Blog' });
+      mockParseURL.mockResolvedValue({ title: 'TechCrunch', items: [] });
+
+      await feedService.refreshFeedSource('feed-1');
+
+      expect(prisma.feedSource.update).not.toHaveBeenCalled();
     });
   });
 
