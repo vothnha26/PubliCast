@@ -935,7 +935,11 @@ export function usePostCreatorForm() {
           ? DEFAULT_PLATFORM
           : (connected[0] || DEFAULT_PLATFORM);
 
-        setSelectedPlatforms([initialPlatform]);
+        // Default to every connected platform, not just one — users creating
+        // a new post overwhelmingly intend to cross-post, and a single
+        // pre-selected pill among several unselected ones is easy to miss,
+        // silently under-publishing to just DEFAULT_PLATFORM (YouTube).
+        setSelectedPlatforms(connected.length > 0 ? connected : [initialPlatform]);
         setActivePlatform(initialPlatform);
         setScheduledDate(defaultScheduledAt ? toLocalDatetimeString(defaultScheduledAt) : toLocalDatetimeString(new Date()));
         setIsLibrary(initialIsLibrary || false);
