@@ -41,6 +41,7 @@
     "tools": "Tools",
     "contentPlanner": "Content Planner",
     "approvalRequests": "Approval Requests",
+    "explore": "Explore",
     "planLabel": "Plan: {{name}}",
     "nextBilling": "Next billing: {{date}}",
     "unlimited": "Unlimited",

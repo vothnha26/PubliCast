@@ -745,7 +745,26 @@ const LOCK_CONFIG = {
   RECAP_SCHEDULER: {
     KEY: 'lock:recap-scheduler:scan',
     TTL_SEC: 20 * 60
+  },
+  STREAK_SCHEDULER: {
+    KEY: 'lock:streak-scheduler:reset',
+    TTL_SEC: 20 * 60
+  },
+  FEED_SCHEDULER: {
+    KEY: 'lock:feed-scheduler:refresh',
+    // Covers one full pass refreshing every FeedSource's entries — generous
+    // ceiling, same reasoning as REPORT_SCHEDULER/RECAP_SCHEDULER.
+    TTL_SEC: 20 * 60
   }
+};
+
+// Comment Score: weights a comment above a like/share since it's the
+// highest-effort engagement signal (typing vs. one tap). See
+// utils/comment-score.util.js for the formula that consumes these.
+const COMMENT_SCORE_WEIGHTS = {
+  COMMENT: 3,
+  LIKE: 1,
+  SHARE: 1.5
 };
 
 module.exports = {
@@ -811,6 +830,7 @@ module.exports = {
   LOCK_CONFIG,
   STOCK_PROVIDERS,
   STOCK_MEDIA_TYPES,
+  COMMENT_SCORE_WEIGHTS,
   splitMediaUrls
 };
 

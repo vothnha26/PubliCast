@@ -160,6 +160,26 @@ class AdminService {
     const data = await apiV2.delete(`/admin/templates/${id}`);
     return data;
   }
+
+  async getSystemFeeds() {
+    const data = await apiV2.get('/admin/feeds');
+    return data;
+  }
+
+  async createSystemFeed(payload) {
+    const data = await apiV2.post('/admin/feeds', payload);
+    return data;
+  }
+
+  async updateSystemFeed(id, payload) {
+    const data = await apiV2.put(`/admin/feeds/${id}`, payload);
+    return data;
+  }
+
+  async deleteSystemFeed(id) {
+    const data = await apiV2.delete(`/admin/feeds/${id}`);
+    return data;
+  }
 }
 
 const adminService = new AdminService();

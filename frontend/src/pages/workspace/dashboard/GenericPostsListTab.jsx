@@ -305,6 +305,21 @@ export function GenericPostsListTab({
                 );
               })}
 
+              {/* Comment Score Header */}
+              <th
+                className="text-right px-6 py-4 text-[10px] font-bold text-muted-foreground uppercase tracking-widest cursor-pointer select-none hover:text-foreground transition-colors w-24"
+                onClick={() => handleSort("commentScore")}
+              >
+                <span className="inline-flex items-center gap-1 justify-end w-full">
+                  <span>Score</span>
+                  {sortConfig.key === "commentScore" ? (
+                    sortConfig.dir === "asc" ? <ChevronUp size={11} className="text-foreground" /> : <ChevronDown size={11} className="text-foreground" />
+                  ) : (
+                    <ChevronsUpDown size={11} className="text-muted-foreground" />
+                  )}
+                </span>
+              </th>
+
               {/* Duration Header */}
               <th className="text-center px-6 py-4 text-[10px] font-bold text-muted-foreground uppercase tracking-widest w-24">Duration</th>
             </tr>
@@ -481,6 +496,14 @@ export function GenericPostsListTab({
                       </td>
                       <td className="px-6 py-4 text-right text-xs font-bold text-foreground">
                         {formatMetricNumber(post.shares)}
+                      </td>
+
+                      {/* Comment Score Cell — null (e.g. Threads has no real
+                          reach figure to score against) renders as "—"
+                          rather than formatMetricNumber's "0", so a missing
+                          score is never confused with a real zero score. */}
+                      <td className="px-6 py-4 text-right text-xs font-bold text-foreground">
+                        {post.commentScore === null || post.commentScore === undefined ? "—" : post.commentScore}
                       </td>
 
                       {/* Duration Cell */}

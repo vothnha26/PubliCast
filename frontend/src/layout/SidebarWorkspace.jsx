@@ -3,7 +3,7 @@ import {
   TrendingUp, Hash, Settings,
   FileText, ClipboardCheck,
   Sun, Moon, Diamond, Users,
-  ArrowLeftRight
+  ArrowLeftRight, Compass
 } from "lucide-react";
 import { useBrand } from "../context/BrandContext";
 import { useConnections } from "../context/ConnectionsContext";
@@ -204,6 +204,20 @@ export function SidebarWorkspace() {
                 <ClipboardCheck size={18} style={{ color: currentPath.startsWith("/manage/tasks") ? "var(--sidebar-foreground)" : undefined }} />
                 <span style={{ fontSize: 13, fontWeight: currentPath.startsWith("/manage/tasks") ? 600 : 400 }}>{t("sidebar.approvalRequests")}</span>
                 {currentPath.startsWith("/manage/tasks") && (
+                  <div className="ml-auto w-1.5 h-1.5 rounded-full bg-[var(--sidebar-foreground)]" />
+                )}
+              </Link>
+              <Link
+                to="/explore"
+                className="flex items-center gap-3 px-3 py-2 rounded-lg transition-all no-underline hover:bg-[var(--sidebar-accent)]"
+                style={{
+                  backgroundColor: currentPath.startsWith("/explore") ? "var(--sidebar-accent)" : "transparent",
+                  color: currentPath.startsWith("/explore") ? "var(--sidebar-foreground)" : "var(--muted-foreground)"
+                }}
+              >
+                <Compass size={18} style={{ color: currentPath.startsWith("/explore") ? "var(--sidebar-foreground)" : undefined }} />
+                <span style={{ fontSize: 13, fontWeight: currentPath.startsWith("/explore") ? 600 : 400 }}>{t("sidebar.explore")}</span>
+                {currentPath.startsWith("/explore") && (
                   <div className="ml-auto w-1.5 h-1.5 rounded-full bg-[var(--sidebar-foreground)]" />
                 )}
               </Link>

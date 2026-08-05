@@ -1,6 +1,12 @@
 {
   "title": "Workspace Dashboard",
   "welcome": "Welcome back, {{name}}!",
+  "postingGoals": {
+    "title": "Posting Goals",
+    "weekly": "This week",
+    "monthly": "This month",
+    "setGoal": "Set goal"
+  },
   "stats": {
     "totalFollowers": "Total Followers",
     "totalViews": "Total Views",
@@ -12,11 +18,15 @@
     "youtubeNote": "YouTube Channel",
     "uploadedNote": "Uploaded",
     "selectedDelta": "Selected",
-    "unknownBrand": "Unknown"
+    "unknownBrand": "Unknown",
+    "postingStreak": "Posting Streak",
+    "longestStreak": "Best: {{count}}"
   },
   "charts": {
     "audienceTrend": "Audience Reach Trend",
-    "viewDetails": "View Detailed Report →"
+    "viewDetails": "View Detailed Report →",
+    "lastSynced": "Updated {{time}}",
+    "neverSynced": "Not synced yet"
   },
   "recentQueue": {
     "title": "Recent Posts Queue",
