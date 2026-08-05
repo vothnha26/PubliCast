@@ -68,6 +68,24 @@ exports.deleteFeedSource = async (req, res, next) => {
 };
 
 /**
+ * GET /api/v2/content-extras/feeds/curated
+ * System (curated) feed sources + entries only — same response for every
+ * brand, so it's safe to cache at the Cloudflare edge (see
+ * getFeaturedTemplates for the identical pattern). Do not add brand-specific
+ * data here; that's what getFeedSources/getFeedEntries are for.
+ */
+exports.getCuratedFeeds = async (req, res, next) => {
+  try {
+    const data = await feedService.getCuratedFeeds();
+    res.set('Cache-Control', 'public, max-age=1800');
+    return res.status(200).json({ message: 'Curated feeds retrieved successfully', data });
+  } catch (error) {
+    logger.error('Error in getCuratedFeeds:', error);
+    next(error);
+  }
+};
+
+/**
  * GET /api/v2/content-extras/feeds/entries
  * Returns cached entries across this brand's feeds + system feeds, newest first.
  */

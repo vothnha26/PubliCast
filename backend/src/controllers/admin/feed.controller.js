@@ -24,6 +24,7 @@ class AdminFeedController {
     });
 
     await feedService.refreshFeedSource(feedSource.id).catch(() => {});
+    await feedService._purgeCuratedFeedsCache();
 
     res.status(201).json({ message: 'System feed created successfully', data: feedSource });
   });
@@ -43,6 +44,7 @@ class AdminFeedController {
     if (category !== undefined) data.category = category?.trim() || null;
 
     const feedSource = await prisma.feedSource.update({ where: { id }, data });
+    await feedService._purgeCuratedFeedsCache();
     res.status(200).json({ message: 'System feed updated successfully', data: feedSource });
   });
 
@@ -55,6 +57,7 @@ class AdminFeedController {
     }
 
     await prisma.feedSource.delete({ where: { id } });
+    await feedService._purgeCuratedFeedsCache();
     res.status(200).json({ message: 'System feed deleted successfully' });
   });
 }

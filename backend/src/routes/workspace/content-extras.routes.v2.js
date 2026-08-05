@@ -194,6 +194,9 @@ router.get('/feeds', checkBrandAccess, feedController.getFeedSources);
 router.post('/feeds', checkBrandAccess, feedController.createFeedSource);
 router.delete('/feeds/:id', checkBrandAccess, feedController.deleteFeedSource);
 router.get('/feeds/entries', checkBrandAccess, feedController.getFeedEntries);
+// Same for every brand — no checkBrandAccess needed, and cacheable at the
+// Cloudflare edge (see feedController.getCuratedFeeds).
+router.get('/feeds/curated', feedController.getCuratedFeeds);
 
 // ── Calendar Events V2 ──
 /**

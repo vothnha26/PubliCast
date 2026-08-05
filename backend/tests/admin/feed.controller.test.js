@@ -9,10 +9,12 @@ jest.mock('../../src/config/prisma', () => ({
 }));
 
 jest.mock('../../src/services/workspace/feed.service', () => ({
-  refreshFeedSource: jest.fn().mockResolvedValue({ added: 0 })
+  refreshFeedSource: jest.fn().mockResolvedValue({ added: 0 }),
+  _purgeCuratedFeedsCache: jest.fn().mockResolvedValue(undefined)
 }));
 
 const prisma = require('../../src/config/prisma');
+const feedService = require('../../src/services/workspace/feed.service');
 const feedController = require('../../src/controllers/admin/feed.controller');
 
 function mockReqRes({ body = {}, params = {} } = {}) {
@@ -72,6 +74,15 @@ describe('admin/feed.controller', () => {
       });
       expect(res.statusCode).toBe(201);
     });
+
+    it('purges the curated feeds CDN cache after creating', async () => {
+      prisma.feedSource.create.mockResolvedValue({ id: 'feed-1', isSystem: true });
+
+      const { req, res, done } = mockReqRes({ body: { name: 'Tech News', url: 'https://example.com/rss' } });
+      await invoke(feedController.createSystemFeed, req, res, done);
+
+      expect(feedService._purgeCuratedFeedsCache).toHaveBeenCalled();
+    });
   });
 
   describe('updateSystemFeed', () => {
@@ -95,6 +106,16 @@ describe('admin/feed.controller', () => {
       expect(prisma.feedSource.update).toHaveBeenCalledWith({ where: { id: 'feed-1' }, data: { name: 'New Name' } });
       expect(res.statusCode).toBe(200);
     });
+
+    it('purges the curated feeds CDN cache after updating', async () => {
+      prisma.feedSource.findUnique.mockResolvedValue({ id: 'feed-1', isSystem: true });
+      prisma.feedSource.update.mockResolvedValue({ id: 'feed-1', name: 'New Name' });
+
+      const { req, res, done } = mockReqRes({ params: { id: 'feed-1' }, body: { name: 'New Name' } });
+      await invoke(feedController.updateSystemFeed, req, res, done);
+
+      expect(feedService._purgeCuratedFeedsCache).toHaveBeenCalled();
+    });
   });
 
   describe('deleteSystemFeed', () => {
@@ -116,6 +137,15 @@ describe('admin/feed.controller', () => {
 
       expect(prisma.feedSource.delete).toHaveBeenCalledWith({ where: { id: 'feed-1' } });
       expect(res.statusCode).toBe(200);
+    });
+
+    it('purges the curated feeds CDN cache after deleting', async () => {
+      prisma.feedSource.findUnique.mockResolvedValue({ id: 'feed-1', isSystem: true });
+
+      const { req, res, done } = mockReqRes({ params: { id: 'feed-1' } });
+      await invoke(feedController.deleteSystemFeed, req, res, done);
+
+      expect(feedService._purgeCuratedFeedsCache).toHaveBeenCalled();
     });
   });
 });

@@ -20,6 +20,13 @@ class FeedService {
     const data = await apiV2.get(`/content-extras/feeds/entries?brandId=${brandId}&limit=${limit}`);
     return data;
   }
+
+  // Same response for every brand — CDN-cached on the backend, so this can
+  // be called independently of the brand-scoped getFeedSources/getFeedEntries.
+  async getCuratedFeeds() {
+    const data = await apiV2.get('/content-extras/feeds/curated');
+    return data;
+  }
 }
 
 const feedService = new FeedService();

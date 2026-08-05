@@ -72,16 +72,31 @@ function AddFeedModal({ isOpen, onClose, onSave }) {
 // no per-brand subscribe step. This modal is a browse-by-category catalog
 // (mirrors Buffer's "Explore Curated Feeds" grid) that jumps the brand to
 // that feed's tab rather than "adding" anything, since it's already there.
-function ExploreCuratedModal({ isOpen, onClose, systemFeeds, onSelectFeed }) {
+// Fetched from its own endpoint (getCuratedFeeds) rather than derived from
+// the brand-scoped feed list — that response is identical for every brand
+// and cached at the CDN edge, so this modal doesn't wait on brand-specific data.
+function ExploreCuratedModal({ isOpen, onClose, onSelectFeed }) {
+  const [systemFeeds, setSystemFeeds] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [activeCategory, setActiveCategory] = useState(null);
+
   const categories = useMemo(() => {
     const set = new Set(systemFeeds.map((f) => f.category).filter(Boolean));
     return Array.from(set);
   }, [systemFeeds]);
-  const [activeCategory, setActiveCategory] = useState(null);
 
   useEffect(() => {
-    if (isOpen) setActiveCategory(categories[0] || null);
-  }, [isOpen]); // eslint-disable-line react-hooks/exhaustive-deps
+    if (!isOpen) return;
+    setLoading(true);
+    feedService.getCuratedFeeds()
+      .then((res) => {
+        const feeds = res?.feedSources || [];
+        setSystemFeeds(feeds);
+        setActiveCategory(new Set(feeds.map((f) => f.category).filter(Boolean)).values().next().value || null);
+      })
+      .catch(() => toast.error("Failed to load curated feeds"))
+      .finally(() => setLoading(false));
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
@@ -114,7 +129,11 @@ function ExploreCuratedModal({ isOpen, onClose, systemFeeds, onSelectFeed }) {
           </div>
         )}
         <div className="p-8 overflow-y-auto">
-          {visibleFeeds.length === 0 ? (
+          {loading ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 size={20} className="animate-spin text-muted-foreground" />
+            </div>
+          ) : visibleFeeds.length === 0 ? (
             <p className="text-sm text-muted-foreground text-center py-12">No curated feeds in this category yet.</p>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -223,8 +242,6 @@ export function Explore() {
   useEffect(() => {
     loadData();
   }, [activeBrand?.id]);
-
-  const systemFeeds = feedSources.filter((s) => s.isSystem);
 
   const activeFeed = feedSources.find((s) => s.id === activeFeedId) || null;
   const visibleEntries = activeFeedId === "all" ? entries : entries.filter((e) => e.feedSource?.id === activeFeedId);
@@ -405,7 +422,6 @@ export function Explore() {
       <ExploreCuratedModal
         isOpen={exploreModalOpen}
         onClose={() => setExploreModalOpen(false)}
-        systemFeeds={systemFeeds}
         onSelectFeed={handleSelectCuratedFeed}
       />
     </div>

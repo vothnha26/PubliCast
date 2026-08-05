@@ -2,7 +2,8 @@ jest.mock('../../src/services/workspace/feed.service', () => ({
   listFeedSources: jest.fn(),
   createCustomFeedSource: jest.fn(),
   deleteFeedSource: jest.fn(),
-  getFeedEntries: jest.fn()
+  getFeedEntries: jest.fn(),
+  getCuratedFeeds: jest.fn()
 }));
 
 const feedService = require('../../src/services/workspace/feed.service');
@@ -142,6 +143,31 @@ describe('feed.controller', () => {
       await invoke(feedController.getFeedEntries, req, res, done);
 
       expect(feedService.getFeedEntries).toHaveBeenCalledWith('brand-1', { limit: 100 });
+    });
+  });
+
+  describe('getCuratedFeeds', () => {
+    it('sets a public Cache-Control header for the CDN', async () => {
+      feedService.getCuratedFeeds.mockResolvedValue({ feedSources: [], entries: [] });
+
+      const { req, res, done } = mockReqRes();
+      let cacheControlHeader = null;
+      res.set = (name, value) => { if (name === 'Cache-Control') cacheControlHeader = value; };
+      await invoke(feedController.getCuratedFeeds, req, res, done);
+
+      expect(cacheControlHeader).toBe('public, max-age=1800');
+      expect(res.statusCode).toBe(200);
+    });
+
+    it('does not require a brandId (same response for every brand)', async () => {
+      feedService.getCuratedFeeds.mockResolvedValue({ feedSources: [{ id: 'sys-1' }], entries: [] });
+
+      const { req, res, done } = mockReqRes({ query: {} });
+      res.set = () => {};
+      await invoke(feedController.getCuratedFeeds, req, res, done);
+
+      expect(res.statusCode).toBe(200);
+      expect(res.body.data.feedSources).toEqual([{ id: 'sys-1' }]);
     });
   });
 });

@@ -19,7 +19,12 @@ jest.mock('rss-parser', () => {
   }));
 });
 
+jest.mock('../../src/utils/cloudflare-cache', () => ({
+  purgeUrls: jest.fn().mockResolvedValue(undefined)
+}));
+
 const prisma = require('../../src/config/prisma');
+const cloudflareCache = require('../../src/utils/cloudflare-cache');
 const feedService = require('../../src/services/workspace/feed.service');
 
 describe('feed.service', () => {
@@ -260,6 +265,46 @@ describe('feed.service', () => {
       const result = await feedService.refreshAllFeedSources();
 
       expect(result).toEqual({ total: 0, succeeded: 0, failed: 0 });
+    });
+
+    it('purges the curated feeds CDN cache when a system feed was refreshed', async () => {
+      prisma.feedSource.findMany.mockResolvedValue([{ id: 'feed-1', url: 'https://example.com', isSystem: true }]);
+      prisma.feedSource.findUnique.mockResolvedValue({ id: 'feed-1', url: 'https://example.com' });
+      mockParseURL.mockResolvedValue({ items: [] });
+
+      await feedService.refreshAllFeedSources();
+
+      expect(cloudflareCache.purgeUrls).toHaveBeenCalledWith(['/api/v2/content-extras/feeds/curated']);
+    });
+
+    it('does not purge the cache when only custom (non-system) feeds were refreshed', async () => {
+      prisma.feedSource.findMany.mockResolvedValue([{ id: 'feed-1', url: 'https://example.com', isSystem: false }]);
+      prisma.feedSource.findUnique.mockResolvedValue({ id: 'feed-1', url: 'https://example.com' });
+      mockParseURL.mockResolvedValue({ items: [] });
+
+      await feedService.refreshAllFeedSources();
+
+      expect(cloudflareCache.purgeUrls).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('getCuratedFeeds', () => {
+    it('returns only system feed sources and entries, ignoring custom feeds', async () => {
+      prisma.feedSource.findMany.mockResolvedValue([{ id: 'sys-1', isSystem: true, name: 'BBC' }]);
+      prisma.feedEntry.findMany.mockResolvedValue([{ id: 'entry-1', title: 'World news' }]);
+
+      const result = await feedService.getCuratedFeeds();
+
+      expect(prisma.feedSource.findMany).toHaveBeenCalledWith(expect.objectContaining({
+        where: { isSystem: true }
+      }));
+      expect(prisma.feedEntry.findMany).toHaveBeenCalledWith(expect.objectContaining({
+        where: { feedSource: { isSystem: true } }
+      }));
+      expect(result).toEqual({
+        feedSources: [{ id: 'sys-1', isSystem: true, name: 'BBC' }],
+        entries: [{ id: 'entry-1', title: 'World news' }]
+      });
     });
   });
 });

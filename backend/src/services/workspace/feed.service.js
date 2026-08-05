@@ -1,6 +1,9 @@
 const Parser = require('rss-parser');
 const prisma = require('../../config/prisma');
 const logger = require('../../utils/logger');
+const cloudflareCache = require('../../utils/cloudflare-cache');
+
+const CURATED_FEEDS_PATH = '/api/v2/content-extras/feeds/curated';
 
 // media:thumbnail/media:content aren't part of rss-parser's default field
 // set — without this, feeds that only use those tags (e.g. BBC) silently
@@ -82,6 +85,30 @@ class FeedService {
     await prisma.feedSource.delete({ where: { id } });
   }
 
+  // Same response for every caller regardless of brand — safe to cache at
+  // the Cloudflare edge (see routes/workspace/content-extras.routes.v2.js),
+  // unlike getFeedSources/getFeedEntries which mix in the caller's own
+  // custom feeds and must stay per-brand.
+  async getCuratedFeeds() {
+    const feedSources = await prisma.feedSource.findMany({
+      where: { isSystem: true },
+      orderBy: [{ category: 'asc' }, { createdAt: 'desc' }]
+    });
+
+    const entries = await prisma.feedEntry.findMany({
+      where: { feedSource: { isSystem: true } },
+      include: { feedSource: { select: { id: true, name: true, category: true, isSystem: true } } },
+      orderBy: { publishedAt: 'desc' },
+      take: 100
+    });
+
+    return { feedSources, entries };
+  }
+
+  async _purgeCuratedFeedsCache() {
+    await cloudflareCache.purgeUrls([CURATED_FEEDS_PATH]);
+  }
+
   async getFeedEntries(brandId, { limit = 50 } = {}) {
     return prisma.feedEntry.findMany({
       where: {
@@ -131,18 +158,24 @@ class FeedService {
   }
 
   async refreshAllFeedSources() {
-    const feedSources = await prisma.feedSource.findMany({ select: { id: true, url: true } });
+    const feedSources = await prisma.feedSource.findMany({ select: { id: true, url: true, isSystem: true } });
 
     let succeeded = 0;
     let failed = 0;
+    let anySystemRefreshed = false;
     for (const source of feedSources) {
       try {
         await this.refreshFeedSource(source.id);
         succeeded += 1;
+        if (source.isSystem) anySystemRefreshed = true;
       } catch (error) {
         failed += 1;
         logger.warn(`[FeedService] Refresh failed for feed source ${source.id} (${source.url}):`, error.message);
       }
+    }
+
+    if (anySystemRefreshed) {
+      await this._purgeCuratedFeedsCache();
     }
 
     return { total: feedSources.length, succeeded, failed };
