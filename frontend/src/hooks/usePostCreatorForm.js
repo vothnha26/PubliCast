@@ -540,6 +540,24 @@ export function usePostCreatorForm() {
     }));
   };
 
+  // Writes one technical-setting field (YouTube categoryId, TikTok
+  // allowDuet, etc.) into the given account's slot — unlike
+  // updateNetworkCaption/updateNetworkMedia, this does NOT force
+  // useTemplate:false, since a user may want a different category for one
+  // account while still sharing the global caption (settings and
+  // caption/media are independent override axes).
+  const updateNetworkSetting = (platformId, key, value, accountId = null) => {
+    setNetworkCustom((prev) => {
+      const entry = prev[platformId];
+      const currentSlot = getNetworkEntrySlot(entry, accountId);
+      const nextSettings = { ...(currentSlot.settings || {}), [key]: value };
+      return {
+        ...prev,
+        [platformId]: setNetworkEntrySlot(entry, accountId, { settings: nextSettings }),
+      };
+    });
+  };
+
   const updateThreadPostText = (index, text) => {
     setNetworkCustom((prev) => {
       const threads = prev[PLATFORMS.THREADS] || { threadPosts: [{ text: "", mediaUrls: [] }] };
@@ -1284,13 +1302,27 @@ export function usePostCreatorForm() {
         const overrides = [];
         Object.entries(networkCustom).forEach(([platform, entry]) => {
           if (!selectedPlatforms.includes(platform)) return;
-          if (entry?.useTemplate !== false) return;
           const apiKey = PLATFORM_API_KEY[platform];
           if (!apiKey) return; // bỏ qua platform không có API key hợp lệ
 
           const accountsForPlatform = activeBrand?.socialAccounts?.filter(
             sa => (sa.platform || '').toLowerCase() === apiKey.toLowerCase() && selectedAccountIds.includes(sa.id)
           ) || [];
+
+          // Settings (YouTube category/privacy/tags, TikTok duet/stitch,
+          // etc.) are an independent override axis from caption/media —
+          // updateNetworkSetting deliberately doesn't flip useTemplate, so a
+          // user can give one account a different category while every
+          // account still shares the global caption. Both this and the
+          // platform-level useTemplate!==false check (below, per-branch)
+          // gate whether an override row is written for a given account.
+          const hasAnySettingsFor = (accountId) => {
+            const slot = accountId ? entry.perAccount?.[accountId] : entry;
+            return slot?.settings && Object.keys(slot.settings).length > 0;
+          };
+          if (entry?.useTemplate !== false && accountsForPlatform.every((acc) => !hasAnySettingsFor(acc.id)) && !hasAnySettingsFor(null)) {
+            return;
+          }
 
           // With ≥2 accounts, each may have its own perAccount slot (see
           // getNetworkEntrySlot) — falls back to the shared `entry` for any
@@ -1353,23 +1385,43 @@ export function usePostCreatorForm() {
               accountsForPlatform.forEach((acc) => {
                 const accEntry = effectiveEntryFor(acc.id);
                 const accMediaUrls = formatOverrideMediaUrls(accEntry.mediaUrls);
-                if (!accEntry.caption && accMediaUrls.length === 0) return;
+                // Settings live on this account's own perAccount slot, never
+                // inherited via effectiveEntryFor's shared-content fallback —
+                // a category chosen for account A must never silently apply
+                // to account B just because B hasn't customized its caption yet.
+                const accSettings = entry.perAccount?.[acc.id]?.settings;
+                const hasSettings = accSettings && Object.keys(accSettings).length > 0;
+                const isCaptionCustomized = accEntry.useTemplate === false;
+                if (!isCaptionCustomized && !hasSettings) return;
+                if (isCaptionCustomized && !accEntry.caption && accMediaUrls.length === 0 && !hasSettings) return;
                 overrides.push({
                   platform: apiKey,
                   socialAccountId: acc.id,
-                  useTemplate: false,
-                  caption: accEntry.caption || '',
-                  mediaUrls: accMediaUrls,
+                  useTemplate: isCaptionCustomized,
+                  caption: isCaptionCustomized ? (accEntry.caption || '') : undefined,
+                  mediaUrls: isCaptionCustomized ? accMediaUrls : undefined,
+                  ...(hasSettings ? { settings: accSettings } : {}),
                 });
               });
             } else {
-              if (!entry.caption && formattedMediaUrls.length === 0) return;
-              overrides.push({
-                platform: apiKey,
-                useTemplate: false,
-                caption: entry.caption || '',
-                mediaUrls: formattedMediaUrls,
-              });
+              const singleSettings = entry.settings;
+              const hasSettings = singleSettings && Object.keys(singleSettings).length > 0;
+              if (entry?.useTemplate === false) {
+                if (!entry.caption && formattedMediaUrls.length === 0 && !hasSettings) return;
+                overrides.push({
+                  platform: apiKey,
+                  useTemplate: false,
+                  caption: entry.caption || '',
+                  mediaUrls: formattedMediaUrls,
+                  ...(hasSettings ? { settings: singleSettings } : {}),
+                });
+              } else if (hasSettings) {
+                overrides.push({
+                  platform: apiKey,
+                  useTemplate: true,
+                  settings: singleSettings,
+                });
+              }
             }
           }
         });
@@ -1622,6 +1674,7 @@ export function usePostCreatorForm() {
     toggleUseTemplate,
     updateNetworkCaption,
     updateNetworkMedia,
+    updateNetworkSetting,
     updateThreadPostText,
     updateThreadPostMedia,
     addThreadPost,

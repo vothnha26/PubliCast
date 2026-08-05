@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { ChevronDown } from "lucide-react";
 import { usePostCreatorFormContext } from "../../../../context/PostCreatorFormContext";
 import { FACEBOOK_TYPE } from "../../../../constants/postTypes";
+import { PLATFORMS } from "../../../../constants/platforms";
 
 export function FacebookPresets() {
   const { t } = useTranslation(["planner"]);
@@ -17,8 +18,36 @@ export function FacebookPresets() {
     facebookReelPlaceId,
     setFacebookReelPlaceId,
     facebookReelThumbnail,
-    setFacebookReelThumbnail
+    setFacebookReelThumbnail,
+    selectedAccountIds,
+    activeBrand,
+    networkCustom,
+    activeNetworkAccountId,
+    updateNetworkSetting
   } = usePostCreatorFormContext();
+
+  // Same per-account settings pattern as YouTubePresets — see its comment
+  // for the full rationale (composer-audit P0.4 / SRS FR-3.4).
+  const facebookAccounts = (activeBrand?.socialAccounts || []).filter(
+    sa => (sa.platform || '').toUpperCase() === PLATFORMS.FACEBOOK.toUpperCase() && selectedAccountIds.includes(sa.id)
+  );
+  const hasAccountSettings = facebookAccounts.length > 1 && !!activeNetworkAccountId;
+  const accountSettings = hasAccountSettings
+    ? (networkCustom?.[PLATFORMS.FACEBOOK]?.perAccount?.[activeNetworkAccountId]?.settings || {})
+    : null;
+
+  const effectiveTitle = hasAccountSettings && accountSettings.title !== undefined ? accountSettings.title : facebookTitle;
+  const effectiveReelThumbnail = hasAccountSettings && accountSettings.reelThumbnail !== undefined ? accountSettings.reelThumbnail : facebookReelThumbnail;
+  const effectiveReelCollaboratorId = hasAccountSettings && accountSettings.reelCollaboratorId !== undefined ? accountSettings.reelCollaboratorId : facebookReelCollaboratorId;
+  const effectiveReelPlaceId = hasAccountSettings && accountSettings.reelPlaceId !== undefined ? accountSettings.reelPlaceId : facebookReelPlaceId;
+
+  const handleSettingChange = (key, flatSetter, value) => {
+    if (hasAccountSettings) {
+      updateNetworkSetting(PLATFORMS.FACEBOOK, key, value, activeNetworkAccountId);
+    } else {
+      flatSetter(value);
+    }
+  };
 
   return (
     <div className="border border-border rounded-3xl overflow-hidden bg-card shadow-sm transition-all duration-300">
@@ -39,10 +68,10 @@ export function FacebookPresets() {
         <div className="space-y-4 text-left">
           <div>
             <label className="block text-[11px] font-bold text-muted-foreground uppercase mb-2 font-sans">{t("planner:postCreator.presets.facebook.titleLabel")}</label>
-            <input 
+            <input
               type="text"
-              value={facebookTitle}
-              onChange={(e) => setFacebookTitle(e.target.value)}
+              value={effectiveTitle}
+              onChange={(e) => handleSettingChange('title', setFacebookTitle, e.target.value)}
               placeholder={t("planner:postCreator.presets.facebook.titlePlaceholder")}
               className="w-full px-4 py-3 bg-card border border-border rounded-2xl text-xs font-semibold focus:border-black outline-none font-sans"
             />
@@ -53,10 +82,10 @@ export function FacebookPresets() {
               {/* Custom Thumbnail URL */}
               <div>
                 <label className="block text-[11px] font-bold text-muted-foreground uppercase mb-2 font-sans">{t("planner:postCreator.presets.facebook.customThumbnailUrl")}</label>
-                <input 
+                <input
                   type="text"
-                  value={facebookReelThumbnail}
-                  onChange={(e) => setFacebookReelThumbnail(e.target.value)}
+                  value={effectiveReelThumbnail}
+                  onChange={(e) => handleSettingChange('reelThumbnail', setFacebookReelThumbnail, e.target.value)}
                   placeholder="https://example.com/thumbnail.jpg"
                   className="w-full px-4 py-3 bg-card border border-border rounded-2xl text-xs font-semibold focus:border-black outline-none font-sans"
                 />
@@ -65,10 +94,10 @@ export function FacebookPresets() {
               {/* Collaborator Page ID */}
               <div>
                 <label className="block text-[11px] font-bold text-muted-foreground uppercase mb-2 font-sans">{t("planner:postCreator.presets.facebook.collaboratorPageId")}</label>
-                <input 
+                <input
                   type="text"
-                  value={facebookReelCollaboratorId}
-                  onChange={(e) => setFacebookReelCollaboratorId(e.target.value)}
+                  value={effectiveReelCollaboratorId}
+                  onChange={(e) => handleSettingChange('reelCollaboratorId', setFacebookReelCollaboratorId, e.target.value)}
                   placeholder="e.g., 1029384756"
                   className="w-full px-4 py-3 bg-card border border-border rounded-2xl text-xs font-semibold focus:border-black outline-none font-sans"
                 />
@@ -77,10 +106,10 @@ export function FacebookPresets() {
               {/* Place ID */}
               <div>
                 <label className="block text-[11px] font-bold text-muted-foreground uppercase mb-2 font-sans">{t("planner:postCreator.presets.facebook.placeId")}</label>
-                <input 
+                <input
                   type="text"
-                  value={facebookReelPlaceId}
-                  onChange={(e) => setFacebookReelPlaceId(e.target.value)}
+                  value={effectiveReelPlaceId}
+                  onChange={(e) => handleSettingChange('reelPlaceId', setFacebookReelPlaceId, e.target.value)}
                   placeholder="e.g., 987654321"
                   className="w-full px-4 py-3 bg-card border border-border rounded-2xl text-xs font-semibold focus:border-black outline-none font-sans"
                 />

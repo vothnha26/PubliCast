@@ -13,7 +13,12 @@ const buildDefaultNetworkEntry = (platform) => {
   if (platform === PLATFORMS.THREADS) {
     return { useTemplate: true, activeThreadIndex: 0, threadPosts: [{ text: '', mediaUrls: [] }], mediaUrls: [] };
   }
-  return { useTemplate: true, caption: '', mediaUrls: [] };
+  // settings: platform-specific technical fields (YouTube category/privacy/
+  // tags, TikTok duet/stitch, etc.) for this entry's account slot — kept
+  // alongside caption/mediaUrls so a platform with ≥2 accounts can give each
+  // one its own category/privacy instead of sharing one flat value across
+  // every account (composer-audit P0.4 follow-up, see SRS FR-3.4).
+  return { useTemplate: true, caption: '', mediaUrls: [], settings: {} };
 };
 
 /** Object rỗng mặc định cho toàn bộ platform hỗ trợ networkCustom */
@@ -66,6 +71,7 @@ const buildEntryFromOverride = (platform, override, formattedMediaUrls) => {
     useTemplate: override.useTemplate !== false,
     caption: override.caption || '',
     mediaUrls: formattedMediaUrls,
+    settings: (override.settings && typeof override.settings === 'object') ? override.settings : {},
   };
 };
 

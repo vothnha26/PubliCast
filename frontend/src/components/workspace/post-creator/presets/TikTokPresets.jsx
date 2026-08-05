@@ -2,6 +2,7 @@ import React from "react";
 import { useTranslation } from "react-i18next";
 import { ChevronDown } from "lucide-react";
 import { usePostCreatorFormContext } from "../../../../context/PostCreatorFormContext";
+import { PLATFORMS } from "../../../../constants/platforms";
 
 export function TikTokPresets() {
   const { t } = useTranslation(["planner"]);
@@ -19,8 +20,38 @@ export function TikTokPresets() {
     tiktokAiGenerated,
     setTiktokAiGenerated,
     tiktokCommercialContent,
-    setTiktokCommercialContent
+    setTiktokCommercialContent,
+    selectedAccountIds,
+    activeBrand,
+    networkCustom,
+    activeNetworkAccountId,
+    updateNetworkSetting
   } = usePostCreatorFormContext();
+
+  // Same per-account settings pattern as YouTubePresets — see its comment
+  // for the full rationale (composer-audit P0.4 / SRS FR-3.4).
+  const tiktokAccounts = (activeBrand?.socialAccounts || []).filter(
+    sa => (sa.platform || '').toUpperCase() === PLATFORMS.TIKTOK.toUpperCase() && selectedAccountIds.includes(sa.id)
+  );
+  const hasAccountSettings = tiktokAccounts.length > 1 && !!activeNetworkAccountId;
+  const accountSettings = hasAccountSettings
+    ? (networkCustom?.[PLATFORMS.TIKTOK]?.perAccount?.[activeNetworkAccountId]?.settings || {})
+    : null;
+
+  const effectivePrivacy = hasAccountSettings && accountSettings.privacy !== undefined ? accountSettings.privacy : tiktokPrivacy;
+  const effectiveAllowComments = hasAccountSettings && accountSettings.allowComments !== undefined ? accountSettings.allowComments : tiktokAllowComments;
+  const effectiveAllowDuet = hasAccountSettings && accountSettings.allowDuet !== undefined ? accountSettings.allowDuet : tiktokAllowDuet;
+  const effectiveAllowStitch = hasAccountSettings && accountSettings.allowStitch !== undefined ? accountSettings.allowStitch : tiktokAllowStitch;
+  const effectiveAiGenerated = hasAccountSettings && accountSettings.aiGenerated !== undefined ? accountSettings.aiGenerated : tiktokAiGenerated;
+  const effectiveCommercialContent = hasAccountSettings && accountSettings.commercialContent !== undefined ? accountSettings.commercialContent : tiktokCommercialContent;
+
+  const handleSettingChange = (key, flatSetter, value) => {
+    if (hasAccountSettings) {
+      updateNetworkSetting(PLATFORMS.TIKTOK, key, value, activeNetworkAccountId);
+    } else {
+      flatSetter(value);
+    }
+  };
 
   return (
     <div className="border border-border rounded-3xl overflow-hidden bg-card shadow-sm transition-all duration-300">
@@ -45,8 +76,8 @@ export function TikTokPresets() {
             <label className="block text-[11px] font-bold text-muted-foreground uppercase mb-2 font-sans">{t("planner:postCreator.presets.tiktok.whoCanView")}</label>
             <div className="relative">
               <select
-                value={tiktokPrivacy}
-                onChange={(e) => setTiktokPrivacy(e.target.value)}
+                value={effectivePrivacy}
+                onChange={(e) => handleSettingChange('privacy', setTiktokPrivacy, e.target.value)}
                 className="w-full px-4 py-3 bg-card border border-border rounded-2xl text-xs font-semibold focus:border-black outline-none appearance-none cursor-pointer font-sans"
               >
                 <option value="public">{t("planner:postCreator.presets.tiktok.public")}</option>
@@ -63,14 +94,14 @@ export function TikTokPresets() {
               <span className="text-[11px] font-bold text-muted-foreground uppercase font-sans">{t("planner:postCreator.presets.tiktok.allowComments")}</span>
               <button
                 type="button"
-                onClick={() => setTiktokAllowComments(!tiktokAllowComments)}
+                onClick={() => handleSettingChange('allowComments', setTiktokAllowComments, !effectiveAllowComments)}
                 className={`w-10 h-6 flex items-center rounded-full p-1 cursor-pointer transition-all duration-300 ${
-                  tiktokAllowComments ? 'bg-black' : 'bg-gray-200'
+                  effectiveAllowComments ? 'bg-black' : 'bg-gray-200'
                 }`}
               >
                 <div
                   className={`bg-card w-4 h-4 rounded-full shadow-sm transform transition-all duration-300 ${
-                    tiktokAllowComments ? 'translate-x-4' : 'translate-x-0'
+                    effectiveAllowComments ? 'translate-x-4' : 'translate-x-0'
                   }`}
                 />
               </button>
@@ -79,14 +110,14 @@ export function TikTokPresets() {
               <span className="text-[11px] font-bold text-muted-foreground uppercase font-sans">{t("planner:postCreator.presets.tiktok.allowDuet")}</span>
               <button
                 type="button"
-                onClick={() => setTiktokAllowDuet(!tiktokAllowDuet)}
+                onClick={() => handleSettingChange('allowDuet', setTiktokAllowDuet, !effectiveAllowDuet)}
                 className={`w-10 h-6 flex items-center rounded-full p-1 cursor-pointer transition-all duration-300 ${
-                  tiktokAllowDuet ? 'bg-black' : 'bg-gray-200'
+                  effectiveAllowDuet ? 'bg-black' : 'bg-gray-200'
                 }`}
               >
                 <div
                   className={`bg-card w-4 h-4 rounded-full shadow-sm transform transition-all duration-300 ${
-                    tiktokAllowDuet ? 'translate-x-4' : 'translate-x-0'
+                    effectiveAllowDuet ? 'translate-x-4' : 'translate-x-0'
                   }`}
                 />
               </button>
@@ -95,14 +126,14 @@ export function TikTokPresets() {
               <span className="text-[11px] font-bold text-muted-foreground uppercase font-sans">{t("planner:postCreator.presets.tiktok.allowStitch")}</span>
               <button
                 type="button"
-                onClick={() => setTiktokAllowStitch(!tiktokAllowStitch)}
+                onClick={() => handleSettingChange('allowStitch', setTiktokAllowStitch, !effectiveAllowStitch)}
                 className={`w-10 h-6 flex items-center rounded-full p-1 cursor-pointer transition-all duration-300 ${
-                  tiktokAllowStitch ? 'bg-black' : 'bg-gray-200'
+                  effectiveAllowStitch ? 'bg-black' : 'bg-gray-200'
                 }`}
               >
                 <div
                   className={`bg-card w-4 h-4 rounded-full shadow-sm transform transition-all duration-300 ${
-                    tiktokAllowStitch ? 'translate-x-4' : 'translate-x-0'
+                    effectiveAllowStitch ? 'translate-x-4' : 'translate-x-0'
                   }`}
                 />
               </button>
@@ -118,14 +149,14 @@ export function TikTokPresets() {
               </div>
               <button
                 type="button"
-                onClick={() => setTiktokAiGenerated(!tiktokAiGenerated)}
+                onClick={() => handleSettingChange('aiGenerated', setTiktokAiGenerated, !effectiveAiGenerated)}
                 className={`w-10 h-6 flex items-center rounded-full p-1 cursor-pointer transition-all duration-300 shrink-0 ${
-                  tiktokAiGenerated ? 'bg-black' : 'bg-gray-200'
+                  effectiveAiGenerated ? 'bg-black' : 'bg-gray-200'
                 }`}
               >
                 <div
                   className={`bg-card w-4 h-4 rounded-full shadow-sm transform transition-all duration-300 ${
-                    tiktokAiGenerated ? 'translate-x-4' : 'translate-x-0'
+                    effectiveAiGenerated ? 'translate-x-4' : 'translate-x-0'
                   }`}
                 />
               </button>
@@ -140,14 +171,14 @@ export function TikTokPresets() {
               </div>
               <button
                 type="button"
-                onClick={() => setTiktokCommercialContent(!tiktokCommercialContent)}
+                onClick={() => handleSettingChange('commercialContent', setTiktokCommercialContent, !effectiveCommercialContent)}
                 className={`w-10 h-6 flex items-center rounded-full p-1 cursor-pointer transition-all duration-300 shrink-0 mt-0.5 ${
-                  tiktokCommercialContent ? 'bg-black' : 'bg-gray-200'
+                  effectiveCommercialContent ? 'bg-black' : 'bg-gray-200'
                 }`}
               >
                 <div
                   className={`bg-card w-4 h-4 rounded-full shadow-sm transform transition-all duration-300 ${
-                    tiktokCommercialContent ? 'translate-x-4' : 'translate-x-0'
+                    effectiveCommercialContent ? 'translate-x-4' : 'translate-x-0'
                   }`}
                 />
               </button>

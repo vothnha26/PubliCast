@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { ChevronDown, Instagram, Plus, X, Music, UserPlus } from "lucide-react";
 import { usePostCreatorFormContext } from "../../../../context/PostCreatorFormContext";
 import socialService from "../../../../services/social.service";
+import { PLATFORMS } from "../../../../constants/platforms";
 
 const MOCK_AUDIO_TRACKS = [
   { id: "viral_pop", name: "Trending Pop Hits (Viral)" },
@@ -24,8 +25,34 @@ export function InstagramPresets() {
     setInstagramAudio,
     instagramShowOnFeed,
     setInstagramShowOnFeed,
-    activeBrand
+    activeBrand,
+    selectedAccountIds,
+    networkCustom,
+    activeNetworkAccountId,
+    updateNetworkSetting
   } = usePostCreatorFormContext();
+
+  // Same per-account settings pattern as YouTubePresets — see its comment
+  // for the full rationale (composer-audit P0.4 / SRS FR-3.4).
+  const instagramAccounts = (activeBrand?.socialAccounts || []).filter(
+    sa => (sa.platform || '').toUpperCase() === PLATFORMS.INSTAGRAM.toUpperCase() && selectedAccountIds.includes(sa.id)
+  );
+  const hasAccountSettings = instagramAccounts.length > 1 && !!activeNetworkAccountId;
+  const accountSettings = hasAccountSettings
+    ? (networkCustom?.[PLATFORMS.INSTAGRAM]?.perAccount?.[activeNetworkAccountId]?.settings || {})
+    : null;
+
+  const effectiveCollaborators = hasAccountSettings && accountSettings.collaborators !== undefined ? accountSettings.collaborators : instagramCollaborators;
+  const effectiveAudio = hasAccountSettings && accountSettings.audio !== undefined ? accountSettings.audio : instagramAudio;
+  const effectiveShowOnFeed = hasAccountSettings && accountSettings.showOnFeed !== undefined ? accountSettings.showOnFeed : instagramShowOnFeed;
+
+  const handleSettingChange = (key, flatSetter, value) => {
+    if (hasAccountSettings) {
+      updateNetworkSetting(PLATFORMS.INSTAGRAM, key, value, activeNetworkAccountId);
+    } else {
+      flatSetter(value);
+    }
+  };
 
   const [collabInput, setCollabInput] = useState("");
   const [showAudioList, setShowAudioList] = useState(false);
@@ -72,16 +99,16 @@ export function InstagramPresets() {
   const handleAddCollaborator = () => {
     const clean = collabInput.trim().replace(/^@/, "");
     if (!clean) return;
-    if (instagramCollaborators.includes(clean)) {
+    if (effectiveCollaborators.includes(clean)) {
       setCollabInput("");
       return;
     }
-    setInstagramCollaborators([...instagramCollaborators, clean]);
+    handleSettingChange('collaborators', setInstagramCollaborators, [...effectiveCollaborators, clean]);
     setCollabInput("");
   };
 
   const handleRemoveCollaborator = (name) => {
-    setInstagramCollaborators(instagramCollaborators.filter(c => c !== name));
+    handleSettingChange('collaborators', setInstagramCollaborators, effectiveCollaborators.filter(c => c !== name));
   };
 
   return (
@@ -136,9 +163,9 @@ export function InstagramPresets() {
             </div>
 
             {/* Collaborators List Badges */}
-            {instagramCollaborators.length > 0 && (
+            {effectiveCollaborators.length > 0 && (
               <div className="flex flex-wrap gap-1.5 mt-3">
-                {instagramCollaborators.map((collab) => (
+                {effectiveCollaborators.map((collab) => (
                   <span 
                     key={collab}
                     className="flex items-center gap-1 px-2.5 py-1 bg-muted hover:bg-gray-200 text-foreground rounded-full text-[11px] font-bold transition-all"
@@ -165,15 +192,15 @@ export function InstagramPresets() {
             </label>
             
             <div className="relative">
-              {instagramAudio ? (
+              {effectiveAudio ? (
                 <div className="flex items-center justify-between p-3 border border-purple-200 bg-purple-50/20 rounded-xl">
                   <div className="flex items-center gap-2 text-xs font-semibold text-purple-700">
                     <Music size={14} className="animate-pulse" />
-                    <span>{instagramAudio.name}</span>
+                    <span>{effectiveAudio.name}</span>
                   </div>
                   <button
                     type="button"
-                    onClick={() => setInstagramAudio(null)}
+                    onClick={() => handleSettingChange('audio', setInstagramAudio, null)}
                     className="p-1 text-purple-400 hover:text-purple-700 hover:bg-purple-100 rounded-full transition-all cursor-pointer"
                   >
                     <X size={14} />
@@ -193,7 +220,7 @@ export function InstagramPresets() {
                 </button>
               )}
 
-              {showAudioList && !instagramAudio && (
+              {showAudioList && !effectiveAudio && (
                 <div className="absolute left-0 right-0 mt-1 bg-card border border-border rounded-xl shadow-lg z-10 py-2 overflow-hidden animate-in fade-in slide-in-from-top-1 duration-150 flex flex-col max-h-56">
                   <div className="px-3 pb-2 border-b border-border">
                     <input
@@ -221,7 +248,7 @@ export function InstagramPresets() {
                           key={track.id}
                           type="button"
                           onClick={() => {
-                            setInstagramAudio(track);
+                            handleSettingChange('audio', setInstagramAudio, track);
                             setShowAudioList(false);
                             setAudioSearchQuery("");
                           }}
@@ -247,10 +274,10 @@ export function InstagramPresets() {
               </div>
               <button
                 type="button"
-                onClick={() => setInstagramShowOnFeed(!instagramShowOnFeed)}
-                className={`w-11 h-6 rounded-full transition-all duration-300 relative ${instagramShowOnFeed ? 'bg-[#E1306C]' : 'bg-gray-200'}`}
+                onClick={() => handleSettingChange('showOnFeed', setInstagramShowOnFeed, !effectiveShowOnFeed)}
+                className={`w-11 h-6 rounded-full transition-all duration-300 relative ${effectiveShowOnFeed ? 'bg-[#E1306C]' : 'bg-gray-200'}`}
               >
-                <span className={`absolute top-1 left-1 w-4 h-4 rounded-full bg-card transition-all duration-300 ${instagramShowOnFeed ? 'translate-x-5' : 'translate-x-0'}`} />
+                <span className={`absolute top-1 left-1 w-4 h-4 rounded-full bg-card transition-all duration-300 ${effectiveShowOnFeed ? 'translate-x-5' : 'translate-x-0'}`} />
               </button>
             </div>
           )}

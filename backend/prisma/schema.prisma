@@ -921,6 +921,16 @@ model PostNetworkOverride {
   // THREADS only: JSON array of {text, mediaUrls} for the reply chain,
   // parallel to draft.networkCustom.THREADS.threadPosts on the frontend.
   threadPosts     String?       @db.Text
+  // JSON object of platform-specific technical fields for this account —
+  // YouTube's {categoryId, privacyStatus, tags, madeForKids, playlistId},
+  // TikTok's {privacy, allowComments, allowDuet, allowStitch, aiGenerated,
+  // commercialContent}, etc. Only populated when useTemplate=false; publish
+  // merges it into the post's shared `options` for this (platform, account)
+  // pair (see SocialPublishStep). Before this column, every account of a
+  // platform shared one flat category/privacy/tags value regardless of
+  // which specific channel was selected — a brand with 2 YouTube channels
+  // could not give them different categories.
+  settings        String?       @db.Text
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
 

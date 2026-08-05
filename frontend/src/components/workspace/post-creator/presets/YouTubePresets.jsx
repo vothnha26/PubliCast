@@ -41,8 +41,40 @@ export function YouTubePresets() {
     isLoadingCategories,
     fetchCategories,
     selectedAccountIds,
-    activeBrand
+    activeBrand,
+    networkCustom,
+    activeNetworkAccountId,
+    updateNetworkSetting
   } = usePostCreatorFormContext();
+
+  // A YouTube channel's technical settings (category/privacy/tags/madeForKids)
+  // are per-account when the brand has ≥2 YouTube channels targeted — read
+  // from/write into networkCustom.youtube.perAccount[accountId].settings
+  // instead of the flat state, mirroring how caption/media already work
+  // (composer-audit P0.4 / SRS FR-3.4). With exactly one account, or no
+  // sub-tab selected yet, the flat state below remains the effective value —
+  // it also still doubles as the "shared/global default" every account seeds
+  // from on first customization.
+  const youtubeAccounts = (activeBrand?.socialAccounts || []).filter(
+    sa => (sa.platform || '').toUpperCase() === PLATFORMS.YOUTUBE.toUpperCase() && selectedAccountIds.includes(sa.id)
+  );
+  const hasAccountSettings = youtubeAccounts.length > 1 && !!activeNetworkAccountId;
+  const accountSettings = hasAccountSettings
+    ? (networkCustom?.[PLATFORMS.YOUTUBE]?.perAccount?.[activeNetworkAccountId]?.settings || {})
+    : null;
+
+  const effectiveCategory = hasAccountSettings && accountSettings.categoryId !== undefined ? accountSettings.categoryId : youtubeCategory;
+  const effectivePrivacy = hasAccountSettings && accountSettings.privacyStatus !== undefined ? accountSettings.privacyStatus : youtubePrivacy;
+  const effectiveTags = hasAccountSettings && accountSettings.tags !== undefined ? accountSettings.tags : youtubeTags;
+  const effectiveMadeForKids = hasAccountSettings && accountSettings.madeForKids !== undefined ? accountSettings.madeForKids : youtubeMadeForKids;
+
+  const handleSettingChange = (key, flatSetter, value) => {
+    if (hasAccountSettings) {
+      updateNetworkSetting(PLATFORMS.YOUTUBE, key, value, activeNetworkAccountId);
+    } else {
+      flatSetter(value);
+    }
+  };
 
   // A playlist belongs to exactly one YouTube channel — with ≥2 channels
   // targeted, options.playlistId (a single value for the whole post) would
@@ -50,9 +82,7 @@ export function YouTubePresets() {
   // playlist it doesn't own (silently fails or errors per-channel). Simplest
   // correct behavior until playlist selection is modeled per-channel: only
   // offer it when there's exactly one YouTube channel to disambiguate.
-  const selectedYoutubeAccountCount = (activeBrand?.socialAccounts || []).filter(
-    sa => (sa.platform || '').toUpperCase() === PLATFORMS.YOUTUBE.toUpperCase() && selectedAccountIds.includes(sa.id)
-  ).length;
+  const selectedYoutubeAccountCount = youtubeAccounts.length;
   const canPickPlaylist = selectedYoutubeAccountCount <= 1;
 
   useEffect(() => {
@@ -110,12 +140,12 @@ export function YouTubePresets() {
           <div>
             <label className="block text-[11px] font-bold text-muted-foreground uppercase mb-2 font-sans">{t("planner:postCreator.presets.youtube.audienceLabel")}</label>
             <div className="relative">
-              <select 
-                value={typeof youtubeMadeForKids === "boolean" ? (youtubeMadeForKids ? "true" : "false") : ""}
-                onChange={(e) => setYoutubeMadeForKids(e.target.value === "" ? null : e.target.value === "true")}
+              <select
+                value={typeof effectiveMadeForKids === "boolean" ? (effectiveMadeForKids ? "true" : "false") : ""}
+                onChange={(e) => handleSettingChange('madeForKids', setYoutubeMadeForKids, e.target.value === "" ? null : e.target.value === "true")}
                 className={`w-full px-4 py-3 bg-card border rounded-2xl text-xs font-semibold focus:border-black outline-none appearance-none cursor-pointer font-sans transition-all ${
-                  youtubeMadeForKids === null 
-                    ? "border-amber-300 bg-amber-50/20 text-amber-900 font-bold" 
+                  effectiveMadeForKids === null
+                    ? "border-amber-300 bg-amber-50/20 text-amber-900 font-bold"
                     : "border-border text-foreground"
                 }`}
               >
@@ -131,9 +161,9 @@ export function YouTubePresets() {
           <div>
             <label className="block text-[11px] font-bold text-muted-foreground uppercase mb-2 font-sans">{t("planner:postCreator.presets.youtube.privacyLabel")}</label>
             <div className="relative">
-              <select 
-                value={youtubePrivacy}
-                onChange={(e) => setYoutubePrivacy(e.target.value)}
+              <select
+                value={effectivePrivacy}
+                onChange={(e) => handleSettingChange('privacyStatus', setYoutubePrivacy, e.target.value)}
                 className="w-full px-4 py-3 bg-card border border-border rounded-2xl text-xs font-semibold focus:border-black outline-none appearance-none cursor-pointer font-sans"
               >
                 <option value="public">{t("planner:postCreator.presets.youtube.public")}</option>
@@ -152,9 +182,9 @@ export function YouTubePresets() {
             <label className="block text-[11px] font-bold text-muted-foreground uppercase mb-2 font-sans">{t("planner:postCreator.presets.youtube.categoryLabel")}</label>
             <div className="flex gap-2">
               <div className="relative flex-1">
-                <select 
-                  value={youtubeCategory}
-                  onChange={(e) => setYoutubeCategory(e.target.value)}
+                <select
+                  value={effectiveCategory}
+                  onChange={(e) => handleSettingChange('categoryId', setYoutubeCategory, e.target.value)}
                   className="w-full px-4 py-3 bg-card border border-border rounded-2xl text-xs font-semibold focus:border-black outline-none appearance-none cursor-pointer font-sans"
                 >
                   {displayCategories.map(cat => (
@@ -212,17 +242,17 @@ export function YouTubePresets() {
           <div>
             <label className="block text-[11px] font-bold text-muted-foreground uppercase mb-2 font-sans">{t("planner:postCreator.presets.youtube.tagsLabel")}</label>
             <div className="flex gap-2">
-              <input 
+              <input
                 type="text"
-                value={youtubeTags}
-                onChange={(e) => setYoutubeTags(e.target.value)}
+                value={effectiveTags}
+                onChange={(e) => handleSettingChange('tags', setYoutubeTags, e.target.value)}
                 placeholder={t("planner:postCreator.presets.youtube.tagsPlaceholder")}
                 className="w-full px-4 py-3 bg-card border border-border rounded-2xl text-xs font-semibold focus:border-black outline-none font-sans"
               />
-              <button 
+              <button
                 type="button"
                 onClick={() => {
-                  navigator.clipboard.writeText(youtubeTags);
+                  navigator.clipboard.writeText(effectiveTags);
                   toast.success(t("planner:postCreator.presets.youtube.tagsCopied"));
                 }}
                 className="p-3 bg-muted hover:bg-muted rounded-2xl border border-border text-muted-foreground hover:text-black transition-all flex items-center justify-center shrink-0 cursor-pointer"

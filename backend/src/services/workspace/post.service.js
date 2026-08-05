@@ -229,7 +229,7 @@ class PostService {
    * transaction that creates/updates the Post — an override is meaningless
    * without the post it belongs to, so they're never written independently.
    *
-   * networkOverrides: [{ platform, socialAccountId?, useTemplate, caption?, mediaUrls?, threadPosts? }]
+   * networkOverrides: [{ platform, socialAccountId?, useTemplate, caption?, mediaUrls?, threadPosts?, settings? }]
    * socialAccountId is omitted/null for brands with a single account of the
    * platform (the common case) — the row then applies to that one implicit
    * account. targetPlatforms: the post's own target platform list
@@ -268,6 +268,11 @@ class PostService {
 
       const mediaUrls = Array.isArray(override.mediaUrls) ? override.mediaUrls.filter(Boolean) : [];
       const threadPosts = Array.isArray(override.threadPosts) ? override.threadPosts : undefined;
+      // Platform-specific technical fields for this (platform, account) pair
+      // — e.g. YouTube's categoryId/privacyStatus/tags, TikTok's
+      // allowDuet/allowStitch. Only present when the composer customized
+      // this account's settings independently of the shared/global values.
+      const settings = override.settings && typeof override.settings === 'object' ? override.settings : undefined;
 
       await tx.postNetworkOverride.upsert({
         where: { postId_platform_socialAccountId: { postId, platform, socialAccountId } },
@@ -279,12 +284,14 @@ class PostService {
           caption: override.caption ?? null,
           mediaUrls: mediaUrls.length > 0 ? mediaUrls.join(SEPARATORS.COMMA) : null,
           threadPosts: threadPosts ? JSON.stringify(threadPosts) : null,
+          settings: settings ? JSON.stringify(settings) : null,
         },
         update: {
           useTemplate: override.useTemplate !== false,
           caption: override.caption ?? null,
           mediaUrls: mediaUrls.length > 0 ? mediaUrls.join(SEPARATORS.COMMA) : null,
           threadPosts: threadPosts ? JSON.stringify(threadPosts) : null,
+          settings: settings ? JSON.stringify(settings) : null,
         },
       });
     }
@@ -998,14 +1005,21 @@ class PostService {
         acc[t.platform].push(t.socialAccountId);
         return acc;
       }, {}),
-      networkOverrides: (p.networkOverrides || []).map((o) => ({
-        platform: o.platform,
-        socialAccountId: o.socialAccountId,
-        useTemplate: o.useTemplate,
-        caption: o.caption,
-        mediaUrls: o.mediaUrls ? splitMediaUrls(o.mediaUrls) : [],
-        threadPosts: o.threadPosts ? JSON.parse(o.threadPosts) : null,
-      }))
+      networkOverrides: (p.networkOverrides || []).map((o) => {
+        let settings = null;
+        if (o.settings) {
+          try { settings = JSON.parse(o.settings); } catch { settings = null; }
+        }
+        return {
+          platform: o.platform,
+          socialAccountId: o.socialAccountId,
+          useTemplate: o.useTemplate,
+          caption: o.caption,
+          mediaUrls: o.mediaUrls ? splitMediaUrls(o.mediaUrls) : [],
+          threadPosts: o.threadPosts ? JSON.parse(o.threadPosts) : null,
+          settings,
+        };
+      })
     };
   }
 
