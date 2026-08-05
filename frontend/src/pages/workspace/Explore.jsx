@@ -1,21 +1,19 @@
 import { useState, useEffect, useMemo } from "react";
-import { Compass, Plus, X, Trash2, Loader2, ExternalLink, Rss } from "lucide-react";
+import { formatDistanceToNow } from "date-fns";
+import { Compass, Plus, X, Trash2, Loader2, ExternalLink, Rss, PenSquare, MoreHorizontal, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 import feedService from "../../services/feed.service";
 import { useBrand } from "../../context/BrandContext";
+import { usePostCreator } from "../../context/PostCreatorContext";
 import { useConfirm } from "@/hooks/useConfirm";
 
 function AddFeedModal({ isOpen, onClose, onSave }) {
-  const [name, setName] = useState("");
   const [url, setUrl] = useState("");
-  const [category, setCategory] = useState("");
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     if (!isOpen) return;
-    setName("");
     setUrl("");
-    setCategory("");
   }, [isOpen]);
 
   if (!isOpen) return null;
@@ -24,7 +22,7 @@ function AddFeedModal({ isOpen, onClose, onSave }) {
     if (!url.trim()) return;
     setSaving(true);
     try {
-      await onSave({ name: name.trim(), url: url.trim(), category: category.trim() });
+      await onSave({ url: url.trim() });
       onClose();
     } catch (err) {
       toast.error(err?.response?.data?.message || err.message || "Failed to add feed");
@@ -37,39 +35,23 @@ function AddFeedModal({ isOpen, onClose, onSave }) {
     <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
       <div className="bg-card rounded-[32px] w-full max-w-sm shadow-2xl overflow-hidden flex flex-col">
         <div className="flex justify-between items-center px-8 py-6 border-b border-border">
-          <h3 className="text-lg font-bold text-foreground">Add RSS Feed</h3>
+          <h3 className="text-lg font-bold text-foreground">Add Feed</h3>
           <button onClick={onClose} className="p-2 hover:bg-muted rounded-full transition-all text-muted-foreground hover:text-foreground" disabled={saving}>
             <X size={20} />
           </button>
         </div>
         <div className="p-8 space-y-4">
+          <p className="text-xs text-muted-foreground leading-relaxed">
+            RSS URLs are links to automatically get updates from a blog or news site. The link is usually made up of the website&apos;s domain name, followed by &quot;/feed&quot; or &quot;/rss&quot;.
+          </p>
           <div className="space-y-1.5">
-            <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Feed URL</label>
+            <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">RSS URL</label>
             <input
               type="text"
               value={url}
               onChange={(e) => setUrl(e.target.value)}
-              placeholder="https://example.com/rss.xml"
-              className="w-full px-4 py-3 rounded-xl border border-border focus:border-foreground outline-none text-sm font-semibold bg-background text-foreground"
-            />
-          </div>
-          <div className="space-y-1.5">
-            <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Name (optional)</label>
-            <input
-              type="text"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="My favorite blog"
-              className="w-full px-4 py-3 rounded-xl border border-border focus:border-foreground outline-none text-sm font-semibold bg-background text-foreground"
-            />
-          </div>
-          <div className="space-y-1.5">
-            <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Category (optional)</label>
-            <input
-              type="text"
-              value={category}
-              onChange={(e) => setCategory(e.target.value)}
-              placeholder="Marketing, Tech, News..."
+              placeholder="https://"
+              autoFocus
               className="w-full px-4 py-3 rounded-xl border border-border focus:border-foreground outline-none text-sm font-semibold bg-background text-foreground"
             />
           </div>
@@ -86,15 +68,139 @@ function AddFeedModal({ isOpen, onClose, onSave }) {
   );
 }
 
+// Curated (system) feeds are visible to every brand automatically — there's
+// no per-brand subscribe step. This modal is a browse-by-category catalog
+// (mirrors Buffer's "Explore Curated Feeds" grid) that jumps the brand to
+// that feed's tab rather than "adding" anything, since it's already there.
+function ExploreCuratedModal({ isOpen, onClose, systemFeeds, onSelectFeed }) {
+  const categories = useMemo(() => {
+    const set = new Set(systemFeeds.map((f) => f.category).filter(Boolean));
+    return Array.from(set);
+  }, [systemFeeds]);
+  const [activeCategory, setActiveCategory] = useState(null);
+
+  useEffect(() => {
+    if (isOpen) setActiveCategory(categories[0] || null);
+  }, [isOpen]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  if (!isOpen) return null;
+
+  const visibleFeeds = activeCategory ? systemFeeds.filter((f) => f.category === activeCategory) : systemFeeds;
+
+  return (
+    <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+      <div className="bg-card rounded-[32px] w-full max-w-2xl shadow-2xl overflow-hidden flex flex-col max-h-[85vh]">
+        <div className="flex justify-between items-center px-8 py-6 border-b border-border">
+          <h3 className="text-lg font-bold text-foreground">Explore Curated Feeds</h3>
+          <button onClick={onClose} className="p-2 hover:bg-muted rounded-full transition-all text-muted-foreground hover:text-foreground">
+            <X size={20} />
+          </button>
+        </div>
+        {categories.length > 0 && (
+          <div className="flex items-center gap-2 px-8 pt-4 flex-wrap">
+            {categories.map((cat) => (
+              <button
+                key={cat}
+                onClick={() => setActiveCategory(cat)}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-all cursor-pointer ${
+                  activeCategory === cat
+                    ? "bg-[#0A0A0A] text-white border-[#0A0A0A]"
+                    : "bg-background text-muted-foreground border-border hover:border-foreground"
+                }`}
+              >
+                {cat}
+              </button>
+            ))}
+          </div>
+        )}
+        <div className="p-8 overflow-y-auto">
+          {visibleFeeds.length === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-12">No curated feeds in this category yet.</p>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {visibleFeeds.map((feed) => (
+                <button
+                  key={feed.id}
+                  onClick={() => onSelectFeed(feed)}
+                  className="flex items-center gap-3 p-3 rounded-xl border border-border bg-background hover:border-foreground transition-all text-left cursor-pointer"
+                >
+                  <div className="w-9 h-9 rounded-full bg-muted flex items-center justify-center shrink-0">
+                    <Compass size={14} className="text-muted-foreground" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[13px] font-bold text-foreground truncate">{feed.name}</p>
+                    <p className="text-[11px] text-muted-foreground truncate">{feed.url}</p>
+                  </div>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function timeAgo(dateStr) {
+  if (!dateStr) return "";
+  try {
+    return formatDistanceToNow(new Date(dateStr), { addSuffix: true });
+  } catch {
+    return "";
+  }
+}
+
+function EntryCard({ entry, onCreatePost }) {
+  return (
+    <div className="flex gap-4 p-4 rounded-2xl border border-border bg-card hover:border-foreground/30 transition-all group">
+      {entry.imageUrl ? (
+        <img src={entry.imageUrl} alt="" className="w-28 h-20 rounded-xl object-cover shrink-0 bg-muted" />
+      ) : (
+        <div className="w-28 h-20 rounded-xl bg-muted shrink-0 flex items-center justify-center">
+          <Rss size={18} className="text-muted-foreground" />
+        </div>
+      )}
+      <div className="flex-1 min-w-0 flex flex-col">
+        <h3 className="text-sm font-bold text-foreground line-clamp-2">{entry.title}</h3>
+        <p className="text-[11px] text-muted-foreground mt-1">{entry.feedSource?.name}</p>
+        {entry.summary && <p className="text-xs text-muted-foreground line-clamp-2 mt-1">{entry.summary}</p>}
+        <div className="flex items-center justify-between mt-auto pt-2">
+          <span className="text-[11px] text-muted-foreground">{timeAgo(entry.publishedAt)}</span>
+          <div className="flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+            <a
+              href={entry.link}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="w-7 h-7 rounded-lg border border-border flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted transition-all"
+              title="Open original"
+            >
+              <ExternalLink size={13} />
+            </a>
+            <button
+              onClick={() => onCreatePost(entry)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-bold border border-border hover:bg-muted transition-all text-foreground"
+            >
+              <PenSquare size={13} /> Create Post
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function Explore() {
   const { activeBrand } = useBrand();
   const confirm = useConfirm();
+  const { openPostCreator } = usePostCreator();
 
   const [feedSources, setFeedSources] = useState([]);
   const [entries, setEntries] = useState([]);
   const [loading, setLoading] = useState(true);
   const [addModalOpen, setAddModalOpen] = useState(false);
-  const [activeCategory, setActiveCategory] = useState("All");
+  const [exploreModalOpen, setExploreModalOpen] = useState(false);
+  const [activeFeedId, setActiveFeedId] = useState("all");
+  const [feedMenuOpenId, setFeedMenuOpenId] = useState(null);
 
   const loadData = async () => {
     if (!activeBrand?.id) return;
@@ -118,20 +224,23 @@ export function Explore() {
     loadData();
   }, [activeBrand?.id]);
 
-  const categories = useMemo(() => {
-    const set = new Set(feedSources.map((s) => s.category).filter(Boolean));
-    return ["All", ...Array.from(set)];
-  }, [feedSources]);
+  const systemFeeds = feedSources.filter((s) => s.isSystem);
 
-  const filteredEntries = useMemo(() => {
-    if (activeCategory === "All") return entries;
-    return entries.filter((e) => e.feedSource?.category === activeCategory);
-  }, [entries, activeCategory]);
+  const activeFeed = feedSources.find((s) => s.id === activeFeedId) || null;
+  const visibleEntries = activeFeedId === "all" ? entries : entries.filter((e) => e.feedSource?.id === activeFeedId);
+  const lastRefreshedAt = feedSources.length > 0
+    ? feedSources.reduce((latest, s) => (!latest || new Date(s.updatedAt) > new Date(latest) ? s.updatedAt : latest), null)
+    : null;
 
-  const handleAddFeed = async ({ name, url, category }) => {
-    await feedService.createFeedSource({ brandId: activeBrand.id, name, url, category });
+  const handleAddFeed = async ({ url }) => {
+    await feedService.createFeedSource({ brandId: activeBrand.id, url });
     toast.success("Feed added");
     await loadData();
+  };
+
+  const handleSelectCuratedFeed = (feed) => {
+    setActiveFeedId(feed.id);
+    setExploreModalOpen(false);
   };
 
   const handleDeleteFeed = async (feedSource) => {
@@ -142,6 +251,7 @@ export function Explore() {
     if (!ok) return;
     try {
       await feedService.deleteFeedSource(feedSource.id, activeBrand.id);
+      if (activeFeedId === feedSource.id) setActiveFeedId("all");
       toast.success("Feed removed");
       await loadData();
     } catch (err) {
@@ -149,11 +259,17 @@ export function Explore() {
     }
   };
 
-  const customFeeds = feedSources.filter((s) => !s.isSystem);
-  const systemFeeds = feedSources.filter((s) => s.isSystem);
+  const handleCreatePost = (entry) => {
+    openPostCreator({
+      template: {
+        title: entry.title,
+        caption: entry.summary ? `${entry.title}\n\n${entry.summary}\n\n${entry.link}` : `${entry.title}\n\n${entry.link}`
+      }
+    });
+  };
 
   return (
-    <div className="p-8 space-y-8 max-w-5xl mx-auto">
+    <div className="p-8 space-y-6 max-w-4xl mx-auto">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl bg-lime-100 flex items-center justify-center">
@@ -161,95 +277,137 @@ export function Explore() {
           </div>
           <div>
             <h1 className="text-xl font-bold text-foreground">Explore</h1>
-            <p className="text-sm text-muted-foreground">Content ideas from your own feeds and curated sources</p>
+            <p className="text-sm text-muted-foreground">Content ideas from your feeds and curated sources</p>
           </div>
         </div>
-        <button
-          onClick={() => setAddModalOpen(true)}
-          className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-bold bg-card border border-border hover:bg-muted transition-all"
-        >
-          <Plus size={16} /> Add Feed
-        </button>
-      </div>
-
-      {/* Feed sources chips */}
-      {feedSources.length > 0 && (
-        <div className="flex flex-wrap items-center gap-2">
-          {customFeeds.map((source) => (
-            <div key={source.id} className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-card border border-border text-xs font-semibold text-foreground">
-              <Rss size={12} className="text-muted-foreground" />
-              {source.name}
-              <button onClick={() => handleDeleteFeed(source)} className="text-muted-foreground hover:text-red-600 transition-colors">
-                <Trash2 size={12} />
-              </button>
-            </div>
-          ))}
-          {systemFeeds.map((source) => (
-            <div key={source.id} className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-muted text-xs font-semibold text-muted-foreground">
-              <Compass size={12} />
-              {source.name}
-            </div>
-          ))}
-        </div>
-      )}
-
-      {categories.length > 1 && (
-        <div className="flex flex-wrap gap-2">
-          {categories.map((cat) => (
+        <div className="flex items-center gap-2">
+          {feedSources.length > 0 && (
             <button
-              key={cat}
-              onClick={() => setActiveCategory(cat)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-all cursor-pointer ${
-                activeCategory === cat
-                  ? "bg-[#0A0A0A] text-white border-[#0A0A0A]"
-                  : "bg-card text-muted-foreground border-border hover:border-foreground"
-              }`}
+              onClick={() => setExploreModalOpen(true)}
+              className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold border border-border hover:bg-muted transition-all text-foreground"
             >
-              {cat}
+              <Compass size={15} /> Explore Curated Feeds
             </button>
-          ))}
+          )}
+          <button
+            onClick={() => setAddModalOpen(true)}
+            className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold bg-[#0A0A0A] text-white hover:opacity-90 transition-all"
+          >
+            <Plus size={15} /> New Feed
+          </button>
         </div>
-      )}
+      </div>
 
       {loading ? (
         <div className="flex items-center justify-center py-24">
           <Loader2 size={24} className="animate-spin text-muted-foreground" />
         </div>
       ) : feedSources.length === 0 ? (
-        <div className="bg-card border border-border rounded-3xl p-12 text-center">
-          <p className="text-muted-foreground text-sm">No feeds yet. Add an RSS feed to start getting content ideas.</p>
-        </div>
-      ) : filteredEntries.length === 0 ? (
-        <div className="bg-card border border-border rounded-3xl p-12 text-center">
-          <p className="text-muted-foreground text-sm">No entries yet — your feeds refresh automatically every 30 minutes.</p>
+        <div className="bg-card border border-border rounded-3xl p-12 text-center space-y-4">
+          <div className="w-14 h-14 rounded-2xl bg-lime-100 flex items-center justify-center mx-auto">
+            <Compass size={24} className="text-lime-700" />
+          </div>
+          <div>
+            <h3 className="text-base font-bold text-foreground">Add your First Feed</h3>
+            <p className="text-sm text-muted-foreground mt-1">Subscribe to your favorite blogs, websites, or creators to get the latest content ideas.</p>
+          </div>
+          <div className="flex items-center justify-center gap-2 pt-2">
+            <button
+              onClick={() => setAddModalOpen(true)}
+              className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold bg-[#0A0A0A] text-white hover:opacity-90 transition-all"
+            >
+              <Plus size={15} /> New Feed
+            </button>
+            <button
+              onClick={() => setExploreModalOpen(true)}
+              className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold border border-border hover:bg-muted transition-all text-foreground"
+            >
+              <Compass size={15} /> Explore Curated Feeds
+            </button>
+          </div>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {filteredEntries.map((entry) => (
-            <a
-              key={entry.id}
-              href={entry.link}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="bg-card border border-border rounded-2xl p-5 flex flex-col gap-2 no-underline hover:border-foreground transition-all group"
+        <>
+          {/* Per-feed pill tabs, mirroring Buffer's "All Feeds" + one pill per subscribed feed */}
+          <div className="flex items-center gap-2 flex-wrap">
+            <button
+              onClick={() => setActiveFeedId("all")}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-all cursor-pointer ${
+                activeFeedId === "all" ? "bg-[#0A0A0A] text-white border-[#0A0A0A]" : "bg-card text-muted-foreground border-border hover:border-foreground"
+              }`}
             >
-              <div className="flex items-center justify-between gap-2">
-                <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">{entry.feedSource?.name}</span>
-                <ExternalLink size={12} className="text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
+              All Feeds
+            </button>
+            {feedSources.map((source) => (
+              <div key={source.id} className="relative">
+                <button
+                  onClick={() => setActiveFeedId(source.id)}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold border transition-all cursor-pointer ${
+                    activeFeedId === source.id ? "bg-[#0A0A0A] text-white border-[#0A0A0A]" : "bg-card text-muted-foreground border-border hover:border-foreground"
+                  }`}
+                >
+                  {source.isSystem ? <Compass size={12} /> : <Rss size={12} />}
+                  {source.name}
+                </button>
               </div>
-              <h3 className="text-sm font-bold text-foreground line-clamp-2">{entry.title}</h3>
-              {entry.summary && <p className="text-xs text-muted-foreground line-clamp-3">{entry.summary}</p>}
-              {entry.publishedAt && (
-                <p className="text-[10px] text-muted-foreground mt-auto pt-2">
-                  {new Date(entry.publishedAt).toLocaleDateString()}
-                </p>
+            ))}
+          </div>
+
+          {/* Active feed header */}
+          <div className="flex items-center justify-between pb-1">
+            <div>
+              <h2 className="text-sm font-bold text-foreground">{activeFeed?.name || "All Feeds"}</h2>
+              {lastRefreshedAt && (
+                <p className="text-[11px] text-muted-foreground">Last refreshed {timeAgo(lastRefreshedAt)}</p>
               )}
-            </a>
-          ))}
-        </div>
+            </div>
+            {activeFeed && !activeFeed.isSystem && (
+              <div className="relative">
+                <button
+                  onClick={() => setFeedMenuOpenId((v) => (v === activeFeed.id ? null : activeFeed.id))}
+                  className="w-8 h-8 rounded-lg flex items-center justify-center text-muted-foreground hover:bg-muted transition-all"
+                >
+                  <MoreHorizontal size={16} />
+                </button>
+                {feedMenuOpenId === activeFeed.id && (
+                  <>
+                    <div className="fixed inset-0 z-40" onClick={() => setFeedMenuOpenId(null)} />
+                    <div className="absolute right-0 top-full mt-1 z-50 w-36 rounded-xl border shadow-lg py-1 bg-card border-border">
+                      <button
+                        onClick={() => { setFeedMenuOpenId(null); handleDeleteFeed(activeFeed); }}
+                        className="w-full flex items-center gap-2 px-3 py-2 text-[12px] font-medium cursor-pointer border-none bg-transparent text-left text-red-600 hover:bg-muted transition-colors"
+                      >
+                        <Trash2 size={13} /> Delete
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
+          </div>
+
+          {visibleEntries.length === 0 ? (
+            <div className="bg-card border border-border rounded-3xl p-12 text-center">
+              <RefreshCw size={20} className="text-muted-foreground mx-auto mb-3" />
+              <p className="text-muted-foreground text-sm">No entries yet — feeds refresh automatically every 30 minutes.</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {visibleEntries.map((entry) => (
+                <EntryCard key={entry.id} entry={entry} onCreatePost={handleCreatePost} />
+              ))}
+            </div>
+          )}
+        </>
       )}
 
       <AddFeedModal isOpen={addModalOpen} onClose={() => setAddModalOpen(false)} onSave={handleAddFeed} />
+      <ExploreCuratedModal
+        isOpen={exploreModalOpen}
+        onClose={() => setExploreModalOpen(false)}
+        systemFeeds={systemFeeds}
+        onSelectFeed={handleSelectCuratedFeed}
+      />
     </div>
   );
 }
