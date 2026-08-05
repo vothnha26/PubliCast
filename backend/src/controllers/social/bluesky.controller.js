@@ -52,13 +52,26 @@ class BlueskyController {
     const keyPair = blueskyOAuthHelper.generateES256KeyPair();
     const privatePem = keyPair.privateKey.export({ type: 'pkcs8', format: 'pem' });
 
+    // state carries a per-attempt nonce, not just brandId — previously the
+    // Redis session was cached under a fixed `bluesky_oauth_session:{brandId}`
+    // key, so clicking "Connect" twice (double-click, or retrying after the
+    // first attempt seemed to hang) overwrote the first attempt's DPoP
+    // keypair with a second one before the user finished the OAuth redirect.
+    // The authorization server had already bound the PAR request (and thus
+    // the eventual authorization code) to the FIRST keypair's JWK thumbprint,
+    // so the token exchange — signed with the second, now-cached keypair —
+    // failed with invalid_grant/JKT mismatch. Scoping the cache key to this
+    // attempt's own nonce makes concurrent attempts fully independent.
+    const attemptNonce = crypto.randomBytes(16).toString('hex');
+    const state = `${brandId}::${attemptNonce}`;
+
     // Save PKCE verifier & DPoP Keypair to Redis (10 minutes expiry)
     const sessionData = {
       codeVerifier,
       privatePem,
       jwk: keyPair.jwk
     };
-    const cacheKey = `bluesky_oauth_session:${brandId}`;
+    const cacheKey = `bluesky_oauth_session:${state}`;
     try {
       await redisClient.setEx(cacheKey, 600, JSON.stringify(sessionData));
     } catch (err) {
@@ -75,7 +88,7 @@ class BlueskyController {
         parUrl,
         clientId,
         redirectUri,
-        state: brandId,
+        state,
         codeChallenge,
         keyPair
       });
@@ -90,7 +103,7 @@ class BlueskyController {
         client_id: clientId,
         redirect_uri: redirectUri,
         scope: 'atproto transition:generic',
-        state: brandId,
+        state,
         code_challenge: codeChallenge,
         code_challenge_method: 'S256'
       });
@@ -102,7 +115,13 @@ class BlueskyController {
 
   blueskyCallback = asyncHandler(async (req, res) => {
     const { code, state } = req.query;
-    const brandId = state;
+    // state is "<brandId>::<attemptNonce>" (see getBlueskyAuthUrl) — split
+    // defensively, first segment is always brandId. cacheKey below uses the
+    // full state string (not just brandId), so any OAuth attempt started
+    // before this nonce-scoping change simply won't find its session (it
+    // was cached under a plain brandId key) and fails with the "session
+    // expired" message below — a clean failure, not a silent mismatch.
+    const [brandId] = (state || '').split('::');
     const frontendUrl = DEFAULT_CONFIG.FRONTEND_URL || 'http://localhost:5173';
     const baseUrl = this._getRedirectBaseUrl(req);
     const redirectUri = `${baseUrl}/api/social/bluesky/callback`;
@@ -112,7 +131,7 @@ class BlueskyController {
 
     let sessionData = null;
     try {
-      const cacheKey = `bluesky_oauth_session:${brandId}`;
+      const cacheKey = `bluesky_oauth_session:${state}`;
       const rawSession = await redisClient.get(cacheKey);
       if (rawSession) {
         sessionData = JSON.parse(rawSession);
