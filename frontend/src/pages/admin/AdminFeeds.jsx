@@ -126,7 +126,7 @@ export function AdminFeeds() {
   };
 
   return (
-    <div className="p-8 space-y-8 max-w-5xl mx-auto">
+    <div className="flex-1 overflow-y-auto p-8 space-y-8 max-w-5xl mx-auto w-full">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl bg-lime-100 flex items-center justify-center">
