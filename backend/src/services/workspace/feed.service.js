@@ -2,7 +2,13 @@ const Parser = require('rss-parser');
 const prisma = require('../../config/prisma');
 const logger = require('../../utils/logger');
 
-const parser = new Parser({ timeout: 15000 });
+// media:thumbnail/media:content aren't part of rss-parser's default field
+// set — without this, feeds that only use those tags (e.g. BBC) silently
+// lose their image even though the data is right there in the XML.
+const parser = new Parser({
+  timeout: 15000,
+  customFields: { item: ['media:thumbnail', 'media:content', 'content:encoded'] }
+});
 
 // rss-parser gives every item at least a link; guid is the dedupe key we
 // prefer since some feeds reuse links (e.g. a redirect shortener) but not
@@ -11,10 +17,23 @@ function extractGuid(item) {
   return item.guid || item.id || item.link;
 }
 
+const FIRST_IMG_TAG_SRC = /<img[^>]+src=["']([^"']+)["']/i;
+
 function extractImageUrl(item) {
   if (item.enclosure?.url) return item.enclosure.url;
+
+  const mediaThumbnail = item['media:thumbnail'];
+  if (mediaThumbnail?.$?.url) return mediaThumbnail.$.url;
+
   const mediaContent = item['media:content'];
-  if (mediaContent?.$ && mediaContent.$.url) return mediaContent.$.url;
+  if (mediaContent?.$?.url) return mediaContent.$.url;
+
+  // Many feeds (The Verge, HubSpot, ...) don't expose a dedicated image
+  // field at all — the only image is the first <img> inside the HTML body.
+  const html = item['content:encoded'] || item.content;
+  const match = html?.match(FIRST_IMG_TAG_SRC);
+  if (match) return match[1];
+
   return null;
 }
 

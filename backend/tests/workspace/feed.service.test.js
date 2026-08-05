@@ -146,6 +146,57 @@ describe('feed.service', () => {
       expect(result).toEqual({ added: 2 });
     });
 
+    it('extracts image from media:thumbnail when there is no enclosure', async () => {
+      prisma.feedSource.findUnique.mockResolvedValue({ id: 'feed-1', url: 'https://example.com/rss' });
+      mockParseURL.mockResolvedValue({
+        items: [{
+          guid: 'guid-1', title: 'Post 1', link: 'https://example.com/1',
+          'media:thumbnail': { $: { url: 'https://example.com/thumb.jpg' } }
+        }]
+      });
+      prisma.feedEntry.createMany.mockResolvedValue({ count: 1 });
+
+      await feedService.refreshFeedSource('feed-1');
+
+      expect(prisma.feedEntry.createMany).toHaveBeenCalledWith({
+        data: [expect.objectContaining({ imageUrl: 'https://example.com/thumb.jpg' })],
+        skipDuplicates: true
+      });
+    });
+
+    it('falls back to the first <img> in content:encoded when no image field exists', async () => {
+      prisma.feedSource.findUnique.mockResolvedValue({ id: 'feed-1', url: 'https://example.com/rss' });
+      mockParseURL.mockResolvedValue({
+        items: [{
+          guid: 'guid-1', title: 'Post 1', link: 'https://example.com/1',
+          'content:encoded': '<figure><img alt="x" src="https://example.com/embedded.jpg" width="800"></figure>'
+        }]
+      });
+      prisma.feedEntry.createMany.mockResolvedValue({ count: 1 });
+
+      await feedService.refreshFeedSource('feed-1');
+
+      expect(prisma.feedEntry.createMany).toHaveBeenCalledWith({
+        data: [expect.objectContaining({ imageUrl: 'https://example.com/embedded.jpg' })],
+        skipDuplicates: true
+      });
+    });
+
+    it('sets imageUrl to null when nothing has an image at all', async () => {
+      prisma.feedSource.findUnique.mockResolvedValue({ id: 'feed-1', url: 'https://example.com/rss' });
+      mockParseURL.mockResolvedValue({
+        items: [{ guid: 'guid-1', title: 'Post 1', link: 'https://example.com/1', content: 'no images here' }]
+      });
+      prisma.feedEntry.createMany.mockResolvedValue({ count: 1 });
+
+      await feedService.refreshFeedSource('feed-1');
+
+      expect(prisma.feedEntry.createMany).toHaveBeenCalledWith({
+        data: [expect.objectContaining({ imageUrl: null })],
+        skipDuplicates: true
+      });
+    });
+
     it('skips items with no guid and no link', async () => {
       prisma.feedSource.findUnique.mockResolvedValue({ id: 'feed-1', url: 'https://example.com/rss' });
       mockParseURL.mockResolvedValue({ items: [{ title: 'No identifiers' }] });
