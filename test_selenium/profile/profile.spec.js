@@ -43,9 +43,32 @@ describe('Profile & Settings Detailed Suite', function () {
   });
 
   beforeEach(async function () {
+    this.timeout(60000);
     // Go to Settings page before each test case
     await driver.get(`${BASE_URL}/settings`);
     await driver.wait(until.elementLocated(By.css('h1')), 15000);
+    // Wait for the profile fetch (fullName/email/accounts) to resolve so
+    // tab-specific fields that depend on it (e.g. the Access tab's
+    // conditionally-rendered current-password input) are ready once a
+    // test switches tabs, instead of racing an in-flight request.
+    // On a slow/cold CI backend the fetch can occasionally exceed the wait
+    // window entirely (same class of flake handled in loginAs()) — reload
+    // once and give it a fresh window before failing the hook.
+    const fullNameInput = await driver.wait(
+      until.elementLocated(By.css('[data-testid="profile-fullname-input"]')),
+      15000
+    );
+    try {
+      await driver.wait(async () => (await fullNameInput.getAttribute('value')) !== '', 25000);
+    } catch (waitErr) {
+      await driver.navigate().refresh();
+      await driver.wait(until.elementLocated(By.css('h1')), 15000);
+      const retriedInput = await driver.wait(
+        until.elementLocated(By.css('[data-testid="profile-fullname-input"]')),
+        15000
+      );
+      await driver.wait(async () => (await retriedInput.getAttribute('value')) !== '', 25000);
+    }
   });
 
   describe('Tab Navigation and Deep Links', function () {
@@ -178,7 +201,15 @@ describe('Profile & Settings Detailed Suite', function () {
         10000
       );
       await accessTab.click();
-      await driver.sleep(500);
+      // Wait for the tab's actual content (not a fixed sleep) — a fixed
+      // 500ms was occasionally shorter than the tab's real render time
+      // under CI load, leaving the very next test's own element wait to
+      // race against a still-mounting form (root cause of TC_PROFILE_09's
+      // intermittent timeout on profile-current-password-input).
+      await driver.wait(
+        until.elementLocated(By.css('[data-testid="profile-current-password-input"]')),
+        15000
+      );
     });
 
     it('TC_PROFILE_07 – Verify password change fails when current password is empty', async function () {

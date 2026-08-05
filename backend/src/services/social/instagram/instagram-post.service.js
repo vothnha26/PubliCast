@@ -1,11 +1,32 @@
 const instagramGateway = require('./instagram.gateway');
 const socialAccountRepository = require('../../../repositories/social/social-account.repository');
+const brandRepository = require('../../../repositories/workspace/brand.repository');
+const prisma = require('../../../config/prisma');
 const { PLATFORMS, POST_STATUS, POST_TYPES, DEFAULT_CONFIG } = require('../../../utils/constants');
+const { computeCommentScore } = require('../../../utils/comment-score.util');
 const InstagramPublishStrategyFactory = require('./publish-strategies/publish-strategy.factory');
 const logger = require('../../../utils/logger');
 
 const postCache = new Map();
 const CACHE_TTL_MS = 10 * 60 * 1000; // 10 minutes
+
+// getPublishedPosts()'s DB-first cache (see SocialPostMetric). Instagram's
+// own docs say metrics can lag up to 48h behind real activity — re-fetching
+// live more often than that cannot reliably return newer numbers, so a live
+// re-fetch is only worth its rate-limit cost once/day (same reasoning as
+// Facebook's FACEBOOK_POST_METRICS_TTL_MS).
+const SOCIAL_POST_METRICS_TTL_MS = 24 * 60 * 60 * 1000;
+
+// Instagram Graph API has no date-range filter for media, and (unlike
+// Facebook Pages) no batch/multi-id insights endpoint to reduce round-trips
+// — the only lever available is bounding how many pages this walk makes.
+// Kept intentionally lower than TikTok's MAX_PAGE_COUNT since every
+// Instagram post still costs 1 extra insights call each (no batching).
+const MAX_PAGE_COUNT = 5;
+
+// Fallback when a brand has no active subscription — same conservative
+// (FREE-tier) default used by TikTokVideoService.
+const DEFAULT_HISTORY_WINDOW_MONTHS = 1;
 
 class InstagramPostService {
   _withTimeout(promise, ms, fallback) {
@@ -25,37 +46,40 @@ class InstagramPostService {
       });
   }
 
-  async getPublishedPosts(brandId, pageToken = null, limit = 10, socialAccountId = null) {
-    const cacheKey = `${brandId}_${socialAccountId || 'default'}_${pageToken || 'first'}_${limit}`;
+  async getPublishedPosts(brandId, pageToken = null, limit = 10, socialAccountId = null, startDate = null, endDate = null) {
+    const cacheKey = `${brandId}_${socialAccountId || 'default'}_${pageToken || 'first'}_${limit}_${startDate || ''}_${endDate || ''}`;
     const cached = postCache.get(cacheKey);
     if (cached && cached.expiry > Date.now()) return cached.data;
 
     try {
-      const { igAccountId, accessToken } = await this._getAccountCredentials(brandId, socialAccountId);
-      
+      const { igAccountId, accessToken, socialAccountId: resolvedAccountId } = await this._getAccountCredentials(brandId, socialAccountId);
+
       if (accessToken && accessToken.startsWith('mock-')) {
         return { data: [], nextPageToken: null, prevPageToken: null };
       }
 
-      const feedResult = await this._withTimeout(
-        instagramGateway.getInstagramMediaFeed(igAccountId, accessToken, pageToken, limit),
-        4000,
-        { data: [], nextPageToken: null, prevPageToken: null }
-      );
+      // The initial load (no explicit pageToken) is DB-first (see
+      // SocialPostMetric) — Instagram's insights can lag up to 48h, so
+      // re-fetching live every tab-open burns rate-limit budget for numbers
+      // that provably haven't changed. Only when the DB has nothing fresh
+      // enough for the brand's plan window does this fall through to the
+      // live page-walk, same as before. An explicit pageToken (manual "next
+      // page" click) always goes live.
+      let result;
+      if (pageToken) {
+        result = await this._fetchSinglePage(igAccountId, accessToken, pageToken, limit);
+      } else {
+        const windowMonths = await this._getHistoryWindowMonths(brandId);
+        result = await this._fetchFromDbCache(brandId, resolvedAccountId, windowMonths);
+        if (!result) {
+          result = await this._fetchRecentWindow(brandId, igAccountId, accessToken, limit);
+          this._persistPostMetrics(brandId, resolvedAccountId, result.data).catch(err => {
+            console.warn('[InstagramPostService] Failed to persist post metrics cache:', err.message);
+          });
+        }
+      }
 
-      const feed = feedResult.data || [];
-      const nextPageToken = feedResult.nextPageToken || null;
-      const prevPageToken = feedResult.prevPageToken || null;
-
-      const postsWithInsights = await Promise.all(
-        feed.map(post => this._enrichPostWithInsights(post, accessToken))
-      );
-
-      const result = {
-        data: postsWithInsights,
-        nextPageToken,
-        prevPageToken
-      };
+      result = { ...result, data: this._filterByDateRange(result.data, startDate, endDate) };
 
       postCache.set(cacheKey, { data: result, expiry: Date.now() + CACHE_TTL_MS });
       return result;
@@ -65,6 +89,183 @@ class InstagramPostService {
       }
       throw error;
     }
+  }
+
+  // See FacebookPostService#_filterByDateRange — same display-only
+  // narrowing applied after the DB-first/live fetch resolves.
+  _filterByDateRange(posts, startDate, endDate) {
+    if (!startDate && !endDate) return posts;
+    return (posts || []).filter((post) => {
+      if (!post.date) return true;
+      const postTime = new Date(post.date).getTime();
+      if (startDate && postTime < new Date(startDate).getTime()) return false;
+      if (endDate && postTime > new Date(endDate).getTime() + 24 * 60 * 60 * 1000 - 1) return false;
+      return true;
+    });
+  }
+
+  /** DB-first read path (see SocialPostMetric in schema.prisma). Mirrors
+   * FacebookPostService#_fetchFromDbCache: null (cache miss) unless the
+   * newest row for this account is fresher than SOCIAL_POST_METRICS_TTL_MS. */
+  async _fetchFromDbCache(brandId, socialAccountId, windowMonths) {
+    const cutoff = new Date();
+    cutoff.setMonth(cutoff.getMonth() - windowMonths);
+
+    const rows = await prisma.socialPostMetric.findMany({
+      where: { brandId, socialAccountId, platform: PLATFORMS.INSTAGRAM, publishedAt: { gte: cutoff } },
+      orderBy: { publishedAt: 'desc' }
+    });
+    if (rows.length === 0) return null;
+
+    const newestFetch = rows.reduce((max, r) => (r.fetchedAt > max ? r.fetchedAt : max), rows[0].fetchedAt);
+    if (Date.now() - newestFetch.getTime() >= SOCIAL_POST_METRICS_TTL_MS) return null;
+
+    return {
+      data: rows.map(r => this._formatDbMetricRow(r)),
+      nextPageToken: null,
+      prevPageToken: null
+    };
+  }
+
+  _formatDbMetricRow(row) {
+    return {
+      id: row.platformPostId,
+      message: row.captionSnippet || DEFAULT_CONFIG.NO_CONTENT,
+      type: row.postType || POST_TYPES.IMAGE,
+      mediaUrl: row.thumbnailUrl || '',
+      thumbnailUrl: row.thumbnailUrl || '',
+      postUrl: row.postUrl || null,
+      date: row.publishedAt,
+      status: POST_STATUS.PUBLISHED,
+      reach: row.reach,
+      views: row.views,
+      reactions: row.likes,
+      comments: row.comments,
+      shares: row.shares,
+      clicks: row.clicks,
+      linkClicks: Math.round(row.clicks * 0.2),
+      videoViews: row.postType === POST_TYPES.VIDEO ? row.views : 0,
+      videoTimeWatched: row.postType === POST_TYPES.VIDEO ? '0:20' : '0:00',
+      engagement: row.engagementRate,
+      commentScore: computeCommentScore({ comments: row.comments, likes: row.likes, shares: row.shares, reach: row.reach }),
+      spent: 0
+    };
+  }
+
+  /** Upserts the freshly-enriched page(s) of posts into SocialPostMetric so
+   * the next getPublishedPosts call for this brand/account can be DB-first
+   * instead of hitting the live Graph API again. Best-effort. */
+  async _persistPostMetrics(brandId, socialAccountId, posts) {
+    for (const post of posts) {
+      await prisma.socialPostMetric.upsert({
+        where: { socialAccountId_platformPostId: { socialAccountId, platformPostId: post.id } },
+        create: {
+          brandId,
+          socialAccountId,
+          platform: PLATFORMS.INSTAGRAM,
+          platformPostId: post.id,
+          postType: post.type || null,
+          publishedAt: post.date ? new Date(post.date) : null,
+          reach: post.reach || 0,
+          views: post.views || 0,
+          likes: post.reactions || 0,
+          comments: post.comments || 0,
+          shares: post.shares || 0,
+          clicks: post.clicks || 0,
+          engagementRate: post.engagement || 0,
+          captionSnippet: post.message || null,
+          thumbnailUrl: post.thumbnailUrl || post.mediaUrl || null,
+          postUrl: post.postUrl || null
+        },
+        update: {
+          postType: post.type || null,
+          publishedAt: post.date ? new Date(post.date) : null,
+          reach: post.reach || 0,
+          views: post.views || 0,
+          likes: post.reactions || 0,
+          comments: post.comments || 0,
+          shares: post.shares || 0,
+          clicks: post.clicks || 0,
+          engagementRate: post.engagement || 0,
+          captionSnippet: post.message || null,
+          thumbnailUrl: post.thumbnailUrl || post.mediaUrl || null,
+          postUrl: post.postUrl || null,
+          fetchedAt: new Date()
+        }
+      }).catch(err => {
+        console.warn(`[InstagramPostService] Failed to upsert metrics for post ${post.id}:`, err.message);
+      });
+    }
+  }
+
+  async _fetchSinglePage(igAccountId, accessToken, pageToken, limit) {
+    const feedResult = await this._withTimeout(
+      instagramGateway.getInstagramMediaFeed(igAccountId, accessToken, pageToken, limit),
+      4000,
+      { data: [], nextPageToken: null, prevPageToken: null }
+    );
+
+    const feed = feedResult.data || [];
+    const postsWithInsights = await Promise.all(
+      feed.map(post => this._enrichPostWithInsights(post, accessToken))
+    );
+
+    return {
+      data: postsWithInsights,
+      nextPageToken: feedResult.nextPageToken || null,
+      prevPageToken: feedResult.prevPageToken || null
+    };
+  }
+
+  /** Walks pages from the start, stopping at whichever comes first: a post
+   * older than the brand's plan-based history window, or MAX_PAGE_COUNT. */
+  async _fetchRecentWindow(brandId, igAccountId, accessToken, limit) {
+    const windowMonths = await this._getHistoryWindowMonths(brandId);
+    const recentCutoff = new Date();
+    recentCutoff.setMonth(recentCutoff.getMonth() - windowMonths);
+
+    let pageToken = null;
+    let posts = [];
+    let hasMore = true;
+    let pageCount = 0;
+
+    while (hasMore && pageCount < MAX_PAGE_COUNT) {
+      pageCount += 1;
+      const feedResult = await this._withTimeout(
+        instagramGateway.getInstagramMediaFeed(igAccountId, accessToken, pageToken, limit),
+        4000,
+        { data: [], nextPageToken: null, prevPageToken: null }
+      );
+      const feed = feedResult.data || [];
+      if (feed.length === 0) break;
+
+      // Instagram returns media newest-first, so once one post in a page is
+      // older than the cutoff, every post after it (this page and all
+      // subsequent pages) is guaranteed older too — safe to stop instead of
+      // walking the rest of the account's history.
+      const cutoffIndex = feed.findIndex(p => p.timestamp && new Date(p.timestamp) < recentCutoff);
+      const pageFeed = cutoffIndex === -1 ? feed : feed.slice(0, cutoffIndex);
+
+      const enriched = await Promise.all(
+        pageFeed.map(post => this._enrichPostWithInsights(post, accessToken))
+      );
+      posts = posts.concat(enriched);
+
+      if (cutoffIndex === -1) {
+        hasMore = Boolean(feedResult.nextPageToken);
+        pageToken = feedResult.nextPageToken || null;
+      } else {
+        hasMore = false;
+      }
+    }
+
+    return { data: posts, nextPageToken: null, prevPageToken: null };
+  }
+
+  async _getHistoryWindowMonths(brandId) {
+    const brand = await brandRepository.findBrandWithSubscription(brandId);
+    const planLimit = brand?.subscription?.status === 'ACTIVE' ? brand.subscription.plan?.planLimit : null;
+    return planLimit?.historyWindowMonths || DEFAULT_HISTORY_WINDOW_MONTHS;
   }
 
   async publishPost(brandId, postData) {
@@ -157,7 +358,8 @@ class InstagramPostService {
     const account = (socialAccountId && socialAccount.find(acc => acc.id === socialAccountId)) || socialAccount[0];
     return {
       igAccountId: account.platformAccountId,
-      accessToken: account.accessToken
+      accessToken: account.accessToken,
+      socialAccountId: account.id
     };
   }
 
@@ -205,6 +407,7 @@ class InstagramPostService {
         videoViews: post.media_type === 'VIDEO' ? views : 0,
         videoTimeWatched: post.media_type === 'VIDEO' ? '0:20' : '0:00',
         engagement,
+        commentScore: computeCommentScore({ comments, likes: reactions, shares, reach }),
         spent: 0
       };
     } catch (err) {
@@ -252,6 +455,10 @@ class InstagramPostService {
       videoViews: 0,
       videoTimeWatched: '0:00',
       engagement: 0,
+      // reach is 0 here (no insights data in the fallback path), so
+      // computeCommentScore would score 0 regardless — skip the call and
+      // just state that explicitly instead of implying it was computed.
+      commentScore: 0,
       spent: 0
     };
   }

@@ -2,6 +2,7 @@ const redditService = require('../../services/social/reddit/reddit.service');
 const redditGateway = require('../../services/social/reddit/reddit.gateway');
 const socialAccountRepository = require('../../repositories/social/social-account.repository');
 const { PLATFORMS } = require('../../utils/constants');
+const appConfig = require('../../config/app.config');
 
 class RedditController {
   async getAuthUrl(req, res, next) {
@@ -39,7 +40,7 @@ class RedditController {
 
       const account = await redditService.connectChannel(brandId, code);
 
-      const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+      const frontendUrl = appConfig.frontendUrl;
       return res.redirect(`${frontendUrl}/dashboard/brand/${brandId}/settings/connections?connected=reddit`);
     } catch (error) {
       next(error);

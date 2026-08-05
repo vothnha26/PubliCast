@@ -15,7 +15,7 @@ class PostController {
     const brandId = req.query.brandId;
     if (!brandId) return res.status(400).json({ message: 'brandId is required' });
 
-    const result = await postService.getPosts(req.query, brandId);
+    const result = await postService.getPosts(req.query, brandId, req.user.id);
 
     res.status(200).json({
       message: 'Posts retrieved successfully',

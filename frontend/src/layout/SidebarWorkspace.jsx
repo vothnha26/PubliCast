@@ -1,10 +1,12 @@
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
   TrendingUp, Hash, Settings,
   FileText, ClipboardCheck,
-  Sun, Moon
+  Sun, Moon, Diamond, Users,
+  ArrowLeftRight, Compass
 } from "lucide-react";
 import { useBrand } from "../context/BrandContext";
+import { useConnections } from "../context/ConnectionsContext";
 import { ChannelsList } from "./ChannelsList";
 import { useState, useEffect } from "react";
 import billingService from "../services/billing.service";
@@ -12,21 +14,42 @@ import { useTheme } from "../context/ThemeContext";
 import { THEME_MODES } from "../constants/theme";
 import { useTranslation } from "react-i18next";
 
+function ShareIcon({ size, className }) {
+  return <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" x2="15.42" y1="13.51" y2="17.49"/><line x1="15.41" x2="8.59" y1="6.51" y2="10.49"/></svg>;
+}
+
+// Order mirrors the requested reference layout: workplace/brand setup first,
+// then org-level admin (team/billing/tasks). Everything here has its own
+// real destination. What's new/Affiliation program were dropped (no page
+// ever existed for them, they were dead menu items in the old
+// SettingsDrawer) — Help Center now has a real page at /help. Language and
+// Account settings were dropped too: both just navigate into different tabs
+// of the same /settings page, which reads as a duplicate entry point sitting
+// next to genuinely distinct pages — Settings is still reachable via
+// quickLinks/the search palette.
 const MANAGE_ITEMS = [
+  { name: "Create Workplace", nameKey: "menu.createWorkplace", icon: <Diamond size={18} />, path: "/manage/workplace/new" },
+  { name: "Connections", nameKey: "menu.connections", icon: <ShareIcon size={18} />, isConnections: true },
   { name: "Brand settings", nameKey: "menu.brandSettings", icon: <Settings size={18} />, path: "/manage/connections?tab=brand-settings" },
-  { name: "Approval Tasks", nameKey: "sidebar.approvalTasks", icon: <ClipboardCheck size={18} />, path: "/manage/tasks" },
+  { name: "User management", nameKey: "menu.userManagement", icon: <Users size={18} />, path: "/manage/team" },
+  { name: "My tasks", nameKey: "menu.myTasks", icon: <ClipboardCheck size={18} />, path: "/manage/tasks" },
   { name: "Hashtag Tracker", nameKey: "sidebar.hashtagTracker", icon: <Hash size={18} />, path: "/hashtags" },
   { name: "Reporting", nameKey: "sidebar.reporting", icon: <FileText size={18} />, path: "/manage/reports" },
   { name: "Competitors", nameKey: "sidebar.competitors", icon: <TrendingUp size={18} />, path: "/manage/competitors" },
 ];
+// Plans and billing, Help Center, Support Chat, and Logout now live in the
+// AccountMenu dropdown on the Topbar (visible on every page, not just
+// Manage mode) — kept here would just duplicate the same destinations.
 
 export function SidebarWorkspace() {
   const { t } = useTranslation("topbar");
   const location = useLocation();
+  const navigate = useNavigate();
   const currentPath = location.pathname;
   const { activeBrand } = useBrand();
+  const { openConnections } = useConnections();
   const { theme, setTheme } = useTheme();
-  
+
   const [planInfo, setPlanInfo] = useState(null);
 
   useEffect(() => {
@@ -45,13 +68,18 @@ export function SidebarWorkspace() {
   // way the rest of /manage/* does.
   const isManageMode = (currentPath.startsWith("/manage") && !currentPath.startsWith("/manage/inbox"))
     || currentPath.startsWith("/hashtags")
-    || currentPath.startsWith("/settings");
+    || currentPath.startsWith("/settings")
+    || currentPath.startsWith("/pricing")
+    || currentPath.startsWith("/help");
 
   const planName = planInfo?.planName || "FREE";
   const isPremium = planName.toUpperCase() !== "FREE";
-  const nextBillDate = planInfo?.periodEnd 
+  const nextBillDate = planInfo?.periodEnd
     ? new Date(planInfo.periodEnd).toLocaleDateString(undefined, { year: 'numeric', month: 'numeric', day: 'numeric' })
     : t("sidebar.unlimited");
+
+  const goToManage = () => navigate("/manage/team");
+  const goToWorkspace = () => navigate("/dashboard");
 
   return (
     <aside
@@ -60,17 +88,41 @@ export function SidebarWorkspace() {
     >
       {isManageMode ? (
         <div className="flex-1 py-6 px-3 overflow-y-auto scrollbar-none">
-          {/* Section Label */}
+          {/* Section Label + explicit switch back to Workspace */}
           <div className="px-3 mb-4 flex items-center justify-between">
             <span style={{ fontSize: 10, fontWeight: 800, color: "var(--muted-foreground)", textTransform: "uppercase", letterSpacing: "1px" }}>
               {t("sidebar.management")}
             </span>
+            <button
+              onClick={goToWorkspace}
+              title={t("brand.backWorkspace")}
+              className="p-1 rounded-md text-[var(--muted-foreground)] hover:text-[var(--sidebar-foreground)] hover:bg-[var(--sidebar-accent)] transition-colors"
+            >
+              <ArrowLeftRight size={13} />
+            </button>
           </div>
 
           <nav className="flex flex-col gap-1">
             {MANAGE_ITEMS.map((item) => {
               const isActive = item.path && currentPath === item.path.split('?')[0];
               const itemLabel = item.nameKey ? t(item.nameKey) : item.name;
+
+              if (item.isConnections) {
+                return (
+                  <button
+                    key={item.name}
+                    onClick={openConnections}
+                    className="flex items-center gap-3 px-3 py-2 rounded-lg transition-all group hover:bg-[var(--sidebar-accent)] text-left"
+                  >
+                    <div className="shrink-0 text-gray-400 group-hover:text-[var(--sidebar-foreground)]">
+                      {item.icon}
+                    </div>
+                    <span style={{ fontSize: 13, fontWeight: 400, color: "var(--muted-foreground)" }} className="transition-colors group-hover:text-[var(--sidebar-foreground)]">
+                      {itemLabel}
+                    </span>
+                  </button>
+                );
+              }
 
               return (
                 <Link
@@ -115,10 +167,17 @@ export function SidebarWorkspace() {
           {/* Tools region — separate scroll container, never shares Channels' scrollbar */}
           <div className="shrink-0 max-h-[35vh] overflow-y-auto scrollbar-none px-3 pb-4 border-t border-[var(--sidebar-border)]">
             <div className="space-y-1 pt-4">
-              <div className="px-3 mb-4">
+              <div className="px-3 mb-4 flex items-center justify-between">
                 <span style={{ fontSize: 10, fontWeight: 800, color: "var(--muted-foreground)", textTransform: "uppercase", letterSpacing: "1px" }}>
                   {t("sidebar.tools")}
                 </span>
+                <button
+                  onClick={goToManage}
+                  title={t("brand.switchToManager")}
+                  className="p-1 rounded-md text-[var(--muted-foreground)] hover:text-[var(--sidebar-foreground)] hover:bg-[var(--sidebar-accent)] transition-colors"
+                >
+                  <ArrowLeftRight size={13} />
+                </button>
               </div>
               <Link
                 to="/planner"
@@ -145,6 +204,20 @@ export function SidebarWorkspace() {
                 <ClipboardCheck size={18} style={{ color: currentPath.startsWith("/manage/tasks") ? "var(--sidebar-foreground)" : undefined }} />
                 <span style={{ fontSize: 13, fontWeight: currentPath.startsWith("/manage/tasks") ? 600 : 400 }}>{t("sidebar.approvalRequests")}</span>
                 {currentPath.startsWith("/manage/tasks") && (
+                  <div className="ml-auto w-1.5 h-1.5 rounded-full bg-[var(--sidebar-foreground)]" />
+                )}
+              </Link>
+              <Link
+                to="/explore"
+                className="flex items-center gap-3 px-3 py-2 rounded-lg transition-all no-underline hover:bg-[var(--sidebar-accent)]"
+                style={{
+                  backgroundColor: currentPath.startsWith("/explore") ? "var(--sidebar-accent)" : "transparent",
+                  color: currentPath.startsWith("/explore") ? "var(--sidebar-foreground)" : "var(--muted-foreground)"
+                }}
+              >
+                <Compass size={18} style={{ color: currentPath.startsWith("/explore") ? "var(--sidebar-foreground)" : undefined }} />
+                <span style={{ fontSize: 13, fontWeight: currentPath.startsWith("/explore") ? 600 : 400 }}>{t("sidebar.explore")}</span>
+                {currentPath.startsWith("/explore") && (
                   <div className="ml-auto w-1.5 h-1.5 rounded-full bg-[var(--sidebar-foreground)]" />
                 )}
               </Link>

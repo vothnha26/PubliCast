@@ -284,12 +284,31 @@ router.post('/reddit/submit', verifyAuth, requireBrandMember, redditController.s
 // ── Twitch V2 ──
 router.get('/twitch/url', verifyAuth, twitchController.getTwitchAuthUrl);
 router.post('/twitch/disconnect', verifyAuth, requireManageConnections, twitchController.disconnectTwitchAccount);
-router.post('/twitch/clips/create', verifyAuth, requireBrandMember, twitchController.createClip);
-router.get('/twitch/stream-status', verifyAuth, requireBrandMember, twitchController.getStreamStatus);
 
 // ── Bluesky V2 ──
 router.get('/bluesky/url', verifyAuth, blueskyController.getBlueskyAuthUrl);
 router.get('/bluesky/comments', verifyAuth, requireBrandMember, blueskyController.getBlueskyComments);
+/**
+ * @openapi
+ * /v2/social/bluesky/published-posts:
+ *   get:
+ *     summary: Get Bluesky published posts list for brand
+ *     tags: [Social V2]
+ *     security: [{ cookieAuth: [] }]
+ *     parameters:
+ *       - in: query
+ *         name: brandId
+ *         required: true
+ *         schema: { type: string }
+ *     responses:
+ *       200:
+ *         description: Bluesky published posts list
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/V2EnvelopeResponse'
+ */
+router.get('/bluesky/published-posts', verifyAuth, requireBrandMember, blueskyController.getBlueskyPublishedPosts);
 router.post('/bluesky/disconnect', verifyAuth, requireManageConnections, socialConnectionController.disconnectBlueskyAccount);
 
 // ── Telegram V2 ──

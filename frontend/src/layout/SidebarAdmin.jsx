@@ -1,5 +1,5 @@
 import { Link, useLocation } from "react-router-dom";
-import { DollarSign, Shield, Settings2, Users, LayoutGrid, ChevronLeft, Crown, Layers, Server, Activity, Lock } from "lucide-react";
+import { DollarSign, Shield, Settings2, Users, LayoutGrid, ChevronLeft, Crown, Layers, Server, Activity, Lock, Sparkles, BookOpen, Compass } from "lucide-react";
 
 export function SidebarAdmin() {
   const location = useLocation();
@@ -9,6 +9,9 @@ export function SidebarAdmin() {
     { icon: <Activity size={18} />, label: "Revenue Dashboard", path: "/admin/revenue" },
     { icon: <Users size={18} />, label: "User Management", path: "/admin/users" },
     { icon: <Layers size={18} />, label: "Product Matrix", path: "/admin/products" },
+    { icon: <Sparkles size={18} />, label: "Featured Templates", path: "/admin/templates" },
+    { icon: <Compass size={18} />, label: "Explore Feeds", path: "/admin/feeds" },
+    { icon: <BookOpen size={18} />, label: "Help Articles", path: "/admin/help-articles" },
     { icon: <Settings2 size={18} />, label: "Plan Configuration", path: "/admin/pricing" },
     { icon: <Lock size={18} />, label: "Platform Lock", path: "/admin/platform-lock" },
     { icon: <Shield size={18} />, label: "System Audit Log", path: "/admin/audit" },

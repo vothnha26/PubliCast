@@ -2,6 +2,19 @@ const facebookGateway = require('./facebook.gateway');
 const facebookReelGateway = require('./facebook-reel.gateway');
 const logger = require('../../../utils/logger');
 
+// Same 3-tier metric names getPostInsights() tries in order — Facebook has
+// renamed these metrics across API versions (post_impressions_unique* is
+// the newest name at the time of writing, the others are older aliases
+// some pages/posts still respond to) and not every page supports every
+// name yet. Kept as an ordered list so the batch path can try tier 1 first
+// and only fall back for whichever posts' tier-1 sub-request actually
+// errored, instead of always paying for all 3 tiers per post.
+const STANDARD_METRIC_TIERS = [
+  'post_impressions_unique,post_impressions,post_clicks_by_type',
+  'post_total_media_view_unique,post_media_view,post_clicks_by_type',
+  'post_impressions_unique,post_impressions'
+];
+
 const INSIGHTS_STRATEGIES = {
   REEL: async (platformPostId, pageAccessToken) => {
     try {
@@ -41,11 +54,16 @@ const INSIGHTS_STRATEGIES = {
   }
 };
 const socialAccountRepository = require('../../../repositories/social/social-account.repository');
+const brandRepository = require('../../../repositories/workspace/brand.repository');
 const { PLATFORMS, POST_STATUS, POST_TYPES, DEFAULT_CONFIG, SOCIAL_TECHNICAL } = require('../../../utils/constants');
 const FacebookPublishStrategyFactory = require('./publish-strategies/publish-strategy.factory');
 const redisClient = require('../../../config/redis');
 const prisma = require('../../../config/prisma');
 const DistributedLockService = require('../distributed-lock.service');
+
+// Fallback when a brand has no active subscription — same conservative
+// (FREE-tier) default used by TikTokVideoService/InstagramPostService.
+const DEFAULT_HISTORY_WINDOW_MONTHS = 1;
 
 const POST_INSIGHTS_CACHE_TTL_SEC = 5 * 60; // 5 minutes
 // getVideoDetails() read-through cache: Inbox preview was calling the Graph
@@ -53,6 +71,12 @@ const POST_INSIGHTS_CACHE_TTL_SEC = 5 * 60; // 5 minutes
 // post (N+1) — same bug class already fixed for YouTube via TrackedVideo.
 // title/thumbnail don't need to be fresher than this.
 const VIDEO_DETAILS_CACHE_TTL_MS = 60 * 60 * 1000; // 1 hour
+// getPublishedPosts()'s DB-first cache (see FacebookPostMetric). Facebook's
+// own docs say most post-insights metrics only refresh once every 24h
+// (developers.facebook.com/docs/graph-api/reference/insights) — re-fetching
+// live more often than that cannot return newer numbers for most metrics,
+// so a live re-fetch is only worth its BUC quota cost once/day.
+const FACEBOOK_POST_METRICS_TTL_MS = 24 * 60 * 60 * 1000;
 const PAGE_DEMOGRAPHICS_CACHE_TTL_SEC = 60 * 60; // 1 hour
 
 const COLD_START_POLL_INTERVAL_MS = 200;
@@ -83,37 +107,41 @@ class FacebookPostService {
       });
   }
 
-  async getPublishedPosts(brandId, pageToken = null, limit = 10, socialAccountId = null) {
-    const cacheKey = `${brandId}_${pageToken || 'first'}_${limit}_${socialAccountId || 'default'}`;
+  async getPublishedPosts(brandId, pageToken = null, limit = 10, socialAccountId = null, startDate = null, endDate = null) {
+    const cacheKey = `${brandId}_${pageToken || 'first'}_${limit}_${socialAccountId || 'default'}_${startDate || ''}_${endDate || ''}`;
     const cached = postCache.get(cacheKey);
     if (cached && cached.expiry > Date.now()) return cached.data;
 
     try {
-      const { pageId, pageAccessToken } = await this._getAccountCredentials(brandId, socialAccountId);
-      
+      const { pageId, pageAccessToken, socialAccountId: resolvedAccountId } = await this._getAccountCredentials(brandId, socialAccountId);
+
       if ((pageAccessToken && pageAccessToken.startsWith('mock-')) || (pageId && pageId.startsWith('mock-')) || pageId === 'fb-page-mock') {
         return { data: [], nextPageToken: null, prevPageToken: null };
       }
 
-      const feedResult = await this._withTimeout(
-        facebookGateway.getPageFeed(pageId, pageAccessToken, pageToken, limit),
-        4000,
-        { data: [], nextPageToken: null, prevPageToken: null }
-      );
+      // The initial load (no explicit pageToken) is DB-first: Facebook's own
+      // docs say most post-insights metrics only update once every 24h, so
+      // re-fetching live every time a user opens the tab burns BUC quota for
+      // numbers that provably haven't changed (see FACEBOOK_POST_METRICS
+      // cache TTL). Only when the DB has nothing fresh enough for the
+      // brand's plan window does this fall through to the live Batch
+      // Request walk, same as before. An explicit pageToken (manual "next
+      // page" click) always goes live — DB-first is only for the default view.
+      let result;
+      if (pageToken) {
+        result = await this._fetchSinglePage(pageId, pageAccessToken, pageToken, limit);
+      } else {
+        const windowMonths = await this._getHistoryWindowMonths(brandId);
+        result = await this._fetchFromDbCache(brandId, resolvedAccountId, windowMonths);
+        if (!result) {
+          result = await this._fetchRecentWindow(brandId, pageId, pageAccessToken, limit);
+          this._persistPostMetrics(brandId, resolvedAccountId, result.data).catch(err => {
+            console.warn('[FacebookPostService] Failed to persist post metrics cache:', err.message);
+          });
+        }
+      }
 
-      const feed = feedResult.data || [];
-      const nextPageToken = feedResult.nextPageToken || null;
-      const prevPageToken = feedResult.prevPageToken || null;
-
-      const postsWithInsights = await Promise.all(
-        feed.map(post => this._enrichPostWithInsights(post, pageAccessToken))
-      );
-
-      const result = {
-        data: postsWithInsights,
-        nextPageToken,
-        prevPageToken
-      };
+      result = { ...result, data: this._filterByDateRange(result.data, startDate, endDate) };
 
       postCache.set(cacheKey, { data: result, expiry: Date.now() + CACHE_TTL_MS });
       return result;
@@ -123,6 +151,199 @@ class FacebookPostService {
       }
       throw error;
     }
+  }
+
+  // Applied after the DB-first/live fetch resolves, on top of the plan's
+  // historyWindowMonths — this is a display-only narrowing (the caller
+  // picked a shorter range in the UI's date picker) and never widens what
+  // the plan already fetched/cached.
+  _filterByDateRange(posts, startDate, endDate) {
+    if (!startDate && !endDate) return posts;
+    return (posts || []).filter((post) => {
+      if (!post.date) return true;
+      const postTime = new Date(post.date).getTime();
+      if (startDate && postTime < new Date(startDate).getTime()) return false;
+      if (endDate && postTime > new Date(endDate).getTime() + 24 * 60 * 60 * 1000 - 1) return false;
+      return true;
+    });
+  }
+
+  /**
+   * DB-first read path (see FacebookPostMetric in schema.prisma) — returns
+   * null (cache miss, caller falls through to a live fetch) unless the
+   * NEWEST row for this account is fresher than FACEBOOK_POST_METRICS_TTL_MS.
+   * Using only the newest row's freshness (not every row's) means a page
+   * that hasn't published anything new keeps serving cache indefinitely
+   * once it's been fetched live once — correct, since "no new posts" is
+   * itself accurately reflected by the cache.
+   */
+  async _fetchFromDbCache(brandId, socialAccountId, windowMonths) {
+    const cutoff = new Date();
+    cutoff.setMonth(cutoff.getMonth() - windowMonths);
+
+    const rows = await prisma.facebookPostMetric.findMany({
+      where: { brandId, socialAccountId, publishedAt: { gte: cutoff } },
+      orderBy: { publishedAt: 'desc' }
+    });
+    if (rows.length === 0) return null;
+
+    const newestFetch = rows.reduce((max, r) => (r.fetchedAt > max ? r.fetchedAt : max), rows[0].fetchedAt);
+    if (Date.now() - newestFetch.getTime() >= FACEBOOK_POST_METRICS_TTL_MS) return null;
+
+    return {
+      data: rows.map(r => this._formatDbMetricRow(r)),
+      nextPageToken: null,
+      prevPageToken: null
+    };
+  }
+
+  _formatDbMetricRow(row) {
+    const reach = row.reach || row.videoViews || 0;
+    const views = row.videoViews || row.reach || 0;
+    return {
+      id: row.platformPostId,
+      message: row.captionSnippet || DEFAULT_CONFIG.NO_CONTENT,
+      type: row.postType,
+      platform: 'facebook',
+      mediaUrl: row.thumbnailUrl || '',
+      postUrl: `https://www.facebook.com/${row.platformPostId}`,
+      date: row.publishedAt,
+      status: POST_STATUS.PUBLISHED,
+      reach,
+      views,
+      reactions: row.reactions,
+      comments: row.comments,
+      shares: row.shares,
+      clicks: row.linkClicks + row.otherClicks,
+      linkClicks: row.linkClicks,
+      videoViews: row.videoViews,
+      videoTimeWatched: row.avgWatchTimeSeconds ? `${Math.round(row.avgWatchTimeSeconds / 60)}:${String(Math.round(row.avgWatchTimeSeconds % 60)).padStart(2, '0')}` : '0:00',
+      engagement: row.engagementRate,
+      spent: 0
+    };
+  }
+
+  /** Upserts the freshly-enriched page(s) of posts into FacebookPostMetric
+   * so the next getPublishedPosts call for this brand/account can be
+   * DB-first instead of hitting the live Graph API again. Best-effort —
+   * caller doesn't await this on the response path. */
+  async _persistPostMetrics(brandId, socialAccountId, posts) {
+    for (const post of posts) {
+      const postType = post.type === 'REEL' ? 'REEL' : (post.type || 'IMAGE');
+      await prisma.facebookPostMetric.upsert({
+        where: { socialAccountId_platformPostId: { socialAccountId, platformPostId: post.id } },
+        create: {
+          brandId,
+          socialAccountId,
+          platformPostId: post.id,
+          postType,
+          publishedAt: post.date ? new Date(post.date) : null,
+          reach: post.reach || 0,
+          impressions: post.views || 0,
+          videoViews: post.videoViews || 0,
+          avgWatchTimeSeconds: null,
+          likes: post.reactions || 0,
+          comments: post.comments || 0,
+          shares: post.shares || 0,
+          reactions: post.reactions || 0,
+          linkClicks: post.linkClicks || 0,
+          otherClicks: Math.max((post.clicks || 0) - (post.linkClicks || 0), 0),
+          engagementRate: post.engagement || 0,
+          captionSnippet: post.message || null,
+          thumbnailUrl: post.mediaUrl || null
+        },
+        update: {
+          postType,
+          publishedAt: post.date ? new Date(post.date) : null,
+          reach: post.reach || 0,
+          impressions: post.views || 0,
+          videoViews: post.videoViews || 0,
+          likes: post.reactions || 0,
+          comments: post.comments || 0,
+          shares: post.shares || 0,
+          reactions: post.reactions || 0,
+          linkClicks: post.linkClicks || 0,
+          otherClicks: Math.max((post.clicks || 0) - (post.linkClicks || 0), 0),
+          engagementRate: post.engagement || 0,
+          captionSnippet: post.message || null,
+          thumbnailUrl: post.mediaUrl || null,
+          fetchedAt: new Date()
+        }
+      }).catch(err => {
+        console.warn(`[FacebookPostService] Failed to upsert metrics for post ${post.id}:`, err.message);
+      });
+    }
+  }
+
+  async _fetchSinglePage(pageId, pageAccessToken, pageToken, limit) {
+    const feedResult = await this._withTimeout(
+      facebookGateway.getPageFeed(pageId, pageAccessToken, pageToken, limit),
+      4000,
+      { data: [], nextPageToken: null, prevPageToken: null }
+    );
+
+    const feed = feedResult.data || [];
+    const postsWithInsights = await this._enrichPostsWithInsightsBatch(feed, pageAccessToken);
+
+    return {
+      data: postsWithInsights,
+      nextPageToken: feedResult.nextPageToken || null,
+      prevPageToken: feedResult.prevPageToken || null
+    };
+  }
+
+  /** Walks pages from the start, stopping at whichever comes first: a post
+   * older than the brand's plan-based history window, or MAX_PAGE_COUNT.
+   * Kept lower than TikTok's page cap since every Facebook post still costs
+   * 2 sub-requests each (insights + reactions) even when batched — batching
+   * cuts round-trips, not the per-post BUC quota cost
+   * (developers.facebook.com/docs/graph-api/overview/rate-limiting/). */
+  async _fetchRecentWindow(brandId, pageId, pageAccessToken, limit) {
+    const MAX_PAGE_COUNT = 5;
+    const windowMonths = await this._getHistoryWindowMonths(brandId);
+    const recentCutoff = new Date();
+    recentCutoff.setMonth(recentCutoff.getMonth() - windowMonths);
+
+    let pageToken = null;
+    let posts = [];
+    let hasMore = true;
+    let pageCount = 0;
+
+    while (hasMore && pageCount < MAX_PAGE_COUNT) {
+      pageCount += 1;
+      const feedResult = await this._withTimeout(
+        facebookGateway.getPageFeed(pageId, pageAccessToken, pageToken, limit),
+        4000,
+        { data: [], nextPageToken: null, prevPageToken: null }
+      );
+      const feed = feedResult.data || [];
+      if (feed.length === 0) break;
+
+      // Facebook returns posts newest-first, so once one post in a page is
+      // older than the cutoff, every post after it (this page and all
+      // subsequent pages) is guaranteed older too — safe to stop instead of
+      // walking the rest of the Page's history.
+      const cutoffIndex = feed.findIndex(p => p.created_time && new Date(p.created_time) < recentCutoff);
+      const pageFeed = cutoffIndex === -1 ? feed : feed.slice(0, cutoffIndex);
+
+      const enriched = await this._enrichPostsWithInsightsBatch(pageFeed, pageAccessToken);
+      posts = posts.concat(enriched);
+
+      if (cutoffIndex === -1) {
+        hasMore = Boolean(feedResult.nextPageToken);
+        pageToken = feedResult.nextPageToken || null;
+      } else {
+        hasMore = false;
+      }
+    }
+
+    return { data: posts, nextPageToken: null, prevPageToken: null };
+  }
+
+  async _getHistoryWindowMonths(brandId) {
+    const brand = await brandRepository.findBrandWithSubscription(brandId);
+    const planLimit = brand?.subscription?.status === 'ACTIVE' ? brand.subscription.plan?.planLimit : null;
+    return planLimit?.historyWindowMonths || DEFAULT_HISTORY_WINDOW_MONTHS;
   }
   async publishPost(brandId, postData) {
     const { platformPostId, scheduledAt, type, mediaUrls = [], socialAccountId } = postData;
@@ -434,7 +655,8 @@ class FacebookPostService {
 
     return {
       pageId: account.platformAccountId,
-      pageAccessToken: account.accessToken
+      pageAccessToken: account.accessToken,
+      socialAccountId: account.id
     };
   }
 
@@ -493,6 +715,128 @@ class FacebookPostService {
       console.error(`Error enriching post insights for post ${post.id}:`, err.message);
       return this._formatFallbackPost(post);
     }
+  }
+
+  /**
+   * Batched equivalent of mapping `feed.map(post => _enrichPostWithInsights(post, token))`
+   * — used by the multi-page recent-window walk (getPublishedPosts), where
+   * per-post sequential HTTP calls would multiply badly across pages.
+   * Standard posts still use the same metric-name fallback tiers as the
+   * single-post path, but only pay for tier 2+ on the posts whose tier-1
+   * sub-request actually came back empty/errored, via a follow-up batch —
+   * not upfront for every post regardless of outcome.
+   */
+  async _enrichPostsWithInsightsBatch(feed, pageAccessToken) {
+    if (feed.length === 0) return [];
+
+    // One DB round-trip for the whole page instead of one findFirst() per
+    // post — same information _enrichPostWithInsights looks up individually.
+    const dbPosts = await prisma.post.findMany({
+      where: { platformPostId: { in: feed.map(p => p.id) } }
+    }).catch(() => []);
+    const dbPostByPlatformId = new Map(dbPosts.map(p => [p.platformPostId, p]));
+
+    const isReel = (post) => {
+      const dbPost = dbPostByPlatformId.get(post.id);
+      return dbPost?.type === 'REEL' || dbPost?.options?.facebookType === 'reel';
+    };
+
+    // REEL insights use a single fixed metric (getReelVideoInsights doesn't
+    // have the multi-tier fallback problem STANDARD posts do), fetched via
+    // the same batch endpoint as everything else here rather than
+    // facebookReelGateway's own per-post fetch, to keep this one round-trip.
+    const REEL_METRIC = 'blue_reels_play_count';
+
+    let batchRequests = feed.map(post => ({
+      postId: post.id,
+      metric: isReel(post) ? REEL_METRIC : STANDARD_METRIC_TIERS[0]
+    }));
+
+    let insightsByPostId = await this._withTimeout(
+      facebookGateway.getBatchPostInsights(batchRequests, pageAccessToken),
+      4000,
+      new Map()
+    );
+
+    // Retry only the STANDARD posts whose tier-1 sub-request errored/came
+    // back empty, one tier at a time, same order getPostInsights() used.
+    for (let tier = 1; tier < STANDARD_METRIC_TIERS.length; tier++) {
+      const failedStandardPosts = feed.filter(post => {
+        if (isReel(post)) return false;
+        const entry = insightsByPostId.get(post.id);
+        return !entry || entry.insights === null || entry.insights.length === 0;
+      });
+      if (failedStandardPosts.length === 0) break;
+
+      const retryResult = await this._withTimeout(
+        facebookGateway.getBatchPostInsights(
+          failedStandardPosts.map(post => ({ postId: post.id, metric: STANDARD_METRIC_TIERS[tier] })),
+          pageAccessToken
+        ),
+        4000,
+        new Map()
+      );
+      for (const [postId, entry] of retryResult) {
+        const existing = insightsByPostId.get(postId);
+        insightsByPostId.set(postId, { insights: entry.insights, reactions: entry.reactions ?? existing?.reactions ?? null });
+      }
+    }
+
+    return feed.map(post => {
+      try {
+        const entry = insightsByPostId.get(post.id);
+        const reel = isReel(post);
+        const insightsResult = reel
+          ? this._parseReelInsights(entry?.insights || [])
+          : this._parseInsightsMetrics(entry?.insights || []);
+        const reactionsBreakdownResult = entry?.reactions || { total: 0, breakdown: {} };
+
+        const counts = this._extractPostCounts(post);
+        const postType = reel ? 'REEL' : this._determinePostType(post);
+
+        const reach = insightsResult.reach || insightsResult.views || 0;
+        const views = insightsResult.views || insightsResult.reach || 0;
+        const clicks = insightsResult.clicks || 0;
+        const baseCount = reach || views;
+        const engagement = baseCount ? parseFloat((((counts.reactions + counts.comments + counts.shares + clicks) / baseCount) * 100).toFixed(2)) : 0;
+
+        return {
+          id: post.id,
+          message: post.message || post.story || DEFAULT_CONFIG.NO_CONTENT,
+          type: postType,
+          platform: 'facebook',
+          mediaUrl: post.full_picture || '',
+          postUrl: post.permalink_url || `https://www.facebook.com/${post.id}`,
+          date: post.created_time,
+          status: POST_STATUS.PUBLISHED,
+          reach,
+          views,
+          reactions: counts.reactions || reactionsBreakdownResult.total || 0,
+          comments: counts.comments,
+          shares: counts.shares,
+          clicks,
+          linkClicks: insightsResult.linkClicks || 0,
+          videoViews: (postType === POST_TYPES.VIDEO || postType === 'REEL') ? Math.round(views * 0.4) : 0,
+          videoTimeWatched: (postType === POST_TYPES.VIDEO || postType === 'REEL') ? '0:45' : '0:00',
+          engagement,
+          spent: 0
+        };
+      } catch (err) {
+        console.error(`Error enriching post insights (batch) for post ${post.id}:`, err.message);
+        return this._formatFallbackPost(post);
+      }
+    });
+  }
+
+  _parseReelInsights(insights) {
+    const metrics = { reach: 0, views: 0, clicks: 0, linkClicks: 0 };
+    for (const item of insights) {
+      if (item.name === 'blue_reels_play_count') {
+        metrics.views = item.values?.[0]?.value || 0;
+        metrics.reach = metrics.views;
+      }
+    }
+    return metrics;
   }
 
   _parseInsightsMetrics(insights) {

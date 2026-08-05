@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
-import { subDays } from "date-fns";
+import { useDateRangeQuery } from "../../hooks/useDateRangeQuery";
 import { 
   Link2, 
   Plus, 
@@ -80,10 +80,7 @@ export function SmartLinksPage() {
   const [copied, setCopied] = useState(false);
   const [smartLinkId, setSmartLinkId] = useState(null);
   const [slug, setSlug] = useState("");
-  const [dateRange, setDateRange] = useState({
-    from: subDays(new Date(), 29),
-    to: new Date()
-  });
+  const [dateRange, setDateRange] = useDateRangeQuery(29);
   
   // Metricool Tab Levels
   const [searchParams, setSearchParams] = useSearchParams();

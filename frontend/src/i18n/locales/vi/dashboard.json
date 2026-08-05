@@ -1,6 +1,12 @@
 {
   "title": "Bảng điều khiển Không gian làm việc",
   "welcome": "Chào mừng bạn quay trở lại, {{name}}!",
+  "postingGoals": {
+    "title": "Mục tiêu đăng bài",
+    "weekly": "Tuần này",
+    "monthly": "Tháng này",
+    "setGoal": "Đặt mục tiêu"
+  },
   "stats": {
     "totalFollowers": "Tổng người theo dõi",
     "totalViews": "Tổng lượt xem",
@@ -12,11 +18,15 @@
     "youtubeNote": "Kênh YouTube",
     "uploadedNote": "Đã tải lên",
     "selectedDelta": "Đang chọn",
-    "unknownBrand": "Không xác định"
+    "unknownBrand": "Không xác định",
+    "postingStreak": "Chuỗi đăng bài",
+    "longestStreak": "Kỷ lục: {{count}}"
   },
   "charts": {
     "audienceTrend": "Xu Hướng Lượng Người Xem",
-    "viewDetails": "Xem Chi Tiết Báo Cáo →"
+    "viewDetails": "Xem Chi Tiết Báo Cáo →",
+    "lastSynced": "Cập nhật {{time}}",
+    "neverSynced": "Chưa đồng bộ"
   },
   "recentQueue": {
     "title": "Hàng chờ bài đăng gần đây",

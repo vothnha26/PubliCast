@@ -73,6 +73,24 @@ class ProfileControllerV2 {
       next(err);
     }
   }
+
+  async getNotificationSettings(req, res, next) {
+    try {
+      const result = await profileService.getNotificationSettings(req.user.id);
+      return v2Success(res, result, 'Notification settings fetched successfully.');
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  async updateNotificationSettings(req, res, next) {
+    try {
+      const result = await profileService.updateNotificationSettings(req.user.id, req.body);
+      return v2Success(res, result, 'Notification settings updated successfully.');
+    } catch (err) {
+      next(err);
+    }
+  }
 }
 
 module.exports = new ProfileControllerV2();

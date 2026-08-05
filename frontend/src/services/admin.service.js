@@ -125,6 +125,61 @@ class AdminService {
     const data = await apiV2.get(`/admin/revenue?${searchParamsString}`);
     return data;
   }
+
+  async getTemplates() {
+    const data = await apiV2.get('/admin/templates');
+    return data;
+  }
+
+  async createTemplateCategory(payload) {
+    const data = await apiV2.post('/admin/templates/categories', payload);
+    return data;
+  }
+
+  async updateTemplateCategory(id, payload) {
+    const data = await apiV2.put(`/admin/templates/categories/${id}`, payload);
+    return data;
+  }
+
+  async deleteTemplateCategory(id) {
+    const data = await apiV2.delete(`/admin/templates/categories/${id}`);
+    return data;
+  }
+
+  async createTemplate(payload) {
+    const data = await apiV2.post('/admin/templates', payload);
+    return data;
+  }
+
+  async updateTemplate(id, payload) {
+    const data = await apiV2.put(`/admin/templates/${id}`, payload);
+    return data;
+  }
+
+  async deleteTemplate(id) {
+    const data = await apiV2.delete(`/admin/templates/${id}`);
+    return data;
+  }
+
+  async getSystemFeeds() {
+    const data = await apiV2.get('/admin/feeds');
+    return data;
+  }
+
+  async createSystemFeed(payload) {
+    const data = await apiV2.post('/admin/feeds', payload);
+    return data;
+  }
+
+  async updateSystemFeed(id, payload) {
+    const data = await apiV2.put(`/admin/feeds/${id}`, payload);
+    return data;
+  }
+
+  async deleteSystemFeed(id) {
+    const data = await apiV2.delete(`/admin/feeds/${id}`);
+    return data;
+  }
 }
 
 const adminService = new AdminService();

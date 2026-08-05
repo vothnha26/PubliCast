@@ -16,8 +16,8 @@ class YouTubeControllerV2 {
   });
 
   getYouTubePublishedVideos = asyncHandler(async (req, res) => {
-    const { brandId, pageToken, limit, socialAccountId } = req.query;
-    const data = await youtubeService.getPublishedVideos(brandId, pageToken, limit, socialAccountId);
+    const { brandId, pageToken, limit, socialAccountId, startDate, endDate } = req.query;
+    const data = await youtubeService.getPublishedVideos(brandId, pageToken, limit, socialAccountId, false, startDate || null, endDate || null);
     sendSuccess(res, data);
   });
 

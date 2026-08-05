@@ -1,7 +1,9 @@
 import { useNavigate, useLocation } from "react-router-dom";
-import { TrendingUp, FileText, CheckCircle2, Clock, AlertCircle, AlertTriangle, Plus, ChevronRight, Share2 } from "lucide-react";
+import { TrendingUp, FileText, CheckCircle2, Clock, AlertCircle, AlertTriangle, Plus, ChevronRight, Share2, RefreshCw } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
+import { formatDistanceToNow } from "date-fns";
+import { enUS, vi } from "date-fns/locale";
 import { 
   XAxis, YAxis, Tooltip, ResponsiveContainer, 
   LineChart, Line, CartesianGrid 
@@ -9,6 +11,8 @@ import {
 
 import { PlatformIcon } from "../../components/shared/PlatformIcon";
 import { StatCard } from "../../components/shared/StatCard";
+import { PostingGoalWidget } from "../../components/shared/PostingGoalWidget";
+import { StreakStatCard } from "../../components/shared/StreakStatCard";
 import { useBrand } from "../../context/BrandContext";
 import socialService from "../../services/social.service";
 import postService from "../../services/post.service";
@@ -170,6 +174,16 @@ export function DashboardPage() {
 
   const stats = getAggregatedStats();
 
+  // Most recent sync across every connected account — SocialAccount.lastSyncAt
+  // is set whenever the background/force sync in social.service.js's
+  // getAggregatedMetrics completes, so this reflects real sync state rather
+  // than "page load time".
+  const lastSyncedAt = metrics.reduce((latest, m) => {
+    if (!m.lastSyncAt) return latest;
+    const syncTime = new Date(m.lastSyncAt);
+    return !latest || syncTime > latest ? syncTime : latest;
+  }, null);
+
   const getViewersByPlatform = () => {
     const list = [
       { platform: "YouTube", key: "YOUTUBE" },
@@ -276,8 +290,8 @@ export function DashboardPage() {
         className="flex-1 overflow-y-auto bg-background text-foreground animate-pulse p-6 flex flex-col gap-5"
       >
         {/* Stat Cards Row Skeleton */}
-        <div className="grid grid-cols-4 gap-4">
-          {[1, 2, 3, 4].map((n) => (
+        <div className="grid grid-cols-5 gap-4">
+          {[1, 2, 3, 4, 5].map((n) => (
             <div key={n} className="bg-card p-6 rounded-2xl border border-border shadow-sm h-[110px] space-y-3">
               <div className="w-20 h-3 bg-muted rounded" />
               <div className="w-28 h-6 bg-muted/80 rounded" />
@@ -323,8 +337,18 @@ export function DashboardPage() {
     <div
       className="flex-1 overflow-y-auto font-sans bg-background text-foreground p-6 flex flex-col gap-5"
     >
+      {/* Last synced indicator — reflects SocialAccount.lastSyncAt, not page load time */}
+      <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+        <RefreshCw size={11} />
+        {lastSyncedAt
+          ? t("charts.lastSynced", {
+              time: formatDistanceToNow(lastSyncedAt, { addSuffix: true, locale: i18n.language === "vi" ? vi : enUS })
+            })
+          : t("charts.neverSynced")}
+      </div>
+
       {/* Stat Cards Row */}
-      <div className="grid grid-cols-4 gap-4">
+      <div className="grid grid-cols-5 gap-4">
         <StatCard
           label={t("stats.totalFollowers")}
           value={stats.subscribers.toLocaleString()}
@@ -347,6 +371,7 @@ export function DashboardPage() {
           delta={t("stats.selectedDelta")}
           deltaColor="#16A34A"
         />
+        {activeBrand && <StreakStatCard brandId={activeBrand.id} />}
       </div>
 
       {/* Weekly Viewers Chart */}
@@ -466,6 +491,9 @@ export function DashboardPage() {
 
         {/* Platform Status and Reach (Cột phải) */}
         <div className="col-span-5 flex flex-col gap-6">
+          {/* Posting Goals */}
+          {activeBrand && <PostingGoalWidget brandId={activeBrand.id} />}
+
           {/* Platform Connections Status */}
           <div className="bg-card border border-border rounded-3xl p-6 shadow-xl flex flex-col">
             <div className="flex items-center justify-between mb-5">

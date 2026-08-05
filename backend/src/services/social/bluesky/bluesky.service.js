@@ -1,5 +1,6 @@
 const BaseSocialService = require('../base-social.service');
 const blueskyGateway = require('./bluesky.gateway');
+const blueskyAnalytics = require('./bluesky-analytics.service');
 const blueskyOAuthHelper = require('./bluesky-oauth.helper');
 const socialAccountRepository = require('../../../repositories/social/social-account.repository');
 const QuotaTrackerService = require('../quota-tracker.service');
@@ -236,20 +237,41 @@ class BlueskyService extends BaseSocialService {
     return { id: result.id };
   }
 
-  async syncChannelMetrics(socialAccountId) {
+  async syncChannelMetrics(socialAccountId, startDate = null, endDate = null) {
     const account = await socialAccountRepository.findById(socialAccountId);
     if (!account || !account.blueskyAccount) return account;
 
     const agent = await this._getAuthenticatedAgent(account);
     const profile = await blueskyGateway.getProfile(agent, account.blueskyAccount.did);
 
+    const report = await blueskyAnalytics.getAnalyticsReport(
+      agent,
+      account.blueskyAccount.did,
+      startDate,
+      endDate,
+      profile.followersCount || 0
+    ).catch((err) => {
+      logger.warn(`[Bluesky] getAnalyticsReport failed for ${socialAccountId}: ${err.message}`);
+      return null;
+    });
+
     await socialAccountRepository.updateBlueskyMetrics(socialAccountId, {
       followersCount: profile.followersCount,
       followsCount: profile.followsCount,
-      postsCount: profile.postsCount
+      postsCount: profile.postsCount,
+      analytics: report ? { ...report, startDate, endDate, brandId: account.brandId } : undefined
     });
 
     return socialAccountRepository.findById(socialAccountId);
+  }
+
+  async getPublishedVideos(brandId, pageToken = null, limit = 10, socialAccountId = null) {
+    const account = await this._getAccount(brandId, socialAccountId);
+    if (!account) return { data: [], nextPageToken: null, prevPageToken: null };
+
+    const agent = await this._getAuthenticatedAgent(account);
+    const result = await blueskyAnalytics.getPublishedPosts(agent, account.blueskyAccount.did, { limit, cursor: pageToken || undefined });
+    return { data: result.data, nextPageToken: result.nextPageToken, prevPageToken: null };
   }
 
   /**
@@ -314,19 +336,9 @@ class BlueskyService extends BaseSocialService {
   async getPostComments(brandId, { uri, depth = 6, parentHeight = 80, socialAccountId = null } = {}) {
     if (!uri) throw new Error('Post URI is required to fetch Bluesky thread/comments');
 
-    let account;
-    if (socialAccountId && String(socialAccountId).startsWith('mock')) {
-      account = { id: socialAccountId, accessToken: socialAccountId, platformAccountId: socialAccountId };
-    } else {
-      account = await this._getAccount(brandId, socialAccountId);
-    }
-
+    const account = await this._getAccount(brandId, socialAccountId);
     if (!account) {
       return { comments: [], rootPost: null };
-    }
-
-    if (account.accessToken && String(account.accessToken).startsWith('mock')) {
-      return this._getMockComments(uri);
     }
 
     const agent = await this._getAuthenticatedAgent(account);
@@ -408,44 +420,33 @@ class BlueskyService extends BaseSocialService {
     }
   }
 
-  _getMockComments(uri) {
-    return {
-      comments: [
-        {
-          id: `${uri}-reply-1`,
-          uri: `${uri}-reply-1`,
-          cid: "bafyreicjclx66vstawgvawlzrk5sdbjemxmhfheq7guvenfcf7h6kfope4",
-          parentCommentId: null,
-          text: "Love this AT Protocol post! 🦋",
-          likeCount: 5,
-          replyCount: 1,
-          repostCount: 2,
-          quoteCount: 0,
-          authorName: "Alice (bsky)",
-          authorHandle: "alice.bsky.social",
-          authorAvatar: "https://bsky.app/avatar.png",
-          createdAt: new Date().toISOString(),
-          platform: PLATFORMS.BLUESKY
-        }
-      ],
-      rootPost: {
-        id: uri,
-        uri: uri,
-        text: "Sample Bluesky AT Protocol Post",
-        authorName: "PubliCast Admin",
-        platform: PLATFORMS.BLUESKY
-      }
-    };
+  // socialAccountId (not an auth bag) — no caller assembles Bluesky "auth"
+  // separately from the account record the way Instagram/Facebook do, so
+  // these take the account id directly. The real entry point the sync
+  // pipeline actually calls is syncChannelMetrics() above; these exist for
+  // BaseSocialService contract compliance and any future on-demand caller.
+  async getAnalyticsReport(socialAccountId, startDate, endDate) {
+    const account = await socialAccountRepository.findById(socialAccountId);
+    if (!account || !account.blueskyAccount) return {};
+    const agent = await this._getAuthenticatedAgent(account);
+    return blueskyAnalytics.getAnalyticsReport(agent, account.blueskyAccount.did, startDate, endDate, account.blueskyAccount.followersCount || 0);
   }
 
-  // Stubs for BaseSocialService contract compliance
-  async getChannelInfo() { return null; }
-  async getPublishedVideos() { return []; }
-  async getAnalyticsReport() { return {}; }
+  async getChannelInfo(socialAccountId) {
+    const account = await socialAccountRepository.findById(socialAccountId);
+    if (!account || !account.blueskyAccount) return null;
+    const agent = await this._getAuthenticatedAgent(account);
+    return blueskyGateway.getProfile(agent, account.blueskyAccount.did);
+  }
+
+  // Not applicable to Bluesky — AT Protocol has no video-hosting concept
+  // distinct from a regular post (see publishPost's uploadVideo path).
   async trackVideo() { return null; }
   async getVideoDetails() { return null; }
   async searchChannel() { return []; }
   async addCompetitor() { return null; }
+  // Bluesky comments are fetched ad hoc per-post via getPostComments(), not
+  // through the app's unified inbox sync — see getPostComments below.
   async fetchChannelComments() { return []; }
   async updatePublishedPost() { return null; }
   async deletePost() { return true; }

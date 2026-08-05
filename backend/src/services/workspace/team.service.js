@@ -18,6 +18,7 @@ const TeamRoleFilter = require('./team/filters/role.filter');
 const TeamStatusFilter = require('./team/filters/status.filter');
 const notificationService = require('../core/notification.service');
 const logger = require('../../utils/logger');
+const appConfig = require('../../config/app.config');
 
 class TeamService {
   constructor() {
@@ -141,7 +142,7 @@ class TeamService {
     );
 
     // Send invitation email
-    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+    const frontendUrl = appConfig.frontendUrl;
     const inviteUrl = `${frontendUrl}/invite?token=${token}`;
     const inviter = await userRepository.findById(invitedByUserId);
 
@@ -160,7 +161,8 @@ class TeamService {
         type: NOTIFICATION_TYPES.TEAM,
         title: `Bạn được mời vào "${brand.name}"`,
         message: `${inviter?.name || 'Ai đó'} đã mời bạn tham gia với vai trò ${role}.`,
-        actionUrl: `/invite?token=${token}`
+        actionUrl: `/invite?token=${token}`,
+        preferenceKey: 'notifyCollaboration'
       });
     } catch (notifErr) {
       // Không để lỗi notification chặn flow mời thành viên
@@ -211,7 +213,7 @@ class TeamService {
     // Update invitedAt to reflect the resend time
     await teamRepository.update(teamId, { invitedAt: new Date(), invitedByUserId: requestedByUserId });
 
-    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+    const frontendUrl = appConfig.frontendUrl;
     const inviteUrl = `${frontendUrl}/invite?token=${token}`;
 
     try {
@@ -232,7 +234,8 @@ class TeamService {
         type: NOTIFICATION_TYPES.TEAM,
         title: `Lời mời gia nhập "${brand.name}" đã được gửi lại`,
         message: `${requester?.name || 'Ai đó'} đã gửi lại lời mời. Vui lòng kiểm tra email của bạn.`,
-        actionUrl: `/invite?token=${token}`
+        actionUrl: `/invite?token=${token}`,
+        preferenceKey: 'notifyCollaboration'
       });
     } catch (notifErr) {
       console.error('[TeamService] Failed to create resend notification:', notifErr.message);
@@ -352,7 +355,7 @@ class TeamService {
         );
 
         // Send invitation email
-        const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+        const frontendUrl = appConfig.frontendUrl;
         const inviteUrl = `${frontendUrl}/invite?token=${token}`;
         const inviter = await userRepository.findById(invitedByUserId);
 
@@ -371,7 +374,8 @@ class TeamService {
             type: NOTIFICATION_TYPES.TEAM,
             title: `Bạn được mời vào "${brand.name}"`,
             message: `${inviter?.name || 'Ai đó'} đã mời bạn tham gia với vai trò ${role}.`,
-            actionUrl: `/invite?token=${token}`
+            actionUrl: `/invite?token=${token}`,
+            preferenceKey: 'notifyCollaboration'
           });
         } catch (notifErr) {
           console.error('[TeamService] Failed to create invite notification:', notifErr.message);
@@ -572,7 +576,8 @@ class TeamService {
         type: NOTIFICATION_TYPES.TEAM,
         title: 'Vai trò của bạn đã được cập nhật',
         message: `Vai trò của bạn trong workspace đã được thay đổi thành ${role}.`,
-        actionUrl: '/settings/team'
+        actionUrl: '/settings/team',
+        preferenceKey: 'notifyCollaboration'
       });
     } catch (notifErr) {
       console.error('[TeamService] Failed to create role-update notification:', notifErr.message);
@@ -761,7 +766,8 @@ class TeamService {
             type: NOTIFICATION_TYPES.TEAM,
             title: notifTitle,
             message: notifMessage,
-            actionUrl: `/planner/list`
+            actionUrl: `/planner/list`,
+            preferenceKey: 'notifyCollaboration'
           }).catch(err => console.error('[TeamService] Failed to notify requester:', err.message));
         }
 

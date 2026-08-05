@@ -1,11 +1,12 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { subDays, eachDayOfInterval, format } from "date-fns";
+import { eachDayOfInterval, format } from "date-fns";
 import { toast } from "sonner";
 import { useBrand } from "../context/BrandContext";
 import socialService from "../services/social.service";
 import postService from "../services/post.service";
 import { useLatestRequestId } from "./useLatestRequestId";
+import { useDateRangeQuery } from "./useDateRangeQuery";
 import { getPlatformPostUrl } from "../utils/postUrlHelper";
 import { PLATFORM_DEFAULT_TAB } from "../constants/platforms";
 import { parseAnalyticsData } from "../utils/parseAnalyticsData";
@@ -90,11 +91,8 @@ export function usePlatformDashboard(platform) {
   const [loading, setLoading] = useState(true);
   const [metrics, setMetrics] = useState(null);
   
-  // Date Range State
-  const [dateRange, setDateRange] = useState({
-    from: subDays(new Date(), 30),
-    to: new Date(),
-  });
+  // Date Range State — synced to ?from=&to= in the URL (see useDateRangeQuery)
+  const [dateRange, setDateRange] = useDateRangeQuery(30);
 
   const [selectedMetrics, setSelectedMetrics] = useState({
     subscribers: true,

@@ -3,6 +3,9 @@ const multer = require('multer');
 const smartLinkController = require('../../controllers/workspace/smart-link.controller');
 const autoListController = require('../../controllers/workspace/auto-list.controller');
 const hashtagController = require('../../controllers/workspace/hashtag.controller');
+const postingGoalController = require('../../controllers/workspace/posting-goal.controller');
+const streakController = require('../../controllers/workspace/streak.controller');
+const feedController = require('../../controllers/workspace/feed.controller');
 const calendarEventController = require('../../controllers/workspace/calendar-event.controller');
 const stockController = require('../../controllers/stock.controller');
 const { verifyAuth } = require('../../middlewares/auth.middleware');
@@ -117,6 +120,83 @@ router.delete('/hashtags/sets/:id', hashtagController.deleteHashtagSet);
 router.post('/hashtags/track', checkBrandAccess, hashtagController.trackHashtag);
 router.delete('/hashtags/track/:id', hashtagController.untrackHashtag);
 router.post('/hashtags/track/:id/refresh', hashtagController.refreshHashtag);
+
+// ── Posting Goals V2 ──
+/**
+ * @openapi
+ * /v2/content-extras/posting-goals:
+ *   get:
+ *     summary: Get posting goals with current progress for brand
+ *     tags: [Workspace Content Extras V2]
+ *     security: [{ cookieAuth: [] }]
+ *     parameters:
+ *       - in: query
+ *         name: brandId
+ *         required: true
+ *         schema: { type: string }
+ *     responses:
+ *       200:
+ *         description: Posting goals list
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/V2EnvelopeResponse'
+ */
+router.get('/posting-goals', checkBrandAccess, postingGoalController.getPostingGoals);
+router.put('/posting-goals', checkBrandAccess, postingGoalController.upsertPostingGoal);
+router.delete('/posting-goals/:id', postingGoalController.deletePostingGoal);
+
+// ── Posting Streak V2 ──
+/**
+ * @openapi
+ * /v2/content-extras/streak:
+ *   get:
+ *     summary: Get the brand's current posting streak
+ *     tags: [Workspace Content Extras V2]
+ *     security: [{ cookieAuth: [] }]
+ *     parameters:
+ *       - in: query
+ *         name: brandId
+ *         required: true
+ *         schema: { type: string }
+ *     responses:
+ *       200:
+ *         description: Posting streak
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/V2EnvelopeResponse'
+ */
+router.get('/streak', checkBrandAccess, streakController.getStreak);
+
+// ── Explore Feeds V2 ──
+/**
+ * @openapi
+ * /v2/content-extras/feeds:
+ *   get:
+ *     summary: Get this brand's custom feed sources plus curated system feeds
+ *     tags: [Workspace Content Extras V2]
+ *     security: [{ cookieAuth: [] }]
+ *     parameters:
+ *       - in: query
+ *         name: brandId
+ *         required: true
+ *         schema: { type: string }
+ *     responses:
+ *       200:
+ *         description: Feed sources list
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/V2EnvelopeResponse'
+ */
+router.get('/feeds', checkBrandAccess, feedController.getFeedSources);
+router.post('/feeds', checkBrandAccess, feedController.createFeedSource);
+router.delete('/feeds/:id', checkBrandAccess, feedController.deleteFeedSource);
+router.get('/feeds/entries', checkBrandAccess, feedController.getFeedEntries);
+// Same for every brand — no checkBrandAccess needed, and cacheable at the
+// Cloudflare edge (see feedController.getCuratedFeeds).
+router.get('/feeds/curated', feedController.getCuratedFeeds);
 
 // ── Calendar Events V2 ──
 /**

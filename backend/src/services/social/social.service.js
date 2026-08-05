@@ -1,16 +1,46 @@
 const socialPlatformFactory = require('./social-platform.factory');
 const socialAccountRepository = require('../../repositories/social/social-account.repository');
+const brandRepository = require('../../repositories/workspace/brand.repository');
 const googleDriveService = require('./google-drive.service');
 const notificationService = require('../core/notification.service');
 const redisClient = require('../../config/redis');
 const { PLATFORMS, NOTIFICATION_TYPES } = require('../../utils/constants');
 const logger = require('../../utils/logger');
 
+// Fallback when a brand has no active subscription — same conservative
+// (FREE-tier) default used by each platform's own post-history service.
+const DEFAULT_HISTORY_WINDOW_MONTHS = 1;
+
 class SocialService {
+  async _getHistoryWindowMonths(brandId) {
+    const brand = await brandRepository.findBrandWithSubscription(brandId);
+    const planLimit = brand?.subscription?.status === 'ACTIVE' ? brand.subscription.plan?.planLimit : null;
+    return planLimit?.historyWindowMonths || DEFAULT_HISTORY_WINDOW_MONTHS;
+  }
+
+  /**
+   * Clamp a requested startDate to the brand's plan-based history window,
+   * so a client can't read further back than their plan allows just by
+   * passing an arbitrary startDate query param (the date-range picker's
+   * "premium" presets are a UI hint only — this is the actual enforcement).
+   */
+  async _clampStartDate(brandId, startDate) {
+    const windowMonths = await this._getHistoryWindowMonths(brandId);
+    const earliestAllowed = new Date();
+    earliestAllowed.setMonth(earliestAllowed.getMonth() - windowMonths);
+    const earliestAllowedStr = earliestAllowed.toISOString().slice(0, 10);
+
+    if (!startDate || startDate < earliestAllowedStr) {
+      return earliestAllowedStr;
+    }
+    return startDate;
+  }
+
   /**
    * Sync and aggregate metrics for all social accounts of a brand
    */
   async getAggregatedMetrics(brandId, startDate, endDate, force = false) {
+    startDate = await this._clampStartDate(brandId, startDate);
     const cacheKey = `sync:metrics:${brandId}:${startDate || 'all'}:${endDate || 'all'}`;
 
     // Step 1: Redis Cache First (<5ms response, ZERO MySQL DB queries!)
@@ -218,13 +248,12 @@ class SocialService {
 
   async _notifyPlatformDisconnected(brandId, platform) {
     try {
-      await notificationService.create({
-        brandId,
+      await notificationService.notifyBrandMembers(brandId, {
         type: NOTIFICATION_TYPES.PLATFORM,
         title: `${platform} disconnected`,
         message: `${platform} has been disconnected. Reconnect it to keep publishing and syncing analytics.`,
         actionUrl: '/manage/connections'
-      });
+      }, 'notifyChannelDisconnect');
     } catch (err) {
       console.error(`[SocialService] Failed to create ${platform} disconnect notification:`, err.message);
     }
@@ -232,13 +261,12 @@ class SocialService {
 
   async _notifyPlatformSyncFailure(account, error) {
     try {
-      await notificationService.create({
-        brandId: account.brandId,
+      await notificationService.notifyBrandMembers(account.brandId, {
         type: NOTIFICATION_TYPES.PLATFORM,
         title: `${account.platform} sync failed`,
         message: `${account.platform} could not sync analytics. ${error.message || 'Reconnect the platform to continue syncing.'}`,
         actionUrl: '/manage/connections'
-      });
+      }, 'notifyChannelDisconnect');
     } catch (err) {
       console.error(`[SocialService] Failed to create ${account.platform} sync failure notification:`, err.message);
     }

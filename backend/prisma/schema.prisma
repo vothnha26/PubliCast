@@ -46,6 +46,7 @@ model User {
   auditLogs                AuditLog[]                @relation("AuditLogUser")
   notifications            SystemNotification[]
   notificationReadReceipts NotificationReadReceipt[]
+  createdChannelGroups     ChannelGroup[]
   createdTickets           SupportTicket[]           @relation("TicketCreator")
   assignedTickets          SupportTicket[]           @relation("TicketAssignedAgent")
   ticketMessages           TicketMessage[]           @relation("TicketMessageSender")
@@ -63,7 +64,21 @@ model UserSettings {
   userId   String @unique
   language String @default("vi")
   timezone String @default("Asia/Ho_Chi_Minh")
-  user     User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Master toggle — overrides every category switch below when false,
+  // without needing to clear each one individually (mirrors Buffer's
+  // "Unsubscribe from all" behavior).
+  notificationsEnabled     Boolean @default(true)
+  notifyPostFailure        Boolean @default(true)
+  notifyPublishSuccess     Boolean @default(true)
+  notifyChannelDisconnect  Boolean @default(true)
+  notifyCollaboration      Boolean @default(true)
+  notifyBilling            Boolean @default(true)
+  notifyEmptyQueue         Boolean @default(true)
+  notifyDailyRecap         Boolean @default(false)
+  notifyWeeklyReport       Boolean @default(false)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("user_settings")
 }
@@ -111,17 +126,22 @@ model Brand {
   autoLists               AutoList[]
   approvalWorkflows       ApprovalWorkflow[]
   socialAccounts          SocialAccount[]
+  channelGroups           ChannelGroup[]
   adAccounts              AdAccount[]
   analytics               Analytics[]
   competitorAnalysis      CompetitorAnalysis[]
   facebookOverviewMetrics FacebookOverviewMetric[]
   facebookPostMetrics     FacebookPostMetric[]
   facebookStoryMetrics    FacebookStoryMetric[]
+  socialPostMetrics       SocialPostMetric[]
   unifiedInbox            UnifiedInbox[]
   reports                 Report[]
   smartLinks              SmartLink[]
   hashtagTrackers         HashtagTracker[]
   hashtagSets             HashtagSet[]
+  postingGoals            PostingGoal[]
+  streak                  BrandStreak?
+  feedSources             FeedSource[]
   aiAssistant             AIAssistant?
   reportScheduleConfig    ReportScheduleConfig?
   mediaLibrary            MediaLibrary[]
@@ -378,6 +398,12 @@ model PlanLimit {
   maxTeamSeats          Int
   allowCustomRoles      Boolean
   allowApprovalWorkflow Boolean
+  // How far back (in months) an on-demand published-post fetch looks for a
+  // brand on this plan — bounds platforms with no native date-range filter
+  // (e.g. TikTok's video/list, which only supports cursor pagination).
+  // Deliberately never nullable/unlimited: an old, prolific channel could
+  // still mean many sequential API calls to walk even on the highest tier.
+  historyWindowMonths   Int           @default(1)
   createdAt             DateTime      @default(now())
 
   plans Plan[]
@@ -535,15 +561,71 @@ model SocialAccount {
   twitchAccount    TwitchAccount?
   autoReplySetting AutoReplySetting?
   postNetworkOverrides PostNetworkOverride[]
+  postTargets      PostTarget[]
 
   // Facebook dedicated metrics
   facebookOverviewMetrics FacebookOverviewMetric[] @relation("FacebookOverviewMetricAccount")
   facebookPostMetrics     FacebookPostMetric[]     @relation("FacebookPostMetricAccount")
   facebookStoryMetrics    FacebookStoryMetric[]    @relation("FacebookStoryMetricAccount")
 
+  // Shared post-metrics cache (Instagram, Threads — see SocialPostMetric)
+  socialPostMetrics SocialPostMetric[]
+
+  channelGroupMembers ChannelGroupMember[]
+
   @@unique([brandId, platform, platformAccountId])
   @@index([brandId])
   @@map("social_accounts")
+}
+
+// User-organizable grouping of channels within a brand (e.g. "Client A",
+// "Video content") — separate from platform type, which is a fixed
+// taxonomy. A channel can belong to multiple groups (many-to-many via
+// ChannelGroupMember), same shape as Team's brand-scoped membership rows.
+//
+// visibility controls who can see the group: TEAM (default) is visible to
+// every brand member, matching how the rest of the app's brand-scoped data
+// works; PRIVATE is visible only to createdByUserId, for a user who wants
+// their own scratch organization without cluttering the shared list.
+model ChannelGroup {
+  id              String              @id @default(uuid())
+  brandId         String
+  createdByUserId String
+  name            String
+  color           String?
+  visibility      ChannelGroupVisibility @default(TEAM)
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+
+  brand       Brand                @relation(fields: [brandId], references: [id], onDelete: Cascade)
+  createdBy   User                 @relation(fields: [createdByUserId], references: [id], onDelete: Cascade)
+  members     ChannelGroupMember[]
+
+  // A name only needs to be unique within whatever the creator can see it
+  // alongside — two different users can each have their own "My Channels"
+  // private group without conflicting.
+  @@unique([brandId, createdByUserId, name])
+  @@index([brandId])
+  @@map("channel_groups")
+}
+
+enum ChannelGroupVisibility {
+  TEAM
+  PRIVATE
+}
+
+model ChannelGroupMember {
+  id              String   @id @default(uuid())
+  channelGroupId  String
+  socialAccountId String
+  createdAt       DateTime @default(now())
+
+  channelGroup  ChannelGroup  @relation(fields: [channelGroupId], references: [id], onDelete: Cascade)
+  socialAccount SocialAccount @relation(fields: [socialAccountId], references: [id], onDelete: Cascade)
+
+  @@unique([channelGroupId, socialAccountId])
+  @@index([socialAccountId])
+  @@map("channel_group_members")
 }
 
 model YouTubeChannel {
@@ -763,6 +845,11 @@ model Post {
   autoListId         String?
   platformPostId     String?
   isLibrary          Boolean    @default(false)
+  // Only meaningful when isLibrary is true — TEAM: visible to every brand
+  // member's Post Library. PRIVATE: only the creator sees it. Mirrors
+  // ChannelGroupVisibility's semantics (see that enum), reused here rather
+  // than duplicated since the meaning is identical.
+  libraryVisibility  ChannelGroupVisibility @default(TEAM)
   isDeleted          Boolean    @default(false)
   deletedAt          DateTime?
   createdAt          DateTime   @default(now())
@@ -774,10 +861,32 @@ model Post {
   approvalWorkflows ApprovalWorkflow[]
 
   networkOverrides       PostNetworkOverride[]
+  targets                PostTarget[]
 
   @@index([brandId])
   @@index([createdByUserId])
   @@map("posts")
+}
+
+// Which SocialAccount(s) a Post is/was published to — the single source of
+// truth for account targeting, independent of PostNetworkOverride (which is
+// content-customization only, and only exists for accounts where the
+// composer's "edit by network" was turned on). One row per targeted account,
+// written whenever a post is created/updated, regardless of whether that
+// account's content was customized. Channel filters, the publish step, and
+// delete-on-platform calls all resolve "which account(s)" from this table.
+model PostTarget {
+  id              String       @id @default(uuid())
+  postId          String
+  platform        PlatformType
+  socialAccountId String
+
+  post          Post          @relation(fields: [postId], references: [id], onDelete: Cascade)
+  socialAccount SocialAccount @relation(fields: [socialAccountId], references: [id], onDelete: Cascade)
+
+  @@unique([postId, socialAccountId])
+  @@index([socialAccountId])
+  @@map("post_targets")
 }
 
 // Per-platform (and, when a brand has multiple accounts of that platform,
@@ -1191,6 +1300,51 @@ model FacebookStoryMetric {
   @@map("facebook_story_metrics")
 }
 
+// DB-first cache for published-post metrics on platforms whose insights
+// endpoints don't warrant a dedicated per-platform table the way Facebook's
+// richer FacebookPostMetric does (no REEL/STANDARD branching, no separate
+// reactions-breakdown call) — currently Instagram and Threads. `platform`
+// disambiguates within the shared table rather than one model per platform,
+// since both write/read the same shape (see instagram-post.service.js /
+// threads/index.js's getPublishedPosts DB-first path). Mirrors
+// FacebookPostMetric's role: getPublishedPosts reads this before ever
+// hitting the live Graph API, only re-fetching live once fetchedAt is
+// older than that platform's insights-refresh cadence.
+model SocialPostMetric {
+  id              String       @id @default(uuid())
+  brandId         String
+  socialAccountId String
+  platform        PlatformType
+  platformPostId  String
+  postType        String? // platform-specific type string, e.g. IMAGE/VIDEO/CAROUSEL/REEL/STORY — not a shared enum since each platform's set differs
+  publishedAt     DateTime?
+
+  reach       Int @default(0)
+  views       Int @default(0)
+  likes       Int @default(0)
+  comments    Int @default(0)
+  shares      Int @default(0)
+  saves       Int @default(0)
+  clicks      Int @default(0)
+
+  engagementRate Float @default(0)
+
+  captionSnippet String? @db.Text
+  thumbnailUrl   String?
+  postUrl        String?
+
+  fetchedAt DateTime @default(now())
+  createdAt DateTime @default(now())
+
+  brand         Brand         @relation(fields: [brandId], references: [id], onDelete: Cascade)
+  socialAccount SocialAccount @relation(fields: [socialAccountId], references: [id], onDelete: Cascade)
+
+  @@unique([socialAccountId, platformPostId])
+  @@index([brandId])
+  @@index([socialAccountId])
+  @@map("social_post_metrics")
+}
+
 // ============================================
 // COMMUNICATION & SUPPORT
 // ============================================
@@ -1460,6 +1614,81 @@ model HashtagSet {
 
   @@index([brandId])
   @@map("hashtag_sets")
+}
+
+enum GoalPeriod {
+  WEEKLY
+  MONTHLY
+}
+
+model PostingGoal {
+  id          String     @id @default(uuid())
+  brandId     String
+  period      GoalPeriod
+  targetCount Int
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  brand Brand @relation(fields: [brandId], references: [id], onDelete: Cascade)
+
+  @@unique([brandId, period])
+  @@index([brandId])
+  @@map("posting_goals")
+}
+
+model BrandStreak {
+  id             String    @id @default(uuid())
+  brandId        String    @unique
+  currentStreak  Int       @default(0)
+  longestStreak  Int       @default(0)
+  lastPostedDate DateTime? @db.Date
+  updatedAt      DateTime  @updatedAt
+
+  brand Brand @relation(fields: [brandId], references: [id], onDelete: Cascade)
+
+  @@map("brand_streaks")
+}
+
+// A feed a brand can browse for content ideas. brandId is null for curated
+// "system" feeds (managed by admins, shown to every brand under a category,
+// mirroring how Template/TemplateCategory work) and set for feeds a brand
+// added themselves via URL.
+model FeedSource {
+  id        String   @id @default(uuid())
+  brandId   String?
+  name      String
+  url       String   @db.VarChar(2048)
+  category  String?
+  isSystem  Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  brand   Brand?      @relation(fields: [brandId], references: [id], onDelete: Cascade)
+  entries FeedEntry[]
+
+  @@index([brandId])
+  @@index([isSystem, category])
+  @@map("feed_sources")
+}
+
+// Cached parsed RSS items for a FeedSource, refreshed periodically by
+// feed-scheduler.service.js rather than fetched live on every page view.
+model FeedEntry {
+  id          String    @id @default(uuid())
+  feedSourceId String
+  guid        String    @db.VarChar(500)
+  title       String    @db.Text
+  link        String    @db.VarChar(2048)
+  summary     String?   @db.Text
+  imageUrl    String?   @db.VarChar(2048)
+  publishedAt DateTime?
+  fetchedAt   DateTime  @default(now())
+
+  feedSource FeedSource @relation(fields: [feedSourceId], references: [id], onDelete: Cascade)
+
+  @@unique([feedSourceId, guid])
+  @@index([feedSourceId, publishedAt])
+  @@map("feed_entries")
 }
 
 model AIAssistant {
@@ -1853,4 +2082,74 @@ model OutboxEvent {
   @@index([aggregateId])
   @@index([eventType])
   @@map("outbox_events")
+}
+
+// Featured post-content templates (Buffer-style content ideas), shown in the
+// Post Library "Featured Templates" tab. Global/system-owned — no brandId,
+// managed only by ADMIN users, unlike PostTemplate-style per-brand data.
+// Many-to-many with Template: a single idea can be tagged under multiple
+// categories at once (e.g. a template can be both "Reflection" and
+// "Behind the Scenes"), same as Buffer's own template library.
+model TemplateCategory {
+  id        String   @id @default(uuid())
+  name      String   @unique
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  templates TemplateCategoryOnTemplate[]
+
+  @@map("template_categories")
+}
+
+model Template {
+  id          String         @id @default(uuid())
+  emoji       String?
+  title       String
+  // Short prompt shown on the template card (what to write about).
+  description String         @db.Text
+  // Full starter content with {{placeholder}} sections, inserted into the
+  // composer when the user clicks the template — mirrors Buffer's
+  // Description vs Body split in its own template editor.
+  body        String?        @db.Text
+  // Both optional — fixed enums (not free text like TemplateCategory.name)
+  // since they're closed classification sets meant to stay filterable/
+  // consistent, unlike categories which admins can freely create.
+  format      TemplateFormat?
+  goal        TemplateGoal?
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  categories TemplateCategoryOnTemplate[]
+
+  @@map("templates")
+}
+
+enum TemplateFormat {
+  IMAGE
+  VIDEO
+  TEXT
+  CAROUSEL
+}
+
+enum TemplateGoal {
+  ENGAGEMENT
+  BRAND_AWARENESS
+  EDUCATION
+  COMMUNITY
+  SALES
+}
+
+model TemplateCategoryOnTemplate {
+  id         String   @id @default(uuid())
+  categoryId String
+  templateId String
+  createdAt  DateTime @default(now())
+
+  category TemplateCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  template Template         @relation(fields: [templateId], references: [id], onDelete: Cascade)
+
+  @@unique([categoryId, templateId])
+  @@index([templateId])
+  @@map("template_category_on_template")
 }

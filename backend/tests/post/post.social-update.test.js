@@ -50,7 +50,16 @@ jest.mock('../../src/config/prisma', () => ({
   platformLimit: {
     findMany: jest.fn().mockResolvedValue([])
   },
-  $transaction: jest.fn().mockImplementation((cb) => cb({}))
+  $transaction: jest.fn().mockImplementation((cb) => cb({
+    postTarget: {
+      deleteMany: jest.fn().mockResolvedValue({ count: 0 }),
+      createMany: jest.fn().mockResolvedValue({ count: 0 })
+    },
+    socialAccount: {
+      findFirst: jest.fn().mockResolvedValue(null),
+      findMany: jest.fn().mockResolvedValue([])
+    }
+  }))
 }));
 
 // Mock the social platform factory

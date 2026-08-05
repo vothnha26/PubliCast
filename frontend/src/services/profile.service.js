@@ -42,6 +42,16 @@ class ProfileService {
     const data = await apiV2.get(`/auth/google?state=${state}`);
     return data;
   }
+
+  async getNotificationSettings() {
+    const data = await apiV2.get('/profile/notification-settings');
+    return data;
+  }
+
+  async updateNotificationSettings(payload) {
+    const data = await apiV2.put('/profile/notification-settings', payload);
+    return data;
+  }
 }
 
 const profileService = new ProfileService();

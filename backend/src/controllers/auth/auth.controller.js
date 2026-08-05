@@ -10,6 +10,7 @@ const OAUTH_CALLBACK_ERROR_REDIRECTS = {
   [ERROR_CODES.GOOGLE_ACCOUNT_NOT_LINKED]: 'google_account_not_linked'
 };
 const asyncHandler = require('../../utils/async-handler');
+const appConfig = require('../../config/app.config');
 
 class AuthController {
   /**
@@ -32,7 +33,7 @@ class AuthController {
     const { code, state } = req.query;
     const baseUrl = process.env.BACKEND_BASE_URL || `${req.protocol}://${req.get('host')}`;
     const redirectUri = `${baseUrl}/api/auth/google/callback`;
-    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+    const frontendUrl = appConfig.frontendUrl;
 
     let currentUserId = null;
     if (state === 'settings') {

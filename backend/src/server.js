@@ -44,6 +44,8 @@ const server = app.listen(PORT, async () => {
   require('./queues/video.worker');
   // Initialize BullMQ social sync worker
   require('./queues/social.worker');
+  // Initialize BullMQ Help Center article embedding worker
+  require('./queues/help-center-embedding.worker');
 
   // Start Token Auto-Refresh Service scheduler
   const tokenRefreshService = require('./services/social/token-refresh/token-refresh.service');
@@ -56,6 +58,22 @@ const server = app.listen(PORT, async () => {
   // Start Automated Reports Scheduler
   const reportSchedulerService = require('./services/reports/report-scheduler.service');
   reportSchedulerService.start();
+
+  // Start Empty Content Queue Alert Scheduler
+  const emptyQueueSchedulerService = require('./services/core/empty-queue-scheduler.service');
+  emptyQueueSchedulerService.start();
+
+  // Start Daily/Weekly In-App Recap Scheduler
+  const recapSchedulerService = require('./services/core/recap-scheduler.service');
+  recapSchedulerService.start();
+
+  // Start Daily Posting Streak Reset Scheduler
+  const streakSchedulerService = require('./services/core/streak-scheduler.service');
+  streakSchedulerService.start();
+
+  // Start Periodic Explore Feeds Refresh Scheduler (30-minute cycle)
+  const feedSchedulerService = require('./services/core/feed-scheduler.service');
+  feedSchedulerService.start();
 
   // Start Periodic Inbox Sync Scheduler (15-minute fallback cycle)
   const inboxSyncSchedulerService = require('./services/social/inbox-sync-scheduler.service');
@@ -137,11 +155,13 @@ async function shutdown(signal) {
       const publishWorker = require('./queues/publish.worker');
       const videoWorker = require('./queues/video.worker');
       const socialWorker = require('./queues/social.worker');
+      const helpCenterEmbeddingWorker = require('./queues/help-center-embedding.worker');
       logger.debug('[Shutdown] Closing BullMQ Workers...');
       await Promise.all([
         publishWorker.close(),
         videoWorker.close(),
-        socialWorker.close()
+        socialWorker.close(),
+        helpCenterEmbeddingWorker.close()
       ]);
       logger.info('BullMQ workers closed.');
     } catch (err) {

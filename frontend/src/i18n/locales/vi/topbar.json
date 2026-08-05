@@ -14,14 +14,17 @@
     "userManagement": "Quản lý thành viên",
     "billing": "Gói cước & Thanh toán",
     "myTasks": "Nhiệm vụ của tôi",
-    "language": "Ngôn ngữ",
-    "accountSettings": "Cài đặt tài khoản",
-    "helpCenter": "Trung tâm trợ giúp",
     "supportChat": "Trò chuyện hỗ trợ",
-    "whatsNew": "Tính năng mới",
-    "affiliation": "Chương trình tiếp thị",
-    "logout": "Đăng xuất",
-    "legalTerms": "Điều khoản pháp lý"
+    "logout": "Đăng xuất"
+  },
+  "accountMenu": {
+    "planLabel": "Gói {{name}}",
+    "upgradePlan": "Nâng cấp gói",
+    "settings": "Cài đặt",
+    "channels": "Kênh",
+    "billing": "Gói cước & Thanh toán",
+    "helpSupport": "Trợ giúp & Hỗ trợ",
+    "logout": "Đăng xuất"
   },
   "brand": {
     "select": "Chọn thương hiệu",
@@ -38,6 +41,7 @@
     "tools": "Công cụ",
     "contentPlanner": "Lên lịch nội dung",
     "approvalRequests": "Yêu cầu duyệt bài",
+    "explore": "Khám phá",
     "planLabel": "Gói: {{name}}",
     "nextBilling": "Kỳ tiếp theo: {{date}}",
     "unlimited": "Không giới hạn",
@@ -47,7 +51,8 @@
     "approvalTasks": "Yêu cầu duyệt bài",
     "hashtagTracker": "Theo dõi Hashtag",
     "reporting": "Báo cáo",
-    "competitors": "Đối thủ"
+    "competitors": "Đối thủ",
+    "helpCenter": "Trung tâm hỗ trợ"
   },
   "channels": {
     "title": "Kênh",
@@ -69,6 +74,36 @@
     "disconnectUnsupported": "Nền tảng này chưa hỗ trợ ngắt kết nối tại đây",
     "disconnectSuccess": "Đã ngắt kết nối {{name}}",
     "disconnectFailed": "Không thể ngắt kết nối"
+  },
+  "channelGroups": {
+    "createGroup": "Tạo nhóm kênh",
+    "editGroup": "Sửa nhóm",
+    "deleteGroup": "Xóa nhóm",
+    "createPost": "Tạo bài viết",
+    "showOnly": "Chỉ hiện nhóm này",
+    "showAll": "Hiện tất cả kênh",
+    "confirmDelete": "Xóa nhóm \"{{name}}\"? Các kênh trong nhóm sẽ không bị ảnh hưởng.",
+    "created": "Đã tạo nhóm kênh",
+    "updated": "Đã lưu nhóm kênh",
+    "deleted": "Đã xóa nhóm kênh",
+    "deleteFailed": "Không thể xóa nhóm kênh",
+    "modal": {
+      "titleCreate": "Tạo nhóm kênh mới",
+      "titleEdit": "Sửa nhóm kênh",
+      "nameLabel": "Tên nhóm",
+      "namePlaceholder": "Ví dụ: Khách hàng A, Kênh video...",
+      "colorLabel": "Màu",
+      "visibilityLabel": "Chế độ hiển thị",
+      "visibilityTeamLabel": "Nhóm chung",
+      "visibilityTeamDesc": "Mọi thành viên trong brand đều thấy",
+      "visibilityPrivateLabel": "Riêng tư",
+      "visibilityPrivateDesc": "Chỉ mình bạn thấy nhóm này",
+      "channelsLabel": "Kênh trong nhóm ({{count}})",
+      "noChannels": "Chưa có kênh nào được kết nối",
+      "cancel": "Hủy",
+      "save": "Lưu",
+      "create": "Tạo nhóm"
+    }
   },
   "searchPlaceholder": "Tìm kiếm công cụ, nền tảng...",
   "upgrade": "Nâng cấp",

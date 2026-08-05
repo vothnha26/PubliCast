@@ -3,7 +3,7 @@ const postRepository = require('../../repositories/workspace/post.repository');
 const brandRepository = require('../../repositories/workspace/brand.repository');
 const subscriptionRepository = require('../../repositories/billing/subscription.repository');
 const socialPlatformFactory = require('../social/social-platform.factory');
-const { POST_STATUS, POST_TYPES, SEPARATORS, WORKSPACE_DEFAULTS, PLATFORMS, PERMISSION_KEYS, DEFAULT_CONFIG, splitMediaUrls } = require('../../utils/constants');
+const { POST_STATUS, POST_TYPES, SEPARATORS, WORKSPACE_DEFAULTS, PLATFORMS, PERMISSION_KEYS, DEFAULT_CONFIG, splitMediaUrls, CHANNEL_GROUP_VISIBILITY } = require('../../utils/constants');
 const { EVENTS } = require('../../events/event-emitter');
 const { OUTBOX_EVENT_TYPES } = require('../../constants/outbox.constants');
 const autoListRepository = require('../../repositories/workspace/auto-list.repository');
@@ -51,12 +51,23 @@ class PostService {
   /**
    * Get filtered posts with pagination
    */
-  async getPosts(queryParams, brandId) {
+  async getPosts(queryParams, brandId, userId = null) {
     const { page = 1, limit = 10, sortBy = 'createdAt', sortOrder = 'desc' } = queryParams;
     const { skip, take } = this._getPagination(page, limit);
     const order = this._getSortOrder(sortBy, sortOrder);
 
     const where = this.queryPipeline.apply({ brandId }, queryParams);
+
+    // Library posts marked PRIVATE are only visible to their own creator —
+    // other brand members' Post Library requests must not see them, same
+    // "existence not leaked" semantics as PRIVATE channel groups.
+    if (where.isLibrary === true && userId) {
+      where.OR = [
+        { libraryVisibility: CHANNEL_GROUP_VISIBILITY.TEAM },
+        { libraryVisibility: CHANNEL_GROUP_VISIBILITY.PRIVATE, createdByUserId: userId }
+      ];
+    }
+
     const { posts, total } = await postRepository.findManyAndCount(where, { skip, take, orderBy: order });
 
     return {
@@ -279,6 +290,60 @@ class PostService {
     }
   }
 
+  /**
+   * Writes the PostTarget rows (see schema.prisma) recording exactly which
+   * SocialAccount(s) a post is targeting per platform — the source of truth
+   * consumed by PostSocialAccountFilter (channel views) and SocialPublishStep
+   * (publish-time account resolution). Runs unconditionally for every
+   * targeted platform, unlike upsertNetworkOverrides which only writes a row
+   * when content was actually customized per-account.
+   *
+   * selectedAccountIds: optional { [platform]: string[] } map of explicitly
+   * chosen SocialAccount ids per platform, sent by the composer. For a
+   * platform with no explicit selection, falls back to that platform's
+   * default/only connected account for the brand (the common single-account
+   * case), so older/simpler composer payloads keep working unchanged.
+   */
+  async upsertPostTargets(postId, targetPlatforms, selectedAccountIds, tx, brandId) {
+    await tx.postTarget.deleteMany({ where: { postId } });
+
+    for (const platform of targetPlatforms) {
+      const normalizedPlatform = platform.trim().toUpperCase();
+      let accountIds = Array.isArray(selectedAccountIds?.[normalizedPlatform])
+        ? selectedAccountIds[normalizedPlatform].filter(Boolean)
+        : [];
+
+      if (accountIds.length === 0) {
+        const fallbackAccount = await tx.socialAccount.findFirst({
+          where: { brandId, platform: normalizedPlatform, isConnected: true },
+          orderBy: [{ isDefault: 'desc' }, { connectedAt: 'asc' }]
+        });
+        if (fallbackAccount) {
+          accountIds = [fallbackAccount.id];
+        }
+      }
+
+      if (accountIds.length === 0) continue;
+
+      const accounts = await tx.socialAccount.findMany({
+        where: { id: { in: accountIds }, brandId, platform: normalizedPlatform }
+      });
+      if (accounts.length !== accountIds.length) {
+        const error = new Error(`One or more selected accounts are not valid ${normalizedPlatform} accounts for this brand.`);
+        error.statusCode = 400;
+        throw error;
+      }
+
+      await tx.postTarget.createMany({
+        data: accounts.map((account) => ({
+          postId,
+          platform: normalizedPlatform,
+          socialAccountId: account.id
+        }))
+      });
+    }
+  }
+
   _parseMediaInfo(firstMediaUrl, hasMedia) {
     if (!firstMediaUrl) {
       return { format: null, isVideo: false };
@@ -397,10 +462,13 @@ class PostService {
       const created = await postRepository.create(data, tx);
       logger.debug('[PostService] Post successfully created in DB with ID:', created.id);
 
+      const targetPlatformsArr = Array.isArray(postData.targetPlatforms)
+        ? postData.targetPlatforms
+        : (postData.targetPlatforms || '').split(SEPARATORS.COMMA).filter(Boolean);
+
+      await this.upsertPostTargets(created.id, targetPlatformsArr, postData.selectedAccountIds, tx, brandId);
+
       if (postData.networkOverrides) {
-        const targetPlatformsArr = Array.isArray(postData.targetPlatforms)
-          ? postData.targetPlatforms
-          : (postData.targetPlatforms || '').split(SEPARATORS.COMMA).filter(Boolean);
         await this.upsertNetworkOverrides(created.id, postData.networkOverrides, targetPlatformsArr, tx, brandId);
       }
 
@@ -586,18 +654,24 @@ class PostService {
 
       const updated = await postRepository.update(id, data, tx);
 
-      // Ghi lại networkOverrides khi bài CHƯA publish — bài đã PUBLISHED có luồng
-      // xử lý riêng ở nhánh phía trên (dòng 439-468) và không hỗ trợ sửa override.
-      // Dùng post.status (snapshot CŨ trước update) để quyết định: nếu bài chưa
-      // từng published tại thời điểm request này, override phải được lưu, kể cả khi
-      // cùng request đó đổi status sang SCHEDULED/DRAFT trong payload mới.
+      // Ghi lại networkOverrides + PostTarget khi bài CHƯA publish — bài đã
+      // PUBLISHED có luồng xử lý riêng ở nhánh phía trên (dòng 439-468) và
+      // không hỗ trợ sửa override/targeting nữa. Dùng post.status (snapshot
+      // CŨ trước update) để quyết định: nếu bài chưa từng published tại thời
+      // điểm request này, override/targeting phải được lưu, kể cả khi cùng
+      // request đó đổi status sang SCHEDULED/DRAFT trong payload mới.
       // targetPlatforms lấy từ updated (đã qua _prepareUpdateData) — luôn là string
       // chuẩn hoá, split SEPARATORS.COMMA là đủ, không cần xử lý mảng/string 2 nhánh.
-      if (postData.networkOverrides && post.status !== POST_STATUS.PUBLISHED) {
+      if (post.status !== POST_STATUS.PUBLISHED) {
         const targetPlatformsArr = updated.targetPlatforms
           ? updated.targetPlatforms.split(SEPARATORS.COMMA).filter(Boolean)
           : [];
-        await this.upsertNetworkOverrides(updated.id, postData.networkOverrides, targetPlatformsArr, tx, brandId);
+
+        await this.upsertPostTargets(updated.id, targetPlatformsArr, postData.selectedAccountIds, tx, brandId);
+
+        if (postData.networkOverrides) {
+          await this.upsertNetworkOverrides(updated.id, postData.networkOverrides, targetPlatformsArr, tx, brandId);
+        }
       }
 
       // Job publish + domain event ghi vào outbox trong CÙNG transaction với việc
@@ -761,12 +835,16 @@ class PostService {
                 logger.debug(`[Post Service] Found deletePost for ${platform}. Invoking service.deletePost...`);
                 const platformId = this._getPlatformPostId(post, platform);
                 if (platformId) {
-                  // socialAccountId comes from the override row saved for
-                  // this platform when the post was published — the one
-                  // source of truth for which account it actually went to
-                  // (see PostNetworkOverride in schema.prisma).
-                  const override = (post.networkOverrides || []).find(o => o.platform === platform);
-                  await service.deletePost(brandId, platformId, override?.socialAccountId || null);
+                  // socialAccountId(s) come from PostTarget — the source of
+                  // truth for which account(s) this platform actually
+                  // published to (see PostTarget in schema.prisma). A post
+                  // may target multiple accounts of the same platform, so
+                  // delete from each one.
+                  const targets = (post.targets || []).filter(t => t.platform === platform);
+                  const accountIds = targets.length > 0 ? targets.map(t => t.socialAccountId) : [null];
+                  for (const socialAccountId of accountIds) {
+                    await service.deletePost(brandId, platformId, socialAccountId);
+                  }
                   logger.debug(`[Post Service] Successfully deleted post on ${platform}`);
                 } else {
                   logger.debug(`[Post Service] No platform post ID found for ${platform}`);
@@ -886,6 +964,7 @@ class PostService {
       mediaUrls: splitMediaUrls(p.mediaUrls),
       altText: p.altText,
       isLibrary: p.isLibrary,
+      libraryVisibility: p.libraryVisibility,
       options,
       approvalInfo,
       platformPostId,
@@ -995,8 +1074,11 @@ class PostService {
           const platformId = this._getPlatformPostId(post, platform);
           if (platformId) {
             logger.debug(`[PostService] Invoking deletePost on ${platform} for ID: ${platformId}`);
-            const override = (post.networkOverrides || []).find(o => o.platform === platform);
-            await service.deletePost(post.brandId, platformId, override?.socialAccountId || null);
+            const targets = (post.targets || []).filter(t => t.platform === platform);
+            const accountIds = targets.length > 0 ? targets.map(t => t.socialAccountId) : [null];
+            for (const socialAccountId of accountIds) {
+              await service.deletePost(post.brandId, platformId, socialAccountId);
+            }
           }
         }
       } catch (err) {
@@ -1087,7 +1169,7 @@ class PostService {
   }
 
   _preparePostData(postData, userId, brandId) {
-    const { title, caption, type = POST_TYPES.VIDEO, status = POST_STATUS.DRAFT, targetPlatforms = [], mediaUrls = [], mediaThumbnailUrls = [], scheduledAt, isLibrary = false, altText = null, autoListId = null, options = {} } = postData;
+    const { title, caption, type = POST_TYPES.VIDEO, status = POST_STATUS.DRAFT, targetPlatforms = [], mediaUrls = [], mediaThumbnailUrls = [], scheduledAt, isLibrary = false, libraryVisibility, altText = null, autoListId = null, options = {} } = postData;
     
     // Normalize paths and Unicode recursively in options and strings
     const normalizedOptions = this._normalizePath(options);
@@ -1117,6 +1199,7 @@ class PostService {
       mediaThumbnailUrls: Array.isArray(finalThumbnailUrls) ? finalThumbnailUrls.join(SEPARATORS.COMMA) : finalThumbnailUrls,
       scheduledAt: scheduledAt ? new Date(scheduledAt) : null,
       altText: cleanAltText, isLibrary: isLibrary === true || isLibrary === 'true',
+      libraryVisibility: Object.values(CHANNEL_GROUP_VISIBILITY).includes(libraryVisibility) ? libraryVisibility : CHANNEL_GROUP_VISIBILITY.TEAM,
       autoListId,
       firstComment: normalizedOptions.firstComment || null,
       metadata: normalizedOptions ? JSON.stringify(normalizedOptions) : null
@@ -1124,7 +1207,7 @@ class PostService {
   }
 
   _prepareUpdateData(postData) {
-    const { title, caption, type, status, targetPlatforms, mediaUrls, mediaThumbnailUrls, scheduledAt, isLibrary, altText, autoListId, firstComment } = postData;
+    const { title, caption, type, status, targetPlatforms, mediaUrls, mediaThumbnailUrls, scheduledAt, isLibrary, libraryVisibility, altText, autoListId, firstComment } = postData;
     const data = {};
     if (title !== undefined) data.title = this._normalizePath(title) || WORKSPACE_DEFAULTS.UNTITLED;
     if (caption !== undefined) data.caption = this._normalizePath(caption);
@@ -1148,6 +1231,9 @@ class PostService {
     }
     if (scheduledAt !== undefined) data.scheduledAt = (scheduledAt && !isNaN(new Date(scheduledAt).getTime())) ? new Date(scheduledAt) : null;
     if (isLibrary !== undefined) data.isLibrary = isLibrary === true || isLibrary === 'true';
+    if (libraryVisibility !== undefined && Object.values(CHANNEL_GROUP_VISIBILITY).includes(libraryVisibility)) {
+      data.libraryVisibility = libraryVisibility;
+    }
     if (altText !== undefined) data.altText = altText;
     if (autoListId !== undefined) data.autoListId = autoListId;
     if (firstComment !== undefined) data.firstComment = firstComment;

@@ -41,8 +41,8 @@ class SocialService {
     return data;
   }
 
-  async getPublishedVideos(brandId, pageToken = null, limit = 10, socialAccountId = null) {
-    const url = `/social/youtube/published-videos?brandId=${encodeURIComponent(brandId)}${pageToken ? `&pageToken=${encodeURIComponent(pageToken)}` : ''}${limit ? `&limit=${encodeURIComponent(limit)}` : ''}${socialAccountId ? `&socialAccountId=${encodeURIComponent(socialAccountId)}` : ''}`;
+  async getPublishedVideos(brandId, pageToken = null, limit = 10, socialAccountId = null, startDate = null, endDate = null) {
+    const url = `/social/youtube/published-videos?brandId=${encodeURIComponent(brandId)}${pageToken ? `&pageToken=${encodeURIComponent(pageToken)}` : ''}${limit ? `&limit=${encodeURIComponent(limit)}` : ''}${socialAccountId ? `&socialAccountId=${encodeURIComponent(socialAccountId)}` : ''}${startDate ? `&startDate=${encodeURIComponent(startDate)}` : ''}${endDate ? `&endDate=${encodeURIComponent(endDate)}` : ''}`;
     const data = await apiV2.get(url);
     return data;
   }
@@ -130,8 +130,8 @@ class SocialService {
     return data;
   }
 
-  async getFacebookPublishedPosts(brandId, pageToken = null, limit = 10, socialAccountId = null) {
-    const url = `/social/facebook/published-posts?brandId=${brandId}${pageToken ? `&pageToken=${pageToken}` : ''}${limit ? `&limit=${limit}` : ''}${socialAccountId ? `&socialAccountId=${socialAccountId}` : ''}`;
+  async getFacebookPublishedPosts(brandId, pageToken = null, limit = 10, socialAccountId = null, startDate = null, endDate = null) {
+    const url = `/social/facebook/published-posts?brandId=${brandId}${pageToken ? `&pageToken=${pageToken}` : ''}${limit ? `&limit=${limit}` : ''}${socialAccountId ? `&socialAccountId=${socialAccountId}` : ''}${startDate ? `&startDate=${startDate}` : ''}${endDate ? `&endDate=${endDate}` : ''}`;
     const data = await apiV2.get(url);
     return data;
   }
@@ -168,8 +168,8 @@ class SocialService {
     return data;
   }
 
-  async getTikTokPublishedVideos(brandId, pageToken = null, limit = 10) {
-    const url = `/social/tiktok/published-videos?brandId=${brandId}${pageToken ? `&pageToken=${pageToken}` : ''}${limit ? `&limit=${limit}` : ''}`;
+  async getTikTokPublishedVideos(brandId, pageToken = null, limit = 10, socialAccountId = null, startDate = null, endDate = null) {
+    const url = `/social/tiktok/published-videos?brandId=${brandId}${pageToken ? `&pageToken=${pageToken}` : ''}${limit ? `&limit=${limit}` : ''}${socialAccountId ? `&socialAccountId=${socialAccountId}` : ''}${startDate ? `&startDate=${startDate}` : ''}${endDate ? `&endDate=${endDate}` : ''}`;
     const data = await apiV2.get(url);
     return data;
   }
@@ -197,8 +197,8 @@ class SocialService {
     return data;
   }
 
-  async getInstagramPublishedPosts(brandId, pageToken = null, limit = 10, socialAccountId = null) {
-    const url = `/social/instagram/published-posts?brandId=${brandId}${pageToken ? `&pageToken=${pageToken}` : ''}${limit ? `&limit=${limit}` : ''}${socialAccountId ? `&socialAccountId=${socialAccountId}` : ''}`;
+  async getInstagramPublishedPosts(brandId, pageToken = null, limit = 10, socialAccountId = null, startDate = null, endDate = null) {
+    const url = `/social/instagram/published-posts?brandId=${brandId}${pageToken ? `&pageToken=${pageToken}` : ''}${limit ? `&limit=${limit}` : ''}${socialAccountId ? `&socialAccountId=${socialAccountId}` : ''}${startDate ? `&startDate=${startDate}` : ''}${endDate ? `&endDate=${endDate}` : ''}`;
     const data = await apiV2.get(url);
     return data;
   }
@@ -224,8 +224,8 @@ class SocialService {
     return data;
   }
 
-  async getThreadsPublishedPosts(brandId, pageToken = null, limit = 10, socialAccountId = null) {
-    const url = `/social/threads/published-posts?brandId=${brandId}${pageToken ? `&pageToken=${pageToken}` : ''}${limit ? `&limit=${limit}` : ''}${socialAccountId ? `&socialAccountId=${socialAccountId}` : ''}`;
+  async getThreadsPublishedPosts(brandId, pageToken = null, limit = 10, socialAccountId = null, startDate = null, endDate = null) {
+    const url = `/social/threads/published-posts?brandId=${brandId}${pageToken ? `&pageToken=${pageToken}` : ''}${limit ? `&limit=${limit}` : ''}${socialAccountId ? `&socialAccountId=${socialAccountId}` : ''}${startDate ? `&startDate=${startDate}` : ''}${endDate ? `&endDate=${endDate}` : ''}`;
     const data = await apiV2.get(url);
     return data;
   }
@@ -281,6 +281,12 @@ class SocialService {
 
   async disconnectBlueskyAccount(brandId, socialAccountId = null) {
     const data = await apiV2.post('/social/bluesky/disconnect', { brandId, socialAccountId });
+    return data;
+  }
+
+  async getBlueskyPublishedPosts(brandId, pageToken = null, limit = 10, socialAccountId = null) {
+    const url = `/social/bluesky/published-posts?brandId=${brandId}${pageToken ? `&pageToken=${pageToken}` : ''}${limit ? `&limit=${limit}` : ''}${socialAccountId ? `&socialAccountId=${socialAccountId}` : ''}`;
+    const data = await apiV2.get(url);
     return data;
   }
 

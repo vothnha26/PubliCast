@@ -3,6 +3,8 @@
  * Following SOLID principles for better maintainability.
  */
 
+const appConfig = require('../config/app.config');
+
 const PLATFORMS = {
   YOUTUBE: 'YOUTUBE',
   FACEBOOK: 'FACEBOOK',
@@ -82,6 +84,32 @@ const POST_STATUS = {
   FAILED: 'FAILED',
   REJECTED: 'REJECTED',
   PAUSED: 'PAUSED'
+};
+
+// Mirrors the Prisma ChannelGroupVisibility enum — TEAM groups are visible
+// to every brand member, PRIVATE only to their creator (never shared, even
+// within an org — same as Buffer's channel groups).
+const CHANNEL_GROUP_VISIBILITY = {
+  TEAM: 'TEAM',
+  PRIVATE: 'PRIVATE'
+};
+
+// Mirrors the Prisma TemplateFormat/TemplateGoal enums — closed
+// classification sets for Featured Templates, kept as fixed enums (not
+// free text like TemplateCategory.name) so they stay filterable/consistent.
+const TEMPLATE_FORMAT = {
+  IMAGE: 'IMAGE',
+  VIDEO: 'VIDEO',
+  TEXT: 'TEXT',
+  CAROUSEL: 'CAROUSEL'
+};
+
+const TEMPLATE_GOAL = {
+  ENGAGEMENT: 'ENGAGEMENT',
+  BRAND_AWARENESS: 'BRAND_AWARENESS',
+  EDUCATION: 'EDUCATION',
+  COMMUNITY: 'COMMUNITY',
+  SALES: 'SALES'
 };
 
 /**
@@ -253,7 +281,8 @@ const ANALYTICS = {
     FACEBOOK_DETAILED: 'FACEBOOK_DETAILED',
     TIKTOK_DETAILED: 'TIKTOK_DETAILED',
     INSTAGRAM_DETAILED: 'INSTAGRAM_DETAILED',
-    TELEGRAM_DETAILED: 'TELEGRAM_DETAILED'
+    TELEGRAM_DETAILED: 'TELEGRAM_DETAILED',
+    BLUESKY_DETAILED: 'BLUESKY_DETAILED'
   },
   METRICS: {
     FACEBOOK: {
@@ -365,7 +394,7 @@ const DEFAULT_CONFIG = {
   CURRENCY: 'USD',
   UNTITLED_POST: 'Untitled Post',
   NO_CONTENT: 'No content',
-  FRONTEND_URL: process.env.FRONTEND_URL || 'http://localhost:5173'
+  FRONTEND_URL: appConfig.frontendUrl
 };
 
 const FACEBOOK_API = {
@@ -661,6 +690,16 @@ const QUOTA_TTL_STRATEGY = {
     HOURLY_LIMIT: 5000,
     POINTS: { CREATE: 3, UPDATE: 2, DELETE: 1 },
     DEFAULT_TTL_SEC: 2 * 3600
+  },
+  // TikTok's published-docs rate limit for /v2/video/list/ (and
+  // /v2/user/info/, /v2/video/query/) is 600 requests/minute on a sliding
+  // window, enforced app-wide (not per-brand) — exceeding it returns HTTP
+  // 429 rate_limit_exceeded. MINUTE_LIMIT is kept well under 600 so our own
+  // multi-page cursor walk (tiktok-video.service.js#_fetchRecentWindow)
+  // backs off before actually tripping TikTok's limit, even if several
+  // brands' tabs are open at once.
+  TIKTOK_VIDEO_LIST: {
+    MINUTE_LIMIT: 400
   }
 };
 
@@ -698,7 +737,34 @@ const LOCK_CONFIG = {
     // Covers one full published-posts/metrics sync pass across every brand —
     // generous ceiling, same reasoning as REPORT_SCHEDULER.
     TTL_SEC: 20 * 60
+  },
+  EMPTY_QUEUE_SCHEDULER: {
+    KEY: 'lock:empty-queue-scheduler:daily-scan',
+    TTL_SEC: 20 * 60
+  },
+  RECAP_SCHEDULER: {
+    KEY: 'lock:recap-scheduler:scan',
+    TTL_SEC: 20 * 60
+  },
+  STREAK_SCHEDULER: {
+    KEY: 'lock:streak-scheduler:reset',
+    TTL_SEC: 20 * 60
+  },
+  FEED_SCHEDULER: {
+    KEY: 'lock:feed-scheduler:refresh',
+    // Covers one full pass refreshing every FeedSource's entries — generous
+    // ceiling, same reasoning as REPORT_SCHEDULER/RECAP_SCHEDULER.
+    TTL_SEC: 20 * 60
   }
+};
+
+// Comment Score: weights a comment above a like/share since it's the
+// highest-effort engagement signal (typing vs. one tap). See
+// utils/comment-score.util.js for the formula that consumes these.
+const COMMENT_SCORE_WEIGHTS = {
+  COMMENT: 3,
+  LIKE: 1,
+  SHARE: 1.5
 };
 
 module.exports = {
@@ -709,6 +775,9 @@ module.exports = {
   INBOX_STATUS,
   INBOX_TYPES,
   POST_STATUS,
+  CHANNEL_GROUP_VISIBILITY,
+  TEMPLATE_FORMAT,
+  TEMPLATE_GOAL,
   WORKFLOW_STATUS,
   REVIEW_ACTION,
   WORKFLOW_POLICY,
@@ -761,6 +830,7 @@ module.exports = {
   LOCK_CONFIG,
   STOCK_PROVIDERS,
   STOCK_MEDIA_TYPES,
+  COMMENT_SCORE_WEIGHTS,
   splitMediaUrls
 };
 

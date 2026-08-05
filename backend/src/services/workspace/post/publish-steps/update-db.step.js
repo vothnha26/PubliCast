@@ -2,6 +2,7 @@ const BaseStep = require('../../../../core/pipeline/base.step');
 const postRepository = require('../../../../repositories/workspace/post.repository');
 const autoListRepository = require('../../../../repositories/workspace/auto-list.repository');
 const notificationService = require('../../../core/notification.service');
+const streakService = require('../../streak.service');
 const { POST_STATUS, NOTIFICATION_TYPES } = require('../../../../utils/constants');
 const logger = require('../../../../utils/logger');
 
@@ -62,10 +63,12 @@ class UpdatePostStatusStep extends BaseStep {
       const primaryResult = results[0].result;
       logger.debug(`[UpdatePostStatusStep] 🎉 Post ${post.id} published successfully on all platforms: ${results.map(r => r.platform).join(', ')}`);
 
+      const publishedAt = primaryResult.publishedAt || new Date();
+
       if (shouldLoop) {
         await this._handleLoopCycle(post, {
           status: POST_STATUS.PUBLISHED,
-          publishedAt: primaryResult.publishedAt || new Date(),
+          publishedAt,
           platformPostId: platformPostIdStr
         });
       } else {
@@ -73,11 +76,12 @@ class UpdatePostStatusStep extends BaseStep {
         await postRepository.update(post.id, {
           status: POST_STATUS.PUBLISHED,
           platformPostId: platformPostIdStr,
-          publishedAt: primaryResult.publishedAt || new Date(),
+          publishedAt,
           publishRetryCount: 0
         });
       }
 
+      await streakService.recalculateStreak(post.brandId, publishedAt);
       await this._notifyPublishSuccess(post, results);
     } else {
       // Truncate failureReason để không vượt VARCHAR(191) của DB
@@ -264,7 +268,8 @@ class UpdatePostStatusStep extends BaseStep {
         type: NOTIFICATION_TYPES.CONTENT,
         title: 'Post published successfully',
         message: `"${post.title}" was published${platforms ? ` to ${platforms}` : ''}.`,
-        actionUrl: '/planner'
+        actionUrl: '/planner',
+        preferenceKey: 'notifyPublishSuccess'
       });
     } catch (err) {
       console.error('[UpdatePostStatusStep] Failed to create publish success notification:', err.message);
@@ -279,7 +284,8 @@ class UpdatePostStatusStep extends BaseStep {
         type: NOTIFICATION_TYPES.CONTENT,
         title: 'Post publishing failed',
         message: `"${post.title}" could not be published. ${failureReason}`,
-        actionUrl: '/planner'
+        actionUrl: '/planner',
+        preferenceKey: 'notifyPostFailure'
       });
     } catch (err) {
       console.error('[UpdatePostStatusStep] Failed to create publish failure notification:', err.message);

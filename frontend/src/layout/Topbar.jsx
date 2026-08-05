@@ -1,13 +1,9 @@
 import { useState, useEffect } from "react";
 import { useNavigate, Link, useLocation } from "react-router-dom";
 import {
-  BarChart2, MessageSquare, Calendar, Link2, Megaphone, Zap, Image,
-  Menu, ChevronDown, Sparkles, Radio, X, Diamond, Globe,
-  Settings, LogOut, HelpCircle, Gift, ChevronRight, Bell, Search,
-  MessageCircle, Check, Star
+  BarChart2, MessageSquare, Calendar, Link2, Image, Zap, Sparkles, X,
+  ChevronDown, Settings, Bell, Search, Check, Star
 } from "lucide-react";
-import { useConnections } from "../context/ConnectionsContext";
-import { useAuth } from "../context/AuthContext";
 import { useBrand } from "../context/BrandContext";
 import { useDebounce } from "../hooks/useDebounce";
 import notificationService from "../services/notification.service";
@@ -15,102 +11,7 @@ import { apiV2 } from "../services/api";
 import { openNotificationStream } from "../utils/notification-stream";
 import { useTranslation } from "react-i18next";
 import { useLanguage } from "../context/LanguageContext";
-
-function SettingsDrawer({ isOpen, onClose }) {
-  const { t } = useTranslation("topbar");
-  const { language } = useLanguage();
-  const navigate = useNavigate();
-  const location = useLocation();
-  const { openConnections } = useConnections();
-  const { logout } = useAuth();
-  if (!isOpen) return null;
-
-  const sections = [
-    { items: [
-      { label: t("menu.createWorkplace"), icon: <Diamond size={16} className="text-yellow-500" />, path: "/manage/workplace/new" },
-      { label: t("menu.connections"), icon: <ShareIcon size={16} className="text-blue-500" />, onClick: openConnections },
-      { label: t("menu.brandSettings"), icon: <Settings size={16} className="text-gray-400" />, path: "/manage/connections?tab=brand-settings" },
-    ]},
-    { items: [
-      { label: t("menu.userManagement"), icon: <Diamond size={16} className="text-yellow-500" />, path: "/manage/team" },
-      { label: t("menu.billing"), icon: <BillingIcon size={16} className="text-blue-600" />, path: "/pricing" },
-      { label: t("menu.myTasks"), icon: <Diamond size={16} className="text-yellow-500" />, path: "/manage/tasks" },
-      { 
-        label: t("menu.language"), 
-        icon: <Globe size={16} className="text-blue-500" />, 
-        extra: <span className="bg-gray-200 dark:bg-gray-800 dark:text-gray-200 px-1.5 py-0.5 rounded text-[10px] font-bold">{language.toUpperCase()}</span>, 
-        hasChevron: true, 
-        onClick: () => navigate("/settings?tab=account") 
-      },
-      { label: t("menu.accountSettings"), icon: <Settings size={16} className="text-gray-400" />, path: "/settings" },
-    ]},
-    { items: [
-      { label: t("menu.helpCenter"), icon: <HelpCircle size={16} className="text-blue-500" /> },
-      { label: t("menu.supportChat"), icon: <MessageCircle size={16} className="text-blue-500" />, path: "/settings?tab=support" },
-      { label: t("menu.whatsNew"), icon: <Megaphone size={16} className="text-blue-500" /> },
-      { label: t("menu.affiliation"), icon: <Gift size={16} className="text-blue-500" /> },
-    ]},
-  ];
-
-  return (
-    <div className="fixed inset-0 z-[100] flex justify-end">
-      <div className="absolute inset-0 bg-black/20" onClick={onClose} />
-      <div className="relative w-[280px] h-full bg-[var(--card)] shadow-2xl flex flex-col border-l border-[var(--sidebar-border)] animate-in slide-in-from-right duration-300">
-        <div className="flex items-center justify-end p-4 border-b border-[var(--sidebar-border)] bg-[var(--sidebar)] text-[var(--foreground)]">
-           <button onClick={onClose} className="p-1 hover:bg-[var(--muted)] rounded-md transition-colors text-[var(--foreground)]"><X size={24} /></button>
-        </div>
-        <div className="flex-1 overflow-y-auto py-2">
-           {sections.map((section, si) => (
-              <div key={si}>
-                 <div className="py-1">
-                    {section.items.map((item, ii) => (
-                      <button
-                        key={ii}
-                        onClick={() => {
-                          if(item.onClick) item.onClick();
-                          else if(item.path) navigate(item.path, { state: { from: location.pathname } });
-                          onClose();
-                        }}
-                        className="w-full flex items-center gap-3 px-6 py-2.5 hover:bg-[var(--muted)] transition-colors group"
-                      >
-                         <div className="shrink-0">{item.icon}</div>
-                         <span style={{ fontSize: 13, color: "var(--foreground)" }} className="flex-1 text-left">{item.label}</span>
-                         {item.extra}
-                         {item.hasChevron && <ChevronRight size={14} className="text-blue-500" />}
-                      </button>
-                    ))}
-                 </div>
-                 {si < sections.length - 1 && <div className="h-px bg-[var(--sidebar-border)] mx-4 my-1" />}
-              </div>
-           ))}
-           <div className="h-px bg-[var(--sidebar-border)] mx-4 my-1" />
-           <button 
-             onClick={async () => { 
-               await logout(); 
-               onClose(); 
-               navigate("/login");
-             }} 
-             className="w-full flex items-center gap-3 px-6 py-4 text-red-500 hover:bg-red-500/10 transition-colors"
-           >
-              <LogOut size={16} />
-              <span style={{ fontSize: 13, fontWeight: 500 }}>{t("menu.logout")}</span>
-           </button>
-        </div>
-        <div className="p-6 border-t border-[var(--sidebar-border)]">
-           <button className="text-xs font-bold text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors">{t("menu.legalTerms")}</button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function ShareIcon({ size, className }) {
-  return <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" x2="15.42" y1="13.51" y2="17.49"/><line x1="15.41" x2="8.59" y1="6.51" y2="10.49"/></svg>;
-}
-
-function BillingIcon({ size, className }) {
-  return <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 9h18"/><path d="M9 21V9"/></svg>;
-}
+import { AccountMenu } from "./AccountMenu";
 
 export function Topbar() {
   const { t } = useTranslation("topbar");
@@ -118,7 +19,6 @@ export function Topbar() {
   const navigate = useNavigate();
   const location = useLocation();
   const [brandOpen, setBrandOpen] = useState(false);
-  const [drawerOpen, setDrawerOpen] = useState(false);
   const { brands, activeBrand, selectBrand, deselectBrand, defaultBrandId, setDefaultBrand } = useBrand();
 
   // Search states
@@ -466,20 +366,11 @@ export function Topbar() {
             </div>
           )}
 
-          {/* Settings Drawer Trigger (ONLY for Workspace & Manage) */}
-          {!isSuperadmin && (
-            <button
-              onClick={() => setDrawerOpen(true)}
-              className="p-2 rounded-lg hover:bg-[var(--muted)] transition-colors text-[var(--foreground)]"
-              title="Menu"
-            >
-              <Menu size={20} />
-            </button>
-          )}
+          {/* Account Menu (Workspace & Manage only) */}
+          {!isSuperadmin && <AccountMenu />}
+
         </div>
       </header>
-
-      {!isSuperadmin && <SettingsDrawer isOpen={drawerOpen} onClose={() => setDrawerOpen(false)} />}
     </>
   );
 }

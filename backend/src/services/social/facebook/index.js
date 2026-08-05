@@ -24,9 +24,9 @@ class FacebookService extends BaseSocialService {
   }
 
   // --- Posts & Feed ---
-  async getPublishedVideos(brandId, pageToken = null, limit = 10, socialAccountId = null) {
+  async getPublishedVideos(brandId, pageToken = null, limit = 10, socialAccountId = null, startDate = null, endDate = null) {
     // For Facebook, getPublishedVideos behaves as getPublishedPosts
-    return facebookPost.getPublishedPosts(brandId, pageToken, limit, socialAccountId);
+    return facebookPost.getPublishedPosts(brandId, pageToken, limit, socialAccountId, startDate, endDate);
   }
 
   async publishPost(brandId, postData) {

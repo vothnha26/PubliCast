@@ -118,6 +118,38 @@ class QuotaTrackerService {
   }
 
   /**
+   * Helper key format for per-minute rate limit tracking (used for APIs
+   * whose published limit is a sliding-window requests/minute, e.g.
+   * TikTok's /v2/video/list/ — see QUOTA_TTL_STRATEGY.TIKTOK_VIDEO_LIST).
+   */
+  getMinuteQuotaKey(serviceName, now = new Date()) {
+    const bucket = Math.floor(now.getTime() / 60000); // one key per wall-clock minute
+    return `quota:minute:${serviceName}:${bucket}`;
+  }
+
+  /**
+   * Increment and get per-minute quota (resets every 1 minute, TTL = 60s).
+   * Approximates TikTok's true sliding window with fixed 1-minute buckets —
+   * conservative enough (MINUTE_LIMIT is set well under TikTok's actual
+   * cap) that the boundary imprecision doesn't matter in practice.
+   */
+  async incrementAndGetMinute(serviceName, increment = 1) {
+    try {
+      const key = this.getMinuteQuotaKey(serviceName);
+      const newValue = await this.redisClient.incrBy(key, increment);
+
+      const ttl = await this.redisClient.ttl(key);
+      if (ttl <= 0) {
+        await this.redisClient.expire(key, 60);
+      }
+      return newValue;
+    } catch (err) {
+      logger.error('[QUOTA] Error incrementing minute quota:', { serviceName, error: err.message });
+      throw err;
+    }
+  }
+
+  /**
    * Get current quota usage for the day
    *
    * @param {string} serviceName - Service identifier

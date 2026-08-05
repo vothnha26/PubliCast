@@ -45,8 +45,8 @@ class YouTubeService extends BaseSocialService {
   }
 
   // --- Videos & Tracking ---
-  async getPublishedVideos(brandId, pageToken = null, limit = 10, socialAccountId = null) {
-    return youtubeVideo.getPublishedVideos(brandId, pageToken, limit, socialAccountId);
+  async getPublishedVideos(brandId, pageToken = null, limit = 10, socialAccountId = null, forceSync = false, startDate = null, endDate = null) {
+    return youtubeVideo.getPublishedVideos(brandId, pageToken, limit, socialAccountId, forceSync, startDate, endDate);
   }
 
   async trackVideo(brandId, videoUrl) {

@@ -14,14 +14,17 @@
     "userManagement": "User management",
     "billing": "Plans and billing",
     "myTasks": "My tasks",
-    "language": "Language",
-    "accountSettings": "Account settings",
-    "helpCenter": "Help center",
     "supportChat": "Support Chat",
-    "whatsNew": "What's new",
-    "affiliation": "Affiliation program",
-    "logout": "Logout",
-    "legalTerms": "Legal terms"
+    "logout": "Logout"
+  },
+  "accountMenu": {
+    "planLabel": "{{name}} plan",
+    "upgradePlan": "Upgrade Plan",
+    "settings": "Settings",
+    "channels": "Channels",
+    "billing": "Plans and Billing",
+    "helpSupport": "Help & Support",
+    "logout": "Log out"
   },
   "brand": {
     "select": "Select Brand",
@@ -38,6 +41,7 @@
     "tools": "Tools",
     "contentPlanner": "Content Planner",
     "approvalRequests": "Approval Requests",
+    "explore": "Explore",
     "planLabel": "Plan: {{name}}",
     "nextBilling": "Next billing: {{date}}",
     "unlimited": "Unlimited",
@@ -47,7 +51,8 @@
     "approvalTasks": "Approval Requests",
     "hashtagTracker": "Hashtag Tracker",
     "reporting": "Reporting",
-    "competitors": "Competitors"
+    "competitors": "Competitors",
+    "helpCenter": "Help Center"
   },
   "channels": {
     "title": "Channels",
@@ -69,6 +74,36 @@
     "disconnectUnsupported": "This platform doesn't support disconnecting here yet",
     "disconnectSuccess": "Disconnected {{name}}",
     "disconnectFailed": "Failed to disconnect"
+  },
+  "channelGroups": {
+    "createGroup": "Create channel group",
+    "editGroup": "Edit group",
+    "deleteGroup": "Delete group",
+    "createPost": "Create post",
+    "showOnly": "Show only this group",
+    "showAll": "Show all channels",
+    "confirmDelete": "Delete group \"{{name}}\"? Channels in the group won't be affected.",
+    "created": "Channel group created",
+    "updated": "Channel group saved",
+    "deleted": "Channel group deleted",
+    "deleteFailed": "Failed to delete channel group",
+    "modal": {
+      "titleCreate": "Create channel group",
+      "titleEdit": "Edit channel group",
+      "nameLabel": "Group name",
+      "namePlaceholder": "e.g. Client A, Video channels...",
+      "colorLabel": "Color",
+      "visibilityLabel": "Visibility",
+      "visibilityTeamLabel": "Team",
+      "visibilityTeamDesc": "Visible to every brand member",
+      "visibilityPrivateLabel": "Private",
+      "visibilityPrivateDesc": "Only you can see this group",
+      "channelsLabel": "Channels in group ({{count}})",
+      "noChannels": "No channels connected yet",
+      "cancel": "Cancel",
+      "save": "Save",
+      "create": "Create group"
+    }
   },
   "searchPlaceholder": "Search tools, platforms...",
   "upgrade": "Upgrade",
