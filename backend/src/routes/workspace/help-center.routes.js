@@ -5,8 +5,10 @@ const helpAskRateLimiter = require('../../middlewares/help-ask-rate-limit.middle
 
 const router = express.Router();
 
-// Help Center is global (not brand-scoped) — only requires a logged-in user.
-router.use(verifyAuth);
+// Reading published articles is public — anyone can browse the docs
+// without an account, same as any other help center. Only /ask requires
+// login: each question costs an embedding + LLM call, and the rate
+// limiter below is keyed per-user (falls back to IP for anonymous callers).
 
 /**
  * GET /api/v2/help/articles?category=
@@ -22,6 +24,6 @@ router.get('/articles/:slug', helpCenterController.getArticleBySlug);
  * POST /api/v2/help/ask
  * Body: { question }
  */
-router.post('/ask', helpAskRateLimiter, helpCenterController.ask);
+router.post('/ask', verifyAuth, helpAskRateLimiter, helpCenterController.ask);
 
 module.exports = router;

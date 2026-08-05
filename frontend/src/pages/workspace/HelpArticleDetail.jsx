@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
 import helpCenterService from "../../services/helpCenter.service";
+import { HelpCenterHeader } from "./help/HelpCenterHeader";
 
 export function HelpArticleDetailPage() {
   const { slug } = useParams();
@@ -25,62 +26,39 @@ export function HelpArticleDetailPage() {
   }, [slug]);
 
   return (
-    <div style={{ maxWidth: 700, margin: "0 auto", padding: "40px 24px" }}>
-      <Link
-        to="/help"
-        style={{
-          display: "inline-flex",
-          alignItems: "center",
-          gap: 6,
-          fontSize: 13,
-          color: "var(--muted-foreground)",
-          textDecoration: "none",
-          marginBottom: 24
-        }}
-      >
-        <ArrowLeft size={14} />
-        Quay lại Trung tâm hỗ trợ
-      </Link>
+    <div className="min-h-screen bg-background">
+      <HelpCenterHeader />
 
-      {isLoading && (
-        <div style={{ textAlign: "center", padding: 40, color: "var(--muted-foreground)", fontSize: 13 }}>
-          Đang tải bài viết...
-        </div>
-      )}
+      <div className="max-w-2xl mx-auto px-6 py-10">
+        <Link
+          to="/help"
+          className="inline-flex items-center gap-1.5 text-sm text-muted-foreground no-underline hover:text-foreground transition-colors mb-6"
+        >
+          <ArrowLeft size={14} />
+          Quay lại Trung tâm hỗ trợ
+        </Link>
 
-      {notFound && !isLoading && (
-        <div style={{ textAlign: "center", padding: 40, color: "var(--muted-foreground)", fontSize: 13 }}>
-          Không tìm thấy bài viết này.
-        </div>
-      )}
+        {isLoading && (
+          <div className="text-center py-16 text-sm text-muted-foreground">Đang tải bài viết...</div>
+        )}
 
-      {article && !isLoading && (
-        <>
-          <span
-            style={{
-              display: "inline-block",
-              fontSize: 11,
-              fontWeight: 600,
-              color: "var(--muted-foreground)",
-              textTransform: "uppercase",
-              background: "var(--muted)",
-              padding: "4px 10px",
-              borderRadius: 999,
-              marginBottom: 12
-            }}
-          >
-            {article.category}
-          </span>
-          <h1 style={{ fontSize: 26, fontWeight: 600, color: "var(--foreground)", marginBottom: 24, lineHeight: 1.3 }}>
-            {article.title}
-          </h1>
-          <div
-            style={{ fontSize: 14, color: "var(--foreground)", lineHeight: 1.7 }}
-            className="help-article-content"
-            dangerouslySetInnerHTML={{ __html: article.contentHtml }}
-          />
-        </>
-      )}
+        {notFound && !isLoading && (
+          <div className="text-center py-16 text-sm text-muted-foreground">Không tìm thấy bài viết này.</div>
+        )}
+
+        {article && !isLoading && (
+          <>
+            <span className="inline-block text-[11px] font-bold text-muted-foreground uppercase tracking-wide bg-muted px-2.5 py-1 rounded-full mb-3">
+              {article.category}
+            </span>
+            <h1 className="text-2xl font-bold text-foreground leading-snug mb-6">{article.title}</h1>
+            <div
+              className="help-article-content text-sm text-foreground leading-relaxed"
+              dangerouslySetInnerHTML={{ __html: article.contentHtml }}
+            />
+          </>
+        )}
+      </div>
     </div>
   );
 }

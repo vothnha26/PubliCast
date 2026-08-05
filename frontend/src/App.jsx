@@ -113,7 +113,7 @@ export default function App() {
     const handleSessionExpired = () => {
       logout();
       const publicPaths = ["/", "/login", "/signup", "/register", "/register/verify-otp", "/reset-password", "/forgot-password", "/invite"];
-      if (!publicPaths.includes(window.location.pathname)) {
+      if (!publicPaths.includes(window.location.pathname) && !window.location.pathname.startsWith("/help")) {
         navigate('/login', { replace: true });
       }
     };
@@ -127,7 +127,7 @@ export default function App() {
     );
   }
 
-  const isNoLayout = NO_LAYOUT_PATHS.includes(currentPath) || currentPath.startsWith("/s/") || currentPath.startsWith("/overlay/");
+  const isNoLayout = NO_LAYOUT_PATHS.includes(currentPath) || currentPath.startsWith("/s/") || currentPath.startsWith("/overlay/") || currentPath.startsWith("/help");
   const isSuperadmin = currentPath.startsWith("/admin");
   const isStaff = currentPath.startsWith("/staff");
 
@@ -187,8 +187,11 @@ export default function App() {
                 <Route path="/ai" element={<ProtectedRoute allowedRoles={CLIENT_ROLES}><FeatureGate productId={PRODUCT_IDS.AI_CONTENT_ENGINE}><AIAssistant /></FeatureGate></ProtectedRoute>} />
                 <Route path="/hashtags" element={<ProtectedRoute allowedRoles={CLIENT_ROLES}><HashtagManager /></ProtectedRoute>} />
                 <Route path="/explore" element={<ProtectedRoute allowedRoles={CLIENT_ROLES}><Explore /></ProtectedRoute>} />
-                <Route path="/help" element={<ProtectedRoute allowedRoles={CLIENT_ROLES}><HelpCenterPage /></ProtectedRoute>} />
-                <Route path="/help/:slug" element={<ProtectedRoute allowedRoles={CLIENT_ROLES}><HelpArticleDetailPage /></ProtectedRoute>} />
+                {/* Public docs — anyone can read published Help Center articles
+                    without logging in, same as any other help center. Only
+                    the "Ask AI" action inside these pages requires auth. */}
+                <Route path="/help" element={<HelpCenterPage />} />
+                <Route path="/help/:slug" element={<HelpArticleDetailPage />} />
                 <Route path="/errors" element={<ProtectedRoute allowedRoles={CLIENT_ROLES}><ErrorPages /></ProtectedRoute>} />
                 <Route path="/notifications" element={<ProtectedRoute allowedRoles={CLIENT_ROLES}><NotificationsPage /></ProtectedRoute>} />
                 
