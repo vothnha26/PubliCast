@@ -2,8 +2,47 @@ const axios = require('axios');
 const BaseAiProvider = require('./base.provider');
 const { compileResponseSchemaInstruction, GEMINI_CONFIG } = require('../../../../config/ai.config');
 
+// Gemini occasionally appends trailing prose/whitespace after a
+// well-formed JSON object despite responseMimeType: 'application/json'.
+// Slicing to the first balanced {...} recovers those cases instead of
+// failing JSON.parse on the very first stray character after it.
+function extractJsonObject(text) {
+  const start = text.indexOf('{');
+  if (start === -1) throw new Error('No JSON object found in response');
+
+  let depth = 0;
+  for (let i = start; i < text.length; i += 1) {
+    if (text[i] === '{') depth += 1;
+    else if (text[i] === '}') {
+      depth -= 1;
+      if (depth === 0) return text.slice(start, i + 1);
+    }
+  }
+  throw new Error('Unbalanced JSON object in response');
+}
+
+const MAX_ATTEMPTS = 2;
+
 class GeminiProvider extends BaseAiProvider {
   async generate(prompt, options = {}) {
+    let lastError;
+    for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt += 1) {
+      try {
+        return await this._callOnce(prompt, options);
+      } catch (error) {
+        lastError = error;
+        // Only retry on the hallucination case (malformed JSON) — a fresh
+        // sample from the model is likely to come back well-formed. Auth,
+        // network, and safety-block errors are deterministic; retrying
+        // them just burns another 45s timeout for the same outcome.
+        if (!error.isJsonHallucination || attempt === MAX_ATTEMPTS) break;
+        console.warn(`[GeminiProvider] Invalid JSON on attempt ${attempt}/${MAX_ATTEMPTS}, retrying...`);
+      }
+    }
+    throw lastError;
+  }
+
+  async _callOnce(prompt, options = {}) {
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) {
       throw new Error('GEMINI_API_KEY is not configured in environment variables');
@@ -68,11 +107,20 @@ class GeminiProvider extends BaseAiProvider {
         // Remove markdown formatting if the model accidentally included it despite responseMimeType
         text = text.replace(/^```json\n?/i, '').replace(/```$/i, '').trim();
         return JSON.parse(text);
-      } catch (parseError) {
-        console.error('[GeminiProvider] Failed to parse JSON. Raw text from Gemini:', text);
-        throw new Error(`Gemini generated invalid JSON: ${parseError.message}. This is an AI hallucination, please try generating again.`);
+      } catch {
+        try {
+          // Fallback: model appended trailing prose after an otherwise
+          // well-formed object — recover by slicing to the balanced {...}.
+          return JSON.parse(extractJsonObject(text));
+        } catch (parseError) {
+          console.error('[GeminiProvider] Failed to parse JSON. Raw text from Gemini:', text);
+          const err = new Error(`Gemini generated invalid JSON: ${parseError.message}. This is an AI hallucination, please try generating again.`);
+          err.isJsonHallucination = true;
+          throw err;
+        }
       }
     } catch (error) {
+      if (error.isJsonHallucination) throw error;
       // Do NOT fall back to MockAiProvider here. Returning fabricated mock
       // content on a real API/parse failure silently hands the user made-up
       // copy as if it were genuine AI output — and the caller still charges a
