@@ -232,17 +232,19 @@ class YouTubeVideoService {
   }
 
   async getPlaylists(brandId, forceRefresh = false, socialAccountId = null) {
+    // Resolve the actual account first (even when socialAccountId wasn't
+    // passed in) so the cache lookup/write below is keyed to the specific
+    // channel being queried, not just the brand — otherwise a brand with
+    // multiple YouTube channels could get one channel's playlists served
+    // from another's cache.
+    const { auth, account } = await this._getAuthContext(brandId, false, socialAccountId);
+    const resolvedAccountId = account.id;
+
     if (!forceRefresh) {
-      const cached = await prisma.youTubePlaylistCache.findMany({ where: { brandId } });
+      const cached = await prisma.youTubePlaylistCache.findMany({ where: { brandId, socialAccountId: resolvedAccountId } });
       if (cached.length > 0) return this._formatPlaylistRows(cached);
     }
 
-    // NOTE: cache above is keyed by brandId only — a brand with multiple
-    // YouTube channels can see one channel's playlists served from another's
-    // cache. socialAccountId here only fixes which channel's *auth* is used
-    // for the live API call; the cache cross-contamination is a separate,
-    // known gap (needs a schema change to fix properly).
-    const { auth } = await this._getAuthContext(brandId, false, socialAccountId);
     const playlists = [];
     let pageToken = null;
 
@@ -259,16 +261,17 @@ class YouTubeVideoService {
       pageToken = res.data.nextPageToken || null;
     } while (pageToken);
 
-    await this._upsertPlaylistCache(brandId, playlists);
+    await this._upsertPlaylistCache(brandId, resolvedAccountId, playlists);
     return playlists;
   }
 
-  async _upsertPlaylistCache(brandId, playlists) {
+  async _upsertPlaylistCache(brandId, socialAccountId, playlists) {
     await prisma.$transaction([
-      prisma.youTubePlaylistCache.deleteMany({ where: { brandId } }),
+      prisma.youTubePlaylistCache.deleteMany({ where: { brandId, socialAccountId } }),
       prisma.youTubePlaylistCache.createMany({
         data: playlists.map(p => ({
           brandId,
+          socialAccountId,
           playlistId: p.id,
           title: p.title,
           description: p.description,

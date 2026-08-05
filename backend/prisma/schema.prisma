@@ -197,16 +197,25 @@ model YouTubeVideoCategory {
 model YouTubePlaylistCache {
   id          String   @id @default(uuid())
   brandId     String
+  // Which YouTube channel these playlists belong to — nullable because rows
+  // written before this column existed have no way to know; those are
+  // treated as belonging to the brand's first/default YouTube account (see
+  // youtube-video.service.js's cache lookup fallback). A brand with multiple
+  // YouTube channels needs this to avoid serving one channel's playlists
+  // from another's cache.
+  socialAccountId String?
   playlistId  String // ID gốc từ YouTube
   title       String
   description String?  @db.Text
   itemCount   Int      @default(0)
   syncedAt    DateTime @default(now())
 
-  brand Brand @relation(fields: [brandId], references: [id], onDelete: Cascade)
+  brand         Brand          @relation(fields: [brandId], references: [id], onDelete: Cascade)
+  socialAccount SocialAccount? @relation(fields: [socialAccountId], references: [id], onDelete: Cascade)
 
-  @@unique([brandId, playlistId])
+  @@unique([brandId, socialAccountId, playlistId])
   @@index([brandId])
+  @@index([socialAccountId])
   @@map("youtube_playlist_cache")
 }
 
@@ -562,6 +571,7 @@ model SocialAccount {
   autoReplySetting AutoReplySetting?
   postNetworkOverrides PostNetworkOverride[]
   postTargets      PostTarget[]
+  youtubePlaylistCache YouTubePlaylistCache[]
 
   // Facebook dedicated metrics
   facebookOverviewMetrics FacebookOverviewMetric[] @relation("FacebookOverviewMetricAccount")

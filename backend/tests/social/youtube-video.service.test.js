@@ -49,7 +49,10 @@ describe('YouTubeVideoService Playlists Pagination Unit Tests', () => {
     const result = await youtubeVideoService.getPlaylists(mockBrandId, false);
 
     expect(result).toEqual([{ id: 'p1', title: 'Cached Playlist', description: 'Desc', itemCount: 5 }]);
-    expect(prisma.youTubePlaylistCache.findMany).toHaveBeenCalledWith({ where: { brandId: mockBrandId } });
+    // Cache is keyed by the resolved account, not just brandId, so a brand
+    // with multiple YouTube channels doesn't serve one channel's cached
+    // playlists from another's cache entry.
+    expect(prisma.youTubePlaylistCache.findMany).toHaveBeenCalledWith({ where: { brandId: mockBrandId, socialAccountId: mockAccount.id } });
     expect(youtubeGateway.getPlaylists).not.toHaveBeenCalled();
   });
 
@@ -92,11 +95,11 @@ describe('YouTubeVideoService Playlists Pagination Unit Tests', () => {
     expect(youtubeGateway.getPlaylists).toHaveBeenNthCalledWith(1, expect.any(Object), 50, null);
     expect(youtubeGateway.getPlaylists).toHaveBeenNthCalledWith(2, expect.any(Object), 50, 'page-token-2');
 
-    expect(prisma.youTubePlaylistCache.deleteMany).toHaveBeenCalledWith({ where: { brandId: mockBrandId } });
+    expect(prisma.youTubePlaylistCache.deleteMany).toHaveBeenCalledWith({ where: { brandId: mockBrandId, socialAccountId: mockAccount.id } });
     expect(prisma.youTubePlaylistCache.createMany).toHaveBeenCalledWith({
       data: [
-        { brandId: mockBrandId, playlistId: 'p1', title: 'Playlist 1', description: 'Desc 1', itemCount: 10 },
-        { brandId: mockBrandId, playlistId: 'p2', title: 'Playlist 2', description: 'Desc 2', itemCount: 20 }
+        { brandId: mockBrandId, socialAccountId: mockAccount.id, playlistId: 'p1', title: 'Playlist 1', description: 'Desc 1', itemCount: 10 },
+        { brandId: mockBrandId, socialAccountId: mockAccount.id, playlistId: 'p2', title: 'Playlist 2', description: 'Desc 2', itemCount: 20 }
       ]
     });
   });
