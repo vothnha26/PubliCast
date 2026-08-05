@@ -1,7 +1,9 @@
 import { useNavigate, useLocation } from "react-router-dom";
-import { TrendingUp, FileText, CheckCircle2, Clock, AlertCircle, AlertTriangle, Plus, ChevronRight, Share2 } from "lucide-react";
+import { TrendingUp, FileText, CheckCircle2, Clock, AlertCircle, AlertTriangle, Plus, ChevronRight, Share2, RefreshCw } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
+import { formatDistanceToNow } from "date-fns";
+import { enUS, vi } from "date-fns/locale";
 import { 
   XAxis, YAxis, Tooltip, ResponsiveContainer, 
   LineChart, Line, CartesianGrid 
@@ -172,6 +174,16 @@ export function DashboardPage() {
 
   const stats = getAggregatedStats();
 
+  // Most recent sync across every connected account — SocialAccount.lastSyncAt
+  // is set whenever the background/force sync in social.service.js's
+  // getAggregatedMetrics completes, so this reflects real sync state rather
+  // than "page load time".
+  const lastSyncedAt = metrics.reduce((latest, m) => {
+    if (!m.lastSyncAt) return latest;
+    const syncTime = new Date(m.lastSyncAt);
+    return !latest || syncTime > latest ? syncTime : latest;
+  }, null);
+
   const getViewersByPlatform = () => {
     const list = [
       { platform: "YouTube", key: "YOUTUBE" },
@@ -325,6 +337,16 @@ export function DashboardPage() {
     <div
       className="flex-1 overflow-y-auto font-sans bg-background text-foreground p-6 flex flex-col gap-5"
     >
+      {/* Last synced indicator — reflects SocialAccount.lastSyncAt, not page load time */}
+      <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+        <RefreshCw size={11} />
+        {lastSyncedAt
+          ? t("charts.lastSynced", {
+              time: formatDistanceToNow(lastSyncedAt, { addSuffix: true, locale: i18n.language === "vi" ? vi : enUS })
+            })
+          : t("charts.neverSynced")}
+      </div>
+
       {/* Stat Cards Row */}
       <div className="grid grid-cols-5 gap-4">
         <StatCard

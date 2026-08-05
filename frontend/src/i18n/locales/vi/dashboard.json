@@ -24,7 +24,9 @@
   },
   "charts": {
     "audienceTrend": "Xu Hướng Lượng Người Xem",
-    "viewDetails": "Xem Chi Tiết Báo Cáo →"
+    "viewDetails": "Xem Chi Tiết Báo Cáo →",
+    "lastSynced": "Cập nhật {{time}}",
+    "neverSynced": "Chưa đồng bộ"
   },
   "recentQueue": {
     "title": "Hàng chờ bài đăng gần đây",
