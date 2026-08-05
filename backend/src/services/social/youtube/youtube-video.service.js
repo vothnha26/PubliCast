@@ -231,13 +231,18 @@ class YouTubeVideoService {
     }));
   }
 
-  async getPlaylists(brandId, forceRefresh = false) {
+  async getPlaylists(brandId, forceRefresh = false, socialAccountId = null) {
     if (!forceRefresh) {
       const cached = await prisma.youTubePlaylistCache.findMany({ where: { brandId } });
       if (cached.length > 0) return this._formatPlaylistRows(cached);
     }
 
-    const { auth } = await this._getAuthContext(brandId);
+    // NOTE: cache above is keyed by brandId only — a brand with multiple
+    // YouTube channels can see one channel's playlists served from another's
+    // cache. socialAccountId here only fixes which channel's *auth* is used
+    // for the live API call; the cache cross-contamination is a separate,
+    // known gap (needs a schema change to fix properly).
+    const { auth } = await this._getAuthContext(brandId, false, socialAccountId);
     const playlists = [];
     let pageToken = null;
 
@@ -282,8 +287,8 @@ class YouTubeVideoService {
     }));
   }
 
-  async getVideoCategories(brandId, forceRefresh = false) {
-    const { auth, account } = await this._getAuthContext(brandId);
+  async getVideoCategories(brandId, forceRefresh = false, socialAccountId = null) {
+    const { auth, account } = await this._getAuthContext(brandId, false, socialAccountId);
     const regionCode = account?.youtubeChannel?.country || 'US';
 
     if (!forceRefresh) {

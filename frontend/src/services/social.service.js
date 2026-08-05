@@ -47,14 +47,14 @@ class SocialService {
     return data;
   }
 
-  async getYouTubePlaylists(brandId, forceRefresh = false) {
-    const url = `/social/youtube/playlists?brandId=${encodeURIComponent(brandId)}${forceRefresh ? '&sync=true' : ''}`;
+  async getYouTubePlaylists(brandId, forceRefresh = false, socialAccountId = null) {
+    const url = `/social/youtube/playlists?brandId=${encodeURIComponent(brandId)}${forceRefresh ? '&sync=true' : ''}${socialAccountId ? `&socialAccountId=${encodeURIComponent(socialAccountId)}` : ''}`;
     const data = await apiV2.get(url);
     return data;
   }
 
-  async getYouTubeVideoCategories(brandId, forceRefresh = false) {
-    const url = `/social/youtube/video-categories?brandId=${encodeURIComponent(brandId)}${forceRefresh ? '&sync=true' : ''}`;
+  async getYouTubeVideoCategories(brandId, forceRefresh = false, socialAccountId = null) {
+    const url = `/social/youtube/video-categories?brandId=${encodeURIComponent(brandId)}${forceRefresh ? '&sync=true' : ''}${socialAccountId ? `&socialAccountId=${encodeURIComponent(socialAccountId)}` : ''}`;
     const data = await apiV2.get(url);
     return data;
   }

@@ -65,11 +65,11 @@ class YouTubeControllerV2 {
   });
 
   getYouTubePlaylists = asyncHandler(async (req, res) => {
-    const { brandId, sync } = req.query;
+    const { brandId, sync, socialAccountId } = req.query;
     if (!brandId) return res.status(400).json({ message: 'brandId is required' });
     const forceRefresh = sync === 'true' || sync === true;
     try {
-      const playlists = await youtubeService.getPlaylists(brandId, forceRefresh);
+      const playlists = await youtubeService.getPlaylists(brandId, forceRefresh, socialAccountId || null);
       sendSuccess(res, playlists);
     } catch (error) {
       res.status(500).json({ message: error.message });
@@ -77,11 +77,11 @@ class YouTubeControllerV2 {
   });
 
   getYouTubeVideoCategories = asyncHandler(async (req, res) => {
-    const { brandId, sync } = req.query;
+    const { brandId, sync, socialAccountId } = req.query;
     if (!brandId) return res.status(400).json({ message: 'brandId is required' });
     const forceRefresh = sync === 'true' || sync === true;
     try {
-      const categories = await youtubeService.getVideoCategories(brandId, forceRefresh);
+      const categories = await youtubeService.getVideoCategories(brandId, forceRefresh, socialAccountId || null);
       sendSuccess(res, categories);
     } catch (error) {
       res.status(500).json({ message: error.message });

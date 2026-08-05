@@ -734,20 +734,32 @@ export function usePostCreatorForm() {
     }
   };
 
+  // Brands can have multiple YouTube channels connected — without pinning
+  // to the one actually selected in this post, the backend silently fell
+  // back to "whichever YouTube account comes first", so playlists/categories
+  // could load for the wrong channel (or fail entirely if that first
+  // account's token was stale) while the user was targeting a different one.
+  const getSelectedYoutubeAccountId = () => {
+    return activeBrand?.socialAccounts?.find(
+      sa => (sa.platform || '').toUpperCase() === PLATFORMS.YOUTUBE && selectedAccountIds.includes(sa.id)
+    )?.id || null;
+  };
+
   const fetchPlaylists = async (forceRefresh = false) => {
     if (!activeBrand) return;
     setIsLoadingPlaylists(true);
     try {
-      const res = await socialService.getYouTubePlaylists(activeBrand.id, forceRefresh);
+      const res = await socialService.getYouTubePlaylists(activeBrand.id, forceRefresh, getSelectedYoutubeAccountId());
       setPlaylists(res.data || res || []);
       if (forceRefresh) {
         toast.success("YouTube Playlists synchronized successfully");
       }
     } catch (err) {
       logger.error("Failed to load playlists:", err);
-      if (forceRefresh) {
-        toast.error("Failed to synchronize playlists");
-      }
+      // Previously silent unless forceRefresh — an initial-load failure
+      // (e.g. expired YouTube token) left the dropdown empty with no
+      // indication why, indistinguishable from "no playlists exist".
+      toast.error(err.message || "Failed to load YouTube playlists");
     } finally {
       setIsLoadingPlaylists(false);
     }
@@ -757,16 +769,14 @@ export function usePostCreatorForm() {
     if (!activeBrand) return;
     setIsLoadingCategories(true);
     try {
-      const res = await socialService.getYouTubeVideoCategories(activeBrand.id, forceRefresh);
+      const res = await socialService.getYouTubeVideoCategories(activeBrand.id, forceRefresh, getSelectedYoutubeAccountId());
       setCategories(res.data || []);
       if (forceRefresh) {
         toast.success("YouTube Video Categories synchronized successfully");
       }
     } catch (err) {
       logger.error("Failed to load video categories:", err);
-      if (forceRefresh) {
-        toast.error("Failed to synchronize video categories");
-      }
+      toast.error(err.message || "Failed to load YouTube video categories");
     } finally {
       setIsLoadingCategories(false);
     }
