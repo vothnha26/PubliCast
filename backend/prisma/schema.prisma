@@ -141,6 +141,7 @@ model Brand {
   hashtagSets             HashtagSet[]
   postingGoals            PostingGoal[]
   streak                  BrandStreak?
+  feedSources             FeedSource[]
   aiAssistant             AIAssistant?
   reportScheduleConfig    ReportScheduleConfig?
   mediaLibrary            MediaLibrary[]
@@ -1646,6 +1647,48 @@ model BrandStreak {
   brand Brand @relation(fields: [brandId], references: [id], onDelete: Cascade)
 
   @@map("brand_streaks")
+}
+
+// A feed a brand can browse for content ideas. brandId is null for curated
+// "system" feeds (managed by admins, shown to every brand under a category,
+// mirroring how Template/TemplateCategory work) and set for feeds a brand
+// added themselves via URL.
+model FeedSource {
+  id        String   @id @default(uuid())
+  brandId   String?
+  name      String
+  url       String   @db.VarChar(2048)
+  category  String?
+  isSystem  Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  brand   Brand?      @relation(fields: [brandId], references: [id], onDelete: Cascade)
+  entries FeedEntry[]
+
+  @@index([brandId])
+  @@index([isSystem, category])
+  @@map("feed_sources")
+}
+
+// Cached parsed RSS items for a FeedSource, refreshed periodically by
+// feed-scheduler.service.js rather than fetched live on every page view.
+model FeedEntry {
+  id          String    @id @default(uuid())
+  feedSourceId String
+  guid        String    @db.VarChar(500)
+  title       String    @db.Text
+  link        String    @db.VarChar(2048)
+  summary     String?   @db.Text
+  imageUrl    String?   @db.VarChar(2048)
+  publishedAt DateTime?
+  fetchedAt   DateTime  @default(now())
+
+  feedSource FeedSource @relation(fields: [feedSourceId], references: [id], onDelete: Cascade)
+
+  @@unique([feedSourceId, guid])
+  @@index([feedSourceId, publishedAt])
+  @@map("feed_entries")
 }
 
 model AIAssistant {

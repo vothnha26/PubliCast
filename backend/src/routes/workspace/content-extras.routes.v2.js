@@ -5,6 +5,7 @@ const autoListController = require('../../controllers/workspace/auto-list.contro
 const hashtagController = require('../../controllers/workspace/hashtag.controller');
 const postingGoalController = require('../../controllers/workspace/posting-goal.controller');
 const streakController = require('../../controllers/workspace/streak.controller');
+const feedController = require('../../controllers/workspace/feed.controller');
 const calendarEventController = require('../../controllers/workspace/calendar-event.controller');
 const stockController = require('../../controllers/stock.controller');
 const { verifyAuth } = require('../../middlewares/auth.middleware');
@@ -167,6 +168,32 @@ router.delete('/posting-goals/:id', postingGoalController.deletePostingGoal);
  *               $ref: '#/components/schemas/V2EnvelopeResponse'
  */
 router.get('/streak', checkBrandAccess, streakController.getStreak);
+
+// ── Explore Feeds V2 ──
+/**
+ * @openapi
+ * /v2/content-extras/feeds:
+ *   get:
+ *     summary: Get this brand's custom feed sources plus curated system feeds
+ *     tags: [Workspace Content Extras V2]
+ *     security: [{ cookieAuth: [] }]
+ *     parameters:
+ *       - in: query
+ *         name: brandId
+ *         required: true
+ *         schema: { type: string }
+ *     responses:
+ *       200:
+ *         description: Feed sources list
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/V2EnvelopeResponse'
+ */
+router.get('/feeds', checkBrandAccess, feedController.getFeedSources);
+router.post('/feeds', checkBrandAccess, feedController.createFeedSource);
+router.delete('/feeds/:id', checkBrandAccess, feedController.deleteFeedSource);
+router.get('/feeds/entries', checkBrandAccess, feedController.getFeedEntries);
 
 // ── Calendar Events V2 ──
 /**

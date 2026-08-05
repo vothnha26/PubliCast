@@ -749,6 +749,12 @@ const LOCK_CONFIG = {
   STREAK_SCHEDULER: {
     KEY: 'lock:streak-scheduler:reset',
     TTL_SEC: 20 * 60
+  },
+  FEED_SCHEDULER: {
+    KEY: 'lock:feed-scheduler:refresh',
+    // Covers one full pass refreshing every FeedSource's entries — generous
+    // ceiling, same reasoning as REPORT_SCHEDULER/RECAP_SCHEDULER.
+    TTL_SEC: 20 * 60
   }
 };
 

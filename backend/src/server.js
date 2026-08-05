@@ -71,6 +71,10 @@ const server = app.listen(PORT, async () => {
   const streakSchedulerService = require('./services/core/streak-scheduler.service');
   streakSchedulerService.start();
 
+  // Start Periodic Explore Feeds Refresh Scheduler (30-minute cycle)
+  const feedSchedulerService = require('./services/core/feed-scheduler.service');
+  feedSchedulerService.start();
+
   // Start Periodic Inbox Sync Scheduler (15-minute fallback cycle)
   const inboxSyncSchedulerService = require('./services/social/inbox-sync-scheduler.service');
   inboxSyncSchedulerService.start();
