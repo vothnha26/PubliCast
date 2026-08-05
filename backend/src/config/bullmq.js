@@ -28,7 +28,14 @@ if (process.env.REDIS_URL) {
 }
 
 const defaultConnection = {
-  connection: redisConfig
+  connection: redisConfig,
+  // BullMQ's default (30s) has every worker poll Redis for stalled jobs
+  // every 30s even when the queue is empty. With 4 workers running 24/7
+  // in one process, that alone is ~11k Redis commands/day before any
+  // real job traffic — enough to blow through Upstash's free-tier request
+  // cap. 5 minutes still catches a crashed worker promptly relative to
+  // job durations (video trims, publishes) while cutting that idle cost ~10x.
+  stalledInterval: 300000,
 };
 
 module.exports = {
