@@ -248,9 +248,88 @@ describe('Instagram Integration Service Tests', () => {
         caption: 'Hello Instagram!'
       });
 
-      expect(instagramGateway.createImageContainer).toHaveBeenCalledWith('ig_123', 'ig_access_token', 'http://pic.jpg', 'Hello Instagram!', null, undefined);
+      expect(instagramGateway.createImageContainer).toHaveBeenCalledWith('ig_123', 'ig_access_token', 'http://pic.jpg', 'Hello Instagram!', null, undefined, undefined);
       expect(instagramGateway.publishContainer).toHaveBeenCalledWith('ig_123', 'ig_access_token', 'container_photo_123');
       expect(result.platformVideoId).toBe('ig_post_photo_123');
+    });
+
+    it('should forward altText as alt_text when publishing a single photo post', async () => {
+      instagramGateway.createImageContainer.mockResolvedValue({ id: 'container_photo_alt_123' });
+      instagramGateway.publishContainer.mockResolvedValue({ id: 'ig_post_photo_alt_123' });
+
+      socialAccountRepository.findByBrandAndPlatform.mockResolvedValue([{
+        platformAccountId: 'ig_123',
+        accessToken: 'ig_access_token'
+      }]);
+
+      await instagramService.publishPost('brand_1', {
+        type: POST_TYPES.IMAGE,
+        mediaUrls: ['http://pic.jpg'],
+        caption: 'Hello Instagram!',
+        altText: 'A red bicycle leaning against a brick wall'
+      });
+
+      expect(instagramGateway.createImageContainer).toHaveBeenCalledWith(
+        'ig_123', 'ig_access_token', 'http://pic.jpg', 'Hello Instagram!', null, undefined,
+        'A red bicycle leaning against a brick wall'
+      );
+    });
+
+    it('should publish a multi-image carousel, forwarding alt_text to each image child', async () => {
+      instagramGateway.createCarouselItemContainer
+        .mockResolvedValueOnce({ id: 'child_1' })
+        .mockResolvedValueOnce({ id: 'child_2' });
+      instagramGateway.createCarouselContainer.mockResolvedValue({ id: 'container_carousel_123' });
+      instagramGateway.pollContainerStatus.mockResolvedValue({ status_code: 'FINISHED' });
+      instagramGateway.publishContainer.mockResolvedValue({ id: 'ig_post_carousel_123' });
+
+      socialAccountRepository.findByBrandAndPlatform.mockResolvedValue([{
+        platformAccountId: 'ig_123',
+        accessToken: 'ig_access_token'
+      }]);
+
+      const result = await instagramService.publishPost('brand_1', {
+        mediaUrls: ['http://pic1.jpg', 'http://pic2.jpg'],
+        caption: 'Carousel post!',
+        altText: 'Shared alt text'
+      });
+
+      expect(instagramGateway.createCarouselItemContainer).toHaveBeenNthCalledWith(
+        1, 'ig_123', 'ig_access_token', 'http://pic1.jpg', false, 'Shared alt text'
+      );
+      expect(instagramGateway.createCarouselItemContainer).toHaveBeenNthCalledWith(
+        2, 'ig_123', 'ig_access_token', 'http://pic2.jpg', false, 'Shared alt text'
+      );
+      expect(instagramGateway.createCarouselContainer).toHaveBeenCalledWith(
+        'ig_123', 'ig_access_token', ['child_1', 'child_2'], 'Carousel post!', null, undefined
+      );
+      // Publishing the parent carousel container immediately after creation
+      // (before Meta finishes assembling it) intermittently failed with
+      // "Media upload has failed with error code 2207082" — the parent
+      // must be polled to FINISHED first, same as video children already
+      // were, regardless of whether the carousel is all-image, all-video,
+      // or mixed.
+      expect(instagramGateway.pollContainerStatus).toHaveBeenCalledWith('container_carousel_123', 'ig_access_token');
+      expect(instagramGateway.publishContainer).toHaveBeenCalledWith('ig_123', 'ig_access_token', 'container_carousel_123');
+      expect(result.platformVideoId).toBe('ig_post_carousel_123');
+    });
+
+    it('should reject a carousel with more than 10 media items', async () => {
+      socialAccountRepository.findByBrandAndPlatform.mockResolvedValue([{
+        platformAccountId: 'ig_123',
+        accessToken: 'ig_access_token'
+      }]);
+
+      const elevenUrls = Array.from({ length: 11 }, (_, i) => `http://pic${i}.jpg`);
+
+      await expect(
+        instagramService.publishPost('brand_1', {
+          mediaUrls: elevenUrls,
+          caption: 'Too many!'
+        })
+      ).rejects.toThrow('maximum of 10');
+
+      expect(instagramGateway.createCarouselItemContainer).not.toHaveBeenCalled();
     });
 
     it('should publish Reels successfully via Reel strategy', async () => {

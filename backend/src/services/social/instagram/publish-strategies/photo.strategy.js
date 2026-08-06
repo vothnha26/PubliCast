@@ -9,8 +9,8 @@ class PhotoPublishStrategy extends InstagramPublishStrategy {
 
     const rawMediaUrl = postData.mediaUrl || (postData.mediaUrls && postData.mediaUrls[0]);
     const mediaUrl = this.resolveUrl(rawMediaUrl);
-    const { caption, scheduledAt } = postData;
-    const container = await instagramGateway.createImageContainer(igAccountId, accessToken, mediaUrl, caption, scheduledAt, postData.options);
+    const { caption, scheduledAt, altText } = postData;
+    const container = await instagramGateway.createImageContainer(igAccountId, accessToken, mediaUrl, caption, scheduledAt, postData.options, altText);
     return instagramGateway.publishContainer(igAccountId, accessToken, container.id);
   }
 }

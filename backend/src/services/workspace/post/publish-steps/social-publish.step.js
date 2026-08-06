@@ -85,6 +85,7 @@ class SocialPublishStep extends BaseStep {
           title: post.title,
           caption: effectiveCaption,
           mediaUrls: effectiveMediaUrls,
+          altText: post.altText,
           type: post.type,
           platformPostId: platformPostId,
           socialAccountId,
