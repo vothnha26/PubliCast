@@ -10,6 +10,12 @@ yarn-error.log*
 .idea/
 .vscode/
 
+# Local AI agent skills (installed via `npx skills add`) — personal tooling,
+# not part of the product
+.agents/
+.claude/
+skills-lock.json
+
 # Documentation and temporary files
 *.puml
 *.md
