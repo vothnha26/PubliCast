@@ -22,7 +22,6 @@ import { FACEBOOK_TYPE, YOUTUBE_TYPE, INSTAGRAM_TYPE, POST_TYPE } from "../../..
 
 // Presets Imports
 import { GlobalPresets } from "./presets/GlobalPresets";
-import { PRESET_REGISTRY } from "../../../constants/presetRegistry";
 
 import { MEDIA_FILTER_TYPES } from "../../../constants/mediaAcceptStrategy";
 
@@ -300,7 +299,7 @@ export function ComposerBody() {
         )}
 
         {/* Text Area Card */}
-        <div className="border border-border/40 rounded-[20px] overflow-hidden focus-within:ring-2 focus-within:ring-composer-accent/40 transition-all bg-card/60 relative shadow-sm">
+        <div className="border border-border/40 rounded-[20px] focus-within:ring-2 focus-within:ring-composer-accent/40 transition-all bg-card/60 relative shadow-sm">
           <input type="file" ref={fileInputRef} accept="video/*,image/*" onChange={handleVideoChange} className="hidden" data-testid="post-file-input" />
           
 
@@ -552,7 +551,7 @@ export function ComposerBody() {
           )}
 
           {/* Toolbar & Character Limit */}
-          <div className="px-5 py-3 bg-white border-t border-slate-200/80">
+          <div className="px-5 py-3 bg-white border-t border-slate-200/80 rounded-b-[20px]">
             <CaptionToolbar
               activePopover={activePopover}
               setActivePopover={setActivePopover}
@@ -704,31 +703,9 @@ export function ComposerBody() {
 
         </div>
 
-        {/* Presets Accordion — shows only the preset panel for the platform
-            currently in view, not every selected platform's panel stacked
-            at once (previously up to ~23 fields on screen simultaneously
-            with 4 platforms selected). Reuses whichever tab concept is
-            active: activeNetworkTab when "Theo mạng" is on (so there's a
-            single tab strip driving both caption and presets, not two),
-            otherwise activePlatform from the header platform icons. */}
+        {/* Presets Accordion — keep GlobalPresets only in main composer (platform-specific presets belong in Customize post per network) */}
         <div className="space-y-3">
-          {/* Global Presets Accordion */}
           <GlobalPresets />
-
-          {/* Dynamic Platform Presets */}
-          {(() => {
-            const viewedPlatform = (isEditByNetwork && activeNetworkTab && activeNetworkTab !== NETWORK_TAB_TEMPLATE)
-              ? activeNetworkTab
-              : activePlatform;
-            return Object.entries(PRESET_REGISTRY).map(([platformKey, registryItem]) => {
-              if (platformKey !== viewedPlatform) return null;
-              if (registryItem.shouldRender(selectedPlatforms, { facebookType })) {
-                const PresetComponent = registryItem.Component;
-                return <PresetComponent key={platformKey} />;
-              }
-              return null;
-            });
-          })()}
         </div>
 
         {/* Approval Workflow Settings */}

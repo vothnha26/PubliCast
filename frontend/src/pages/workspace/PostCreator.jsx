@@ -560,7 +560,6 @@ export function PostCreatorPage() {
             <div className="flex-[1.1] flex flex-col min-h-0 overflow-hidden">
               <ComposerHeader />
               <ComposerBody />
-              <ComposerFooter />
             </div>
 
             {/* Cột 2: PREVIEW / NOTES / TEMPLATES / AI ASSISTANT (Bên phải) —
@@ -590,6 +589,8 @@ export function PostCreatorPage() {
             )}
           </div>
 
+          {/* Full-width Footer across entire bottom */}
+          <ComposerFooter />
         </div>
 
         {/* Modals and Sidebars */}
