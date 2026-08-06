@@ -25,7 +25,17 @@ const QUEUE_CONFIG = Object.freeze({
     // (Facebook hiện là 45s cho request có body) cộng buffer an toàn cho video
     // nặng — tránh BullMQ coi job publish còn đang chạy hợp lệ là "stalled" và
     // giao lại cho worker khác trong khi job cũ vẫn publish dở (rủi ro đăng trùng).
-    LOCK_DURATION_MS: 120000
+    LOCK_DURATION_MS: 120000,
+    // Default exponential backoff (5s/10s/20s) used for ordinary transient
+    // failures. Platform "app rate limit reached" errors (Meta's #4, and
+    // similar per-app quota errors on other platforms) need a much longer
+    // wait — retrying within seconds while the app-wide quota is exhausted
+    // just adds more requests against that same exhausted quota (each
+    // publish attempt itself calls several Graph API endpoints: create
+    // container, poll status repeatedly, publish), delaying recovery
+    // instead of helping. See publish.worker.js's custom backoffStrategy.
+    DEFAULT_BACKOFF_MS: 5000,
+    RATE_LIMIT_BACKOFF_MS: 10 * 60 * 1000 // 10 minutes
   },
   // Sweeps posts stuck at RETRYING whose self-enqueued partial-retry job got
   // lost (Redis restart, or a #106 active-job dedup skip) — #107 I7.

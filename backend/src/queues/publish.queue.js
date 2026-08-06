@@ -16,9 +16,12 @@ if (process.env.NODE_ENV !== 'test') {
     ...defaultConnection,
     defaultJobOptions: {
       attempts: QUEUE_CONFIG.PUBLISH.MAX_PUBLISH_ATTEMPTS, // Retry if failed
+      // 'custom' delegates to publish.worker.js's backoffStrategy, which
+      // falls back to the same exponential 5s/10s/20s for ordinary errors
+      // but backs off much longer for platform rate-limit errors — see
+      // RATE_LIMIT_BACKOFF_MS.
       backoff: {
-        type: 'exponential',
-        delay: 5000, // Wait 5s before first retry, then 10s, 20s...
+        type: 'custom',
       },
       removeOnComplete: true, // Keep Redis clean
       removeOnFail: false, // Keep failed jobs for debugging

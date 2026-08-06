@@ -59,4 +59,36 @@ describe('publish.worker on(\'failed\')', () => {
 
     expect(postRepository.update).not.toHaveBeenCalled();
   });
+
+  describe('settings.backoffStrategy', () => {
+    // Retrying an app-rate-limit failure within the default short backoff
+    // just adds more requests against the same still-exhausted quota
+    // (each publish attempt calls several Graph API endpoints), delaying
+    // recovery instead of helping — this backoff must be much longer for
+    // that specific error class.
+    it('backs off for RATE_LIMIT_BACKOFF_MS on a Meta "(#4) Application request limit reached" error', () => {
+      const { QUEUE_CONFIG } = require('../../src/constants/video-publish.constants');
+      const options = Worker.mock.calls[0][2];
+      const delay = options.settings.backoffStrategy(1, 'custom', new Error('(#4) Application request limit reached'));
+
+      expect(delay).toBe(QUEUE_CONFIG.PUBLISH.RATE_LIMIT_BACKOFF_MS);
+    });
+
+    it('backs off for RATE_LIMIT_BACKOFF_MS on a generic "rate limit" error from any platform', () => {
+      const { QUEUE_CONFIG } = require('../../src/constants/video-publish.constants');
+      const options = Worker.mock.calls[0][2];
+      const delay = options.settings.backoffStrategy(2, 'custom', new Error('TikTok rate limit exceeded'));
+
+      expect(delay).toBe(QUEUE_CONFIG.PUBLISH.RATE_LIMIT_BACKOFF_MS);
+    });
+
+    it('falls back to exponential backoff for ordinary (non-rate-limit) errors', () => {
+      const { QUEUE_CONFIG } = require('../../src/constants/video-publish.constants');
+      const options = Worker.mock.calls[0][2];
+
+      expect(options.settings.backoffStrategy(1, 'custom', new Error('Network timeout'))).toBe(QUEUE_CONFIG.PUBLISH.DEFAULT_BACKOFF_MS);
+      expect(options.settings.backoffStrategy(2, 'custom', new Error('Network timeout'))).toBe(QUEUE_CONFIG.PUBLISH.DEFAULT_BACKOFF_MS * 2);
+      expect(options.settings.backoffStrategy(3, 'custom', new Error('Network timeout'))).toBe(QUEUE_CONFIG.PUBLISH.DEFAULT_BACKOFF_MS * 4);
+    });
+  });
 });
