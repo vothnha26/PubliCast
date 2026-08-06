@@ -20,6 +20,36 @@ class TemplateRepository {
     }));
   }
 
+  /**
+   * Flat, paginated template list (used by the composer's Discover tab,
+   * which flattens+dedupes categories into one scrollable list anyway).
+   * Distinct from findAllCategoriesWithTemplates, which stays
+   * unpaginated for FeaturedTemplatesTab.jsx's full-page category view.
+   */
+  async findManyTemplatesAndCount({ skip, take } = {}) {
+    const [templates, total] = await Promise.all([
+      prisma.template.findMany({
+        orderBy: { createdAt: 'asc' },
+        skip,
+        take,
+        include: {
+          categories: {
+            include: { category: true }
+          }
+        }
+      }),
+      prisma.template.count()
+    ]);
+
+    return {
+      templates: templates.map(({ categories, ...tpl }) => ({
+        ...tpl,
+        categoryIds: categories.map((link) => link.categoryId)
+      })),
+      total
+    };
+  }
+
   async findCategoryByName(name) {
     return prisma.templateCategory.findUnique({ where: { name } });
   }

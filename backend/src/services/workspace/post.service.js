@@ -70,9 +70,16 @@ class PostService {
 
     const { posts, total } = await postRepository.findManyAndCount(where, { skip, take, orderBy: order });
 
+    const safePage = Math.max(1, parseInt(page) || 1);
     return {
       data: posts.map(p => this._formatPostResponse(p)),
-      meta: { total, page: Math.max(1, parseInt(page) || 1), limit: take, totalPages: Math.ceil(total / take) }
+      meta: {
+        total,
+        page: safePage,
+        limit: take,
+        totalPages: Math.ceil(total / take),
+        hasMore: skip + posts.length < total
+      }
     };
   }
 
