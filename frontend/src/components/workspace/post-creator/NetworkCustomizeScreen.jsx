@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
-  ArrowLeft, Calendar, Loader2, AlertCircle, Plus,
+  ArrowLeft, Calendar, AlertCircle, Plus,
   ChevronDown, Check, Film, PlusCircle, LayoutGrid, Youtube, Globe, X,
   Maximize2, Minimize2, Tag
 } from "lucide-react";
@@ -12,9 +12,12 @@ import { PreviewHeader } from "./previews/PreviewHeader";
 import { PreviewBody } from "./previews/PreviewBody";
 import { TemplatesSidebar } from "./TemplatesSidebar";
 import { NotesPanel } from "./NotesPanel";
+import { ConfirmExitModal } from "./ConfirmExitModal";
 import { AICopilotPopover } from "./popovers/AICopilotPopover";
 import { CaptionToolbar } from "./CaptionToolbar";
 import { ChannelPickerDropdown } from "./ChannelPickerDropdown";
+import { PublishSplitButton } from "./PublishSplitButton";
+import { ComposerFooter } from "./ComposerFooter";
 import { PRESET_REGISTRY } from "../../../constants/presetRegistry";
 import { PLATFORM_CONFIGS } from "../../../constants/platformRegistry";
 import { MEDIA_FILTER_TYPES } from "../../../constants/mediaAcceptStrategy";
@@ -45,6 +48,9 @@ export function NetworkCustomizeScreen({ onClose }) {
     updateNetworkMedia,
     updateThreadPostText,
     updateThreadPostMedia,
+    addThreadPost,
+    removeThreadPost,
+    setThreadActiveIndex,
     toggleUseTemplate,
     setActivePlatform,
     facebookType,
@@ -59,12 +65,11 @@ export function NetworkCustomizeScreen({ onClose }) {
     setUploadModalTab,
     setMediaTypeFilter,
     getValidationErrors,
-    handleCreatePost,
-    isCreating,
-    submitProgressText,
-    hasCreatePermission,
+    selectedPublishId,
     scheduledDate,
     setScheduledDate,
+    createAnother,
+    setCreateAnother,
     postMedia,
     videoFile,
     videoFileUrl,
@@ -77,7 +82,6 @@ export function NetworkCustomizeScreen({ onClose }) {
     setIsFullScreen
   } = usePostCreatorFormContext();
 
-  const [createAnother, setCreateAnother] = useState(false);
   const [activePopover, setActivePopover] = useState(null);
   const [showTypeDropdown, setShowTypeDropdown] = useState(false);
   const [showChannelPicker, setShowChannelPicker] = useState(false);
@@ -150,8 +154,11 @@ export function NetworkCustomizeScreen({ onClose }) {
     });
   };
 
+  const [showConfirmExit, setShowConfirmExit] = useState(false);
+
   const handleExit = () => {
-    if (hasUnsavedChanges() && !window.confirm(t("planner:postCreator.networkCustomize.confirmExit", "You have unsaved changes. Are you sure you want to exit?"))) {
+    if (hasUnsavedChanges()) {
+      setShowConfirmExit(true);
       return;
     }
     closePostCreator();
@@ -211,9 +218,20 @@ export function NetworkCustomizeScreen({ onClose }) {
     ? (activePlatformEntry?.perAccount?.[effectiveAccountId] || { caption: "", mediaUrls: [] })
     : activePlatformEntry;
 
+  // Mirrors globalMedia below: while a channel is still "using template"
+  // (useTemplate !== false, i.e. hasn't been individually customized yet),
+  // show the shared composer caption instead of the per-network slot, which
+  // stays empty until toggleUseTemplate(false) seeds it. Without this, text
+  // silently appeared blank here even though media (which always falls
+  // back to globalMedia) showed up fine.
+  // Threads' first post falls back to the shared caption the same way, but
+  // only for index 0 — posts after the first only ever exist as manually
+  // added chain entries, so there's no "shared" content for them to show.
   const captionValue = isThreadsChannel
-    ? (typeof activeThreadPost === 'string' ? activeThreadPost : activeThreadPost?.text || '')
-    : (activeEntry?.caption || "");
+    ? (activeThreadPost !== undefined
+        ? (typeof activeThreadPost === 'string' ? activeThreadPost : activeThreadPost?.text || '')
+        : (activeThreadIndex === 0 ? caption || '' : ''))
+    : (activeEntry?.useTemplate === false ? (activeEntry?.caption || "") : (activeEntry?.caption || caption || ""));
 
   const globalMedia = (postMedia && postMedia.length > 0)
     ? postMedia
@@ -292,6 +310,7 @@ export function NetworkCustomizeScreen({ onClose }) {
   // stay-open-after-submit behavior is a follow-up.
 
   return (
+    <>
     <div className={`fixed inset-0 z-[2500] bg-slate-900/60 backdrop-blur-sm flex flex-col overflow-hidden animate-in fade-in duration-300 ${
       isFullScreen ? 'p-0' : 'p-3 md:p-5'
     }`}>
@@ -459,11 +478,85 @@ export function NetworkCustomizeScreen({ onClose }) {
             )}
 
             <div className="space-y-6">
+              {/* Threads chain — numbered pills joined by a connector line,
+                  each pill a separate post in the thread. Unlike other
+                  platforms, Threads' chain isn't gated behind
+                  useTemplate === false: threadPosts[] is the only shape its
+                  content ever has (there's no flat "shared caption" mode to
+                  fall back to), so the chain always shows once a Threads
+                  channel is active. */}
+              {isThreadsChannel && (threadsEntry?.threadPosts?.length || 0) > 0 && (
+                <div className="space-y-2">
+                  <label className="block text-xs font-medium text-muted-foreground font-sans">
+                    {t("planner:postCreator.networkCustomize.threadChain", "Thread")}
+                  </label>
+                  <div className="flex items-center gap-0 overflow-x-auto scrollbar-thin pb-1">
+                    {(threadsEntry?.threadPosts || []).map((_, index) => {
+                      const isActive = activeThreadIndex === index;
+                      const isLast = index === (threadsEntry?.threadPosts?.length || 0) - 1;
+                      return (
+                        <div key={index} className="flex items-center shrink-0">
+                          <button
+                            type="button"
+                            onClick={() => setThreadActiveIndex(index)}
+                            title={t("planner:postCreator.networkCustomize.threadPost", "Post {{n}}", { n: index + 1 })}
+                            className={`group relative flex items-center gap-2 pl-2 pr-3 py-1.5 rounded-full text-[11px] font-bold font-sans transition-all cursor-pointer border ${
+                              isActive
+                                ? "bg-composer-accent text-composer-accent-foreground border-composer-accent shadow-sm"
+                                : "bg-muted text-muted-foreground border-transparent hover:bg-muted/70 hover:text-foreground"
+                            }`}
+                          >
+                            <span
+                              className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-black shrink-0 ${
+                                isActive ? "bg-card/25" : "bg-card border border-border"
+                              }`}
+                            >
+                              {index + 1}
+                            </span>
+                            <span>{t("planner:postCreator.networkCustomize.threadPost", "Post {{n}}", { n: index + 1 })}</span>
+                            {(threadsEntry?.threadPosts?.length || 0) > 1 && (
+                              <span
+                                role="button"
+                                title={t("planner:postCreator.networkCustomize.threadRemove", "Remove this post")}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  removeThreadPost(index);
+                                }}
+                                className={`ml-0.5 w-4 h-4 rounded-full flex items-center justify-center transition-all cursor-pointer ${
+                                  isActive
+                                    ? "hover:bg-card/30 text-composer-accent-foreground/70 hover:text-composer-accent-foreground"
+                                    : "hover:bg-muted-foreground/20 text-muted-foreground/70 hover:text-foreground"
+                                }`}
+                              >
+                                <X size={10} strokeWidth={3} />
+                              </span>
+                            )}
+                          </button>
+                          {!isLast && (
+                            <span className="w-3 h-px bg-border shrink-0" aria-hidden="true" />
+                          )}
+                        </div>
+                      );
+                    })}
+                    <button
+                      type="button"
+                      onClick={addThreadPost}
+                      title={t("planner:postCreator.networkCustomize.threadAdd", "Add a post to the thread")}
+                      className="ml-1 w-7 h-7 rounded-full flex items-center justify-center text-muted-foreground bg-muted hover:bg-muted/70 hover:text-foreground border border-dashed border-border transition-all cursor-pointer shrink-0"
+                    >
+                      <Plus size={13} />
+                    </button>
+                  </div>
+                </div>
+              )}
+
               {/* Caption Textarea Box */}
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
                   <label className="block text-xs font-medium text-muted-foreground font-sans">
-                    {t("planner:postCreator.networkCustomize.caption")}
+                    {isThreadsChannel && threadsEntry?.useTemplate === false
+                      ? t("planner:postCreator.networkCustomize.threadPost", "Post {{n}}", { n: activeThreadIndex + 1 })
+                      : t("planner:postCreator.networkCustomize.caption")}
                   </label>
                   {activeConfig?.supportedTypes?.length > 1 && (
                     <div className="relative">
@@ -503,7 +596,7 @@ export function NetworkCustomizeScreen({ onClose }) {
                   )}
                 </div>
 
-                <div className="border border-border/40 rounded-2xl overflow-hidden focus-within:ring-2 focus-within:ring-composer-accent/40 transition-all bg-card/60 relative shadow-sm">
+                <div className="border border-border/40 rounded-2xl focus-within:ring-2 focus-within:ring-composer-accent/40 transition-all bg-card/60 relative shadow-sm">
                   <textarea
                     value={captionValue}
                     onChange={(e) => handleCaptionChange(e.target.value)}
@@ -542,7 +635,7 @@ export function NetworkCustomizeScreen({ onClose }) {
                     activePopover={activePopover}
                     setActivePopover={setActivePopover}
                     iconSize={16}
-                    className="px-4 py-2.5 border-t border-border bg-muted/30"
+                    className="px-4 py-2.5 border-t border-border bg-muted/30 rounded-b-2xl"
                     onSelectMediaImage={() => { setUploadModalTab("computer"); setMediaTypeFilter?.(MEDIA_FILTER_TYPES.IMAGE); setShowUploadModal(true); }}
                     onSelectMediaVideo={() => { setUploadModalTab("computer"); setMediaTypeFilter?.(MEDIA_FILTER_TYPES.VIDEO); setShowUploadModal(true); }}
                     onSelectMediaLibrary={() => { setUploadModalTab("library"); setMediaTypeFilter?.(MEDIA_FILTER_TYPES.ALL); setShowUploadModal(true); }}
@@ -564,48 +657,6 @@ export function NetworkCustomizeScreen({ onClose }) {
                   <PresetComponent />
                 </div>
               )}
-            </div>
-          </div>
-
-          {/* Footer */}
-          <div className="shrink-0 px-8 py-5 border-t border-border bg-card flex items-center justify-between z-10">
-            <label className="flex items-center gap-2 cursor-pointer select-none">
-              <input
-                type="checkbox"
-                checked={createAnother}
-                onChange={(e) => setCreateAnother(e.target.checked)}
-                className="w-4 h-4 accent-composer-accent cursor-pointer rounded"
-              />
-              <span className="text-sm text-muted-foreground font-sans">
-                {t("planner:postCreator.footer.createAnother")}
-              </span>
-            </label>
-
-            <div className="flex items-center gap-3">
-              <div className="flex items-center gap-2 border border-border rounded-xl px-4 py-2 bg-card">
-                <Calendar size={16} className="text-muted-foreground" />
-                <input
-                  type="datetime-local"
-                  value={scheduledDate}
-                  onChange={(e) => setScheduledDate(e.target.value)}
-                  className="text-xs font-bold text-muted-foreground outline-none bg-transparent cursor-pointer border-none p-0 font-sans"
-                />
-              </div>
-              <button
-                type="button"
-                onClick={handleCreatePost}
-                disabled={isCreating || !hasCreatePermission}
-                className="flex items-center gap-2 px-6 py-2.5 bg-composer-accent text-composer-accent-foreground text-sm font-bold rounded-xl transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed font-sans shadow-sm hover:opacity-90"
-              >
-                {isCreating ? (
-                  <>
-                    <Loader2 size={16} className="animate-spin" />
-                    {submitProgressText || t("planner:postCreator.footer.scheduleAll")}
-                  </>
-                ) : (
-                  t("planner:postCreator.footer.scheduleAll")
-                )}
-              </button>
             </div>
           </div>
         </div>
@@ -637,7 +688,20 @@ export function NetworkCustomizeScreen({ onClose }) {
           </div>
         )}
       </div>
+
+      {/* Full-width Footer across entire bottom */}
+      <ComposerFooter isNetworkCustomize={true} onCloseNetworkCustomize={onClose} />
     </div>
   </div>
+
+    <ConfirmExitModal
+      isOpen={showConfirmExit}
+      onCancel={() => setShowConfirmExit(false)}
+      onConfirm={() => {
+        setShowConfirmExit(false);
+        closePostCreator();
+      }}
+    />
+    </>
   );
 }

@@ -82,6 +82,12 @@ export function usePostCreatorForm() {
   // from isEditByNetwork, which tracks whether any platform actually HAS
   // custom content (a data concern used by validation/submit/ComposerBody).
   const [isNetworkCustomizeOpen, setIsNetworkCustomizeOpen] = useState(false);
+  // Checkbox-only for now — handleCreatePost's success path always calls
+  // closePostCreator() unconditionally for new posts; there's no "stay open
+  // and reset" branch to hook this into without changing that shared submit
+  // handler, which is out of scope here. Lifted from NetworkCustomizeScreen's
+  // local state so ComposerFooter can show/toggle the same checkbox.
+  const [createAnother, setCreateAnother] = useState(false);
   const [mediaThumbnailUrl, setMediaThumbnailUrl] = useState("");
   const [scheduledDate, setScheduledDate] = useState(() => toLocalDatetimeString(new Date()));
   const [isLibrary, setIsLibrary] = useState(false);
@@ -598,11 +604,23 @@ export function usePostCreatorForm() {
 
   const addThreadPost = () => {
     setNetworkCustom((prev) => {
-      const threads = prev[PLATFORMS.THREADS] || { threadPosts: [{ text: "", mediaUrls: [] }] };
-      const newPosts = [...threads.threadPosts, { text: "", mediaUrls: [] }];
+      const threads = prev[PLATFORMS.THREADS];
+      // First time a Threads chain is started (no threadPosts yet), seed
+      // post 1 from the shared caption/media instead of starting blank —
+      // otherwise whatever the user already typed in the shared caption box
+      // silently vanishes the moment they add a second post.
+      const effectiveInitialMedia = (postMedia && postMedia.length > 0)
+        ? [...postMedia]
+        : (videoFileUrl || uploadedVideoPath)
+          ? [{ previewUrl: videoFileUrl, path: uploadedVideoPath, file: videoFile }]
+          : [];
+      const existingPosts = threads?.threadPosts?.length
+        ? threads.threadPosts
+        : [{ text: caption, mediaUrls: effectiveInitialMedia }];
+      const newPosts = [...existingPosts, { text: "", mediaUrls: [] }];
       return {
         ...prev,
-        [PLATFORMS.THREADS]: { ...threads, activeThreadIndex: newPosts.length - 1, threadPosts: newPosts },
+        [PLATFORMS.THREADS]: { ...threads, useTemplate: false, activeThreadIndex: newPosts.length - 1, threadPosts: newPosts },
       };
     });
   };
@@ -1328,13 +1346,32 @@ export function usePostCreatorForm() {
           // updateNetworkSetting deliberately doesn't flip useTemplate, so a
           // user can give one account a different category while every
           // account still shares the global caption. Both this and the
-          // platform-level useTemplate!==false check (below, per-branch)
-          // gate whether an override row is written for a given account.
+          // useTemplate!==false check below gate whether an override row is
+          // written for a given account.
           const hasAnySettingsFor = (accountId) => {
             const slot = accountId ? entry.perAccount?.[accountId] : entry;
             return slot?.settings && Object.keys(slot.settings).length > 0;
           };
-          if (entry?.useTemplate !== false && accountsForPlatform.every((acc) => !hasAnySettingsFor(acc.id)) && !hasAnySettingsFor(null)) {
+          // entry.useTemplate is the SINGLE-account flag (setNetworkEntrySlot
+          // only ever writes it when accountId is falsy) — on a platform with
+          // ≥2 targeted accounts, per-account customization lives in
+          // entry.perAccount[accId].useTemplate instead and never touches
+          // entry.useTemplate at all. Checking only entry.useTemplate here
+          // meant every per-account customization on a multi-account platform
+          // was silently skipped (this whole platform returned before ever
+          // building an override row for it) — the composer's own UI wrote
+          // the caption fine, it just never made it into the payload.
+          const hasAnyCaptionCustomizedFor = (accountId) => {
+            const slot = accountId ? entry.perAccount?.[accountId] : entry;
+            return slot?.useTemplate === false;
+          };
+          const isThreadsWithChain = platform === PLATFORMS.THREADS && (entry?.threadPosts?.length || 0) > 0;
+          if (
+            !isThreadsWithChain &&
+            !hasAnyCaptionCustomizedFor(null) &&
+            accountsForPlatform.every((acc) => !hasAnyCaptionCustomizedFor(acc.id) && !hasAnySettingsFor(acc.id)) &&
+            !hasAnySettingsFor(null)
+          ) {
             return;
           }
 
@@ -1411,7 +1448,15 @@ export function usePostCreatorForm() {
                 overrides.push({
                   platform: apiKey,
                   socialAccountId: acc.id,
-                  useTemplate: isCaptionCustomized,
+                  // useTemplate here means the SAME thing backend expects
+                  // (social-publish.step.js: useOverride = override.useTemplate
+                  // === false) — false = "this account has its own
+                  // caption/media, don't fall back to the shared post". It was
+                  // previously sent as `isCaptionCustomized` itself (true when
+                  // customized), the exact inverse of what the backend checks
+                  // for, so every per-account customization on a multi-account
+                  // platform silently published the shared caption instead.
+                  useTemplate: !isCaptionCustomized,
                   caption: isCaptionCustomized ? (accEntry.caption || '') : undefined,
                   mediaUrls: isCaptionCustomized ? accMediaUrls : undefined,
                   ...(hasSettings ? { settings: accSettings } : {}),
@@ -1709,6 +1754,8 @@ export function usePostCreatorForm() {
     setRightPanelTab,
     isNetworkCustomizeOpen,
     setIsNetworkCustomizeOpen,
+    createAnother,
+    setCreateAnother,
     isFullScreen,
     setIsFullScreen
   };

@@ -542,7 +542,13 @@
       "noSettings": "Nền tảng này không có tùy chọn cài đặt riêng.",
       "addMedia": "Thêm ảnh/video",
       "hasErrors": "Nền tảng này còn thiếu điều kiện đăng bài",
-      "confirmExit": "Bạn có thay đổi chưa lưu. Bạn có chắc chắn muốn thoát không?"
+      "confirmExit": "Bạn có thay đổi chưa lưu. Bạn có chắc chắn muốn thoát không?",
+      "confirmExitTitle": "Bỏ qua thay đổi?",
+      "confirmExitAction": "Vẫn thoát",
+      "threadChain": "Chuỗi Threads",
+      "threadPost": "Bài {{n}}",
+      "threadAdd": "Thêm bài vào chuỗi",
+      "threadRemove": "Xoá bài này"
     },
     "channelPicker": {
       "search": "Tìm kênh...",
@@ -604,6 +610,7 @@
       "saveTemplate": "Lưu mẫu",
       "customizePerNetwork": "Tùy chỉnh cho từng nền tảng",
       "createAnother": "Tạo bài viết khác",
+      "saveDrafts": "Lưu nháp",
       "scheduleAll": "Lên lịch tất cả",
       "nextAvailable": "Lịch trống tiếp theo",
       "publishOptions": {

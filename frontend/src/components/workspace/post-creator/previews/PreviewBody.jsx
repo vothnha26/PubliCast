@@ -101,10 +101,18 @@ export function PreviewBody({ platformFilter } = {}) {
           : (platformCustom?.caption || ''))
       : caption;
 
-    const effectiveMediaItems = isPlatformCustomized
-      ? (isThreadsPlatform
-          ? ((typeof firstThreadPost === 'object' ? firstThreadPost?.mediaUrls : []) || [])
-          : (platformCustom?.mediaUrls || []))
+    // Mirrors NetworkCustomizeScreen's own mediaItems fallback: caption and
+    // media are customized independently (updateNetworkCaption only ever
+    // writes { useTemplate: false, caption }, never touching mediaUrls), so
+    // typing text alone flips isPlatformCustomized to true while
+    // mediaUrls/threadPosts[0].mediaUrls is still empty. Without this guard
+    // the preview would drop media it never actually had a per-network
+    // override for, the instant the user edited only the caption.
+    const rawCustomMediaItems = isThreadsPlatform
+      ? ((typeof firstThreadPost === 'object' ? firstThreadPost?.mediaUrls : []) || [])
+      : (platformCustom?.mediaUrls || []);
+    const effectiveMediaItems = (isPlatformCustomized && rawCustomMediaItems.length > 0)
+      ? rawCustomMediaItems
       : postMedia;
 
     let effectiveVideoFileUrl = videoFileUrl;
@@ -135,7 +143,11 @@ export function PreviewBody({ platformFilter } = {}) {
           });
         })();
 
-    return { simulatedCaption, effectiveVideoFileUrl, effectiveVideoFile };
+    const threadPosts = isThreadsPlatform
+      ? (networkCustom?.threads?.threadPosts || null)
+      : null;
+
+    return { simulatedCaption, effectiveVideoFileUrl, effectiveVideoFile, threadPosts };
   };
 
   // ----------------------------------------------------
@@ -240,7 +252,7 @@ export function PreviewBody({ platformFilter } = {}) {
       {platformsToRender.map((platform) => {
         const PreviewComponent = PreviewStrategies[platform];
         if (!PreviewComponent) return null;
-        const { simulatedCaption, effectiveVideoFileUrl, effectiveVideoFile } = getEffectiveDataForPlatform(platform);
+        const { simulatedCaption, effectiveVideoFileUrl, effectiveVideoFile, threadPosts } = getEffectiveDataForPlatform(platform);
 
         return (
           <div key={platform} className={`w-full transition-all duration-300 ${previewDevice === 'desktop' && platform === 'youtube' ? 'max-w-2xl' : 'max-w-sm'}`}>
@@ -252,6 +264,7 @@ export function PreviewBody({ platformFilter } = {}) {
               caption={simulatedCaption}
               videoFileUrl={effectiveVideoFileUrl}
               videoFile={effectiveVideoFile}
+              threadPosts={threadPosts}
               youtubeType={youtubeType}
               youtubeTitle={youtubeTitle}
               youtubePlaylistId={youtubePlaylistId}

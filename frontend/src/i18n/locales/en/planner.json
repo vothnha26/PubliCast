@@ -540,7 +540,13 @@
       "mediaDropzone": "Drag & drop or",
       "selectFile": "select a file",
       "noSettings": "This platform has no dedicated settings.",
-      "confirmExit": "You have unsaved changes. Are you sure you want to exit?"
+      "confirmExit": "You have unsaved changes. Are you sure you want to exit?",
+      "confirmExitTitle": "Discard changes?",
+      "confirmExitAction": "Exit anyway",
+      "threadChain": "Thread",
+      "threadPost": "Post {{n}}",
+      "threadAdd": "Add a post to the thread",
+      "threadRemove": "Remove this post"
     },
     "aiAssistant": {
       "label": "What do you want to write about?",
@@ -592,6 +598,7 @@
       "saveTemplate": "Save Template",
       "customizePerNetwork": "Customize for each network",
       "createAnother": "Create Another",
+      "saveDrafts": "Save Drafts",
       "scheduleAll": "Schedule All",
       "nextAvailable": "Next Available",
       "publishOptions": {
