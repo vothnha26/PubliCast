@@ -95,4 +95,104 @@ describe('Bluesky Integration Suite', () => {
       await expect(blueskyService.publishPost('brand_1', { caption: 'Test' })).rejects.toThrow('Bluesky account not connected');
     });
   });
+
+  describe('_getAuthenticatedAgent DPoP token refresh', () => {
+    const makeJwt = (exp) => {
+      const header = Buffer.from(JSON.stringify({ alg: 'ES256', typ: 'JWT' })).toString('base64url');
+      const payload = Buffer.from(JSON.stringify({ exp, sub: 'did:plc:123' })).toString('base64url');
+      return `${header}.${payload}.fakesignature`;
+    };
+
+    const mockKeyPair = {
+      privateKey: 'mock-private-key',
+      jwk: { kty: 'EC', crv: 'P-256', x: 'x', y: 'y' }
+    };
+
+    const dpopAccount = (accessJwt, refreshJwt = 'refresh_jwt_value') => ({
+      id: 'sa_bsky_dpop_1',
+      accessToken: accessJwt,
+      refreshToken: refreshJwt,
+      platformAccountId: 'did:plc:123',
+      blueskyAccount: {
+        pdsUrl: 'https://bsky.social',
+        dpopPrivateKey: 'encrypted-priv',
+        dpopJwk: JSON.stringify(mockKeyPair.jwk)
+      }
+    });
+
+    beforeEach(() => {
+      const crypto = require('crypto');
+      jest.spyOn(crypto, 'createPrivateKey').mockReturnValue(mockKeyPair.privateKey);
+      const { decrypt } = require('../../src/utils/encryption');
+      decrypt.mockImplementation((val) => val);
+    });
+
+    it('does not refresh when the DPoP access token is still valid', async () => {
+      const farFutureExp = Math.floor(Date.now() / 1000) + 3600;
+      const account = dpopAccount(makeJwt(farFutureExp));
+      const mockAgent = {};
+      blueskyGateway.createDPoPAgent.mockReturnValue(mockAgent);
+
+      const agent = await blueskyService._getAuthenticatedAgent(account);
+
+      expect(agent).toBe(mockAgent);
+      expect(blueskyOAuthHelper.refreshDPoPToken).not.toHaveBeenCalled();
+      expect(blueskyGateway.createDPoPAgent).toHaveBeenCalledWith(
+        expect.objectContaining({ accessJwt: makeJwt(farFutureExp) })
+      );
+    });
+
+    it('refreshes an expired DPoP access token before creating the agent, and persists the new tokens (fixes "exp claim timestamp check failed")', async () => {
+      const expiredExp = Math.floor(Date.now() / 1000) - 60;
+      const account = dpopAccount(makeJwt(expiredExp));
+      const mockAgent = {};
+
+      blueskyOAuthHelper.refreshDPoPToken.mockResolvedValue({
+        access_token: 'brand-new-access-jwt',
+        refresh_token: 'brand-new-refresh-jwt'
+      });
+      blueskyGateway.createDPoPAgent.mockReturnValue(mockAgent);
+      socialAccountRepository.updateTokens.mockResolvedValue({});
+
+      const agent = await blueskyService._getAuthenticatedAgent(account);
+
+      expect(blueskyOAuthHelper.refreshDPoPToken).toHaveBeenCalledWith(
+        expect.objectContaining({ refreshJwt: 'refresh_jwt_value' })
+      );
+      expect(socialAccountRepository.updateTokens).toHaveBeenCalledWith('sa_bsky_dpop_1', {
+        access_token: 'brand-new-access-jwt',
+        refresh_token: 'brand-new-refresh-jwt'
+      });
+      expect(blueskyGateway.createDPoPAgent).toHaveBeenCalledWith(
+        expect.objectContaining({ accessJwt: 'brand-new-access-jwt' })
+      );
+      expect(agent).toBe(mockAgent);
+    });
+
+    it('throws a clear reconnect error when the access token is expired and no refresh token is stored', async () => {
+      const expiredExp = Math.floor(Date.now() / 1000) - 60;
+      const account = dpopAccount(makeJwt(expiredExp), null);
+
+      await expect(blueskyService._getAuthenticatedAgent(account)).rejects.toThrow(
+        'please reconnect this account'
+      );
+      expect(blueskyOAuthHelper.refreshDPoPToken).not.toHaveBeenCalled();
+    });
+
+    it('falls back to the expired token (request will fail downstream) if the refresh call itself fails, instead of throwing here', async () => {
+      const expiredExp = Math.floor(Date.now() / 1000) - 60;
+      const account = dpopAccount(makeJwt(expiredExp));
+      const mockAgent = {};
+
+      blueskyOAuthHelper.refreshDPoPToken.mockRejectedValue(new Error('invalid_grant'));
+      blueskyGateway.createDPoPAgent.mockReturnValue(mockAgent);
+
+      const agent = await blueskyService._getAuthenticatedAgent(account);
+
+      expect(agent).toBe(mockAgent);
+      expect(blueskyGateway.createDPoPAgent).toHaveBeenCalledWith(
+        expect.objectContaining({ accessJwt: makeJwt(expiredExp) })
+      );
+    });
+  });
 });

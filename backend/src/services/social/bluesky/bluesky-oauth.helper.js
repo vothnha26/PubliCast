@@ -178,6 +178,41 @@ class BlueskyOAuthHelper {
   }
 
   /**
+   * Exchanges a refresh_token for a fresh DPoP-bound access token via the
+   * same client's token endpoint (grant_type=refresh_token). DPoP OAuth
+   * access tokens are short-lived and, unlike the session-based BskyAgent
+   * path (see BlueskyGateway.createAgent's persistSession), createDPoPAgent
+   * has no built-in auto-refresh — callers must call this themselves and
+   * persist the result when a request fails with an expired-token error
+   * (e.g. "exp" claim timestamp check failed).
+   */
+  async refreshDPoPToken({ tokenUrl, clientId, refreshJwt, keyPair, nonce }) {
+    const body = new URLSearchParams({
+      grant_type: 'refresh_token',
+      refresh_token: refreshJwt,
+      client_id: clientId
+    });
+
+    const { response } = await this.sendDPoPRequest(
+      tokenUrl,
+      'POST',
+      {
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body
+      },
+      keyPair,
+      nonce
+    );
+
+    if (!response.ok) {
+      const errText = await response.text().catch(() => '');
+      throw new Error(`Token Refresh failed (HTTP ${response.status}): ${errText}`);
+    }
+
+    return response.json();
+  }
+
+  /**
    * Builds an @atproto/api sessionManager for OAuth DPoP-bound access tokens.
    * BskyAgent/AtpAgent normally send plain `Authorization: Bearer` requests
    * (via resumeSession), which Bluesky's AS/PDS rejects for DPoP-bound tokens
