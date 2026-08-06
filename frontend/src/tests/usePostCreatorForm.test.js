@@ -20,8 +20,6 @@ describe('usePostCreatorForm Hook Reels States Tests', () => {
   it('should initialize Reels advanced options states with empty strings', () => {
     const { result } = renderHook(() => usePostCreatorForm());
 
-    expect(result.current.facebookReelCollaboratorId).toBe('');
-    expect(result.current.facebookReelPlaceId).toBe('');
     expect(result.current.facebookReelThumbnail).toBe('');
   });
 
@@ -29,14 +27,10 @@ describe('usePostCreatorForm Hook Reels States Tests', () => {
     const { result } = renderHook(() => usePostCreatorForm());
 
     act(() => {
-      result.current.setFacebookReelCollaboratorId('collab_123');
-      result.current.setFacebookReelPlaceId('place_456');
       result.current.setFacebookReelThumbnail('https://example.com/thumb.jpg');
     });
 
     const backup = result.current.getBackupPayload();
-    expect(backup.facebookReelCollaboratorId).toBe('collab_123');
-    expect(backup.facebookReelPlaceId).toBe('place_456');
     expect(backup.facebookReelThumbnail).toBe('https://example.com/thumb.jpg');
   });
 });

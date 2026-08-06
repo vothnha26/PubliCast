@@ -119,8 +119,6 @@ export function usePostCreatorForm() {
   const [facebookType, setFacebookType] = useState(FACEBOOK_TYPE.POST);
   const [showFacebookTypeMenu, setShowFacebookTypeMenu] = useState(false);
   const [facebookTitle, setFacebookTitle] = useState("");
-  const [facebookReelCollaboratorId, setFacebookReelCollaboratorId] = useState("");
-  const [facebookReelPlaceId, setFacebookReelPlaceId] = useState("");
   const [facebookReelThumbnail, setFacebookReelThumbnail] = useState("");
 
   // YouTube Presets States
@@ -192,8 +190,6 @@ export function usePostCreatorForm() {
       setYoutubeType(backup.youtubeType ?? YOUTUBE_TYPE.VIDEO);
       setFacebookType(backup.facebookType ?? FACEBOOK_TYPE.POST);
       setFacebookTitle(backup.facebookTitle ?? "");
-      setFacebookReelCollaboratorId(backup.facebookReelCollaboratorId ?? "");
-      setFacebookReelPlaceId(backup.facebookReelPlaceId ?? "");
       setFacebookReelThumbnail(backup.facebookReelThumbnail ?? "");
       setYoutubeTitle(backup.youtubeTitle ?? "");
       setYoutubeMadeForKids(typeof backup.youtubeMadeForKids === 'boolean' ? backup.youtubeMadeForKids : null);
@@ -274,8 +270,6 @@ export function usePostCreatorForm() {
       youtubeType,
       facebookType,
       facebookTitle,
-      facebookReelCollaboratorId,
-      facebookReelPlaceId,
       facebookReelThumbnail,
       youtubeTitle,
       youtubeMadeForKids,
@@ -910,9 +904,14 @@ export function usePostCreatorForm() {
         // Setup Facebook
         setFacebookType(opts.facebookType || "post");
         setFacebookTitle(opts.facebookTitle || "");
-        setFacebookReelCollaboratorId(opts.facebookReelCollaboratorId || "");
-        setFacebookReelPlaceId(opts.facebookReelPlaceId || "");
         setFacebookReelThumbnail(opts.facebookReelThumbnail || "");
+        // mediaThumbnailUrl is the composer's single thumbnail SSoT (see the
+        // "Upload video thumbnail" menu item) — restore it from whichever
+        // per-platform field the post was saved with, so a post edited
+        // after this field existed still shows its thumbnail here.
+        if (!opts.youtubeThumbnail && opts.facebookReelThumbnail) {
+          setMediaThumbnailUrl(opts.facebookReelThumbnail);
+        }
 
         // Setup Instagram
         setInstagramType(opts.instagramType || "post");
@@ -1055,8 +1054,6 @@ export function usePostCreatorForm() {
         // Reset Facebook
         setFacebookType(FACEBOOK_TYPE.POST);
         setFacebookTitle("");
-        setFacebookReelCollaboratorId("");
-        setFacebookReelPlaceId("");
         setFacebookReelThumbnail("");
         setAltText("");
         setVideoSettings(null);
@@ -1313,13 +1310,13 @@ export function usePostCreatorForm() {
           tags: youtubeTags,
           madeForKids: youtubeMadeForKids,
           firstComment: youtubeFirstComment || globalFirstComment,
-          // mediaThumbnailUrl làm SSoT cho thumbnail, nối dây cho cả YouTube và Facebook Reel
+          // mediaThumbnailUrl ("Upload video thumbnail" trong media 3-dot
+          // menu) là SSoT duy nhất cho thumbnail — dùng chung cho cả YouTube
+          // và Facebook Reel, không còn ô "Custom Thumbnail URL" riêng nữa.
           youtubeThumbnail: mediaThumbnailUrl || youtubeThumbnail,
           facebookType,
           facebookTitle,
-          facebookReelCollaboratorId,
-          facebookReelPlaceId,
-          facebookReelThumbnail: mediaThumbnailUrl || facebookReelThumbnail,
+          facebookReelThumbnail: mediaThumbnailUrl,
           instagramType,
           instagramCollaborators,
           instagramAudio,
@@ -1539,8 +1536,6 @@ export function usePostCreatorForm() {
         setMediaThumbnailUrl("");
         setFacebookTitle("");
         setFacebookType(FACEBOOK_TYPE.POST);
-        setFacebookReelCollaboratorId("");
-        setFacebookReelPlaceId("");
         setFacebookReelThumbnail("");
         setInstagramType(INSTAGRAM_TYPE.POST);
         setInstagramCollaborators([]);
@@ -1678,10 +1673,6 @@ export function usePostCreatorForm() {
     setShowFacebookTypeMenu,
     facebookTitle,
     setFacebookTitle,
-    facebookReelCollaboratorId,
-    setFacebookReelCollaboratorId,
-    facebookReelPlaceId,
-    setFacebookReelPlaceId,
     facebookReelThumbnail,
     setFacebookReelThumbnail,
     // Instagram States

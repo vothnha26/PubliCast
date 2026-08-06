@@ -2,7 +2,6 @@ import React from "react";
 import { useTranslation } from "react-i18next";
 import { ChevronDown } from "lucide-react";
 import { usePostCreatorFormContext } from "../../../../context/PostCreatorFormContext";
-import { FACEBOOK_TYPE } from "../../../../constants/postTypes";
 import { PLATFORMS } from "../../../../constants/platforms";
 
 export function FacebookPresets() {
@@ -10,15 +9,8 @@ export function FacebookPresets() {
   const {
     facebookOpen,
     setFacebookOpen,
-    facebookType,
     facebookTitle,
     setFacebookTitle,
-    facebookReelCollaboratorId,
-    setFacebookReelCollaboratorId,
-    facebookReelPlaceId,
-    setFacebookReelPlaceId,
-    facebookReelThumbnail,
-    setFacebookReelThumbnail,
     selectedAccountIds,
     activeBrand,
     networkCustom,
@@ -37,9 +29,6 @@ export function FacebookPresets() {
     : null;
 
   const effectiveTitle = hasAccountSettings && accountSettings.title !== undefined ? accountSettings.title : facebookTitle;
-  const effectiveReelThumbnail = hasAccountSettings && accountSettings.reelThumbnail !== undefined ? accountSettings.reelThumbnail : facebookReelThumbnail;
-  const effectiveReelCollaboratorId = hasAccountSettings && accountSettings.reelCollaboratorId !== undefined ? accountSettings.reelCollaboratorId : facebookReelCollaboratorId;
-  const effectiveReelPlaceId = hasAccountSettings && accountSettings.reelPlaceId !== undefined ? accountSettings.reelPlaceId : facebookReelPlaceId;
 
   const handleSettingChange = (key, flatSetter, value) => {
     if (hasAccountSettings) {
@@ -50,10 +39,10 @@ export function FacebookPresets() {
   };
 
   return (
-    <div className="border border-border rounded-3xl overflow-hidden bg-card shadow-sm transition-all duration-300">
+    <div className="border border-border rounded-3xl bg-card shadow-sm transition-all duration-300">
       <div 
         onClick={() => setFacebookOpen(!facebookOpen)}
-        className="p-5 flex items-center justify-between hover:bg-muted/50 transition-all cursor-pointer group"
+        className="p-5 flex items-center justify-between hover:bg-muted/50 transition-all cursor-pointer group rounded-3xl"
       >
         <div className="flex items-center gap-3">
           <svg className="w-[18px] h-[18px] text-[#1877F2] fill-[#1877F2]" viewBox="0 0 24 24">
@@ -64,60 +53,22 @@ export function FacebookPresets() {
         <ChevronDown size={16} className={`text-muted-foreground transition-transform duration-300 ${facebookOpen ? 'rotate-180 text-black' : ''}`} />
       </div>
 
-      <div className={`transition-all duration-300 ease-in-out overflow-hidden ${facebookOpen ? 'max-h-[600px] border-t border-gray-50 p-6' : 'max-h-0'}`}>
-        <div className="space-y-4 text-left">
-          <div>
-            <label className="block text-[11px] font-bold text-muted-foreground uppercase mb-2 font-sans">{t("planner:postCreator.presets.facebook.titleLabel")}</label>
-            <input
-              type="text"
-              value={effectiveTitle}
-              onChange={(e) => handleSettingChange('title', setFacebookTitle, e.target.value)}
-              placeholder={t("planner:postCreator.presets.facebook.titlePlaceholder")}
-              className="w-full px-4 py-3 bg-card border border-border rounded-2xl text-xs font-semibold focus:border-black outline-none font-sans"
-            />
+      {facebookOpen && (
+        <div className="border-t border-gray-50 p-6 rounded-b-3xl">
+          <div className="space-y-4 text-left">
+            <div>
+              <label className="block text-[11px] font-bold text-muted-foreground uppercase mb-2 font-sans">{t("planner:postCreator.presets.facebook.titleLabel")}</label>
+              <input
+                type="text"
+                value={effectiveTitle}
+                onChange={(e) => handleSettingChange('title', setFacebookTitle, e.target.value)}
+                placeholder={t("planner:postCreator.presets.facebook.titlePlaceholder")}
+                className="w-full px-4 py-3 bg-card border border-border rounded-2xl text-xs font-semibold focus:border-black outline-none font-sans"
+              />
+            </div>
           </div>
-
-          {facebookType === FACEBOOK_TYPE.REEL && (
-            <>
-              {/* Custom Thumbnail URL */}
-              <div>
-                <label className="block text-[11px] font-bold text-muted-foreground uppercase mb-2 font-sans">{t("planner:postCreator.presets.facebook.customThumbnailUrl")}</label>
-                <input
-                  type="text"
-                  value={effectiveReelThumbnail}
-                  onChange={(e) => handleSettingChange('reelThumbnail', setFacebookReelThumbnail, e.target.value)}
-                  placeholder="https://example.com/thumbnail.jpg"
-                  className="w-full px-4 py-3 bg-card border border-border rounded-2xl text-xs font-semibold focus:border-black outline-none font-sans"
-                />
-              </div>
-
-              {/* Collaborator Page ID */}
-              <div>
-                <label className="block text-[11px] font-bold text-muted-foreground uppercase mb-2 font-sans">{t("planner:postCreator.presets.facebook.collaboratorPageId")}</label>
-                <input
-                  type="text"
-                  value={effectiveReelCollaboratorId}
-                  onChange={(e) => handleSettingChange('reelCollaboratorId', setFacebookReelCollaboratorId, e.target.value)}
-                  placeholder="e.g., 1029384756"
-                  className="w-full px-4 py-3 bg-card border border-border rounded-2xl text-xs font-semibold focus:border-black outline-none font-sans"
-                />
-              </div>
-
-              {/* Place ID */}
-              <div>
-                <label className="block text-[11px] font-bold text-muted-foreground uppercase mb-2 font-sans">{t("planner:postCreator.presets.facebook.placeId")}</label>
-                <input
-                  type="text"
-                  value={effectiveReelPlaceId}
-                  onChange={(e) => handleSettingChange('reelPlaceId', setFacebookReelPlaceId, e.target.value)}
-                  placeholder="e.g., 987654321"
-                  className="w-full px-4 py-3 bg-card border border-border rounded-2xl text-xs font-semibold focus:border-black outline-none font-sans"
-                />
-              </div>
-            </>
-          )}
         </div>
-      </div>
+      )}
     </div>
   );
 }

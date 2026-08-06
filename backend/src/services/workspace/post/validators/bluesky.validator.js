@@ -5,6 +5,7 @@ class BlueskyValidator extends BaseValidator {
     const errors = [];
     errors.push(...this.validateCaption(postData.caption));
     errors.push(...this.validateMedia(mediaInfo));
+    errors.push(...this.validateHasContent(postData, mediaInfo));
     return errors;
   }
 
