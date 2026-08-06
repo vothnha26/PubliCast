@@ -107,45 +107,22 @@ export function ListView({ socialAccountId } = {}) {
   const handleBulkDelete = async () => {
     if (!activeBrand || selected.length === 0) return;
 
-    const selectedPosts = posts.filter(p => selected.includes(p.id));
-    const hasPublished = selectedPosts.some(p => p.status?.toLowerCase() === "published");
-
-    let deleteFromSocials = false;
-    let proceed = false;
-
-    if (hasPublished) {
-      const wantDeleteSocial = await confirm({
-        title: "Xóa bài viết?",
-        description: "Một số bài viết đã được đăng. Bạn có muốn xóa bài viết này trên các nền tảng mạng xã hội liên kết không?",
-        confirmText: "Xóa trên tất cả nền tảng",
-        secondaryText: "Chỉ xóa trên hệ thống",
-        cancelText: "Hủy",
-        variant: "destructive"
-      });
-      if (wantDeleteSocial === true) {
-        deleteFromSocials = true;
-        proceed = true;
-      } else if (wantDeleteSocial === false) {
-        deleteFromSocials = false;
-        proceed = true;
-      }
-    } else {
-      const isConfirmed = await confirm({
-        title: "Xóa bài viết?",
-        description: `Bạn có chắc chắn muốn xóa ${selected.length} bài viết?`,
-        confirmText: "Xóa",
-        cancelText: "Hủy",
-        variant: "destructive"
-      });
-      if (isConfirmed) {
-        proceed = true;
-      }
-    }
-
-    if (!proceed) return;
+    // Deleting from linked social platforms too was removed — an
+    // already-published post's delete-from-platform call can partially
+    // fail per platform, leaving the system record gone while the real
+    // post still exists (or vice versa), with no easy way to reconcile.
+    // Delete only ever removes the system record now.
+    const isConfirmed = await confirm({
+      title: "Xóa bài viết?",
+      description: `Bạn có chắc chắn muốn xóa ${selected.length} bài viết?`,
+      confirmText: "Xóa",
+      cancelText: "Hủy",
+      variant: "destructive"
+    });
+    if (!isConfirmed) return;
 
     try {
-      await postService.deletePosts(activeBrand.id, selected, deleteFromSocials);
+      await postService.deletePosts(activeBrand.id, selected, false);
       toast.success(t("listView.toasts.bulkDeleteSuccess"));
       setSelected([]);
       fetchPosts();
@@ -178,45 +155,22 @@ export function ListView({ socialAccountId } = {}) {
   const handleDeletePost = async (id) => {
     if (!activeBrand) return;
 
-    const postToDelete = posts.find(p => p.id === id);
-    const isPublished = postToDelete?.status?.toLowerCase() === "published";
-
-    let deleteFromSocials = false;
-    let proceed = false;
-
-    if (isPublished) {
-      const wantDeleteSocial = await confirm({
-        title: "Xóa bài viết?",
-        description: "Bài viết này đã được đăng. Bạn có muốn xóa bài viết trên các nền tảng mạng xã hội liên kết không?",
-        confirmText: "Xóa trên tất cả nền tảng",
-        secondaryText: "Chỉ xóa trên hệ thống",
-        cancelText: "Hủy",
-        variant: "destructive"
-      });
-      if (wantDeleteSocial === true) {
-        deleteFromSocials = true;
-        proceed = true;
-      } else if (wantDeleteSocial === false) {
-        deleteFromSocials = false;
-        proceed = true;
-      }
-    } else {
-      const isConfirmed = await confirm({
-        title: "Xóa bài viết?",
-        description: "Bạn có chắc chắn muốn xóa bài viết này?",
-        confirmText: "Xóa",
-        cancelText: "Hủy",
-        variant: "destructive"
-      });
-      if (isConfirmed) {
-        proceed = true;
-      }
-    }
-
-    if (!proceed) return;
+    // Deleting from linked social platforms too was removed — an
+    // already-published post's delete-from-platform call can partially
+    // fail per platform, leaving the system record gone while the real
+    // post still exists (or vice versa), with no easy way to reconcile.
+    // Delete only ever removes the system record now.
+    const isConfirmed = await confirm({
+      title: "Xóa bài viết?",
+      description: "Bạn có chắc chắn muốn xóa bài viết này?",
+      confirmText: "Xóa",
+      cancelText: "Hủy",
+      variant: "destructive"
+    });
+    if (!isConfirmed) return;
 
     try {
-      await postService.deletePosts(activeBrand.id, [id], deleteFromSocials);
+      await postService.deletePosts(activeBrand.id, [id], false);
       toast.success(t("listView.toasts.deleteSuccess"));
       fetchPosts();
     } catch (e) {
