@@ -111,7 +111,27 @@ class PostService {
     const format = isLocal
       ? require('path').extname(req.file.originalname || '').replace('.', '').toLowerCase() || null
       : req.file.format;
-    const duration = isLocal ? null : req.file.duration;
+    let duration = isLocal ? null : req.file.duration;
+
+    // Local storage has no Cloudinary analysis to fall back on — ffprobe
+    // reads the file's own headers instead (read-only, doesn't touch the
+    // saved file). Only ever runs for actual video uploads; images/PDFs
+    // skip straight past. Best-effort: a probe failure just leaves these
+    // null (same as the Cloudinary path when metadata isn't available),
+    // it never blocks the upload itself.
+    let width = null;
+    let height = null;
+    let frameRate = null;
+    let codec = null;
+    if (isLocal && req.file.mimetype?.startsWith('video/')) {
+      const videoProcessorFacade = require('./video/video-processor.facade');
+      const probed = await videoProcessorFacade.probeVideoMetadata(req.file.path);
+      width = probed.width;
+      height = probed.height;
+      frameRate = probed.frameRate;
+      codec = probed.codec;
+      if (duration === null && probed.durationSeconds !== null) duration = probed.durationSeconds;
+    }
 
     const limits = req.postUploadLimits;
     const destroyRejectedUpload = async () => {
@@ -142,7 +162,7 @@ class PostService {
       videoUrl = `/${relativePath}`;
     }
 
-    return { videoUrl, sizeMb, duration, format };
+    return { videoUrl, sizeMb, duration, format, width, height, frameRate, codec };
   }
 
   /**
@@ -413,7 +433,14 @@ class PostService {
       isVideo,
       format,
       duration: postData.options?.videoDuration || null,
-      sizeMb: postData.options?.videoSizeMb || null
+      sizeMb: postData.options?.videoSizeMb || null,
+      // width/height come from the browser's own <video> element metadata
+      // (free, no probe needed); frameRate has no equivalent browser API and
+      // only ever exists when the upload went through processUploadedFile's
+      // ffprobe pass (local storage) or a future platform that supplies it.
+      width: postData.options?.videoWidth || null,
+      height: postData.options?.videoHeight || null,
+      frameRate: postData.options?.videoFrameRate || null
     };
 
     const status = postData.status || POST_STATUS.DRAFT;
@@ -597,7 +624,10 @@ class PostService {
       isVideo,
       format,
       duration: mergedPostData.options.videoDuration || null,
-      sizeMb: mergedPostData.options.videoSizeMb || null
+      sizeMb: mergedPostData.options.videoSizeMb || null,
+      width: mergedPostData.options.videoWidth || null,
+      height: mergedPostData.options.videoHeight || null,
+      frameRate: mergedPostData.options.videoFrameRate || null
     };
 
     const targetStatus = postData.status !== undefined ? postData.status : post.status;

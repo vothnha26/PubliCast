@@ -12,8 +12,8 @@ const { sendSuccess } = require('../../utils/response.util');
  */
 class PostControllerV2 {
   uploadVideoV2 = asyncHandler(async (req, res) => {
-    const { videoUrl, sizeMb, duration, format } = await postService.processUploadedFile(req);
-    sendSuccess(res, { videoUrl, sizeMb, duration, format }, 'Video uploaded successfully');
+    const { videoUrl, sizeMb, duration, format, width, height, frameRate, codec } = await postService.processUploadedFile(req);
+    sendSuccess(res, { videoUrl, sizeMb, duration, format, width, height, frameRate, codec }, 'Video uploaded successfully');
   });
 
   getPlatformLimitsV2 = asyncHandler(async (req, res) => {

@@ -8,12 +8,15 @@ class FacebookValidator extends BaseValidator {
 
     const isReel = postData.type === 'REEL' || postData.options?.facebookType === 'reel';
     if (isReel) {
-      const { hasMedia, isVideo, duration, width, height } = mediaInfo;
+      const { hasMedia, isVideo, duration, width, height, frameRate } = mediaInfo;
       // Reels require video
       if (!hasMedia || !isVideo) {
         errors.push('Facebook Reels require a video file.');
       } else {
-        // Best-effort specs validation (chỉ validate khi có các thông tin duration/width/height)
+        // Best-effort specs validation (chỉ validate khi có các thông tin duration/width/height/frameRate —
+        // available from the browser's <video> element for duration/width/
+        // height, and from Cloudinary's upload response for frameRate; see
+        // usePostCreatorForm.js's payload.options build).
         if (duration) {
           if (duration < 3 || duration > 90) {
             errors.push(`Facebook Reels duration must be between 3 and 90 seconds (Current: ${duration.toFixed(1)}s).`);
@@ -24,6 +27,14 @@ class FacebookValidator extends BaseValidator {
           // Thước phim Reels phải là video dọc (tỉ lệ < 1.0)
           if (ratio >= 1.0) {
             errors.push('Facebook Reels must be vertical (aspect ratio 9:16).');
+          }
+          if (width < 540 || height < 960) {
+            errors.push(`Facebook Reels resolution must be at least 540x960 (Current: ${width}x${height}).`);
+          }
+        }
+        if (frameRate) {
+          if (frameRate < 24 || frameRate > 60) {
+            errors.push(`Facebook Reels frame rate must be between 24 and 60 fps (Current: ${frameRate}fps).`);
           }
         }
       }

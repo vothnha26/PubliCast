@@ -333,6 +333,64 @@ class VideoProcessorFacade {
     });
   }
 
+  /**
+   * Read-only video metadata probe (frame rate, resolution, duration, codec)
+   * via ffprobe — the read-only counterpart to ffmpeg (used elsewhere in
+   * this file to actually transcode/re-encode). ffprobe only inspects the
+   * file's container/stream headers; it never writes, re-encodes, or
+   * otherwise modifies the input file on disk.
+   *
+   * Used for local-storage uploads (UPLOAD_STORAGE=local) where, unlike
+   * Cloudinary, nothing else analyzes the file server-side — without this,
+   * facebook.validator.js's frame-rate/resolution checks have no data to
+   * validate against and silently no-op.
+   *
+   * @param {string} filePath Absolute path to a video file already saved on disk
+   * @returns {Promise<{width: number|null, height: number|null, frameRate: number|null, durationSeconds: number|null, codec: string|null}>}
+   */
+  async probeVideoMetadata(filePath) {
+    return new Promise((resolve) => {
+      const args = [
+        '-v', 'error',
+        '-select_streams', 'v:0',
+        '-show_entries', 'stream=width,height,r_frame_rate,codec_name:format=duration',
+        '-of', 'json',
+        filePath
+      ];
+
+      execFile('ffprobe', args, (error, stdout) => {
+        if (error) {
+          console.warn(`[VideoProcessorFacade] ffprobe failed for ${filePath}: ${error.message}`);
+          return resolve({ width: null, height: null, frameRate: null, durationSeconds: null, codec: null });
+        }
+
+        try {
+          const parsed = JSON.parse(stdout);
+          const stream = parsed.streams?.[0] || {};
+
+          // r_frame_rate comes back as a fraction string like "30/1" or
+          // "30000/1001" (29.97fps) — never a plain number.
+          let frameRate = null;
+          if (stream.r_frame_rate) {
+            const [num, den] = stream.r_frame_rate.split('/').map(Number);
+            if (den) frameRate = Math.round((num / den) * 100) / 100;
+          }
+
+          resolve({
+            width: stream.width ?? null,
+            height: stream.height ?? null,
+            frameRate,
+            durationSeconds: parsed.format?.duration ? parseFloat(parsed.format.duration) : null,
+            codec: stream.codec_name ?? null
+          });
+        } catch (parseErr) {
+          console.warn(`[VideoProcessorFacade] Failed to parse ffprobe output for ${filePath}: ${parseErr.message}`);
+          resolve({ width: null, height: null, frameRate: null, durationSeconds: null, codec: null });
+        }
+      });
+    });
+  }
+
   _cleanupFiles(paths) {
     paths.forEach((p) => {
       if (p && fs.existsSync(p)) {
