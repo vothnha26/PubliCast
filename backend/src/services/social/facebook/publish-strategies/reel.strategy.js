@@ -10,7 +10,6 @@ class ReelPublishStrategy extends FacebookPublishStrategy {
       throw new Error('Reel requires a video media file');
     }
 
-    // 1. Đăng Reel kèm placeId nếu có
     const publishOptions = {};
     if (options.facebookReelPlaceId) {
       publishOptions.placeId = options.facebookReelPlaceId;
@@ -25,12 +24,14 @@ class ReelPublishStrategy extends FacebookPublishStrategy {
     );
     const videoId = publishResult.id;
 
-    // 2. Tải & Cập nhật ảnh bìa tùy chỉnh (Best-effort)
+    // Tải & đăng ảnh bìa tùy chỉnh (Best-effort), SAU khi Reel đã publish
+    // xong — theo Meta, /thumbnails được gọi sau khi video_state đã là
+    // PUBLISHED, không phải trước.
     if (options.facebookReelThumbnail) {
       try {
         logger.debug(`[ReelPublishStrategy] Downloading custom thumbnail safely from: ${options.facebookReelThumbnail}`);
         const thumbnailBuffer = await downloadImageSafely(options.facebookReelThumbnail);
-        
+
         logger.debug(`[ReelPublishStrategy] Uploading thumbnail to Reels video ${videoId}`);
         await facebookReelGateway.uploadReelThumbnail(
           videoId,
@@ -42,22 +43,6 @@ class ReelPublishStrategy extends FacebookPublishStrategy {
       } catch (err) {
         console.error('[ReelPublishStrategy] Failed to upload custom thumbnail:', err.message);
         // Best-effort: Không làm hỏng cả luồng post nếu chỉ lỗi upload thumbnail
-      }
-    }
-
-    // 3. Mời cộng tác viên (Best-effort)
-    if (options.facebookReelCollaboratorId) {
-      try {
-        logger.debug(`[ReelPublishStrategy] Inviting collaborator ${options.facebookReelCollaboratorId} for video ${videoId}`);
-        await facebookReelGateway.inviteReelCollaborator(
-          videoId,
-          options.facebookReelCollaboratorId,
-          pageAccessToken
-        );
-        logger.debug('[ReelPublishStrategy] Collaborator invitation sent successfully.');
-      } catch (err) {
-        console.error('[ReelPublishStrategy] Failed to invite collaborator:', err.message);
-        // Best-effort: Không làm hỏng cả luồng post nếu chỉ lỗi mời cộng tác viên
       }
     }
 

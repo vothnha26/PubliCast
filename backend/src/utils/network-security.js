@@ -74,6 +74,26 @@ const safeLookup = (hostname, options, callback) => {
 
   dns.lookup(hostname, options, (err, address, family) => {
     if (err) return callback(err);
+
+    // net.Socket's autoSelectFamily (default since Node 18.13, confirmed via
+    // this project's Node 23 runtime) calls custom lookup functions with
+    // { all: true } for happy-eyeballs — dns.lookup() then calls back with
+    // an array of {address, family} instead of a single string. Passing
+    // that array straight to isPrivateIp always failed it (non-string →
+    // unsafe), which silently SSRF-blocked every public hostname resolved
+    // this way (e.g. res.cloudinary.com) instead of only actually-private
+    // ones. Filter to the public entries instead of rejecting the whole batch.
+    if (Array.isArray(address)) {
+      const safeEntries = address.filter((entry) => !isPrivateIp(entry?.address));
+      if (safeEntries.length === 0) {
+        return callback(new Error(`SSRF Blocked: All destination IPs resolved from ${hostname} are private or reserved.`));
+      }
+      // net.Socket's autoSelectFamily lookup expects the same
+      // {address, family}[] shape dns.lookup(..., {all:true}) itself
+      // returns — passing back a flat string[] here breaks happy-eyeballs.
+      return callback(null, safeEntries);
+    }
+
     if (isPrivateIp(address)) {
       return callback(new Error(`SSRF Blocked: Destination IP ${address} resolved from ${hostname} is private or reserved.`));
     }

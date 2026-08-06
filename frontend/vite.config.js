@@ -42,6 +42,13 @@ export default defineConfig({
   // File types to support raw imports. Never add .css, .tsx, or .ts files to this.
   assetsInclude: ['**/*.svg', '**/*.csv'],
   server: {
+    fs: {
+      // Allow serving shared/facebook-limits.json (validation limits shared
+      // with the backend — see src/constants/platformValidation.constants.js)
+      // from outside the frontend/ project root. Vite blocks fs access
+      // outside root by default; without this the dev server 403s on it.
+      allow: [path.resolve(__dirname, '.'), path.resolve(__dirname, '../shared')],
+    },
     proxy: {
       '/api': {
         target: 'http://127.0.0.1:3000',

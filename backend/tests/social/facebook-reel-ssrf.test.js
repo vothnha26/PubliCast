@@ -1,4 +1,4 @@
-const { isPrivateIp, downloadImageSafely, downloadBufferSafely } = require('../../src/utils/network-security');
+const { isPrivateIp, safeLookup, downloadImageSafely, downloadBufferSafely } = require('../../src/utils/network-security');
 const axios = require('axios');
 const dns = require('dns');
 
@@ -37,6 +37,70 @@ describe('Network Security SSRF / DNS Rebinding Tests', () => {
       expect(isPrivateIp(undefined)).toBe(true);
       expect(isPrivateIp(null)).toBe(true);
       expect(isPrivateIp(42)).toBe(true);
+    });
+  });
+
+  describe('safeLookup', () => {
+    beforeEach(() => {
+      jest.clearAllMocks();
+    });
+
+    it('resolves with the safe entries when dns.lookup is called with {all:true} (autoSelectFamily happy-eyeballs) and every resolved IP is public', (done) => {
+      dns.lookup.mockImplementation((hostname, options, callback) => {
+        callback(null, [
+          { address: '2606:4700::1', family: 6 },
+          { address: '203.0.113.10', family: 4 }
+        ]);
+      });
+
+      safeLookup('res.cloudinary.com', { all: true }, (err, address) => {
+        expect(err).toBeNull();
+        expect(address).toEqual([
+          { address: '2606:4700::1', family: 6 },
+          { address: '203.0.113.10', family: 4 }
+        ]);
+        done();
+      });
+    });
+
+    it('filters out only the private entries when {all:true} returns a mix of public and private IPs', (done) => {
+      dns.lookup.mockImplementation((hostname, options, callback) => {
+        callback(null, [
+          { address: '127.0.0.1', family: 4 },
+          { address: '203.0.113.10', family: 4 }
+        ]);
+      });
+
+      safeLookup('example.com', { all: true }, (err, address) => {
+        expect(err).toBeNull();
+        expect(address).toEqual([{ address: '203.0.113.10', family: 4 }]);
+        done();
+      });
+    });
+
+    it('errors when every {all:true} resolved IP is private', (done) => {
+      dns.lookup.mockImplementation((hostname, options, callback) => {
+        callback(null, [{ address: '127.0.0.1', family: 4 }]);
+      });
+
+      safeLookup('localhost', { all: true }, (err) => {
+        expect(err).toBeInstanceOf(Error);
+        expect(err.message).toContain('SSRF Blocked');
+        done();
+      });
+    });
+
+    it('still blocks a single private IP when dns.lookup is called without {all:true}', (done) => {
+      dns.lookup.mockImplementation((hostname, options, callback) => {
+        const cb = typeof options === 'function' ? options : callback;
+        cb(null, '127.0.0.1', 4);
+      });
+
+      safeLookup('localhost', {}, (err) => {
+        expect(err).toBeInstanceOf(Error);
+        expect(err.message).toContain('SSRF Blocked');
+        done();
+      });
     });
   });
 

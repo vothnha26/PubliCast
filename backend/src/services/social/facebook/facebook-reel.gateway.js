@@ -82,9 +82,16 @@ class FacebookReelGateway {
    */
   async _handleResponse(res, context = '') {
     if (!res.ok) {
-      const errData = await res.json().catch(() => ({}));
+      const rawText = await res.text().catch(() => '');
+      let errData = {};
+      try {
+        errData = rawText ? JSON.parse(rawText) : {};
+      } catch (e) {
+        // Body wasn't JSON — surface it raw below so the real cause isn't lost.
+      }
       const code = errData.error?.code;
-      const message = errData.error?.message || `Failed in Facebook Reels Gateway: ${context}`;
+      const message = errData.error?.message
+        || `Failed in Facebook Reels Gateway: ${context} (HTTP ${res.status}${rawText ? `: ${rawText.slice(0, 500)}` : ''})`;
 
       if (ERROR_CODES.RATE_LIMIT.includes(code)) {
         let retryAfter = DEFAULT_RETRY_AFTER_SECONDS;
@@ -103,8 +110,11 @@ class FacebookReelGateway {
   /**
    * publishReel
    * Đăng Reels bằng quy trình 3 bước (Start -> Upload -> Finish).
+   * @param {Object} [options]
+   * @param {string} [options.placeId] Gắn địa điểm cho Reel (finish phase).
    */
   async publishReel(pageId, pageAccessToken, mediaUrl, caption, options = {}) {
+    const { placeId } = options;
     // Bước 1: Khởi tạo phiên tải lên (Start Phase)
     const startUrl = `${this.graphBaseUrl}/${pageId}/video_reels`;
     const startFormData = new FormData();
@@ -120,14 +130,18 @@ class FacebookReelGateway {
 
     // Bước 2: Tải video lên (Upload Phase)
     if (mediaUrl.startsWith('http://') || mediaUrl.startsWith('https://')) {
-      // Hosted URL upload
+      // Hosted URL upload — per Meta's docs, file_url is passed as an HTTP
+      // header (not a JSON body); offset/file_size are binary-upload-only
+      // and must be omitted here, since Facebook validates whichever
+      // headers are present against the binary-vs-hosted-URL mode it infers
+      // from them — sending a JSON body with Content-Type: application/json
+      // previously made it try (and fail) to parse a missing offset header.
       const uploadRes = await global.fetch(uploadUrl, {
         method: 'POST',
         headers: {
           'Authorization': `OAuth ${pageAccessToken}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ file_url: mediaUrl })
+          'file_url': mediaUrl
+        }
       });
       await this._handleResponse(uploadRes, 'Upload video from hosted URL');
     } else {
@@ -157,8 +171,8 @@ class FacebookReelGateway {
     if (caption) {
       finishFormData.append('description', caption);
     }
-    if (options.placeId) {
-      finishFormData.append('place', options.placeId);
+    if (placeId) {
+      finishFormData.append('place', placeId);
     }
 
     const finishRes = await global.fetch(finishUrl, {
@@ -175,6 +189,11 @@ class FacebookReelGateway {
   /**
    * uploadReelThumbnail
    * Đăng ảnh bìa tùy chỉnh (Custom Thumbnail) cho thước phim.
+   * Theo Meta: gọi SAU khi Reel đã publish xong (video_state=PUBLISHED),
+   * không phải trước — xem publish-strategies/reel.strategy.js. Cố tình
+   * KHÔNG retry và KHÔNG verify lại bằng GET ở đây: đây vẫn là một bước
+   * best-effort chạy sau khi publishReel() đã resolve, thêm round-trip sẽ
+   * chỉ kéo dài thời gian job giữ BullMQ lock mà không có lợi ích tương xứng.
    */
   async uploadReelThumbnail(videoId, pageAccessToken, thumbnailBuffer, filename = 'thumbnail.jpg') {
     const url = `${this.graphBaseUrl}/${videoId}/thumbnails`;
@@ -190,18 +209,6 @@ class FacebookReelGateway {
       body: formData
     });
     return this._handleResponse(res, 'Upload Reel thumbnail');
-  }
-
-  /**
-   * inviteReelCollaborator
-   * Mời cộng tác viên đăng thước phim.
-   */
-  async inviteReelCollaborator(videoId, collaboratorPageId, pageAccessToken) {
-    const url = `${this.graphBaseUrl}/${videoId}/collaborators?target_id=${collaboratorPageId}&access_token=${pageAccessToken}`;
-    const res = await global.fetch(url, {
-      method: 'POST'
-    });
-    return this._handleResponse(res, 'Invite collaborator');
   }
 
   /**

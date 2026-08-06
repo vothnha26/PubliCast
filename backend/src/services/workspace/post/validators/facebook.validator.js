@@ -1,12 +1,16 @@
 const BaseValidator = require('./base.validator');
+const { STORY_LIMITS } = require('../../../../config/facebook-reel.constants');
 
 class FacebookValidator extends BaseValidator {
   validate(postData, mediaInfo = {}) {
     const errors = [];
     errors.push(...this.validateCaption(postData.caption));
     errors.push(...this.validateMedia(mediaInfo));
+    errors.push(...this.validateHasContent(postData, mediaInfo));
 
     const isReel = postData.type === 'REEL' || postData.options?.facebookType === 'reel';
+    const isStory = postData.type === 'STORY' || postData.options?.facebookType === 'story';
+
     if (isReel) {
       const { hasMedia, isVideo, duration, width, height, frameRate } = mediaInfo;
       // Reels require video
@@ -39,24 +43,39 @@ class FacebookValidator extends BaseValidator {
         }
       }
 
-      // Kiểm tra Collaborator Page ID (phải là số)
-      const collabId = postData.options?.facebookReelCollaboratorId;
-      if (collabId && !/^\d+$/.test(collabId)) {
-        errors.push('Collaborator Page ID must be a numeric string.');
-      }
-
-      // Kiểm tra Place ID (phải là số)
-      const placeId = postData.options?.facebookReelPlaceId;
-      if (placeId && !/^\d+$/.test(placeId)) {
-        errors.push('Place ID must be a numeric string.');
-      }
-
       // Kiểm tra Thumbnail URL
       const thumbUrl = postData.options?.facebookReelThumbnail;
       if (thumbUrl && !/^https?:\/\//i.test(thumbUrl)) {
         errors.push('Thumbnail must be a valid HTTP/HTTPS URL.');
       }
     }
+
+    if (isStory) {
+      const { hasMedia, isVideo, duration, width, height, frameRate } = mediaInfo;
+      // Story cho phép cả ảnh và video — chỉ video mới có giới hạn
+      // duration/resolution/frameRate bên dưới.
+      if (!hasMedia) {
+        errors.push('Facebook Stories require a photo or video file.');
+      } else if (isVideo) {
+        // Video Story đăng lên Trang Facebook không được vượt quá 60 giây.
+        if (duration) {
+          if (duration < STORY_LIMITS.MIN_DURATION_SECONDS || duration > STORY_LIMITS.MAX_DURATION_SECONDS) {
+            errors.push(`Facebook Story videos must be between ${STORY_LIMITS.MIN_DURATION_SECONDS} and ${STORY_LIMITS.MAX_DURATION_SECONDS} seconds (Current: ${duration.toFixed(1)}s).`);
+          }
+        }
+        if (width && height) {
+          if (width < STORY_LIMITS.MIN_RESOLUTION_WIDTH || height < STORY_LIMITS.MIN_RESOLUTION_HEIGHT) {
+            errors.push(`Facebook Story resolution must be at least ${STORY_LIMITS.MIN_RESOLUTION_WIDTH}x${STORY_LIMITS.MIN_RESOLUTION_HEIGHT} (Current: ${width}x${height}).`);
+          }
+        }
+        if (frameRate) {
+          if (frameRate < STORY_LIMITS.MIN_FRAME_RATE || frameRate > STORY_LIMITS.MAX_FRAME_RATE) {
+            errors.push(`Facebook Story frame rate must be between ${STORY_LIMITS.MIN_FRAME_RATE} and ${STORY_LIMITS.MAX_FRAME_RATE} fps (Current: ${frameRate}fps).`);
+          }
+        }
+      }
+    }
+
     return errors;
   }
 }

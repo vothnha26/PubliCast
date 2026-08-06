@@ -4,12 +4,19 @@
  * Eliminates all magic strings and hardcoded literals.
  */
 
+// Facebook Reel/Story duration+resolution+frameRate limits are shared with
+// the backend (backend/src/config/facebook-reel.constants.js) via this JSON
+// file so the two validators can't drift apart — this is what caused the
+// Story max-duration bug (frontend hardcoded 15s, the real Meta limit is
+// 60s, backend already had it right).
+import facebookLimits from '../../../shared/facebook-limits.json';
+
 export const PLATFORM_LIMIT_THRESHOLDS = {
   FACEBOOK: {
     ALBUM_MIN_MEDIA: 2,
-    REEL_MIN_DURATION: 3,
-    REEL_MAX_DURATION: 90,
-    STORY_MAX_DURATION: 15
+    REEL_MIN_DURATION: facebookLimits.REEL.MIN_DURATION_SECONDS,
+    REEL_MAX_DURATION: facebookLimits.REEL.MAX_DURATION_SECONDS,
+    STORY_MAX_DURATION: facebookLimits.STORY.MAX_DURATION_SECONDS
   },
   INSTAGRAM: {
     REEL_MIN_DURATION: 3,
