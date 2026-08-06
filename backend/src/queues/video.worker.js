@@ -20,7 +20,12 @@ const videoWorker = new Worker(VIDEO_QUEUE_NAME, async (job) => {
   throw new Error(`Unhandled job type: ${job.name} in Video Worker`);
 }, {
   ...defaultConnection,
-  concurrency: 2 // Giới hạn tối đa 2 luồng render video song song trên mỗi instance để tránh nghẽn CPU
+  concurrency: 2, // Giới hạn tối đa 2 luồng render video song song trên mỗi instance để tránh nghẽn CPU
+  // BullMQ's default drainDelay (5s) re-polls Redis for new jobs every 5s
+  // even when the queue sits empty. Video trims aren't latency-sensitive
+  // like publish scheduling — 30s still feels instant to a user waiting on
+  // a trim, while cutting idle-poll command volume against Upstash ~6x.
+  drainDelay: 30
 });
 
 // Event Listeners cho logging/monitoring

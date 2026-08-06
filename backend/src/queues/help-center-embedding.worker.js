@@ -54,7 +54,11 @@ const helpCenterEmbeddingWorker = new Worker(QUEUE_CONFIG.HELP_CENTER_EMBEDDING.
   }
 }, {
   ...defaultConnection,
-  concurrency: 2
+  concurrency: 2,
+  // See video.worker.js — article embedding is triggered by an admin
+  // publish action, not time-sensitive, so a longer drainDelay trades
+  // idle-poll command volume against Upstash for a negligible pickup delay.
+  drainDelay: 30
 });
 
 helpCenterEmbeddingWorker.on('completed', (job) => {

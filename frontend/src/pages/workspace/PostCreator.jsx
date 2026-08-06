@@ -551,7 +551,7 @@ export function PostCreatorPage() {
           {/* Main 2-Column Content Body */}
           <div className="flex-1 flex overflow-hidden min-h-0">
             {/* Cột 1: COMPOSE (Bên trái) */}
-            <div className="flex-[1.1] flex flex-col min-h-0 overflow-hidden">
+            <div className="flex-[1.1] flex flex-col min-h-0">
               <ComposerHeader />
               <ComposerBody />
             </div>

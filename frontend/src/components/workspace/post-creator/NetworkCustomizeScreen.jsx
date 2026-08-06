@@ -374,7 +374,7 @@ export function NetworkCustomizeScreen({ onClose }) {
         {/* Main 2-Column Content Body */}
         <div className="flex-1 flex overflow-hidden min-h-0">
           {/* Left Column: Workspace & Channels & Footer */}
-          <div className="flex-[1.1] flex flex-col min-h-0 overflow-hidden">
+          <div className="flex-[1.1] flex flex-col min-h-0">
 
           {/* Unified Header matching ComposerHeader layout & single border-b */}
           <div className="shrink-0 px-8 py-3 border-b border-border flex flex-col gap-3 bg-card z-10">
