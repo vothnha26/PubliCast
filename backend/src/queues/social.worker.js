@@ -45,7 +45,12 @@ const socialWorker = new Worker(QUEUE_CONFIG.SOCIAL.NAME, async (job) => {
   }
 }, {
   ...defaultConnection,
-  concurrency: 3 // Chỉ mở tối đa 3 connection song song để bảo vệ connection pool của database
+  concurrency: 3, // Chỉ mở tối đa 3 connection song song để bảo vệ connection pool của database
+  // See video.worker.js — social sync jobs are background work, not
+  // latency-sensitive, so a longer drainDelay trades idle-poll command
+  // volume against Upstash for a small (imperceptible) delay picking up
+  // the next job.
+  drainDelay: 30
 });
 
 // Event Listeners cho giám sát
