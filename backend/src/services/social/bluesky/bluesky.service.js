@@ -17,15 +17,73 @@ class BlueskyService extends BaseSocialService {
     this.quotaTracker = new QuotaTrackerService(redisClient);
   }
 
+  /**
+   * Decodes a JWT's payload (no signature verification — we only need the
+   * `exp` claim to decide whether to proactively refresh) and returns the
+   * expiry as a Unix timestamp in seconds, or null if it can't be read.
+   */
+  _decodeJwtExp(jwt) {
+    try {
+      const payloadB64 = jwt.split('.')[1];
+      const payload = JSON.parse(Buffer.from(payloadB64, 'base64url').toString('utf8'));
+      return typeof payload.exp === 'number' ? payload.exp : null;
+    } catch {
+      return null;
+    }
+  }
+
   async _getAuthenticatedAgent(account) {
     let agent;
 
     if (account.blueskyAccount?.dpopPrivateKey && account.blueskyAccount?.dpopJwk) {
       const privateKey = crypto.createPrivateKey(decrypt(account.blueskyAccount.dpopPrivateKey));
       const jwk = JSON.parse(decrypt(account.blueskyAccount.dpopJwk));
+      let accessJwt = decrypt(account.accessToken);
+
+      // createDPoPAgent has no built-in auto-refresh (unlike the session-
+      // based BskyAgent path below, which gets it for free via
+      // persistSession) — without this, an expired access token surfaces
+      // downstream as an opaque "exp claim timestamp check failed" on every
+      // publish attempt until the user manually reconnects. Proactively
+      // refresh here (30s safety buffer) using the same DPoP keypair the
+      // token was originally bound to, since it's bound to that specific
+      // key and can't be swapped for a different one.
+      const exp = this._decodeJwtExp(accessJwt);
+      const nowSec = Math.floor(Date.now() / 1000);
+      if (exp !== null && exp <= nowSec + 30) {
+        const refreshJwt = account.refreshToken ? decrypt(account.refreshToken) : null;
+        if (!refreshJwt) {
+          throw new Error('Bluesky access token expired and no refresh token is stored — please reconnect this account.');
+        }
+        try {
+          const tokenUrl = process.env.BLUESKY_TOKEN_URL || 'https://bsky.social/oauth/token';
+          const baseUrl = process.env.BACKEND_BASE_URL || '';
+          const clientId = process.env.BLUESKY_CLIENT_ID || `${baseUrl}/api/social/bluesky/client-metadata.json`;
+
+          const refreshed = await blueskyOAuthHelper.refreshDPoPToken({
+            tokenUrl,
+            clientId,
+            refreshJwt,
+            keyPair: { privateKey, jwk }
+          });
+
+          accessJwt = refreshed.access_token;
+          await socialAccountRepository.updateTokens(account.id, {
+            access_token: refreshed.access_token,
+            // Bluesky's refresh_token grant rotates the refresh token too —
+            // keep the old one if the response omits it rather than wiping
+            // out a still-valid token with undefined.
+            refresh_token: refreshed.refresh_token || undefined
+          });
+          logger.debug(`[Bluesky] Refreshed expired DPoP access token for account ${account.id}.`);
+        } catch (err) {
+          logger.warn(`[Bluesky] Failed to refresh DPoP access token for account ${account.id}: ${err.message}. Falling back to the expired token — request will likely fail.`);
+        }
+      }
+
       agent = blueskyGateway.createDPoPAgent({
         did: account.platformAccountId,
-        accessJwt: decrypt(account.accessToken),
+        accessJwt,
         keyPair: { privateKey, jwk },
         pdsUrl: account.blueskyAccount?.pdsUrl
       });
