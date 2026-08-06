@@ -621,7 +621,29 @@ class FacebookGateway {
       throw new Error('Facebook album requires at least 2 images');
     }
 
+    // Multi-photo feed post (attached_media on /feed) is the primary path,
+    // not a fallback: it reads on Facebook as a normal post — shared status
+    // text up top, photos attached below, matching how users actually post
+    // multiple photos on Facebook. The "Traditional Album" API
+    // (createAlbum + uploadPhotoToAlbum) creates a real, separate Album
+    // object instead — its message only ever shows as the album's own
+    // description, never as status text on a feed post, which read to
+    // users as "the caption got lost" even though it published fine.
     try {
+      const photoIds = [];
+      for (let i = 0; i < mediaUrls.length; i += 1) {
+        const photoCaption = mediaCaptions[i] || '';
+        logger.debug(`[FacebookGateway] Uploading photo ${i + 1}/${mediaUrls.length} as unpublished`);
+        const result = await this.uploadUnpublishedPhoto(pageId, pageAccessToken, mediaUrls[i], photoCaption);
+        photoIds.push(result.id);
+      }
+
+      const feedResult = await this.publishMultiPhotoPost(pageId, pageAccessToken, photoIds, caption, scheduledAt);
+      logger.debug('[FacebookGateway] Successfully published multi-photo post:', feedResult.id);
+      return { id: feedResult.id, photoIds };
+    } catch (feedError) {
+      console.warn('[FacebookGateway] Multi-photo feed post failed, trying Traditional Album fallback. Error:', feedError.message);
+
       const albumName = (caption || 'New Album').slice(0, 50);
       const album = await this.createAlbum(pageId, pageAccessToken, albumName, caption);
       const albumId = album.id;
@@ -629,26 +651,13 @@ class FacebookGateway {
       const photos = [];
       for (let i = 0; i < mediaUrls.length; i += 1) {
         const photoCaption = mediaCaptions[i] || caption || '';
-        logger.debug(`[FacebookGateway] Uploading photo ${i + 1}/${mediaUrls.length}`);
+        logger.debug(`[FacebookGateway] [Fallback] Uploading photo ${i + 1}/${mediaUrls.length}`);
         const result = await this.uploadPhotoToAlbum(albumId, pageAccessToken, mediaUrls[i], photoCaption);
         photos.push(result);
       }
 
       logger.debug('[FacebookGateway] Successfully published all photos to album:', albumId);
-      return { id: albumId, photos };
-    } catch (albumError) {
-      console.warn('[FacebookGateway] Traditional album creation failed, trying multi-photo post fallback. Error:', albumError.message);
-      
-      const photoIds = [];
-      for (let i = 0; i < mediaUrls.length; i += 1) {
-        const photoCaption = mediaCaptions[i] || caption || '';
-        logger.debug(`[FacebookGateway] [Fallback] Uploading photo ${i + 1}/${mediaUrls.length} as unpublished`);
-        const result = await this.uploadUnpublishedPhoto(pageId, pageAccessToken, mediaUrls[i], photoCaption);
-        photoIds.push(result.id);
-      }
-      
-      const feedResult = await this.publishMultiPhotoPost(pageId, pageAccessToken, photoIds, caption, scheduledAt);
-      return { id: feedResult.id, fallback: true, photoIds };
+      return { id: albumId, fallback: true, photos };
     }
   }
 
