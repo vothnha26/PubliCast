@@ -11,13 +11,29 @@ const logger = require('../../utils/logger');
 // (FREE-tier) default used by each platform's own post-history service.
 const DEFAULT_HISTORY_WINDOW_MONTHS = 1;
 
-// getAggregatedMetrics feeds both the client API response and the Redis
-// cache from the same repository result, which carries decrypted
+// getAggregatedMetrics feeds both the client API response and (formerly)
+// a Redis cache from the same repository result, which carries decrypted
 // accessToken/refreshToken/scopes for calling each platform's API — fine
-// internally, but neither the frontend (which never reads these) nor the
-// Redis cache (a second, unencrypted copy of live OAuth credentials with no
-// reason to exist) should ever receive them.
+// internally, but neither the frontend (which never reads these) nor Redis
+// (a second, unencrypted copy of live OAuth credentials with no reason to
+// exist) should ever receive them.
 const stripSensitiveAccountFields = (accounts) => accounts.map(({ accessToken, refreshToken, scopes, ...rest }) => rest);
+
+// How often the background sync (a real call to each platform's API) is
+// allowed to fire per brand+date-range. This used to be a side effect of
+// caching the full accounts payload in Redis (a HIT skipped the sync
+// entirely) — but that payload is 20-40KB+ per account (each account's
+// most recent Analytics row embeds 31 days of growth/balance/clicks data,
+// double-JSON-encoded), multiplied by every brand, re-written on every
+// cache miss. The client already has its own copy of this data (React
+// state) and re-fetches it via the `data_invalidate` socket event fired at
+// the end of a sync — so caching the payload just to skip a DB read bought
+// nothing a client wouldn't already have. What actually mattered was
+// distinct: not hammering platform APIs like YouTube, which has a hard
+// daily quota (see QuotaTrackerService), on every page load/refresh. This
+// key preserves only that throttle — a few bytes, not the payload.
+const METRICS_SYNC_THROTTLE_SECONDS = 300;
+const metricsSyncThrottleKey = (brandId) => `sync:metrics-throttle:${brandId}`;
 
 class SocialService {
   async _getHistoryWindowMonths(brandId) {
@@ -49,20 +65,6 @@ class SocialService {
    */
   async getAggregatedMetrics(brandId, startDate, endDate, force = false) {
     startDate = await this._clampStartDate(brandId, startDate);
-    const cacheKey = `sync:metrics:${brandId}:${startDate || 'all'}:${endDate || 'all'}`;
-
-    // Step 1: Redis Cache First (<5ms response, ZERO MySQL DB queries!)
-    if (!force && redisClient.isOpen) {
-      try {
-        const cachedMetrics = await redisClient.get(cacheKey);
-        if (cachedMetrics) {
-          logger.debug(`[SocialService] Returning Redis cached metrics for brand ${brandId}`);
-          return JSON.parse(cachedMetrics);
-        }
-      } catch (cacheErr) {
-        console.warn(`[SocialService] Redis read failed, falling back to DB:`, cacheErr.message);
-      }
-    }
 
     const allAccounts = await socialAccountRepository.findByBrandAndPlatform(brandId, null); // passing null to platform to get all platforms
     const accounts = allAccounts.filter(account => socialPlatformFactory.isSupported(account.platform));
@@ -94,39 +96,55 @@ class SocialService {
         });
     };
 
-    // Optimization: When not forcing a fresh sync, save DB result to Redis Cache (TTL = 300s)
-    // and trigger live API sync asynchronously in background.
+    // Always return a fresh DB read — the client already holds its own copy
+    // (React state) and re-fetches on the `data_invalidate` socket event
+    // fired below, so there's nothing to gain from caching this payload.
+    // What still needs guarding is the background sync a few lines down: it
+    // calls out to each platform's real API (YouTube has a hard daily
+    // quota), so repeated page loads/refreshes across every open tab and
+    // device for this brand must not each trigger their own live sync.
+    // SET...NX is the gate: only the request that wins it proceeds to sync;
+    // everyone else within the throttle window just returns the DB read.
     if (!force) {
-      // Save MySQL DB snapshot to Redis Cache (300s TTL)
-      if (redisClient.isOpen && accounts.length > 0) {
-        redisClient.setEx(cacheKey, 300, JSON.stringify(stripSensitiveAccountFields(accounts))).catch(err => {
-          console.warn(`[SocialService] Redis write failed:`, err.message);
-        });
+      let shouldSync = true;
+      if (redisClient.isOpen) {
+        try {
+          const acquired = await redisClient.set(
+            metricsSyncThrottleKey(brandId),
+            '1',
+            { NX: true, EX: METRICS_SYNC_THROTTLE_SECONDS }
+          );
+          shouldSync = acquired === 'OK';
+        } catch (throttleErr) {
+          console.warn(`[SocialService] Redis throttle check failed, syncing anyway:`, throttleErr.message);
+        }
       }
 
-      // Trigger background sync non-blocking
-      Promise.all(accounts.map(async (account) => {
-        try {
-          const service = socialPlatformFactory.getService(account.platform);
-          await withTimeout(
-            service.syncChannelMetrics(account.id, startDate, endDate, false),
-            60000,
-            account
-          );
-        } catch (err) {
-          console.warn(`[SocialService] Background metrics sync error for ${account.platform}:`, err.message);
-        }
-      })).then(() => {
-        // Notify connected client browsers via Socket to invalidate & refetch fresh metrics
-        const socketInvalidationService = require('../core/socket-invalidation.service');
-        const { CACHE_SCOPES } = require('../../utils/socket-constants');
-        socketInvalidationService.invalidateBrandScope(brandId, CACHE_SCOPES.METRICS);
-      }).catch(() => {});
+      if (shouldSync) {
+        // Trigger background sync non-blocking
+        Promise.all(accounts.map(async (account) => {
+          try {
+            const service = socialPlatformFactory.getService(account.platform);
+            await withTimeout(
+              service.syncChannelMetrics(account.id, startDate, endDate, false),
+              60000,
+              account
+            );
+          } catch (err) {
+            console.warn(`[SocialService] Background metrics sync error for ${account.platform}:`, err.message);
+          }
+        })).then(() => {
+          // Notify connected client browsers via Socket to invalidate & refetch fresh metrics
+          const socketInvalidationService = require('../core/socket-invalidation.service');
+          const { CACHE_SCOPES } = require('../../utils/socket-constants');
+          socketInvalidationService.invalidateBrandScope(brandId, CACHE_SCOPES.METRICS);
+        }).catch(() => {});
+      }
 
       return stripSensitiveAccountFields(accounts);
     }
 
-    // Force === true: Sync from live social APIs, update DB and refresh Redis Cache
+    // Force === true: Sync from live social APIs and update DB, bypassing the throttle
     const freshAccounts = await Promise.all(accounts.map(async (account) => {
       try {
         const service = socialPlatformFactory.getService(account.platform);
@@ -151,9 +169,12 @@ class SocialService {
       }
     }));
 
-    if (redisClient.isOpen && freshAccounts.length > 0) {
-      redisClient.setEx(cacheKey, 300, JSON.stringify(stripSensitiveAccountFields(freshAccounts))).catch(err => {
-        console.warn(`[SocialService] Redis cache update on force sync failed:`, err.message);
+    // A force sync just did the real work the throttle exists to gate, so
+    // refresh it — otherwise a !force request landing right after would see
+    // no throttle key and immediately trigger a redundant background sync.
+    if (redisClient.isOpen) {
+      redisClient.set(metricsSyncThrottleKey(brandId), '1', { EX: METRICS_SYNC_THROTTLE_SECONDS }).catch(err => {
+        console.warn(`[SocialService] Redis throttle refresh after force sync failed:`, err.message);
       });
     }
 

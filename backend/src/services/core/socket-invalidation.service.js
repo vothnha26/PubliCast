@@ -1,12 +1,11 @@
 const socketManager = require('../workspace/socket/socket.manager');
-const { SOCKET_EVENTS, ROOM_PREFIXES, CACHE_SCOPES } = require('../../utils/socket-constants');
-const redisClient = require('../../config/redis');
+const { SOCKET_EVENTS, ROOM_PREFIXES } = require('../../utils/socket-constants');
 const logger = require('../../utils/logger');
 
 /**
- * Service Facade: Manages Realtime Cache Invalidation broadcasting over Socket.io
- * and Redis Cache purging.
- * 
+ * Service Facade: Broadcasts realtime cache-invalidation events over Socket.io
+ * so connected clients know to refetch stale data for a brand.
+ *
  * Following SOLID Principles:
  * - SRP: Single Responsibility for cache invalidation propagation.
  * - OCP: Open for new cache scopes without modifying socket transport logic.
@@ -28,20 +27,7 @@ class SocketInvalidationService {
       ...extraPayload
     };
 
-    // 1. Purge Redis Cache if applicable
-    if (scope === CACHE_SCOPES.METRICS && redisClient.isOpen) {
-      try {
-        const pattern = `sync:metrics:${brandId}:*`;
-        const keys = await redisClient.keys(pattern).catch(() => []);
-        if (keys && keys.length > 0) {
-          await redisClient.del(...keys);
-        }
-      } catch (err) {
-        console.warn(`[SocketInvalidationService] Failed to purge Redis keys for ${brandId}:`, err.message);
-      }
-    }
-
-    // 2. Broadcast DATA_INVALIDATE event to brand socket room
+    // Broadcast DATA_INVALIDATE event to brand socket room
     const roomName = `${ROOM_PREFIXES.BRAND}${brandId}`;
     socketManager.emitToRoom(roomName, SOCKET_EVENTS.DATA_INVALIDATE, payload);
     logger.debug(`[SocketInvalidationService] Broadcasted DATA_INVALIDATE for scope '${scope}' to room '${roomName}'`);
