@@ -284,4 +284,44 @@ router.get('/music', postController.getMusicTracks);
  */
 router.put('/:id', checkPermission(PERMISSION_KEYS.CREATE_POSTS), postController.updatePost);
 
+/**
+ * @openapi
+ * /v2/posts/{id}/retry-failed:
+ *   post:
+ *     summary: Retry publishing to platforms that previously failed for this post
+ *     tags:
+ *       - Workspace Posts V2
+ *     security:
+ *       - cookieAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - brandId
+ *             properties:
+ *               brandId:
+ *                 type: string
+ *               platforms:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *     responses:
+ *       200:
+ *         description: Retry job enqueued
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/V2EnvelopeResponse'
+ */
+router.post('/:id/retry-failed', checkPermission(PERMISSION_KEYS.CREATE_POSTS), postController.retryFailedPlatforms);
+
 module.exports = router;

@@ -3,8 +3,20 @@ const BLUESKY_CONSTANTS = require('./bluesky.constants');
 const blueskyOAuthHelper = require('./bluesky-oauth.helper');
 
 class BlueskyGateway {
-  createAgent(pdsUrl = BLUESKY_CONSTANTS.DEFAULT_PDS_URL) {
-    return new BskyAgent({ service: pdsUrl });
+  /**
+   * persistSession is @atproto/api's own hook for this exact problem:
+   * BskyAgent transparently refreshes accessJwt using refreshJwt when a
+   * request hits an expired token, but that refreshed pair only lives in
+   * the agent's in-memory session unless something persists it. Without a
+   * persistSession callback, every new agent built from resumeSession()
+   * loads the same stale tokens from the DB again — eventually even
+   * refreshJwt itself expires (Bluesky's refresh tokens are long-lived but
+   * not infinite) and the account is stuck with no way to self-heal,
+   * surfacing as an opaque "exp claim timestamp check failed" instead of a
+   * clear "reconnect this account" prompt.
+   */
+  createAgent(pdsUrl = BLUESKY_CONSTANTS.DEFAULT_PDS_URL, persistSession) {
+    return new BskyAgent({ service: pdsUrl, persistSession });
   }
 
   /**

@@ -3,6 +3,7 @@ const threadsGateway = require('./threads.gateway');
 const brandRepository = require('../../../repositories/workspace/brand.repository');
 const prisma = require('../../../config/prisma');
 const { PLATFORMS } = require('../../../utils/constants');
+const { THREADS_MEDIA_TYPE, THREADS_CONTAINER_STATUS } = require('./threads.constants');
 const { computeCommentScore } = require('../../../utils/comment-score.util');
 const logger = require('../../../utils/logger');
 
@@ -252,11 +253,11 @@ class ThreadsService extends BaseSocialService {
     if (!isMock && feedResult.length > 0) {
       for (const post of feedResult) {
         const mediaType = post.media_type;
-        let type = 'TEXT';
-        if (mediaType === 'IMAGE' || mediaType === 'CAROUSEL_ALBUM') {
-          type = 'IMAGE';
-        } else if (mediaType === 'VIDEO') {
-          type = 'VIDEO';
+        let type = THREADS_MEDIA_TYPE.TEXT;
+        if (mediaType === THREADS_MEDIA_TYPE.IMAGE || mediaType === THREADS_MEDIA_TYPE.CAROUSEL_ALBUM) {
+          type = THREADS_MEDIA_TYPE.IMAGE;
+        } else if (mediaType === THREADS_MEDIA_TYPE.VIDEO) {
+          type = THREADS_MEDIA_TYPE.VIDEO;
         }
         typesBreakdown[type]++;
       }
@@ -444,7 +445,7 @@ class ThreadsService extends BaseSocialService {
     return {
       id: post.id,
       message: post.text || 'Threads Post',
-      type: post.media_type || 'TEXT',
+      type: post.media_type || THREADS_MEDIA_TYPE.TEXT,
       mediaUrl: post.media_url || '',
       postUrl: post.permalink || null,
       date: post.timestamp,
@@ -529,7 +530,7 @@ class ThreadsService extends BaseSocialService {
       data: rows.map(r => ({
         id: r.platformPostId,
         message: r.captionSnippet || 'Threads Post',
-        type: r.postType || 'TEXT',
+        type: r.postType || THREADS_MEDIA_TYPE.TEXT,
         mediaUrl: r.thumbnailUrl || '',
         postUrl: r.postUrl || null,
         date: r.publishedAt,
@@ -589,6 +590,24 @@ class ThreadsService extends BaseSocialService {
   }
 
   async publishPost(brandId, postData) {
+    // Short-circuit like YouTube/Instagram: platformPostId is only ever set
+    // once SocialPublishStep sees a prior successful result for this
+    // (platform, account) pair. Without this check, retrying a post whose
+    // OTHER platforms failed (e.g. ListView's "Repost" button, which retries
+    // every target platform since most gateways already short-circuit — see
+    // its own comment) re-ran the entire thread chain from scratch: a fresh
+    // previousPostId=null meant every post in the chain was recreated as a
+    // new, disconnected root post instead of resuming/skipping the existing
+    // thread, duplicating content on Threads with no reply links between them.
+    if (postData.platformPostId) {
+      logger.debug(`[Threads] Already published. ID: ${postData.platformPostId}`);
+      return {
+        success: true,
+        platformVideoId: postData.platformPostId,
+        publishedAt: new Date()
+      };
+    }
+
     const accounts = await require('../../../repositories/social/social-account.repository').findByBrandAndPlatform(brandId, PLATFORMS.THREADS);
     if (!accounts || accounts.length === 0) throw new Error('Threads account not linked');
     const account = accounts[0];
@@ -613,10 +632,10 @@ class ThreadsService extends BaseSocialService {
         const rawMediaUrl = mediaUrls.length > 0 ? mediaUrls[0] : null;
         const mediaUrl = this.resolveUrl(rawMediaUrl);
 
-        let mediaType = 'TEXT';
+        let mediaType = THREADS_MEDIA_TYPE.TEXT;
         if (mediaUrl) {
           const isVideo = ['.mp4', '.mov', '.avi', '.mkv'].some(ext => mediaUrl.toLowerCase().endsWith(ext));
-          mediaType = isVideo ? 'VIDEO' : 'IMAGE';
+          mediaType = isVideo ? THREADS_MEDIA_TYPE.VIDEO : THREADS_MEDIA_TYPE.IMAGE;
         }
 
         logger.debug(`[Threads] Creating media container for post ${i + 1}/${threadPosts.length} | mediaType=${mediaType} | replyToId=${previousPostId || 'none'}`);
@@ -631,29 +650,41 @@ class ThreadsService extends BaseSocialService {
         );
         logger.debug(`[Threads] Container created | containerId=${container.id}`);
 
-        if (mediaType !== 'TEXT') {
-          const maxAttempts = 60;
-          const intervalMs = 5000;
-          let isReady = false;
+        // Poll every container (not just media ones) before publishing.
+        // A TEXT container used to skip this entirely and publish
+        // immediately — fine for a lone/root post, but a TEXT reply
+        // (reply_to_id set) created right after the parent it's replying to
+        // was just published intermittently failed with "The requested
+        // resource does not exist" / "Không tìm thấy file phương tiện":
+        // Meta's own createMediaContainer response is not a guarantee the
+        // container has finished propagating server-side yet, and a fast
+        // reply chain (3+ posts published back-to-back) hits that window far
+        // more often than a single post ever would. Meta's own Threads API
+        // docs recommend checking status before publish for exactly this
+        // reason — this now does so unconditionally instead of gating on
+        // mediaType, at the cost of a few extra ~1s polls for plain text.
+        const isTextContainer = mediaType === THREADS_MEDIA_TYPE.TEXT;
+        const maxAttempts = isTextContainer ? 10 : 60;
+        const intervalMs = isTextContainer ? 1000 : 5000;
+        let isReady = false;
 
-          for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-            const statusData = await threadsGateway.getContainerStatus(account.accessToken, container.id);
-            const status = statusData.status;
-            logger.debug(`[Threads Polling] Attempt ${attempt}/${maxAttempts} | Container: ${container.id} | Status: ${status}`);
+        for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+          const statusData = await threadsGateway.getContainerStatus(account.accessToken, container.id);
+          const status = statusData.status;
+          logger.debug(`[Threads Polling] Attempt ${attempt}/${maxAttempts} | Container: ${container.id} | Status: ${status}`);
 
-            if (status === 'FINISHED') {
-              isReady = true;
-              break;
-            }
-            if (status === 'ERROR') {
-              throw new Error(statusData.error_message || 'Threads media processing failed');
-            }
-            await new Promise(resolve => setTimeout(resolve, intervalMs));
+          if (status === THREADS_CONTAINER_STATUS.FINISHED) {
+            isReady = true;
+            break;
           }
-
-          if (!isReady) {
-            throw new Error('Timeout waiting for Threads media container to be processed');
+          if (status === THREADS_CONTAINER_STATUS.ERROR) {
+            throw new Error(statusData.error_message || 'Threads media processing failed');
           }
+          await new Promise(resolve => setTimeout(resolve, intervalMs));
+        }
+
+        if (!isReady) {
+          throw new Error('Timeout waiting for Threads container to be processed');
         }
 
         logger.debug(`[Threads] Publishing container ${container.id}...`);
