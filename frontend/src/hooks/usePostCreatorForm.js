@@ -75,6 +75,13 @@ export function usePostCreatorForm() {
   const [isCreating, setIsCreating] = useState(false);
   const [submitProgressText, setSubmitProgressText] = useState(null);
   const [showMediaViewer, setShowMediaViewer] = useState(false);
+  // Which panel the right column shows: Figma's Templates / AI Assistant /
+  // Preview tab switcher in ComposerHeader and NetworkCustomizeScreen.
+  const [rightPanelTab, setRightPanelTab] = useState("preview");
+  // Fullscreen "Customize post per network" overlay (Figma 4:289) — separate
+  // from isEditByNetwork, which tracks whether any platform actually HAS
+  // custom content (a data concern used by validation/submit/ComposerBody).
+  const [isNetworkCustomizeOpen, setIsNetworkCustomizeOpen] = useState(false);
   const [mediaThumbnailUrl, setMediaThumbnailUrl] = useState("");
   const [scheduledDate, setScheduledDate] = useState(() => toLocalDatetimeString(new Date()));
   const [isLibrary, setIsLibrary] = useState(false);
@@ -150,6 +157,7 @@ export function usePostCreatorForm() {
   const [notes, setNotes] = useState([]);
   const [isLoadingReviewers, setIsLoadingReviewers] = useState(false);
   const [videoSettings, setVideoSettings] = useState(null);
+  const [isFullScreen, setIsFullScreen] = useState(false);
 
   useEffect(() => {
     const backup = restoreFormState();
@@ -507,16 +515,22 @@ export function usePostCreatorForm() {
           : !current.caption) &&
         (current.mediaUrls?.length || 0) === 0;
 
+      const effectiveInitialMedia = (postMedia && postMedia.length > 0)
+        ? [...postMedia]
+        : (videoFileUrl || uploadedVideoPath)
+          ? [{ previewUrl: videoFileUrl, path: uploadedVideoPath, file: videoFile }]
+          : [];
+
       const seeded = isFirstCustomization
         ? isThreads
           ? {
               ...current,
               threadPosts: [
-                { text: caption, mediaUrls: [...postMedia] },
+                { text: caption, mediaUrls: effectiveInitialMedia },
                 ...(Array.isArray(current.threadPosts) ? current.threadPosts.slice(1) : [])
               ]
             }
-          : { ...current, caption }
+          : { ...current, caption, mediaUrls: effectiveInitialMedia }
         : current;
 
       return {
@@ -1690,6 +1704,12 @@ export function usePostCreatorForm() {
     setMediaThumbnailUrl,
     getBackupPayload,
     backupFormState,
-    closePostCreatorTemporarily
+    closePostCreatorTemporarily,
+    rightPanelTab,
+    setRightPanelTab,
+    isNetworkCustomizeOpen,
+    setIsNetworkCustomizeOpen,
+    isFullScreen,
+    setIsFullScreen
   };
 }

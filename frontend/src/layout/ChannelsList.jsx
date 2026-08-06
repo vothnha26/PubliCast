@@ -4,6 +4,7 @@ import { Calendar, MessageSquare, BarChart3, Plus, MoreVertical, Star, Unlink, C
 import { useBrand } from "../context/BrandContext";
 import { useConnections } from "../context/ConnectionsContext";
 import { PlatformIcon } from "../components/shared/PlatformIcon";
+import { ChannelAvatar } from "../components/workspace/post-creator/ChannelAvatar";
 import { useTranslation } from "react-i18next";
 import socialService from "../services/social.service";
 import channelGroupService from "../services/channel-group.service";
@@ -187,7 +188,6 @@ export function ChannelsList() {
   const renderChannelItem = (account) => {
     const isExpanded = expandedId === account.id;
     const displayName = account.displayName || account.username || account.platform;
-    const initial = displayName?.charAt(0)?.toUpperCase() || "?";
     const isDisconnecting = disconnectingId === account.id;
 
     return (
@@ -209,28 +209,12 @@ export function ChannelsList() {
           {!account.isConnected && (
             <span className="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0" title={t("channels.reconnectNeeded", "Cần kết nối lại")} />
           )}
-          <div className="relative shrink-0">
-            {account.profilePictureUrl ? (
-              <img
-                src={account.profilePictureUrl}
-                alt={displayName}
-                className="w-7 h-7 rounded-lg object-cover"
-              />
-            ) : (
-              <div
-                className="w-7 h-7 rounded-lg flex items-center justify-center text-white text-[11px] font-extrabold"
-                style={{ background: "var(--sidebar-primary)" }}
-              >
-                {initial}
-              </div>
-            )}
-            <div
-              className="absolute -bottom-0.5 -right-0.5 rounded-full flex items-center justify-center"
-              style={{ border: "2px solid var(--sidebar)" }}
-            >
-              <PlatformIcon platform={account.platform} size={14} />
-            </div>
-          </div>
+          <ChannelAvatar
+            account={account}
+            platform={account.platform}
+            size={28}
+            badgeSize={14}
+          />
           <span
             className="flex-1 min-w-0 truncate text-[13.5px] font-semibold"
             style={{ color: "var(--sidebar-foreground)" }}

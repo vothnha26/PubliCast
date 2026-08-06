@@ -1,7 +1,7 @@
 import * as React from "react";
-import { useState } from "react";
-import { 
-  X, Loader2, Check, Search, Lock, ArrowRight, Diamond
+import { useState, useEffect, useRef } from "react";
+import {
+  X, Check, Search, Lock, ArrowRight, Maximize2, Minimize2, Tag, ChevronDown, FileText
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
@@ -26,10 +26,13 @@ import { useBrandPermission } from "../../hooks/useBrandPermission";
 import { ComposerHeader } from "../../components/workspace/post-creator/ComposerHeader";
 import { ComposerBody } from "../../components/workspace/post-creator/ComposerBody";
 import { ComposerFooter } from "../../components/workspace/post-creator/ComposerFooter";
-import { ComposerErrorPanel } from "../../components/workspace/post-creator/ComposerErrorPanel";
 import { PreviewHeader } from "../../components/workspace/post-creator/previews/PreviewHeader";
 import { PreviewBody } from "../../components/workspace/post-creator/previews/PreviewBody";
 import { NotesPanel } from "../../components/workspace/post-creator/NotesPanel";
+import { TemplatesSidebar } from "../../components/workspace/post-creator/TemplatesSidebar";
+import { AICopilotPopover } from "../../components/workspace/post-creator/popovers/AICopilotPopover";
+import { NetworkCustomizeScreen } from "../../components/workspace/post-creator/NetworkCustomizeScreen";
+import { RightPanelTabSwitcher } from "../../components/workspace/post-creator/RightPanelTabSwitcher";
 
 // Context Provider
 import { PostCreatorFormProvider } from "../../context/PostCreatorFormContext";
@@ -47,6 +50,8 @@ export function PostCreatorPage() {
   const {
     isOpen,
     closePostCreator,
+    isFullScreen,
+    setIsFullScreen,
     caption,
     setCaption,
     title,
@@ -186,6 +191,8 @@ export function PostCreatorPage() {
     setIsEditByNetwork,
     activeNetworkTab,
     setNetworkTab,
+    activeNetworkAccountId,
+    selectedAccountIds,
     networkCustom,
     toggleUseTemplate,
     updateNetworkCaption,
@@ -201,14 +208,34 @@ export function PostCreatorPage() {
     setVideoSettings,
     getBackupPayload,
     backupFormState,
-    closePostCreatorTemporarily
+    closePostCreatorTemporarily,
+    rightPanelTab,
+    setRightPanelTab,
+    isNetworkCustomizeOpen,
+    setIsNetworkCustomizeOpen
   } = formState;
 
   const [threadsOpen, setThreadsOpen] = useState(false);
-  const [isNotesOpen, setIsNotesOpen] = useState(false);
   const { user } = useAuthStore();
   const [isUploadingThumbnail, setIsUploadingThumbnail] = useState(false);
   const [newNoteText, setNewNoteText] = useState("");
+
+  // NetworkCustomizeScreen repurposes the composer's shared activePlatform
+  // state to track which channel tab is active while it's open (it has no
+  // state of its own for that). Snapshot it on open and restore it on
+  // close so the main composer doesn't inherit whatever platform the user
+  // last looked at in Customize (e.g. its Instagram char limit leaking into
+  // the main caption box after closing).
+  const activePlatformBeforeCustomizeRef = useRef(null);
+  useEffect(() => {
+    if (isNetworkCustomizeOpen) {
+      activePlatformBeforeCustomizeRef.current = activePlatform;
+    } else if (activePlatformBeforeCustomizeRef.current) {
+      setActivePlatform(activePlatformBeforeCustomizeRef.current);
+      activePlatformBeforeCustomizeRef.current = null;
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isNetworkCustomizeOpen]);
 
   const handleAddNoteClick = () => {
     if (!newNoteText.trim()) return;
@@ -252,13 +279,11 @@ export function PostCreatorPage() {
   const [imageTransform, setImageTransform] = useState({ rotation: 0, flipH: false, flipV: false, filter: 'none' });
   const [showAltTextModal, setShowAltTextModal] = useState(false);
   
-  const [showTemplatePicker, setShowTemplatePicker] = useState(false);
   const [templates, setTemplates] = useState([]);
   const [loadingTemplates, setLoadingTemplates] = useState(false);
 
   const handleOpenTemplatePicker = async () => {
     if (!activeBrand) return;
-    setShowTemplatePicker(true);
     setLoadingTemplates(true);
     try {
       const res = await postService.getPosts(activeBrand.id, { isLibrary: true });
@@ -422,8 +447,6 @@ export function PostCreatorPage() {
 
     threadsOpen,
     setThreadsOpen,
-    isNotesOpen,
-    setIsNotesOpen,
     isUploadingThumbnail,
     setIsUploadingThumbnail,
     newNoteText,
@@ -458,8 +481,6 @@ export function PostCreatorPage() {
     setShowAltTextModal,
     useUrlShortener,
     setUseUrlShortener,
-    showTemplatePicker,
-    setShowTemplatePicker,
     templates,
     setTemplates,
     loadingTemplates,
@@ -471,61 +492,101 @@ export function PostCreatorPage() {
     closePostCreatorTemporarily,
     hasAccess,
     getBackupPayload,
-    backupFormState
+    backupFormState,
+    isFullScreen,
+    setIsFullScreen
   };
 
   return (
     <PostCreatorFormProvider value={contextValue}>
-      <div className="fixed inset-0 z-[2000] bg-[#ECEEF2] flex flex-col p-5 overflow-hidden animate-in slide-in-from-bottom duration-500">
-        {/* Outer Top Bar */}
-        <div className="flex items-center justify-between px-1 pb-4 shrink-0">
-          <div className="flex items-center gap-3">
-            <div className="flex items-center gap-2.5">
-              <div className="w-7 h-7 rounded-lg bg-black flex items-center justify-center">
-                <svg className="w-4 h-4 text-white fill-white" viewBox="0 0 24 24"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>
-              </div>
-              <h1 className="text-[15px] font-black text-foreground tracking-tight font-sans">
-                {isLibrary 
-                  ? (editingPost ? t("planner:postCreator.header.editTemplate") : t("planner:postCreator.header.createTemplate")) 
-                  : (editingPost ? t("planner:postCreator.header.editPost") : t("planner:postCreator.header.createPost"))}
-              </h1>
-            </div>
-            {!editingPost && !isLibrary && (
-              <button 
-                onClick={handleOpenTemplatePicker}
-                className="flex items-center gap-1.5 px-3 py-1.5 bg-card text-purple-700 hover:bg-purple-50 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all shadow-sm border border-purple-200 cursor-pointer font-sans"
-              >
-                <Diamond size={11} />
-                {t("planner:postCreator.header.loadTemplate")}
-              </button>
-            )}
-          </div>
-          <button onClick={closePostCreator} data-testid="post-creator-close-btn" className="flex items-center gap-2 px-4 py-2 rounded-xl bg-card/80 hover:bg-card border border-border text-muted-foreground hover:text-black transition-all group cursor-pointer font-sans shadow-sm">
-            <X size={16} className="group-hover:rotate-90 transition-transform duration-300" />
-            <span className="text-[11px] font-bold uppercase tracking-widest">{t("planner:postCreator.header.close")}</span>
-          </button>
-        </div>
-
+      <div className={`fixed inset-0 z-[2000] bg-slate-900/60 backdrop-blur-sm flex flex-col overflow-hidden animate-in fade-in duration-300 ${
+        isFullScreen ? 'p-0' : 'p-3 md:p-5'
+      }`}>
         {/* Main Unified Workspace Card */}
-        <div className="flex-1 bg-card rounded-[24px] border border-border/80 shadow-xl flex overflow-hidden min-h-0">
+        <div className={`flex-1 w-full mx-auto bg-card shadow-2xl flex flex-col overflow-hidden min-h-0 ${
+          isFullScreen ? 'max-w-none rounded-none border-0' : 'max-w-[1530px] rounded-[24px] border border-border/40'
+        }`}>
 
-          {/* Cột 1: COMPOSE (Bên trái) */}
-          <div className="flex-[1.15] flex flex-col min-h-0 overflow-hidden border-r border-border">
-            <ComposerHeader />
-            <ComposerBody />
-            <ComposerErrorPanel />
-            <ComposerFooter />
+          {/* Unified Top Headbar matching Figma / User Reference */}
+          <div className="shrink-0 px-6 py-3.5 border-b border-border/60 bg-card flex items-center justify-between z-30">
+            <div className="flex items-center gap-3">
+              <h1 className="text-base font-bold text-foreground tracking-tight font-sans">
+                {isLibrary
+                  ? (editingPost ? t("planner:postCreator.header.editTemplate") : t("planner:postCreator.header.createTemplate"))
+                  : (editingPost ? t("planner:postCreator.header.editPost", "Create Post") : t("planner:postCreator.header.createPost", "Create Post"))}
+              </h1>
+
+              {/* Tags Dropdown Button */}
+              <button
+                type="button"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-border/80 bg-card hover:bg-muted text-xs font-semibold text-foreground transition-all cursor-pointer font-sans shadow-xs"
+              >
+                <Tag size={13} className="text-muted-foreground" />
+                <span>{t("planner:postCreator.header.tags", "Tags")}</span>
+                <ChevronDown size={12} className="text-muted-foreground" />
+              </button>
+            </div>
+
+            <div className="flex items-center gap-3">
+              <RightPanelTabSwitcher />
+
+              <div className="h-4 w-px bg-border/60 shrink-0" />
+
+              <div className="flex items-center gap-1">
+                <button
+                  type="button"
+                  onClick={() => setIsFullScreen(!isFullScreen)}
+                  className="p-2 rounded-xl text-muted-foreground hover:text-foreground hover:bg-muted transition-all cursor-pointer"
+                  title={isFullScreen ? "Thu nhỏ" : "Toàn màn hình"}
+                >
+                  {isFullScreen ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
+                </button>
+                <button
+                  type="button"
+                  onClick={closePostCreator}
+                  data-testid="post-creator-close-btn"
+                  className="p-2 rounded-xl text-muted-foreground hover:text-foreground hover:bg-muted transition-all cursor-pointer"
+                  title="Đóng"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+            </div>
           </div>
 
-          {/* Cột 2: PREVIEW / NOTES (Bên phải) */}
-          <div className="flex-[0.85] flex flex-col min-h-0 overflow-hidden bg-card">
-            {isNotesOpen ? (
-              <NotesPanel />
-            ) : (
-              <>
-                <PreviewHeader />
-                <PreviewBody />
-              </>
+          {/* Main 2-Column Content Body */}
+          <div className="flex-1 flex overflow-hidden min-h-0">
+            {/* Cột 1: COMPOSE (Bên trái) */}
+            <div className="flex-[1.1] flex flex-col min-h-0 overflow-hidden">
+              <ComposerHeader />
+              <ComposerBody />
+              <ComposerFooter />
+            </div>
+
+            {/* Cột 2: PREVIEW / NOTES / TEMPLATES / AI ASSISTANT (Bên phải) —
+                collapses entirely when rightPanelTab is null (re-clicking the
+                active tab in RightPanelTabSwitcher toggles it off). */}
+            {rightPanelTab && (
+              <div className="flex-[0.9] flex flex-col min-h-0 overflow-hidden bg-muted/20 border-l border-border/40">
+                {rightPanelTab === 'notes' ? (
+                  <NotesPanel />
+                ) : rightPanelTab === 'templates' ? (
+                  <TemplatesSidebar />
+                ) : rightPanelTab === 'ai' ? (
+                  <AICopilotPopover
+                    variant="panel"
+                    caption={caption}
+                    onUpdateCaption={setCaption}
+                    activePlatform={activePlatform}
+                    onClose={() => setRightPanelTab('preview')}
+                  />
+                ) : (
+                  <>
+                    <PreviewHeader />
+                    <PreviewBody />
+                  </>
+                )}
+              </div>
             )}
           </div>
 
@@ -551,14 +612,36 @@ export function PostCreatorPage() {
           onSelectFile={handleSelectDriveFile}
         />
         {(() => {
-          const isCustomizingThreads = isEditByNetwork
+          // Media uploads route into the per-network slot either from the
+          // main composer's "Theo mạng" mode (isEditByNetwork) or from the
+          // fullscreen NetworkCustomizeScreen (isNetworkCustomizeOpen) —
+          // the two are independent UIs sharing the same underlying data.
+          const isInNetworkEditingContext = isEditByNetwork || isNetworkCustomizeOpen;
+
+          const isCustomizingThreads = isInNetworkEditingContext
             && activeNetworkTab === 'threads'
             && networkCustom?.threads?.useTemplate === false;
 
-          const isCustomizingNonThreadsPlatform = isEditByNetwork
+          const isCustomizingNonThreadsPlatform = isInNetworkEditingContext
             && activeNetworkTab !== NETWORK_TAB_TEMPLATE
             && activeNetworkTab !== 'threads'
             && networkCustom?.[activeNetworkTab]?.useTemplate === false;
+
+          // When the platform being edited has ≥2 targeted accounts, its
+          // content lives in a perAccount slot, not the platform-level
+          // entry — mirrors NetworkCustomizeScreen's own
+          // isMultiAccountPlatform/effectiveAccountId logic, needed here so
+          // media read/write (including edits saved from ImageEditorModal/
+          // VideoEditorModal below) hits the right slot instead of always
+          // falling back to the shared platform-level one.
+          const accountsForActiveNetworkTab = isCustomizingNonThreadsPlatform
+            ? (activeBrand?.socialAccounts || []).filter(
+                sa => (sa.platform || '').toLowerCase() === activeNetworkTab && selectedAccountIds.includes(sa.id)
+              )
+            : [];
+          const effectiveNetworkAccountId = accountsForActiveNetworkTab.length > 1
+            ? activeNetworkAccountId
+            : null;
 
           const activeThreadIndex = networkCustom?.threads?.activeThreadIndex || 0;
           const activeThreadPost = isCustomizingThreads
@@ -566,7 +649,9 @@ export function PostCreatorPage() {
             : null;
 
           const activeNetworkMedia = isCustomizingNonThreadsPlatform
-            ? (networkCustom?.[activeNetworkTab]?.mediaUrls || [])
+            ? (effectiveNetworkAccountId
+                ? (networkCustom?.[activeNetworkTab]?.perAccount?.[effectiveNetworkAccountId]?.mediaUrls || [])
+                : (networkCustom?.[activeNetworkTab]?.mediaUrls || []))
             : isCustomizingThreads
               ? ((typeof activeThreadPost === 'object' ? activeThreadPost?.mediaUrls : []) || [])
               : postMedia;
@@ -611,8 +696,8 @@ export function PostCreatorPage() {
                       const current = (typeof activeThreadPost === 'object' ? activeThreadPost?.mediaUrls : []) || [];
                       updateThreadPostMedia(activeThreadIndex, [...current, ...newItems]);
                     } else if (isCustomizingNonThreadsPlatform) {
-                      const current = networkCustom?.[activeNetworkTab]?.mediaUrls || [];
-                      updateNetworkMedia(activeNetworkTab, [...current, ...newItems]);
+                      const current = activeNetworkMedia;
+                      updateNetworkMedia(activeNetworkTab, [...current, ...newItems], effectiveNetworkAccountId);
                     } else {
                       setPostMedia(prev => {
                         const updated = [...prev, ...newItems];
@@ -679,7 +764,7 @@ export function PostCreatorPage() {
                       );
                       updateThreadPostMedia(activeThreadIndex, updated);
                     } else if (isCustomizingNonThreadsPlatform) {
-                      const current = networkCustom?.[activeNetworkTab]?.mediaUrls || [];
+                      const current = activeNetworkMedia;
                       const updated = current.map((item, idx) =>
                         idx === editingPostMediaIndex
                           ? {
@@ -690,7 +775,7 @@ export function PostCreatorPage() {
                             }
                           : item
                       );
-                      updateNetworkMedia(activeNetworkTab, updated);
+                      updateNetworkMedia(activeNetworkTab, updated, effectiveNetworkAccountId);
                     } else {
                       setPostMedia((prev) =>
                         prev.map((item, idx) =>
@@ -768,10 +853,22 @@ export function PostCreatorPage() {
                       )
                     );
                   } else if (editingPostMediaIndex !== null && activeNetworkMedia[editingPostMediaIndex]) {
-                    updateNetworkMedia(editingPostMediaIndex, {
-                      previewUrl: newUrl,
-                      path: newUrl
-                    });
+                    const updateItem = (item, idx) =>
+                      idx === editingPostMediaIndex
+                        ? { ...item, previewUrl: newUrl, path: newUrl }
+                        : item;
+                    if (isCustomizingThreads) {
+                      const current = (typeof activeThreadPost === 'object' ? activeThreadPost?.mediaUrls : []) || [];
+                      updateThreadPostMedia(activeThreadIndex, current.map(updateItem));
+                    } else if (isCustomizingNonThreadsPlatform) {
+                      updateNetworkMedia(activeNetworkTab, activeNetworkMedia.map(updateItem), effectiveNetworkAccountId);
+                    } else {
+                      setPostMedia((prev) => prev.map(updateItem));
+                      if (editingPostMediaIndex === 0) {
+                        setVideoFileUrl(newUrl);
+                        setUploadedVideoPath(newUrl);
+                      }
+                    }
                   } else {
                     setVideoFileUrl(newUrl);
                     setUploadedVideoPath(newUrl);
@@ -798,69 +895,6 @@ export function PostCreatorPage() {
             toast.success(t("common:success"));
           }}
         />
-        {showTemplatePicker && (
-          <div className="fixed inset-0 z-[3000] flex items-center justify-center bg-black/40 backdrop-blur-sm animate-in fade-in duration-200">
-            <div className="bg-card rounded-[32px] w-full max-w-lg shadow-[0_20px_50px_rgba(0,0,0,0.15)] border border-border overflow-hidden animate-in zoom-in-95 duration-200">
-              <div className="px-6 py-5 border-b border-border flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Diamond size={16} className="text-purple-600" />
-                  <h3 className="font-bold text-foreground text-xs uppercase tracking-wider font-sans">{t("planner:postCreator.header.loadTemplate")}</h3>
-                </div>
-                <button 
-                  onClick={() => setShowTemplatePicker(false)}
-                  className="text-muted-foreground hover:text-black transition-colors cursor-pointer"
-                >
-                  <X size={18} />
-                </button>
-              </div>
-              
-              <div className="p-6 max-h-[400px] overflow-y-auto space-y-3 scrollbar-thin">
-                {loadingTemplates ? (
-                  <div className="py-12 flex flex-col items-center justify-center gap-2 text-muted-foreground">
-                    <Loader2 className="animate-spin" size={24} />
-                    <span className="text-[10px] font-bold uppercase tracking-wider font-sans">{t("planner:postCreator.templatesPicker.loading")}</span>
-                  </div>
-                ) : templates.length === 0 ? (
-                  <div className="py-12 text-center text-muted-foreground space-y-2">
-                    <p className="text-[10px] font-bold uppercase tracking-wider font-sans">{t("planner:postCreator.templatesPicker.noTemplates")}</p>
-                    <p className="text-[11px] text-muted-foreground font-medium font-sans">{t("planner:postCreator.templatesPicker.noTemplatesDesc")}</p>
-                  </div>
-                ) : (
-                  templates.map((tpl) => (
-                    <button
-                      key={tpl.id}
-                      onClick={() => {
-                        loadTemplate(tpl);
-                        setShowTemplatePicker(false);
-                      }}
-                      className="w-full text-left p-4 rounded-2xl border border-border hover:border-purple-300 hover:bg-purple-50/20 transition-all flex items-center gap-4 group cursor-pointer font-sans"
-                    >
-                      <div className="w-12 h-12 rounded-xl bg-muted flex items-center justify-center overflow-hidden shrink-0 border border-border">
-                        {tpl.thumbnail ? (
-                          <img src={tpl.thumbnail} className="w-full h-full object-cover" />
-                        ) : (
-                          <span className="text-xl">📝</span>
-                        )}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <h4 className="font-bold text-xs text-foreground group-hover:text-purple-700 transition-colors truncate uppercase tracking-tight">{tpl.title}</h4>
-                        <p className="text-[11px] text-muted-foreground line-clamp-1 mt-0.5 font-medium">{tpl.caption || t("planner:postCreator.templatesPicker.noCaption")}</p>
-                      </div>
-                      <div className="flex gap-1 shrink-0">
-                        {tpl.platforms?.map(plt => (
-                          <span key={plt} className="text-[9px] font-black bg-muted text-muted-foreground px-1.5 py-0.5 rounded uppercase tracking-tighter">
-                            {plt.toLowerCase()}
-                          </span>
-                        ))}
-                      </div>
-                    </button>
-                  ))
-                )}
-              </div>
-            </div>
-          </div>
-        )}
-
         {/* Select Reviewers Modal */}
         {showReviewersModal && (
           <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[100] p-4 animate-in fade-in duration-200">
@@ -1040,6 +1074,10 @@ export function PostCreatorPage() {
               </button>
             </div>
           </div>
+        )}
+
+        {isNetworkCustomizeOpen && (
+          <NetworkCustomizeScreen onClose={() => setIsNetworkCustomizeOpen(false)} />
         )}
       </div>
     </PostCreatorFormProvider>
