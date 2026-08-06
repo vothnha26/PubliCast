@@ -280,6 +280,7 @@ describe('Instagram Integration Service Tests', () => {
         .mockResolvedValueOnce({ id: 'child_1' })
         .mockResolvedValueOnce({ id: 'child_2' });
       instagramGateway.createCarouselContainer.mockResolvedValue({ id: 'container_carousel_123' });
+      instagramGateway.pollContainerStatus.mockResolvedValue({ status_code: 'FINISHED' });
       instagramGateway.publishContainer.mockResolvedValue({ id: 'ig_post_carousel_123' });
 
       socialAccountRepository.findByBrandAndPlatform.mockResolvedValue([{
@@ -302,6 +303,14 @@ describe('Instagram Integration Service Tests', () => {
       expect(instagramGateway.createCarouselContainer).toHaveBeenCalledWith(
         'ig_123', 'ig_access_token', ['child_1', 'child_2'], 'Carousel post!', null, undefined
       );
+      // Publishing the parent carousel container immediately after creation
+      // (before Meta finishes assembling it) intermittently failed with
+      // "Media upload has failed with error code 2207082" — the parent
+      // must be polled to FINISHED first, same as video children already
+      // were, regardless of whether the carousel is all-image, all-video,
+      // or mixed.
+      expect(instagramGateway.pollContainerStatus).toHaveBeenCalledWith('container_carousel_123', 'ig_access_token');
+      expect(instagramGateway.publishContainer).toHaveBeenCalledWith('ig_123', 'ig_access_token', 'container_carousel_123');
       expect(result.platformVideoId).toBe('ig_post_carousel_123');
     });
 

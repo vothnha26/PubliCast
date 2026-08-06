@@ -31,7 +31,17 @@ class CarouselPublishStrategy extends InstagramPublishStrategy {
 
     // 2. Tạo container cha liên kết các container con
     const parentContainer = await instagramGateway.createCarouselContainer(igAccountId, accessToken, childrenIds, caption, scheduledAt, postData.options);
-    
+
+    // 2b. Chờ container cha xử lý xong trước khi publish — publishing
+    // immediately after creation (before Meta finishes assembling the
+    // carousel from its children) intermittently fails with
+    // "Media upload has failed with error code 2207082" even though every
+    // child container was itself already FINISHED. Video children were
+    // already polled individually above; the parent carousel container
+    // needs its own poll regardless of whether it contains images, video,
+    // or a mix.
+    await this.pollUntilReady(instagramGateway, parentContainer.id, accessToken);
+
     // 3. Xuất bản container cha
     return instagramGateway.publishContainer(igAccountId, accessToken, parentContainer.id);
   }
