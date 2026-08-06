@@ -215,27 +215,48 @@ describe('Post Creator Detailed E2E Suite', function () {
     }
   }
 
+  /**
+   * Channel selection lives in the "+" ChannelPickerDropdown now (avatar-row
+   * UI), not a row of always-visible platform toggle buttons. Selected
+   * channels show as an avatar with data-testid="selected-channel-{platform}";
+   * unselected-but-connected channels only appear inside the dropdown as
+   * data-testid="channel-picker-item-{platform}".
+   */
   async function ensurePlatformState(platform, shouldBeSelected) {
-    const selector = By.css(`[data-testid="platform-select-${platform}"]`);
-    const element = await driver.wait(until.elementLocated(selector), 12000);
-    const className = await element.getAttribute('class');
-    const isSelected = !className.includes('text-gray-400');
-    
-    if (isSelected !== shouldBeSelected) {
-      await safeClick(selector);
+    const selectedSelector = By.css(`[data-testid="selected-channel-${platform}"]`);
+    const alreadySelected = (await driver.findElements(selectedSelector)).length > 0;
+
+    if (alreadySelected === shouldBeSelected) return;
+
+    if (alreadySelected && !shouldBeSelected) {
+      // Hover to reveal the remove (X) button, then click it.
+      const avatar = await driver.findElement(selectedSelector);
+      await driver.executeScript("arguments[0].scrollIntoView({block:'center'});", avatar);
+      await driver.actions().move({ origin: avatar }).perform();
+      await safeClick(By.css(`[data-testid="selected-channel-remove-${platform}"]`));
       await driver.sleep(600);
+      return;
     }
+
+    // Not selected but should be: open the "+" dropdown and click the item.
+    await safeClick(By.css('[data-testid="channel-picker-open-btn"]'));
+    await safeClick(By.css(`[data-testid="channel-picker-item-${platform}"]`));
+    await driver.sleep(600);
+    // Close the dropdown by clicking elsewhere (it closes on outside click).
+    await driver.executeScript("document.body.click();");
+    await driver.sleep(300);
   }
 
   async function selectPlatformOnly(targetPlatform) {
     const platforms = ['facebook', 'instagram', 'youtube', 'tiktok', 'telegram', 'threads'];
     for (const p of platforms) {
-      const selector = By.css(`[data-testid="platform-select-${p}"]`);
-      const elements = await driver.findElements(selector);
-      if (elements.length > 0) {
-        await ensurePlatformState(p, p === targetPlatform);
+      if (p === targetPlatform) continue;
+      const selected = (await driver.findElements(By.css(`[data-testid="selected-channel-${p}"]`))).length > 0;
+      if (selected) {
+        await ensurePlatformState(p, false);
       }
     }
+    await ensurePlatformState(targetPlatform, true);
   }
 
   /**
@@ -572,7 +593,7 @@ describe('Post Creator Detailed E2E Suite', function () {
     const modalElements = await driver.findElements(By.css('[data-testid="post-caption-input"]'));
     expect(modalElements.length).to.be.greaterThan(0);
 
-    await safeClick(By.css('[data-testid="post-creator-cancel-btn"]'));
+    await safeClick(By.css('[data-testid="post-creator-close-btn"]'));
   });
 
   it('TC_POST_08 – Verify platform validation blocks submission if TikTok has no media', async function () {
@@ -593,7 +614,7 @@ describe('Post Creator Detailed E2E Suite', function () {
     const modalElements = await driver.findElements(By.css('[data-testid="post-caption-input"]'));
     expect(modalElements.length).to.be.greaterThan(0);
 
-    await safeClick(By.css('[data-testid="post-creator-cancel-btn"]'));
+    await safeClick(By.css('[data-testid="post-creator-close-btn"]'));
   });
 
   it.skip('TC_POST_09 – Verify scheduling a post for tomorrow saves scheduledAt correctly in DB and displays on List UI', async function () {

@@ -241,7 +241,11 @@ export function ComposerHeader() {
             const lockInfo = getPlatformLockInfo(platformKey);
 
             return (
-              <div key={sa.id} className="relative shrink-0 group/avatar">
+              <div
+                key={sa.id}
+                data-testid={`selected-channel-${platformKey}`}
+                className="relative shrink-0 group/avatar"
+              >
                 <ChannelAvatar
                   account={sa}
                   platform={platformKey}
@@ -251,6 +255,7 @@ export function ComposerHeader() {
                 />
                 <button
                   type="button"
+                  data-testid={`selected-channel-remove-${platformKey}`}
                   onClick={() => handleToggleAccount(sa.id)}
                   title={t("planner:postCreator.channelPicker.removeChannel")}
                   className="absolute -top-1 -left-1 w-4 h-4 rounded-full bg-slate-800 text-white flex items-center justify-center opacity-0 group-hover/avatar:opacity-100 transition-all cursor-pointer shadow-sm z-10"
@@ -265,6 +270,7 @@ export function ComposerHeader() {
           <div className="relative self-start">
             <button
               type="button"
+              data-testid="channel-picker-open-btn"
               onClick={() => setShowChannelPicker((v) => !v)}
               title={t("planner:postCreator.channelPicker.addRemove")}
               className="w-12 h-12 rounded-xl bg-muted border border-dashed border-border flex items-center justify-center text-muted-foreground hover:border-gray-400 hover:text-foreground transition-all cursor-pointer shrink-0"
