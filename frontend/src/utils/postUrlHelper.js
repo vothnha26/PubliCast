@@ -108,8 +108,21 @@ export function getPlatformPostUrl(post) {
         return `https://www.linkedin.com/feed/update/${id}`;
       case 'THREADS':
         return `https://www.threads.net/p/${id}`;
-      case 'BLUESKY':
+      case 'BLUESKY': {
+        // platformPostId is the AT URI returned by publishPost
+        // (bluesky.service.js: `return { id: result.id }`), shaped
+        // at://did:plc:xxx/app.bsky.feed.post/{rkey} — not a bare post id.
+        // The bsky.app web permalink needs the did and rkey pulled back
+        // out of it; falling through to the bare bsky.app homepage (the
+        // previous behavior) always linked to the wrong place instead of
+        // the actual post.
+        const match = id.match(/^at:\/\/(did:[^/]+)\/app\.bsky\.feed\.post\/([^/]+)$/);
+        if (match) {
+          const [, did, rkey] = match;
+          return `https://bsky.app/profile/${did}/post/${rkey}`;
+        }
         return `https://bsky.app`;
+      }
       case 'REDDIT':
         return `https://www.reddit.com/comments/${id}`;
       case 'TWITCH':
