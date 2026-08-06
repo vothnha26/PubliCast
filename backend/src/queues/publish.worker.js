@@ -23,6 +23,15 @@ const publishWorker = new Worker(PUBLISH_QUEUE_NAME, async (job) => {
   concurrency: 5, // Process up to 5 posts simultaneously
   lockDuration: QUEUE_CONFIG.PUBLISH.LOCK_DURATION_MS,
   maxStalledCount: 1,
+  // BullMQ's default drainDelay (5s) re-polls Redis every 5s whenever the
+  // wait list is empty — this queue was still generating ~34k idle Upstash
+  // commands/day post-fix (see video/social/help-center workers, already on
+  // drainDelay: 30) because it kept the 5s default for scheduling accuracy.
+  // Delayed jobs are promoted to `wait` by BullMQ's own delayed-job marker
+  // regardless of drainDelay, so this only affects how long an
+  // already-ready job waits to be picked up when the queue is idle — up to
+  // 15s of slack is unnoticeable for a scheduled social post.
+  drainDelay: 15,
 });
 
 // Event Listeners for logging/monitoring
