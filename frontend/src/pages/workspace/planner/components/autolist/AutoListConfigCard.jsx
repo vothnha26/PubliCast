@@ -33,10 +33,6 @@ export function AutoListConfigCard({
   setFacebookContentType,
   facebookTitle,
   setFacebookTitle,
-  facebookReelCollaboratorId,
-  setFacebookReelCollaboratorId,
-  facebookReelPlaceId,
-  setFacebookReelPlaceId,
   facebookReelThumbnail,
   setFacebookReelThumbnail,
 
@@ -245,40 +241,16 @@ export function AutoListConfigCard({
                 </div>
 
                 {facebookContentType === 'reel' && (
-                  <>
-                    <div>
-                      <label className="block text-[11px] font-bold text-muted-foreground uppercase mb-2 font-sans">Custom Thumbnail URL</label>
-                      <input 
-                        type="text"
-                        value={facebookReelThumbnail || ''}
-                        onChange={(e) => setFacebookReelThumbnail(e.target.value)}
-                        placeholder="https://example.com/thumbnail.jpg"
-                        className="w-full px-4 py-3 bg-card border border-border rounded-2xl text-xs font-semibold focus:border-black outline-none font-sans"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-[11px] font-bold text-muted-foreground uppercase mb-2 font-sans">Collaborator Page ID</label>
-                      <input 
-                        type="text"
-                        value={facebookReelCollaboratorId || ''}
-                        onChange={(e) => setFacebookReelCollaboratorId(e.target.value)}
-                        placeholder="e.g., 1029384756"
-                        className="w-full px-4 py-3 bg-card border border-border rounded-2xl text-xs font-semibold focus:border-black outline-none font-sans"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-[11px] font-bold text-muted-foreground uppercase mb-2 font-sans">Place ID (Location Tag)</label>
-                      <input 
-                        type="text"
-                        value={facebookReelPlaceId || ''}
-                        onChange={(e) => setFacebookReelPlaceId(e.target.value)}
-                        placeholder="e.g., 987654321"
-                        className="w-full px-4 py-3 bg-card border border-border rounded-2xl text-xs font-semibold focus:border-black outline-none font-sans"
-                      />
-                    </div>
-                  </>
+                  <div>
+                    <label className="block text-[11px] font-bold text-muted-foreground uppercase mb-2 font-sans">Custom Thumbnail URL</label>
+                    <input
+                      type="text"
+                      value={facebookReelThumbnail || ''}
+                      onChange={(e) => setFacebookReelThumbnail(e.target.value)}
+                      placeholder="https://example.com/thumbnail.jpg"
+                      className="w-full px-4 py-3 bg-card border border-border rounded-2xl text-xs font-semibold focus:border-black outline-none font-sans"
+                    />
+                  </div>
                 )}
               </div>
             </div>

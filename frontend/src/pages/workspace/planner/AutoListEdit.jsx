@@ -52,8 +52,6 @@ export function AutoListEdit() {
   const [globalFirstComment, setGlobalFirstComment] = useState('');
   const [facebookContentType, setFacebookContentType] = useState('post');
   const [facebookTitle, setFacebookTitle] = useState('');
-  const [facebookReelCollaboratorId, setFacebookReelCollaboratorId] = useState('');
-  const [facebookReelPlaceId, setFacebookReelPlaceId] = useState('');
   const [facebookReelThumbnail, setFacebookReelThumbnail] = useState('');
   const [instagramContentType, setInstagramContentType] = useState('post');
   const [instagramCollaborators, setInstagramCollaborators] = useState([]);
@@ -143,8 +141,6 @@ export function AutoListEdit() {
               else if (parsed.firstComment !== undefined) setGlobalFirstComment(parsed.firstComment);
               if (parsed.facebookContentType !== undefined) setFacebookContentType(parsed.facebookContentType);
               if (parsed.facebookTitle !== undefined) setFacebookTitle(parsed.facebookTitle);
-              if (parsed.facebookReelCollaboratorId !== undefined) setFacebookReelCollaboratorId(parsed.facebookReelCollaboratorId);
-              if (parsed.facebookReelPlaceId !== undefined) setFacebookReelPlaceId(parsed.facebookReelPlaceId);
               if (parsed.facebookReelThumbnail !== undefined) setFacebookReelThumbnail(parsed.facebookReelThumbnail);
               if (parsed.instagramContentType !== undefined) setInstagramContentType(parsed.instagramContentType);
               if (parsed.instagramCollaborators !== undefined) setInstagramCollaborators(parsed.instagramCollaborators);
@@ -232,8 +228,6 @@ export function AutoListEdit() {
         globalFirstComment,
         facebookContentType,
         facebookTitle,
-        facebookReelCollaboratorId,
-        facebookReelPlaceId,
         facebookReelThumbnail,
         instagramContentType,
         instagramCollaborators,
@@ -578,10 +572,6 @@ export function AutoListEdit() {
               setFacebookContentType={setFacebookContentType}
               facebookTitle={facebookTitle}
               setFacebookTitle={setFacebookTitle}
-              facebookReelCollaboratorId={facebookReelCollaboratorId}
-              setFacebookReelCollaboratorId={setFacebookReelCollaboratorId}
-              facebookReelPlaceId={facebookReelPlaceId}
-              setFacebookReelPlaceId={setFacebookReelPlaceId}
               facebookReelThumbnail={facebookReelThumbnail}
               setFacebookReelThumbnail={setFacebookReelThumbnail}
               instagramContentType={instagramContentType}
