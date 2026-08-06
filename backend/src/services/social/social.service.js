@@ -11,6 +11,14 @@ const logger = require('../../utils/logger');
 // (FREE-tier) default used by each platform's own post-history service.
 const DEFAULT_HISTORY_WINDOW_MONTHS = 1;
 
+// getAggregatedMetrics feeds both the client API response and the Redis
+// cache from the same repository result, which carries decrypted
+// accessToken/refreshToken/scopes for calling each platform's API — fine
+// internally, but neither the frontend (which never reads these) nor the
+// Redis cache (a second, unencrypted copy of live OAuth credentials with no
+// reason to exist) should ever receive them.
+const stripSensitiveAccountFields = (accounts) => accounts.map(({ accessToken, refreshToken, scopes, ...rest }) => rest);
+
 class SocialService {
   async _getHistoryWindowMonths(brandId) {
     const brand = await brandRepository.findBrandWithSubscription(brandId);
@@ -91,7 +99,7 @@ class SocialService {
     if (!force) {
       // Save MySQL DB snapshot to Redis Cache (300s TTL)
       if (redisClient.isOpen && accounts.length > 0) {
-        redisClient.setEx(cacheKey, 300, JSON.stringify(accounts)).catch(err => {
+        redisClient.setEx(cacheKey, 300, JSON.stringify(stripSensitiveAccountFields(accounts))).catch(err => {
           console.warn(`[SocialService] Redis write failed:`, err.message);
         });
       }
@@ -115,7 +123,7 @@ class SocialService {
         socketInvalidationService.invalidateBrandScope(brandId, CACHE_SCOPES.METRICS);
       }).catch(() => {});
 
-      return accounts;
+      return stripSensitiveAccountFields(accounts);
     }
 
     // Force === true: Sync from live social APIs, update DB and refresh Redis Cache
@@ -144,12 +152,12 @@ class SocialService {
     }));
 
     if (redisClient.isOpen && freshAccounts.length > 0) {
-      redisClient.setEx(cacheKey, 300, JSON.stringify(freshAccounts)).catch(err => {
+      redisClient.setEx(cacheKey, 300, JSON.stringify(stripSensitiveAccountFields(freshAccounts))).catch(err => {
         console.warn(`[SocialService] Redis cache update on force sync failed:`, err.message);
       });
     }
 
-    return freshAccounts;
+    return stripSensitiveAccountFields(freshAccounts);
   }
 
   /**
