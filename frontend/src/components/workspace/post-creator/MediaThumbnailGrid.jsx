@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { MoreHorizontal, Edit, Type, Trash2, EyeOff, ImageIcon } from "lucide-react";
+import { MoreHorizontal, Edit, Type, Trash2, EyeOff, ImageIcon, Check } from "lucide-react";
 import { isVideoPath } from "../../../utils/url";
 
 /**
@@ -34,6 +34,7 @@ export function MediaThumbnailGrid({
         const mediaUrl = typeof item === "string" ? item : (item?.previewUrl || item?.path || "");
         const isVid = isVideoPath(mediaUrl, typeof item === "object" ? item?.file : null);
         const isSpoilerActive = !!spoilersMap[index];
+        const hasAltText = typeof item === "object" && !!item?.caption?.trim();
 
         return (
           <div key={index} className="relative group">
@@ -60,6 +61,14 @@ export function MediaThumbnailGrid({
                     </div>
                   )}
                 </>
+              )}
+              {hasAltText && (
+                <div
+                  className="absolute bottom-1 left-1 w-4.5 h-4.5 rounded-full bg-emerald-500 border border-white flex items-center justify-center shadow-sm z-10"
+                  title={t("planner:postCreator.composer.imageMenu.altText")}
+                >
+                  <Check size={10} className="text-white" strokeWidth={3} />
+                </div>
               )}
             </div>
 

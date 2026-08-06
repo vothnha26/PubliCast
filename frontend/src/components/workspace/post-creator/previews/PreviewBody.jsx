@@ -43,7 +43,6 @@ export function PreviewBody({ platformFilter } = {}) {
     facebookTitle,
     instagramType,
     imageTransform,
-    albumMedia,
     useUrlShortener,
     networkCustom,
     postMedia,
@@ -147,7 +146,7 @@ export function PreviewBody({ platformFilter } = {}) {
       ? (networkCustom?.threads?.threadPosts || null)
       : null;
 
-    return { simulatedCaption, effectiveVideoFileUrl, effectiveVideoFile, threadPosts };
+    return { simulatedCaption, effectiveVideoFileUrl, effectiveVideoFile, threadPosts, effectiveMediaItems };
   };
 
   // ----------------------------------------------------
@@ -252,7 +251,7 @@ export function PreviewBody({ platformFilter } = {}) {
       {platformsToRender.map((platform) => {
         const PreviewComponent = PreviewStrategies[platform];
         if (!PreviewComponent) return null;
-        const { simulatedCaption, effectiveVideoFileUrl, effectiveVideoFile, threadPosts } = getEffectiveDataForPlatform(platform);
+        const { simulatedCaption, effectiveVideoFileUrl, effectiveVideoFile, threadPosts, effectiveMediaItems } = getEffectiveDataForPlatform(platform);
 
         return (
           <div key={platform} className={`w-full transition-all duration-300 ${previewDevice === 'desktop' && platform === 'youtube' ? 'max-w-2xl' : 'max-w-sm'}`}>
@@ -277,7 +276,7 @@ export function PreviewBody({ platformFilter } = {}) {
               facebookTitle={facebookTitle}
               instagramType={instagramType}
               imageTransform={imageTransform}
-              albumMedia={albumMedia}
+              mediaItems={effectiveMediaItems}
             />
           </div>
         );

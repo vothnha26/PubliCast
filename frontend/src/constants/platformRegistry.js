@@ -13,20 +13,19 @@ export const PLATFORM_CONFIGS = {
     defaultType: 'post',
     supportedTypes: [
       { id: 'post', label: 'Feed Post' },
-      { id: 'album', label: 'Album' },
       { id: 'reel', label: 'Reel' },
       { id: 'story', label: 'Story' }
     ],
+    // Album is no longer a selectable post type — ≥2 photos (no video mixed
+    // in) auto-routes to Facebook's album/carousel strategy server-side
+    // (facebook-post.service.js) based on how many photos are actually
+    // selected, not a manual toggle here.
     getPostType: (subType, hasMedia, isVideo) => {
-      if (subType === 'album') return POST_TYPE.CAROUSEL;
       if (subType === 'story') return POST_TYPE.STORY;
       if (subType === 'reel') return POST_TYPE.REEL;
       return (hasMedia && isVideo) ? POST_TYPE.VIDEO : POST_TYPE.IMAGE;
     },
     validationRules: {
-      album: [
-        VALIDATION_RULES.FACEBOOK.ALBUM_MIN_MEDIA
-      ],
       reel: [
         VALIDATION_RULES.FACEBOOK.REEL_MEDIA_REQUIRED,
         VALIDATION_RULES.FACEBOOK.REEL_MUST_BE_VIDEO,

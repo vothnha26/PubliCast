@@ -7,25 +7,28 @@ import { PreviewShell } from "./PreviewShell";
 
 import { PreviewFacebookAlbum } from "./PreviewFacebookAlbum";
 
-export function PreviewFacebook({ 
-  caption, 
-  videoFileUrl, 
+export function PreviewFacebook({
+  caption,
+  videoFileUrl,
   videoFile = null,
   previewDevice = "mobile",
   pageName = "PubliCast Fanpage",
   facebookType = "post",
   facebookTitle = "",
   imageTransform = null,
-  albumMedia = []
+  mediaItems = []
 }) {
   const displayCaption = caption || "What's on your mind?";
 
-  // 0. ALBUM PREVIEW DESIGN
-  if (facebookType === "album") {
+  // 0. ALBUM PREVIEW DESIGN — ≥2 photos auto-routes to Facebook's album
+  // strategy server-side (facebook-post.service.js), so the preview mirrors
+  // that: it's no longer gated behind a separate "Album" post type, just
+  // however many photos are actually selected.
+  if (facebookType !== "reel" && facebookType !== "story" && mediaItems.length >= 2) {
     return (
       <PreviewFacebookAlbum
         caption={caption}
-        albumMedia={albumMedia}
+        albumMedia={mediaItems}
         previewDevice={previewDevice}
         pageName={pageName}
       />

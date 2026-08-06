@@ -14,7 +14,7 @@ import { buildMediaUrl, isVideoPath } from "../utils/url";
 import { validatePostForm } from "../utils/postValidation";
 import { logger } from "../utils/logger";
 import postService from "../services/post.service";
-import { uploadMediaFile } from "../services/mediaUpload.service";
+import { uploadMediaFile, uploadMediaFileWithMetadata } from "../services/mediaUpload.service";
 import {
   NETWORK_TAB_TEMPLATE,
   buildDefaultNetworkCustom,
@@ -50,10 +50,8 @@ export function usePostCreatorForm() {
     setVideoFileUrl,
     isUploadingVideo, 
     setIsUploadingVideo,
-    uploadedVideoPath, 
+    uploadedVideoPath,
     setUploadedVideoPath,
-    albumMedia,
-    setAlbumMedia,
     postMedia,
     setPostMedia,
     backupFormState,
@@ -244,8 +242,7 @@ export function usePostCreatorForm() {
         defaultVideoPath: currentStoreState.uploadedVideoPath || backup.uploadedVideoPath,
         isUploadingVideo: backup.isUploadingVideo,
         videoSettings: currentStoreState.videoSettings || backup.videoSettings || null,
-        postMedia: updatedPostMedia,
-        albumMedia: backup.albumMedia
+        postMedia: updatedPostMedia
       });
     }
   }, []);
@@ -671,7 +668,6 @@ export function usePostCreatorForm() {
     ?.filter(Boolean) || [];
 
   const getValidationErrors = () => {
-    const isAlbum = selectedPlatforms.includes('facebook') && activePlatform === 'facebook' && facebookType === 'album';
     const activeSelectedPlatforms = selectedPlatforms.filter(p => connectedPlatforms.includes(p));
     return validatePostForm({
       isLibrary,
@@ -688,7 +684,7 @@ export function usePostCreatorForm() {
       videoHeight,
       uploadedVideoPath,
       platformLimits,
-      mediaCount: isAlbum ? albumMedia.length : (postMedia ? postMedia.length : 0),
+      mediaCount: postMedia ? postMedia.length : 0,
       editingPost,
       postMedia,
       captionText: caption,
@@ -933,9 +929,7 @@ export function usePostCreatorForm() {
         setTiktokCommercialContent(opts.tiktokCommercialContent || false);
 
         // Setup media
-        if (opts.facebookType === 'album' && opts.albumMedia) {
-          setAlbumMedia(opts.albumMedia);
-        } else if (editingPost.mediaUrls?.[0]) {
+        if (editingPost.mediaUrls?.[0]) {
           const path = editingPost.mediaUrls[0];
           setUploadedVideoPath(path);
           setVideoFileUrl(buildMediaUrl(path));
@@ -1000,9 +994,7 @@ export function usePostCreatorForm() {
         setTiktokCommercialContent(opts.tiktokCommercialContent || false);
 
         // Setup media
-        if (opts.facebookType === 'album' && opts.albumMedia) {
-          setAlbumMedia(opts.albumMedia);
-        } else if (templatePost.mediaUrls?.[0]) {
+        if (templatePost.mediaUrls?.[0]) {
           const path = templatePost.mediaUrls[0];
           setUploadedVideoPath(path);
           setVideoFileUrl(buildMediaUrl(path));
@@ -1067,7 +1059,6 @@ export function usePostCreatorForm() {
         setFacebookReelPlaceId("");
         setFacebookReelThumbnail("");
         setAltText("");
-        setAlbumMedia([]);
         setVideoSettings(null);
 
         // Reset per-platform content override
@@ -1138,9 +1129,7 @@ export function usePostCreatorForm() {
     setTiktokCommercialContent(opts.tiktokCommercialContent || false);
 
     // Setup media
-    if (opts.facebookType === 'album' && opts.albumMedia) {
-      setAlbumMedia(opts.albumMedia);
-    } else if (template.mediaUrls?.[0]) {
+    if (template.mediaUrls?.[0]) {
       const path = template.mediaUrls[0];
       setUploadedVideoPath(path);
       setVideoFileUrl(buildMediaUrl(path));
@@ -1169,7 +1158,6 @@ export function usePostCreatorForm() {
     try {
       // 1. Quét và tập hợp tất cả các file media chưa upload (has file && !path)
       const pendingPostMedia = postMedia.filter((item) => item.file && !item.path);
-      const pendingAlbumMedia = albumMedia.filter((item) => item.file && !item.path);
       const pendingNetworkItems = [];
 
       Object.entries(networkCustom).forEach(([platform, entry]) => {
@@ -1197,7 +1185,7 @@ export function usePostCreatorForm() {
         }
       });
 
-      const allPendingFiles = [...pendingPostMedia, ...pendingAlbumMedia, ...pendingNetworkItems];
+      const allPendingFiles = [...pendingPostMedia, ...pendingNetworkItems];
       const totalPending = allPendingFiles.length;
 
       if (totalPending > 0) {
@@ -1206,8 +1194,19 @@ export function usePostCreatorForm() {
           uploadedCount++;
           setSubmitProgressText(`Đang tải lên file ${uploadedCount}/${totalPending}...`);
           try {
-            const uploadedUrl = await uploadMediaFile(item.file, activeBrand.id);
+            // Cloudinary's own upload response already carries width/height/
+            // duration/frame rate/codec for videos — read from it here
+            // instead of a separate probe pass, since this request happens
+            // regardless of whether anything reads the extra fields.
+            const uploadResult = await uploadMediaFileWithMetadata(item.file, activeBrand.id);
+            const uploadedUrl = uploadResult.url;
             item.path = uploadedUrl;
+            if (item.file?.type?.startsWith('video/')) {
+              item.width = uploadResult.width;
+              item.height = uploadResult.height;
+              item.frameRate = uploadResult.frameRate;
+              item.codec = uploadResult.codec;
+            }
 
             // Track asset immediately upon successful upload to allow rollback if subsequent uploads fail
             const trackUploadedAsset = usePostCreatorStore.getState().trackUploadedAsset;
@@ -1225,7 +1224,6 @@ export function usePostCreatorForm() {
         }
 
         setPostMedia([...postMedia]);
-        setAlbumMedia([...albumMedia]);
         setNetworkCustom({ ...networkCustom });
       }
 
@@ -1240,26 +1238,32 @@ export function usePostCreatorForm() {
       else if (activePlatform === PLATFORMS.INSTAGRAM) activeSubType = instagramType;
       else if (activePlatform === PLATFORMS.TIKTOK) activeSubType = 'video';
 
-      const isAlbum = activePlatform === PLATFORMS.FACEBOOK && facebookType === 'album';
       const effectiveUploadedPath = uploadedVideoPath || (postMedia.length > 0 ? postMedia[0].path : "");
-      const hasMedia = isAlbum ? albumMedia.length > 0 : !!(effectiveUploadedPath || (postMedia && postMedia.length > 0 && postMedia[0].path));
-      const isVid = !isAlbum && isVideoPath(videoFileUrl, videoFile);
+      const hasMedia = !!(effectiveUploadedPath || (postMedia && postMedia.length > 0 && postMedia[0].path));
+      const isVid = isVideoPath(videoFileUrl, videoFile);
 
       const platformConfig = PLATFORM_CONFIGS[activePlatform];
-      const postType = platformConfig 
+      const postType = platformConfig
         ? platformConfig.getPostType(activeSubType, hasMedia, isVid)
         : POST_TYPE.VIDEO;
 
-      // Chuẩn bị danh sách URLs và captions cho Album hoặc Post
-      const postMediaUrls = isAlbum 
-        ? albumMedia.map(item => item.path).filter(Boolean)
-        : (postMedia && postMedia.length > 0
-            ? postMedia.map(item => item.path).filter(Boolean)
-            : (effectiveUploadedPath ? [effectiveUploadedPath] : [])
-          );
-      const mediaCaptions = isAlbum
-        ? albumMedia.map(item => item.caption || "")
-        : [];
+      // Captions built alongside their URLs (not filtered separately) so an
+      // item with no path doesn't shift mediaCaptions[i] out of sync with
+      // postMediaUrls[i] (AlbumPublishStrategy matches them by index).
+      // postMedia's per-item caption is written by AltTextModal (see
+      // PostCreator.jsx's onSave) — ≥2 photos here auto-routes to Facebook's
+      // album strategy server-side (facebook-post.service.js), no separate
+      // "Album" post type needed anymore.
+      let postMediaUrls;
+      let mediaCaptions;
+      if (postMedia && postMedia.length > 0) {
+        const validItems = postMedia.filter(item => item.path);
+        postMediaUrls = validItems.map(item => item.path);
+        mediaCaptions = validItems.map(item => item.caption || "");
+      } else {
+        postMediaUrls = effectiveUploadedPath ? [effectiveUploadedPath] : [];
+        mediaCaptions = [];
+      }
 
       // Groups the flat selectedAccountIds by platform into the shape
       // upsertPostTargets expects ({ [PLATFORM]: string[] }) — without this,
@@ -1292,6 +1296,15 @@ export function usePostCreatorForm() {
         approvalPolicy: approvalPolicy,
         requesterNote: requesterNote || "Vui lòng phê duyệt bài viết này.",
         options: {
+          // From the browser's own <video> element (free, measured before
+          // upload — see the videoFileUrl-driven effect that sets these) or,
+          // for width/frameRate, from Cloudinary's upload response captured
+          // on postMedia[0] just above (frameRate has no browser API
+          // equivalent, so Cloudinary is the only source for it here).
+          videoDuration,
+          videoWidth: postMedia[0]?.width || videoWidth,
+          videoHeight: postMedia[0]?.height || videoHeight,
+          videoFrameRate: postMedia[0]?.frameRate || null,
           youtubeType,
           youtubeTitle,
           privacyStatus: youtubePrivacy,
@@ -1317,7 +1330,6 @@ export function usePostCreatorForm() {
           tiktokAllowStitch,
           tiktokAiGenerated,
           tiktokCommercialContent,
-          albumMedia,
           mediaCaptions,
           threadsWhoCanReply,
           useUrlShortener,
@@ -1715,8 +1727,6 @@ export function usePostCreatorForm() {
     requesterNote,
     setRequesterNote,
     isLoadingReviewers,
-    albumMedia,
-    setAlbumMedia,
     postMedia,
     setPostMedia,
     // Threads States

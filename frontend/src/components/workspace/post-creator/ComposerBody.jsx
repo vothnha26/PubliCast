@@ -11,7 +11,6 @@ import { usePostCreatorFormContext } from "../../../context/PostCreatorFormConte
 import { PlatformIcon } from "../../shared/PlatformIcon";
 import { MediaThumbnailGrid } from "./MediaThumbnailGrid";
 import { CaptionToolbar } from "./CaptionToolbar";
-import { FacebookAlbumComposer } from "./FacebookAlbumComposer";
 import StockMediaPicker from "../../shared/StockMediaPicker";
 import { toast } from "sonner";
 import { PRODUCT_IDS } from "../../../constants/products";
@@ -72,9 +71,6 @@ export function ComposerBody() {
     instagramType,
     youtubeType,
     activeBrand,
-    albumMedia,
-    setAlbumMedia,
-    setEditingAlbumPhoto,
     setShowImageEditor,
     setShowVideoEditor,
     setEditingPostMediaIndex,
@@ -375,24 +371,10 @@ export function ComposerBody() {
             </div>
           )}
 
-          {/* Facebook Album Composer Section */}
-          {activePlatform === 'facebook' && facebookType === 'album' ? (
-            <div className="px-6 pb-6 border-t border-gray-50 pt-6">
-              <FacebookAlbumComposer
-                brandId={activeBrand?.id}
-                albumMedia={albumMedia}
-                setAlbumMedia={setAlbumMedia}
-                onEditPhoto={(photo) => {
-                  setEditingAlbumPhoto(photo);
-                  setShowImageEditor(true);
-                }}
-              />
-            </div>
-          ) : (
-            <>
-
-              {/* Multiple thumbnails for standard posts */}
-              <MediaThumbnailGrid
+          {/* Multiple thumbnails for standard posts — ≥2 photos here
+              auto-routes to Facebook's album strategy server-side
+              (facebook-post.service.js), no separate album-only UI needed. */}
+          <MediaThumbnailGrid
                 items={effectivePostMedia}
                 spoilersMap={spoilersMap}
                 onToggleSpoiler={handleToggleSpoiler}
@@ -547,8 +529,6 @@ export function ComposerBody() {
                   </div>
                 </div>
               )}
-            </>
-          )}
 
           {/* Toolbar & Character Limit */}
           <div className="px-5 py-3 bg-white border-t border-slate-200/80 rounded-b-[20px]">

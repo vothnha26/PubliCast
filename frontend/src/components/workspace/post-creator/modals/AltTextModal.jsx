@@ -1,5 +1,5 @@
 import * as React from "react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { X, Info, Sparkles, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -15,6 +15,17 @@ export function AltTextModal({
   const [altText, setAltText] = useState(initialAltText || "");
   const [aiCredits, setAiCredits] = useState(5);
   const [isGenerating, setIsGenerating] = useState(false);
+
+  // useState(initialAltText) only reads the prop on first mount — this modal
+  // stays mounted between opens (isOpen just toggles visibility), so without
+  // this, opening it for image B after having edited image A kept showing
+  // A's text (React never re-reads the initial value) until Save silently
+  // overwrote B's caption with whatever was left over from A.
+  useEffect(() => {
+    if (isOpen) {
+      setAltText(initialAltText || "");
+    }
+  }, [isOpen, initialAltText]);
 
   if (!isOpen) return null;
 

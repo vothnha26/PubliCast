@@ -2,7 +2,6 @@ import * as React from "react";
 import { useState, useRef } from "react";
 import { X, Upload, Link2, File, Image as ImageIcon, Video, CheckCircle2, Loader2, Search, Folder, ChevronLeft } from "lucide-react";
 import { toast } from "sonner";
-import { uploadMediaFile } from "../../../../services/mediaUpload.service";
 import { useMediaLibrary } from "../../../../hooks/useMediaLibrary";
 
 import { 
@@ -11,14 +10,13 @@ import {
   resolveMediaPromptText 
 } from "../../../../constants/mediaAcceptStrategy";
 
-export function MediaUploadModal({ 
-  isOpen, 
-  onClose, 
-  onAccept, 
-  brandId, 
-  initialTab = "computer", 
-  multiple = false, 
-  mediaTypeFilter = MEDIA_FILTER_TYPES.ALL 
+export function MediaUploadModal({
+  isOpen,
+  onClose,
+  onAccept,
+  initialTab = "computer",
+  multiple = false,
+  mediaTypeFilter = MEDIA_FILTER_TYPES.ALL
 }) {
   const [activeTab, setActiveTab] = useState(initialTab); // 'computer' | 'url' | 'library'
   const [dragActive, setDragActive] = useState(false);
@@ -26,9 +24,7 @@ export function MediaUploadModal({
   const [selectedFiles, setSelectedFiles] = useState([]);
   const [fileUrlInput, setFileUrlInput] = useState("");
   const [fileUrlsInput, setFileUrlsInput] = useState("");
-  const [isUploading, setIsUploading] = useState(false);
-  const [uploadProgress, setUploadProgress] = useState(0);
-  
+
   // Library management using custom hook
   const {
     filters,
@@ -67,7 +63,6 @@ export function MediaUploadModal({
       setSelectedLibraryFiles([]);
       setFileUrlInput("");
       setFileUrlsInput("");
-      setUploadProgress(0);
     }
   }, [isOpen]);
 
@@ -123,121 +118,74 @@ export function MediaUploadModal({
     }
   };
 
-  const handleAccept = async () => {
+  // Single upload path regardless of tab or `multiple` — always defers the
+  // real upload (returns { file, path: null, previewUrl: blob/url }) and
+  // always calls onAccept with an array, even for a single file. `multiple`
+  // now only controls the picker UI (one file vs. several); it no longer
+  // also decides upload timing or onAccept's argument shape the way it used
+  // to (uploadMediaFile was called here, ahead of Submit, only for the
+  // single-file case — every other case already deferred). The one caller
+  // that genuinely needs a real URL immediately (composer thumbnail upload)
+  // now uploads it itself after receiving the blob, instead of this modal
+  // special-casing that behavior via `multiple={false}`.
+  const handleAccept = () => {
     if (activeTab === "computer") {
-      if (multiple) {
-        if (selectedFiles.length === 0) {
-          toast.error("Please select at least one file");
-          return;
-        }
-        // Hoãn upload: Tạo previewUrl blob: đồng bộ, path = null (sẽ upload khi Submit)
-        const items = selectedFiles.map((file) => ({
-          file,
-          path: null,
-          previewUrl: URL.createObjectURL(file),
-        }));
-        onAccept(items);
-        onClose();
-        setSelectedFiles([]);
-      } else {
-        if (!selectedFile) {
-          toast.error("Please select a file first");
-          return;
-        }
-        
-        setIsUploading(true);
-        setUploadProgress(0);
-        const toastId = toast.loading(`Preparing ${selectedFile.name}...`);
-
-        try {
-          toast.loading(`Uploading ${selectedFile.name}... 0%`, { id: toastId });
-
-          const finalUrl = await uploadMediaFile(selectedFile, brandId, (percent) => {
-            setUploadProgress(percent);
-            toast.loading(`Uploading ${selectedFile.name}... ${percent}%`, { id: toastId });
-          });
-
-          onAccept(selectedFile, finalUrl);
-          toast.success("File uploaded successfully", { id: toastId });
-          onClose();
-          setSelectedFile(null);
-        } catch (err) {
-          const errorMessage = err.response?.data?.message || err.message || "Failed to upload file";
-          toast.error(errorMessage, { id: toastId });
-          console.error(err);
-        } finally {
-          setIsUploading(false);
-          setUploadProgress(0);
-        }
+      const files = multiple ? selectedFiles : (selectedFile ? [selectedFile] : []);
+      if (files.length === 0) {
+        toast.error(multiple ? "Please select at least one file" : "Please select a file first");
+        return;
       }
+      const items = files.map((file) => ({
+        file,
+        path: null,
+        previewUrl: URL.createObjectURL(file),
+      }));
+      onAccept(items);
+      onClose();
+      setSelectedFiles([]);
+      setSelectedFile(null);
     } else if (activeTab === "library") {
-      if (multiple) {
-        if (selectedLibraryFiles.length === 0) {
-          toast.error("Please select at least one file from the library");
-          return;
-        }
-        const items = selectedLibraryFiles.map(file => ({
-          file: null,
-          path: file.url,
-          previewUrl: file.thumbnail || file.url
-        }));
-        onAccept(items);
-        toast.success(`${items.length} file(s) selected from library`);
-        onClose();
-        setSelectedLibraryFiles([]);
-      } else {
-        if (!selectedLibraryFile) {
-          toast.error("Please select a file from the library");
-          return;
-        }
-        onAccept(null, selectedLibraryFile.url);
-        toast.success("File selected from library");
-        onClose();
-        setSelectedLibraryFile(null);
+      const files = multiple ? selectedLibraryFiles : (selectedLibraryFile ? [selectedLibraryFile] : []);
+      if (files.length === 0) {
+        toast.error(multiple ? "Please select at least one file from the library" : "Please select a file from the library");
+        return;
       }
+      const items = files.map((file) => ({
+        file: null,
+        path: file.url,
+        previewUrl: file.thumbnail || file.url
+      }));
+      onAccept(items);
+      toast.success(items.length > 1 ? `${items.length} file(s) selected from library` : "File selected from library");
+      onClose();
+      setSelectedLibraryFiles([]);
+      setSelectedLibraryFile(null);
     } else {
-      if (multiple) {
-        const urls = fileUrlsInput
-          .split("\n")
-          .map(url => url.trim())
-          .filter(url => url.length > 0);
+      const urls = multiple
+        ? fileUrlsInput.split("\n").map(url => url.trim()).filter(url => url.length > 0)
+        : (fileUrlInput.trim() ? [fileUrlInput.trim()] : []);
 
-        if (urls.length === 0) {
-          toast.error("Please enter at least one URL");
-          return;
-        }
-
-        const invalidUrl = urls.find(url => !url.startsWith("http://") && !url.startsWith("https://"));
-        if (invalidUrl) {
-          toast.error(`Invalid URL: ${invalidUrl}. Must start with http:// or https://`);
-          return;
-        }
-
-        const items = urls.map(url => ({
-          file: null,
-          path: url,
-          previewUrl: url
-        }));
-
-        onAccept(items);
-        toast.success(`${items.length} media link(s) accepted`);
-        onClose();
-        setFileUrlsInput("");
-      } else {
-        if (!fileUrlInput.trim()) {
-          toast.error("Please enter a valid URL");
-          return;
-        }
-        if (!fileUrlInput.startsWith("http://") && !fileUrlInput.startsWith("https://")) {
-          toast.error("URL must start with http:// or https://");
-          return;
-        }
-        
-        onAccept(null, fileUrlInput.trim());
-        toast.success("Media link accepted");
-        onClose();
-        setFileUrlInput("");
+      if (urls.length === 0) {
+        toast.error(multiple ? "Please enter at least one URL" : "Please enter a valid URL");
+        return;
       }
+      const invalidUrl = urls.find(url => !url.startsWith("http://") && !url.startsWith("https://"));
+      if (invalidUrl) {
+        toast.error(`Invalid URL: ${invalidUrl}. Must start with http:// or https://`);
+        return;
+      }
+
+      const items = urls.map(url => ({
+        file: null,
+        path: url,
+        previewUrl: url
+      }));
+
+      onAccept(items);
+      toast.success(items.length > 1 ? `${items.length} media link(s) accepted` : "Media link accepted");
+      onClose();
+      setFileUrlsInput("");
+      setFileUrlInput("");
     }
   };
 
@@ -509,29 +457,12 @@ export function MediaUploadModal({
 
         </div>
 
-        {/* Upload Progress Bar */}
-        {isUploading && (
-          <div className="px-6 pb-3 -mt-2">
-            <div className="flex items-center justify-between mb-1.5">
-              <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Uploading...</span>
-              <span className="text-[10px] font-black text-muted-foreground">{uploadProgress}%</span>
-            </div>
-            <div className="w-full h-1.5 bg-muted rounded-full overflow-hidden">
-              <div
-                className="h-full bg-[#2D1D35] rounded-full transition-[width] duration-200 ease-out"
-                style={{ width: `${uploadProgress}%` }}
-              />
-            </div>
-          </div>
-        )}
-
         {/* Modal Footer */}
         <div className="px-6 py-4 bg-muted flex items-center justify-between border-t border-border">
           <button
             type="button"
             onClick={onClose}
-            disabled={isUploading}
-            className="px-5 py-2.5 text-xs font-bold text-muted-foreground hover:text-black border border-border rounded-xl bg-card hover:bg-muted transition-all cursor-pointer disabled:opacity-50"
+            className="px-5 py-2.5 text-xs font-bold text-muted-foreground hover:text-black border border-border rounded-xl bg-card hover:bg-muted transition-all cursor-pointer"
           >
             Cancel
           </button>
@@ -539,10 +470,9 @@ export function MediaUploadModal({
           <button
             type="button"
             onClick={handleAccept}
-            disabled={isUploading}
-            className="px-6 py-2.5 text-xs font-bold bg-[#2D1D35] hover:bg-black text-yellow-300 rounded-xl transition-all cursor-pointer disabled:opacity-50 flex items-center gap-2"
+            className="px-6 py-2.5 text-xs font-bold bg-[#2D1D35] hover:bg-black text-yellow-300 rounded-xl transition-all cursor-pointer flex items-center gap-2"
           >
-            {isUploading ? `Uploading ${uploadProgress}%` : "Accept"}
+            Accept
           </button>
         </div>
 

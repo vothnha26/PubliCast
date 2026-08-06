@@ -14,6 +14,7 @@ import { usePostCreatorStore } from "../../store/usePostCreatorStore";
 import { FirstCommentModal } from "../../components/workspace/post-creator/modals/FirstCommentModal";
 import { GoogleDrivePickerModal } from "../../components/workspace/post-creator/modals/GoogleDrivePickerModal";
 import { MediaUploadModal } from "../../components/workspace/post-creator/modals/MediaUploadModal";
+import { uploadMediaFile } from "../../services/mediaUpload.service";
 import { MEDIA_FILTER_TYPES } from "../../constants/mediaAcceptStrategy";
 import { ImageEditorModal } from "../../components/workspace/post-creator/modals/ImageEditorModal";
 import { VideoEditorModal } from "../../components/workspace/post-creator/modals/VideoEditorModal";
@@ -181,8 +182,6 @@ export function PostCreatorPage() {
     requesterNote,
     setRequesterNote,
     isLoadingReviewers,
-    albumMedia,
-    setAlbumMedia,
     postMedia,
     setPostMedia,
     threadsWhoCanReply,
@@ -274,7 +273,6 @@ export function PostCreatorPage() {
   const [showImageMenu, setShowImageMenu] = useState(false);
   const [showImageEditor, setShowImageEditor] = useState(false);
   const [showVideoEditor, setShowVideoEditor] = useState(false);
-  const [editingAlbumPhoto, setEditingAlbumPhoto] = useState(null);
   const [editingPostMediaIndex, setEditingPostMediaIndex] = useState(null);
   const [imageTransform, setImageTransform] = useState({ rotation: 0, flipH: false, flipV: false, filter: 'none' });
   const [showAltTextModal, setShowAltTextModal] = useState(false);
@@ -421,8 +419,6 @@ export function PostCreatorPage() {
     requesterNote,
     setRequesterNote,
     isLoadingReviewers,
-    albumMedia,
-    setAlbumMedia,
     postMedia,
     setPostMedia,
     threadsWhoCanReply,
@@ -471,8 +467,6 @@ export function PostCreatorPage() {
     setShowImageEditor,
     showVideoEditor,
     setShowVideoEditor,
-    editingAlbumPhoto,
-    setEditingAlbumPhoto,
     editingPostMediaIndex,
     setEditingPostMediaIndex,
     imageTransform,
@@ -659,76 +653,85 @@ export function PostCreatorPage() {
 
           return (
             <>
-              <MediaUploadModal 
+              <MediaUploadModal
                 isOpen={showUploadModal}
                 initialTab={uploadModalTab}
-                brandId={activeBrand?.id}
                 multiple={!isUploadingThumbnail}
                 mediaTypeFilter={mediaTypeFilter}
                 onClose={() => {
                   setShowUploadModal(false);
                   setIsUploadingThumbnail(false);
                 }}
-                onAccept={(result, path) => {
+                onAccept={async (items) => {
                   if (isUploadingThumbnail) {
-                    // mediaThumbnailUrl là SSoT chung cho thumbnail — YouTube/Facebook Reel sẽ đọc từ đây khi submit
-                    formState.setMediaThumbnailUrl(path);
+                    // Thumbnail is the one case that needs a real URL right
+                    // away (fed straight into mediaThumbnailUrl, the SSoT
+                    // YouTube/Facebook Reel read at submit) — the modal
+                    // itself always defers upload now, so this uploads the
+                    // picked file itself instead of relying on the modal to
+                    // special-case it via multiple={false}.
+                    const thumbItem = items[0];
                     setIsUploadingThumbnail(false);
+                    if (!thumbItem) return;
+                    if (thumbItem.path) {
+                      formState.setMediaThumbnailUrl(thumbItem.path);
+                      return;
+                    }
+                    try {
+                      const url = await uploadMediaFile(thumbItem.file, activeBrand.id);
+                      formState.setMediaThumbnailUrl(url);
+                    } catch (err) {
+                      toast.error(err.message || "Failed to upload thumbnail");
+                    }
+                    return;
+                  }
+
+                  const newItems = items.map(item => ({
+                    file: item.file,
+                    previewUrl: item.previewUrl || item.path,
+                    path: item.path
+                  }));
+
+                  // Track bất kỳ path nào mới upload trong session
+                  const trackAssetFn = usePostCreatorStore.getState().trackUploadedAsset;
+                  if (trackAssetFn) {
+                    newItems.forEach(item => {
+                      if (item.path) trackAssetFn(item.path);
+                    });
+                  }
+
+                  if (isCustomizingThreads) {
+                    const current = (typeof activeThreadPost === 'object' ? activeThreadPost?.mediaUrls : []) || [];
+                    updateThreadPostMedia(activeThreadIndex, [...current, ...newItems]);
+                  } else if (isCustomizingNonThreadsPlatform) {
+                    const current = activeNetworkMedia;
+                    updateNetworkMedia(activeNetworkTab, [...current, ...newItems], effectiveNetworkAccountId);
                   } else {
-                    // Normalize thành array items { file, path, previewUrl }
-                    const items = Array.isArray(result)
-                      ? result
-                      : [{ file: result, path, previewUrl: result ? URL.createObjectURL(result) : path }];
-                    const newItems = items.map(item => ({
-                      file: item.file,
-                      previewUrl: item.previewUrl || item.path,
-                      path: item.path
-                    }));
-
-                    // Track bất kỳ path nào mới upload trong session
-                    const trackAssetFn = usePostCreatorStore.getState().trackUploadedAsset;
-                    if (trackAssetFn) {
-                      newItems.forEach(item => {
-                        if (item.path) trackAssetFn(item.path);
-                      });
-                    }
-
-                    if (isCustomizingThreads) {
-                      const current = (typeof activeThreadPost === 'object' ? activeThreadPost?.mediaUrls : []) || [];
-                      updateThreadPostMedia(activeThreadIndex, [...current, ...newItems]);
-                    } else if (isCustomizingNonThreadsPlatform) {
-                      const current = activeNetworkMedia;
-                      updateNetworkMedia(activeNetworkTab, [...current, ...newItems], effectiveNetworkAccountId);
-                    } else {
-                      setPostMedia(prev => {
-                        const updated = [...prev, ...newItems];
-                        if (updated.length > 0) {
-                          const firstItem = updated[0];
-                          setVideoFile(firstItem.file || null);
-                          setVideoFileUrl(firstItem.previewUrl || firstItem.path || '');
-                          setUploadedVideoPath(firstItem.path || '');
-                        }
-                        return updated;
-                      });
-                      setImageTransform({ rotation: 0, flipH: false, flipV: false, filter: 'none' });
-                    }
+                    setPostMedia(prev => {
+                      const updated = [...prev, ...newItems];
+                      if (updated.length > 0) {
+                        const firstItem = updated[0];
+                        setVideoFile(firstItem.file || null);
+                        setVideoFileUrl(firstItem.previewUrl || firstItem.path || '');
+                        setUploadedVideoPath(firstItem.path || '');
+                      }
+                      return updated;
+                    });
+                    setImageTransform({ rotation: 0, flipH: false, flipV: false, filter: 'none' });
                   }
                 }}
               />
-              <ImageEditorModal 
+              <ImageEditorModal
                 isOpen={showImageEditor}
                 imageUrl={
-                  editingAlbumPhoto 
-                    ? (editingAlbumPhoto.previewUrl || editingAlbumPhoto.path) 
-                    : (editingPostMediaIndex !== null && activeNetworkMedia[editingPostMediaIndex]) 
-                      ? (activeNetworkMedia[editingPostMediaIndex].previewUrl || activeNetworkMedia[editingPostMediaIndex].path) 
-                      : videoFileUrl
+                  editingPostMediaIndex !== null && activeNetworkMedia[editingPostMediaIndex]
+                    ? (activeNetworkMedia[editingPostMediaIndex].previewUrl || activeNetworkMedia[editingPostMediaIndex].path)
+                    : videoFileUrl
                 }
                 currentTransform={imageTransform}
                 brandId={activeBrand?.id}
                 onClose={() => {
                   setShowImageEditor(false);
-                  setEditingAlbumPhoto(null);
                   setEditingPostMediaIndex(null);
                 }}
                 onSave={(file, path, fallbackTransform) => {
@@ -737,20 +740,7 @@ export function PostCreatorPage() {
                     trackAssetFn(path);
                   }
 
-                  if (editingAlbumPhoto) {
-                    setAlbumMedia((prev) =>
-                      prev.map((item) =>
-                        item.id === editingAlbumPhoto.id
-                          ? {
-                              ...item,
-                              previewUrl: file ? URL.createObjectURL(file) : path,
-                              path: path || item.path
-                            }
-                          : item
-                      )
-                    );
-                    setEditingAlbumPhoto(null);
-                  } else if (editingPostMediaIndex !== null) {
+                  if (editingPostMediaIndex !== null) {
                     if (isCustomizingThreads) {
                       const current = (typeof activeThreadPost === 'object' ? activeThreadPost?.mediaUrls : []) || [];
                       const updated = current.map((item, idx) =>
@@ -815,24 +805,19 @@ export function PostCreatorPage() {
               <VideoEditorModal 
                 isOpen={showVideoEditor}
                 videoUrl={
-                  editingAlbumPhoto 
-                    ? (editingAlbumPhoto.previewUrl || editingAlbumPhoto.path) 
-                    : (editingPostMediaIndex !== null && activeNetworkMedia[editingPostMediaIndex]) 
-                      ? (activeNetworkMedia[editingPostMediaIndex].previewUrl || activeNetworkMedia[editingPostMediaIndex].path) 
-                      : videoFileUrl
+                  (editingPostMediaIndex !== null && activeNetworkMedia[editingPostMediaIndex])
+                    ? (activeNetworkMedia[editingPostMediaIndex].previewUrl || activeNetworkMedia[editingPostMediaIndex].path)
+                    : videoFileUrl
                 }
                 videoPath={
-                  editingAlbumPhoto
-                    ? editingAlbumPhoto.path
-                    : (editingPostMediaIndex !== null && activeNetworkMedia[editingPostMediaIndex])
-                      ? activeNetworkMedia[editingPostMediaIndex].path
-                      : uploadedVideoPath
+                  (editingPostMediaIndex !== null && activeNetworkMedia[editingPostMediaIndex])
+                    ? activeNetworkMedia[editingPostMediaIndex].path
+                    : uploadedVideoPath
                 }
                 initialSettings={videoSettings}
                 brandId={activeBrand?.id}
                 onClose={() => {
                   setShowVideoEditor(false);
-                  setEditingAlbumPhoto(null);
                   setEditingPostMediaIndex(null);
                 }}
                 onSave={(newUrl, newSettings) => {
@@ -841,19 +826,7 @@ export function PostCreatorPage() {
                     trackAssetFn(newUrl);
                   }
 
-                  if (editingAlbumPhoto) {
-                    setAlbumMedia((prev) =>
-                      prev.map((item) =>
-                        item.id === editingAlbumPhoto.id
-                          ? {
-                              ...item,
-                              previewUrl: newUrl,
-                              path: newUrl
-                            }
-                          : item
-                      )
-                    );
-                  } else if (editingPostMediaIndex !== null && activeNetworkMedia[editingPostMediaIndex]) {
+                  if (editingPostMediaIndex !== null && activeNetworkMedia[editingPostMediaIndex]) {
                     const updateItem = (item, idx) =>
                       idx === editingPostMediaIndex
                         ? { ...item, previewUrl: newUrl, path: newUrl }
@@ -876,26 +849,56 @@ export function PostCreatorPage() {
                     setVideoSettings(newSettings);
                   }
                   setShowVideoEditor(false);
-                  setEditingAlbumPhoto(null);
+                  setEditingPostMediaIndex(null);
+                }}
+              />
+
+              <AltTextModal
+                isOpen={showAltTextModal}
+                onClose={() => {
+                  setShowAltTextModal(false);
+                  setEditingPostMediaIndex(null);
+                }}
+                imageUrl={
+                  editingPostMediaIndex !== null && activeNetworkMedia[editingPostMediaIndex]
+                    ? (activeNetworkMedia[editingPostMediaIndex].previewUrl || activeNetworkMedia[editingPostMediaIndex].path)
+                    : videoFileUrl
+                }
+                imageTransform={imageTransform}
+                caption={caption}
+                initialAltText={
+                  editingPostMediaIndex !== null && activeNetworkMedia[editingPostMediaIndex]
+                    ? (activeNetworkMedia[editingPostMediaIndex].caption || "")
+                    : altText
+                }
+                onSave={(text) => {
+                  // Per-image alt text (Facebook album "Add a description"),
+                  // not a single post-wide value — mirrors ImageEditorModal/
+                  // VideoEditorModal's own editingPostMediaIndex-scoped
+                  // write-back just above, so it lands in whichever media
+                  // array is actually active (per-network override, thread
+                  // post, or the main postMedia list).
+                  if (editingPostMediaIndex !== null) {
+                    const updateItem = (item, idx) =>
+                      idx === editingPostMediaIndex ? { ...item, caption: text } : item;
+                    if (isCustomizingThreads) {
+                      const current = (typeof activeThreadPost === 'object' ? activeThreadPost?.mediaUrls : []) || [];
+                      updateThreadPostMedia(activeThreadIndex, current.map(updateItem));
+                    } else if (isCustomizingNonThreadsPlatform) {
+                      updateNetworkMedia(activeNetworkTab, activeNetworkMedia.map(updateItem), effectiveNetworkAccountId);
+                    } else {
+                      setPostMedia((prev) => prev.map(updateItem));
+                    }
+                  } else {
+                    setAltText(text);
+                  }
+                  toast.success(t("common:success"));
                   setEditingPostMediaIndex(null);
                 }}
               />
             </>
           );
         })()}
-
-        <AltTextModal 
-          isOpen={showAltTextModal}
-          onClose={() => setShowAltTextModal(false)}
-          imageUrl={videoFileUrl}
-          imageTransform={imageTransform}
-          caption={caption}
-          initialAltText={altText}
-          onSave={(text) => {
-            setAltText(text);
-            toast.success(t("common:success"));
-          }}
-        />
         {/* Select Reviewers Modal */}
         {showReviewersModal && (
           <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[100] p-4 animate-in fade-in duration-200">
