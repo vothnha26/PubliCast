@@ -131,8 +131,8 @@ class PostController {
    * with v2's uploadVideoV2 below).
    */
   uploadVideo = asyncHandler(async (req, res) => {
-    const { videoUrl, sizeMb, duration, format } = await postService.processUploadedFile(req);
-    res.status(200).json({ message: 'Video uploaded successfully', videoUrl, sizeMb, duration, format });
+    const { videoUrl, sizeMb, duration, format, width, height, frameRate, codec } = await postService.processUploadedFile(req);
+    res.status(200).json({ message: 'Video uploaded successfully', videoUrl, sizeMb, duration, format, width, height, frameRate, codec });
   });
 
   /**

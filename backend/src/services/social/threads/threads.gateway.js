@@ -1,4 +1,5 @@
 const { API_VERSIONS } = require('../../../utils/constants');
+const { THREADS_MEDIA_TYPE } = require('./threads.constants');
 const logger = require('../../../utils/logger');
 
 class ThreadsGateway {
@@ -11,7 +12,14 @@ class ThreadsGateway {
   }
 
   getAuthUrl(brandId, redirectUri) {
-    const scope = 'threads_basic,threads_content_publish,threads_delete';
+    // threads_manage_replies is required for reply_to_id on createMediaContainer
+    // — used to chain multi-post threads (thread 2+ publishes as a reply to
+    // thread 1). Without it, the first post in a chain succeeds but every
+    // subsequent one is rejected with "Application does not have permission
+    // for this action". Existing connected accounts authorized under the old
+    // scope must disconnect and reconnect to pick up the new permission —
+    // Meta does not retroactively grant scopes to already-issued tokens.
+    const scope = 'threads_basic,threads_content_publish,threads_delete,threads_manage_replies';
     return `https://threads.net/oauth/authorize?client_id=${this.appId}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=${scope}&response_type=code&state=${brandId}`;
   }
 
@@ -102,10 +110,10 @@ class ThreadsGateway {
     };
   }
 
-  async createMediaContainer(userId, accessToken, text, mediaUrl = null, mediaType = 'TEXT', whoCanReply = null, replyToId = null) {
+  async createMediaContainer(userId, accessToken, text, mediaUrl = null, mediaType = THREADS_MEDIA_TYPE.TEXT, whoCanReply = null, replyToId = null) {
     let url = `${this.graphBaseUrl}/${userId}/threads?media_type=${mediaType}&text=${encodeURIComponent(text)}&access_token=${accessToken}`;
     if (mediaUrl) {
-      if (mediaType === 'VIDEO') {
+      if (mediaType === THREADS_MEDIA_TYPE.VIDEO) {
         url += `&video_url=${encodeURIComponent(mediaUrl)}`;
       } else {
         url += `&image_url=${encodeURIComponent(mediaUrl)}`;

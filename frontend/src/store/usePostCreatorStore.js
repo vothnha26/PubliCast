@@ -13,9 +13,7 @@ export const usePostCreatorStore = create((set, get) => ({
   isUploadingVideo: false,
   uploadedVideoPath: "",
   uploadedAssetsThisSession: [],
-  // State phục vụ Facebook Album
-  albumMedia: [], // Mảng chứa các đối tượng { file, previewUrl, path, caption }
-  postMedia: [], // Mảng chứa các đối tượng { file, previewUrl, path } for standard posts
+  postMedia: [], // Mảng chứa các đối tượng { file, previewUrl, path, caption } — ≥2 photos here auto-routes to a Facebook album server-side (facebook-post.service.js), no separate album-only flow needed
   videoSettings: null,
   postCreatorFormBackup: null,
 
@@ -33,7 +31,6 @@ export const usePostCreatorStore = create((set, get) => ({
   setVideoFileUrl: (val) => set({ videoFileUrl: val }),
   setIsUploadingVideo: (val) => set({ isUploadingVideo: val }),
   setUploadedVideoPath: (val) => set({ uploadedVideoPath: val }),
-  setAlbumMedia: (val) => set((state) => ({ albumMedia: typeof val === 'function' ? val(state.albumMedia) : val })),
   setPostMedia: (val) => set((state) => ({ postMedia: typeof val === 'function' ? val(state.postMedia) : val })),
   setVideoSettings: (val) => set({ videoSettings: val }),
   
@@ -74,7 +71,6 @@ export const usePostCreatorStore = create((set, get) => ({
     isUploadingVideo: options.isUploadingVideo || false,
     uploadedAssetsThisSession: [],
     videoSettings: options.videoSettings !== undefined ? options.videoSettings : (options.post?.options?.videoSettings || state.videoSettings || null),
-    albumMedia: options.albumMedia !== undefined ? options.albumMedia : (options.post?.options?.albumMedia || options.template?.options?.albumMedia || []),
     postMedia: options.postMedia !== undefined ? options.postMedia : (
       options.post?.mediaUrls?.map(url => ({
         file: null,
@@ -124,7 +120,6 @@ export const usePostCreatorStore = create((set, get) => ({
       uploadedAssetsThisSession: [],
       videoSettings: null,
       postCreatorFormBackup: null,
-      albumMedia: [],
       postMedia: [],
       isOpen: false
     });

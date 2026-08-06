@@ -421,7 +421,25 @@
       "loading": "Đang tải mẫu...",
       "noTemplates": "Không tìm thấy mẫu bài viết nào",
       "noTemplatesDesc": "Tạo mẫu trong Thư viện trước để sử dụng tại đây.",
-      "noCaption": "Không có mô tả"
+      "noDiscoverDesc": "Chưa có mẫu gợi ý nào vào lúc này.",
+      "noCaption": "Không có mô tả",
+      "searchPlaceholder": "Tìm kiếm mẫu bài viết...",
+      "useTemplate": "Dùng mẫu này",
+      "createNew": "Tạo mẫu mới",
+      "loadFail": "Không thể tải mẫu gợi ý",
+      "loadPersonalFail": "Không thể tải mẫu bài viết",
+      "loadingMore": "Đang tải thêm...",
+      "applied": "Đã áp dụng mẫu vào bài viết",
+      "tabs": {
+        "discover": "Khám phá",
+        "personal": "Của tôi"
+      },
+      "categories": {
+        "all": "Tất cả",
+        "promotional": "Quảng cáo",
+        "educational": "Giáo dục",
+        "entertainment": "Giải trí"
+      }
     },
     "header": {
       "createPost": "Tạo bài viết mới",
@@ -430,7 +448,15 @@
       "editTemplate": "Sửa mẫu bài viết",
       "loadTemplate": "Tải mẫu bài viết",
       "close": "Đóng",
-      "notes": "Ghi chú"
+      "notes": "Ghi chú",
+      "tabs": {
+        "templates": "Mẫu bài viết",
+        "aiAssistant": "Trợ lý AI",
+        "notes": "Ghi chú",
+        "preview": "Xem trước"
+      },
+      "postPreviews": "Xem trước bài viết",
+      "postPreviewsInfo": "Xem trước cách bài viết hiển thị trên từng nền tảng đã chọn"
     },
     "composer": {
       "viewMode": "Chế độ Xem: Bạn không có quyền chỉnh sửa hoặc xuất bản bài viết này.",
@@ -506,7 +532,45 @@
         "policyAll": "Tất cả người duyệt phê duyệt."
       }
     },
+    "networkCustomize": {
+      "title": "Tùy chỉnh bài viết cho từng nền tảng",
+      "caption": "Nội dung",
+      "captionPlaceholder": "Nhập nội dung của bạn tại đây...",
+      "media": "Media",
+      "mediaDropzone": "Kéo thả hoặc",
+      "selectFile": "chọn tệp",
+      "noSettings": "Nền tảng này không có tùy chọn cài đặt riêng.",
+      "addMedia": "Thêm ảnh/video",
+      "hasErrors": "Nền tảng này còn thiếu điều kiện đăng bài",
+      "confirmExit": "Bạn có thay đổi chưa lưu. Bạn có chắc chắn muốn thoát không?",
+      "confirmExitTitle": "Bỏ qua thay đổi?",
+      "confirmExitAction": "Vẫn thoát",
+      "threadChain": "Chuỗi Threads",
+      "threadPost": "Bài {{n}}",
+      "threadAdd": "Thêm bài vào chuỗi",
+      "threadRemove": "Xoá bài này"
+    },
+    "channelPicker": {
+      "search": "Tìm kênh...",
+      "channels": "Kênh",
+      "selectAll": "Chọn tất cả",
+      "deselectAll": "Bỏ chọn tất cả",
+      "noResults": "Không tìm thấy kênh nào",
+      "connectChannel": "Kết nối thêm kênh",
+      "addRemove": "Thêm/bớt kênh",
+      "removeChannel": "Bỏ kênh này"
+    },
+    "aiAssistant": {
+      "label": "Bạn muốn viết về chủ đề gì?",
+      "placeholder": "VD: Quảng bá khóa học nhiếp ảnh của tôi để có thêm người đăng ký. Đăng ký đóng sau 3 ngày.",
+      "generate": "Tạo nội dung",
+      "proTip": "Mẹo: Nêu rõ ý chính, đối tượng mục tiêu và kết quả bạn mong muốn cho bài viết này.",
+      "noBrand": "Vui lòng chọn một thương hiệu trước.",
+      "success": "Đã tạo nội dung AI thành công!",
+      "error": "Không thể tạo nội dung từ AI."
+    },
     "preview": {
+      "noPlatforms": "Chọn ít nhất một nền tảng để xem trước bài viết.",
       "header": {
         "title": "Xem trước bài đăng",
         "reviewToggle": "Chế độ xem trước của người duyệt",
@@ -544,6 +608,11 @@
       "schedule": "Lên lịch",
       "update": "Cập nhật",
       "saveTemplate": "Lưu mẫu",
+      "customizePerNetwork": "Tùy chỉnh cho từng nền tảng",
+      "createAnother": "Tạo bài viết khác",
+      "saveDrafts": "Lưu nháp",
+      "scheduleAll": "Lên lịch tất cả",
+      "nextAvailable": "Lịch trống tiếp theo",
       "publishOptions": {
         "draft": {
           "label": "LƯU BẢN NHÁP",

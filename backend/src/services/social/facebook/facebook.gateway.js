@@ -621,7 +621,29 @@ class FacebookGateway {
       throw new Error('Facebook album requires at least 2 images');
     }
 
+    // Multi-photo feed post (attached_media on /feed) is the primary path,
+    // not a fallback: it reads on Facebook as a normal post — shared status
+    // text up top, photos attached below, matching how users actually post
+    // multiple photos on Facebook. The "Traditional Album" API
+    // (createAlbum + uploadPhotoToAlbum) creates a real, separate Album
+    // object instead — its message only ever shows as the album's own
+    // description, never as status text on a feed post, which read to
+    // users as "the caption got lost" even though it published fine.
     try {
+      const photoIds = [];
+      for (let i = 0; i < mediaUrls.length; i += 1) {
+        const photoCaption = mediaCaptions[i] || '';
+        logger.debug(`[FacebookGateway] Uploading photo ${i + 1}/${mediaUrls.length} as unpublished`);
+        const result = await this.uploadUnpublishedPhoto(pageId, pageAccessToken, mediaUrls[i], photoCaption);
+        photoIds.push(result.id);
+      }
+
+      const feedResult = await this.publishMultiPhotoPost(pageId, pageAccessToken, photoIds, caption, scheduledAt);
+      logger.debug('[FacebookGateway] Successfully published multi-photo post:', feedResult.id);
+      return { id: feedResult.id, photoIds };
+    } catch (feedError) {
+      console.warn('[FacebookGateway] Multi-photo feed post failed, trying Traditional Album fallback. Error:', feedError.message);
+
       const albumName = (caption || 'New Album').slice(0, 50);
       const album = await this.createAlbum(pageId, pageAccessToken, albumName, caption);
       const albumId = album.id;
@@ -629,26 +651,13 @@ class FacebookGateway {
       const photos = [];
       for (let i = 0; i < mediaUrls.length; i += 1) {
         const photoCaption = mediaCaptions[i] || caption || '';
-        logger.debug(`[FacebookGateway] Uploading photo ${i + 1}/${mediaUrls.length}`);
+        logger.debug(`[FacebookGateway] [Fallback] Uploading photo ${i + 1}/${mediaUrls.length}`);
         const result = await this.uploadPhotoToAlbum(albumId, pageAccessToken, mediaUrls[i], photoCaption);
         photos.push(result);
       }
 
       logger.debug('[FacebookGateway] Successfully published all photos to album:', albumId);
-      return { id: albumId, photos };
-    } catch (albumError) {
-      console.warn('[FacebookGateway] Traditional album creation failed, trying multi-photo post fallback. Error:', albumError.message);
-      
-      const photoIds = [];
-      for (let i = 0; i < mediaUrls.length; i += 1) {
-        const photoCaption = mediaCaptions[i] || caption || '';
-        logger.debug(`[FacebookGateway] [Fallback] Uploading photo ${i + 1}/${mediaUrls.length} as unpublished`);
-        const result = await this.uploadUnpublishedPhoto(pageId, pageAccessToken, mediaUrls[i], photoCaption);
-        photoIds.push(result.id);
-      }
-      
-      const feedResult = await this.publishMultiPhotoPost(pageId, pageAccessToken, photoIds, caption, scheduledAt);
-      return { id: feedResult.id, fallback: true, photoIds };
+      return { id: albumId, fallback: true, photos };
     }
   }
 
@@ -826,35 +835,95 @@ class FacebookGateway {
   async publishStory(pageId, pageAccessToken, mediaUrl, caption) {
     const isVideo = MEDIA_EXTENSIONS.VIDEO.some(ext => mediaUrl.toLowerCase().includes(ext));
 
+    // Same fabricated-success bug as publishReel above (#64): every fetch()
+    // here used to go straight to res.json() with no res.ok check, so a 400
+    // (bad token, invalid file, etc.) still parsed as if it succeeded — the
+    // error body Meta returns is JSON too, just shaped like
+    // { error: { message, code } } instead of { id }. That's what let the
+    // pipeline log "Published successfully! platformPostId=undefined" and
+    // mark the post PUBLISHED even though nothing went out.
+    const assertOk = async (res, context) => {
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.error?.message || `Facebook Story ${context} failed (HTTP ${res.status})`);
+      }
+      return res.json();
+    };
+
     try {
-      const { buffer, filename } = await this._getMediaBuffer(mediaUrl);
-      const formData = new FormData();
-      const blob = new Blob([buffer]);
-      formData.append('source', blob, filename);
-      formData.append('published', 'false');
-      formData.append('access_token', pageAccessToken);
-
       if (isVideo) {
-        const uploadUrl = `${FACEBOOK_API.VIDEO_BASE_URL}/${API_VERSIONS.FACEBOOK}/${pageId}/videos`;
-        const uploadRes = await fetch(uploadUrl, { method: 'POST', body: formData });
-        const { id: videoId } = await uploadRes.json();
+        // Per Meta's Facebook Stories API docs: video stories use their own
+        // 3-phase upload session on /page_id/video_stories (start → upload
+        // → finish) — NOT the /page_id/videos feed-post endpoint. The
+        // previous implementation uploaded to /videos (a normal feed video
+        // post) and passed that video_id straight to video_stories, which
+        // is a different resource than what the start phase hands back.
+        const startUrl = `${this.graphBaseUrl}/${pageId}/video_stories`;
+        const startRes = await fetch(startUrl, {
+          method: 'POST',
+          body: new URLSearchParams({ upload_phase: 'start', access_token: pageAccessToken })
+        });
+        const { video_id: videoId, upload_url: uploadUrl } = await assertOk(startRes, 'start upload session');
 
-        const storyUrl = `${this.graphBaseUrl}/${pageId}/video_stories?video_id=${videoId}&access_token=${pageAccessToken}`;
-        const storyRes = await fetch(storyUrl, { method: 'POST' });
-        return await storyRes.json();
+        const { buffer, filename } = await this._getMediaBuffer(mediaUrl);
+        const uploadRes = await fetch(uploadUrl, {
+          method: 'POST',
+          headers: {
+            'Authorization': `OAuth ${pageAccessToken}`,
+            'offset': '0',
+            'file_size': buffer.length.toString(),
+            'Content-Type': 'application/octet-stream'
+          },
+          body: buffer
+        });
+        await assertOk(uploadRes, `upload video binary (${filename})`);
+
+        const finishRes = await fetch(startUrl, {
+          method: 'POST',
+          body: new URLSearchParams({ upload_phase: 'finish', video_id: videoId, access_token: pageAccessToken })
+        });
+        const storyData = await assertOk(finishRes, 'publish (video_stories finish)');
+        // Meta's video_stories/photo_stories endpoints return { post_id },
+        // not { id } — normalize to `id` since every caller up the chain
+        // (facebook-post.service.js logs/persists result.id) expects that
+        // field regardless of which strategy produced it.
+        return { id: storyData.post_id || storyData.id, ...storyData };
       } else {
+        // TEMP diagnostic instrumentation — user reports Facebook ends up
+        // with 2 independent published photo Stories per single publish
+        // attempt, but every direct test of this function (including live
+        // against the real Graph API) only ever fires exactly 2 fetch calls
+        // producing exactly 1 Story. This traces a unique invocation id +
+        // pid + timestamp around both calls to catch this function being
+        // entered twice concurrently, which nothing found by static
+        // reading rules out yet. Remove once root-caused.
+        const invocationId = `${process.pid}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+        console.log(`[STORY-DIAG] ${invocationId} publishStory(photo) ENTER pid=${process.pid} pageId=${pageId} mediaUrl=${mediaUrl}`);
+
+        const { buffer, filename } = await this._getMediaBuffer(mediaUrl);
+        const formData = new FormData();
+        const blob = new Blob([buffer]);
+        formData.append('source', blob, filename);
+        formData.append('published', 'false');
+        formData.append('access_token', pageAccessToken);
+
         const uploadUrl = `${this.graphBaseUrl}/${pageId}/photos`;
+        console.log(`[STORY-DIAG] ${invocationId} calling POST /photos at ${new Date().toISOString()}`);
         const uploadRes = await fetch(uploadUrl, { method: 'POST', body: formData });
-        const { id: photoId } = await uploadRes.json();
+        const { id: photoId } = await assertOk(uploadRes, 'photo upload');
+        console.log(`[STORY-DIAG] ${invocationId} /photos returned photoId=${photoId} at ${new Date().toISOString()}`);
 
         const storyUrl = `${this.graphBaseUrl}/${pageId}/photo_stories?photo_id=${photoId}&access_token=${pageAccessToken}`;
+        console.log(`[STORY-DIAG] ${invocationId} calling POST /photo_stories at ${new Date().toISOString()}`);
         const storyRes = await fetch(storyUrl, { method: 'POST' });
-        return await storyRes.json();
+        const storyData = await assertOk(storyRes, 'publish (photo_stories)');
+        console.log(`[STORY-DIAG] ${invocationId} /photo_stories returned post_id=${storyData.post_id} at ${new Date().toISOString()}`);
+        console.log(`[STORY-DIAG] ${invocationId} publishStory(photo) EXIT`);
+        return { id: storyData.post_id || storyData.id, ...storyData };
       }
     } catch (err) {
-      // Same fabricated-success bug as publishReel above (#64) — propagate
-      // instead of returning a fake id so the pipeline can retry/mark
-      // FAILED correctly.
+      // Propagate instead of returning a fake/incomplete result so the
+      // pipeline can retry/mark FAILED correctly.
       throw new Error(`Facebook Story publish failed: ${err.message}`);
     }
   }

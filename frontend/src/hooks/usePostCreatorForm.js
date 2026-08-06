@@ -14,7 +14,7 @@ import { buildMediaUrl, isVideoPath } from "../utils/url";
 import { validatePostForm } from "../utils/postValidation";
 import { logger } from "../utils/logger";
 import postService from "../services/post.service";
-import { uploadMediaFile } from "../services/mediaUpload.service";
+import { uploadMediaFile, uploadMediaFileWithMetadata } from "../services/mediaUpload.service";
 import {
   NETWORK_TAB_TEMPLATE,
   buildDefaultNetworkCustom,
@@ -50,10 +50,8 @@ export function usePostCreatorForm() {
     setVideoFileUrl,
     isUploadingVideo, 
     setIsUploadingVideo,
-    uploadedVideoPath, 
+    uploadedVideoPath,
     setUploadedVideoPath,
-    albumMedia,
-    setAlbumMedia,
     postMedia,
     setPostMedia,
     backupFormState,
@@ -75,6 +73,19 @@ export function usePostCreatorForm() {
   const [isCreating, setIsCreating] = useState(false);
   const [submitProgressText, setSubmitProgressText] = useState(null);
   const [showMediaViewer, setShowMediaViewer] = useState(false);
+  // Which panel the right column shows: Figma's Templates / AI Assistant /
+  // Preview tab switcher in ComposerHeader and NetworkCustomizeScreen.
+  const [rightPanelTab, setRightPanelTab] = useState("preview");
+  // Fullscreen "Customize post per network" overlay (Figma 4:289) — separate
+  // from isEditByNetwork, which tracks whether any platform actually HAS
+  // custom content (a data concern used by validation/submit/ComposerBody).
+  const [isNetworkCustomizeOpen, setIsNetworkCustomizeOpen] = useState(false);
+  // Checkbox-only for now — handleCreatePost's success path always calls
+  // closePostCreator() unconditionally for new posts; there's no "stay open
+  // and reset" branch to hook this into without changing that shared submit
+  // handler, which is out of scope here. Lifted from NetworkCustomizeScreen's
+  // local state so ComposerFooter can show/toggle the same checkbox.
+  const [createAnother, setCreateAnother] = useState(false);
   const [mediaThumbnailUrl, setMediaThumbnailUrl] = useState("");
   const [scheduledDate, setScheduledDate] = useState(() => toLocalDatetimeString(new Date()));
   const [isLibrary, setIsLibrary] = useState(false);
@@ -150,6 +161,7 @@ export function usePostCreatorForm() {
   const [notes, setNotes] = useState([]);
   const [isLoadingReviewers, setIsLoadingReviewers] = useState(false);
   const [videoSettings, setVideoSettings] = useState(null);
+  const [isFullScreen, setIsFullScreen] = useState(false);
 
   useEffect(() => {
     const backup = restoreFormState();
@@ -230,8 +242,7 @@ export function usePostCreatorForm() {
         defaultVideoPath: currentStoreState.uploadedVideoPath || backup.uploadedVideoPath,
         isUploadingVideo: backup.isUploadingVideo,
         videoSettings: currentStoreState.videoSettings || backup.videoSettings || null,
-        postMedia: updatedPostMedia,
-        albumMedia: backup.albumMedia
+        postMedia: updatedPostMedia
       });
     }
   }, []);
@@ -507,16 +518,22 @@ export function usePostCreatorForm() {
           : !current.caption) &&
         (current.mediaUrls?.length || 0) === 0;
 
+      const effectiveInitialMedia = (postMedia && postMedia.length > 0)
+        ? [...postMedia]
+        : (videoFileUrl || uploadedVideoPath)
+          ? [{ previewUrl: videoFileUrl, path: uploadedVideoPath, file: videoFile }]
+          : [];
+
       const seeded = isFirstCustomization
         ? isThreads
           ? {
               ...current,
               threadPosts: [
-                { text: caption, mediaUrls: [...postMedia] },
+                { text: caption, mediaUrls: effectiveInitialMedia },
                 ...(Array.isArray(current.threadPosts) ? current.threadPosts.slice(1) : [])
               ]
             }
-          : { ...current, caption }
+          : { ...current, caption, mediaUrls: effectiveInitialMedia }
         : current;
 
       return {
@@ -584,11 +601,23 @@ export function usePostCreatorForm() {
 
   const addThreadPost = () => {
     setNetworkCustom((prev) => {
-      const threads = prev[PLATFORMS.THREADS] || { threadPosts: [{ text: "", mediaUrls: [] }] };
-      const newPosts = [...threads.threadPosts, { text: "", mediaUrls: [] }];
+      const threads = prev[PLATFORMS.THREADS];
+      // First time a Threads chain is started (no threadPosts yet), seed
+      // post 1 from the shared caption/media instead of starting blank —
+      // otherwise whatever the user already typed in the shared caption box
+      // silently vanishes the moment they add a second post.
+      const effectiveInitialMedia = (postMedia && postMedia.length > 0)
+        ? [...postMedia]
+        : (videoFileUrl || uploadedVideoPath)
+          ? [{ previewUrl: videoFileUrl, path: uploadedVideoPath, file: videoFile }]
+          : [];
+      const existingPosts = threads?.threadPosts?.length
+        ? threads.threadPosts
+        : [{ text: caption, mediaUrls: effectiveInitialMedia }];
+      const newPosts = [...existingPosts, { text: "", mediaUrls: [] }];
       return {
         ...prev,
-        [PLATFORMS.THREADS]: { ...threads, activeThreadIndex: newPosts.length - 1, threadPosts: newPosts },
+        [PLATFORMS.THREADS]: { ...threads, useTemplate: false, activeThreadIndex: newPosts.length - 1, threadPosts: newPosts },
       };
     });
   };
@@ -639,7 +668,6 @@ export function usePostCreatorForm() {
     ?.filter(Boolean) || [];
 
   const getValidationErrors = () => {
-    const isAlbum = selectedPlatforms.includes('facebook') && activePlatform === 'facebook' && facebookType === 'album';
     const activeSelectedPlatforms = selectedPlatforms.filter(p => connectedPlatforms.includes(p));
     return validatePostForm({
       isLibrary,
@@ -656,7 +684,7 @@ export function usePostCreatorForm() {
       videoHeight,
       uploadedVideoPath,
       platformLimits,
-      mediaCount: isAlbum ? albumMedia.length : (postMedia ? postMedia.length : 0),
+      mediaCount: postMedia ? postMedia.length : 0,
       editingPost,
       postMedia,
       captionText: caption,
@@ -901,9 +929,7 @@ export function usePostCreatorForm() {
         setTiktokCommercialContent(opts.tiktokCommercialContent || false);
 
         // Setup media
-        if (opts.facebookType === 'album' && opts.albumMedia) {
-          setAlbumMedia(opts.albumMedia);
-        } else if (editingPost.mediaUrls?.[0]) {
+        if (editingPost.mediaUrls?.[0]) {
           const path = editingPost.mediaUrls[0];
           setUploadedVideoPath(path);
           setVideoFileUrl(buildMediaUrl(path));
@@ -968,9 +994,7 @@ export function usePostCreatorForm() {
         setTiktokCommercialContent(opts.tiktokCommercialContent || false);
 
         // Setup media
-        if (opts.facebookType === 'album' && opts.albumMedia) {
-          setAlbumMedia(opts.albumMedia);
-        } else if (templatePost.mediaUrls?.[0]) {
+        if (templatePost.mediaUrls?.[0]) {
           const path = templatePost.mediaUrls[0];
           setUploadedVideoPath(path);
           setVideoFileUrl(buildMediaUrl(path));
@@ -1035,7 +1059,6 @@ export function usePostCreatorForm() {
         setFacebookReelPlaceId("");
         setFacebookReelThumbnail("");
         setAltText("");
-        setAlbumMedia([]);
         setVideoSettings(null);
 
         // Reset per-platform content override
@@ -1106,9 +1129,7 @@ export function usePostCreatorForm() {
     setTiktokCommercialContent(opts.tiktokCommercialContent || false);
 
     // Setup media
-    if (opts.facebookType === 'album' && opts.albumMedia) {
-      setAlbumMedia(opts.albumMedia);
-    } else if (template.mediaUrls?.[0]) {
+    if (template.mediaUrls?.[0]) {
       const path = template.mediaUrls[0];
       setUploadedVideoPath(path);
       setVideoFileUrl(buildMediaUrl(path));
@@ -1137,7 +1158,6 @@ export function usePostCreatorForm() {
     try {
       // 1. Quét và tập hợp tất cả các file media chưa upload (has file && !path)
       const pendingPostMedia = postMedia.filter((item) => item.file && !item.path);
-      const pendingAlbumMedia = albumMedia.filter((item) => item.file && !item.path);
       const pendingNetworkItems = [];
 
       Object.entries(networkCustom).forEach(([platform, entry]) => {
@@ -1165,7 +1185,7 @@ export function usePostCreatorForm() {
         }
       });
 
-      const allPendingFiles = [...pendingPostMedia, ...pendingAlbumMedia, ...pendingNetworkItems];
+      const allPendingFiles = [...pendingPostMedia, ...pendingNetworkItems];
       const totalPending = allPendingFiles.length;
 
       if (totalPending > 0) {
@@ -1174,8 +1194,19 @@ export function usePostCreatorForm() {
           uploadedCount++;
           setSubmitProgressText(`Đang tải lên file ${uploadedCount}/${totalPending}...`);
           try {
-            const uploadedUrl = await uploadMediaFile(item.file, activeBrand.id);
+            // Cloudinary's own upload response already carries width/height/
+            // duration/frame rate/codec for videos — read from it here
+            // instead of a separate probe pass, since this request happens
+            // regardless of whether anything reads the extra fields.
+            const uploadResult = await uploadMediaFileWithMetadata(item.file, activeBrand.id);
+            const uploadedUrl = uploadResult.url;
             item.path = uploadedUrl;
+            if (item.file?.type?.startsWith('video/')) {
+              item.width = uploadResult.width;
+              item.height = uploadResult.height;
+              item.frameRate = uploadResult.frameRate;
+              item.codec = uploadResult.codec;
+            }
 
             // Track asset immediately upon successful upload to allow rollback if subsequent uploads fail
             const trackUploadedAsset = usePostCreatorStore.getState().trackUploadedAsset;
@@ -1193,7 +1224,6 @@ export function usePostCreatorForm() {
         }
 
         setPostMedia([...postMedia]);
-        setAlbumMedia([...albumMedia]);
         setNetworkCustom({ ...networkCustom });
       }
 
@@ -1208,26 +1238,32 @@ export function usePostCreatorForm() {
       else if (activePlatform === PLATFORMS.INSTAGRAM) activeSubType = instagramType;
       else if (activePlatform === PLATFORMS.TIKTOK) activeSubType = 'video';
 
-      const isAlbum = activePlatform === PLATFORMS.FACEBOOK && facebookType === 'album';
       const effectiveUploadedPath = uploadedVideoPath || (postMedia.length > 0 ? postMedia[0].path : "");
-      const hasMedia = isAlbum ? albumMedia.length > 0 : !!(effectiveUploadedPath || (postMedia && postMedia.length > 0 && postMedia[0].path));
-      const isVid = !isAlbum && isVideoPath(videoFileUrl, videoFile);
+      const hasMedia = !!(effectiveUploadedPath || (postMedia && postMedia.length > 0 && postMedia[0].path));
+      const isVid = isVideoPath(videoFileUrl, videoFile);
 
       const platformConfig = PLATFORM_CONFIGS[activePlatform];
-      const postType = platformConfig 
+      const postType = platformConfig
         ? platformConfig.getPostType(activeSubType, hasMedia, isVid)
         : POST_TYPE.VIDEO;
 
-      // Chuẩn bị danh sách URLs và captions cho Album hoặc Post
-      const postMediaUrls = isAlbum 
-        ? albumMedia.map(item => item.path).filter(Boolean)
-        : (postMedia && postMedia.length > 0
-            ? postMedia.map(item => item.path).filter(Boolean)
-            : (effectiveUploadedPath ? [effectiveUploadedPath] : [])
-          );
-      const mediaCaptions = isAlbum
-        ? albumMedia.map(item => item.caption || "")
-        : [];
+      // Captions built alongside their URLs (not filtered separately) so an
+      // item with no path doesn't shift mediaCaptions[i] out of sync with
+      // postMediaUrls[i] (AlbumPublishStrategy matches them by index).
+      // postMedia's per-item caption is written by AltTextModal (see
+      // PostCreator.jsx's onSave) — ≥2 photos here auto-routes to Facebook's
+      // album strategy server-side (facebook-post.service.js), no separate
+      // "Album" post type needed anymore.
+      let postMediaUrls;
+      let mediaCaptions;
+      if (postMedia && postMedia.length > 0) {
+        const validItems = postMedia.filter(item => item.path);
+        postMediaUrls = validItems.map(item => item.path);
+        mediaCaptions = validItems.map(item => item.caption || "");
+      } else {
+        postMediaUrls = effectiveUploadedPath ? [effectiveUploadedPath] : [];
+        mediaCaptions = [];
+      }
 
       // Groups the flat selectedAccountIds by platform into the shape
       // upsertPostTargets expects ({ [PLATFORM]: string[] }) — without this,
@@ -1260,6 +1296,15 @@ export function usePostCreatorForm() {
         approvalPolicy: approvalPolicy,
         requesterNote: requesterNote || "Vui lòng phê duyệt bài viết này.",
         options: {
+          // From the browser's own <video> element (free, measured before
+          // upload — see the videoFileUrl-driven effect that sets these) or,
+          // for width/frameRate, from Cloudinary's upload response captured
+          // on postMedia[0] just above (frameRate has no browser API
+          // equivalent, so Cloudinary is the only source for it here).
+          videoDuration,
+          videoWidth: postMedia[0]?.width || videoWidth,
+          videoHeight: postMedia[0]?.height || videoHeight,
+          videoFrameRate: postMedia[0]?.frameRate || null,
           youtubeType,
           youtubeTitle,
           privacyStatus: youtubePrivacy,
@@ -1285,7 +1330,6 @@ export function usePostCreatorForm() {
           tiktokAllowStitch,
           tiktokAiGenerated,
           tiktokCommercialContent,
-          albumMedia,
           mediaCaptions,
           threadsWhoCanReply,
           useUrlShortener,
@@ -1314,13 +1358,32 @@ export function usePostCreatorForm() {
           // updateNetworkSetting deliberately doesn't flip useTemplate, so a
           // user can give one account a different category while every
           // account still shares the global caption. Both this and the
-          // platform-level useTemplate!==false check (below, per-branch)
-          // gate whether an override row is written for a given account.
+          // useTemplate!==false check below gate whether an override row is
+          // written for a given account.
           const hasAnySettingsFor = (accountId) => {
             const slot = accountId ? entry.perAccount?.[accountId] : entry;
             return slot?.settings && Object.keys(slot.settings).length > 0;
           };
-          if (entry?.useTemplate !== false && accountsForPlatform.every((acc) => !hasAnySettingsFor(acc.id)) && !hasAnySettingsFor(null)) {
+          // entry.useTemplate is the SINGLE-account flag (setNetworkEntrySlot
+          // only ever writes it when accountId is falsy) — on a platform with
+          // ≥2 targeted accounts, per-account customization lives in
+          // entry.perAccount[accId].useTemplate instead and never touches
+          // entry.useTemplate at all. Checking only entry.useTemplate here
+          // meant every per-account customization on a multi-account platform
+          // was silently skipped (this whole platform returned before ever
+          // building an override row for it) — the composer's own UI wrote
+          // the caption fine, it just never made it into the payload.
+          const hasAnyCaptionCustomizedFor = (accountId) => {
+            const slot = accountId ? entry.perAccount?.[accountId] : entry;
+            return slot?.useTemplate === false;
+          };
+          const isThreadsWithChain = platform === PLATFORMS.THREADS && (entry?.threadPosts?.length || 0) > 0;
+          if (
+            !isThreadsWithChain &&
+            !hasAnyCaptionCustomizedFor(null) &&
+            accountsForPlatform.every((acc) => !hasAnyCaptionCustomizedFor(acc.id) && !hasAnySettingsFor(acc.id)) &&
+            !hasAnySettingsFor(null)
+          ) {
             return;
           }
 
@@ -1397,7 +1460,15 @@ export function usePostCreatorForm() {
                 overrides.push({
                   platform: apiKey,
                   socialAccountId: acc.id,
-                  useTemplate: isCaptionCustomized,
+                  // useTemplate here means the SAME thing backend expects
+                  // (social-publish.step.js: useOverride = override.useTemplate
+                  // === false) — false = "this account has its own
+                  // caption/media, don't fall back to the shared post". It was
+                  // previously sent as `isCaptionCustomized` itself (true when
+                  // customized), the exact inverse of what the backend checks
+                  // for, so every per-account customization on a multi-account
+                  // platform silently published the shared caption instead.
+                  useTemplate: !isCaptionCustomized,
                   caption: isCaptionCustomized ? (accEntry.caption || '') : undefined,
                   mediaUrls: isCaptionCustomized ? accMediaUrls : undefined,
                   ...(hasSettings ? { settings: accSettings } : {}),
@@ -1656,8 +1727,6 @@ export function usePostCreatorForm() {
     requesterNote,
     setRequesterNote,
     isLoadingReviewers,
-    albumMedia,
-    setAlbumMedia,
     postMedia,
     setPostMedia,
     // Threads States
@@ -1690,6 +1759,14 @@ export function usePostCreatorForm() {
     setMediaThumbnailUrl,
     getBackupPayload,
     backupFormState,
-    closePostCreatorTemporarily
+    closePostCreatorTemporarily,
+    rightPanelTab,
+    setRightPanelTab,
+    isNetworkCustomizeOpen,
+    setIsNetworkCustomizeOpen,
+    createAnother,
+    setCreateAnother,
+    isFullScreen,
+    setIsFullScreen
   };
 }

@@ -6,8 +6,18 @@
  */
 /**
  * Resolve which platform a post targets and its real platform-side post ID.
- * post.platformPostId is either a legacy plain string (YouTube-only posts)
- * or a JSON map of { PLATFORM: id } for multi-platform posts.
+ *
+ * post.platformPostId is a JSON map with two shapes in the wild (mirrors
+ * backend/src/services/workspace/post/platform-post-id.util.js, which this
+ * duplicates client-side since there's no API endpoint exposing it):
+ *   Legacy:  { [PLATFORM]: id }
+ *   Current: { [PLATFORM]: { [socialAccountId]: id } } — one id per
+ *     (platform, account) pair, since a post can target multiple accounts
+ *     of the same platform. Reading parsed[firstPlatform] directly without
+ *     checking which shape it is returns the *inner object* under the
+ *     current shape, not a string — String(thatObject) then produces the
+ *     literal text "[object Object]" as the "id", which got baked straight
+ *     into the post URL (e.g. facebook.com/[object%20Object]).
  *
  * @returns {{ platform: string, platformPostId: string|null }}
  */
@@ -22,18 +32,43 @@ export function resolvePlatformTarget(post) {
 
   const firstPlatform = (platforms[0] || post.platform || '').trim().toUpperCase();
 
-  let platformPostId = post.platformPostId;
-  if (typeof platformPostId === 'string') {
-    try {
-      const parsed = JSON.parse(platformPostId);
-      if (parsed && typeof parsed === 'object') {
-        platformPostId = parsed[firstPlatform] || Object.values(parsed)[0];
-      }
-    } catch (_) {
-      // Keep as string if plain text ID
+  // A map entry is either a legacy plain string id, or the current
+  // { socialAccountId: id } shape — resolve either down to a single id
+  // string, same as getIdForAccount()/getFirstIdForPlatform() server-side.
+  const firstIdFromEntry = (entry) => {
+    if (entry == null) return null;
+    if (typeof entry === 'string') return entry;
+    if (typeof entry === 'object') {
+      const values = Object.values(entry);
+      return values.length > 0 ? values[0] : null;
     }
-  } else if (platformPostId && typeof platformPostId === 'object') {
-    platformPostId = platformPostId[firstPlatform] || Object.values(platformPostId)[0];
+    return null;
+  };
+
+  let parsedMap = post.platformPostId;
+  if (typeof parsedMap === 'string') {
+    try {
+      const parsed = JSON.parse(parsedMap);
+      parsedMap = parsed && typeof parsed === 'object' ? parsed : null;
+    } catch (_) {
+      // Plain text ID, not JSON — not a per-platform map, so there's no
+      // firstPlatform to key into; treat the whole string as the id itself.
+      return { platform: firstPlatform, platformPostId: parsedMap.trim() || null };
+    }
+  }
+
+  let platformPostId = null;
+  if (parsedMap && typeof parsedMap === 'object') {
+    platformPostId = firstIdFromEntry(parsedMap[firstPlatform]);
+    if (platformPostId == null) {
+      // No entry for the platform we resolved from post.platforms — fall
+      // back to whichever platform's id happens to exist, same tolerance
+      // the old code had for mismatched/missing platform metadata.
+      for (const entry of Object.values(parsedMap)) {
+        platformPostId = firstIdFromEntry(entry);
+        if (platformPostId != null) break;
+      }
+    }
   }
 
   return { platform: firstPlatform, platformPostId: platformPostId ? String(platformPostId).trim() : null };

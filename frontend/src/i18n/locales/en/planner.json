@@ -421,7 +421,25 @@
       "loading": "Loading templates...",
       "noTemplates": "No templates found",
       "noTemplatesDesc": "Create templates in the Library first to load them here.",
-      "noCaption": "No caption"
+      "noDiscoverDesc": "No featured templates available right now.",
+      "noCaption": "No caption",
+      "searchPlaceholder": "Search templates...",
+      "useTemplate": "Use Template",
+      "createNew": "Create new template",
+      "loadFail": "Failed to load featured templates",
+      "loadPersonalFail": "Failed to load templates",
+      "loadingMore": "Loading more...",
+      "applied": "Template applied to your post",
+      "tabs": {
+        "discover": "Discover",
+        "personal": "Personal"
+      },
+      "categories": {
+        "all": "All",
+        "promotional": "Promotional",
+        "educational": "Educational",
+        "entertainment": "Entertainment"
+      }
     },
     "header": {
       "createPost": "Create new post",
@@ -430,7 +448,15 @@
       "editTemplate": "Edit post template",
       "loadTemplate": "Load template",
       "close": "Close",
-      "notes": "Notes"
+      "notes": "Notes",
+      "tabs": {
+        "templates": "Templates",
+        "aiAssistant": "AI Assistant",
+        "notes": "Notes",
+        "preview": "Preview"
+      },
+      "postPreviews": "Post Previews",
+      "postPreviewsInfo": "Preview how this post will look on each selected platform"
     },
     "composer": {
       "viewMode": "View Mode: You do not have permission to edit or publish this post.",
@@ -506,7 +532,33 @@
         "policyAll": "All reviewers must approve it."
       }
     },
+    "networkCustomize": {
+      "title": "Customize post per network",
+      "caption": "Caption",
+      "captionPlaceholder": "Write your caption here...",
+      "media": "Media",
+      "mediaDropzone": "Drag & drop or",
+      "selectFile": "select a file",
+      "noSettings": "This platform has no dedicated settings.",
+      "confirmExit": "You have unsaved changes. Are you sure you want to exit?",
+      "confirmExitTitle": "Discard changes?",
+      "confirmExitAction": "Exit anyway",
+      "threadChain": "Thread",
+      "threadPost": "Post {{n}}",
+      "threadAdd": "Add a post to the thread",
+      "threadRemove": "Remove this post"
+    },
+    "aiAssistant": {
+      "label": "What do you want to write about?",
+      "placeholder": "Eg. Promote my photography course to get new signups. Registration closes in 3 days.",
+      "generate": "Generate",
+      "proTip": "Pro tip: Include key points, your target audience and your desired outcome for this post.",
+      "noBrand": "Please select a brand first.",
+      "success": "AI content generated successfully!",
+      "error": "Failed to generate AI content."
+    },
     "preview": {
+      "noPlatforms": "Select at least one platform to preview your post.",
       "header": {
         "title": "Post Preview",
         "reviewToggle": "Reviewer preview mode",
@@ -544,6 +596,11 @@
       "schedule": "Schedule",
       "update": "Update",
       "saveTemplate": "Save Template",
+      "customizePerNetwork": "Customize for each network",
+      "createAnother": "Create Another",
+      "saveDrafts": "Save Drafts",
+      "scheduleAll": "Schedule All",
+      "nextAvailable": "Next Available",
       "publishOptions": {
         "draft": {
           "label": "SAVE AS DRAFT",

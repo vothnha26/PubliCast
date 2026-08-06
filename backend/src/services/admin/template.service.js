@@ -13,6 +13,32 @@ class TemplateService {
     return templateRepository.findAllCategoriesWithTemplates();
   }
 
+  /**
+   * Flat, paginated variant for the composer's Discover tab (infinite
+   * scroll). page/limit are optional — omitting both preserves the old
+   * "everything in one shot" behavior via a null pagination result, so
+   * getFeaturedTemplates() above stays the source of truth for callers
+   * that want the full category tree (FeaturedTemplatesTab.jsx).
+   */
+  async getFeaturedTemplatesPage({ page, limit } = {}) {
+    const safePage = Math.max(1, parseInt(page) || 1);
+    const safeLimit = Math.min(100, Math.max(1, parseInt(limit) || 20));
+    const skip = (safePage - 1) * safeLimit;
+
+    const { templates, total } = await templateRepository.findManyTemplatesAndCount({ skip, take: safeLimit });
+
+    return {
+      data: templates,
+      meta: {
+        total,
+        page: safePage,
+        limit: safeLimit,
+        totalPages: Math.ceil(total / safeLimit),
+        hasMore: skip + templates.length < total
+      }
+    };
+  }
+
   async _purgeFeaturedTemplatesCache() {
     await cloudflareCache.purgeUrls([FEATURED_TEMPLATES_PATH]);
   }

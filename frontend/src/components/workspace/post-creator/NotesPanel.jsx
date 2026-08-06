@@ -36,7 +36,7 @@ const getInitials = (author) => {
  * NotesPanel
  *
  * Hiển thị toàn bộ tính năng Notes (thêm, xoá, danh sách, empty-state) dưới
- * dạng side-panel thay thế khu vực Preview khi `isNotesOpen === true`.
+ * dạng side-panel thay thế khu vực Preview khi `rightPanelTab === 'notes'`.
  * Lấy toàn bộ state qua `usePostCreatorFormContext()` — không nhận props.
  */
 export function NotesPanel() {
@@ -47,7 +47,7 @@ export function NotesPanel() {
     setNewNoteText,
     handleAddNoteClick,
     handleDeleteNoteClick,
-    setIsNotesOpen,
+    setRightPanelTab,
   } = usePostCreatorFormContext();
 
   return (
@@ -67,7 +67,7 @@ export function NotesPanel() {
         </div>
         <button
           type="button"
-          onClick={() => setIsNotesOpen(false)}
+          onClick={() => setRightPanelTab('preview')}
           className="text-muted-foreground hover:text-black transition-colors cursor-pointer p-1 rounded-full hover:bg-muted"
           title={t("planner:postCreator.header.close")}
         >

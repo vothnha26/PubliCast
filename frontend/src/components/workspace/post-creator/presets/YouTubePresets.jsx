@@ -119,7 +119,7 @@ export function YouTubePresets() {
         <div className="grid grid-cols-2 gap-x-6 gap-y-4 text-left">
           
           {/* Video or Short Title */}
-          <div>
+          <div className="col-span-2">
             <label className="block text-[11px] font-bold text-muted-foreground uppercase mb-2 font-sans">{t("planner:postCreator.presets.youtube.videoTitleLabel")}</label>
             <div className="relative">
               <input 

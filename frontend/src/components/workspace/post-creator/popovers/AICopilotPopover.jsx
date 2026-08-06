@@ -31,7 +31,8 @@ const TONE_OPTIONS = [
   { id: "SCIENTIFIC", name: "Scientific", emoji: "🧪" },
 ];
 
-export function AICopilotPopover({ caption, onUpdateCaption, activePlatform, onClose }) {
+export function AICopilotPopover({ caption, onUpdateCaption, activePlatform, onClose, variant = "modal" }) {
+  const isPanel = variant === "panel";
   const { activeBrand } = useBrand();
   
   const [prompt, setPrompt] = useState("");
@@ -260,46 +261,72 @@ export function AICopilotPopover({ caption, onUpdateCaption, activePlatform, onC
   const currentToneObj = TONE_OPTIONS.find(t => t.id === tone) || TONE_OPTIONS[1];
   const hasGeneratedText = chatHistory.some(m => m.role === "ai" && m.content);
 
+  const outerClass = isPanel
+    ? "flex flex-col h-full min-h-0 bg-transparent font-sans w-full"
+    : "fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200 font-sans";
+  const dialogClass = isPanel
+    ? "w-full h-full bg-transparent overflow-hidden flex flex-col min-h-0"
+    : "w-full max-w-4xl bg-card rounded-[28px] shadow-2xl overflow-hidden flex flex-col max-h-[90vh] border border-border animate-in zoom-in-95 duration-200";
+
   return (
-    <div className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200 font-sans">
-      {/* Modal Dialog Box */}
-      <div className="w-full max-w-4xl bg-card rounded-[28px] shadow-2xl overflow-hidden flex flex-col max-h-[90vh] border border-border animate-in zoom-in-95 duration-200">
-        
-        {/* Top Header */}
-        <div className="px-6 py-4 border-b border-border flex items-center justify-between bg-card shrink-0">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-2xl bg-purple-50 flex items-center justify-center text-purple-600 shadow-xs border border-purple-100/50">
-              <Sparkles size={18} className="animate-pulse" />
+    <div className={outerClass}>
+      {/* Modal Dialog Box (or, in panel mode, just the right-column content) */}
+      <div className={dialogClass}>
+
+        {/* Top Header — panel mode drops the redundant title/close button
+            since the column already has its own tab switcher above it. */}
+        {!isPanel && (
+          <div className="px-6 py-4 border-b border-border flex items-center justify-between bg-card shrink-0">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-2xl bg-purple-50 flex items-center justify-center text-purple-600 shadow-xs border border-purple-100/50">
+                <Sparkles size={18} className="animate-pulse" />
+              </div>
+              <div>
+                <h2 className="text-base font-extrabold text-foreground tracking-tight">Text generator with AI</h2>
+                <p className="text-[11px] text-muted-foreground font-bold">Tối ưu hóa bài viết cho {PLATFORM_OPTIONS.find(p => p.id === targetPlatform)?.name || 'mạng xã hội'}</p>
+              </div>
             </div>
-            <div>
-              <h2 className="text-base font-extrabold text-foreground tracking-tight">Text generator with AI</h2>
-              <p className="text-[11px] text-muted-foreground font-bold">Tối ưu hóa bài viết cho {PLATFORM_OPTIONS.find(p => p.id === targetPlatform)?.name || 'mạng xã hội'}</p>
+
+            <div className="flex items-center gap-4">
+              {/* Credits Counter */}
+              <div className="flex items-center gap-1.5 px-3 py-1.5 bg-muted border border-border/80 rounded-xl text-xs font-bold text-muted-foreground">
+                <span>Available AI credits:</span>
+                <span className="text-purple-600 font-black">{remainingCredits} of {creditsLimit}</span>
+                <Info size={14} className="text-muted-foreground hover:text-foreground cursor-pointer ml-0.5" title="Mỗi lượt tạo tiêu tốn 1 Credit" />
+              </div>
+
+              {/* Dark Close Button */}
+              <button
+                onClick={onClose}
+                className="w-8 h-8 rounded-full bg-[#18111B] text-white flex items-center justify-center hover:bg-black transition-all cursor-pointer shadow-xs hover:scale-105"
+              >
+                <X size={15} />
+              </button>
             </div>
           </div>
+        )}
 
-          <div className="flex items-center gap-4">
-            {/* Credits Counter */}
-            <div className="flex items-center gap-1.5 px-3 py-1.5 bg-muted border border-border/80 rounded-xl text-xs font-bold text-muted-foreground">
-              <span>Available AI credits:</span>
-              <span className="text-purple-600 font-black">{remainingCredits} of {creditsLimit}</span>
-              <Info size={14} className="text-muted-foreground hover:text-foreground cursor-pointer ml-0.5" title="Mỗi lượt tạo tiêu tốn 1 Credit" />
+        {isPanel && (
+          <div className="px-5 py-3 border-b border-border flex items-center justify-between bg-card shrink-0">
+            <div className="flex items-center gap-2">
+              <div className="w-6 h-6 rounded-lg bg-purple-100 text-purple-700 flex items-center justify-center">
+                <Sparkles size={13} className="animate-pulse" />
+              </div>
+              <span className="text-xs font-extrabold text-foreground tracking-tight">AI Assistant Copilot</span>
             </div>
-
-            {/* Dark Close Button */}
-            <button 
-              onClick={onClose}
-              className="w-8 h-8 rounded-full bg-[#18111B] text-white flex items-center justify-center hover:bg-black transition-all cursor-pointer shadow-xs hover:scale-105"
-            >
-              <X size={15} />
-            </button>
+            <div className="flex items-center gap-1.5 text-xs font-bold text-muted-foreground">
+              <span>AI credits:</span>
+              <span className="text-purple-600 font-black">{remainingCredits}/{creditsLimit}</span>
+            </div>
           </div>
-        </div>
+        )}
 
-        {/* Modal Body - 2 Columns */}
-        <div className="flex-1 flex flex-col md:flex-row overflow-hidden min-h-0">
-          
-          {/* Left Column: Chat Thread Feed */}
-          <div className="md:w-[56%] p-5 border-b md:border-b-0 md:border-r border-border bg-muted/40 flex flex-col justify-between overflow-y-auto scrollbar-thin">
+        {/* Body — stacked in panel mode (narrow column has no room for two
+            side-by-side columns), side-by-side in modal mode. */}
+        <div className={`flex-1 flex overflow-hidden min-h-0 ${isPanel ? "flex-col" : "flex-col md:flex-row"}`}>
+
+          {/* Chat Thread Feed */}
+          <div className={`${isPanel ? "w-full max-h-[38%] shrink-0" : "w-full md:w-[56%]"} p-5 border-b ${isPanel ? "border-b" : "md:border-b-0 md:border-r"} border-border bg-muted/40 flex flex-col justify-between overflow-y-auto scrollbar-thin`}>
             
             <div className="space-y-4">
               {chatHistory.map((item) => {
@@ -388,7 +415,7 @@ export function AICopilotPopover({ caption, onUpdateCaption, activePlatform, onC
           </div>
 
           {/* Right Column: Dynamic Form vs Refinement Action List */}
-          <div className="md:w-[44%] p-6 flex flex-col justify-between bg-card overflow-y-auto scrollbar-thin gap-5">
+          <div className={`${isPanel ? "w-full flex-1" : "w-full md:w-[44%]"} p-6 flex flex-col justify-between bg-transparent overflow-y-auto scrollbar-thin gap-5`}>
             
             {hasGeneratedText ? (
               /* Action List Mode (Matching Screenshot 100%) */
@@ -518,26 +545,26 @@ export function AICopilotPopover({ caption, onUpdateCaption, activePlatform, onC
                 
                 {/* Field 1: Topic Textarea */}
                 <div className="space-y-1.5">
-                  <label className="block text-xs font-extrabold text-foreground">
+                  <label className="block text-xs font-extrabold text-foreground font-sans">
                     Write the topic of the text to generate.
                   </label>
                   <textarea
                     value={prompt}
                     onChange={(e) => setPrompt(e.target.value)}
                     placeholder="E.g. Five benefits of having Labrador dogs at home..."
-                    className="w-full h-24 p-3.5 rounded-xl border border-border text-xs font-medium text-foreground placeholder-gray-400 focus:outline-none focus:border-purple-600 focus:ring-1 focus:ring-purple-600 resize-none transition-all"
+                    className="w-full h-24 p-3.5 rounded-xl border border-border bg-card text-xs font-medium text-foreground placeholder-muted-foreground focus:outline-none focus:border-composer-accent focus:ring-1 focus:ring-composer-accent/10 resize-none transition-all shadow-sm font-sans"
                   />
                 </div>
 
                 {/* Field 2: Tone Selection Button & Dropdown */}
                 <div className="space-y-1.5">
-                  <label className="block text-xs font-bold text-foreground">
+                  <label className="block text-xs font-bold text-foreground font-sans">
                     Choose a tone
                   </label>
                   <button
                     type="button"
                     onClick={() => setShowToneModal(true)}
-                    className="w-full p-2.5 px-3.5 rounded-xl border border-border text-xs font-bold text-foreground flex items-center justify-between bg-card hover:border-gray-300 transition-all cursor-pointer"
+                    className="w-full p-2.5 px-3.5 rounded-xl border border-border text-xs font-bold text-foreground flex items-center justify-between bg-card hover:border-composer-accent/60 transition-all cursor-pointer shadow-sm font-sans"
                   >
                     <div className="flex items-center gap-2">
                       <span className="text-base">{currentToneObj.emoji}</span>
@@ -549,13 +576,13 @@ export function AICopilotPopover({ caption, onUpdateCaption, activePlatform, onC
 
                 {/* Field 3: Language */}
                 <div className="space-y-1.5">
-                  <label className="block text-xs font-bold text-foreground">
+                  <label className="block text-xs font-bold text-foreground font-sans">
                     Language
                   </label>
                   <select
                     value={language}
                     onChange={(e) => setLanguage(e.target.value)}
-                    className="w-full p-2.5 rounded-xl border border-border text-xs font-bold text-foreground focus:outline-none focus:border-purple-600 bg-card cursor-pointer"
+                    className="w-full p-2.5 rounded-xl border border-border text-xs font-bold text-foreground focus:outline-none focus:border-composer-accent bg-card cursor-pointer shadow-sm font-sans"
                   >
                     <option value="vi">Vietnamese</option>
                     <option value="en">English</option>
@@ -564,13 +591,13 @@ export function AICopilotPopover({ caption, onUpdateCaption, activePlatform, onC
 
                 {/* Field 4: Optimize for Social media (Click opens modal) */}
                 <div className="space-y-1.5">
-                  <label className="block text-xs font-bold text-foreground">
+                  <label className="block text-xs font-bold text-foreground font-sans">
                     Optimize for Social media
                   </label>
                   <button
                     type="button"
                     onClick={() => setShowPlatformModal(true)}
-                    className="w-full p-2.5 px-3.5 rounded-xl border border-border text-xs font-bold text-foreground flex items-center justify-between bg-card hover:border-gray-300 transition-all cursor-pointer"
+                    className="w-full p-2.5 px-3.5 rounded-xl border border-border text-xs font-bold text-foreground flex items-center justify-between bg-card hover:border-composer-accent/60 transition-all cursor-pointer shadow-sm font-sans"
                   >
                     <div className="flex items-center gap-2.5">
                       {targetPlatform !== "any" ? (
@@ -584,13 +611,13 @@ export function AICopilotPopover({ caption, onUpdateCaption, activePlatform, onC
 
                 {/* Field 5: Format */}
                 <div className="space-y-1.5">
-                  <label className="block text-xs font-bold text-foreground">
+                  <label className="block text-xs font-bold text-foreground font-sans">
                     Định dạng bài viết (Format)
                   </label>
                   <select
                     value={format}
                     onChange={(e) => setFormat(e.target.value)}
-                    className="w-full p-2.5 rounded-xl border border-border text-xs font-bold text-foreground focus:outline-none focus:border-purple-600 bg-card cursor-pointer"
+                    className="w-full p-2.5 rounded-xl border border-border text-xs font-bold text-foreground focus:outline-none focus:border-composer-accent bg-card cursor-pointer shadow-sm font-sans"
                   >
                     <option value="Caption">Caption ngắn</option>
                     <option value="Article">Bài viết chi tiết</option>

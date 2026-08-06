@@ -74,6 +74,23 @@ class BaseValidator {
     return errors;
   }
 
+  /**
+   * Every platform needs at least a caption or a media file — an
+   * all-empty post has nothing to publish. Platforms that already
+   * hard-require media (YouTube/TikTok/Instagram) don't need this since
+   * their own hasMedia check already rejects the empty case; call this
+   * from validate() on the platforms that don't (Facebook, Bluesky,
+   * Threads/Telegram/etc. via GenericValidator).
+   */
+  validateHasContent(postData, mediaInfo = {}) {
+    const errors = [];
+    const caption = (postData.caption || '').trim();
+    if (!caption && !mediaInfo.hasMedia) {
+      errors.push('Post must have a caption or at least one media file.');
+    }
+    return errors;
+  }
+
   validateVideoSettings(postData, mediaInfo = {}) {
     const errors = [];
     const settings = postData.options?.videoSettings;

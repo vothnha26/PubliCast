@@ -30,7 +30,25 @@ class BlueskyService extends BaseSocialService {
         pdsUrl: account.blueskyAccount?.pdsUrl
       });
     } else {
-      agent = blueskyGateway.createAgent(account.blueskyAccount?.pdsUrl);
+      // persistSession fires whenever the SDK refreshes accessJwt using
+      // refreshJwt (event 'update') — without saving that pair back to the
+      // DB, every future request keeps loading the same aging tokens until
+      // refreshJwt itself expires and the account can no longer self-heal
+      // (see createAgent's doc comment). 'expired' means refreshJwt itself
+      // was rejected — nothing left to persist, the account genuinely needs
+      // the user to reconnect.
+      agent = blueskyGateway.createAgent(account.blueskyAccount?.pdsUrl, (event, session) => {
+        if (event === 'update' || event === 'create') {
+          socialAccountRepository.updateTokens(account.id, {
+            access_token: session.accessJwt,
+            refresh_token: session.refreshJwt
+          }).catch(err => {
+            logger.error(`[Bluesky] Failed to persist refreshed session for account ${account.id}:`, err);
+          });
+        } else if (event === 'expired') {
+          logger.warn(`[Bluesky] Session expired for account ${account.id} — refreshJwt is no longer valid, user must reconnect.`);
+        }
+      });
       const accessJwt = decrypt(account.accessToken);
       const refreshJwt = account.refreshToken ? decrypt(account.refreshToken) : undefined;
       await blueskyGateway.resumeSession(agent, {

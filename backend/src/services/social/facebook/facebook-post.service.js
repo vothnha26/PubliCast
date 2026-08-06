@@ -55,7 +55,8 @@ const INSIGHTS_STRATEGIES = {
 };
 const socialAccountRepository = require('../../../repositories/social/social-account.repository');
 const brandRepository = require('../../../repositories/workspace/brand.repository');
-const { PLATFORMS, POST_STATUS, POST_TYPES, DEFAULT_CONFIG, SOCIAL_TECHNICAL } = require('../../../utils/constants');
+const { PLATFORMS, POST_STATUS, POST_TYPES, DEFAULT_CONFIG, SOCIAL_TECHNICAL, MEDIA_EXTENSIONS } = require('../../../utils/constants');
+const { matchesExtension } = require('../../../utils/media-type.utils');
 const FacebookPublishStrategyFactory = require('./publish-strategies/publish-strategy.factory');
 const redisClient = require('../../../config/redis');
 const prisma = require('../../../config/prisma');
@@ -366,7 +367,31 @@ class FacebookPostService {
       };
     }
 
-    const mediaUrl = mediaUrls && mediaUrls.length > 0 ? mediaUrls[0] : null;
+    // Facebook's Graph API has no "mixed carousel" endpoint — an album can
+    // only contain photos, never a video alongside them. Previously
+    // publishPost only ever looked at mediaUrls[0], so picking 2-3 files
+    // (any mix) silently published just the first one and dropped the rest
+    // with no error. Now: photos-only + ≥2 files auto-routes to the album
+    // strategy (no more requiring the user to manually pick "Album" as the
+    // post type); a video anywhere in the selection wins outright — every
+    // photo in the same selection is dropped so the post still goes out
+    // (as that one video) instead of silently truncating to whichever
+    // media happened to be mediaUrls[0].
+    const effectiveMediaUrls = Array.isArray(mediaUrls) ? mediaUrls.filter(Boolean) : [];
+    const videoUrls = effectiveMediaUrls.filter((url) => matchesExtension(url, MEDIA_EXTENSIONS.VIDEO));
+    const photoUrls = effectiveMediaUrls.filter((url) => !matchesExtension(url, MEDIA_EXTENSIONS.VIDEO));
+
+    let resolvedMediaUrls = effectiveMediaUrls;
+    let resolvedType = type;
+    if (videoUrls.length > 0 && photoUrls.length > 0) {
+      logger.debug(`[Facebook] Selection mixed ${videoUrls.length} video(s) with ${photoUrls.length} photo(s) — Facebook doesn't support that in one post. Keeping only the video, dropping the photo(s).`);
+      resolvedMediaUrls = [videoUrls[0]];
+      resolvedType = POST_TYPES.VIDEO;
+    } else if (photoUrls.length >= 2 && type !== POST_TYPES.REEL && type !== POST_TYPES.STORY) {
+      resolvedType = POST_TYPES.CAROUSEL;
+    }
+
+    const mediaUrl = resolvedMediaUrls.length > 0 ? resolvedMediaUrls[0] : null;
 
     // Check if we can use native scheduling
     let finalScheduledAt = null;
@@ -374,7 +399,7 @@ class FacebookPostService {
       const diffMs = new Date(scheduledAt).getTime() - Date.now();
       // Meta requires 10 minutes to 75 days.
       const isTimeValid = diffMs >= 10 * 60 * 1000 && diffMs <= 75 * 24 * 60 * 60 * 1000;
-      const isTypeSupported = type !== POST_TYPES.STORY && type !== POST_TYPES.REEL; // Reels / Stories are queue-based
+      const isTypeSupported = resolvedType !== POST_TYPES.STORY && resolvedType !== POST_TYPES.REEL; // Reels / Stories are queue-based
 
       if (isTimeValid && isTypeSupported) {
         finalScheduledAt = scheduledAt;
@@ -384,14 +409,14 @@ class FacebookPostService {
       }
     }
 
-    const strategy = FacebookPublishStrategyFactory.getStrategy(type, mediaUrl);
-    logger.debug(`[Facebook] Strategy selected: ${strategy.constructor.name} | mediaUrl=${mediaUrl}`);
+    const strategy = FacebookPublishStrategyFactory.getStrategy(resolvedType, mediaUrl);
+    logger.debug(`[Facebook] Strategy selected: ${strategy.constructor.name} | mediaUrl=${mediaUrl} | resolvedType=${resolvedType}`);
 
     try {
-      const result = await strategy.publish(pageId, pageAccessToken, { 
-        ...postData, 
-        mediaUrl, 
-        mediaUrls,
+      const result = await strategy.publish(pageId, pageAccessToken, {
+        ...postData,
+        mediaUrl,
+        mediaUrls: resolvedMediaUrls,
         scheduledAt: finalScheduledAt
       });
       logger.debug(`[Facebook] ✅ Published successfully! platformPostId=${result.id}`);

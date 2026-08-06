@@ -107,13 +107,13 @@ describe('FacebookReelGateway Tests', () => {
       global.fetch.mockResolvedValueOnce({
         ok: false,
         headers: mockHeaders,
-        json: jest.fn().mockResolvedValue({
+        text: jest.fn().mockResolvedValue(JSON.stringify({
           error: {
             message: 'Calls to this api have exceeded the rate limit',
             code: 4,
             error_subcode: 80007
           }
-        })
+        }))
       });
 
       try {
@@ -149,23 +149,6 @@ describe('FacebookReelGateway Tests', () => {
           method: 'POST',
           body: expect.any(FormData)
         })
-      );
-    });
-  });
-
-  describe('inviteReelCollaborator', () => {
-    it('should invite collaborator successfully', async () => {
-      global.fetch.mockResolvedValueOnce({
-        ok: true,
-        json: jest.fn().mockResolvedValue({ success: true })
-      });
-
-      const result = await gateway.inviteReelCollaborator('video_123', 'collab_999', 'token_123');
-
-      expect(result).toEqual({ success: true });
-      expect(global.fetch).toHaveBeenCalledWith(
-        'https://graph.facebook.com/v18.0/video_123/collaborators?target_id=collab_999&access_token=token_123',
-        { method: 'POST' }
       );
     });
   });

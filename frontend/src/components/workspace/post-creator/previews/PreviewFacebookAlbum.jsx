@@ -24,8 +24,13 @@ export function PreviewFacebookAlbum({
     setActiveIndex((prev) => (prev === albumMedia.length - 1 ? 0 : prev + 1));
   };
 
-  // Mock visual layouts based on image counts
-  const renderAlbumGrid = () => {
+  // Full-height vertical list — every photo shown at full size with its own
+  // alt text directly underneath, instead of Facebook's real compact grid.
+  // The composer's job here is showing what will actually publish (which
+  // photo pairs with which alt text) at a glance, not mimicking Facebook's
+  // space-constrained feed layout — the lightbox below still exists for a
+  // closer, one-at-a-time look.
+  const renderAlbumList = () => {
     if (albumMedia.length === 0) {
       return (
         <div className="aspect-video bg-muted flex items-center justify-center text-center p-6 text-muted-foreground border-y border-border">
@@ -34,46 +39,27 @@ export function PreviewFacebookAlbum({
       );
     }
 
-    if (albumMedia.length === 1) {
-      return (
-        <div className="aspect-video bg-black flex items-center justify-center relative overflow-hidden cursor-pointer" onClick={() => { setActiveIndex(0); setLightboxOpen(true); }}>
-          <img src={albumMedia[0].previewUrl || albumMedia[0].path} alt="" className="w-full h-full object-cover" />
-        </div>
-      );
-    }
-
-    if (albumMedia.length === 2) {
-      return (
-        <div className="grid grid-cols-2 gap-0.5 aspect-video bg-gray-200 cursor-pointer" onClick={() => { setActiveIndex(0); setLightboxOpen(true); }}>
-          {albumMedia.map((media, idx) => (
-            <div key={idx} className="relative h-full overflow-hidden">
-              <img src={media.previewUrl || media.path} alt="" className="w-full h-full object-cover" />
-            </div>
-          ))}
-        </div>
-      );
-    }
-
-    // Grid for 3+ images
-    const remainingCount = albumMedia.length - 3;
     return (
-      <div className="grid grid-cols-3 gap-0.5 aspect-video bg-gray-200 cursor-pointer" onClick={() => { setActiveIndex(0); setLightboxOpen(true); }}>
-        <div className="col-span-2 relative h-full overflow-hidden">
-          <img src={albumMedia[0].previewUrl || albumMedia[0].path} alt="" className="w-full h-full object-cover" />
-        </div>
-        <div className="grid grid-rows-2 gap-0.5 h-full">
-          <div className="relative overflow-hidden">
-            <img src={albumMedia[1].previewUrl || albumMedia[1].path} alt="" className="w-full h-full object-cover" />
-          </div>
-          <div className="relative overflow-hidden bg-black flex items-center justify-center">
-            <img src={albumMedia[2].previewUrl || albumMedia[2].path} alt="" className="w-full h-full object-cover opacity-60" />
-            {remainingCount > 0 && (
-              <span className="absolute inset-0 flex items-center justify-center text-white text-base font-bold bg-black/40">
-                +{remainingCount}
+      <div className="space-y-3">
+        {albumMedia.map((media, idx) => (
+          <div key={idx} className="rounded-xl overflow-hidden border border-border bg-muted">
+            <div
+              className="aspect-video bg-black relative overflow-hidden cursor-pointer"
+              onClick={() => { setActiveIndex(idx); setLightboxOpen(true); }}
+            >
+              <img src={media.previewUrl || media.path} alt={media.caption || ""} className="w-full h-full object-cover" />
+              <span className="absolute top-2 left-2 px-2 py-0.5 rounded-full bg-black/60 text-white text-[9px] font-bold">
+                {idx + 1}/{albumMedia.length}
               </span>
-            )}
+            </div>
+            <div className="px-3 py-2 bg-card">
+              <p className="text-[9px] font-black text-muted-foreground uppercase tracking-widest mb-0.5">Alt text</p>
+              <p className={`text-[11px] leading-relaxed whitespace-pre-wrap ${media.caption ? 'text-foreground font-medium' : 'text-muted-foreground italic'}`}>
+                {media.caption || "No alt text for this photo."}
+              </p>
+            </div>
           </div>
-        </div>
+        ))}
       </div>
     );
   };
@@ -115,8 +101,8 @@ export function PreviewFacebookAlbum({
           </p>
 
           {/* Rendering custom album layout */}
-          <div className="rounded-2xl overflow-hidden border border-border shadow-inner">
-            {renderAlbumGrid()}
+          <div className="overflow-hidden">
+            {renderAlbumList()}
           </div>
 
           {/* Analytics Action Counts Bar */}
