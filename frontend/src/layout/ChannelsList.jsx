@@ -48,6 +48,7 @@ export function ChannelsList() {
   const openPostCreator = usePostCreatorStore((s) => s.openPostCreator);
   const [openMenuId, setOpenMenuId] = useState(null);
   const [disconnectingId, setDisconnectingId] = useState(null);
+  const [menuPos, setMenuPos] = useState({ top: 0, left: 0 });
 
   const [groups, setGroups] = useState([]);
   const [collapsedGroupIds, setCollapsedGroupIds] = useState([]);
@@ -224,7 +225,20 @@ export function ChannelsList() {
         </div>
 
         <button
-          onClick={(e) => { e.stopPropagation(); setOpenMenuId((cur) => (cur === account.id ? null : account.id)); }}
+          onClick={(e) => {
+            e.stopPropagation();
+            if (openMenuId === account.id) {
+              setOpenMenuId(null);
+            } else {
+              const rect = e.currentTarget.getBoundingClientRect();
+              const showAbove = rect.bottom + 100 > window.innerHeight;
+              setMenuPos({
+                top: showAbove ? Math.max(10, rect.top - 80) : rect.bottom + 4,
+                left: Math.max(10, rect.right - 176),
+              });
+              setOpenMenuId(account.id);
+            }
+          }}
           className="absolute right-1.5 top-1/2 -translate-y-1/2 w-6 h-6 rounded-md flex items-center justify-center cursor-pointer border-none bg-transparent opacity-0 group-hover/channel:opacity-100 transition-opacity"
           style={{ color: "var(--muted-foreground)", opacity: openMenuId === account.id ? 1 : undefined }}
           title={t("channels.channelOptions", "Tùy chọn kênh")}
@@ -234,10 +248,15 @@ export function ChannelsList() {
 
         {openMenuId === account.id && (
           <>
-            <div className="fixed inset-0 z-40" onClick={() => setOpenMenuId(null)} />
+            <div className="fixed inset-0 z-[999]" onClick={() => setOpenMenuId(null)} />
             <div
-              className="absolute right-1 top-full mt-1 z-50 w-44 rounded-xl border shadow-lg py-1"
-              style={{ background: "var(--card)", borderColor: "var(--border)" }}
+              className="fixed z-[1000] w-44 rounded-xl border shadow-xl py-1 animate-in fade-in zoom-in-95 duration-150"
+              style={{
+                top: menuPos.top,
+                left: menuPos.left,
+                background: "var(--card)",
+                borderColor: "var(--border)"
+              }}
             >
               {!account.isDefault && (
                 <button
@@ -346,7 +365,20 @@ export function ChannelsList() {
                 </span>
               </button>
               <button
-                onClick={(e) => { e.stopPropagation(); setOpenGroupMenuId((cur) => (cur === group.id ? null : group.id)); }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (openGroupMenuId === group.id) {
+                    setOpenGroupMenuId(null);
+                  } else {
+                    const rect = e.currentTarget.getBoundingClientRect();
+                    const showAbove = rect.bottom + 160 > window.innerHeight;
+                    setMenuPos({
+                      top: showAbove ? Math.max(10, rect.top - 150) : rect.bottom + 4,
+                      left: Math.max(10, rect.right - 176),
+                    });
+                    setOpenGroupMenuId(group.id);
+                  }
+                }}
                 className="w-5 h-5 rounded-md flex items-center justify-center cursor-pointer border-none bg-transparent opacity-0 group-hover/groupheader:opacity-100 transition-opacity shrink-0"
                 style={{ color: "var(--muted-foreground)", opacity: openGroupMenuId === group.id ? 1 : undefined }}
               >
@@ -354,10 +386,15 @@ export function ChannelsList() {
               </button>
               {openGroupMenuId === group.id && (
                 <>
-                  <div className="fixed inset-0 z-40" onClick={() => setOpenGroupMenuId(null)} />
+                  <div className="fixed inset-0 z-[999]" onClick={() => setOpenGroupMenuId(null)} />
                   <div
-                    className="absolute right-1 top-full mt-1 z-50 w-44 rounded-xl border shadow-lg py-1"
-                    style={{ background: "var(--card)", borderColor: "var(--border)" }}
+                    className="fixed z-[1000] w-44 rounded-xl border shadow-xl py-1 animate-in fade-in zoom-in-95 duration-150"
+                    style={{
+                      top: menuPos.top,
+                      left: menuPos.left,
+                      background: "var(--card)",
+                      borderColor: "var(--border)"
+                    }}
                   >
                     <button
                       onClick={() => handleCreatePostFromGroup(group)}
