@@ -432,6 +432,7 @@ class PostService {
       hasMedia,
       isVideo,
       format,
+      mediaCount: validMediaUrls.length,
       duration: postData.options?.videoDuration || null,
       sizeMb: postData.options?.videoSizeMb || null,
       // width/height come from the browser's own <video> element metadata
@@ -606,23 +607,26 @@ class PostService {
     };
 
     // Lọc bỏ empty strings trước khi check media
-    let hasMedia, firstMediaUrl;
+    let hasMedia, firstMediaUrl, mediaCount;
     if (postData.mediaUrls !== undefined) {
       const validMediaUrls = (postData.mediaUrls || []).filter(u => u && u.trim() !== '');
       hasMedia = validMediaUrls.length > 0;
       firstMediaUrl = hasMedia ? validMediaUrls[0] : null;
+      mediaCount = validMediaUrls.length;
     } else {
       const existingUrls = post.mediaUrls ? post.mediaUrls.split(',').map(u => u.trim()).filter(Boolean) : [];
       hasMedia = existingUrls.length > 0;
       firstMediaUrl = hasMedia ? existingUrls[0] : null;
+      mediaCount = existingUrls.length;
     }
-    
+
     const { format, isVideo } = this._parseMediaInfo(firstMediaUrl, hasMedia);
-    
+
     const mediaInfo = {
       hasMedia,
       isVideo,
       format,
+      mediaCount,
       duration: mergedPostData.options.videoDuration || null,
       sizeMb: mergedPostData.options.videoSizeMb || null,
       width: mergedPostData.options.videoWidth || null,

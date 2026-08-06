@@ -72,7 +72,7 @@ class InstagramGateway {
   /**
    * Tạo media container cho hình ảnh đơn lẻ
    */
-  async createImageContainer(igAccountId, accessToken, imageUrl, caption, scheduledAt = null, options = {}) {
+  async createImageContainer(igAccountId, accessToken, imageUrl, caption, scheduledAt = null, options = {}, altText = null) {
     const url = `${this.graphBaseUrl}/${igAccountId}/media`;
     const body = {
       image_url: imageUrl,
@@ -87,6 +87,11 @@ class InstagramGateway {
     }
     if (options.instagramAudio) {
       body.audio_asset_id = options.instagramAudio.id || options.instagramAudio;
+    }
+    // alt_text: image posts only (Reels/Stories not supported per Meta docs,
+    // introduced March 24, 2025 on the /media endpoint).
+    if (altText) {
+      body.alt_text = altText;
     }
 
     const res = await fetch(url, {
@@ -216,7 +221,7 @@ class InstagramGateway {
   /**
    * Tạo container con cho Album/Carousel
    */
-  async createCarouselItemContainer(igAccountId, accessToken, mediaUrl, isVideo = false) {
+  async createCarouselItemContainer(igAccountId, accessToken, mediaUrl, isVideo = false, altText = null) {
     const url = `${this.graphBaseUrl}/${igAccountId}/media`;
     const body = {
       is_carousel_item: true,
@@ -228,6 +233,12 @@ class InstagramGateway {
       body.video_url = mediaUrl;
     } else {
       body.image_url = mediaUrl;
+      // alt_text is only valid on image carousel children — Meta docs:
+      // "Reels and stories are not supported"; video carousel items aren't
+      // mentioned as supported either, so scope this to the image branch.
+      if (altText) {
+        body.alt_text = altText;
+      }
     }
 
     const res = await fetch(url, {

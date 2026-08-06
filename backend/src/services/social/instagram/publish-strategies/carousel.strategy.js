@@ -8,9 +8,12 @@ class CarouselPublishStrategy extends InstagramPublishStrategy {
       return { id: `ig_mock_carousel_${Date.now()}` };
     }
 
-    const { mediaUrls = [], caption, scheduledAt } = postData;
+    const { mediaUrls = [], caption, scheduledAt, altText } = postData;
     if (mediaUrls.length === 0) {
       throw new Error('At least one media URL is required for Instagram Carousel');
+    }
+    if (mediaUrls.length > 10) {
+      throw new Error('Instagram carousel posts support a maximum of 10 images/videos.');
     }
 
     // 1. Tạo các container con cho từng tệp phương tiện
@@ -18,7 +21,7 @@ class CarouselPublishStrategy extends InstagramPublishStrategy {
     for (const rawUrl of mediaUrls) {
       const url = this.resolveUrl(rawUrl);
       const isVideo = MEDIA_EXTENSIONS.VIDEO.some(ext => url.toLowerCase().endsWith(ext));
-      const itemContainer = await instagramGateway.createCarouselItemContainer(igAccountId, accessToken, url, isVideo);
+      const itemContainer = await instagramGateway.createCarouselItemContainer(igAccountId, accessToken, url, isVideo, altText);
       
       if (isVideo) {
         await this.pollUntilReady(instagramGateway, itemContainer.id, accessToken);
