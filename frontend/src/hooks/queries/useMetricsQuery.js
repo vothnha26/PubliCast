@@ -17,7 +17,13 @@ export function useMetricsQuery(brandId, startDate, endDate, force = false) {
     queryKey: QUERY_KEYS.metrics(brandId, startDate, endDate),
     queryFn: async () => {
       if (!brandId) return [];
-      const res = await socialService.getMetrics(brandId, startDate, endDate, force);
+      // URLSearchParams (inside getMetrics) stringifies `undefined` as the
+      // literal text "undefined", which the backend would then compare as a
+      // real date string — omit unset params instead of passing them through.
+      const params = { force };
+      if (startDate) params.startDate = startDate;
+      if (endDate) params.endDate = endDate;
+      const res = await socialService.getMetrics(brandId, params);
       return res.data || res;
     },
     enabled: Boolean(brandId),

@@ -11,7 +11,10 @@ import { SplashScreen } from "./components/shared/SplashScreen";
 import { useAuthStore } from "./store/useAuthStore";
 import ProtectedRoute from "./components/ProtectedRoute";
 import { FeatureGate } from "./components/shared/FeatureGate";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { QueryClient } from "@tanstack/react-query";
+import { PersistQueryClientProvider } from "@tanstack/react-query-persist-client";
+import { createAsyncStoragePersister } from "@tanstack/query-async-storage-persister";
+import { get as idbGet, set as idbSet, del as idbDel } from "idb-keyval";
 import { PRODUCT_IDS } from "./constants/products";
 import { CACHE_CONFIG } from "./constants/cache-config.constants";
 
@@ -26,6 +29,20 @@ const queryClient = new QueryClient({
   }
 });
 export { queryClient };
+
+// Persists React Query's cache to IndexedDB so a refresh doesn't discard
+// data the user already fetched (e.g. channel insights) — the server-side
+// socket `data_invalidate` event (see services/socket.js) is what keeps it
+// from ever going stale, not a short TTL, so persisting across reloads is
+// safe rather than serving stale data indefinitely.
+const idbPersister = createAsyncStoragePersister({
+  storage: {
+    getItem: idbGet,
+    setItem: idbSet,
+    removeItem: idbDel
+  },
+  key: "publicast-query-cache"
+});
 
 // Auth Pages
 import { LoginPage } from "./pages/auth/Login";
@@ -132,7 +149,7 @@ export default function App() {
   const isStaff = currentPath.startsWith("/staff");
 
   return (
-    <QueryClientProvider client={queryClient}>
+    <PersistQueryClientProvider client={queryClient} persistOptions={{ persister: idbPersister }}>
       <div className="w-full h-screen flex flex-col overflow-hidden" style={{ fontFamily: "'DM Sans', sans-serif" }}>
         {/* Topbar ALWAYS on top across full width (except landing/login/admin/staff) */}
         {!isNoLayout && !isSuperadmin && !isStaff && <Topbar />}
@@ -239,6 +256,6 @@ export default function App() {
         <UpsellModal />
         {!isNoLayout && !isSuperadmin && !isStaff && <HelpChatWidget />}
       </div>
-    </QueryClientProvider>
+    </PersistQueryClientProvider>
   );
 }

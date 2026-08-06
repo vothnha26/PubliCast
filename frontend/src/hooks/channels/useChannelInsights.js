@@ -1,11 +1,13 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
+import { useQueryClient, useMutation } from "@tanstack/react-query";
 import { eachDayOfInterval, format } from "date-fns";
 import { toast } from "sonner";
 import { useBrand } from "../../context/BrandContext";
 import socialService from "../../services/social.service";
 import postService from "../../services/post.service";
 import socketClient from "../../services/socket";
-import { useLatestRequestId } from "../useLatestRequestId";
+import { useMetricsQuery } from "../queries/useMetricsQuery";
+import { QUERY_KEYS } from "../../constants/query-keys.constants";
 import { useDateRangeQuery } from "../useDateRangeQuery";
 import { parseAnalyticsData } from "../../utils/parseAnalyticsData";
 import { PLATFORMS } from "../../constants/platforms";
@@ -19,12 +21,9 @@ const DEFAULT_PAGE_SIZE = 10;
 export function useChannelInsights(socialAccountId, platformInput) {
   const platform = (platformInput || "").toLowerCase();
   const { activeBrand } = useBrand();
-  const metricsRequest = useLatestRequestId();
+  const queryClient = useQueryClient();
 
   const [dateRange, setDateRange] = useDateRangeQuery(29);
-  const [metrics, setMetrics] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [isRefreshing, setIsRefreshing] = useState(false);
   const [platformLimits, setPlatformLimits] = useState([]);
 
   const [publishedVideos, setPublishedVideos] = useState([]);
@@ -60,52 +59,56 @@ export function useChannelInsights(socialAccountId, platformInput) {
     return lockedLimit ? lockedLimit.lockReason : null;
   }, [platformLimits, platform]);
 
-  const loadMetrics = useCallback(async (force = false) => {
-    if (!activeBrand || !socialAccountId) return;
-    const requestId = metricsRequest.start();
-    if (force) setIsRefreshing(true);
-    try {
-      const allMetrics = await socialService.getMetrics(activeBrand.id, {
-        startDate: dateRange.from?.toISOString().slice(0, 10),
-        endDate: dateRange.to?.toISOString().slice(0, 10),
-        force,
-      });
-      const own = (allMetrics || []).find((m) => m?.id === socialAccountId);
-      if (!metricsRequest.isLatest(requestId)) return;
-      setMetrics(own || null);
-      if (force) toast.success("Đồng bộ số liệu thành công!");
-    } catch (error) {
-      console.error("Failed to load channel metrics:", error);
-      if (!metricsRequest.isLatest(requestId)) return;
-      setMetrics(null);
-      if (force) toast.error("Đồng bộ số liệu thất bại");
-    } finally {
-      if (!force || metricsRequest.isLatest(requestId)) setLoading(false);
-      if (force && metricsRequest.isLatest(requestId)) setIsRefreshing(false);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeBrand?.id, socialAccountId, dateRange, metricsRequest]);
+  const startDate = dateRange.from?.toISOString().slice(0, 10);
+  const endDate = dateRange.to?.toISOString().slice(0, 10);
 
-  useEffect(() => {
-    setMetrics(null);
-    setLoading(true);
-    loadMetrics();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeBrand?.id, socialAccountId, dateRange]);
+  // Cached in IndexedDB (see App.jsx's PersistQueryClientProvider) and kept
+  // fresh by the `data_invalidate` socket event (services/socket.js already
+  // invalidates any query keyed [CACHE_SCOPES.METRICS, brandId, ...] on that
+  // event) instead of a client-side poll, so a page refresh shows the last
+  // known data instantly rather than a blank loading state.
+  const metricsQuery = useMetricsQuery(activeBrand?.id, startDate, endDate);
+  const metrics = useMemo(
+    () => (metricsQuery.data || []).find((m) => m?.id === socialAccountId) || null,
+    [metricsQuery.data, socialAccountId]
+  );
+  const loading = metricsQuery.isLoading;
 
-  // Auto-poll while a background sync is in flight for this account.
+  // Auto-poll while a background sync is in flight for this account — the
+  // eventual data_invalidate covers the normal case, but polls as a
+  // fallback in case that event is missed (e.g. a dropped socket message).
   useEffect(() => {
     if (!activeBrand || !metrics) return;
     if (metrics.syncStatus === "PENDING" || metrics.syncStatus === "PARTIAL") {
-      const intervalId = setInterval(() => loadMetrics(), 5000);
+      const intervalId = setInterval(() => metricsQuery.refetch(), 5000);
       return () => clearInterval(intervalId);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeBrand?.id, metrics?.syncStatus, loadMetrics]);
+  }, [activeBrand?.id, metrics?.syncStatus]);
+
+  const forceSyncMutation = useMutation({
+    mutationFn: async () => {
+      if (!activeBrand || !socialAccountId) return null;
+      return socialService.getMetrics(activeBrand.id, { startDate, endDate, force: true });
+    },
+    onSuccess: (res) => {
+      if (!res) return;
+      toast.success("Đồng bộ số liệu thành công!");
+      // The force sync response is authoritative and already fresh —
+      // seed it directly instead of waiting on the data_invalidate socket
+      // round-trip, so the UI reflects it immediately.
+      queryClient.setQueryData(QUERY_KEYS.metrics(activeBrand.id, startDate, endDate), res.data || res);
+    },
+    onError: (error) => {
+      console.error("Failed to force-sync channel metrics:", error);
+      toast.error("Đồng bộ số liệu thất bại");
+    }
+  });
 
   const handleRefresh = useCallback(async () => {
-    await loadMetrics(true);
-  }, [loadMetrics]);
+    await forceSyncMutation.mutateAsync();
+  }, [forceSyncMutation]);
+  const isRefreshing = forceSyncMutation.isPending;
 
   const fetchPublishedVideos = useCallback(async (pageToken = null, limit = DEFAULT_PAGE_SIZE) => {
     if (!activeBrand || !socialAccountId) return;
@@ -170,18 +173,18 @@ export function useChannelInsights(socialAccountId, platformInput) {
     fetchPublishedVideos();
   }, [fetchPublishedVideos]);
 
-  // Real-time socket listener for cache invalidation
+  // Real-time socket listener for published-videos invalidation. Metrics
+  // invalidation doesn't need handling here — services/socket.js already
+  // invalidates any React Query key matching [CACHE_SCOPES.METRICS,
+  // brandId, ...] on the same `data_invalidate` event, which useMetricsQuery
+  // above is keyed into automatically.
   useEffect(() => {
     if (!activeBrand?.id) return;
     socketClient.emit("join_room", { brandId: activeBrand.id });
 
     const handleDataInvalidate = (data) => {
-      if (data?.brandId === activeBrand.id) {
-        if (data.scope === "published_videos") {
-          fetchPublishedVideos();
-        } else if (data.scope === "metrics") {
-          loadMetrics();
-        }
+      if (data?.brandId === activeBrand.id && data.scope === "published_videos") {
+        fetchPublishedVideos();
       }
     };
 
@@ -189,7 +192,7 @@ export function useChannelInsights(socialAccountId, platformInput) {
     return () => {
       socketClient.off("data_invalidate", handleDataInvalidate);
     };
-  }, [activeBrand?.id, fetchPublishedVideos, loadMetrics]);
+  }, [activeBrand?.id, fetchPublishedVideos]);
 
   const realData = useMemo(() => parseAnalyticsData(metrics, platform, dateRange), [metrics, platform, dateRange]);
 
