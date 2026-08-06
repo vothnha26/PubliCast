@@ -253,6 +253,19 @@ describe('Post Creator Detailed E2E Suite', function () {
     await driver.sleep(600);
     // Close the dropdown by clicking elsewhere (it closes on outside click).
     await driver.executeScript("document.body.click();");
+    // Wait for the dropdown to actually unmount (its items, and the
+    // full-screen overlay that captures the outside click, gone from the
+    // DOM) instead of a fixed sleep — calling ensurePlatformState
+    // back-to-back (e.g. selecting threads then facebook) could otherwise
+    // click the next "+" button while the previous dropdown's overlay was
+    // still present for one more render, intercepting that click and
+    // leaving the picker never (re)opened — so the next platform's item was
+    // never located within safeClick's wait window (TC_POST_05's "Waiting
+    // until element is visible" timeout).
+    await driver.wait(async () => {
+      const items = await driver.findElements(By.css(`[data-testid="channel-picker-item-${platform}"]`));
+      return items.length === 0;
+    }, 5000).catch(() => {});
     await driver.sleep(300);
   }
 

@@ -67,6 +67,25 @@ async function resetBrowserSession(driver) {
   }
 }
 
+/**
+ * Navigates to /signup and waits for the page to actually finish loading
+ * before returning — AUTH_003 was seen timing out on By.id('email') after
+ * 15s even though AUTH_002 (identical navigate-then-find-#email sequence,
+ * run immediately prior) passed fine. driver.get() only waits for the
+ * initial HTML document load event, not for Vite/React to finish mounting
+ * — under CI load (a fresh navigate right after resetBrowserSession's own
+ * driver.get(BASE_URL)) that gap can occasionally outlast the wait. Poll
+ * document.readyState first so the elementLocated wait isn't racing page
+ * bootstrap on a slow run.
+ */
+async function navigateToSignup(driver) {
+  await driver.get(`${BASE_URL}/signup`);
+  await driver.wait(async () => {
+    const state = await driver.executeScript('return document.readyState;');
+    return state === 'complete';
+  }, 15000).catch(() => {});
+}
+
 // Biến lưu trữ email test giữa các kịch bản
 let testEmail = '';
 const timestamp = Date.now();
@@ -119,7 +138,7 @@ async function runAuthSuite() {
     console.log("---------------------------------------------------------");
     try {
       await resetBrowserSession(driver);
-      await driver.get(`${BASE_URL}/signup`);
+      await navigateToSignup(driver);
       console.log("👉 Đã truy cập trang Đăng ký.");
 
       // Đợi input email có mặt bằng ID trước
@@ -223,7 +242,7 @@ async function runAuthSuite() {
     try {
       // Làm sạch session trước khi chạy test case
       await resetBrowserSession(driver);
-      await driver.get(`${BASE_URL}/signup`);
+      await navigateToSignup(driver);
       console.log("👉 Đã truy cập trang Đăng ký.");
 
       let emailInput = await driver.wait(until.elementLocated(By.id('email')), 15000);
@@ -278,7 +297,7 @@ async function runAuthSuite() {
     try {
       // Làm sạch session trước khi chạy test case
       await resetBrowserSession(driver);
-      await driver.get(`${BASE_URL}/signup`);
+      await navigateToSignup(driver);
       console.log("👉 Đã truy cập trang Đăng ký.");
 
       let emailInput = await driver.wait(until.elementLocated(By.id('email')), 15000);
@@ -411,7 +430,7 @@ async function runAuthSuite() {
     try {
       // Làm sạch session trước khi chạy test case
       await resetBrowserSession(driver);
-      await driver.get(`${BASE_URL}/signup`);
+      await navigateToSignup(driver);
       console.log("👉 Đã truy cập trang Đăng ký.");
 
       let emailInput = await driver.wait(until.elementLocated(By.id('email')), 15000);
