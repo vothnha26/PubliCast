@@ -154,23 +154,36 @@ export function PreviewBody({ platformFilter } = {}) {
   //    shared/global media, not per-platform.
   // ----------------------------------------------------
   if (showMediaViewer) {
-    const isVideo = isVideoPath(videoFileUrl, videoFile);
+    // When "Theo mạng" is on and a network's media was customized, the
+    // upload goes through updateNetworkMedia — which never touches the
+    // top-level videoFileUrl/videoFile — so reading those directly here
+    // showed "No Media Uploaded" even though the customized platform (e.g.
+    // Facebook Reel) clearly had a video. Fall back to the currently
+    // customized platform's effective media, same as the per-platform
+    // preview cards below already do via getEffectiveDataForPlatform.
+    const activeCustomizedPlatform = (isEditByNetwork || isNetworkCustomizeOpen) ? activeNetworkTab : null;
+    const { effectiveVideoFileUrl, effectiveVideoFile } = activeCustomizedPlatform
+      ? getEffectiveDataForPlatform(activeCustomizedPlatform)
+      : { effectiveVideoFileUrl: videoFileUrl, effectiveVideoFile: videoFile };
+    const mediaViewerUrl = effectiveVideoFileUrl || videoFileUrl;
+    const mediaViewerFile = effectiveVideoFile || videoFile;
+    const isVideo = isVideoPath(mediaViewerUrl, mediaViewerFile);
     return (
       <div className="flex-1 overflow-y-auto px-6 py-8 flex flex-col items-center justify-center space-y-6 bg-transparent scrollbar-thin animate-in fade-in duration-300">
         <div className="w-full max-w-md bg-card rounded-2xl shadow-xl border border-border p-5 space-y-5 text-left font-sans">
           {/* Main Media Preview Frame */}
           <div className="w-full aspect-video bg-black rounded-xl overflow-hidden relative flex items-center justify-center border border-border shadow-inner">
-            {videoFileUrl ? (
+            {mediaViewerUrl ? (
               isVideo ? (
                 <video
-                  src={videoFileUrl}
+                  src={mediaViewerUrl}
                   poster={mediaThumbnailUrl || undefined}
                   controls
                   className="w-full h-full object-contain"
                 />
               ) : (
                 <img
-                  src={videoFileUrl}
+                  src={mediaViewerUrl}
                   className="w-full h-full object-contain"
                   alt={altText || "Uploaded Media"}
                 />
