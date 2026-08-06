@@ -249,7 +249,19 @@ describe('Post Creator Detailed E2E Suite', function () {
 
     // Not selected but should be: open the "+" dropdown and click the item.
     await safeClick(By.css('[data-testid="channel-picker-open-btn"]'));
-    await safeClick(By.css(`[data-testid="channel-picker-item-${platform}"]`));
+    // The item list scrolls inside its own container
+    // (max-h-64 overflow-y-auto) — an item below the fold is still
+    // elementLocated but Selenium's elementIsVisible treats it as not
+    // visible until scrolled into that container's own viewport, which
+    // safeClick's plain wait never does. Locate + scrollIntoView + click
+    // directly via JS instead, same approach already used for the
+    // hover-revealed remove button above.
+    const pickerItem = await driver.wait(
+      until.elementLocated(By.css(`[data-testid="channel-picker-item-${platform}"]`)),
+      12000
+    );
+    await driver.executeScript("arguments[0].scrollIntoView({block:'center'});", pickerItem);
+    await driver.executeScript("arguments[0].click();", pickerItem);
     await driver.sleep(600);
     // Close the dropdown by clicking elsewhere (it closes on outside click).
     await driver.executeScript("document.body.click();");
