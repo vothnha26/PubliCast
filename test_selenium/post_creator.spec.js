@@ -229,11 +229,20 @@ describe('Post Creator Detailed E2E Suite', function () {
     if (alreadySelected === shouldBeSelected) return;
 
     if (alreadySelected && !shouldBeSelected) {
-      // Hover to reveal the remove (X) button, then click it.
-      const avatar = await driver.findElement(selectedSelector);
-      await driver.executeScript("arguments[0].scrollIntoView({block:'center'});", avatar);
-      await driver.actions().move({ origin: avatar }).perform();
-      await safeClick(By.css(`[data-testid="selected-channel-remove-${platform}"]`));
+      // The remove (X) button is opacity-0 until :hover (group-hover/avatar
+      // CSS), and headless Chrome's synthetic actions().move() hover does
+      // not reliably trigger CSS :hover, so safeClick's elementIsVisible
+      // wait (which checks computed visibility, including opacity) timed
+      // out here even though the button was present in the DOM the whole
+      // time. It's still a real, interactable button regardless of opacity
+      // — click it directly via JS instead of waiting for the hover-driven
+      // visibility transition.
+      const removeBtn = await driver.wait(
+        until.elementLocated(By.css(`[data-testid="selected-channel-remove-${platform}"]`)),
+        12000
+      );
+      await driver.executeScript("arguments[0].scrollIntoView({block:'center'});", removeBtn);
+      await driver.executeScript("arguments[0].click();", removeBtn);
       await driver.sleep(600);
       return;
     }
