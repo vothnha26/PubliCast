@@ -3,12 +3,31 @@ import { useTranslation } from "react-i18next";
 import { Type, Image as ImageIcon, Check, Play } from "lucide-react";
 import { usePostCreatorFormContext } from "../../../../context/PostCreatorFormContext";
 import { PreviewStrategies } from "./PreviewStrategies";
+import { PlatformIcon } from "../../../shared/PlatformIcon";
 import { isVideoPath } from "../../../../utils/url";
 
-export function PreviewBody() {
+const PLATFORM_LABEL = {
+  youtube: "YouTube",
+  facebook: "Facebook",
+  tiktok: "TikTok",
+  instagram: "Instagram",
+  telegram: "Telegram",
+  threads: "Threads",
+  bluesky: "Bluesky",
+  reddit: "Reddit",
+  twitch: "Twitch",
+};
+
+/**
+ * @param {string[]} [platformFilter] - When provided, only these platforms'
+ *   previews render (used by NetworkCustomizeScreen to show just the
+ *   channel currently being edited). Omit to show every selected platform
+ *   stacked, the main composer's default behavior.
+ */
+export function PreviewBody({ platformFilter } = {}) {
   const { t } = useTranslation(["planner", "common"]);
   const {
-    activePlatform,
+    selectedPlatforms,
     caption,
     videoFileUrl,
     videoFile,
@@ -37,11 +56,14 @@ export function PreviewBody() {
     setUploadModalTab,
     setMediaTypeFilter,
     isEditByNetwork,
+    isNetworkCustomizeOpen,
     activeNetworkTab,
     activeNetworkAccountId,
     selectedAccountIds,
     activeBrand
   } = usePostCreatorFormContext();
+
+  const platformsToRender = platformFilter || selectedPlatforms;
 
   const [showAltInput, setShowAltInput] = useState(false);
 
@@ -53,90 +75,93 @@ export function PreviewBody() {
   };
 
   // Mirrors ComposerBody's own account-slot resolution — when "Theo mạng"
-  // is on and the account sub-tabs are showing (platform has ≥2 targeted
-  // accounts), preview the account actually being edited instead of always
-  // the platform-level entry, so what's shown here matches what the
-  // caption/media inputs are writing to.
-  const platformEntry = networkCustom?.[activePlatform];
-  const accountsForPreviewTab = (isEditByNetwork && activeNetworkTab === activePlatform)
-    ? (activeBrand?.socialAccounts || []).filter(
-        sa => (sa.platform || '').toLowerCase() === activePlatform && selectedAccountIds.includes(sa.id)
-      )
-    : [];
-  const platformCustom = accountsForPreviewTab.length > 1 && activeNetworkAccountId
-    ? (platformEntry?.perAccount?.[activeNetworkAccountId] || platformEntry)
-    : platformEntry;
-  const isPlatformCustomized = platformCustom?.useTemplate === false;
-  const isThreadsPlatform = activePlatform === 'threads';
+  // is on and the account sub-tabs are showing for a given platform,
+  // preview the account actually being edited instead of always the
+  // platform-level entry, so what's shown here matches what the
+  // caption/media inputs are writing to. Runs once per selected platform
+  // (Buffer reference stacks every platform's preview simultaneously)
+  // instead of just the single previously-active one.
+  const getEffectiveDataForPlatform = (platform) => {
+    const platformEntry = networkCustom?.[platform];
+    const accountsForTab = ((isEditByNetwork || isNetworkCustomizeOpen) && activeNetworkTab === platform)
+      ? (activeBrand?.socialAccounts || []).filter(
+          sa => (sa.platform || '').toLowerCase() === platform && selectedAccountIds.includes(sa.id)
+        )
+      : [];
+    const platformCustom = accountsForTab.length > 1 && activeNetworkAccountId
+      ? (platformEntry?.perAccount?.[activeNetworkAccountId] || platformEntry)
+      : platformEntry;
+    const isPlatformCustomized = platformCustom?.useTemplate === false;
+    const isThreadsPlatform = platform === 'threads';
+    const firstThreadPost = isThreadsPlatform && platformCustom?.threadPosts?.[0];
 
-  const firstThreadPost = isThreadsPlatform && platformCustom?.threadPosts?.[0];
+    const effectiveCaption = isPlatformCustomized
+      ? (isThreadsPlatform
+          ? (typeof firstThreadPost === 'string' ? firstThreadPost : firstThreadPost?.text || '')
+          : (platformCustom?.caption || ''))
+      : caption;
 
-  const effectiveCaption = isPlatformCustomized
-    ? (isThreadsPlatform
-        ? (typeof firstThreadPost === 'string' ? firstThreadPost : firstThreadPost?.text || '')
-        : (platformCustom?.caption || ''))
-    : caption;
+    const effectiveMediaItems = isPlatformCustomized
+      ? (isThreadsPlatform
+          ? ((typeof firstThreadPost === 'object' ? firstThreadPost?.mediaUrls : []) || [])
+          : (platformCustom?.mediaUrls || []))
+      : postMedia;
 
-  const effectiveMediaItems = isPlatformCustomized
-    ? (isThreadsPlatform
-        ? ((typeof firstThreadPost === 'object' ? firstThreadPost?.mediaUrls : []) || [])
-        : (platformCustom?.mediaUrls || []))
-    : postMedia;
+    let effectiveVideoFileUrl = videoFileUrl;
+    let effectiveVideoFile = videoFile;
 
-  let effectiveVideoFileUrl = videoFileUrl;
-  let effectiveVideoFile = videoFile;
-
-  if (isPlatformCustomized) {
-    if (effectiveMediaItems.length > 0) {
-      const firstMedia = effectiveMediaItems[0];
-      effectiveVideoFileUrl = typeof firstMedia === 'string'
-        ? firstMedia
-        : (firstMedia?.previewUrl || firstMedia?.path || '');
-      effectiveVideoFile = typeof firstMedia === 'string' ? null : (firstMedia?.file || null);
-    } else {
-      effectiveVideoFileUrl = '';
-      effectiveVideoFile = null;
+    if (isPlatformCustomized) {
+      if (effectiveMediaItems.length > 0) {
+        const firstMedia = effectiveMediaItems[0];
+        effectiveVideoFileUrl = typeof firstMedia === 'string'
+          ? firstMedia
+          : (firstMedia?.previewUrl || firstMedia?.path || '');
+        effectiveVideoFile = typeof firstMedia === 'string' ? null : (firstMedia?.file || null);
+      } else {
+        effectiveVideoFileUrl = '';
+        effectiveVideoFile = null;
+      }
     }
-  }
 
-  const isVideo = isVideoPath(effectiveVideoFileUrl, effectiveVideoFile);
+    // Mô phỏng rút gọn link thời gian thực khi sử dụng UrlShortener
+    const simulatedCaption = (!effectiveCaption || !useUrlShortener)
+      ? effectiveCaption
+      : (() => {
+          const urlRegex = /(https?:\/\/[^\s<]+)/g;
+          let idx = 1;
+          return effectiveCaption.replace(urlRegex, (url) => {
+            if (url.includes('/sl/')) return url;
+            return `https://publicast.link/link_${idx++}`;
+          });
+        })();
 
-
-  // Mô phỏng rút gọn link thời gian thực khi sử dụng UrlShortener
-  const simulatedCaption = React.useMemo(() => {
-    if (!effectiveCaption || !useUrlShortener) return effectiveCaption;
-    const urlRegex = /(https?:\/\/[^\s<]+)/g;
-    let idx = 1;
-    return effectiveCaption.replace(urlRegex, (url) => {
-      if (url.includes('/sl/')) return url;
-      return `https://publicast.link/link_${idx++}`;
-    });
-  }, [effectiveCaption, useUrlShortener]);
-
-  const PreviewComponent = PreviewStrategies[activePlatform];
+    return { simulatedCaption, effectiveVideoFileUrl, effectiveVideoFile };
+  };
 
   // ----------------------------------------------------
-  // 1. MEDIA VIEWER MODE (Khi bấm nút Con Mắt Eye)
+  // 1. MEDIA VIEWER MODE (Khi bấm nút Con Mắt Eye) — still scoped to the
+  //    shared/global media, not per-platform.
   // ----------------------------------------------------
   if (showMediaViewer) {
+    const isVideo = isVideoPath(videoFileUrl, videoFile);
     return (
       <div className="flex-1 overflow-y-auto px-6 py-8 flex flex-col items-center justify-center space-y-6 bg-transparent scrollbar-thin animate-in fade-in duration-300">
         <div className="w-full max-w-md bg-card rounded-2xl shadow-xl border border-border p-5 space-y-5 text-left font-sans">
           {/* Main Media Preview Frame */}
           <div className="w-full aspect-video bg-black rounded-xl overflow-hidden relative flex items-center justify-center border border-border shadow-inner">
-            {effectiveVideoFileUrl ? (
+            {videoFileUrl ? (
               isVideo ? (
-                <video 
-                  src={effectiveVideoFileUrl} 
+                <video
+                  src={videoFileUrl}
                   poster={mediaThumbnailUrl || undefined}
-                  controls 
-                  className="w-full h-full object-contain" 
+                  controls
+                  className="w-full h-full object-contain"
                 />
               ) : (
-                <img 
-                  src={effectiveVideoFileUrl} 
-                  className="w-full h-full object-contain" 
-                  alt={altText || "Uploaded Media"} 
+                <img
+                  src={videoFileUrl}
+                  className="w-full h-full object-contain"
+                  alt={altText || "Uploaded Media"}
                 />
               )
             ) : (
@@ -203,32 +228,47 @@ export function PreviewBody() {
   }
 
   // ----------------------------------------------------
-  // 2. SOCIAL POST PREVIEW MODE (Mặc định)
+  // 2. SOCIAL POST PREVIEW MODE — every selected platform's preview
+  //    stacked in one scrollable column (Buffer reference), instead of a
+  //    single active-platform preview switched via tabs.
   // ----------------------------------------------------
   return (
-    <div className="flex-1 overflow-y-auto px-6 py-8 flex flex-col items-center justify-start space-y-8 bg-transparent scrollbar-thin">
-      <div className={`w-full transition-all duration-300 ${previewDevice === 'desktop' && activePlatform === 'youtube' ? 'max-w-2xl' : 'max-w-sm'}`}>
-        {PreviewComponent && (
-          <PreviewComponent 
-            caption={simulatedCaption} 
-            videoFileUrl={effectiveVideoFileUrl}
-            videoFile={effectiveVideoFile}
-            youtubeType={youtubeType}
-            youtubeTitle={youtubeTitle}
-            youtubePlaylistId={youtubePlaylistId}
-            playlists={playlists}
-            youtubeTags={youtubeTags}
-            youtubeFirstComment={youtubeFirstComment}
-            globalFirstComment={globalFirstComment}
-            previewDevice={previewDevice}
-            facebookType={facebookType}
-            facebookTitle={facebookTitle}
-            instagramType={instagramType}
-            imageTransform={imageTransform}
-            albumMedia={albumMedia}
-          />
-        )}
-      </div>
+    <div className="flex-1 overflow-y-auto px-6 py-8 flex flex-col items-center justify-start space-y-10 bg-transparent scrollbar-thin">
+      {platformsToRender.length === 0 && (
+        <p className="text-xs text-muted-foreground font-sans">{t("planner:postCreator.preview.noPlatforms")}</p>
+      )}
+      {platformsToRender.map((platform) => {
+        const PreviewComponent = PreviewStrategies[platform];
+        if (!PreviewComponent) return null;
+        const { simulatedCaption, effectiveVideoFileUrl, effectiveVideoFile } = getEffectiveDataForPlatform(platform);
+
+        return (
+          <div key={platform} className={`w-full transition-all duration-300 ${previewDevice === 'desktop' && platform === 'youtube' ? 'max-w-2xl' : 'max-w-sm'}`}>
+            <div className="flex items-center gap-2 mb-3">
+              <PlatformIcon platform={platform} size={16} variant="flat" />
+              <span className="text-xs font-bold text-foreground font-sans">{PLATFORM_LABEL[platform] || platform}</span>
+            </div>
+            <PreviewComponent
+              caption={simulatedCaption}
+              videoFileUrl={effectiveVideoFileUrl}
+              videoFile={effectiveVideoFile}
+              youtubeType={youtubeType}
+              youtubeTitle={youtubeTitle}
+              youtubePlaylistId={youtubePlaylistId}
+              playlists={playlists}
+              youtubeTags={youtubeTags}
+              youtubeFirstComment={youtubeFirstComment}
+              globalFirstComment={globalFirstComment}
+              previewDevice={previewDevice}
+              facebookType={facebookType}
+              facebookTitle={facebookTitle}
+              instagramType={instagramType}
+              imageTransform={imageTransform}
+              albumMedia={albumMedia}
+            />
+          </div>
+        );
+      })}
     </div>
   );
 }

@@ -1,6 +1,6 @@
 import React from "react";
 import { useTranslation } from "react-i18next";
-import { Calendar, Loader2, ChevronDown, Check } from "lucide-react";
+import { Calendar, Loader2, ChevronDown, Check, ArrowRight } from "lucide-react";
 import { usePostCreatorFormContext } from "../../../context/PostCreatorFormContext";
 
 const PUBLISH_OPTIONS = [
@@ -26,7 +26,9 @@ export function ComposerFooter() {
     submitProgressText,
     editingPost,
     showPublishMenu,
-    setShowPublishMenu
+    setShowPublishMenu,
+    setIsNetworkCustomizeOpen,
+    selectedAccountIds
   } = usePostCreatorFormContext();
 
   const getPublishButtonLabelText = () => {
@@ -59,6 +61,17 @@ export function ComposerFooter() {
       <button onClick={closePostCreator} data-testid="post-creator-cancel-btn" className="px-6 py-2.5 rounded-xl border border-border text-xs font-bold text-muted-foreground hover:bg-muted hover:text-black transition-all cursor-pointer font-sans">{t("planner:postCreator.footer.cancel")}</button>
       
       <div className="flex items-center gap-4">
+        {!isLibrary && selectedAccountIds.length > 1 && (
+          <button
+            type="button"
+            onClick={() => setIsNetworkCustomizeOpen(true)}
+            className="flex items-center gap-2 px-5 py-2.5 bg-composer-accent text-composer-accent-foreground text-xs font-bold rounded-xl transition-all cursor-pointer font-sans shadow-sm hover:opacity-90"
+          >
+            {t("planner:postCreator.footer.customizePerNetwork")}
+            <ArrowRight size={14} />
+          </button>
+        )}
+
         {!isLibrary && ['schedule', 'review'].includes(selectedPublishId) && (
           <div className="flex items-center gap-3 bg-card border border-border rounded-2xl px-5 py-2.5 hover:bg-muted transition-all relative">
             <Calendar size={18} className="text-muted-foreground" />
