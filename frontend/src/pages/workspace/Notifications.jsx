@@ -47,7 +47,21 @@ export function NotificationsPage() {
       }
       const paramsObj = Object.fromEntries(queryParams.entries());
       const response = await notificationService.getNotifications(paramsObj);
-      setNotifData(response || { data: [], meta: { categoryCounts: {} } });
+      
+      const rawData = Array.isArray(response)
+        ? response
+        : Array.isArray(response?.data)
+          ? response.data
+          : Array.isArray(response?.notifications)
+            ? response.notifications
+            : [];
+
+      const meta = response?.meta || { categoryCounts: {} };
+
+      setNotifData({
+        data: rawData,
+        meta
+      });
       setErrorMessage("");
     } catch (error) {
       const message = error.message || t("toasts.loadFailed");
@@ -78,7 +92,7 @@ export function NotificationsPage() {
           if (payload?.notificationId) {
             setNotifData(prev => ({
               ...prev,
-              data: prev.data.map(n => n.id === payload.notificationId ? { ...n, isRead: true } : n)
+              data: (prev?.data || []).map(n => n.id === payload.notificationId ? { ...n, isRead: true } : n)
             }));
           }
         } catch (err) {
@@ -89,7 +103,7 @@ export function NotificationsPage() {
       stream.addEventListener("notifications.read_all", (e) => {
         setNotifData(prev => ({
           ...prev,
-          data: prev.data.map(n => ({ ...n, isRead: true }))
+          data: (prev?.data || []).map(n => ({ ...n, isRead: true }))
         }));
         refreshSilently();
       });
@@ -111,7 +125,7 @@ export function NotificationsPage() {
       // Optimistic update
       setNotifData(prev => ({
         ...prev,
-        data: prev.data.map(n => n.id === id ? { ...n, isRead: true } : n)
+        data: (prev?.data || []).map(n => n.id === id ? { ...n, isRead: true } : n)
       }));
       window.dispatchEvent(new Event("notifications:changed"));
     } catch (error) {
@@ -124,7 +138,7 @@ export function NotificationsPage() {
       await notificationService.markAllRead(activeBrand?.id);
       setNotifData(prev => ({
         ...prev,
-        data: prev.data.map(n => ({ ...n, isRead: true }))
+        data: (prev?.data || []).map(n => ({ ...n, isRead: true }))
       }));
       window.dispatchEvent(new Event("notifications:changed"));
       toast.success(t("toasts.markAllReadSuccess"));
