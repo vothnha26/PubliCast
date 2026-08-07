@@ -3,9 +3,15 @@ const googleOAuthService = require('../google-oauth.service');
 const socialAccountRepository = require('../../../repositories/social/social-account.repository');
 const competitorRepository = require('../../../repositories/social/competitor.repository');
 const youTubeVideoMetricRepository = require('../../../repositories/social/youtube-video-metric.repository');
-const { PLATFORMS, SEPARATORS, ANALYTICS, SOCIAL_TECHNICAL, YT_VIDEO_INSIGHTS, REDIS_TTL } = require('../../../utils/constants');
+const { eventEmitter, EVENTS } = require('../../../events/event-emitter');
+const { PLATFORMS, SEPARATORS, ANALYTICS, SOCIAL_TECHNICAL, YT_VIDEO_INSIGHTS } = require('../../../utils/constants');
 const { YOUTUBE_QUOTA_THRESHOLD, YOUTUBE_DAILY_QUOTA_LIMIT } = ANALYTICS;
 const logger = require('../../../utils/logger');
+
+// getPostInsights' DB-first staleness window — YouTube Analytics data
+// itself lags 24-48h at the source, so re-fetching more often than this
+// would just call the live API for data that hasn't actually changed yet.
+const POST_INSIGHTS_STALENESS_MS = 24 * 60 * 60 * 1000;
 
 let redisClient = null;
 try {
@@ -617,21 +623,30 @@ class YouTubeAnalyticsService {
    * Áp dụng SRP: mỗi bước được tách thành method riêng.
    */
   async getPostInsights(brandId, videoId) {
-    const cacheKey = `yt:video-insights:${videoId}`;
-
-    const cached = await this._readCache(cacheKey);
-    if (cached) return cached;
-
     const authInfo = await this._getAuthClient(brandId);
     if (!authInfo) return this._emptyInsightsResponse();
 
-    const result = await this._buildInsights(authInfo.auth, videoId);
-    await this._writeCache(cacheKey, result);
+    // DB-first, not Redis — YouTubeVideoMetric is the permanent record of
+    // every fetch, so there is no separate short-TTL cache layer needed on
+    // top of it. A Redis TTL previously gated this instead, which meant a
+    // request landing just after the TTL expired re-hit the live API even
+    // though the DB already had a record from minutes earlier (#98-
+    // equivalent fix — the DB write existed but was never read back).
+    // 24h staleness matches the underlying data's own lag (YouTube
+    // Analytics itself is 24-48h behind), so refreshing more often than
+    // this fetches nothing new from the real API anyway.
+    const recent = await youTubeVideoMetricRepository.findRecentByVideo(authInfo.socialAccountId, videoId, 1);
+    const freshRecord = recent[0];
+    if (freshRecord && Date.now() - freshRecord.fetchedAt.getTime() < POST_INSIGHTS_STALENESS_MS) {
+      try {
+        return JSON.parse(freshRecord.rawInsightsJson);
+      } catch (err) {
+        logger.debug('[YouTubeAnalyticsService] Failed to parse cached video insight, refetching:', err.message);
+      }
+    }
 
-    // Persist alongside the Redis cache — was never written to the DB
-    // before, so a cache expiry (2h TTL) permanently lost the fetch. Redis
-    // stays as the short-TTL layer that avoids re-hitting the YouTube
-    // Analytics API; this table is the permanent record of what was fetched.
+    const result = await this._buildInsights(authInfo.auth, videoId);
+
     // No likes/comments/avgWatchTime in _buildInsights's actual shape (see
     // _fetchInsightsSummary) — those columns default to 0; the full shape
     // (totalWatchHrs/avgViewPercentage/subscribersNet/trafficSource/
@@ -649,24 +664,11 @@ class YouTubeAnalyticsService {
       logger.debug('[YouTubeAnalyticsService] Failed to persist video insight:', err.message);
     });
 
+    // Best-effort — a delayed socket update on failure is fine, nothing
+    // needs a retry (same reasoning as sync-cache.proxy.js's syncAndEmit).
+    eventEmitter.emit(EVENTS.SOCIAL.METRICS_SYNCED, { brandId, socialAccountId: authInfo.socialAccountId, platform: PLATFORMS.YOUTUBE });
+
     return result;
-  }
-
-  /** Đọc cache Redis — trả null nếu miss hoặc Redis lỗi */
-  async _readCache(key) {
-    if (!redisClient) return null;
-    try {
-      const cached = await redisClient.get(key);
-      return cached ? JSON.parse(cached) : null;
-    } catch (_) { return null; }
-  }
-
-  /** Ghi cache Redis — bỏ qua lỗi, không làm crash flow chính */
-  async _writeCache(key, value) {
-    if (!redisClient) return;
-    try {
-      await redisClient.setEx(key, REDIS_TTL.VIDEO_INSIGHTS_SEC, JSON.stringify(value));
-    } catch (_) { /* bỏ qua */ }
   }
 
   /**

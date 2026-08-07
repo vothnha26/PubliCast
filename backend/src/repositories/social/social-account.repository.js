@@ -604,6 +604,32 @@ class SocialAccountRepository {
     });
   }
 
+  /**
+   * Cheap version signal for a brand's metrics — max(updatedAt) across its
+   * social accounts and max(fetchedAt) across their Analytics snapshot rows,
+   * whichever is newer. Used by the reconnect-reconcile flow to detect a
+   * missed `data_invalidate` socket event without re-fetching the full
+   * metrics payload just to compare it.
+   */
+  async getMetricsVersion(brandId) {
+    const [latestAccount, latestAnalytics] = await Promise.all([
+      prisma.socialAccount.findFirst({
+        where: { brandId },
+        orderBy: { updatedAt: 'desc' },
+        select: { updatedAt: true }
+      }),
+      prisma.analytics.findFirst({
+        where: { brandId },
+        orderBy: { fetchedAt: 'desc' },
+        select: { fetchedAt: true }
+      })
+    ]);
+
+    const accountTime = latestAccount?.updatedAt?.getTime() || 0;
+    const analyticsTime = latestAnalytics?.fetchedAt?.getTime() || 0;
+    return Math.max(accountTime, analyticsTime);
+  }
+
   async findAnalyticsInRange(socialAccountId, startDate, endDate) {
     return prisma.analytics.findMany({
       where: {

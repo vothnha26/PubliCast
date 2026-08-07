@@ -33,6 +33,17 @@ class SocialService {
     return data;
   }
 
+  /**
+   * Cheap version signal for a brand's metrics — used by socket.js to
+   * reconcile after a reconnect in case a `data_invalidate` event was
+   * missed while disconnected. Not meant for polling.
+   */
+  async getMetricsVersion(brandId) {
+    const queryParams = new URLSearchParams({ brandId }).toString();
+    const data = await apiV2.get(`/social/metrics/version?${queryParams}`);
+    return data;
+  }
+
   async addTrackedVideo(brandId, videoUrl) {
     const data = await apiV2.post('/social/youtube/track', { brandId, videoUrl });
     return data;

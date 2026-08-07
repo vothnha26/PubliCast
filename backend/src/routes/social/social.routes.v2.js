@@ -54,6 +54,30 @@ router.get('/metrics', verifyAuth, checkPermission(PERMISSION_KEYS.VIEW_ANALYTIC
 
 /**
  * @openapi
+ * /v2/social/metrics/version:
+ *   get:
+ *     summary: Cheap version signal for a brand's metrics, used to reconcile after a socket reconnect
+ *     tags: [Social V2]
+ *     security: [{ cookieAuth: [] }]
+ *     parameters:
+ *       - in: query
+ *         name: brandId
+ *         required: true
+ *         schema: { type: string }
+ *     responses:
+ *       200:
+ *         description: Metrics version returned
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/V2EnvelopeResponse'
+ */
+router.get('/metrics/version', verifyAuth, checkPermission(PERMISSION_KEYS.VIEW_ANALYTICS), (req, res, next) => {
+  socialAnalyticsController.getMetricsVersion(req, res, next);
+});
+
+/**
+ * @openapi
  * /v2/social/facebook/published-posts:
  *   get:
  *     summary: Get Facebook published posts list for brand

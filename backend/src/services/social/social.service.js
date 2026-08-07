@@ -36,6 +36,15 @@ class SocialService {
   }
 
   /**
+   * Cheap version signal for a brand's metrics, used by the frontend to
+   * reconcile after a socket reconnect in case a `data_invalidate` event was
+   * missed while disconnected (see socket-invalidation.service.js).
+   */
+  async getMetricsVersion(brandId) {
+    return socialAccountRepository.getMetricsVersion(brandId);
+  }
+
+  /**
    * Get Google Drive context including connection status and account info
    */
   async getGoogleDriveContext(brandId) {

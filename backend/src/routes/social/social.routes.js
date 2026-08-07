@@ -88,6 +88,8 @@ router.get('/threads/published-posts', verifyAuth, requireBrandMember, threadsCo
 
 // Real-time Metrics
 router.get('/metrics', verifyAuth, checkPermission(PERMISSION_KEYS.VIEW_ANALYTICS), socialAnalyticsController.getMetrics);
+// Cheap version check for reconcile-on-reconnect (see frontend services/socket.js)
+router.get('/metrics/version', verifyAuth, checkPermission(PERMISSION_KEYS.VIEW_ANALYTICS), socialAnalyticsController.getMetricsVersion);
 
 // YouTube Tracked Videos
 /**

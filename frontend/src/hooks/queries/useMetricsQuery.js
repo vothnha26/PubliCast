@@ -26,5 +26,12 @@ export function useMetricsQuery(brandId, startDate, endDate) {
     enabled: Boolean(brandId),
     staleTime: CACHE_CONFIG.METRICS_STALE_TIME_MS,
     gcTime: CACHE_CONFIG.DEFAULT_GC_TIME_MS,
+    // Forces a refetch every time this hook mounts, even if the persisted
+    // IndexedDB cache is still within staleTime — closes the multi-device
+    // gap where Browser B was offline when Browser A's change fired
+    // `data_invalidate`. Browser B renders the (possibly stale) persisted
+    // value instantly on mount, then this corrects it within one round
+    // trip instead of waiting up to staleTime for a background refetch.
+    refetchOnMount: 'always',
   });
 }
