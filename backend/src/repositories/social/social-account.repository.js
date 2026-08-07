@@ -908,6 +908,36 @@ class SocialAccountRepository {
     return this._decryptAccounts(accounts);
   }
 
+  /**
+   * Lightweight counterpart to findByBrandAndPlatform for callers that only
+   * need the token/identity fields to authenticate an outbound API call
+   * (publish, comment sync, competitor lookup) — not the 8 platform-specific
+   * relations + latest-analytics blob the full query joins in. Those callers
+   * run on the hottest paths in the app (every publish, every comment sync),
+   * so the 8-join Prisma query plus decrypting tokens for rows whose
+   * relations are immediately discarded was pure overhead on every call.
+   */
+  async findAuthContextByBrandAndPlatform(brandId, platform) {
+    const where = { brandId };
+    if (platform) where.platform = platform;
+
+    const accounts = await prisma.socialAccount.findMany({
+      where,
+      select: {
+        id: true,
+        brandId: true,
+        platform: true,
+        platformAccountId: true,
+        displayName: true,
+        profilePictureUrl: true,
+        accessToken: true,
+        refreshToken: true,
+        tokenExpiresAt: true
+      }
+    });
+    return this._decryptAccounts(accounts);
+  }
+
   async upsertRedditAccount(brandId, accountData, tokens, options = {}) {
     const { enqueueSync = true } = options;
     const { platformAccountId, username, displayName, profilePictureUrl, linkKarma = 0, commentKarma = 0 } = accountData;
@@ -1180,6 +1210,29 @@ class SocialAccountRepository {
     return this._decryptAccount(account);
   }
 
+
+  /**
+   * Connected accounts whose lastSyncAt is past the cooldown (or never
+   * synced) — used by SocialMetricsSyncScheduler to publish one QStash
+   * message per due account instead of force-syncing every account on
+   * every brand at the top of the hour regardless of how recently each was
+   * synced (the previous behavior, which spiked platform API calls and
+   * blocked the main process for however many brands existed).
+   */
+  async findDueForMetricsSync(cooldownHours, limit) {
+    const threshold = new Date(Date.now() - cooldownHours * 60 * 60 * 1000);
+    return prisma.socialAccount.findMany({
+      where: {
+        isConnected: true,
+        OR: [
+          { lastSyncAt: null },
+          { lastSyncAt: { lt: threshold } }
+        ]
+      },
+      select: { id: true, platform: true, brandId: true },
+      take: limit
+    });
+  }
 
   async updateSyncStatus(id, syncStatus) {
     return prisma.socialAccount.update({

@@ -733,10 +733,12 @@ const LOCK_CONFIG = {
     TTL_SEC: 100              // Lock expires in 100s (for 2m testing cycle)
   },
   SOCIAL_METRICS_SYNC_SCHEDULER: {
-    KEY: 'lock:social-metrics-sync-scheduler:hourly-scan',
-    // Covers one full published-posts/metrics sync pass across every brand —
-    // generous ceiling, same reasoning as REPORT_SCHEDULER.
-    TTL_SEC: 20 * 60
+    KEY: 'lock:social-metrics-sync-scheduler:scan',
+    // Only covers a DB query + a batch of QStash publishJSON calls now (the
+    // actual per-account sync moved to the metrics-sync QStash webhook) —
+    // shortened from 20min to comfortably fit inside the 15min cadence
+    // without a slow scan run risking self-blocking the next cycle's lock.
+    TTL_SEC: 5 * 60
   },
   EMPTY_QUEUE_SCHEDULER: {
     KEY: 'lock:empty-queue-scheduler:daily-scan',

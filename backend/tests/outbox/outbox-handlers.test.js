@@ -3,10 +3,9 @@ jest.mock('../../src/queues/publish.queue', () => ({
   removePublishJob: jest.fn().mockResolvedValue(true)
 }));
 
-jest.mock('../../src/queues/social.queue', () => ({
-  socialQueue: {
-    add: jest.fn().mockResolvedValue({ id: 'mock-job' }),
-    remove: jest.fn().mockResolvedValue(true)
+jest.mock('../../src/config/qstash', () => ({
+  qstashClient: {
+    publishJSON: jest.fn().mockResolvedValue({ messageId: 'mock-message-id' })
   }
 }));
 
@@ -27,13 +26,12 @@ jest.mock('../../src/services/core/email.service', () => ({
 }));
 
 const { upsertPublishJob, removePublishJob } = require('../../src/queues/publish.queue');
-const { socialQueue } = require('../../src/queues/social.queue');
+const { qstashClient } = require('../../src/config/qstash');
 const initPostSubscribers = require('../../src/events/subscribers/post.subscriber');
 const brandService = require('../../src/services/workspace/brand.service');
 const emailService = require('../../src/services/core/email.service');
 const { OUTBOX_HANDLERS } = require('../../src/services/core/outbox-handlers');
 const { OUTBOX_EVENT_TYPES } = require('../../src/constants/outbox.constants');
-const { QUEUE_CONFIG } = require('../../src/constants/video-publish.constants');
 
 describe('OUTBOX_HANDLERS', () => {
   beforeEach(() => {
@@ -78,27 +76,27 @@ describe('OUTBOX_HANDLERS', () => {
   });
 
   describe('SOCIAL_SYNC_ENQUEUE', () => {
-    it('removes any existing job before adding, using a jobId derived from socialAccountId', async () => {
+    it('publishes to the QStash social-sync webhook with a deduplicationId derived from socialAccountId', async () => {
       await OUTBOX_HANDLERS[OUTBOX_EVENT_TYPES.SOCIAL_SYNC_ENQUEUE]({
         socialAccountId: 'sa-1',
         platform: 'FACEBOOK',
         brandId: 'brand-1'
       });
 
-      expect(socialQueue.remove).toHaveBeenCalledWith('social-sync-sa-1');
-      expect(socialQueue.add).toHaveBeenCalledWith(
-        QUEUE_CONFIG.SOCIAL.JOB_SYNC,
-        { socialAccountId: 'sa-1', platform: 'FACEBOOK', brandId: 'brand-1' },
-        { jobId: 'social-sync-sa-1' }
+      expect(qstashClient.publishJSON).toHaveBeenCalledWith(
+        expect.objectContaining({
+          body: { socialAccountId: 'sa-1', platform: 'FACEBOOK', brandId: 'brand-1' },
+          deduplicationId: 'social-sync-sa-1'
+        })
       );
     });
 
-    it('produces the same jobId for repeated calls with the same socialAccountId (idempotent)', async () => {
+    it('produces the same deduplicationId for repeated calls with the same socialAccountId (idempotent)', async () => {
       await OUTBOX_HANDLERS[OUTBOX_EVENT_TYPES.SOCIAL_SYNC_ENQUEUE]({ socialAccountId: 'sa-2', platform: 'YOUTUBE', brandId: 'brand-1' });
       await OUTBOX_HANDLERS[OUTBOX_EVENT_TYPES.SOCIAL_SYNC_ENQUEUE]({ socialAccountId: 'sa-2', platform: 'YOUTUBE', brandId: 'brand-1' });
 
-      const jobIds = socialQueue.add.mock.calls.map(call => call[2].jobId);
-      expect(jobIds).toEqual(['social-sync-sa-2', 'social-sync-sa-2']);
+      const dedupIds = qstashClient.publishJSON.mock.calls.map(call => call[0].deduplicationId);
+      expect(dedupIds).toEqual(['social-sync-sa-2', 'social-sync-sa-2']);
     });
   });
 });

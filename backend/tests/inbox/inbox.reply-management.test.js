@@ -23,7 +23,8 @@ jest.mock('../../src/repositories/social/inbox.repository', () => ({
 jest.mock('../../src/repositories/social/social-account.repository', () => ({
   findById: jest.fn(),
   findByBrandAndPlatformFirst: jest.fn(),
-  findByBrandAndPlatform: jest.fn()
+  findByBrandAndPlatform: jest.fn(),
+  findAuthContextByBrandAndPlatform: jest.fn()
 }));
 
 jest.mock('../../src/services/auth/authorization.facade', () => ({
@@ -135,7 +136,7 @@ describe('InboxService - updateReply', () => {
       };
 
       inboxRepository.findById.mockResolvedValue(ytReply);
-      socialAccountRepository.findByBrandAndPlatform.mockResolvedValue(mockYtAccount);
+      socialAccountRepository.findAuthContextByBrandAndPlatform.mockResolvedValue(mockYtAccount);
       mockYtGateway.updateComment.mockResolvedValue({ success: true });
       inboxRepository.updateInboxItem.mockResolvedValue({ ...ytReply, content: 'YouTube updated reply' });
 
@@ -212,7 +213,7 @@ describe('InboxService - deleteReply', () => {
       };
 
       inboxRepository.findById.mockResolvedValue(ytReply);
-      socialAccountRepository.findByBrandAndPlatform.mockResolvedValue(mockYtAccount);
+      socialAccountRepository.findAuthContextByBrandAndPlatform.mockResolvedValue(mockYtAccount);
       mockYtGateway.deleteComment.mockResolvedValue({ success: true });
       inboxRepository.deleteInboxItem.mockResolvedValue(true);
 

@@ -7,8 +7,7 @@
  */
 const { OUTBOX_EVENT_TYPES } = require('../../constants/outbox.constants');
 const { upsertPublishJob, removePublishJob } = require('../../queues/publish.queue');
-const { socialQueue } = require('../../queues/social.queue');
-const { QUEUE_CONFIG } = require('../../constants/video-publish.constants');
+const { qstashClient } = require('../../config/qstash');
 const initPostSubscribers = require('../../events/subscribers/post.subscriber');
 const { POST_DOMAIN_EVENT_HANDLERS } = initPostSubscribers;
 const brandService = require('../workspace/brand.service');
@@ -37,16 +36,17 @@ const OUTBOX_HANDLERS = {
     await emailService.sendOTP(payload.email, payload.otp);
   },
   [OUTBOX_EVENT_TYPES.SOCIAL_SYNC_ENQUEUE]: async (payload) => {
-    // jobId cố định theo socialAccountId — idempotent, khác với social.subscriber.js
-    // cũ (đã bỏ) từng để BullMQ tự sinh ID ngẫu nhiên mỗi lần. remove trước khi add
-    // (giống upsertPublishJob) để reconnect nhanh liên tiếp không bị lỗi "job đã tồn tại".
-    const jobId = `social-sync-${payload.socialAccountId}`;
-    await socialQueue.remove(jobId);
-    await socialQueue.add(
-      QUEUE_CONFIG.SOCIAL.JOB_SYNC,
-      { socialAccountId: payload.socialAccountId, platform: payload.platform, brandId: payload.brandId },
-      { jobId }
-    );
+    // deduplicationId fixed to socialAccountId — a fast reconnect landing
+    // before the previous sync's dedup window (90 days) expires is accepted
+    // but not redelivered, matching the old remove-then-add idempotency.
+    // Delivered via HTTP webhook (see routes/webhooks/qstash.routes.js) instead
+    // of a BullMQ worker — no idle-poll cost when there's nothing to sync.
+    await qstashClient.publishJSON({
+      url: `${process.env.BACKEND_BASE_URL}/api/webhooks/qstash/social-sync`,
+      body: { socialAccountId: payload.socialAccountId, platform: payload.platform, brandId: payload.brandId },
+      deduplicationId: `social-sync-${payload.socialAccountId}`,
+      retries: 3
+    });
   },
   [OUTBOX_EVENT_TYPES.INTEGRATION_REVOCATION_WEBHOOK]: async (payload) => {
     // One outbox event per client (see revocation-webhook.service.js's

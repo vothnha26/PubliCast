@@ -78,6 +78,9 @@ const webhookRoutes = require('./routes/billing/webhook.routes');
 // Routes - External Integrations (e.g. Convo — HMAC-signed, no user session)
 const convoIntegrationRoutes = require('./routes/integrations/convo-integration.routes');
 
+// Routes - QStash Webhooks (server-to-server, Upstash-Signature verified)
+const qstashRoutes = require('./routes/webhooks/qstash.routes');
+
 // BullMQ Dashboard
 const queueDashboard = require('./queues/dashboard');
 const { verifyAuth } = require('./middlewares/auth.middleware');
@@ -248,6 +251,7 @@ app.use('/api/ad-accounts', adAccountRoutes);
 app.use('/api/billing/subscriptions', subscriptionRoutes);
 app.use('/api/webhooks', webhookRoutes);  // SePay POSTs to /api/webhooks/sepay
 app.use('/api/payments', webhookRoutes);  // Alias for backward compatibility with user's SePay config
+app.use('/api/webhooks/qstash', qstashRoutes);
 
 // ── External Integration Routes ─────────────────────────────────────────────
 // HMAC-signed, no user session — see src/middlewares/hmac-auth.middleware.js

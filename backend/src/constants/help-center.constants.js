@@ -1,10 +1,3 @@
-const QUEUE_CONFIG = Object.freeze({
-  HELP_CENTER_EMBEDDING: {
-    NAME: 'help-center-embedding-queue',
-    JOB_EMBED_ARTICLE: 'embed-article'
-  }
-});
-
 const EMBEDDING_CONFIG = Object.freeze({
   // gemini-embedding-001 defaults to 3072 dims but supports truncating via
   // outputDimensionality — 768 matches the HelpArticleChunk.embedding
@@ -28,7 +21,6 @@ const CHUNKING_CONFIG = Object.freeze({
 const SEMANTIC_CACHE_THRESHOLD = 0.95;
 
 module.exports = {
-  QUEUE_CONFIG,
   EMBEDDING_CONFIG,
   CHUNKING_CONFIG,
   SEMANTIC_CACHE_THRESHOLD

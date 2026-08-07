@@ -13,7 +13,7 @@ const OUTBOX_EVENT_TYPES = {
   POST_PUBLISH_UPSERT: 'POST_PUBLISH_UPSERT',   // upsertPublishJob(postId, scheduledAt)
   POST_PUBLISH_REMOVE: 'POST_PUBLISH_REMOVE',   // removePublishJob(postId)
   POST_DOMAIN_EVENT: 'POST_DOMAIN_EVENT',       // re-emit eventEmitter cho post.subscriber.js xử lý phần còn lại
-  SOCIAL_SYNC_ENQUEUE: 'SOCIAL_SYNC_ENQUEUE',   // socialQueue.add JOB_SYNC (đợt 3)
+  SOCIAL_SYNC_ENQUEUE: 'SOCIAL_SYNC_ENQUEUE',   // QStash publishJSON to /api/webhooks/qstash/social-sync
   USER_DEFAULT_BRAND_CREATE: 'USER_DEFAULT_BRAND_CREATE', // brandService.createDefaultBrand(userId) — thay eventEmitter fire-and-forget (#108 I10)
   USER_SEND_WELCOME_OTP: 'USER_SEND_WELCOME_OTP',         // emailService.sendOTP(email, otp) — thay eventEmitter fire-and-forget (#108 I10)
   INTEGRATION_REVOCATION_WEBHOOK: 'INTEGRATION_REVOCATION_WEBHOOK' // revocationWebhookService.dispatch(payload) — critical-event push to external integrations (Convo), see plan.txt mục 6

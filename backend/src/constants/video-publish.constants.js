@@ -35,10 +35,6 @@ const QUEUE_CONFIG = Object.freeze({
     STALE_RETRYING_MS: 10 * 60 * 1000,
     POLL_INTERVAL_MS: 5 * 60 * 1000,
     BATCH_SIZE: 50
-  },
-  SOCIAL: {
-    NAME: 'social-sync-queue',
-    JOB_SYNC: 'sync-channel-metrics'
   }
 });
 

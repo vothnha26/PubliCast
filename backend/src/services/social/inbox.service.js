@@ -20,6 +20,7 @@ const FacebookDMSyncStrategy = require('./inbox/strategies/facebook-dm.strategy'
 const InstagramDMSyncStrategy = require('./inbox/strategies/instagram-dm.strategy');
 const TiktokCommentSyncStrategy = require('./inbox/strategies/tiktok-comment.strategy');
 const autoReplyService = require('./inbox/strategies/auto-reply/auto-reply.service');
+const { parsePlatformPostId, getFirstIdForPlatform } = require('../workspace/post/platform-post-id.util');
 
 class InboxService {
   constructor() {
@@ -75,20 +76,26 @@ class InboxService {
    */
   _resolvePlatformPostId(post) {
     if (!post.platformPostId) return null;
-    try {
-      const parsed = JSON.parse(post.platformPostId);
-      if (parsed && typeof parsed === 'object') {
-        const platforms = (post.targetPlatforms || '').split(',').map(p => p.trim()).filter(Boolean);
-        for (const p of platforms) {
-          if (parsed[p]) return parsed[p];
-        }
-        return Object.values(parsed)[0] || null;
-      }
-    } catch (e) {
+    const platformIdMap = parsePlatformPostId(post.platformPostId);
+    if (Object.keys(platformIdMap).length === 0) {
       // Not JSON — legacy plain-string format (YouTube video ID).
       return post.platformPostId;
     }
-    return post.platformPostId;
+
+    const platforms = (post.targetPlatforms || '').split(',').map(p => p.trim()).filter(Boolean);
+    for (const p of platforms) {
+      // getFirstIdForPlatform unwraps both the legacy per-platform string
+      // shape and the current per-account { [socialAccountId]: id } shape —
+      // reading platformIdMap[p] directly here previously returned that raw
+      // per-account object for any post published to multiple accounts of
+      // the same platform, which then flowed into postsMap as a non-string
+      // `id` and broke React's key prop (`[object Object]`) downstream in
+      // PostsGridSidebar.
+      const id = getFirstIdForPlatform(platformIdMap, p);
+      if (id) return id;
+    }
+    const remaining = Object.keys(platformIdMap)[0];
+    return remaining ? getFirstIdForPlatform(platformIdMap, remaining) : null;
   }
 
   /**

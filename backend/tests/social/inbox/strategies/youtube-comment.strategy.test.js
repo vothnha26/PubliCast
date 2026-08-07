@@ -25,7 +25,7 @@ describe('YoutubeCommentSyncStrategy Pagination Unit Tests', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     strategy = new YoutubeCommentSyncStrategy();
-    socialAccountRepository.findByBrandAndPlatform.mockResolvedValue([mockAccount]);
+    socialAccountRepository.findAuthContextByBrandAndPlatform.mockResolvedValue([mockAccount]);
     inboxRepository.upsertInboxItem.mockImplementation((where, update, create) => {
       return Promise.resolve({ id: `item-${create.platformItemId}`, ...create });
     });
@@ -157,7 +157,7 @@ describe('YoutubeCommentSyncStrategy Pagination Unit Tests', () => {
       { id: 'acc-mock', platformAccountId: 'mock-channel', accessToken: 'mock-token' },
       { id: 'acc-real', platformAccountId: 'real-channel', accessToken: 'real-token' }
     ];
-    socialAccountRepository.findByBrandAndPlatform.mockResolvedValue(mockAccounts);
+    socialAccountRepository.findAuthContextByBrandAndPlatform.mockResolvedValue(mockAccounts);
     
     youtubeGateway.getCommentThreads.mockResolvedValue({ data: { items: [] } });
 
