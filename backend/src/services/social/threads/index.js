@@ -1,6 +1,6 @@
 const BaseSocialService = require('../base-social.service');
 const threadsGateway = require('./threads.gateway');
-const brandRepository = require('../../../repositories/workspace/brand.repository');
+const { getHistoryWindowMonths } = require('../plan-history-window.util');
 const prisma = require('../../../config/prisma');
 const { PLATFORMS } = require('../../../utils/constants');
 const { THREADS_MEDIA_TYPE, THREADS_CONTAINER_STATUS } = require('./threads.constants');
@@ -13,10 +13,6 @@ const logger = require('../../../utils/logger');
 // rate limit as Facebook/Instagram (developers.facebook.com/documentation/
 // threads/overview).
 const MAX_PAGE_COUNT = 5;
-
-// Fallback when a brand has no active subscription — same conservative
-// (FREE-tier) default used by the other platform services.
-const DEFAULT_HISTORY_WINDOW_MONTHS = 1;
 
 // getPublishedVideos()'s DB-first cache (see SocialPostMetric). Threads
 // currently exposes no real insights (reach/views are left null — see the
@@ -399,7 +395,7 @@ class ThreadsService extends BaseSocialService {
       if (pageToken) {
         result = await this._fetchThreadsSinglePage(pageId, accessToken, pageToken, limit);
       } else {
-        const windowMonths = await this._getHistoryWindowMonths(brandId);
+        const windowMonths = await getHistoryWindowMonths(brandId);
         result = await this._fetchThreadsFromDbCache(brandId, activeAccount.id, windowMonths);
         if (!result) {
           result = await this._fetchThreadsRecentWindow(brandId, pageId, accessToken, windowMonths, limit);
@@ -503,12 +499,6 @@ class ThreadsService extends BaseSocialService {
     }
 
     return { data: posts, nextPageToken: null, prevPageToken: null };
-  }
-
-  async _getHistoryWindowMonths(brandId) {
-    const brand = await brandRepository.findBrandWithSubscription(brandId);
-    const planLimit = brand?.subscription?.status === 'ACTIVE' ? brand.subscription.plan?.planLimit : null;
-    return planLimit?.historyWindowMonths || DEFAULT_HISTORY_WINDOW_MONTHS;
   }
 
   /** DB-first read path (see SocialPostMetric in schema.prisma). Mirrors

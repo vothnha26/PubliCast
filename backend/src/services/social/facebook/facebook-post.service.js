@@ -54,17 +54,13 @@ const INSIGHTS_STRATEGIES = {
   }
 };
 const socialAccountRepository = require('../../../repositories/social/social-account.repository');
-const brandRepository = require('../../../repositories/workspace/brand.repository');
+const { getHistoryWindowMonths } = require('../plan-history-window.util');
 const { PLATFORMS, POST_STATUS, POST_TYPES, DEFAULT_CONFIG, SOCIAL_TECHNICAL, MEDIA_EXTENSIONS } = require('../../../utils/constants');
 const { matchesExtension } = require('../../../utils/media-type.utils');
 const FacebookPublishStrategyFactory = require('./publish-strategies/publish-strategy.factory');
 const redisClient = require('../../../config/redis');
 const prisma = require('../../../config/prisma');
 const DistributedLockService = require('../distributed-lock.service');
-
-// Fallback when a brand has no active subscription — same conservative
-// (FREE-tier) default used by TikTokVideoService/InstagramPostService.
-const DEFAULT_HISTORY_WINDOW_MONTHS = 1;
 
 const POST_INSIGHTS_CACHE_TTL_SEC = 5 * 60; // 5 minutes
 // getVideoDetails() read-through cache: Inbox preview was calling the Graph
@@ -132,7 +128,7 @@ class FacebookPostService {
       if (pageToken) {
         result = await this._fetchSinglePage(pageId, pageAccessToken, pageToken, limit);
       } else {
-        const windowMonths = await this._getHistoryWindowMonths(brandId);
+        const windowMonths = await getHistoryWindowMonths(brandId);
         result = await this._fetchFromDbCache(brandId, resolvedAccountId, windowMonths);
         if (!result) {
           result = await this._fetchRecentWindow(brandId, pageId, pageAccessToken, limit);
@@ -301,7 +297,7 @@ class FacebookPostService {
    * (developers.facebook.com/docs/graph-api/overview/rate-limiting/). */
   async _fetchRecentWindow(brandId, pageId, pageAccessToken, limit) {
     const MAX_PAGE_COUNT = 5;
-    const windowMonths = await this._getHistoryWindowMonths(brandId);
+    const windowMonths = await getHistoryWindowMonths(brandId);
     const recentCutoff = new Date();
     recentCutoff.setMonth(recentCutoff.getMonth() - windowMonths);
 
@@ -341,11 +337,6 @@ class FacebookPostService {
     return { data: posts, nextPageToken: null, prevPageToken: null };
   }
 
-  async _getHistoryWindowMonths(brandId) {
-    const brand = await brandRepository.findBrandWithSubscription(brandId);
-    const planLimit = brand?.subscription?.status === 'ACTIVE' ? brand.subscription.plan?.planLimit : null;
-    return planLimit?.historyWindowMonths || DEFAULT_HISTORY_WINDOW_MONTHS;
-  }
   async publishPost(brandId, postData) {
     const { platformPostId, scheduledAt, type, mediaUrls = [], socialAccountId } = postData;
     logger.debug(`\n[Facebook] ▶ publishPost | brandId=${brandId} | type=${type} | mediaUrls=${JSON.stringify(mediaUrls)}`);
