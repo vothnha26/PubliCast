@@ -1,21 +1,20 @@
 /**
  * Regression tests for #107 (I7): posts stuck at RETRYING because their
- * self-enqueued partial-retry job was lost (Redis restart, or a #106
- * active-job dedup skip) have nothing left to move them forward on their
- * own. publishReconcilerService sweeps them periodically and either
- * re-enqueues (using the persisted publishRetryCount) or marks FAILED once
- * MAX_PUBLISH_ATTEMPTS is exhausted.
+ * self-published partial-retry QStash message was lost have nothing left to
+ * move them forward on their own. publishReconcilerService sweeps them
+ * periodically and either re-publishes a delivery (using the persisted
+ * publishRetryCount) or marks FAILED once MAX_PUBLISH_ATTEMPTS is exhausted.
  */
 jest.mock('../../src/repositories/workspace/post.repository', () => ({
   findStaleRetrying: jest.fn(),
   update: jest.fn()
 }));
-jest.mock('../../src/queues/publish.queue', () => ({
-  safeUpsertPublishJob: jest.fn()
+jest.mock('../../src/services/workspace/post/publish-qstash.service', () => ({
+  enqueueImmediate: jest.fn()
 }));
 
 const postRepository = require('../../src/repositories/workspace/post.repository');
-const { safeUpsertPublishJob } = require('../../src/queues/publish.queue');
+const { enqueueImmediate } = require('../../src/services/workspace/post/publish-qstash.service');
 const publishReconcilerService = require('../../src/services/workspace/post/publish-reconciler.service');
 const { QUEUE_CONFIG } = require('../../src/constants/video-publish.constants');
 
@@ -24,25 +23,20 @@ describe('PublishReconcilerService.runOnce (#107 I7)', () => {
     jest.clearAllMocks();
   });
 
-  it('re-enqueues a stale RETRYING post that has not exhausted its attempts', async () => {
+  it('re-publishes a delivery for a stale RETRYING post that has not exhausted its attempts', async () => {
     postRepository.findStaleRetrying.mockResolvedValue([
       { id: 'post-1', publishRetryCount: 1 }
     ]);
-    safeUpsertPublishJob.mockResolvedValue({ applied: true });
+    enqueueImmediate.mockResolvedValue('msg-new');
 
     const result = await publishReconcilerService.runOnce();
 
-    expect(safeUpsertPublishJob).toHaveBeenCalledWith(
-      'publish-post-post-1',
-      QUEUE_CONFIG.PUBLISH.JOB_PUBLISH,
-      { postId: 'post-1', partialRetryCount: 1 },
-      { delay: 0 }
-    );
+    expect(enqueueImmediate).toHaveBeenCalledWith('post-1', { partialRetryCount: 1 });
     expect(postRepository.update).not.toHaveBeenCalledWith('post-1', { status: 'FAILED' });
     expect(result).toEqual({ swept: 1, reenqueued: 1, failed: 0 });
   });
 
-  it('marks FAILED instead of re-enqueuing once publishRetryCount has exhausted MAX_PUBLISH_ATTEMPTS', async () => {
+  it('marks FAILED instead of re-publishing once publishRetryCount has exhausted MAX_PUBLISH_ATTEMPTS', async () => {
     postRepository.findStaleRetrying.mockResolvedValue([
       { id: 'post-1', publishRetryCount: QUEUE_CONFIG.PUBLISH.MAX_PUBLISH_ATTEMPTS }
     ]);
@@ -50,19 +44,8 @@ describe('PublishReconcilerService.runOnce (#107 I7)', () => {
     const result = await publishReconcilerService.runOnce();
 
     expect(postRepository.update).toHaveBeenCalledWith('post-1', { status: 'FAILED' });
-    expect(safeUpsertPublishJob).not.toHaveBeenCalled();
+    expect(enqueueImmediate).not.toHaveBeenCalled();
     expect(result).toEqual({ swept: 1, reenqueued: 0, failed: 1 });
-  });
-
-  it('does not count a skipped re-enqueue (job unexpectedly already active) as reenqueued', async () => {
-    postRepository.findStaleRetrying.mockResolvedValue([
-      { id: 'post-1', publishRetryCount: 0 }
-    ]);
-    safeUpsertPublishJob.mockResolvedValue({ applied: false });
-
-    const result = await publishReconcilerService.runOnce();
-
-    expect(result).toEqual({ swept: 1, reenqueued: 0, failed: 0 });
   });
 
   it('processes multiple stale posts independently, one failure does not block the rest', async () => {
@@ -70,9 +53,9 @@ describe('PublishReconcilerService.runOnce (#107 I7)', () => {
       { id: 'post-1', publishRetryCount: 0 },
       { id: 'post-2', publishRetryCount: 0 }
     ]);
-    safeUpsertPublishJob
-      .mockRejectedValueOnce(new Error('Redis unavailable'))
-      .mockResolvedValueOnce({ applied: true });
+    enqueueImmediate
+      .mockRejectedValueOnce(new Error('QStash unavailable'))
+      .mockResolvedValueOnce('msg-new');
 
     const result = await publishReconcilerService.runOnce();
 
@@ -85,6 +68,6 @@ describe('PublishReconcilerService.runOnce (#107 I7)', () => {
     const result = await publishReconcilerService.runOnce();
 
     expect(result).toEqual({ swept: 0, reenqueued: 0, failed: 0 });
-    expect(safeUpsertPublishJob).not.toHaveBeenCalled();
+    expect(enqueueImmediate).not.toHaveBeenCalled();
   });
 });

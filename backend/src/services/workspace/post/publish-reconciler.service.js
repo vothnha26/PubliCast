@@ -8,15 +8,16 @@ const { POST_STATUS } = require('../../../utils/constants');
  * RETRYING (#107 I7).
  *
  * UpdatePostStatusStep always does one of two things immediately after
- * setting a post to RETRYING: throw (so BullMQ retries the whole job) or
- * self-enqueue a scoped partial-retry job. Either path relies on a BullMQ job
- * actually existing. If that job is ever lost — a Redis restart wipes it, or
- * the #106 safeUpsertPublishJob active-job dedup skips a re-enqueue that
- * genuinely needed to happen — the post is left at RETRYING with nothing left
- * to move it forward. This sweeper finds those posts and either re-enqueues
- * them (using the persisted publishRetryCount, since the BullMQ job.data that
- * normally carries this count is gone) or marks them FAILED once they've
- * exhausted MAX_PUBLISH_ATTEMPTS.
+ * setting a post to RETRYING: throw (so QStash retries the whole delivery
+ * per its retries config) or self-publish a scoped partial-retry delivery.
+ * Either path relies on that QStash message actually existing. If it's ever
+ * lost (e.g. a QStash outage, or the delivery's retries were exhausted
+ * without failureCallback reaching this process), the post is left at
+ * RETRYING with nothing left to move it forward. This sweeper finds those
+ * posts and either re-publishes a delivery for them (using the persisted
+ * publishRetryCount, since the QStash message body that normally carries
+ * this count is gone) or marks them FAILED once they've exhausted
+ * MAX_PUBLISH_ATTEMPTS.
  */
 class PublishReconcilerService {
   constructor() {
@@ -72,19 +73,11 @@ class PublishReconcilerService {
         // (already correctly merged, see #61) platformPostId map and every
         // native-scheduling-capable gateway short-circuits instead of
         // re-publishing when that id is already present (verified for I6).
-        const { safeUpsertPublishJob } = require('../../../queues/publish.queue');
-        const jobId = `publish-post-${post.id}`;
-        const { applied } = await safeUpsertPublishJob(jobId, QUEUE_CONFIG.PUBLISH.JOB_PUBLISH, {
-          postId: post.id,
-          partialRetryCount: post.publishRetryCount
-        }, { delay: 0 });
+        const { enqueueImmediate } = require('./publish-qstash.service');
+        await enqueueImmediate(post.id, { partialRetryCount: post.publishRetryCount });
 
-        if (applied) {
-          logger.warn(`[PublishReconciler] Re-enqueued stale RETRYING post ${post.id} (publishRetryCount=${post.publishRetryCount}).`);
-          reenqueued++;
-        }
-        // applied === false means a job for this post is (unexpectedly)
-        // already active — leave it alone, the next sweep will re-check.
+        logger.warn(`[PublishReconciler] Re-published stale RETRYING post ${post.id} (publishRetryCount=${post.publishRetryCount}).`);
+        reenqueued++;
       } catch (err) {
         logger.error(`[PublishReconciler] Failed to reconcile post ${post.id}:`, err.message);
       }

@@ -73,10 +73,10 @@ jest.mock('../../src/services/core/email.service', () => ({
 jest.mock('../../src/services/core/notification.service', () => ({
   create: jest.fn().mockResolvedValue({ id: 'notif-mock-id' })
 }));
-jest.mock('../../src/queues/publish.queue', () => ({
-  publishQueue: { client: { on: jest.fn() } },
+jest.mock('../../src/services/workspace/post/publish-qstash.service', () => ({
   upsertPublishJob: jest.fn().mockResolvedValue(true),
-  removePublishJob: jest.fn().mockResolvedValue(true)
+  removePublishJob: jest.fn().mockResolvedValue(true),
+  enqueueImmediate: jest.fn().mockResolvedValue('msg-mock')
 }));
 
 const emailService = require('../../src/services/core/email.service');

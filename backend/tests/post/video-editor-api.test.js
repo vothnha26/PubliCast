@@ -23,31 +23,14 @@ jest.mock('../../src/queues/video.queue', () => ({
   videoQueue: mockVideoQueue
 }));
 
-const mockPublishQueue = {
-  add: jest.fn().mockResolvedValue({ id: 'mock-publish-job-id' }),
-  remove: jest.fn().mockResolvedValue(),
-  getJob: jest.fn().mockResolvedValue(null)
-};
-jest.mock('../../src/queues/publish.queue', () => ({
-  publishQueue: mockPublishQueue,
+jest.mock('../../src/services/workspace/post/publish-qstash.service', () => ({
   upsertPublishJob: jest.fn(),
   removePublishJob: jest.fn(),
-  // Mirrors the real safeUpsertPublishJob's active-job check against this
-  // mocked queue, so retryFailedPlatforms's #106 guard is still exercised.
-  safeUpsertPublishJob: jest.fn(async (jobId, jobName, jobData, jobOpts) => {
-    const existing = await mockPublishQueue.getJob(jobId);
-    if (existing && (await existing.getState()) === 'active') {
-      return { applied: false };
-    }
-    await mockPublishQueue.remove(jobId);
-    await mockPublishQueue.add(jobName, jobData, { ...jobOpts, jobId });
-    return { applied: true };
-  })
+  enqueueImmediate: jest.fn()
 }));
 
 // Mock workers to prevent connection attempts in tests
 jest.mock('../../src/queues/video.worker', () => ({}));
-jest.mock('../../src/queues/publish.worker', () => ({}));
 
 // 3. Mock Authorization Facade for Brand Access Control
 const mockAuthorizationFacade = {
@@ -124,8 +107,7 @@ describe('Video Editor & Social Publishing Pipeline Integration Tests', () => {
     mockRedis.set.mockReset();
     mockRedis.del.mockReset();
     mockVideoQueue.add.mockReset();
-    mockPublishQueue.add.mockReset();
-    mockPublishQueue.remove.mockReset();
+    require('../../src/services/workspace/post/publish-qstash.service').enqueueImmediate.mockReset();
     mockAuthorizationFacade.checkBrandAccess.mockClear();
   });
 
@@ -255,8 +237,8 @@ describe('Video Editor & Social Publishing Pipeline Integration Tests', () => {
 
   describe('Social Publishing & Retry Pipeline', () => {
     it('POST /api/posts/:id/retry-failed should queue retry jobs successfully', async () => {
-      mockPublishQueue.remove.mockResolvedValue(true);
-      mockPublishQueue.add.mockResolvedValue({ id: 'new-job-id' });
+      const { enqueueImmediate } = require('../../src/services/workspace/post/publish-qstash.service');
+      enqueueImmediate.mockResolvedValue('msg-retry');
 
       const res = await request(app)
         .post('/api/posts/post_123/retry-failed')
@@ -268,8 +250,7 @@ describe('Video Editor & Social Publishing Pipeline Integration Tests', () => {
       expect(res.status).toBe(200);
       expect(res.body.message).toBe('Đã xếp hàng gửi lại bài viết thành công.');
       expect(res.body.platforms).toContain('YOUTUBE');
-      expect(mockPublishQueue.remove).toHaveBeenCalledWith('publish-post-post_123');
-      expect(mockPublishQueue.add).toHaveBeenCalled();
+      expect(enqueueImmediate).toHaveBeenCalled();
     });
 
     it('POST /api/posts/:id/retry-failed should fail if brand ownership is invalid', async () => {

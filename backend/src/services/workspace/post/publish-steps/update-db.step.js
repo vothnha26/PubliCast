@@ -174,21 +174,20 @@ class UpdatePostStatusStep extends BaseStep {
   }
 
   /**
-   * Enqueues a new BullMQ job scoped to only the (platform, account) pairs
-   * that failed this round, reusing the exact pattern already used by
-   * postService.retryFailedPlatforms — remove the existing job, add a new one
-   * with retryTargets set. Capped by MAX_PUBLISH_ATTEMPTS (same constant
-   * BullMQ's own attempts uses) to avoid an unbounded retry loop.
+   * Publishes a new QStash delivery scoped to only the (platform, account)
+   * pairs that failed this round, reusing the exact pattern already used by
+   * postService.retryFailedPlatforms. Capped by MAX_PUBLISH_ATTEMPTS to avoid
+   * an unbounded retry loop.
    */
   async _enqueuePartialRetry(postId, failedTargets, partialRetryCount = 0) {
-    const { publishQueue } = require('../../../../queues/publish.queue');
+    const { enqueueImmediate } = require('../publish-qstash.service');
     const { QUEUE_CONFIG } = require('../../../../constants/video-publish.constants');
     const maxAttempts = QUEUE_CONFIG.PUBLISH.MAX_PUBLISH_ATTEMPTS;
 
-    // Persisted alongside the in-memory partialRetryCount passed through
-    // job.data — this is what the RETRYING reconciler sweeper reads if the
-    // self-enqueued job below is ever lost (Redis restart, or a #106
-    // active-job dedup skip), since job.data itself doesn't survive that (#107 I7).
+    // Persisted alongside the in-memory partialRetryCount passed through the
+    // QStash message body — this is what the RETRYING reconciler sweeper
+    // reads if the self-published delivery below is ever lost (e.g. QStash
+    // outage), since the message body itself doesn't survive that (#107 I7).
     await postRepository.update(postId, { publishRetryCount: partialRetryCount + 1 });
 
     if (partialRetryCount >= maxAttempts) {
@@ -198,20 +197,10 @@ class UpdatePostStatusStep extends BaseStep {
       return;
     }
 
-    // Unlike post.service.js#retryFailedPlatforms (an external caller, which
-    // must use safeUpsertPublishJob to avoid racing a possibly-active job),
-    // this method runs INSIDE the currently-executing job's own handler —
-    // this job's own jobId is itself the "active" one right now, so
-    // safeUpsertPublishJob's active-job check would always (wrongly) skip
-    // here. removeOnComplete cleans this job up once the handler returns, so
-    // a plain remove+add is the correct handoff to the newly self-enqueued job.
-    const jobId = `publish-post-${postId}`;
-    await publishQueue.remove(jobId);
-    await publishQueue.add(QUEUE_CONFIG.PUBLISH.JOB_PUBLISH, {
-      postId,
+    await enqueueImmediate(postId, {
       retryTargets: failedTargets,
       partialRetryCount: partialRetryCount + 1
-    }, { jobId, delay: 5000 });
+    }, 5);
   }
 
   /**

@@ -3,7 +3,7 @@ const postRepository = require('../../src/repositories/workspace/post.repository
 const brandRepository = require('../../src/repositories/workspace/brand.repository');
 const authorizationFacade = require('../../src/services/auth/authorization.facade');
 const approvalWorkflowService = require('../../src/services/workspace/approval-workflow.service');
-const { upsertPublishJob, removePublishJob } = require('../../src/queues/publish.queue');
+const { upsertPublishJob, removePublishJob, enqueueImmediate } = require('../../src/services/workspace/post/publish-qstash.service');
 const outboxEventRepository = require('../../src/repositories/core/outbox-event.repository');
 const { OUTBOX_EVENT_TYPES } = require('../../src/constants/outbox.constants');
 const { POST_STATUS } = require('../../src/utils/constants');
@@ -39,10 +39,10 @@ jest.mock('../../src/services/workspace/approval-workflow.service', () => ({
   createWorkflowRequest: jest.fn()
 }));
 
-jest.mock('../../src/queues/publish.queue', () => ({
+jest.mock('../../src/services/workspace/post/publish-qstash.service', () => ({
   upsertPublishJob: jest.fn(),
   removePublishJob: jest.fn(),
-  safeUpsertPublishJob: jest.fn()
+  enqueueImmediate: jest.fn()
 }));
 
 jest.mock('../../src/repositories/core/outbox-event.repository', () => ({
@@ -580,35 +580,37 @@ describe('PostService Unit Tests', () => {
     });
   });
 
-  describe('retryFailedPlatforms — safe upsert against an active job (#106)', () => {
-    const { safeUpsertPublishJob } = require('../../src/queues/publish.queue');
-
+  describe('retryFailedPlatforms — guarding against an in-flight publish (#106)', () => {
     beforeEach(() => {
       postRepository.findById.mockResolvedValue({ id: 'post-1', brandId: 'brand-abc', status: POST_STATUS.FAILED });
     });
 
-    it('queues the retry job when no job is currently active for this post', async () => {
-      safeUpsertPublishJob.mockResolvedValue({ applied: true });
+    it('publishes the retry delivery when the post is not currently PUBLISHING', async () => {
+      enqueueImmediate.mockResolvedValue('msg-retry');
 
       const result = await postService.retryFailedPlatforms('post-1', ['INSTAGRAM'], 'brand-abc', 'user-1');
 
       expect(result).toEqual({ postId: 'post-1', platforms: ['INSTAGRAM'] });
       // No PostTarget rows on the mocked post -> falls back to a single
       // implicit account (null), same as pre-multi-account behavior.
-      expect(safeUpsertPublishJob).toHaveBeenCalledWith(
-        'publish-post-post-1',
-        QUEUE_CONFIG.PUBLISH.JOB_PUBLISH,
-        { postId: 'post-1', retryTargets: [{ platform: 'INSTAGRAM', socialAccountId: null }] },
-        { delay: 0 }
-      );
+      expect(enqueueImmediate).toHaveBeenCalledWith('post-1', {
+        retryTargets: [{ platform: 'INSTAGRAM', socialAccountId: null }]
+      });
     });
 
-    it('rejects with 409 when a job for this post is currently active, instead of silently losing the retry', async () => {
-      safeUpsertPublishJob.mockResolvedValue({ applied: false });
+    it('rejects with 409 when the post is already PUBLISHING, instead of racing the in-flight delivery', async () => {
+      // First findById (status check + retryTargets build) sees FAILED;
+      // the re-check immediately before the RETRYING write sees PUBLISHING —
+      // simulates a delivery that started between the two reads.
+      postRepository.findById
+        .mockResolvedValueOnce({ id: 'post-1', brandId: 'brand-abc', status: POST_STATUS.FAILED })
+        .mockResolvedValueOnce({ id: 'post-1', brandId: 'brand-abc', status: POST_STATUS.PUBLISHING });
 
       await expect(
         postService.retryFailedPlatforms('post-1', ['INSTAGRAM'], 'brand-abc', 'user-1')
       ).rejects.toMatchObject({ statusCode: 409 });
+
+      expect(enqueueImmediate).not.toHaveBeenCalled();
     });
   });
 

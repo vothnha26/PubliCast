@@ -6,7 +6,7 @@
  * + 1 hàm ở đây — KHÔNG sửa outbox-dispatcher.service.js (Open/Closed).
  */
 const { OUTBOX_EVENT_TYPES } = require('../../constants/outbox.constants');
-const { upsertPublishJob, removePublishJob } = require('../../queues/publish.queue');
+const { upsertPublishJob, removePublishJob } = require('../workspace/post/publish-qstash.service');
 const { qstashClient } = require('../../config/qstash');
 const initPostSubscribers = require('../../events/subscribers/post.subscriber');
 const { POST_DOMAIN_EVENT_HANDLERS } = initPostSubscribers;
