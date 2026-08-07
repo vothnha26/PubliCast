@@ -262,6 +262,14 @@ const SYSTEM_PLANS = {
 
 const ANALYTICS = {
   COOLDOWN_HOURS: parseInt(process.env.SOCIAL_SYNC_COOLDOWN_HOURS) || 12,
+  // How many recent Analytics rows to fetch for merging into a real growth
+  // time series (see social-account.repository.js's findById/
+  // findByBrandAndPlatform). Each row already embeds its own ~31-day
+  // overlapping window (audienceDemographicsJson.growth[]), so this doesn't
+  // need to equal "days of history" 1:1 — 90 rows comfortably covers 90+
+  // days of sync history even at the once-daily low end of COOLDOWN_HOURS
+  // cadence, without shipping an unbounded number of overlapping blobs.
+  HISTORY_ROWS_TO_MERGE: 90,
   // Mốc bắt đầu "lifetime" — trước ngày này YouTube Analytics không có data chi tiết theo video
   LIFETIME_START_DATE: '2020-01-01',
   // YouTube Data/Analytics API's default daily quota cap (units/day), and the

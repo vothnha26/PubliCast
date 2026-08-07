@@ -1,6 +1,7 @@
 import { format } from "date-fns";
 import { EMPTY_ANALYTICS_DATA } from "@/mocks/dashboardFallback";
 import { PLATFORMS } from "../constants/platforms";
+import { mergeAnalyticsRows } from "./mergeAnalyticsRows";
 
 const COUNTRY_MAP = {
   VN: { name: "Vietnam", flag: "🇻🇳" },
@@ -20,12 +21,13 @@ const COUNTRY_MAP = {
  * platform-grouped dashboard and the new per-channel Insights tab
  * (useChannelInsights) share one implementation instead of drifting apart.
  *
- * @param {object|null} metrics - one entry from GET /social/metrics (has .analytics[0].socialAnalytics.audienceDemographicsJson)
+ * @param {object|null} metrics - one entry from GET /social/metrics (has .analytics[], newest first, merged across rows via mergeAnalyticsRows)
  * @param {string} platform - lowercase platform id, e.g. "youtube", "facebook"
  * @param {{from?: Date, to?: Date}} dateRange - only used for facebook/tiktok/instagram's date-filtered arrays
  */
 export function parseAnalyticsData(metrics, platform, dateRange = {}) {
-  if (!metrics?.analytics?.[0]?.socialAnalytics?.audienceDemographicsJson) {
+  const raw = mergeAnalyticsRows(metrics?.analytics);
+  if (!raw) {
     if (platform === PLATFORMS.INSTAGRAM) {
       return {
         demographics: { gender: [], age: [], countries: [], trafficSource: [] },
@@ -41,8 +43,6 @@ export function parseAnalyticsData(metrics, platform, dateRange = {}) {
   }
 
   try {
-    const raw = JSON.parse(metrics.analytics[0].socialAnalytics.audienceDemographicsJson);
-
     if (platform === PLATFORMS.BLUESKY) {
       const fromStr = dateRange.from ? format(dateRange.from, "yyyy-MM-dd") : null;
       const toStr = dateRange.to ? format(dateRange.to, "yyyy-MM-dd") : null;

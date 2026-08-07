@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from "react";
-import { 
-  X, ExternalLink, ThumbsUp, MessageSquare, Activity, Eye, 
+import {
+  X, ExternalLink, ThumbsUp, MessageSquare, Activity, Eye,
   BarChart2, MoreVertical, Tag, Play, Share2, Target, MousePointerClick,
-  Youtube, Facebook, Instagram
+  Youtube, Facebook, Instagram, ChevronUp, Smartphone, Globe2, Search, Loader2
 } from "lucide-react";
 import { format } from "date-fns";
 import { useTranslation } from "react-i18next";
@@ -16,6 +16,11 @@ export function PublishedPostDetailModal({ post, onClose }) {
   const { activeBrand } = useBrand();
   const [loading, setLoading] = useState(false);
   const [metrics, setMetrics] = useState(null);
+  const [showInsights, setShowInsights] = useState(false);
+  const [insights, setInsights] = useState(null);
+  const [insightsLoading, setInsightsLoading] = useState(false);
+  const [insightsError, setInsightsError] = useState(null);
+  const [insightsFetched, setInsightsFetched] = useState(false);
 
   const { platform, platformPostId } = resolvePlatformTarget(post || {});
   const postUrl = getPlatformPostUrl(post || {});
@@ -58,6 +63,29 @@ export function PublishedPostDetailModal({ post, onClose }) {
       isMounted = false;
     };
   }, [platform, targetPostId, brandId, post?.socialAccountId]);
+
+  // Lazy: only fetches on first expand, not on modal open — most opens are
+  // just to glance at basic metrics, not the deep-dive breakdown. Only
+  // platforms whose strategy implements fetchInsights (currently YouTube)
+  // return real data; others resolve to null and the section stays hidden.
+  const handleToggleInsights = async () => {
+    const next = !showInsights;
+    setShowInsights(next);
+    if (!next || insightsFetched) return;
+
+    setInsightsLoading(true);
+    setInsightsError(null);
+    try {
+      const strategy = PlatformMetricsStrategyFactory.getStrategy(platform);
+      const res = strategy ? await strategy.fetchInsights(brandId, targetPostId, post?.socialAccountId) : null;
+      setInsights(res);
+    } catch (err) {
+      setInsightsError(err?.message || "Failed to load insights");
+    } finally {
+      setInsightsLoading(false);
+      setInsightsFetched(true);
+    }
+  };
 
   // 100% Real metrics extraction directly from API response or post object
   const reactionsCount = (typeof metrics?.reactions === 'object' ? metrics?.reactions?.total : metrics?.reactions) || post?.stats?.likes || post?.stats?.reactions || post?.reactionsCount || post?.likeCount || post?.likes || post?.reactions || 0;
@@ -238,12 +266,157 @@ export function PublishedPostDetailModal({ post, onClose }) {
               )}
             </div>
 
-            {/* Chart icon */}
-            <button className="p-1.5 rounded-lg bg-muted/60 border border-border hover:bg-muted text-muted-foreground hover:text-foreground transition-colors cursor-pointer shrink-0 ml-1">
-              <BarChart2 size={15} />
-            </button>
+            {/* Chart icon — only shown for platforms whose strategy exposes
+                deep-dive insights (currently YouTube only); other platforms
+                have no fetchInsights implementation, so hide it rather than
+                show a toggle that always opens an empty section. */}
+            {isYoutube && (
+              <button
+                onClick={handleToggleInsights}
+                className="p-1.5 rounded-lg bg-muted/60 border border-border hover:bg-muted text-muted-foreground hover:text-foreground transition-colors cursor-pointer shrink-0 ml-1"
+                title={t("postDetail.viewInsights", "Xem phân tích chi tiết")}
+              >
+                {showInsights ? <ChevronUp size={15} /> : <BarChart2 size={15} />}
+              </button>
+            )}
           </div>
         </div>
+
+        {/* Deep-Dive Insights Section (expand-in-place, lazy-fetched) */}
+        {showInsights && (
+          <div className="px-5 py-4 border-b border-border bg-muted/10 overflow-y-auto max-h-[40vh] scrollbar-thin space-y-4">
+            {insightsLoading ? (
+              <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground py-6">
+                <Loader2 size={14} className="animate-spin" />
+                <span>{t("postDetail.loadingInsights", "Đang tải phân tích...")}</span>
+              </div>
+            ) : insightsError ? (
+              <div className="text-xs text-rose-600 text-center py-6">{insightsError}</div>
+            ) : !insights || (!insights.trafficSource?.length && !insights.deviceType?.length && !insights.demographics && !insights.geography?.length && !insights.searchTerms?.length) ? (
+              <div className="text-xs text-muted-foreground text-center py-6">
+                {t("postDetail.noInsights", "Chưa có dữ liệu phân tích chi tiết cho video này.")}
+              </div>
+            ) : (
+              <>
+                {insights.summary && (
+                  <div className="grid grid-cols-3 gap-2">
+                    <div className="rounded-lg bg-muted/40 border border-border px-3 py-2 text-center">
+                      <div className="text-sm font-bold text-foreground">{insights.summary.totalWatchHrs ?? 0}h</div>
+                      <div className="text-[10px] text-muted-foreground uppercase tracking-wider">{t("postDetail.watchTime", "Giờ xem")}</div>
+                    </div>
+                    <div className="rounded-lg bg-muted/40 border border-border px-3 py-2 text-center">
+                      <div className="text-sm font-bold text-foreground">{insights.summary.avgViewPercentage ?? 0}%</div>
+                      <div className="text-[10px] text-muted-foreground uppercase tracking-wider">{t("postDetail.avgViewPct", "% xem TB")}</div>
+                    </div>
+                    <div className="rounded-lg bg-muted/40 border border-border px-3 py-2 text-center">
+                      <div className="text-sm font-bold text-foreground">{insights.summary.subscribersNet >= 0 ? "+" : ""}{insights.summary.subscribersNet ?? 0}</div>
+                      <div className="text-[10px] text-muted-foreground uppercase tracking-wider">{t("postDetail.subscribersNet", "Đăng ký mới")}</div>
+                    </div>
+                  </div>
+                )}
+
+                {insights.trafficSource?.length > 0 && (
+                  <div>
+                    <div className="flex items-center gap-1.5 mb-2">
+                      <Globe2 size={12} className="text-muted-foreground" />
+                      <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">{t("postDetail.trafficSource", "Nguồn lưu lượng")}</span>
+                    </div>
+                    <div className="space-y-1.5">
+                      {insights.trafficSource.slice(0, 5).map((row, i) => (
+                        <div key={i} className="flex items-center justify-between text-xs">
+                          <span className="text-foreground">{row.label}</span>
+                          <span className="font-bold text-foreground">{row.pct}%</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {insights.deviceType?.length > 0 && (
+                  <div>
+                    <div className="flex items-center gap-1.5 mb-2">
+                      <Smartphone size={12} className="text-muted-foreground" />
+                      <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">{t("postDetail.deviceType", "Loại thiết bị")}</span>
+                    </div>
+                    <div className="space-y-1.5">
+                      {insights.deviceType.slice(0, 5).map((row, i) => (
+                        <div key={i} className="flex items-center justify-between text-xs">
+                          <span className="text-foreground">{row.label}</span>
+                          <span className="font-bold text-foreground">{row.pct}%</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {insights.demographics && (insights.demographics.gender?.length > 0 || insights.demographics.age?.length > 0) && (
+                  <div>
+                    <div className="flex items-center gap-1.5 mb-2">
+                      <Activity size={12} className="text-muted-foreground" />
+                      <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">{t("postDetail.demographics", "Nhân khẩu học")}</span>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      {insights.demographics.gender?.length > 0 && (
+                        <div className="space-y-1">
+                          {insights.demographics.gender.map((row, i) => (
+                            <div key={i} className="flex items-center justify-between text-xs">
+                              <span className="text-foreground">{row.label}</span>
+                              <span className="font-bold text-foreground">{row.pct}%</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                      {insights.demographics.age?.length > 0 && (
+                        <div className="space-y-1">
+                          {insights.demographics.age.map((row, i) => (
+                            <div key={i} className="flex items-center justify-between text-xs">
+                              <span className="text-foreground">{row.label}</span>
+                              <span className="font-bold text-foreground">{row.pct}%</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {insights.geography?.length > 0 && (
+                  <div>
+                    <div className="flex items-center gap-1.5 mb-2">
+                      <Globe2 size={12} className="text-muted-foreground" />
+                      <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">{t("postDetail.geography", "Khu vực")}</span>
+                    </div>
+                    <div className="space-y-1.5">
+                      {insights.geography.slice(0, 5).map((row, i) => (
+                        <div key={i} className="flex items-center justify-between text-xs">
+                          <span className="text-foreground">{row.flag} {row.countryName}</span>
+                          <span className="font-bold text-foreground">{row.pct}%</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {insights.searchTerms?.length > 0 && (
+                  <div>
+                    <div className="flex items-center gap-1.5 mb-2">
+                      <Search size={12} className="text-muted-foreground" />
+                      <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">{t("postDetail.searchTerms", "Từ khóa tìm kiếm")}</span>
+                    </div>
+                    <div className="space-y-1.5">
+                      {insights.searchTerms.slice(0, 5).map((row, i) => (
+                        <div key={i} className="flex items-center justify-between text-xs">
+                          <span className="text-foreground truncate max-w-[70%]">{row.term}</span>
+                          <span className="font-bold text-foreground">{row.pct}%</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+        )}
 
         {/* Footer Actions */}
         <div className="flex items-center justify-between px-5 py-3.5 bg-muted/40">
