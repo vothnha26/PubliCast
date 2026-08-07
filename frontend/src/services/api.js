@@ -1,20 +1,8 @@
 import axios from 'axios';
 import { toast } from 'sonner';
+import { withCrossTabRefreshLock } from './cross-tab-refresh-lock';
 
 const baseURL = import.meta.env.VITE_API_BASE_URL;
-
-// Flag to prevent multiple concurrent refresh attempts
-let isRefreshing = false;
-let refreshSubscribers = [];
-
-const onRefreshed = () => {
-  refreshSubscribers.forEach(cb => cb());
-  refreshSubscribers = [];
-};
-
-const addRefreshSubscriber = (cb) => {
-  refreshSubscribers.push(cb);
-};
 
 class ApiService {
   constructor() {
@@ -68,35 +56,21 @@ class ApiService {
           !originalRequest.url?.includes('/auth/login') &&
           !originalRequest.url?.includes('/auth/logout')
         ) {
-          if (isRefreshing) {
-            // Queue this request until refresh is done
-            return new Promise((resolve, reject) => {
-              addRefreshSubscriber(() => {
-                resolve(this.api(originalRequest));
-              });
-            });
-          }
-
           originalRequest._retry = true;
-          isRefreshing = true;
 
-          try {
-            // Call refresh — backend sets new accessToken cookie automatically
-            await this.api.post('/auth/refresh');
-            isRefreshing = false;
-            onRefreshed();
-            // Retry the original request (cookie is now updated)
+          const { ok } = await withCrossTabRefreshLock(() => this.api.post('/auth/refresh'));
+          if (ok) {
+            // Retry the original request (cookie is now updated, possibly
+            // by another tab's refresh call — this tab never needed its own).
             return this.api(originalRequest);
-          } catch (refreshError) {
-            isRefreshing = false;
-            refreshSubscribers = [];
-            // Refresh also failed — session truly expired, redirect to login
-            window.dispatchEvent(new CustomEvent('SESSION_EXPIRED'));
-            const message = data?.message || error.message;
-            const customError = new Error(message);
-            customError.status = error.response?.status;
-            return Promise.reject(customError);
           }
+
+          // Refresh also failed — session truly expired, redirect to login
+          window.dispatchEvent(new CustomEvent('SESSION_EXPIRED'));
+          const message = data?.message || error.message;
+          const customError = new Error(message);
+          customError.status = error.response?.status;
+          return Promise.reject(customError);
         }
 
         // Xử lý lỗi thông thường (Gộp từ nhánh develop)
@@ -194,32 +168,19 @@ apiV2.interceptors.response.use(
         !originalRequest.url?.includes('/auth/login') &&
         !originalRequest.url?.includes('/auth/logout')
       ) {
-        if (isRefreshing) {
-          return new Promise((resolve) => {
-            addRefreshSubscriber(() => {
-              resolve(apiV2(originalRequest));
-            });
-          });
+        originalRequest._retry = true;
+
+        const { ok } = await withCrossTabRefreshLock(() => apiV2.post('/auth/refresh'));
+        if (ok) {
+          return apiV2(originalRequest);
         }
 
-        originalRequest._retry = true;
-        isRefreshing = true;
-
-        try {
-          await apiV2.post('/auth/refresh');
-        isRefreshing = false;
-        onRefreshed();
-        return apiV2(originalRequest);
-      } catch (refreshError) {
-        isRefreshing = false;
-        refreshSubscribers = [];
         window.dispatchEvent(new CustomEvent('SESSION_EXPIRED'));
         const message = data?.message || error.message;
         const customError = new Error(message);
         customError.status = error.response?.status;
         return Promise.reject(customError);
       }
-    }
 
     if (error.response?.status === 429) {
       const retryAfter = error.response?.data?.retryAfterSeconds || error.response?.headers?.['retry-after'];

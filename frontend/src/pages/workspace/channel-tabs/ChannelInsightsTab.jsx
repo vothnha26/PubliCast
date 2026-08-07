@@ -1,5 +1,4 @@
 import React, { useState } from "react";
-import { Loader2, RotateCw } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useChannelInsights } from "../../../hooks/channels/useChannelInsights";
 import { DateRangeFilter } from "../../../components/app/DateRangeFilter";
@@ -64,8 +63,6 @@ export function ChannelInsightsTab({ socialAccountId, platform: platformInput })
     setDateRange,
     metrics,
     loading,
-    isRefreshing,
-    handleRefresh,
     publishedVideos,
     isPublishedLoading,
     nextPageToken,
@@ -126,22 +123,6 @@ export function ChannelInsightsTab({ socialAccountId, platform: platformInput })
 
         <div className="flex items-center gap-2">
           <DateRangeFilter date={dateRange} setDate={setDateRange} />
-          <button
-            onClick={() => !isPlatformLocked && handleRefresh()}
-            disabled={isRefreshing || isPlatformLocked}
-            className="p-2 hover:bg-muted rounded-lg transition-colors text-muted-foreground disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center cursor-pointer border-none bg-transparent"
-            title={
-              isPlatformLocked
-                ? "Không thể đồng bộ dữ liệu vì nền tảng đang bị khóa"
-                : "Làm mới dữ liệu (Đồng bộ từ API)"
-            }
-          >
-            {isRefreshing ? (
-              <Loader2 size={16} className="animate-spin text-indigo-600" />
-            ) : (
-              <RotateCw size={16} />
-            )}
-          </button>
         </div>
       </div>
 

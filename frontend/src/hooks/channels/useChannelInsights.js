@@ -1,5 +1,4 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
-import { useQueryClient, useMutation } from "@tanstack/react-query";
 import { eachDayOfInterval, format } from "date-fns";
 import { toast } from "sonner";
 import { useBrand } from "../../context/BrandContext";
@@ -7,7 +6,6 @@ import socialService from "../../services/social.service";
 import postService from "../../services/post.service";
 import socketClient from "../../services/socket";
 import { useMetricsQuery } from "../queries/useMetricsQuery";
-import { QUERY_KEYS } from "../../constants/query-keys.constants";
 import { useDateRangeQuery } from "../useDateRangeQuery";
 import { parseAnalyticsData } from "../../utils/parseAnalyticsData";
 import { PLATFORMS } from "../../constants/platforms";
@@ -21,7 +19,6 @@ const DEFAULT_PAGE_SIZE = 10;
 export function useChannelInsights(socialAccountId, platformInput) {
   const platform = (platformInput || "").toLowerCase();
   const { activeBrand } = useBrand();
-  const queryClient = useQueryClient();
 
   const [dateRange, setDateRange] = useDateRangeQuery(29);
   const [platformLimits, setPlatformLimits] = useState([]);
@@ -85,30 +82,6 @@ export function useChannelInsights(socialAccountId, platformInput) {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeBrand?.id, metrics?.syncStatus]);
-
-  const forceSyncMutation = useMutation({
-    mutationFn: async () => {
-      if (!activeBrand || !socialAccountId) return null;
-      return socialService.getMetrics(activeBrand.id, { startDate, endDate, force: true });
-    },
-    onSuccess: (res) => {
-      if (!res) return;
-      toast.success("Đồng bộ số liệu thành công!");
-      // The force sync response is authoritative and already fresh —
-      // seed it directly instead of waiting on the data_invalidate socket
-      // round-trip, so the UI reflects it immediately.
-      queryClient.setQueryData(QUERY_KEYS.metrics(activeBrand.id, startDate, endDate), res.data || res);
-    },
-    onError: (error) => {
-      console.error("Failed to force-sync channel metrics:", error);
-      toast.error("Đồng bộ số liệu thất bại");
-    }
-  });
-
-  const handleRefresh = useCallback(async () => {
-    await forceSyncMutation.mutateAsync();
-  }, [forceSyncMutation]);
-  const isRefreshing = forceSyncMutation.isPending;
 
   const fetchPublishedVideos = useCallback(async (pageToken = null, limit = DEFAULT_PAGE_SIZE) => {
     if (!activeBrand || !socialAccountId) return;
@@ -305,8 +278,6 @@ export function useChannelInsights(socialAccountId, platformInput) {
     setDateRange,
     metrics,
     loading,
-    isRefreshing,
-    handleRefresh,
     publishedVideos,
     isPublishedLoading,
     nextPageToken,
