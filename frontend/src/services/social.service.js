@@ -76,7 +76,10 @@ class SocialService {
     return data;
   }
 
-  async getVideoInsights(brandId, videoId) {
+  // Route path kept as-is (public API contract) — method renamed to
+  // getPostInsights: this fetches lifetime insights for one post/video, not
+  // a date-ranged list, so "video" in the old name was misleading.
+  async getPostInsights(brandId, videoId) {
     const url = `/social/youtube/video-insights?brandId=${brandId}&videoId=${videoId}`;
     const data = await apiV2.get(url, { timeout: 30000 });
     return data;

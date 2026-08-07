@@ -37,8 +37,8 @@ class YouTubeService extends BaseSocialService {
     return youtubeAnalytics.getVideoAnalytics(brandId, videoId, startDate, endDate);
   }
 
-  async getVideoInsights(brandId, videoId) {
-    return youtubeAnalytics.getVideoInsights(brandId, videoId);
+  async getPostInsights(brandId, videoId) {
+    return youtubeAnalytics.getPostInsights(brandId, videoId);
   }
 
   // --- Videos & Tracking ---
