@@ -4,12 +4,16 @@
  * Eliminates all magic strings and hardcoded literals.
  */
 
-// Facebook Reel/Story duration+resolution+frameRate limits are shared with
-// the backend (backend/src/config/facebook-reel.constants.js) via this JSON
-// file so the two validators can't drift apart — this is what caused the
-// Story max-duration bug (frontend hardcoded 15s, the real Meta limit is
-// 60s, backend already had it right).
-import facebookLimits from '../../../shared/facebook-limits.json';
+// Facebook Reel/Story duration+resolution+frameRate limits are meant to
+// match the backend's copy (backend/src/config/facebook-reel.constants.js,
+// which reads the canonical PubliCast/shared/facebook-limits.json) so the
+// two validators can't drift apart — this is what caused the Story
+// max-duration bug (frontend hardcoded 15s, the real Meta limit is 60s,
+// backend already had it right). This is a local copy, not an import of the
+// monorepo-root shared/ file: the frontend now builds as a standalone repo
+// (publicast-frontend) with no access to files outside this directory. Keep
+// both copies in sync by hand when Meta's limits change.
+import facebookLimits from './facebook-limits.json';
 
 export const PLATFORM_LIMIT_THRESHOLDS = {
   FACEBOOK: {

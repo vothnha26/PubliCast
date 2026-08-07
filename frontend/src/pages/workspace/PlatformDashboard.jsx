@@ -128,8 +128,6 @@ export function PlatformDashboardPage() {
     handleAddCompetitor,
     handleDeleteCompetitor,
     fetchPublishedVideos,
-    isRefreshing,
-    handleRefresh,
     activeBrand,
     isPlatformLocked,
     platformLockReason
@@ -257,20 +255,7 @@ export function PlatformDashboardPage() {
         <div className="flex items-center gap-2">
            <DateRangeFilter date={dateRange} setDate={setDateRange} />
            
-           <button 
-             onClick={() => !isPlatformLocked && handleRefresh()}
-             disabled={isRefreshing || isPlatformLocked}
-             className="p-2 hover:bg-muted rounded-lg transition-colors text-muted-foreground disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
-             title={isPlatformLocked ? "Không thể đồng bộ dữ liệu vì nền tảng đang bị khóa" : "Làm mới dữ liệu (Đồng bộ từ API)"}
-           >
-             {isRefreshing ? (
-               <Loader2 size={16} className="animate-spin text-indigo-600" />
-             ) : (
-               <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-rotate-cw"><path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"/><polyline points="21 3 21 8 16 8"/></svg>
-             )}
-           </button>
-
-           <button 
+           <button
              onClick={() => setIsExportModalOpen(true)}
              className="p-2 hover:bg-muted rounded-lg transition-colors text-muted-foreground"
             >
@@ -365,24 +350,10 @@ export function PlatformDashboardPage() {
                 >
                   {metrics.syncStatus === "PENDING" && "Tài khoản vừa được kết nối thành công. Hệ thống đang xếp lịch tải dữ liệu lịch sử 90 ngày gần nhất."}
                   {metrics.syncStatus === "PARTIAL" && "Hệ thống đang tải dữ liệu phân tích chi tiết (lượt xem, nhân khẩu học, cộng đồng...) từ API nền tảng."}
-                  {metrics.syncStatus === "FAILED" && "Quá trình đồng bộ dữ liệu gặp lỗi hoặc token đã hết hạn. Vui lòng bấm nút Làm mới hoặc kết nối lại tài khoản."}
+                  {metrics.syncStatus === "FAILED" && "Quá trình đồng bộ dữ liệu gặp lỗi hoặc token đã hết hạn. Vui lòng kết nối lại tài khoản."}
                 </p>
               </div>
             </div>
-            {metrics.syncStatus === "FAILED" && (
-              <button 
-                onClick={() => handleRefresh()}
-                disabled={isRefreshing}
-                className="px-4 py-2 bg-red-900 text-white rounded-xl text-xs font-bold hover:bg-red-950 transition-all shadow-md flex items-center gap-2"
-              >
-                {isRefreshing ? (
-                  <Loader2 size={12} className="animate-spin" />
-                ) : (
-                  <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"/><polyline points="21 3 21 8 16 8"/></svg>
-                )}
-                Đồng bộ lại
-              </button>
-            )}
           </div>
         )}
 

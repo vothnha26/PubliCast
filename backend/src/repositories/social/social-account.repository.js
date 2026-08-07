@@ -1023,6 +1023,11 @@ class SocialAccountRepository {
     const { enqueueSync = true } = options;
     const { did, handle, displayName, avatarUrl, accessToken, refreshToken, pdsUrl = 'https://bsky.social', emailConfirmed = false, followersCount = 0, followsCount = 0, postsCount = 0, dpopPrivateKey, dpopJwk } = accountData;
 
+    // Prisma's default transaction timeout (5s) was occasionally too tight
+    // under DB pool contention (e.g. a busy cron/dispatcher holding
+    // connections), producing "Transaction not found... refers to an old
+    // closed transaction" — this upsert + outbox insert is small, but give
+    // it real headroom instead of racing the default.
     return prisma.$transaction(async (tx) => {
       const account = await tx.socialAccount.upsert({
         where: {
@@ -1110,7 +1115,7 @@ class SocialAccountRepository {
       }
 
       return this._decryptAccount(account);
-    });
+    }, { timeout: 15000 });
   }
 
   async updateBlueskyMetrics(socialAccountId, metricsData) {

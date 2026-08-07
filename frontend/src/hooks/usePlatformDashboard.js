@@ -141,19 +141,17 @@ export function usePlatformDashboard(platform) {
   const [isVideoModalOpen, setIsVideoModalOpen] = useState(false);
   const [isCompetitorModalOpen, setIsCompetitorModalOpen] = useState(false);
 
-  const [isRefreshing, setIsRefreshing] = useState(false);
   const metricsRequest = useLatestRequestId();
 
-  // loadMetrics is invoked by the mount/brand/platform/dateRange effect, the
-  // 5s sync-status poll, and manual refresh — a slow older call resolving
-  // after a newer one must not clobber fresher state (#78). Memoized with
-  // useCallback (deps: platform, dateRange) so effects that depend on it
-  // don't need dateRange as a separate dependency, which previously required
-  // a second effect just to react to dateRange changes and caused a
-  // duplicate fetch alongside the brand/platform effect on mount (#91 M9).
-  const loadMetrics = useCallback(async (brandId, force = false) => {
+  // loadMetrics is invoked by the mount/brand/platform/dateRange effect and
+  // the 5s sync-status poll — a slow older call resolving after a newer one
+  // must not clobber fresher state (#78). Memoized with useCallback (deps:
+  // platform, dateRange) so effects that depend on it don't need dateRange
+  // as a separate dependency, which previously required a second effect
+  // just to react to dateRange changes and caused a duplicate fetch
+  // alongside the brand/platform effect on mount (#91 M9).
+  const loadMetrics = useCallback(async (brandId) => {
     const requestId = metricsRequest.start();
-    if (force) setIsRefreshing(true);
     try {
       // toISOString() converts to UTC first — for a UTC+ user, "today" in
       // local time can shift to yesterday's date, silently dropping the
@@ -161,32 +159,18 @@ export function usePlatformDashboard(platform) {
       // the date's local calendar fields instead.
       const metrics = await socialService.getMetrics(brandId, {
         startDate: dateRange.from ? format(dateRange.from, 'yyyy-MM-dd') : undefined,
-        endDate: dateRange.to ? format(dateRange.to, 'yyyy-MM-dd') : undefined,
-        force: force
+        endDate: dateRange.to ? format(dateRange.to, 'yyyy-MM-dd') : undefined
       });
       const platformType = platform.toUpperCase() === 'X' ? 'TWITTER_X' : platform.toUpperCase();
       const platformMetrics = (metrics || []).find(m => m?.platform === platformType);
       if (!metricsRequest.isLatest(requestId)) return;
       setMetrics(platformMetrics || null);
-      if (force) {
-        toast.success("Đồng bộ số liệu thành công!");
-      }
     } catch (error) {
       console.error("Failed to load platform metrics:", error);
       if (!metricsRequest.isLatest(requestId)) return;
       setMetrics(null);
-      if (force) {
-        toast.error("Đồng bộ số liệu thất bại");
-      }
-    } finally {
-      if (force && metricsRequest.isLatest(requestId)) setIsRefreshing(false);
     }
   }, [platform, dateRange, metricsRequest]);
-
-  const handleRefresh = useCallback(async () => {
-    if (!activeBrand) return;
-    await loadMetrics(activeBrand.id, true);
-  }, [activeBrand, loadMetrics]);
 
   const fetchTracked = async () => {
     if (!activeBrand) return;
@@ -570,8 +554,6 @@ export function usePlatformDashboard(platform) {
     handleAddCompetitor,
     handleDeleteCompetitor,
     fetchPublishedVideos,
-    isRefreshing,
-    handleRefresh,
     activeBrand,
     isPlatformLocked,
     platformLockReason
