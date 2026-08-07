@@ -8,7 +8,6 @@ const instagramController = require('../../controllers/social/instagram.controll
 const googleDriveController = require('../../controllers/social/google-drive.controller');
 const socialAnalyticsController = require('../../controllers/social/social-analytics.controller');
 const socialConnectionController = require('../../controllers/social/social-connection.controller');
-const telegramController = require('../../controllers/social/telegram.controller');
 const threadsController = require('../../controllers/social/threads.controller');
 const blueskyController = require('../../controllers/social/bluesky.controller');
 const redditController = require('../../controllers/social/reddit.controller');
@@ -310,10 +309,6 @@ router.get('/bluesky/comments', verifyAuth, requireBrandMember, blueskyControlle
  */
 router.get('/bluesky/published-posts', verifyAuth, requireBrandMember, blueskyController.getBlueskyPublishedPosts);
 router.post('/bluesky/disconnect', verifyAuth, requireManageConnections, socialConnectionController.disconnectBlueskyAccount);
-
-// ── Telegram V2 ──
-router.post('/telegram/connect', verifyAuth, requireManageConnections, telegramController.connectTelegram);
-router.post('/telegram/disconnect', verifyAuth, requireManageConnections, socialConnectionController.disconnectTelegramAccount);
 
 // ── Account Reassignment V2 ──
 router.post('/reassign', verifyAuth, socialConnectionController.reassignSocialAccount);

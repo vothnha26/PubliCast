@@ -1069,6 +1069,21 @@ class PostService {
         acc[t.platform].push(t.socialAccountId);
         return acc;
       }, {}),
+      // Per-platform publish progress ("N/M platforms published") — lets the
+      // UI show live progress for a SCHEDULED/PUBLISHING post without
+      // waiting for the aggregate Post.status, which only flips once every
+      // target has resolved (see SocialPublishStep).
+      publishProgress: (p.targets || []).length > 0 ? {
+        total: p.targets.length,
+        published: p.targets.filter(t => t.publishStatus === 'PUBLISHED').length,
+        failed: p.targets.filter(t => t.publishStatus === 'FAILED').length,
+        targets: p.targets.map(t => ({
+          platform: t.platform,
+          socialAccountId: t.socialAccountId,
+          status: t.publishStatus,
+          errorMessage: t.errorMessage
+        }))
+      } : null,
       networkOverrides: (p.networkOverrides || []).map((o) => {
         let settings = null;
         if (o.settings) {

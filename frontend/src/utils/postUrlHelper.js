@@ -127,8 +127,6 @@ export function getPlatformPostUrl(post) {
         return `https://www.reddit.com/comments/${id}`;
       case 'TWITCH':
         return `https://www.twitch.tv/videos/${id}`;
-      case 'TELEGRAM':
-        return `https://t.me/${id}`;
       default:
         break;
     }
@@ -147,7 +145,6 @@ export function getPlatformPostUrl(post) {
     case 'BLUESKY': return 'https://bsky.app';
     case 'REDDIT': return 'https://www.reddit.com';
     case 'TWITCH': return 'https://www.twitch.tv';
-    case 'TELEGRAM': return 'https://t.me';
     default: return null;
   }
 }

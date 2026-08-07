@@ -8,7 +8,6 @@ const instagramController = require('../../controllers/social/instagram.controll
 const googleDriveController = require('../../controllers/social/google-drive.controller');
 const socialAnalyticsController = require('../../controllers/social/social-analytics.controller');
 const socialConnectionController = require('../../controllers/social/social-connection.controller');
-const telegramController = require('../../controllers/social/telegram.controller');
 const threadsController = require('../../controllers/social/threads.controller');
 const blueskyController = require('../../controllers/social/bluesky.controller');
 const redditController = require('../../controllers/social/reddit.controller');
@@ -83,8 +82,6 @@ router.get('/bluesky/url', verifyAuth, blueskyController.getBlueskyAuthUrl);
 router.get('/bluesky/comments', verifyAuth, requireBrandMember, blueskyController.getBlueskyComments);
 router.get('/bluesky/callback', blueskyController.blueskyCallback);
 router.post('/bluesky/disconnect', verifyAuth, requireManageConnections, socialConnectionController.disconnectBlueskyAccount);
-router.post('/telegram/connect', verifyAuth, requireManageConnections, telegramController.connectTelegram);
-router.post('/telegram/disconnect', verifyAuth, requireManageConnections, socialConnectionController.disconnectTelegramAccount);
 // NOTE: /reassign checks MANAGE_CONNECTIONS on BOTH the source and target brand
 // inside the controller (authorizationFacade called twice), not via this
 // single-brandId middleware — see reassignSocialAccount in social-connection.controller.js.

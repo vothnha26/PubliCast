@@ -224,11 +224,9 @@ const renderPlatformWidget = (widgetKey, color, previewData, preset) => {
   const instagram = getChannel(previewData, "instagram");
   const youtube = getChannel(previewData, "youtube");
   const tiktok = getChannel(previewData, "tiktok");
-  const telegram = getChannel(previewData, "telegram");
   const igGrowthRows = instagram?.analyticsData?.growth || [];
   const ytGrowthRows = youtube?.analyticsData?.growth || [];
   const ttGrowthRows = tiktok?.analyticsData?.growth || [];
-  const tgGrowthRows = telegram?.analyticsData?.growth || [];
 
   if (widgetKey === "igGrowth") {
     return (
@@ -337,20 +335,6 @@ const renderPlatformWidget = (widgetKey, color, previewData, preset) => {
       <div className="space-y-1.5">
         <TinyHeader title="List of posts" subtitle="Top TikTok posts" color={color} />
         {WidgetThumbnailRenderer.renderRankingList(color, getRankingItems(ttGrowthRows, ["views", "likes"], "name"))}
-      </div>
-    );
-  }
-
-  if (widgetKey === "tgGrowth") {
-    return (
-      <div className="space-y-1.5">
-        <TinyHeader title="Telegram Analytics" subtitle="Subscribers, views, forwards" color={color} />
-        <div className="grid grid-cols-3 gap-1">
-          <MiniChip label="Subs" value={`${telegram?.followers || 0}`} color={color} />
-          <MiniChip label="Views" value={`${telegram?.impressions || 0}`} color={color} />
-          <MiniChip label="Fwd" value={`${telegram?.shares || 0}`} color={color} />
-        </div>
-        {WidgetThumbnailRenderer.renderGrowthChart(color, mapGrowthSeries(tgGrowthRows, ["views", "followers"]))}
       </div>
     );
   }

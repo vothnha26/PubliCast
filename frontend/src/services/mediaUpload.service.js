@@ -47,11 +47,15 @@ export async function uploadMediaFileWithMetadata(file, brandId, onProgress) {
 
   const uploadData = await uploader.upload(file, signature, timestamp);
 
-  // 3. Register uploaded media in backend DB
+  // 3. Register uploaded media in backend DB — saveToLibrary:true so a file
+  // uploaded through the post composer also shows up in the Media Library,
+  // same as a file uploaded there directly (previously false, which left
+  // every composer upload invisible in the Library despite existing on
+  // Cloudinary).
   const savedMedia = await apiV2.post("/media/save-direct", {
     brandId,
     fileInfo: uploadData,
-    saveToLibrary: false
+    saveToLibrary: true
   });
 
   return {

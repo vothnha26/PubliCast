@@ -14,11 +14,11 @@ import { StatCard } from "../../components/shared/StatCard";
 import { PostingGoalWidget } from "../../components/shared/PostingGoalWidget";
 import { StreakStatCard } from "../../components/shared/StreakStatCard";
 import { useBrand } from "../../context/BrandContext";
-import socialService from "../../services/social.service";
 import postService from "../../services/post.service";
 import { POST_STATUS } from "../../constants/postStatus";
 import { useTranslation } from "react-i18next";
 import { usePostCreator } from "../../context/PostCreatorContext";
+import { useMetricsQuery } from "../../hooks/queries/useMetricsQuery";
 
 const PLATFORM_COLORS = {
   YouTube: "#FF0000",
@@ -95,11 +95,6 @@ const PLATFORM_METRICS_STRATEGIES = {
     getSubscribers: (m) => m.tikTokAccount?.followersCount || 0,
     getViews: (m) => m.tikTokAccount?.likesCount || 0,
     getVideos: (m) => m.tikTokAccount?.videoCount || 0,
-  },
-  TELEGRAM: {
-    getSubscribers: (m) => m.telegramAccount?.memberCount || 0,
-    getViews: (m) => 0,
-    getVideos: (m) => 0,
   }
 };
 
@@ -107,11 +102,19 @@ export function DashboardPage() {
   const { t, i18n } = useTranslation(["dashboard", "common"]);
   const navigate = useNavigate();
   const location = useLocation();
-  const [metrics, setMetrics] = useState([]);
   const [recentPosts, setRecentPosts] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [postsLoading, setPostsLoading] = useState(true);
   const { activeBrand } = useBrand();
   const { openPostCreator } = usePostCreator();
+
+  // Reuses the same cached query as channel-insights tabs (useMetricsQuery) —
+  // previously this fetched socialService.getMetrics directly via its own
+  // useEffect, bypassing React Query's cache entirely, so navigating back to
+  // the Dashboard re-fetched metrics from scratch every time instead of
+  // reading the already-cached result.
+  const { data: metricsData, isLoading: metricsLoading } = useMetricsQuery(activeBrand?.id);
+  const metrics = metricsData || [];
+  const loading = metricsLoading || postsLoading;
 
   useEffect(() => {
     const params = new URLSearchParams(location.search);
@@ -133,26 +136,22 @@ export function DashboardPage() {
   }, [activeBrand, navigate]);
 
   useEffect(() => {
-    const loadData = async () => {
+    const loadPosts = async () => {
       if (!activeBrand) {
-        setLoading(false);
+        setPostsLoading(false);
         return;
       }
       try {
-        setLoading(true);
-        const [metricsRes, postsRes] = await Promise.all([
-          socialService.getMetrics(activeBrand.id),
-          postService.getPosts(activeBrand.id, { limit: 5 })
-        ]);
-        setMetrics(metricsRes || []);
+        setPostsLoading(true);
+        const postsRes = await postService.getPosts(activeBrand.id, { limit: 5 });
         setRecentPosts(postsRes || []);
       } catch (error) {
-        console.error("Failed to load dashboard data:", error);
+        console.error("Failed to load dashboard posts:", error);
       } finally {
-        setLoading(false);
+        setPostsLoading(false);
       }
     };
-    loadData();
+    loadPosts();
   }, [activeBrand]);
 
   const getAggregatedStats = () => {

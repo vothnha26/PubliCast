@@ -46,12 +46,6 @@ const SUPPORTED_PLATFORM_BUTTONS = [
     inactiveBgClass: "bg-[#FF0000]/10 text-[#FF0000] hover:bg-[#FF0000]/20",
   },
   {
-    id: "telegram",
-    label: "Telegram",
-    activeBgClass: "bg-[#0088cc] text-white shadow-md",
-    inactiveBgClass: "bg-[#0088cc]/10 text-[#0088cc] hover:bg-[#0088cc]/20",
-  },
-  {
     id: "threads",
     label: "Threads",
     activeBgClass: "bg-black text-white shadow-md",

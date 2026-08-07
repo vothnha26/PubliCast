@@ -17,17 +17,16 @@ describe('Composer Preview Strategies Registry', () => {
     expect(PreviewStrategies.twitch).toBe(TwitchPreview);
   });
 
-  it('should contain all 9 platform preview strategies', () => {
+  it('should contain all 8 platform preview strategies', () => {
     const keys = Object.keys(PreviewStrategies);
     expect(keys).toContain('youtube');
     expect(keys).toContain('facebook');
     expect(keys).toContain('tiktok');
     expect(keys).toContain('instagram');
-    expect(keys).toContain('telegram');
     expect(keys).toContain('threads');
     expect(keys).toContain('bluesky');
     expect(keys).toContain('reddit');
     expect(keys).toContain('twitch');
-    expect(keys.length).toBe(9);
+    expect(keys.length).toBe(8);
   });
 });

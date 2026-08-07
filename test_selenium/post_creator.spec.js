@@ -72,7 +72,6 @@ const mockPlatforms = [
   { platform: 'INSTAGRAM', id: 'mock-ig-social-account-id', accountId: 'ig-123', name: 'Mock Instagram' },
   { platform: 'TIKTOK', id: 'mock-tt-social-account-id', accountId: 'tt-123', name: 'Mock TikTok' },
   { platform: 'YOUTUBE', id: 'mock-yt-social-account-id', accountId: 'yt-123', name: 'Mock YouTube' },
-  { platform: 'TELEGRAM', id: 'mock-tg-social-account-id', accountId: 'tg-123', name: 'Mock Telegram' },
   { platform: 'THREADS', id: 'mock-th-social-account-id', accountId: 'th-123', name: 'Mock Threads' }
 ];
 
@@ -282,7 +281,7 @@ describe('Post Creator Detailed E2E Suite', function () {
   }
 
   async function selectPlatformOnly(targetPlatform) {
-    const platforms = ['facebook', 'instagram', 'youtube', 'tiktok', 'telegram', 'threads'];
+    const platforms = ['facebook', 'instagram', 'youtube', 'tiktok', 'threads'];
     for (const p of platforms) {
       if (p === targetPlatform) continue;
       const selected = (await driver.findElements(By.css(`[data-testid="selected-channel-${p}"]`))).length > 0;

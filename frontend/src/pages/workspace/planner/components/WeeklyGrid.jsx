@@ -3,6 +3,7 @@ import { BarChart3 } from 'lucide-react';
 import { buildMediaUrl } from '@/utils/url';
 import { PlatformIcon } from '@/components/shared/PlatformIcon';
 import { PostMediaThumbnail } from '@/components/shared/PostMediaThumbnail';
+import { PublishProgressBadge } from '@/components/shared/PublishProgressBadge';
 
 const PLATFORM_COLORS = {
   YOUTUBE: "#FF0000",
@@ -295,6 +296,7 @@ export function WeeklyGrid({
                               <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-tight group-hover/card:hidden">
                                 {displayTime}
                               </span>
+                              <PublishProgressBadge status={post.status?.toLowerCase()} publishProgress={post.publishProgress} className="group-hover/card:hidden" />
                               {post.status?.toLowerCase() === "published" && onDetailClick && (
                                 <button
                                   onClick={(e) => {

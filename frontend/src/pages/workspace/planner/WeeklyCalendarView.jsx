@@ -9,6 +9,7 @@ import postService from "../../../services/post.service";
 import { useTranslation } from "react-i18next";
 import { getPlatformPostUrl } from "../../../utils/postUrlHelper";
 import { useLatestRequestId } from "../../../hooks/useLatestRequestId";
+import { usePostsRealtimeRefresh } from "../../../hooks/usePostsRealtimeRefresh";
 
 // Import SOLID Subcomponents
 import { UpgradeBanner } from "./components/UpgradeBanner";
@@ -192,6 +193,8 @@ export function WeeklyCalendarView({ socialAccountId, platform } = {}) {
   useEffect(() => {
     fetchPosts();
   }, [activeBrand, selectedDate, isOpen, calendarViewMode, socialAccountId]);
+
+  usePostsRealtimeRefresh(activeBrand?.id, fetchPosts);
 
   // Search/status/type filtering shared between Week view (further grouped
   // below into groupedPosts) and Month view — MonthlyGrid previously only

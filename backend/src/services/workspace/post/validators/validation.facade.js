@@ -61,7 +61,6 @@ class ValidationFacade {
       const DEFAULT_PLATFORM_CAPTION_LIMITS = {
         BLUESKY: 300,
         THREADS: 500,
-        TELEGRAM: 1024,
         TIKTOK: 2200,
         INSTAGRAM: 2200,
         YOUTUBE: 5000,

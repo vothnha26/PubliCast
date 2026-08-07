@@ -34,10 +34,6 @@ export const PLATFORM_LIMIT_THRESHOLDS = {
     TITLE_MAX_LENGTH: 100,
     SHORT_MAX_DURATION: 180
   },
-  TELEGRAM: {
-    MEDIA_CAPTION_MAX_LENGTH: 1024,
-    TEXT_CAPTION_MAX_LENGTH: 4096
-  },
   THREADS: {
     POST_MAX_LENGTH: 500
   },
@@ -96,13 +92,6 @@ export const PLATFORM_VALIDATION_MESSAGES = {
 
   TIKTOK: {
     MEDIA_REQUIRED: "TikTok -> Add at least 1 image or video."
-  },
-
-  TELEGRAM: {
-    CAPTION_MAX_LIMIT: (hasMedia, count) => {
-      const limit = hasMedia ? PLATFORM_LIMIT_THRESHOLDS.TELEGRAM.MEDIA_CAPTION_MAX_LENGTH : PLATFORM_LIMIT_THRESHOLDS.TELEGRAM.TEXT_CAPTION_MAX_LENGTH;
-      return `Telegram post caption with ${hasMedia ? 'media' : 'text only'} must be ${limit} characters or less. (Current: ${count})`;
-    }
   },
 
   THREADS: {
@@ -232,16 +221,6 @@ export const VALIDATION_RULES = {
     MEDIA_REQUIRED: {
       check: ({ hasMedia }) => !hasMedia,
       message: () => PLATFORM_VALIDATION_MESSAGES.TIKTOK.MEDIA_REQUIRED
-    }
-  },
-
-  TELEGRAM: {
-    CAPTION_MAX_LIMIT: {
-      check: ({ caption, hasMedia }) => {
-        const limit = hasMedia ? PLATFORM_LIMIT_THRESHOLDS.TELEGRAM.MEDIA_CAPTION_MAX_LENGTH : PLATFORM_LIMIT_THRESHOLDS.TELEGRAM.TEXT_CAPTION_MAX_LENGTH;
-        return caption && caption.length > limit;
-      },
-      message: ({ caption, hasMedia }) => PLATFORM_VALIDATION_MESSAGES.TELEGRAM.CAPTION_MAX_LIMIT(hasMedia, caption ? caption.length : 0)
     }
   },
 

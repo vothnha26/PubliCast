@@ -33,7 +33,6 @@ const DISCONNECT_FN_BY_PLATFORM = {
   INSTAGRAM: "disconnectInstagramAccount",
   TIKTOK: "disconnectTikTokAccount",
   THREADS: "disconnectThreadsAccount",
-  TELEGRAM: "disconnectTelegramAccount",
   TWITCH: "disconnectTwitchAccount",
   BLUESKY: "disconnectBlueskyAccount",
   REDDIT: "disconnectRedditAccount",
