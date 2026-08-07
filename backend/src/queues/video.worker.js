@@ -21,11 +21,14 @@ const videoWorker = new Worker(VIDEO_QUEUE_NAME, async (job) => {
 }, {
   ...defaultConnection,
   concurrency: 2, // Giới hạn tối đa 2 luồng render video song song trên mỗi instance để tránh nghẽn CPU
-  // BullMQ's default drainDelay (5s) re-polls Redis for new jobs every 5s
-  // even when the queue sits empty. Video trims aren't latency-sensitive
-  // like publish scheduling — 30s still feels instant to a user waiting on
-  // a trim, while cutting idle-poll command volume against Upstash ~6x.
-  drainDelay: 30
+  // drainDelay only bounds how long a worker blocks on BZPOPMIN while the
+  // queue sits EMPTY — a job added via .add() pushes a "marker" that wakes
+  // the blocked BZPOPMIN immediately regardless of this value (BullMQ v5
+  // marker mechanism), so raising it doesn't delay a user waiting on their
+  // trim. It only controls the idle re-poll interval, which was still
+  // costing ~5.7k Upstash commands/day at 30s for a queue that's empty
+  // the vast majority of the time.
+  drainDelay: 300
 });
 
 // Event Listeners cho logging/monitoring

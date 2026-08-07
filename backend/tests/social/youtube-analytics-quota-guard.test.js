@@ -31,10 +31,6 @@ jest.mock('../../src/services/social/youtube/youtube.gateway');
 jest.mock('../../src/config/prisma', () => ({
   postAnalyticsDailySnapshot: { count: jest.fn().mockResolvedValue(1) }
 }));
-jest.mock('../../src/queues/social.queue', () => ({
-  socialQueue: { add: jest.fn().mockResolvedValue({ id: 'mock-job' }) }
-}));
-
 const QuotaTrackerService = require('../../src/services/social/quota-tracker.service');
 const socialAccountRepository = require('../../src/repositories/social/social-account.repository');
 const youtubeGateway = require('../../src/services/social/youtube/youtube.gateway');

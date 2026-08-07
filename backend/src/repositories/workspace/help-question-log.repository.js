@@ -3,7 +3,7 @@ const { toPgvectorLiteral } = require('../../services/help-center/embedding.serv
 
 class HelpQuestionLogRepository {
   // questionEmbedding is an Unsupported("vector") column, so the whole
-  // insert goes through $executeRaw — mirrors help-center-embedding.worker.js's
+  // insert goes through $executeRaw — mirrors help-article.service.js's
   // chunk insert. Prisma Client's .create() can't write a raw vector column.
   async create({ question, answer, citedArticleIds, userId, latencyMs, questionEmbedding }) {
     const vectorLiteral = questionEmbedding ? toPgvectorLiteral(questionEmbedding) : null;

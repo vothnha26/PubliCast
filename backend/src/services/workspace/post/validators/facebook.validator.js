@@ -48,6 +48,17 @@ class FacebookValidator extends BaseValidator {
       if (thumbUrl && !/^https?:\/\//i.test(thumbUrl)) {
         errors.push('Thumbnail must be a valid HTTP/HTTPS URL.');
       }
+
+      // Facebook Page/Place IDs are always numeric strings — reject anything
+      // else before it reaches the Graph API call.
+      const collaboratorId = postData.options?.facebookReelCollaboratorId;
+      if (collaboratorId && !/^\d+$/.test(collaboratorId)) {
+        errors.push('Collaborator Page ID must be a numeric string.');
+      }
+      const placeId = postData.options?.facebookReelPlaceId;
+      if (placeId && !/^\d+$/.test(placeId)) {
+        errors.push('Place ID must be a numeric string.');
+      }
     }
 
     if (isStory) {

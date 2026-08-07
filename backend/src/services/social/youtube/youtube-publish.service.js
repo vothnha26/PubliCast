@@ -73,7 +73,7 @@ class YouTubePublishService {
   // behavior (first non-mock account) — correct as long as the brand only
   // has one real account, which is still the common case.
   async _getAuthContext(brandId, socialAccountId = null) {
-    const socialAccount = await socialAccountRepository.findByBrandAndPlatform(brandId, PLATFORMS.YOUTUBE);
+    const socialAccount = await socialAccountRepository.findAuthContextByBrandAndPlatform(brandId, PLATFORMS.YOUTUBE);
     if (!socialAccount || socialAccount.length === 0) {
       throw new Error('YouTube account not connected for this brand');
     }

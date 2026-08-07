@@ -40,7 +40,7 @@ class FacebookCompetitorService {
    */
   async _resolveAccessToken(brandId) {
     try {
-      const accounts = await socialAccountRepository.findByBrandAndPlatform(brandId, PLATFORM);
+      const accounts = await socialAccountRepository.findAuthContextByBrandAndPlatform(brandId, PLATFORM);
       const account = Array.isArray(accounts) ? accounts[0] : accounts;
       if (account?.accessToken) {
         return account.accessToken;

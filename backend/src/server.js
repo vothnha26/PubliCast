@@ -42,10 +42,8 @@ const server = app.listen(PORT, async () => {
   require('./queues/publish.worker');
   // Initialize BullMQ video processing worker
   require('./queues/video.worker');
-  // Initialize BullMQ social sync worker
-  require('./queues/social.worker');
-  // Initialize BullMQ Help Center article embedding worker
-  require('./queues/help-center-embedding.worker');
+  // Social account sync now runs via QStash webhook delivery instead of a
+  // BullMQ worker (see routes/webhooks/qstash.routes.js) — no worker to init.
 
   // Start Token Auto-Refresh Service scheduler
   const tokenRefreshService = require('./services/social/token-refresh/token-refresh.service');
@@ -154,14 +152,10 @@ async function shutdown(signal) {
     try {
       const publishWorker = require('./queues/publish.worker');
       const videoWorker = require('./queues/video.worker');
-      const socialWorker = require('./queues/social.worker');
-      const helpCenterEmbeddingWorker = require('./queues/help-center-embedding.worker');
       logger.debug('[Shutdown] Closing BullMQ Workers...');
       await Promise.all([
         publishWorker.close(),
-        videoWorker.close(),
-        socialWorker.close(),
-        helpCenterEmbeddingWorker.close()
+        videoWorker.close()
       ]);
       logger.info('BullMQ workers closed.');
     } catch (err) {

@@ -1,6 +1,8 @@
 const helpArticleRepository = require('../../repositories/admin/help-article.repository');
-const { helpCenterEmbeddingQueue } = require('../../queues/help-center-embedding.queue');
-const { QUEUE_CONFIG } = require('../../constants/help-center.constants');
+const helpCenterPrisma = require('../../config/help-center-prisma');
+const { chunkContent } = require('../help-center/chunking.service');
+const { embedText, toPgvectorLiteral } = require('../help-center/embedding.service');
+const logger = require('../../utils/logger');
 
 class HelpArticleService {
   async list(filters) {
@@ -72,12 +74,41 @@ class HelpArticleService {
       publishedAt: new Date()
     });
 
-    await helpCenterEmbeddingQueue.add(
-      QUEUE_CONFIG.HELP_CENTER_EMBEDDING.JOB_EMBED_ARTICLE,
-      { articleId: id }
-    );
+    await this._embedArticle(id, updated.contentHtml);
 
     return updated;
+  }
+
+  /**
+   * Chunks and embeds an article's content into the Help Center pgvector
+   * store. Runs synchronously on publish — was a BullMQ job, but publishing
+   * is an already-rare admin action, so the async-queue/worker overhead
+   * (its own idle Redis polling 24/7) cost more than the few extra seconds
+   * an admin waits for this to finish inline.
+   */
+  async _embedArticle(articleId, contentHtml) {
+    const chunks = chunkContent(contentHtml);
+
+    // Drop previous chunks/vectors before re-embedding — avoids stale
+    // vectors lingering after an edit removes or rewords content.
+    await helpCenterPrisma.helpArticleChunk.deleteMany({ where: { articleId } });
+
+    for (let i = 0; i < chunks.length; i += 1) {
+      const text = chunks[i];
+      const embedding = await embedText(text);
+      const vectorLiteral = toPgvectorLiteral(embedding);
+
+      // Prisma doesn't generate a field for Unsupported("vector") columns,
+      // so the insert (including the embedding column) goes through a
+      // parameterized raw query — safe from injection since values are
+      // bound, not string-concatenated into the SQL itself.
+      await helpCenterPrisma.$executeRaw`
+        INSERT INTO "HelpArticleChunk" (id, "articleId", "chunkIndex", text, embedding, "createdAt")
+        VALUES (gen_random_uuid()::text, ${articleId}, ${i}, ${text}, ${vectorLiteral}::vector, now())
+      `;
+    }
+
+    logger.debug(`[HelpArticleService] Embedded ${chunks.length} chunks for article: ${articleId}`);
   }
 
   async unpublish(id) {

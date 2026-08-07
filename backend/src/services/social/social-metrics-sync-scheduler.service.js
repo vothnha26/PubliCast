@@ -1,29 +1,44 @@
 const cron = require('node-cron');
-const prisma = require('../../config/prisma');
 const redisClient = require('../../config/redis');
 const DistributedLockService = require('./distributed-lock.service');
-const socialService = require('./social.service');
+const socialAccountRepository = require('../../repositories/social/social-account.repository');
+const { qstashClient } = require('../../config/qstash');
 const logger = require('../../utils/logger');
-const { LOCK_CONFIG } = require('../../utils/constants');
+const { LOCK_CONFIG, ANALYTICS } = require('../../utils/constants');
 
 const lockService = new DistributedLockService(redisClient);
 
+// Cap on how many due accounts one scan claims — QStash's flowControl below
+// bounds concurrent delivery regardless, but this also bounds how large a
+// single DB read + publish batch gets per cron tick.
+const SCAN_BATCH_SIZE = 500;
+
 /**
  * SocialMetricsSyncSchedulerService
- * Periodic background scheduler that syncs published posts + channel metrics
- * from connected social platforms every hour.
+ * Periodic background scheduler that queues channel-metrics sync for
+ * connected social accounts past their sync cooldown.
  *
- * Split out of InboxSyncSchedulerService, which used to run this same
- * forceSync=true metrics pass every 15 minutes (the same cadence as comment
- * sync) for every brand/platform regardless of whether anyone was actually
- * viewing the Inbox — view/like/comment counts don't need to be fresher than
- * an hour (matches the TrackedVideo/getVideoDetails() read-through cache
- * TTL), so this runs on its own, slower cycle instead.
+ * Previously this force-synced (bypassing SyncCacheProxy's own cooldown
+ * check) every account of every active brand, sequentially, once an hour,
+ * awaited directly inside the cron callback in the main process. That
+ * spiked platform API calls at the top of every hour regardless of how
+ * recently each account had actually synced, and blocked the process for
+ * however long the full sequential pass took.
+ *
+ * Now the cron only queries SocialAccount.lastSyncAt to find accounts
+ * actually due (respecting ANALYTICS.COOLDOWN_HOURS, same threshold
+ * SyncCacheProxy already enforces per-request) and publishes one QStash
+ * message per due account to the metrics-sync webhook. QStash's flowControl
+ * caps how many sync calls run concurrently — if a large batch of accounts
+ * all fall due at once (e.g. after downtime), delivery is throttled instead
+ * of hitting platform APIs / the DB pool all at once — and failed syncs
+ * retry independently per account instead of one broken account's error
+ * being swallowed inside a shared try/catch.
  */
 class SocialMetricsSyncSchedulerService {
   constructor() {
     this.job = null;
-    this.cronSchedule = '0 * * * *'; // Runs at the top of every hour
+    this.cronSchedule = '*/15 * * * *'; // Runs every 15 minutes
   }
 
   start() {
@@ -33,15 +48,15 @@ class SocialMetricsSyncSchedulerService {
     }
 
     this.job = cron.schedule(this.cronSchedule, async () => {
-      logger.info('⏰ [SocialMetricsSyncScheduler] Starting hourly published posts & metrics sync...');
+      logger.info('⏰ [SocialMetricsSyncScheduler] Starting metrics-sync scan...');
       try {
         await this.runSyncWithLock();
       } catch (error) {
-        logger.error('❌ [SocialMetricsSyncScheduler] Error executing hourly sync:', error);
+        logger.error('❌ [SocialMetricsSyncScheduler] Error executing scan:', error);
       }
     });
 
-    logger.info('✅ [SocialMetricsSyncScheduler] Cron service initialized (Schedule: Every hour).');
+    logger.info('✅ [SocialMetricsSyncScheduler] Cron service initialized (Schedule: Every 15 minutes).');
   }
 
   stop() {
@@ -57,52 +72,53 @@ class SocialMetricsSyncSchedulerService {
     const token = await lockService.acquireLock(KEY, TTL_SEC);
 
     if (!token) {
-      logger.info('ℹ️ [SocialMetricsSyncScheduler] Another cluster instance is already executing the hourly sync, skipping.');
+      logger.info('ℹ️ [SocialMetricsSyncScheduler] Another cluster instance is already scanning, skipping.');
       return;
     }
 
     try {
-      await this.syncAllActiveBrands();
+      await this.queueDueAccounts();
     } finally {
       await lockService.releaseLock(KEY, token);
     }
   }
 
-  async syncAllActiveBrands() {
-    const activeBrands = await prisma.brand.findMany({
-      select: {
-        id: true,
-        name: true,
-        socialAccounts: {
-          where: { isConnected: true },
-          select: { platform: true }
-        }
-      }
-    });
+  async queueDueAccounts() {
+    const dueAccounts = await socialAccountRepository.findDueForMetricsSync(
+      ANALYTICS.COOLDOWN_HOURS,
+      SCAN_BATCH_SIZE
+    );
 
-    if (!activeBrands || activeBrands.length === 0) {
-      logger.info('ℹ️ [SocialMetricsSyncScheduler] No active brands with connected social accounts found.');
+    if (dueAccounts.length === 0) {
+      logger.info('ℹ️ [SocialMetricsSyncScheduler] No accounts due for sync.');
       return;
     }
 
-    logger.info(`🔍 [SocialMetricsSyncScheduler] Scanning ${activeBrands.length} active brand(s)...`);
+    logger.info(`🔍 [SocialMetricsSyncScheduler] Queuing ${dueAccounts.length} account(s) due for sync...`);
 
-    for (const brand of activeBrands) {
-      if (!brand.socialAccounts || brand.socialAccounts.length === 0) {
-        continue;
-      }
-
-      const platforms = [...new Set(brand.socialAccounts.map(sa => sa.platform))];
-
-      for (const platform of platforms) {
-        try {
-          await socialService.getAggregatedMetrics(brand.id, null, null, true);
-          logger.info(`✅ [SocialMetricsSyncScheduler] Synced published posts & metrics for brand '${brand.name}' (${platform}).`);
-        } catch (err) {
-          logger.warn(`⚠️ [SocialMetricsSyncScheduler] Channel metrics & posts sync warning for brand '${brand.name}' (${platform}): ${err.message}`);
-        }
+    let queued = 0;
+    for (const account of dueAccounts) {
+      try {
+        await qstashClient.publishJSON({
+          url: `${process.env.BACKEND_BASE_URL}/api/webhooks/qstash/metrics-sync`,
+          body: { socialAccountId: account.id, platform: account.platform },
+          // Scoped to a coarse time bucket (not per-run) so a scan that
+          // re-claims the same still-due account before it's synced doesn't
+          // pile up duplicate deliveries for it within the same cooldown window.
+          deduplicationId: `metrics-sync-${account.id}-${Math.floor(Date.now() / (15 * 60 * 1000))}`,
+          // Caps concurrent metrics-sync deliveries across ALL accounts,
+          // regardless of how many fall due in this scan — the actual guard
+          // against a large due-batch flooding platform APIs / the DB pool.
+          flowControl: { key: 'social-metrics-sync', parallelism: 20 },
+          retries: 3
+        });
+        queued++;
+      } catch (err) {
+        logger.warn(`⚠️ [SocialMetricsSyncScheduler] Failed to queue sync for account ${account.id} (${account.platform}): ${err.message}`);
       }
     }
+
+    logger.info(`✅ [SocialMetricsSyncScheduler] Queued ${queued}/${dueAccounts.length} account(s).`);
   }
 }
 

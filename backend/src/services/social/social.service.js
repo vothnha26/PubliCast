@@ -18,6 +18,11 @@ const DEFAULT_HISTORY_WINDOW_MONTHS = 1;
 // (a second, unencrypted copy of live OAuth credentials with no reason to
 // exist) should ever receive them.
 const stripSensitiveAccountFields = (accounts) => accounts.map(({ accessToken, refreshToken, scopes, ...rest }) => rest);
+const stripSensitiveAccountFieldsSingle = (account) => {
+  if (!account) return account;
+  const { accessToken, refreshToken, scopes, ...rest } = account;
+  return rest;
+};
 
 // How often the background sync (a real call to each platform's API) is
 // allowed to fire per brand+date-range. This used to be a side effect of
@@ -272,7 +277,12 @@ class SocialService {
     }
 
     await socialAccountRepository.setDefault(brandId, account.platform, socialAccountId);
-    return socialAccountRepository.findById(socialAccountId);
+    // findById returns decrypted accessToken/refreshToken (needed by internal
+    // callers like disconnectAccount's YouTube-PubSub check above) — this
+    // result instead flows straight into the controller's res.json(), so it
+    // must be stripped the same way getAggregatedMetrics's response is.
+    const updated = await socialAccountRepository.findById(socialAccountId);
+    return stripSensitiveAccountFieldsSingle(updated);
   }
 
   async _notifyPlatformDisconnected(brandId, platform) {

@@ -146,7 +146,7 @@ describe('YouTubeService', () => {
         tokenExpiresAt: new Date(Date.now() + 3600 * 1000)
       };
 
-      socialAccountRepository.findByBrandAndPlatform.mockResolvedValue([mockAccount]);
+      socialAccountRepository.findAuthContextByBrandAndPlatform.mockResolvedValue([mockAccount]);
       googleOAuthService.createClient.mockReturnValue({
         setCredentials: jest.fn()
       });
@@ -164,7 +164,7 @@ describe('YouTubeService', () => {
 
       const result = await youtubeService.publishPost('brand1', mockPostData);
 
-      expect(socialAccountRepository.findByBrandAndPlatform).toHaveBeenCalledWith('brand1', 'YOUTUBE');
+      expect(socialAccountRepository.findAuthContextByBrandAndPlatform).toHaveBeenCalledWith('brand1', 'YOUTUBE');
       expect(uploadVideoSpy).toHaveBeenCalled();
       expect(result.platformVideoId).toBe('ytVideoId123');
       expect(result.videoUrl).toBe('https://www.youtube.com/watch?v=ytVideoId123');
@@ -194,7 +194,7 @@ describe('YouTubeService', () => {
         tokenExpiresAt: new Date(Date.now() + 3600 * 1000)
       };
 
-      socialAccountRepository.findByBrandAndPlatform.mockResolvedValue([mockAccount]);
+      socialAccountRepository.findAuthContextByBrandAndPlatform.mockResolvedValue([mockAccount]);
       googleOAuthService.createClient.mockReturnValue({
         setCredentials: jest.fn()
       });
@@ -251,7 +251,7 @@ describe('YouTubeService', () => {
         tokenExpiresAt: new Date(Date.now() + 3600 * 1000)
       };
 
-      socialAccountRepository.findByBrandAndPlatform.mockResolvedValue([mockAccount]);
+      socialAccountRepository.findAuthContextByBrandAndPlatform.mockResolvedValue([mockAccount]);
       googleOAuthService.createClient.mockReturnValue({
         setCredentials: jest.fn()
       });
@@ -313,7 +313,7 @@ describe('YouTubeService', () => {
         tokenExpiresAt: new Date(Date.now() + 3600 * 1000)
       };
 
-      socialAccountRepository.findByBrandAndPlatform.mockResolvedValue([mockAccount]);
+      socialAccountRepository.findAuthContextByBrandAndPlatform.mockResolvedValue([mockAccount]);
       googleOAuthService.createClient.mockReturnValue({
         setCredentials: jest.fn()
       });
@@ -365,7 +365,7 @@ describe('YouTubeService', () => {
         tokenExpiresAt: new Date(Date.now() + 3600 * 1000)
       };
 
-      socialAccountRepository.findByBrandAndPlatform.mockResolvedValue([mockAccount]);
+      socialAccountRepository.findAuthContextByBrandAndPlatform.mockResolvedValue([mockAccount]);
       googleOAuthService.createClient.mockReturnValue({
         setCredentials: jest.fn()
       });

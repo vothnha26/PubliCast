@@ -147,7 +147,7 @@ class YoutubeCommentSyncStrategy extends BaseSyncStrategy {
   // account (correct as long as the brand only has one real account, still
   // the common case).
   async _getAccountAndAuth(brandId, socialAccountId = null) {
-    const socialAccount = await socialAccountRepository.findByBrandAndPlatform(brandId, PLATFORMS.YOUTUBE);
+    const socialAccount = await socialAccountRepository.findAuthContextByBrandAndPlatform(brandId, PLATFORMS.YOUTUBE);
     if (!socialAccount || socialAccount.length === 0) throw new Error('YouTube account not connected');
 
     const account = (socialAccountId && socialAccount.find(acc => acc.id === socialAccountId)) || socialAccount.find(acc =>
