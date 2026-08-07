@@ -486,11 +486,12 @@ class PostService {
 
     logger.debug('[PostService] Final payload to database:', data);
 
-    const post = await prisma.$transaction(async (tx) => {
-      // Re-check the monthly post limit inside the transaction, behind a row
-      // lock on the brand's Subscription — closes the check-then-act race
-      // (#60): two concurrent createPost calls now serialize on this lock
-      // instead of both reading a count under the limit and both writing.
+    // Step 1: short, locked transaction — only the count-then-act invariant
+    // (#60) needs the row lock, so only lock+count+insert happen here. This
+    // keeps the lock held for a few ms instead of the whole request, so
+    // concurrent createPost calls for the same brand no longer queue up
+    // behind each other's slow per-platform work below.
+    const created = await prisma.$transaction(async (tx) => {
       if (planLimit) {
         await subscriptionRepository.lockSubscriptionForUpdate(brandId, tx);
         const lockedCount = await postRepository.countActivePostsThisMonth(brandId, tx);
@@ -501,53 +502,76 @@ class PostService {
         }
       }
 
-      const created = await postRepository.create(data, tx);
-      logger.debug('[PostService] Post successfully created in DB with ID:', created.id);
-
-      const targetPlatformsArr = Array.isArray(postData.targetPlatforms)
-        ? postData.targetPlatforms
-        : (postData.targetPlatforms || '').split(SEPARATORS.COMMA).filter(Boolean);
-
-      await this.upsertPostTargets(created.id, targetPlatformsArr, postData.selectedAccountIds, tx, brandId);
-
-      if (postData.networkOverrides) {
-        await this.upsertNetworkOverrides(created.id, postData.networkOverrides, targetPlatformsArr, tx, brandId);
-      }
-
-      // Job publish + domain event chỉ được ghi vào outbox trong CÙNG transaction với
-      // việc tạo post — outbox là nguồn ghi duy nhất cho job publish-post-${postId},
-      // tránh double-write với post.subscriber.js (xem outbox-handlers.js).
-      if (!created.autoListId && created.status === POST_STATUS.PUBLISHED) {
-        await outboxEventRepository.create(
-          OUTBOX_EVENT_TYPES.POST_PUBLISH_UPSERT,
-          created.id,
-          { postId: created.id, scheduledAt: new Date() },
-          {},
-          tx
-        );
-      } else if (!created.autoListId && created.status === POST_STATUS.SCHEDULED && created.scheduledAt) {
-        await outboxEventRepository.create(
-          OUTBOX_EVENT_TYPES.POST_PUBLISH_UPSERT,
-          created.id,
-          { postId: created.id, scheduledAt: created.scheduledAt },
-          {},
-          tx
-        );
-      }
-
-      await outboxEventRepository.create(
-        OUTBOX_EVENT_TYPES.POST_DOMAIN_EVENT,
-        created.id,
-        { eventName: EVENTS.POST.CREATED, eventArgs: { post: created, options: postData.options } },
-        {},
-        tx
-      );
-
-      const mediaLibraryService = require('./media-library.service');
-      await mediaLibraryService.syncMediaUsage(brandId, validMediaUrls, [], tx);
-
-      return created;
+      return postRepository.create(data, tx);
     });
+    logger.debug('[PostService] Post successfully created in DB with ID:', created.id);
+
+    // Step 2: unlocked transaction for everything that doesn't need the
+    // subscription lock — per-platform target/override upserts (N+1 lookups
+    // against SocialAccount), outbox writes, and media-usage sync. Previously
+    // all of this ran inside the locked transaction above, so a post
+    // targeting several platforms with per-network customization could
+    // comfortably exceed Prisma's 5s default transaction timeout under real
+    // network latency to the DB (confirmed in production:
+    // "Transaction already closed... 5104 ms passed" on
+    // postNetworkOverride.upsert) — and worse, held the brand's subscription
+    // lock the whole time, serializing every other concurrent createPost for
+    // that brand behind it. If this step fails, the post row created in step
+    // 1 is compensating-deleted below so we don't leave an orphaned post with
+    // no targets/outbox events.
+    let post;
+    try {
+      post = await prisma.$transaction(async (tx) => {
+        const targetPlatformsArr = Array.isArray(postData.targetPlatforms)
+          ? postData.targetPlatforms
+          : (postData.targetPlatforms || '').split(SEPARATORS.COMMA).filter(Boolean);
+
+        await this.upsertPostTargets(created.id, targetPlatformsArr, postData.selectedAccountIds, tx, brandId);
+
+        if (postData.networkOverrides) {
+          await this.upsertNetworkOverrides(created.id, postData.networkOverrides, targetPlatformsArr, tx, brandId);
+        }
+
+        // Job publish + domain event chỉ được ghi vào outbox trong CÙNG transaction với
+        // việc tạo post — outbox là nguồn ghi duy nhất cho job publish-post-${postId},
+        // tránh double-write với post.subscriber.js (xem outbox-handlers.js).
+        if (!created.autoListId && created.status === POST_STATUS.PUBLISHED) {
+          await outboxEventRepository.create(
+            OUTBOX_EVENT_TYPES.POST_PUBLISH_UPSERT,
+            created.id,
+            { postId: created.id, scheduledAt: new Date() },
+            {},
+            tx
+          );
+        } else if (!created.autoListId && created.status === POST_STATUS.SCHEDULED && created.scheduledAt) {
+          await outboxEventRepository.create(
+            OUTBOX_EVENT_TYPES.POST_PUBLISH_UPSERT,
+            created.id,
+            { postId: created.id, scheduledAt: created.scheduledAt },
+            {},
+            tx
+          );
+        }
+
+        await outboxEventRepository.create(
+          OUTBOX_EVENT_TYPES.POST_DOMAIN_EVENT,
+          created.id,
+          { eventName: EVENTS.POST.CREATED, eventArgs: { post: created, options: postData.options } },
+          {},
+          tx
+        );
+
+        const mediaLibraryService = require('./media-library.service');
+        await mediaLibraryService.syncMediaUsage(brandId, validMediaUrls, [], tx);
+
+        return created;
+      }, { timeout: 15000 });
+    } catch (err) {
+      await postRepository.deleteMany({ id: created.id }).catch((cleanupErr) => {
+        logger.error('[PostService] Failed to compensating-delete orphaned post after step 2 failure:', { postId: created.id, cleanupErr });
+      });
+      throw err;
+    }
 
     // approvalWorkflowService.createWorkflowRequest có transaction/lockForUpdate riêng
     // của nó, cố tình nằm ngoài transaction phía trên (xem Đợt 2 kế hoạch outbox).
