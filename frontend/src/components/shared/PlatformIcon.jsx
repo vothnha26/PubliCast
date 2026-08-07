@@ -8,7 +8,8 @@ const PLATFORM_COLORS = {
   Twitch: "#9146FF",
   X: "#000000",
   Threads: "#000000",
-  Bluesky: "#0085FF"
+  Bluesky: "#0085FF",
+  GoogleDrive: "#4285F4"
 };
 
 const SVG_PATHS = {
@@ -53,13 +54,26 @@ const SVG_PATHS = {
     <svg viewBox="0 0 24 24" width={size} height={size} fill="currentColor">
       <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
     </svg>
+  ),
+  GoogleDrive: (size) => (
+    <svg viewBox="0 0 24 24" width={size} height={size} fill="currentColor">
+      <path d="M7.71 3.5L1.15 15l3.44 6L11.15 9.5zm8.58 0l-3.44 6L19.41 21l3.44-6zM8.85 21h10.3l-3.44-6H5.41z"/>
+    </svg>
   )
 };
 
 export function PlatformIcon({ platform, size = 18, variant = "color", className = "" }) {
+  // Strip non-alphanumerics so "google_drive"/"Google Drive"/"GOOGLE-DRIVE"
+  // all match the "GoogleDrive" key — previously an unmatched platform name
+  // (e.g. "google_drive", which never matched "GoogleDrive" case-insensitively
+  // since the literal underscore differs) silently fell back to "YouTube",
+  // rendering the YouTube logo for Google Drive connections.
+  const normalize = (s) => (s || '').toLowerCase().replace(/[^a-z0-9]/g, '');
   const normPlatform = Object.keys(SVG_PATHS).find(
-    (k) => k.toLowerCase() === platform?.toLowerCase()
-  ) || "YouTube";
+    (k) => normalize(k) === normalize(platform)
+  );
+
+  if (!normPlatform) return null;
 
   const renderSvg = SVG_PATHS[normPlatform];
   const bg = PLATFORM_COLORS[normPlatform] || "#888";

@@ -12,6 +12,13 @@ export const PLATFORMS = {
   BLUESKY: 'bluesky',
   REDDIT: 'reddit',
   TWITCH: 'twitch',
+  // Media-source integration, not a publishable channel — has no publish
+  // pipeline, post-creator preset, or channel dashboard. Kept here (matching
+  // backend's PLATFORMS.GOOGLE_DRIVE) so callers can reference it instead of
+  // the raw string, but it's intentionally absent from PLATFORM_LABELS/
+  // PLATFORM_DEFAULT_TAB/PLATFORM_API_KEY above — those are all
+  // publish-channel-only maps.
+  GOOGLE_DRIVE: 'GOOGLE_DRIVE',
 };
 
 /** Tên hiển thị */

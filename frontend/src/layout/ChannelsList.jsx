@@ -11,6 +11,7 @@ import channelGroupService from "../services/channel-group.service";
 import { ChannelGroupModal } from "../components/app/ChannelGroupModal";
 import { CHANNEL_GROUP_VISIBILITY } from "../constants/channelGroupVisibility";
 import { usePostCreatorStore } from "../store/usePostCreatorStore";
+import { PLATFORMS } from "../constants/platforms";
 import { toast } from "sonner";
 
 // Platforms not yet connected in this brand show up under "Connect more
@@ -57,7 +58,11 @@ export function ChannelsList() {
   const [openGroupMenuId, setOpenGroupMenuId] = useState(null);
   const [activeFilterGroupId, setActiveFilterGroupId] = useState(null);
 
-  const socialAccounts = activeBrand?.socialAccounts || [];
+  // GOOGLE_DRIVE is a media-source integration (import images/video from
+  // Drive into a post), not a publishable channel — it has no publish
+  // pipeline, no post-creator preset, and no channel-insights dashboard.
+  // Excluded here so it doesn't show up as a selectable "channel" to post to.
+  const socialAccounts = (activeBrand?.socialAccounts || []).filter((a) => a.platform !== PLATFORMS.GOOGLE_DRIVE);
 
   const fetchGroups = useCallback(async () => {
     if (!activeBrand?.id) return;
