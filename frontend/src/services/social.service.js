@@ -24,10 +24,12 @@ class SocialService {
     return data;
   }
 
-  async getMetrics(brandId, params = {}) {
-    const queryParams = new URLSearchParams({ brandId, ...params }).toString();
-    // Timeout 90s vì backend cần sync với các nền tảng (Facebook Smart Sync có thể mất 30-60s)
-    const data = await apiV2.get(`/social/metrics?${queryParams}`, { timeout: 90000 });
+  async getMetrics(brandId) {
+    const queryParams = new URLSearchParams({ brandId }).toString();
+    // DB read only — the backend never calls a platform's live API here
+    // anymore (only the cron scheduler and initial connect do), so this is
+    // fast and needs no extended timeout.
+    const data = await apiV2.get(`/social/metrics?${queryParams}`);
     return data;
   }
 

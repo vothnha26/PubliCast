@@ -6,24 +6,21 @@ import { CACHE_CONFIG } from '../../constants/cache-config.constants';
 /**
  * Custom Hook: Fetch & Cache Brand Aggregated Metrics
  * Following Single Responsibility Principle (SRP).
- * 
+ *
+ * The backend never syncs a platform's live API on this call anymore (only
+ * the cron scheduler and initial connect do) — it's a DB read, so startDate/
+ * endDate here only scope the React Query cache key, not the request itself.
+ *
  * @param {string} brandId - ID of active brand/workspace
- * @param {string} [startDate] - Filter start date
- * @param {string} [endDate] - Filter end date
- * @param {boolean} [force=false] - Force fresh sync from social APIs
+ * @param {string} [startDate] - Cache key scoping only
+ * @param {string} [endDate] - Cache key scoping only
  */
-export function useMetricsQuery(brandId, startDate, endDate, force = false) {
+export function useMetricsQuery(brandId, startDate, endDate) {
   return useQuery({
     queryKey: QUERY_KEYS.metrics(brandId, startDate, endDate),
     queryFn: async () => {
       if (!brandId) return [];
-      // URLSearchParams (inside getMetrics) stringifies `undefined` as the
-      // literal text "undefined", which the backend would then compare as a
-      // real date string — omit unset params instead of passing them through.
-      const params = { force };
-      if (startDate) params.startDate = startDate;
-      if (endDate) params.endDate = endDate;
-      const res = await socialService.getMetrics(brandId, params);
+      const res = await socialService.getMetrics(brandId);
       return res.data || res;
     },
     enabled: Boolean(brandId),
