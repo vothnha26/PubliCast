@@ -293,7 +293,12 @@ const ANALYTICS = {
   METRICS: {
     FACEBOOK: {
       VIEWS: 'page_media_view',
-      IMPRESSIONS: 'page_total_media_view_unique',
+      // page_impressions_unique was deprecated by Meta on 2025-06-15 with no
+      // page-level replacement (only page_total_media_view_unique, already
+      // used here as REACH) — there is no real impressions metric to fetch
+      // anymore. Do not reintroduce an IMPRESSIONS metric name here without
+      // confirming against Meta's current deprecation list first.
+      REACH: 'page_total_media_view_unique',
       FOLLOWS: 'page_daily_follows_unique',
       ENGAGEMENTS: 'page_post_engagements',
       ACTIONS: 'page_total_actions',

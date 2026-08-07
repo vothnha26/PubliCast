@@ -330,9 +330,20 @@ class YouTubeAnalyticsService {
     const tokens = await googleOAuthService.getTokens(code, redirectUri);
     const client = googleOAuthService.createClient(redirectUri);
     client.setCredentials(tokens);
-    
-    const channelData = await this.getChannelInfo(client);
-    
+
+    // Backfill the brand's full plan-based history window on first connect
+    // (not just the default 30 days) — upsertYouTubeChannelSnapshots explodes
+    // this into one row per real day, so the growth chart has real history
+    // immediately instead of accumulating one row per future sync.
+    const { getHistoryWindowMonths } = require('../plan-history-window.util');
+    const windowMonths = await getHistoryWindowMonths(brandId);
+    const backfillStart = new Date();
+    backfillStart.setMonth(backfillStart.getMonth() - windowMonths);
+    const startDate = backfillStart.toISOString().split('T')[0];
+    const endDate = new Date().toISOString().split('T')[0];
+
+    const channelData = await this.getChannelInfo(client, startDate, endDate);
+
     const { ConnectionConflictGuard, ConnectionConflictError } = require('../connection-conflict.guard');
     const conflictResult = await ConnectionConflictGuard.validateConflict(brandId, PLATFORMS.YOUTUBE, channelData.channelId);
     

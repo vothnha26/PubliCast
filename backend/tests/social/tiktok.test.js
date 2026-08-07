@@ -42,8 +42,15 @@ describe('TikTok Integration Service Tests', () => {
       expect(result.summary).toBeDefined();
       expect(result.summary.followers).toBe(currentFollowers);
       expect(result.summary.views).toBeGreaterThanOrEqual(0);
-      expect(result.summary.reach).toBeGreaterThanOrEqual(0);
       expect(result.summary.totalContent).toBeGreaterThanOrEqual(0);
+
+      // reach/balance/clicks/viewsBreakdown were removed — TikTok's
+      // video-list API has no real reach, click, or follower-delta data;
+      // those fields used to be fabricated percentages of view/like
+      // counts presented as measured data (#97-equivalent fix).
+      expect(result.summary.reach).toBeUndefined();
+      expect(result.balance).toBeUndefined();
+      expect(result.clicks).toBeUndefined();
 
       expect(result.growth).toBeDefined();
       expect(result.growth.length).toBeGreaterThan(0);
@@ -51,17 +58,12 @@ describe('TikTok Integration Service Tests', () => {
       expect(result.growth[0].followers).toBeDefined();
       expect(result.growth[0].views).toBeDefined();
 
-      expect(result.balance).toBeDefined();
-      expect(result.balance.length).toBeGreaterThan(0);
-      expect(result.balance[0].acquired).toBeDefined();
-      expect(result.balance[0].lost).toBeDefined();
-
-      expect(result.clicks).toBeDefined();
       expect(result.postsPeriod).toBeDefined();
       expect(result.interactions).toBeDefined();
       expect(result.interactions.likes).toBeDefined();
       expect(result.interactions.comments).toBeDefined();
       expect(result.interactions.shares).toBeDefined();
+      expect(result.interactions.viewsBreakdown).toBeUndefined();
     });
   });
 
