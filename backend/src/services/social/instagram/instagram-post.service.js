@@ -1,6 +1,6 @@
 const instagramGateway = require('./instagram.gateway');
 const socialAccountRepository = require('../../../repositories/social/social-account.repository');
-const brandRepository = require('../../../repositories/workspace/brand.repository');
+const { getHistoryWindowMonths } = require('../plan-history-window.util');
 const prisma = require('../../../config/prisma');
 const { PLATFORMS, POST_STATUS, POST_TYPES, DEFAULT_CONFIG } = require('../../../utils/constants');
 const { computeCommentScore } = require('../../../utils/comment-score.util');
@@ -23,10 +23,6 @@ const SOCIAL_POST_METRICS_TTL_MS = 24 * 60 * 60 * 1000;
 // Kept intentionally lower than TikTok's MAX_PAGE_COUNT since every
 // Instagram post still costs 1 extra insights call each (no batching).
 const MAX_PAGE_COUNT = 5;
-
-// Fallback when a brand has no active subscription — same conservative
-// (FREE-tier) default used by TikTokVideoService.
-const DEFAULT_HISTORY_WINDOW_MONTHS = 1;
 
 class InstagramPostService {
   _withTimeout(promise, ms, fallback) {
@@ -69,7 +65,7 @@ class InstagramPostService {
       if (pageToken) {
         result = await this._fetchSinglePage(igAccountId, accessToken, pageToken, limit);
       } else {
-        const windowMonths = await this._getHistoryWindowMonths(brandId);
+        const windowMonths = await getHistoryWindowMonths(brandId);
         result = await this._fetchFromDbCache(brandId, resolvedAccountId, windowMonths);
         if (!result) {
           result = await this._fetchRecentWindow(brandId, igAccountId, accessToken, limit);
@@ -220,7 +216,7 @@ class InstagramPostService {
   /** Walks pages from the start, stopping at whichever comes first: a post
    * older than the brand's plan-based history window, or MAX_PAGE_COUNT. */
   async _fetchRecentWindow(brandId, igAccountId, accessToken, limit) {
-    const windowMonths = await this._getHistoryWindowMonths(brandId);
+    const windowMonths = await getHistoryWindowMonths(brandId);
     const recentCutoff = new Date();
     recentCutoff.setMonth(recentCutoff.getMonth() - windowMonths);
 
@@ -260,12 +256,6 @@ class InstagramPostService {
     }
 
     return { data: posts, nextPageToken: null, prevPageToken: null };
-  }
-
-  async _getHistoryWindowMonths(brandId) {
-    const brand = await brandRepository.findBrandWithSubscription(brandId);
-    const planLimit = brand?.subscription?.status === 'ACTIVE' ? brand.subscription.plan?.planLimit : null;
-    return planLimit?.historyWindowMonths || DEFAULT_HISTORY_WINDOW_MONTHS;
   }
 
   async publishPost(brandId, postData) {

@@ -2,9 +2,16 @@ const youtubeGateway = require('./youtube.gateway');
 const googleOAuthService = require('../google-oauth.service');
 const socialAccountRepository = require('../../../repositories/social/social-account.repository');
 const competitorRepository = require('../../../repositories/social/competitor.repository');
-const { PLATFORMS, SEPARATORS, ANALYTICS, SOCIAL_TECHNICAL, YT_VIDEO_INSIGHTS, REDIS_TTL } = require('../../../utils/constants');
+const youTubeVideoMetricRepository = require('../../../repositories/social/youtube-video-metric.repository');
+const { eventEmitter, EVENTS } = require('../../../events/event-emitter');
+const { PLATFORMS, SEPARATORS, ANALYTICS, SOCIAL_TECHNICAL, YT_VIDEO_INSIGHTS } = require('../../../utils/constants');
 const { YOUTUBE_QUOTA_THRESHOLD, YOUTUBE_DAILY_QUOTA_LIMIT } = ANALYTICS;
 const logger = require('../../../utils/logger');
+
+// getPostInsights' DB-first staleness window — YouTube Analytics data
+// itself lags 24-48h at the source, so re-fetching more often than this
+// would just call the live API for data that hasn't actually changed yet.
+const POST_INSIGHTS_STALENESS_MS = 24 * 60 * 60 * 1000;
 
 let redisClient = null;
 try {
@@ -329,9 +336,20 @@ class YouTubeAnalyticsService {
     const tokens = await googleOAuthService.getTokens(code, redirectUri);
     const client = googleOAuthService.createClient(redirectUri);
     client.setCredentials(tokens);
-    
-    const channelData = await this.getChannelInfo(client);
-    
+
+    // Backfill the brand's full plan-based history window on first connect
+    // (not just the default 30 days) — upsertYouTubeChannelSnapshots explodes
+    // this into one row per real day, so the growth chart has real history
+    // immediately instead of accumulating one row per future sync.
+    const { getHistoryWindowMonths } = require('../plan-history-window.util');
+    const windowMonths = await getHistoryWindowMonths(brandId);
+    const backfillStart = new Date();
+    backfillStart.setMonth(backfillStart.getMonth() - windowMonths);
+    const startDate = backfillStart.toISOString().split('T')[0];
+    const endDate = new Date().toISOString().split('T')[0];
+
+    const channelData = await this.getChannelInfo(client, startDate, endDate);
+
     const { ConnectionConflictGuard, ConnectionConflictError } = require('../connection-conflict.guard');
     const conflictResult = await ConnectionConflictGuard.validateConflict(brandId, PLATFORMS.YOUTUBE, channelData.channelId);
     
@@ -345,26 +363,7 @@ class YouTubeAnalyticsService {
       );
     }
     
-    const account = await socialAccountRepository.upsertYouTubeAccount(brandId, channelData, tokens);
-
-    // Tự động kích hoạt PubSubHubbub Push Notifications (Event-driven Architecture)
-    // Tự bắt lỗi trong try-catch để nếu môi trường Dev/Local chưa có Public Webhook Domain thì flow connect chính vẫn thành công 100%
-    try {
-      const callbackUrl = process.env.PUBLIC_WEBHOOK_URL 
-        ? `${process.env.PUBLIC_WEBHOOK_URL}/api/v1/social/youtube/pubsub/callback`
-        : null;
-
-      if (callbackUrl) {
-        const youtubePubSubService = require('./youtube-pubsub.service');
-        await youtubePubSubService.requestHubSubscription(channelData.channelId, callbackUrl);
-      } else {
-        logger.debug('[YouTube Connect] PUBLIC_WEBHOOK_URL not configured. PubSubHubbub auto-subscription skipped.');
-      }
-    } catch (pubSubErr) {
-      console.warn('[YouTube Connect] Failed to auto-subscribe to PubSubHubbub Hub:', pubSubErr.message);
-    }
-
-    return account;
+    return socialAccountRepository.upsertYouTubeAccount(brandId, channelData, tokens);
   }
 
   async syncChannelMetrics(socialAccountId, startDate, endDate) {
@@ -614,39 +613,62 @@ class YouTubeAnalyticsService {
   // ────────────────────────────────────────────────────────────
 
   /**
-   * Lấy toàn bộ lifetime analytics của 1 video.
+   * Lấy toàn bộ lifetime analytics của 1 post/video cụ thể (không phải danh
+   * sách nhiều post — xem getPublishedVideos cho việc đó). Đổi tên từ
+   * getVideoInsights → getPostInsights để không bị hiểu lầm là chỉ áp dụng
+   * cho YouTube hoặc liên quan gì tới historyWindowMonths (khái niệm date-
+   * range theo plan chỉ áp dụng cho danh sách nhiều post, không áp dụng ở
+   * đây — hàm này luôn lấy lifetime của đúng 1 videoId được truyền vào).
    * Trả partial data nếu một phần query bị lỗi.
    * Áp dụng SRP: mỗi bước được tách thành method riêng.
    */
-  async getVideoInsights(brandId, videoId) {
-    const cacheKey = `yt:video-insights:${videoId}`;
+  async getPostInsights(brandId, videoId) {
+    const authInfo = await this._getAuthClient(brandId);
+    if (!authInfo) return this._emptyInsightsResponse();
 
-    const cached = await this._readCache(cacheKey);
-    if (cached) return cached;
+    // DB-first, not Redis — YouTubeVideoMetric is the permanent record of
+    // every fetch, so there is no separate short-TTL cache layer needed on
+    // top of it. A Redis TTL previously gated this instead, which meant a
+    // request landing just after the TTL expired re-hit the live API even
+    // though the DB already had a record from minutes earlier (#98-
+    // equivalent fix — the DB write existed but was never read back).
+    // 24h staleness matches the underlying data's own lag (YouTube
+    // Analytics itself is 24-48h behind), so refreshing more often than
+    // this fetches nothing new from the real API anyway.
+    const recent = await youTubeVideoMetricRepository.findRecentByVideo(authInfo.socialAccountId, videoId, 1);
+    const freshRecord = recent[0];
+    if (freshRecord && Date.now() - freshRecord.fetchedAt.getTime() < POST_INSIGHTS_STALENESS_MS) {
+      try {
+        return JSON.parse(freshRecord.rawInsightsJson);
+      } catch (err) {
+        logger.debug('[YouTubeAnalyticsService] Failed to parse cached video insight, refetching:', err.message);
+      }
+    }
 
-    const auth = await this._getAuthClient(brandId);
-    if (!auth) return this._emptyInsightsResponse();
+    const result = await this._buildInsights(authInfo.auth, videoId);
 
-    const result = await this._buildInsights(auth, videoId);
-    await this._writeCache(cacheKey, result);
+    // No likes/comments/avgWatchTime in _buildInsights's actual shape (see
+    // _fetchInsightsSummary) — those columns default to 0; the full shape
+    // (totalWatchHrs/avgViewPercentage/subscribersNet/trafficSource/
+    // deviceType/demographics/geography/searchTerms) lives in rawInsightsJson.
+    youTubeVideoMetricRepository.create({
+      brandId,
+      socialAccountId: authInfo.socialAccountId,
+      platformVideoId: videoId,
+      views: 0,
+      likes: 0,
+      comments: 0,
+      avgWatchTime: result?.summary?.totalWatchHrs || 0,
+      rawInsightsJson: JSON.stringify(result)
+    }).catch((err) => {
+      logger.debug('[YouTubeAnalyticsService] Failed to persist video insight:', err.message);
+    });
+
+    // Best-effort — a delayed socket update on failure is fine, nothing
+    // needs a retry (same reasoning as sync-cache.proxy.js's syncAndEmit).
+    eventEmitter.emit(EVENTS.SOCIAL.METRICS_SYNCED, { brandId, socialAccountId: authInfo.socialAccountId, platform: PLATFORMS.YOUTUBE });
+
     return result;
-  }
-
-  /** Đọc cache Redis — trả null nếu miss hoặc Redis lỗi */
-  async _readCache(key) {
-    if (!redisClient) return null;
-    try {
-      const cached = await redisClient.get(key);
-      return cached ? JSON.parse(cached) : null;
-    } catch (_) { return null; }
-  }
-
-  /** Ghi cache Redis — bỏ qua lỗi, không làm crash flow chính */
-  async _writeCache(key, value) {
-    if (!redisClient) return;
-    try {
-      await redisClient.setEx(key, REDIS_TTL.VIDEO_INSIGHTS_SEC, JSON.stringify(value));
-    } catch (_) { /* bỏ qua */ }
   }
 
   /**
@@ -665,7 +687,7 @@ class YouTubeAnalyticsService {
 
     if (active.accessToken && active.accessToken.startsWith('mock-')) return null;
 
-    return this._createAuthenticatedClient(active);
+    return { auth: this._createAuthenticatedClient(active), socialAccountId: active.id };
   }
 
   /** Chạy 6 query song song, detect silent quota failure, build response shape */

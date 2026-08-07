@@ -20,6 +20,15 @@ class SocketClient {
     // dropped by the old guard in emit() below — queued here and flushed
     // once 'connect' fires instead (#112 K6).
     this.pendingEmits = [];
+    // brandIds any component has asked to join (see emit('join_room', ...)
+    // below) — kept so a reconnect can reconcile each of them, not just the
+    // one active at reconnect time.
+    this.joinedBrandIds = new Set();
+    // Last-known metrics version per brandId, captured from `data_invalidate`
+    // payloads' dataVersion field. Used only to detect a missed event on
+    // reconnect — see _reconcileAfterReconnect.
+    this.lastKnownMetricsVersion = new Map();
+    this.wasDisconnected = false;
   }
 
   /**
@@ -65,12 +74,25 @@ class SocketClient {
       const queued = this.pendingEmits;
       this.pendingEmits = [];
       queued.forEach(({ event, data }) => this.socket.emit(event, data));
+
+      // A missed `data_invalidate` (e.g. emitted server-side during the gap
+      // between disconnect and this reconnect) leaves this tab on stale
+      // cache indefinitely — nothing else would ever trigger a refetch since
+      // staleTime hasn't elapsed and the tab never remounts. Only run this
+      // on an actual reconnect, not the very first connect of the session.
+      if (this.wasDisconnected) {
+        this.wasDisconnected = false;
+        this._reconcileAfterReconnect();
+      }
     });
 
     // Realtime Hybrid Cache Invalidation Handler
-    this.socket.on('data_invalidate', ({ scope, brandId }) => {
+    this.socket.on('data_invalidate', ({ scope, brandId, dataVersion }) => {
       logger.debug(`⚡ [SocketClient] Received data_invalidate for scope '${scope}', brandId '${brandId}'`);
       if (scope && brandId) {
+        if (scope === 'metrics' && typeof dataVersion === 'number') {
+          this.lastKnownMetricsVersion.set(brandId, dataVersion);
+        }
         import('../App').then(({ queryClient }) => {
           queryClient.invalidateQueries({ queryKey: [scope, brandId] });
         }).catch(err => {
@@ -85,6 +107,7 @@ class SocketClient {
 
     this.socket.on('disconnect', (reason) => {
       console.warn('🔌 [SocketClient] Disconnected:', reason);
+      this.wasDisconnected = true;
     });
   }
 
@@ -107,6 +130,9 @@ class SocketClient {
    * room join with no realtime delivery and no visible error.
    */
   emit(event, data) {
+    if (event === 'join_room' && data?.brandId) {
+      this.joinedBrandIds.add(data.brandId);
+    }
     if (!this.socket) {
       console.warn(`⚠️ [SocketClient] Cannot emit event "${event}". Socket not initialized (connect() not called yet).`);
       return;
@@ -116,6 +142,40 @@ class SocketClient {
       return;
     }
     this.socket.emit(event, data);
+  }
+
+  /**
+   * Reconcile every joined brand's metrics cache against the server after a
+   * reconnect, in case a `data_invalidate` was emitted while this tab was
+   * disconnected and so never arrived. Compares the last dataVersion we
+   * actually observed against the server's current version — only
+   * invalidates brands that are actually behind, not every joined brand.
+   */
+  async _reconcileAfterReconnect() {
+    if (this.joinedBrandIds.size === 0) return;
+    try {
+      const [{ default: socialService }, { queryClient }] = await Promise.all([
+        import('./social.service'),
+        import('../App')
+      ]);
+
+      await Promise.all(Array.from(this.joinedBrandIds).map(async (brandId) => {
+        try {
+          const res = await socialService.getMetricsVersion(brandId);
+          const serverVersion = (res.data || res)?.version;
+          const knownVersion = this.lastKnownMetricsVersion.get(brandId) || 0;
+          if (typeof serverVersion === 'number' && serverVersion > knownVersion) {
+            logger.debug(`⚡ [SocketClient] Reconcile found stale metrics for brand '${brandId}', invalidating`);
+            this.lastKnownMetricsVersion.set(brandId, serverVersion);
+            queryClient.invalidateQueries({ queryKey: ['metrics', brandId] });
+          }
+        } catch (err) {
+          console.warn(`[SocketClient] Reconcile failed for brand '${brandId}':`, err.message);
+        }
+      }));
+    } catch (err) {
+      console.warn('[SocketClient] Reconcile-after-reconnect failed:', err.message);
+    }
   }
 
   /**

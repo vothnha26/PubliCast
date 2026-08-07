@@ -133,36 +133,13 @@ describe('Notification integration hooks', () => {
       }), 'notifyChannelDisconnect');
     });
 
-    it('creates a platform notification when social metric sync fails', async () => {
-      const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
-      const account = {
-        id: 'sa-1',
-        brandId: 'brand-1',
-        platform: PLATFORMS.FACEBOOK
-      };
-      const platformService = {
-        syncChannelMetrics: jest.fn().mockRejectedValue(new Error('Token expired'))
-      };
-
-      socialAccountRepository.findByBrandAndPlatform.mockResolvedValue([account]);
-      socialPlatformFactory.getService.mockReturnValue(platformService);
-      notificationService.notifyBrandMembers.mockResolvedValue({});
-
-      // force=false (default) returns the cached/DB snapshot immediately and
-      // fires the live sync + failure notification in the background,
-      // fire-and-forget (see getAggregatedMetrics' "Optimization" comment in
-      // social.service.js) — awaiting the call alone races ahead of that
-      // background Promise.all. Wait a tick for it to settle before asserting.
-      const result = await socialService.getAggregatedMetrics('brand-1', '2026-05-01', '2026-05-30');
-      await new Promise((resolve) => setImmediate(resolve));
-
-      expect(result).toEqual([account]);
-      expect(notificationService.notifyBrandMembers).toHaveBeenCalledWith('brand-1', expect.objectContaining({
-        type: NOTIFICATION_TYPES.PLATFORM,
-        title: `${PLATFORMS.FACEBOOK} sync failed`,
-        actionUrl: '/manage/connections'
-      }), 'notifyChannelDisconnect');
-      consoleSpy.mockRestore();
-    });
+    // "creates a platform notification when social metric sync fails" was
+    // removed — it tested getAggregatedMetrics firing a background sync +
+    // failure notification, a behavior intentionally deleted when
+    // dashboard-load-sync was removed (getAggregatedMetrics is now a pure
+    // DB read; the cron scheduler and initial connect are the only sync
+    // sources, and sync-cache.proxy.js's Observer — see
+    // social.subscriber.js's handleMetricsSyncFailed — is what fires this
+    // notification today, not getAggregatedMetrics).
   });
 });

@@ -3,9 +3,18 @@ import {
   BarChart2, Loader2, PlayCircle, ChevronUp, ChevronDown, 
   ChevronsUpDown, Star, MoreVertical, Film, Image as ImageIcon, 
   Layers, Check, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight,
-  Sparkles, X, ExternalLink
+  Sparkles, X, ExternalLink, Eye, Copy
 } from "lucide-react";
 import { Button } from "../../../components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "../../../components/ui/dropdown-menu";
+import { PublishedPostDetailModal } from "../planner/components/PublishedPostDetailModal";
+import { toast } from "sonner";
 
 export function GenericPostsListTab({
   posts = [],
@@ -450,11 +459,54 @@ export function GenericPostsListTab({
                             </a>
 
                             {/* More button */}
-                            <button
-                              className="p-1 hover:bg-muted rounded-lg text-muted-foreground hover:text-foreground transition-colors border-none bg-transparent cursor-pointer"
-                            >
-                              <MoreVertical size={13} />
-                            </button>
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <button
+                                  className="p-1 hover:bg-muted rounded-lg text-muted-foreground hover:text-foreground transition-colors border-none bg-transparent cursor-pointer outline-none"
+                                  title="Tùy chọn khác"
+                                >
+                                  <MoreVertical size={13} />
+                                </button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end" className="w-48 bg-card border border-border shadow-xl rounded-2xl p-1.5 z-50">
+                                <DropdownMenuItem
+                                  onClick={() => setSelectedPost(post)}
+                                  className="cursor-pointer flex items-center gap-2 px-3 py-2 text-xs font-bold text-foreground rounded-xl hover:bg-muted transition-colors"
+                                >
+                                  <Eye size={14} className="text-muted-foreground" />
+                                  <span>Xem chi tiết</span>
+                                </DropdownMenuItem>
+                                {getPostUrl(post) !== "#" && (
+                                  <DropdownMenuItem
+                                    onClick={() => window.open(getPostUrl(post), "_blank", "noopener,noreferrer")}
+                                    className="cursor-pointer flex items-center gap-2 px-3 py-2 text-xs font-bold text-foreground rounded-xl hover:bg-muted transition-colors"
+                                  >
+                                    <ExternalLink size={14} className="text-muted-foreground" />
+                                    <span>Xem trên nền tảng</span>
+                                  </DropdownMenuItem>
+                                )}
+                                {getPostUrl(post) !== "#" && (
+                                  <DropdownMenuItem
+                                    onClick={() => {
+                                      navigator.clipboard.writeText(getPostUrl(post));
+                                      toast.success("Đã sao chép liên kết bài đăng");
+                                    }}
+                                    className="cursor-pointer flex items-center gap-2 px-3 py-2 text-xs font-bold text-foreground rounded-xl hover:bg-muted transition-colors"
+                                  >
+                                    <Copy size={14} className="text-muted-foreground" />
+                                    <span>Sao chép liên kết</span>
+                                  </DropdownMenuItem>
+                                )}
+                                <DropdownMenuSeparator className="my-1 bg-border" />
+                                <DropdownMenuItem
+                                  onClick={(e) => toggleStar(post.id, e)}
+                                  className="cursor-pointer flex items-center gap-2 px-3 py-2 text-xs font-bold text-foreground rounded-xl hover:bg-muted transition-colors"
+                                >
+                                  <Star size={14} className={isStarred ? "text-amber-500 fill-amber-500" : "text-muted-foreground"} />
+                                  <span>{isStarred ? "Bỏ yêu thích" : "Đánh dấu yêu thích"}</span>
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
                           </div>
                         </div>
                       </td>
@@ -592,6 +644,14 @@ export function GenericPostsListTab({
           </div>
         )}
       </div>
+
+      {/* Modal Chi tiết Bài đăng */}
+      {selectedPost && (
+        <PublishedPostDetailModal
+          post={selectedPost}
+          onClose={() => setSelectedPost(null)}
+        />
+      )}
     </div>
   );
 }

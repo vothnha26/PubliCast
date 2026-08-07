@@ -3,9 +3,6 @@ const youtubeAnalytics = require('./youtube-analytics.service');
 const youtubeVideo = require('./youtube-video.service');
 const youtubePublish = require('./youtube-publish.service');
 
-const youtubePubSub = require('./youtube-pubsub.service');
-const youtubePubSubProcessor = require('./youtube-pubsub.processor');
-
 class YouTubeService extends BaseSocialService {
   // --- Analytics & Channel ---
   async getChannelInfo(auth, startDate, endDate) {
@@ -40,8 +37,8 @@ class YouTubeService extends BaseSocialService {
     return youtubeAnalytics.getVideoAnalytics(brandId, videoId, startDate, endDate);
   }
 
-  async getVideoInsights(brandId, videoId) {
-    return youtubeAnalytics.getVideoInsights(brandId, videoId);
+  async getPostInsights(brandId, videoId) {
+    return youtubeAnalytics.getPostInsights(brandId, videoId);
   }
 
   // --- Videos & Tracking ---
@@ -75,19 +72,6 @@ class YouTubeService extends BaseSocialService {
 
   async updateVideo(brandId, videoId, updates, socialAccountId = null) {
     return youtubeVideo.updateVideo(brandId, videoId, updates, socialAccountId);
-  }
-
-  // --- PubSubHubbub Push Notifications ---
-  async requestPubSubSubscription(channelId, callbackUrl, mode) {
-    return youtubePubSub.requestHubSubscription(channelId, callbackUrl, mode);
-  }
-
-  async verifyPubSubIntent(query) {
-    return youtubePubSub.verifyIntent(query);
-  }
-
-  async processPubSubEvent(xmlPayload, signatureHeader) {
-    return youtubePubSubProcessor.processEventPayload(xmlPayload, signatureHeader);
   }
 
   // --- Comments & Interactions ---

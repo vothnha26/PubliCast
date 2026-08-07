@@ -19,6 +19,7 @@ import { POST_STATUS } from "../../constants/postStatus";
 import { useTranslation } from "react-i18next";
 import { usePostCreator } from "../../context/PostCreatorContext";
 import { useMetricsQuery } from "../../hooks/queries/useMetricsQuery";
+import { mergeAnalyticsRows } from "../../utils/mergeAnalyticsRows";
 
 const PLATFORM_COLORS = {
   YouTube: "#FF0000",
@@ -214,9 +215,9 @@ export function DashboardPage() {
     const dailyGrowth = {};
 
     metrics.forEach(m => {
-      if (!m.analytics?.[0]?.socialAnalytics?.audienceDemographicsJson) return;
+      const raw = mergeAnalyticsRows(m.analytics);
+      if (!raw) return;
       try {
-        const raw = JSON.parse(m.analytics[0].socialAnalytics.audienceDemographicsJson);
         const growthList = raw.growth || [];
         growthList.forEach(row => {
           let dateStr = "";

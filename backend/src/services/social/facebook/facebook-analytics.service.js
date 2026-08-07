@@ -287,6 +287,7 @@ class FacebookAnalyticsService {
         name: new Date(time).toLocaleDateString(DEFAULT_CONFIG.LOCALE, { month: 'short', day: 'numeric', timeZone: 'UTC' }),
         followers: 0,
         views: 0,
+        reach: 0,
         pageVisits: 0,
         totalContent: 0,
         acquired: 0,
@@ -317,10 +318,16 @@ class FacebookAnalyticsService {
               dailyMap[dateStr].pageVisits = val.value || 0;
             } else if (name === ANALYTICS.METRICS.FACEBOOK.VIEWS || name === 'page_media_view') {
               dailyMap[dateStr].views = val.value || 0;
-            } else if (name === ANALYTICS.METRICS.FACEBOOK.IMPRESSIONS || name === 'page_total_media_view_unique') {
+            } else if (name === ANALYTICS.METRICS.FACEBOOK.REACH || name === 'page_total_media_view_unique') {
+              // Fallback for views only when the primary page_media_view
+              // metric wasn't returned — reach and views are distinct
+              // concepts, but this legacy-path fallback predates the
+              // dedicated REACH mapping and is kept for older tokens that
+              // only return this metric.
               if (!dailyMap[dateStr].views) {
                 dailyMap[dateStr].views = val.value || 0;
               }
+              dailyMap[dateStr].reach = val.value || 0;
             } else if (name === ANALYTICS.METRICS.FACEBOOK.FOLLOWS || name === 'page_fan_adds_unique') {
               dailyMap[dateStr].acquired = (dailyMap[dateStr].acquired || 0) + (val.value || 0);
             } else if (name === 'page_daily_unfollows_unique' || name === 'page_fan_removes_unique') {

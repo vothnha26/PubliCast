@@ -18,13 +18,24 @@ export const SUPPORTED_METRIC_PLATFORMS = Object.freeze({
 export class BasePlatformMetricsStrategy {
   /**
    * Fetch metrics for a specific platform post/video.
-   * @param {string} brandId 
-   * @param {string} postId 
-   * @param {string|null} socialAccountId 
+   * @param {string} brandId
+   * @param {string} postId
+   * @param {string|null} socialAccountId
    * @returns {Promise<{reactions: number, comments: number, views: number, engagement: string|number, impressions?: number, shares?: number}>}
    */
   async fetchMetrics(brandId, postId, socialAccountId = null) {
     throw new Error("Method fetchMetrics() must be implemented.");
+  }
+
+  /**
+   * Fetch deep-dive insights (traffic source, device type, demographics,
+   * geography, search terms) for a specific post/video, if the platform
+   * supports it. Default: unsupported — callers should hide the insights
+   * section entirely when this resolves to null, not show an empty one.
+   * @returns {Promise<{summary, trafficSource, deviceType, demographics, geography, searchTerms, errors}|null>}
+   */
+  async fetchInsights(brandId, postId, socialAccountId = null) {
+    return null;
   }
 }
 
@@ -79,6 +90,16 @@ export class YoutubeMetricsStrategy extends BasePlatformMetricsStrategy {
       console.warn("[YoutubeMetricsStrategy] Failed to fetch metrics:", err.message);
     }
     return null;
+  }
+
+  async fetchInsights(brandId, postId, socialAccountId = null) {
+    if (!brandId || !postId) return null;
+    try {
+      return await socialService.getPostInsights(brandId, postId);
+    } catch (err) {
+      console.warn("[YoutubeMetricsStrategy] Failed to fetch insights:", err.message);
+      return null;
+    }
   }
 }
 

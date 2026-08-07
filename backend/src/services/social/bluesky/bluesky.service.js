@@ -4,12 +4,18 @@ const blueskyAnalytics = require('./bluesky-analytics.service');
 const blueskyOAuthHelper = require('./bluesky-oauth.helper');
 const socialAccountRepository = require('../../../repositories/social/social-account.repository');
 const QuotaTrackerService = require('../quota-tracker.service');
+const { getHistoryWindowMonths } = require('../plan-history-window.util');
 const { decrypt } = require('../../../utils/encryption');
 const { PLATFORMS, QUOTA_TTL_STRATEGY } = require('../../../utils/constants');
 const redisClient = require('../../../config/redis');
 const BLUESKY_CONSTANTS = require('./bluesky.constants');
 const crypto = require('crypto');
 const logger = require('../../../utils/logger');
+
+// Every page fetched costs one getAuthorFeed call — same reasoning as
+// TikTok/Instagram/Facebook/Threads' MAX_PAGE_COUNT: bound how many calls a
+// single tab-open can make even on the highest plan tier.
+const MAX_PAGE_COUNT = 5;
 
 class BlueskyService extends BaseSocialService {
   constructor() {
@@ -346,8 +352,47 @@ class BlueskyService extends BaseSocialService {
     if (!account) return { data: [], nextPageToken: null, prevPageToken: null };
 
     const agent = await this._getAuthenticatedAgent(account);
-    const result = await blueskyAnalytics.getPublishedPosts(agent, account.blueskyAccount.did, { limit, cursor: pageToken || undefined });
-    return { data: result.data, nextPageToken: result.nextPageToken, prevPageToken: null };
+
+    // An explicit pageToken (manual "next page" click) always fetches exactly
+    // one page, same as before. The initial load (no pageToken) instead
+    // walks the cursor bounded by the brand's plan-based history window —
+    // previously this had NO plan enforcement at all (unlike Facebook/
+    // Instagram/TikTok/Threads), only the `limit` param.
+    if (pageToken) {
+      const result = await blueskyAnalytics.getPublishedPosts(agent, account.blueskyAccount.did, { limit, cursor: pageToken });
+      return { data: result.data, nextPageToken: result.nextPageToken, prevPageToken: null };
+    }
+
+    const windowMonths = await getHistoryWindowMonths(brandId);
+    const cutoff = new Date();
+    cutoff.setMonth(cutoff.getMonth() - windowMonths);
+
+    let cursor = undefined;
+    let posts = [];
+    let pageCount = 0;
+    let hasMore = true;
+
+    while (hasMore && pageCount < MAX_PAGE_COUNT) {
+      pageCount += 1;
+      const result = await blueskyAnalytics.getPublishedPosts(agent, account.blueskyAccount.did, { limit, cursor });
+      const pagePosts = result.data || [];
+      if (pagePosts.length === 0) break;
+
+      // AT Protocol's author feed is newest-first, so once one post in a
+      // page is older than the cutoff, every post after it (this page and
+      // all subsequent pages) is guaranteed older too.
+      const cutoffIndex = pagePosts.findIndex((p) => p.date && new Date(p.date) < cutoff);
+      if (cutoffIndex === -1) {
+        posts = posts.concat(pagePosts);
+        hasMore = Boolean(result.nextPageToken);
+        cursor = result.nextPageToken || undefined;
+      } else {
+        posts = posts.concat(pagePosts.slice(0, cutoffIndex));
+        hasMore = false;
+      }
+    }
+
+    return { data: posts, nextPageToken: null, prevPageToken: null };
   }
 
   /**

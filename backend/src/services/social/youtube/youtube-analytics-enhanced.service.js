@@ -48,7 +48,7 @@ class YouTubeAnalyticsEnhancedService {
    * @param {string} videoId - YouTube video ID
    * @returns {Promise<object>} - Video insights or status message
    */
-  async getVideoInsights(brandId, videoId) {
+  async getPostInsights(brandId, videoId) {
     const cacheKey = `yt:video-insights:${videoId}`;
     const staleKey = `yt:video-insights:stale:${videoId}`;
     const lockKey = LOCK_CONFIG.YOUTUBE_INSIGHTS.PREFIX + videoId;

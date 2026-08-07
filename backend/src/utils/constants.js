@@ -262,6 +262,14 @@ const SYSTEM_PLANS = {
 
 const ANALYTICS = {
   COOLDOWN_HOURS: parseInt(process.env.SOCIAL_SYNC_COOLDOWN_HOURS) || 12,
+  // How many recent Analytics rows to fetch for merging into a real growth
+  // time series (see social-account.repository.js's findById/
+  // findByBrandAndPlatform). Each row already embeds its own ~31-day
+  // overlapping window (audienceDemographicsJson.growth[]), so this doesn't
+  // need to equal "days of history" 1:1 — 90 rows comfortably covers 90+
+  // days of sync history even at the once-daily low end of COOLDOWN_HOURS
+  // cadence, without shipping an unbounded number of overlapping blobs.
+  HISTORY_ROWS_TO_MERGE: 90,
   // Mốc bắt đầu "lifetime" — trước ngày này YouTube Analytics không có data chi tiết theo video
   LIFETIME_START_DATE: '2020-01-01',
   // YouTube Data/Analytics API's default daily quota cap (units/day), and the
@@ -285,7 +293,12 @@ const ANALYTICS = {
   METRICS: {
     FACEBOOK: {
       VIEWS: 'page_media_view',
-      IMPRESSIONS: 'page_total_media_view_unique',
+      // page_impressions_unique was deprecated by Meta on 2025-06-15 with no
+      // page-level replacement (only page_total_media_view_unique, already
+      // used here as REACH) — there is no real impressions metric to fetch
+      // anymore. Do not reintroduce an IMPRESSIONS metric name here without
+      // confirming against Meta's current deprecation list first.
+      REACH: 'page_total_media_view_unique',
       FOLLOWS: 'page_daily_follows_unique',
       ENGAGEMENTS: 'page_post_engagements',
       ACTIONS: 'page_total_actions',
@@ -415,7 +428,6 @@ const {
   YOUTUBE_MODERATION_STATUS,
   YOUTUBE_SEARCH_TYPES,
   YOUTUBE_CONSTRAINTS,
-  YOUTUBE_PUBSUB,
   YOUTUBE_VIDEO_DETAILS_CACHE
 } = require('../services/social/youtube/youtube.constants');
 
@@ -562,7 +574,6 @@ const REDIS_NAMESPACES = {
 
 const REDIS_TTL = {
   WEBHOOK_DEDUP_SEC: 600,
-  VIDEO_INSIGHTS_SEC: 7200, // 2 giờ
   SMART_LINK_VISITOR_SEC: 86400, // 24 giờ — 1 IP tính là 1 unique visitor/ngày cho 1 SmartLink
   AUTO_REPLY_RATE_LIMIT_WINDOW_SEC: 60,
   HMAC_NONCE_SEC: 300, // = ±5 phút timestamp window cho HMAC verify-token (Convo integration)
@@ -798,7 +809,6 @@ module.exports = {
   YOUTUBE_MODERATION_STATUS,
   YOUTUBE_SEARCH_TYPES,
   YOUTUBE_CONSTRAINTS,
-  YOUTUBE_PUBSUB,
   NOTIFICATION_TYPES,
   DEFAULT_CONFIG,
   FACEBOOK_API,

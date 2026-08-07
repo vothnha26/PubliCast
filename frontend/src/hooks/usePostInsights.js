@@ -2,7 +2,10 @@ import { useState, useEffect, useCallback } from 'react';
 import socialService from '../services/social.service';
 
 /**
- * Hook duy nhất quản lý lifetime analytics data cho 1 video YouTube.
+ * Hook duy nhất quản lý lifetime analytics data cho 1 post/video YouTube.
+ * Đổi tên từ useVideoInsights → usePostInsights: đây là insight của 1 post
+ * cụ thể (lifetime, không theo date-range/plan window), không phải danh
+ * sách nhiều video — không nên nhầm với historyWindowMonths list-windowing.
  *
  * Trả về:
  *   - insights: { summary, trafficSource, deviceType, demographics, geography, searchTerms, errors }
@@ -15,7 +18,7 @@ import socialService from '../services/social.service';
  *   - onRetry ở mọi section đều trỏ về refetch() này, không tạo 6 API riêng.
  *   - Nếu brandId hoặc videoId null/undefined → không fetch, trả về state rỗng.
  */
-export function useVideoInsights(brandId, videoId) {
+export function usePostInsights(brandId, videoId) {
   const [insights, setInsights]   = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError]         = useState(null);
@@ -31,10 +34,10 @@ export function useVideoInsights(brandId, videoId) {
     setError(null);
 
     try {
-      const data = await socialService.getVideoInsights(brandId, videoId);
+      const data = await socialService.getPostInsights(brandId, videoId);
       setInsights(data);
     } catch (err) {
-      console.error('[useVideoInsights] Failed to fetch:', err);
+      console.error('[usePostInsights] Failed to fetch:', err);
       setError(err?.response?.data?.message || 'Không thể tải dữ liệu phân tích video.');
       setInsights(null);
     } finally {
