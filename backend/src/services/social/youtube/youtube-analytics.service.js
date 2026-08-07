@@ -2,6 +2,7 @@ const youtubeGateway = require('./youtube.gateway');
 const googleOAuthService = require('../google-oauth.service');
 const socialAccountRepository = require('../../../repositories/social/social-account.repository');
 const competitorRepository = require('../../../repositories/social/competitor.repository');
+const youTubeVideoMetricRepository = require('../../../repositories/social/youtube-video-metric.repository');
 const { PLATFORMS, SEPARATORS, ANALYTICS, SOCIAL_TECHNICAL, YT_VIDEO_INSIGHTS, REDIS_TTL } = require('../../../utils/constants');
 const { YOUTUBE_QUOTA_THRESHOLD, YOUTUBE_DAILY_QUOTA_LIMIT } = ANALYTICS;
 const logger = require('../../../utils/logger');
@@ -345,26 +346,7 @@ class YouTubeAnalyticsService {
       );
     }
     
-    const account = await socialAccountRepository.upsertYouTubeAccount(brandId, channelData, tokens);
-
-    // Tự động kích hoạt PubSubHubbub Push Notifications (Event-driven Architecture)
-    // Tự bắt lỗi trong try-catch để nếu môi trường Dev/Local chưa có Public Webhook Domain thì flow connect chính vẫn thành công 100%
-    try {
-      const callbackUrl = process.env.PUBLIC_WEBHOOK_URL 
-        ? `${process.env.PUBLIC_WEBHOOK_URL}/api/v1/social/youtube/pubsub/callback`
-        : null;
-
-      if (callbackUrl) {
-        const youtubePubSubService = require('./youtube-pubsub.service');
-        await youtubePubSubService.requestHubSubscription(channelData.channelId, callbackUrl);
-      } else {
-        logger.debug('[YouTube Connect] PUBLIC_WEBHOOK_URL not configured. PubSubHubbub auto-subscription skipped.');
-      }
-    } catch (pubSubErr) {
-      console.warn('[YouTube Connect] Failed to auto-subscribe to PubSubHubbub Hub:', pubSubErr.message);
-    }
-
-    return account;
+    return socialAccountRepository.upsertYouTubeAccount(brandId, channelData, tokens);
   }
 
   async syncChannelMetrics(socialAccountId, startDate, endDate) {
@@ -614,21 +596,48 @@ class YouTubeAnalyticsService {
   // ────────────────────────────────────────────────────────────
 
   /**
-   * Lấy toàn bộ lifetime analytics của 1 video.
+   * Lấy toàn bộ lifetime analytics của 1 post/video cụ thể (không phải danh
+   * sách nhiều post — xem getPublishedVideos cho việc đó). Đổi tên từ
+   * getVideoInsights → getPostInsights để không bị hiểu lầm là chỉ áp dụng
+   * cho YouTube hoặc liên quan gì tới historyWindowMonths (khái niệm date-
+   * range theo plan chỉ áp dụng cho danh sách nhiều post, không áp dụng ở
+   * đây — hàm này luôn lấy lifetime của đúng 1 videoId được truyền vào).
    * Trả partial data nếu một phần query bị lỗi.
    * Áp dụng SRP: mỗi bước được tách thành method riêng.
    */
-  async getVideoInsights(brandId, videoId) {
+  async getPostInsights(brandId, videoId) {
     const cacheKey = `yt:video-insights:${videoId}`;
 
     const cached = await this._readCache(cacheKey);
     if (cached) return cached;
 
-    const auth = await this._getAuthClient(brandId);
-    if (!auth) return this._emptyInsightsResponse();
+    const authInfo = await this._getAuthClient(brandId);
+    if (!authInfo) return this._emptyInsightsResponse();
 
-    const result = await this._buildInsights(auth, videoId);
+    const result = await this._buildInsights(authInfo.auth, videoId);
     await this._writeCache(cacheKey, result);
+
+    // Persist alongside the Redis cache — was never written to the DB
+    // before, so a cache expiry (2h TTL) permanently lost the fetch. Redis
+    // stays as the short-TTL layer that avoids re-hitting the YouTube
+    // Analytics API; this table is the permanent record of what was fetched.
+    // No likes/comments/avgWatchTime in _buildInsights's actual shape (see
+    // _fetchInsightsSummary) — those columns default to 0; the full shape
+    // (totalWatchHrs/avgViewPercentage/subscribersNet/trafficSource/
+    // deviceType/demographics/geography/searchTerms) lives in rawInsightsJson.
+    youTubeVideoMetricRepository.create({
+      brandId,
+      socialAccountId: authInfo.socialAccountId,
+      platformVideoId: videoId,
+      views: 0,
+      likes: 0,
+      comments: 0,
+      avgWatchTime: result?.summary?.totalWatchHrs || 0,
+      rawInsightsJson: JSON.stringify(result)
+    }).catch((err) => {
+      logger.debug('[YouTubeAnalyticsService] Failed to persist video insight:', err.message);
+    });
+
     return result;
   }
 
@@ -665,7 +674,7 @@ class YouTubeAnalyticsService {
 
     if (active.accessToken && active.accessToken.startsWith('mock-')) return null;
 
-    return this._createAuthenticatedClient(active);
+    return { auth: this._createAuthenticatedClient(active), socialAccountId: active.id };
   }
 
   /** Chạy 6 query song song, detect silent quota failure, build response shape */

@@ -385,6 +385,10 @@ class SocialAccountRepository {
       if (analytics) {
         const { startDate, endDate } = analytics;
         await this.saveYouTubeAnalytics(brandId, account.id, analytics, startDate, endDate, tx);
+
+        const todayStr = new Date().toISOString().split('T')[0];
+        const todayGrowth = Array.isArray(analytics.growth) ? analytics.growth.find(g => g.date === todayStr) : null;
+        await this.createYouTubeChannelSnapshot(brandId, account.id, statistics, todayGrowth, tx);
       }
 
       if (enqueueSync) {
@@ -399,6 +403,39 @@ class SocialAccountRepository {
 
       return this.findById(account.id, tx);
     }, { timeout: PRISMA_TIMEOUTS.INTERACTIVE_TRANSACTION_MS });
+  }
+
+  /**
+   * Append-only daily channel snapshot — one row per socialAccountId per
+   * calendar day (upserted, so re-syncing the same day updates that day's
+   * row instead of duplicating it). Distinct from saveYouTubeAnalytics's
+   * Analytics/SocialAnalytics rows: those store a whole ~31-day window's
+   * worth of data per sync; this stores today's actual counters plus
+   * today's gained/lost, one row that accumulates real day-by-day history.
+   */
+  async createYouTubeChannelSnapshot(brandId, socialAccountId, statistics, todayGrowth, client = prisma) {
+    const snapshotDate = new Date().toISOString().split('T')[0];
+    return client.youTubeChannelSnapshot.upsert({
+      where: { socialAccountId_snapshotDate: { socialAccountId, snapshotDate: new Date(snapshotDate) } },
+      update: {
+        subscribersCount: parseInt(statistics.subscriberCount) || 0,
+        totalViewsCount: parseInt(statistics.viewCount) || 0,
+        totalVideosCount: parseInt(statistics.videoCount) || 0,
+        subscribersGained: todayGrowth?.subscribersGained || 0,
+        subscribersLost: todayGrowth?.subscribersLost || 0,
+        fetchedAt: new Date()
+      },
+      create: {
+        brandId,
+        socialAccountId,
+        snapshotDate: new Date(snapshotDate),
+        subscribersCount: parseInt(statistics.subscriberCount) || 0,
+        totalViewsCount: parseInt(statistics.viewCount) || 0,
+        totalVideosCount: parseInt(statistics.videoCount) || 0,
+        subscribersGained: todayGrowth?.subscribersGained || 0,
+        subscribersLost: todayGrowth?.subscribersLost || 0
+      }
+    });
   }
 
   async saveYouTubeAnalytics(brandId, socialAccountId, analyticsData, startDate, endDate, client = prisma) {
@@ -636,7 +673,7 @@ class SocialAccountRepository {
         twitchAccount: true,
         analytics: {
           orderBy: { fetchedAt: 'desc' },
-          take: 1,
+          take: ANALYTICS.HISTORY_ROWS_TO_MERGE,
           include: {
             socialAnalytics: true
           }
@@ -778,7 +815,7 @@ class SocialAccountRepository {
         twitchAccount: true,
         analytics: {
           orderBy: { fetchedAt: 'desc' },
-          take: 1,
+          take: ANALYTICS.HISTORY_ROWS_TO_MERGE,
           include: {
             socialAnalytics: true
           }
