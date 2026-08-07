@@ -20,9 +20,10 @@ jest.mock('../../src/repositories/workspace/post.repository', () => ({
   updateMany: jest.fn()
 }));
 
-jest.mock('../../src/queues/publish.queue', () => ({
+jest.mock('../../src/services/workspace/post/publish-qstash.service', () => ({
   upsertPublishJob: jest.fn(),
-  removePublishJob: jest.fn()
+  removePublishJob: jest.fn(),
+  enqueueImmediate: jest.fn()
 }));
 
 jest.mock('../../src/services/auth/authorization.facade', () => ({
@@ -210,7 +211,7 @@ describe('AutoList Queue Scheduler Suite', () => {
       autoListRepository.findById.mockResolvedValue(mockAutoList);
       autoListRepository.update.mockResolvedValue({ ...mockAutoList, isActive: false });
       
-      const { removePublishJob } = require('../../src/queues/publish.queue');
+      const { removePublishJob } = require('../../src/services/workspace/post/publish-qstash.service');
 
       await autoListService.toggleStatus('list-123', 'user-1');
 
@@ -384,7 +385,7 @@ describe('AutoList Queue Scheduler Suite', () => {
       };
       autoListRepository.findById.mockResolvedValue(mockAutoList);
       authorizationFacade.checkPermission.mockResolvedValue(true);
-      const { removePublishJob } = require('../../src/queues/publish.queue');
+      const { removePublishJob } = require('../../src/services/workspace/post/publish-qstash.service');
 
       await autoListService.deleteAutoList('list-123', 'user-1');
 

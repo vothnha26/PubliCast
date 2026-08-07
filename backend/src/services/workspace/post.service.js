@@ -827,8 +827,7 @@ class PostService {
     }
 
     logger.debug(`[Post Service] Queueing retry job for Post ${postId} on platforms: ${platforms.join(', ')}`);
-    const { safeUpsertPublishJob } = require('../../queues/publish.queue');
-    const jobId = `publish-post-${postId}`;
+    const { enqueueImmediate } = require('./post/publish-qstash.service');
 
     // Expand the caller's platform list into explicit (platform, account)
     // pairs from PostTarget — a manual "repost" from the UI retries every
@@ -851,27 +850,27 @@ class PostService {
       }
     }
 
-    // Đặt trạng thái RETRYING trước khi enqueue — PublishPostHandler.claimForPublishing
-    // chỉ chấp nhận SCHEDULED/DRAFT/RETRYING, bài FAILED sẽ bị skip nếu không set trước.
-    await postRepository.updateStatus(postId, POST_STATUS.RETRYING);
-
-    // safeUpsertPublishJob skips the upsert if a job for this post is
-    // currently active — a plain remove-then-add here would race the running
-    // worker (#106): remove() can't touch an active job, so the stale job
-    // keeps running while this add() either gets deduped away (retry lost)
-    // or coexists once the active job completes (double publish).
-    const { applied } = await safeUpsertPublishJob(jobId, QUEUE_CONFIG.PUBLISH.JOB_PUBLISH, {
-      postId,
-      retryTargets
-    }, { delay: 0 });
-
-    if (!applied) {
-      // Rollback status nếu không enqueue được
-      await postRepository.updateStatus(postId, post.status);
+    // Atomically claim PUBLISHING->RETRYING is impossible here (retry is
+    // only valid from FAILED/RETRYING, never PUBLISHING per RETRYABLE_STATUSES
+    // above) — but a post can flip to PUBLISHING between the findById() at
+    // the top of this method and here if an in-flight QStash delivery just
+    // started. Re-checking status right before the write catches that
+    // narrow window; the real safety net is still postRepository
+    // .claimForPublishing()'s atomic compare-and-swap inside the QStash
+    // publish-post webhook handler, which would reject a delivery landing
+    // mid-PUBLISHING regardless of this check.
+    const fresh = await postRepository.findById(postId);
+    if (fresh.status === POST_STATUS.PUBLISHING) {
       const error = new Error('Post đang được xử lý bởi một job khác, vui lòng thử lại sau ít phút.');
       error.statusCode = 409;
       throw error;
     }
+
+    // Đặt trạng thái RETRYING trước khi enqueue — PublishPostHandler.claimForPublishing
+    // chỉ chấp nhận SCHEDULED/DRAFT/RETRYING, bài FAILED sẽ bị skip nếu không set trước.
+    await postRepository.updateStatus(postId, POST_STATUS.RETRYING);
+
+    await enqueueImmediate(postId, { retryTargets });
 
     return { postId, platforms };
   }

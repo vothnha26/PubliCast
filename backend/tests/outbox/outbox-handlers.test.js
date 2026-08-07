@@ -1,6 +1,7 @@
-jest.mock('../../src/queues/publish.queue', () => ({
+jest.mock('../../src/services/workspace/post/publish-qstash.service', () => ({
   upsertPublishJob: jest.fn().mockResolvedValue(true),
-  removePublishJob: jest.fn().mockResolvedValue(true)
+  removePublishJob: jest.fn().mockResolvedValue(true),
+  enqueueImmediate: jest.fn().mockResolvedValue('msg-mock')
 }));
 
 jest.mock('../../src/config/qstash', () => ({
@@ -25,7 +26,7 @@ jest.mock('../../src/services/core/email.service', () => ({
   sendOTP: jest.fn().mockResolvedValue(true)
 }));
 
-const { upsertPublishJob, removePublishJob } = require('../../src/queues/publish.queue');
+const { upsertPublishJob, removePublishJob } = require('../../src/services/workspace/post/publish-qstash.service');
 const { qstashClient } = require('../../src/config/qstash');
 const initPostSubscribers = require('../../src/events/subscribers/post.subscriber');
 const brandService = require('../../src/services/workspace/brand.service');

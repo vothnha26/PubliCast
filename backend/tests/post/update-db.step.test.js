@@ -17,14 +17,14 @@ jest.mock('../../src/services/workspace/auto-list.service', () => ({
 jest.mock('../../src/services/core/notification.service', () => ({
   create: jest.fn().mockResolvedValue({})
 }));
-jest.mock('../../src/queues/publish.queue', () => ({
-  publishQueue: { remove: jest.fn(), add: jest.fn() }
+jest.mock('../../src/services/workspace/post/publish-qstash.service', () => ({
+  enqueueImmediate: jest.fn()
 }));
 
 const postRepository = require('../../src/repositories/workspace/post.repository');
 const autoListRepository = require('../../src/repositories/workspace/auto-list.repository');
 const autoListService = require('../../src/services/workspace/auto-list.service');
-const { publishQueue } = require('../../src/queues/publish.queue');
+const { enqueueImmediate } = require('../../src/services/workspace/post/publish-qstash.service');
 
 describe('UpdatePostStatusStep', () => {
   let step;
@@ -49,7 +49,7 @@ describe('UpdatePostStatusStep', () => {
     await expect(step.execute(context)).resolves.toBeUndefined();
 
     expect(postRepository.update).toHaveBeenCalledWith('post-1', expect.objectContaining({ status: 'PUBLISHED' }));
-    expect(publishQueue.add).not.toHaveBeenCalled();
+    expect(enqueueImmediate).not.toHaveBeenCalled();
   });
 
   it('marks RETRYING and throws PublishFailedError when all platforms fail', async () => {
@@ -65,8 +65,7 @@ describe('UpdatePostStatusStep', () => {
     await expect(step.execute(context)).rejects.toThrow(PublishFailedError);
 
     expect(postRepository.update).toHaveBeenCalledWith('post-1', expect.objectContaining({ status: 'RETRYING' }));
-    expect(publishQueue.add).not.toHaveBeenCalled();
-    expect(publishQueue.remove).not.toHaveBeenCalled();
+    expect(enqueueImmediate).not.toHaveBeenCalled();
   });
 
   it('marks RETRYING, does not throw, and enqueues a scoped retry job on partial failure', async () => {
@@ -82,11 +81,10 @@ describe('UpdatePostStatusStep', () => {
     await expect(step.execute(context)).resolves.toBeUndefined();
 
     expect(postRepository.update).toHaveBeenCalledWith('post-1', expect.objectContaining({ status: 'RETRYING' }));
-    expect(publishQueue.remove).toHaveBeenCalledWith('publish-post-post-1');
-    expect(publishQueue.add).toHaveBeenCalledWith(
-      'publish-post',
-      { postId: 'post-1', retryTargets: [{ platform: 'INSTAGRAM', socialAccountId: undefined }], partialRetryCount: 1 },
-      { jobId: 'publish-post-post-1', delay: 5000 }
+    expect(enqueueImmediate).toHaveBeenCalledWith(
+      'post-1',
+      { retryTargets: [{ platform: 'INSTAGRAM', socialAccountId: undefined }], partialRetryCount: 1 },
+      5
     );
     // Persisted to the DB (#107 I7) — the publish-reconciler sweeper reads
     // this if the just-enqueued job above is ever lost.
@@ -144,7 +142,7 @@ describe('UpdatePostStatusStep', () => {
     // First update (inside execute) sets RETRYING; the second (in
     // _enqueuePartialRetry's exhausted branch) overwrites it to FAILED.
     expect(postRepository.update).toHaveBeenCalledWith('post-1', { status: 'FAILED' });
-    expect(publishQueue.add).not.toHaveBeenCalled();
+    expect(enqueueImmediate).not.toHaveBeenCalled();
   });
 
   it('loop mode (shouldLoop) never throws or enqueues a retry, keeping its own snapshot-and-recycle behavior', async () => {
@@ -165,7 +163,7 @@ describe('UpdatePostStatusStep', () => {
     expect(postRepository.create).toHaveBeenCalledWith(expect.objectContaining({ status: 'FAILED' }));
     // Original post recycled back to DRAFT, not left at RETRYING/FAILED.
     expect(postRepository.update).toHaveBeenCalledWith('post-1', expect.objectContaining({ status: 'DRAFT' }));
-    expect(publishQueue.add).not.toHaveBeenCalled();
+    expect(enqueueImmediate).not.toHaveBeenCalled();
   });
 
   it('does not let AutoList sync failure (e.g. deleted mid-publish) break the post status update', async () => {
@@ -200,6 +198,6 @@ describe('UpdatePostStatusStep', () => {
 
     await expect(step.execute(context)).resolves.toBeUndefined();
 
-    expect(publishQueue.add).toHaveBeenCalled();
+    expect(enqueueImmediate).toHaveBeenCalled();
   });
 });

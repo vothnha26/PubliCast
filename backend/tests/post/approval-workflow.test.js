@@ -126,11 +126,11 @@ jest.mock('../../src/config/prisma', () => {
   return mockPrisma;
 });
 
-// Mock BullMQ Queue calls
-jest.mock('../../src/queues/publish.queue', () => ({
-  publishQueue: { client: { on: jest.fn() } },
+// Mock QStash publish scheduling calls
+jest.mock('../../src/services/workspace/post/publish-qstash.service', () => ({
   upsertPublishJob: jest.fn().mockResolvedValue(true),
-  removePublishJob: jest.fn().mockResolvedValue(true)
+  removePublishJob: jest.fn().mockResolvedValue(true),
+  enqueueImmediate: jest.fn().mockResolvedValue('msg-mock')
 }));
 
 // Mock Outbox Event Repository — approval-workflow.service.js ghi outbox trong transaction

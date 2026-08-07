@@ -126,11 +126,11 @@ jest.mock('../../src/services/core/notification.service', () => ({
   create: jest.fn().mockResolvedValue({ id: 'notif-mock-id' })
 }));
 
-// Mock BullMQ Queue calls (chạm tới khi _handleReviewerRemoved auto-approve 1 workflow có scheduledAt)
-jest.mock('../../src/queues/publish.queue', () => ({
-  publishQueue: { client: { on: jest.fn() } },
+// Mock QStash publish scheduling calls (chạm tới khi _handleReviewerRemoved auto-approve 1 workflow có scheduledAt)
+jest.mock('../../src/services/workspace/post/publish-qstash.service', () => ({
   upsertPublishJob: jest.fn().mockResolvedValue(true),
-  removePublishJob: jest.fn().mockResolvedValue(true)
+  removePublishJob: jest.fn().mockResolvedValue(true),
+  enqueueImmediate: jest.fn().mockResolvedValue('msg-mock')
 }));
 
 const notificationService = require('../../src/services/core/notification.service');

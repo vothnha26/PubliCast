@@ -1,5 +1,8 @@
 const socialPlatformFactory = require('../../services/social/social-platform.factory');
 const socialAccountRepository = require('../../repositories/social/social-account.repository');
+const postService = require('../../services/workspace/post.service');
+const postRepository = require('../../repositories/workspace/post.repository');
+const { POST_STATUS } = require('../../utils/constants');
 const logger = require('../../utils/logger');
 
 /**
@@ -66,4 +69,84 @@ const handleMetricsSync = async (req, res) => {
   }
 };
 
-module.exports = { handleSocialSync, handleMetricsSync };
+/**
+ * Handles the publish-post QStash delivery — replaces publish.worker.js's
+ * BullMQ handler (see the old publish-post.handler.js, whose logic this
+ * mirrors exactly). postRepository.claimForPublishing()'s atomic DB
+ * compare-and-swap is the actual guard against double-publish (an extra
+ * delivery for a post already PUBLISHING just loses the claim and returns
+ * early) — this replaces BullMQ's job-active check, not the safety net.
+ */
+const handlePublishPost = async (req, res) => {
+  const { postId, retryTargets, retryPlatforms, partialRetryCount } = req.body;
+
+  logger.debug(`[QStash Publish] 📝 Processing delivery for Post: ${postId}`);
+
+  try {
+    const validStatuses = [POST_STATUS.SCHEDULED, POST_STATUS.DRAFT, POST_STATUS.RETRYING];
+    const claimed = await postRepository.claimForPublishing(postId, validStatuses);
+    if (!claimed) {
+      logger.debug(`[QStash Publish] ⏩ Post ${postId} is not in a valid state for publishing (or already being published). Skipping.`);
+      return res.status(200).json({ success: true, skipped: true });
+    }
+
+    await postService.publishToPlatforms(postId, { retryTargets, retryPlatforms, partialRetryCount });
+
+    logger.debug(`[QStash Publish] ✅ Successfully processed Post: ${postId}`);
+    return res.status(200).json({ success: true });
+  } catch (err) {
+    console.error(`[QStash Publish] ❌ Error processing post ${postId}:`, err.message);
+
+    // Safety net: PublishFailedError (all platforms failed) already moves
+    // the post to RETRYING inside UpdatePostStatusStep before throwing, so
+    // this is a no-op for that path. But an unexpected failure earlier in
+    // the pipeline would otherwise leave the post stuck at PUBLISHING
+    // forever with no path back to a retryable state — only revert if it's
+    // still exactly where the claim left it.
+    try {
+      await postRepository.updateMany(
+        { id: postId, status: POST_STATUS.PUBLISHING },
+        { status: POST_STATUS.RETRYING }
+      );
+    } catch (resetErr) {
+      console.error(`[QStash Publish] Failed to reset stuck PUBLISHING status for ${postId}:`, resetErr.message);
+    }
+
+    // Non-2xx tells QStash to retry per the message's configured retry count.
+    return res.status(500).json({ success: false, message: err.message });
+  }
+};
+
+/**
+ * QStash failureCallback target — fires once, only after every retry for a
+ * publish-post delivery is exhausted. Replaces publish.worker.js's
+ * on('failed') handler's attemptsMade >= maxAttempts branch, which marked
+ * the post FAILED. QStash's failure-callback payload wraps the original
+ * request body (base64) in sourceBody, not as parsed JSON — see
+ * advanced/callbacks.md's Failure Callback Body shape.
+ */
+const handlePublishPostFailed = async (req, res) => {
+  try {
+    const sourceBody = req.body?.sourceBody
+      ? JSON.parse(Buffer.from(req.body.sourceBody, 'base64').toString('utf8'))
+      : {};
+    const { postId } = sourceBody;
+
+    if (!postId) {
+      logger.warn('[QStash Publish Failed] Failure callback missing postId in sourceBody.');
+      return res.status(200).json({ success: true });
+    }
+
+    console.error(`[QStash Publish Failed] Post ${postId} exhausted all retries (retried=${req.body.retried}/${req.body.maxRetries}).`);
+    await postRepository.update(postId, { status: POST_STATUS.FAILED });
+
+    return res.status(200).json({ success: true });
+  } catch (err) {
+    console.error('[QStash Publish Failed] Error handling failure callback:', err.message);
+    // Still 200 — retrying this callback won't fix a bug in this handler,
+    // and QStash would otherwise keep redelivering the failure callback itself.
+    return res.status(200).json({ success: false, message: err.message });
+  }
+};
+
+module.exports = { handleSocialSync, handleMetricsSync, handlePublishPost, handlePublishPostFailed };

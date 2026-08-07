@@ -16,4 +16,10 @@ router.post('/social-sync', qstashAuth, qstashController.handleSocialSync);
 // POST /api/webhooks/qstash/metrics-sync
 router.post('/metrics-sync', qstashAuth, qstashController.handleMetricsSync);
 
+// POST /api/webhooks/qstash/publish-post
+router.post('/publish-post', qstashAuth, qstashController.handlePublishPost);
+
+// POST /api/webhooks/qstash/publish-post-failed (QStash failureCallback target)
+router.post('/publish-post-failed', qstashAuth, qstashController.handlePublishPostFailed);
+
 module.exports = router;

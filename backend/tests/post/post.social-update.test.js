@@ -37,9 +37,10 @@ jest.mock('../../src/services/workspace/approval-workflow.service', () => ({
   createWorkflowRequest: jest.fn()
 }));
 
-jest.mock('../../src/queues/publish.queue', () => ({
+jest.mock('../../src/services/workspace/post/publish-qstash.service', () => ({
   upsertPublishJob: jest.fn(),
-  removePublishJob: jest.fn()
+  removePublishJob: jest.fn(),
+  enqueueImmediate: jest.fn()
 }));
 
 jest.mock('../../src/repositories/core/outbox-event.repository', () => ({

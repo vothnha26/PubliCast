@@ -854,6 +854,11 @@ model Post {
   failureReason      String?    @db.Text
   autoListId         String?
   platformPostId     String?
+  // QStash messageId for the currently-scheduled/in-flight publish delivery
+  // (replaces BullMQ's jobId-based remove/re-add) — lets upsertPublishJob and
+  // removePublishJob cancel a specific pending delivery via
+  // client.messages.delete() when a post is rescheduled or unscheduled.
+  qstashMessageId    String?
   isLibrary          Boolean    @default(false)
   // Only meaningful when isLibrary is true — TEAM: visible to every brand
   // member's Post Library. PRIVATE: only the creator sees it. Mirrors
