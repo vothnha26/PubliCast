@@ -25,7 +25,6 @@ class ValidatorFactory {
         return new YouTubeValidator(limitConfig);
       case PLATFORMS.BLUESKY:
         return new BlueskyValidator(limitConfig);
-      case PLATFORMS.TELEGRAM:
       default:
         return new GenericValidator(limitConfig);
     }

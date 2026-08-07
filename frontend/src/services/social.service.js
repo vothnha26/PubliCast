@@ -230,16 +230,6 @@ class SocialService {
     return data;
   }
 
-  async connectTelegramAccount(brandId, botToken, chatId) {
-    const data = await apiV2.post('/social/telegram/connect', { brandId, botToken, chatId });
-    return data;
-  }
-
-  async disconnectTelegramAccount(brandId, socialAccountId = null) {
-    const data = await apiV2.post('/social/telegram/disconnect', { brandId, socialAccountId });
-    return data;
-  }
-
   async reassignSocialAccount(platform, platformAccountId, targetBrandId) {
     const data = await apiV2.post('/social/reassign', { platform, platformAccountId, targetBrandId });
     return data;

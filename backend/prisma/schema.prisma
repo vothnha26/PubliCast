@@ -68,15 +68,15 @@ model UserSettings {
   // Master toggle — overrides every category switch below when false,
   // without needing to clear each one individually (mirrors Buffer's
   // "Unsubscribe from all" behavior).
-  notificationsEnabled     Boolean @default(true)
-  notifyPostFailure        Boolean @default(true)
-  notifyPublishSuccess     Boolean @default(true)
-  notifyChannelDisconnect  Boolean @default(true)
-  notifyCollaboration      Boolean @default(true)
-  notifyBilling            Boolean @default(true)
-  notifyEmptyQueue         Boolean @default(true)
-  notifyDailyRecap         Boolean @default(false)
-  notifyWeeklyReport       Boolean @default(false)
+  notificationsEnabled    Boolean @default(true)
+  notifyPostFailure       Boolean @default(true)
+  notifyPublishSuccess    Boolean @default(true)
+  notifyChannelDisconnect Boolean @default(true)
+  notifyCollaboration     Boolean @default(true)
+  notifyBilling           Boolean @default(true)
+  notifyEmptyQueue        Boolean @default(true)
+  notifyDailyRecap        Boolean @default(false)
+  notifyWeeklyReport      Boolean @default(false)
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -116,43 +116,41 @@ model Brand {
   updatedAt              DateTime  @updatedAt
   deletedAt              DateTime?
 
-  owner                   User                         @relation("BrandOwner", fields: [ownerId], references: [id], onDelete: Restrict)
-  subscription            Subscription                 @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
-  teamMembers             Team[]
-  customRoles             CustomRole[]                 @relation("CustomRoleBrand")
-  posts                   Post[]
-  contentCalendars        ContentCalendar[]
-  bestTimeSlots           BestTimeSlot[]
-  autoLists               AutoList[]
-  approvalWorkflows       ApprovalWorkflow[]
-  socialAccounts          SocialAccount[]
-  channelGroups           ChannelGroup[]
-  adAccounts              AdAccount[]
-  analytics               Analytics[]
-  competitorAnalysis      CompetitorAnalysis[]
-  facebookOverviewMetrics FacebookOverviewMetric[]
-  facebookPostMetrics     FacebookPostMetric[]
-  facebookStoryMetrics    FacebookStoryMetric[]
-  socialPostMetrics       SocialPostMetric[]
-  unifiedInbox            UnifiedInbox[]
-  reports                 Report[]
-  smartLinks              SmartLink[]
-  hashtagTrackers         HashtagTracker[]
-  hashtagSets             HashtagSet[]
-  postingGoals            PostingGoal[]
-  streak                  BrandStreak?
-  feedSources             FeedSource[]
-  aiAssistant             AIAssistant?
-  reportScheduleConfig    ReportScheduleConfig?
-  mediaLibrary            MediaLibrary[]
-  mediaFolders            MediaFolder[]
-  auditLogs               AuditLog[]
-  notifications           SystemNotification[]
-  subscriptionAddons      SubscriptionAddon[]
-  supportTickets          SupportTicket[]
-  trackedVideos           TrackedVideo[]
-  youtubePlaylistCache    YouTubePlaylistCache[]
-  calendarEvents          CalendarEvent[]
+  owner                User                   @relation("BrandOwner", fields: [ownerId], references: [id], onDelete: Restrict)
+  subscription         Subscription           @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+  teamMembers          Team[]
+  customRoles          CustomRole[]           @relation("CustomRoleBrand")
+  posts                Post[]
+  contentCalendars     ContentCalendar[]
+  bestTimeSlots        BestTimeSlot[]
+  autoLists            AutoList[]
+  approvalWorkflows    ApprovalWorkflow[]
+  socialAccounts       SocialAccount[]
+  channelGroups        ChannelGroup[]
+  adAccounts           AdAccount[]
+  analytics            Analytics[]
+  competitorAnalysis   CompetitorAnalysis[]
+  facebookPostMetrics  FacebookPostMetric[]
+  socialPostMetrics    SocialPostMetric[]
+  unifiedInbox         UnifiedInbox[]
+  reports              Report[]
+  smartLinks           SmartLink[]
+  hashtagTrackers      HashtagTracker[]
+  hashtagSets          HashtagSet[]
+  postingGoals         PostingGoal[]
+  streak               BrandStreak?
+  feedSources          FeedSource[]
+  aiAssistant          AIAssistant?
+  reportScheduleConfig ReportScheduleConfig?
+  mediaLibrary         MediaLibrary[]
+  mediaFolders         MediaFolder[]
+  auditLogs            AuditLog[]
+  notifications        SystemNotification[]
+  subscriptionAddons   SubscriptionAddon[]
+  supportTickets       SupportTicket[]
+  trackedVideos        TrackedVideo[]
+  youtubePlaylistCache YouTubePlaylistCache[]
+  calendarEvents       CalendarEvent[]
 
   @@index([ownerId])
   @@map("brands")
@@ -195,8 +193,8 @@ model YouTubeVideoCategory {
 }
 
 model YouTubePlaylistCache {
-  id          String   @id @default(uuid())
-  brandId     String
+  id              String   @id @default(uuid())
+  brandId         String
   // Which YouTube channel these playlists belong to — nullable because rows
   // written before this column existed have no way to know; those are
   // treated as belonging to the brand's first/default YouTube account (see
@@ -204,11 +202,11 @@ model YouTubePlaylistCache {
   // YouTube channels needs this to avoid serving one channel's playlists
   // from another's cache.
   socialAccountId String?
-  playlistId  String // ID gốc từ YouTube
-  title       String
-  description String?  @db.Text
-  itemCount   Int      @default(0)
-  syncedAt    DateTime @default(now())
+  playlistId      String // ID gốc từ YouTube
+  title           String
+  description     String?  @db.Text
+  itemCount       Int      @default(0)
+  syncedAt        DateTime @default(now())
 
   brand         Brand          @relation(fields: [brandId], references: [id], onDelete: Cascade)
   socialAccount SocialAccount? @relation(fields: [socialAccountId], references: [id], onDelete: Cascade)
@@ -557,26 +555,23 @@ model SocialAccount {
   createdAt         DateTime     @default(now())
   updatedAt         DateTime     @updatedAt
 
-  brand            Brand             @relation(fields: [brandId], references: [id], onDelete: Cascade)
-  analytics        Analytics[]
-  inboxItems       InboxItem[]
-  instagramAccount InstagramAccount?
-  facebookPage     FacebookPage?
-  tikTokAccount    TikTokAccount?
-  youtubeChannel   YouTubeChannel?
-  telegramAccount  TelegramAccount?
-  blueskyAccount   BlueskyAccount?
-  redditAccount    RedditAccount?
-  twitchAccount    TwitchAccount?
-  autoReplySetting AutoReplySetting?
+  brand                Brand                  @relation(fields: [brandId], references: [id], onDelete: Cascade)
+  analytics            Analytics[]
+  inboxItems           InboxItem[]
+  instagramAccount     InstagramAccount?
+  facebookPage         FacebookPage?
+  tikTokAccount        TikTokAccount?
+  youtubeChannel       YouTubeChannel?
+  blueskyAccount       BlueskyAccount?
+  redditAccount        RedditAccount?
+  twitchAccount        TwitchAccount?
+  autoReplySetting     AutoReplySetting?
   postNetworkOverrides PostNetworkOverride[]
-  postTargets      PostTarget[]
+  postTargets          PostTarget[]
   youtubePlaylistCache YouTubePlaylistCache[]
 
   // Facebook dedicated metrics
-  facebookOverviewMetrics FacebookOverviewMetric[] @relation("FacebookOverviewMetricAccount")
-  facebookPostMetrics     FacebookPostMetric[]     @relation("FacebookPostMetricAccount")
-  facebookStoryMetrics    FacebookStoryMetric[]    @relation("FacebookStoryMetricAccount")
+  facebookPostMetrics FacebookPostMetric[] @relation("FacebookPostMetricAccount")
 
   // Shared post-metrics cache (Instagram, Threads — see SocialPostMetric)
   socialPostMetrics SocialPostMetric[]
@@ -598,18 +593,18 @@ model SocialAccount {
 // works; PRIVATE is visible only to createdByUserId, for a user who wants
 // their own scratch organization without cluttering the shared list.
 model ChannelGroup {
-  id              String              @id @default(uuid())
+  id              String                 @id @default(uuid())
   brandId         String
   createdByUserId String
   name            String
   color           String?
   visibility      ChannelGroupVisibility @default(TEAM)
-  createdAt       DateTime            @default(now())
-  updatedAt       DateTime            @updatedAt
+  createdAt       DateTime               @default(now())
+  updatedAt       DateTime               @updatedAt
 
-  brand       Brand                @relation(fields: [brandId], references: [id], onDelete: Cascade)
-  createdBy   User                 @relation(fields: [createdByUserId], references: [id], onDelete: Cascade)
-  members     ChannelGroupMember[]
+  brand     Brand                @relation(fields: [brandId], references: [id], onDelete: Cascade)
+  createdBy User                 @relation(fields: [createdByUserId], references: [id], onDelete: Cascade)
+  members   ChannelGroupMember[]
 
   // A name only needs to be unique within whatever the creator can see it
   // alongside — two different users can each have their own "My Channels"
@@ -741,17 +736,6 @@ model TikTokAccount {
   @@map("tiktok_accounts")
 }
 
-model TelegramAccount {
-  id              String @id @default(uuid())
-  socialAccountId String @unique
-  chatType        String @default("channel") // "channel" or "group"
-  memberCount     Int    @default(0)
-
-  socialAccount SocialAccount @relation(fields: [socialAccountId], references: [id], onDelete: Cascade)
-
-  @@map("telegram_accounts")
-}
-
 model BlueskyAccount {
   id              String  @id @default(uuid())
   socialAccountId String  @unique
@@ -823,35 +807,35 @@ model AdAccount {
 // ============================================
 
 model Post {
-  id                 String     @id @default(uuid())
+  id                 String                 @id @default(uuid())
   brandId            String
   createdByUserId    String
   title              String
-  caption            String?    @db.Text
+  caption            String?                @db.Text
   type               PostType
-  status             PostStatus @default(DRAFT)
+  status             PostStatus             @default(DRAFT)
   // Persisted count of self-enqueued partial-retry rounds (mirrors the
   // in-memory partialRetryCount that only lives in BullMQ job.data — if that
   // job is ever lost (Redis restart, or the #106 active-job dedup skipping a
   // re-enqueue), this is what the RETRYING reconciler sweeper reads to decide
   // whether to re-enqueue again or give up as FAILED (#107 I7).
-  publishRetryCount  Int        @default(0)
-  targetPlatforms    String     @db.Text
-  mediaUrls          String?    @db.Text
-  mediaThumbnailUrls String?    @db.Text
-  hashtags           String?    @db.Text
-  mentions           String?    @db.Text
-  firstComment       String?    @db.Text
+  publishRetryCount  Int                    @default(0)
+  targetPlatforms    String                 @db.Text
+  mediaUrls          String?                @db.Text
+  mediaThumbnailUrls String?                @db.Text
+  hashtags           String?                @db.Text
+  mentions           String?                @db.Text
+  firstComment       String?                @db.Text
   locationId         String?
   locationName       String?
   linkUrl            String?
   altText            String?
-  metadata           String?    @db.Text
-  isCollaboration    Boolean    @default(false)
+  metadata           String?                @db.Text
+  isCollaboration    Boolean                @default(false)
   collaboratorHandle String?
   scheduledAt        DateTime?
   publishedAt        DateTime?
-  failureReason      String?    @db.Text
+  failureReason      String?                @db.Text
   autoListId         String?
   platformPostId     String?
   // QStash messageId for the currently-scheduled/in-flight publish delivery
@@ -859,24 +843,24 @@ model Post {
   // removePublishJob cancel a specific pending delivery via
   // client.messages.delete() when a post is rescheduled or unscheduled.
   qstashMessageId    String?
-  isLibrary          Boolean    @default(false)
+  isLibrary          Boolean                @default(false)
   // Only meaningful when isLibrary is true — TEAM: visible to every brand
   // member's Post Library. PRIVATE: only the creator sees it. Mirrors
   // ChannelGroupVisibility's semantics (see that enum), reused here rather
   // than duplicated since the meaning is identical.
   libraryVisibility  ChannelGroupVisibility @default(TEAM)
-  isDeleted          Boolean    @default(false)
+  isDeleted          Boolean                @default(false)
   deletedAt          DateTime?
-  createdAt          DateTime   @default(now())
-  updatedAt          DateTime   @updatedAt
+  createdAt          DateTime               @default(now())
+  updatedAt          DateTime               @updatedAt
 
   brand             Brand              @relation(fields: [brandId], references: [id], onDelete: Cascade)
   creator           User               @relation("PostCreator", fields: [createdByUserId], references: [id], onDelete: Restrict)
   autoList          AutoList?          @relation(fields: [autoListId], references: [id], onDelete: Cascade)
   approvalWorkflows ApprovalWorkflow[]
 
-  networkOverrides       PostNetworkOverride[]
-  targets                PostTarget[]
+  networkOverrides PostNetworkOverride[]
+  targets          PostTarget[]
 
   @@index([brandId])
   @@index([createdByUserId])
@@ -891,10 +875,18 @@ model Post {
 // account's content was customized. Channel filters, the publish step, and
 // delete-on-platform calls all resolve "which account(s)" from this table.
 model PostTarget {
-  id              String       @id @default(uuid())
+  id              String           @id @default(uuid())
   postId          String
   platform        PlatformType
   socialAccountId String
+  // Per-target publish outcome, written by SocialPublishStep as each
+  // (platform, account) publish call actually resolves — lets the UI show
+  // real "N/M platforms published" progress instead of only the Post's
+  // single aggregate status, which can't distinguish "still publishing" from
+  // "half-published" across independently-completing platform calls.
+  publishStatus   PostTargetStatus @default(PENDING)
+  publishedAt     DateTime?
+  errorMessage    String?
 
   post          Post          @relation(fields: [postId], references: [id], onDelete: Cascade)
   socialAccount SocialAccount @relation(fields: [socialAccountId], references: [id], onDelete: Cascade)
@@ -902,6 +894,13 @@ model PostTarget {
   @@unique([postId, socialAccountId])
   @@index([socialAccountId])
   @@map("post_targets")
+}
+
+enum PostTargetStatus {
+  PENDING
+  PUBLISHING
+  PUBLISHED
+  FAILED
 }
 
 // Per-platform (and, when a brand has multiple accounts of that platform,
@@ -916,16 +915,16 @@ model PostTarget {
 // existed — this table only ever adds an optional override layer, it never
 // replaces Post as the single calendar/approval unit.
 model PostNetworkOverride {
-  id              String        @id @default(uuid())
+  id              String       @id @default(uuid())
   postId          String
   platform        PlatformType
   socialAccountId String?
-  useTemplate     Boolean       @default(true)
-  caption         String?       @db.Text
-  mediaUrls       String?       @db.Text
+  useTemplate     Boolean      @default(true)
+  caption         String?      @db.Text
+  mediaUrls       String?      @db.Text
   // THREADS only: JSON array of {text, mediaUrls} for the reply chain,
   // parallel to draft.networkCustom.THREADS.threadPosts on the frontend.
-  threadPosts     String?       @db.Text
+  threadPosts     String?      @db.Text
   // JSON object of platform-specific technical fields for this account —
   // YouTube's {categoryId, privacyStatus, tags, madeForKids, playlistId},
   // TikTok's {privacy, allowComments, allowDuet, allowStitch, aiGenerated,
@@ -935,9 +934,9 @@ model PostNetworkOverride {
   // platform shared one flat category/privacy/tags value regardless of
   // which specific channel was selected — a brand with 2 YouTube channels
   // could not give them different categories.
-  settings        String?       @db.Text
-  createdAt       DateTime      @default(now())
-  updatedAt       DateTime      @updatedAt
+  settings        String?      @db.Text
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
 
   post          Post           @relation(fields: [postId], references: [id], onDelete: Cascade)
   socialAccount SocialAccount? @relation(fields: [socialAccountId], references: [id], onDelete: Cascade)
@@ -945,10 +944,6 @@ model PostNetworkOverride {
   @@unique([postId, platform, socialAccountId])
   @@map("post_network_overrides")
 }
-
-
-
-
 
 model ContentCalendar {
   id               String       @id @default(uuid())
@@ -1028,10 +1023,10 @@ model ApprovalWorkflow {
   reviewedAt        DateTime?
   version           Int            @default(1)
 
-  post       Post?              @relation(fields: [postId], references: [id], onDelete: Cascade)
-  brand      Brand              @relation(fields: [brandId], references: [id], onDelete: Cascade)
-  requester  User               @relation("ApprovalWorkflowRequester", fields: [requesterId], references: [id], onDelete: Restrict)
-  reviewers  WorkflowReviewer[]
+  post      Post?              @relation(fields: [postId], references: [id], onDelete: Cascade)
+  brand     Brand              @relation(fields: [brandId], references: [id], onDelete: Cascade)
+  requester User               @relation("ApprovalWorkflowRequester", fields: [requesterId], references: [id], onDelete: Restrict)
+  reviewers WorkflowReviewer[]
 
   @@index([brandId])
   @@map("approval_workflows")
@@ -1075,7 +1070,6 @@ model Analytics {
   socialAccount   SocialAccount?   @relation(fields: [socialAccountId], references: [id], onDelete: Cascade)
   adAccount       AdAccount?       @relation(fields: [adAccountId], references: [id], onDelete: Cascade)
   socialAnalytics SocialAnalytics?
-  adAnalytics     AdAnalytics?
 
   @@index([brandId])
   @@map("analytics")
@@ -1108,34 +1102,6 @@ model SocialAnalytics {
   analytics Analytics @relation(fields: [analyticsId], references: [id], onDelete: Cascade)
 
   @@map("social_analytics")
-}
-
-model AdAnalytics {
-  id                    String   @id @default(uuid())
-  analyticsId           String   @unique
-  campaignId            String?
-  campaignName          String?
-  adSetId               String?
-  totalSpend            Decimal
-  impressions           Int
-  clicks                Int
-  ctr                   Float
-  cpc                   Decimal
-  cpm                   Decimal
-  conversions           Int
-  conversionValue       Decimal
-  cpa                   Decimal
-  roas                  Float
-  reach                 Int
-  frequency             Float
-  videoViews            Int?
-  videoWatchRate        Float?
-  campaignBreakdownJson String?  @db.Text
-  createdAt             DateTime @default(now())
-
-  analytics Analytics @relation(fields: [analyticsId], references: [id], onDelete: Cascade)
-
-  @@map("ad_analytics")
 }
 
 model CompetitorAnalysis {
@@ -1174,63 +1140,6 @@ model CompetitorAnalysis {
 
 /// Số liệu tổng quan Facebook theo khoảng thời gian.
 /// Tab Overview: followers, clicks, reach, impressions (organic vs promoted).
-model FacebookOverviewMetric {
-  id              String   @id @default(uuid())
-  brandId         String
-  socialAccountId String
-  dateFrom        DateTime
-  dateTo          DateTime
-  granularity     String   @default("DAY") // DAY | WEEK | MONTH
-
-  // Followers
-  followersTotal     Int @default(0)
-  followersGain      Int @default(0)
-  followersLost      Int @default(0)
-  followersNetChange Int @default(0)
-
-  // Reach & Impressions (chia organic/promoted)
-  reach              Int @default(0)
-  impressions        Int @default(0)
-  organicReach       Int @default(0)
-  paidReach          Int @default(0)
-  organicImpressions Int @default(0)
-  paidImpressions    Int @default(0)
-
-  // Clicks
-  pageClicks  Int @default(0) // Tổng click trên page
-  linkClicks  Int @default(0) // Click vào link trong post
-  otherClicks Int @default(0) // Click profile, phone, direction...
-
-  // Engagement
-  engagements Int @default(0)
-  likes       Int @default(0)
-  comments    Int @default(0)
-  shares      Int @default(0)
-  reactions   Int @default(0) // Tổng reactions (all types)
-
-  // Page Views
-  pageViews       Int @default(0)
-  uniquePageViews Int @default(0)
-
-  // Video
-  videoViews        Int @default(0)
-  organicVideoViews Int @default(0)
-  paidVideoViews    Int @default(0)
-
-  // Dữ liệu breakdown theo ngày (JSON array)
-  dailyBreakdownJson String? @db.LongText
-
-  fetchedAt DateTime @default(now())
-  createdAt DateTime @default(now())
-
-  brand         Brand         @relation(fields: [brandId], references: [id], onDelete: Cascade)
-  socialAccount SocialAccount @relation("FacebookOverviewMetricAccount", fields: [socialAccountId], references: [id], onDelete: Cascade)
-
-  @@index([brandId])
-  @@index([socialAccountId])
-  @@map("facebook_overview_metrics")
-}
-
 /// Analytics từng bài post Facebook.
 /// Tab Posts: Types panel (Group/Count + Views donut chart), List of Posts.
 model FacebookPostMetric {
@@ -1285,46 +1194,6 @@ model FacebookPostMetric {
   @@map("facebook_post_metrics")
 }
 
-/// Analytics từng Facebook Story.
-/// Tab Stories: danh sách stories + metrics reach/exits/replies/completion.
-model FacebookStoryMetric {
-  id              String    @id @default(uuid())
-  brandId         String
-  socialAccountId String
-  platformStoryId String // Facebook story ID
-  publishedAt     DateTime?
-  expiresAt       DateTime?
-
-  // Media
-  mediaType    String  @default("IMAGE") // IMAGE | VIDEO
-  thumbnailUrl String?
-  mediaUrl     String?
-
-  // Reach & Impressions
-  reach       Int @default(0)
-  impressions Int @default(0)
-
-  // Story-specific metrics
-  exits          Int    @default(0) // Người dùng thoát khỏi story
-  replies        Int    @default(0) // Replies qua Direct Message
-  tapsForward    Int    @default(0) // Tap xem story tiếp theo
-  tapsBack       Int    @default(0) // Tap xem lại story trước
-  linkClicks     Int    @default(0) // Swipe-up / link sticker clicks
-  completionRate Float? // % người xem đến hết story
-  exitRate       Float? // % exits / impressions
-
-  fetchedAt DateTime @default(now())
-  createdAt DateTime @default(now())
-
-  brand         Brand         @relation(fields: [brandId], references: [id], onDelete: Cascade)
-  socialAccount SocialAccount @relation("FacebookStoryMetricAccount", fields: [socialAccountId], references: [id], onDelete: Cascade)
-
-  @@unique([socialAccountId, platformStoryId])
-  @@index([brandId])
-  @@index([socialAccountId])
-  @@map("facebook_story_metrics")
-}
-
 // DB-first cache for published-post metrics on platforms whose insights
 // endpoints don't warrant a dedicated per-platform table the way Facebook's
 // richer FacebookPostMetric does (no REEL/STANDARD branching, no separate
@@ -1344,13 +1213,13 @@ model SocialPostMetric {
   postType        String? // platform-specific type string, e.g. IMAGE/VIDEO/CAROUSEL/REEL/STORY — not a shared enum since each platform's set differs
   publishedAt     DateTime?
 
-  reach       Int @default(0)
-  views       Int @default(0)
-  likes       Int @default(0)
-  comments    Int @default(0)
-  shares      Int @default(0)
-  saves       Int @default(0)
-  clicks      Int @default(0)
+  reach    Int @default(0)
+  views    Int @default(0)
+  likes    Int @default(0)
+  comments Int @default(0)
+  shares   Int @default(0)
+  saves    Int @default(0)
+  clicks   Int @default(0)
 
   engagementRate Float @default(0)
 
@@ -1699,15 +1568,15 @@ model FeedSource {
 // Cached parsed RSS items for a FeedSource, refreshed periodically by
 // feed-scheduler.service.js rather than fetched live on every page view.
 model FeedEntry {
-  id          String    @id @default(uuid())
+  id           String    @id @default(uuid())
   feedSourceId String
-  guid        String    @db.VarChar(500)
-  title       String    @db.Text
-  link        String    @db.VarChar(2048)
-  summary     String?   @db.Text
-  imageUrl    String?   @db.VarChar(2048)
-  publishedAt DateTime?
-  fetchedAt   DateTime  @default(now())
+  guid         String    @db.VarChar(500)
+  title        String    @db.Text
+  link         String    @db.VarChar(2048)
+  summary      String?   @db.Text
+  imageUrl     String?   @db.VarChar(2048)
+  publishedAt  DateTime?
+  fetchedAt    DateTime  @default(now())
 
   feedSource FeedSource @relation(fields: [feedSourceId], references: [id], onDelete: Cascade)
 
@@ -1917,7 +1786,6 @@ enum PlatformType {
   BLUESKY
   REDDIT
   GOOGLE_BUSINESS
-  TELEGRAM
   GOOGLE_DRIVE
 }
 
@@ -2029,7 +1897,7 @@ enum AuthProvider {
 
 model PlatformLimit {
   id                String       @id @default(uuid())
-  platform          PlatformType // e.g. YOUTUBE, FACEBOOK, INSTAGRAM, TIKTOK, TELEGRAM
+  platform          PlatformType // e.g. YOUTUBE, FACEBOOK, INSTAGRAM, TIKTOK
   subType           String // e.g. "POST", "REEL", "STORY", "VIDEO", "SHORTS"
   maxCaptionLength  Int          @default(2000)
   maxFileSizeMb     Int          @default(100) // 100MB
@@ -2128,22 +1996,22 @@ model TemplateCategory {
 }
 
 model Template {
-  id          String         @id @default(uuid())
+  id          String          @id @default(uuid())
   emoji       String?
   title       String
   // Short prompt shown on the template card (what to write about).
-  description String         @db.Text
+  description String          @db.Text
   // Full starter content with {{placeholder}} sections, inserted into the
   // composer when the user clicks the template — mirrors Buffer's
   // Description vs Body split in its own template editor.
-  body        String?        @db.Text
+  body        String?         @db.Text
   // Both optional — fixed enums (not free text like TemplateCategory.name)
   // since they're closed classification sets meant to stay filterable/
   // consistent, unlike categories which admins can freely create.
   format      TemplateFormat?
   goal        TemplateGoal?
-  createdAt   DateTime       @default(now())
-  updatedAt   DateTime       @updatedAt
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
 
   categories TemplateCategoryOnTemplate[]
 

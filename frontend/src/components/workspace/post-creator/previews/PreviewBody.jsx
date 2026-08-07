@@ -11,7 +11,6 @@ const PLATFORM_LABEL = {
   facebook: "Facebook",
   tiktok: "TikTok",
   instagram: "Instagram",
-  telegram: "Telegram",
   threads: "Threads",
   bluesky: "Bluesky",
   reddit: "Reddit",

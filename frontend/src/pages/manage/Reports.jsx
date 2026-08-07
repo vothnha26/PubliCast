@@ -70,18 +70,6 @@ const FALLBACK_PREVIEW_DATA = {
       { week: "W3", views: 0 },
       { week: "W4", views: 0 }
     ]
-  },
-  telegram: {
-    members: 0,
-    avgViews: 0,
-    forwarded: 0,
-    reactionRate: 0,
-    weeklyGrowth: [
-      { week: "W1", views: 0 },
-      { week: "W2", views: 0 },
-      { week: "W3", views: 0 },
-      { week: "W4", views: 0 }
-    ]
   }
 };
 
@@ -321,7 +309,7 @@ export function ReportsPage() {
     if (!activeBrand) return;
     setPreviewLoading(true);
     try {
-      const platforms = ["Facebook", "YouTube", "Instagram", "TikTok", "Telegram"];
+      const platforms = ["Facebook", "YouTube", "Instagram", "TikTok"];
       const res = await reportService.getPreviewData(activeBrand.id, period, platforms.join(","));
       if (res?.data) {
         setPreviewData(res.data);
@@ -1028,120 +1016,6 @@ export function ReportsPage() {
       );
     }
 
-    if (pageType === "telegram") {
-      const tgChannel = data.channels?.find(c => c.platform === "TELEGRAM") || { displayName: t("editor.widgetSections.telegram"), followers: 0, postsCount: 0, engagementRate: 0, reach: 0, impressions: 0, engagements: 0, likes: 0, comments: 0, shares: 0, clicks: 0 };
-      const tgData = data.telegram || FALLBACK_PREVIEW_DATA.telegram;
-      const tgPosts = (data.topPosts || []).filter(p => p.platform === "TELEGRAM").slice(0, 4);
-
-      return (
-        <div
-          className="w-full aspect-[1.414/1] relative flex flex-col justify-between overflow-hidden p-5 bg-card text-foreground border border-gray-150 rounded-xl"
-          style={bodyBackgroundUrl ? { backgroundImage: `url(${bodyBackgroundUrl})`, backgroundSize: "cover", backgroundPosition: "center" } : {}}
-        >
-          {renderHeader("TELEGRAM CHANNEL ANALYTICS")}
-
-          {/* KPI Strip */}
-          <div className="grid grid-cols-4 gap-2.5 mb-2.5">
-            {[
-              { label: t("sections.followers"), value: tgChannel.followers >= 1000 ? `${(tgChannel.followers / 1000).toFixed(1)}K` : tgChannel.followers, accent: "#24A1DE" },
-              { label: t("sections.avgViews"), value: tgChannel.reach >= 1000 ? `${(tgChannel.reach / 1000).toFixed(1)}K` : tgChannel.reach, accent: "#2AABEE" },
-              { label: t("sections.forwarded"), value: tgChannel.shares >= 1000 ? `${(tgChannel.shares / 1000).toFixed(1)}K` : tgChannel.shares, accent: color },
-              { label: t("sections.reactionRate"), value: `${tgChannel.engagementRate}%`, accent: "#52C79F" }
-            ].map((kpi, i) => (
-              <div key={i} className="p-2 bg-muted border border-border rounded-lg space-y-0.5" style={{ borderTop: `2px solid ${kpi.accent}` }}>
-                <span className="text-[6.5px] text-gray-450 font-bold uppercase tracking-wider block">{kpi.label}</span>
-                <div className="text-xs font-black font-mono" style={{ color: kpi.accent }}>{kpi.value}</div>
-              </div>
-            ))}
-          </div>
-
-          <div className="grid grid-cols-5 gap-2.5 items-stretch mb-1">
-            {/* Views Trend Line */}
-            <div className="col-span-2 bg-muted border border-border rounded-lg p-2 flex flex-col">
-              <span className="text-[7px] font-extrabold text-muted-foreground uppercase tracking-wider mb-1">{t("sections.totalViews")}</span>
-              <svg viewBox="0 0 150 70" className="w-full flex-1">
-                <line x1="10" y1="10" x2="140" y2="10" stroke="#E2E8F0" strokeWidth="0.5" strokeDasharray="2 2" />
-                <line x1="10" y1="35" x2="140" y2="35" stroke="#E2E8F0" strokeWidth="0.5" strokeDasharray="2 2" />
-                <line x1="10" y1="60" x2="140" y2="60" stroke="#E2E8F0" strokeWidth="0.5" />
-                {(() => {
-                  const weeklyViews = getWeeklyData(tgChannel.analyticsData?.growth, "views");
-                  const maxV = Math.max(...weeklyViews, 1);
-                  const minV = Math.min(...weeklyViews, 0);
-                  const range = maxV - minV || 1;
-                  const coords = weeklyViews.map((wVal, i) => {
-                    const x = 20 + i * 35;
-                    const y = 60 - ((wVal - minV) / range) * 45;
-                    return { x, y };
-                  });
-                  const pathD = `M ${coords.map(c => `${c.x},${c.y}`).join(" L ")}`;
-                  const fillD = `M ${coords[0].x},${coords[0].y} L ${coords.map(c => `${c.x},${c.y}`).join(" L ")} L ${coords[coords.length - 1].x},60 L ${coords[0].x},60 Z`;
-                  return (
-                    <>
-                      <defs>
-                        <linearGradient id="tgGrad" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="0%" stopColor="#24A1DE" stopOpacity="0.3" />
-                          <stop offset="100%" stopColor="#24A1DE" stopOpacity="0" />
-                        </linearGradient>
-                      </defs>
-                      <path d={fillD} fill="url(#tgGrad)" />
-                      <path d={pathD} fill="none" stroke="#24A1DE" strokeWidth="1.5" />
-                      {coords.map((c, i) => (
-                        <circle key={i} cx={c.x} cy={c.y} r="1.5" fill="#24A1DE" stroke="white" strokeWidth="0.5" />
-                      ))}
-                    </>
-                  );
-                })()}
-              </svg>
-            </div>
-
-            {/* Subscriber Growth + Top Posts */}
-            <div className="col-span-3 bg-muted border border-border rounded-lg p-2.5 flex flex-col">
-              <div className="flex items-center justify-between mb-1.5">
-                <span className="text-[7px] font-extrabold text-muted-foreground uppercase tracking-wider">{t("sections.topPosts")}</span>
-                <span className="text-[6px] px-1.5 py-0.5 rounded font-bold text-white" style={{ backgroundColor: "#24A1DE" }}>TELEGRAM</span>
-              </div>
-              <div className="space-y-1.5">
-                {tgPosts.length > 0 ? tgPosts.map((post, idx) => (
-                  <div key={post.id || idx} className="border-b border-border pb-1 last:border-b-0 last:pb-0">
-                    <p className="text-[7px] text-foreground font-bold truncate">{post.title}</p>
-                    <div className="flex justify-between items-center text-[6px] text-muted-foreground font-mono mt-0.5">
-                      <span>👁 {(post.views || 0).toLocaleString()} {t("sections.totalViews").toLowerCase()}</span>
-                      <span className="font-bold" style={{ color: "#24A1DE" }}>{post.engagementRate}% reach</span>
-                    </div>
-                  </div>
-                )) : (
-                  <div className="text-[7.5px] text-gray-450 text-center py-4">{t("sections.noPosts")}</div>
-                )}
-              </div>
-              
-              {/* Subscriber growth progress */}
-              <div className="mt-auto pt-1.5 border-t border-border">
-                {(() => {
-                  const weeklyMembers = getWeeklyData(tgChannel.analyticsData?.growth, "followers");
-                  const initialTgMembers = weeklyMembers[0] || 0;
-                  const finalTgMembers = weeklyMembers[3] || 0;
-                  const tgGrowthPct = initialTgMembers > 0 ? (((finalTgMembers - initialTgMembers) / initialTgMembers) * 100).toFixed(1) : "0.0";
-                  return (
-                    <>
-                      <div className="flex justify-between text-[6.5px] text-muted-foreground mb-1">
-                        <span>{t("sections.subscribersGrowthMonthly")}</span>
-                        <span className="font-bold text-green-500">+{tgGrowthPct}%</span>
-                      </div>
-                      <div className="h-1.5 bg-gray-200 rounded-full overflow-hidden">
-                        <div className="h-full rounded-full" style={{ width: `${initialTgMembers > 0 ? Math.min(100, Math.max(0, ((finalTgMembers - initialTgMembers) / initialTgMembers) * 100 * 10)).toFixed(1) : 0}%`, backgroundColor: "#24A1DE" }} />
-                      </div>
-                    </>
-                  );
-                })()}
-              </div>
-            </div>
-          </div>
-
-          {renderFooter()}
-        </div>
-      );
-    }
-
     return null;
   };
 
@@ -1357,33 +1231,6 @@ export function ReportsPage() {
       );
     }
 
-    if (platform === "TELEGRAM" || platform === "telegram") {
-      const tgGrowthData = growthRows.map((r, i) => ({
-        name: r.date ? r.date.slice(5) : `D${i+1}`,
-        views: r.views || r.avgViews || 0,
-        members: r.members || r.followers || r.new || 0
-      }));
-      const tgMetricConfig = [
-        { key: "members", label: t("sections.followers"), color: "bg-[#24A1DE] text-white", chartColor: "#24A1DE", type: "area", value: channelData.followers || 0 },
-        { key: "views", label: t("sections.avgViews"), color: "bg-[#A7F3D0] text-foreground", chartColor: "#34D399", type: "line", value: channelData.impressions || 0 }
-      ];
-      const tgSummaryGrid = [
-        { label: t("sections.followers"), value: channelData.followers >= 1000 ? `${(channelData.followers/1000).toFixed(1)}K` : channelData.followers || 0 },
-        { label: t("sections.avgViews"), value: channelData.impressions || 0 },
-        { label: t("sections.forwarded"), value: channelData.shares || 0 },
-        { label: t("sections.reactionRate"), value: `${channelData.engagementRate || 0}%` }
-      ];
-      return (
-        <GenericDashboardTab
-          title={t("dashboard.tgAnalytics")}
-          description={t("dashboard.tgAnalyticsDesc")}
-          data={tgGrowthData}
-          metricConfig={tgMetricConfig}
-          summaryGrid={tgSummaryGrid}
-        />
-      );
-    }
-
     return null;
   };
 
@@ -1590,7 +1437,7 @@ export function ReportsPage() {
     }
     toast.loading("Đang tạo và gửi báo cáo qua Email...", { id: "test-report" });
     try {
-      const platforms = ["Facebook", "YouTube", "Instagram", "TikTok", "Telegram"];
+      const platforms = ["Facebook", "YouTube", "Instagram", "TikTok"];
       await reportService.sendTestReport(activeBrand.id, {
         title: templateName || "Social Media Insights",
         format: "Excel",
@@ -1617,7 +1464,7 @@ export function ReportsPage() {
     if (!previewData) {
       const toastId = toast.loading("Đang tự động tải dữ liệu thực tế trước khi xuất PDF...");
       try {
-        const platforms = ["Facebook", "YouTube", "Instagram", "TikTok", "Telegram"];
+        const platforms = ["Facebook", "YouTube", "Instagram", "TikTok"];
         const res = await reportService.getPreviewData(activeBrand.id, period, platforms.join(","));
         if (res?.data) {
           setPreviewData(res.data);
@@ -1652,7 +1499,6 @@ export function ReportsPage() {
     if (enabledPages.includes("instagram")) platforms.push("Instagram");
     if (enabledPages.includes("youtube")) platforms.push("YouTube");
     if (enabledPages.includes("tiktok")) platforms.push("TikTok");
-    if (enabledPages.includes("telegram")) platforms.push("Telegram");
     if (platforms.length === 0) platforms.push("Facebook");
 
     // Map UI selectedWidgets configuration to Backend includedSections

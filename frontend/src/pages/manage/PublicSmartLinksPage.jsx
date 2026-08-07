@@ -11,8 +11,7 @@ import {
   Globe, 
   Mail, 
   Share2, 
-  Video, 
-  Send,
+  Video,
   Linkedin,
   Github,
   Chrome 
@@ -37,7 +36,6 @@ const renderSocialIcon = (platform, size = 15) => {
   if (p === "tiktok") return <Video size={size} />;
   if (p === "linkedin") return <Linkedin size={size} />;
   if (p === "github") return <Github size={size} />;
-  if (p === "telegram") return <Send size={size} />;
   return <Share2 size={size} />;
 };
 

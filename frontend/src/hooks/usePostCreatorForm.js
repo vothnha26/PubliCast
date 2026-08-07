@@ -376,7 +376,6 @@ export function usePostCreatorForm() {
         INSTAGRAM: "instagram",
         YOUTUBE: "youtube",
         TIKTOK: "tiktok",
-        TELEGRAM: "telegram",
         THREADS: "threads",
         BLUESKY: "bluesky",
         REDDIT: "reddit"
@@ -434,7 +433,6 @@ export function usePostCreatorForm() {
           INSTAGRAM: "instagram",
           YOUTUBE: "youtube",
           TIKTOK: "tiktok",
-          TELEGRAM: "telegram",
           THREADS: "threads",
           BLUESKY: "bluesky",
           REDDIT: "reddit"
@@ -652,7 +650,6 @@ export function usePostCreatorForm() {
         INSTAGRAM: "instagram",
         YOUTUBE: "youtube",
         TIKTOK: "tiktok",
-        TELEGRAM: "telegram",
         THREADS: "threads",
         BLUESKY: "bluesky",
         REDDIT: "reddit"
@@ -1022,7 +1019,6 @@ export function usePostCreatorForm() {
               INSTAGRAM: "instagram",
               YOUTUBE: "youtube",
               TIKTOK: "tiktok",
-              TELEGRAM: "telegram",
               THREADS: "threads"
             };
             return mapping[sa.platform];
@@ -1188,10 +1184,15 @@ export function usePostCreatorForm() {
 
       if (totalPending > 0) {
         let uploadedCount = 0;
-        for (const item of allPendingFiles) {
-          uploadedCount++;
-          setSubmitProgressText(`Đang tải lên file ${uploadedCount}/${totalPending}...`);
-          try {
+        setSubmitProgressText(`Đang tải lên 0/${totalPending} file...`);
+        const trackUploadedAsset = usePostCreatorStore.getState().trackUploadedAsset;
+
+        // Uploads are independent Cloudinary requests — nothing about file B
+        // depends on file A finishing, so run them concurrently instead of
+        // one-at-a-time. A 3-video post that used to take 3x a single
+        // upload's time now takes ~1x.
+        const uploadResults = await Promise.allSettled(
+          allPendingFiles.map(async (item) => {
             // Cloudinary's own upload response already carries width/height/
             // duration/frame rate/codec for videos — read from it here
             // instead of a separate probe pass, since this request happens
@@ -1207,18 +1208,24 @@ export function usePostCreatorForm() {
             }
 
             // Track asset immediately upon successful upload to allow rollback if subsequent uploads fail
-            const trackUploadedAsset = usePostCreatorStore.getState().trackUploadedAsset;
             if (trackUploadedAsset && uploadedUrl) {
               trackUploadedAsset(uploadedUrl);
             }
-          } catch (uploadErr) {
-            console.error("Failed to upload file during submit:", uploadErr);
-            setSubmitProgressText(null);
-            setIsCreating(false);
-            const fileName = item.file?.name || "media";
-            toast.error(`Tải lên file "${fileName}" thất bại: ${uploadErr.response?.data?.message || uploadErr.message || "Lỗi kết nối"}`);
-            return; // Dừng submit ngay lập tức, giữ nguyên 100% state form!
-          }
+
+            uploadedCount++;
+            setSubmitProgressText(`Đang tải lên ${uploadedCount}/${totalPending} file...`);
+            return item;
+          })
+        );
+
+        const firstFailure = uploadResults.find((r) => r.status === 'rejected');
+        if (firstFailure) {
+          const uploadErr = firstFailure.reason;
+          console.error("Failed to upload file during submit:", uploadErr);
+          setSubmitProgressText(null);
+          setIsCreating(false);
+          toast.error(`Tải lên file thất bại: ${uploadErr?.response?.data?.message || uploadErr?.message || "Lỗi kết nối"}`);
+          return; // Dừng submit ngay lập tức, giữ nguyên 100% state form!
         }
 
         setPostMedia([...postMedia]);

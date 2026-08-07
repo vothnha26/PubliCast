@@ -109,22 +109,6 @@ export const PLATFORM_CONFIGS = {
       ]
     }
   },
-  [PLATFORMS.TELEGRAM]: {
-    id: PLATFORMS.TELEGRAM,
-    name: 'Telegram',
-    defaultType: 'post',
-    supportedTypes: [
-      { id: 'post', label: 'Channel Post' }
-    ],
-    getPostType: (subType, hasMedia, isVideo) => {
-      return (hasMedia && isVideo) ? POST_TYPE.VIDEO : POST_TYPE.IMAGE;
-    },
-    validationRules: {
-      _always: [
-        VALIDATION_RULES.TELEGRAM.CAPTION_MAX_LIMIT
-      ]
-    }
-  },
   [PLATFORMS.THREADS]: {
     id: PLATFORMS.THREADS,
     name: 'Threads',

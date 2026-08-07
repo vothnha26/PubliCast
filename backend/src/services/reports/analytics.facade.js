@@ -30,8 +30,7 @@ class AnalyticsFacade {
         youtubeChannel: true,
         facebookPage: true,
         instagramAccount: true,
-        tikTokAccount: true,
-        telegramAccount: true
+        tikTokAccount: true
       }
     });
 
@@ -111,8 +110,6 @@ class AnalyticsFacade {
         followers = acc.instagramAccount.followersCount;
       } else if (acc.platform === 'TIKTOK' && acc.tikTokAccount) {
         followers = acc.tikTokAccount.followersCount;
-      } else if (acc.platform === 'TELEGRAM' && acc.telegramAccount) {
-        followers = acc.telegramAccount.memberCount;
       }
 
       // Get analytics record for this account:
@@ -210,8 +207,6 @@ class AnalyticsFacade {
           followers = acc.instagramAccount.followersCount;
         } else if (acc.platform === 'TIKTOK' && acc.tikTokAccount) {
           followers = acc.tikTokAccount.followersCount;
-        } else if (acc.platform === 'TELEGRAM' && acc.telegramAccount) {
-          followers = acc.telegramAccount.memberCount;
         }
 
         try {

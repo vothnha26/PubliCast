@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import {
   Info, AlertCircle, Youtube, MoreHorizontal, Edit, Type, Trash2,
-  ImageIcon, Languages, FileText, Send,
+  ImageIcon, Languages, FileText,
   Settings, ChevronDown, Instagram, MessageSquare, X, EyeOff,
   Folder, MapPin, Sparkles, Lock
 } from "lucide-react";
@@ -277,8 +277,6 @@ export function ComposerBody() {
         );
       case 'youtube':
         return <Youtube size={14} className="text-[#FF0000] fill-[#FF0000] shrink-0" />;
-      case 'telegram':
-        return <Send size={12} className="text-[#0088cc] fill-[#0088cc] shrink-0 rotate-45" />;
       default:
         return <AlertCircle size={14} className="text-red-500 shrink-0" />;
     }
@@ -561,7 +559,6 @@ export function ComposerBody() {
                         instagram: 2200,
                         tiktok: 2200,
                         youtube: 5000,
-                        telegram: 1024,
                         threads: 500,
                         bluesky: 300,
                         twitch: 500,
@@ -610,7 +607,6 @@ export function ComposerBody() {
                         currentPlatform === 'youtube' ? 'bg-[#FF0000]' :
                         currentPlatform === 'tiktok' ? 'bg-black' :
                         currentPlatform === 'instagram' ? 'bg-gradient-to-tr from-[#F58529] via-[#DD2A7B] to-[#8134AF]' :
-                        currentPlatform === 'telegram' ? 'bg-[#0088cc]' :
                         currentPlatform === 'threads' ? 'bg-black' : 'bg-[#1877F2]'
                       }`}>
                         {currentPlatform === 'youtube' ? (
@@ -621,8 +617,6 @@ export function ComposerBody() {
                           </svg>
                         ) : currentPlatform === 'instagram' ? (
                           <Instagram size={12} className="text-white" />
-                        ) : currentPlatform === 'telegram' ? (
-                          <Send size={11} className="text-white fill-white translate-x-[-0.5px]" />
                         ) : currentPlatform === 'threads' ? (
                           <PlatformIcon platform="Threads" size={12} variant="flat" className="text-white" />
                         ) : (

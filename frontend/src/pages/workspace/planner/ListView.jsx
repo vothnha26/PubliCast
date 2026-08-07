@@ -22,6 +22,8 @@ import { PostMediaThumbnail } from "@/components/shared/PostMediaThumbnail";
 import { useTranslation } from "react-i18next";
 import { getPlatformPostUrl } from "../../../utils/postUrlHelper";
 import { PublishedPostDetailModal } from "./components/PublishedPostDetailModal";
+import { PublishProgressBadge } from "@/components/shared/PublishProgressBadge";
+import { usePostsRealtimeRefresh } from "../../../hooks/usePostsRealtimeRefresh";
 
 const STATUS_STYLE = {
   published: "bg-green-50 text-green-700 border-green-100",
@@ -99,6 +101,8 @@ export function ListView({ socialAccountId } = {}) {
   useEffect(() => {
     fetchPosts();
   }, [activeBrand, searchParamsString, isOpen, socialAccountId]);
+
+  usePostsRealtimeRefresh(activeBrand?.id, fetchPosts);
 
   const toggleSelect = (id) => {
     setSelected(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
@@ -522,9 +526,12 @@ export function ListView({ socialAccountId } = {}) {
                           </div>
                        </td>
                        <td className="px-4 py-5">
-                          <span className={`px-3 py-1 rounded-full text-[9px] font-bold uppercase tracking-wider border shadow-sm ${STATUS_STYLE[post.status] || "bg-muted text-muted-foreground border-border"}`}>
-                             {post.status.replace('_', ' ')}
-                          </span>
+                          <div className="flex items-center gap-1.5">
+                             <span className={`px-3 py-1 rounded-full text-[9px] font-bold uppercase tracking-wider border shadow-sm ${STATUS_STYLE[post.status] || "bg-muted text-muted-foreground border-border"}`}>
+                                {post.status.replace('_', ' ')}
+                             </span>
+                             <PublishProgressBadge status={post.status} publishProgress={post.publishProgress} />
+                          </div>
                        </td>
                        <td className="px-4 py-5">
                           <div className="flex items-center gap-2">

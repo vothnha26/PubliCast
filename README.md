@@ -29,7 +29,7 @@ Monorepo gồm backend Express.js + Prisma và frontend React (Vite), cùng bộ
                                                        MySQL           Redis        Social APIs
                                                   (dữ liệu chính)  (cache, nonce,   (Facebook, YouTube,
                                                                     rate-limit,      Instagram, TikTok,
-                                                                    outbox queue)    Telegram, Threads...)
+                                                                    outbox queue)    Threads...)
 ```
 
 - **Backend** theo kiến trúc lớp `Route → Controller → Service → Repository`, dùng **Strategy Pattern** cho logic phân nhánh theo nền tảng (đăng bài, đồng bộ inbox, làm mới token, v.v.) và **outbox pattern** (qua bảng `OutboxEvent` + dispatcher) để đảm bảo các side-effect bất đồng bộ (webhook, thông báo) không bị mất khi transaction DB commit.
@@ -143,7 +143,7 @@ CI chạy các bước tương đương qua GitHub Actions (`.github/workflows/`
 
 ## Nền tảng mạng xã hội được hỗ trợ
 
-Facebook · Instagram · YouTube · TikTok · Telegram · Threads
+Facebook · Instagram · YouTube · TikTok · Threads
 
 Danh sách nền tảng và cấu hình giới hạn (caption length, kích thước file...) được định nghĩa tại `backend/src/utils/constants.js` (`PLATFORMS`) và bảng `PlatformLimit` trong database — hoàn toàn data-driven, không hardcode trong logic gating.
 

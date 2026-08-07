@@ -30,7 +30,6 @@ import {
   Youtube,
   Facebook,
   Mail,
-  Send,
   Linkedin,
   Github,
   Chrome
@@ -53,7 +52,6 @@ const renderSocialIcon = (platform, size = 15) => {
   if (p === "tiktok") return <Video size={size} />;
   if (p === "linkedin") return <Linkedin size={size} />;
   if (p === "github") return <Github size={size} />;
-  if (p === "telegram") return <Send size={size} />;
   return <Share2 size={size} />;
 };
 
@@ -1112,7 +1110,6 @@ export function SmartLinksPage() {
                             <option value="website">Website / Portfolio</option>
                             <option value="linkedin">LinkedIn</option>
                             <option value="github">GitHub</option>
-                            <option value="telegram">Telegram</option>
                             <option value="threads">Threads</option>
                           </select>
 

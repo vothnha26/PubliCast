@@ -219,7 +219,9 @@ export function MonthlyGrid({
                     
                     <span className="truncate flex-1 font-medium">{post.title || post.caption || "Untitled"}</span>
                     <span className="text-[8px] opacity-75 font-black uppercase font-mono tracking-tight shrink-0 group-hover/mcard:hidden">
-                      {format(new Date(post.publishedAt || post.scheduledAt || post.createdAt), 'h:mma')}
+                      {(post.status?.toLowerCase() === "scheduled" || post.status?.toLowerCase() === "publishing") && post.publishProgress
+                        ? `${post.publishProgress.published}/${post.publishProgress.total}`
+                        : format(new Date(post.publishedAt || post.scheduledAt || post.createdAt), 'h:mma')}
                     </span>
                     {post.status?.toLowerCase() === "published" && onDetailClick && (
                       <button

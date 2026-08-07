@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   AlertCircle, ChevronDown, ChevronUp,
-  Youtube, Instagram, Send
+  Youtube, Instagram
 } from "lucide-react";
 import { usePostCreatorFormContext } from "../../../context/PostCreatorFormContext";
 
@@ -36,7 +36,6 @@ export function ComposerErrorPanel() {
           </svg>
         );
       case 'youtube': return <Youtube size={12} className="text-[#FF0000] fill-[#FF0000] shrink-0" />;
-      case 'telegram': return <Send size={11} className="text-[#0088cc] fill-[#0088cc] shrink-0 rotate-45" />;
       default: return <AlertCircle size={12} className="text-red-500 shrink-0" />;
     }
   };

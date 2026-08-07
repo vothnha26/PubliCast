@@ -3,6 +3,22 @@ const socialPlatformFactory = require('../../../social/social-platform.factory')
 const { SEPARATORS, splitMediaUrls } = require('../../../../utils/constants');
 const logger = require('../../../../utils/logger');
 const { parsePlatformPostId, getIdForAccount } = require('../platform-post-id.util');
+const postTargetRepository = require('../../../../repositories/workspace/post-target.repository');
+const socketInvalidationService = require('../../../core/socket-invalidation.service');
+const { CACHE_SCOPES } = require('../../../../utils/socket-constants');
+
+/** Best-effort per-target progress update — a post created before PostTarget
+ * existed has no row to update (legacy fallback socialAccountId: null), and a
+ * failure here must never fail the actual publish attempt it's reporting on. */
+async function markTargetStatus(postId, brandId, platform, socialAccountId, data) {
+  if (!socialAccountId) return;
+  try {
+    await postTargetRepository.updateStatus(postId, platform, socialAccountId, data);
+    socketInvalidationService.invalidateBrandScope(brandId, CACHE_SCOPES.POSTS, { postId }).catch(() => {});
+  } catch (err) {
+    logger.debug(`[SocialPublishStep] Failed to update PostTarget status for post ${postId} (${platform}/${socialAccountId}):`, err.message);
+  }
+}
 
 class SocialPublishStep extends BaseStep {
   async execute(context) {
@@ -25,6 +41,7 @@ class SocialPublishStep extends BaseStep {
     const platformIdMap = parsePlatformPostId(post.platformPostId);
 
     const publishPromises = publishTargets.map(async ({ platform, socialAccountId }) => {
+      await markTargetStatus(post.id, brandId, platform, socialAccountId, { publishStatus: 'PUBLISHING' });
       try {
         const service = socialPlatformFactory.getService(platform);
 
@@ -98,9 +115,18 @@ class SocialPublishStep extends BaseStep {
         });
 
         logger.debug(`[SocialPublishStep] ✅ Successfully published post ${post.id} to platform ${platform} (account: ${socialAccountId || 'default'})! Result:`, JSON.stringify(result));
+        await markTargetStatus(post.id, brandId, platform, socialAccountId, {
+          publishStatus: 'PUBLISHED',
+          publishedAt: result?.publishedAt || new Date(),
+          errorMessage: null
+        });
         return { platform, socialAccountId, success: true, result };
       } catch (error) {
         console.error(`[SocialPublishStep] ❌ Failed to publish post ${post.id} to platform ${platform} (account: ${socialAccountId || 'default'}):`, error);
+        await markTargetStatus(post.id, brandId, platform, socialAccountId, {
+          publishStatus: 'FAILED',
+          errorMessage: error.message?.substring(0, 190) || 'Unknown error'
+        });
         return { platform, socialAccountId, success: false, error: error.message };
       }
     });

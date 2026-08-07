@@ -1,7 +1,7 @@
 const validatorFactory = require('../../src/services/workspace/post/validators/validator.factory');
 const { PLATFORMS } = require('../../src/utils/constants');
 
-describe('Bluesky vs Telegram Caption Limit Validation Unit Tests', () => {
+describe('Bluesky vs GenericValidator Caption Limit Validation Unit Tests', () => {
   const limitConfig = {
     maxCaptionLength: 300,
     allowedMediaTypes: 'ALL'
@@ -38,23 +38,27 @@ describe('Bluesky vs Telegram Caption Limit Validation Unit Tests', () => {
     });
   });
 
-  describe('GenericValidator (String length counting for Telegram/default)', () => {
-    let telegramValidator;
+  describe('GenericValidator (String length counting for unlisted platforms/default)', () => {
+    let genericValidator;
 
     beforeEach(() => {
-      telegramValidator = validatorFactory.getValidator(PLATFORMS.TELEGRAM, limitConfig);
+      // Any platform without a dedicated case in validator.factory.js falls
+      // through to GenericValidator — using a fake platform string here
+      // instead of a real one keeps the test from depending on any specific
+      // platform's validator.factory.js case staying absent.
+      genericValidator = validatorFactory.getValidator('UNLISTED_PLATFORM', limitConfig);
     });
 
     it('should fail validation when caption contains emoji ZWJ sequence exceeding string length limit', () => {
       const caption = '👨‍👩‍👧‍👧'.repeat(30); // length = 330 > 300
-      const errors = telegramValidator.validate({ caption }, { hasMedia: false });
+      const errors = genericValidator.validate({ caption }, { hasMedia: false });
       expect(errors).toHaveLength(1);
       expect(errors[0]).toContain('Caption length exceeds the maximum limit of 300 characters.');
     });
 
     it('should pass validation when caption length is within limits', () => {
       const caption = 'a'.repeat(300);
-      const errors = telegramValidator.validate({ caption }, { hasMedia: false });
+      const errors = genericValidator.validate({ caption }, { hasMedia: false });
       expect(errors).toHaveLength(0);
     });
   });

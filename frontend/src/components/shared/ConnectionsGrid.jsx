@@ -2,8 +2,7 @@ import React from "react";
 import {
   Rss, Facebook, Instagram, Twitter,
   Music2, Globe, Store,
-  Diamond, Check, X, Youtube, PlayCircle,
-  Send, Loader2
+  Diamond, Check, X, Youtube, PlayCircle
 } from "lucide-react";
 import socialService from "../../services/social.service";
 import { toast } from "sonner";
@@ -14,12 +13,6 @@ export const NETWORKS = [
 ];
 
 export function ConnectionsGrid({ className = "", brand, onDisconnect }) {
-  const [showTelegramModal, setShowTelegramModal] = React.useState(false);
-  const [botToken, setBotToken] = React.useState("");
-  const [chatId, setChatId] = React.useState("");
-
-  const [isSubmitting, setIsSubmitting] = React.useState(false);
-
   React.useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const success = params.get("success");
@@ -67,36 +60,6 @@ export function ConnectionsGrid({ className = "", brand, onDisconnect }) {
       }
     } catch (error) {
       toast.error(error.message || "Failed to start Google Drive connection");
-    }
-  };
-
-  const handleConnectTelegram = async () => {
-    if (!brand) {
-      toast.error("Please select a brand first");
-      return;
-    }
-    setBotToken("");
-    setChatId("");
-    setShowTelegramModal(true);
-  };
-
-  const submitTelegramConnection = async (e) => {
-    e.preventDefault();
-    if (!botToken || !chatId) {
-      toast.error("Bot Token and Chat ID are required");
-      return;
-    }
-    setIsSubmitting(true);
-    try {
-      await socialService.connectTelegramAccount(brand.id, botToken, chatId);
-      toast.success("Telegram connected successfully!");
-      setShowTelegramModal(false);
-      if (onDisconnect) onDisconnect();
-      else window.location.reload();
-    } catch (error) {
-      toast.error(error.message || "Failed to connect Telegram");
-    } finally {
-      setIsSubmitting(false);
     }
   };
 
@@ -228,7 +191,6 @@ export function ConnectionsGrid({ className = "", brand, onDisconnect }) {
       "youtube": "YOUTUBE",
       "tiktok": "TIKTOK",
       "x": "TWITTER_X",
-      "telegram": "TELEGRAM",
       "threads": "THREADS",
       "twitch": "TWITCH",
       "bluesky": "BLUESKY",
@@ -274,10 +236,6 @@ export function ConnectionsGrid({ className = "", brand, onDisconnect }) {
       btnText: "Connect a Twitter / X account", btnBg: "bg-black", ...getStatus("x")
     },
     {
-      id: "telegram", name: "Telegram", icon: <Send size={16} className="text-white fill-current" />,
-      btnText: "Connect a Telegram channel", btnBg: "bg-[#0088cc]", ...getStatus("telegram")
-    },
-    {
       id: "twitch", name: "Twitch", icon: <PlayCircle size={16} className="text-purple-600" />,
       btnText: "Connect a Twitch channel", btnBg: "bg-[#9146FF]", ...getStatus("twitch")
     },
@@ -312,7 +270,6 @@ export function ConnectionsGrid({ className = "", brand, onDisconnect }) {
                     if (net.id === "tiktok") handleConnectTikTok();
                     if (net.id === "instagram") handleConnectInstagram();
                     if (net.id === "threads") handleConnectThreads();
-                    if (net.id === "telegram") handleConnectTelegram();
                     if (net.id === "twitch") handleConnectTwitch();
                     if (net.id === "bluesky") handleConnectBluesky();
                     if (net.id === "reddit") handleConnectReddit();
@@ -342,83 +299,6 @@ export function ConnectionsGrid({ className = "", brand, onDisconnect }) {
           </div>
         ))}
       </div>
-
-      {/* Telegram Modal */}
-      {showTelegramModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-card dark:bg-[#1a1a1a] rounded-[24px] p-6 max-w-md w-full shadow-2xl border border-border dark:border-gray-800 animate-in zoom-in-95 duration-200 text-left">
-            <div className="flex items-center justify-between mb-6">
-              <div className="flex items-center gap-2.5">
-                <div className="w-9 h-9 rounded-xl bg-[#0088cc] flex items-center justify-center text-white">
-                  <Send size={18} className="fill-current" />
-                </div>
-                <h3 className="text-lg font-bold text-foreground dark:text-white">Connect Telegram Channel</h3>
-              </div>
-              <button 
-                onClick={() => setShowTelegramModal(false)}
-                className="text-muted-foreground hover:text-muted-foreground dark:hover:text-gray-300 p-1.5 hover:bg-muted dark:hover:bg-gray-800 rounded-full transition-all"
-              >
-                <X size={18} />
-              </button>
-            </div>
-
-            <form onSubmit={submitTelegramConnection} className="space-y-4">
-              <div>
-                <label className="block text-xs font-bold text-foreground dark:text-gray-300 mb-1.5 uppercase tracking-wider">Bot Token</label>
-                <input 
-                  type="text"
-                  required
-                  placeholder="e.g. 123456:ABC-DEF1234ghIkl-zyx57W2v1u1"
-                  value={botToken}
-                  onChange={(e) => setBotToken(e.target.value)}
-                  className="w-full h-11 px-4 rounded-xl border border-border dark:border-gray-700 bg-muted dark:bg-gray-800 text-sm text-foreground dark:text-white focus:outline-none focus:ring-2 focus:ring-[#0088cc] transition-all"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-foreground dark:text-gray-300 mb-1.5 uppercase tracking-wider">Chat ID (Channel or Group)</label>
-                <input 
-                  type="text"
-                  required
-                  placeholder="e.g. @mychannel or -100123456789"
-                  value={chatId}
-                  onChange={(e) => setChatId(e.target.value)}
-                  className="w-full h-11 px-4 rounded-xl border border-border dark:border-gray-700 bg-muted dark:bg-gray-800 text-sm text-foreground dark:text-white focus:outline-none focus:ring-2 focus:ring-[#0088cc] transition-all"
-                />
-              </div>
-
-              <div className="bg-blue-50 dark:bg-blue-950/40 p-4 rounded-2xl border border-blue-100 dark:border-blue-900/40 text-[11px] text-blue-700 dark:text-blue-300 leading-relaxed space-y-1">
-                <span className="font-bold block text-xs mb-1">Quick Instructions:</span>
-                <p>1. Start a chat with <span className="font-bold">@BotFather</span> on Telegram and create a new bot to get your <span className="font-bold">Bot Token</span>.</p>
-                <p>2. Add your bot as an <span className="font-bold">Administrator</span> to your channel/group with post permission.</p>
-                <p>3. Provide the <span className="font-bold">Chat ID</span> (e.g. @your_channel_username or the numeric ID starting with -100).</p>
-              </div>
-
-              <div className="flex gap-3 pt-3">
-                <button
-                  type="button"
-                  onClick={() => setShowTelegramModal(false)}
-                  className="flex-1 h-11 rounded-xl text-sm font-semibold text-foreground dark:text-gray-300 hover:bg-muted dark:hover:bg-gray-800 transition-all border border-border dark:border-gray-700 cursor-pointer"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={isSubmitting}
-                  className="flex-1 h-11 rounded-xl text-sm font-semibold text-white bg-[#0088cc] hover:bg-[#0077b5] disabled:opacity-50 transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-lg shadow-[#0088cc]/20"
-                >
-                  {isSubmitting ? (
-                    <Loader2 size={16} className="animate-spin" />
-                  ) : (
-                    <span>Connect</span>
-                  )}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
 
 
     </>

@@ -6,8 +6,7 @@
  * query string (`https://cdn/.../clip.mp4?token=abc&exp=...`), since the
  * string doesn't end in `.mp4` anymore — it ends in the token. That silently
  * routed videos to an image publish strategy across every platform's
- * publish-strategy.factory.js (Facebook, Instagram, Telegram — see
- * issues #65/#119).
+ * publish-strategy.factory.js (Facebook, Instagram — see issues #65/#119).
  *
  * Local file paths (e.g. `/uploads/video.mp4`) aren't valid absolute URLs,
  * so `new URL()` throws on them — fall back to the raw string in that case,
