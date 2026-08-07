@@ -208,9 +208,9 @@ export const VALIDATION_RULES = {
       message: () => PLATFORM_VALIDATION_MESSAGES.YOUTUBE.MUST_BE_VIDEO
     },
     TITLE_REQUIRED_AND_INVALID: {
-      check: ({ caption }) => {
-        if (!caption || !caption.trim()) return true;
-        return caption.length > PLATFORM_LIMIT_THRESHOLDS.YOUTUBE.TITLE_MAX_LENGTH || /[<>]/.test(caption);
+      check: ({ youtubeTitle }) => {
+        if (!youtubeTitle || !youtubeTitle.trim()) return true;
+        return youtubeTitle.length > PLATFORM_LIMIT_THRESHOLDS.YOUTUBE.TITLE_MAX_LENGTH || /[<>]/.test(youtubeTitle);
       },
       message: () => PLATFORM_VALIDATION_MESSAGES.YOUTUBE.TITLE_REQUIRED_AND_INVALID
     },

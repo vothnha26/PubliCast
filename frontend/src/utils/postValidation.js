@@ -30,6 +30,7 @@ export function validatePostForm({
   youtubeMadeForKids = null,
   postMedia = [],
   captionText = '',
+  youtubeTitle = '',
   networkCustom = {}
 }) {
   const errors = [];
@@ -123,6 +124,7 @@ export function validatePostForm({
           videoHeight: videoHeight || 0,
           mediaCount,
           caption: captionText,
+          youtubeTitle,
           youtubeMadeForKids
         };
 
@@ -187,7 +189,7 @@ export function validatePostForm({
 
     // Validate YouTube Audience & Title
     if (platUpper === 'YOUTUBE') {
-      if (!captionText || !captionText.trim() || captionText.length > 100 || /[<>]/.test(captionText)) {
+      if (!youtubeTitle || !youtubeTitle.trim() || youtubeTitle.length > 100 || /[<>]/.test(youtubeTitle)) {
         errors.push("Video or short title is required and must be shorter than 100 characters. The characters < or > are not allowed.");
       }
       if (typeof youtubeMadeForKids !== 'boolean') {

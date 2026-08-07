@@ -21,6 +21,7 @@ import { ComposerFooter } from "./ComposerFooter";
 import { PRESET_REGISTRY } from "../../../constants/presetRegistry";
 import { PLATFORM_CONFIGS } from "../../../constants/platformRegistry";
 import { MEDIA_FILTER_TYPES } from "../../../constants/mediaAcceptStrategy";
+import { PLATFORMS } from "../../../constants/platforms";
 import { MediaThumbnailGrid } from "./MediaThumbnailGrid";
 import { ShortsIcon } from "./ShortsIcon";
 
@@ -90,7 +91,7 @@ export function NetworkCustomizeScreen({ onClose }) {
   // one per platform. A brand with 2 TikTok accounts selected gets 2 tabs,
   // each independently editable, matching Figma's per-channel tab row.
   const channelTabs = (activeBrand?.socialAccounts || [])
-    .filter((sa) => selectedAccountIds.includes(sa.id))
+    .filter((sa) => selectedAccountIds.includes(sa.id) && sa.platform !== PLATFORMS.GOOGLE_DRIVE)
     .map((sa) => ({
       accountId: sa.id,
       platform: (sa.platform || "").toLowerCase(),
@@ -243,7 +244,11 @@ export function NetworkCustomizeScreen({ onClose }) {
     ? ((typeof activeThreadPost === 'object' ? activeThreadPost?.mediaUrls : []) || [])
     : (activeEntry?.mediaUrls || []);
 
-  const isCustomMedia = activeEntry?.useTemplate === false && rawCustomMedia.length > 0;
+  // Must NOT also require rawCustomMedia.length > 0 — removing the last
+  // customized media item (down to 0) previously made this fall back to
+  // globalMedia, silently un-deleting it and making the remove button look
+  // broken for a channel with exactly one media item.
+  const isCustomMedia = activeEntry?.useTemplate === false;
   const mediaItems = isCustomMedia ? rawCustomMedia : globalMedia;
 
   const handleCaptionChange = (val) => {
@@ -454,7 +459,7 @@ export function NetworkCustomizeScreen({ onClose }) {
               </button>
               {showChannelPicker && (
                 <ChannelPickerDropdown
-                  accounts={activeBrand?.socialAccounts || []}
+                  accounts={(activeBrand?.socialAccounts || []).filter(sa => sa.platform !== PLATFORMS.GOOGLE_DRIVE)}
                   selectedAccountIds={selectedAccountIds}
                   onToggleAccount={toggleAccount}
                   onClose={() => setShowChannelPicker(false)}

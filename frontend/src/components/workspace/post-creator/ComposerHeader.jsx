@@ -5,6 +5,7 @@ import {
 } from "lucide-react";
 import { usePostCreatorFormContext } from "../../../context/PostCreatorFormContext";
 import { PRODUCT_IDS } from "../../../constants/products";
+import { PLATFORMS } from "../../../constants/platforms";
 import channelGroupService from "../../../services/channel-group.service";
 import { toast } from "sonner";
 import { RightPanelTabSwitcher } from "./RightPanelTabSwitcher";
@@ -91,7 +92,10 @@ export function ComposerHeader() {
   const [showGroupDropdown, setShowGroupDropdown] = useState(false);
   const [showChannelPicker, setShowChannelPicker] = useState(false);
 
-  const connectedAccounts = activeBrand?.socialAccounts?.filter(sa => sa.isConnected) || [];
+  // GOOGLE_DRIVE is a media-source integration, not a publishable channel —
+  // excluded so it never shows up in the channel picker (matches
+  // layout/ChannelsList.jsx's same exclusion).
+  const connectedAccounts = activeBrand?.socialAccounts?.filter(sa => sa.isConnected && sa.platform !== PLATFORMS.GOOGLE_DRIVE) || [];
 
   // Channel groups are a compose-time selection shortcut only — expanding
   // a group into selectedAccountIds is the entire integration, no
@@ -279,7 +283,7 @@ export function ComposerHeader() {
             </button>
             {showChannelPicker && (
               <ChannelPickerDropdown
-                accounts={activeBrand?.socialAccounts || []}
+                accounts={(activeBrand?.socialAccounts || []).filter(sa => sa.platform !== PLATFORMS.GOOGLE_DRIVE)}
                 selectedAccountIds={selectedAccountIds}
                 onToggleAccount={handleToggleAccount}
                 onClose={() => setShowChannelPicker(false)}

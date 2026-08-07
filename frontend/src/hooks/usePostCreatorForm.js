@@ -682,6 +682,7 @@ export function usePostCreatorForm() {
       editingPost,
       postMedia,
       captionText: caption,
+      youtubeTitle,
       youtubeMadeForKids,
       networkCustom
     });
