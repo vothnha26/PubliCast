@@ -1,7 +1,7 @@
 import React from "react";
-import { GenericDashboardTab } from "./GenericDashboardTab";
+import { GenericDashboardTab } from "../common/GenericDashboardTab";
 import { Users, UserCheck, MessageSquare, Heart, Repeat, ShieldCheck, CheckCircle2, Globe, Sparkles } from "lucide-react";
-import { ThreadsPostsListTab } from "./ThreadsPostsListTab";
+import { ThreadsPostsListTab } from "../threads/ThreadsPostsListTab";
 
 export function BlueskyDashboardTab({
   metrics,

@@ -110,6 +110,19 @@ export function GenericDashboardTab({
                 const dataKey = m.dataKey || m.key;
 
                 if (m.type === "area") {
+                  let fillColor = m.fillColor;
+                  if (!fillColor) {
+                    if (strokeColor && strokeColor.startsWith("#") && strokeColor.length === 7) {
+                      const r = parseInt(strokeColor.slice(1, 3), 16);
+                      const g = parseInt(strokeColor.slice(3, 5), 16);
+                      const b = parseInt(strokeColor.slice(5, 7), 16);
+                      if (!isNaN(r) && !isNaN(g) && !isNaN(b)) {
+                        fillColor = `rgba(${r}, ${g}, ${b}, 0.05)`;
+                      }
+                    }
+                  }
+                  if (!fillColor) fillColor = "rgba(142, 155, 238, 0.05)";
+
                   return (
                     <Area
                       key={m.key}
@@ -117,7 +130,7 @@ export function GenericDashboardTab({
                       type="monotone"
                       dataKey={dataKey}
                       stroke={strokeColor}
-                      fill={m.fillColor || `rgba(${parseInt(strokeColor.slice(1,3),16)}, ${parseInt(strokeColor.slice(3,5),16)}, ${parseInt(strokeColor.slice(5,7),16)}, 0.05)`}
+                      fill={fillColor}
                       strokeWidth={3}
                       dot={{ fill: strokeColor, strokeWidth: 2, r: 4, stroke: "var(--card)" }}
                       activeDot={{ r: 6 }}

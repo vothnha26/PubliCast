@@ -2,7 +2,7 @@ import React, { useMemo } from "react";
 import {
   ResponsiveContainer, PieChart, Pie, Cell, Tooltip, Legend,
 } from "recharts";
-import { GenericDashboardTab } from "./GenericDashboardTab";
+import { GenericDashboardTab } from "../common/GenericDashboardTab";
 import { Clock } from "lucide-react";
 import { FacebookPostsListTab } from "./FacebookPostsListTab";
 

@@ -36,13 +36,13 @@ import { useBrand } from "../../context/BrandContext";
 import reportService from "../../services/report.service";
 import teamService from "../../services/team.service";
 import { createPortal } from "react-dom";
-import { GenericDashboardTab } from "../workspace/dashboard/GenericDashboardTab";
-import { GenericPostsListTab } from "../workspace/dashboard/GenericPostsListTab";
-import { FacebookOverviewTab } from "../workspace/dashboard/FacebookOverviewTab";
-import { FacebookInteractionsTab } from "../workspace/dashboard/FacebookInteractionsTab";
-import { FacebookPostsTab } from "../workspace/dashboard/FacebookPostsTab";
-import { TikTokCommunityTab } from "../workspace/dashboard/TikTokCommunityTab";
-import { InstagramAccountTab } from "../workspace/dashboard/InstagramAccountTab";
+import { GenericDashboardTab } from "../workspace/dashboard/common/GenericDashboardTab";
+import { GenericPostsListTab } from "../workspace/dashboard/common/GenericPostsListTab";
+import { FacebookOverviewTab } from "../workspace/dashboard/facebook/FacebookOverviewTab";
+import { FacebookInteractionsTab } from "../workspace/dashboard/facebook/FacebookInteractionsTab";
+import { FacebookPostsTab } from "../workspace/dashboard/facebook/FacebookPostsTab";
+import { TikTokCommunityTab } from "../workspace/dashboard/tiktok/TikTokCommunityTab";
+import { InstagramAccountTab } from "../workspace/dashboard/instagram/InstagramAccountTab";
 import { renderWidgetThumbnail } from "./reportWidgetThumbnails.jsx";
 
 // Import modular components and constants

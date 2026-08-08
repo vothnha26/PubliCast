@@ -1,5 +1,5 @@
 import React from "react";
-import { GenericDashboardTab } from "./GenericDashboardTab";
+import { GenericDashboardTab } from "../common/GenericDashboardTab";
 
 export function FacebookFollowersTab({ realData = {} }) {
   const balanceData = realData.balance || [];

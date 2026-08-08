@@ -1,6 +1,6 @@
 import React, { useMemo } from "react";
-import { GenericPostsListTab } from "./GenericPostsListTab";
-import { GenericDashboardTab } from "./GenericDashboardTab";
+import { GenericPostsListTab } from "../common/GenericPostsListTab";
+import { GenericDashboardTab } from "../common/GenericDashboardTab";
 
 export function InstagramStoriesTab({
   metrics,
@@ -17,11 +17,10 @@ export function InstagramStoriesTab({
 }) {
   const displayStories = useMemo(() => {
     if (!publishedVideos || publishedVideos.length === 0) return [];
-    const storiesOnly = publishedVideos.filter(p => {
+    return publishedVideos.filter(p => {
       const type = (p.mediaType || p.type || "").toUpperCase();
       return type.includes("STORY") || type.includes("STORIES");
     });
-    return storiesOnly.length > 0 ? storiesOnly : publishedVideos.slice(0, 3);
   }, [publishedVideos]);
 
   const totalStoriesCount = displayStories.length || 3;

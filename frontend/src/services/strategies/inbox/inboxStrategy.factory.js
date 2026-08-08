@@ -1,6 +1,7 @@
 import { BaseInboxDisplayStrategy } from './baseInboxDisplay.strategy';
 import { YouTubeInboxDisplayStrategy } from './youtubeInboxDisplay.strategy';
 import { FacebookInboxDisplayStrategy } from './facebookInboxDisplay.strategy';
+import { InstagramInboxDisplayStrategy } from './instagramInboxDisplay.strategy';
 
 class InboxStrategyFactory {
   constructor() {
@@ -10,6 +11,7 @@ class InboxStrategyFactory {
     // Register Supported Platform Strategies
     this.register('YOUTUBE', new YouTubeInboxDisplayStrategy());
     this.register('FACEBOOK', new FacebookInboxDisplayStrategy());
+    this.register('INSTAGRAM', new InstagramInboxDisplayStrategy());
   }
 
   register(platform, strategyInstance) {

@@ -1,6 +1,6 @@
 import React from "react";
 import { useTranslation } from "react-i18next";
-import { GenericDashboardTab } from "./GenericDashboardTab";
+import { GenericDashboardTab } from "../common/GenericDashboardTab";
 import { Clock } from "lucide-react";
 import { ThreadsPostsListTab } from "./ThreadsPostsListTab";
 

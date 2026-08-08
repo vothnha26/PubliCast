@@ -3,8 +3,8 @@ import {
   X, HelpCircle, Search, Download, Columns, Star, ExternalLink,
   ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight
 } from 'lucide-react';
-import { Dialog, DialogContent, DialogTitle, DialogDescription } from "../../../components/ui/dialog";
-import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent } from "../../../components/ui/dropdown-menu";
+import { Dialog, DialogContent, DialogTitle, DialogDescription } from "../../../../components/ui/dialog";
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent } from "../../../../components/ui/dropdown-menu";
 import { 
   ResponsiveContainer, ComposedChart, Line, Bar, XAxis, YAxis, 
   CartesianGrid, Tooltip 

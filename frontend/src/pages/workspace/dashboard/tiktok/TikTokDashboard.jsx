@@ -4,6 +4,8 @@ import { TikTokPostsTab } from "./TikTokPostsTab";
 
 export function TikTokDashboard({
   metrics,
+  stats,
+  communityGrowthData,
   dateRange,
   setDateRange,
   realData,
@@ -19,7 +21,14 @@ export function TikTokDashboard({
   return (
     <>
       {activeTab === "community" && (
-        <TikTokCommunityTab realData={realData} dateRange={dateRange} />
+        <TikTokCommunityTab
+          realData={realData}
+          dateRange={dateRange}
+          metrics={metrics}
+          stats={stats}
+          communityGrowthData={communityGrowthData}
+          publishedVideos={publishedVideos}
+        />
       )}
 
       {activeTab === "posts" && (

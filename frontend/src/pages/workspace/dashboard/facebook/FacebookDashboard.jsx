@@ -7,6 +7,8 @@ import { FacebookCompetitorsTab }  from "./FacebookCompetitorsTab";
 
 export function FacebookDashboard({
   metrics,
+  stats,
+  communityGrowthData,
   loading,
   dateRange,
   setDateRange,
@@ -39,7 +41,14 @@ export function FacebookDashboard({
     <>
       {/* ── OVERVIEW: Followers + Clicks (gộp) ─────────────────────── */}
       {activeTab === "overview" && (
-        <FacebookOverviewTab realData={realData} />
+        <FacebookOverviewTab
+          realData={realData}
+          dateRange={dateRange}
+          metrics={metrics}
+          stats={stats}
+          communityGrowthData={communityGrowthData}
+          publishedVideos={publishedVideos}
+        />
       )}
 
       {/* ── POSTS: Overview + Interactions + Types + List of posts ───── */}

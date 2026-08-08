@@ -1,5 +1,6 @@
 import React from "react";
-import { GenericDashboardTab } from "./GenericDashboardTab";
+import { GenericDashboardTab } from "../common/GenericDashboardTab";
+import { InsightsSummaryWidget } from "../common/InsightsSummaryWidget";
 
 function SectionLabel({ children }) {
   return (
@@ -9,7 +10,14 @@ function SectionLabel({ children }) {
   );
 }
 
-export function FacebookOverviewTab({ realData = {} }) {
+export function FacebookOverviewTab({ 
+  realData = {},
+  dateRange,
+  metrics,
+  stats,
+  communityGrowthData,
+  publishedVideos 
+}) {
   const growthData    = realData.growth       || [];
   const balanceData   = realData.balance      || [];
   const postsData     = realData.postsPeriod  || [];
@@ -127,6 +135,16 @@ export function FacebookOverviewTab({ realData = {} }) {
 
   return (
     <div className="space-y-10">
+      <InsightsSummaryWidget
+        dateRange={dateRange}
+        metrics={metrics}
+        stats={stats}
+        realData={realData}
+        communityGrowthData={communityGrowthData || growthData}
+        publishedVideos={publishedVideos}
+        platform="facebook"
+      />
+
       {/* ── GROWTH ────────────────────────────────────────────────────── */}
       <div>
         <SectionLabel>Growth</SectionLabel>

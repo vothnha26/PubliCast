@@ -1,8 +1,8 @@
 import React, { useState, useMemo } from "react";
 import { ExternalLink, Heart, MessageCircle, Percent } from "lucide-react";
 import { ResponsiveContainer, PieChart, Pie, Cell, Tooltip } from "recharts";
-import { GenericPostsListTab } from "./GenericPostsListTab";
-import { GenericDashboardTab } from "./GenericDashboardTab";
+import { GenericPostsListTab } from "../common/GenericPostsListTab";
+import { GenericDashboardTab } from "../common/GenericDashboardTab";
 
 export function InstagramAccountTab({
   metrics,
@@ -256,7 +256,7 @@ export function InstagramAccountTab({
           <div className="p-[3px] rounded-full bg-gradient-to-tr from-[#FCAF45] via-[#E1306C] to-[#C13584]">
             <div className="w-20 h-20 rounded-full bg-card p-[2px]">
               <img
-                src={metrics?.profilePictureUrl || "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=100&auto=format&fit=crop&q=60"}
+                src={metrics?.profilePictureUrl || metrics?.instagramAccount?.profilePictureUrl || "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=100&auto=format&fit=crop&q=60"}
                 alt="Profile"
                 referrerPolicy="no-referrer"
                 className="w-full h-full rounded-full object-cover"

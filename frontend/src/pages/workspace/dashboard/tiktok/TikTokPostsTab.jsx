@@ -1,6 +1,6 @@
 import React from "react";
-import { GenericDashboardTab } from "./GenericDashboardTab";
-import { GenericPostsListTab } from "./GenericPostsListTab";
+import { GenericDashboardTab } from "../common/GenericDashboardTab";
+import { GenericPostsListTab } from "../common/GenericPostsListTab";
 
 export function TikTokPostsTab({
   realData = {},

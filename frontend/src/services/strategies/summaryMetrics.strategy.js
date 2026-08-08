@@ -122,50 +122,56 @@ export class YouTubeSummaryStrategy extends BaseSummaryStrategy {
  */
 export class FacebookSummaryStrategy extends BaseSummaryStrategy {
   buildSummaryMetrics({ communityGrowthData = [], stats = {}, metrics = {}, realData = {}, publishedVideos = [] }) {
-    const len = communityGrowthData.length;
-    const half = Math.floor(len / 2);
-
-    const totalViews = communityGrowthData.reduce((acc, curr) => acc + (curr.views || curr.value || 0), 0);
-    const totalFollowersGained = communityGrowthData.reduce((acc, curr) => acc + (curr.followers || curr.new || 0), 0);
-    const totalPosts = communityGrowthData.reduce((acc, curr) => acc + (curr.posts || curr.totalContent || 0), 0);
-    let totalReactions = communityGrowthData.reduce((acc, curr) => acc + (curr.likes || curr.reactions || 0), 0);
-    let totalComments = communityGrowthData.reduce((acc, curr) => acc + (curr.comments || 0), 0);
-
-    const postList = (publishedVideos && publishedVideos.length > 0)
+    const growthList = Array.isArray(communityGrowthData) ? communityGrowthData : [];
+    const videoList = Array.isArray(publishedVideos) && publishedVideos.length > 0
       ? publishedVideos
       : (realData?.publishedVideos || realData?.posts || metrics?.publishedPosts || []);
 
-    if (totalReactions === 0 && postList.length > 0) {
-      totalReactions = postList.reduce((acc, p) => acc + Number(p.likes || p.likeCount || p.reactionsCount || 0), 0);
+    const len = growthList.length;
+    const half = Math.floor(len / 2);
+
+    const totalViews = growthList.reduce((acc, curr) => acc + (curr?.views || curr?.value || 0), 0);
+    const totalFollowersGained = growthList.reduce((acc, curr) => acc + (curr?.followers || curr?.new || curr?.acquired || 0), 0);
+    const totalPosts = growthList.reduce((acc, curr) => acc + (curr?.posts || curr?.totalContent || 0), 0);
+    let totalReactions = growthList.reduce((acc, curr) => acc + (curr?.likes || curr?.reactions || 0), 0);
+    let totalComments = growthList.reduce((acc, curr) => acc + (curr?.comments || 0), 0);
+    let totalShares = growthList.reduce((acc, curr) => acc + (curr?.shares || 0), 0);
+
+    if (totalReactions === 0 && videoList.length > 0) {
+      totalReactions = videoList.reduce((acc, p) => acc + Number(p?.likes || p?.likeCount || p?.reactionsCount || p?.reactions || 0), 0);
     }
-    if (totalComments === 0 && postList.length > 0) {
-      totalComments = postList.reduce((acc, p) => acc + Number(p.comments || p.commentCount || 0), 0);
+    if (totalComments === 0 && videoList.length > 0) {
+      totalComments = videoList.reduce((acc, p) => acc + Number(p?.comments || p?.commentCount || 0), 0);
+    }
+    if (totalShares === 0 && videoList.length > 0) {
+      totalShares = videoList.reduce((acc, p) => acc + Number(p?.shares || p?.sharesCount || 0), 0);
     }
 
-    const firstHalfReactions = communityGrowthData.slice(0, half).reduce((acc, curr) => acc + (curr.likes || curr.reactions || 0), 0);
-    const secondHalfReactions = communityGrowthData.slice(half).reduce((acc, curr) => acc + (curr.likes || curr.reactions || 0), 0);
+    const firstHalfReactions = growthList.slice(0, half).reduce((acc, curr) => acc + (curr?.likes || curr?.reactions || 0), 0);
+    const secondHalfReactions = growthList.slice(half).reduce((acc, curr) => acc + (curr?.likes || curr?.reactions || 0), 0);
     const reactionsTrend = this.computeTrendPct(firstHalfReactions, secondHalfReactions);
 
-    const firstHalfPosts = communityGrowthData.slice(0, half).reduce((acc, curr) => acc + (curr.posts || curr.totalContent || 0), 0);
-    const secondHalfPosts = communityGrowthData.slice(half).reduce((acc, curr) => acc + (curr.posts || curr.totalContent || 0), 0);
+    const firstHalfPosts = growthList.slice(0, half).reduce((acc, curr) => acc + (curr?.posts || curr?.totalContent || 0), 0);
+    const secondHalfPosts = growthList.slice(half).reduce((acc, curr) => acc + (curr?.posts || curr?.totalContent || 0), 0);
     const postsTrend = this.computeTrendPct(firstHalfPosts, secondHalfPosts);
 
-    const followers = stats?.subscribers || metrics?.facebookPage?.followersCount || 1;
-    const engRate = totalPosts > 0 ? ((totalReactions + totalComments) / (followers * totalPosts)) * 100 : 0;
+    const followers = metrics?.facebookPage?.followersCount || metrics?.followersCount || metrics?.facebookAccount?.followersCount || stats?.subscribers || realData?.summary?.followers || 0;
+    const baseCount = totalPosts > 0 && followers > 0 ? (followers * totalPosts) : (totalViews > 0 ? totalViews : 1);
+    const engRate = ((totalReactions + totalComments + totalShares) / baseCount) * 100;
 
     return [
       {
         id: "followers",
         label: "Total Followers",
         value: formatCompactNumber(followers),
-        trendText: totalFollowersGained > 0 ? `+${totalFollowersGained}` : null,
+        trendText: totalFollowersGained > 0 ? `+${totalFollowersGained}` : totalFollowersGained < 0 ? `${totalFollowersGained}` : null,
         isPositive: totalFollowersGained >= 0,
         tooltip: "Tổng số người theo dõi trang Facebook.",
       },
       {
         id: "posts",
         label: "Posts",
-        value: totalPosts || postList.length || 0,
+        value: totalPosts || videoList.length || 0,
         trendText: postsTrend !== 0 ? `${Math.abs(postsTrend).toFixed(1)}%` : null,
         isPositive: postsTrend >= 0,
         tooltip: "Tổng số bài viết đăng trong khoảng thời gian chọn.",
@@ -197,7 +203,7 @@ export class FacebookSummaryStrategy extends BaseSummaryStrategy {
       {
         id: "views",
         label: "Views / Reach",
-        value: formatCompactNumber(totalViews),
+        value: formatCompactNumber(totalViews || videoList.reduce((acc, p) => acc + Number(p?.views || p?.reach || 0), 0)),
         trendText: null,
         isPositive: true,
         tooltip: "Lượt xem hoặc phạm vi tiếp cận.",
@@ -211,57 +217,89 @@ export class FacebookSummaryStrategy extends BaseSummaryStrategy {
  */
 export class InstagramSummaryStrategy extends BaseSummaryStrategy {
   buildSummaryMetrics({ communityGrowthData = [], stats = {}, metrics = {}, realData = {}, publishedVideos = [] }) {
-    const len = communityGrowthData.length;
-    const half = Math.floor(len / 2);
-
-    const totalReach = communityGrowthData.reduce((acc, curr) => acc + (curr.reach || 0), 0);
-    const totalViews = communityGrowthData.reduce((acc, curr) => acc + (curr.views || 0), 0);
-    const totalPosts = communityGrowthData.reduce((acc, curr) => acc + (curr.posts || curr.totalContent || 0), 0);
-    let totalInteractions = communityGrowthData.reduce((acc, curr) => acc + (curr.interactions || (curr.likes + curr.comments + curr.saved + curr.shares) || 0), 0);
-    let totalComments = communityGrowthData.reduce((acc, curr) => acc + (curr.comments || 0), 0);
-
-    const postList = (publishedVideos && publishedVideos.length > 0)
+    const growthList = Array.isArray(communityGrowthData) ? communityGrowthData : [];
+    const videoList = Array.isArray(publishedVideos) && publishedVideos.length > 0
       ? publishedVideos
       : (realData?.publishedVideos || realData?.posts || metrics?.publishedPosts || []);
 
-    if (totalInteractions === 0 && postList.length > 0) {
-      totalInteractions = postList.reduce((acc, p) => acc + (Number(p.likes || p.likeCount || 0) + Number(p.comments || p.commentCount || 0)), 0);
+    const len = growthList.length;
+    const half = Math.floor(len / 2);
+
+    let totalReach = growthList.reduce((acc, curr) => acc + (curr?.reach || 0), 0);
+    let totalViews = growthList.reduce((acc, curr) => acc + (curr?.views || 0), 0);
+    const totalPosts = growthList.reduce((acc, curr) => acc + (curr?.posts || curr?.totalContent || 0), 0);
+    let totalReactions = growthList.reduce((acc, curr) => acc + (curr?.likes || 0), 0);
+    let totalComments = growthList.reduce((acc, curr) => acc + (curr?.comments || 0), 0);
+    let totalShares = growthList.reduce((acc, curr) => acc + (curr?.shares || 0), 0);
+    let totalSaves = growthList.reduce((acc, curr) => acc + (curr?.saved || 0), 0);
+    let totalFollowsGained = growthList.reduce((acc, curr) => acc + (curr?.new || 0), 0);
+
+    if (totalReactions === 0 && videoList.length > 0) {
+      totalReactions = videoList.reduce((acc, p) => acc + Number(p?.likes || p?.likeCount || p?.reactions || 0), 0);
     }
-    if (totalComments === 0 && postList.length > 0) {
-      totalComments = postList.reduce((acc, p) => acc + Number(p.comments || p.commentCount || 0), 0);
+    if (totalComments === 0 && videoList.length > 0) {
+      totalComments = videoList.reduce((acc, p) => acc + Number(p?.comments || p?.commentCount || 0), 0);
+    }
+    if (totalShares === 0 && videoList.length > 0) {
+      totalShares = videoList.reduce((acc, p) => acc + Number(p?.shares || p?.sharesCount || 0), 0);
+    }
+    if (totalSaves === 0 && videoList.length > 0) {
+      totalSaves = videoList.reduce((acc, p) => acc + Number(p?.saved || p?.saves || 0), 0);
+    }
+    if (totalViews === 0 && videoList.length > 0) {
+      totalViews = videoList.reduce((acc, p) => acc + Number(p?.views || p?.viewCount || 0), 0);
     }
 
-    const firstHalfInteractions = communityGrowthData.slice(0, half).reduce((acc, curr) => acc + (curr.interactions || 0), 0);
-    const secondHalfInteractions = communityGrowthData.slice(half).reduce((acc, curr) => acc + (curr.interactions || 0), 0);
-    const interactionsTrend = this.computeTrendPct(firstHalfInteractions, secondHalfInteractions);
+    // Trend calculations (First half vs Second half)
+    const firstHalfPosts = growthList.slice(0, half).reduce((acc, curr) => acc + (curr?.posts || curr?.totalContent || 0), 0);
+    const secondHalfPosts = growthList.slice(half).reduce((acc, curr) => acc + (curr?.posts || curr?.totalContent || 0), 0);
+    const postsTrend = this.computeTrendPct(firstHalfPosts, secondHalfPosts);
 
-    const followers = metrics?.instagramAccount?.followersCount || stats?.subscribers || 0;
-    const engRate = totalReach > 0 ? (totalInteractions / totalReach) * 100 : 0;
+    const firstHalfReactions = growthList.slice(0, half).reduce((acc, curr) => acc + (curr?.likes || 0), 0);
+    const secondHalfReactions = growthList.slice(half).reduce((acc, curr) => acc + (curr?.likes || 0), 0);
+    const reactionsTrend = this.computeTrendPct(firstHalfReactions, secondHalfReactions);
+
+    const firstHalfViews = growthList.slice(0, half).reduce((acc, curr) => acc + (curr?.views || 0), 0);
+    const secondHalfViews = growthList.slice(half).reduce((acc, curr) => acc + (curr?.views || 0), 0);
+    const viewsTrend = this.computeTrendPct(firstHalfViews, secondHalfViews);
+
+    const firstHalfReach = growthList.slice(0, half).reduce((acc, curr) => acc + (curr?.reach || 0), 0);
+    const secondHalfReach = growthList.slice(half).reduce((acc, curr) => acc + (curr?.reach || 0), 0);
+    const reachTrend = this.computeTrendPct(firstHalfReach, secondHalfReach);
+
+    const totalInteractions = totalReactions + totalComments + totalSaves + totalShares;
+    const followers = metrics?.instagramAccount?.followersCount || metrics?.followersCount || stats?.subscribers || 0;
+    const baseDenom = totalReach > 0 ? totalReach : (totalViews > 0 ? totalViews : (followers > 0 ? followers : 1));
+    const engRate = (totalInteractions / baseDenom) * 100;
+
+    const firstHalfEngRate = firstHalfReach > 0 ? ((firstHalfReactions) / firstHalfReach) * 100 : 0;
+    const secondHalfEngRate = secondHalfReach > 0 ? ((secondHalfReactions) / secondHalfReach) * 100 : 0;
+    const engRateTrend = this.computeTrendPct(firstHalfEngRate, secondHalfEngRate);
 
     return [
       {
         id: "followers",
-        label: "Followers",
+        label: "Total Followers",
         value: formatCompactNumber(followers),
-        trendText: null,
+        trendText: totalFollowsGained > 0 ? `+${totalFollowsGained}` : null,
         isPositive: true,
-        tooltip: "Số người theo dõi Instagram.",
+        tooltip: "Tổng số người theo dõi Instagram.",
       },
       {
         id: "posts",
         label: "Posts",
-        value: totalPosts || postList.length || 0,
-        trendText: null,
-        isPositive: true,
+        value: totalPosts || videoList.length || 0,
+        trendText: postsTrend !== 0 ? `${Math.abs(postsTrend).toFixed(1)}%` : null,
+        isPositive: postsTrend >= 0,
         tooltip: "Số lượng bài viết / Reels đã đăng.",
       },
       {
-        id: "interactions",
-        label: "Interactions",
-        value: formatCompactNumber(totalInteractions),
-        trendText: interactionsTrend !== 0 ? `${Math.abs(interactionsTrend).toFixed(1)}%` : null,
-        isPositive: interactionsTrend >= 0,
-        tooltip: "Tổng lượt tương tác (Like, Comment, Save, Share).",
+        id: "reactions",
+        label: "Reactions",
+        value: formatCompactNumber(totalReactions),
+        trendText: reactionsTrend !== 0 ? `${Math.abs(reactionsTrend).toFixed(1)}%` : null,
+        isPositive: reactionsTrend >= 0,
+        tooltip: "Tổng lượt cảm xúc / Thích bài viết.",
       },
       {
         id: "comments",
@@ -275,16 +313,40 @@ export class InstagramSummaryStrategy extends BaseSummaryStrategy {
         id: "engagementRate",
         label: "Eng. Rate",
         value: `${engRate.toFixed(2)}%`,
-        trendText: null,
-        isPositive: engRate >= 0,
+        trendText: engRateTrend !== 0 ? `${Math.abs(engRateTrend).toFixed(1)}%` : null,
+        isPositive: engRateTrend >= 0,
         tooltip: "Tỷ lệ tương tác trên tiếp cận.",
+      },
+      {
+        id: "views",
+        label: "Views",
+        value: formatCompactNumber(totalViews),
+        trendText: viewsTrend !== 0 ? `${Math.abs(viewsTrend).toFixed(1)}%` : null,
+        isPositive: viewsTrend >= 0,
+        tooltip: "Tổng lượt xem video/reels.",
+      },
+      {
+        id: "shares",
+        label: "Shares",
+        value: formatCompactNumber(totalShares),
+        trendText: null,
+        isPositive: true,
+        tooltip: "Tổng số lượt chia sẻ.",
+      },
+      {
+        id: "saves",
+        label: "Saves",
+        value: formatCompactNumber(totalSaves),
+        trendText: null,
+        isPositive: true,
+        tooltip: "Tổng số lượt lưu bài viết.",
       },
       {
         id: "reach",
         label: "Reach",
-        value: formatCompactNumber(totalReach || totalViews),
-        trendText: null,
-        isPositive: true,
+        value: formatCompactNumber(totalReach),
+        trendText: reachTrend !== 0 ? `${Math.abs(reachTrend).toFixed(1)}%` : null,
+        isPositive: reachTrend >= 0,
         tooltip: "Tổng lượt tiếp cận tài khoản.",
       },
     ];
@@ -296,24 +358,33 @@ export class InstagramSummaryStrategy extends BaseSummaryStrategy {
  */
 export class TikTokSummaryStrategy extends BaseSummaryStrategy {
   buildSummaryMetrics({ communityGrowthData = [], stats = {}, metrics = {}, realData = {}, publishedVideos = [] }) {
-    const totalViews = communityGrowthData.reduce((acc, curr) => acc + (curr.views || curr.value || 0), 0);
-    const totalVideos = communityGrowthData.reduce((acc, curr) => acc + (curr.videos || 0), 0);
-    let totalLikes = communityGrowthData.reduce((acc, curr) => acc + (curr.likes || 0), 0);
-    let totalComments = communityGrowthData.reduce((acc, curr) => acc + (curr.comments || 0), 0);
-
-    const postList = (publishedVideos && publishedVideos.length > 0)
+    const growthList = Array.isArray(communityGrowthData) ? communityGrowthData : [];
+    const videoList = Array.isArray(publishedVideos) && publishedVideos.length > 0
       ? publishedVideos
       : (realData?.publishedVideos || realData?.posts || metrics?.publishedPosts || []);
 
-    if (totalLikes === 0 && postList.length > 0) {
-      totalLikes = postList.reduce((acc, p) => acc + Number(p.likes || p.likeCount || 0), 0);
+    let totalViews = growthList.reduce((acc, curr) => acc + (curr?.views || curr?.value || 0), 0);
+    const totalVideos = growthList.reduce((acc, curr) => acc + (curr?.videos || curr?.totalContent || 0), 0);
+    let totalLikes = growthList.reduce((acc, curr) => acc + (curr?.likes || 0), 0);
+    let totalComments = growthList.reduce((acc, curr) => acc + (curr?.comments || 0), 0);
+    let totalShares = growthList.reduce((acc, curr) => acc + (curr?.shares || 0), 0);
+
+    if (totalViews === 0 && videoList.length > 0) {
+      totalViews = videoList.reduce((acc, p) => acc + Number(p?.views || p?.viewCount || p?.playCount || 0), 0);
     }
-    if (totalComments === 0 && postList.length > 0) {
-      totalComments = postList.reduce((acc, p) => acc + Number(p.comments || p.commentCount || 0), 0);
+    if (totalLikes === 0 && videoList.length > 0) {
+      totalLikes = videoList.reduce((acc, p) => acc + Number(p?.likes || p?.likeCount || p?.diggCount || 0), 0);
+    }
+    if (totalComments === 0 && videoList.length > 0) {
+      totalComments = videoList.reduce((acc, p) => acc + Number(p?.comments || p?.commentCount || 0), 0);
+    }
+    if (totalShares === 0 && videoList.length > 0) {
+      totalShares = videoList.reduce((acc, p) => acc + Number(p?.shares || p?.shareCount || 0), 0);
     }
 
-    const followers = metrics?.tikTokAccount?.followersCount || stats?.subscribers || 0;
-    const engRate = totalViews > 0 ? ((totalLikes + totalComments) / totalViews) * 100 : 0;
+    const followers = metrics?.tikTokAccount?.followersCount || metrics?.followersCount || stats?.subscribers || 0;
+    const baseDenom = totalViews > 0 ? totalViews : (followers > 0 ? followers : 1);
+    const engRate = ((totalLikes + totalComments + totalShares) / baseDenom) * 100;
 
     return [
       {
@@ -327,7 +398,7 @@ export class TikTokSummaryStrategy extends BaseSummaryStrategy {
       {
         id: "videos",
         label: "Videos",
-        value: totalVideos || stats?.videos || postList.length || 0,
+        value: totalVideos || stats?.videos || videoList.length || 0,
         trendText: null,
         isPositive: true,
         tooltip: "Tổng số video đăng.",

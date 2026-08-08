@@ -1,7 +1,7 @@
 import React, { useMemo } from "react";
 import { format, subDays, differenceInDays } from "date-fns";
 import { Info, Send, ExternalLink, TrendingUp, TrendingDown } from "lucide-react";
-import { SummaryStrategyFactory } from "../../../services/strategies/summaryMetrics.strategy";
+import { SummaryStrategyFactory } from "../../../../services/strategies/summaryMetrics.strategy";
 
 export function InsightsSummaryWidget({
   dateRange = {},
@@ -75,7 +75,7 @@ export function InsightsSummaryWidget({
       </div>
 
       {/* Metric Cards Grid */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 lg:grid-cols-6 gap-3.5">
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 lg:grid-cols-5 gap-3.5">
         {summaryMetrics.map((item) => (
           <div
             key={item.id}

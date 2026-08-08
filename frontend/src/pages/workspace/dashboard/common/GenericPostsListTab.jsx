@@ -5,15 +5,15 @@ import {
   Layers, Check, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight,
   Sparkles, X, ExternalLink, Eye, Copy
 } from "lucide-react";
-import { Button } from "../../../components/ui/button";
+import { Button } from "../../../../components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "../../../components/ui/dropdown-menu";
-import { PublishedPostDetailModal } from "../planner/components/PublishedPostDetailModal";
+} from "../../../../components/ui/dropdown-menu";
+import { PublishedPostDetailModal } from "../../planner/components/PublishedPostDetailModal";
 import { toast } from "sonner";
 
 export function GenericPostsListTab({

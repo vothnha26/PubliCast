@@ -1,6 +1,6 @@
 import React from "react";
 import { useTranslation } from "react-i18next";
-import { GenericPostsListTab } from "./GenericPostsListTab";
+import { GenericPostsListTab } from "../common/GenericPostsListTab";
 
 export function ThreadsPostsListTab({
   publishedVideos = [],

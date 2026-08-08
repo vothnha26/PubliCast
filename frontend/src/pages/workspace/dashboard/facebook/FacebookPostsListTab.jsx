@@ -1,5 +1,5 @@
 import React from "react";
-import { GenericPostsListTab } from "./GenericPostsListTab";
+import { GenericPostsListTab } from "../common/GenericPostsListTab";
 
 export function FacebookPostsListTab({
   publishedVideos = [],

@@ -1,7 +1,15 @@
 import React from "react";
-import { GenericDashboardTab } from "./GenericDashboardTab";
+import { GenericDashboardTab } from "../common/GenericDashboardTab";
+import { InsightsSummaryWidget } from "../common/InsightsSummaryWidget";
 
-export function TikTokCommunityTab({ realData = {}, dateRange }) {
+export function TikTokCommunityTab({
+  realData = {},
+  dateRange,
+  metrics,
+  stats,
+  communityGrowthData,
+  publishedVideos
+}) {
   const filteredGrowth = React.useMemo(() => {
     const rawGrowth = realData.growth || [];
     if (!dateRange || !dateRange.from) return rawGrowth;
@@ -49,7 +57,7 @@ export function TikTokCommunityTab({ realData = {}, dateRange }) {
       color: "bg-[#8E9BEE] text-white",
       chartColor: "#8E9BEE",
       type: "area",
-      value: summary.followers ?? growthData[growthData.length - 1]?.followers ?? 0
+      value: summary.followers ?? (growthData && growthData.length > 0 ? growthData[growthData.length - 1]?.followers : 0) ?? 0
     },
     {
       key: "totalContent",
@@ -84,6 +92,16 @@ export function TikTokCommunityTab({ realData = {}, dateRange }) {
 
   return (
     <div className="space-y-6">
+      <InsightsSummaryWidget
+        dateRange={dateRange}
+        metrics={metrics}
+        stats={stats}
+        realData={realData}
+        communityGrowthData={communityGrowthData}
+        publishedVideos={publishedVideos}
+        platform="tiktok"
+      />
+
       <GenericDashboardTab
         title="Growth"
         description="Biểu đồ tăng trưởng người theo dõi và bài đăng theo thời gian"

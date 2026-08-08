@@ -13,7 +13,7 @@
 // monorepo-root shared/ file: the frontend now builds as a standalone repo
 // (publicast-frontend) with no access to files outside this directory. Keep
 // both copies in sync by hand when Meta's limits change.
-import facebookLimits from './facebook-limits.json' with { type: 'json' };
+import facebookLimits from './facebook-limits.json';
 
 export const PLATFORM_LIMIT_THRESHOLDS = {
   FACEBOOK: {
@@ -67,7 +67,7 @@ export const PLATFORM_VALIDATION_MESSAGES = {
     REEL_DURATION_RANGE: (duration) => `Facebook Reels duration must be between ${PLATFORM_LIMIT_THRESHOLDS.FACEBOOK.REEL_MIN_DURATION} and ${PLATFORM_LIMIT_THRESHOLDS.FACEBOOK.REEL_MAX_DURATION} seconds (Current: ${Number(duration).toFixed(1)}s).`,
     REEL_MUST_BE_VERTICAL: "Facebook Reels must be vertical (aspect ratio 9:16).",
     STORY_MEDIA_REQUIRED: "Facebook Stories require a photo or video file.",
-    STORY_MAX_DURATION: (duration) => `Facebook Story videos must be between ${STORY_LIMITS.MIN_DURATION_SECONDS} and ${STORY_LIMITS.MAX_DURATION_SECONDS} seconds (Current: ${Number(duration).toFixed(1)}s).`,
+    STORY_MAX_DURATION: (duration) => `Facebook Story videos must be 60 seconds or less (Current: ${Number(duration).toFixed(1)}s).`,
     STORY_MUST_BE_VERTICAL: "Facebook Story videos must be vertical (aspect ratio 9:16)."
   },
 

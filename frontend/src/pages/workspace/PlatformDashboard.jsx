@@ -14,19 +14,21 @@ import {
   DialogHeader,
   DialogTitle,
 } from "../../components/ui/dialog";
-import { GenericDashboardTab } from "./dashboard/GenericDashboardTab";
-import { DemographicsTab } from "./dashboard/DemographicsTab";
-import { PublishedVideosTab } from "./dashboard/PublishedVideosTab";
-import { CompetitorsTab } from "./dashboard/CompetitorsTab";
-import { TrackedVideosTab } from "./dashboard/TrackedVideosTab";
-import { FacebookDashboard } from "./dashboard/FacebookDashboard";
-import { TikTokDashboard } from "./dashboard/TikTokDashboard";
-import { InstagramAccountTab } from "./dashboard/InstagramAccountTab";
-import { InstagramReelsTab } from "./dashboard/InstagramReelsTab";
-import { InstagramStoriesTab } from "./dashboard/InstagramStoriesTab";
-import { ThreadsPostsTab } from "./dashboard/ThreadsPostsTab";
-import { BlueskyDashboardTab } from "./dashboard/BlueskyDashboardTab";
-import { InsightsSummaryWidget } from "./dashboard/InsightsSummaryWidget";
+import { GenericDashboardTab } from "./dashboard/common/GenericDashboardTab";
+import { DemographicsTab } from "./dashboard/common/DemographicsTab";
+import { PublishedVideosTab } from "./dashboard/common/PublishedVideosTab";
+import { CompetitorsTab } from "./dashboard/common/CompetitorsTab";
+import { TrackedVideosTab } from "./dashboard/common/TrackedVideosTab";
+import { FacebookDashboard } from "./dashboard/facebook/FacebookDashboard";
+import { TikTokDashboard } from "./dashboard/tiktok/TikTokDashboard";
+import { InstagramAccountTab } from "./dashboard/instagram/InstagramAccountTab";
+import { InstagramCommunityTab } from "./dashboard/instagram/InstagramCommunityTab";
+import { InstagramReelsTab } from "./dashboard/instagram/InstagramReelsTab";
+import { InstagramStoriesTab } from "./dashboard/instagram/InstagramStoriesTab";
+import { YouTubeCommunityTab } from "./dashboard/youtube/YouTubeCommunityTab";
+import { ThreadsPostsTab } from "./dashboard/threads/ThreadsPostsTab";
+import { BlueskyDashboardTab } from "./dashboard/bluesky/BlueskyDashboardTab";
+import { InsightsSummaryWidget } from "./dashboard/common/InsightsSummaryWidget";
 import { usePlatformDashboard } from "../../hooks/usePlatformDashboard";
 import { DateRangeFilter } from "../../components/app/DateRangeFilter";
 import { useConnections } from "../../context/ConnectionsContext";
@@ -367,7 +369,7 @@ export function PlatformDashboardPage() {
            <div className="flex items-center gap-3 bg-card px-3 py-1.5 rounded-xl border border-border shadow-sm">
               <div className="w-6 h-6 rounded-lg overflow-hidden border border-border">
                 <img 
-                  src={metrics?.profilePictureUrl} 
+                  src={metrics?.profilePictureUrl || metrics?.instagramAccount?.profilePictureUrl} 
                   alt="Avatar" 
                   referrerPolicy="no-referrer"
                   onError={(e) => {
@@ -423,8 +425,6 @@ export function PlatformDashboardPage() {
              <div className="w-20 h-20 bg-muted rounded-full flex items-center justify-center mb-6">
                 <div style={{ color: config.color }}>{config.icon}</div>
              </div>
-             <h3 className="text-xl font-bold text-foreground">{config.name} account not connected</h3>
-             <p className="text-sm text-muted-foreground mt-2 mb-8 max-w-sm">Connect your {config.name} account to see real-time analytics, demographics, and video performance.</p>
              <button 
                onClick={() => !isPlatformLocked && openConnections(activeBrand?.id)}
                disabled={isPlatformLocked}
@@ -433,125 +433,51 @@ export function PlatformDashboardPage() {
                Connect {config.name}
              </button>
           </div>
-        ) : platform === "facebook" ? (
-          <FacebookDashboard
-            metrics={metrics}
-            loading={loading}
-            dateRange={dateRange}
-            setDateRange={setDateRange}
-            realData={realData}
-            activeTab={activeTab}
-            setActiveTab={setActiveTab}
-            publishedVideos={publishedVideos}
-            isPublishedLoading={isPublishedLoading}
-            pageSize={pageSize}
-            setPageSize={setPageSize}
-            fetchPublishedVideos={fetchPublishedVideos}
-            prevPageToken={prevPageToken}
-            nextPageToken={nextPageToken}
-            onVideoClick={handleVideoClick}
-            isCompetitorModalOpen={isCompetitorModalOpen}
-            setIsCompetitorModalOpen={setIsCompetitorModalOpen}
-            competitorQuery={competitorQuery}
-            setCompetitorQuery={setCompetitorQuery}
-            handleSearchCompetitors={handleSearchCompetitors}
-            isSearching={isSearching}
-            searchResults={searchResults}
-            handleAddCompetitor={handleAddCompetitor}
-            handleDeleteCompetitor={handleDeleteCompetitor}
-            isCompetitorLoading={isCompetitorLoading}
-            competitors={competitors}
-            isPlatformLocked={isPlatformLocked}
-          />
-        ) : platform === "instagram" ? (
+        ) : (
+          <div className="space-y-6">
+            {platform === "facebook" ? (
+              <FacebookDashboard
+                metrics={metrics}
+                stats={stats}
+                communityGrowthData={communityGrowthData}
+                loading={loading}
+                dateRange={dateRange}
+                setDateRange={setDateRange}
+                realData={realData}
+                activeTab={activeTab}
+                setActiveTab={setActiveTab}
+                publishedVideos={publishedVideos}
+                isPublishedLoading={isPublishedLoading}
+                pageSize={pageSize}
+                setPageSize={setPageSize}
+                fetchPublishedVideos={fetchPublishedVideos}
+                prevPageToken={prevPageToken}
+                nextPageToken={nextPageToken}
+                onVideoClick={handleVideoClick}
+                isCompetitorModalOpen={isCompetitorModalOpen}
+                setIsCompetitorModalOpen={setIsCompetitorModalOpen}
+                competitorQuery={competitorQuery}
+                setCompetitorQuery={setCompetitorQuery}
+                handleSearchCompetitors={handleSearchCompetitors}
+                isSearching={isSearching}
+                searchResults={searchResults}
+                handleAddCompetitor={handleAddCompetitor}
+                handleDeleteCompetitor={handleDeleteCompetitor}
+                isCompetitorLoading={isCompetitorLoading}
+                competitors={competitors}
+                isPlatformLocked={isPlatformLocked}
+              />
+            ) : platform === "instagram" ? (
           <>
             {activeTab === "community" && (
-              <div className="space-y-6">
-                {(() => {
-                  const followersCount = metrics?.instagramAccount?.followersCount || 0;
-                  const followingCount = metrics?.instagramAccount?.followingCount || 0;
-                  const mediaCount = metrics?.instagramAccount?.mediaCount || 0;
-
-                  const igGrowthConfig = [
-                    {
-                      key: "followers",
-                      label: "Followers",
-                      color: "bg-[#8E9BEE] text-white",
-                      chartColor: "#8E9BEE",
-                      type: "area",
-                      value: followersCount
-                    },
-                    {
-                      key: "following",
-                      label: "Following",
-                      color: "bg-[#A7F3D0] text-foreground",
-                      chartColor: "#A7F3D0",
-                      type: "line",
-                      value: followingCount
-                    },
-                    {
-                      key: "totalContent",
-                      label: "Total content",
-                      color: "bg-[#E6A34A] text-white",
-                      chartColor: "#E6A34A",
-                      type: "bar",
-                      value: mediaCount
-                    }
-                  ];
-
-                  const daysCount = communityGrowthData?.length || 30;
-                  const totalContentInPeriod = communityGrowthData?.reduce((acc, curr) => acc + (curr.totalContent || 0), 0) || mediaCount;
-
-                  const dailyPostsNum = daysCount > 0 ? (totalContentInPeriod / daysCount) : 0;
-                  const dailyPosts = dailyPostsNum.toFixed(2);
-                  const postsPerWeek = (dailyPostsNum * 7).toFixed(2);
-                  const followersPerPost = mediaCount > 0 ? (followersCount / mediaCount).toFixed(2) : "0";
-                  const dailyFollowers = daysCount > 0 ? (totalPeriodGained / daysCount).toFixed(2) : "0";
-
-                  const summaryGrid = [
-                    { label: "Followers", value: followersCount.toLocaleString() },
-                    { label: "Daily followers", value: dailyFollowers },
-                    { label: "Followers per post", value: followersPerPost },
-                    { label: "Following", value: followingCount.toLocaleString() },
-                    { label: "Daily posts", value: dailyPosts },
-                    { label: "Posts per week", value: postsPerWeek }
-                  ];
-
-                  const igBalanceConfig = [
-                    {
-                      key: "followers",
-                      label: "Followers",
-                      color: "bg-[#86EFAC] text-[#166534]",
-                      chartColor: "#22C55E",
-                      type: "line",
-                      value: followersCount
-                    }
-                  ];
-
-                  return (
-                    <>
-                      <GenericDashboardTab
-                        title="Growth"
-                        description=""
-                        data={communityGrowthData}
-                        metricConfig={igGrowthConfig}
-                        watermark="publicast"
-                        summaryGrid={summaryGrid}
-                      />
-
-                      <div className="h-2" />
-
-                      <GenericDashboardTab
-                        title="Balance of Followers"
-                        description=""
-                        data={communityGrowthData}
-                        metricConfig={igBalanceConfig}
-                        watermark="publicast"
-                      />
-                    </>
-                  );
-                })()}
-              </div>
+              <InstagramCommunityTab
+                dateRange={dateRange}
+                metrics={metrics}
+                stats={stats}
+                realData={realData}
+                communityGrowthData={communityGrowthData}
+                publishedVideos={publishedVideos}
+              />
             )}
 
             {activeTab === "account" && (
@@ -846,112 +772,17 @@ export function PlatformDashboardPage() {
         ) : (
           <>
             {activeTab === "community" && (
-              <div className="space-y-6">
-                  {(() => {
-                    const ytGrowthConfig = [
-                      {
-                        key: "subscribers",
-                        label: "Subscribers",
-                        color: "bg-[#8E9BEE] text-white",
-                        chartColor: "#8E9BEE",
-                        type: "area",
-                        value: totalPeriodGained ?? stats?.subscribers ?? 0
-                      },
-                      {
-                        key: "views",
-                        label: "Video views",
-                        color: "bg-[#86EFAC] text-foreground",
-                        chartColor: "#86EFAC",
-                        type: "line",
-                        value: totalPeriodViews ?? 0
-                      },
-                      {
-                        key: "revenue",
-                        label: "Revenue",
-                        color: "bg-[#C084FC] text-white",
-                        chartColor: "#C084FC",
-                        type: "line",
-                        value: "0"
-                      },
-                      {
-                        key: "videos",
-                        label: "Videos",
-                        color: "bg-[#E6A34A] text-white",
-                        chartColor: "#E6A34A",
-                        type: "bar",
-                        yAxisId: "right",
-                        value: totalPeriodVideos ?? stats?.videos ?? 0
-                      }
-                    ];
-
-                    const ytBalanceConfig = [
-                      {
-                        key: "gained",
-                        dataKey: "new",
-                        label: "Gained",
-                        color: "bg-[#8E9BEE] text-white",
-                        chartColor: "#8E9BEE",
-                        type: "area",
-                        value: totalPeriodGained || 0
-                      },
-                      {
-                        key: "lost",
-                        label: "Lost",
-                        color: "bg-[#F7A6E0] text-white",
-                        chartColor: "#F7A6E0",
-                        type: "area",
-                        value: "0"
-                      },
-                      {
-                        key: "videos",
-                        label: "Videos",
-                        color: "bg-[#E6A34A] text-white",
-                        chartColor: "#E6A34A",
-                        type: "bar",
-                        yAxisId: "right",
-                        value: stats?.videos || 0
-                      }
-                    ];
-
-                    return (
-                      <>
-                        <InsightsSummaryWidget
-                          dateRange={dateRange}
-                          metrics={metrics}
-                          stats={stats}
-                          realData={realData}
-                          communityGrowthData={communityGrowthData}
-                          publishedVideos={publishedVideos}
-                          platform={platform}
-                        />
-                        <div className="h-6" />
-                        <GenericDashboardTab
-                          title="Growth"
-                          description="Biểu đồ tăng trưởng người theo dõi, lượt xem và doanh thu"
-                          data={communityGrowthData}
-                          metricConfig={ytGrowthConfig}
-                          watermark="publicast"
-                        />
-                        <div className="h-6" />
-                        <GenericDashboardTab
-                          title="Balance of Subscribers"
-                          description="Biến động số lượng người đăng ký mới và hủy đăng ký"
-                          data={communityGrowthData}
-                          metricConfig={ytBalanceConfig}
-                          watermark="publicast"
-                        />
-                      </>
-                    );
-                  })()}
-                 {realData.growth?.length === 0 && (
-                   <div className="bg-amber-50 border border-amber-100 p-4 rounded-2xl flex items-center gap-3">
-                      <Info className="text-amber-500" size={18} />
-                      <p className="text-xs text-amber-700 font-medium">
-                        Real-time analytics data (Engagement, Watch Time, etc.) can take up to 48-72 hours to appear after connecting your account.
-                      </p>
-                   </div>
-                 )}
-              </div>
+              <YouTubeCommunityTab
+                dateRange={dateRange}
+                metrics={metrics}
+                stats={stats}
+                realData={realData}
+                communityGrowthData={communityGrowthData}
+                publishedVideos={publishedVideos}
+                totalPeriodGained={totalPeriodGained}
+                totalPeriodViews={totalPeriodViews}
+                totalPeriodVideos={totalPeriodVideos}
+              />
             )}
 
             {activeTab === "demographics" && (
@@ -1003,6 +834,8 @@ export function PlatformDashboardPage() {
           </>
         )}
       </div>
+    )}
+  </div>
 
 
       <Dialog open={isExportModalOpen} onOpenChange={setIsExportModalOpen}>

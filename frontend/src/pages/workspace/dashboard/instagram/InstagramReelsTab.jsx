@@ -1,6 +1,6 @@
 import React, { useMemo } from "react";
-import { GenericPostsListTab } from "./GenericPostsListTab";
-import { GenericDashboardTab } from "./GenericDashboardTab";
+import { GenericPostsListTab } from "../common/GenericPostsListTab";
+import { GenericDashboardTab } from "../common/GenericDashboardTab";
 
 export function InstagramReelsTab({
   metrics,
