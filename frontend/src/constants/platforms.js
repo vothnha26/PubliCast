@@ -57,6 +57,18 @@ export const PLATFORM_API_KEY = {
   X: 'TWITTER_X', // special case
 };
 
+/** Map từ backend uppercase platform name sang lowercase key */
+export const PLATFORM_KEY_MAP = {
+  FACEBOOK: PLATFORMS.FACEBOOK,
+  INSTAGRAM: PLATFORMS.INSTAGRAM,
+  YOUTUBE: PLATFORMS.YOUTUBE,
+  TIKTOK: PLATFORMS.TIKTOK,
+  THREADS: PLATFORMS.THREADS,
+  BLUESKY: PLATFORMS.BLUESKY,
+  REDDIT: PLATFORMS.REDDIT,
+  TWITCH: PLATFORMS.TWITCH,
+};
+
 /** Stock Providers & Types */
 export const STOCK_PROVIDERS = {
   UNSPLASH: 'UNSPLASH',

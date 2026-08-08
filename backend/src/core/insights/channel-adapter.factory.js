@@ -25,6 +25,10 @@ class ChannelAdapterFactory {
     if (!platform) return false;
     return this._registry.has(platform.toUpperCase());
   }
+
+  getAllAdapters() {
+    return Array.from(this._registry.values());
+  }
 }
 
 module.exports = ChannelAdapterFactory;

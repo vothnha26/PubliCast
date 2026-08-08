@@ -3,7 +3,7 @@ const request = require('supertest');
 
 jest.mock('../../src/services/social/youtube', () => ({
   getPublishedVideos: jest.fn(),
-  getVideoInsights: jest.fn(),
+  getPostInsights: jest.fn(),
   getTrackedVideos: jest.fn()
 }));
 
@@ -46,9 +46,9 @@ describe('YouTube API v2 — response envelope', () => {
     expect(res.body).toEqual({ message: 'Success', data: rawResult });
   });
 
-  it('wraps getVideoInsights (also raw in v1) as { message, data }', async () => {
+  it('wraps getPostInsights (also raw in v1) as { message, data }', async () => {
     const rawResult = { views: 100, likes: 10 };
-    youtubeService.getVideoInsights.mockResolvedValue(rawResult);
+    youtubeService.getPostInsights.mockResolvedValue(rawResult);
 
     const res = await request(app)
       .get('/api/v2/social/youtube/video-insights')

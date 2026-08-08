@@ -65,6 +65,7 @@ export function ListView({ socialAccountId } = {}) {
     search: "",
     status: "All",
     platform: "All Platforms",
+    type: "",
     page: "1",
     limit: "10"
   });

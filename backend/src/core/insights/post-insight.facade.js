@@ -17,11 +17,12 @@ class PostInsightFacade {
    * @param {string} brandId
    * @param {string} platform - e.g. PLATFORMS.YOUTUBE
    * @param {string} postId
+   * @param {object} [options] - e.g. { socialAccountId }
    * @returns {Promise<object>}
    */
-  async getPostInsights(brandId, platform, postId) {
+  async getPostInsights(brandId, platform, postId, options = {}) {
     const adapter = this.factory.getAdapter(platform);
-    const metrics = await adapter.execute(brandId, postId);
+    const metrics = await adapter.execute(brandId, postId, options);
 
     eventEmitter.emit(EVENTS.SOCIAL.METRICS_SYNCED, {
       brandId,

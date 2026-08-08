@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import {
   X, ExternalLink, ThumbsUp, MessageSquare, Activity, Eye,
   BarChart2, MoreVertical, Tag, Play, Share2, Target, MousePointerClick,
-  Youtube, Facebook, Instagram, ChevronUp, Smartphone, Globe2, Search, Loader2
+  ChevronUp, Loader2
 } from "lucide-react";
 import { format } from "date-fns";
 import { useTranslation } from "react-i18next";
@@ -10,6 +10,7 @@ import { resolvePlatformTarget, getPlatformPostUrl } from "@/utils/postUrlHelper
 import socialService from "@/services/social.service";
 import { PlatformMetricsStrategyFactory } from "@/services/strategies/platformMetrics.strategy";
 import { useBrand } from "@/context/BrandContext";
+import { PlatformIcon } from "@/components/shared/PlatformIcon";
 
 export function PublishedPostDetailModal({ post, onClose }) {
   const { t } = useTranslation("planner");
@@ -22,8 +23,22 @@ export function PublishedPostDetailModal({ post, onClose }) {
   const [insightsError, setInsightsError] = useState(null);
   const [insightsFetched, setInsightsFetched] = useState(false);
 
-  const { platform, platformPostId } = resolvePlatformTarget(post || {});
+  const resolvedTarget = resolvePlatformTarget(post || {});
   const postUrl = getPlatformPostUrl(post || {});
+
+  const rawPlatform = (
+    post?.platform ||
+    resolvedTarget.platform ||
+    (postUrl?.includes("facebook") ? "FACEBOOK" :
+     postUrl?.includes("instagram") ? "INSTAGRAM" :
+     postUrl?.includes("tiktok") ? "TIKTOK" :
+     postUrl?.includes("youtube") ? "YOUTUBE" :
+     postUrl?.includes("threads") ? "THREADS" :
+     postUrl?.includes("bsky") ? "BLUESKY" : "YOUTUBE")
+  ).toUpperCase();
+
+  const platform = rawPlatform;
+  const platformPostId = resolvedTarget.platformPostId;
 
   const caption = post?.caption || post?.message || post?.title || "";
   const mediaUrl = post?.thumbnail || post?.thumbnailUrl || post?.mediaUrl || post?.mediaUrls?.[0] || null;
@@ -101,12 +116,14 @@ export function PublishedPostDetailModal({ post, onClose }) {
   const formattedDate = publishedAt ? format(new Date(publishedAt), "MMM d, h:mm a") : "Jul 11, 4:14 PM";
   const targetLabel = post?.targetPlatforms || post?.options?.targetType || t("postDetail.custom", "Custom");
 
-  const isFacebook = platform === "FACEBOOK" || (postUrl && postUrl.includes("facebook"));
-  const isInstagram = platform === "INSTAGRAM" || (postUrl && postUrl.includes("instagram"));
-  const isYoutube = platform === "YOUTUBE" || (postUrl && postUrl.includes("youtube"));
+  const isFacebook = platform === "FACEBOOK";
+  const isInstagram = platform === "INSTAGRAM";
+  const isYoutube = platform === "YOUTUBE";
+  const isTikTok = platform === "TIKTOK";
+  const isVideoPlatform = isYoutube || isTikTok;
 
-  // Layout mode: Facebook / Instagram displays caption top, image below. YouTube displays vertical video box left.
-  const isTopCaptionLayout = isFacebook || isInstagram || !isYoutube;
+  // Layout mode: Facebook / Instagram displays caption top, image below. YouTube / TikTok displays vertical video box left.
+  const isTopCaptionLayout = !isVideoPlatform;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
@@ -141,13 +158,7 @@ export function PublishedPostDetailModal({ post, onClose }) {
                 </div>
               )}
               <div className="absolute -bottom-1 -right-1 bg-background rounded-full p-0.5 shadow-sm flex items-center justify-center">
-                {isFacebook ? (
-                  <Facebook size={12} className="text-[#1877F2] fill-[#1877F2]" />
-                ) : isInstagram ? (
-                  <Instagram size={12} className="text-[#E1306C]" />
-                ) : (
-                  <Youtube size={12} className="text-red-600 fill-red-600" />
-                )}
+                <PlatformIcon platform={platform} size={14} variant="flat" />
               </div>
             </div>
             <span className="font-bold text-sm text-foreground tracking-tight">{channelTitle}</span>
@@ -365,23 +376,9 @@ export function PublishedPostDetailModal({ post, onClose }) {
         <div className="flex items-center justify-between px-5 py-3.5 bg-muted/40">
           <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
             <span>{t("postDetail.publishedVia", "Published via")}</span>
-            <div className="flex items-center gap-1 text-foreground font-semibold">
-              {isFacebook ? (
-                <>
-                  <Facebook size={15} className="text-[#1877F2] fill-[#1877F2]" />
-                  <span>Facebook</span>
-                </>
-              ) : isInstagram ? (
-                <>
-                  <Instagram size={15} className="text-[#E1306C]" />
-                  <span>Instagram</span>
-                </>
-              ) : (
-                <>
-                  <Youtube size={15} className="text-red-600 fill-red-600" />
-                  <span>Youtube</span>
-                </>
-              )}
+            <div className="flex items-center gap-1.5 text-foreground font-semibold">
+              <PlatformIcon platform={platform} size={15} variant="flat" />
+              <span className="capitalize">{platform === "YOUTUBE" ? "YouTube" : platform === "TIKTOK" ? "TikTok" : platform.toLowerCase()}</span>
             </div>
           </div>
 

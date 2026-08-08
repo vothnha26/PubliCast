@@ -148,6 +148,16 @@ export class InstagramMetricsStrategy extends BasePlatformMetricsStrategy {
     }
     return null;
   }
+
+  async fetchInsights(brandId, postId, socialAccountId = null) {
+    if (!brandId || !postId) return null;
+    try {
+      return await socialService.getPostInsights(brandId, postId);
+    } catch (err) {
+      console.warn("[InstagramMetricsStrategy] Failed to fetch insights:", err.message);
+      return null;
+    }
+  }
 }
 
 /**

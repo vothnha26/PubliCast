@@ -429,7 +429,8 @@ export function usePlatformDashboard(platform) {
         subscribers: metrics.instagramAccount.followersCount,
         views: realData.summary?.views || 0,
         likes: realData.summary?.likes || 0,
-        videos: metrics.instagramAccount.mediaCount || 0
+        videos: metrics.instagramAccount.mediaCount || 0,
+        profilePictureUrl: metrics.profilePictureUrl || metrics.instagramAccount.profilePictureUrl || ''
       };
     }
     if (platform === "tiktok") {
@@ -479,7 +480,7 @@ export function usePlatformDashboard(platform) {
 
           return {
             name: dateString,
-            followers: realDayData ? (realDayData.followers || 0) : 0,
+            followers: (realDayData && realDayData.followers > 0) ? realDayData.followers : (metrics?.instagramAccount?.followersCount || 0),
             following: metrics?.instagramAccount?.followingCount || 0,
             totalContent: postsCount,
             posts: postsCount,

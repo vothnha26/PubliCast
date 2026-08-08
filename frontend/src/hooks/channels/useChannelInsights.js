@@ -239,7 +239,7 @@ export function useChannelInsights(socialAccountId, platformInput) {
 
           return {
             name: dateString,
-            followers: realDayData ? realDayData.followers || 0 : 0,
+            followers: (realDayData && realDayData.followers > 0) ? realDayData.followers : (metrics?.instagramAccount?.followersCount || 0),
             following: metrics?.instagramAccount?.followingCount || 0,
             totalContent: postsCount,
             posts: postsCount,

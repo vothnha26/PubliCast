@@ -187,7 +187,7 @@ class YouTubeInboxSyncAdapter extends BaseInboxSyncAdapter {
 
   async _processComment(comment, account, inbox) {
     return await inboxRepository.upsertInboxItem(
-      { platformItemId: comment.id },
+      { inboxId_platformItemId: { inboxId: inbox.id, platformItemId: comment.id } },
       {
         content: comment.snippet.textDisplay,
         authorName: comment.snippet.authorDisplayName,
@@ -216,7 +216,7 @@ class YouTubeInboxSyncAdapter extends BaseInboxSyncAdapter {
   async _processReplies(replies, parentDbId, account, inbox) {
     for (const reply of replies) {
       await inboxRepository.upsertInboxItem(
-        { platformItemId: reply.id },
+        { inboxId_platformItemId: { inboxId: inbox.id, platformItemId: reply.id } },
         {
           content: reply.snippet.textDisplay,
           authorName: reply.snippet.authorDisplayName,

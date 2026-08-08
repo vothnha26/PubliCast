@@ -127,7 +127,6 @@ model Brand {
   approvalWorkflows         ApprovalWorkflow[]
   socialAccounts            SocialAccount[]
   channelGroups             ChannelGroup[]
-  adAccounts                AdAccount[]
   analytics                 Analytics[]
   competitorAnalysis        CompetitorAnalysis[]
   facebookPostMetrics       FacebookPostMetric[]
@@ -175,7 +174,7 @@ model TrackedVideo {
   platform     PlatformType @default(YOUTUBE)
   videoId      String // YouTube Video ID
   title        String?
-  thumbnailUrl String?
+  thumbnailUrl String? @db.Text
   channelId    String?
   channelName  String?
   publishedAt  DateTime?
@@ -679,8 +678,6 @@ model YouTubeChannel {
   defaultLanguage       String?
   isVerified            Boolean @default(false)
   isMonetized           Boolean @default(false)
-  supportsShorts        Boolean @default(true)
-  madeForKids           Boolean @default(false)
   hiddenSubscriberCount Boolean @default(false)
 
   socialAccount SocialAccount @relation(fields: [socialAccountId], references: [id], onDelete: Cascade)
@@ -689,26 +686,22 @@ model YouTubeChannel {
 }
 
 model InstagramAccount {
-  id                    String  @id @default(uuid())
-  socialAccountId       String  @unique
+  id                   String  @id @default(uuid())
+  socialAccountId      String  @unique
   // Facebook Page ID linked to this Instagram Business Account — required to
   // call Graph API insights/media endpoints (Instagram Graph API only exposes
   // these via the linked Page node, never via the IG Business Account ID
   // itself). Without this, periodic sync has no way to re-derive the Page ID
   // after the initial connect, since platformAccountId stores the IG account
   // ID (see social-account.repository.js#upsertInstagramAccount).
-  facebookPageId        String?
-  accountType           String
-  businessCategoryName  String?
-  followersCount        Int     @default(0)
-  followingCount        Int     @default(0)
-  mediaCount            Int     @default(0)
-  biography             String?
-  website               String?
-  supportsStories       Boolean @default(false)
-  supportsReels         Boolean @default(false)
-  supportsCarousels     Boolean @default(false)
-  supportsCollaboration Boolean @default(false)
+  facebookPageId       String?
+  accountType          String
+  businessCategoryName String?
+  followersCount       Int     @default(0)
+  followingCount       Int     @default(0)
+  mediaCount           Int     @default(0)
+  biography            String?
+  website              String?
 
   socialAccount SocialAccount @relation(fields: [socialAccountId], references: [id], onDelete: Cascade)
 
@@ -732,14 +725,13 @@ model FacebookPage {
 }
 
 model TikTokAccount {
-  id                String  @id @default(uuid())
-  socialAccountId   String  @unique
-  followersCount    Int     @default(0)
-  followingCount    Int     @default(0)
-  likesCount        Int     @default(0)
-  videoCount        Int     @default(0)
-  isVerified        Boolean @default(false)
-  supportsCarousels Boolean @default(false)
+  id              String  @id @default(uuid())
+  socialAccountId String  @unique
+  followersCount  Int     @default(0)
+  followingCount  Int     @default(0)
+  likesCount      Int     @default(0)
+  videoCount      Int     @default(0)
+  isVerified      Boolean @default(false)
 
   socialAccount SocialAccount @relation(fields: [socialAccountId], references: [id], onDelete: Cascade)
 
@@ -789,27 +781,6 @@ model TwitchAccount {
   socialAccount SocialAccount @relation(fields: [socialAccountId], references: [id], onDelete: Cascade)
 
   @@map("twitch_accounts")
-}
-
-model AdAccount {
-  id                String         @id @default(uuid())
-  brandId           String
-  platform          AdPlatformType
-  platformAccountId String
-  accountName       String
-  currency          String
-  timezone          String
-  accessToken       String
-  isActive          Boolean        @default(true)
-  lastSyncAt        DateTime?
-  createdAt         DateTime       @default(now())
-
-  brand     Brand       @relation(fields: [brandId], references: [id], onDelete: Cascade)
-  analytics Analytics[]
-
-  @@unique([brandId, platform, platformAccountId])
-  @@index([brandId])
-  @@map("ad_accounts")
 }
 
 // ============================================
@@ -1069,7 +1040,6 @@ model Analytics {
   id              String   @id @default(uuid())
   brandId         String
   socialAccountId String?
-  adAccountId     String?
   dateFrom        DateTime
   dateTo          DateTime
   granularity     String
@@ -1078,7 +1048,6 @@ model Analytics {
 
   brand           Brand            @relation(fields: [brandId], references: [id], onDelete: Cascade)
   socialAccount   SocialAccount?   @relation(fields: [socialAccountId], references: [id], onDelete: Cascade)
-  adAccount       AdAccount?       @relation(fields: [adAccountId], references: [id], onDelete: Cascade)
   socialAnalytics SocialAnalytics?
 
   @@index([brandId])
@@ -1190,8 +1159,8 @@ model FacebookPostMetric {
 
   // Snapshot để hiển thị danh sách
   captionSnippet String? @db.Text
-  thumbnailUrl   String?
-  permalinkUrl   String?
+  thumbnailUrl   String? @db.Text
+  permalinkUrl   String? @db.Text
 
   fetchedAt DateTime @default(now())
   createdAt DateTime @default(now())
@@ -1235,8 +1204,8 @@ model SocialPostMetric {
   engagementRate Float @default(0)
 
   captionSnippet String? @db.Text
-  thumbnailUrl   String?
-  postUrl        String?
+  thumbnailUrl   String? @db.Text
+  postUrl        String? @db.Text
 
   fetchedAt DateTime @default(now())
   createdAt DateTime @default(now())
@@ -1362,14 +1331,14 @@ model InstagramChannelSnapshot {
   socialAccountId String
   snapshotDate    DateTime @db.Date
 
-  followersCount  Int @default(0)
-  followingCount  Int @default(0)
-  mediaCount      Int @default(0)
-  followersGained Int @default(0)
-  followersLost   Int @default(0)
-  views           Int @default(0)
-  reach           Int @default(0)
-  profileViews    Int @default(0)
+  followersCount  Int  @default(0)
+  followingCount  Int  @default(0)
+  mediaCount      Int  @default(0)
+  followersGained Int?
+  followersLost   Int?
+  views           Int?
+  reach           Int?
+  profileViews    Int?
 
   rawInsightsJson String? @db.LongText
 
@@ -1453,13 +1422,13 @@ model FacebookChannelSnapshot {
   socialAccountId String
   snapshotDate    DateTime @db.Date
 
-  likesCount      Int @default(0)
-  followersCount  Int @default(0)
-  followersGained Int @default(0)
-  followersLost   Int @default(0)
-  reach           Int @default(0)
-  impressions     Int @default(0)
-  pageViews       Int @default(0)
+  likesCount      Int  @default(0)
+  followersCount  Int  @default(0)
+  followersGained Int?
+  followersLost   Int?
+  reach           Int?
+  impressions     Int?
+  pageViews       Int?
 
   rawInsightsJson String? @db.LongText
 
@@ -1669,7 +1638,7 @@ model InboxItem {
   inboxId                 String
   platform                PlatformType
   type                    InboxItemType
-  platformItemId          String        @unique
+  platformItemId          String
   authorId                String
   authorName              String
   authorAvatarUrl         String?
@@ -1701,6 +1670,7 @@ model InboxItem {
   socialAccount   SocialAccount? @relation(fields: [socialAccountId], references: [id], onDelete: Cascade)
   socialAccountId String?
 
+  @@unique([inboxId, platformItemId])
   @@index([inboxId])
   @@index([relatedPostId])
   @@index([pendingParentPlatformId])
@@ -2451,4 +2421,15 @@ model TemplateCategoryOnTemplate {
   @@unique([categoryId, templateId])
   @@index([templateId])
   @@map("template_category_on_template")
+}
+
+model PlatformCapabilityOverride {
+  platform    String   @id @db.VarChar(50)
+  isLocked    Boolean  @default(false)
+  lockReason  String?  @db.VarChar(255)
+  overrides   Json     @default("{}")
+  updatedAt   DateTime @updatedAt
+  updatedBy   String?  @db.VarChar(50)
+
+  @@map("platform_capability_overrides")
 }

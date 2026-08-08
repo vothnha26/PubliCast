@@ -15,7 +15,6 @@ const InboxTypeFilter = require('./inbox/filters/type.filter');
 const InboxSocialAccountFilter = require('./inbox/filters/social-account.filter');
 
 const YoutubeCommentSyncStrategy = require('./inbox/strategies/youtube-comment.strategy');
-const FacebookCommentSyncStrategy = require('./inbox/strategies/facebook-comment.strategy');
 const FacebookDMSyncStrategy = require('./inbox/strategies/facebook-dm.strategy');
 const InstagramDMSyncStrategy = require('./inbox/strategies/instagram-dm.strategy');
 const TiktokCommentSyncStrategy = require('./inbox/strategies/tiktok-comment.strategy');
@@ -37,7 +36,6 @@ class InboxService {
 
     this.strategies = [
       new YoutubeCommentSyncStrategy(),
-      new FacebookCommentSyncStrategy(),
       new FacebookDMSyncStrategy(),
       new InstagramDMSyncStrategy(),
       new TiktokCommentSyncStrategy()
@@ -109,9 +107,7 @@ class InboxService {
   _buildPlatformPostUrl(targetPlatforms, postId) {
     if (!postId) return null;
     const platform = (targetPlatforms || '').split(',')[0]?.trim().toUpperCase();
-    if (platform === 'FACEBOOK') return `https://www.facebook.com/${postId}`;
-    if (platform === 'YOUTUBE') return `https://www.youtube.com/watch?v=${postId}`;
-    return null;
+    return inboxFacade.buildPostUrl(platform, postId);
   }
 
   /**
@@ -213,34 +209,28 @@ class InboxService {
       return [];
     }
 
-    const normalizers = {
-      YOUTUBE: (res, socialAccountId) => (res?.videos || []).filter(v => v.privacyStatus !== 'private').map(v => ({
-        id: v.id,
-        title: v.title || null,
-        thumbnailUrl: v.thumbnailUrl || null,
-        platform: 'YOUTUBE',
-        publishedAt: v.publishedAt || null,
-        postUrl: `https://www.youtube.com/watch?v=${v.id}`,
-        socialAccountId,
-        views: parseInt(v.views || 0, 10),
-        likes: parseInt(v.likes || 0, 10),
-        comments: parseInt(v.comments || 0, 10),
-      })),
-      FACEBOOK: (res, socialAccountId) => (res?.data || []).map(p => ({
-        id: p.id,
-        title: p.message?.slice(0, 60) || null,
-        thumbnailUrl: p.mediaUrl || null,
-        platform: 'FACEBOOK',
-        publishedAt: p.date || null,
-        postUrl: p.postUrl || `https://www.facebook.com/${p.id}`,
-        socialAccountId,
-        views: parseInt(p.video_views || p.views || 0, 10),
-        likes: parseInt(p.reactions?.summary?.total_count || p.reactions || p.likes || 0, 10),
-        comments: parseInt(p.comments?.summary?.total_count || p.comments || 0, 10),
-        shares: parseInt(p.shares?.count || p.shares || 0, 10),
-        clicks: parseInt(p.clicks || 0, 10),
-        reach: parseInt(p.reach || p.impressions || 0, 10),
-      })),
+    const posts = [];
+    const supportedPlatforms = [PLATFORMS.YOUTUBE, PLATFORMS.FACEBOOK];
+    const platformMap = {};
+    socialAccounts.forEach(sa => {
+      if (!platformMap[sa.platform]) platformMap[sa.platform] = [];
+      platformMap[sa.platform].push(sa.id);
+    });
+
+    // 1. Fetch via InboxFacade for supported platforms
+    for (const p of supportedPlatforms) {
+      if (platformMap[p]) {
+        try {
+          const pPosts = await inboxFacade.fetchPlatformPosts(brandId, p, platformMap[p]);
+          posts.push(...pPosts);
+        } catch (err) {
+          console.error(`[getInboxPosts] Failed to fetch posts via inboxFacade for platform ${p}:`, err.message);
+        }
+      }
+    }
+
+    // 2. Fetch via legacy handlers for unsupported platforms (Instagram, TikTok)
+    const legacyNormalizers = {
       INSTAGRAM: (res, socialAccountId) => (res?.data || []).map(p => ({
         id: p.id,
         title: p.message?.slice(0, 60) || null,
@@ -267,21 +257,6 @@ class InboxService {
       })),
     };
 
-    // TikTok's video/list endpoint caps max_count at 20 per call (enforced
-    // in tiktok.gateway.js#getVideoList) — unlike the other platforms, a
-    // single limit=50 call silently truncates to whatever the API allows
-    // per page, so fetching this inbox requires walking pages via the
-    // cursor (nextPageToken/has_more).
-    //
-    // Fetching a channel's ENTIRE history here would be both slow (TikTok
-    // only allows 20/page, so an old, prolific channel could mean dozens of
-    // sequential requests) and pointless for an inbox whose job is
-    // surfacing recent comments to reply to, not archiving. Stop at
-    // whichever comes first: posts older than RECENT_WINDOW_MONTHS, or
-    // MAX_POST_COUNT total — the time window bounds the common case (an
-    // active channel), the hard count cap bounds the pathological one (a
-    // channel that posts many times a day, where "3 months" could still be
-    // thousands of videos).
     const RECENT_WINDOW_MONTHS = 3;
     const MAX_POST_COUNT = 200;
     const recentCutoff = new Date();
@@ -297,10 +272,6 @@ class InboxService {
         const pageVideos = page?.videos || [];
         if (pageVideos.length === 0) break;
 
-        // TikTok returns videos newest-first, so once one video in a page
-        // is older than the cutoff, every video after it (this page and
-        // all subsequent pages) is guaranteed older too — safe to stop
-        // instead of walking the rest of the channel's history.
         const cutoffIndex = pageVideos.findIndex(v => v.publishedAt && new Date(v.publishedAt) < recentCutoff);
         if (cutoffIndex === -1) {
           videos = videos.concat(pageVideos);
@@ -314,26 +285,24 @@ class InboxService {
       return { videos: videos.slice(0, MAX_POST_COUNT) };
     };
 
-    const fetchers = {
-      YOUTUBE: (socialAccountId) => socialPlatformFactory.getService('YOUTUBE').getPublishedVideos(brandId, null, 50, socialAccountId),
-      FACEBOOK: (socialAccountId) => socialPlatformFactory.getService('FACEBOOK').getPublishedVideos(brandId, null, 50, socialAccountId),
+    const legacyFetchers = {
       INSTAGRAM: (socialAccountId) => socialPlatformFactory.getService('INSTAGRAM').getPublishedVideos(brandId, null, 50, socialAccountId),
       TIKTOK: fetchTikTokPaged,
     };
 
-    const fetchableAccounts = socialAccounts.filter(sa => fetchers[sa.platform]);
+    const legacyAccounts = socialAccounts.filter(sa => legacyFetchers[sa.platform]);
     const results = await Promise.allSettled(
-      fetchableAccounts.map(sa => fetchers[sa.platform](sa.id).then(res => normalizers[sa.platform](res, sa.id)))
+      legacyAccounts.map(sa => legacyFetchers[sa.platform](sa.id).then(res => legacyNormalizers[sa.platform](res, sa.id)))
     );
 
-    const posts = [];
     results.forEach((result, idx) => {
       if (result.status === 'fulfilled') {
         posts.push(...result.value);
       } else {
-        console.error(`[getInboxPosts] Failed to fetch published posts for account ${fetchableAccounts[idx]?.id} (${fetchableAccounts[idx]?.platform}):`, result.reason?.message || result.reason);
+        console.error(`[getInboxPosts] Failed to fetch published posts for legacy account ${legacyAccounts[idx]?.id} (${legacyAccounts[idx]?.platform}):`, result.reason?.message || result.reason);
       }
     });
+
     return posts;
   }
 
@@ -593,13 +562,25 @@ class InboxService {
    * Get comments and thread messages belonging to a specific post
    */
   async getCommentsByPost(brandId, postId, queryParams = {}) {
+    // postId can itself be a reply's own platformItemId (e.g. a Facebook
+    // comment ID the user landed on via a deep link, or the ID of a reply
+    // the brand sent) rather than the post's ID — parentItemId: null below
+    // would otherwise exclude it outright, returning an empty thread even
+    // though the post it belongs to does have comments. Resolve up to the
+    // owning post's relatedPostId first so the query below still finds the
+    // full top-level thread.
+    const directMatch = await inboxRepository.findInboxItemByPlatformId(postId, brandId);
+    const resolvedPostId = (directMatch && directMatch.parentItemId && directMatch.relatedPostId)
+      ? directMatch.relatedPostId
+      : postId;
+
     const initialWhere = {
       inbox: { brandId },
       parentItemId: null,
       OR: [
-        { relatedPostId: postId },
-        { platformItemId: postId },
-        { id: postId }
+        { relatedPostId: resolvedPostId },
+        { platformItemId: resolvedPostId },
+        { id: resolvedPostId }
       ]
     };
 
@@ -766,24 +747,32 @@ class InboxService {
   async updateReply(brandId, replyId, text, userId) {
     const reply = await this._getAuthorizedItem(replyId, userId, brandId, 'Reply not found');
 
-    const strategy = this.strategies.find(s => s.supportsReply(reply));
-    if (!strategy) {
-      throw new Error(`No strategy found to update reply for platform ${reply.platform}`);
+    if (inboxSyncFactory.isSupported(reply.platform)) {
+      await inboxFacade.getSyncAdapter(reply.platform).updateReply(brandId, reply.platformItemId, text, reply.socialAccountId);
+    } else {
+      const strategy = this.strategies.find(s => s.supportsReply(reply));
+      if (!strategy) {
+        throw new Error(`No strategy found to update reply for platform ${reply.platform}`);
+      }
+      await strategy.updateReply(brandId, reply.platformItemId, text, reply.socialAccountId);
     }
 
-    await strategy.updateReply(brandId, reply.platformItemId, text, reply.socialAccountId);
     return await inboxRepository.updateInboxItem(replyId, { content: text });
   }
 
   async deleteReply(brandId, replyId, userId) {
     const reply = await this._getAuthorizedItem(replyId, userId, brandId, 'Reply not found');
 
-    const strategy = this.strategies.find(s => s.supportsReply(reply));
-    if (!strategy) {
-      throw new Error(`No strategy found to delete reply for platform ${reply.platform}`);
+    if (inboxSyncFactory.isSupported(reply.platform)) {
+      await inboxFacade.getSyncAdapter(reply.platform).deleteReply(brandId, reply.platformItemId, reply.socialAccountId);
+    } else {
+      const strategy = this.strategies.find(s => s.supportsReply(reply));
+      if (!strategy) {
+        throw new Error(`No strategy found to delete reply for platform ${reply.platform}`);
+      }
+      await strategy.deleteReply(brandId, reply.platformItemId, reply.socialAccountId);
     }
 
-    await strategy.deleteReply(brandId, reply.platformItemId, reply.socialAccountId);
     return await inboxRepository.deleteInboxItem(replyId);
   }
 

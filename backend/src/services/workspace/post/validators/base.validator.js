@@ -13,6 +13,37 @@ class BaseValidator {
     throw new Error('validate() method must be implemented');
   }
 
+  validateFixedRules(postData, mediaInfo = {}) {
+    const errors = [];
+    const cfg = this.limitConfig;
+    const { hasMedia, isVideo, videoWidth, videoHeight } = mediaInfo;
+
+    if (cfg.isLocked) {
+      errors.push(cfg.lockReason || 'Tài khoản hoặc tính năng này hiện đang bị khóa.');
+      return errors;
+    }
+
+    if (cfg.requiredFields?.includes('video') && (!hasMedia || !isVideo)) {
+      errors.push('Requires a video file.');
+    }
+    if (cfg.requiredFields?.includes('media') && !hasMedia) {
+      errors.push('Requires at least one photo or video.');
+    }
+    if (cfg.requiredFields?.includes('title') && !(postData.title || postData.options?.youtubeTitle || postData.options?.facebookTitle)?.trim()) {
+      errors.push('Requires a title.');
+    }
+    if (cfg.orientation === 'VERTICAL' && isVideo && videoWidth && videoHeight && videoWidth >= videoHeight) {
+      errors.push('Must be vertical (9:16 aspect ratio).');
+    }
+    if (cfg.allowedMediaTypes === 'NONE' && hasMedia) {
+      errors.push('Media uploads are not allowed.');
+    }
+    if (cfg.requireCaptionOrMedia && !(postData.caption || '').trim() && !hasMedia) {
+      errors.push('Post must have a caption or at least one media file.');
+    }
+    return errors;
+  }
+
   // Helper validation methods
   validateCaption(caption) {
     const errors = [];

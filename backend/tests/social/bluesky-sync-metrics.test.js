@@ -83,19 +83,56 @@ describe('BlueskyService — real metrics sync and published posts', () => {
   });
 
   describe('getPublishedVideos', () => {
-    it('delegates to bluesky-analytics.getPublishedPosts for the account', async () => {
+    it('delegates to bluesky-analytics.getPublishedPosts and walks pages until one has no nextPageToken', async () => {
+      socialAccountRepository.findByBrandAndPlatformFirst.mockResolvedValueOnce(mockAccount);
+      // No pageToken passed in -> getPublishedVideos walks every page itself
+      // (bounded by MAX_PAGE_COUNT / the cutoff date) instead of handing a
+      // single page's nextPageToken back to the caller.
+      blueskyAnalytics.getPublishedPosts
+        .mockResolvedValueOnce({
+          data: [{ id: 'p1', message: 'hi', likes: 2 }],
+          nextPageToken: 'cursor-2'
+        })
+        .mockResolvedValueOnce({
+          data: [{ id: 'p2', message: 'yo', likes: 1 }],
+          nextPageToken: null
+        });
+
+      const result = await blueskyService.getPublishedVideos(mockBrandId, null, 10, null);
+
+      expect(blueskyAnalytics.getPublishedPosts).toHaveBeenNthCalledWith(
+        1,
+        expect.anything(),
+        'did:plc:testuser123',
+        { limit: 10, cursor: undefined }
+      );
+      expect(blueskyAnalytics.getPublishedPosts).toHaveBeenNthCalledWith(
+        2,
+        expect.anything(),
+        'did:plc:testuser123',
+        { limit: 10, cursor: 'cursor-2' }
+      );
+      expect(result).toEqual({
+        data: [{ id: 'p1', message: 'hi', likes: 2 }, { id: 'p2', message: 'yo', likes: 1 }],
+        nextPageToken: null,
+        prevPageToken: null
+      });
+    });
+
+    it('passes an explicit pageToken straight through as a single page (client-driven pagination)', async () => {
       socialAccountRepository.findByBrandAndPlatformFirst.mockResolvedValueOnce(mockAccount);
       blueskyAnalytics.getPublishedPosts.mockResolvedValueOnce({
         data: [{ id: 'p1', message: 'hi', likes: 2 }],
         nextPageToken: 'cursor-2'
       });
 
-      const result = await blueskyService.getPublishedVideos(mockBrandId, null, 10, null);
+      const result = await blueskyService.getPublishedVideos(mockBrandId, 'cursor-1', 10, null);
 
+      expect(blueskyAnalytics.getPublishedPosts).toHaveBeenCalledTimes(1);
       expect(blueskyAnalytics.getPublishedPosts).toHaveBeenCalledWith(
         expect.anything(),
         'did:plc:testuser123',
-        { limit: 10, cursor: undefined }
+        { limit: 10, cursor: 'cursor-1' }
       );
       expect(result).toEqual({
         data: [{ id: 'p1', message: 'hi', likes: 2 }],

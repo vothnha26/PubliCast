@@ -111,6 +111,7 @@ router.post('/', checkPermission(PERMISSION_KEYS.CREATE_POSTS), postControllerV2
  *               $ref: '#/components/schemas/V2EnvelopeResponse'
  */
 router.get('/platform-limits', postControllerV2.getPlatformLimitsV2);
+router.get('/platform-capabilities', postControllerV2.getPlatformCapabilitiesV2);
 
 /**
  * @openapi

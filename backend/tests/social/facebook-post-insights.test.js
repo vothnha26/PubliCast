@@ -1,28 +1,18 @@
-jest.mock('../../src/config/redis', () => ({
-  get: jest.fn(),
-  setEx: jest.fn()
-}));
+// getPostDetails is now DB-first via postInsightFacade -> FacebookPostInsightAdapter
+// (see facebook-post.service.js), backed by prisma.facebookPostMetric instead of the
+// old Redis-cached implementation this suite used to test — mocks below match that.
 jest.mock('../../src/services/social/facebook/facebook.gateway');
 jest.mock('../../src/repositories/social/social-account.repository');
 jest.mock('../../src/config/prisma', () => ({
-  postAnalyticsDailySnapshot: {
-    count: jest.fn(),
-    findMany: jest.fn(),
-    findFirst: jest.fn(),
+  facebookPostMetric: {
+    findUnique: jest.fn(),
     upsert: jest.fn()
   },
   post: {
     findFirst: jest.fn()
   }
 }));
-jest.mock('../../src/services/social/distributed-lock.service', () => {
-  return jest.fn().mockImplementation(() => ({
-    acquireLock: jest.fn(),
-    releaseLock: jest.fn()
-  }));
-});
 
-const redisMock = require('../../src/config/redis');
 const facebookGateway = require('../../src/services/social/facebook/facebook.gateway');
 const socialAccountRepository = require('../../src/repositories/social/social-account.repository');
 const prismaMock = require('../../src/config/prisma');
@@ -31,36 +21,24 @@ const facebookPostService = require('../../src/services/social/facebook/facebook
 const BRAND_ID = 'brand_1';
 const POST_ID = 'post_123';
 const REAL_ACCOUNT = {
+  id: 'acc_real',
+  brandId: BRAND_ID,
   platformAccountId: 'page_123',
   accessToken: 'real_page_token'
 };
 const MOCK_ACCOUNT = {
+  id: 'acc_mock',
+  brandId: BRAND_ID,
   platformAccountId: 'mock-page-123',
   accessToken: 'mock-page-token'
 };
 
-/**
- * Recursively compute the "shape" of an object — same key set and value
- * types, ignoring actual values. Used to assert mock and real responses
- * are structurally interchangeable (implementation_plan.md Verification
- * Plan: "Kiểm thử tự động tính nhất quán cấu trúc dữ liệu (Mock vs Real)").
- */
-function getShape(obj) {
-  if (Array.isArray(obj)) return ['array'];
-  if (obj && typeof obj === 'object') {
-    return Object.fromEntries(
-      Object.entries(obj).map(([k, v]) => [k, getShape(v)])
-    );
-  }
-  return typeof obj;
-}
-
 describe('FacebookPostService — Post Insights & Analytics', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    redisMock.get.mockResolvedValue(null);
-    redisMock.setEx.mockResolvedValue('OK');
     prismaMock.post.findFirst.mockResolvedValue(null);
+    prismaMock.facebookPostMetric.findUnique.mockResolvedValue(null);
+    prismaMock.facebookPostMetric.upsert.mockResolvedValue({});
   });
 
   describe('getPostDetails — mock token branch', () => {
@@ -76,12 +54,11 @@ describe('FacebookPostService — Post Insights & Analytics', () => {
       expect(result.reactions.breakdown).toEqual(
         expect.objectContaining({ LIKE: expect.any(Number), LOVE: expect.any(Number) })
       );
-      expect(result.demographics).toEqual({ available: false, reason: 'deprecated_by_platform', data: null });
     });
   });
 
-  describe('getPostDetails — real token, cache miss', () => {
-    it('calls the gateway, assembles the response, and writes it to Redis', async () => {
+  describe('getPostDetails — real token, DB cache miss', () => {
+    it('calls the gateway, assembles the response, and persists it to facebookPostMetric', async () => {
       socialAccountRepository.findByBrandAndPlatform.mockResolvedValue([REAL_ACCOUNT]);
       facebookGateway.getPostDetails.mockResolvedValue({
         id: POST_ID,
@@ -102,10 +79,6 @@ describe('FacebookPostService — Post Insights & Analytics', () => {
       facebookGateway.getPostReactionsBreakdown.mockResolvedValue({
         LIKE: 15, LOVE: 3, HAHA: 1, WOW: 1, SAD: 0, ANGRY: 0
       });
-      facebookGateway.getPageDemographics.mockResolvedValue({
-        ageGender: { available: false, reason: 'deprecated_by_platform', data: null },
-        geography: { available: true, reason: null, data: { Vietnam: 400, 'United States': 100 } }
-      });
 
       const result = await facebookPostService.getPostDetails(BRAND_ID, POST_ID);
 
@@ -113,61 +86,49 @@ describe('FacebookPostService — Post Insights & Analytics', () => {
       expect(facebookGateway.getPostInsights).toHaveBeenCalledWith(POST_ID, REAL_ACCOUNT.accessToken);
       expect(facebookGateway.getPostReactionsBreakdown).toHaveBeenCalledWith(POST_ID, REAL_ACCOUNT.accessToken);
 
-      expect(result.reach).toBe(500);
-      expect(result.views).toBe(800);
-      expect(result.clicks).toBe(15);
-      expect(result.linkClicks).toBe(10);
       expect(result.comments).toBe(4);
       expect(result.shares).toBe(2);
       expect(result.reactions.total).toBe(20);
       expect(result.reactions.breakdown.LIKE).toBe(15);
-      expect(result.geography.available).toBe(true);
 
-      expect(redisMock.setEx).toHaveBeenCalledWith(
-        `fb:post-insights:${BRAND_ID}:${POST_ID}`,
-        300,
-        expect.any(String)
-      );
-    });
-
-    it('caches page demographics separately from post insights (fb:page-demographics)', async () => {
-      socialAccountRepository.findByBrandAndPlatform.mockResolvedValue([REAL_ACCOUNT]);
-      facebookGateway.getPostDetails.mockResolvedValue({ id: POST_ID, created_time: '2026-05-24T12:00:00+0000' });
-      facebookGateway.getPostInsights.mockResolvedValue([]);
-      facebookGateway.getPostReactionsBreakdown.mockResolvedValue({ LIKE: 0, LOVE: 0, HAHA: 0, WOW: 0, SAD: 0, ANGRY: 0 });
-      facebookGateway.getPageDemographics.mockResolvedValue({
-        ageGender: { available: false, reason: 'deprecated_by_platform', data: null },
-        geography: { available: false, reason: 'insufficient_data', data: null }
-      });
-
-      await facebookPostService.getPostDetails(BRAND_ID, POST_ID);
-
-      expect(redisMock.setEx).toHaveBeenCalledWith(
-        `fb:page-demographics:${BRAND_ID}`,
-        3600,
-        expect.any(String)
+      expect(prismaMock.facebookPostMetric.upsert).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { socialAccountId_platformPostId: { socialAccountId: REAL_ACCOUNT.id, platformPostId: POST_ID } }
+        })
       );
     });
   });
 
-  describe('getPostDetails — cache hit', () => {
-    it('returns the cached value and never calls the gateway', async () => {
+  describe('getPostDetails — DB cache hit', () => {
+    it('returns the cached row and never calls the gateway', async () => {
       socialAccountRepository.findByBrandAndPlatform.mockResolvedValue([REAL_ACCOUNT]);
-      const cached = { id: POST_ID, platform: 'facebook', reach: 999 };
-      redisMock.get.mockImplementation(async (key) => {
-        if (key === `fb:post-insights:${BRAND_ID}:${POST_ID}`) return JSON.stringify(cached);
-        return null;
+      prismaMock.facebookPostMetric.findUnique.mockResolvedValue({
+        platformPostId: POST_ID,
+        postType: 'IMAGE',
+        reach: 999,
+        videoViews: 0,
+        likes: 0,
+        comments: 0,
+        shares: 0,
+        reactions: 0,
+        linkClicks: 0,
+        otherClicks: 0,
+        captionSnippet: null,
+        thumbnailUrl: null,
+        permalinkUrl: null,
+        publishedAt: null,
+        fetchedAt: new Date() // fresh — within FACEBOOK_POST_METRICS_TTL_MS
       });
 
       const result = await facebookPostService.getPostDetails(BRAND_ID, POST_ID);
 
-      expect(result).toEqual(cached);
+      expect(result.reach).toBe(999);
       expect(facebookGateway.getPostDetails).not.toHaveBeenCalled();
       expect(facebookGateway.getPostInsights).not.toHaveBeenCalled();
     });
   });
 
-  describe('getPostDetails — gateway failure (FacebookInsightsError)', () => {
+  describe('getPostDetails — gateway failure', () => {
     it('does not fail the whole request when only insights fails — returns zeroed insights instead', async () => {
       socialAccountRepository.findByBrandAndPlatform.mockResolvedValue([REAL_ACCOUNT]);
       const gatewayError = new Error('Token expired');
@@ -187,76 +148,13 @@ describe('FacebookPostService — Post Insights & Analytics', () => {
     });
   });
 
-
-
-  describe('Mock vs Real response shape consistency', () => {
-    it('getPostDetails: mock and real responses have identical shape (available: true case)', async () => {
-      socialAccountRepository.findByBrandAndPlatform
-        .mockResolvedValueOnce([MOCK_ACCOUNT])
-        .mockResolvedValueOnce([REAL_ACCOUNT]);
-
-      const mockResult = await facebookPostService.getPostDetails(BRAND_ID, POST_ID);
-
-      facebookGateway.getPostDetails.mockResolvedValue({
-        id: POST_ID,
-        message: 'Real post',
-        created_time: '2026-05-24T12:00:00+0000',
-        full_picture: 'http://img.jpg',
-        permalink_url: 'http://fb.com/post_123',
-        comments: { summary: { total_count: 4 } },
-        reactions: { summary: { total_count: 20 } },
-        shares: { count: 2 },
-        attachments: { data: [] }
-      });
-      facebookGateway.getPostInsights.mockResolvedValue([
-        { name: 'post_total_media_view_unique', values: [{ value: 500 }] },
-        { name: 'post_media_view', values: [{ value: 800 }] }
-      ]);
-      facebookGateway.getPostReactionsBreakdown.mockResolvedValue({
-        LIKE: 15, LOVE: 3, HAHA: 1, WOW: 1, SAD: 0, ANGRY: 0
-      });
-      facebookGateway.getPageDemographics.mockResolvedValue({
-        ageGender: { available: false, reason: 'deprecated_by_platform', data: null },
-        geography: { available: true, reason: null, data: { Vietnam: 400 } }
-      });
-
-      const realResult = await facebookPostService.getPostDetails(BRAND_ID, POST_ID);
-
-      // geography.data is a dynamic country->count map — compare everything else structurally
-      const stripDynamicGeoData = (r) => ({ ...r, geography: { ...r.geography, data: null } });
-
-      expect(getShape(stripDynamicGeoData(mockResult))).toEqual(getShape(stripDynamicGeoData(realResult)));
-    });
-
-    it('getPostDetails: geography available:false (insufficient_data) keeps the same shape as available:true', async () => {
-      socialAccountRepository.findByBrandAndPlatform.mockResolvedValue([REAL_ACCOUNT]);
-      facebookGateway.getPostDetails.mockResolvedValue({ id: POST_ID, created_time: '2026-05-24T12:00:00+0000' });
-      facebookGateway.getPostInsights.mockResolvedValue([]);
-      facebookGateway.getPostReactionsBreakdown.mockResolvedValue({ LIKE: 0, LOVE: 0, HAHA: 0, WOW: 0, SAD: 0, ANGRY: 0 });
-      facebookGateway.getPageDemographics.mockResolvedValue({
-        ageGender: { available: false, reason: 'deprecated_by_platform', data: null },
-        geography: { available: false, reason: 'insufficient_data', data: null }
-      });
-
-      const result = await facebookPostService.getPostDetails(BRAND_ID, POST_ID);
-
-      expect(result.geography).toEqual({ available: false, reason: 'insufficient_data', data: null });
-      // available:false must still expose the same keys as available:true so the
-      // frontend never has to special-case a missing field (implementation_plan.md
-      // "Field optional có mặt dù rỗng" checklist item).
-      expect(Object.keys(result.geography).sort()).toEqual(['available', 'data', 'reason']);
-    });
-
+  describe('response shape consistency', () => {
     it('reactions breakdown always exposes all 6 reaction types, even at zero', async () => {
       socialAccountRepository.findByBrandAndPlatform.mockResolvedValue([REAL_ACCOUNT]);
       facebookGateway.getPostDetails.mockResolvedValue({ id: POST_ID, created_time: '2026-05-24T12:00:00+0000' });
       facebookGateway.getPostInsights.mockResolvedValue([]);
       facebookGateway.getPostReactionsBreakdown.mockResolvedValue({
         LIKE: 0, LOVE: 0, HAHA: 0, WOW: 0, SAD: 0, ANGRY: 0
-      });
-      facebookGateway.getPageDemographics.mockResolvedValue({
-        ageGender: { available: false, reason: 'deprecated_by_platform', data: null },
-        geography: { available: false, reason: 'insufficient_data', data: null }
       });
 
       const result = await facebookPostService.getPostDetails(BRAND_ID, POST_ID);

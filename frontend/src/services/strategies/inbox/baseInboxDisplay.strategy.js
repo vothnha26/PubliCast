@@ -4,7 +4,7 @@
  */
 export class BaseInboxDisplayStrategy {
   get platform() {
-    throw new Error('Abstract property platform must be implemented');
+    return 'UNKNOWN';
   }
 
   /**

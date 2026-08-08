@@ -1,5 +1,6 @@
 const prisma = require('../../../../config/prisma');
 const validatorFactory = require('./validator.factory');
+const { PLATFORMS, POST_STATUS, POST_TYPES, DEFAULT_PLATFORM_CAPTION_LIMITS } = require('../../../../utils/constants');
 
 class ValidationFacade {
   /**
@@ -11,7 +12,7 @@ class ValidationFacade {
   shouldBypassValidation(postData) {
     // Bỏ qua validate chỉ khi bài viết là Nháp (DRAFT)
     const status = postData.status;
-    return status === 'DRAFT';
+    return status === POST_STATUS.DRAFT;
   }
 
   async validatePost(postData, mediaInfo = {}) {
@@ -32,14 +33,7 @@ class ValidationFacade {
       return { isValid: true, errors: [] };
     }
 
-    // Load limits from DB
-    const limits = await prisma.platformLimit.findMany({
-      where: {
-        platform: {
-          in: platforms.map(p => p.toUpperCase())
-        }
-      }
-    });
+    const { resolveCapability } = require('../capability-resolver.service');
 
     const allErrors = [];
 
@@ -47,35 +41,30 @@ class ValidationFacade {
       const platUpper = platform.toUpperCase();
       
       // Determine subtype from options (e.g. facebookType, youtubeType, instagramType)
-      let subType = 'POST'; // default
-      if (platUpper === 'YOUTUBE') {
-        subType = (options.youtubeType || 'video').toUpperCase(); // VIDEO or SHORTS
-      } else if (platUpper === 'FACEBOOK') {
-        subType = (options.facebookType || 'post').toUpperCase(); // POST, REEL, STORY
-      } else if (platUpper === 'INSTAGRAM') {
-        subType = (options.instagramType || 'post').toUpperCase(); // POST, REEL, STORY
-      } else if (platUpper === 'TIKTOK') {
-        subType = 'VIDEO';
+      let subType = POST_TYPES.POST; // default
+      if (platUpper === PLATFORMS.YOUTUBE) {
+        subType = (options.youtubeType || POST_TYPES.VIDEO).toUpperCase(); // VIDEO or SHORT
+      } else if (platUpper === PLATFORMS.FACEBOOK) {
+        subType = (options.facebookType || POST_TYPES.POST).toUpperCase(); // POST, REEL, STORY
+      } else if (platUpper === PLATFORMS.INSTAGRAM) {
+        subType = (options.instagramType || POST_TYPES.POST).toUpperCase(); // POST, REEL, STORY
+      } else if (platUpper === PLATFORMS.TIKTOK) {
+        subType = POST_TYPES.VIDEO;
       }
 
-      const DEFAULT_PLATFORM_CAPTION_LIMITS = {
-        BLUESKY: 300,
-        THREADS: 500,
-        TIKTOK: 2200,
-        INSTAGRAM: 2200,
-        YOUTUBE: 5000,
-        FACEBOOK: 63206
-      };
-
-      // Find the specific limit from DB result
-      const limitConfig = limits.find(l => l.platform === platUpper && l.subType === subType) || {
-        platform: platUpper,
-        subType,
-        maxCaptionLength: DEFAULT_PLATFORM_CAPTION_LIMITS[platUpper] || 2000,
-        maxFileSizeMb: 100,
-        allowedMediaTypes: 'ALL',
-        allowedFormats: 'mp4,mov,png,jpg,jpeg'
-      };
+      let limitConfig;
+      try {
+        limitConfig = await resolveCapability(platUpper, subType);
+      } catch (err) {
+        limitConfig = {
+          platform: platUpper,
+          subType,
+          maxCaptionLength: DEFAULT_PLATFORM_CAPTION_LIMITS[platUpper] || 2000,
+          maxFileSizeMb: 100,
+          allowedMediaTypes: 'ALL',
+          allowedFormats: 'mp4,mov,png,jpg,jpeg'
+        };
+      }
 
       // Check if platform is locked
       if (limitConfig.isLocked) {
@@ -84,10 +73,10 @@ class ValidationFacade {
       }
 
       // Check Bluesky Email verification for Video posts
-      if (platUpper === 'BLUESKY' && (mediaInfo.isVideo || (postData.mediaUrls && postData.mediaUrls.some(u => typeof u === 'string' && u.match(/\.(mp4|mov|webm|mkv)$/i))))) {
+      if (platUpper === PLATFORMS.BLUESKY && (mediaInfo.isVideo || (postData.mediaUrls && postData.mediaUrls.some(u => typeof u === 'string' && u.match(/\.(mp4|mov|webm|mkv)$/i))))) {
         try {
           const socialAccountRepo = require('../../../../repositories/social/social-account.repository');
-          const account = await socialAccountRepo.findByBrandAndPlatformFirst(postData.brandId, 'BLUESKY');
+          const account = await socialAccountRepo.findByBrandAndPlatformFirst(postData.brandId, PLATFORMS.BLUESKY);
           if (account && account.blueskyAccount && !account.blueskyAccount.emailConfirmed) {
             allErrors.push(`[BLUESKY] Tài khoản Bluesky chưa xác thực Email. Bluesky yêu cầu xác thực Email tại bsky.app > Settings > Confirm Email trước khi cho phép tải Video.`);
           }
@@ -96,8 +85,55 @@ class ValidationFacade {
         }
       }
 
+      // Check if networkOverrides has customized content for this platform
+      const override = Array.isArray(postData.networkOverrides)
+        ? postData.networkOverrides.find(o => (o.platform || '').toUpperCase() === platUpper)
+        : null;
+
+      let effectiveCaption = postData.caption;
+      let effectiveMediaUrls = postData.mediaUrls || [];
+
+      if (override && override.useTemplate === false) {
+        if (override.caption !== undefined && override.caption !== null) {
+          effectiveCaption = override.caption;
+        }
+        if (Array.isArray(override.mediaUrls)) {
+          effectiveMediaUrls = override.mediaUrls;
+        }
+      }
+
+      const platformHasMedia = effectiveMediaUrls.length > 0 || Boolean(mediaInfo.hasMedia);
+      let platformIsVideo = mediaInfo.isVideo;
+      let platformFormat = mediaInfo.format;
+      if (platformHasMedia) {
+        const firstUrl = effectiveMediaUrls[0];
+        const cleanUrl = (typeof firstUrl === 'string' ? firstUrl : (firstUrl?.path || firstUrl?.url || '')).split('?')[0];
+        const ext = cleanUrl.split('.').pop().toLowerCase();
+        if (['mp4', 'mov', 'webm', 'avi', 'mkv'].includes(ext)) {
+          platformIsVideo = true;
+          platformFormat = ext;
+        } else if (['jpg', 'jpeg', 'png', 'gif', 'webp', 'heic'].includes(ext)) {
+          platformIsVideo = false;
+          platformFormat = ext;
+        }
+      }
+
+      const platformMediaInfo = {
+        ...mediaInfo,
+        hasMedia: platformHasMedia,
+        isVideo: platformIsVideo,
+        format: platformFormat,
+        mediaCount: effectiveMediaUrls.length
+      };
+
+      const platformPostData = {
+        ...postData,
+        caption: effectiveCaption,
+        mediaUrls: effectiveMediaUrls
+      };
+
       const validator = validatorFactory.getValidator(platUpper, limitConfig);
-      const errors = await validator.validate(postData, mediaInfo);
+      const errors = await validator.validate(platformPostData, platformMediaInfo);
 
       if (errors.length > 0) {
         allErrors.push(...errors.map(err => `[${platUpper} - ${subType}] ${err}`));

@@ -27,6 +27,13 @@ jest.mock('../../src/services/social/google-oauth.service', () => ({
     setCredentials: jest.fn()
   })
 }));
+// getPublishedVideos clamps its start date via getHistoryWindowMonths (see
+// plan-history-window.util.js), which reads the brand's subscription plan
+// from Prisma — mock the util directly rather than the Prisma chain it
+// depends on internally.
+jest.mock('../../src/services/social/plan-history-window.util', () => ({
+  getHistoryWindowMonths: jest.fn().mockResolvedValue(1)
+}));
 
 describe('YouTubeVideoService Playlists Pagination Unit Tests', () => {
   const mockBrandId = 'brand-123';

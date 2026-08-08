@@ -3,16 +3,18 @@ import { useTranslation } from "react-i18next";
 import { useChannelInsights } from "../../../hooks/channels/useChannelInsights";
 import { DateRangeFilter } from "../../../components/app/DateRangeFilter";
 import { ChannelInsightsSkeleton } from "./ChannelInsightsSkeleton";
-import { GenericDashboardTab } from "../dashboard/GenericDashboardTab";
-import { DemographicsTab } from "../dashboard/DemographicsTab";
-import { PublishedVideosTab } from "../dashboard/PublishedVideosTab";
-import { FacebookDashboard } from "../dashboard/FacebookDashboard";
-import { InstagramAccountTab } from "../dashboard/InstagramAccountTab";
-import { InstagramReelsTab } from "../dashboard/InstagramReelsTab";
-import { InstagramStoriesTab } from "../dashboard/InstagramStoriesTab";
-import { ThreadsPostsTab } from "../dashboard/ThreadsPostsTab";
-import { TikTokDashboard } from "../dashboard/TikTokDashboard";
-import { InsightsSummaryWidget } from "../dashboard/InsightsSummaryWidget";
+import { GenericDashboardTab } from "../dashboard/common/GenericDashboardTab";
+import { DemographicsTab } from "../dashboard/common/DemographicsTab";
+import { PublishedVideosTab } from "../dashboard/common/PublishedVideosTab";
+import { FacebookDashboard } from "../dashboard/facebook/FacebookDashboard";
+import { InstagramAccountTab } from "../dashboard/instagram/InstagramAccountTab";
+import { InstagramCommunityTab } from "../dashboard/instagram/InstagramCommunityTab";
+import { InstagramReelsTab } from "../dashboard/instagram/InstagramReelsTab";
+import { InstagramStoriesTab } from "../dashboard/instagram/InstagramStoriesTab";
+import { YouTubeCommunityTab } from "../dashboard/youtube/YouTubeCommunityTab";
+import { ThreadsPostsTab } from "../dashboard/threads/ThreadsPostsTab";
+import { TikTokDashboard } from "../dashboard/tiktok/TikTokDashboard";
+import { InsightsSummaryWidget } from "../dashboard/common/InsightsSummaryWidget";
 
 const YT_TABS = [
   { id: "community", label: "COMMUNITY" },
@@ -156,90 +158,17 @@ export function ChannelInsightsTab({ socialAccountId, platform: platformInput })
         {platform === "youtube" && (
           <>
             {activeTab === "community" && (
-              <div className="space-y-6">
-                {(() => {
-                  const ytGrowthConfig = [
-                    {
-                      key: "subscribers",
-                      label: t("youtubeDashboard.subscribersLabel", "Subscribers"),
-                      color: "bg-[#8E9BEE] text-white",
-                      chartColor: "#8E9BEE",
-                      type: "area",
-                      value: totalPeriodGained ?? stats?.subscribers ?? 0,
-                    },
-                    {
-                      key: "views",
-                      label: t("youtubeDashboard.viewsLabel", "Views"),
-                      color: "bg-[#A7F3D0] text-foreground",
-                      chartColor: "#A7F3D0",
-                      type: "line",
-                      value: totalPeriodViews ?? stats?.views ?? 0,
-                    },
-                    {
-                      key: "totalContent",
-                      label: t("youtubeDashboard.totalVideosLabel", "Total videos"),
-                      color: "bg-[#E6A34A] text-white",
-                      chartColor: "#E6A34A",
-                      type: "bar",
-                      value: totalPeriodVideos ?? stats?.videos ?? 0,
-                    },
-                  ];
-
-                  const ytBalanceConfig = [
-                    {
-                      key: "gained",
-                      dataKey: "new",
-                      label: t("youtubeDashboard.gainedLabel", "Gained"),
-                      color: "bg-[#8E9BEE] text-white",
-                      chartColor: "#8E9BEE",
-                      type: "area",
-                      value: totalPeriodGained || 0,
-                    },
-                    {
-                      key: "lost",
-                      label: t("youtubeDashboard.lostLabel", "Lost"),
-                      color: "bg-[#F7A6E0] text-white",
-                      chartColor: "#F7A6E0",
-                      type: "area",
-                      value: 0,
-                    },
-                  ];
-
-                  return (
-                    <>
-                      <InsightsSummaryWidget
-                        dateRange={dateRange}
-                        metrics={metrics}
-                        stats={stats}
-                        realData={realData}
-                        communityGrowthData={communityGrowthData}
-                        publishedVideos={publishedVideos}
-                        platform={platform}
-                      />
-                      <GenericDashboardTab
-                        title={t("youtubeDashboard.subscriberGrowthTitle", "Subscriber Growth")}
-                        description={t(
-                          "youtubeDashboard.subscriberGrowthDesc",
-                          "Biểu đồ phát triển người đăng ký theo thời gian"
-                        )}
-                        data={communityGrowthData}
-                        metricConfig={ytGrowthConfig}
-                        watermark="publicast"
-                      />
-                      <GenericDashboardTab
-                        title={t("youtubeDashboard.viewBalanceTitle", "Balance of Subscribers")}
-                        description={t(
-                          "youtubeDashboard.viewBalanceDesc",
-                          "Biến động người đăng ký mới và hủy đăng ký"
-                        )}
-                        data={communityGrowthData}
-                        metricConfig={ytBalanceConfig}
-                        watermark="publicast"
-                      />
-                    </>
-                  );
-                })()}
-              </div>
+              <YouTubeCommunityTab
+                dateRange={dateRange}
+                metrics={metrics}
+                stats={stats}
+                realData={realData}
+                communityGrowthData={communityGrowthData}
+                publishedVideos={publishedVideos}
+                totalPeriodGained={totalPeriodGained}
+                totalPeriodViews={totalPeriodViews}
+                totalPeriodVideos={totalPeriodVideos}
+              />
             )}
             {activeTab === "demographics" && <DemographicsTab realData={realData} />}
             {activeTab === "published" && (
@@ -282,93 +211,14 @@ export function ChannelInsightsTab({ socialAccountId, platform: platformInput })
         {platform === "instagram" && (
           <>
             {activeTab === "community" && (
-              <div className="space-y-6">
-                {(() => {
-                  const followersCount =
-                    metrics?.instagramAccount?.followersCount || stats?.subscribers || 0;
-                  const followingCount = metrics?.instagramAccount?.followingCount || 0;
-                  const mediaCount = metrics?.instagramAccount?.mediaCount || stats?.videos || 0;
-
-                  const igGrowthConfig = [
-                    {
-                      key: "followers",
-                      label: "Followers",
-                      color: "bg-[#8E9BEE] text-white",
-                      chartColor: "#8E9BEE",
-                      type: "area",
-                      value: followersCount,
-                    },
-                    {
-                      key: "following",
-                      label: "Following",
-                      color: "bg-[#A7F3D0] text-foreground",
-                      chartColor: "#A7F3D0",
-                      type: "line",
-                      value: followingCount,
-                    },
-                    {
-                      key: "totalContent",
-                      label: "Total content",
-                      color: "bg-[#E6A34A] text-white",
-                      chartColor: "#E6A34A",
-                      type: "bar",
-                      value: mediaCount,
-                    },
-                  ];
-
-                  const daysCount = communityGrowthData?.length || 30;
-                  const totalContentInPeriod =
-                    communityGrowthData?.reduce((acc, curr) => acc + (curr.totalContent || 0), 0) ||
-                    mediaCount;
-                  const dailyPostsNum = daysCount > 0 ? totalContentInPeriod / daysCount : 0;
-                  const dailyPosts = dailyPostsNum.toFixed(2);
-                  const postsPerWeek = (dailyPostsNum * 7).toFixed(2);
-                  const followersPerPost =
-                    mediaCount > 0 ? (followersCount / mediaCount).toFixed(2) : "0";
-                  const dailyFollowers =
-                    daysCount > 0 ? (totalPeriodGained / daysCount).toFixed(2) : "0";
-
-                  const summaryGrid = [
-                    { label: "Followers", value: followersCount.toLocaleString() },
-                    { label: "Daily followers", value: dailyFollowers },
-                    { label: "Followers per post", value: followersPerPost },
-                    { label: "Following", value: followingCount.toLocaleString() },
-                    { label: "Daily posts", value: dailyPosts },
-                    { label: "Posts per week", value: postsPerWeek },
-                  ];
-
-                  const igBalanceConfig = [
-                    {
-                      key: "followers",
-                      label: "Followers",
-                      color: "bg-[#86EFAC] text-[#166534]",
-                      chartColor: "#22C55E",
-                      type: "line",
-                      value: followersCount,
-                    },
-                  ];
-
-                  return (
-                    <>
-                      <GenericDashboardTab
-                        title="Growth"
-                        description=""
-                        data={communityGrowthData}
-                        metricConfig={igGrowthConfig}
-                        watermark="publicast"
-                        summaryGrid={summaryGrid}
-                      />
-                      <GenericDashboardTab
-                        title="Balance of Followers"
-                        description=""
-                        data={communityGrowthData}
-                        metricConfig={igBalanceConfig}
-                        watermark="publicast"
-                      />
-                    </>
-                  );
-                })()}
-              </div>
+              <InstagramCommunityTab
+                dateRange={dateRange}
+                metrics={metrics}
+                stats={stats}
+                realData={realData}
+                communityGrowthData={communityGrowthData}
+                publishedVideos={publishedVideos}
+              />
             )}
             {activeTab === "account" && (
               <InstagramAccountTab
@@ -473,6 +323,15 @@ export function ChannelInsightsTab({ socialAccountId, platform: platformInput })
 
                   return (
                     <>
+                      <InsightsSummaryWidget
+                        dateRange={dateRange}
+                        metrics={metrics}
+                        stats={stats}
+                        realData={realData}
+                        communityGrowthData={communityGrowthData}
+                        publishedVideos={publishedVideos}
+                        platform={platform}
+                      />
                       <GenericDashboardTab
                         title={`${platform === "bluesky" ? "Bluesky" : "Threads"} Growth`}
                         description="Growth metrics for Followers, Views, and Likes"

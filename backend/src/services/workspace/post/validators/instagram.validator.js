@@ -3,15 +3,16 @@ const BaseValidator = require('./base.validator');
 class InstagramValidator extends BaseValidator {
   validate(postData, mediaInfo = {}) {
     const errors = [];
+    errors.push(...this.validateFixedRules(postData, mediaInfo));
     errors.push(...this.validateCaption(postData.caption));
     errors.push(...this.validateMedia(mediaInfo));
     errors.push(...this.validateVideoSettings(postData, mediaInfo));
 
-    // Instagram: ALL post types require at least one photo or video
-    const { hasMedia, mediaCount } = mediaInfo;
-    if (!hasMedia) {
-      errors.push(`Instagram requires at least one photo or video to publish a post.`);
-    }
+    // Carousel posts (2+ media) are capped at 10 items per Meta's Content
+    // Publishing API docs ("Carousels are limited to 10 images, videos, or
+    // a mix of the two") — catching this here avoids a confusing API-level
+    // rejection after the composer has already uploaded every file.
+    const { mediaCount } = mediaInfo;
 
     // Carousel posts (2+ media) are capped at 10 items per Meta's Content
     // Publishing API docs ("Carousels are limited to 10 images, videos, or

@@ -62,6 +62,7 @@ const { matchesExtension } = require('../../../utils/media-type.utils');
 const FacebookPublishStrategyFactory = require('./publish-strategies/publish-strategy.factory');
 const prisma = require('../../../config/prisma');
 const { eventEmitter, EVENTS } = require('../../../events/event-emitter');
+const { postInsightFacade } = require('../../../core/insights');
 
 // getVideoDetails() read-through cache: Inbox preview was calling the Graph
 // API on every click, including once per top-level comment sharing the same
@@ -483,104 +484,7 @@ class FacebookPostService {
    * about once every 24h, matching FACEBOOK_POST_METRICS_TTL_MS.
    */
   async getPostDetails(brandId, platformPostId, socialAccountId = null) {
-    const { pageAccessToken, socialAccountId: resolvedAccountId } = await this._getAccountCredentials(brandId, socialAccountId);
-
-    const lookupKey = { socialAccountId: resolvedAccountId, platformPostId };
-    const freshRow = await postInsightRepository.getFresh(prisma.facebookPostMetric, lookupKey, FACEBOOK_POST_METRICS_TTL_MS, true).catch(() => null);
-    if (freshRow) {
-      return this._formatDetailMetricRow(freshRow, platformPostId);
-    }
-
-    let result;
-    if (pageAccessToken && pageAccessToken.startsWith('mock-')) {
-      result = this._buildMockPostDetails(platformPostId);
-    } else {
-      try {
-        const dbPost = await prisma.post.findFirst({
-          where: { platformPostId: platformPostId }
-        }).catch(() => null);
-
-        const isReel = dbPost?.type === 'REEL' || dbPost?.options?.facebookType === 'reel';
-        const strategy = isReel ? INSIGHTS_STRATEGIES.REEL : INSIGHTS_STRATEGIES.STANDARD;
-
-        const results = await Promise.allSettled([
-          facebookGateway.getPostDetails(platformPostId, pageAccessToken),
-          strategy(platformPostId, pageAccessToken),
-          facebookGateway.getPostReactionsBreakdown(platformPostId, pageAccessToken)
-        ]);
-
-        const postResult = results[0].status === 'fulfilled' ? results[0].value : null;
-        const insightsResult = results[1].status === 'fulfilled' ? results[1].value : { reach: 0, views: 0, clicks: 0, linkClicks: 0 };
-        const reactionsResult = results[2].status === 'fulfilled' ? results[2].value : { total: 0, breakdown: {} };
-
-        const postDetails = postResult ? {
-          id: postResult.id,
-          message: postResult.message || postResult.story || DEFAULT_CONFIG.NO_CONTENT,
-          type: isReel ? POST_TYPES.REEL : this._determinePostType(postResult),
-          mediaUrl: postResult.full_picture || '',
-          permalinkUrl: postResult.permalink_url || null,
-          date: postResult.created_time,
-          platform: 'facebook'
-        } : {
-          id: platformPostId,
-          message: dbPost?.caption || DEFAULT_CONFIG.NO_CONTENT,
-          type: isReel ? POST_TYPES.REEL : POST_TYPES.IMAGE,
-          mediaUrl: dbPost?.mediaUrls?.[0] || '',
-          permalinkUrl: `https://www.facebook.com/${platformPostId}`,
-          date: dbPost?.createdAt || new Date(),
-          platform: 'facebook'
-        };
-
-        const counts = postResult ? this._extractPostCounts(postResult) : { comments: 0, reactions: 0, shares: 0 };
-
-        result = {
-          postDetails,
-          reach: insightsResult.reach || 0,
-          views: insightsResult.views || 0,
-          clicks: insightsResult.clicks || 0,
-          linkClicks: insightsResult.linkClicks || 0,
-          comments: counts.comments,
-          shares: counts.shares,
-          reactions: {
-            total: counts.reactions || reactionsResult.total || 0,
-            breakdown: reactionsResult.breakdown || reactionsResult
-          }
-        };
-      } catch (err) {
-        console.warn(`[FacebookPostService] getPostDetails failed for post ${platformPostId} (brand ${brandId}): ${err.message}`);
-        throw err;
-      }
-    }
-
-    if (resolvedAccountId) {
-      const postType = result.postDetails.type === POST_TYPES.REEL ? POST_TYPES.REEL : POST_TYPES.IMAGE;
-
-      postInsightRepository.persist(prisma.facebookPostMetric, lookupKey, {
-        brandId,
-        postType,
-        publishedAt: result.postDetails.date ? new Date(result.postDetails.date) : null,
-        reach: result.reach,
-        videoViews: result.views,
-        likes: result.reactions.total,
-        comments: result.comments,
-        shares: result.shares,
-        reactions: result.reactions.total,
-        linkClicks: result.linkClicks,
-        otherClicks: Math.max(result.clicks - result.linkClicks, 0),
-        captionSnippet: result.postDetails.message || null,
-        thumbnailUrl: result.postDetails.mediaUrl || null,
-        permalinkUrl: result.postDetails.permalinkUrl || null
-      }, true).catch((err) => {
-        console.warn(`[FacebookPostService] Failed to persist post detail metrics for ${platformPostId}:`, err.message);
-      });
-
-      // Best-effort — a delayed socket update on failure is fine, nothing
-      // needs a retry (same reasoning as sync-cache.proxy.js's syncAndEmit
-      // and youtube-analytics.service.js's getPostInsights).
-      eventEmitter.emit(EVENTS.SOCIAL.METRICS_SYNCED, { brandId, socialAccountId: resolvedAccountId, platform: PLATFORMS.FACEBOOK });
-    }
-
-    return result;
+    return postInsightFacade.getPostInsights(brandId, PLATFORMS.FACEBOOK, platformPostId, { socialAccountId });
   }
 
   /**

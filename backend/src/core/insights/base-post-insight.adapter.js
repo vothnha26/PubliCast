@@ -32,10 +32,11 @@ class BasePostInsightAdapter {
    * TEMPLATE METHOD: Quy trình xử lý cố định (Stateless execution)
    * @param {string} brandId
    * @param {string} postId
+   * @param {object} [options] - e.g. { socialAccountId }
    * @returns {Promise<object>}
    */
-  async execute(brandId, postId) {
-    const authInfo = await socialAuthFactory.getAuthClient(brandId, this.platform);
+  async execute(brandId, postId, options = {}) {
+    const authInfo = await socialAuthFactory.getAuthClient(brandId, this.platform, options.socialAccountId);
     if (!authInfo) {
       return this.emptyMetrics();
     }
@@ -52,11 +53,11 @@ class BasePostInsightAdapter {
       this.isUniqueKeyed
     );
 
-    if (freshRow && freshRow.rawInsightsJson) {
+    if (freshRow) {
       try {
-        return this.parseRaw(freshRow.rawInsightsJson);
+        return this.parseRaw(freshRow.rawInsightsJson || freshRow);
       } catch (err) {
-        logger.debug(`[${this.constructor.name}] Failed to parse cached insights JSON: ${err.message}`);
+        logger.debug(`[${this.constructor.name}] Failed to parse cached insights: ${err.message}`);
       }
     }
 

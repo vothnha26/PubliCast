@@ -74,6 +74,8 @@ export function parseAnalyticsData(metrics, platform, dateRange = {}) {
         growth: filterByRange(raw.growth || []).map((g) => ({
           ...g,
           value: g.views || 0,
+          reach: g.reach || g.pageVisits || 0,
+          likes: g.likes || g.reactions || 0,
           new: g.acquired || raw.balance?.find((b) => b.date === g.date)?.acquired || 0,
           lost: g.lost || raw.balance?.find((b) => b.date === g.date)?.lost || 0,
           videos: g.totalContent || 0,

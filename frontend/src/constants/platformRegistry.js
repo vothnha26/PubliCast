@@ -1,6 +1,6 @@
-import { PLATFORMS } from './platforms';
-import { POST_TYPE } from './postTypes';
-import { VALIDATION_RULES } from './platformValidation.constants';
+import { PLATFORMS } from './platforms.js';
+import { POST_TYPE } from './postTypes.js';
+import { VALIDATION_RULES } from './platformValidation.constants.js';
 
 const graphemeSegmenter = typeof Intl !== 'undefined' && Intl.Segmenter
   ? new Intl.Segmenter('en', { granularity: 'grapheme' })
