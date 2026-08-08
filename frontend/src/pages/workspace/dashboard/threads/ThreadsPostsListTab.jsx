@@ -18,24 +18,27 @@ export function ThreadsPostsListTab({
   const columns = [
     {
       header: "Post",
-      renderCell: (item) => (
-        <div className="flex items-center gap-4">
-          {item.mediaUrl ? (
-            <div className="w-12 h-12 bg-muted rounded-lg overflow-hidden relative shadow-sm border border-border shrink-0">
-              <img src={item.mediaUrl} className="w-full h-full object-cover" />
+      renderCell: (item) => {
+        const url = item.mediaUrl || item.thumbnailUrl;
+        return (
+          <div className="flex items-center gap-4">
+            {url ? (
+              <div className="w-12 h-12 bg-muted rounded-lg overflow-hidden relative shadow-sm border border-border shrink-0">
+                <img src={url} alt="" className="w-full h-full object-cover" />
+              </div>
+            ) : (
+              <div className="w-12 h-12 bg-muted rounded-lg flex items-center justify-center text-foreground font-black text-sm shrink-0 border border-border">
+                T
+              </div>
+            )}
+            <div className="flex flex-col">
+              <span className="text-sm font-bold text-foreground line-clamp-2 max-w-[280px]">
+                {item.message || "No content message"}
+              </span>
             </div>
-          ) : (
-            <div className="w-12 h-12 bg-muted rounded-lg flex items-center justify-center text-foreground font-black text-sm shrink-0 border border-border">
-              T
-            </div>
-          )}
-          <div className="flex flex-col">
-            <span className="text-sm font-bold text-foreground line-clamp-2 max-w-[280px]">
-              {item.message || "No content message"}
-            </span>
           </div>
-        </div>
-      )
+        );
+      }
     },
     {
       header: "Date",
@@ -52,31 +55,37 @@ export function ThreadsPostsListTab({
     },
     {
       header: "Reach",
-      renderCell: (item) => <span className="text-xs font-bold text-foreground">{(item.reach || 0).toLocaleString()}</span>
+      renderCell: (item) => {
+        const val = item.reach ?? item.views ?? item.viewsCount;
+        return <span className="text-xs font-bold text-foreground">{val !== null && val !== undefined ? val.toLocaleString() : "—"}</span>;
+      }
     },
     {
       header: "Views",
-      renderCell: (item) => <span className="text-xs font-bold text-foreground">{(item.views || 0).toLocaleString()}</span>
+      renderCell: (item) => {
+        const val = item.views ?? item.viewsCount;
+        return <span className="text-xs font-bold text-foreground">{val !== null && val !== undefined ? val.toLocaleString() : "—"}</span>;
+      }
     },
     {
       header: "Engagement",
       renderCell: (item) => (
-        <span className="px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider bg-indigo-50 text-indigo-700">
-          {(item.engagement || 0).toFixed(1)}%
+        <span className="px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider bg-indigo-50 text-indigo-700 dark:bg-indigo-950/50 dark:text-indigo-300">
+          {item.engagement !== null && item.engagement !== undefined ? `${Number(item.engagement).toFixed(1)}%` : "0.0%"}
         </span>
       )
     },
     {
       header: "Likes",
-      renderCell: (item) => <span className="text-xs text-muted-foreground font-semibold">{(item.reactions || 0).toLocaleString()}</span>
+      renderCell: (item) => <span className="text-xs text-muted-foreground font-semibold">{(item.reactions ?? item.likes ?? item.likeCount ?? 0).toLocaleString()}</span>
     },
     {
       header: "Replies",
-      renderCell: (item) => <span className="text-xs text-muted-foreground font-semibold">{(item.comments || 0).toLocaleString()}</span>
+      renderCell: (item) => <span className="text-xs text-muted-foreground font-semibold">{(item.comments ?? item.replies ?? item.replyCount ?? 0).toLocaleString()}</span>
     },
     {
       header: "Reposts",
-      renderCell: (item) => <span className="text-xs text-muted-foreground font-semibold">{(item.shares || 0).toLocaleString()}</span>
+      renderCell: (item) => <span className="text-xs text-muted-foreground font-semibold">{(item.shares ?? item.reposts ?? item.repostCount ?? 0).toLocaleString()}</span>
     }
   ];
 

@@ -495,6 +495,30 @@ export function usePlatformDashboard(platform) {
           };
         }
 
+        if (platform === "threads") {
+          const likesCount = realDayData ? (realDayData.likes || 0) : 0;
+          const commentsCount = realDayData ? (realDayData.comments || 0) : 0;
+          const sharesCount = realDayData ? (realDayData.shares || 0) : 0;
+          const postsCount = realDayData ? (realDayData.totalContent || realDayData.posts || 0) : 0;
+          const interactionsCount = realDayData ? (realDayData.interactions || (likesCount + commentsCount + sharesCount)) : 0;
+          const viewsCount = realDayData ? (realDayData.views || 0) : 0;
+          const engagementRate = realDayData ? (realDayData.engagement || 0) : 0;
+
+          return {
+            name: dateString,
+            followers: (realDayData && realDayData.followers > 0) ? realDayData.followers : (metrics?.threadsAccount?.followersCount || metrics?.followersCount || 0),
+            following: metrics?.threadsAccount?.followingCount || metrics?.followingCount || 0,
+            totalContent: postsCount,
+            posts: postsCount,
+            engagement: engagementRate,
+            interactions: interactionsCount,
+            views: viewsCount,
+            likes: likesCount,
+            comments: commentsCount,
+            shares: sharesCount
+          };
+        }
+
         return {
           name: dateString,
           subscribers: realDayData ? realDayData.new : 0,

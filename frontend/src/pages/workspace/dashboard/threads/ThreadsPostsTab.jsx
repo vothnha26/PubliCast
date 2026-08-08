@@ -1,5 +1,6 @@
 import React from "react";
 import { useTranslation } from "react-i18next";
+import { eachDayOfInterval, format, subDays } from "date-fns";
 import { GenericDashboardTab } from "../common/GenericDashboardTab";
 import { Clock } from "lucide-react";
 import { ThreadsPostsListTab } from "./ThreadsPostsListTab";
@@ -190,6 +191,7 @@ export function ThreadsPostsTab({
   prevPageToken = null,
   nextPageToken = null,
   onVideoClick = null,
+  dateRange = {},
 }) {
   const { t } = useTranslation("dashboard");
   const postsData = realData.growth || [];
@@ -197,14 +199,28 @@ export function ThreadsPostsTab({
   const interactions = realData.interactions || {};
   const clicksData = realData.clicks || [];
 
-  const totalViews = summary.views || 0;
-  const totalLikes = summary.likes || 0;
-  const totalReplies = summary.replies || 0;
-  const totalReposts = summary.reposts || 0;
+  const listViews = publishedVideos.reduce((s, p) => s + (p.views || p.viewsCount || 0), 0);
+  const listLikes = publishedVideos.reduce((s, p) => s + (p.likes || p.reactions || p.likeCount || 0), 0);
+  const listReplies = publishedVideos.reduce((s, p) => s + (p.replies || p.comments || p.replyCount || 0), 0);
+  const listReposts = publishedVideos.reduce((s, p) => s + (p.reposts || p.shares || p.repostCount || 0), 0);
+
+  const totalViews = summary.views || listViews || 0;
+  const totalLikes = summary.likes || listLikes || 0;
+  const totalReplies = summary.replies || listReplies || 0;
+  const totalReposts = summary.reposts || listReposts || 0;
   const totalClicks = clicksData.reduce((s, d) => s + (d.totalClicks || 0), 0);
 
   const totalInteractions = totalLikes + totalReplies + totalReposts + totalClicks;
-  const avgEngagement = totalViews ? parseFloat(((totalInteractions / totalViews) * 100).toFixed(2)) : 0;
+  const totalPostsCount = summary.totalContent || publishedVideos.length || 0;
+
+  // Tính Tỷ lệ tương tác (Eng. Rate):
+  // Ưu tiên chia cho (Followers * TotalPosts) nếu có, fallback chia cho totalViews
+  const followersCount = realData.summary?.followersCount || 0;
+  const baseDenominator = (totalPostsCount > 0 && followersCount > 0)
+    ? (followersCount * totalPostsCount)
+    : (totalViews > 0 ? totalViews : 1);
+
+  const avgEngagement = parseFloat(((totalInteractions / baseDenominator) * 100).toFixed(2));
 
   const overviewConfig = [
     {
@@ -238,20 +254,122 @@ export function ThreadsPostsTab({
       chartColor: "#EAB308",
       type: "bar",
       yAxisId: "right",
-      value: summary.totalContent || 0,
+      value: totalPostsCount,
     },
   ];
 
   const overviewSummary = [
     { label: "Tỉ lệ tương tác", value: `${avgEngagement}%` },
     { label: "Tổng tương tác", value: totalInteractions },
-    { label: "Tổng bài đăng", value: summary.totalContent || 0 },
+    { label: "Tổng bài đăng", value: totalPostsCount },
   ];
 
-  const postsOverviewData = postsData.map(d => {
-    const dayClicks = clicksData.find(c => c.date === d.date)?.totalClicks || 0;
+  // Tạo map từng bài đăng theo ngày để tra cứu nhanh
+  const postsByDate = React.useMemo(() => {
+    const map = {};
+    (publishedVideos || []).forEach(post => {
+      if (!post.date) return;
+      const d = new Date(post.date);
+      const key = d.toISOString().split("T")[0];
+      if (!map[key]) {
+        map[key] = { views: 0, reach: 0, reactions: 0, comments: 0, shares: 0, clicks: 0, totalContent: 0 };
+      }
+      const v = post.views || post.viewsCount || post.reach || 0;
+      map[key].views += v;
+      map[key].reach += (post.reach || v);
+      map[key].reactions += (post.reactions || post.likes || post.likeCount || 0);
+      map[key].comments += (post.comments || post.replies || post.replyCount || 0);
+      map[key].shares += (post.shares || post.reposts || post.repostCount || 0);
+      map[key].clicks += (post.clicks || 0);
+      map[key].totalContent += 1;
+    });
+    return map;
+  }, [publishedVideos]);
+
+  const chartSourceData = React.useMemo(() => {
+    const startDate = dateRange?.from ? new Date(dateRange.from) : subDays(new Date(), 29);
+    const endDate = dateRange?.to ? new Date(dateRange.to) : new Date();
+
+    // Map metrics/postsData by YYYY-MM-DD
+    const metricsByDate = {};
+    (postsData || []).forEach(d => {
+      if (d.date) {
+        metricsByDate[d.date] = d;
+      }
+    });
+
+    if (startDate && endDate && !isNaN(startDate.getTime()) && !isNaN(endDate.getTime())) {
+      try {
+        const days = eachDayOfInterval({ start: startDate, end: endDate });
+        return days.map(day => {
+          const key = format(day, "yyyy-MM-dd");
+          const name = format(day, "MMM d");
+          const dayPost = postsByDate[key] || {};
+          const dayMetric = metricsByDate[key] || {};
+
+          const views = dayMetric.views || dayMetric.value || dayPost.views || 0;
+          const reach = dayMetric.reach || dayPost.reach || views;
+          const reactions = dayMetric.likes || dayMetric.reactions || dayPost.reactions || 0;
+          const comments = dayMetric.comments || dayPost.comments || 0;
+          const shares = dayMetric.shares || dayPost.shares || 0;
+          const clicks = dayMetric.clicks || dayPost.clicks || 0;
+          const totalContent = dayMetric.totalContent || dayMetric.posts || dayPost.totalContent || 0;
+
+          return {
+            date: key,
+            name,
+            views,
+            reach,
+            reactions,
+            comments,
+            shares,
+            clicks,
+            totalContent,
+            posts: totalContent,
+          };
+        });
+      } catch (e) {
+        console.error("Failed to build daily chart range:", e);
+      }
+    }
+
+    const allKeys = Array.from(new Set([...Object.keys(postsByDate), ...Object.keys(metricsByDate)])).sort();
+    return allKeys.map(key => {
+      const dayPost = postsByDate[key] || {};
+      const dayMetric = metricsByDate[key] || {};
+      let name = key;
+      try {
+        const d = new Date(key);
+        if (!isNaN(d.getTime())) name = format(d, "MMM d");
+      } catch (e) {}
+
+      const views = dayMetric.views || dayMetric.value || dayPost.views || 0;
+      const reach = dayMetric.reach || dayPost.reach || views;
+      const reactions = dayMetric.likes || dayMetric.reactions || dayPost.reactions || 0;
+      const comments = dayMetric.comments || dayPost.comments || 0;
+      const shares = dayMetric.shares || dayPost.shares || 0;
+      const clicks = dayMetric.clicks || dayPost.clicks || 0;
+      const totalContent = dayMetric.totalContent || dayMetric.posts || dayPost.totalContent || 0;
+
+      return {
+        date: key,
+        name,
+        views,
+        reach,
+        reactions,
+        comments,
+        shares,
+        clicks,
+        totalContent,
+        posts: totalContent,
+      };
+    });
+  }, [postsData, publishedVideos, dateRange, postsByDate]);
+
+  const postsOverviewData = chartSourceData.map(d => {
+    const dayClicks = clicksData.find(c => c.date === d.date)?.totalClicks || d.clicks || 0;
     const postInteractions = (d.reactions || 0) + (d.comments || 0) + (d.shares || 0) + dayClicks;
-    const reach = d.views || 0;
+    const reach = d.views || d.reach || 0;
     const engagement = reach ? parseFloat(((postInteractions / reach) * 100).toFixed(2)) : 0;
     return {
       ...d,
@@ -302,8 +420,8 @@ export function ThreadsPostsTab({
     { label: "Clicks", value: totalClicks },
   ];
 
-  const interactionsChartData = postsData.map(d => {
-    const dayClicks = clicksData.find(c => c.date === d.date)?.totalClicks || 0;
+  const interactionsChartData = chartSourceData.map(d => {
+    const dayClicks = clicksData.find(c => c.date === d.date)?.totalClicks || d.clicks || 0;
     return {
       ...d,
       clicks: dayClicks
