@@ -2,7 +2,8 @@ const validationFacade = require('../../src/services/workspace/post/validators/v
 const prisma = require('../../src/config/prisma');
 
 jest.mock('../../src/config/prisma', () => ({
-  platformLimit: {
+  platformCapabilityOverride: {
+    findUnique: jest.fn(),
     findMany: jest.fn()
   }
 }));
@@ -21,14 +22,12 @@ describe('ValidationFacade Unit Tests', () => {
   });
 
   it('should fail validation if target platform is locked', async () => {
-    prisma.platformLimit.findMany.mockResolvedValue([
-      {
-        platform: 'FACEBOOK',
-        subType: 'POST',
-        isLocked: true,
-        lockReason: 'Facebook API maintenance'
-      }
-    ]);
+    prisma.platformCapabilityOverride.findUnique.mockResolvedValue({
+      platform: 'FACEBOOK_POST',
+      isLocked: true,
+      lockReason: 'Facebook API maintenance',
+      overrides: {}
+    });
 
     const result = await validationFacade.validatePost({
       targetPlatforms: ['FACEBOOK'],
@@ -41,15 +40,11 @@ describe('ValidationFacade Unit Tests', () => {
   });
 
   it('should pass validation if platform is not locked and limits are respected', async () => {
-    prisma.platformLimit.findMany.mockResolvedValue([
-      {
-        platform: 'FACEBOOK',
-        subType: 'POST',
-        isLocked: false,
-        maxCaptionLength: 2000,
-        allowedMediaTypes: 'ALL'
-      }
-    ]);
+    prisma.platformCapabilityOverride.findUnique.mockResolvedValue({
+      platform: 'FACEBOOK_POST',
+      isLocked: false,
+      overrides: { maxCaptionLength: 2000 }
+    });
 
     const result = await validationFacade.validatePost({
       targetPlatforms: ['FACEBOOK'],
@@ -61,15 +56,11 @@ describe('ValidationFacade Unit Tests', () => {
   });
 
   it('should fail validation if videoSettings trim values are invalid', async () => {
-    prisma.platformLimit.findMany.mockResolvedValue([
-      {
-        platform: 'INSTAGRAM',
-        subType: 'POST',
-        isLocked: false,
-        maxCaptionLength: 2000,
-        allowedMediaTypes: 'ALL'
-      }
-    ]);
+    prisma.platformCapabilityOverride.findUnique.mockResolvedValue({
+      platform: 'INSTAGRAM_POST',
+      isLocked: false,
+      overrides: { maxCaptionLength: 2000 }
+    });
 
     const result = await validationFacade.validatePost({
       targetPlatforms: ['INSTAGRAM'],
@@ -87,15 +78,11 @@ describe('ValidationFacade Unit Tests', () => {
   });
 
   it('should fail validation if videoSettings audioVolume is out of bounds', async () => {
-    prisma.platformLimit.findMany.mockResolvedValue([
-      {
-        platform: 'INSTAGRAM',
-        subType: 'POST',
-        isLocked: false,
-        maxCaptionLength: 2000,
-        allowedMediaTypes: 'ALL'
-      }
-    ]);
+    prisma.platformCapabilityOverride.findUnique.mockResolvedValue({
+      platform: 'INSTAGRAM_POST',
+      isLocked: false,
+      overrides: { maxCaptionLength: 2000 }
+    });
 
     const result = await validationFacade.validatePost({
       targetPlatforms: ['INSTAGRAM'],
@@ -112,15 +99,11 @@ describe('ValidationFacade Unit Tests', () => {
   });
 
   it('should fail validation if Instagram Reels aspect ratio is horizontal (16:9)', async () => {
-    prisma.platformLimit.findMany.mockResolvedValue([
-      {
-        platform: 'INSTAGRAM',
-        subType: 'REEL',
-        isLocked: false,
-        maxCaptionLength: 2000,
-        allowedMediaTypes: 'ALL'
-      }
-    ]);
+    prisma.platformCapabilityOverride.findUnique.mockResolvedValue({
+      platform: 'INSTAGRAM_REEL',
+      isLocked: false,
+      overrides: { maxCaptionLength: 2000 }
+    });
 
     const result = await validationFacade.validatePost({
       targetPlatforms: ['INSTAGRAM'],
@@ -138,15 +121,11 @@ describe('ValidationFacade Unit Tests', () => {
   });
 
   it('should pass validation if Instagram Reels aspect ratio is vertical (9:16)', async () => {
-    prisma.platformLimit.findMany.mockResolvedValue([
-      {
-        platform: 'INSTAGRAM',
-        subType: 'REEL',
-        isLocked: false,
-        maxCaptionLength: 2000,
-        allowedMediaTypes: 'ALL'
-      }
-    ]);
+    prisma.platformCapabilityOverride.findUnique.mockResolvedValue({
+      platform: 'INSTAGRAM_REEL',
+      isLocked: false,
+      overrides: { maxCaptionLength: 2000 }
+    });
 
     const result = await validationFacade.validatePost({
       targetPlatforms: ['INSTAGRAM'],
@@ -165,15 +144,11 @@ describe('ValidationFacade Unit Tests', () => {
 
   describe('YouTube Custom Thumbnail Validation', () => {
     beforeEach(() => {
-      prisma.platformLimit.findMany.mockResolvedValue([
-        {
-          platform: 'YOUTUBE',
-          subType: 'VIDEO',
-          isLocked: false,
-          maxCaptionLength: 5000,
-          allowedMediaTypes: 'ALL'
-        }
-      ]);
+      prisma.platformCapabilityOverride.findUnique.mockResolvedValue({
+        platform: 'YOUTUBE_VIDEO',
+        isLocked: false,
+        overrides: { maxCaptionLength: 5000 }
+      });
     });
 
     afterEach(() => {
