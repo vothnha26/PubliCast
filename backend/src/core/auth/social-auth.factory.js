@@ -25,11 +25,32 @@ class SocialAuthFactory {
     if (platformKey === PLATFORMS.FACEBOOK) {
       return this._getFacebookAuthClient(brandId, socialAccountId);
     }
+    if (platformKey === PLATFORMS.INSTAGRAM) {
+      return this._getInstagramAuthClient(brandId, socialAccountId);
+    }
     if (platformKey === PLATFORMS.TIKTOK) {
       return this._getTikTokAuthClient(brandId, socialAccountId);
     }
 
     return null;
+  }
+
+  async _getInstagramAuthClient(brandId, socialAccountId = null) {
+    let accounts;
+    if (socialAccountId) {
+      const acc = await socialAccountRepository.findById(socialAccountId);
+      if (!acc || (brandId && String(acc.brandId) !== String(brandId))) {
+        throw new Error(`Social account ${socialAccountId} not found for brand ${brandId}`);
+      }
+      accounts = [acc];
+    } else {
+      accounts = await socialAccountRepository.findByBrandAndPlatform(brandId, PLATFORMS.INSTAGRAM);
+    }
+    if (!accounts || accounts.length === 0) return null;
+
+    const active = accounts.find(acc => !(acc.accessToken && acc.accessToken.startsWith('mock-'))) || accounts[0];
+
+    return { auth: { accessToken: active.accessToken }, socialAccountId: active.id, account: active };
   }
 
   async _getTikTokAuthClient(brandId, socialAccountId = null) {

@@ -9,10 +9,14 @@ const AudienceInsightFacade = require('./audience-insight.facade');
 const YouTubePostInsightAdapter = require('../../services/social/youtube/youtube-post-insight.adapter');
 const FacebookPostInsightAdapter = require('../../services/social/facebook/facebook-post-insight.adapter');
 const TikTokPostInsightAdapter = require('../../services/social/tiktok/tiktok-post-insight.adapter');
+const InstagramPostInsightAdapter = require('../../services/social/instagram/instagram-post-insight.adapter');
+
 const YouTubeChannelAdapter = require('../../services/social/youtube/youtube-channel.adapter');
-const YouTubeAudienceAdapter = require('../../services/social/youtube/youtube-audience.adapter');
 const FacebookChannelAdapter = require('../../services/social/facebook/facebook-channel.adapter');
 const TikTokChannelAdapter = require('../../services/social/tiktok/tiktok-channel.adapter');
+const InstagramChannelAdapter = require('../../services/social/instagram/instagram-channel.adapter');
+
+const YouTubeAudienceAdapter = require('../../services/social/youtube/youtube-audience.adapter');
 
 const { PLATFORMS } = require('../../utils/constants');
 
@@ -25,9 +29,13 @@ const audienceAdapterFactory = new AudienceAdapterFactory();
 postAdapterFactory.register(PLATFORMS.YOUTUBE, new YouTubePostInsightAdapter());
 postAdapterFactory.register(PLATFORMS.FACEBOOK, new FacebookPostInsightAdapter());
 postAdapterFactory.register(PLATFORMS.TIKTOK, new TikTokPostInsightAdapter());
+postAdapterFactory.register(PLATFORMS.INSTAGRAM, new InstagramPostInsightAdapter());
+
 channelAdapterFactory.register(PLATFORMS.YOUTUBE, new YouTubeChannelAdapter());
 channelAdapterFactory.register(PLATFORMS.FACEBOOK, new FacebookChannelAdapter());
 channelAdapterFactory.register(PLATFORMS.TIKTOK, new TikTokChannelAdapter());
+channelAdapterFactory.register(PLATFORMS.INSTAGRAM, new InstagramChannelAdapter());
+
 audienceAdapterFactory.register(PLATFORMS.YOUTUBE, new YouTubeAudienceAdapter());
 
 // 3. Instantiation Facades

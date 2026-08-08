@@ -654,11 +654,7 @@ class SocialAccountRepository {
                 followingCount: parseInt(followingCount) || 0,
                 mediaCount: parseInt(mediaCount) || 0,
                 biography,
-                website,
-                supportsStories: true,
-                supportsReels: true,
-                supportsCarousels: true,
-                supportsCollaboration: true
+                website
               },
               update: {
                 // facebookPageId omitted from update on purpose: syncChannelMetrics
@@ -700,11 +696,7 @@ class SocialAccountRepository {
               followingCount: parseInt(followingCount) || 0,
               mediaCount: parseInt(mediaCount) || 0,
               biography,
-              website,
-              supportsStories: true,
-              supportsReels: true,
-              supportsCarousels: true,
-              supportsCollaboration: true
+              website
             }
           }
         },
@@ -762,7 +754,7 @@ class SocialAccountRepository {
     const dailyRows = balanceRows.map((balance) => {
       const growth = growthByDate.get(balance.date) || {};
       return {
-        date: balance.date,
+        date: balance.date || new Date().toISOString().split('T')[0],
         followersGained: balance.acquired ?? null,
         followersLost: balance.lost ?? null,
         columns: {
