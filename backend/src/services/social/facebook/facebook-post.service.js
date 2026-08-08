@@ -55,6 +55,7 @@ const INSIGHTS_STRATEGIES = {
 };
 const socialAccountRepository = require('../../../repositories/social/social-account.repository');
 const facebookPostMetricRepository = require('../../../repositories/social/facebook-post-metric.repository');
+const postInsightRepository = require('../../../repositories/social/post-insight.repository');
 const { getHistoryWindowMonths } = require('../plan-history-window.util');
 const { PLATFORMS, POST_STATUS, POST_TYPES, DEFAULT_CONFIG, SOCIAL_TECHNICAL, MEDIA_EXTENSIONS } = require('../../../utils/constants');
 const { matchesExtension } = require('../../../utils/media-type.utils');
