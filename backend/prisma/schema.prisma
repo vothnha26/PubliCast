@@ -127,7 +127,6 @@ model Brand {
   approvalWorkflows         ApprovalWorkflow[]
   socialAccounts            SocialAccount[]
   channelGroups             ChannelGroup[]
-  adAccounts                AdAccount[]
   analytics                 Analytics[]
   competitorAnalysis        CompetitorAnalysis[]
   facebookPostMetrics       FacebookPostMetric[]
@@ -679,8 +678,6 @@ model YouTubeChannel {
   defaultLanguage       String?
   isVerified            Boolean @default(false)
   isMonetized           Boolean @default(false)
-  supportsShorts        Boolean @default(true)
-  madeForKids           Boolean @default(false)
   hiddenSubscriberCount Boolean @default(false)
 
   socialAccount SocialAccount @relation(fields: [socialAccountId], references: [id], onDelete: Cascade)
@@ -689,26 +686,22 @@ model YouTubeChannel {
 }
 
 model InstagramAccount {
-  id                    String  @id @default(uuid())
-  socialAccountId       String  @unique
+  id                   String  @id @default(uuid())
+  socialAccountId      String  @unique
   // Facebook Page ID linked to this Instagram Business Account — required to
   // call Graph API insights/media endpoints (Instagram Graph API only exposes
   // these via the linked Page node, never via the IG Business Account ID
   // itself). Without this, periodic sync has no way to re-derive the Page ID
   // after the initial connect, since platformAccountId stores the IG account
   // ID (see social-account.repository.js#upsertInstagramAccount).
-  facebookPageId        String?
-  accountType           String
-  businessCategoryName  String?
-  followersCount        Int     @default(0)
-  followingCount        Int     @default(0)
-  mediaCount            Int     @default(0)
-  biography             String?
-  website               String?
-  supportsStories       Boolean @default(false)
-  supportsReels         Boolean @default(false)
-  supportsCarousels     Boolean @default(false)
-  supportsCollaboration Boolean @default(false)
+  facebookPageId       String?
+  accountType          String
+  businessCategoryName String?
+  followersCount       Int     @default(0)
+  followingCount       Int     @default(0)
+  mediaCount           Int     @default(0)
+  biography            String?
+  website              String?
 
   socialAccount SocialAccount @relation(fields: [socialAccountId], references: [id], onDelete: Cascade)
 
@@ -732,14 +725,13 @@ model FacebookPage {
 }
 
 model TikTokAccount {
-  id                String  @id @default(uuid())
-  socialAccountId   String  @unique
-  followersCount    Int     @default(0)
-  followingCount    Int     @default(0)
-  likesCount        Int     @default(0)
-  videoCount        Int     @default(0)
-  isVerified        Boolean @default(false)
-  supportsCarousels Boolean @default(false)
+  id              String  @id @default(uuid())
+  socialAccountId String  @unique
+  followersCount  Int     @default(0)
+  followingCount  Int     @default(0)
+  likesCount      Int     @default(0)
+  videoCount      Int     @default(0)
+  isVerified      Boolean @default(false)
 
   socialAccount SocialAccount @relation(fields: [socialAccountId], references: [id], onDelete: Cascade)
 
@@ -789,27 +781,6 @@ model TwitchAccount {
   socialAccount SocialAccount @relation(fields: [socialAccountId], references: [id], onDelete: Cascade)
 
   @@map("twitch_accounts")
-}
-
-model AdAccount {
-  id                String         @id @default(uuid())
-  brandId           String
-  platform          AdPlatformType
-  platformAccountId String
-  accountName       String
-  currency          String
-  timezone          String
-  accessToken       String
-  isActive          Boolean        @default(true)
-  lastSyncAt        DateTime?
-  createdAt         DateTime       @default(now())
-
-  brand     Brand       @relation(fields: [brandId], references: [id], onDelete: Cascade)
-  analytics Analytics[]
-
-  @@unique([brandId, platform, platformAccountId])
-  @@index([brandId])
-  @@map("ad_accounts")
 }
 
 // ============================================
@@ -1069,7 +1040,6 @@ model Analytics {
   id              String   @id @default(uuid())
   brandId         String
   socialAccountId String?
-  adAccountId     String?
   dateFrom        DateTime
   dateTo          DateTime
   granularity     String
@@ -1078,7 +1048,6 @@ model Analytics {
 
   brand           Brand            @relation(fields: [brandId], references: [id], onDelete: Cascade)
   socialAccount   SocialAccount?   @relation(fields: [socialAccountId], references: [id], onDelete: Cascade)
-  adAccount       AdAccount?       @relation(fields: [adAccountId], references: [id], onDelete: Cascade)
   socialAnalytics SocialAnalytics?
 
   @@index([brandId])

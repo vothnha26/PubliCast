@@ -60,7 +60,6 @@ const approvalWorkflowRoutes = require('./routes/workspace/approval-workflow.rou
 const aiRoutes = require('./routes/workspace/ai.routes');
 const reportRoutes = require('./routes/workspace/report.routes');
 const hashtagRoutes = require('./routes/workspace/hashtag.routes');
-const adAccountRoutes = require('./routes/workspace/ad-account.routes');
 const calendarEventRoutes = require('./routes/workspace/calendar-event.routes');
 const helpCenterRoutes = require('./routes/workspace/help-center.routes');
 
@@ -244,7 +243,6 @@ app.use('/api/smart-links', smartLinkRoutes);
 app.use('/api/ai', aiRoutes);
 app.use('/api/reports', reportRoutes);
 app.use('/api/hashtags', hashtagRoutes);
-app.use('/api/ad-accounts', adAccountRoutes);
 
 
 // ── Billing Routes ─────────────────────────────────────────────────────────
