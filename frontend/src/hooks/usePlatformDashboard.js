@@ -548,6 +548,7 @@ export function usePlatformDashboard(platform) {
     realData,
     totalPeriodViews,
     totalPeriodGained,
+    totalPeriodVideos,
     communityGrowthData,
     handleTrackVideo,
     handleSearchCompetitors,

@@ -123,6 +123,7 @@ export function PlatformDashboardPage() {
     realData,
     totalPeriodViews,
     totalPeriodGained,
+    totalPeriodVideos,
     communityGrowthData,
     handleTrackVideo,
     handleSearchCompetitors,
