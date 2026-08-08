@@ -12,14 +12,7 @@ class ThreadsGateway {
   }
 
   getAuthUrl(brandId, redirectUri) {
-    // threads_manage_replies is required for reply_to_id on createMediaContainer
-    // — used to chain multi-post threads (thread 2+ publishes as a reply to
-    // thread 1). Without it, the first post in a chain succeeds but every
-    // subsequent one is rejected with "Application does not have permission
-    // for this action". Existing connected accounts authorized under the old
-    // scope must disconnect and reconnect to pick up the new permission —
-    // Meta does not retroactively grant scopes to already-issued tokens.
-    const scope = 'threads_basic,threads_content_publish,threads_delete,threads_manage_replies';
+    const scope = 'threads_basic,threads_content_publish,threads_delete,threads_manage_replies,threads_read_replies,threads_manage_insights';
     return `https://threads.net/oauth/authorize?client_id=${this.appId}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=${scope}&response_type=code&state=${brandId}`;
   }
 
@@ -73,17 +66,32 @@ class ThreadsGateway {
     return res.json();
   }
 
+  async getMediaDetails(mediaId, accessToken) {
+    const url = `${this.graphBaseUrl}/${mediaId}?fields=id,media_product_type,media_type,media_url,thumbnail_url,permalink,text,timestamp,username,like_count,reply_count,repost_count,quote_count,children{id,media_type,media_url,thumbnail_url}&access_token=${accessToken}`;
+    const res = await fetch(url);
+    if (!res.ok) {
+      const errData = await res.json().catch(() => ({}));
+      throw new Error(errData.error?.message || `Failed to fetch Threads media details for ${mediaId}`);
+    }
+    return res.json();
+  }
+
+  async getMediaInsights(mediaId, accessToken, metrics = ['views', 'likes', 'replies', 'reposts', 'quotes']) {
+    const metricStr = Array.isArray(metrics) ? metrics.join(',') : metrics;
+    const url = `${this.graphBaseUrl}/${mediaId}/insights?metric=${metricStr}&access_token=${accessToken}`;
+    const res = await fetch(url);
+    if (!res.ok) {
+      const errData = await res.json().catch(() => ({}));
+      throw new Error(errData.error?.message || `Failed to fetch Threads media insights for ${mediaId}`);
+    }
+    return res.json();
+  }
+
   async getInsights(userId, accessToken) {
     // Threads Insights API
     const url = `${this.graphBaseUrl}/${userId}/threads_insights?metric=views,likes,replies,reposts,followers_count&access_token=${accessToken}`;
     const res = await fetch(url);
     if (!res.ok) {
-      // Unlike every other method here, this previously swallowed ANY
-      // failure (expired token, missing threads_insights permission, rate
-      // limit) as a silent null — the caller (threads/index.js) had no way
-      // to distinguish "no insights data yet" from "the API call actually
-      // failed," so real, recoverable errors fell straight into a fabricated
-      // likes*12 views estimate with no visible signal anything was wrong (#97).
       const errData = await res.json().catch(() => ({}));
       throw new Error(errData.error?.message || 'Failed to fetch Threads insights');
     }
@@ -91,7 +99,7 @@ class ThreadsGateway {
   }
 
   async getThreadsMediaFeed(userId, accessToken, pageToken = null, limit = 10) {
-    let url = `${this.graphBaseUrl}/${userId}/threads?fields=id,media_product_type,media_type,media_url,permalink,text,timestamp,username,like_count,is_shared_to_feed&access_token=${accessToken}&limit=${limit}`;
+    let url = `${this.graphBaseUrl}/${userId}/threads?fields=id,media_product_type,media_type,media_url,thumbnail_url,permalink,text,timestamp,username,like_count,reply_count,repost_count,quote_count,children{id,media_type,media_url,thumbnail_url}&access_token=${accessToken}&limit=${limit}`;
     if (pageToken) {
       url += `&after=${pageToken}`;
     }
@@ -186,10 +194,6 @@ class ThreadsGateway {
     const publishUrl = `${this.graphBaseUrl}/${userId}/threads_publish?creation_id=${container.id}&access_token=${accessToken}`;
     const publishRes = await fetch(publishUrl, { method: 'POST' });
     if (!publishRes.ok) {
-      // Bug: this read res.json() — the FIRST fetch's response, already
-      // consumed above — instead of publishRes.json(), so a publish-step
-      // failure reported a stale/wrong error (or threw "body already read")
-      // instead of the real Threads API error for this step (#97).
       const errData = await publishRes.json().catch(() => ({}));
       throw new Error(errData.error?.message || 'Failed to publish Threads reply container');
     }

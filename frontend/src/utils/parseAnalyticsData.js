@@ -60,7 +60,7 @@ export function parseAnalyticsData(metrics, platform, dateRange = {}) {
       };
     }
 
-    if (platform === PLATFORMS.FACEBOOK || platform === PLATFORMS.TIKTOK || platform === PLATFORMS.INSTAGRAM) {
+    if (platform === PLATFORMS.FACEBOOK || platform === PLATFORMS.TIKTOK || platform === PLATFORMS.INSTAGRAM || platform === PLATFORMS.THREADS) {
       const fromStr = dateRange.from ? format(dateRange.from, "yyyy-MM-dd") : null;
       const toStr = dateRange.to ? format(dateRange.to, "yyyy-MM-dd") : null;
       const filterByRange = (arr) => {

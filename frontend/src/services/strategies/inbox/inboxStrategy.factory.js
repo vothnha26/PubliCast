@@ -2,6 +2,7 @@ import { BaseInboxDisplayStrategy } from './baseInboxDisplay.strategy';
 import { YouTubeInboxDisplayStrategy } from './youtubeInboxDisplay.strategy';
 import { FacebookInboxDisplayStrategy } from './facebookInboxDisplay.strategy';
 import { InstagramInboxDisplayStrategy } from './instagramInboxDisplay.strategy';
+import { ThreadsInboxDisplayStrategy } from './threadsInboxDisplay.strategy';
 
 class InboxStrategyFactory {
   constructor() {
@@ -12,6 +13,7 @@ class InboxStrategyFactory {
     this.register('YOUTUBE', new YouTubeInboxDisplayStrategy());
     this.register('FACEBOOK', new FacebookInboxDisplayStrategy());
     this.register('INSTAGRAM', new InstagramInboxDisplayStrategy());
+    this.register('THREADS', new ThreadsInboxDisplayStrategy());
   }
 
   register(platform, strategyInstance) {

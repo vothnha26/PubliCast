@@ -10,11 +10,13 @@ const YouTubePostInsightAdapter = require('../../services/social/youtube/youtube
 const FacebookPostInsightAdapter = require('../../services/social/facebook/facebook-post-insight.adapter');
 const TikTokPostInsightAdapter = require('../../services/social/tiktok/tiktok-post-insight.adapter');
 const InstagramPostInsightAdapter = require('../../services/social/instagram/instagram-post-insight.adapter');
+const ThreadsPostInsightAdapter = require('../../services/social/threads/threads-post-insight.adapter');
 
 const YouTubeChannelAdapter = require('../../services/social/youtube/youtube-channel.adapter');
 const FacebookChannelAdapter = require('../../services/social/facebook/facebook-channel.adapter');
 const TikTokChannelAdapter = require('../../services/social/tiktok/tiktok-channel.adapter');
 const InstagramChannelAdapter = require('../../services/social/instagram/instagram-channel.adapter');
+const ThreadsChannelAdapter = require('../../services/social/threads/threads-channel.adapter');
 
 const YouTubeAudienceAdapter = require('../../services/social/youtube/youtube-audience.adapter');
 
@@ -30,11 +32,13 @@ postAdapterFactory.register(PLATFORMS.YOUTUBE, new YouTubePostInsightAdapter());
 postAdapterFactory.register(PLATFORMS.FACEBOOK, new FacebookPostInsightAdapter());
 postAdapterFactory.register(PLATFORMS.TIKTOK, new TikTokPostInsightAdapter());
 postAdapterFactory.register(PLATFORMS.INSTAGRAM, new InstagramPostInsightAdapter());
+postAdapterFactory.register(PLATFORMS.THREADS, new ThreadsPostInsightAdapter());
 
 channelAdapterFactory.register(PLATFORMS.YOUTUBE, new YouTubeChannelAdapter());
 channelAdapterFactory.register(PLATFORMS.FACEBOOK, new FacebookChannelAdapter());
 channelAdapterFactory.register(PLATFORMS.TIKTOK, new TikTokChannelAdapter());
 channelAdapterFactory.register(PLATFORMS.INSTAGRAM, new InstagramChannelAdapter());
+channelAdapterFactory.register(PLATFORMS.THREADS, new ThreadsChannelAdapter());
 
 audienceAdapterFactory.register(PLATFORMS.YOUTUBE, new YouTubeAudienceAdapter());
 

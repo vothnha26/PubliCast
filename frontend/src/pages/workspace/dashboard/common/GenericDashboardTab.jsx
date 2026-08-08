@@ -70,12 +70,8 @@ export function GenericDashboardTab({
                 tickLine={false}
                 tick={{ fontSize: 10, fill: "var(--muted-foreground, #9CA3AF)", fontWeight: 600 }}
                 dy={10}
-                interval={
-                  data.length <= 7 ? 0 :
-                  data.length <= 14 ? 1 :
-                  data.length <= 31 ? 2 :
-                  Math.floor(data.length / 10)
-                }
+                interval="preserveStartEnd"
+                minTickGap={20}
               />
               <YAxis
                 yAxisId="left"

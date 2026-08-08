@@ -440,7 +440,107 @@ export class TikTokSummaryStrategy extends BaseSummaryStrategy {
 }
 
 /**
- * Default / Fallback Summary Strategy (Threads, Bluesky, Generic)
+ * Threads Summary Strategy
+ */
+export class ThreadsSummaryStrategy extends BaseSummaryStrategy {
+  buildSummaryMetrics({ communityGrowthData = [], stats = {}, metrics = {}, realData = {}, publishedVideos = [] }) {
+    const growthList = Array.isArray(communityGrowthData) ? communityGrowthData : [];
+    const videoList = Array.isArray(publishedVideos) && publishedVideos.length > 0
+      ? publishedVideos
+      : (realData?.publishedVideos || realData?.posts || metrics?.publishedPosts || []);
+
+    const len = growthList.length;
+    const half = Math.floor(len / 2);
+
+    const summary = realData?.summary || {};
+    const totalViews = growthList.reduce((acc, curr) => acc + (curr?.views || curr?.value || 0), 0) || summary.views || 0;
+    const totalFollowersGained = growthList.reduce((acc, curr) => acc + (curr?.followers || curr?.new || curr?.acquired || 0), 0);
+    const totalPosts = growthList.reduce((acc, curr) => acc + (curr?.posts || curr?.totalContent || 0), 0) || summary.totalContent || 0;
+    let totalLikes = growthList.reduce((acc, curr) => acc + (curr?.likes || curr?.reactions || 0), 0) || summary.likes || 0;
+    let totalReplies = growthList.reduce((acc, curr) => acc + (curr?.comments || curr?.replies || 0), 0) || summary.replies || 0;
+    let totalReposts = growthList.reduce((acc, curr) => acc + (curr?.reposts || curr?.shares || 0), 0) || summary.reposts || 0;
+
+    if (totalLikes === 0 && videoList.length > 0) {
+      totalLikes = videoList.reduce((acc, p) => acc + Number(p?.likes || p?.likeCount || 0), 0);
+    }
+    if (totalReplies === 0 && videoList.length > 0) {
+      totalReplies = videoList.reduce((acc, p) => acc + Number(p?.comments || p?.replyCount || p?.replies || 0), 0);
+    }
+    if (totalReposts === 0 && videoList.length > 0) {
+      totalReposts = videoList.reduce((acc, p) => acc + Number(p?.reposts || p?.repostCount || p?.shares || 0), 0);
+    }
+
+    const firstHalfPosts = growthList.slice(0, half).reduce((acc, curr) => acc + (curr?.posts || curr?.totalContent || 0), 0);
+    const secondHalfPosts = growthList.slice(half).reduce((acc, curr) => acc + (curr?.posts || curr?.totalContent || 0), 0);
+    const postsTrend = this.computeTrendPct(firstHalfPosts, secondHalfPosts);
+
+    const followers = metrics?.threadsAccount?.followersCount || metrics?.followersCount || stats?.subscribers || realData?.summary?.followers || 0;
+    const baseDenom = totalPosts > 0 && followers > 0 ? (followers * totalPosts) : (totalViews > 0 ? totalViews : 1);
+    const engRate = ((totalLikes + totalReplies + totalReposts) / baseDenom) * 100;
+
+    return [
+      {
+        id: "followers",
+        label: "Total Followers",
+        value: formatCompactNumber(followers),
+        trendText: totalFollowersGained > 0 ? `+${totalFollowersGained}` : totalFollowersGained < 0 ? `${totalFollowersGained}` : null,
+        isPositive: totalFollowersGained >= 0,
+        tooltip: "Tổng số người theo dõi trên tài khoản Threads.",
+      },
+      {
+        id: "posts",
+        label: "Threads Posts",
+        value: totalPosts || videoList.length || 0,
+        trendText: postsTrend !== 0 ? `${Math.abs(postsTrend).toFixed(1)}%` : null,
+        isPositive: postsTrend >= 0,
+        tooltip: "Tổng số bài viết đăng trên Threads.",
+      },
+      {
+        id: "likes",
+        label: "Likes",
+        value: formatCompactNumber(totalLikes),
+        trendText: null,
+        isPositive: true,
+        tooltip: "Tổng lượt thích trên các bài viết Threads.",
+      },
+      {
+        id: "replies",
+        label: "Replies",
+        value: formatCompactNumber(totalReplies),
+        trendText: null,
+        isPositive: true,
+        tooltip: "Tổng số lượt trả lời (bình luận).",
+      },
+      {
+        id: "reposts",
+        label: "Reposts",
+        value: formatCompactNumber(totalReposts),
+        trendText: null,
+        isPositive: true,
+        tooltip: "Tổng lượt chia sẻ lại (Reposts).",
+      },
+      {
+        id: "engagementRate",
+        label: "Eng. Rate",
+        value: `${engRate.toFixed(2)}%`,
+        trendText: null,
+        isPositive: true,
+        tooltip: "Tỷ lệ tương tác trên nền tảng Threads.",
+      },
+      {
+        id: "views",
+        label: "Views / Impressions",
+        value: formatCompactNumber(totalViews || videoList.reduce((acc, p) => acc + Number(p?.views || p?.viewsCount || 0), 0)),
+        trendText: null,
+        isPositive: true,
+        tooltip: "Tổng số lượt hiển thị/xem bài viết Threads.",
+      },
+    ];
+  }
+}
+
+/**
+ * Default / Fallback Summary Strategy (Bluesky, Generic)
  */
 export class DefaultSummaryStrategy extends BaseSummaryStrategy {
   buildSummaryMetrics({ communityGrowthData = [], stats = {}, metrics = {}, realData = {}, publishedVideos = [] }) {
@@ -514,6 +614,7 @@ export class SummaryStrategyFactory {
     facebook: new FacebookSummaryStrategy(),
     instagram: new InstagramSummaryStrategy(),
     tiktok: new TikTokSummaryStrategy(),
+    threads: new ThreadsSummaryStrategy(),
   };
 
   /**

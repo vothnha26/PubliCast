@@ -27,6 +27,7 @@ import { InstagramReelsTab } from "./dashboard/instagram/InstagramReelsTab";
 import { InstagramStoriesTab } from "./dashboard/instagram/InstagramStoriesTab";
 import { YouTubeCommunityTab } from "./dashboard/youtube/YouTubeCommunityTab";
 import { ThreadsPostsTab } from "./dashboard/threads/ThreadsPostsTab";
+import { ThreadsCommunityTab } from "./dashboard/threads/ThreadsCommunityTab";
 import { BlueskyDashboardTab } from "./dashboard/bluesky/BlueskyDashboardTab";
 import { InsightsSummaryWidget } from "./dashboard/common/InsightsSummaryWidget";
 import { usePlatformDashboard } from "../../hooks/usePlatformDashboard";
@@ -547,76 +548,10 @@ export function PlatformDashboardPage() {
         ) : platform === "threads" ? (
           <>
             {activeTab === "community" && (
-              <div className="space-y-6">
-                {(() => {
-                  const threadsGrowthConfig = [
-                    {
-                      key: "followers",
-                      label: "Followers",
-                      color: "bg-[#8E9BEE] text-white",
-                      chartColor: "#8E9BEE",
-                      type: "area",
-                      value: metrics?.followersCount || 0
-                    },
-                    {
-                      key: "views",
-                      label: "Views",
-                      color: "bg-[#A7F3D0] text-foreground",
-                      chartColor: "#A7F3D0",
-                      type: "line",
-                      value: stats?.views || 0
-                    },
-                    {
-                      key: "likes",
-                      label: "Likes",
-                      color: "bg-[#E6A34A] text-white",
-                      chartColor: "#E6A34A",
-                      type: "bar",
-                      value: stats?.likes || 0
-                    }
-                  ];
-
-                  const threadsBalanceConfig = [
-                    {
-                      key: "gained",
-                      dataKey: "new",
-                      label: "Gained",
-                      color: "bg-[#8E9BEE] text-white",
-                      chartColor: "#8E9BEE",
-                      type: "area",
-                      value: totalPeriodGained || 0
-                    },
-                    {
-                      key: "lost",
-                      label: "Lost",
-                      color: "bg-[#F7A6E0] text-white",
-                      chartColor: "#F7A6E0",
-                      type: "area",
-                      value: 0
-                    }
-                  ];
-
-                  return (
-                    <>
-                      <GenericDashboardTab
-                        title="Threads Growth"
-                        description="Growth metrics for Followers, Views, and Likes"
-                        data={communityGrowthData}
-                        metricConfig={threadsGrowthConfig}
-                        watermark="threads"
-                      />
-                      <div className="h-6" />
-                      <GenericDashboardTab
-                        title="Balance of Followers"
-                        description="Biến động số lượng người theo dõi mới và hủy theo dõi"
-                        data={communityGrowthData}
-                        metricConfig={threadsBalanceConfig}
-                        watermark="threads"
-                      />
-                    </>
-                  );
-                })()}
-              </div>
+              <ThreadsCommunityTab
+                metrics={metrics}
+                communityGrowthData={communityGrowthData}
+              />
             )}
 
             {activeTab === "posts" && (
@@ -630,6 +565,7 @@ export function PlatformDashboardPage() {
                 prevPageToken={prevPageToken}
                 nextPageToken={nextPageToken}
                 onVideoClick={handleVideoClick}
+                dateRange={dateRange}
               />
             )}
 
@@ -735,6 +671,7 @@ export function PlatformDashboardPage() {
                 prevPageToken={prevPageToken}
                 nextPageToken={nextPageToken}
                 onVideoClick={handleVideoClick}
+                dateRange={dateRange}
               />
             )}
 

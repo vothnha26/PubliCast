@@ -442,37 +442,73 @@ class ThreadsService extends BaseSocialService {
 
   _formatThreadsPost(post) {
     const reactions = post.like_count || 0;
-    const comments = 0; // Threads API v1.0 chưa trả về comments_count trực tiếp dễ dàng
-    const shares = 0;
+    const comments = post.reply_count || 0;
+    const shares = (post.repost_count || 0) + (post.quote_count || 0);
     const clicks = 0;
-    // The Threads feed endpoint (getThreadsMediaFeed) doesn't return a
-    // real per-post views/reach count — these were previously
-    // reactions*12 / reactions*8, arbitrary made-up multipliers
-    // presented as measured data (#97). Left null (unavailable) rather
-    // than fabricated; engagement can't be computed without a real reach.
+    const views = post.views !== undefined ? post.views : null;
+    const reach = post.reach !== undefined ? post.reach : views;
+
+    let mediaUrl = post.thumbnail_url || post.media_url || '';
+    if (!mediaUrl && post.children && Array.isArray(post.children.data) && post.children.data.length > 0) {
+      const firstChild = post.children.data[0];
+      mediaUrl = firstChild.thumbnail_url || firstChild.media_url || '';
+    }
+
+    const engagement = (views && views > 0)
+      ? parseFloat((((reactions + comments + shares) / views) * 100).toFixed(1))
+      : (post.engagement !== undefined ? post.engagement : null);
+
     return {
       id: post.id,
       message: post.text || 'Threads Post',
       type: post.media_type || THREADS_MEDIA_TYPE.TEXT,
-      mediaUrl: post.media_url || '',
+      mediaUrl,
       postUrl: post.permalink || null,
       date: post.timestamp,
       status: 'PUBLISHED',
-      reach: null,
-      views: null,
+      reach,
+      views,
       reactions,
       comments,
       shares,
       clicks,
-      engagement: null,
-      commentScore: computeCommentScore({ comments, likes: reactions, shares, reach: null })
+      engagement,
+      commentScore: computeCommentScore({ comments, likes: reactions, shares, reach })
     };
+  }
+
+  async _enrichPostsWithInsights(posts, accessToken) {
+    if (!accessToken || !Array.isArray(posts) || posts.length === 0) return posts;
+
+    await Promise.allSettled(
+      posts.map(async (post) => {
+        try {
+          const insightsRes = await threadsGateway.getMediaInsights(post.id, accessToken, ['views']);
+          if (insightsRes && Array.isArray(insightsRes.data)) {
+            const viewsMetric = insightsRes.data.find(m => m.name === 'views');
+            if (viewsMetric && Array.isArray(viewsMetric.values) && viewsMetric.values.length > 0) {
+              const views = parseInt(viewsMetric.values[0].value || 0, 10);
+              post.views = views;
+              post.reach = views;
+              if (views > 0) {
+                post.engagement = parseFloat((((post.reactions + post.comments + post.shares) / views) * 100).toFixed(1));
+              }
+            }
+          }
+        } catch (err) {
+          // Insights fail gracefully if token/permission missing
+        }
+      })
+    );
+    return posts;
   }
 
   async _fetchThreadsSinglePage(pageId, accessToken, pageToken, limit) {
     const feedResult = await threadsGateway.getThreadsMediaFeed(pageId, accessToken, pageToken, limit);
+    const formatted = (feedResult.data || []).map(post => this._formatThreadsPost(post));
+    const enriched = await this._enrichPostsWithInsights(formatted, accessToken);
     return {
-      data: (feedResult.data || []).map(post => this._formatThreadsPost(post)),
+      data: enriched,
       nextPageToken: feedResult.nextPageToken || null,
       prevPageToken: feedResult.prevPageToken || null
     };
@@ -495,12 +531,11 @@ class ThreadsService extends BaseSocialService {
       const feed = feedResult.data || [];
       if (feed.length === 0) break;
 
-      // Threads returns posts newest-first, so once one post in a page is
-      // older than the cutoff, every post after it (this page and all
-      // subsequent pages) is guaranteed older too.
       const cutoffIndex = feed.findIndex(p => p.timestamp && new Date(p.timestamp) < recentCutoff);
       const pageFeed = cutoffIndex === -1 ? feed : feed.slice(0, cutoffIndex);
-      posts = posts.concat(pageFeed.map(post => this._formatThreadsPost(post)));
+      const formatted = pageFeed.map(post => this._formatThreadsPost(post));
+      const enriched = await this._enrichPostsWithInsights(formatted, accessToken);
+      posts = posts.concat(enriched);
 
       if (cutoffIndex === -1) {
         hasMore = Boolean(feedResult.nextPageToken);
@@ -537,14 +572,14 @@ class ThreadsService extends BaseSocialService {
         postUrl: r.postUrl || null,
         date: r.publishedAt,
         status: 'PUBLISHED',
-        reach: null,
-        views: null,
-        reactions: r.likes,
-        comments: r.comments,
-        shares: r.shares,
-        clicks: r.clicks,
-        engagement: null,
-        commentScore: computeCommentScore({ comments: r.comments, likes: r.likes, shares: r.shares, reach: null })
+        reach: r.reach || r.views || 0,
+        views: r.views || 0,
+        reactions: r.likes || 0,
+        comments: r.comments || 0,
+        shares: r.shares || 0,
+        clicks: r.clicks || 0,
+        engagement: r.engagementRate || (r.views > 0 ? parseFloat((((r.likes + r.comments + r.shares) / r.views) * 100).toFixed(1)) : 0),
+        commentScore: computeCommentScore({ comments: r.comments, likes: r.likes, shares: r.shares, reach: r.reach || r.views })
       })),
       nextPageToken: null,
       prevPageToken: null
@@ -569,6 +604,9 @@ class ThreadsService extends BaseSocialService {
           comments: post.comments || 0,
           shares: post.shares || 0,
           clicks: post.clicks || 0,
+          reach: post.reach || post.views || 0,
+          views: post.views || 0,
+          engagementRate: post.engagement || 0,
           captionSnippet: post.message || null,
           thumbnailUrl: post.mediaUrl || null,
           postUrl: post.postUrl || null
@@ -580,6 +618,9 @@ class ThreadsService extends BaseSocialService {
           comments: post.comments || 0,
           shares: post.shares || 0,
           clicks: post.clicks || 0,
+          reach: post.reach || post.views || 0,
+          views: post.views || 0,
+          engagementRate: post.engagement || 0,
           captionSnippet: post.message || null,
           thumbnailUrl: post.mediaUrl || null,
           postUrl: post.postUrl || null,
