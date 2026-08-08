@@ -124,8 +124,8 @@ class YouTubeAnalyticsEnhancedService {
         throw new Error('No authenticated client available');
       }
 
-      // Increment quota (6 units for 6 sub-queries)
-      const quotaUsage = await this.quotaService?.incrementAndGet('youtube-analytics', 6);
+      // Increment quota (1 unit for 1 basic metrics query)
+      const quotaUsage = await this.quotaService?.incrementAndGet('youtube-analytics', 1);
       logger.debug('[QUOTA_INCREMENTED] Quota usage after fetch', {
         videoId,
         usage: quotaUsage
@@ -226,7 +226,7 @@ class YouTubeAnalyticsEnhancedService {
       if (!auth) return this._getStatusMessage();
 
       // Still increment quota count if quota service works
-      await this.quotaService?.incrementAndGet('youtube-analytics', 6);
+      await this.quotaService?.incrementAndGet('youtube-analytics', 1);
 
       return await this._buildInsights(auth, videoId);
     } catch (err) {
@@ -236,110 +236,48 @@ class YouTubeAnalyticsEnhancedService {
   }
 
   /**
-   * Build insights from Google API (6 parallel queries)
-   * This was previously _buildInsights from youtube-analytics.service.js
+   * Build basic video insights from Google API (1 single query)
    *
    * @private
    */
   async _buildInsights(auth, videoId) {
-    const [summaryR, trafficR, deviceR, demoR, geoR, searchR] = await Promise.allSettled([
-      this._fetchInsightsSummary(auth, videoId),
-      this._fetchInsightsTrafficSource(auth, videoId),
-      this._fetchInsightsDeviceType(auth, videoId),
-      this._fetchInsightsDemographics(auth, videoId),
-      this._fetchInsightsGeography(auth, videoId),
-      this._fetchInsightsSearchTerms(auth, videoId)
-    ]);
-
-    return {
-      summary: summaryR.status === 'fulfilled' ? summaryR.value : null,
-      trafficSource: trafficR.status === 'fulfilled' ? trafficR.value : null,
-      deviceType: deviceR.status === 'fulfilled' ? deviceR.value : null,
-      demographics: demoR.status === 'fulfilled' ? demoR.value : null,
-      geography: geoR.status === 'fulfilled' ? geoR.value : null,
-      searchTerms: searchR.status === 'fulfilled' ? searchR.value : null,
-      timestamp: Date.now()
-    };
-  }
-
-  /**
-   * Fetch individual insight dimensions
-   * These delegate to youtubeGateway
-   *
-   * @private
-   */
-  async _fetchInsightsSummary(auth, videoId) {
     const { ANALYTICS } = require('../../../utils/constants');
-    return youtubeGateway.getAnalyticsReportQuery(auth, {
-      ids: 'channel==MINE',
-      startDate: ANALYTICS.LIFETIME_START_DATE,
-      endDate: new Date().toISOString().split('T')[0],
-      metrics: 'views,estimatedMinutesWatched',
-      filters: `video==${videoId}`
-    });
-  }
+    try {
+      const res = await youtubeGateway.getAnalyticsReportQuery(auth, {
+        ids: 'channel==MINE',
+        startDate: ANALYTICS.LIFETIME_START_DATE,
+        endDate: new Date().toISOString().split('T')[0],
+        metrics: 'views,likes,comments,shares,estimatedMinutesWatched,averageViewDuration',
+        filters: `${ANALYTICS.DIMENSIONS.YOUTUBE.VIDEO}==${videoId}`
+      });
 
-  async _fetchInsightsTrafficSource(auth, videoId) {
-    const { ANALYTICS } = require('../../../utils/constants');
-    return youtubeGateway.getAnalyticsReportQuery(auth, {
-      ids: 'channel==MINE',
-      startDate: ANALYTICS.LIFETIME_START_DATE,
-      endDate: new Date().toISOString().split('T')[0],
-      metrics: 'views,estimatedMinutesWatched',
-      dimensions: 'insightTrafficSourceType',
-      filters: `video==${videoId}`
-    });
-  }
+      const row = res.data?.rows?.[0];
+      if (!row) {
+        return { views: 0, watchTime: 0, totalWatchHrs: 0, avgViewDuration: 0, likes: 0, comments: 0, shares: 0, timestamp: Date.now() };
+      }
 
-  async _fetchInsightsDeviceType(auth, videoId) {
-    const { ANALYTICS } = require('../../../utils/constants');
-    return youtubeGateway.getAnalyticsReportQuery(auth, {
-      ids: 'channel==MINE',
-      startDate: ANALYTICS.LIFETIME_START_DATE,
-      endDate: new Date().toISOString().split('T')[0],
-      metrics: 'views,estimatedMinutesWatched',
-      dimensions: 'deviceType',
-      filters: `video==${videoId}`
-    });
-  }
+      const views = parseInt(row[0] || 0, 10);
+      const likes = parseInt(row[1] || 0, 10);
+      const comments = parseInt(row[2] || 0, 10);
+      const shares = parseInt(row[3] || 0, 10);
+      const watchMinutes = parseFloat(row[4] || 0);
+      const avgViewDuration = Math.round(parseFloat(row[5] || 0));
+      const totalWatchHrs = Math.round((watchMinutes / 60) * 10) / 10;
 
-  async _fetchInsightsDemographics(auth, videoId) {
-    const { ANALYTICS } = require('../../../utils/constants');
-    return youtubeGateway.getAnalyticsReportQuery(auth, {
-      ids: 'channel==MINE',
-      startDate: ANALYTICS.LIFETIME_START_DATE,
-      endDate: new Date().toISOString().split('T')[0],
-      metrics: 'viewerPercentage',
-      dimensions: 'ageGroup,gender',
-      filters: `video==${videoId}`
-    });
-  }
-
-  async _fetchInsightsGeography(auth, videoId) {
-    const { ANALYTICS } = require('../../../utils/constants');
-    return youtubeGateway.getAnalyticsReportQuery(auth, {
-      ids: 'channel==MINE',
-      startDate: ANALYTICS.LIFETIME_START_DATE,
-      endDate: new Date().toISOString().split('T')[0],
-      metrics: 'views',
-      dimensions: 'country',
-      filters: `video==${videoId}`,
-      maxResults: 20
-    });
-  }
-
-  async _fetchInsightsSearchTerms(auth, videoId) {
-    const { ANALYTICS, YT_VIDEO_INSIGHTS } = require('../../../utils/constants');
-    return youtubeGateway.getAnalyticsReportQuery(auth, {
-      ids: 'channel==MINE',
-      startDate: ANALYTICS.LIFETIME_START_DATE,
-      endDate: new Date().toISOString().split('T')[0],
-      metrics: ANALYTICS.METRICS.YOUTUBE.VIEWS,
-      dimensions: ANALYTICS.DIMENSIONS.YOUTUBE.TRAFFIC_SOURCE_DETAIL,
-      filters: `${ANALYTICS.DIMENSIONS.YOUTUBE.VIDEO}==${videoId};${ANALYTICS.DIMENSIONS.YOUTUBE.TRAFFIC_SOURCE}==${YT_VIDEO_INSIGHTS.TRAFFIC_SOURCE_TYPES.YT_SEARCH}`,
-      sort: ANALYTICS.SORT.YOUTUBE.VIEWS_DESC,
-      maxResults: 10
-    });
+      return {
+        views,
+        watchTime: totalWatchHrs,
+        totalWatchHrs,
+        avgViewDuration,
+        likes,
+        comments,
+        shares,
+        timestamp: Date.now()
+      };
+    } catch (err) {
+      logger.warn(`[YouTubeAnalyticsEnhanced] Failed to fetch basic video metrics for ${videoId}:`, err.message);
+      return { views: 0, watchTime: 0, totalWatchHrs: 0, avgViewDuration: 0, likes: 0, comments: 0, shares: 0, timestamp: Date.now() };
+    }
   }
 
   /**

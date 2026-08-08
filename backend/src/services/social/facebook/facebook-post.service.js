@@ -54,33 +54,26 @@ const INSIGHTS_STRATEGIES = {
   }
 };
 const socialAccountRepository = require('../../../repositories/social/social-account.repository');
+const facebookPostMetricRepository = require('../../../repositories/social/facebook-post-metric.repository');
 const { getHistoryWindowMonths } = require('../plan-history-window.util');
 const { PLATFORMS, POST_STATUS, POST_TYPES, DEFAULT_CONFIG, SOCIAL_TECHNICAL, MEDIA_EXTENSIONS } = require('../../../utils/constants');
 const { matchesExtension } = require('../../../utils/media-type.utils');
 const FacebookPublishStrategyFactory = require('./publish-strategies/publish-strategy.factory');
-const redisClient = require('../../../config/redis');
 const prisma = require('../../../config/prisma');
-const DistributedLockService = require('../distributed-lock.service');
+const { eventEmitter, EVENTS } = require('../../../events/event-emitter');
 
-const POST_INSIGHTS_CACHE_TTL_SEC = 5 * 60; // 5 minutes
 // getVideoDetails() read-through cache: Inbox preview was calling the Graph
 // API on every click, including once per top-level comment sharing the same
 // post (N+1) — same bug class already fixed for YouTube via TrackedVideo.
 // title/thumbnail don't need to be fresher than this.
 const VIDEO_DETAILS_CACHE_TTL_MS = 60 * 60 * 1000; // 1 hour
-// getPublishedPosts()'s DB-first cache (see FacebookPostMetric). Facebook's
-// own docs say most post-insights metrics only refresh once every 24h
+// getPublishedPosts()'s and getPostDetails()'s DB-first cache (see
+// FacebookPostMetric). Facebook's own docs say most post-insights metrics
+// only refresh once every 24h
 // (developers.facebook.com/docs/graph-api/reference/insights) — re-fetching
 // live more often than that cannot return newer numbers for most metrics,
 // so a live re-fetch is only worth its BUC quota cost once/day.
 const FACEBOOK_POST_METRICS_TTL_MS = 24 * 60 * 60 * 1000;
-const PAGE_DEMOGRAPHICS_CACHE_TTL_SEC = 60 * 60; // 1 hour
-
-const COLD_START_POLL_INTERVAL_MS = 200;
-const COLD_START_POLL_TIMEOUT_MS = 2000;
-const COLD_START_RETRY_AFTER_SEC = 5;
-
-const lockService = new DistributedLockService(redisClient);
 
 // Memory Cache: Key -> brandId_limit, Value -> { data, expiry }
 const postCache = new Map();
@@ -178,10 +171,7 @@ class FacebookPostService {
     const cutoff = new Date();
     cutoff.setMonth(cutoff.getMonth() - windowMonths);
 
-    const rows = await prisma.facebookPostMetric.findMany({
-      where: { brandId, socialAccountId, publishedAt: { gte: cutoff } },
-      orderBy: { publishedAt: 'desc' }
-    });
+    const rows = await facebookPostMetricRepository.findByAccountSincePublished(brandId, socialAccountId, cutoff);
     if (rows.length === 0) return null;
 
     const newestFetch = rows.reduce((max, r) => (r.fetchedAt > max ? r.fetchedAt : max), rows[0].fetchedAt);
@@ -220,52 +210,63 @@ class FacebookPostService {
     };
   }
 
+  /** Builds getPostDetails()'s response shape from structured FacebookPostMetric
+   * columns (#351: no JSON blob) — the DB-first counterpart to the live-fetch
+   * branch below, which builds the same shape from raw Graph API responses.
+   * Reaction breakdown by type isn't persisted (nothing queries it in SQL,
+   * unlike reach/views/comments) — a DB-first hit only has the total; the
+   * per-type split is only available right after a live fetch. */
+  _formatDetailMetricRow(row, platformPostId) {
+    return {
+      postDetails: {
+        id: platformPostId,
+        message: row.captionSnippet || DEFAULT_CONFIG.NO_CONTENT,
+        type: row.postType,
+        mediaUrl: row.thumbnailUrl || '',
+        permalinkUrl: row.permalinkUrl || `https://www.facebook.com/${platformPostId}`,
+        date: row.publishedAt,
+        platform: 'facebook'
+      },
+      reach: row.reach,
+      views: row.videoViews,
+      clicks: row.linkClicks + row.otherClicks,
+      linkClicks: row.linkClicks,
+      comments: row.comments,
+      shares: row.shares,
+      reactions: {
+        total: row.reactions,
+        breakdown: {}
+      }
+    };
+  }
+
   /** Upserts the freshly-enriched page(s) of posts into FacebookPostMetric
    * so the next getPublishedPosts call for this brand/account can be
    * DB-first instead of hitting the live Graph API again. Best-effort —
    * caller doesn't await this on the response path. */
   async _persistPostMetrics(brandId, socialAccountId, posts) {
     for (const post of posts) {
-      const postType = post.type === 'REEL' ? 'REEL' : (post.type || 'IMAGE');
-      await prisma.facebookPostMetric.upsert({
-        where: { socialAccountId_platformPostId: { socialAccountId, platformPostId: post.id } },
-        create: {
-          brandId,
-          socialAccountId,
-          platformPostId: post.id,
-          postType,
-          publishedAt: post.date ? new Date(post.date) : null,
-          reach: post.reach || 0,
-          impressions: post.views || 0,
-          videoViews: post.videoViews || 0,
-          avgWatchTimeSeconds: null,
-          likes: post.reactions || 0,
-          comments: post.comments || 0,
-          shares: post.shares || 0,
-          reactions: post.reactions || 0,
-          linkClicks: post.linkClicks || 0,
-          otherClicks: Math.max((post.clicks || 0) - (post.linkClicks || 0), 0),
-          engagementRate: post.engagement || 0,
-          captionSnippet: post.message || null,
-          thumbnailUrl: post.mediaUrl || null
-        },
-        update: {
-          postType,
-          publishedAt: post.date ? new Date(post.date) : null,
-          reach: post.reach || 0,
-          impressions: post.views || 0,
-          videoViews: post.videoViews || 0,
-          likes: post.reactions || 0,
-          comments: post.comments || 0,
-          shares: post.shares || 0,
-          reactions: post.reactions || 0,
-          linkClicks: post.linkClicks || 0,
-          otherClicks: Math.max((post.clicks || 0) - (post.linkClicks || 0), 0),
-          engagementRate: post.engagement || 0,
-          captionSnippet: post.message || null,
-          thumbnailUrl: post.mediaUrl || null,
-          fetchedAt: new Date()
-        }
+      const postType = post.type === POST_TYPES.REEL ? POST_TYPES.REEL : (post.type || POST_TYPES.IMAGE);
+      const shared = {
+        postType,
+        publishedAt: post.date ? new Date(post.date) : null,
+        reach: post.reach || 0,
+        impressions: post.views || 0,
+        videoViews: post.videoViews || 0,
+        likes: post.reactions || 0,
+        comments: post.comments || 0,
+        shares: post.shares || 0,
+        reactions: post.reactions || 0,
+        linkClicks: post.linkClicks || 0,
+        otherClicks: Math.max((post.clicks || 0) - (post.linkClicks || 0), 0),
+        engagementRate: post.engagement || 0,
+        captionSnippet: post.message || null,
+        thumbnailUrl: post.mediaUrl || null
+      };
+
+      await facebookPostMetricRepository.upsert(socialAccountId, post.id, {
+        create: { brandId, avgWatchTimeSeconds: null, ...shared },
+        update: { ...shared, fetchedAt: new Date() }
       }).catch(err => {
         console.warn(`[FacebookPostService] Failed to upsert metrics for post ${post.id}:`, err.message);
       });
@@ -473,21 +474,21 @@ class FacebookPostService {
   }
 
   /**
-   * Lấy chi tiết phân tích 1 bài viết Facebook (Overview + Reactions breakdown + Demographics).
-   * Kiểm tra Redis Cache trước (fb:post-insights:${brandId}:${platformPostId}, TTL 5 phút).
+   * Lấy chi tiết phân tích 1 bài viết Facebook (Overview + Reactions breakdown).
+   * DB-first (see FacebookPostMetric), same pattern as YouTube's
+   * getPostInsights (youtube-analytics.service.js) — the DB row is the
+   * permanent record of the last real fetch, no separate short-TTL cache
+   * layer on top of it. Facebook's insights metrics only refresh server-side
+   * about once every 24h, matching FACEBOOK_POST_METRICS_TTL_MS.
    */
   async getPostDetails(brandId, platformPostId, socialAccountId = null) {
-    const cacheKey = `fb:post-insights:${brandId}:${platformPostId}`;
-    const cached = await redisClient.get(cacheKey).catch(() => null);
-    if (cached) {
-      try {
-        return JSON.parse(cached);
-      } catch (e) {
-        // fall through to refetch on corrupt cache entry
-      }
-    }
+    const { pageAccessToken, socialAccountId: resolvedAccountId } = await this._getAccountCredentials(brandId, socialAccountId);
 
-    const { pageId, pageAccessToken } = await this._getAccountCredentials(brandId, socialAccountId);
+    const lookupKey = { socialAccountId: resolvedAccountId, platformPostId };
+    const freshRow = await postInsightRepository.getFresh(prisma.facebookPostMetric, lookupKey, FACEBOOK_POST_METRICS_TTL_MS, true).catch(() => null);
+    if (freshRow) {
+      return this._formatDetailMetricRow(freshRow, platformPostId);
+    }
 
     let result;
     if (pageAccessToken && pageAccessToken.startsWith('mock-')) {
@@ -530,7 +531,6 @@ class FacebookPostService {
         };
 
         const counts = postResult ? this._extractPostCounts(postResult) : { comments: 0, reactions: 0, shares: 0 };
-        const demographics = await this._getPageDemographicsCached(brandId, pageId, pageAccessToken).catch(() => ({ ageGender: null, geography: null }));
 
         result = {
           postDetails,
@@ -543,9 +543,7 @@ class FacebookPostService {
           reactions: {
             total: counts.reactions || reactionsResult.total || 0,
             breakdown: reactionsResult.breakdown || reactionsResult
-          },
-          demographics: demographics?.ageGender || null,
-          geography: demographics?.geography || null
+          }
         };
       } catch (err) {
         console.warn(`[FacebookPostService] getPostDetails failed for post ${platformPostId} (brand ${brandId}): ${err.message}`);
@@ -553,7 +551,34 @@ class FacebookPostService {
       }
     }
 
-    await redisClient.setEx(cacheKey, POST_INSIGHTS_CACHE_TTL_SEC, JSON.stringify(result)).catch(() => {});
+    if (resolvedAccountId) {
+      const postType = result.postDetails.type === POST_TYPES.REEL ? POST_TYPES.REEL : POST_TYPES.IMAGE;
+
+      postInsightRepository.persist(prisma.facebookPostMetric, lookupKey, {
+        brandId,
+        postType,
+        publishedAt: result.postDetails.date ? new Date(result.postDetails.date) : null,
+        reach: result.reach,
+        videoViews: result.views,
+        likes: result.reactions.total,
+        comments: result.comments,
+        shares: result.shares,
+        reactions: result.reactions.total,
+        linkClicks: result.linkClicks,
+        otherClicks: Math.max(result.clicks - result.linkClicks, 0),
+        captionSnippet: result.postDetails.message || null,
+        thumbnailUrl: result.postDetails.mediaUrl || null,
+        permalinkUrl: result.postDetails.permalinkUrl || null
+      }, true).catch((err) => {
+        console.warn(`[FacebookPostService] Failed to persist post detail metrics for ${platformPostId}:`, err.message);
+      });
+
+      // Best-effort — a delayed socket update on failure is fine, nothing
+      // needs a retry (same reasoning as sync-cache.proxy.js's syncAndEmit
+      // and youtube-analytics.service.js's getPostInsights).
+      eventEmitter.emit(EVENTS.SOCIAL.METRICS_SYNCED, { brandId, socialAccountId: resolvedAccountId, platform: PLATFORMS.FACEBOOK });
+    }
+
     return result;
   }
 
@@ -565,9 +590,7 @@ class FacebookPostService {
    * "view on Facebook" link, not analytics.
    */
   async getVideoDetails(brandId, platformPostId, socialAccountId = null) {
-    const cached = await prisma.facebookPostMetric.findFirst({
-      where: { brandId, platformPostId }
-    });
+    const cached = await facebookPostMetricRepository.findByBrandAndPost(brandId, platformPostId);
     if (cached && Date.now() - cached.fetchedAt.getTime() < VIDEO_DETAILS_CACHE_TTL_MS) {
       return {
         id: platformPostId,
@@ -599,22 +622,6 @@ class FacebookPostService {
     };
   }
 
-  async _getPageDemographicsCached(brandId, pageId, pageAccessToken) {
-    const cacheKey = `fb:page-demographics:${brandId}`;
-    const cached = await redisClient.get(cacheKey).catch(() => null);
-    if (cached) {
-      try {
-        return JSON.parse(cached);
-      } catch (e) {
-        // fall through to refetch on corrupt cache entry
-      }
-    }
-
-    const demographics = await facebookGateway.getPageDemographics(pageId, pageAccessToken);
-    await redisClient.setEx(cacheKey, PAGE_DEMOGRAPHICS_CACHE_TTL_SEC, JSON.stringify(demographics)).catch(() => {});
-    return demographics;
-  }
-
   _buildMockPostDetails(platformPostId) {
     return {
       postDetails: {
@@ -635,9 +642,7 @@ class FacebookPostService {
       reactions: {
         total: 56,
         breakdown: { LIKE: 40, LOVE: 10, HAHA: 3, WOW: 2, SAD: 1, ANGRY: 0 }
-      },
-      demographics: { available: false, reason: 'deprecated_by_platform', data: null },
-      geography: { available: true, reason: null, data: { 'Vietnam': 820, 'United States': 210 } }
+      }
     };
   }
 

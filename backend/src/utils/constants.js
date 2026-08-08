@@ -314,6 +314,8 @@ const ANALYTICS = {
       UNIQUE_VIEWERS: 'uniqueViewers',
       SUBSCRIBERS_GAINED: 'subscribersGained',
       SUBSCRIBERS_LOST: 'subscribersLost',
+      LIKES: 'likes',
+      COMMENTS: 'comments',
       VIEWER_PERCENTAGE: 'viewerPercentage'
     }
   },

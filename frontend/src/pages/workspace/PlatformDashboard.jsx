@@ -26,6 +26,7 @@ import { InstagramReelsTab } from "./dashboard/InstagramReelsTab";
 import { InstagramStoriesTab } from "./dashboard/InstagramStoriesTab";
 import { ThreadsPostsTab } from "./dashboard/ThreadsPostsTab";
 import { BlueskyDashboardTab } from "./dashboard/BlueskyDashboardTab";
+import { InsightsSummaryWidget } from "./dashboard/InsightsSummaryWidget";
 import { usePlatformDashboard } from "../../hooks/usePlatformDashboard";
 import { DateRangeFilter } from "../../components/app/DateRangeFilter";
 import { useConnections } from "../../context/ConnectionsContext";
@@ -853,7 +854,7 @@ export function PlatformDashboardPage() {
                         color: "bg-[#8E9BEE] text-white",
                         chartColor: "#8E9BEE",
                         type: "area",
-                        value: stats?.subscribers || totalPeriodGained || 0
+                        value: totalPeriodGained ?? stats?.subscribers ?? 0
                       },
                       {
                         key: "views",
@@ -861,7 +862,7 @@ export function PlatformDashboardPage() {
                         color: "bg-[#86EFAC] text-foreground",
                         chartColor: "#86EFAC",
                         type: "line",
-                        value: totalPeriodViews || 0
+                        value: totalPeriodViews ?? 0
                       },
                       {
                         key: "revenue",
@@ -878,7 +879,7 @@ export function PlatformDashboardPage() {
                         chartColor: "#E6A34A",
                         type: "bar",
                         yAxisId: "right",
-                        value: stats?.videos || 0
+                        value: totalPeriodVideos ?? stats?.videos ?? 0
                       }
                     ];
 
@@ -913,6 +914,16 @@ export function PlatformDashboardPage() {
 
                     return (
                       <>
+                        <InsightsSummaryWidget
+                          dateRange={dateRange}
+                          metrics={metrics}
+                          stats={stats}
+                          realData={realData}
+                          communityGrowthData={communityGrowthData}
+                          publishedVideos={publishedVideos}
+                          platform={platform}
+                        />
+                        <div className="h-6" />
                         <GenericDashboardTab
                           title="Growth"
                           description="Biểu đồ tăng trưởng người theo dõi, lượt xem và doanh thu"

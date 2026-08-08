@@ -282,9 +282,12 @@ export function PublishedPostDetailModal({ post, onClose }) {
           </div>
         </div>
 
-        {/* Deep-Dive Insights Section (expand-in-place, lazy-fetched) */}
+        {/* Deep-Dive Insights Section (basic video metrics) */}
         {showInsights && (
-          <div className="px-5 py-4 border-b border-border bg-muted/10 overflow-y-auto max-h-[40vh] scrollbar-thin space-y-4">
+          <div className="px-5 py-4 border-b border-border bg-muted/10 overflow-y-auto max-h-[40vh] scrollbar-thin space-y-3">
+            <div className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground mb-2 flex items-center justify-between">
+              <span>{t("postDetail.youtubeMetricsTitle", "Phân tích số liệu Video YouTube")}</span>
+            </div>
             {insightsLoading ? (
               <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground py-6">
                 <Loader2 size={14} className="animate-spin" />
@@ -292,128 +295,68 @@ export function PublishedPostDetailModal({ post, onClose }) {
               </div>
             ) : insightsError ? (
               <div className="text-xs text-rose-600 text-center py-6">{insightsError}</div>
-            ) : !insights || (!insights.trafficSource?.length && !insights.deviceType?.length && !insights.demographics && !insights.geography?.length && !insights.searchTerms?.length) ? (
+            ) : !insights ? (
               <div className="text-xs text-muted-foreground text-center py-6">
                 {t("postDetail.noInsights", "Chưa có dữ liệu phân tích chi tiết cho video này.")}
               </div>
             ) : (
-              <>
-                {insights.summary && (
-                  <div className="grid grid-cols-3 gap-2">
-                    <div className="rounded-lg bg-muted/40 border border-border px-3 py-2 text-center">
-                      <div className="text-sm font-bold text-foreground">{insights.summary.totalWatchHrs ?? 0}h</div>
-                      <div className="text-[10px] text-muted-foreground uppercase tracking-wider">{t("postDetail.watchTime", "Giờ xem")}</div>
-                    </div>
-                    <div className="rounded-lg bg-muted/40 border border-border px-3 py-2 text-center">
-                      <div className="text-sm font-bold text-foreground">{insights.summary.avgViewPercentage ?? 0}%</div>
-                      <div className="text-[10px] text-muted-foreground uppercase tracking-wider">{t("postDetail.avgViewPct", "% xem TB")}</div>
-                    </div>
-                    <div className="rounded-lg bg-muted/40 border border-border px-3 py-2 text-center">
-                      <div className="text-sm font-bold text-foreground">{insights.summary.subscribersNet >= 0 ? "+" : ""}{insights.summary.subscribersNet ?? 0}</div>
-                      <div className="text-[10px] text-muted-foreground uppercase tracking-wider">{t("postDetail.subscribersNet", "Đăng ký mới")}</div>
-                    </div>
+              <div className="grid grid-cols-3 gap-2.5">
+                {/* 1. Views */}
+                <div className="rounded-xl bg-card border border-border p-3 flex flex-col items-center justify-center text-center shadow-xs">
+                  <div className="flex items-center gap-1 text-muted-foreground mb-1">
+                    <Eye size={13} />
+                    <span className="text-[10px] font-medium uppercase tracking-wider">{t("postDetail.views", "Lượt xem")}</span>
                   </div>
-                )}
+                  <div className="text-base font-extrabold text-foreground">{(insights.views || 0).toLocaleString()}</div>
+                </div>
 
-                {insights.trafficSource?.length > 0 && (
-                  <div>
-                    <div className="flex items-center gap-1.5 mb-2">
-                      <Globe2 size={12} className="text-muted-foreground" />
-                      <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">{t("postDetail.trafficSource", "Nguồn lưu lượng")}</span>
-                    </div>
-                    <div className="space-y-1.5">
-                      {insights.trafficSource.slice(0, 5).map((row, i) => (
-                        <div key={i} className="flex items-center justify-between text-xs">
-                          <span className="text-foreground">{row.label}</span>
-                          <span className="font-bold text-foreground">{row.pct}%</span>
-                        </div>
-                      ))}
-                    </div>
+                {/* 2. Watch Time */}
+                <div className="rounded-xl bg-card border border-border p-3 flex flex-col items-center justify-center text-center shadow-xs">
+                  <div className="flex items-center gap-1 text-muted-foreground mb-1">
+                    <BarChart2 size={13} />
+                    <span className="text-[10px] font-medium uppercase tracking-wider">{t("postDetail.watchTime", "Giờ xem")}</span>
                   </div>
-                )}
+                  <div className="text-base font-extrabold text-foreground">{insights.totalWatchHrs ?? insights.watchTime ?? 0}h</div>
+                </div>
 
-                {insights.deviceType?.length > 0 && (
-                  <div>
-                    <div className="flex items-center gap-1.5 mb-2">
-                      <Smartphone size={12} className="text-muted-foreground" />
-                      <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">{t("postDetail.deviceType", "Loại thiết bị")}</span>
-                    </div>
-                    <div className="space-y-1.5">
-                      {insights.deviceType.slice(0, 5).map((row, i) => (
-                        <div key={i} className="flex items-center justify-between text-xs">
-                          <span className="text-foreground">{row.label}</span>
-                          <span className="font-bold text-foreground">{row.pct}%</span>
-                        </div>
-                      ))}
-                    </div>
+                {/* 3. Avg View Duration */}
+                <div className="rounded-xl bg-card border border-border p-3 flex flex-col items-center justify-center text-center shadow-xs">
+                  <div className="flex items-center gap-1 text-muted-foreground mb-1">
+                    <Activity size={13} />
+                    <span className="text-[10px] font-medium uppercase tracking-wider">{t("postDetail.avgViewDuration", "Xem TB")}</span>
                   </div>
-                )}
+                  <div className="text-base font-extrabold text-foreground">
+                    {insights.avgViewDuration ? `${Math.floor(insights.avgViewDuration / 60)}:${String(insights.avgViewDuration % 60).padStart(2, '0')}` : "00:00"}
+                  </div>
+                </div>
 
-                {insights.demographics && (insights.demographics.gender?.length > 0 || insights.demographics.age?.length > 0) && (
-                  <div>
-                    <div className="flex items-center gap-1.5 mb-2">
-                      <Activity size={12} className="text-muted-foreground" />
-                      <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">{t("postDetail.demographics", "Nhân khẩu học")}</span>
-                    </div>
-                    <div className="grid grid-cols-2 gap-3">
-                      {insights.demographics.gender?.length > 0 && (
-                        <div className="space-y-1">
-                          {insights.demographics.gender.map((row, i) => (
-                            <div key={i} className="flex items-center justify-between text-xs">
-                              <span className="text-foreground">{row.label}</span>
-                              <span className="font-bold text-foreground">{row.pct}%</span>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                      {insights.demographics.age?.length > 0 && (
-                        <div className="space-y-1">
-                          {insights.demographics.age.map((row, i) => (
-                            <div key={i} className="flex items-center justify-between text-xs">
-                              <span className="text-foreground">{row.label}</span>
-                              <span className="font-bold text-foreground">{row.pct}%</span>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
+                {/* 4. Likes */}
+                <div className="rounded-xl bg-card border border-border p-3 flex flex-col items-center justify-center text-center shadow-xs">
+                  <div className="flex items-center gap-1 text-muted-foreground mb-1">
+                    <ThumbsUp size={13} />
+                    <span className="text-[10px] font-medium uppercase tracking-wider">{t("postDetail.reactions", "Thích")}</span>
                   </div>
-                )}
+                  <div className="text-base font-extrabold text-foreground">{(insights.likes || 0).toLocaleString()}</div>
+                </div>
 
-                {insights.geography?.length > 0 && (
-                  <div>
-                    <div className="flex items-center gap-1.5 mb-2">
-                      <Globe2 size={12} className="text-muted-foreground" />
-                      <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">{t("postDetail.geography", "Khu vực")}</span>
-                    </div>
-                    <div className="space-y-1.5">
-                      {insights.geography.slice(0, 5).map((row, i) => (
-                        <div key={i} className="flex items-center justify-between text-xs">
-                          <span className="text-foreground">{row.flag} {row.countryName}</span>
-                          <span className="font-bold text-foreground">{row.pct}%</span>
-                        </div>
-                      ))}
-                    </div>
+                {/* 5. Comments */}
+                <div className="rounded-xl bg-card border border-border p-3 flex flex-col items-center justify-center text-center shadow-xs">
+                  <div className="flex items-center gap-1 text-muted-foreground mb-1">
+                    <MessageSquare size={13} />
+                    <span className="text-[10px] font-medium uppercase tracking-wider">{t("postDetail.comments", "Bình luận")}</span>
                   </div>
-                )}
+                  <div className="text-base font-extrabold text-foreground">{(insights.comments || 0).toLocaleString()}</div>
+                </div>
 
-                {insights.searchTerms?.length > 0 && (
-                  <div>
-                    <div className="flex items-center gap-1.5 mb-2">
-                      <Search size={12} className="text-muted-foreground" />
-                      <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">{t("postDetail.searchTerms", "Từ khóa tìm kiếm")}</span>
-                    </div>
-                    <div className="space-y-1.5">
-                      {insights.searchTerms.slice(0, 5).map((row, i) => (
-                        <div key={i} className="flex items-center justify-between text-xs">
-                          <span className="text-foreground truncate max-w-[70%]">{row.term}</span>
-                          <span className="font-bold text-foreground">{row.pct}%</span>
-                        </div>
-                      ))}
-                    </div>
+                {/* 6. Shares */}
+                <div className="rounded-xl bg-card border border-border p-3 flex flex-col items-center justify-center text-center shadow-xs">
+                  <div className="flex items-center gap-1 text-muted-foreground mb-1">
+                    <Share2 size={13} />
+                    <span className="text-[10px] font-medium uppercase tracking-wider">{t("postDetail.shares", "Chia sẻ")}</span>
                   </div>
-                )}
-              </>
+                  <div className="text-base font-extrabold text-foreground">{(insights.shares || 0).toLocaleString()}</div>
+                </div>
+              </div>
             )}
           </div>
         )}

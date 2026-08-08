@@ -132,7 +132,14 @@ export function parseAnalyticsData(metrics, platform, dateRange = {}) {
         };
       });
 
-    const growth = (raw.growth || [])
+    const fromStr = dateRange.from ? format(dateRange.from, "yyyy-MM-dd") : null;
+    const toStr = dateRange.to ? format(dateRange.to, "yyyy-MM-dd") : null;
+    const filterByRange = (arr) => {
+      if (!arr?.length || !fromStr || !toStr) return arr || [];
+      return arr.filter((item) => item.date >= fromStr && item.date <= toStr);
+    };
+
+    const rawGrowth = (raw.growth || [])
       .map((row) => {
         if (typeof row === "object" && !Array.isArray(row)) {
           return {
@@ -142,10 +149,12 @@ export function parseAnalyticsData(metrics, platform, dateRange = {}) {
             new: row.subscribersGained || 0,
             lost: row.subscribersLost || 0,
             videos: row.totalContent || 0,
+            likes: row.likes || 0,
+            comments: row.comments || 0,
           };
         }
         if (Array.isArray(row) && row.length >= 4) {
-          const [day, views, gained, lost] = row;
+          const [day, views, gained, lost, likes, comments] = row;
           return {
             date: day,
             name: day ? day.split("-").slice(1).join("/") : "Unknown",
@@ -153,11 +162,15 @@ export function parseAnalyticsData(metrics, platform, dateRange = {}) {
             new: gained || 0,
             lost: lost || 0,
             videos: 0,
+            likes: likes || 0,
+            comments: comments || 0,
           };
         }
         return null;
       })
       .filter(Boolean);
+
+    const growth = filterByRange(rawGrowth);
 
     return {
       demographics: { age, gender, countries, trafficSource },

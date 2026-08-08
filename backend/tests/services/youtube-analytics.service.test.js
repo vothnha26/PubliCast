@@ -157,7 +157,7 @@ describe('YouTubeAnalyticsEnhancedService', () => {
 
       await service._backgroundFetch('brand1', 'video123', 'token', 'cache', 'stale', 'lock');
 
-      expect(service.quotaService.incrementAndGet).toHaveBeenCalledWith('youtube-analytics', 6);
+      expect(service.quotaService.incrementAndGet).toHaveBeenCalledWith('youtube-analytics', 1);
       expect(service._buildInsights).toHaveBeenCalledWith(mockAuth, 'video123');
       expect(service._writeCache).toHaveBeenCalledTimes(2); // Cache + stale
       expect(service.lockService.releaseLock).toHaveBeenCalledWith('lock', 'token');
@@ -181,7 +181,7 @@ describe('YouTubeAnalyticsEnhancedService', () => {
       const result = await service._fetchInsightsDirectly('brand1', 'video123');
 
       expect(service._buildInsights).toHaveBeenCalledWith(mockAuth, 'video123');
-      expect(service.quotaService.incrementAndGet).toHaveBeenCalledWith('youtube-analytics', 6);
+      expect(service.quotaService.incrementAndGet).toHaveBeenCalledWith('youtube-analytics', 1);
     });
 
     it('should return status message if fetch fails', async () => {
@@ -251,7 +251,7 @@ describe('YouTubeAnalyticsEnhancedService', () => {
       await service.getPostInsights('brand1', 'video123');
 
       // Check quota was incremented
-      expect(service.quotaService.incrementAndGet).toHaveBeenCalledWith('youtube-analytics', 6);
+      expect(service.quotaService.incrementAndGet).toHaveBeenCalledWith('youtube-analytics', 1);
       // Check TTL was calculated
       expect(service.quotaService.getCalculatedTTL).toHaveBeenCalled();
     });

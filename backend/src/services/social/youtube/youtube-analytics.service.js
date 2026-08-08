@@ -2,10 +2,12 @@ const youtubeGateway = require('./youtube.gateway');
 const googleOAuthService = require('../google-oauth.service');
 const socialAccountRepository = require('../../../repositories/social/social-account.repository');
 const competitorRepository = require('../../../repositories/social/competitor.repository');
-const youTubeVideoMetricRepository = require('../../../repositories/social/youtube-video-metric.repository');
+const postInsightRepository = require('../../../repositories/social/post-insight.repository');
+const prisma = require('../../../config/prisma');
 const { eventEmitter, EVENTS } = require('../../../events/event-emitter');
 const { PLATFORMS, SEPARATORS, ANALYTICS, SOCIAL_TECHNICAL, YT_VIDEO_INSIGHTS } = require('../../../utils/constants');
 const { YOUTUBE_QUOTA_THRESHOLD, YOUTUBE_DAILY_QUOTA_LIMIT } = ANALYTICS;
+const { postInsightFacade } = require('../../../core/insights');
 const logger = require('../../../utils/logger');
 
 // getPostInsights' DB-first staleness window — YouTube Analytics data
@@ -268,7 +270,7 @@ class YouTubeAnalyticsService {
       ids: 'channel==MINE',
       startDate: start,
       endDate: end,
-      metrics: `${ANALYTICS.METRICS.YOUTUBE.VIEWS},${ANALYTICS.METRICS.YOUTUBE.SUBSCRIBERS_GAINED},${ANALYTICS.METRICS.YOUTUBE.SUBSCRIBERS_LOST}`,
+      metrics: `${ANALYTICS.METRICS.YOUTUBE.VIEWS},${ANALYTICS.METRICS.YOUTUBE.LIKES},${ANALYTICS.METRICS.YOUTUBE.COMMENTS},${ANALYTICS.METRICS.YOUTUBE.SUBSCRIBERS_GAINED},${ANALYTICS.METRICS.YOUTUBE.SUBSCRIBERS_LOST}`,
       dimensions: ANALYTICS.DIMENSIONS.YOUTUBE.DAY,
       sort: ANALYTICS.SORT.YOUTUBE.DAY_ASC
     });
@@ -314,6 +316,8 @@ class YouTubeAnalyticsService {
       dailyMap[d] = {
         date: d,
         views: 0,
+        likes: 0,
+        comments: 0,
         subscribersGained: 0,
         subscribersLost: 0,
         totalContent: videosPerDay[d] || 0
@@ -324,8 +328,10 @@ class YouTubeAnalyticsService {
       const d = row[0];
       if (dailyMap[d]) {
         dailyMap[d].views = row[1];
-        dailyMap[d].subscribersGained = row[2];
-        dailyMap[d].subscribersLost = row[3];
+        dailyMap[d].likes = row[2];
+        dailyMap[d].comments = row[3];
+        dailyMap[d].subscribersGained = row[4];
+        dailyMap[d].subscribersLost = row[5];
       }
     });
 
@@ -609,277 +615,15 @@ class YouTubeAnalyticsService {
   }
 
   // ────────────────────────────────────────────────────────────
-  // VIDEO INSIGHTS (lifetime analytics — Promise.allSettled + Redis)
+  // VIDEO INSIGHTS (basic lifetime video analytics)
   // ────────────────────────────────────────────────────────────
 
   /**
-   * Lấy toàn bộ lifetime analytics của 1 post/video cụ thể (không phải danh
-   * sách nhiều post — xem getPublishedVideos cho việc đó). Đổi tên từ
-   * getVideoInsights → getPostInsights để không bị hiểu lầm là chỉ áp dụng
-   * cho YouTube hoặc liên quan gì tới historyWindowMonths (khái niệm date-
-   * range theo plan chỉ áp dụng cho danh sách nhiều post, không áp dụng ở
-   * đây — hàm này luôn lấy lifetime của đúng 1 videoId được truyền vào).
-   * Trả partial data nếu một phần query bị lỗi.
-   * Áp dụng SRP: mỗi bước được tách thành method riêng.
+   * Lấy 6 chỉ số phân tích cơ bản của 1 post/video YouTube cụ thể.
+   * Uỷ quyền trực tiếp sang postInsightFacade (Facade Pattern).
    */
   async getPostInsights(brandId, videoId) {
-    const authInfo = await this._getAuthClient(brandId);
-    if (!authInfo) return this._emptyInsightsResponse();
-
-    // DB-first, not Redis — YouTubeVideoMetric is the permanent record of
-    // every fetch, so there is no separate short-TTL cache layer needed on
-    // top of it. A Redis TTL previously gated this instead, which meant a
-    // request landing just after the TTL expired re-hit the live API even
-    // though the DB already had a record from minutes earlier (#98-
-    // equivalent fix — the DB write existed but was never read back).
-    // 24h staleness matches the underlying data's own lag (YouTube
-    // Analytics itself is 24-48h behind), so refreshing more often than
-    // this fetches nothing new from the real API anyway.
-    const recent = await youTubeVideoMetricRepository.findRecentByVideo(authInfo.socialAccountId, videoId, 1);
-    const freshRecord = recent[0];
-    if (freshRecord && Date.now() - freshRecord.fetchedAt.getTime() < POST_INSIGHTS_STALENESS_MS) {
-      try {
-        return JSON.parse(freshRecord.rawInsightsJson);
-      } catch (err) {
-        logger.debug('[YouTubeAnalyticsService] Failed to parse cached video insight, refetching:', err.message);
-      }
-    }
-
-    const result = await this._buildInsights(authInfo.auth, videoId);
-
-    // No likes/comments/avgWatchTime in _buildInsights's actual shape (see
-    // _fetchInsightsSummary) — those columns default to 0; the full shape
-    // (totalWatchHrs/avgViewPercentage/subscribersNet/trafficSource/
-    // deviceType/demographics/geography/searchTerms) lives in rawInsightsJson.
-    youTubeVideoMetricRepository.create({
-      brandId,
-      socialAccountId: authInfo.socialAccountId,
-      platformVideoId: videoId,
-      views: 0,
-      likes: 0,
-      comments: 0,
-      avgWatchTime: result?.summary?.totalWatchHrs || 0,
-      rawInsightsJson: JSON.stringify(result)
-    }).catch((err) => {
-      logger.debug('[YouTubeAnalyticsService] Failed to persist video insight:', err.message);
-    });
-
-    // Best-effort — a delayed socket update on failure is fine, nothing
-    // needs a retry (same reasoning as sync-cache.proxy.js's syncAndEmit).
-    eventEmitter.emit(EVENTS.SOCIAL.METRICS_SYNCED, { brandId, socialAccountId: authInfo.socialAccountId, platform: PLATFORMS.YOUTUBE });
-
-    return result;
-  }
-
-  /**
-   * Tìm active account của brand + tạo auth client.
-   * Tách riêng để tái sử dụng ở các service khác (video-analytics, channel-analytics).
-   * Trả null nếu không có account hợp lệ (mock hoặc không tồn tại).
-   */
-  async _getAuthClient(brandId) {
-    const accounts = await socialAccountRepository.findByBrandAndPlatform(brandId, PLATFORMS.YOUTUBE);
-    if (!accounts || accounts.length === 0) return null;
-
-    const active = accounts.find(acc =>
-      !(acc.accessToken && acc.accessToken.startsWith('mock-')) &&
-      !(acc.platformAccountId && acc.platformAccountId.startsWith('mock-'))
-    ) || accounts[0];
-
-    if (active.accessToken && active.accessToken.startsWith('mock-')) return null;
-
-    return { auth: this._createAuthenticatedClient(active), socialAccountId: active.id };
-  }
-
-  /** Chạy 6 query song song, detect silent quota failure, build response shape */
-  async _buildInsights(auth, videoId) {
-    const [summaryR, trafficR, deviceR, demoR, geoR, searchR] = await Promise.allSettled([
-      this._fetchInsightsSummary(auth, videoId),
-      this._fetchInsightsTrafficSource(auth, videoId),
-      this._fetchInsightsDeviceType(auth, videoId),
-      this._fetchInsightsDemographics(auth, videoId),
-      this._fetchInsightsGeography(auth, videoId),
-      this._fetchInsightsSearchTerms(auth, videoId)
-    ]);
-
-    // Phát hiện quota silent failure:
-    // summary là object → check !value; 5 field còn lại là array → check !value?.length
-    const isSummaryEmpty = summaryR.status === 'fulfilled' && !summaryR.value;
-    const areArraysEmpty = [trafficR, deviceR, demoR, geoR, searchR]
-      .every(r => r.status === 'fulfilled' && !r.value?.length);
-    if (isSummaryEmpty && areArraysEmpty) {
-      console.warn('[video-insights] Suspected quota silent failure for videoId=' + videoId);
-    }
-
-    return {
-      summary:       summaryR.status === 'fulfilled' ? summaryR.value : null,
-      trafficSource: trafficR.status === 'fulfilled' ? trafficR.value : null,
-      deviceType:    deviceR.status === 'fulfilled'  ? deviceR.value  : null,
-      demographics:  demoR.status === 'fulfilled'    ? demoR.value    : null,
-      geography:     geoR.status === 'fulfilled'     ? geoR.value     : null,
-      searchTerms:   searchR.status === 'fulfilled'  ? searchR.value  : null,
-      errors: {
-        summary:       summaryR.status === 'rejected' ? summaryR.reason?.message : null,
-        trafficSource: trafficR.status === 'rejected' ? trafficR.reason?.message : null,
-        deviceType:    deviceR.status === 'rejected'  ? deviceR.reason?.message  : null,
-        demographics:  demoR.status === 'rejected'    ? demoR.reason?.message    : null,
-        geography:     geoR.status === 'rejected'     ? geoR.reason?.message     : null,
-        searchTerms:   searchR.status === 'rejected'  ? searchR.reason?.message  : null
-      }
-    };
-  }
-
-  _emptyInsightsResponse() {
-    return {
-      summary: null, trafficSource: null, deviceType: null,
-      demographics: null, geography: null, searchTerms: null,
-      errors: {}
-    };
-  }
-
-
-
-  /** 1. Tổng hợp (không có dimension) */
-  async _fetchInsightsSummary(auth, videoId) {
-    const res = await youtubeGateway.getAnalyticsReportQuery(auth, {
-      ids: 'channel==MINE',
-      startDate: ANALYTICS.LIFETIME_START_DATE,
-      endDate: new Date().toISOString().split('T')[0],
-      metrics: [
-        ANALYTICS.METRICS.YOUTUBE.MINUTES_WATCHED,
-        ANALYTICS.METRICS.YOUTUBE.AVERAGE_VIEW_PERCENTAGE,
-        ANALYTICS.METRICS.YOUTUBE.SUBSCRIBERS_GAINED,
-        ANALYTICS.METRICS.YOUTUBE.SUBSCRIBERS_LOST
-      ].join(','),
-      filters: `${ANALYTICS.DIMENSIONS.YOUTUBE.VIDEO}==${videoId}`
-    });
-    const row = res.data?.rows?.[0];
-    if (!row) return null;
-    return {
-      totalWatchHrs:      Math.round((row[0] / 60) * 10) / 10,
-      uniqueViewers:      null,
-      avgViewPercentage:  Math.round((row[1] || 0) * 10) / 10,
-      subscribersNet:     (row[2] || 0) - (row[3] || 0)
-    };
-  }
-
-  /** 2. Traffic source */
-  async _fetchInsightsTrafficSource(auth, videoId) {
-    const res = await youtubeGateway.getAnalyticsReportQuery(auth, {
-      ids: 'channel==MINE',
-      startDate: ANALYTICS.LIFETIME_START_DATE,
-      endDate: new Date().toISOString().split('T')[0],
-      metrics: ANALYTICS.METRICS.YOUTUBE.VIEWS,
-      dimensions: ANALYTICS.DIMENSIONS.YOUTUBE.TRAFFIC_SOURCE,
-      filters: `${ANALYTICS.DIMENSIONS.YOUTUBE.VIDEO}==${videoId}`,
-      sort: ANALYTICS.SORT.YOUTUBE.VIEWS_DESC
-    });
-    const rows = res.data?.rows || [];
-    if (!rows.length) return [];
-    const total = rows.reduce((s, r) => s + (r[1] || 0), 0) || 1;
-    return rows.map(([type, views]) => {
-      const meta = YT_VIDEO_INSIGHTS.TRAFFIC_SOURCE[type] || YT_VIDEO_INSIGHTS.TRAFFIC_SOURCE.UNKNOWN;
-      return { type, label: meta.label, color: meta.color, views, pct: Math.round((views / total) * 1000) / 10 };
-    });
-  }
-
-  /** 3. Device type */
-  async _fetchInsightsDeviceType(auth, videoId) {
-    const res = await youtubeGateway.getAnalyticsReportQuery(auth, {
-      ids: 'channel==MINE',
-      startDate: ANALYTICS.LIFETIME_START_DATE,
-      endDate: new Date().toISOString().split('T')[0],
-      metrics: ANALYTICS.METRICS.YOUTUBE.MINUTES_WATCHED,
-      dimensions: ANALYTICS.DIMENSIONS.YOUTUBE.DEVICE_TYPE,
-      filters: `${ANALYTICS.DIMENSIONS.YOUTUBE.VIDEO}==${videoId}`,
-      sort: ANALYTICS.SORT.YOUTUBE.MINUTES_WATCHED_DESC
-    });
-    const rows = res.data?.rows || [];
-    if (!rows.length) return [];
-    const total = rows.reduce((s, r) => s + (r[1] || 0), 0) || 1;
-    return rows.map(([type, watchMinutes]) => {
-      const meta = YT_VIDEO_INSIGHTS.DEVICE_TYPE[type] || YT_VIDEO_INSIGHTS.DEVICE_TYPE.UNKNOWN;
-      return { type, label: meta.label, color: meta.color, watchMinutes, pct: Math.round((watchMinutes / total) * 1000) / 10 };
-    });
-  }
-
-  /** 4. Demographics (gender + age) */
-  async _fetchInsightsDemographics(auth, videoId) {
-    const res = await youtubeGateway.getAnalyticsReportQuery(auth, {
-      ids: 'channel==MINE',
-      startDate: ANALYTICS.LIFETIME_START_DATE,
-      endDate: new Date().toISOString().split('T')[0],
-      metrics: ANALYTICS.METRICS.YOUTUBE.VIEWER_PERCENTAGE,
-      dimensions: `${ANALYTICS.DIMENSIONS.YOUTUBE.AGE_GROUP},${ANALYTICS.DIMENSIONS.YOUTUBE.GENDER}`,
-      filters: `${ANALYTICS.DIMENSIONS.YOUTUBE.VIDEO}==${videoId}`
-    });
-    const rows = res.data?.rows || [];
-    if (!rows.length) return null;
-
-    // Tổng hợp gender
-    const genderMap = {};
-    const ageMap = {};
-    rows.forEach(([age, gender, pct]) => {
-      const g = gender.toUpperCase();
-      genderMap[g] = (genderMap[g] || 0) + pct;
-      ageMap[age] = (ageMap[age] || 0) + pct;
-    });
-
-    const genderArr = Object.entries(genderMap).map(([g, pct]) => {
-      const meta = YT_VIDEO_INSIGHTS.DEMOGRAPHICS.GENDER[g] || { label: g, color: '#D1D5DB' };
-      return { gender: g, label: meta.label, color: meta.color, pct: Math.round(pct * 10) / 10 };
-    });
-    const ageArr = Object.entries(ageMap)
-      .map(([group, pct]) => ({ group, label: group.replace('age', '').replace(/-/g, '–'), pct: Math.round(pct * 10) / 10 }))
-      .sort((a, b) => a.group.localeCompare(b.group));
-
-    return { gender: genderArr, age: ageArr };
-  }
-
-  /** 5. Geography */
-  async _fetchInsightsGeography(auth, videoId) {
-    const res = await youtubeGateway.getAnalyticsReportQuery(auth, {
-      ids: 'channel==MINE',
-      startDate: ANALYTICS.LIFETIME_START_DATE,
-      endDate: new Date().toISOString().split('T')[0],
-      metrics: ANALYTICS.METRICS.YOUTUBE.VIEWS,
-      dimensions: ANALYTICS.DIMENSIONS.YOUTUBE.COUNTRY,
-      filters: `${ANALYTICS.DIMENSIONS.YOUTUBE.VIDEO}==${videoId}`,
-      sort: ANALYTICS.SORT.YOUTUBE.VIEWS_DESC,
-      maxResults: 10
-    });
-    const rows = res.data?.rows || [];
-    if (!rows.length) return [];
-    const total = rows.reduce((s, r) => s + (r[1] || 0), 0) || 1;
-    return rows.map(([countryCode, views]) => ({
-      countryCode,
-      countryName: this._countryName(countryCode),
-      flag: this._countryCodeToFlag(countryCode),
-      views,
-      pct: Math.round((views / total) * 1000) / 10
-    }));
-  }
-
-  /** 6. Search terms */
-  async _fetchInsightsSearchTerms(auth, videoId) {
-    const res = await youtubeGateway.getAnalyticsReportQuery(auth, {
-      ids: 'channel==MINE',
-      startDate: ANALYTICS.LIFETIME_START_DATE,
-      endDate: new Date().toISOString().split('T')[0],
-      metrics: ANALYTICS.METRICS.YOUTUBE.VIEWS,
-      dimensions: ANALYTICS.DIMENSIONS.YOUTUBE.TRAFFIC_SOURCE_DETAIL,
-      filters: `${ANALYTICS.DIMENSIONS.YOUTUBE.VIDEO}==${videoId};${ANALYTICS.DIMENSIONS.YOUTUBE.TRAFFIC_SOURCE}==${YT_VIDEO_INSIGHTS.TRAFFIC_SOURCE_TYPES.YT_SEARCH}`,
-      sort: ANALYTICS.SORT.YOUTUBE.VIEWS_DESC,
-      maxResults: 10
-    });
-    const rows = res.data?.rows || [];
-    if (!rows.length) return [];
-    const total = rows.reduce((s, r) => s + (r[1] || 0), 0) || 1;
-    return rows.map(([term, views]) => ({
-      term,
-      views,
-      pct: Math.round((views / total) * 1000) / 10,
-      pctLabel: 'trong lượt tìm kiếm'
-    }));
+    return postInsightFacade.getPostInsights(brandId, PLATFORMS.YOUTUBE, videoId);
   }
 
   /** Chuyển country code → flag emoji */

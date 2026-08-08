@@ -367,30 +367,6 @@ class FacebookGateway {
     return res.json();
   }
 
-  /**
-   * Lấy dữ liệu nhân khẩu học cấp Page (Page-level Demographics).
-   * Age/Gender: Meta đã ngừng cung cấp qua Graph API — trả cứng available:false.
-   * Geography: dùng metric page_follows_country (khuyến nghị thay page_fans_country từ 11/2025).
-   * Xử lý ngưỡng k-anonymity: nếu Facebook trả object/array rỗng, coi là insufficient_data.
-   */
-  async getPageDemographics(pageId, pageAccessToken) {
-    const ageGender = { available: false, reason: 'deprecated_by_platform', data: null };
-
-    const url = `${this.graphBaseUrl}/${pageId}/insights?metric=page_follows_country&period=lifetime&access_token=${pageAccessToken}`;
-    const res = await fetch(url);
-    if (!res.ok) {
-      return { ageGender, geography: { available: false, reason: 'insufficient_data', data: null } };
-    }
-
-    const data = await res.json();
-    const insightData = data.data?.[0]?.values?.[0]?.value;
-    if (!insightData || Object.keys(insightData).length === 0) {
-      return { ageGender, geography: { available: false, reason: 'insufficient_data', data: null } };
-    }
-
-    return { ageGender, geography: { available: true, reason: null, data: insightData } };
-  }
-
   async getPostComments(postId, pageAccessToken) {
     const fields = 'id,message,created_time,from,comments{id,message,created_time,from}';
     const url = `${this.graphBaseUrl}/${postId}/comments?fields=${fields}&access_token=${pageAccessToken}`;

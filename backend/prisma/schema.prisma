@@ -133,6 +133,7 @@ model Brand {
   facebookPostMetrics       FacebookPostMetric[]
   socialPostMetrics         SocialPostMetric[]
   youtubeChannelSnapshots   YouTubeChannelSnapshot[]
+  youtubeAudienceSnapshots  YouTubeAudienceSnapshot[]
   tiktokChannelSnapshots    TikTokChannelSnapshot[]
   instagramChannelSnapshots InstagramChannelSnapshot[]
   threadsChannelSnapshots   ThreadsChannelSnapshot[]
@@ -592,6 +593,7 @@ model SocialAccount {
   // account per day (see §2 of the analytics redesign: replaces the
   // "only ever read the latest sync" gap on the overwritten fields above).
   youtubeChannelSnapshots   YouTubeChannelSnapshot[]
+  youtubeAudienceSnapshots  YouTubeAudienceSnapshot[]
   tiktokChannelSnapshots    TikTokChannelSnapshot[]
   instagramChannelSnapshots InstagramChannelSnapshot[]
   threadsChannelSnapshots   ThreadsChannelSnapshot[]
@@ -1189,6 +1191,7 @@ model FacebookPostMetric {
   // Snapshot để hiển thị danh sách
   captionSnippet String? @db.Text
   thumbnailUrl   String?
+  permalinkUrl   String?
 
   fetchedAt DateTime @default(now())
   createdAt DateTime @default(now())
@@ -1291,6 +1294,28 @@ model YouTubeChannelSnapshot {
   @@index([brandId])
   @@index([socialAccountId, snapshotDate])
   @@map("youtube_channel_snapshots")
+}
+
+model YouTubeAudienceSnapshot {
+  id              String   @id @default(uuid())
+  brandId         String
+  socialAccountId String
+  snapshotDate    DateTime @db.Date
+
+  demographicsJson   String? @db.LongText
+  geographyJson      String? @db.LongText
+  trafficSourcesJson String? @db.LongText
+
+  fetchedAt DateTime @default(now())
+  createdAt DateTime @default(now())
+
+  brand         Brand         @relation(fields: [brandId], references: [id], onDelete: Cascade)
+  socialAccount SocialAccount @relation(fields: [socialAccountId], references: [id], onDelete: Cascade)
+
+  @@unique([socialAccountId, snapshotDate])
+  @@index([brandId])
+  @@index([socialAccountId, snapshotDate])
+  @@map("youtube_audience_snapshots")
 }
 
 model TikTokChannelSnapshot {

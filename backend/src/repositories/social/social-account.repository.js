@@ -536,32 +536,13 @@ class SocialAccountRepository {
    * backward-reconstruction rationale.
    */
   async upsertYouTubeChannelSnapshots(brandId, socialAccountId, statistics, growthRows, client = prisma) {
-    const current = {
-      staticColumns: { totalVideosCount: parseInt(statistics.videoCount) || 0 },
-      reconstructible: [
-        {
-          column: 'subscribersCount',
-          currentValue: parseInt(statistics.subscriberCount) || 0,
-          gainedKey: 'subscribersGained',
-          lostKey: 'subscribersLost',
-          emitDeltaColumns: true
-        },
-        {
-          column: 'totalViewsCount',
-          currentValue: parseInt(statistics.viewCount) || 0,
-          gainedKey: 'views',
-          emitDeltaColumns: false
-        }
-      ]
-    };
-
-    return channelSnapshotRepository.upsertChannelSnapshots(
-      client.youTubeChannelSnapshot,
+    const { channelInsightFacade } = require('../../core/insights');
+    return channelInsightFacade.upsertChannelSnapshots(
+      PLATFORMS.YOUTUBE,
       brandId,
       socialAccountId,
-      current,
-      growthRows.map((row) => ({ ...row, columns: {} })),
-      true
+      { statistics, growthRows },
+      { client }
     );
   }
 
