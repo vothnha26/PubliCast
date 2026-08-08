@@ -21,6 +21,12 @@ class PostControllerV2 {
     sendSuccess(res, limits, 'Platform limits retrieved successfully');
   });
 
+  getPlatformCapabilitiesV2 = asyncHandler(async (req, res) => {
+    const { resolveAllCapabilities } = require('../../services/workspace/post/capability-resolver.service');
+    const capabilities = await resolveAllCapabilities();
+    sendSuccess(res, capabilities, 'Platform capabilities retrieved successfully');
+  });
+
   createPostV2 = asyncHandler(async (req, res) => {
     const { brandId } = req.body;
     if (!brandId) return res.status(400).json({ message: 'brandId is required' });

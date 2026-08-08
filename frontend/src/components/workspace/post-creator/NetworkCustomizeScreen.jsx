@@ -42,6 +42,7 @@ export function NetworkCustomizeScreen({ onClose }) {
     toggleAccount,
     activeNetworkTab,
     setNetworkTab,
+    setActiveNetworkTab,
     activeNetworkAccountId,
     setActiveNetworkAccountId,
     networkCustom,
@@ -111,15 +112,6 @@ export function NetworkCustomizeScreen({ onClose }) {
     || null;
   const activePlatform = activeChannel?.platform;
 
-  const applyCustomModeFor = (channel) => {
-    const accountId = isMultiAccountPlatform(channel.platform) ? channel.accountId : null;
-    const entry = networkCustom[channel.platform];
-    const slot = accountId ? entry?.perAccount?.[accountId] : entry;
-    if (slot?.useTemplate !== false) {
-      toggleUseTemplate(channel.platform, true, accountId);
-    }
-  };
-
   // Land on the first targeted channel when this screen opens, since
   // Figma's per-network screen has no "shared" tab. Does NOT touch the
   // composer's own "Theo mạng" toggle (isEditByNetwork) — that's a
@@ -129,17 +121,14 @@ export function NetworkCustomizeScreen({ onClose }) {
   // right per-network slot without mutating that toggle.
   useEffect(() => {
     if (!activeChannel) return;
-    // setNetworkTab resets activeNetworkAccountId as a side effect — call it
-    // first so the account id set right after actually sticks.
     if (activeNetworkTab !== activeChannel.platform) {
-      setNetworkTab(activeChannel.platform);
+      setActiveNetworkTab(activeChannel.platform);
     }
     if (activeNetworkAccountId !== activeChannel.accountId) {
       setActiveNetworkAccountId(activeChannel.accountId);
     }
     setActivePlatform(activeChannel.platform);
-    applyCustomModeFor(activeChannel);
-  }, []);
+  }, [channelTabs]);
 
   // The top-right "X" (and Escape) exit the whole Post Creator, not just
   // this overlay — unlike the back-arrow, which only returns to the main
@@ -175,16 +164,11 @@ export function NetworkCustomizeScreen({ onClose }) {
   }, []);
 
   const handleSelectChannel = (channel) => {
-    // setNetworkTab (the shared wrapper in usePostCreatorForm) always resets
-    // activeNetworkAccountId to null as a side effect — it was written for
-    // the old platform-tab-first flow. Call it BEFORE setting the account id
-    // here so this screen's per-channel selection wins, not gets clobbered.
-    setNetworkTab(channel.platform);
+    setActiveNetworkTab(channel.platform);
     setActiveNetworkAccountId(channel.accountId);
     setActivePlatform(channel.platform);
     setActivePopover(null);
     setShowTypeDropdown(false);
-    applyCustomModeFor(channel);
   };
 
   // If the channel currently being viewed gets removed (via the "+" picker

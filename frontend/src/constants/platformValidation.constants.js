@@ -13,7 +13,7 @@
 // monorepo-root shared/ file: the frontend now builds as a standalone repo
 // (publicast-frontend) with no access to files outside this directory. Keep
 // both copies in sync by hand when Meta's limits change.
-import facebookLimits from './facebook-limits.json';
+import facebookLimits from './facebook-limits.json' with { type: 'json' };
 
 export const PLATFORM_LIMIT_THRESHOLDS = {
   FACEBOOK: {
@@ -62,13 +62,13 @@ export const isHorizontalOrSquareVideo = (videoWidth, videoHeight) => isVideoDim
 export const PLATFORM_VALIDATION_MESSAGES = {
   FACEBOOK: {
     ALBUM_MIN_MEDIA: `Facebook Album -> Add at least ${PLATFORM_LIMIT_THRESHOLDS.FACEBOOK.ALBUM_MIN_MEDIA} images.`,
-    REEL_MEDIA_REQUIRED: "Reel -> Add at least 1 video.",
-    REEL_MUST_BE_VIDEO: "Facebook Reel must be a video file.",
-    REEL_DURATION_RANGE: (duration) => `Facebook Reels must be between ${PLATFORM_LIMIT_THRESHOLDS.FACEBOOK.REEL_MIN_DURATION} and ${PLATFORM_LIMIT_THRESHOLDS.FACEBOOK.REEL_MAX_DURATION} seconds. (Current: ${Number(duration).toFixed(1)}s)`,
-    REEL_MUST_BE_VERTICAL: "Facebook Reels must be vertical (9:16 aspect ratio). Current ratio is horizontal or square.",
-    STORY_MEDIA_REQUIRED: "Auto publish (story) -> Add at least 1 image or video.",
-    STORY_MAX_DURATION: (duration) => `Facebook Story videos should be ${PLATFORM_LIMIT_THRESHOLDS.FACEBOOK.STORY_MAX_DURATION} seconds or less. (Current: ${Number(duration).toFixed(1)}s)`,
-    STORY_MUST_BE_VERTICAL: "Facebook Story videos should be vertical (9:16 aspect ratio)."
+    REEL_MEDIA_REQUIRED: "Facebook Reels require a video file.",
+    REEL_MUST_BE_VIDEO: "Facebook Reels require a video file.",
+    REEL_DURATION_RANGE: (duration) => `Facebook Reels duration must be between ${PLATFORM_LIMIT_THRESHOLDS.FACEBOOK.REEL_MIN_DURATION} and ${PLATFORM_LIMIT_THRESHOLDS.FACEBOOK.REEL_MAX_DURATION} seconds (Current: ${Number(duration).toFixed(1)}s).`,
+    REEL_MUST_BE_VERTICAL: "Facebook Reels must be vertical (aspect ratio 9:16).",
+    STORY_MEDIA_REQUIRED: "Facebook Stories require a photo or video file.",
+    STORY_MAX_DURATION: (duration) => `Facebook Story videos must be between ${STORY_LIMITS.MIN_DURATION_SECONDS} and ${STORY_LIMITS.MAX_DURATION_SECONDS} seconds (Current: ${Number(duration).toFixed(1)}s).`,
+    STORY_MUST_BE_VERTICAL: "Facebook Story videos must be vertical (aspect ratio 9:16)."
   },
 
   INSTAGRAM: {
@@ -82,8 +82,8 @@ export const PLATFORM_VALIDATION_MESSAGES = {
   },
 
   YOUTUBE: {
-    MEDIA_REQUIRED: "YouTube -> Add at least 1 video.",
-    MUST_BE_VIDEO: "YouTube publication must be a video file.",
+    MEDIA_REQUIRED: "YouTube uploads require a video file.",
+    MUST_BE_VIDEO: "YouTube uploads require a video file.",
     TITLE_REQUIRED_AND_INVALID: `Video or short title is required and must be shorter than ${PLATFORM_LIMIT_THRESHOLDS.YOUTUBE.TITLE_MAX_LENGTH} characters. The characters < or > are not allowed.`,
     AUDIENCE_REQUIRED: "It is necessary to select the audience of the video.",
     SHORT_DURATION_EXCEEDED: (duration) => `Short \u2192 Video length can't exceed ${PLATFORM_LIMIT_THRESHOLDS.YOUTUBE.SHORT_MAX_DURATION} seconds. These videos don't meet the requirements: #1 (${Number(duration).toFixed(1)}s).`,
@@ -91,7 +91,7 @@ export const PLATFORM_VALIDATION_MESSAGES = {
   },
 
   TIKTOK: {
-    MEDIA_REQUIRED: "TikTok -> Add at least 1 image or video."
+    MEDIA_REQUIRED: "TikTok posts require a video file."
   },
 
   THREADS: {

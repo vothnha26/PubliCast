@@ -2453,3 +2453,14 @@ model TemplateCategoryOnTemplate {
   @@index([templateId])
   @@map("template_category_on_template")
 }
+
+model PlatformCapabilityOverride {
+  platform    String   @id @db.VarChar(50)
+  isLocked    Boolean  @default(false)
+  lockReason  String?  @db.VarChar(255)
+  overrides   Json     @default("{}")
+  updatedAt   DateTime @updatedAt
+  updatedBy   String?  @db.VarChar(50)
+
+  @@map("platform_capability_overrides")
+}

@@ -5,23 +5,16 @@ const { validateImageConstraints } = require('../../../social/youtube/youtube-me
 class YouTubeValidator extends BaseValidator {
   async validate(postData, mediaInfo = {}) {
     const errors = [];
+    errors.push(...this.validateFixedRules(postData, mediaInfo));
     
-    // YouTube requires a non-empty title
+    // YouTube title max length check
     const rawTitle = (postData.title || postData.options?.youtubeTitle || '').trim();
-    if (!rawTitle) {
-      errors.push('YouTube uploads require a title.');
-    } else if (rawTitle.length > 100) {
+    if (rawTitle.length > 100) {
       errors.push('YouTube title must be 100 characters or less.');
     }
 
     errors.push(...this.validateCaption(postData.caption));
     errors.push(...this.validateMedia(mediaInfo));
-
-    // YouTube specific: Must have a video
-    const { hasMedia, isVideo } = mediaInfo;
-    if (!hasMedia || !isVideo) {
-      errors.push('YouTube uploads require a video file.');
-    }
 
     // YouTube custom thumbnail validation: size must be < 2MB, formats allowed are JPG/PNG
     const thumbnail = postData.options?.youtubeThumbnail;

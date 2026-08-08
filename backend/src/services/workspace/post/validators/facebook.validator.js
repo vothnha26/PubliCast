@@ -4,9 +4,9 @@ const { STORY_LIMITS } = require('../../../../config/facebook-reel.constants');
 class FacebookValidator extends BaseValidator {
   validate(postData, mediaInfo = {}) {
     const errors = [];
+    errors.push(...this.validateFixedRules(postData, mediaInfo));
     errors.push(...this.validateCaption(postData.caption));
     errors.push(...this.validateMedia(mediaInfo));
-    errors.push(...this.validateHasContent(postData, mediaInfo));
 
     const isReel = postData.type === 'REEL' || postData.options?.facebookType === 'reel';
     const isStory = postData.type === 'STORY' || postData.options?.facebookType === 'story';
