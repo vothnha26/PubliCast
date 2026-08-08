@@ -10,6 +10,8 @@ const TikTokInboxSyncAdapter = require('../../services/social/tiktok/inbox/tikto
 const TikTokInboxDisplayAdapter = require('../../services/social/tiktok/inbox/tiktok-inbox-display.adapter');
 const InstagramInboxSyncAdapter = require('../../services/social/instagram/inbox/instagram-inbox-sync.adapter');
 const InstagramInboxDisplayAdapter = require('../../services/social/instagram/inbox/instagram-inbox-display.adapter');
+const ThreadsInboxSyncAdapter = require('../../services/social/threads/inbox/threads-inbox-sync.adapter');
+const ThreadsInboxDisplayAdapter = require('../../services/social/threads/inbox/threads-inbox-display.adapter');
 
 const { PLATFORMS } = require('../../utils/constants');
 
@@ -17,7 +19,7 @@ const { PLATFORMS } = require('../../utils/constants');
 const inboxSyncFactory = new InboxSyncFactory();
 const inboxDisplayFactory = new InboxDisplayFactory();
 
-// 2. Register Platform Adapters (YouTube, Facebook, TikTok, Instagram)
+// 2. Register Platform Adapters (YouTube, Facebook, TikTok, Instagram, Threads)
 inboxSyncFactory.register(PLATFORMS.YOUTUBE, new YouTubeInboxSyncAdapter());
 inboxDisplayFactory.register(PLATFORMS.YOUTUBE, new YouTubeInboxDisplayAdapter());
 inboxSyncFactory.register(PLATFORMS.FACEBOOK, new FacebookInboxSyncAdapter());
@@ -26,6 +28,8 @@ inboxSyncFactory.register(PLATFORMS.TIKTOK, new TikTokInboxSyncAdapter());
 inboxDisplayFactory.register(PLATFORMS.TIKTOK, new TikTokInboxDisplayAdapter());
 inboxSyncFactory.register(PLATFORMS.INSTAGRAM, new InstagramInboxSyncAdapter());
 inboxDisplayFactory.register(PLATFORMS.INSTAGRAM, new InstagramInboxDisplayAdapter());
+inboxSyncFactory.register(PLATFORMS.THREADS, new ThreadsInboxSyncAdapter());
+inboxDisplayFactory.register(PLATFORMS.THREADS, new ThreadsInboxDisplayAdapter());
 
 // 3. Instantiation Facade
 const inboxFacade = new InboxFacade(inboxSyncFactory, inboxDisplayFactory);
