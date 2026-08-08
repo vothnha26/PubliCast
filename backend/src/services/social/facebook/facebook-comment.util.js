@@ -27,7 +27,7 @@ async function processComment(comment, postId, account, inbox) {
   const authorAvatar = FACEBOOK_API.avatarUrl(API_VERSIONS.FACEBOOK, authorId);
 
   return await inboxRepository.upsertInboxItem(
-    { platformItemId: comment.id },
+    { inboxId_platformItemId: { inboxId: inbox.id, platformItemId: comment.id } },
     {
       content: comment.message,
       authorName,
@@ -63,7 +63,7 @@ async function processReplies(replies, parentDbId, postId, account, inbox) {
     const replyAuthorAvatar = FACEBOOK_API.avatarUrl(API_VERSIONS.FACEBOOK, replyAuthorId);
 
     await inboxRepository.upsertInboxItem(
-      { platformItemId: reply.id },
+      { inboxId_platformItemId: { inboxId: inbox.id, platformItemId: reply.id } },
       {
         content: reply.message,
         authorName: replyAuthorName,

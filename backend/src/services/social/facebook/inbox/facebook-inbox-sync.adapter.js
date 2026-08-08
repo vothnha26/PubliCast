@@ -1,17 +1,17 @@
-const BaseSyncStrategy = require('./base.strategy');
-const facebookGateway = require('../../facebook/facebook.gateway');
+const BaseInboxSyncAdapter = require('../../../../core/inbox/base-inbox-sync.adapter');
+const facebookGateway = require('../facebook.gateway');
 const socialAccountRepository = require('../../../../repositories/social/social-account.repository');
 const inboxRepository = require('../../../../repositories/social/inbox.repository');
 const { PLATFORMS, INBOX_STATUS, INBOX_TYPES } = require('../../../../utils/constants');
-const { filterRealAccount, processComment, processReplies } = require('../../facebook/facebook-comment.util');
+const { filterRealAccount, processComment, processReplies } = require('../facebook-comment.util');
 
-class FacebookCommentSyncStrategy extends BaseSyncStrategy {
-  supports(platform) {
-    return platform.toUpperCase() === PLATFORMS.FACEBOOK;
+class FacebookInboxSyncAdapter extends BaseInboxSyncAdapter {
+  get platform() {
+    return PLATFORMS.FACEBOOK;
   }
 
   async sync(brandId, inbox) {
-    const { account, pageId, pageAccessToken } = await this._getAccountAndToken(brandId);
+    const { account, pageId, pageAccessToken } = await this._getAccountAndAuth(brandId);
     const feedResult = await facebookGateway.getPageFeed(pageId, pageAccessToken, null, 10);
     const feed = feedResult.data || [];
     const inboxItems = [];
@@ -31,12 +31,33 @@ class FacebookCommentSyncStrategy extends BaseSyncStrategy {
     return inboxItems;
   }
 
-  supportsReply(item) {
-    return item.platform === PLATFORMS.FACEBOOK && item.type === INBOX_TYPES.COMMENT;
+  async syncPostComments(brandId, postId, inbox) {
+    if (!postId) return [];
+    const inboxItems = [];
+
+    try {
+      const { account, pageAccessToken } = await this._getAccountAndAuth(brandId);
+      const comments = await facebookGateway.getPostComments(postId, pageAccessToken);
+
+      if (Array.isArray(comments)) {
+        for (const comment of comments) {
+          const item = await processComment(comment, postId, account, inbox);
+          inboxItems.push(item);
+
+          if (comment.comments && comment.comments.data) {
+            await processReplies(comment.comments.data, item.id, postId, account, inbox);
+          }
+        }
+      }
+    } catch (err) {
+      console.warn(`[FacebookInboxSyncAdapter] syncPostComments failed for post ${postId}:`, err.message);
+    }
+
+    return inboxItems;
   }
 
   async reply(brandId, parentPlatformItemId, text, socialAccountId = null, attachmentUrl = null) {
-    const { account, pageAccessToken } = await this._getAccountAndToken(brandId, socialAccountId);
+    const { account, pageAccessToken } = await this._getAccountAndAuth(brandId, socialAccountId);
     const response = await facebookGateway.replyToComment(parentPlatformItemId, text, pageAccessToken, attachmentUrl);
 
     const inbox = await inboxRepository.findOrCreateInbox(brandId);
@@ -61,15 +82,8 @@ class FacebookCommentSyncStrategy extends BaseSyncStrategy {
     });
   }
 
-  supportsNewComment(platform) {
-    return platform.toUpperCase() === PLATFORMS.FACEBOOK;
-  }
-
-  // Posts a brand-new top-level comment directly on a post (no existing
-  // InboxItem/thread needed) — for posts with 0 synced comments, which
-  // reply() can't handle since it always targets an existing comment id.
   async createComment(brandId, postId, text, socialAccountId = null, attachmentUrl = null) {
-    const { account, pageAccessToken } = await this._getAccountAndToken(brandId, socialAccountId);
+    const { account, pageAccessToken } = await this._getAccountAndAuth(brandId, socialAccountId);
     const response = await facebookGateway.createComment(postId, text, pageAccessToken, attachmentUrl);
 
     const inbox = await inboxRepository.findOrCreateInbox(brandId);
@@ -92,11 +106,17 @@ class FacebookCommentSyncStrategy extends BaseSyncStrategy {
     });
   }
 
-  // socialAccountId picks a specific page when the brand has more than one
-  // Facebook page connected; omitted, filterRealAccount picks the first
-  // non-mock account (correct as long as the brand only has one, still the
-  // common case).
-  async _getAccountAndToken(brandId, socialAccountId = null) {
+  async updateReply(brandId, platformItemId, text, socialAccountId = null) {
+    const { pageAccessToken } = await this._getAccountAndAuth(brandId, socialAccountId);
+    return await facebookGateway.updateComment(platformItemId, text, pageAccessToken);
+  }
+
+  async deleteReply(brandId, platformItemId, socialAccountId = null) {
+    const { pageAccessToken } = await this._getAccountAndAuth(brandId, socialAccountId);
+    return await facebookGateway.deleteComment(platformItemId, pageAccessToken);
+  }
+
+  async _getAccountAndAuth(brandId, socialAccountId = null) {
     const socialAccounts = await socialAccountRepository.findByBrandAndPlatform(brandId, PLATFORMS.FACEBOOK);
     const account = (socialAccountId && socialAccounts.find(acc => acc.id === socialAccountId)) || filterRealAccount(socialAccounts);
     if (!account) throw new Error('Facebook account not connected');
@@ -107,16 +127,6 @@ class FacebookCommentSyncStrategy extends BaseSyncStrategy {
       pageAccessToken: account.accessToken
     };
   }
-
-  async updateReply(brandId, platformItemId, text, socialAccountId = null) {
-    const { pageAccessToken } = await this._getAccountAndToken(brandId, socialAccountId);
-    return await facebookGateway.updateComment(platformItemId, text, pageAccessToken);
-  }
-
-  async deleteReply(brandId, platformItemId, socialAccountId = null) {
-    const { pageAccessToken } = await this._getAccountAndToken(brandId, socialAccountId);
-    return await facebookGateway.deleteComment(platformItemId, pageAccessToken);
-  }
 }
 
-module.exports = FacebookCommentSyncStrategy;
+module.exports = FacebookInboxSyncAdapter;

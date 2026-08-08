@@ -1,13 +1,15 @@
 import { BaseInboxDisplayStrategy } from './baseInboxDisplay.strategy';
 import { YouTubeInboxDisplayStrategy } from './youtubeInboxDisplay.strategy';
+import { FacebookInboxDisplayStrategy } from './facebookInboxDisplay.strategy';
 
 class InboxStrategyFactory {
   constructor() {
     this._registry = new Map();
     this._defaultStrategy = new BaseInboxDisplayStrategy();
 
-    // Register YouTube Strategy
+    // Register Supported Platform Strategies
     this.register('YOUTUBE', new YouTubeInboxDisplayStrategy());
+    this.register('FACEBOOK', new FacebookInboxDisplayStrategy());
   }
 
   register(platform, strategyInstance) {
@@ -23,3 +25,4 @@ class InboxStrategyFactory {
 }
 
 export const inboxStrategyFactory = new InboxStrategyFactory();
+

@@ -62,7 +62,7 @@ class FacebookDMSyncStrategy extends BaseSyncStrategy {
     const { account, pageId, pageAccessToken } = await this._getAccountAndToken(brandId, socialAccountId);
     
     let recipientPsid = null;
-    const parentInDb = await inboxRepository.findInboxItemByPlatformId(parentPlatformItemId);
+    const parentInDb = await inboxRepository.findInboxItemByPlatformId(parentPlatformItemId, brandId);
     
     if (parentInDb && parentInDb.authorId && parentInDb.authorId !== 'unknown') {
       recipientPsid = parentInDb.authorId;
@@ -129,7 +129,7 @@ class FacebookDMSyncStrategy extends BaseSyncStrategy {
 
     // 1. Create or update the parent conversation item
     const parentItem = await inboxRepository.upsertInboxItem(
-      { platformItemId: conv.id },
+      { inboxId_platformItemId: { inboxId: inbox.id, platformItemId: conv.id } },
       {
         content: conv.snippet || '',
         authorName: sender.name,
@@ -168,7 +168,7 @@ class FacebookDMSyncStrategy extends BaseSyncStrategy {
         const msgAuthorAvatar = isFromMe ? account.profilePictureUrl : senderAvatar;
 
         await inboxRepository.upsertInboxItem(
-          { platformItemId: msg.id },
+          { inboxId_platformItemId: { inboxId: inbox.id, platformItemId: msg.id } },
           {
             content: msg.message,
             authorName: msgAuthorName,

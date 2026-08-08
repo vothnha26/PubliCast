@@ -143,48 +143,13 @@ class SocialAccountRepository {
    * a replacement metric.
    */
   async upsertFacebookChannelSnapshots(brandId, socialAccountId, currentFollowersCount, currentLikesCount, balanceRows, growthRows, client = prisma) {
-    if (!Array.isArray(balanceRows) || balanceRows.length === 0) return [];
-
-    const growthByDate = new Map((growthRows || []).map((row) => [row.date, row]));
-
-    const dailyRows = balanceRows.map((balance) => {
-      const growth = growthByDate.get(balance.date) || {};
-      return {
-        date: balance.date,
-        followersGained: balance.acquired ?? null,
-        followersLost: balance.lost ?? null,
-        columns: {
-          reach: growth.views ?? null,
-          pageViews: growth.pageVisits ?? null,
-          // No real impressions metric exists anymore — Meta deprecated
-          // page_impressions_unique on 2025-06-15 with no page-level
-          // replacement. The column stays in the schema for when/if a real
-          // one becomes available, but must never be fabricated from reach.
-          impressions: null
-        }
-      };
-    });
-
-    const current = {
-      staticColumns: { likesCount: parseInt(currentLikesCount) || 0 },
-      reconstructible: [
-        {
-          column: 'followersCount',
-          currentValue: parseInt(currentFollowersCount) || 0,
-          gainedKey: 'followersGained',
-          lostKey: 'followersLost',
-          emitDeltaColumns: true
-        }
-      ]
-    };
-
-    return channelSnapshotRepository.upsertChannelSnapshots(
-      client.facebookChannelSnapshot,
+    const { channelInsightFacade } = require('../../core/insights');
+    return channelInsightFacade.upsertChannelSnapshots(
+      PLATFORMS.FACEBOOK,
       brandId,
       socialAccountId,
-      current,
-      dailyRows,
-      true
+      { currentFollowersCount, currentLikesCount, balanceRows, growthRows },
+      { client }
     );
   }
 
@@ -587,13 +552,29 @@ class SocialAccountRepository {
 
   /**
    * Cheap version signal for a brand's metrics — max(updatedAt) across its
-   * social accounts and max(fetchedAt) across their Analytics snapshot rows,
-   * whichever is newer. Used by the reconnect-reconcile flow to detect a
-   * missed `data_invalidate` socket event without re-fetching the full
-   * metrics payload just to compare it.
+   * social accounts, max(fetchedAt) across legacy Analytics rows, and
+   * max(fetchedAt) across every platform's ChannelSnapshot table (via
+   * channelAdapterFactory, so a newly migrated platform is covered
+   * automatically with no further edits here — see core/insights/index.js).
+   * Used both by the mount-time version-check (useMetricsQuery fetches this
+   * before the full metrics payload) and the reconnect-reconcile flow to
+   * detect a missed `data_invalidate` socket event.
    */
   async getMetricsVersion(brandId) {
-    const [latestAccount, latestAnalytics] = await Promise.all([
+    const { channelAdapterFactory } = require('../../core/insights');
+
+    const snapshotQueries = channelAdapterFactory.getAllAdapters().map((adapter) => {
+      const model = adapter.getPrismaModel(prisma);
+      return model
+        .findFirst({
+          where: { brandId },
+          orderBy: { fetchedAt: 'desc' },
+          select: { fetchedAt: true }
+        })
+        .catch(() => null); // one platform's snapshot query failing must not blank out the others'
+    });
+
+    const [latestAccount, latestAnalytics, ...snapshotResults] = await Promise.all([
       prisma.socialAccount.findFirst({
         where: { brandId },
         orderBy: { updatedAt: 'desc' },
@@ -603,12 +584,17 @@ class SocialAccountRepository {
         where: { brandId },
         orderBy: { fetchedAt: 'desc' },
         select: { fetchedAt: true }
-      })
+      }),
+      ...snapshotQueries
     ]);
 
-    const accountTime = latestAccount?.updatedAt?.getTime() || 0;
-    const analyticsTime = latestAnalytics?.fetchedAt?.getTime() || 0;
-    return Math.max(accountTime, analyticsTime);
+    const times = [
+      latestAccount?.updatedAt?.getTime() || 0,
+      latestAnalytics?.fetchedAt?.getTime() || 0,
+      ...snapshotResults.map((r) => r?.fetchedAt?.getTime() || 0)
+    ];
+
+    return Math.max(...times);
   }
 
   async findAnalyticsInRange(socialAccountId, startDate, endDate) {
@@ -1082,6 +1068,14 @@ class SocialAccountRepository {
         blueskyAccount: true,
         redditAccount: true,
         twitchAccount: true,
+        facebookChannelSnapshots: {
+          orderBy: { snapshotDate: 'desc' },
+          take: 30
+        },
+        youtubeChannelSnapshots: {
+          orderBy: { snapshotDate: 'desc' },
+          take: 30
+        },
         analytics: {
           orderBy: { fetchedAt: 'desc' },
           take: ANALYTICS.HISTORY_ROWS_TO_MERGE,
