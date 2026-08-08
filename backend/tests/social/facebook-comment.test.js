@@ -1,5 +1,5 @@
 const facebookCommentService = require('../../src/services/social/facebook/facebook-comment.service');
-const FacebookCommentSyncStrategy = require('../../src/services/social/inbox/strategies/facebook-comment.strategy');
+const FacebookInboxSyncAdapter = require('../../src/services/social/facebook/inbox/facebook-inbox-sync.adapter');
 const facebookGateway = require('../../src/services/social/facebook/facebook.gateway');
 const socialAccountRepository = require('../../src/repositories/social/social-account.repository');
 const inboxRepository = require('../../src/repositories/social/inbox.repository');
@@ -97,11 +97,11 @@ describe('Facebook Comment Sync & Service Unit Tests', () => {
     });
   });
 
-  describe('FacebookCommentSyncStrategy.sync', () => {
+  describe('FacebookInboxSyncAdapter.sync', () => {
     let strategy;
 
     beforeEach(() => {
-      strategy = new FacebookCommentSyncStrategy();
+      strategy = new FacebookInboxSyncAdapter();
     });
 
     it('should filter mock account and sync using real account credentials', async () => {

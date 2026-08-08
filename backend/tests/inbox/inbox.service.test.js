@@ -8,11 +8,13 @@ const { INBOX_STATUS, INBOX_TYPES } = require('../../src/utils/constants');
 jest.mock('../../src/repositories/social/inbox.repository', () => ({
   findManyAndCount: jest.fn(),
   findById: jest.fn(),
+  findInboxItemByPlatformId: jest.fn().mockResolvedValue(null),
   findOrCreateInbox: jest.fn(),
   updateInboxLastSync: jest.fn(),
   createInboxItem: jest.fn(),
   updateInboxItem: jest.fn(),
-  updateStatus: jest.fn()
+  updateStatus: jest.fn(),
+  deleteInboxItem: jest.fn()
 }));
 
 jest.mock('../../src/repositories/social/social-account.repository', () => ({
@@ -30,21 +32,45 @@ jest.mock('../../src/services/social/inbox/strategies/auto-reply/auto-reply.serv
   saveSettings: jest.fn()
 }));
 
+// Facebook now syncs/replies via core/inbox's adapter/factory (see
+// core/inbox/index.js registering FacebookInboxSyncAdapter) instead of the
+// legacy this.strategies array — mock the facade the same way callers do.
+const mockFacebookSyncAdapter = {
+  updateReply: jest.fn().mockResolvedValue({ success: true }),
+  deleteReply: jest.fn().mockResolvedValue({ success: true })
+};
+
+jest.mock('../../src/core/inbox', () => ({
+  inboxFacade: {
+    reply: jest.fn().mockResolvedValue({ id: 'platform-reply-id' }),
+    createComment: jest.fn().mockResolvedValue({ id: 'platform-comment-id' }),
+    syncPlatformComments: jest.fn().mockResolvedValue([{ id: 'facebook-synced-1' }]),
+    syncPostComments: jest.fn().mockResolvedValue([]),
+    fetchPlatformPosts: jest.fn().mockResolvedValue([]),
+    buildThumbnail: jest.fn().mockReturnValue(null),
+    buildPostUrl: jest.fn().mockReturnValue(null),
+    getSyncAdapter: jest.fn().mockImplementation((platform) =>
+      platform === 'FACEBOOK' ? mockFacebookSyncAdapter : undefined
+    )
+  },
+  inboxSyncFactory: {
+    isSupported: jest.fn().mockImplementation((platform) => platform === 'FACEBOOK'),
+    getAdapter: jest.fn(),
+    getAllAdapters: jest.fn().mockReturnValue([])
+  },
+  inboxDisplayFactory: {
+    isSupported: jest.fn().mockReturnValue(false),
+    getAdapter: jest.fn(),
+    getAllAdapters: jest.fn().mockReturnValue([])
+  }
+}));
+
 // Mock các strategy đồng bộ inbox để tránh gọi DB/repo thật
 jest.mock('../../src/services/social/inbox/strategies/youtube-comment.strategy', () => {
   return jest.fn().mockImplementation(() => ({
     supports: jest.fn().mockImplementation((platform) => platform === 'YOUTUBE'),
     sync: jest.fn().mockResolvedValue([{ id: 'youtube-synced-1' }]),
     supportsReply: jest.fn().mockReturnValue(false)
-  }));
-});
-
-jest.mock('../../src/services/social/inbox/strategies/facebook-comment.strategy', () => {
-  return jest.fn().mockImplementation(() => ({
-    supports: jest.fn().mockImplementation((platform) => platform === 'FACEBOOK'),
-    sync: jest.fn().mockResolvedValue([{ id: 'facebook-synced-1' }]),
-    supportsReply: jest.fn().mockReturnValue(true),
-    reply: jest.fn().mockResolvedValue({ id: 'platform-reply-id' })
   }));
 });
 
@@ -68,13 +94,11 @@ describe('InboxService Unit Tests', () => {
   // Re-instantiate strategies since mock modules are applied
   beforeAll(() => {
     const YoutubeStrategy = require('../../src/services/social/inbox/strategies/youtube-comment.strategy');
-    const FacebookCommentStrategy = require('../../src/services/social/inbox/strategies/facebook-comment.strategy');
     const FacebookDMStrategy = require('../../src/services/social/inbox/strategies/facebook-dm.strategy');
     const InstagramDMStrategy = require('../../src/services/social/inbox/strategies/instagram-dm.strategy');
 
     inboxService.strategies = [
       new YoutubeStrategy(),
-      new FacebookCommentStrategy(),
       new FacebookDMStrategy(),
       new InstagramDMStrategy()
     ];
@@ -408,8 +432,6 @@ describe('InboxService Unit Tests', () => {
       };
       
       inboxRepository.findById.mockResolvedValue(mockReplyItem);
-      const activeStrategy = inboxService.strategies.find(s => s.supportsReply(mockReplyItem));
-      activeStrategy.updateReply = jest.fn().mockResolvedValue({ success: true });
       inboxRepository.updateInboxItem.mockResolvedValue({ ...mockReplyItem, content: 'Updated Content' });
 
       const result = await inboxService.updateReply('brand-abc', 'reply-123', 'Updated Content', 'user-1');
@@ -417,7 +439,7 @@ describe('InboxService Unit Tests', () => {
       expect(inboxRepository.findById).toHaveBeenCalledWith('reply-123');
       // 4th arg is reply.socialAccountId, undefined on this mock item — see
       // multi-account-per-platform support in inbox.service.js#updateReply.
-      expect(activeStrategy.updateReply).toHaveBeenCalledWith('brand-abc', 'fb_comment_456', 'Updated Content', undefined);
+      expect(mockFacebookSyncAdapter.updateReply).toHaveBeenCalledWith('brand-abc', 'fb_comment_456', 'Updated Content', undefined);
       expect(inboxRepository.updateInboxItem).toHaveBeenCalledWith('reply-123', { content: 'Updated Content' });
       expect(result.content).toBe('Updated Content');
     });
@@ -445,14 +467,12 @@ describe('InboxService Unit Tests', () => {
       };
 
       inboxRepository.findById.mockResolvedValue(mockReplyItem);
-      const activeStrategy = inboxService.strategies.find(s => s.supportsReply(mockReplyItem));
-      activeStrategy.deleteReply = jest.fn().mockResolvedValue({ success: true });
-      inboxRepository.deleteInboxItem = jest.fn().mockResolvedValue(true);
+      inboxRepository.deleteInboxItem.mockResolvedValue(true);
 
       const result = await inboxService.deleteReply('brand-abc', 'reply-123', 'user-1');
 
       expect(inboxRepository.findById).toHaveBeenCalledWith('reply-123');
-      expect(activeStrategy.deleteReply).toHaveBeenCalledWith('brand-abc', 'fb_comment_456', undefined);
+      expect(mockFacebookSyncAdapter.deleteReply).toHaveBeenCalledWith('brand-abc', 'fb_comment_456', undefined);
       expect(inboxRepository.deleteInboxItem).toHaveBeenCalledWith('reply-123');
       expect(result).toBe(true);
     });

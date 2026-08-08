@@ -51,7 +51,7 @@ describe('Facebook Comment Utility Tests', () => {
       const result = await processComment(comment, postId, mockAccount, mockInbox);
       expect(result.id).toBe('db-item-1');
       expect(inboxRepository.upsertInboxItem).toHaveBeenCalledWith(
-        { platformItemId: 'c1' },
+        { inboxId_platformItemId: { inboxId: 'inbox-1', platformItemId: 'c1' } },
         expect.objectContaining({ content: 'Hello World', authorName: 'John Doe' }),
         expect.objectContaining({ platformItemId: 'c1', inboxId: 'inbox-1' })
       );
@@ -71,7 +71,7 @@ describe('Facebook Comment Utility Tests', () => {
 
       await processReplies(replies, 'db-item-1', postId, mockAccount, mockInbox);
       expect(inboxRepository.upsertInboxItem).toHaveBeenCalledWith(
-        { platformItemId: 'r1' },
+        { inboxId_platformItemId: { inboxId: 'inbox-1', platformItemId: 'r1' } },
         expect.objectContaining({ content: 'Reply message', authorName: 'Jane Doe' }),
         expect.objectContaining({ platformItemId: 'r1', parentItemId: 'db-item-1' })
       );
