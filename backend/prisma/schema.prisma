@@ -175,7 +175,7 @@ model TrackedVideo {
   platform     PlatformType @default(YOUTUBE)
   videoId      String // YouTube Video ID
   title        String?
-  thumbnailUrl String?
+  thumbnailUrl String? @db.Text
   channelId    String?
   channelName  String?
   publishedAt  DateTime?
@@ -1190,8 +1190,8 @@ model FacebookPostMetric {
 
   // Snapshot để hiển thị danh sách
   captionSnippet String? @db.Text
-  thumbnailUrl   String?
-  permalinkUrl   String?
+  thumbnailUrl   String? @db.Text
+  permalinkUrl   String? @db.Text
 
   fetchedAt DateTime @default(now())
   createdAt DateTime @default(now())
@@ -1235,8 +1235,8 @@ model SocialPostMetric {
   engagementRate Float @default(0)
 
   captionSnippet String? @db.Text
-  thumbnailUrl   String?
-  postUrl        String?
+  thumbnailUrl   String? @db.Text
+  postUrl        String? @db.Text
 
   fetchedAt DateTime @default(now())
   createdAt DateTime @default(now())
@@ -1362,14 +1362,14 @@ model InstagramChannelSnapshot {
   socialAccountId String
   snapshotDate    DateTime @db.Date
 
-  followersCount  Int @default(0)
-  followingCount  Int @default(0)
-  mediaCount      Int @default(0)
-  followersGained Int @default(0)
-  followersLost   Int @default(0)
-  views           Int @default(0)
-  reach           Int @default(0)
-  profileViews    Int @default(0)
+  followersCount  Int  @default(0)
+  followingCount  Int  @default(0)
+  mediaCount      Int  @default(0)
+  followersGained Int?
+  followersLost   Int?
+  views           Int?
+  reach           Int?
+  profileViews    Int?
 
   rawInsightsJson String? @db.LongText
 
@@ -1453,13 +1453,13 @@ model FacebookChannelSnapshot {
   socialAccountId String
   snapshotDate    DateTime @db.Date
 
-  likesCount      Int @default(0)
-  followersCount  Int @default(0)
-  followersGained Int @default(0)
-  followersLost   Int @default(0)
-  reach           Int @default(0)
-  impressions     Int @default(0)
-  pageViews       Int @default(0)
+  likesCount      Int  @default(0)
+  followersCount  Int  @default(0)
+  followersGained Int?
+  followersLost   Int?
+  reach           Int?
+  impressions     Int?
+  pageViews       Int?
 
   rawInsightsJson String? @db.LongText
 
@@ -1669,7 +1669,7 @@ model InboxItem {
   inboxId                 String
   platform                PlatformType
   type                    InboxItemType
-  platformItemId          String        @unique
+  platformItemId          String
   authorId                String
   authorName              String
   authorAvatarUrl         String?
@@ -1701,6 +1701,7 @@ model InboxItem {
   socialAccount   SocialAccount? @relation(fields: [socialAccountId], references: [id], onDelete: Cascade)
   socialAccountId String?
 
+  @@unique([inboxId, platformItemId])
   @@index([inboxId])
   @@index([relatedPostId])
   @@index([pendingParentPlatformId])

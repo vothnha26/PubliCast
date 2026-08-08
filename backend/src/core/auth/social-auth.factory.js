@@ -13,21 +13,62 @@ class SocialAuthFactory {
    * Lấy Auth client & socialAccountId cho brand & platform
    * @param {string} brandId
    * @param {string} platform - e.g. PLATFORMS.YOUTUBE
+   * @param {string} [socialAccountId] - Optional specific social account ID
    * @returns {Promise<{ auth: object, socialAccountId: string }|null>}
    */
-  async getAuthClient(brandId, platform) {
+  async getAuthClient(brandId, platform, socialAccountId = null) {
     const platformKey = platform.toUpperCase();
 
     if (platformKey === PLATFORMS.YOUTUBE) {
-      return this._getYouTubeAuthClient(brandId);
+      return this._getYouTubeAuthClient(brandId, socialAccountId);
+    }
+    if (platformKey === PLATFORMS.FACEBOOK) {
+      return this._getFacebookAuthClient(brandId, socialAccountId);
+    }
+    if (platformKey === PLATFORMS.TIKTOK) {
+      return this._getTikTokAuthClient(brandId, socialAccountId);
     }
 
-    // Các nền tảng khác sẽ được tích hợp tương tự khi mở rộng
     return null;
   }
 
-  async _getYouTubeAuthClient(brandId) {
-    const accounts = await socialAccountRepository.findByBrandAndPlatform(brandId, PLATFORMS.YOUTUBE);
+  async _getTikTokAuthClient(brandId, socialAccountId = null) {
+    let accounts;
+    if (socialAccountId) {
+      const acc = await socialAccountRepository.findById(socialAccountId);
+      if (!acc || (brandId && String(acc.brandId) !== String(brandId))) {
+        throw new Error(`Social account ${socialAccountId} not found for brand ${brandId}`);
+      }
+      accounts = [acc];
+    } else {
+      accounts = await socialAccountRepository.findByBrandAndPlatform(brandId, PLATFORMS.TIKTOK);
+    }
+    if (!accounts || accounts.length === 0) return null;
+
+    const active = accounts.find(acc => !(acc.accessToken && acc.accessToken.startsWith('mock-'))) || accounts[0];
+    if (active.accessToken && active.accessToken.startsWith('mock-')) return null;
+
+    const tiktokAnalytics = require('../../services/social/tiktok/tiktok-analytics.service');
+    const refreshedAccount = await tiktokAnalytics.getOrRefreshAccount(active);
+
+    return { auth: refreshedAccount.accessToken, socialAccountId: refreshedAccount.id, account: refreshedAccount };
+  }
+
+  async _getYouTubeAuthClient(brandId, socialAccountId = null) {
+    let accounts;
+    if (socialAccountId) {
+      const acc = await socialAccountRepository.findById(socialAccountId);
+      if (!acc || (brandId && String(acc.brandId) !== String(brandId))) {
+        // A caller-supplied socialAccountId belonging to a different brand
+        // must fail loudly here — silently falling back to some other
+        // account of this brand/platform (as before) would let a request
+        // scoped to one account operate against a different one instead.
+        throw new Error(`Social account ${socialAccountId} not found for brand ${brandId}`);
+      }
+      accounts = [acc];
+    } else {
+      accounts = await socialAccountRepository.findByBrandAndPlatform(brandId, PLATFORMS.YOUTUBE);
+    }
     if (!accounts || accounts.length === 0) return null;
 
     const active = accounts.find(acc =>
@@ -39,6 +80,25 @@ class SocialAuthFactory {
 
     const auth = this._createYouTubeAuthenticatedClient(active);
     return { auth, socialAccountId: active.id };
+  }
+
+  async _getFacebookAuthClient(brandId, socialAccountId = null) {
+    let accounts;
+    if (socialAccountId) {
+      const acc = await socialAccountRepository.findById(socialAccountId);
+      if (!acc || (brandId && String(acc.brandId) !== String(brandId))) {
+        throw new Error(`Social account ${socialAccountId} not found for brand ${brandId}`);
+      }
+      accounts = [acc];
+    } else {
+      accounts = await socialAccountRepository.findByBrandAndPlatform(brandId, PLATFORMS.FACEBOOK);
+    }
+    if (!accounts || accounts.length === 0) return null;
+
+    const active = accounts.find(acc => !(acc.accessToken && acc.accessToken.startsWith('mock-'))) || accounts[0];
+
+    // Facebook Graph API uses raw access token string as auth credential
+    return { auth: active.accessToken, socialAccountId: active.id };
   }
 
   _createYouTubeAuthenticatedClient(account) {

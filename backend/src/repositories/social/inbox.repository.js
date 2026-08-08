@@ -34,16 +34,20 @@ class InboxRepository {
     return { items, total };
   }
 
-  async findById(id) {
+  async findById(id, brandId = null) {
     if (!id) return null;
+    const where = {
+      OR: [
+        { id },
+        { platformItemId: id },
+        { relatedPostId: id }
+      ]
+    };
+    if (brandId) {
+      where.inbox = { brandId };
+    }
     return prisma.inboxItem.findFirst({
-      where: {
-        OR: [
-          { id },
-          { platformItemId: id },
-          { relatedPostId: id }
-        ]
-      },
+      where,
       include: {
         inbox: true,
         assignedUser: { select: { id: true, name: true, avatarUrl: true } },
@@ -55,15 +59,19 @@ class InboxRepository {
     });
   }
 
-  async updateStatus(id, status) {
+  async updateStatus(id, status, brandId = null) {
+    const where = {
+      OR: [
+        { id },
+        { platformItemId: id },
+        { relatedPostId: id }
+      ]
+    };
+    if (brandId) {
+      where.inbox = { brandId };
+    }
     const existingItems = await prisma.inboxItem.findMany({
-      where: {
-        OR: [
-          { id },
-          { platformItemId: id },
-          { relatedPostId: id }
-        ]
-      },
+      where,
       select: { id: true }
     });
 
@@ -79,18 +87,22 @@ class InboxRepository {
     });
   }
 
-  async updateInboxItem(id, data) {
+  async updateInboxItem(id, data, brandId = null) {
     if (data.authorAvatarUrl && data.authorAvatarUrl.length > 190) {
       data.authorAvatarUrl = data.authorAvatarUrl.substring(0, 190);
     }
+    const where = {
+      OR: [
+        { id },
+        { platformItemId: id },
+        { relatedPostId: id }
+      ]
+    };
+    if (brandId) {
+      where.inbox = { brandId };
+    }
     const existing = await prisma.inboxItem.findFirst({
-      where: {
-        OR: [
-          { id },
-          { platformItemId: id },
-          { relatedPostId: id }
-        ]
-      },
+      where,
       select: { id: true }
     });
 
@@ -119,17 +131,44 @@ class InboxRepository {
     if (create.authorAvatarUrl && create.authorAvatarUrl.length > 190) {
       create.authorAvatarUrl = create.authorAvatarUrl.substring(0, 190);
     }
+
+    const inboxId = create.inboxId || update.inboxId;
+
+    // platformItemId is only unique per-inbox (see schema.prisma's
+    // @@unique([inboxId, platformItemId]) — a bare { platformItemId } where
+    // would silently match/overwrite another brand's InboxItem row whenever
+    // two brands sync the same platform comment ID). Callers upserting by
+    // platformItemId must always supply inboxId alongside it.
+    let targetWhere = where;
+    if (where.platformItemId && !where.inboxId_platformItemId) {
+      if (!inboxId) {
+        throw new Error('upsertInboxItem: inboxId is required when upserting by platformItemId');
+      }
+      targetWhere = {
+        inboxId_platformItemId: {
+          inboxId,
+          platformItemId: where.platformItemId
+        }
+      };
+    }
+
     return prisma.inboxItem.upsert({
-      where,
+      where: targetWhere,
       update,
       create
     });
   }
 
-  async findInboxItemByPlatformId(platformItemId) {
-    return prisma.inboxItem.findUnique({
-      where: { platformItemId }
-    });
+  async findInboxItemByPlatformId(platformItemId, brandIdOrInboxId = null) {
+    if (!platformItemId) return null;
+    const where = { platformItemId };
+    if (brandIdOrInboxId) {
+      where.OR = [
+        { inboxId: brandIdOrInboxId },
+        { inbox: { brandId: brandIdOrInboxId } }
+      ];
+    }
+    return prisma.inboxItem.findFirst({ where });
   }
 
   /**
@@ -137,9 +176,16 @@ class InboxRepository {
    * ingested (out-of-order webhook delivery), and links them to the
    * now-available parent (#100).
    */
-  async reconcilePendingChildren(parentPlatformItemId, parentDbId) {
+  async reconcilePendingChildren(parentPlatformItemId, parentDbId, brandIdOrInboxId = null) {
+    const where = { pendingParentPlatformId: parentPlatformItemId };
+    if (brandIdOrInboxId) {
+      where.OR = [
+        { inboxId: brandIdOrInboxId },
+        { inbox: { brandId: brandIdOrInboxId } }
+      ];
+    }
     return prisma.inboxItem.updateMany({
-      where: { pendingParentPlatformId: parentPlatformItemId },
+      where,
       data: { parentItemId: parentDbId, pendingParentPlatformId: null }
     });
   }
