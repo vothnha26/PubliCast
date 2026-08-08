@@ -41,54 +41,18 @@ router.get('/', checkBrandAccess, featureGate, inboxControllerV2.getInboxItems);
 router.get('/posts', checkBrandAccess, featureGate, inboxControllerV2.getInboxPosts);
 router.get('/posts/:postId/comments', checkBrandAccess, featureGate, inboxControllerV2.getCommentsByPost);
 
-/**
- * @openapi
- * /v2/social/inbox/{id}:
- *   get:
- *     summary: Get conversation thread by inbox item ID
- *     tags: [Social Inbox V2]
- *     security: [{ cookieAuth: [] }]
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema: { type: string }
- *     responses:
- *       200:
- *         description: Conversation thread details
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/V2EnvelopeResponse'
- */
-router.get('/:id', inboxControllerV2.getConversationThread);
-
-/**
- * @openapi
- * /v2/social/inbox/sync:
- *   post:
- *     summary: Sync social inbox messages for a brand
- *     tags: [Social Inbox V2]
- *     security: [{ cookieAuth: [] }]
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required: [brandId]
- *             properties:
- *               brandId: { type: string }
- *     responses:
- *       200:
- *         description: Sync initiated
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/V2EnvelopeResponse'
- */
 router.post('/sync', checkBrandAccess, featureGate, inboxControllerV2.syncInbox);
 router.delete('/clear', checkBrandAccess, featureGate, inboxControllerV2.clearAllInbox);
+router.post('/reply', checkBrandAccess, featureGate, inboxControllerV2.replyToItem);
+router.post('/comment', checkBrandAccess, featureGate, inboxControllerV2.postNewComment);
+
+router.patch('/replies/:replyId', featureGate, inboxControllerV2.updateReply);
+router.delete('/replies/:replyId', featureGate, inboxControllerV2.deleteReply);
+
+router.get('/auto-reply/settings/:socialAccountId', inboxControllerV2.getAutoReplySettings);
+router.post('/auto-reply/settings/:socialAccountId', inboxControllerV2.saveAutoReplySettings);
+
+router.get('/:id', inboxControllerV2.getConversationThread);
 
 /**
  * @openapi

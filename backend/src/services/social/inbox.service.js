@@ -22,6 +22,8 @@ const TiktokCommentSyncStrategy = require('./inbox/strategies/tiktok-comment.str
 const autoReplyService = require('./inbox/strategies/auto-reply/auto-reply.service');
 const { parsePlatformPostId, getFirstIdForPlatform } = require('../workspace/post/platform-post-id.util');
 
+const { inboxFacade, inboxSyncFactory } = require('../../core/inbox');
+
 class InboxService {
   constructor() {
     this.queryPipeline = new QueryPipeline([
@@ -601,7 +603,23 @@ class InboxService {
       ]
     };
 
-    const { items } = await inboxRepository.findManyAndCount(initialWhere, { skip: 0, take: 50 });
+    let { items } = await inboxRepository.findManyAndCount(initialWhere, { skip: 0, take: 50 });
+
+    if (!items || items.length === 0) {
+      // If DB has 0 synced comments for this post, attempt live sync for the specific video/post
+      try {
+        const inbox = await inboxRepository.findOrCreateInbox(brandId);
+        // Default to YOUTUBE if 11-char ID or check platform
+        const platform = (postId && postId.length === 11) ? PLATFORMS.YOUTUBE : null;
+        if (platform && inboxSyncFactory.isSupported(platform)) {
+          await inboxFacade.syncPostComments(brandId, platform, postId, inbox);
+          const reCheck = await inboxRepository.findManyAndCount(initialWhere, { skip: 0, take: 50 });
+          items = reCheck.items;
+        }
+      } catch (err) {
+        console.warn(`[getCommentsByPost] Live sync fallback failed for ${postId}:`, err.message);
+      }
+    }
 
     if (!items || items.length === 0) {
       return { data: [], thread: [], videoContext: null };
@@ -656,8 +674,14 @@ class InboxService {
   async syncPlatformComments(brandId, platform) {
     try {
       const inbox = await inboxRepository.findOrCreateInbox(brandId);
-      const activeStrategies = this.strategies.filter(s => s.supports(platform));
       
+      if (platform && inboxSyncFactory.isSupported(platform)) {
+        const items = await inboxFacade.syncPlatformComments(brandId, platform, inbox);
+        await inboxRepository.updateInboxLastSync(inbox.id);
+        return items || [];
+      }
+
+      const activeStrategies = this.strategies.filter(s => s.supports(platform));
       if (activeStrategies.length === 0) {
         console.warn(`No sync strategies found for platform: ${platform}`);
         return [];
@@ -693,15 +717,16 @@ class InboxService {
   async replyToItem(brandId, itemId, text, userId, attachmentUrl = null) {
     const item = await this._getAuthorizedItem(itemId, userId, brandId);
 
-    const strategy = this.strategies.find(s => s.supportsReply(item));
-    if (!strategy) {
-      throw new Error(`No reply strategy found for platform ${item.platform} and type ${item.type}`);
+    let reply;
+    if (inboxSyncFactory.isSupported(item.platform)) {
+      reply = await inboxFacade.reply(brandId, item.platform, item.platformItemId, text, item.socialAccountId, attachmentUrl);
+    } else {
+      const strategy = this.strategies.find(s => s.supportsReply(item));
+      if (!strategy) {
+        throw new Error(`No reply strategy found for platform ${item.platform} and type ${item.type}`);
+      }
+      reply = await strategy.reply(brandId, item.platformItemId, text, item.socialAccountId, attachmentUrl);
     }
-
-    // item.socialAccountId is whichever account synced this comment/DM in —
-    // routing the reply through that exact account (not an arbitrary pick)
-    // matters once a brand has more than one account of the platform.
-    const reply = await strategy.reply(brandId, item.platformItemId, text, item.socialAccountId, attachmentUrl);
     
     // Update parent conversation to reflect the reply (update snippet text, sorting time and mark as READ)
     // and record who replied / when — drives the "Replied" tab filter.
@@ -724,6 +749,10 @@ class InboxService {
     const hasAccess = await authorizationFacade.checkBrandAccess(userId, brandId);
     if (!hasAccess) {
       throw { status: 403, message: 'Bạn không có quyền truy cập vào thương hiệu này.' };
+    }
+
+    if (inboxSyncFactory.isSupported(platform)) {
+      return await inboxFacade.createComment(brandId, platform, postId, text, socialAccountId, attachmentUrl);
     }
 
     const strategy = this.strategies.find(s => s.supportsNewComment && s.supportsNewComment(platform));
