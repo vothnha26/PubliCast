@@ -1,6 +1,5 @@
 const express = require('express');
 const reportController = require('../../controllers/workspace/report.controller');
-const adAccountController = require('../../controllers/workspace/ad-account.controller');
 const ticketController = require('../../controllers/workspace/ticket.controller');
 const { verifyAuth } = require('../../middlewares/auth.middleware');
 const checkPermission = require('../../middlewares/permission.middleware');
@@ -82,29 +81,6 @@ router.delete('/reports/:id', checkPermission('VIEW_ANALYTICS'), reportControlle
  *               $ref: '#/components/schemas/V2EnvelopeResponse'
  */
 router.get('/reports/preview-data', checkPermission('VIEW_ANALYTICS'), reportController.getPreviewData);
-
-// ── Ad Accounts V2 ──
-/**
- * @openapi
- * /v2/analytics-support/ad-accounts/performance:
- *   get:
- *     summary: Get connected ad accounts & performance analytics
- *     tags: [Analytics Reports & Support V2]
- *     security: [{ cookieAuth: [] }]
- *     parameters:
- *       - in: query
- *         name: brandId
- *         required: true
- *         schema: { type: string }
- *     responses:
- *       200:
- *         description: Ad performance metrics
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/V2EnvelopeResponse'
- */
-router.get('/ad-accounts/performance', requireBrandMember, adAccountController.getAdPerformanceData);
 
 // ── Support Tickets V2 ──
 /**
