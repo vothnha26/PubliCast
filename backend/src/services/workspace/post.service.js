@@ -24,6 +24,7 @@ const PostDateRangeFilter = require('./post/filters/date-range.filter');
 const PostLibraryFilter = require('./post/filters/library.filter');
 const PostDeletedFilter = require('./post/filters/deleted.filter');
 const PostSocialAccountFilter = require('./post/filters/social-account.filter');
+const PostTypeFilter = require('./post/filters/type.filter');
 
 const Pipeline = require('../../core/pipeline/pipeline.executor');
 const FetchPostStep = require('./post/publish-steps/fetch-post.step');
@@ -40,7 +41,7 @@ class PostService {
     this.queryPipeline = new QueryPipeline([
       new PostStatusFilter(), new PostSearchFilter(), new PostPlatformFilter(),
       new PostDateRangeFilter(), new PostLibraryFilter(), new PostDeletedFilter(),
-      new PostSocialAccountFilter()
+      new PostSocialAccountFilter(), new PostTypeFilter()
     ]);
 
     this.publishPipeline = new Pipeline([
