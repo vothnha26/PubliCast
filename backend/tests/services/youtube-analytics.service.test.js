@@ -44,12 +44,12 @@ describe('YouTubeAnalyticsEnhancedService', () => {
     service = new YouTubeAnalyticsEnhancedService();
   });
 
-  describe('getVideoInsights', () => {
+  describe('getPostInsights', () => {
     it('should return cached data without fetching', async () => {
       const cachedData = { videoId: 'test123', views: 1000 };
       service._readCache = jest.fn().mockResolvedValue(cachedData);
 
-      const result = await service.getVideoInsights('brand1', 'test123');
+      const result = await service.getPostInsights('brand1', 'test123');
 
       expect(result).toEqual(cachedData);
       expect(service._readCache).toHaveBeenCalledWith('yt:video-insights:test123');
@@ -61,7 +61,7 @@ describe('YouTubeAnalyticsEnhancedService', () => {
       service._handleLockAcquired = jest.fn().mockResolvedValue({ status: 'FETCHING_IN_PROGRESS' });
       service.redisHealthService.shouldFailOpen.mockResolvedValue(false);
 
-      await service.getVideoInsights('brand1', 'video123');
+      await service.getPostInsights('brand1', 'video123');
 
       expect(service.lockService.acquireLock).toHaveBeenCalled();
       expect(service._handleLockAcquired).toHaveBeenCalled();
@@ -73,7 +73,7 @@ describe('YouTubeAnalyticsEnhancedService', () => {
       service._handleLockNotAcquired = jest.fn().mockResolvedValue({ status: 'FETCHING_IN_PROGRESS' });
       service.redisHealthService.shouldFailOpen.mockResolvedValue(false);
 
-      await service.getVideoInsights('brand1', 'video123');
+      await service.getPostInsights('brand1', 'video123');
 
       expect(service._handleLockNotAcquired).toHaveBeenCalled();
     });
@@ -83,7 +83,7 @@ describe('YouTubeAnalyticsEnhancedService', () => {
       service.redisHealthService.shouldFailOpen.mockResolvedValue(true);
       service._fetchInsightsDirectly = jest.fn().mockResolvedValue({ videoId: 'test' });
 
-      await service.getVideoInsights('brand1', 'video123');
+      await service.getPostInsights('brand1', 'video123');
 
       expect(service._fetchInsightsDirectly).toHaveBeenCalled();
     });
@@ -157,7 +157,7 @@ describe('YouTubeAnalyticsEnhancedService', () => {
 
       await service._backgroundFetch('brand1', 'video123', 'token', 'cache', 'stale', 'lock');
 
-      expect(service.quotaService.incrementAndGet).toHaveBeenCalledWith('youtube-analytics', 6);
+      expect(service.quotaService.incrementAndGet).toHaveBeenCalledWith('youtube-analytics', 1);
       expect(service._buildInsights).toHaveBeenCalledWith(mockAuth, 'video123');
       expect(service._writeCache).toHaveBeenCalledTimes(2); // Cache + stale
       expect(service.lockService.releaseLock).toHaveBeenCalledWith('lock', 'token');
@@ -181,7 +181,7 @@ describe('YouTubeAnalyticsEnhancedService', () => {
       const result = await service._fetchInsightsDirectly('brand1', 'video123');
 
       expect(service._buildInsights).toHaveBeenCalledWith(mockAuth, 'video123');
-      expect(service.quotaService.incrementAndGet).toHaveBeenCalledWith('youtube-analytics', 6);
+      expect(service.quotaService.incrementAndGet).toHaveBeenCalledWith('youtube-analytics', 1);
     });
 
     it('should return status message if fetch fails', async () => {
@@ -224,9 +224,9 @@ describe('YouTubeAnalyticsEnhancedService', () => {
       service.redisHealthService.shouldFailOpen.mockResolvedValue(false);
 
       // Simulate 3 concurrent requests
-      const req1 = service.getVideoInsights('brand1', 'video123');
-      const req2 = service.getVideoInsights('brand1', 'video123');
-      const req3 = service.getVideoInsights('brand1', 'video123');
+      const req1 = service.getPostInsights('brand1', 'video123');
+      const req2 = service.getPostInsights('brand1', 'video123');
+      const req3 = service.getPostInsights('brand1', 'video123');
 
       await Promise.all([req1, req2, req3]);
 
@@ -248,10 +248,10 @@ describe('YouTubeAnalyticsEnhancedService', () => {
       service._waitForCacheOrFallback = jest.fn().mockResolvedValue({ videoId: 'test' });
       service.redisHealthService.shouldFailOpen.mockResolvedValue(false);
 
-      await service.getVideoInsights('brand1', 'video123');
+      await service.getPostInsights('brand1', 'video123');
 
       // Check quota was incremented
-      expect(service.quotaService.incrementAndGet).toHaveBeenCalledWith('youtube-analytics', 6);
+      expect(service.quotaService.incrementAndGet).toHaveBeenCalledWith('youtube-analytics', 1);
       // Check TTL was calculated
       expect(service.quotaService.getCalculatedTTL).toHaveBeenCalled();
     });

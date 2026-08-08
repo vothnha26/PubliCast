@@ -24,10 +24,23 @@ class SocialService {
     return data;
   }
 
-  async getMetrics(brandId, params = {}) {
-    const queryParams = new URLSearchParams({ brandId, ...params }).toString();
-    // Timeout 90s vì backend cần sync với các nền tảng (Facebook Smart Sync có thể mất 30-60s)
-    const data = await apiV2.get(`/social/metrics?${queryParams}`, { timeout: 90000 });
+  async getMetrics(brandId) {
+    const queryParams = new URLSearchParams({ brandId }).toString();
+    // DB read only — the backend never calls a platform's live API here
+    // anymore (only the cron scheduler and initial connect do), so this is
+    // fast and needs no extended timeout.
+    const data = await apiV2.get(`/social/metrics?${queryParams}`);
+    return data;
+  }
+
+  /**
+   * Cheap version signal for a brand's metrics — used by socket.js to
+   * reconcile after a reconnect in case a `data_invalidate` event was
+   * missed while disconnected. Not meant for polling.
+   */
+  async getMetricsVersion(brandId) {
+    const queryParams = new URLSearchParams({ brandId }).toString();
+    const data = await apiV2.get(`/social/metrics/version?${queryParams}`);
     return data;
   }
 
@@ -74,7 +87,10 @@ class SocialService {
     return data;
   }
 
-  async getVideoInsights(brandId, videoId) {
+  // Route path kept as-is (public API contract) — method renamed to
+  // getPostInsights: this fetches lifetime insights for one post/video, not
+  // a date-ranged list, so "video" in the old name was misleading.
+  async getPostInsights(brandId, videoId) {
     const url = `/social/youtube/video-insights?brandId=${brandId}&videoId=${videoId}`;
     const data = await apiV2.get(url, { timeout: 30000 });
     return data;

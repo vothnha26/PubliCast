@@ -12,6 +12,7 @@ import { InstagramReelsTab } from "../dashboard/InstagramReelsTab";
 import { InstagramStoriesTab } from "../dashboard/InstagramStoriesTab";
 import { ThreadsPostsTab } from "../dashboard/ThreadsPostsTab";
 import { TikTokDashboard } from "../dashboard/TikTokDashboard";
+import { InsightsSummaryWidget } from "../dashboard/InsightsSummaryWidget";
 
 const YT_TABS = [
   { id: "community", label: "COMMUNITY" },
@@ -72,6 +73,7 @@ export function ChannelInsightsTab({ socialAccountId, platform: platformInput })
     stats,
     totalPeriodViews,
     totalPeriodGained,
+    totalPeriodVideos,
     communityGrowthData,
     isPlatformLocked,
     platformLockReason,
@@ -163,7 +165,7 @@ export function ChannelInsightsTab({ socialAccountId, platform: platformInput })
                       color: "bg-[#8E9BEE] text-white",
                       chartColor: "#8E9BEE",
                       type: "area",
-                      value: stats?.subscribers || 0,
+                      value: totalPeriodGained ?? stats?.subscribers ?? 0,
                     },
                     {
                       key: "views",
@@ -171,7 +173,7 @@ export function ChannelInsightsTab({ socialAccountId, platform: platformInput })
                       color: "bg-[#A7F3D0] text-foreground",
                       chartColor: "#A7F3D0",
                       type: "line",
-                      value: totalPeriodViews || stats?.views || 0,
+                      value: totalPeriodViews ?? stats?.views ?? 0,
                     },
                     {
                       key: "totalContent",
@@ -179,7 +181,7 @@ export function ChannelInsightsTab({ socialAccountId, platform: platformInput })
                       color: "bg-[#E6A34A] text-white",
                       chartColor: "#E6A34A",
                       type: "bar",
-                      value: stats?.videos || 0,
+                      value: totalPeriodVideos ?? stats?.videos ?? 0,
                     },
                   ];
 
@@ -205,6 +207,15 @@ export function ChannelInsightsTab({ socialAccountId, platform: platformInput })
 
                   return (
                     <>
+                      <InsightsSummaryWidget
+                        dateRange={dateRange}
+                        metrics={metrics}
+                        stats={stats}
+                        realData={realData}
+                        communityGrowthData={communityGrowthData}
+                        publishedVideos={publishedVideos}
+                        platform={platform}
+                      />
                       <GenericDashboardTab
                         title={t("youtubeDashboard.subscriberGrowthTitle", "Subscriber Growth")}
                         description={t(

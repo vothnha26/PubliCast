@@ -1,6 +1,6 @@
 const BaseSocialService = require('../base-social.service');
 const threadsGateway = require('./threads.gateway');
-const brandRepository = require('../../../repositories/workspace/brand.repository');
+const { getHistoryWindowMonths } = require('../plan-history-window.util');
 const prisma = require('../../../config/prisma');
 const { PLATFORMS } = require('../../../utils/constants');
 const { THREADS_MEDIA_TYPE, THREADS_CONTAINER_STATUS } = require('./threads.constants');
@@ -13,10 +13,6 @@ const logger = require('../../../utils/logger');
 // rate limit as Facebook/Instagram (developers.facebook.com/documentation/
 // threads/overview).
 const MAX_PAGE_COUNT = 5;
-
-// Fallback when a brand has no active subscription — same conservative
-// (FREE-tier) default used by the other platform services.
-const DEFAULT_HISTORY_WINDOW_MONTHS = 1;
 
 // getPublishedVideos()'s DB-first cache (see SocialPostMetric). Threads
 // currently exposes no real insights (reach/views are left null — see the
@@ -212,16 +208,13 @@ class ThreadsService extends BaseSocialService {
       index++;
     }
 
-    // Progressive followersCount calculation for real accounts
-    if (!isMock) {
-      let tempFollowers = auth.instagramAccount?.followersCount || auth.followersCount || 100;
-      for (let i = sortedKeys.length - 1; i >= 0; i--) {
-        const dateStr = sortedKeys[i];
-        dailyMap[dateStr].followersCount = tempFollowers;
-        tempFollowers = Math.max(0, tempFollowers - (dailyMap[dateStr].acquired - dailyMap[dateStr].lost));
-      }
-    }
-
+    // No progressive backward-reconstruction here (unlike YouTube/Facebook) —
+    // acquired/lost are always 0 above (Threads has no real follower-delta
+    // metric), so "reconstructing" from a seed would only ever produce that
+    // same seed value for every day, dressed up as if it were real
+    // per-day history. dailyMap[dateStr].followersCount already holds
+    // whatever the real followers_count Insights metric returned (line
+    // ~131 above), or stays 0 for any day that metric didn't cover.
     const sortedDates = sortedKeys.map(k => dailyMap[k]);
     const analytics = sortedDates.map(a => ({
       date: a.date,
@@ -314,28 +307,35 @@ class ThreadsService extends BaseSocialService {
     // 3. Lấy thông tin chi tiết profile thật
     const profile = await threadsGateway.getAccountDetails(longToken);
 
-    // 4. Lấy mock analytics report ban đầu
+    // 4. Lấy analytics report thật (bao gồm followers_count thật từ Threads
+    // Insights API nếu token có quyền — xem getAnalyticsReport's summary)
     const report = await this.getAnalyticsReport({
       igAccountId: profile.id,
       pageAccessToken: longToken
     });
 
+    // followersCount lấy từ report.summary (đã ưu tiên giá trị thật từ
+    // Insights, xem getAnalyticsReport). followingCount/mediaCount không có
+    // API thật nào của Threads trả về (getAccountDetails/getInsights đều
+    // không có field này) — để null, không bịa số như 300/10 trước đây (#97).
+    const summary = JSON.parse(report.audienceDemographicsJson).summary;
+
     // 5. Lưu vào Database
-    return require('../../../repositories/social/social-account.repository').upsertInstagramAccount(brandId, {
+    return require('../../../repositories/social/social-account.repository').upsertThreadsAccount(brandId, {
       igAccountId: profile.id,
       username: profile.username,
       displayName: profile.name || profile.username,
       profilePictureUrl: profile.threads_profile_picture_url || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=150&q=80',
-      followersCount: 12500,
-      followingCount: 300,
-      mediaCount: 10,
+      followersCount: summary.followersCount || 0,
+      followingCount: null,
+      mediaCount: null,
       biography: profile.threads_biography || '',
       website: '',
       analytics: report
     }, {
       access_token: longToken,
       refresh_token: '' // Threads long-lived token tự gia hạn không cần refresh_token
-    }, PLATFORMS.THREADS);
+    });
   }
 
   async syncChannelMetrics(socialAccountId, startDate, endDate, force = false) {
@@ -354,23 +354,31 @@ class ThreadsService extends BaseSocialService {
       pageAccessToken: account.accessToken
     }, startDate, endDate);
 
+    // profile.followersCount is always 0 here — getChannelInfo never calls
+    // Insights, only getAccountDetails, which has no follower field at all.
+    // The real value (when the token has permission) lives in the analytics
+    // report's summary instead — see getAnalyticsReport. followingCount/
+    // mediaCount have no real Threads API source anywhere; null, not a
+    // fabricated 300/10 (#97).
+    const summary = JSON.parse(report.audienceDemographicsJson).summary;
+
     // enqueueSync: false — đây CHÍNH LÀ sync job đang chạy; xem ghi chú tương tự ở
     // youtube-analytics.service.js syncChannelMetrics.
-    return require('../../../repositories/social/social-account.repository').upsertInstagramAccount(account.brandId, {
+    return require('../../../repositories/social/social-account.repository').upsertThreadsAccount(account.brandId, {
       igAccountId: account.platformAccountId,
       username: profile.username,
       displayName: profile.displayName,
       profilePictureUrl: profile.profilePictureUrl,
-      followersCount: profile.followersCount || 12500,
-      followingCount: profile.followingCount || 300,
-      mediaCount: profile.mediaCount || 10,
+      followersCount: summary.followersCount || 0,
+      followingCount: null,
+      mediaCount: null,
       biography: profile.biography,
       website: profile.website,
       analytics: report
     }, {
       access_token: account.accessToken,
       refresh_token: account.refreshToken
-    }, PLATFORMS.THREADS, { enqueueSync: false });
+    }, { enqueueSync: false });
   }
 
   async getPublishedVideos(brandId, pageToken = null, limit = 10, socialAccountId = null, startDate = null, endDate = null) {
@@ -399,7 +407,7 @@ class ThreadsService extends BaseSocialService {
       if (pageToken) {
         result = await this._fetchThreadsSinglePage(pageId, accessToken, pageToken, limit);
       } else {
-        const windowMonths = await this._getHistoryWindowMonths(brandId);
+        const windowMonths = await getHistoryWindowMonths(brandId);
         result = await this._fetchThreadsFromDbCache(brandId, activeAccount.id, windowMonths);
         if (!result) {
           result = await this._fetchThreadsRecentWindow(brandId, pageId, accessToken, windowMonths, limit);
@@ -503,12 +511,6 @@ class ThreadsService extends BaseSocialService {
     }
 
     return { data: posts, nextPageToken: null, prevPageToken: null };
-  }
-
-  async _getHistoryWindowMonths(brandId) {
-    const brand = await brandRepository.findBrandWithSubscription(brandId);
-    const planLimit = brand?.subscription?.status === 'ACTIVE' ? brand.subscription.plan?.planLimit : null;
-    return planLimit?.historyWindowMonths || DEFAULT_HISTORY_WINDOW_MONTHS;
   }
 
   /** DB-first read path (see SocialPostMetric in schema.prisma). Mirrors

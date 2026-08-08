@@ -29,11 +29,14 @@ class YouTubeController {
     res.json({ data });
   });
 
+  // Route/method name kept as-is (public API contract) — only the internal
+  // call is renamed to getPostInsights, since this fetches lifetime insights
+  // for one post/video, unrelated to historyWindowMonths list-windowing.
   getYouTubeVideoInsights = asyncHandler(async (req, res) => {
     const { brandId, videoId } = req.query;
     if (!brandId) return res.status(400).json({ message: 'brandId is required' });
     if (!videoId)  return res.status(400).json({ message: 'videoId is required' });
-    const data = await youtubeService.getVideoInsights(brandId, videoId);
+    const data = await youtubeService.getPostInsights(brandId, videoId);
     res.json(data);
   });
 

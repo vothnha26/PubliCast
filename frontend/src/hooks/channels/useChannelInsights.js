@@ -213,9 +213,6 @@ export function useChannelInsights(socialAccountId, platformInput) {
     };
   }, [metrics, platform, realData]);
 
-  const totalPeriodViews = useMemo(() => realData.growth?.reduce((a, b) => a + (b.value || 0), 0) || 0, [realData.growth]);
-  const totalPeriodGained = useMemo(() => realData.growth?.reduce((a, b) => a + (b.new || 0), 0) || 0, [realData.growth]);
-
   const communityGrowthData = useMemo(() => {
     if (!dateRange.from || !dateRange.to) return [];
     try {
@@ -265,6 +262,8 @@ export function useChannelInsights(socialAccountId, platformInput) {
           videos: realDayData ? realDayData.videos : 0,
           new: realDayData ? realDayData.new : 0,
           lost: realDayData ? realDayData.lost : 0,
+          likes: realDayData ? realDayData.likes || 0 : 0,
+          comments: realDayData ? realDayData.comments || 0 : 0,
         };
       });
     } catch (e) {
@@ -272,6 +271,19 @@ export function useChannelInsights(socialAccountId, platformInput) {
       return [];
     }
   }, [dateRange, realData.growth, platform, metrics]);
+
+  const totalPeriodViews = useMemo(
+    () => communityGrowthData?.reduce((a, b) => a + (b.views || 0), 0) || 0,
+    [communityGrowthData]
+  );
+  const totalPeriodGained = useMemo(
+    () => communityGrowthData?.reduce((a, b) => a + (b.subscribers || b.new || 0), 0) || 0,
+    [communityGrowthData]
+  );
+  const totalPeriodVideos = useMemo(
+    () => communityGrowthData?.reduce((a, b) => a + (b.videos || 0), 0) || 0,
+    [communityGrowthData]
+  );
 
   return {
     dateRange,
@@ -287,6 +299,7 @@ export function useChannelInsights(socialAccountId, platformInput) {
     stats,
     totalPeriodViews,
     totalPeriodGained,
+    totalPeriodVideos,
     communityGrowthData,
     isPlatformLocked,
     platformLockReason,

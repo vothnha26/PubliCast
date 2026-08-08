@@ -1,11 +1,35 @@
 const socialAccountRepository = require('../../repositories/social/social-account.repository');
 const { ANALYTICS } = require('../../utils/constants');
 const logger = require('../../utils/logger');
+const { eventEmitter, EVENTS } = require('../../events/event-emitter');
+
+/**
+ * Runs the real syncChannelMetrics call and emits EVENTS.SOCIAL.METRICS_SYNCED
+ * (success) or METRICS_SYNC_FAILED (failure) exactly once per real API call —
+ * this is the one place every platform's syncChannelMetrics passes through,
+ * so it's the single point that knows "a sync actually just happened" versus
+ * the cache-hit branches above, which return early without ever touching a
+ * platform's live API. Best-effort/non-transactional on purpose: unlike
+ * SOCIAL.CONNECTED (removed — see social.subscriber.js's comment on why
+ * enqueueing a job via raw EventEmitter loses it on a crash), missing one of
+ * these events just means the socket UI update for this sync is delayed
+ * until the next one — nothing is lost or needs a retry.
+ */
+async function syncAndEmit(target, account, socialAccountId, startDate, endDate, force) {
+  try {
+    const result = await target.syncChannelMetrics(socialAccountId, startDate, endDate, force);
+    eventEmitter.emit(EVENTS.SOCIAL.METRICS_SYNCED, { brandId: account.brandId, socialAccountId, platform: account.platform });
+    return result;
+  } catch (err) {
+    eventEmitter.emit(EVENTS.SOCIAL.METRICS_SYNC_FAILED, { account, error: err });
+    throw err;
+  }
+}
 
 /**
  * Tạo một ES6 Proxy bọc quanh các Social Analytics Service để tối ưu hóa việc gọi API bằng cơ chế Caching.
  * Nếu tài khoản vừa được đồng bộ trong vòng COOLDOWN_HOURS giờ, trả về trực tiếp dữ liệu từ DB.
- * 
+ *
  * @param {object} realService - Social Analytics Service thật (ví dụ: facebook-analytics.service)
  * @returns {Proxy}
  */
@@ -22,7 +46,7 @@ function createSyncCacheProxy(realService) {
           // Kiểm tra xem có yêu cầu bắt buộc (force refresh) hay không
           if (force) {
             logger.debug(`[SyncCacheProxy] Force refresh requested. Skipping cooldown for account ${socialAccountId} (${account.platform})...`);
-            return target.syncChannelMetrics(socialAccountId, startDate, endDate, force);
+            return syncAndEmit(target, account, socialAccountId, startDate, endDate, force);
           }
 
           // Tính toán Cooldown
@@ -62,8 +86,8 @@ function createSyncCacheProxy(realService) {
           } else {
             logger.debug(`[SyncCacheProxy] Sync triggered for ${account.platform} (${socialAccountId}). Cooldown passed or Force=true.`);
           }
-          
-          return target.syncChannelMetrics(socialAccountId, startDate, endDate, force);
+
+          return syncAndEmit(target, account, socialAccountId, startDate, endDate, force);
         };
       }
       return Reflect.get(target, prop, receiver);

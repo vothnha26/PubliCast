@@ -20,13 +20,7 @@ const { PRODUCT_IDS, PERMISSION_KEYS } = require('../../utils/constants');
 
 const requireManageConnections = checkPermission(PERMISSION_KEYS.MANAGE_CONNECTIONS);
 
-const youtubePubSubController = require('../../controllers/social/youtube-pubsub.controller');
-
 const router = express.Router();
-
-// YouTube PubSubHubbub Webhooks (Public Webhook Endpoints - No Auth Middleware)
-router.get('/youtube/pubsub/callback', youtubePubSubController.verifyWebhook);
-router.post('/youtube/pubsub/callback', express.raw({ type: ['application/atom+xml', 'text/xml', 'application/xml'] }), youtubePubSubController.handleEventPayload);
 
 // OAuth
 router.get('/google/url', verifyAuth, oauthController.getGoogleAuthUrl);
@@ -94,6 +88,8 @@ router.get('/threads/published-posts', verifyAuth, requireBrandMember, threadsCo
 
 // Real-time Metrics
 router.get('/metrics', verifyAuth, checkPermission(PERMISSION_KEYS.VIEW_ANALYTICS), socialAnalyticsController.getMetrics);
+// Cheap version check for reconcile-on-reconnect (see frontend services/socket.js)
+router.get('/metrics/version', verifyAuth, checkPermission(PERMISSION_KEYS.VIEW_ANALYTICS), socialAnalyticsController.getMetricsVersion);
 
 // YouTube Tracked Videos
 /**

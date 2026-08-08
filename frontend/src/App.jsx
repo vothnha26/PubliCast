@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { Routes, Route, useLocation, useNavigate, Navigate } from "react-router-dom";
 import { SidebarWorkspace } from "./layout/SidebarWorkspace";
 import { SidebarAdmin } from "./layout/SidebarAdmin";
@@ -35,14 +35,23 @@ export { queryClient };
 // socket `data_invalidate` event (see services/socket.js) is what keeps it
 // from ever going stale, not a short TTL, so persisting across reloads is
 // safe rather than serving stale data indefinitely.
-const idbPersister = createAsyncStoragePersister({
-  storage: {
-    getItem: idbGet,
-    setItem: idbSet,
-    removeItem: idbDel
-  },
-  key: "publicast-query-cache"
-});
+//
+// The storage key is namespaced per-user (see the userId param below) so a
+// shared/public machine can't have User B's session read User A's cached
+// channel/post/insight data from IndexedDB after A logs out — logout()
+// also calls queryClient.clear() as the primary defense, but a fixed key
+// meant even a missed clear() call anywhere would still cross-contaminate
+// the next login on the same browser profile.
+function createIdbPersister(userId) {
+  return createAsyncStoragePersister({
+    storage: {
+      getItem: idbGet,
+      setItem: idbSet,
+      removeItem: idbDel
+    },
+    key: userId ? `publicast-query-cache:${userId}` : "publicast-query-cache:anonymous"
+  });
+}
 
 // Auth Pages
 import { LoginPage } from "./pages/auth/Login";
@@ -112,6 +121,10 @@ export default function App() {
   // Keeps the splash mounted through its own fade-out animation even after
   // `loading` (checkAuth in flight) has already flipped to false.
   const [showSplash, setShowSplash] = useState(true);
+
+  // Recreated whenever the logged-in user changes — see createIdbPersister's
+  // comment on why the storage key is namespaced per-user.
+  const idbPersister = useMemo(() => createIdbPersister(user?.id), [user?.id]);
 
   const getRedirectPath = () => {
     if (!user) return "/dashboard";

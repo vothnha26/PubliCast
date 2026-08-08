@@ -114,6 +114,26 @@ class YouTubeGateway {
   }
 
   /**
+   * Lấy danh sách Comments trực tiếp cho 1 Video ID cụ thể
+   */
+  async getCommentThreadsByVideoId(auth, videoId, maxResults = 100, pageToken = null) {
+    const youtube = google.youtube({ version: API_VERSIONS.YOUTUBE, auth });
+    const params = {
+      part: YOUTUBE_API_PARTS.COMMENT_THREADS_LIST,
+      videoId,
+      maxResults,
+      order: 'time',
+      moderationStatus: YOUTUBE_MODERATION_STATUS.PUBLISHED
+    };
+    if (pageToken) {
+      params.pageToken = pageToken;
+    }
+    const response = await youtube.commentThreads.list(params);
+    await this._trackQuota('youtube', YOUTUBE_QUOTA_COSTS.COMMENT_THREADS_LIST);
+    return response;
+  }
+
+  /**
    * Thêm bình luận phản hồi (Reply)
    */
   async insertCommentReply(auth, parentId, text) {

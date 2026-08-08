@@ -24,7 +24,9 @@ const EVENTS = {
   },
   SOCIAL: {
     CONNECTED: 'social.connected',
-    DISCONNECTED: 'social.disconnected'
+    DISCONNECTED: 'social.disconnected',
+    METRICS_SYNCED: 'social.metrics_synced',
+    METRICS_SYNC_FAILED: 'social.metrics_sync_failed'
   }
 };
 

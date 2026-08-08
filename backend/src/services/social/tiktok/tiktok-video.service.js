@@ -1,7 +1,7 @@
 const tiktokGateway = require('./tiktok.gateway');
 const tiktokAnalytics = require('./tiktok-analytics.service');
 const socialAccountRepository = require('../../../repositories/social/social-account.repository');
-const brandRepository = require('../../../repositories/workspace/brand.repository');
+const { getHistoryWindowMonths } = require('../plan-history-window.util');
 const QuotaTrackerService = require('../quota-tracker.service');
 const { PLATFORMS, POST_STATUS, QUOTA_TTL_STRATEGY } = require('../../../utils/constants');
 const logger = require('../../../utils/logger');
@@ -15,12 +15,6 @@ try {
 }
 
 const TIKTOK_VIDEO_LIST_QUOTA_SERVICE = 'tiktok-video-list';
-
-// Fallback when a brand has no active subscription (e.g. lapsed/cancelled) —
-// the most conservative (FREE-tier) window, same spirit as the hardcoded
-// fallbacks other services use when planLimit is unavailable (e.g.
-// team.service.js's `|| 5` seat cap).
-const DEFAULT_HISTORY_WINDOW_MONTHS = 1;
 
 class TikTokVideoService {
   constructor() {
@@ -94,7 +88,7 @@ class TikTokVideoService {
    * could still mean many sequential API calls even on the highest tier). */
   async _fetchRecentWindow(brandId, account) {
     const MAX_PAGE_COUNT = 20; // 20 pages * 20 videos/page = 400 videos max, regardless of plan.
-    const windowMonths = await this._getHistoryWindowMonths(brandId);
+    const windowMonths = await getHistoryWindowMonths(brandId);
     const recentCutoff = new Date();
     recentCutoff.setMonth(recentCutoff.getMonth() - windowMonths);
 
@@ -134,12 +128,6 @@ class TikTokVideoService {
     }
 
     return { videos, nextPageToken: null, prevPageToken: null };
-  }
-
-  async _getHistoryWindowMonths(brandId) {
-    const brand = await brandRepository.findBrandWithSubscription(brandId);
-    const planLimit = brand?.subscription?.status === 'ACTIVE' ? brand.subscription.plan?.planLimit : null;
-    return planLimit?.historyWindowMonths || DEFAULT_HISTORY_WINDOW_MONTHS;
   }
 
   /** Best-effort check — quota tracking failures never block the actual API

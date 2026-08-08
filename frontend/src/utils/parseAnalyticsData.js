@@ -1,6 +1,7 @@
 import { format } from "date-fns";
 import { EMPTY_ANALYTICS_DATA } from "@/mocks/dashboardFallback";
 import { PLATFORMS } from "../constants/platforms";
+import { mergeAnalyticsRows } from "./mergeAnalyticsRows";
 
 const COUNTRY_MAP = {
   VN: { name: "Vietnam", flag: "🇻🇳" },
@@ -20,12 +21,13 @@ const COUNTRY_MAP = {
  * platform-grouped dashboard and the new per-channel Insights tab
  * (useChannelInsights) share one implementation instead of drifting apart.
  *
- * @param {object|null} metrics - one entry from GET /social/metrics (has .analytics[0].socialAnalytics.audienceDemographicsJson)
+ * @param {object|null} metrics - one entry from GET /social/metrics (has .analytics[], newest first, merged across rows via mergeAnalyticsRows)
  * @param {string} platform - lowercase platform id, e.g. "youtube", "facebook"
  * @param {{from?: Date, to?: Date}} dateRange - only used for facebook/tiktok/instagram's date-filtered arrays
  */
 export function parseAnalyticsData(metrics, platform, dateRange = {}) {
-  if (!metrics?.analytics?.[0]?.socialAnalytics?.audienceDemographicsJson) {
+  const raw = mergeAnalyticsRows(metrics?.analytics);
+  if (!raw) {
     if (platform === PLATFORMS.INSTAGRAM) {
       return {
         demographics: { gender: [], age: [], countries: [], trafficSource: [] },
@@ -41,8 +43,6 @@ export function parseAnalyticsData(metrics, platform, dateRange = {}) {
   }
 
   try {
-    const raw = JSON.parse(metrics.analytics[0].socialAnalytics.audienceDemographicsJson);
-
     if (platform === PLATFORMS.BLUESKY) {
       const fromStr = dateRange.from ? format(dateRange.from, "yyyy-MM-dd") : null;
       const toStr = dateRange.to ? format(dateRange.to, "yyyy-MM-dd") : null;
@@ -132,7 +132,14 @@ export function parseAnalyticsData(metrics, platform, dateRange = {}) {
         };
       });
 
-    const growth = (raw.growth || [])
+    const fromStr = dateRange.from ? format(dateRange.from, "yyyy-MM-dd") : null;
+    const toStr = dateRange.to ? format(dateRange.to, "yyyy-MM-dd") : null;
+    const filterByRange = (arr) => {
+      if (!arr?.length || !fromStr || !toStr) return arr || [];
+      return arr.filter((item) => item.date >= fromStr && item.date <= toStr);
+    };
+
+    const rawGrowth = (raw.growth || [])
       .map((row) => {
         if (typeof row === "object" && !Array.isArray(row)) {
           return {
@@ -142,10 +149,12 @@ export function parseAnalyticsData(metrics, platform, dateRange = {}) {
             new: row.subscribersGained || 0,
             lost: row.subscribersLost || 0,
             videos: row.totalContent || 0,
+            likes: row.likes || 0,
+            comments: row.comments || 0,
           };
         }
         if (Array.isArray(row) && row.length >= 4) {
-          const [day, views, gained, lost] = row;
+          const [day, views, gained, lost, likes, comments] = row;
           return {
             date: day,
             name: day ? day.split("-").slice(1).join("/") : "Unknown",
@@ -153,11 +162,15 @@ export function parseAnalyticsData(metrics, platform, dateRange = {}) {
             new: gained || 0,
             lost: lost || 0,
             videos: 0,
+            likes: likes || 0,
+            comments: comments || 0,
           };
         }
         return null;
       })
       .filter(Boolean);
+
+    const growth = filterByRange(rawGrowth);
 
     return {
       demographics: { age, gender, countries, trafficSource },

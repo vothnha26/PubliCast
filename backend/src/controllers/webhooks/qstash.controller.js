@@ -2,13 +2,20 @@ const socialPlatformFactory = require('../../services/social/social-platform.fac
 const socialAccountRepository = require('../../repositories/social/social-account.repository');
 const postService = require('../../services/workspace/post.service');
 const postRepository = require('../../repositories/workspace/post.repository');
+const { getHistoryWindowMonths } = require('../../services/social/plan-history-window.util');
 const { POST_STATUS } = require('../../utils/constants');
 const logger = require('../../utils/logger');
 
 /**
  * Handles the social-account-sync QStash delivery — replaces the old
- * social.worker.js BullMQ handler. Pulls the last 90 days of channel
- * metrics for a newly connected/reconnected social account.
+ * social.worker.js BullMQ handler. Pulls channel metrics for a newly
+ * connected/reconnected social account, scoped to the brand's plan-based
+ * history window (previously hardcoded to 90 days regardless of plan).
+ *
+ * Notifying the client (socket invalidation) and alerting on failure both
+ * happen via sync-cache.proxy.js emitting EVENTS.SOCIAL.METRICS_SYNCED/
+ * METRICS_SYNC_FAILED — see social.subscriber.js — so this handler only
+ * needs to run the sync and track its own status bookkeeping.
  */
 const handleSocialSync = async (req, res) => {
   const { socialAccountId, platform } = req.body;
@@ -20,8 +27,12 @@ const handleSocialSync = async (req, res) => {
   try {
     const service = socialPlatformFactory.getService(platform);
 
+    const account = await socialAccountRepository.findById(socialAccountId);
+    if (!account) throw new Error('Social account not found');
+
+    const windowMonths = await getHistoryWindowMonths(account.brandId);
     const endDate = new Date().toISOString().split('T')[0];
-    const startDate = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+    const startDate = new Date(Date.now() - windowMonths * 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
 
     await service.syncChannelMetrics(socialAccountId, startDate, endDate);
 
@@ -51,6 +62,11 @@ const handleSocialSync = async (req, res) => {
  * simultaneously-due accounts (e.g. after downtime) can't flood platform
  * APIs or the DB pool. force=true bypasses SyncCacheProxy's own cooldown
  * check since the scheduler's DB query already applied it.
+ *
+ * Notifying the client (socket invalidation) and alerting on failure both
+ * happen via sync-cache.proxy.js emitting EVENTS.SOCIAL.METRICS_SYNCED/
+ * METRICS_SYNC_FAILED — see social.subscriber.js — so this handler only
+ * needs to run the sync.
  */
 const handleMetricsSync = async (req, res) => {
   const { socialAccountId, platform } = req.body;

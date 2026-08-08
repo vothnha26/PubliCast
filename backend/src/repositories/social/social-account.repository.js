@@ -3,6 +3,7 @@ const { PLATFORMS, ANALYTICS, PRISMA_TIMEOUTS } = require('../../utils/constants
 const { encrypt, decrypt } = require('../../utils/encryption');
 const { OUTBOX_EVENT_TYPES } = require('../../constants/outbox.constants');
 const outboxEventRepository = require('../core/outbox-event.repository');
+const channelSnapshotRepository = require('./channel-snapshot.repository');
 const logger = require('../../utils/logger');
 
 class SocialAccountRepository {
@@ -109,6 +110,7 @@ class SocialAccountRepository {
       if (pageData.analytics) {
         const { startDate, endDate } = pageData.analytics;
         await this.saveFacebookAnalytics(brandId, account.id, pageData.analytics, startDate, endDate, tx);
+        await this.upsertFacebookChannelSnapshots(brandId, account.id, followersCount, likesCount, pageData.analytics.balance, pageData.analytics.growth, tx);
       }
 
       if (enqueueSync) {
@@ -123,6 +125,67 @@ class SocialAccountRepository {
 
       return this.findById(account.id, tx);
     }, { timeout: PRISMA_TIMEOUTS.INTERACTIVE_TRANSACTION_MS });
+  }
+
+  /**
+   * Facebook's Page Insights API genuinely returns per-day follower
+   * gained/lost (page_daily_follows_unique/unfollows_unique, real
+   * period=day Graph API call — see facebook.gateway.js's getPageInsights)
+   * plus real per-day reach/page-views (page_media_view/page_views_total),
+   * so unlike most other platforms it DOES support true historical
+   * backfill, same as YouTube — supportsHistoricalBackfill: true.
+   *
+   * No real page-level "impressions" metric exists anymore — Meta
+   * deprecated page_impressions_unique on 2025-06-15 with no page-level
+   * replacement (only page_total_media_view_unique, already used here as
+   * reach). FacebookChannelSnapshot.impressions is always written null,
+   * never fabricated from reach — populate it for real only if Meta ships
+   * a replacement metric.
+   */
+  async upsertFacebookChannelSnapshots(brandId, socialAccountId, currentFollowersCount, currentLikesCount, balanceRows, growthRows, client = prisma) {
+    if (!Array.isArray(balanceRows) || balanceRows.length === 0) return [];
+
+    const growthByDate = new Map((growthRows || []).map((row) => [row.date, row]));
+
+    const dailyRows = balanceRows.map((balance) => {
+      const growth = growthByDate.get(balance.date) || {};
+      return {
+        date: balance.date,
+        followersGained: balance.acquired ?? null,
+        followersLost: balance.lost ?? null,
+        columns: {
+          reach: growth.views ?? null,
+          pageViews: growth.pageVisits ?? null,
+          // No real impressions metric exists anymore — Meta deprecated
+          // page_impressions_unique on 2025-06-15 with no page-level
+          // replacement. The column stays in the schema for when/if a real
+          // one becomes available, but must never be fabricated from reach.
+          impressions: null
+        }
+      };
+    });
+
+    const current = {
+      staticColumns: { likesCount: parseInt(currentLikesCount) || 0 },
+      reconstructible: [
+        {
+          column: 'followersCount',
+          currentValue: parseInt(currentFollowersCount) || 0,
+          gainedKey: 'followersGained',
+          lostKey: 'followersLost',
+          emitDeltaColumns: true
+        }
+      ]
+    };
+
+    return channelSnapshotRepository.upsertChannelSnapshots(
+      client.facebookChannelSnapshot,
+      brandId,
+      socialAccountId,
+      current,
+      dailyRows,
+      true
+    );
   }
 
   /** Xem ghi chú options.enqueueSync ở upsertFacebookAccount phía trên. */
@@ -199,6 +262,7 @@ class SocialAccountRepository {
       if (accountData.analytics) {
         const { startDate, endDate } = accountData.analytics;
         await this.saveTikTokAnalytics(brandId, account.id, accountData.analytics, startDate, endDate, tx);
+        await this.upsertTikTokChannelSnapshots(brandId, account.id, followersCount, followingCount, likesCount, videoCount, accountData.analytics.growth, tx);
       }
 
       if (enqueueSync) {
@@ -213,6 +277,59 @@ class SocialAccountRepository {
 
       return this.findById(account.id, tx);
     }, { timeout: PRISMA_TIMEOUTS.INTERACTIVE_TRANSACTION_MS });
+  }
+
+  /**
+   * TikTok's video-list API has no date-ranged analytics endpoint at all —
+   * tiktok-analytics.service.js's _processVideosForAnalytics buckets each
+   * real video's real lifetime cumulative view/like/comment/share count
+   * into its post date. Real numbers, but not a true "activity that
+   * occurred this day" delta, and there is no follower-delta or reach/click
+   * metric available anywhere — followersGained/Lost, reach, and clicks are
+   * always null (never fabricated, see the removed *0.85/*0.1/*0.05
+   * constants). followersCount can only accumulate forward from today,
+   * never be backfilled — same as Instagram/Threads/Bluesky.
+   */
+  async upsertTikTokChannelSnapshots(brandId, socialAccountId, currentFollowersCount, currentFollowingCount, currentLikesCount, currentVideoCount, growthRows, client = prisma) {
+    if (!Array.isArray(growthRows) || growthRows.length === 0) return [];
+
+    const dailyRows = growthRows.map((row) => ({
+      date: row.date,
+      followersGained: null,
+      followersLost: null,
+      columns: {
+        views: row.views ?? null,
+        likes: row.likes ?? null,
+        comments: row.comments ?? null,
+        shares: row.shares ?? null
+      }
+    }));
+
+    const current = {
+      staticColumns: {
+        followingCount: parseInt(currentFollowingCount) || 0,
+        likesCount: parseInt(currentLikesCount) || 0,
+        videoCount: parseInt(currentVideoCount) || 0
+      },
+      reconstructible: [
+        {
+          column: 'followersCount',
+          currentValue: parseInt(currentFollowersCount) || 0,
+          gainedKey: 'followersGained',
+          lostKey: 'followersLost',
+          emitDeltaColumns: true
+        }
+      ]
+    };
+
+    return channelSnapshotRepository.upsertChannelSnapshots(
+      client.tikTokChannelSnapshot,
+      brandId,
+      socialAccountId,
+      current,
+      dailyRows,
+      false
+    );
   }
 
   async saveTikTokAnalytics(brandId, socialAccountId, analyticsData, startDate, endDate, client = prisma) {
@@ -383,8 +500,17 @@ class SocialAccountRepository {
       });
 
       if (analytics) {
-        const { startDate, endDate } = analytics;
-        await this.saveYouTubeAnalytics(brandId, account.id, analytics, startDate, endDate, tx);
+        const growthRows = Array.isArray(analytics.growth) ? analytics.growth : [];
+        const firstDate = growthRows[0]?.date;
+        const lastDate = growthRows[growthRows.length - 1]?.date;
+        await this.saveYouTubeAnalytics(brandId, account.id, analytics, firstDate, lastDate, tx);
+
+        // growthRows spans the whole requested window (30 days by default,
+        // or the full connect-time backfill range) — explode every day into
+        // its own snapshot row instead of only upserting "today", so a
+        // first connect immediately has real day-by-day history instead of
+        // starting from a single point and accumulating one row per sync.
+        await this.upsertYouTubeChannelSnapshots(brandId, account.id, statistics, growthRows, tx);
       }
 
       if (enqueueSync) {
@@ -399,6 +525,25 @@ class SocialAccountRepository {
 
       return this.findById(account.id, tx);
     }, { timeout: PRISMA_TIMEOUTS.INTERACTIVE_TRANSACTION_MS });
+  }
+
+  /**
+   * Append-only daily channel snapshot — thin wrapper around the shared
+   * channel-snapshot.repository.js upsert helper (also used by the other 5
+   * platforms). YouTube is the only platform whose API reports real
+   * historical daily deltas, so it's the only caller passing
+   * supportsHistoricalBackfill=true — see that file for the full
+   * backward-reconstruction rationale.
+   */
+  async upsertYouTubeChannelSnapshots(brandId, socialAccountId, statistics, growthRows, client = prisma) {
+    const { channelInsightFacade } = require('../../core/insights');
+    return channelInsightFacade.upsertChannelSnapshots(
+      PLATFORMS.YOUTUBE,
+      brandId,
+      socialAccountId,
+      { statistics, growthRows },
+      { client }
+    );
   }
 
   async saveYouTubeAnalytics(brandId, socialAccountId, analyticsData, startDate, endDate, client = prisma) {
@@ -438,6 +583,32 @@ class SocialAccountRepository {
         })
       }
     });
+  }
+
+  /**
+   * Cheap version signal for a brand's metrics — max(updatedAt) across its
+   * social accounts and max(fetchedAt) across their Analytics snapshot rows,
+   * whichever is newer. Used by the reconnect-reconcile flow to detect a
+   * missed `data_invalidate` socket event without re-fetching the full
+   * metrics payload just to compare it.
+   */
+  async getMetricsVersion(brandId) {
+    const [latestAccount, latestAnalytics] = await Promise.all([
+      prisma.socialAccount.findFirst({
+        where: { brandId },
+        orderBy: { updatedAt: 'desc' },
+        select: { updatedAt: true }
+      }),
+      prisma.analytics.findFirst({
+        where: { brandId },
+        orderBy: { fetchedAt: 'desc' },
+        select: { fetchedAt: true }
+      })
+    ]);
+
+    const accountTime = latestAccount?.updatedAt?.getTime() || 0;
+    const analyticsTime = latestAnalytics?.fetchedAt?.getTime() || 0;
+    return Math.max(accountTime, analyticsTime);
   }
 
   async findAnalyticsInRange(socialAccountId, startDate, endDate) {
@@ -559,6 +730,18 @@ class SocialAccountRepository {
       if (accountData.analytics) {
         const { startDate, endDate } = accountData.analytics;
         await this.saveInstagramAnalytics(brandId, account.id, accountData.analytics, startDate, endDate, tx);
+
+        // Snapshot rows are platform-specific even though the account row
+        // itself is shared (see upsertThreadsAccount below) — Threads was
+        // fully migrated off SocialPostMetric/InstagramAccount sharing
+        // (schema.prisma's comment on ThreadsChannelSnapshot) except for
+        // this one live-account relation, so it must never end up writing
+        // into InstagramChannelSnapshot under the wrong platform.
+        if (platform === PLATFORMS.INSTAGRAM) {
+          await this.upsertInstagramChannelSnapshots(brandId, account.id, followersCount, followingCount, mediaCount, accountData.analytics.balance, accountData.analytics.growth, tx);
+        } else if (platform === PLATFORMS.THREADS) {
+          await this.upsertThreadsChannelSnapshots(brandId, account.id, followersCount, accountData.analytics.balance, accountData.analytics.growth, tx);
+        }
       }
 
       if (enqueueSync) {
@@ -573,6 +756,129 @@ class SocialAccountRepository {
 
       return this.findById(account.id, tx);
     }, { timeout: PRISMA_TIMEOUTS.INTERACTIVE_TRANSACTION_MS });
+  }
+
+  /**
+   * Instagram's Graph API Insights (views/reach/profile_views) genuinely
+   * returns real per-day values — instagram.gateway.js's getAccountInsights
+   * makes one real dated API call per day in the requested range. But
+   * unlike YouTube/Facebook, there is no follower gained/lost metric fetched
+   * anywhere (instagram-analytics.service.js's balance rows are always
+   * acquired:0/lost:0 — never populated from a real delta source), so
+   * followersCount can only accumulate forward from today, never be
+   * backfilled — supportsHistoricalBackfill: false.
+   */
+  async upsertInstagramChannelSnapshots(brandId, socialAccountId, currentFollowersCount, currentFollowingCount, currentMediaCount, balanceRows, growthRows, client = prisma) {
+    if (!Array.isArray(balanceRows) || balanceRows.length === 0) return [];
+
+    const growthByDate = new Map((growthRows || []).map((row) => [row.date, row]));
+
+    const dailyRows = balanceRows.map((balance) => {
+      const growth = growthByDate.get(balance.date) || {};
+      return {
+        date: balance.date,
+        followersGained: balance.acquired ?? null,
+        followersLost: balance.lost ?? null,
+        columns: {
+          views: growth.views ?? null,
+          reach: growth.pageVisits ?? null,
+          profileViews: growth.totalClicks ?? null
+        }
+      };
+    });
+
+    const current = {
+      staticColumns: {
+        followingCount: parseInt(currentFollowingCount) || 0,
+        mediaCount: parseInt(currentMediaCount) || 0
+      },
+      reconstructible: [
+        {
+          column: 'followersCount',
+          currentValue: parseInt(currentFollowersCount) || 0,
+          gainedKey: 'followersGained',
+          lostKey: 'followersLost',
+          emitDeltaColumns: true
+        }
+      ]
+    };
+
+    return channelSnapshotRepository.upsertChannelSnapshots(
+      client.instagramChannelSnapshot,
+      brandId,
+      socialAccountId,
+      current,
+      dailyRows,
+      false
+    );
+  }
+
+  /**
+   * Thin, explicitly-named wrapper — Threads shares SocialAccount's
+   * instagramAccount sub-relation for its live account row (username/
+   * followers/etc; see the facebookPageId comment above), but must NEVER
+   * share snapshot HISTORY with Instagram (schema.prisma's comment on
+   * ThreadsChannelSnapshot: "no longer shares InstagramAccount/
+   * SocialPostMetric with Instagram" was true for post metrics but not yet
+   * for channel snapshots until this method existed). Calling this instead
+   * of upsertInstagramAccount directly makes the platform explicit at every
+   * Threads call site instead of relying on remembering to pass
+   * PLATFORMS.THREADS as the 4th positional argument correctly.
+   */
+  async upsertThreadsAccount(brandId, accountData, tokens, options = {}) {
+    return this.upsertInstagramAccount(brandId, accountData, tokens, PLATFORMS.THREADS, options);
+  }
+
+  /**
+   * Threads Insights (views/likes/replies/reposts) are real per-day values
+   * when the token has threads_insights permission — threads.gateway.js's
+   * getInsights makes one real API call covering the whole requested range.
+   * followers_count is also a real Insights metric, but threads/index.js
+   * never computes a real gained/lost delta from it (balance rows are
+   * always acquired:0/lost:0) — same as Instagram, followersCount can only
+   * accumulate forward from today, never be backfilled.
+   */
+  async upsertThreadsChannelSnapshots(brandId, socialAccountId, currentFollowersCount, balanceRows, growthRows, client = prisma) {
+    if (!Array.isArray(balanceRows) || balanceRows.length === 0) return [];
+
+    const growthByDate = new Map((growthRows || []).map((row) => [row.date, row]));
+
+    const dailyRows = balanceRows.map((balance) => {
+      const growth = growthByDate.get(balance.date) || {};
+      return {
+        date: balance.date,
+        followersGained: balance.acquired ?? null,
+        followersLost: balance.lost ?? null,
+        columns: {
+          views: growth.views ?? null,
+          likes: growth.reactions ?? null,
+          replies: growth.comments ?? null,
+          reposts: growth.shares ?? null
+        }
+      };
+    });
+
+    const current = {
+      staticColumns: {},
+      reconstructible: [
+        {
+          column: 'followersCount',
+          currentValue: parseInt(currentFollowersCount) || 0,
+          gainedKey: 'followersGained',
+          lostKey: 'followersLost',
+          emitDeltaColumns: true
+        }
+      ]
+    };
+
+    return channelSnapshotRepository.upsertChannelSnapshots(
+      client.threadsChannelSnapshot,
+      brandId,
+      socialAccountId,
+      current,
+      dailyRows,
+      false
+    );
   }
 
   async saveInstagramAnalytics(brandId, socialAccountId, analyticsData, startDate, endDate, client = prisma) {
@@ -636,7 +942,7 @@ class SocialAccountRepository {
         twitchAccount: true,
         analytics: {
           orderBy: { fetchedAt: 'desc' },
-          take: 1,
+          take: ANALYTICS.HISTORY_ROWS_TO_MERGE,
           include: {
             socialAnalytics: true
           }
@@ -778,7 +1084,7 @@ class SocialAccountRepository {
         twitchAccount: true,
         analytics: {
           orderBy: { fetchedAt: 'desc' },
-          take: 1,
+          take: ANALYTICS.HISTORY_ROWS_TO_MERGE,
           include: {
             socialAnalytics: true
           }
@@ -1017,9 +1323,67 @@ class SocialAccountRepository {
     if (analytics) {
       const { startDate, endDate, brandId } = analytics;
       await this.saveBlueskyAnalytics(brandId, socialAccountId, analytics, startDate, endDate);
+      await this.upsertBlueskyChannelSnapshots(brandId, socialAccountId, followersCount, followsCount, postsCount, analytics.balance, analytics.growth);
     }
 
     return account;
+  }
+
+  /**
+   * Bluesky's author-feed aggregation (bluesky-analytics.service.js's
+   * getAnalyticsReport) genuinely returns real per-day likes/replies/
+   * reposts/quotes, summed from each real post's own counts — no
+   * fabrication. AT Protocol's public API has no reach/impressions concept
+   * for a developer app, so BlueskyChannelSnapshot has no such columns at
+   * all (not even nulled ones) — there is nothing to ever populate there.
+   * followersGained/Lost are always 0 (never computed from a real delta
+   * source, same as Instagram/Threads) — followersCount can only
+   * accumulate forward from today, never be backfilled.
+   */
+  async upsertBlueskyChannelSnapshots(brandId, socialAccountId, currentFollowersCount, currentFollowsCount, currentPostsCount, balanceRows, growthRows, client = prisma) {
+    if (!Array.isArray(balanceRows) || balanceRows.length === 0) return [];
+
+    const growthByDate = new Map((growthRows || []).map((row) => [row.date, row]));
+
+    const dailyRows = balanceRows.map((balance) => {
+      const growth = growthByDate.get(balance.date) || {};
+      return {
+        date: balance.date,
+        followersGained: balance.acquired ?? null,
+        followersLost: balance.lost ?? null,
+        columns: {
+          likes: growth.likes ?? null,
+          replies: growth.replies ?? null,
+          reposts: growth.reposts ?? null,
+          quotes: growth.quotes ?? null
+        }
+      };
+    });
+
+    const current = {
+      staticColumns: {
+        followsCount: parseInt(currentFollowsCount) || 0,
+        postsCount: parseInt(currentPostsCount) || 0
+      },
+      reconstructible: [
+        {
+          column: 'followersCount',
+          currentValue: parseInt(currentFollowersCount) || 0,
+          gainedKey: 'followersGained',
+          lostKey: 'followersLost',
+          emitDeltaColumns: true
+        }
+      ]
+    };
+
+    return channelSnapshotRepository.upsertChannelSnapshots(
+      client.blueskyChannelSnapshot,
+      brandId,
+      socialAccountId,
+      current,
+      dailyRows,
+      false
+    );
   }
 
   async saveBlueskyAnalytics(brandId, socialAccountId, analyticsData, startDate, endDate, client = prisma) {

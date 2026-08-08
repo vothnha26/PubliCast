@@ -2,6 +2,7 @@ const youtubeGateway = require('./youtube.gateway');
 const googleOAuthService = require('../google-oauth.service');
 const socialAccountRepository = require('../../../repositories/social/social-account.repository');
 const trackedVideoRepository = require('../../../repositories/social/tracked-video.repository');
+const { getHistoryWindowMonths } = require('../plan-history-window.util');
 const prisma = require('../../../config/prisma');
 const redisClient = require('../../../config/redis');
 const socketInvalidationService = require('../../core/socket-invalidation.service');
@@ -9,7 +10,25 @@ const { CACHE_SCOPES } = require('../../../utils/socket-constants');
 const { PLATFORMS, POST_STATUS, SEPARATORS, YOUTUBE_API, YOUTUBE_VIDEO_DETAILS_CACHE } = require('../../../utils/constants');
 
 class YouTubeVideoService {
+  /**
+   * Clamp a requested startDate to the brand's plan-based history window —
+   * same enforcement Facebook/Instagram/TikTok/Threads already have via
+   * their own _fetchRecentWindow/_fetchFromDbCache cutoffs, which this
+   * method never had (it only bounded results by `limit`, a UI page-size
+   * param with no relation to plan tier).
+   */
+  async _clampStartDate(brandId, startDate) {
+    const windowMonths = await getHistoryWindowMonths(brandId);
+    const earliestAllowed = new Date();
+    earliestAllowed.setMonth(earliestAllowed.getMonth() - windowMonths);
+    if (!startDate || new Date(startDate) < earliestAllowed) {
+      return earliestAllowed.toISOString().split('T')[0];
+    }
+    return startDate;
+  }
+
   async getPublishedVideos(brandId, pageToken = null, limit = 10, socialAccountId = null, forceSync = false, startDate = null, endDate = null) {
+    startDate = await this._clampStartDate(brandId, startDate);
     const cacheKey = `cache:youtube:videos:${brandId}:${pageToken || 'first'}:${limit}`;
 
     // 1. Try Redis Cache (< 2ms response time)

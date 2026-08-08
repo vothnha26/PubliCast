@@ -364,14 +364,21 @@ class TikTokAnalyticsService {
 
       if (dateStr >= start && dateStr <= end) {
         if (dailyMap[dateStr]) {
+          // views/likes/comments/shares are each video's real lifetime
+          // cumulative counts, bucketed into its post date — not a true
+          // "activity that occurred on this day" delta (TikTok's API has no
+          // date-ranged analytics endpoint at all, only this video-list
+          // call), but genuinely real numbers, not estimated. reach/
+          // totalClicks/acquired (new followers) used to be fabricated as
+          // arbitrary percentages of view/like counts (*0.85/*0.1/*0.05)
+          // with no backing API call — removed entirely rather than kept
+          // as fake data (#97-equivalent fix for TikTok); left null below
+          // since there is no real source for them.
           dailyMap[dateStr].totalContent += 1;
           dailyMap[dateStr].views += video.view_count || 0;
-          dailyMap[dateStr].reach += Math.round((video.view_count || 0) * 0.85); // Approximate reach
           dailyMap[dateStr].likes += video.like_count || 0;
           dailyMap[dateStr].comments += video.comment_count || 0;
           dailyMap[dateStr].shares += video.share_count || 0;
-          dailyMap[dateStr].totalClicks += Math.round((video.like_count || 0) * 0.1); // Approximate clicks
-          dailyMap[dateStr].acquired += Math.round((video.like_count || 0) * 0.05); // Approximate new followers from this video
 
           stats.totalPostsInPeriod += 1;
           stats.totalViews += video.view_count || 0;
@@ -382,38 +389,24 @@ class TikTokAnalyticsService {
       }
     }
 
-    Object.keys(dailyMap).forEach(dateStr => {
-      const day = dailyMap[dateStr];
-      if (day.views === 0) {
-        day.views = 0;
-        day.reach = 0;
-        day.likes = 0;
-        day.acquired = 0;
-      }
-    });
-
     return stats;
   }
 
   _calculateTotalsAndFormatResponse(sortedDates, currentFollowersCount, stats) {
-    let tempFollowers = currentFollowersCount;
-    for (let i = sortedDates.length - 1; i >= 0; i--) {
-      sortedDates[i].followers = tempFollowers;
-      tempFollowers = Math.max(0, tempFollowers - (sortedDates[i].acquired || 0) + (sortedDates[i].lost || 0));
-    }
+    // No backward-reconstruction of followers here — TikTok's video-list
+    // call never reported a real per-day follower delta (acquired/lost
+    // used to be fabricated as like_count*0.05, removed in
+    // _processVideosForAnalytics). followers just holds today's real
+    // current total for every day, same as Instagram/Threads/Bluesky.
+    sortedDates.forEach(d => { d.followers = currentFollowersCount; });
 
     const totalViews = sortedDates.reduce((sum, d) => sum + d.views, 0);
-    const totalReach = sortedDates.reduce((sum, d) => sum + d.reach, 0);
-    const totalClicks = sortedDates.reduce((sum, d) => sum + d.totalClicks, 0);
-    const totalAcquired = sortedDates.reduce((sum, d) => sum + d.acquired, 0);
-    const totalLost = sortedDates.reduce((sum, d) => sum + d.lost, 0);
     const totalPosts = sortedDates.reduce((sum, d) => sum + d.totalContent, 0);
     const totalLikes = sortedDates.reduce((sum, d) => sum + d.likes, 0);
     const totalComments = sortedDates.reduce((sum, d) => sum + d.comments, 0);
     const totalShares = sortedDates.reduce((sum, d) => sum + d.shares, 0);
 
     const daysCount = sortedDates.length || 1;
-    const averageDailyNewFollowers = Math.round((totalAcquired - totalLost) / daysCount);
     const dailyPageViews = parseFloat((totalViews / daysCount).toFixed(2));
     const dailyPosts = parseFloat((totalPosts / daysCount).toFixed(2));
     const postsPerWeek = parseFloat((dailyPosts * 7).toFixed(2));
@@ -429,9 +422,7 @@ class TikTokAnalyticsService {
       summary: {
         followers: currentFollowersCount,
         views: totalViews,
-        reach: totalReach,
         totalContent: totalPosts,
-        averageDailyNewFollowers,
         dailyPageViews,
         dailyPosts,
         postsPerWeek
@@ -441,25 +432,10 @@ class TikTokAnalyticsService {
         name: d.name,
         followers: d.followers,
         views: d.views,
-        reach: d.reach,
         totalContent: d.totalContent,
         likes: d.likes,
         comments: d.comments,
         shares: d.shares
-      })),
-      balance: sortedDates.map(d => ({
-        date: d.date,
-        name: d.name,
-        acquired: d.acquired,
-        lost: d.lost,
-        totalContent: d.totalContent
-      })),
-      clicks: sortedDates.map(d => ({
-        date: d.date,
-        name: d.name,
-        totalClicks: d.totalClicks,
-        reach: d.reach,
-        totalContent: d.totalContent
       })),
       postsPeriod: sortedDates.map(d => ({
         date: d.date,
@@ -474,18 +450,18 @@ class TikTokAnalyticsService {
         likes: totalLikes,
         comments: totalComments,
         shares: totalShares,
-        clicks: totalClicks,
         posts: totalPosts,
         dailyLikes,
         likesPerPost,
         dailyComments,
         commentsPerPost,
         sharesPerDay,
-        sharesPerPost,
-        viewsBreakdown: {
-          organic: 85,
-          promoted: 15
-        }
+        sharesPerPost
+        // reach/totalClicks/acquired/viewsBreakdown removed entirely — none
+        // had a real API source (TikTok's video-list call has no reach,
+        // click, or follower-delta data at all); the old values were
+        // fabricated percentages of view/like counts presented as measured
+        // data. Do not reintroduce without a real API call backing them.
       }
     };
   }
