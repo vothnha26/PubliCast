@@ -279,7 +279,7 @@ export function useChannelCommunity(socialAccountId) {
     currentPage, setCurrentPage,
     inboxData, fetchedPosts, loading, postsLoading,
     activeConv, setActiveConv,
-    thread, videoContext, threadLoading,
+    thread, setThread, videoContext, setVideoContext, threadLoading,
     isSyncing, isReplying,
     isPostingNewComment,
     handleSync, handleUpdateStatus, handleReply, handlePostNewComment, handleUpdateReply, handleDeleteReply,
