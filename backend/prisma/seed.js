@@ -441,14 +441,15 @@ async function main() {
     });
 
     await prisma.team.upsert({
-      where: { id: `team-${brand.id}-${memberUser.id}` },
-      update: { role: 'STAFF', customRoleId: roleCreator.id },
+      where: { brandId_userId: { brandId: brand.id, userId: memberUser.id } },
+      update: { role: 'STAFF', customRoleId: roleCreator.id, status: 'ACCEPTED' },
       create: {
-        id: `team-${brand.id}-${memberUser.id}`,
         brandId: brand.id,
         userId: memberUser.id,
+        invitedByUserId: adminUser.id,
         role: 'STAFF',
-        customRoleId: roleCreator.id
+        customRoleId: roleCreator.id,
+        status: 'ACCEPTED'
       }
     });
 
