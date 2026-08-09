@@ -29,6 +29,7 @@ import { YouTubeCommunityTab } from "./dashboard/youtube/YouTubeCommunityTab";
 import { ThreadsPostsTab } from "./dashboard/threads/ThreadsPostsTab";
 import { ThreadsCommunityTab } from "./dashboard/threads/ThreadsCommunityTab";
 import { BlueskyDashboardTab } from "./dashboard/bluesky/BlueskyDashboardTab";
+import { BlueskyCommunityTab } from "./dashboard/bluesky/BlueskyCommunityTab";
 import { InsightsSummaryWidget } from "./dashboard/common/InsightsSummaryWidget";
 import { usePlatformDashboard } from "../../hooks/usePlatformDashboard";
 import { DateRangeFilter } from "../../components/app/DateRangeFilter";
@@ -588,76 +589,11 @@ export function PlatformDashboardPage() {
         ) : platform === "bluesky" ? (
           <>
             {activeTab === "community" && (
-              <div className="space-y-6">
-                {(() => {
-                  const bskyGrowthConfig = [
-                    {
-                      key: "followers",
-                      label: "Followers",
-                      color: "bg-[#8E9BEE] text-white",
-                      chartColor: "#8E9BEE",
-                      type: "area",
-                      value: metrics?.followersCount || metrics?.blueskyAccount?.followersCount || 0
-                    },
-                    {
-                      key: "views",
-                      label: "Views",
-                      color: "bg-[#A7F3D0] text-foreground",
-                      chartColor: "#A7F3D0",
-                      type: "line",
-                      value: stats?.views || 0
-                    },
-                    {
-                      key: "likes",
-                      label: "Likes",
-                      color: "bg-[#E6A34A] text-white",
-                      chartColor: "#E6A34A",
-                      type: "bar",
-                      value: stats?.likes || 0
-                    }
-                  ];
-
-                  const bskyBalanceConfig = [
-                    {
-                      key: "gained",
-                      dataKey: "new",
-                      label: "Gained",
-                      color: "bg-[#8E9BEE] text-white",
-                      chartColor: "#8E9BEE",
-                      type: "area",
-                      value: totalPeriodGained || 0
-                    },
-                    {
-                      key: "lost",
-                      label: "Lost",
-                      color: "bg-[#F7A6E0] text-white",
-                      chartColor: "#F7A6E0",
-                      type: "area",
-                      value: 0
-                    }
-                  ];
-
-                  return (
-                    <>
-                      <GenericDashboardTab
-                        title={t("growth.blueskyTitle", "Bluesky Growth")}
-                        description={t("growth.blueskyDesc", "Growth metrics for Followers, Views, and Likes")}
-                        data={communityGrowthData}
-                        metricConfig={bskyGrowthConfig}
-                        watermark="bluesky"
-                      />
-                      <div className="h-6" />
-                      <GenericDashboardTab
-                        title={t("growth.balanceTitle", "Balance of Followers")}
-                        description={t("growth.balanceDesc", "Biến động số lượng người theo dõi mới và hủy theo dõi")}
-                        data={communityGrowthData}
-                        metricConfig={bskyBalanceConfig}
-                        watermark="bluesky"
-                      />
-                    </>
-                  );
-                })()}
-              </div>
+              <BlueskyCommunityTab
+                metrics={metrics}
+                realData={realData}
+                communityGrowthData={communityGrowthData}
+              />
             )}
 
             {activeTab === "posts" && (

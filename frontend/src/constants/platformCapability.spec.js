@@ -420,13 +420,29 @@ export const PLATFORM_SPECS = {
       const errors = [];
       const posts = ctx.threadPosts || [];
       const maxLen = ctx.capability?.maxCaptionLength || 500;
-      posts.forEach((post, i) => {
-        const text = typeof post === 'string' ? post : (post?.text || '');
-        const media = typeof post === 'string' ? [] : (post?.mediaUrls || []);
+
+      if (posts.length === 0) {
+        const text = ctx.caption || '';
+        const hasMedia = ctx.hasMedia;
         if (text && text.length > maxLen) {
           errors.push(`Bài đăng Threads phải có độ dài dưới ${maxLen} ký tự. (Hiện tại: ${text.length})`);
         }
-        if (!text && media.length === 0) {
+        if (!text.trim() && !hasMedia) {
+          errors.push('Bài đăng Threads cần có nội dung văn bản hoặc hình ảnh/video.');
+        }
+        return errors;
+      }
+
+      posts.forEach((post, i) => {
+        const text = typeof post === 'string' ? post : (post?.text || '');
+        const media = typeof post === 'string' ? [] : (post?.mediaUrls || post?.mediaItems || []);
+        if (text && text.length > maxLen) {
+          errors.push(`Bài đăng Threads (Post ${i + 1}) phải có độ dài dưới ${maxLen} ký tự. (Hiện tại: ${text.length})`);
+        }
+        const hasText = Boolean(text && text.trim()) || (i === 0 && Boolean(ctx.caption && ctx.caption.trim()));
+        const hasMedia = media.length > 0 || (i === 0 && ctx.hasMedia);
+
+        if (!hasText && !hasMedia) {
           errors.push(`Post ${i + 1} trong chuỗi đang trống.`);
         }
       });

@@ -171,7 +171,16 @@ class BlueskyAnalyticsService {
         cid: post.cid,
         message: post.record?.text || '',
         date: post.record?.createdAt || post.indexedAt,
-        mediaUrl: post.embed?.images?.[0]?.fullsize || post.embed?.images?.[0]?.thumb || null,
+        mediaUrl:
+          post.embed?.images?.[0]?.fullsize ||
+          post.embed?.images?.[0]?.thumb ||
+          post.embed?.thumbnail ||
+          post.embed?.external?.thumb ||
+          post.embed?.media?.images?.[0]?.fullsize ||
+          post.embed?.media?.images?.[0]?.thumb ||
+          post.embed?.media?.thumbnail ||
+          post.embed?.media?.external?.thumb ||
+          null,
         likes: post.likeCount || 0,
         comments: post.replyCount || 0,
         reposts: post.repostCount || 0,

@@ -3,8 +3,8 @@ import { useState, useEffect } from "react";
 import {
   Search, Filter, MoreHorizontal, Plus,
   Trash2, CheckCircle, Clock, AlertCircle,
-  ExternalLink, Eye, ChevronDown, Youtube, PlayCircle, Loader2, Facebook, Gem, RefreshCw,
-  Users, UserCheck, Edit2, X as XIcon, BarChart2, Copy
+  ExternalLink, Eye, ChevronDown, ChevronUp, Layers, Youtube, PlayCircle, Loader2, Facebook, Gem, RefreshCw,
+  Users, UserCheck, Edit2, X as XIcon, BarChart2, Copy, MessageSquare, Image as ImageIcon, ListOrdered, CornerDownRight
 } from "lucide-react";
 import { usePostCreator } from "../../../context/PostCreatorContext";
 import { PlatformIcon } from "@/components/shared/PlatformIcon";
@@ -35,9 +35,9 @@ const STATUS_STYLE = {
   failed: "bg-rose-100 text-rose-800 border-rose-200"
 };
 
-const getPostLink = (platform, platformPostId) => {
+const getPostLink = (platform, platformPostId, post = {}) => {
   if (!platformPostId) return null;
-  return getPlatformPostUrl({ targetPlatforms: [platform], platformPostId });
+  return getPlatformPostUrl({ ...post, targetPlatforms: [platform], platformPostId });
 };
 
 export function ListView({ socialAccountId } = {}) {
@@ -48,6 +48,12 @@ export function ListView({ socialAccountId } = {}) {
 
   const [selected, setSelected] = useState([]);
   const [posts, setPosts] = useState([]);
+  const [expandedPostIds, setExpandedPostIds] = useState([]);
+
+  const toggleExpandPost = (postId, e) => {
+    if (e) e.stopPropagation();
+    setExpandedPostIds(prev => prev.includes(postId) ? prev.filter(id => id !== postId) : [...prev, postId]);
+  };
   const [loading, setLoading] = useState(true);
   const { activeBrand } = useBrand();
   const [meta, setMeta] = useState({ total: 0, page: 1, totalPages: 1 });
@@ -441,281 +447,491 @@ export function ListView({ socialAccountId } = {}) {
                   </tr>
                </thead>
                <tbody className="divide-y divide-border">
-                  {posts.map((post) => (
-                    <tr 
-                      key={post.id} 
-                      className={`hover:bg-muted/50 transition-colors group ${selected.includes(post.id) ? "bg-primary/10" : ""}`}
-                    >
-                       <td className="px-6 py-5">
-                          <input 
-                            type="checkbox" 
-                            checked={selected.includes(post.id)}
-                            onChange={() => toggleSelect(post.id)}
-                            className="rounded border-border text-primary focus:ring-primary cursor-pointer" 
-                          />
-                       </td>
-                       <td className="px-4 py-5 cursor-pointer" onClick={() => {
-                         if (post.status?.toLowerCase() === 'published') {
-                           openPostAnalytics(post);
-                         } else {
-                           openPostCreator({ post, defaultSocialAccountId: socialAccountId });
-                         }
-                       }}>
-                          <div className="flex items-center gap-4">
-                             <div className="w-12 h-12 rounded-xl overflow-hidden shrink-0 border border-border relative group-hover:border-foreground/30 transition-all shadow-sm">
-                                <PostMediaThumbnail 
-                                  thumbnail={post.thumbnail}
-                                  mediaUrls={post.mediaUrls}
-                                  className="w-full h-full"
-                                />
-                                {post.mediaUrls && post.mediaUrls.length > 1 && (
-                                  <span className="absolute bottom-1 right-1 bg-black/85 text-[8px] font-black text-white px-1 py-0.5 rounded flex items-center justify-center gap-0.5 z-10 shadow-sm border border-white/10">
-                                    +{post.mediaUrls.length - 1}
-                                  </span>
-                                )}
-                                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-all z-10">
-                                   <Eye size={16} className="text-white" />
-                                </div>
-                             </div>
-                             <div className="flex flex-col min-w-0">
-                                <span className="text-[13px] font-bold text-foreground truncate max-w-[300px]" title={post.title || post.caption}>
-                                  {post.title || post.caption || "Không có tiêu đề"}
-                                </span>
-                                <span className="text-[11px] text-muted-foreground truncate max-w-[300px]">
-                                  {post.caption && post.caption !== post.title
-                                    ? post.caption
-                                    : (post.publishedAt || post.scheduledAt || post.createdAt
-                                        ? `${post.status?.toLowerCase() === 'published' ? 'Đã đăng' : 'Lên lịch'}: ${format(new Date(post.publishedAt || post.scheduledAt || post.createdAt), "HH:mm - dd/MM/yyyy")}`
-                                        : "—")}
-                                </span>
-                             </div>
-                          </div>
-                       </td>
-                       <td className="px-4 py-5">
-                          <div className="flex items-center gap-1.5 flex-wrap">
-                             {post.platforms.map(plt => {
-                                const postUrl = post.status === 'published' ? getPostLink(plt, post.platformPostId) : null;
-                                return (
-                                  <div key={plt} className="flex items-center gap-1 bg-muted px-2 py-1 rounded-lg border border-border shadow-sm">
-                                     <PlatformIcon platform={plt} size={12} />
-                                     <span className="text-[9px] font-black uppercase tracking-tighter text-foreground">{plt}</span>
-                                     {postUrl && (
-                                       <a 
-                                         href={postUrl} 
-                                         target="_blank" 
-                                         rel="noopener noreferrer"
-                                         title="View original post"
-                                         className="text-muted-foreground hover:text-blue-500 transition-colors ml-0.5"
-                                         onClick={(e) => e.stopPropagation()}
-                                       >
-                                         <ExternalLink size={10} />
-                                       </a>
-                                     )}
-                                  </div>
-                                );
-                              })}
-                          </div>
-                       </td>
-                       <td className="px-4 py-5">
-                          <div className="flex flex-col">
-                             <span className="text-[12px] font-bold text-foreground">
-                               {(post.scheduledAt || post.publishedAt || post.createdAt) ? format(new Date(post.scheduledAt || post.publishedAt || post.createdAt), "MMM d, yyyy") : "—"}
-                             </span>
-                             <span className="text-[10px] text-muted-foreground uppercase font-medium">
-                               {(post.scheduledAt || post.publishedAt || post.createdAt) ? format(new Date(post.scheduledAt || post.publishedAt || post.createdAt), "hh:mm a") : "—"}
-                             </span>
-                          </div>
-                       </td>
-                       <td className="px-4 py-5">
-                          <div className="flex items-center gap-1.5">
-                             <span className={`px-3 py-1 rounded-full text-[9px] font-bold uppercase tracking-wider border shadow-sm ${STATUS_STYLE[post.status] || "bg-muted text-muted-foreground border-border"}`}>
-                                {post.status.replace('_', ' ')}
-                             </span>
-                             <PublishProgressBadge status={post.status} publishProgress={post.publishProgress} />
-                          </div>
-                       </td>
-                       <td className="px-4 py-5">
-                          <div className="flex items-center gap-2">
-                             <div className="w-6 h-6 rounded-full bg-muted border border-border shadow-sm flex items-center justify-center text-[10px] font-bold text-muted-foreground overflow-hidden">
-                                {post.creatorAvatar ? <img src={post.creatorAvatar} className="w-full h-full object-cover" /> : (post.creator || "?").charAt(0)}
-                             </div>
-                             <span className="text-[11px] font-medium text-foreground">{post.creator || "—"}</span>
-                          </div>
-                       </td>
-                       <td className="px-4 py-5">
-                          {post.approvalInfo?.reviewers?.length > 0 ? (
-                            <div className="flex items-center gap-1">
-                              <div className="flex -space-x-1.5">
-                                {post.approvalInfo.reviewers.slice(0, 3).map(r => (
-                                  <div key={r.id} title={r.name} className={`w-6 h-6 rounded-full border-2 border-card flex items-center justify-center text-[9px] font-bold overflow-hidden shadow-sm ${
-                                    r.status === 'APPROVED' ? 'bg-emerald-100 text-emerald-700' :
-                                    r.status === 'REJECTED' ? 'bg-red-100 text-red-700' :
-                                    'bg-amber-100 text-amber-700'
-                                  }`}>
-                                    {r.avatarUrl ? <img src={r.avatarUrl} className="w-full h-full object-cover" /> : (r.name || '?').charAt(0)}
-                                  </div>
-                                ))}
-                                {post.approvalInfo.reviewers.length > 3 && (
-                                  <div className="w-6 h-6 rounded-full border-2 border-card bg-muted flex items-center justify-center text-[9px] font-bold text-muted-foreground">
-                                    +{post.approvalInfo.reviewers.length - 3}
-                                  </div>
-                                )}
-                              </div>
-                              {post.status === 'pending_approval' && (
-                                <button
-                                  onClick={e => { e.stopPropagation(); openReviewerPanel(post); }}
-                                  className="ml-1 p-1 rounded-md text-muted-foreground hover:text-amber-500 hover:bg-amber-500/10 transition-all opacity-0 group-hover:opacity-100"
-                                  title="Sửa người duyệt"
-                                >
-                                  <Edit2 size={11} />
-                                </button>
-                              )}
-                            </div>
-                          ) : (
-                            post.status === 'pending_approval' ? (
-                              <button
-                                onClick={e => { e.stopPropagation(); openReviewerPanel(post); }}
-                                className="flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-medium text-amber-600 dark:text-amber-400 bg-amber-500/10 border border-amber-500/20 hover:bg-amber-500/20 transition-all"
-                              >
-                                <UserCheck size={10} /> {t("listView.assignBtn")}
-                              </button>
-                            ) : <span className="text-muted-foreground text-[11px]">—</span>
-                          )}
-                       </td>
-                       <td className="px-6 py-5 text-right relative">
-                          <div className="flex items-center justify-end gap-1">
-                            {post.status?.toLowerCase() === "failed" && (
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleRepost(post);
-                                }}
-                                disabled={repostingIds.includes(post.id)}
-                                className="p-2 text-indigo-500 hover:text-indigo-700 hover:bg-indigo-500/10 disabled:bg-muted disabled:text-muted-foreground rounded-lg transition-all border border-transparent hover:border-indigo-500/20 cursor-pointer flex items-center justify-center shrink-0"
-                                title="Đăng lại bài viết ngay"
-                              >
-                                {repostingIds.includes(post.id) ? (
-                                  <Loader2 size={14} className="animate-spin" />
-                                ) : (
-                                  <RefreshCw size={14} />
-                                )}
-                              </button>
-                            )}
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleSaveToLibrary(post);
-                              }}
-                              className="p-2 text-teal-500 hover:text-teal-700 hover:bg-teal-500/10 rounded-lg transition-all border border-transparent hover:border-teal-500/20 cursor-pointer flex items-center justify-center shrink-0"
-                              title="Lưu thành Template"
-                            >
-                              <Gem size={14} />
-                            </button>
-                            
-                           
-                           <button 
-                             onClick={(e) => {
-                               e.stopPropagation();
-                               setActiveMenuId(activeMenuId === post.id ? null : post.id);
-                             }}
-                             data-testid={`post-action-menu-${post.id}`}
-                             className="p-2 text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-all shadow-none hover:shadow-sm border border-transparent hover:border-border cursor-pointer"
-                           >
-                              <MoreHorizontal size={16} />
-                           </button>
-                         </div>
+                   {posts.map((post) => {
+                     const isExpanded = expandedPostIds.includes(post.id);
+                     const hasOverrides = post.networkOverrides && post.networkOverrides.some(o => o.useTemplate === false);
+                     const isMultiPlatform = post.platforms && post.platforms.length > 1;
 
-                          {activeMenuId === post.id && (
-                             <>
-                               <div className="fixed inset-0 z-40" onClick={() => setActiveMenuId(null)} />
-                               <div className="absolute right-6 top-12 w-44 bg-card rounded-2xl shadow-xl border border-border py-1.5 z-50 animate-in fade-in slide-in-from-top-1 text-left overflow-hidden">
-                                   {post.status?.toLowerCase() === "failed" && (
-                                     <button 
-                                       onClick={(e) => {
-                                         e.stopPropagation();
-                                         handleRepost(post);
-                                         setActiveMenuId(null);
-                                       }}
-                                       disabled={repostingIds.includes(post.id)}
-                                       className="w-full px-4 py-2 text-[11px] font-bold text-indigo-600 dark:text-indigo-400 hover:bg-muted transition-all flex items-center gap-2 cursor-pointer border-b border-border"
+                     return (
+                       <React.Fragment key={post.id}>
+                         <tr 
+                           className={`hover:bg-muted/50 transition-colors group ${selected.includes(post.id) ? "bg-primary/10" : ""}`}
+                         >
+                            <td className="px-6 py-5">
+                               <div className="flex items-center gap-2">
+                                 <input 
+                                   type="checkbox" 
+                                   checked={selected.includes(post.id)}
+                                   onChange={() => toggleSelect(post.id)}
+                                   className="rounded border-border text-primary focus:ring-primary cursor-pointer" 
+                                 />
+                                 {(isMultiPlatform || hasOverrides) && (
+                                   <button
+                                     onClick={(e) => toggleExpandPost(post.id, e)}
+                                     className="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/80 transition-all border border-transparent hover:border-border cursor-pointer shrink-0"
+                                     title={isExpanded ? "Thu gọn chi tiết kênh" : "Xem chi tiết nội dung từng kênh"}
+                                   >
+                                     {isExpanded ? <ChevronUp size={14} className="text-primary" /> : <ChevronDown size={14} />}
+                                   </button>
+                                 )}
+                               </div>
+                            </td>
+                            <td className="px-4 py-5 cursor-pointer" onClick={() => {
+                              if (post.status?.toLowerCase() === 'published') {
+                                openPostAnalytics(post);
+                              } else {
+                                openPostCreator({ post, defaultSocialAccountId: socialAccountId });
+                              }
+                            }}>
+                               <div className="flex items-center gap-4">
+                                  <div className="w-12 h-12 rounded-xl overflow-hidden shrink-0 border border-border relative group-hover:border-foreground/30 transition-all shadow-sm">
+                                     <PostMediaThumbnail 
+                                       thumbnail={post.thumbnail}
+                                       mediaUrls={post.mediaUrls}
+                                       className="w-full h-full"
+                                     />
+                                     {post.mediaUrls && post.mediaUrls.length > 1 && (
+                                       <span className="absolute bottom-1 right-1 bg-black/85 text-[8px] font-black text-white px-1 py-0.5 rounded flex items-center justify-center gap-0.5 z-10 shadow-sm border border-white/10">
+                                         +{post.mediaUrls.length - 1}
+                                       </span>
+                                     )}
+                                     <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-all z-10">
+                                        <Eye size={16} className="text-white" />
+                                     </div>
+                                  </div>
+                                  <div className="flex flex-col min-w-0">
+                                     <div className="flex items-center gap-2">
+                                       <span className="text-[13px] font-bold text-foreground truncate max-w-[280px]" title={post.title || post.caption}>
+                                         {post.title || post.caption || "Không có tiêu đề"}
+                                       </span>
+                                       {hasOverrides && (
+                                         <span className="px-1.5 py-0.5 text-[8px] font-bold bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-500/20 rounded-md shrink-0">
+                                           Tùy chỉnh riêng
+                                         </span>
+                                       )}
+                                     </div>
+                                     <span className="text-[11px] text-muted-foreground truncate max-w-[300px]">
+                                       {post.caption && post.caption !== post.title
+                                         ? post.caption
+                                         : (post.publishedAt || post.scheduledAt || post.createdAt
+                                             ? `${post.status?.toLowerCase() === 'published' ? 'Đã đăng' : 'Lên lịch'}: ${format(new Date(post.publishedAt || post.scheduledAt || post.createdAt), "HH:mm - dd/MM/yyyy")}`
+                                             : "—")}
+                                     </span>
+                                  </div>
+                               </div>
+                            </td>
+                            <td className="px-4 py-5">
+                               <div className="flex items-center gap-1.5 flex-wrap">
+                                  {post.platforms.map(plt => {
+                                     const postUrl = post.status === 'published' ? getPostLink(plt, post.platformPostId, post) : null;
+                                     return (
+                                       <div key={plt} className="flex items-center gap-1 bg-muted px-2 py-1 rounded-lg border border-border shadow-sm">
+                                          <PlatformIcon platform={plt} size={12} />
+                                          <span className="text-[9px] font-black uppercase tracking-tighter text-foreground">{plt}</span>
+                                          {postUrl && (
+                                            <a 
+                                              href={postUrl} 
+                                              target="_blank" 
+                                              rel="noopener noreferrer"
+                                              title="View original post"
+                                              className="text-muted-foreground hover:text-blue-500 transition-colors ml-0.5"
+                                              onClick={(e) => e.stopPropagation()}
+                                            >
+                                              <ExternalLink size={10} />
+                                            </a>
+                                          )}
+                                       </div>
+                                     );
+                                   })}
+                               </div>
+                            </td>
+                            <td className="px-4 py-5">
+                               <div className="flex flex-col">
+                                  <span className="text-[12px] font-bold text-foreground">
+                                    {(post.scheduledAt || post.publishedAt || post.createdAt) ? format(new Date(post.scheduledAt || post.publishedAt || post.createdAt), "MMM d, yyyy") : "—"}
+                                  </span>
+                                  <span className="text-[10px] text-muted-foreground uppercase font-medium">
+                                    {(post.scheduledAt || post.publishedAt || post.createdAt) ? format(new Date(post.scheduledAt || post.publishedAt || post.createdAt), "hh:mm a") : "—"}
+                                  </span>
+                               </div>
+                            </td>
+                            <td className="px-4 py-5">
+                               <div className="flex items-center gap-1.5">
+                                  <span className={`px-3 py-1 rounded-full text-[9px] font-bold uppercase tracking-wider border shadow-sm ${STATUS_STYLE[post.status] || "bg-muted text-muted-foreground border-border"}`}>
+                                     {post.status.replace('_', ' ')}
+                                  </span>
+                                  <PublishProgressBadge status={post.status} publishProgress={post.publishProgress} />
+                               </div>
+                            </td>
+                            <td className="px-4 py-5">
+                               <div className="flex items-center gap-2">
+                                  <div className="w-6 h-6 rounded-full bg-muted border border-border shadow-sm flex items-center justify-center text-[10px] font-bold text-muted-foreground overflow-hidden">
+                                     {post.creatorAvatar ? <img src={post.creatorAvatar} className="w-full h-full object-cover" /> : (post.creator || "?").charAt(0)}
+                                  </div>
+                                  <span className="text-[11px] font-medium text-foreground">{post.creator || "—"}</span>
+                               </div>
+                            </td>
+                            <td className="px-4 py-5">
+                               {post.approvalInfo?.reviewers?.length > 0 ? (
+                                 <div className="flex items-center gap-1">
+                                   <div className="flex -space-x-1.5">
+                                     {post.approvalInfo.reviewers.slice(0, 3).map(r => (
+                                       <div key={r.id} title={r.name} className={`w-6 h-6 rounded-full border-2 border-card flex items-center justify-center text-[9px] font-bold overflow-hidden shadow-sm ${
+                                         r.status === 'APPROVED' ? 'bg-emerald-100 text-emerald-700' :
+                                         r.status === 'REJECTED' ? 'bg-red-100 text-red-700' :
+                                         'bg-amber-100 text-amber-700'
+                                       }`}>
+                                         {r.avatarUrl ? <img src={r.avatarUrl} className="w-full h-full object-cover" /> : (r.name || '?').charAt(0)}
+                                       </div>
+                                     ))}
+                                     {post.approvalInfo.reviewers.length > 3 && (
+                                       <div className="w-6 h-6 rounded-full border-2 border-card bg-muted flex items-center justify-center text-[9px] font-bold text-muted-foreground">
+                                         +{post.approvalInfo.reviewers.length - 3}
+                                       </div>
+                                     )}
+                                   </div>
+                                   {post.status === 'pending_approval' && (
+                                     <button
+                                       onClick={e => { e.stopPropagation(); openReviewerPanel(post); }}
+                                       className="ml-1 p-1 rounded-md text-muted-foreground hover:text-amber-500 hover:bg-amber-500/10 transition-all opacity-0 group-hover:opacity-100"
+                                       title="Sửa người duyệt"
                                      >
-                                        <RefreshCw size={13} className="shrink-0" /> {repostingIds.includes(post.id) ? t("listView.reposting") : t("listView.repostNow")}
+                                       <Edit2 size={11} />
                                      </button>
                                    )}
-                                   {post.status?.toLowerCase() === "published" && (
-                                     <button 
-                                       onClick={(e) => {
-                                         e.stopPropagation();
-                                         openPostAnalytics(post);
-                                         setActiveMenuId(null);
-                                       }}
-                                       className="w-full px-4 py-2 text-[11px] font-bold text-indigo-600 dark:text-indigo-400 hover:bg-muted transition-all flex items-center gap-2 cursor-pointer border-b border-border text-left"
-                                     >
-                                        <BarChart2 size={13} className="shrink-0" /> {t("listView.detailStats")}
-                                     </button>
-                                   )}
-                                   <button 
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        if (post.status?.toLowerCase() === "published") {
-                                          openPostAnalytics(post);
-                                        } else {
-                                          openPostCreator({ post, defaultSocialAccountId: socialAccountId });
-                                        }
-                                        setActiveMenuId(null);
-                                      }}
-                                      className="w-full px-4 py-2 text-[11px] font-bold text-foreground hover:bg-muted transition-all flex items-center gap-2 cursor-pointer"
-                                    >
-                                       <span>{post.status?.toLowerCase() === "published" ? "👁️" : "✏️"}</span>
-                                       {post.status?.toLowerCase() === "published"
-                                         ? t("listView.viewPost")
-                                         : (hasCreatePermission ? t("listView.editPost") : t("listView.viewPost"))}
-                                    </button>
-                                   {hasCreatePermission && (
-                                     <button 
-                                       onClick={(e) => {
-                                         e.stopPropagation();
-                                         openPostCreator({
-                                           template: post,
-                                           defaultScheduledAt: post.scheduledAt ? new Date(post.scheduledAt) : null,
-                                           defaultSocialAccountId: socialAccountId
-                                         });
-                                         setActiveMenuId(null);
-                                       }}
-                                       data-testid="post-duplicate-btn"
-                                       className="w-full px-4 py-2 text-[11px] font-bold text-indigo-600 dark:text-indigo-400 hover:bg-muted transition-all flex items-center gap-2 cursor-pointer border-t border-border text-left"
-                                     >
-                                        <Copy size={13} className="shrink-0" /> {t("listView.duplicatePost")}
-                                     </button>
-                                   )}
-                                   <button 
+                                 </div>
+                               ) : (
+                                 post.status === 'pending_approval' ? (
+                                   <button
+                                     onClick={e => { e.stopPropagation(); openReviewerPanel(post); }}
+                                     className="flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-medium text-amber-600 dark:text-amber-400 bg-amber-500/10 border border-amber-500/20 hover:bg-amber-500/20 transition-all"
+                                   >
+                                     <UserCheck size={10} /> {t("listView.assignBtn")}
+                                   </button>
+                                 ) : <span className="text-muted-foreground text-[11px]">—</span>
+                               )}
+                            </td>
+                            <td className="px-6 py-5 text-right relative">
+                               <div className="flex items-center justify-end gap-1">
+                                 {post.status?.toLowerCase() === "failed" && (
+                                   <button
                                      onClick={(e) => {
                                        e.stopPropagation();
-                                       handleSaveToLibrary(post);
-                                       setActiveMenuId(null);
+                                       handleRepost(post);
                                      }}
-                                     className="w-full px-4 py-2 text-[11px] font-bold text-teal-600 dark:text-teal-400 hover:bg-muted transition-all flex items-center gap-2 cursor-pointer border-t border-border"
+                                     disabled={repostingIds.includes(post.id)}
+                                     className="p-2 text-indigo-500 hover:text-indigo-700 hover:bg-indigo-500/10 disabled:bg-muted disabled:text-muted-foreground rounded-lg transition-all border border-transparent hover:border-indigo-500/20 cursor-pointer flex items-center justify-center shrink-0"
+                                     title="Đăng lại bài viết ngay"
                                    >
-                                      <Gem size={13} className="shrink-0" /> {t("listView.saveTemplate")}
+                                     {repostingIds.includes(post.id) ? (
+                                       <Loader2 size={14} className="animate-spin" />
+                                     ) : (
+                                       <RefreshCw size={14} />
+                                     )}
                                    </button>
-                                   <AccessGuard feature="DELETE_POSTS">
-                                     <button 
-                                       onClick={(e) => {
-                                         e.stopPropagation();
-                                         handleDeletePost(post.id);
-                                         setActiveMenuId(null);
-                                       }}
-                                       className="w-full px-4 py-2 text-[11px] font-bold text-red-600 hover:bg-muted transition-all flex items-center gap-2 cursor-pointer border-t border-border"
-                                     >
-                                        <Trash2 size={13} className="shrink-0" /> {t("listView.deletePost")}
-                                     </button>
-                                   </AccessGuard>
-                                </div>
-                             </>
-                           )}
-                       </td>
-                    </tr>
-                  ))}
+                                 )}
+                                 <button
+                                   onClick={(e) => {
+                                     e.stopPropagation();
+                                     handleSaveToLibrary(post);
+                                   }}
+                                   className="p-2 text-teal-500 hover:text-teal-700 hover:bg-teal-500/10 rounded-lg transition-all border border-transparent hover:border-teal-500/20 cursor-pointer flex items-center justify-center shrink-0"
+                                   title="Lưu thành Template"
+                                 >
+                                   <Gem size={14} />
+                                 </button>
+                                 
+                                
+                                <button 
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setActiveMenuId(activeMenuId === post.id ? null : post.id);
+                                  }}
+                                  data-testid={`post-action-menu-${post.id}`}
+                                  className="p-2 text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-all shadow-none hover:shadow-sm border border-transparent hover:border-border cursor-pointer"
+                                >
+                                   <MoreHorizontal size={16} />
+                                </button>
+                              </div>
+
+                               {activeMenuId === post.id && (
+                                  <>
+                                    <div className="fixed inset-0 z-40" onClick={() => setActiveMenuId(null)} />
+                                    <div className="absolute right-6 top-12 w-44 bg-card rounded-2xl shadow-xl border border-border py-1.5 z-50 animate-in fade-in slide-in-from-top-1 text-left overflow-hidden">
+                                        {post.status?.toLowerCase() === "failed" && (
+                                          <button 
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              handleRepost(post);
+                                              setActiveMenuId(null);
+                                            }}
+                                            disabled={repostingIds.includes(post.id)}
+                                            className="w-full px-4 py-2 text-[11px] font-bold text-indigo-600 dark:text-indigo-400 hover:bg-muted transition-all flex items-center gap-2 cursor-pointer border-b border-border"
+                                          >
+                                             <RefreshCw size={13} className="shrink-0" /> {repostingIds.includes(post.id) ? t("listView.reposting") : t("listView.repostNow")}
+                                          </button>
+                                        )}
+                                        {post.status?.toLowerCase() === "published" && (
+                                          <button 
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              openPostAnalytics(post);
+                                              setActiveMenuId(null);
+                                            }}
+                                            className="w-full px-4 py-2 text-[11px] font-bold text-indigo-600 dark:text-indigo-400 hover:bg-muted transition-all flex items-center gap-2 cursor-pointer border-b border-border text-left"
+                                          >
+                                             <BarChart2 size={13} className="shrink-0" /> {t("listView.detailStats")}
+                                          </button>
+                                        )}
+                                        <button 
+                                           onClick={(e) => {
+                                             e.stopPropagation();
+                                             if (post.status?.toLowerCase() === "published") {
+                                               openPostAnalytics(post);
+                                             } else {
+                                               openPostCreator({ post, defaultSocialAccountId: socialAccountId });
+                                             }
+                                             setActiveMenuId(null);
+                                           }}
+                                           className="w-full px-4 py-2 text-[11px] font-bold text-foreground hover:bg-muted transition-all flex items-center gap-2 cursor-pointer"
+                                         >
+                                            <span>{post.status?.toLowerCase() === "published" ? "👁️" : "✏️"}</span>
+                                            {post.status?.toLowerCase() === "published"
+                                              ? t("listView.viewPost")
+                                              : (hasCreatePermission ? t("listView.editPost") : t("listView.viewPost"))}
+                                         </button>
+                                        {hasCreatePermission && (
+                                          <button 
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              openPostCreator({
+                                                template: post,
+                                                defaultScheduledAt: post.scheduledAt ? new Date(post.scheduledAt) : null,
+                                                defaultSocialAccountId: socialAccountId
+                                              });
+                                              setActiveMenuId(null);
+                                            }}
+                                            data-testid="post-duplicate-btn"
+                                            className="w-full px-4 py-2 text-[11px] font-bold text-indigo-600 dark:text-indigo-400 hover:bg-muted transition-all flex items-center gap-2 cursor-pointer border-t border-border text-left"
+                                          >
+                                             <Copy size={13} className="shrink-0" /> {t("listView.duplicatePost")}
+                                          </button>
+                                        )}
+                                        <button 
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            handleSaveToLibrary(post);
+                                            setActiveMenuId(null);
+                                          }}
+                                          className="w-full px-4 py-2 text-[11px] font-bold text-teal-600 dark:text-teal-400 hover:bg-muted transition-all flex items-center gap-2 cursor-pointer border-t border-border"
+                                        >
+                                           <Gem size={13} className="shrink-0" /> {t("listView.saveTemplate")}
+                                        </button>
+                                        <AccessGuard feature="DELETE_POSTS">
+                                          <button 
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              handleDeletePost(post.id);
+                                              setActiveMenuId(null);
+                                            }}
+                                            className="w-full px-4 py-2 text-[11px] font-bold text-red-600 hover:bg-muted transition-all flex items-center gap-2 cursor-pointer border-t border-border"
+                                          >
+                                             <Trash2 size={13} className="shrink-0" /> {t("listView.deletePost")}
+                                          </button>
+                                        </AccessGuard>
+                                     </div>
+                                  </>
+                                )}
+                            </td>
+                         </tr>
+
+                         {/* Sub-row: Rich Channel Breakdown when Expanded */}
+                         {isExpanded && (
+                           <tr key={`${post.id}-sub`} className="bg-muted/30 border-b border-border/80">
+                             <td colSpan={8} className="p-0">
+                               <div className="px-8 py-5 space-y-4 bg-gradient-to-r from-muted/50 via-muted/20 to-transparent border-l-4 border-l-primary">
+                                 
+                                 {/* Sub-row Header Bar */}
+                                 <div className="flex items-center justify-between flex-wrap gap-2">
+                                   <div className="flex items-center gap-2">
+                                     <div className="p-1 rounded-lg bg-primary/10 text-primary border border-primary/20">
+                                       <Layers size={15} />
+                                     </div>
+                                     <span className="text-xs font-black uppercase tracking-wider text-foreground">
+                                       Chi tiết nội dung đăng theo từng kênh ({post.platforms.length} kênh)
+                                     </span>
+                                   </div>
+
+                                   <div className="flex items-center gap-2">
+                                     {hasOverrides ? (
+                                       <span className="text-[10px] font-bold text-purple-600 dark:text-purple-400 bg-purple-500/10 border border-purple-500/20 px-2.5 py-1 rounded-full flex items-center gap-1.5">
+                                         <span className="w-1.5 h-1.5 rounded-full bg-purple-500 animate-pulse" />
+                                         Đã tùy chỉnh nội dung riêng từng kênh
+                                       </span>
+                                     ) : (
+                                       <span className="text-[10px] font-medium text-muted-foreground bg-muted border border-border px-2.5 py-1 rounded-full">
+                                         Sử dụng mẫu chung cho tất cả các kênh
+                                       </span>
+                                     )}
+                                   </div>
+                                 </div>
+
+                                 {/* Channel Cards Grid */}
+                                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                   {post.platforms.map((platform) => {
+                                     const override = (post.networkOverrides || []).find(
+                                       (o) => (o.platform || '').toUpperCase() === platform.toUpperCase()
+                                     );
+                                     const isCustomized = override && override.useTemplate === false;
+                                     const effectiveCaption = isCustomized && override.caption ? override.caption : post.caption;
+                                     const effectiveMediaUrls = isCustomized && override.mediaUrls && override.mediaUrls.length > 0 
+                                       ? override.mediaUrls 
+                                       : (post.mediaUrls || []);
+                                     
+                                     const postUrl = post.status === 'published' ? getPostLink(platform, post.platformPostId, post) : null;
+                                     
+                                     const targetProgress = post.publishProgress?.targets?.find(
+                                       (t) => (t.platform || '').toUpperCase() === platform.toUpperCase()
+                                     );
+                                     const channelStatus = targetProgress?.status || post.status;
+
+                                     return (
+                                       <div 
+                                         key={platform}
+                                         className="bg-card border border-border rounded-2xl p-4 shadow-sm space-y-3 flex flex-col justify-between hover:border-primary/50 transition-all hover:shadow-md"
+                                       >
+                                         {/* Card Top: Platform + Account Info + Badge */}
+                                         <div className="space-y-3">
+                                           <div className="flex items-center justify-between pb-2 border-b border-border/60">
+                                             <div className="flex items-center gap-2">
+                                               <div className="p-2 rounded-xl bg-muted border border-border shrink-0 shadow-xs">
+                                                 <PlatformIcon platform={platform} size={16} />
+                                               </div>
+                                               <div className="flex flex-col">
+                                                 <span className="text-xs font-black capitalize text-foreground tracking-tight">
+                                                   {platform}
+                                                 </span>
+                                                 <span className="text-[10px] text-muted-foreground font-medium truncate max-w-[140px]">
+                                                   {override?.accountName || `@${platform.toLowerCase()}_account`}
+                                                 </span>
+                                               </div>
+                                             </div>
+
+                                             <span className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider border ${
+                                               isCustomized 
+                                                 ? "bg-purple-50 text-purple-700 dark:bg-purple-950/50 dark:text-purple-300 border-purple-200 dark:border-purple-800" 
+                                                 : "bg-muted text-muted-foreground border-border"
+                                             }`}>
+                                               {isCustomized ? "Tùy chỉnh" : "Mẫu chung"}
+                                             </span>
+                                           </div>
+
+                                           {/* Threads Multi-Post Chain Preview */}
+                                           {override?.threadPosts && Array.isArray(override.threadPosts) && override.threadPosts.length > 0 ? (
+                                             <div className="space-y-2">
+                                               <div className="flex items-center justify-between text-[11px] font-bold text-foreground">
+                                                 <span className="flex items-center gap-1 text-blue-600 dark:text-blue-400">
+                                                   <ListOrdered size={12} />
+                                                   Chuỗi Threads ({override.threadPosts.length} bài đăng)
+                                                 </span>
+                                               </div>
+
+                                               <div className="space-y-2 relative pl-3 border-l-2 border-blue-500/30 dark:border-blue-400/30 my-1">
+                                                 {override.threadPosts.map((tPost, idx) => (
+                                                   <div key={idx} className="bg-muted/40 p-2.5 rounded-xl border border-border/50 text-[11px] space-y-1">
+                                                     <div className="flex items-center justify-between text-[9px] font-bold text-muted-foreground">
+                                                       <span>Bài #{idx + 1} {idx === 0 ? "(Bài gốc)" : `(Nối tiếp ${idx})`}</span>
+                                                       {tPost.mediaUrls?.length > 0 && (
+                                                         <span className="flex items-center gap-0.5 text-foreground">
+                                                           <ImageIcon size={9} /> {tPost.mediaUrls.length} file
+                                                         </span>
+                                                       )}
+                                                     </div>
+                                                     <p className="text-foreground text-[11px] line-clamp-3 italic font-normal">
+                                                       {tPost.text || "(Media thuần không kèm chữ)"}
+                                                     </p>
+                                                   </div>
+                                                 ))}
+                                               </div>
+                                             </div>
+                                           ) : (
+                                             /* Single Post Content Preview */
+                                             <div className="space-y-2">
+                                               <div className="bg-muted/30 p-3 rounded-xl border border-border/60 space-y-2">
+                                                 <p className="text-xs text-foreground font-normal whitespace-pre-wrap line-clamp-4 leading-relaxed">
+                                                   {effectiveCaption || "(Không có nội dung văn bản)"}
+                                                 </p>
+
+                                                 {/* Media Preview Thumbnails */}
+                                                 {effectiveMediaUrls.length > 0 && (
+                                                   <div className="flex items-center gap-1.5 pt-1.5 border-t border-border/40">
+                                                     {effectiveMediaUrls.slice(0, 3).map((url, index) => (
+                                                       <div key={index} className="w-10 h-10 rounded-lg overflow-hidden border border-border shrink-0 bg-muted relative">
+                                                         <img src={buildMediaUrl(url)} className="w-full h-full object-cover" alt="Media preview" />
+                                                       </div>
+                                                     ))}
+                                                     {effectiveMediaUrls.length > 3 && (
+                                                       <div className="w-10 h-10 rounded-lg bg-muted border border-border flex items-center justify-center text-[10px] font-bold text-muted-foreground shrink-0">
+                                                         +{effectiveMediaUrls.length - 3}
+                                                       </div>
+                                                     )}
+                                                   </div>
+                                                 )}
+                                               </div>
+                                             </div>
+                                           )}
+
+                                           {/* Comment First Preview if set */}
+                                           {override?.settings?.firstComment && (
+                                             <div className="bg-amber-500/5 border border-amber-500/20 p-2 rounded-xl text-[10px] text-amber-700 dark:text-amber-300 flex items-start gap-1.5">
+                                               <CornerDownRight size={11} className="shrink-0 mt-0.5 text-amber-500" />
+                                               <div>
+                                                 <span className="font-bold">Bình luận đầu: </span>
+                                                 <span className="italic">"{override.settings.firstComment}"</span>
+                                               </div>
+                                             </div>
+                                           )}
+                                         </div>
+
+                                         {/* Card Bottom Bar: Status + Action link */}
+                                         <div className="pt-2.5 border-t border-border/60 flex items-center justify-between text-xs">
+                                           <div className="flex items-center gap-1.5">
+                                             <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider border ${
+                                               channelStatus === 'published' || channelStatus === 'PUBLISHED' 
+                                                 ? 'bg-green-50 text-green-700 border-green-200 dark:bg-green-950/40 dark:text-green-300' 
+                                                 : channelStatus === 'failed' || channelStatus === 'FAILED'
+                                                 ? 'bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950/40 dark:text-rose-300'
+                                                 : 'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/40 dark:text-blue-300'
+                                             }`}>
+                                               {channelStatus}
+                                             </span>
+                                           </div>
+
+                                           {postUrl ? (
+                                             <a
+                                               href={postUrl}
+                                               target="_blank"
+                                               rel="noopener noreferrer"
+                                               className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-bold text-primary bg-primary/10 hover:bg-primary/20 transition-all border border-primary/20"
+                                               onClick={(e) => e.stopPropagation()}
+                                             >
+                                               Xem bài gốc <ExternalLink size={11} />
+                                             </a>
+                                           ) : (
+                                             <span className="text-[10px] text-muted-foreground italic">—</span>
+                                           )}
+                                         </div>
+                                       </div>
+                                     );
+                                   })}
+                                 </div>
+                               </div>
+                             </td>
+                           </tr>
+                         )}
+                       </React.Fragment>
+                     );
+                   })}
                </tbody>
             </table>
             

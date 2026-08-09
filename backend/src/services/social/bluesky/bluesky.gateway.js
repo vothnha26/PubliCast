@@ -240,6 +240,15 @@ class BlueskyGateway {
   async deleteRepost(agent, repostUri) {
     return agent.deleteRepost(repostUri);
   }
+
+  async listNotifications(agent, { limit = 50, cursor } = {}) {
+    const res = await agent.listNotifications({ limit, cursor });
+    return res.data;
+  }
+
+  async deletePost(agent, postUri) {
+    return agent.deletePost(postUri);
+  }
 }
 
 module.exports = new BlueskyGateway();

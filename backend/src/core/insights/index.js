@@ -11,12 +11,14 @@ const FacebookPostInsightAdapter = require('../../services/social/facebook/faceb
 const TikTokPostInsightAdapter = require('../../services/social/tiktok/tiktok-post-insight.adapter');
 const InstagramPostInsightAdapter = require('../../services/social/instagram/instagram-post-insight.adapter');
 const ThreadsPostInsightAdapter = require('../../services/social/threads/threads-post-insight.adapter');
+const BlueskyPostInsightAdapter = require('../../services/social/bluesky/bluesky-post-insight.adapter');
 
 const YouTubeChannelAdapter = require('../../services/social/youtube/youtube-channel.adapter');
 const FacebookChannelAdapter = require('../../services/social/facebook/facebook-channel.adapter');
 const TikTokChannelAdapter = require('../../services/social/tiktok/tiktok-channel.adapter');
 const InstagramChannelAdapter = require('../../services/social/instagram/instagram-channel.adapter');
 const ThreadsChannelAdapter = require('../../services/social/threads/threads-channel.adapter');
+const BlueskyChannelAdapter = require('../../services/social/bluesky/bluesky-channel.adapter');
 
 const YouTubeAudienceAdapter = require('../../services/social/youtube/youtube-audience.adapter');
 
@@ -33,12 +35,14 @@ postAdapterFactory.register(PLATFORMS.FACEBOOK, new FacebookPostInsightAdapter()
 postAdapterFactory.register(PLATFORMS.TIKTOK, new TikTokPostInsightAdapter());
 postAdapterFactory.register(PLATFORMS.INSTAGRAM, new InstagramPostInsightAdapter());
 postAdapterFactory.register(PLATFORMS.THREADS, new ThreadsPostInsightAdapter());
+postAdapterFactory.register(PLATFORMS.BLUESKY, new BlueskyPostInsightAdapter());
 
 channelAdapterFactory.register(PLATFORMS.YOUTUBE, new YouTubeChannelAdapter());
 channelAdapterFactory.register(PLATFORMS.FACEBOOK, new FacebookChannelAdapter());
 channelAdapterFactory.register(PLATFORMS.TIKTOK, new TikTokChannelAdapter());
 channelAdapterFactory.register(PLATFORMS.INSTAGRAM, new InstagramChannelAdapter());
 channelAdapterFactory.register(PLATFORMS.THREADS, new ThreadsChannelAdapter());
+channelAdapterFactory.register(PLATFORMS.BLUESKY, new BlueskyChannelAdapter());
 
 audienceAdapterFactory.register(PLATFORMS.YOUTUBE, new YouTubeAudienceAdapter());
 

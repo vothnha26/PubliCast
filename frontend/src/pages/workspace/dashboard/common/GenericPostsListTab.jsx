@@ -67,7 +67,7 @@ export function GenericPostsListTab({
 
   // Helper trích xuất nội dung text chính
   const getPostText = (item) => {
-    return item.message || item.caption || item.title || item.text || "No content message";
+    return item.message || item.caption || item.title || item.text || "";
   };
 
   // Helper trích xuất thumbnail hình ảnh
@@ -187,10 +187,14 @@ export function GenericPostsListTab({
 
   // Thực hiện tìm kiếm & Sắp xếp bài đăng
   const filteredPosts = useMemo(() => {
+    const effectiveSearchKeys = searchKeys && searchKeys.length > 0 
+      ? Array.from(new Set([...searchKeys, "message", "text", "title", "caption"])) 
+      : ["message", "text", "title", "caption"];
+
     let list = processedPosts.filter(post =>
-      searchKeys.some(key => {
+      !searchQuery.trim() || effectiveSearchKeys.some(key => {
         const val = post[key];
-        return val && typeof val === "string" && val.toLowerCase().includes(searchQuery.toLowerCase());
+        return val && typeof val === "string" && val.toLowerCase().includes(searchQuery.toLowerCase().trim());
       })
     );
 
@@ -412,7 +416,7 @@ export function GenericPostsListTab({
                             )}
                             <div className="flex flex-col min-w-0">
                               <span className="text-xs font-semibold text-foreground line-clamp-2 leading-relaxed max-w-[260px]">
-                                {postText}
+                                {postText || <span className="text-muted-foreground italic font-normal text-[11px]">(Không có nội dung văn bản)</span>}
                               </span>
                               {getPostUrl(post) !== "#" && (
                                 <a

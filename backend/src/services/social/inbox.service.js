@@ -210,7 +210,7 @@ class InboxService {
     }
 
     const posts = [];
-    const supportedPlatforms = [PLATFORMS.YOUTUBE, PLATFORMS.FACEBOOK];
+    const supportedPlatforms = [PLATFORMS.YOUTUBE, PLATFORMS.FACEBOOK, PLATFORMS.THREADS, PLATFORMS.BLUESKY];
     const platformMap = {};
     socialAccounts.forEach(sa => {
       if (!platformMap[sa.platform]) platformMap[sa.platform] = [];
@@ -590,8 +590,16 @@ class InboxService {
       // If DB has 0 synced comments for this post, attempt live sync for the specific video/post
       try {
         const inbox = await inboxRepository.findOrCreateInbox(brandId);
-        // Default to YOUTUBE if 11-char ID or check platform
-        const platform = (postId && postId.length === 11) ? PLATFORMS.YOUTUBE : null;
+        const dbPost = await prisma.post.findFirst({
+          where: { OR: [{ id: postId }, { platformPostId: { contains: postId } }], brandId }
+        });
+        let platform = (postId && String(postId).startsWith('at://'))
+          ? PLATFORMS.BLUESKY
+          : (postId && postId.length === 11 ? PLATFORMS.YOUTUBE : null);
+        if (!platform && dbPost?.targetPlatforms) {
+          platform = dbPost.targetPlatforms.split(',')[0]?.trim()?.toUpperCase();
+        }
+
         if (platform && inboxSyncFactory.isSupported(platform)) {
           await inboxFacade.syncPostComments(brandId, platform, postId, inbox);
           const reCheck = await inboxRepository.findManyAndCount(initialWhere, { skip: 0, take: 50 });

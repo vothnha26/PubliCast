@@ -3,12 +3,12 @@ const socialPlatformFactory = require('../../social-platform.factory');
 const { PLATFORMS } = require('../../../../utils/constants');
 
 /**
- * ThreadsInboxDisplayAdapter
- * Adapter chuẩn hóa hiển thị Threads bài viết & bình luận trong Unified Inbox.
+ * BlueskyInboxDisplayAdapter
+ * Adapter chuẩn hóa hiển thị Bluesky bài viết & bình luận trong Unified Inbox.
  */
-class ThreadsInboxDisplayAdapter extends BaseInboxDisplayAdapter {
+class BlueskyInboxDisplayAdapter extends BaseInboxDisplayAdapter {
   get platform() {
-    return PLATFORMS.THREADS;
+    return PLATFORMS.BLUESKY;
   }
 
   supportsAutoReply() {
@@ -16,29 +16,29 @@ class ThreadsInboxDisplayAdapter extends BaseInboxDisplayAdapter {
   }
 
   async fetchPlatformPosts(brandId, socialAccountIds = [], options = {}) {
-    const service = socialPlatformFactory.getService(PLATFORMS.THREADS);
+    const service = socialPlatformFactory.getService(PLATFORMS.BLUESKY);
     const posts = [];
 
     const idsToFetch = socialAccountIds.length > 0 ? socialAccountIds : [null];
     for (const saId of idsToFetch) {
       try {
         const res = await service.getPublishedVideos(brandId, null, 50, saId);
-        const threadsPosts = (res?.data || []).map(p => ({
-          id: p.id,
+        const bskyPosts = (res?.data || []).map(p => ({
+          id: p.id || p.uri,
           title: p.text?.slice(0, 60) || p.message?.slice(0, 60) || null,
           thumbnailUrl: p.mediaUrl || p.thumbnailUrl || null,
-          platform: PLATFORMS.THREADS,
-          publishedAt: p.date || p.createdAt || null,
-          postUrl: p.postUrl || p.permalink || this.buildPostUrl(p.id),
+          platform: PLATFORMS.BLUESKY,
+          publishedAt: p.createdAt || p.date || null,
+          postUrl: p.postUrl || this.buildPostUrl(p.id || p.uri),
           socialAccountId: saId,
-          likes: parseInt(p.like_count || p.likes || 0, 10),
-          comments: parseInt(p.reply_count || p.comments || 0, 10),
-          shares: parseInt(p.repost_count || p.shares || 0, 10),
+          likes: parseInt(p.likeCount || p.likes || 0, 10),
+          comments: parseInt(p.replyCount || p.comments || 0, 10),
+          shares: parseInt(p.repostCount || p.quoteCount || p.shares || 0, 10),
           views: parseInt(p.views || 0, 10)
         }));
-        posts.push(...threadsPosts);
+        posts.push(...bskyPosts);
       } catch (err) {
-        console.error(`[ThreadsInboxDisplayAdapter] Failed to fetch posts for account ${saId}:`, err.message);
+        console.error(`[BlueskyInboxDisplayAdapter] Failed to fetch posts for account ${saId}:`, err.message);
       }
     }
 
@@ -57,12 +57,17 @@ class ThreadsInboxDisplayAdapter extends BaseInboxDisplayAdapter {
   }
 
   buildPostUrl(postId) {
-    if (!postId) return null;
-    if (typeof postId === 'string' && (postId.startsWith('http://') || postId.startsWith('https://'))) {
-      return postId;
+    if (!postId) return 'https://bsky.app';
+    if (typeof postId === 'string') {
+      if (postId.startsWith('http://') || postId.startsWith('https://')) return postId;
+      const match = postId.match(/^at:\/\/(did:[^/]+)\/app\.bsky\.feed\.post\/([^/]+)$/);
+      if (match) {
+        const [, did, rkey] = match;
+        return `https://bsky.app/profile/${did}/post/${rkey}`;
+      }
     }
-    return `https://www.threads.net/post/${postId}`;
+    return `https://bsky.app`;
   }
 }
 
-module.exports = ThreadsInboxDisplayAdapter;
+module.exports = BlueskyInboxDisplayAdapter;
