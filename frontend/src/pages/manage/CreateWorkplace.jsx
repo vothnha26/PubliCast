@@ -8,6 +8,8 @@ import { toast } from "sonner";
 import { useAuth } from "../../context/AuthContext";
 import { useBrand } from "../../context/BrandContext";
 import profileService from "../../services/profile.service";
+import socialService from "../../services/social.service";
+import teamService from "../../services/team.service";
 
 export function CreateWorkplacePage() {
   const [step, setStep] = useState(1);
@@ -18,17 +20,13 @@ export function CreateWorkplacePage() {
     emails: ""
   });
   const [isSaving, setIsSaving] = useState(false);
+  const [connectingPlatform, setConnectingPlatform] = useState(null);
   const fileInputRef = useRef(null);
   const navigate = useNavigate();
   const location = useLocation();
   const { user } = useAuth();
   const { activeBrand, updateBrand, createBrand } = useBrand();
 
-  // Only trust a same-origin in-app path passed via router state (set by
-  // Topbar's "Create Workplace" link) — never navigate to something an
-  // external source could control. Falls back to /dashboard for entry
-  // points with no meaningful "back" (first-time onboarding redirect,
-  // direct URL visit).
   const closeTarget = (typeof location.state?.from === "string" && location.state.from.startsWith("/"))
     ? location.state.from
     : "/dashboard";
@@ -45,19 +43,52 @@ export function CreateWorkplacePage() {
   const nextStep = () => setStep(prev => Math.min(prev + 1, 4));
   const prevStep = () => setStep(prev => Math.max(prev - 1, 1));
 
-  // Two entry points share this page (see Topbar's "Create Workplace" link
-  // and Dashboard's onboardingCompleted=false redirect):
-  //  - First-time onboarding: activeBrand exists but still has the
-  //    placeholder name/onboardingCompleted=false — rename it in place
-  //    rather than creating a redundant second brand.
-  //  - "Create new workplace" from the Topbar once onboarding is already
-  //    done: must create an actual new brand, not overwrite the one the
-  //    user is currently in.
   const isOnboarding = activeBrand && !activeBrand.onboardingCompleted;
+
+  const handleConnectPlatform = async (platformName) => {
+    if (!activeBrand?.id) {
+      toast.error("Vui lòng hoàn thành thông tin thương hiệu trước khi kết nối.");
+      return;
+    }
+
+    setConnectingPlatform(platformName);
+    try {
+      let res;
+      switch (platformName.toUpperCase()) {
+        case "YOUTUBE":
+          res = await socialService.getGoogleAuthUrl(activeBrand.id);
+          break;
+        case "FACEBOOK":
+          res = await socialService.getFacebookAuthUrl(activeBrand.id);
+          break;
+        case "TIKTOK":
+          res = await socialService.getTikTokAuthUrl(activeBrand.id);
+          break;
+        case "INSTAGRAM":
+          res = await socialService.getInstagramAuthUrl(activeBrand.id);
+          break;
+        default:
+          toast.error("Nền tảng chưa hỗ trợ OAuth tự động.");
+          return;
+      }
+
+      if (res?.url) {
+        window.location.href = res.url;
+      } else {
+        toast.error("Không thể lấy liên kết xác thực.");
+      }
+    } catch (err) {
+      toast.error(`Lỗi kết nối ${platformName}: ${err.message || "Thử lại sau"}`);
+    } finally {
+      setConnectingPlatform(null);
+    }
+  };
 
   const handleFinalize = async () => {
     setIsSaving(true);
     try {
+      let targetBrandId = activeBrand?.id;
+
       if (isOnboarding) {
         await profileService.editProfile({
           fullName: user?.fullName,
@@ -65,8 +96,35 @@ export function CreateWorkplacePage() {
         });
         await updateBrand(activeBrand.id, { name: formData.name.trim() });
       } else {
-        await createBrand({ name: formData.name.trim(), industry: formData.industry });
+        const newBrand = await createBrand({ name: formData.name.trim(), industry: formData.industry });
+        if (newBrand?.id) targetBrandId = newBrand.id;
       }
+
+      // Xử lý gửi lời mời thành viên nhóm nếu có nhập email
+      const emailList = formData.emails
+        .split(/[\n,;]+/)
+        .map(e => e.trim())
+        .filter(e => e && e.includes("@"));
+
+      if (emailList.length > 0 && targetBrandId) {
+        let successCount = 0;
+        for (const email of emailList) {
+          try {
+            await teamService.inviteMember({
+              brandId: targetBrandId,
+              email,
+              role: "STAFF"
+            });
+            successCount++;
+          } catch (err) {
+            console.error(`Failed to invite ${email}:`, err);
+          }
+        }
+        if (successCount > 0) {
+          toast.success(`Đã gửi lời mời tới ${successCount} thành viên!`);
+        }
+      }
+
       nextStep();
     } catch (err) {
       toast.error("Không thể lưu thông tin thiết lập");
@@ -184,7 +242,13 @@ export function CreateWorkplacePage() {
                            <div className="w-10 h-10 rounded-xl flex items-center justify-center text-white font-bold text-[10px]" style={{ backgroundColor: p.color }}>{p.name.slice(0,2).toUpperCase()}</div>
                            <span className="text-xs font-bold text-foreground">{p.name}</span>
                         </div>
-                        <button className="text-[10px] font-black text-blue-500 uppercase group-hover:underline cursor-pointer">Connect</button>
+                        <button 
+                          onClick={() => handleConnectPlatform(p.name)}
+                          disabled={connectingPlatform === p.name}
+                          className="text-[10px] font-black text-blue-500 uppercase group-hover:underline cursor-pointer flex items-center gap-1 disabled:opacity-50"
+                        >
+                          {connectingPlatform === p.name ? <Loader2 size={12} className="animate-spin" /> : "Connect"}
+                        </button>
                      </div>
                    ))}
                 </div>
@@ -212,7 +276,9 @@ export function CreateWorkplacePage() {
                 <div className="space-y-4 mb-10">
                    <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest ml-1">Team Member Emails</label>
                    <textarea 
-                     placeholder="Enter emails separated by comma..." 
+                     placeholder="Enter emails separated by comma or newline..." 
+                     value={formData.emails}
+                     onChange={(e) => setFormData({ ...formData, emails: e.target.value })}
                      className="w-full px-5 py-4 rounded-2xl border border-border bg-background text-foreground focus:border-foreground outline-none text-sm font-medium h-32 resize-none shadow-inner" 
                    />
                    <div className="flex items-center gap-2 px-1">

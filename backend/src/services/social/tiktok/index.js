@@ -45,7 +45,22 @@ class TikTokService extends BaseSocialService {
   async trackVideo() { return null; }
   async getVideoDetails() { return null; }
   async searchChannel() { return []; }
-  async addCompetitor() { return null; }
+  // --- Template Method Hook Implementations ---
+  async buildPlatformClient(account) {
+    return {
+      openId: account.tiktokAccount?.openId || account.platformAccountId,
+      accessToken: account.accessToken
+    };
+  }
+
+  async fetchRawPlatformData(client, options = {}) {
+    const { limit = 10, pageToken = null, socialAccountId = null, startDate = null, endDate = null } = options;
+    return await tiktokVideo.getPublishedVideos(options.brandId, pageToken, limit, socialAccountId, startDate, endDate);
+  }
+
+  normalizePlatformData(rawData, options = {}) {
+    return Array.isArray(rawData) ? rawData : (rawData?.videos || rawData?.data || []);
+  }
 }
 
 module.exports = new TikTokService();

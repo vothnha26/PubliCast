@@ -355,20 +355,33 @@ class BlueskyService extends BaseSocialService {
     return socialAccountRepository.findById(socialAccountId);
   }
 
+  // --- Template Method Hook Implementations ---
+  async buildPlatformClient(account) {
+    return await this._getAuthenticatedAgent(account);
+  }
+
+  async fetchRawPlatformData(client, options = {}) {
+    const { limit = 10, cursor = null, did } = options;
+    const targetDid = did || options.account?.blueskyAccount?.did;
+    return await blueskyAnalytics.getPublishedPosts(client, targetDid, { limit, cursor });
+  }
+
+  normalizePlatformData(rawData, options = {}) {
+    return rawData?.data || [];
+  }
+
   async getPublishedVideos(brandId, pageToken = null, limit = 10, socialAccountId = null) {
     const account = await this._getAccount(brandId, socialAccountId);
     if (!account) return { data: [], nextPageToken: null, prevPageToken: null };
 
-    const agent = await this._getAuthenticatedAgent(account);
-
-    // An explicit pageToken (manual "next page" click) always fetches exactly
-    // one page, same as before. The initial load (no pageToken) instead
-    // walks the cursor bounded by the brand's plan-based history window —
-    // previously this had NO plan enforcement at all (unlike Facebook/
-    // Instagram/TikTok/Threads), only the `limit` param.
     if (pageToken) {
-      const result = await blueskyAnalytics.getPublishedPosts(agent, account.blueskyAccount.did, { limit, cursor: pageToken });
-      return { data: result.data, nextPageToken: result.nextPageToken, prevPageToken: null };
+      const result = await this.executeSyncPipeline(brandId, socialAccountId, {
+        limit,
+        cursor: pageToken,
+        did: account.blueskyAccount?.did,
+        account
+      });
+      return { data: result.data, nextPageToken: null, prevPageToken: null };
     }
 
     const windowMonths = await getHistoryWindowMonths(brandId);
@@ -382,13 +395,14 @@ class BlueskyService extends BaseSocialService {
 
     while (hasMore && pageCount < MAX_PAGE_COUNT) {
       pageCount += 1;
-      const result = await blueskyAnalytics.getPublishedPosts(agent, account.blueskyAccount.did, { limit, cursor });
+      const result = await blueskyAnalytics.getPublishedPosts(
+        await this.buildPlatformClient(account),
+        account.blueskyAccount.did,
+        { limit, cursor }
+      );
       const pagePosts = result.data || [];
       if (pagePosts.length === 0) break;
 
-      // AT Protocol's author feed is newest-first, so once one post in a
-      // page is older than the cutoff, every post after it (this page and
-      // all subsequent pages) is guaranteed older too.
       const cutoffIndex = pagePosts.findIndex((p) => p.date && new Date(p.date) < cutoff);
       if (cutoffIndex === -1) {
         posts = posts.concat(pagePosts);

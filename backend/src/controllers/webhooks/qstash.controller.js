@@ -75,7 +75,17 @@ const handleMetricsSync = async (req, res) => {
 
   try {
     const service = socialPlatformFactory.getService(platform);
-    await service.syncChannelMetrics(socialAccountId, null, null, true);
+
+    if (typeof service.executeSyncPipeline === 'function' && typeof service.fetchRawPlatformData === 'function') {
+      const account = await socialAccountRepository.findById(socialAccountId);
+      if (account) {
+        await service.executeSyncPipeline(account.brandId, socialAccountId, { type: 'METRICS' });
+      } else {
+        await service.syncChannelMetrics(socialAccountId, null, null, true);
+      }
+    } else {
+      await service.syncChannelMetrics(socialAccountId, null, null, true);
+    }
 
     logger.debug(`[QStash Metrics Sync] Successfully synced metrics for account: ${socialAccountId}`);
     return res.status(200).json({ success: true });

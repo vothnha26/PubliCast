@@ -330,9 +330,16 @@ async function main() {
   // limit, which makes the frontend's "Add brand" button open the Limit
   // Reached modal instead of the Create Brand modal — breaking every
   // Selenium test that expects to create/delete brands (TC03, TC04, TC14, TC15).
-  const existingBrand = await prisma.brand.findFirst({ where: { ownerId: adminUser.id } });
-  if (!existingBrand) {
-    await prisma.brand.create({
+  // Pre-create a brand for the admin user on the STARTER plan (maxBrands: 3).
+  // Without this, the backend's lazy auto-brand-creation (profile.service.js)
+  // creates one brand on FREE plan (maxBrands: 1) on first login. Since the DB
+  // is truncated every seed run, that single brand immediately hits the FREE
+  // limit, which makes the frontend's "Add brand" button open the Limit
+  // Reached modal instead of the Create Brand modal — breaking every
+  // Selenium test that expects to create/delete brands (TC03, TC04, TC14, TC15).
+  let brand = await prisma.brand.findFirst({ where: { ownerId: adminUser.id } });
+  if (!brand) {
+    brand = await prisma.brand.create({
       data: {
         name: 'New Workspace',
         timezone: 'Asia/Ho_Chi_Minh',
@@ -348,8 +355,63 @@ async function main() {
         }
       }
     });
-    console.log(`✅ Default brand (STARTER plan) created for ${adminEmail}`);
+    console.log(`✅ Default brand (PRO plan) created for ${adminEmail}`);
   }
+
+  console.log('Seeding Custom Roles & Permissions...');
+  const roleCreator = await prisma.customRole.create({
+    data: {
+      brandId: brand.id,
+      name: 'Content Creator',
+      description: 'Chỉ tạo bài đăng nháp, tải hình ảnh/video và quản lý media',
+      colorHex: '#3B82F6',
+      permissions: {
+        create: [
+          { permissionKey: 'CREATE_POSTS', isAllowed: true },
+          { permissionKey: 'MANAGE_MEDIA', isAllowed: true },
+          { permissionKey: 'PUBLISH_POSTS', isAllowed: false },
+          { permissionKey: 'APPROVE_POSTS', isAllowed: false }
+        ]
+      }
+    }
+  });
+
+  const roleReviewer = await prisma.customRole.create({
+    data: {
+      brandId: brand.id,
+      name: 'Reviewer & Approver',
+      description: 'Chuyên phê duyệt bài đăng, xem báo cáo nhưng không quản lý liên kết',
+      colorHex: '#10B981',
+      permissions: {
+        create: [
+          { permissionKey: 'APPROVE_POSTS', isAllowed: true },
+          { permissionKey: 'VIEW_ANALYTICS', isAllowed: true },
+          { permissionKey: 'PUBLISH_POSTS', isAllowed: true },
+          { permissionKey: 'CREATE_POSTS', isAllowed: true }
+        ]
+      }
+    }
+  });
+
+  const roleSocialSpecialist = await prisma.customRole.create({
+    data: {
+      brandId: brand.id,
+      name: 'Social Media Specialist',
+      description: 'Toàn quyền đăng bài, quản lý liên kết kênh và xem phân tích',
+      colorHex: '#8B5CF6',
+      permissions: {
+        create: [
+          { permissionKey: 'CREATE_POSTS', isAllowed: true },
+          { permissionKey: 'PUBLISH_POSTS', isAllowed: true },
+          { permissionKey: 'MANAGE_MEDIA', isAllowed: true },
+          { permissionKey: 'MANAGE_CONNECTIONS', isAllowed: true },
+          { permissionKey: 'VIEW_ANALYTICS', isAllowed: true }
+        ]
+      }
+    }
+  });
+
+  console.log(`✅ Created 3 Custom Roles for brand '${brand.name}'`);
 
   // Upsert member user (if different from admin)
   if (memberEmail !== adminEmail) {
@@ -359,7 +421,8 @@ async function main() {
         passwordHash: memberHash,
         isActive: true,
         isEmailVerified: true,
-        role: 'STAFF'
+        role: 'STAFF',
+        customRoleId: roleCreator.id
       },
       create: {
         email: memberEmail,
@@ -367,7 +430,8 @@ async function main() {
         passwordHash: memberHash,
         isActive: true,
         isEmailVerified: true,
-        role: 'STAFF'
+        role: 'STAFF',
+        customRoleId: roleCreator.id
       }
     });
     await prisma.userAccount.upsert({
@@ -375,7 +439,21 @@ async function main() {
       update: { passwordHash: memberHash },
       create: { userId: memberUser.id, provider: 'LOCAL', passwordHash: memberHash }
     });
-    console.log(`✅ Member user ensured: ${memberEmail}`);
+
+    await prisma.team.upsert({
+      where: { brandId_userId: { brandId: brand.id, userId: memberUser.id } },
+      update: { role: 'STAFF', customRoleId: roleCreator.id, status: 'ACCEPTED' },
+      create: {
+        brandId: brand.id,
+        userId: memberUser.id,
+        invitedByUserId: adminUser.id,
+        role: 'STAFF',
+        customRoleId: roleCreator.id,
+        status: 'ACCEPTED'
+      }
+    });
+
+    console.log(`✅ Member user ensured & assigned 'Content Creator' custom role in Team`);
   }
 
   console.log('Seeding completed successfully.');
