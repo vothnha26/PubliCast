@@ -105,11 +105,22 @@ class InboxSyncSchedulerService {
 
       for (const platform of platforms) {
         try {
-          // Sync Inbox Comments & Messages. Published-posts/channel-metrics
-          // sync used to run here too on this same 15-minute cycle — split
-          // out to SocialMetricsSyncSchedulerService (hourly), since view/
-          // like/comment counts don't need to be that fresh.
-          const syncedItems = await inboxService.syncPlatformComments(brand.id, platform);
+          // Sync Inbox Comments & Messages.
+          // Tái sử dụng Template Method nếu service hỗ trợ, nếu không fallback qua inboxService
+          let syncedItems;
+          let service;
+          try {
+            service = socialPlatformFactory.getService(platform);
+          } catch (err) {
+            // Platform không hỗ trợ service -> bỏ qua
+          }
+
+          if (service && typeof service.executeSyncPipeline === 'function' && typeof service.fetchRawPlatformData === 'function') {
+            const result = await service.executeSyncPipeline(brand.id, null, { type: 'INBOX' });
+            syncedItems = result.data || [];
+          } else {
+            syncedItems = await inboxService.syncPlatformComments(brand.id, platform);
+          }
 
           if (syncedItems && syncedItems.length > 0) {
             logger.info(`✅ [InboxSyncScheduler] Synced ${syncedItems.length} item(s) for brand '${brand.name}' (${platform}).`);

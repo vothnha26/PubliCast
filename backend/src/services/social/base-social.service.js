@@ -58,6 +58,61 @@ class BaseSocialService {
   }
 
   /**
+   * TEMPLATE METHOD: Bộ khung thuật toán đồng bộ chuẩn hoá cho tất cả các Social Platforms.
+   * Định nghĩa quy trình 5 bước cố định:
+   * 1. Validate Account & Auth
+   * 2. Build Authenticated Platform Client (Hook method)
+   * 3. Fetch Raw Data từ Platform API (Hook method)
+   * 4. Normalize Raw Data về DTO chuẩn (Hook method)
+   * 5. Lưu Database & kích hoạt Event / Socket (Cố định ở Lớp cha)
+   */
+  async executeSyncPipeline(brandId, socialAccountId, options = {}) {
+    // Step 1: Validate Account & Auth
+    const account = await this.getAccountAndValidate(brandId, socialAccountId);
+    if (!account) {
+      return { success: false, reason: 'ACCOUNT_NOT_FOUND_OR_DISCONNECTED', data: [] };
+    }
+
+    // Step 2: Build Authenticated Platform Client
+    const client = await this.buildPlatformClient(account);
+
+    // Step 3: Fetch Raw Data from Social Platform API
+    const rawData = await this.fetchRawPlatformData(client, options);
+
+    // Step 4: Normalize Raw Data to Standard DTO
+    const normalizedItems = this.normalizePlatformData(rawData, options);
+
+    // Step 5: Save/Update Database & Trigger Events
+    const savedItems = await this.persistSyncedItems(brandId, socialAccountId, normalizedItems, options);
+
+    return { success: true, count: savedItems.length, data: savedItems };
+  }
+
+  // --- Hook Methods (Các lớp con tự override) ---
+  async getAccountAndValidate(brandId, socialAccountId) {
+    if (typeof this._getAccount === 'function') {
+      return await this._getAccount(brandId, socialAccountId);
+    }
+    return null;
+  }
+
+  async buildPlatformClient(account) {
+    throw new Error("Hook method 'buildPlatformClient()' must be implemented by subclass.");
+  }
+
+  async fetchRawPlatformData(client, options = {}) {
+    throw new Error("Hook method 'fetchRawPlatformData()' must be implemented by subclass.");
+  }
+
+  normalizePlatformData(rawData, options = {}) {
+    throw new Error("Hook method 'normalizePlatformData()' must be implemented by subclass.");
+  }
+
+  async persistSyncedItems(brandId, socialAccountId, items, options = {}) {
+    return items;
+  }
+
+  /**
    * Chuyển đổi đường dẫn cục bộ thành URL công khai dùng cho các nền tảng xã hội
    */
   resolveUrl(mediaUrl) {

@@ -84,6 +84,22 @@ class YouTubeService extends BaseSocialService {
   async deletePost(brandId, platformPostId) {
     return youtubePublish.deletePost(brandId, platformPostId);
   }
+  // --- Template Method Hook Implementations ---
+  async buildPlatformClient(account) {
+    return {
+      channelId: account.youtubeAccount?.channelId || account.platformAccountId,
+      accessToken: account.accessToken
+    };
+  }
+
+  async fetchRawPlatformData(client, options = {}) {
+    const { limit = 10, pageToken = null, socialAccountId = null, forceSync = false, startDate = null, endDate = null } = options;
+    return await youtubeVideo.getPublishedVideos(options.brandId, pageToken, limit, socialAccountId, forceSync, startDate, endDate);
+  }
+
+  normalizePlatformData(rawData, options = {}) {
+    return Array.isArray(rawData) ? rawData : (rawData?.videos || rawData?.data || []);
+  }
 }
 
 module.exports = new YouTubeService();

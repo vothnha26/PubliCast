@@ -797,6 +797,22 @@ class ThreadsService extends BaseSocialService {
     logger.debug(`[Threads Service] threadsGateway.deletePost successful response:`, res);
     return res;
   }
+  // --- Template Method Hook Implementations ---
+  async buildPlatformClient(account) {
+    return {
+      threadsUserId: account.threadsAccount?.threadsUserId || account.platformAccountId,
+      accessToken: account.accessToken
+    };
+  }
+
+  async fetchRawPlatformData(client, options = {}) {
+    const { limit = 10, pageToken = null, socialAccountId = null } = options;
+    return await this.getPublishedVideos(options.brandId, pageToken, limit, socialAccountId);
+  }
+
+  normalizePlatformData(rawData, options = {}) {
+    return Array.isArray(rawData) ? rawData : (rawData?.posts || rawData?.videos || rawData?.data || []);
+  }
 }
 
 module.exports = new ThreadsService();

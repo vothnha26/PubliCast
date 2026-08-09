@@ -175,6 +175,22 @@ class InstagramService extends BaseSocialService {
       accessToken: socialAccount[0].accessToken
     };
   }
+  // --- Template Method Hook Implementations ---
+  async buildPlatformClient(account) {
+    return {
+      igAccountId: account.instagramAccount?.instagramBusinessId || account.platformAccountId,
+      accessToken: account.accessToken
+    };
+  }
+
+  async fetchRawPlatformData(client, options = {}) {
+    const { limit = 10, pageToken = null, socialAccountId = null, startDate = null, endDate = null } = options;
+    return await instagramPost.getPublishedVideos(options.brandId, pageToken, limit, socialAccountId, startDate, endDate);
+  }
+
+  normalizePlatformData(rawData, options = {}) {
+    return Array.isArray(rawData) ? rawData : (rawData?.videos || rawData?.posts || []);
+  }
 }
 
 module.exports = new InstagramService();

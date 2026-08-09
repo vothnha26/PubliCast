@@ -23,6 +23,23 @@ class FacebookService extends BaseSocialService {
     return facebookAnalytics.syncChannelMetrics(socialAccountId, startDate, endDate);
   }
 
+  // --- Template Method Hook Implementations ---
+  async buildPlatformClient(account) {
+    return {
+      pageId: account.facebookAccount?.facebookPageId || account.platformAccountId,
+      accessToken: account.accessToken
+    };
+  }
+
+  async fetchRawPlatformData(client, options = {}) {
+    const { limit = 10, pageToken = null, socialAccountId = null, startDate = null, endDate = null } = options;
+    return await facebookPost.getPublishedPosts(options.brandId, pageToken, limit, socialAccountId, startDate, endDate);
+  }
+
+  normalizePlatformData(rawData, options = {}) {
+    return Array.isArray(rawData) ? rawData : (rawData?.posts || rawData?.videos || []);
+  }
+
   // --- Posts & Feed ---
   async getPublishedVideos(brandId, pageToken = null, limit = 10, socialAccountId = null, startDate = null, endDate = null) {
     // For Facebook, getPublishedVideos behaves as getPublishedPosts
