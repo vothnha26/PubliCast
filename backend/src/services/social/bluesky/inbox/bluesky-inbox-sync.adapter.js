@@ -154,7 +154,7 @@ class BlueskyInboxSyncAdapter extends BaseInboxSyncAdapter {
         if (rawPlatformId.startsWith('at://')) {
           return rawPlatformId;
         }
-        const match = rawPlatformId.match(/at:\/\/(did:[^"'\s\}/]+)\/app\.bsky\.feed\.post\/([^"'\s\}/]+)/);
+        const match = rawPlatformId.match(/at:\/\/(did:[^"'\s}]+)\/app\.bsky\.feed\.post\/([^"'\s}]+)/);
         if (match) {
           return match[0];
         }
