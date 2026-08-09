@@ -368,9 +368,16 @@ export function validatePostForm({
  * @param {{facebook: Object[], youtube: Object[], instagram: Object[]}} validationPresets -
  *   one preset-settings object per selected account of that platform
  * @param {string[]} selectedPlatformKeys - unique platform names targeted by the AutoList
+ * @param {{file: File, previewUrl: string}[]} pendingMedia - freshly-picked
+ *   media not yet uploaded/saved to post.mediaUrls (see AutoListPostCard's
+ *   pendingMedia state). Included so a file just picked but not yet saved
+ *   is still caught by e.g. "YouTube requires a video file" instead of only
+ *   validating after the user clicks Save.
  */
-export function validatePostAgainstAllPresets(post, validationPresets, selectedPlatformKeys) {
-  const mediaUrls = !post.mediaUrls ? [] : (Array.isArray(post.mediaUrls) ? post.mediaUrls : post.mediaUrls.split(',').filter(Boolean));
+export function validatePostAgainstAllPresets(post, validationPresets, selectedPlatformKeys, pendingMedia = []) {
+  const savedMediaUrls = !post.mediaUrls ? [] : (Array.isArray(post.mediaUrls) ? post.mediaUrls : post.mediaUrls.split(',').filter(Boolean));
+  const pendingMediaItems = (pendingMedia || []).map(p => ({ path: p.previewUrl, file: p.file }));
+  const mediaUrls = [...savedMediaUrls, ...pendingMediaItems];
   const firstMedia = mediaUrls[0];
 
   const facebookPresets = validationPresets.facebook?.length ? validationPresets.facebook : [{}];
@@ -391,10 +398,10 @@ export function validatePostAgainstAllPresets(post, validationPresets, selectedP
           instagramType: post.options?.instagramType || instagramPreset.contentType || 'post',
           youtubeTitle: post.options?.youtubeTitle || youtubePreset.title || '',
           youtubeMadeForKids: post.options?.youtubeMadeForKids ?? youtubePreset.madeForKids ?? null,
-          videoFileUrl: firstMedia,
-          uploadedVideoPath: firstMedia,
+          videoFileUrl: typeof firstMedia === 'string' ? firstMedia : firstMedia?.path,
+          uploadedVideoPath: typeof firstMedia === 'string' ? firstMedia : firstMedia?.path,
           mediaCount: mediaUrls.length,
-          postMedia: mediaUrls.map(url => ({ path: url }))
+          postMedia: mediaUrls.map(item => (typeof item === 'string' ? { path: item } : item))
         }));
       }
     }
