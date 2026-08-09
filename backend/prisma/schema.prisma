@@ -174,7 +174,7 @@ model TrackedVideo {
   platform     PlatformType @default(YOUTUBE)
   videoId      String // YouTube Video ID
   title        String?
-  thumbnailUrl String? @db.Text
+  thumbnailUrl String?      @db.Text
   channelId    String?
   channelName  String?
   publishedAt  DateTime?
@@ -959,27 +959,27 @@ model BestTimeSlot {
 }
 
 model AutoList {
-  id                  String         @id @default(uuid())
-  brandId             String
-  name                String
-  sourceType          ListSourceType
-  rssUrl              String?
-  csvLastUploadedAt   DateTime?
-  targetPlatforms     String         @db.Text
-  scheduleType        String
-  intervalMinutes     Int?
-  specificTimes       String?        @db.Text
-  activeDays          String         @db.Text
-  lastPostedAt        DateTime?
-  useAITimes          Boolean        @default(false)
-  lowQueueAlert       Boolean        @default(true)
-  queueThreshold      Int            @default(5)
-  isActive            Boolean        @default(true)
-  loopEnabled         Boolean        @default(false)
-  totalPostsCount     Int            @default(0)
-  publishedPostsCount Int            @default(0)
-  metadata            String?        @db.Text
-  createdAt           DateTime       @default(now())
+  id                     String         @id @default(uuid())
+  brandId                String
+  name                   String
+  sourceType             ListSourceType
+  rssUrl                 String?
+  csvLastUploadedAt      DateTime?
+  targetSocialAccountIds String         @db.Text
+  scheduleType           String
+  intervalMinutes        Int?
+  specificTimes          String?        @db.Text
+  activeDays             String         @db.Text
+  lastPostedAt           DateTime?
+  useAITimes             Boolean        @default(false)
+  lowQueueAlert          Boolean        @default(true)
+  queueThreshold         Int            @default(5)
+  isActive               Boolean        @default(true)
+  loopEnabled            Boolean        @default(false)
+  totalPostsCount        Int            @default(0)
+  publishedPostsCount    Int            @default(0)
+  metadata               String?        @db.Text
+  createdAt              DateTime       @default(now())
 
   brand Brand  @relation(fields: [brandId], references: [id], onDelete: Cascade)
   posts Post[]
@@ -2424,12 +2424,12 @@ model TemplateCategoryOnTemplate {
 }
 
 model PlatformCapabilityOverride {
-  platform    String   @id @db.VarChar(50)
-  isLocked    Boolean  @default(false)
-  lockReason  String?  @db.VarChar(255)
-  overrides   Json     @default("{}")
-  updatedAt   DateTime @updatedAt
-  updatedBy   String?  @db.VarChar(50)
+  platform   String   @id @db.VarChar(50)
+  isLocked   Boolean  @default(false)
+  lockReason String?  @db.VarChar(255)
+  overrides  Json     @default("{}")
+  updatedAt  DateTime @updatedAt
+  updatedBy  String?  @db.VarChar(50)
 
   @@map("platform_capability_overrides")
 }

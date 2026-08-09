@@ -55,14 +55,11 @@ class BrandService {
       throw error;
     }
 
-    // onboardingCompleted is a system flag, not client-settable — it flips
-    // to true the moment the owner renames the brand away from the signup
-    // placeholder, which is what the onboarding wizard's Finalize step does.
+    // onboardingCompleted flips to true when explicitly provided or when name is changed
     const finalUpdateData = { ...updateData };
     if (
       !brand.onboardingCompleted &&
-      updateData.name &&
-      updateData.name !== WORKSPACE_DEFAULTS.BRAND_NAME
+      (updateData.onboardingCompleted === true || (updateData.name && updateData.name !== WORKSPACE_DEFAULTS.BRAND_NAME))
     ) {
       finalUpdateData.onboardingCompleted = true;
     }

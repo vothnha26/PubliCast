@@ -222,7 +222,7 @@ class AutoListService {
       name: data.name,
       brandId,
       sourceType: data.sourceType || AUTOLIST_TYPES.SOURCE.MANUAL,
-      targetPlatforms: data.targetPlatforms,
+      targetSocialAccountIds: data.targetSocialAccountIds,
       scheduleType: data.scheduleType || AUTOLIST_TYPES.SCHEDULE.INTERVAL,
       intervalMinutes: data.intervalMinutes ? parseInt(data.intervalMinutes) : undefined,
       specificTimes: data.specificTimes,

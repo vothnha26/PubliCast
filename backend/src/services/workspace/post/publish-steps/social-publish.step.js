@@ -34,7 +34,8 @@ class SocialPublishStep extends BaseStep {
     // pass/fail outcomes, so no change needed there for basic success/fail
     // aggregation.
     const publishTargets = platforms.flatMap((platform) => {
-      const accountIds = targetsByPlatform[platform]?.length > 0 ? targetsByPlatform[platform] : [null];
+      const platKey = (platform || '').trim().toUpperCase();
+      const accountIds = (targetsByPlatform[platKey]?.length > 0 ? targetsByPlatform[platKey] : targetsByPlatform[platform]) || [null];
       return accountIds.map((socialAccountId) => ({ platform, socialAccountId }));
     });
 

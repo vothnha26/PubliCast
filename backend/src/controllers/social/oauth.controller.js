@@ -25,16 +25,12 @@ class OAuthController {
     if (!brandId) return res.status(400).json({ message: 'brandId is required' });
 
     const scopes = GOOGLE_OAUTH_SCOPE_SETS.YOUTUBE;
-    // frontendOrigin (optional) lets multiple frontends (legacy app, publicast-frontend
-    // sandbox, ...) share this one OAuth flow — encoded into `state` so googleCallback
-    // knows which origin to redirect back to. Only http(s) origins from ALLOWED
-    // origins are accepted to prevent open-redirect via a spoofed frontendOrigin value;
-    // falls back to DEFAULT_CONFIG.FRONTEND_URL (legacy app) when absent/invalid.
+    // frontendOrigin (optional) lets frontends specify custom return URL (e.g. /manage/workplace/new?step=2)
     const allowedOrigins = (process.env.CORS_ALLOWED_ORIGINS || '').split(',').map(o => o.trim());
     const isValidOrigin = frontendOrigin
-      && /^https?:\/\/[^/]+$/.test(frontendOrigin)
-      && (allowedOrigins.includes(frontendOrigin) || /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(frontendOrigin));
-    const state = isValidOrigin ? `${brandId}::${frontendOrigin}` : brandId;
+      && /^https?:\/\/[^/]+/.test(frontendOrigin)
+      && (allowedOrigins.some(o => frontendOrigin.startsWith(o)) || /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?/.test(frontendOrigin));
+    const state = isValidOrigin ? `${brandId}::${encodeURIComponent(frontendOrigin)}` : brandId;
 
     const redirectUri = `${this._getRedirectBaseUrl(req)}/api/social/google/callback`;
     const url = googleOAuthService.getAuthUrl(scopes, state, redirectUri);
@@ -67,22 +63,30 @@ class OAuthController {
 
   googleCallback = asyncHandler(async (req, res) => {
     const { code, state } = req.query;
-    // state is either "<brandId>" (legacy shape) or "<brandId>::<frontendOrigin>"
-    // (see getGoogleAuthUrl above) — split defensively, first segment is always brandId.
     const [brandId, encodedFrontendOrigin] = (state || '').split('::');
-    const frontendUrl = encodedFrontendOrigin || DEFAULT_CONFIG.FRONTEND_URL;
+    let targetUrl = `${DEFAULT_CONFIG.FRONTEND_URL}/manage/connections?tab=connections`;
+
+    if (encodedFrontendOrigin) {
+      try {
+        const decoded = decodeURIComponent(encodedFrontendOrigin);
+        targetUrl = decoded.includes('?') ? `${decoded}&success=youtube_connected` : `${decoded}?success=youtube_connected`;
+      } catch (e) {
+        targetUrl = `${DEFAULT_CONFIG.FRONTEND_URL}/manage/connections?tab=connections&success=youtube_connected`;
+      }
+    } else {
+      targetUrl = `${DEFAULT_CONFIG.FRONTEND_URL}/manage/connections?tab=connections&success=youtube_connected`;
+    }
+
     const redirectUri = `${this._getRedirectBaseUrl(req)}/api/social/google/callback`;
 
-    if (!brandId) return res.redirect(`${frontendUrl}/manage/connections?error=brand_id_missing`);
+    if (!brandId) return res.redirect(`${DEFAULT_CONFIG.FRONTEND_URL}/manage/connections?error=brand_id_missing`);
 
     try {
-      // connectChannel ghi outbox row SOCIAL_SYNC_ENQUEUE trong cùng transaction lưu
-      // socialAccount (social-account.repository.js) — không cần emit sự kiện ở đây nữa.
       await youtubeService.connectChannel(brandId, code, redirectUri);
       await this._notifySocialConnected(brandId, 'YouTube');
-      return res.redirect(`${frontendUrl}/manage/connections?tab=connections&success=youtube_connected`);
+      return res.redirect(targetUrl);
     } catch (error) {
-      return this._handleCallbackError(error, frontendUrl, res);
+      return this._handleCallbackError(error, DEFAULT_CONFIG.FRONTEND_URL, res);
     }
   });
 
