@@ -111,7 +111,8 @@ export function useChannelInsights(socialAccountId, platformInput) {
         setPrevPageToken(res?.prevPageToken || null);
       } else if (platform === PLATFORMS.BLUESKY) {
         const res = await socialService.getBlueskyPublishedPosts(activeBrand.id, pageToken, limit, socialAccountId);
-        const mapped = (res?.data || []).map((p) => ({
+        const postsList = Array.isArray(res) ? res : (res?.data || []);
+        const mapped = postsList.map((p) => ({
           id: p.id,
           message: p.message || "",
           date: p.date,
@@ -123,7 +124,7 @@ export function useChannelInsights(socialAccountId, platformInput) {
         }));
         setPublishedVideos(mapped);
         setNextPageToken(res?.nextPageToken || null);
-        setPrevPageToken(null);
+        setPrevPageToken(res?.prevPageToken || null);
       } else {
         const res = await socialService.getPublishedVideos(activeBrand.id, pageToken, limit, socialAccountId, startDate, endDate);
         setPublishedVideos(res.videos || []);
