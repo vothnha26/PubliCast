@@ -191,7 +191,14 @@ class TikTokVideoService {
   async _getAccount(brandId, socialAccountId = null) {
     let account;
     if (socialAccountId) {
+      // findById looks up by raw ID with no brand scoping — a caller-supplied
+      // socialAccountId could belong to a different brand than the one the
+      // caller is authorized for, so verify ownership explicitly (IDOR guard),
+      // same as facebook-post.service.js#_getAccountCredentials.
       account = await socialAccountRepository.findById(socialAccountId);
+      if (account && String(account.brandId) !== String(brandId)) {
+        account = null;
+      }
     } else {
       const socialAccount = await socialAccountRepository.findByBrandAndPlatform(brandId, PLATFORMS.TIKTOK);
       if (!socialAccount || socialAccount.length === 0) {
