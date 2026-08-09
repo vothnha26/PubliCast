@@ -54,7 +54,15 @@ export async function uploadMediaFileWithMetadata(file, brandId, onProgress) {
   // Cloudinary).
   const savedMedia = await apiV2.post("/media/save-direct", {
     brandId,
-    fileInfo: uploadData,
+    fileInfo: {
+      ...uploadData,
+      original_filename: uploadData?.original_filename || uploadData?.filename || file.name,
+      filename: uploadData?.filename || uploadData?.original_filename || file.name,
+      mimetype: file.type || (uploadData?.resource_type && uploadData?.format ? `${uploadData.resource_type}/${uploadData.format}` : 'application/octet-stream'),
+      bytes: uploadData?.bytes || file.size || 0,
+      public_id: uploadData?.public_id || `cld_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+      secure_url: uploadData?.secure_url || uploadData?.url || ''
+    },
     saveToLibrary: true
   });
 

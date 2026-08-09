@@ -1,8 +1,8 @@
 import { apiV2 } from './api';
 
 class TeamService {
-  async getMembers(brandId) {
-    const data = await apiV2.get(`/workspace/team?brandId=${brandId}`);
+  async getMembers(brandId, queryParams = "") {
+    const data = await apiV2.get(`/workspace/team?brandId=${brandId}${queryParams ? `&${queryParams}` : ''}`);
     return data;
   }
 

@@ -22,6 +22,14 @@ export function MediaThumbnailGrid({
   onUploadThumbnail,
   onRemove,
   mediaPosterUrl,
+  // Marks an item as picked-but-not-yet-uploaded (e.g. AutoListPostCard's
+  // deferred-upload pending media) — renders a dashed amber border + small
+  // amber dot instead of the normal solid border, and suppresses the Edit
+  // menu item (editing an unsaved image isn't wired up), matching the
+  // AutoList "unsaved" visual language rather than inventing composer-only
+  // markup here. Defaults to false for every item when the caller (e.g.
+  // ComposerBody) has no such concept.
+  isPending = () => false,
 }) {
   const { t } = useTranslation(["planner", "common"]);
   const [activeMenuIndex, setActiveMenuIndex] = useState(null);
@@ -35,10 +43,14 @@ export function MediaThumbnailGrid({
         const isVid = isVideoPath(mediaUrl, typeof item === "object" ? item?.file : null);
         const isSpoilerActive = !!spoilersMap[index];
         const hasAltText = typeof item === "object" && !!item?.caption?.trim();
+        const pending = isPending(item, index);
 
         return (
           <div key={index} className="relative group">
-            <div className={`${thumbnailSize} rounded-2xl overflow-hidden border border-border shadow-md bg-muted flex items-center justify-center relative`}>
+            <div className={`${thumbnailSize} rounded-2xl overflow-hidden border shadow-md bg-muted flex items-center justify-center relative ${
+              pending ? "border-2 border-dashed border-amber-400/60" : "border-border"
+            }`}>
+              {pending && <div className="absolute top-1 left-1 w-2 h-2 rounded-full bg-amber-400 shadow-sm z-10" />}
               {isVid ? (
                 <>
                   <video src={mediaUrl} poster={mediaPosterUrl || undefined} className="w-full h-full object-cover" />
@@ -72,15 +84,29 @@ export function MediaThumbnailGrid({
               )}
             </div>
 
-            <button
-              type="button"
-              onClick={() => setActiveMenuIndex(activeMenuIndex === index ? null : index)}
-              className="absolute -top-1.5 -right-1.5 w-6 h-6 rounded-full bg-black/80 hover:bg-black text-white flex items-center justify-center cursor-pointer transition-all shadow-md z-20"
-            >
-              <MoreHorizontal size={12} />
-            </button>
+            {pending ? (
+              // Editing an unsaved item isn't wired up yet — just a direct
+              // remove button, matching AutoList's pre-existing pending-item
+              // UX (no 3-dot menu with options that don't apply).
+              <button
+                type="button"
+                onClick={() => onRemove?.(index)}
+                className="absolute -top-1.5 -right-1.5 w-6 h-6 rounded-full bg-red-500 hover:bg-red-600 text-white flex items-center justify-center cursor-pointer transition-all shadow-md z-20"
+                title={t("planner:postCreator.composer.imageMenu.remove")}
+              >
+                <Trash2 size={12} />
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setActiveMenuIndex(activeMenuIndex === index ? null : index)}
+                className="absolute -top-1.5 -right-1.5 w-6 h-6 rounded-full bg-black/80 hover:bg-black text-white flex items-center justify-center cursor-pointer transition-all shadow-md z-20"
+              >
+                <MoreHorizontal size={12} />
+              </button>
+            )}
 
-            {activeMenuIndex === index && (
+            {!pending && activeMenuIndex === index && (
               <>
                 <div className="fixed inset-0 z-30" onClick={() => setActiveMenuIndex(null)} />
                 <div className="absolute bottom-full left-0 mb-2 min-w-[220px] w-max bg-card rounded-2xl shadow-2xl border border-border py-2 z-40 text-left text-xs font-sans text-foreground animate-in fade-in slide-in-from-bottom-1">

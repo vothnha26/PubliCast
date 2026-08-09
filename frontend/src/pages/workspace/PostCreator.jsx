@@ -14,7 +14,6 @@ import { usePostCreatorStore } from "../../store/usePostCreatorStore";
 import { FirstCommentModal } from "../../components/workspace/post-creator/modals/FirstCommentModal";
 import { GoogleDrivePickerModal } from "../../components/workspace/post-creator/modals/GoogleDrivePickerModal";
 import { MediaUploadModal } from "../../components/workspace/post-creator/modals/MediaUploadModal";
-import { uploadMediaFile } from "../../services/mediaUpload.service";
 import { MEDIA_FILTER_TYPES } from "../../constants/mediaAcceptStrategy";
 import { ImageEditorModal } from "../../components/workspace/post-creator/modals/ImageEditorModal";
 import { VideoEditorModal } from "../../components/workspace/post-creator/modals/VideoEditorModal";
@@ -504,7 +503,7 @@ export function PostCreatorPage() {
     altText, tiktokOpen, tiktokPrivacy, tiktokAllowComments, tiktokAllowDuet, tiktokAllowStitch,
     tiktokAiGenerated, tiktokCommercialContent, potentialReviewers, selectedReviewerId,
     selectedReviewerIds, approvalPolicy, requesterNote, isLoadingReviewers, postMedia,
-    threadsWhoCanReply, isEditByNetwork, activeNetworkTab, networkCustom, notes, videoSettings,
+    threadsWhoCanReply, isEditByNetwork, activeNetworkTab, activeNetworkAccountId, networkCustom, notes, videoSettings,
     threadsOpen, isUploadingThumbnail, newNoteText, blockedProductId, showReviewersModal,
     reviewerSearchQuery, showUploadModal, uploadModalTab, mediaTypeFilter, showImageMenu,
     showImageEditor, showVideoEditor, editingPostMediaIndex, imageTransform, showAltTextModal,
@@ -690,25 +689,24 @@ export function PostCreatorPage() {
                 }}
                 onAccept={async (items) => {
                   if (isUploadingThumbnail) {
-                    // Thumbnail is the one case that needs a real URL right
-                    // away (fed straight into mediaThumbnailUrl, the SSoT
-                    // YouTube/Facebook Reel read at submit) — the modal
-                    // itself always defers upload now, so this uploads the
-                    // picked file itself instead of relying on the modal to
-                    // special-case it via multiple={false}.
+                    // Thumbnail upload is deferred like every other media
+                    // item now — mediaThumbnailUrl only needs to be a valid
+                    // <img>/<video poster> src for preview (PreviewBody/
+                    // ComposerBody), which a local blob satisfies just as
+                    // well as a real Cloudinary URL. The actual upload
+                    // happens in handleCreatePost's pending-file scan.
                     const thumbItem = items[0];
                     setIsUploadingThumbnail(false);
                     if (!thumbItem) return;
                     if (thumbItem.path) {
                       formState.setMediaThumbnailUrl(thumbItem.path);
+                      formState.setMediaThumbnailFile(null);
+                      formState.setMediaThumbnailPath(thumbItem.path);
                       return;
                     }
-                    try {
-                      const url = await uploadMediaFile(thumbItem.file, activeBrand.id);
-                      formState.setMediaThumbnailUrl(url);
-                    } catch (err) {
-                      toast.error(err.message || "Failed to upload thumbnail");
-                    }
+                    formState.setMediaThumbnailFile(thumbItem.file);
+                    formState.setMediaThumbnailPath(null);
+                    formState.setMediaThumbnailUrl(thumbItem.previewUrl || "");
                     return;
                   }
 
@@ -756,6 +754,7 @@ export function PostCreatorPage() {
                 }
                 currentTransform={imageTransform}
                 brandId={activeBrand?.id}
+                eager={false}
                 onClose={() => {
                   setShowImageEditor(false);
                   setEditingPostMediaIndex(null);

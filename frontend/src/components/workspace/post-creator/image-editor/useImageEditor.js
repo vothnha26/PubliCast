@@ -3,7 +3,7 @@ import { getFullImageUrl, processCanvas } from "./utils";
 import { uploadMediaFile } from "../../../../services/mediaUpload.service";
 import { usePostCreatorStore } from "../../../../store/usePostCreatorStore";
 
-export function useImageEditor({ imageUrl, currentTransform, brandId, onSave, onClose }) {
+export function useImageEditor({ imageUrl, currentTransform, brandId, onSave, onClose, eager = false }) {
   const [activeTab, setActiveTab] = useState('size');
   const [adjustMode, setAdjustMode] = useState('rotation');
   const [rotation, setRotation] = useState(currentTransform?.rotation || 0);
@@ -698,6 +698,17 @@ const isPointNearLine = (cursorPt, line, threshold = 25) => {
             }
 
             const file = new File([blob], "edited_image.jpg", { type: "image/jpeg" });
+
+            if (!eager) {
+              // Deferred: hand the raw file back with path:null — the
+              // caller's own pending-upload scan (e.g. handleCreatePost's
+              // pending-file scan for postMedia/networkCustom items) uploads
+              // it at Save time, same as any other freshly-picked media.
+              onSave(file, null);
+              setIsSaving(false);
+              onClose();
+              return;
+            }
 
             try {
               const path = await uploadMediaFile(file, brandId);

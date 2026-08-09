@@ -216,7 +216,7 @@ export function NetworkCustomizeScreen({ onClose }) {
     ? (activeThreadPost !== undefined
         ? (typeof activeThreadPost === 'string' ? activeThreadPost : activeThreadPost?.text || '')
         : (activeThreadIndex === 0 ? caption || '' : ''))
-    : (activeEntry?.useTemplate === false ? (activeEntry?.caption || "") : (activeEntry?.caption || caption || ""));
+    : (activeEntry?.useTemplate === false ? (activeEntry?.caption ?? caption ?? "") : (activeEntry?.caption || caption || ""));
 
   const globalMedia = (postMedia && postMedia.length > 0)
     ? postMedia

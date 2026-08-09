@@ -38,7 +38,7 @@ import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { useBrand } from "../../context/BrandContext";
 import smartLinkService from "../../services/smartlink.service";
-import { uploadMediaFile } from "../../services/mediaUpload.service";
+import { uploadMediaFileWithMetadata } from "../../services/mediaUpload.service";
 import { SmartLinksAnalyticsPanel } from "./components/SmartLinksAnalyticsPanel";
 
 const renderSocialIcon = (platform, size = 15) => {
@@ -108,6 +108,21 @@ export function SmartLinksPage() {
   const [profileBio, setProfileBio] = useState("");
   const [avatarUrl, setAvatarUrl] = useState("");
   const [avatarError, setAvatarError] = useState(false);
+  // Upload is deferred until Save — picking an avatar/icon only stores the
+  // raw File locally with a local blob preview; the actual Cloudinary
+  // upload happens in handleSaveChanges, right before the PUT payload build.
+  const [avatarFile, setAvatarFile] = useState(null);
+  const [avatarPreviewUrl, setAvatarPreviewUrl] = useState(null);
+  const [linkIconFiles, setLinkIconFiles] = useState({});
+  const [linkIconPreviewUrls, setLinkIconPreviewUrls] = useState({});
+
+  useEffect(() => {
+    return () => {
+      if (avatarPreviewUrl) URL.revokeObjectURL(avatarPreviewUrl);
+      Object.values(linkIconPreviewUrls).forEach(url => URL.revokeObjectURL(url));
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const [isPublished, setIsPublished] = useState(true);
   
   // Stats
@@ -470,6 +485,37 @@ export function SmartLinksPage() {
     if (!smartLinkId) return;
     setSaving(true);
     try {
+      // Resolve any pending (not-yet-uploaded) avatar/icon files first —
+      // upload was deferred until this Save action. Hard-block the whole
+      // save if any upload fails, matching the reference pattern's model
+      // (nothing partially saves).
+      let resolvedAvatarUrl = avatarUrl;
+      const resolvedIconUrls = {};
+      const pendingUploads = [];
+      if (avatarFile) pendingUploads.push({ kind: 'avatar', file: avatarFile });
+      Object.entries(linkIconFiles).forEach(([linkId, file]) => pendingUploads.push({ kind: 'icon', linkId, file }));
+
+      if (pendingUploads.length > 0) {
+        const results = await Promise.allSettled(
+          pendingUploads.map(p => uploadMediaFileWithMetadata(p.file, activeBrand.id))
+        );
+        const failedIndex = results.findIndex(r => r.status === 'rejected');
+        if (failedIndex !== -1) {
+          const failed = pendingUploads[failedIndex];
+          toast.error(`Tải lên ${failed.kind === 'avatar' ? 'ảnh đại diện' : 'icon'} thất bại`);
+          setSaving(false);
+          return;
+        }
+        pendingUploads.forEach((p, i) => {
+          const url = results[i].value.url;
+          if (p.kind === 'avatar') {
+            resolvedAvatarUrl = url;
+          } else {
+            resolvedIconUrls[p.linkId] = url;
+          }
+        });
+      }
+
       const serializedSocials = socialIcons.map(si => `${si.platform}=${si.url}`).join(";");
 
       const payload = {
@@ -477,7 +523,7 @@ export function SmartLinksPage() {
         slug,
         pageTitle: profileName,
         bio: profileBio,
-        profileImageUrl: avatarUrl,
+        profileImageUrl: resolvedAvatarUrl,
         backgroundType: "THEME",
         backgroundValue: activeTheme.id,
         buttonStyle: "rounded",
@@ -491,7 +537,7 @@ export function SmartLinksPage() {
             title: l.title,
             url: l.url,
             emoji: l.emoji,
-            iconUrl: l.iconUrl || null,
+            iconUrl: resolvedIconUrls[l.id] || l.iconUrl || null,
             linkStyle: styleStr,
             isActive: l.isActive !== undefined ? l.isActive : l.active,
             position: index
@@ -502,6 +548,20 @@ export function SmartLinksPage() {
       const res = await smartLinkService.updateSmartLink(smartLinkId, payload);
       if (res) {
         toast.success(t("toasts.saveSuccess"));
+        // Commit resolved URLs into local state and clear pending files —
+        // revoke blob previews now that the real URLs are persisted.
+        if (avatarFile) {
+          if (avatarPreviewUrl) URL.revokeObjectURL(avatarPreviewUrl);
+          setAvatarUrl(resolvedAvatarUrl);
+          setAvatarFile(null);
+          setAvatarPreviewUrl(null);
+        }
+        if (Object.keys(linkIconFiles).length > 0) {
+          Object.values(linkIconPreviewUrls).forEach(url => URL.revokeObjectURL(url));
+          setLinks(prev => prev.map(l => resolvedIconUrls[l.id] ? { ...l, iconUrl: resolvedIconUrls[l.id] } : l));
+          setLinkIconFiles({});
+          setLinkIconPreviewUrls({});
+        }
         await fetchSmartLinksList(smartLinkId); // reload clean data from server and refresh dropdown
       }
     } catch (err) {
@@ -592,36 +652,26 @@ export function SmartLinksPage() {
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const handleAvatarUpload = async (event) => {
+  const handleAvatarUpload = (event) => {
     const file = event.target.files?.[0];
+    event.target.value = "";
     if (!file || !activeBrand) return;
 
-    try {
-      const media = await uploadMediaFile(file, activeBrand.id);
-      setAvatarUrl(media.url);
-      toast.success(t("toasts.avatarUploadSuccess"));
-    } catch (err) {
-      console.error("Error uploading avatar:", err);
-      toast.error(err?.response?.data?.message || t("toasts.avatarUploadError"));
-    } finally {
-      event.target.value = "";
-    }
+    if (avatarPreviewUrl) URL.revokeObjectURL(avatarPreviewUrl);
+    setAvatarFile(file);
+    setAvatarPreviewUrl(URL.createObjectURL(file));
   };
 
-  const handleLinkIconUpload = async (event, linkId) => {
+  const handleLinkIconUpload = (event, linkId) => {
     const file = event.target.files?.[0];
+    event.target.value = "";
     if (!file || !activeBrand || !linkId) return;
 
-    try {
-      const media = await uploadMediaFile(file, activeBrand.id);
-      updateLinkField(linkId, "iconUrl", media.url);
-      toast.success(t("toasts.iconUploadSuccess"));
-    } catch (err) {
-      console.error("Error uploading link icon:", err);
-      toast.error(err?.response?.data?.message || t("toasts.iconUploadError"));
-    } finally {
-      event.target.value = "";
-    }
+    setLinkIconPreviewUrls(prev => {
+      if (prev[linkId]) URL.revokeObjectURL(prev[linkId]);
+      return { ...prev, [linkId]: URL.createObjectURL(file) };
+    });
+    setLinkIconFiles(prev => ({ ...prev, [linkId]: file }));
   };
 
   const getLinkRenderStyle = (link) => {
@@ -1268,12 +1318,12 @@ export function SmartLinksPage() {
                 
                 {/* Logo / Profile Avatar */}
                 <label className="w-16 h-16 rounded-full bg-card flex items-center justify-center shadow-md mb-3 border border-border overflow-hidden shrink-0 cursor-pointer relative group">
-                  {!avatarError && avatarUrl ? (
-                    <img 
-                      src={avatarUrl} 
-                      alt="Logo" 
+                  {!avatarError && (avatarPreviewUrl || avatarUrl) ? (
+                    <img
+                      src={avatarPreviewUrl || avatarUrl}
+                      alt="Logo"
                       className="w-full h-full object-cover"
-                      onError={() => setAvatarError(true)} 
+                      onError={() => setAvatarError(true)}
                     />
                   ) : (
                     <div className="w-full h-full bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 flex items-center justify-center text-white font-extrabold text-xl">
@@ -1305,7 +1355,8 @@ export function SmartLinksPage() {
                 {links
                   .filter(l => l.isActive)
                   .map((link) => {
-                    const hasCustomIconUrl = link.iconUrl && !link.iconUrl.startsWith("style:");
+                    const effectiveIconUrl = linkIconPreviewUrls[link.id] || link.iconUrl;
+                    const hasCustomIconUrl = effectiveIconUrl && !effectiveIconUrl.startsWith("style:");
                     return (
                       <a
                         key={link.id}
@@ -1329,7 +1380,7 @@ export function SmartLinksPage() {
                         className="w-full rounded-2xl py-3 px-4 text-xs font-bold text-center border transition-all hover:scale-[1.02] transform active:scale-98 duration-200 flex justify-between items-center group shadow-sm"
                       >
                         {hasCustomIconUrl ? (
-                          <img src={link.iconUrl} alt="" className="w-5 h-5 object-contain shrink-0 rounded" />
+                          <img src={effectiveIconUrl} alt="" className="w-5 h-5 object-contain shrink-0 rounded" />
                         ) : (
                           <span className="w-5 h-5 flex items-center justify-center shrink-0 text-base">{link.emoji || "🔗"}</span>
                         )}

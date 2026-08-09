@@ -21,6 +21,7 @@ import { FACEBOOK_TYPE, YOUTUBE_TYPE, INSTAGRAM_TYPE, POST_TYPE } from "../../..
 
 // Presets Imports
 import { GlobalPresets } from "./presets/GlobalPresets";
+import { PRESET_REGISTRY } from "../../../constants/presetRegistry";
 
 import { MEDIA_FILTER_TYPES } from "../../../constants/mediaAcceptStrategy";
 
@@ -677,7 +678,7 @@ export function ComposerBody() {
 
         </div>
 
-        {/* Presets Accordion — keep GlobalPresets only in main composer (platform-specific presets belong in Customize post per network) */}
+        {/* Presets Accordion — GlobalPresets only on main shared composer */}
         <div className="space-y-3">
           <GlobalPresets />
         </div>
