@@ -44,7 +44,7 @@ class BaseAudienceAdapter {
     throw new Error('Abstract method fetchFromAPI must be implemented');
   }
 
-  /** Subclasses MUST override to structure demographics, geography, trafficSources */
+  /** Subclasses MUST override to structure age/gender/country/trafficSource distributions */
   normalize(rawData) {
     throw new Error('Abstract method normalize must be implemented');
   }
@@ -56,23 +56,27 @@ class BaseAudienceAdapter {
 
     return model.upsert({
       where: {
-        socialAccountId_snapshotDate: {
+        socialAccountId_snapshotDate_platform: {
           socialAccountId,
-          snapshotDate: today
+          snapshotDate: today,
+          platform: this.platform
         }
       },
       create: {
         brandId,
         socialAccountId,
+        platform: this.platform,
         snapshotDate: today,
-        demographicsJson: normalizedData.demographicsJson,
-        geographyJson: normalizedData.geographyJson,
-        trafficSourcesJson: normalizedData.trafficSourcesJson
+        ageDistribution: normalizedData.ageDistribution,
+        genderDistribution: normalizedData.genderDistribution,
+        countryDistribution: normalizedData.countryDistribution,
+        trafficSourceDistribution: normalizedData.trafficSourceDistribution
       },
       update: {
-        demographicsJson: normalizedData.demographicsJson,
-        geographyJson: normalizedData.geographyJson,
-        trafficSourcesJson: normalizedData.trafficSourcesJson,
+        ageDistribution: normalizedData.ageDistribution,
+        genderDistribution: normalizedData.genderDistribution,
+        countryDistribution: normalizedData.countryDistribution,
+        trafficSourceDistribution: normalizedData.trafficSourceDistribution,
         fetchedAt: new Date()
       }
     });

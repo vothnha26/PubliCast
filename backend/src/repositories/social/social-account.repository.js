@@ -288,9 +288,10 @@ class SocialAccountRepository {
     };
 
     return channelSnapshotRepository.upsertChannelSnapshots(
-      client.tikTokChannelSnapshot,
+      client.channelMetricDaily,
       brandId,
       socialAccountId,
+      PLATFORMS.TIKTOK,
       current,
       dailyRows,
       false
@@ -553,28 +554,17 @@ class SocialAccountRepository {
   /**
    * Cheap version signal for a brand's metrics — max(updatedAt) across its
    * social accounts, max(fetchedAt) across legacy Analytics rows, and
-   * max(fetchedAt) across every platform's ChannelSnapshot table (via
-   * channelAdapterFactory, so a newly migrated platform is covered
-   * automatically with no further edits here — see core/insights/index.js).
+   * max(fetchedAt) across ChannelMetricDaily (the single table shared by all
+   * 6 platforms since the 2026-08-09 consolidation — previously this looped
+   * channelAdapterFactory.getAllAdapters() to query 6 separate per-platform
+   * tables; now every adapter's getPrismaModel() resolves to the same
+   * table, so one query covers all platforms instead of 6 redundant ones).
    * Used both by the mount-time version-check (useMetricsQuery fetches this
    * before the full metrics payload) and the reconnect-reconcile flow to
    * detect a missed `data_invalidate` socket event.
    */
   async getMetricsVersion(brandId) {
-    const { channelAdapterFactory } = require('../../core/insights');
-
-    const snapshotQueries = channelAdapterFactory.getAllAdapters().map((adapter) => {
-      const model = adapter.getPrismaModel(prisma);
-      return model
-        .findFirst({
-          where: { brandId },
-          orderBy: { fetchedAt: 'desc' },
-          select: { fetchedAt: true }
-        })
-        .catch(() => null); // one platform's snapshot query failing must not blank out the others'
-    });
-
-    const [latestAccount, latestAnalytics, ...snapshotResults] = await Promise.all([
+    const [latestAccount, latestAnalytics, latestSnapshot] = await Promise.all([
       prisma.socialAccount.findFirst({
         where: { brandId },
         orderBy: { updatedAt: 'desc' },
@@ -585,13 +575,17 @@ class SocialAccountRepository {
         orderBy: { fetchedAt: 'desc' },
         select: { fetchedAt: true }
       }),
-      ...snapshotQueries
+      prisma.channelMetricDaily.findFirst({
+        where: { brandId },
+        orderBy: { fetchedAt: 'desc' },
+        select: { fetchedAt: true }
+      }).catch(() => null)
     ]);
 
     const times = [
       latestAccount?.updatedAt?.getTime() || 0,
       latestAnalytics?.fetchedAt?.getTime() || 0,
-      ...snapshotResults.map((r) => r?.fetchedAt?.getTime() || 0)
+      latestSnapshot?.fetchedAt?.getTime() || 0
     ];
 
     return Math.max(...times);
@@ -782,9 +776,10 @@ class SocialAccountRepository {
     };
 
     return channelSnapshotRepository.upsertChannelSnapshots(
-      client.instagramChannelSnapshot,
+      client.channelMetricDaily,
       brandId,
       socialAccountId,
+      PLATFORMS.INSTAGRAM,
       current,
       dailyRows,
       false
@@ -850,9 +845,10 @@ class SocialAccountRepository {
     };
 
     return channelSnapshotRepository.upsertChannelSnapshots(
-      client.threadsChannelSnapshot,
+      client.channelMetricDaily,
       brandId,
       socialAccountId,
+      PLATFORMS.THREADS,
       current,
       dailyRows,
       false
@@ -1050,6 +1046,12 @@ class SocialAccountRepository {
     const where = { brandId };
     if (platform) where.platform = platform;
 
+    // channelMetricsDaily is scoped by this row's own socialAccountId FK, so
+    // it never needs a platform filter here (a SocialAccount only ever has
+    // one platform) — replaces the old facebookChannelSnapshots/
+    // youtubeChannelSnapshots includes, which only covered those 2
+    // platforms; every platform now gets its last-30-days history uniformly
+    // since the 2026-08-09 ChannelMetricDaily consolidation.
     const accounts = await prisma.socialAccount.findMany({
       where,
       include: {
@@ -1060,11 +1062,7 @@ class SocialAccountRepository {
         blueskyAccount: true,
         redditAccount: true,
         twitchAccount: true,
-        facebookChannelSnapshots: {
-          orderBy: { snapshotDate: 'desc' },
-          take: 30
-        },
-        youtubeChannelSnapshots: {
+        channelMetricsDaily: {
           orderBy: { snapshotDate: 'desc' },
           take: 30
         },
@@ -1373,9 +1371,10 @@ class SocialAccountRepository {
     };
 
     return channelSnapshotRepository.upsertChannelSnapshots(
-      client.blueskyChannelSnapshot,
+      client.channelMetricDaily,
       brandId,
       socialAccountId,
+      PLATFORMS.BLUESKY,
       current,
       dailyRows,
       false
@@ -1490,6 +1489,34 @@ class SocialAccountRepository {
     return prisma.socialAccount.update({
       where: { id },
       data: { lastSyncAt: new Date() }
+    });
+  }
+
+  // Distinct from findDueForMetricsSync (per-post metrics cooldown) — this
+  // scans for accounts (any platform, or all 6 if platform is omitted) whose
+  // published-post list hasn't been re-pulled from the live API recently,
+  // feeding PostsSyncSchedulerService (Smart Fetch's only Sync trigger
+  // besides OAuth-connect backfill and the manual-refresh endpoint).
+  async findDueForPostsSync(cooldownHours, limit, platform = null) {
+    const threshold = new Date(Date.now() - cooldownHours * 60 * 60 * 1000);
+    return prisma.socialAccount.findMany({
+      where: {
+        ...(platform ? { platform } : {}),
+        isConnected: true,
+        OR: [
+          { lastPostsSyncAt: null },
+          { lastPostsSyncAt: { lt: threshold } }
+        ]
+      },
+      select: { id: true, platform: true, brandId: true },
+      take: limit
+    });
+  }
+
+  async updateLastPostsSyncAt(id) {
+    return prisma.socialAccount.update({
+      where: { id },
+      data: { lastPostsSyncAt: new Date() }
     });
   }
 
