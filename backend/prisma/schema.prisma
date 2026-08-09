@@ -1381,6 +1381,7 @@ model PostMetricDaily {
   @@unique([socialAccountId, platformPostId, snapshotDate])
   @@index([brandId])
   @@index([socialAccountId, platformPostId])
+  @@index([brandId, platform, snapshotDate])
   @@map("post_metrics_daily")
 }
 
