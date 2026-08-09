@@ -117,6 +117,7 @@ describe('Core Insights Architecture (Vertical Slice: YouTube)', () => {
         expect.anything(),
         'brand1',
         'acc123',
+        PLATFORMS.YOUTUBE,
         expect.objectContaining({
           staticColumns: { totalVideosCount: 10 }
         }),
@@ -158,18 +159,26 @@ describe('Core Insights Architecture (Vertical Slice: YouTube)', () => {
       expect(result).toEqual({ id: 'aud-snap-1' });
       expect(mockModel.upsert).toHaveBeenCalledWith(
         expect.objectContaining({
+          where: {
+            socialAccountId_snapshotDate_platform: expect.objectContaining({
+              socialAccountId: 'acc123',
+              platform: PLATFORMS.YOUTUBE
+            })
+          },
           create: expect.objectContaining({
-            demographicsJson: JSON.stringify([
+            platform: PLATFORMS.YOUTUBE,
+            ageDistribution: [
               { ageGroup: '18-24', gender: 'male', percentage: 25.4 },
               { ageGroup: '25-34', gender: 'female', percentage: 18.2 }
-            ]),
-            geographyJson: JSON.stringify([
+            ],
+            genderDistribution: null,
+            countryDistribution: [
               { countryCode: 'VN', views: 1500 },
               { countryCode: 'US', views: 350 }
-            ]),
-            trafficSourcesJson: JSON.stringify([
+            ],
+            trafficSourceDistribution: [
               { sourceType: 'SUGGESTED_VIDEO', views: 800, minutesWatched: 2400 }
-            ])
+            ]
           })
         })
       );

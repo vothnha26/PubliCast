@@ -11,6 +11,12 @@ jest.mock('../../src/utils/encryption', () => ({
   decrypt: jest.fn((val) => val || 'decrypted_token'),
   encrypt: jest.fn((val) => val)
 }));
+jest.mock('../../src/services/social/post-metric-daily-persistence.util', () => ({
+  upsertPostMetricsDaily: jest.fn(),
+  findLatestPostMetrics: jest.fn()
+}));
+
+const { upsertPostMetricsDaily, findLatestPostMetrics } = require('../../src/services/social/post-metric-daily-persistence.util');
 
 describe('BlueskyService — real metrics sync and published posts', () => {
   const mockAccountId = 'acc-bsky-456';
@@ -82,23 +88,56 @@ describe('BlueskyService — real metrics sync and published posts', () => {
     });
   });
 
-  describe('getPublishedVideos', () => {
-    it('delegates to bluesky-analytics.getPublishedPosts and walks pages until one has no nextPageToken', async () => {
+  describe('getPublishedVideos (Smart Fetch: DB-only read)', () => {
+    it('reads from PostMetricDaily and never calls the live AT Protocol API', async () => {
       socialAccountRepository.findByBrandAndPlatformFirst.mockResolvedValueOnce(mockAccount);
-      // No pageToken passed in -> getPublishedVideos walks every page itself
-      // (bounded by MAX_PAGE_COUNT / the cutoff date) instead of handing a
-      // single page's nextPageToken back to the caller.
+      findLatestPostMetrics.mockResolvedValueOnce([{
+        platformPostId: 'at://did:plc:testuser123/app.bsky.feed.post/p1',
+        captionSnippet: 'hi',
+        publishedAt: new Date('2026-08-01'),
+        likes: 2,
+        comments: 0,
+        shares: 0,
+        reach: 0,
+        views: 0,
+        thumbnailUrl: null,
+        metrics: {}
+      }]);
+
+      const result = await blueskyService.getPublishedVideos(mockBrandId, null, 10, null);
+
+      expect(findLatestPostMetrics).toHaveBeenCalledWith(mockBrandId, PLATFORMS.BLUESKY, mockAccountId, 10);
+      expect(result.data[0].likes).toBe(2);
+      expect(result.nextPageToken).toBeNull();
+      expect(blueskyAnalytics.getPublishedPosts).not.toHaveBeenCalled();
+    });
+
+    it('returns an empty result when no Bluesky account is connected', async () => {
+      socialAccountRepository.findByBrandAndPlatformFirst.mockResolvedValueOnce(null);
+
+      const result = await blueskyService.getPublishedVideos(mockBrandId, null, 10, null);
+
+      expect(result).toEqual({ data: [], nextPageToken: null, prevPageToken: null });
+      expect(findLatestPostMetrics).not.toHaveBeenCalled();
+      expect(blueskyAnalytics.getPublishedPosts).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('syncPublishedPosts (Smart Fetch: Sync-only live fetch)', () => {
+    it('delegates to bluesky-analytics.getPublishedPosts, walks pages until one has no nextPageToken, and persists to PostMetricDaily', async () => {
+      socialAccountRepository.findById.mockResolvedValueOnce(mockAccount);
       blueskyAnalytics.getPublishedPosts
         .mockResolvedValueOnce({
-          data: [{ id: 'p1', message: 'hi', likes: 2 }],
+          data: [{ id: 'p1', uri: 'at://p1', message: 'hi', likes: 2, date: '2026-08-01' }],
           nextPageToken: 'cursor-2'
         })
         .mockResolvedValueOnce({
-          data: [{ id: 'p2', message: 'yo', likes: 1 }],
+          data: [{ id: 'p2', uri: 'at://p2', message: 'yo', likes: 1, date: '2026-08-02' }],
           nextPageToken: null
         });
+      upsertPostMetricsDaily.mockResolvedValueOnce([]);
 
-      const result = await blueskyService.getPublishedVideos(mockBrandId, null, 10, null);
+      const result = await blueskyService.syncPublishedPosts(mockBrandId, mockAccountId);
 
       expect(blueskyAnalytics.getPublishedPosts).toHaveBeenNthCalledWith(
         1,
@@ -112,42 +151,26 @@ describe('BlueskyService — real metrics sync and published posts', () => {
         'did:plc:testuser123',
         { limit: 10, cursor: 'cursor-2' }
       );
-      expect(result).toEqual({
-        data: [{ id: 'p1', message: 'hi', likes: 2 }, { id: 'p2', message: 'yo', likes: 1 }],
-        nextPageToken: null,
-        prevPageToken: null
-      });
-    });
-
-    it('passes an explicit pageToken straight through as a single page (client-driven pagination)', async () => {
-      socialAccountRepository.findByBrandAndPlatformFirst.mockResolvedValueOnce(mockAccount);
-      blueskyAnalytics.getPublishedPosts.mockResolvedValueOnce({
-        data: [{ id: 'p1', message: 'hi', likes: 2 }],
-        nextPageToken: 'cursor-2'
-      });
-
-      const result = await blueskyService.getPublishedVideos(mockBrandId, 'cursor-1', 10, null);
-
-      expect(blueskyAnalytics.getPublishedPosts).toHaveBeenCalledTimes(1);
-      expect(blueskyAnalytics.getPublishedPosts).toHaveBeenCalledWith(
-        expect.anything(),
-        'did:plc:testuser123',
-        { limit: 10, cursor: 'cursor-1' }
+      expect(upsertPostMetricsDaily).toHaveBeenCalledWith(
+        mockBrandId,
+        mockAccountId,
+        PLATFORMS.BLUESKY,
+        expect.arrayContaining([
+          expect.objectContaining({ platformPostId: 'at://p1' }),
+          expect.objectContaining({ platformPostId: 'at://p2' })
+        ])
       );
-      expect(result).toEqual({
-        data: [{ id: 'p1', message: 'hi', likes: 2 }],
-        nextPageToken: 'cursor-2',
-        prevPageToken: null
-      });
+      expect(result).toEqual({ synced: 2 });
     });
 
-    it('returns an empty result when no Bluesky account is connected', async () => {
-      socialAccountRepository.findByBrandAndPlatformFirst.mockResolvedValueOnce(null);
+    it('no-ops when no Bluesky account is connected', async () => {
+      socialAccountRepository.findById.mockResolvedValueOnce(null);
 
-      const result = await blueskyService.getPublishedVideos(mockBrandId, null, 10, null);
+      const result = await blueskyService.syncPublishedPosts(mockBrandId, mockAccountId);
 
-      expect(result).toEqual({ data: [], nextPageToken: null, prevPageToken: null });
+      expect(result).toEqual({ synced: 0 });
       expect(blueskyAnalytics.getPublishedPosts).not.toHaveBeenCalled();
+      expect(upsertPostMetricsDaily).not.toHaveBeenCalled();
     });
   });
 });

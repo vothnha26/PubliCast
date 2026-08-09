@@ -31,19 +31,35 @@ jest.mock('../../src/services/auth/authorization.facade', () => ({
 }));
 
 // recalculateQueueSchedules/deleteAutoList now run inside prisma.$transaction —
-// the mock just invokes the callback with a fake tx object, letting the
+// the mock invokes the callback with the same mock object prisma itself is
+// (mirrors real Prisma, where the tx client has the same shape as the top-
+// level client), so code that dereferences tx.post.update etc. inside the
+// transaction still hits a real jest.fn() instead of throwing on `{}`. The
 // existing autoListRepository/postRepository mocks (called with `tx` as an
-// extra arg) keep working unchanged, since they ignore what `client`/`tx` is.
-jest.mock('../../src/config/prisma', () => ({
-  $transaction: jest.fn((callback) => callback({})),
-  autoList: {
-    update: jest.fn()
-  },
-  post: {
-    update: jest.fn(),
-    updateMany: jest.fn()
-  }
+// extra arg) keep working unchanged either way, since they ignore what
+// `client`/`tx` actually is.
+jest.mock('../../src/config/prisma', () => {
+  const client = {
+    autoList: {
+      update: jest.fn()
+    },
+    post: {
+      update: jest.fn(),
+      updateMany: jest.fn()
+    },
+    socialAccount: {
+      findMany: jest.fn()
+    }
+  };
+  client.$transaction = jest.fn((callback) => callback(client));
+  return client;
+});
+
+jest.mock('../../src/services/workspace/post.service', () => ({
+  upsertPostTargets: jest.fn()
 }));
+
+const postService = require('../../src/services/workspace/post.service');
 
 describe('AutoList Queue Scheduler Suite', () => {
   beforeEach(() => {
@@ -77,6 +93,54 @@ describe('AutoList Queue Scheduler Suite', () => {
         isActive: true
       }));
       expect(result).toEqual(mockCreated);
+    });
+
+    // Regression: changing an AutoList's selected channels after posts are
+    // already queued must re-sync those posts' PostTarget/targetPlatforms —
+    // otherwise a post created when only 1 channel was selected keeps
+    // publishing to just that 1 channel even after 2 more are added.
+    it('re-syncs PostTarget and targetPlatforms for queued posts when targetSocialAccountIds changes', async () => {
+      const queuedPost = { id: 'post-1', brandId: 'brand-1', status: 'SCHEDULED' };
+      const publishedPost = { id: 'post-2', brandId: 'brand-1', status: 'PUBLISHED' };
+      const mockAutoList = {
+        id: 'list-123',
+        brandId: 'brand-1',
+        posts: [queuedPost, publishedPost]
+      };
+
+      autoListRepository.findById.mockResolvedValue(mockAutoList);
+      prisma.socialAccount.findMany.mockResolvedValue([
+        { id: 'acc-1', platform: 'YOUTUBE' },
+        { id: 'acc-2', platform: 'YOUTUBE' },
+        { id: 'acc-3', platform: 'TIKTOK' }
+      ]);
+
+      await autoListService.updateAutoList('list-123', {
+        targetSocialAccountIds: 'acc-1,acc-2,acc-3'
+      }, 'user-1');
+
+      // Only the not-yet-published post gets re-synced.
+      expect(postService.upsertPostTargets).toHaveBeenCalledTimes(1);
+      expect(postService.upsertPostTargets).toHaveBeenCalledWith(
+        'post-1',
+        ['YOUTUBE', 'TIKTOK'],
+        { YOUTUBE: ['acc-1', 'acc-2'], TIKTOK: ['acc-3'] },
+        expect.anything(),
+        'brand-1'
+      );
+      expect(prisma.post.update).toHaveBeenCalledWith({
+        where: { id: 'post-1' },
+        data: { targetPlatforms: 'YOUTUBE,TIKTOK' }
+      });
+    });
+
+    it('does not touch PostTarget when the update has no targetSocialAccountIds', async () => {
+      autoListRepository.findById.mockResolvedValue({ id: 'list-123' });
+
+      await autoListService.updateAutoList('list-123', { name: 'Renamed' }, 'user-1');
+
+      expect(prisma.socialAccount.findMany).not.toHaveBeenCalled();
+      expect(postService.upsertPostTargets).not.toHaveBeenCalled();
     });
   });
 

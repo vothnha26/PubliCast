@@ -13,11 +13,17 @@ jest.mock('../../src/services/workspace/post.service', () => ({
   publishToPlatforms: jest.fn()
 }));
 jest.mock('../../src/services/social/social-platform.factory');
-jest.mock('../../src/repositories/social/social-account.repository');
-
+jest.mock('../../src/repositories/social/social-account.repository', () => ({
+  updateSyncStatus: jest.fn(),
+  updateLastSyncAt: jest.fn(),
+  updateLastPostsSyncAt: jest.fn(),
+  findById: jest.fn()
+}));
 const postRepository = require('../../src/repositories/workspace/post.repository');
 const postService = require('../../src/services/workspace/post.service');
-const { handlePublishPost, handlePublishPostFailed } = require('../../src/controllers/webhooks/qstash.controller');
+const socialAccountRepository = require('../../src/repositories/social/social-account.repository');
+const socialPlatformFactory = require('../../src/services/social/social-platform.factory');
+const { handlePublishPost, handlePublishPostFailed, handlePostsSync } = require('../../src/controllers/webhooks/qstash.controller');
 
 const mockRes = () => {
   const res = {};
@@ -97,6 +103,43 @@ describe('handlePublishPost', () => {
       { status: 'RETRYING' }
     );
     expect(res.status).toHaveBeenCalledWith(500);
+  });
+});
+
+describe('handlePostsSync', () => {
+  let mockService;
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockService = { syncPublishedPosts: jest.fn() };
+    socialPlatformFactory.getService.mockReturnValue(mockService);
+  });
+
+  it('dispatches via socialPlatformFactory and stamps lastPostsSyncAt on success', async () => {
+    mockService.syncPublishedPosts.mockResolvedValue({ synced: 3 });
+    socialAccountRepository.updateLastPostsSyncAt.mockResolvedValue(undefined);
+    const req = { body: { socialAccountId: 'acc-1', platform: 'YOUTUBE', brandId: 'brand-1' } };
+    const res = mockRes();
+
+    await handlePostsSync(req, res);
+
+    expect(socialPlatformFactory.getService).toHaveBeenCalledWith('YOUTUBE');
+    expect(mockService.syncPublishedPosts).toHaveBeenCalledWith('brand-1', 'acc-1');
+    expect(socialAccountRepository.updateLastPostsSyncAt).toHaveBeenCalledWith('acc-1');
+    expect(res.status).toHaveBeenCalledWith(200);
+    expect(res.json).toHaveBeenCalledWith({ success: true });
+  });
+
+  it('returns 500 and does not stamp lastPostsSyncAt when the sync throws', async () => {
+    mockService.syncPublishedPosts.mockRejectedValue(new Error('Platform API down'));
+    const req = { body: { socialAccountId: 'acc-1', platform: 'FACEBOOK', brandId: 'brand-1' } };
+    const res = mockRes();
+
+    await handlePostsSync(req, res);
+
+    expect(socialAccountRepository.updateLastPostsSyncAt).not.toHaveBeenCalled();
+    expect(res.status).toHaveBeenCalledWith(500);
+    expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ success: false }));
   });
 });
 
