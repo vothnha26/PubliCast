@@ -2,84 +2,85 @@ const tiktokGateway = require('./tiktok.gateway');
 const tiktokAnalytics = require('./tiktok-analytics.service');
 const socialAccountRepository = require('../../../repositories/social/social-account.repository');
 const { getHistoryWindowMonths } = require('../plan-history-window.util');
-const QuotaTrackerService = require('../quota-tracker.service');
+const quotaService = require('../quota-tracker.singleton');
 const { PLATFORMS, POST_STATUS, QUOTA_TTL_STRATEGY } = require('../../../utils/constants');
 const logger = require('../../../utils/logger');
-
-let redisClient = null;
-try {
-  redisClient = require('../../../config/redis');
-} catch (_) {
-  // Redis not available — minute-quota tracking is skipped, same fallback
-  // pattern as youtube.gateway.js.
-}
+const { upsertPostMetricsDaily, findLatestPostMetrics } = require('../post-metric-daily-persistence.util');
 
 const TIKTOK_VIDEO_LIST_QUOTA_SERVICE = 'tiktok-video-list';
 
 class TikTokVideoService {
-  constructor() {
-    this.quotaService = redisClient ? new QuotaTrackerService(redisClient) : null;
-  }
-
+  // DB-only read — Smart Fetch: no live TikTok API call happens here.
+  // pageToken beyond what Sync has already cached returns empty rather
+  // than falling back to a live fetch (accepted simplification).
   async getPublishedVideos(brandId, pageToken = 0, limit = 10, socialAccountId = null, startDate = null, endDate = null) {
     try {
-      let account = await this._getAccount(brandId, socialAccountId);
-
-      if (account && (
-        (account.accessToken && account.accessToken.startsWith('mock-')) ||
-        (account.platformAccountId && account.platformAccountId.startsWith('mock-'))
-      )) {
-        return { videos: [], nextPageToken: null, prevPageToken: null };
-      }
-
-      // Get fresh token if expired based on metadata
-      account = await tiktokAnalytics.getOrRefreshAccount(account);
-
-      // A date-range filter narrows what's shown, but a single limit=10
-      // page fetched from the newest-first cursor may not contain anything
-      // from an older range at all (or only part of it) — filtering after
-      // the fact on that one page silently undercounts instead of showing
-      // everything actually published in the range. When a range was
-      // requested and this is the initial load (no explicit pageToken —
-      // that always means a real UI "next page" click, single page only),
-      // walk pages until the range is covered, same MAX_PAGE_COUNT-bounded
-      // pattern used by Facebook/Instagram/Threads' analytics feed walk.
-      if ((startDate || endDate) && !pageToken) {
-        return await this._fetchDateRangeWindow(account, startDate, endDate);
-      }
-
-      // The initial load with no date range walks the cursor itself,
-      // bounded by the brand's plan-based history window, instead of
-      // returning just one 20-video page — TikTok's API has no date-range
-      // filter, so "recent videos" only exists as "keep paging until
-      // stale." An explicit pageToken (manual "next page" click) still
-      // fetches exactly one page, so callers can keep paging past the
-      // window if they choose.
-      if (!pageToken) {
-        return await this._fetchRecentWindow(brandId, account);
-      }
-
-      const cursor = parseInt(pageToken) || 0;
-      const maxCount = parseInt(limit) || 10;
-      const response = await this._getVideoListWithRefresh(account, cursor, maxCount);
-
-      if (!response || !response.videos) {
-        return { videos: [], nextPageToken: null, prevPageToken: null };
-      }
-
-      const formattedVideos = this._filterByDateRange(this._formatVideoList(response.videos), startDate, endDate);
-
-      return {
-        videos: formattedVideos,
-        nextPageToken: response.has_more ? response.cursor.toString() : null,
-        prevPageToken: cursor > 0 ? '0' : null // Simple fallback for prev token
-      };
+      const account = await this._getAccount(brandId, socialAccountId);
+      const rows = await findLatestPostMetrics(brandId, PLATFORMS.TIKTOK, account.id, limit);
+      const videos = this._filterByDateRange(rows.map(r => this._formatDbMetricRow(r)), startDate, endDate);
+      return { videos, nextPageToken: null, prevPageToken: null };
     } catch (err) {
       if (err.message.includes('TikTok account not connected')) {
         return { videos: [], nextPageToken: null, prevPageToken: null };
       }
       throw err;
     }
+  }
+
+  // Smart Fetch Sync — the only method allowed to call TikTok's live API
+  // for published videos. Called by the posts-sync scheduler webhook,
+  // OAuth-connect-time backfill, and the manual-refresh endpoint.
+  async syncPublishedVideos(brandId, socialAccountId) {
+    let account = await this._getAccount(brandId, socialAccountId);
+
+    if (account && (
+      (account.accessToken && account.accessToken.startsWith('mock-')) ||
+      (account.platformAccountId && account.platformAccountId.startsWith('mock-'))
+    )) {
+      return { synced: 0 };
+    }
+
+    account = await tiktokAnalytics.getOrRefreshAccount(account);
+    const result = await this._fetchRecentWindow(brandId, account);
+    await this._persistVideoMetrics(brandId, account.id, result.videos);
+    return { synced: result.videos.length };
+  }
+
+  _formatDbMetricRow(row) {
+    const m = row.metrics || {};
+    return {
+      id: row.platformPostId,
+      title: row.captionSnippet || '',
+      thumbnailUrl: row.thumbnailUrl || '',
+      publishedAt: row.publishedAt,
+      views: row.views || 0,
+      likes: row.likes || 0,
+      comments: row.comments || 0,
+      shares: row.shares || 0,
+      duration: m.duration || 0,
+      status: POST_STATUS.PUBLISHED,
+      platform: 'TIKTOK',
+      postUrl: row.postUrl || `https://www.tiktok.com/video/${row.platformPostId}`,
+      shareUrl: row.postUrl || `https://www.tiktok.com/video/${row.platformPostId}`
+    };
+  }
+
+  async _persistVideoMetrics(brandId, socialAccountId, videos) {
+    const rows = videos.map(v => ({
+      platformPostId: v.id,
+      postType: null,
+      publishedAt: v.publishedAt || null,
+      likes: v.likes || 0,
+      comments: v.comments || 0,
+      shares: v.shares || 0,
+      views: v.views || 0,
+      captionSnippet: v.title || null,
+      thumbnailUrl: v.thumbnailUrl || null,
+      postUrl: v.postUrl || null,
+      metrics: { duration: v.duration || 0 }
+    }));
+
+    await upsertPostMetricsDaily(brandId, socialAccountId, PLATFORMS.TIKTOK, rows);
   }
 
   /** Walks the cursor from the start, stopping at whichever comes first: a
@@ -133,9 +134,8 @@ class TikTokVideoService {
   /** Best-effort check — quota tracking failures never block the actual API
    * call, only inform whether _fetchRecentWindow's loop should keep going. */
   async _isNearMinuteQuota() {
-    if (!this.quotaService) return false;
     try {
-      const usage = await this.quotaService.incrementAndGetMinute(TIKTOK_VIDEO_LIST_QUOTA_SERVICE, 0);
+      const usage = await quotaService.incrementAndGetMinute(TIKTOK_VIDEO_LIST_QUOTA_SERVICE, 0);
       return usage >= QUOTA_TTL_STRATEGY.TIKTOK_VIDEO_LIST.MINUTE_LIMIT;
     } catch (err) {
       logger.warn(`[TikTok Video] Minute-quota check failed, proceeding without backoff: ${err.message}`);
@@ -144,11 +144,9 @@ class TikTokVideoService {
   }
 
   async _getVideoListWithRefresh(account, cursor, maxCount) {
-    if (this.quotaService) {
-      this.quotaService.incrementAndGetMinute(TIKTOK_VIDEO_LIST_QUOTA_SERVICE, 1).catch(err => {
-        logger.warn(`[TikTok Video] Minute-quota increment failed: ${err.message}`);
-      });
-    }
+    quotaService.incrementAndGetMinute(TIKTOK_VIDEO_LIST_QUOTA_SERVICE, 1).catch(err => {
+      logger.warn(`[TikTok Video] Minute-quota increment failed: ${err.message}`);
+    });
     try {
       return await tiktokGateway.getVideoList(account.accessToken, cursor, maxCount);
     } catch (error) {
@@ -173,64 +171,6 @@ class TikTokVideoService {
       }
       throw error;
     }
-  }
-
-  // Walks TikTok's cursor-paginated video list (newest-first) until either
-  // the range is fully covered, the feed runs out, or a safety cap is hit —
-  // see the comment at the getPublishedVideos call site for why a single
-  // page isn't enough once a date range is in play.
-  async _fetchDateRangeWindow(account, startDate, endDate) {
-    const MAX_PAGE_COUNT = 10;
-    const PAGE_SIZE = 20;
-    // Small gap between pages so a 6-12 month window (up to 10 calls) reads
-    // as normal traffic instead of a burst that trips TikTok's rate limit —
-    // hit mid-walk before this existed (10 calls fired back-to-back), which
-    // aborted the whole request and left the UI showing stale/no data.
-    const PAGE_DELAY_MS = 300;
-    const rangeStartMs = startDate ? new Date(startDate).getTime() : null;
-
-    let allVideos = [];
-    let cursor = 0;
-    let hasMore = true;
-    let pageCount = 0;
-
-    while (hasMore && pageCount < MAX_PAGE_COUNT) {
-      // Same per-minute backoff as _fetchRecentWindow — a date-range walk
-      // can burn just as many sequential calls.
-      if (await this._isNearMinuteQuota()) {
-        logger.warn('[TikTok Video] Backing off _fetchDateRangeWindow: approaching TikTok\'s per-minute rate limit.');
-        break;
-      }
-
-      pageCount += 1;
-      let response;
-      try {
-        response = await this._getVideoListWithRefresh(account, cursor, PAGE_SIZE);
-      } catch (err) {
-        // Mid-walk failure (e.g. 429 rate limit): return whatever pages were
-        // already collected instead of losing the whole range to one
-        // transient error — a partial result is strictly better than none.
-        logger.warn(`[TikTok Video] Date-range page walk stopped early at page ${pageCount}: ${err.message}`);
-        break;
-      }
-      if (!response || !response.videos || response.videos.length === 0) break;
-
-      allVideos = allVideos.concat(response.videos);
-
-      const oldestInPage = response.videos[response.videos.length - 1];
-      const oldestTimeMs = oldestInPage?.create_time ? oldestInPage.create_time * 1000 : null;
-      const pageIsFullyBeforeRange = rangeStartMs && oldestTimeMs && oldestTimeMs < rangeStartMs;
-
-      hasMore = Boolean(response.has_more) && !pageIsFullyBeforeRange;
-      cursor = response.cursor;
-
-      if (hasMore && pageCount < MAX_PAGE_COUNT) {
-        await new Promise((resolve) => setTimeout(resolve, PAGE_DELAY_MS));
-      }
-    }
-
-    const formattedVideos = this._filterByDateRange(this._formatVideoList(allVideos), startDate, endDate);
-    return { videos: formattedVideos, nextPageToken: null, prevPageToken: null };
   }
 
   // Display-only narrowing on top of whatever page of live results was

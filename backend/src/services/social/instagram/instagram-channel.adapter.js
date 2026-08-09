@@ -7,7 +7,7 @@ class InstagramChannelAdapter extends BaseChannelAdapter {
   }
 
   getPrismaModel(client) {
-    return client.instagramChannelSnapshot;
+    return client.channelMetricDaily;
   }
 
   get supportsBackfill() {

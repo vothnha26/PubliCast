@@ -46,6 +46,14 @@ class FacebookService extends BaseSocialService {
     return facebookPost.getPublishedPosts(brandId, pageToken, limit, socialAccountId, startDate, endDate);
   }
 
+  // Smart Fetch Sync — the only method allowed to call Facebook's live Graph
+  // API for published posts, called by posts-sync-scheduler.service.js's
+  // cron webhook, OAuth-connect-time backfill, and the manual-refresh
+  // endpoint. getPublishedVideos/getPublishedPosts above are DB-only reads.
+  async syncPublishedPosts(brandId, socialAccountId) {
+    return facebookPost.syncPublishedPosts(brandId, socialAccountId);
+  }
+
   async publishPost(brandId, postData) {
     return facebookPost.publishPost(brandId, postData);
   }

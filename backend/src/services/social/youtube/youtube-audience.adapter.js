@@ -9,7 +9,7 @@ class YouTubeAudienceAdapter extends BaseAudienceAdapter {
   }
 
   getPrismaModel(client) {
-    return client.youTubeAudienceSnapshot;
+    return client.channelDemographic;
   }
 
   /**
@@ -73,10 +73,20 @@ class YouTubeAudienceAdapter extends BaseAudienceAdapter {
   }
 
   /**
-   * Chuẩn hóa dữ liệu thô từ API thành các JSON Objects có cấu trúc rõ ràng
+   * Chuẩn hóa dữ liệu thô từ API thành các JSON Objects có cấu trúc rõ ràng.
+   *
+   * YouTube's age/gender breakdown is cross-tabulated (each row is a real
+   * "this % of viewers are BOTH this age group AND this gender" figure, not
+   * two independent distributions) — stored as-is in ageDistribution rather
+   * than split into separate age-only/gender-only totals, which would throw
+   * away the cross-tab relationship. genderDistribution stays null for
+   * YouTube since the cross-tab already carries that information; a
+   * platform whose API only reports gender independently (no age
+   * cross-tab) would populate genderDistribution as its own {gender: pct}
+   * map instead.
    */
   normalize(rawData) {
-    const demographics = (rawData.demographicsRows || []).map(row => {
+    const ageDistribution = (rawData.demographicsRows || []).map(row => {
       // row: ['age18-24', 'female', 12.5]
       const rawAgeGroup = row[0] || '';
       const ageGroup = rawAgeGroup.replace(/^age/, ''); // 'age18-24' -> '18-24'
@@ -85,14 +95,14 @@ class YouTubeAudienceAdapter extends BaseAudienceAdapter {
       return { ageGroup, gender, percentage };
     });
 
-    const geography = (rawData.geographyRows || []).map(row => {
+    const countryDistribution = (rawData.geographyRows || []).map(row => {
       // row: ['VN', 1500]
       const countryCode = (row[0] || '').toUpperCase();
       const views = parseInt(row[1] || 0, 10);
       return { countryCode, views };
     });
 
-    const trafficSources = (rawData.trafficSourceRows || []).map(row => {
+    const trafficSourceDistribution = (rawData.trafficSourceRows || []).map(row => {
       // row: ['SUGGESTED_VIDEO', 800, 2400]
       const sourceType = row[0] || 'UNKNOWN';
       const views = parseInt(row[1] || 0, 10);
@@ -101,9 +111,10 @@ class YouTubeAudienceAdapter extends BaseAudienceAdapter {
     });
 
     return {
-      demographicsJson: JSON.stringify(demographics),
-      geographyJson: JSON.stringify(geography),
-      trafficSourcesJson: JSON.stringify(trafficSources)
+      ageDistribution,
+      genderDistribution: null,
+      countryDistribution,
+      trafficSourceDistribution
     };
   }
 }

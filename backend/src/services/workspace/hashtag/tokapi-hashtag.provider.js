@@ -1,11 +1,9 @@
 const logger = require('../../../utils/logger');
-const redisClient = require('../../../config/redis');
-const QuotaTrackerService = require('../../social/quota-tracker.service');
+const quotaService = require('../../social/quota-tracker.singleton');
 const { QUOTA_TTL_STRATEGY } = require('../../../utils/constants');
 
 const QUOTA_SERVICE_NAME = 'tokapi-hashtag';
 const TOKAPI_HOST = 'tokapi-mobile-version.p.rapidapi.com';
-const quotaService = redisClient ? new QuotaTrackerService(redisClient) : null;
 
 /**
  * Looks up a TikTok hashtag by name via TokApi (RapidAPI) and returns its real
@@ -62,7 +60,6 @@ class TokApiHashtagProvider {
   }
 
   async _isQuotaBudgetExceeded() {
-    if (!quotaService) return false;
     try {
       const usage = await quotaService.getCurrentUsage(QUOTA_SERVICE_NAME);
       return usage >= QUOTA_TTL_STRATEGY.TOKAPI_HASHTAG.DAILY_LIMIT;
@@ -73,7 +70,6 @@ class TokApiHashtagProvider {
   }
 
   async _recordQuotaUsage() {
-    if (!quotaService) return;
     try {
       await quotaService.incrementAndGet(QUOTA_SERVICE_NAME, 1);
     } catch (err) {

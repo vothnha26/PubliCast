@@ -3,14 +3,14 @@ const blueskyGateway = require('./bluesky.gateway');
 const blueskyAnalytics = require('./bluesky-analytics.service');
 const blueskyOAuthHelper = require('./bluesky-oauth.helper');
 const socialAccountRepository = require('../../../repositories/social/social-account.repository');
-const QuotaTrackerService = require('../quota-tracker.service');
+const quotaTracker = require('../quota-tracker.singleton');
 const { getHistoryWindowMonths } = require('../plan-history-window.util');
 const { decrypt } = require('../../../utils/encryption');
 const { PLATFORMS, QUOTA_TTL_STRATEGY } = require('../../../utils/constants');
-const redisClient = require('../../../config/redis');
 const BLUESKY_CONSTANTS = require('./bluesky.constants');
 const crypto = require('crypto');
 const logger = require('../../../utils/logger');
+const { upsertPostMetricsDaily, findLatestPostMetrics } = require('../post-metric-daily-persistence.util');
 
 // Every page fetched costs one getAuthorFeed call — same reasoning as
 // TikTok/Instagram/Facebook/Threads' MAX_PAGE_COUNT: bound how many calls a
@@ -18,11 +18,6 @@ const logger = require('../../../utils/logger');
 const MAX_PAGE_COUNT = 5;
 
 class BlueskyService extends BaseSocialService {
-  constructor() {
-    super();
-    this.quotaTracker = new QuotaTrackerService(redisClient);
-  }
-
   /**
    * Decodes a JWT's payload (no signature verification — we only need the
    * `exp` claim to decide whether to proactively refresh) and returns the
@@ -186,19 +181,18 @@ class BlueskyService extends BaseSocialService {
   }
 
   async _checkAndIncrementQuota(socialAccountId, actionType = 'CREATE') {
-    if (!this.quotaTracker) return;
     try {
       const serviceQuotaKey = `bluesky:${socialAccountId}`;
       const points = QUOTA_TTL_STRATEGY.BLUESKY.POINTS[actionType] || 1;
 
       // 1. Hourly rate limit check (reset every 1h)
-      const newHourlyTotal = await this.quotaTracker.incrementAndGetHourly(serviceQuotaKey, points, 3600);
+      const newHourlyTotal = await quotaTracker.incrementAndGetHourly(serviceQuotaKey, points, 3600);
       if (typeof newHourlyTotal === 'number' && newHourlyTotal > QUOTA_TTL_STRATEGY.BLUESKY.HOURLY_LIMIT) {
         throw new Error(`Bluesky hourly rate limit exceeded (${newHourlyTotal}/${QUOTA_TTL_STRATEGY.BLUESKY.HOURLY_LIMIT} points)`);
       }
 
       // 2. Daily rate limit check (reset at midnight PT)
-      const newDailyTotal = await this.quotaTracker.incrementAndGet(serviceQuotaKey, points);
+      const newDailyTotal = await quotaTracker.incrementAndGet(serviceQuotaKey, points);
       if (typeof newDailyTotal === 'number' && newDailyTotal > QUOTA_TTL_STRATEGY.BLUESKY.DAILY_LIMIT) {
         throw new Error(`Bluesky daily rate limit exceeded (${newDailyTotal}/${QUOTA_TTL_STRATEGY.BLUESKY.DAILY_LIMIT} points)`);
       }
@@ -295,8 +289,8 @@ class BlueskyService extends BaseSocialService {
       try {
         const serviceQuotaKey = `bluesky:${account.id}`;
         const points = QUOTA_TTL_STRATEGY.BLUESKY.POINTS['CREATE'] || 1;
-        await this.quotaTracker.incrementAndGetHourly(serviceQuotaKey, -points, 3600);
-        await this.quotaTracker.incrementAndGet(serviceQuotaKey, -points);
+        await quotaTracker.incrementAndGetHourly(serviceQuotaKey, -points, 3600);
+        await quotaTracker.incrementAndGet(serviceQuotaKey, -points);
       } catch (rollbackErr) {
         // ignore rollback error
       }
@@ -370,24 +364,27 @@ class BlueskyService extends BaseSocialService {
     return rawData?.data || [];
   }
 
+  // DB-only read — Smart Fetch: no live AT Protocol call happens here.
   async getPublishedVideos(brandId, pageToken = null, limit = 10, socialAccountId = null) {
     const account = await this._getAccount(brandId, socialAccountId);
     if (!account) return { data: [], nextPageToken: null, prevPageToken: null };
 
-    if (pageToken) {
-      const result = await this.executeSyncPipeline(brandId, socialAccountId, {
-        limit,
-        cursor: pageToken,
-        did: account.blueskyAccount?.did,
-        account
-      });
-      return { data: result.data, nextPageToken: null, prevPageToken: null };
-    }
+    const rows = await findLatestPostMetrics(brandId, PLATFORMS.BLUESKY, account.id, limit);
+    return { data: rows.map(r => this._formatDbMetricRow(r)), nextPageToken: null, prevPageToken: null };
+  }
+
+  // Smart Fetch Sync — the only method allowed to call Bluesky's live AT
+  // Protocol API for published posts. Called by the posts-sync scheduler
+  // webhook, OAuth-connect-time backfill, and the manual-refresh endpoint.
+  async syncPublishedPosts(brandId, socialAccountId) {
+    const account = await this._getAccount(brandId, socialAccountId);
+    if (!account) return { synced: 0 };
 
     const windowMonths = await getHistoryWindowMonths(brandId);
     const cutoff = new Date();
     cutoff.setMonth(cutoff.getMonth() - windowMonths);
 
+    const agent = await this.buildPlatformClient(account);
     let cursor = undefined;
     let posts = [];
     let pageCount = 0;
@@ -396,9 +393,9 @@ class BlueskyService extends BaseSocialService {
     while (hasMore && pageCount < MAX_PAGE_COUNT) {
       pageCount += 1;
       const result = await blueskyAnalytics.getPublishedPosts(
-        await this.buildPlatformClient(account),
+        agent,
         account.blueskyAccount.did,
-        { limit, cursor }
+        { limit: 10, cursor }
       );
       const pagePosts = result.data || [];
       if (pagePosts.length === 0) break;
@@ -414,7 +411,45 @@ class BlueskyService extends BaseSocialService {
       }
     }
 
-    return { data: posts, nextPageToken: null, prevPageToken: null };
+    await this._persistPostMetrics(brandId, account.id, posts);
+    return { synced: posts.length };
+  }
+
+  _formatDbMetricRow(row) {
+    const m = row.metrics || {};
+    return {
+      id: row.platformPostId,
+      uri: row.platformPostId,
+      cid: m.cid || null,
+      message: row.captionSnippet || '',
+      date: row.publishedAt,
+      mediaUrl: row.thumbnailUrl || null,
+      likes: row.likes || 0,
+      comments: row.comments || 0,
+      reposts: row.shares || 0,
+      quotes: m.quotes || 0,
+      reach: row.reach || 0,
+      views: row.views || 0
+    };
+  }
+
+  async _persistPostMetrics(brandId, socialAccountId, posts) {
+    const rows = posts.map(p => ({
+      platformPostId: p.uri,
+      postType: null,
+      publishedAt: p.date ? new Date(p.date) : null,
+      likes: p.likes || 0,
+      comments: p.comments || 0,
+      shares: p.reposts || 0,
+      reach: p.reach || 0,
+      views: p.views || 0,
+      captionSnippet: p.message || null,
+      thumbnailUrl: p.mediaUrl || null,
+      postUrl: p.uri || null,
+      metrics: { cid: p.cid || null, quotes: p.quotes || 0 }
+    }));
+
+    await upsertPostMetricsDaily(brandId, socialAccountId, PLATFORMS.BLUESKY, rows);
   }
 
   /**

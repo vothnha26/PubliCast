@@ -7,7 +7,7 @@ class YouTubeChannelAdapter extends BaseChannelAdapter {
   }
 
   getPrismaModel(client) {
-    return client.youTubeChannelSnapshot;
+    return client.channelMetricDaily;
   }
 
   get supportsBackfill() {

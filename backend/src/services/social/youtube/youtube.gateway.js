@@ -1,27 +1,15 @@
 const { google } = require('googleapis');
 const { YOUTUBE_CATEGORIES, API_VERSIONS, YOUTUBE_PRIVACY } = require('../../../utils/constants');
 const { YOUTUBE_MODERATION_STATUS, YOUTUBE_SEARCH_TYPES, YOUTUBE_QUOTA_COSTS, YOUTUBE_API_PARTS } = require('./youtube.constants');
-const QuotaTrackerService = require('../quota-tracker.service');
-
-let redisClient = null;
-try {
-  redisClient = require('../../../config/redis');
-} catch (_) {
-  // Redis không có - quota tracking sẽ được bỏ qua
-}
+const quotaService = require('../quota-tracker.singleton');
 
 class YouTubeGateway {
-  constructor() {
-    this.quotaService = redisClient ? new QuotaTrackerService(redisClient) : null;
-  }
-
   /**
    * Theo dõi lượng quota tiêu thụ của YouTube API
    */
   async _trackQuota(serviceName, cost) {
-    if (!this.quotaService) return;
     try {
-      await this.quotaService.incrementAndGet(serviceName, cost);
+      await quotaService.incrementAndGet(serviceName, cost);
     } catch (err) {
       // Quota tracking lỗi không được phép làm ngắt luồng gọi API chính
       console.warn(`[YouTubeGateway] Quota tracking failed for ${serviceName}: ${err.message}`);

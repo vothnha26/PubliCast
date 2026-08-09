@@ -1,11 +1,11 @@
 const BaseSocialService = require('../base-social.service');
 const threadsGateway = require('./threads.gateway');
 const { getHistoryWindowMonths } = require('../plan-history-window.util');
-const prisma = require('../../../config/prisma');
 const { PLATFORMS } = require('../../../utils/constants');
 const { THREADS_MEDIA_TYPE, THREADS_CONTAINER_STATUS } = require('./threads.constants');
 const { computeCommentScore } = require('../../../utils/comment-score.util');
 const logger = require('../../../utils/logger');
+const { upsertPostMetricsDaily, findLatestPostMetrics } = require('../post-metric-daily-persistence.util');
 
 // Threads has no date-range filter for media, so — same as Instagram/TikTok
 // — "recent posts" only exists as "keep paging until stale." Kept low since
@@ -13,13 +13,6 @@ const logger = require('../../../utils/logger');
 // rate limit as Facebook/Instagram (developers.facebook.com/documentation/
 // threads/overview).
 const MAX_PAGE_COUNT = 5;
-
-// getPublishedVideos()'s DB-first cache (see SocialPostMetric). Threads
-// currently exposes no real insights (reach/views are left null — see the
-// #97 fix below), so the DB cache mainly saves the feed call itself, not an
-// insights N+1 the way Facebook/Instagram's does — still worth 24h TTL to
-// avoid re-walking the account's history on every tab open.
-const SOCIAL_POST_METRICS_TTL_MS = 24 * 60 * 60 * 1000;
 
 class ThreadsService extends BaseSocialService {
   async getChannelInfo(auth, startDate, endDate) {
@@ -381,6 +374,11 @@ class ThreadsService extends BaseSocialService {
     }, { enqueueSync: false });
   }
 
+  /**
+   * Smart Fetch: DB-only read, no live Threads API call is ever triggered
+   * from this method — see FacebookPostService#getPublishedPosts for the
+   * full rationale. `pageToken` also reads DB only.
+   */
   async getPublishedVideos(brandId, pageToken = null, limit = 10, socialAccountId = null, startDate = null, endDate = null) {
     try {
       const account = await require('../../../repositories/social/social-account.repository').findByBrandAndPlatform(brandId, PLATFORMS.THREADS);
@@ -392,31 +390,10 @@ class ThreadsService extends BaseSocialService {
       // more than one connected; omitted, falls back to the first one
       // (correct as long as the brand only has one, still the common case).
       const activeAccount = (socialAccountId && account.find(acc => acc.id === socialAccountId)) || account[0];
-      const pageId = activeAccount.platformAccountId;
-      const accessToken = activeAccount.accessToken;
 
-      if (accessToken && accessToken.startsWith('mock-')) {
-        return { data: [], nextPageToken: null, prevPageToken: null };
-      }
-
-      // The initial load (no explicit pageToken) is DB-first (see
-      // SocialPostMetric), only falling through to the live page-walk when
-      // the DB has nothing fresh enough for the brand's plan window. An
-      // explicit pageToken (manual "next page" click) always goes live.
-      let result;
-      if (pageToken) {
-        result = await this._fetchThreadsSinglePage(pageId, accessToken, pageToken, limit);
-      } else {
-        const windowMonths = await getHistoryWindowMonths(brandId);
-        result = await this._fetchThreadsFromDbCache(brandId, activeAccount.id, windowMonths);
-        if (!result) {
-          result = await this._fetchThreadsRecentWindow(brandId, pageId, accessToken, windowMonths, limit);
-          this._persistThreadsPostMetrics(brandId, activeAccount.id, result.data).catch(err => {
-            console.warn('[ThreadsService] Failed to persist post metrics cache:', err.message);
-          });
-        }
-      }
-      return { ...result, data: this._filterByDateRange(result.data, startDate, endDate) };
+      const rows = await findLatestPostMetrics(brandId, PLATFORMS.THREADS, activeAccount.id, limit);
+      const data = this._filterByDateRange(rows.map(r => this._formatDbMetricRow(r)), startDate, endDate);
+      return { data, nextPageToken: null, prevPageToken: null };
     } catch (error) {
       console.error('Threads getPublishedVideos error:', error);
       return {
@@ -425,6 +402,32 @@ class ThreadsService extends BaseSocialService {
         prevPageToken: null
       };
     }
+  }
+
+  /**
+   * Sync-only: the ONE place allowed to call Threads' live API for
+   * published posts. Called from posts-sync-scheduler.service.js's cron
+   * webhook, connectChannel's OAuth-time backfill, and the manual-refresh
+   * endpoint — never from a read path.
+   */
+  async syncPublishedPosts(brandId, socialAccountId) {
+    // findById looks up by raw ID with no brand scoping — a caller-supplied
+    // socialAccountId could belong to a different brand than the one the
+    // caller is authorized for, so verify ownership explicitly (IDOR guard),
+    // same as facebook-post.service.js#_getAccountCredentials.
+    const account = await require('../../../repositories/social/social-account.repository').findById(socialAccountId);
+    if (!account || String(account.brandId) !== String(brandId)) return { synced: 0 };
+
+    const pageId = account.platformAccountId;
+    const accessToken = account.accessToken;
+    if (accessToken && accessToken.startsWith('mock-')) {
+      return { synced: 0 };
+    }
+
+    const windowMonths = await getHistoryWindowMonths(brandId);
+    const result = await this._fetchThreadsRecentWindow(brandId, pageId, accessToken, windowMonths, 50);
+    await this._persistThreadsPostMetrics(brandId, socialAccountId, result.data);
+    return { synced: result.data.length };
   }
 
   // See FacebookPostService#_filterByDateRange — same display-only
@@ -506,17 +509,6 @@ class ThreadsService extends BaseSocialService {
     return posts;
   }
 
-  async _fetchThreadsSinglePage(pageId, accessToken, pageToken, limit) {
-    const feedResult = await threadsGateway.getThreadsMediaFeed(pageId, accessToken, pageToken, limit);
-    const formatted = (feedResult.data || []).map(post => this._formatThreadsPost(post));
-    const enriched = await this._enrichPostsWithInsights(formatted, accessToken);
-    return {
-      data: enriched,
-      nextPageToken: feedResult.nextPageToken || null,
-      prevPageToken: feedResult.prevPageToken || null
-    };
-  }
-
   /** Walks pages from the start, stopping at whichever comes first: a post
    * older than the brand's plan-based history window, or MAX_PAGE_COUNT. */
   async _fetchThreadsRecentWindow(brandId, pageId, accessToken, windowMonths, limit) {
@@ -551,92 +543,57 @@ class ThreadsService extends BaseSocialService {
     return { data: posts, nextPageToken: null, prevPageToken: null };
   }
 
-  /** DB-first read path (see SocialPostMetric in schema.prisma). Mirrors
-   * FacebookPostService/InstagramPostService's _fetchFromDbCache. */
-  async _fetchThreadsFromDbCache(brandId, socialAccountId, windowMonths) {
-    const cutoff = new Date();
-    cutoff.setMonth(cutoff.getMonth() - windowMonths);
-
-    const rows = await prisma.socialPostMetric.findMany({
-      where: { brandId, socialAccountId, platform: PLATFORMS.THREADS, publishedAt: { gte: cutoff } },
-      orderBy: { publishedAt: 'desc' }
-    });
-    if (rows.length === 0) return null;
-
-    const newestFetch = rows.reduce((max, r) => (r.fetchedAt > max ? r.fetchedAt : max), rows[0].fetchedAt);
-    if (Date.now() - newestFetch.getTime() >= SOCIAL_POST_METRICS_TTL_MS) return null;
-
+  /** Builds getPublishedVideos()'s response shape from a PostMetricDaily
+   * row — clicks isn't a typed column, so it lives in `metrics` JSON. */
+  // reach/views/engagement stay null (never fabricated from likes*N) when
+  // Threads' API genuinely has no data for them — see #97.
+  _formatDbMetricRow(row) {
+    const m = row.metrics || {};
+    const clicks = m.clicks || 0;
+    const postUrl = row.postUrl || (row.platformPostId ? `https://www.threads.net/post/${row.platformPostId}` : null);
+    const views = row.views ?? null;
     return {
-      data: rows.map(r => {
-        const postUrl = r.postUrl || (r.platformPostId ? `https://www.threads.net/post/${r.platformPostId}` : null);
-        return {
-          id: r.platformPostId,
-          message: r.captionSnippet || '',
-          type: r.postType || THREADS_MEDIA_TYPE.TEXT,
-          mediaUrl: r.thumbnailUrl || '',
-          postUrl,
-          permalinkUrl: postUrl,
-          date: r.publishedAt,
-          status: 'PUBLISHED',
-          reach: r.reach || r.views || 0,
-          views: r.views || 0,
-          reactions: r.likes || 0,
-          comments: r.comments || 0,
-          shares: r.shares || 0,
-          clicks: r.clicks || 0,
-          engagement: r.engagementRate || (r.views > 0 ? parseFloat((((r.likes + r.comments + r.shares) / r.views) * 100).toFixed(1)) : 0),
-          commentScore: computeCommentScore({ comments: r.comments, likes: r.likes, shares: r.shares, reach: r.reach || r.views })
-        };
-      }),
-      nextPageToken: null,
-      prevPageToken: null
+      id: row.platformPostId,
+      message: row.captionSnippet || '',
+      type: row.postType || THREADS_MEDIA_TYPE.TEXT,
+      mediaUrl: row.thumbnailUrl || '',
+      postUrl,
+      permalinkUrl: postUrl,
+      date: row.publishedAt,
+      status: 'PUBLISHED',
+      reach: row.reach ?? views,
+      views,
+      reactions: row.likes || 0,
+      comments: row.comments || 0,
+      shares: row.shares || 0,
+      clicks,
+      engagement: m.engagementRate ?? null,
+      commentScore: computeCommentScore({ comments: row.comments || 0, likes: row.likes || 0, shares: row.shares || 0, reach: row.reach || views || 0 })
     };
   }
 
-  /** Upserts the freshly-fetched page(s) of posts into SocialPostMetric so
-   * the next getPublishedVideos call for this brand/account can be
-   * DB-first instead of walking the live feed again. Best-effort. */
+  /** Sync-only: upserts the freshly-fetched page(s) of posts into
+   * PostMetricDaily so the next getPublishedVideos call can be DB-only. */
   async _persistThreadsPostMetrics(brandId, socialAccountId, posts) {
-    for (const post of posts) {
-      await prisma.socialPostMetric.upsert({
-        where: { socialAccountId_platformPostId: { socialAccountId, platformPostId: post.id } },
-        create: {
-          brandId,
-          socialAccountId,
-          platform: PLATFORMS.THREADS,
-          platformPostId: post.id,
-          postType: post.type || null,
-          publishedAt: post.date ? new Date(post.date) : null,
-          likes: post.reactions || 0,
-          comments: post.comments || 0,
-          shares: post.shares || 0,
-          clicks: post.clicks || 0,
-          reach: post.reach || post.views || 0,
-          views: post.views || 0,
-          engagementRate: post.engagement || 0,
-          captionSnippet: post.message || null,
-          thumbnailUrl: post.mediaUrl || null,
-          postUrl: post.postUrl || null
-        },
-        update: {
-          postType: post.type || null,
-          publishedAt: post.date ? new Date(post.date) : null,
-          likes: post.reactions || 0,
-          comments: post.comments || 0,
-          shares: post.shares || 0,
-          clicks: post.clicks || 0,
-          reach: post.reach || post.views || 0,
-          views: post.views || 0,
-          engagementRate: post.engagement || 0,
-          captionSnippet: post.message || null,
-          thumbnailUrl: post.mediaUrl || null,
-          postUrl: post.postUrl || null,
-          fetchedAt: new Date()
-        }
-      }).catch(err => {
-        console.warn(`[ThreadsService] Failed to upsert metrics for post ${post.id}:`, err.message);
-      });
-    }
+    const rows = posts.map(post => ({
+      platformPostId: post.id,
+      postType: post.type || null,
+      publishedAt: post.date ? new Date(post.date) : null,
+      likes: post.reactions || 0,
+      comments: post.comments || 0,
+      shares: post.shares || 0,
+      reach: post.reach ?? null,
+      views: post.views ?? null,
+      captionSnippet: post.message || null,
+      thumbnailUrl: post.mediaUrl || null,
+      postUrl: post.postUrl || null,
+      metrics: {
+        clicks: post.clicks || 0,
+        engagementRate: post.engagement ?? null
+      }
+    }));
+
+    await upsertPostMetricsDaily(brandId, socialAccountId, PLATFORMS.THREADS, rows);
   }
 
   async publishPost(brandId, postData) {
