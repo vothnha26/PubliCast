@@ -12,12 +12,12 @@ class InboxService {
   }
 
   async getCommentsByPost(brandId, postId, searchParamsString = '') {
-    const data = await apiV2.get(`/social/inbox/posts/${postId}/comments?brandId=${brandId}&${searchParamsString}`);
+    const data = await apiV2.get(`/social/inbox/posts/${encodeURIComponent(postId)}/comments?brandId=${brandId}&${searchParamsString}`);
     return data;
   }
 
   async getThread(itemId) {
-    const data = await apiV2.get(`/social/inbox/${itemId}`);
+    const data = await apiV2.get(`/social/inbox/${encodeURIComponent(itemId)}`);
     return data;
   }
 
@@ -27,7 +27,7 @@ class InboxService {
   }
 
   async updateInboxStatus(itemId, status) {
-    const data = await apiV2.patch(`/social/inbox/${itemId}/status`, { status });
+    const data = await apiV2.patch(`/social/inbox/${encodeURIComponent(itemId)}/status`, { status });
     return data;
   }
 
@@ -42,12 +42,12 @@ class InboxService {
   }
 
   async updateInboxReply(replyId, payload) {
-    const data = await apiV2.patch(`/social/inbox/replies/${replyId}`, payload);
+    const data = await apiV2.patch(`/social/inbox/replies/${encodeURIComponent(replyId)}`, payload);
     return data;
   }
 
   async deleteInboxReply(replyId, brandId) {
-    const data = await apiV2.delete(`/social/inbox/replies/${replyId}`, { data: { brandId } });
+    const data = await apiV2.delete(`/social/inbox/replies/${encodeURIComponent(replyId)}`, { data: { brandId } });
     return data;
   }
 

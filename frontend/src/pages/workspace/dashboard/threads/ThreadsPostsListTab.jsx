@@ -31,11 +31,9 @@ export function ThreadsPostsListTab({
                 T
               </div>
             )}
-            <div className="flex flex-col">
               <span className="text-sm font-bold text-foreground line-clamp-2 max-w-[280px]">
-                {item.message || "No content message"}
+                {item.message || <span className="text-muted-foreground italic font-normal text-xs">(Không có nội dung văn bản)</span>}
               </span>
-            </div>
           </div>
         );
       }

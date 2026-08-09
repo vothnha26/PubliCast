@@ -128,8 +128,10 @@ const handlePublishPost = async (req, res) => {
       console.error(`[QStash Publish] Failed to reset stuck PUBLISHING status for ${postId}:`, resetErr.message);
     }
 
-    // Non-2xx tells QStash to retry per the message's configured retry count.
-    return res.status(500).json({ success: false, message: err.message });
+    // Return 200 OK so QStash acknowledges HTTP delivery and does not re-trigger
+    // 3x duplicate webhook calls — internal post retries are already handled
+    // via UpdatePostStatusStep / _enqueuePartialRetry.
+    return res.status(200).json({ success: false, message: err.message });
   }
 };
 

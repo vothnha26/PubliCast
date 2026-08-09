@@ -55,7 +55,7 @@ const upsertPublishJob = async (postId, scheduledAt, extraBody = {}) => {
     url: publishWebhookUrl(),
     body: { postId, ...extraBody },
     delay: delaySeconds,
-    retries: QUEUE_CONFIG.PUBLISH.MAX_PUBLISH_ATTEMPTS,
+    retries: 0,
     timeout: Math.ceil(QUEUE_CONFIG.PUBLISH.LOCK_DURATION_MS / 1000),
     // Fires once, only when every retry is exhausted — the QStash
     // equivalent of publish.worker.js's old on('failed') check for
@@ -92,7 +92,7 @@ const enqueueImmediate = async (postId, extraBody = {}, delaySeconds = 0) => {
     url: publishWebhookUrl(),
     body: { postId, ...extraBody },
     delay: delaySeconds,
-    retries: QUEUE_CONFIG.PUBLISH.MAX_PUBLISH_ATTEMPTS,
+    retries: 0,
     timeout: Math.ceil(QUEUE_CONFIG.PUBLISH.LOCK_DURATION_MS / 1000),
     failureCallback: publishFailureWebhookUrl()
   });

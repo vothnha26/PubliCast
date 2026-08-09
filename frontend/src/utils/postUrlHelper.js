@@ -81,6 +81,9 @@ export function getPlatformPostUrl(post) {
   const options = typeof post.options === 'string' ? safeJsonParse(post.options) : post.options;
   if (options?.permalinkUrl) return options.permalinkUrl;
   if (post.permalinkUrl) return post.permalinkUrl;
+  if (post.postUrl) return post.postUrl;
+  if (post.permalink) return post.permalink;
+  if (post.url) return post.url;
 
   // 2. Extract platform and platformPostId
   const { platform: firstPlatform, platformPostId } = resolvePlatformTarget(post);
@@ -106,8 +109,15 @@ export function getPlatformPostUrl(post) {
         return `https://x.com/i/status/${id}`;
       case 'LINKEDIN':
         return `https://www.linkedin.com/feed/update/${id}`;
-      case 'THREADS':
-        return `https://www.threads.net/p/${id}`;
+      case 'THREADS': {
+        if (id.startsWith('http://') || id.startsWith('https://')) return id;
+        const username = post?.accountUsername || post?.username || (typeof post?.options === 'object' ? post.options?.username : null);
+        if (username) {
+          const cleanUser = username.replace(/^@/, '');
+          return `https://www.threads.net/@${cleanUser}/post/${id}`;
+        }
+        return /^\d+$/.test(id) ? `https://www.threads.net/t/${id}` : `https://www.threads.net/p/${id}`;
+      }
       case 'BLUESKY': {
         // platformPostId is the AT URI returned by publishPost
         // (bluesky.service.js: `return { id: result.id }`), shaped

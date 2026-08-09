@@ -1,11 +1,13 @@
 import * as React from "react";
-import { Youtube, Facebook, Instagram, Maximize2, ExternalLink } from "lucide-react";
+import { Youtube, Facebook, Instagram, Maximize2, ExternalLink, AtSign, Cloud } from "lucide-react";
 import { PublishedPostDetailModal } from "@/pages/workspace/planner/components/PublishedPostDetailModal";
 
 const PLATFORM_BADGE = {
   FACEBOOK: { Icon: Facebook, bg: "bg-[#1877F2]", label: "Facebook" },
   INSTAGRAM: { Icon: Instagram, bg: "bg-[#E1306C]", label: "Instagram" },
   YOUTUBE: { Icon: Youtube, bg: "bg-red-600", label: "YouTube" },
+  THREADS: { Icon: AtSign, bg: "bg-black", label: "Threads" },
+  BLUESKY: { Icon: Cloud, bg: "bg-[#0085ff]", label: "Bluesky" },
 };
 
 export const VideoContextCard = ({ videoContext, activeConv }) => {

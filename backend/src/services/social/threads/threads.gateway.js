@@ -88,7 +88,6 @@ class ThreadsGateway {
   }
 
   async getInsights(userId, accessToken) {
-    // Threads Insights API
     const url = `${this.graphBaseUrl}/${userId}/threads_insights?metric=views,likes,replies,reposts,followers_count&access_token=${accessToken}`;
     const res = await fetch(url);
     if (!res.ok) {
@@ -119,22 +118,34 @@ class ThreadsGateway {
   }
 
   async createMediaContainer(userId, accessToken, text, mediaUrl = null, mediaType = THREADS_MEDIA_TYPE.TEXT, whoCanReply = null, replyToId = null) {
-    let url = `${this.graphBaseUrl}/${userId}/threads?media_type=${mediaType}&text=${encodeURIComponent(text)}&access_token=${accessToken}`;
+    const url = `${this.graphBaseUrl}/${userId}/threads`;
+    const params = new URLSearchParams({
+      media_type: mediaType,
+      text: text || '',
+      access_token: accessToken
+    });
     if (mediaUrl) {
       if (mediaType === THREADS_MEDIA_TYPE.VIDEO) {
-        url += `&video_url=${encodeURIComponent(mediaUrl)}`;
+        params.append('video_url', mediaUrl);
       } else {
-        url += `&image_url=${encodeURIComponent(mediaUrl)}`;
+        params.append('image_url', mediaUrl);
       }
     }
     if (whoCanReply) {
-      url += `&who_can_reply=${encodeURIComponent(whoCanReply)}`;
+      params.append('who_can_reply', whoCanReply);
     }
     if (replyToId) {
-      url += `&reply_to_id=${encodeURIComponent(replyToId)}`;
+      params.append('reply_to_id', replyToId);
     }
 
-    const res = await fetch(url, { method: 'POST' });
+    const res = await fetch(url, {
+      method: 'POST',
+      body: params,
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded'
+      }
+    });
+
     if (!res.ok) {
       const errData = await res.json().catch(() => ({}));
       console.error('[ThreadsGateway] createMediaContainer FAILED:', JSON.stringify(errData, null, 2));
@@ -155,9 +166,20 @@ class ThreadsGateway {
   }
 
   async publishMediaContainer(userId, accessToken, containerId) {
-    const url = `${this.graphBaseUrl}/${userId}/threads_publish?creation_id=${containerId}&access_token=${accessToken}`;
+    const url = `${this.graphBaseUrl}/${userId}/threads_publish`;
+    const params = new URLSearchParams({
+      creation_id: containerId,
+      access_token: accessToken
+    });
     
-    const res = await fetch(url, { method: 'POST' });
+    const res = await fetch(url, {
+      method: 'POST',
+      body: params,
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded'
+      }
+    });
+
     if (!res.ok) {
       const errData = await res.json().catch(() => ({}));
       console.error('[ThreadsGateway] publishMediaContainer FAILED:', JSON.stringify(errData, null, 2));
@@ -182,19 +204,50 @@ class ThreadsGateway {
   }
 
   async createComment(userId, accessToken, parentPostId, text) {
-    const url = `${this.graphBaseUrl}/${userId}/threads?media_type=TEXT&text=${encodeURIComponent(text)}&reply_to_post_id=${parentPostId}&access_token=${accessToken}`;
-    const res = await fetch(url, { method: 'POST' });
+    const url = `${this.graphBaseUrl}/${userId}/threads`;
+    const params = new URLSearchParams({
+      media_type: 'TEXT',
+      text: text || '',
+      reply_to_id: parentPostId,
+      access_token: accessToken
+    });
+
+    const res = await fetch(url, {
+      method: 'POST',
+      body: params,
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded'
+      }
+    });
+
     if (!res.ok) {
       const errData = await res.json().catch(() => ({}));
+      console.error('[ThreadsGateway] createComment container FAILED:', JSON.stringify(errData, null, 2));
       throw new Error(errData.error?.message || 'Failed to create Threads reply container');
     }
     const container = await res.json();
     
+    // Small headroom delay to ensure Threads backend resolves container before publishing
+    await new Promise(resolve => setTimeout(resolve, 500));
+
     // Publish reply container
-    const publishUrl = `${this.graphBaseUrl}/${userId}/threads_publish?creation_id=${container.id}&access_token=${accessToken}`;
-    const publishRes = await fetch(publishUrl, { method: 'POST' });
+    const publishUrl = `${this.graphBaseUrl}/${userId}/threads_publish`;
+    const publishParams = new URLSearchParams({
+      creation_id: container.id,
+      access_token: accessToken
+    });
+
+    const publishRes = await fetch(publishUrl, {
+      method: 'POST',
+      body: publishParams,
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded'
+      }
+    });
+
     if (!publishRes.ok) {
       const errData = await publishRes.json().catch(() => ({}));
+      console.error('[ThreadsGateway] publish reply container FAILED:', JSON.stringify(errData, null, 2));
       throw new Error(errData.error?.message || 'Failed to publish Threads reply container');
     }
     return publishRes.json();

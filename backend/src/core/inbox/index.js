@@ -12,6 +12,8 @@ const InstagramInboxSyncAdapter = require('../../services/social/instagram/inbox
 const InstagramInboxDisplayAdapter = require('../../services/social/instagram/inbox/instagram-inbox-display.adapter');
 const ThreadsInboxSyncAdapter = require('../../services/social/threads/inbox/threads-inbox-sync.adapter');
 const ThreadsInboxDisplayAdapter = require('../../services/social/threads/inbox/threads-inbox-display.adapter');
+const BlueskyInboxSyncAdapter = require('../../services/social/bluesky/inbox/bluesky-inbox-sync.adapter');
+const BlueskyInboxDisplayAdapter = require('../../services/social/bluesky/inbox/bluesky-inbox-display.adapter');
 
 const { PLATFORMS } = require('../../utils/constants');
 
@@ -19,7 +21,7 @@ const { PLATFORMS } = require('../../utils/constants');
 const inboxSyncFactory = new InboxSyncFactory();
 const inboxDisplayFactory = new InboxDisplayFactory();
 
-// 2. Register Platform Adapters (YouTube, Facebook, TikTok, Instagram, Threads)
+// 2. Register Platform Adapters (YouTube, Facebook, TikTok, Instagram, Threads, Bluesky)
 inboxSyncFactory.register(PLATFORMS.YOUTUBE, new YouTubeInboxSyncAdapter());
 inboxDisplayFactory.register(PLATFORMS.YOUTUBE, new YouTubeInboxDisplayAdapter());
 inboxSyncFactory.register(PLATFORMS.FACEBOOK, new FacebookInboxSyncAdapter());
@@ -30,6 +32,8 @@ inboxSyncFactory.register(PLATFORMS.INSTAGRAM, new InstagramInboxSyncAdapter());
 inboxDisplayFactory.register(PLATFORMS.INSTAGRAM, new InstagramInboxDisplayAdapter());
 inboxSyncFactory.register(PLATFORMS.THREADS, new ThreadsInboxSyncAdapter());
 inboxDisplayFactory.register(PLATFORMS.THREADS, new ThreadsInboxDisplayAdapter());
+inboxSyncFactory.register(PLATFORMS.BLUESKY, new BlueskyInboxSyncAdapter());
+inboxDisplayFactory.register(PLATFORMS.BLUESKY, new BlueskyInboxDisplayAdapter());
 
 // 3. Instantiation Facade
 const inboxFacade = new InboxFacade(inboxSyncFactory, inboxDisplayFactory);

@@ -1214,12 +1214,16 @@ export function usePostCreatorForm() {
       } else {
         const finalPayload = networkOverrides.length > 0 ? { ...payload, networkOverrides } : payload;
         await postService.createPost(finalPayload);
-        toast.success("Post created successfully");
+        toast.success(
+          selectedPublishId === PUBLISH_MODE.NOW
+            ? "Bài viết đã được tạo và đang được xuất bản ngầm"
+            : "Tạo bài viết thành công"
+        );
         // Xóa danh sách track để không bị rollback nhầm file đã đăng
         const clearTrackedAssets = usePostCreatorStore.getState().clearTrackedAssets;
         if (clearTrackedAssets) clearTrackedAssets();
-        // Reset state sau khi tạo bài mới thành công
-        setSelectedPlatforms([DEFAULT_PLATFORM]);
+        // Đóng form lập tức để trả về giao diện ngầm không phải chờ
+        closePostCreator();
         setActivePlatform(DEFAULT_PLATFORM);
         setScheduledDate(toLocalDatetimeString(new Date()));
         setIsLibrary(false);

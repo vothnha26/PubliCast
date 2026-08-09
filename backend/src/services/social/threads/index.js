@@ -458,12 +458,15 @@ class ThreadsService extends BaseSocialService {
       ? parseFloat((((reactions + comments + shares) / views) * 100).toFixed(1))
       : (post.engagement !== undefined ? post.engagement : null);
 
+    const postUrl = post.permalink || (post.id ? `https://www.threads.net/post/${post.id}` : null);
+
     return {
       id: post.id,
-      message: post.text || 'Threads Post',
+      message: post.text || '',
       type: post.media_type || THREADS_MEDIA_TYPE.TEXT,
       mediaUrl,
-      postUrl: post.permalink || null,
+      postUrl,
+      permalinkUrl: postUrl,
       date: post.timestamp,
       status: 'PUBLISHED',
       reach,
@@ -564,23 +567,27 @@ class ThreadsService extends BaseSocialService {
     if (Date.now() - newestFetch.getTime() >= SOCIAL_POST_METRICS_TTL_MS) return null;
 
     return {
-      data: rows.map(r => ({
-        id: r.platformPostId,
-        message: r.captionSnippet || 'Threads Post',
-        type: r.postType || THREADS_MEDIA_TYPE.TEXT,
-        mediaUrl: r.thumbnailUrl || '',
-        postUrl: r.postUrl || null,
-        date: r.publishedAt,
-        status: 'PUBLISHED',
-        reach: r.reach || r.views || 0,
-        views: r.views || 0,
-        reactions: r.likes || 0,
-        comments: r.comments || 0,
-        shares: r.shares || 0,
-        clicks: r.clicks || 0,
-        engagement: r.engagementRate || (r.views > 0 ? parseFloat((((r.likes + r.comments + r.shares) / r.views) * 100).toFixed(1)) : 0),
-        commentScore: computeCommentScore({ comments: r.comments, likes: r.likes, shares: r.shares, reach: r.reach || r.views })
-      })),
+      data: rows.map(r => {
+        const postUrl = r.postUrl || (r.platformPostId ? `https://www.threads.net/post/${r.platformPostId}` : null);
+        return {
+          id: r.platformPostId,
+          message: r.captionSnippet || '',
+          type: r.postType || THREADS_MEDIA_TYPE.TEXT,
+          mediaUrl: r.thumbnailUrl || '',
+          postUrl,
+          permalinkUrl: postUrl,
+          date: r.publishedAt,
+          status: 'PUBLISHED',
+          reach: r.reach || r.views || 0,
+          views: r.views || 0,
+          reactions: r.likes || 0,
+          comments: r.comments || 0,
+          shares: r.shares || 0,
+          clicks: r.clicks || 0,
+          engagement: r.engagementRate || (r.views > 0 ? parseFloat((((r.likes + r.comments + r.shares) / r.views) * 100).toFixed(1)) : 0),
+          commentScore: computeCommentScore({ comments: r.comments, likes: r.likes, shares: r.shares, reach: r.reach || r.views })
+        };
+      }),
       nextPageToken: null,
       prevPageToken: null
     };
@@ -749,9 +756,22 @@ class ThreadsService extends BaseSocialService {
         }
       }
 
+      // Fetch exact permalink from Threads Graph API
+      let permalink = null;
+      try {
+        const mediaDetails = await threadsGateway.getMediaDetails(rootPostId, account.accessToken);
+        if (mediaDetails?.permalink) {
+          permalink = mediaDetails.permalink;
+          logger.debug(`[Threads] Fetched official permalink: ${permalink}`);
+        }
+      } catch (detailsErr) {
+        logger.warn(`[Threads] Could not fetch permalink for ${rootPostId}: ${detailsErr.message}`);
+      }
+
       return {
         success: true,
         platformVideoId: rootPostId,
+        permalink: permalink,
         publishedAt: new Date()
       };
     } catch (err) {
