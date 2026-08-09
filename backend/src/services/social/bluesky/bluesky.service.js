@@ -38,6 +38,14 @@ class BlueskyService extends BaseSocialService {
     }
   }
 
+  async getAgentForAccount(account) {
+    return this._getAuthenticatedAgent(account);
+  }
+
+  async getAuthenticatedAgent(account) {
+    return this._getAuthenticatedAgent(account);
+  }
+
   async _getAuthenticatedAgent(account) {
     let agent;
 

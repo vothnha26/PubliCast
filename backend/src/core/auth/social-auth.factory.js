@@ -31,6 +31,12 @@ class SocialAuthFactory {
     if (platformKey === PLATFORMS.TIKTOK) {
       return this._getTikTokAuthClient(brandId, socialAccountId);
     }
+    if (platformKey === PLATFORMS.THREADS) {
+      return this._getThreadsAuthClient(brandId, socialAccountId);
+    }
+    if (platformKey === PLATFORMS.BLUESKY) {
+      return this._getBlueskyAuthClient(brandId, socialAccountId);
+    }
 
     return null;
   }
@@ -119,7 +125,44 @@ class SocialAuthFactory {
     const active = accounts.find(acc => !(acc.accessToken && acc.accessToken.startsWith('mock-'))) || accounts[0];
 
     // Facebook Graph API uses raw access token string as auth credential
-    return { auth: active.accessToken, socialAccountId: active.id };
+    return { auth: active.accessToken, socialAccountId: active.id, account: active };
+  }
+
+  async _getThreadsAuthClient(brandId, socialAccountId = null) {
+    let accounts;
+    if (socialAccountId) {
+      const acc = await socialAccountRepository.findById(socialAccountId);
+      if (!acc || (brandId && String(acc.brandId) !== String(brandId))) {
+        throw new Error(`Social account ${socialAccountId} not found for brand ${brandId}`);
+      }
+      accounts = [acc];
+    } else {
+      accounts = await socialAccountRepository.findByBrandAndPlatform(brandId, PLATFORMS.THREADS);
+    }
+    if (!accounts || accounts.length === 0) return null;
+
+    const active = accounts.find(acc => !(acc.accessToken && acc.accessToken.startsWith('mock-'))) || accounts[0];
+    return { auth: { accessToken: active.accessToken }, socialAccountId: active.id, account: active };
+  }
+
+  async _getBlueskyAuthClient(brandId, socialAccountId = null) {
+    let accounts;
+    if (socialAccountId) {
+      const acc = await socialAccountRepository.findById(socialAccountId);
+      if (!acc || (brandId && String(acc.brandId) !== String(brandId))) {
+        throw new Error(`Social account ${socialAccountId} not found for brand ${brandId}`);
+      }
+      accounts = [acc];
+    } else {
+      accounts = await socialAccountRepository.findByBrandAndPlatform(brandId, PLATFORMS.BLUESKY);
+    }
+    if (!accounts || accounts.length === 0) return null;
+
+    const active = accounts.find(acc => !(acc.accessToken && acc.accessToken.startsWith('mock-'))) || accounts[0];
+    const blueskyService = require('../../services/social/bluesky/bluesky.service');
+    const agent = await blueskyService.getAgentForAccount(active);
+
+    return { auth: { agent, accessToken: active.accessToken }, socialAccountId: active.id, account: active };
   }
 
   _createYouTubeAuthenticatedClient(account) {

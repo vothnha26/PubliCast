@@ -1218,32 +1218,7 @@ class SocialAccountRepository {
           scopes: 'atproto',
           isConnected: true,
           lastSyncAt: new Date(),
-          updatedAt: new Date(),
-          blueskyAccount: {
-            upsert: {
-              create: {
-                did,
-                handle,
-                pdsUrl,
-                emailConfirmed: Boolean(emailConfirmed),
-                followersCount: parseInt(followersCount) || 0,
-                followsCount: parseInt(followsCount) || 0,
-                postsCount: parseInt(postsCount) || 0,
-                dpopPrivateKey: dpopPrivateKey ? encrypt(dpopPrivateKey) : undefined,
-                dpopJwk: dpopJwk ? encrypt(dpopJwk) : undefined
-              },
-              update: {
-                handle,
-                pdsUrl,
-                emailConfirmed: Boolean(emailConfirmed),
-                followersCount: parseInt(followersCount) || 0,
-                followsCount: parseInt(followsCount) || 0,
-                postsCount: parseInt(postsCount) || 0,
-                dpopPrivateKey: dpopPrivateKey ? encrypt(dpopPrivateKey) : undefined,
-                dpopJwk: dpopJwk ? encrypt(dpopJwk) : undefined
-              }
-            }
-          }
+          updatedAt: new Date()
         },
         create: {
           brandId,
@@ -1256,25 +1231,55 @@ class SocialAccountRepository {
           refreshToken: refreshToken ? encrypt(refreshToken) : '',
           scopes: 'atproto',
           lastSyncAt: new Date(),
-          connectedAt: new Date(),
-          blueskyAccount: {
-            create: {
-              did,
-              handle,
-              pdsUrl,
-              emailConfirmed: Boolean(emailConfirmed),
-              followersCount: parseInt(followersCount) || 0,
-              followsCount: parseInt(followsCount) || 0,
-              postsCount: parseInt(postsCount) || 0,
-              dpopPrivateKey: dpopPrivateKey ? encrypt(dpopPrivateKey) : undefined,
-              dpopJwk: dpopJwk ? encrypt(dpopJwk) : undefined
-            }
-          }
-        },
-        include: {
-          blueskyAccount: true
+          connectedAt: new Date()
         }
       });
+
+      // Safely upsert child BlueskyAccount without racing unique constraint on `did`
+      const existingByDid = await tx.blueskyAccount.findUnique({ where: { did } });
+      if (existingByDid) {
+        await tx.blueskyAccount.update({
+          where: { did },
+          data: {
+            socialAccountId: account.id,
+            handle,
+            pdsUrl,
+            emailConfirmed: Boolean(emailConfirmed),
+            followersCount: parseInt(followersCount) || 0,
+            followsCount: parseInt(followsCount) || 0,
+            postsCount: parseInt(postsCount) || 0,
+            dpopPrivateKey: dpopPrivateKey ? encrypt(dpopPrivateKey) : undefined,
+            dpopJwk: dpopJwk ? encrypt(dpopJwk) : undefined
+          }
+        });
+      } else {
+        await tx.blueskyAccount.upsert({
+          where: { socialAccountId: account.id },
+          update: {
+            did,
+            handle,
+            pdsUrl,
+            emailConfirmed: Boolean(emailConfirmed),
+            followersCount: parseInt(followersCount) || 0,
+            followsCount: parseInt(followsCount) || 0,
+            postsCount: parseInt(postsCount) || 0,
+            dpopPrivateKey: dpopPrivateKey ? encrypt(dpopPrivateKey) : undefined,
+            dpopJwk: dpopJwk ? encrypt(dpopJwk) : undefined
+          },
+          create: {
+            socialAccountId: account.id,
+            did,
+            handle,
+            pdsUrl,
+            emailConfirmed: Boolean(emailConfirmed),
+            followersCount: parseInt(followersCount) || 0,
+            followsCount: parseInt(followsCount) || 0,
+            postsCount: parseInt(postsCount) || 0,
+            dpopPrivateKey: dpopPrivateKey ? encrypt(dpopPrivateKey) : undefined,
+            dpopJwk: dpopJwk ? encrypt(dpopJwk) : undefined
+          }
+        });
+      }
 
       if (enqueueSync) {
         await outboxEventRepository.create(
@@ -1286,7 +1291,12 @@ class SocialAccountRepository {
         );
       }
 
-      return this._decryptAccount(account);
+      const fullAccount = await tx.socialAccount.findUnique({
+        where: { id: account.id },
+        include: { blueskyAccount: true }
+      });
+
+      return this._decryptAccount(fullAccount);
     }, { timeout: 15000 });
   }
 

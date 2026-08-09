@@ -818,7 +818,7 @@ model Post {
   publishedAt        DateTime?
   failureReason      String?                @db.Text
   autoListId         String?
-  platformPostId     String?
+  platformPostId     String?                @db.Text
   // QStash messageId for the currently-scheduled/in-flight publish delivery
   // (replaces BullMQ's jobId-based remove/re-add) — lets upsertPublishJob and
   // removePublishJob cancel a specific pending delivery via
