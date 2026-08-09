@@ -1,11 +1,8 @@
 import * as React from "react";
 import { useState, useEffect, useRef } from "react";
-import { 
-  GripVertical, Trash2, Image, FileText, 
-  Smile, Folder, Hash, Link2, Youtube, 
-  Facebook, Instagram, PlaySquare, Film, X,
-  MessageSquare, Languages, AlertCircle, Pencil,
-  MoreVertical, Copy, Sparkles, Building2, Crown
+import {
+  GripVertical, Trash2, MessageSquare, AlertCircle,
+  MoreVertical, Link2, Sparkles, Building2, Crown
 } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import {
@@ -14,28 +11,31 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { EmojiPickerPopover } from "@/components/workspace/post-creator/popovers/EmojiPickerPopover";
-import { UTMGeneratorPopover } from "@/components/workspace/post-creator/popovers/UTMGeneratorPopover";
+import { CaptionToolbar } from "@/components/workspace/post-creator/CaptionToolbar";
+import { MediaThumbnailGrid } from "@/components/workspace/post-creator/MediaThumbnailGrid";
 import { FirstCommentModal } from "@/components/workspace/post-creator/modals/FirstCommentModal";
-import { MediaDropdown } from "@/components/workspace/post-creator/MediaDropdown";
 import { GoogleDrivePickerModal } from "@/components/workspace/post-creator/modals/GoogleDrivePickerModal";
 import { ImageEditorModal } from "@/components/workspace/post-creator/modals/ImageEditorModal";
 import { toast } from "sonner";
-import { uploadMediaFile } from "@/services/mediaUpload.service";
-import { buildMediaUrl, isVideoPath } from "@/utils/url";
-import { useFeatureGate } from "@/hooks/useFeatureGate";
+import { uploadMediaFileWithMetadata } from "@/services/mediaUpload.service";
+import { buildMediaUrl } from "@/utils/url";
 import { PlatformIcon } from "@/components/shared/PlatformIcon";
-import { validatePostForm } from "@/utils/postValidation";
-import { PRODUCT_IDS } from "@/constants/products";
+import { validatePostAgainstAllPresets } from "@/utils/postValidation";
 
-export function AutoListPostCard({ 
-  post, 
-  index, 
-  onDelete, 
-  onToggleStatus, 
+export function AutoListPostCard({
+  post,
+  index,
+  onDelete,
+  onToggleStatus,
   onUpdatePostFields,
   activeBrand,
   selectedPlatforms,
+  // { facebook: [], youtube: [], instagram: [] } — one effective preset
+  // settings object PER SELECTED ACCOUNT of each platform (from
+  // AutoListEdit's networkCustom), consumed by validatePostAgainstAllPresets
+  // to check every channel, not just one, since each channel gets its own
+  // Title/Audience/etc applied independently at publish time.
+  validationPresets = {},
   // Drag & Drop handlers
   onDragStart,
   onDragOver,
@@ -44,13 +44,18 @@ export function AutoListPostCard({
   draggedIndex
 }) {
   const [caption, setCaption] = useState(post.caption || "");
-  const [activePopover, setActivePopover] = useState(null); // 'emoji' | 'utm' | 'media' | null
+  const [activePopover, setActivePopover] = useState(null); // 'media' | 'emoji' | 'hashtag' | 'utm' | null
   const [showFirstCommentModal, setShowFirstCommentModal] = useState(false);
   const [isDriveModalOpen, setIsDriveModalOpen] = useState(false);
-  const [isUploading, setIsUploading] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const [editingMediaIndex, setEditingMediaIndex] = useState(null);
   const [editingImageUrl, setEditingImageUrl] = useState(null);
-  const { hasAccess } = useFeatureGate();
+  // Freshly-picked media, not yet uploaded/saved — {file, previewUrl}[].
+  // Upload is deferred until the card's unified Save button is clicked
+  // (see handleSaveCard), instead of uploading on pick and autosaving
+  // immediately, which is what caused per-file "Uploading... 0%" toasts to
+  // appear stuck on slow connections/large files.
+  const [pendingMedia, setPendingMedia] = useState([]);
   const textareaRef = useRef(null);
   const fileInputRef = useRef(null);
 
@@ -70,18 +75,54 @@ export function AutoListPostCard({
     setCaption(post.caption || "");
   }, [post.caption]);
 
-  const handleBlur = () => {
-    if (caption !== post.caption) {
-      onUpdatePostFields(post.id, { caption });
+  // Revoke any outstanding pending-media blob URLs on unmount (covers card
+  // deletion too, since onDelete removing this post from the parent's list
+  // unmounts this component).
+  useEffect(() => {
+    return () => {
+      pendingMedia.forEach(p => URL.revokeObjectURL(p.previewUrl));
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const hasUnsavedChanges = caption !== (post.caption || "") || pendingMedia.length > 0;
+
+  const handleSaveCard = async () => {
+    setIsSaving(true);
+    try {
+      let uploadedUrls = [];
+      if (pendingMedia.length > 0) {
+        const results = await Promise.allSettled(
+          pendingMedia.map(p => uploadMediaFileWithMetadata(p.file, activeBrand?.id))
+        );
+        const failed = results.find(r => r.status === 'rejected');
+        if (failed) {
+          toast.error(`Failed to upload: ${failed.reason?.response?.data?.message || failed.reason?.message || "unknown error"}`);
+          setIsSaving(false);
+          return;
+        }
+        uploadedUrls = results.map(r => r.value.url);
+      }
+
+      const fields = {};
+      if (caption !== (post.caption || "")) fields.caption = caption;
+      if (uploadedUrls.length > 0) fields.mediaUrls = [...getMediaUrls(), ...uploadedUrls];
+
+      await onUpdatePostFields(post.id, fields);
+
+      pendingMedia.forEach(p => URL.revokeObjectURL(p.previewUrl));
+      setPendingMedia([]);
+    } catch (err) {
+      toast.error("Failed to save changes");
+    } finally {
+      setIsSaving(false);
     }
   };
 
   const insertAtCursor = (textToInsert) => {
     const textarea = textareaRef.current;
     if (!textarea) {
-      const newCaption = caption + textToInsert;
-      setCaption(newCaption);
-      onUpdatePostFields(post.id, { caption: newCaption });
+      setCaption(caption + textToInsert);
       return;
     }
 
@@ -89,9 +130,6 @@ export function AutoListPostCard({
     const end = textarea.selectionEnd;
     const newCaption = caption.substring(0, start) + textToInsert + caption.substring(end);
     setCaption(newCaption);
-    
-    // Auto-save the new caption fields
-    onUpdatePostFields(post.id, { caption: newCaption });
 
     // Focus back and position cursor
     setTimeout(() => {
@@ -107,74 +145,55 @@ export function AutoListPostCard({
     return [];
   };
 
-  const getMediaPreviewUrl = (url) => {
-    return buildMediaUrl(url);
-  };
-
-  const handleFileChange = async (e) => {
+  const handlePickFiles = (e) => {
     const files = Array.from(e.target.files || []);
+    if (e.target) e.target.value = "";
     if (files.length === 0) return;
 
-    setIsUploading(true);
-    const toastId = toast.loading(`Preparing ${files.length} file(s)...`);
-
-    try {
-      const uploadedUrls = [];
-      for (const file of files) {
-        toast.loading(`Uploading ${file.name}... 0%`, { id: toastId });
-        const finalUrl = await uploadMediaFile(file, activeBrand?.id, (percent) => {
-          toast.loading(`Uploading ${file.name}... ${percent}%`, { id: toastId });
-        });
-        if (finalUrl) {
-          uploadedUrls.push(finalUrl);
-        }
-      }
-
-      if (uploadedUrls.length > 0) {
-        const currentMedia = getMediaUrls();
-        const updatedMedia = [...currentMedia, ...uploadedUrls];
-        await onUpdatePostFields(post.id, { mediaUrls: updatedMedia });
-        toast.success(`Successfully uploaded ${uploadedUrls.length} file(s)`, { id: toastId });
-      } else {
-        toast.error("Upload failed: No file path returned from server", { id: toastId });
-      }
-    } catch (err) {
-      const errorMessage = err.response?.data?.message || err.message || "Failed to upload files to server";
-      console.error("Upload error:", err);
-      toast.error(errorMessage, { id: toastId });
-    } finally {
-      setIsUploading(false);
-      if (e.target) {
-        e.target.value = "";
-      }
-    }
+    // Upload is deferred until Save — just add to pendingMedia with local
+    // blob previews, no network call and no autosave here.
+    setPendingMedia(prev => [
+      ...prev,
+      ...files.map(file => ({ file, previewUrl: URL.createObjectURL(file) }))
+    ]);
   };
 
-  const handleRemoveMedia = (urlToRemove) => {
+  // Removing an already-saved URL stays an immediate, explicit committed
+  // action (unlike adding media, which only takes effect on Save) — deleting
+  // saved media isn't something to batch/undo the way an unsaved pending
+  // item is.
+  const handleRemoveSavedMedia = (url) => {
     const currentMedia = getMediaUrls();
-    const updatedMedia = currentMedia.filter(url => url !== urlToRemove);
+    const updatedMedia = currentMedia.filter(u => u !== url);
     onUpdatePostFields(post.id, { mediaUrls: updatedMedia });
     toast.success("Attachment removed");
   };
 
-  const mediaList = getMediaUrls();
-  const firstMediaUrl = mediaList.length > 0 ? mediaList[0] : null;
-  const isVid = firstMediaUrl ? isVideoPath(firstMediaUrl) : false;
+  const handleRemovePendingMedia = (pendingIdx) => {
+    setPendingMedia(prev => {
+      const removed = prev[pendingIdx];
+      if (removed) URL.revokeObjectURL(removed.previewUrl);
+      return prev.filter((_, i) => i !== pendingIdx);
+    });
+  };
 
-  const validationErrors = validatePostForm({
-    isLibrary: false,
-    selectedPublishId: 'schedule',
-    scheduledDate: post.scheduledAt || new Date(),
-    selectedPlatforms: selectedPlatforms || [],
-    facebookType: post.options?.facebookType || 'post',
-    youtubeType: post.options?.youtubeType || 'video',
-    instagramType: post.options?.instagramType || 'post',
-    videoFileUrl: firstMediaUrl,
-    uploadedVideoPath: firstMediaUrl,
-    videoFile: null,
-    mediaCount: mediaList.length,
-    postMedia: mediaList.map(url => ({ path: url }))
-  });
+  const mediaList = getMediaUrls();
+  const savedItems = mediaList.map(url => buildMediaUrl(url));
+  // MediaThumbnailGrid takes one flat items array — pending items appended
+  // after saved ones, with isPending() distinguishing them by index so
+  // remove/edit route to the right handler (savedItems.length is the pending
+  // section's start offset).
+  const gridItems = [...savedItems, ...pendingMedia];
+
+  const handleGridRemove = (gridIndex) => {
+    if (gridIndex < savedItems.length) {
+      handleRemoveSavedMedia(mediaList[gridIndex]);
+    } else {
+      handleRemovePendingMedia(gridIndex - savedItems.length);
+    }
+  };
+
+  const validationErrors = validatePostAgainstAllPresets(post, validationPresets, selectedPlatforms);
 
   // Map platform keys to React Icons using shared PlatformIcon component
   const renderPlatformIcon = (platform) => {
@@ -182,7 +201,7 @@ export function AutoListPostCard({
   };
 
   return (
-    <div 
+    <div
       draggable
       onDragStart={(e) => onDragStart(e, index - 1)}
       onDragOver={(e) => onDragOver(e, index - 1)}
@@ -195,13 +214,13 @@ export function AutoListPostCard({
       }`}
     >
       {/* Hidden File Input */}
-      <input 
-        type="file" 
-        ref={fileInputRef} 
-        multiple 
-        accept="image/*,video/*" 
-        className="hidden" 
-        onChange={handleFileChange}
+      <input
+        type="file"
+        ref={fileInputRef}
+        multiple
+        accept="image/*,video/*"
+        className="hidden"
+        onChange={handlePickFiles}
       />
 
       {/* Top Bar: Drag handle & Index pill & Validation Badge & Action Menu */}
@@ -226,8 +245,8 @@ export function AutoListPostCard({
           {/* Action Dropdown Menu matching image.png */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <button 
-                type="button" 
+              <button
+                type="button"
                 className="p-1 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors cursor-pointer outline-none"
                 onClick={(e) => e.stopPropagation()}
               >
@@ -236,7 +255,7 @@ export function AutoListPostCard({
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-72 p-1.5 bg-card rounded-xl shadow-xl border border-border font-sans z-50 text-foreground">
               {/* Copy link */}
-              <DropdownMenuItem 
+              <DropdownMenuItem
                 onClick={() => {
                   navigator.clipboard.writeText(caption);
                   toast.success("Post content copied to clipboard!");
@@ -248,7 +267,7 @@ export function AutoListPostCard({
               </DropdownMenuItem>
 
               {/* Send to review (Highlighted / Premium style like screenshot) */}
-              <DropdownMenuItem 
+              <DropdownMenuItem
                 onClick={() => toast.info("Sent to review")}
                 className="flex items-center gap-3 px-3 py-2 text-xs font-semibold text-muted-foreground bg-amber-500/10 hover:bg-amber-500/20 rounded-lg cursor-pointer transition-colors"
               >
@@ -259,7 +278,7 @@ export function AutoListPostCard({
               </DropdownMenuItem>
 
               {/* Duplicate in another brand */}
-              <DropdownMenuItem 
+              <DropdownMenuItem
                 onClick={() => toast.info("Duplicate in another brand")}
                 className="flex flex-col items-start gap-0.5 px-3 py-2 text-xs text-foreground hover:bg-muted rounded-lg cursor-pointer transition-colors"
               >
@@ -273,7 +292,7 @@ export function AutoListPostCard({
               </DropdownMenuItem>
 
               {/* Duplicate in another brand (advanced) */}
-              <DropdownMenuItem 
+              <DropdownMenuItem
                 onClick={() => toast.info("Duplicate in another brand (advanced)")}
                 className="flex flex-col items-start gap-0.5 px-3 py-2 text-xs text-foreground hover:bg-muted rounded-lg cursor-pointer transition-colors"
               >
@@ -287,7 +306,7 @@ export function AutoListPostCard({
               </DropdownMenuItem>
 
               {/* Delete */}
-              <DropdownMenuItem 
+              <DropdownMenuItem
                 onClick={() => onDelete(post.id)}
                 className="flex items-center gap-3 px-3 py-2 text-xs font-semibold text-red-500 hover:bg-red-500/10 rounded-lg cursor-pointer transition-colors mt-0.5 border-t border-border"
               >
@@ -305,7 +324,6 @@ export function AutoListPostCard({
           ref={textareaRef}
           value={caption}
           onChange={(e) => setCaption(e.target.value)}
-          onBlur={handleBlur}
           placeholder="Write what you want to share..."
           rows={4}
           className="w-full bg-card border-none outline-none focus:ring-0 resize-none text-xs font-semibold text-foreground placeholder:text-muted-foreground p-0 leading-relaxed"
@@ -328,213 +346,62 @@ export function AutoListPostCard({
           </div>
         )}
 
-        {/* Media Preview if attached */}
-        {mediaList.length > 0 && (
-          <div className="flex flex-wrap gap-2.5 pt-2 border-t border-gray-50 animate-in fade-in">
-            {mediaList.map((url, idx) => {
-              const fullUrl = getMediaPreviewUrl(url);
-              const isVideo = isVideoPath(url);
+        {/* Media Preview — saved media + picked-but-unsaved pending media in
+            one grid, shared with the Post Composer. */}
+        <MediaThumbnailGrid
+          items={gridItems}
+          isPending={(item, gridIndex) => gridIndex >= savedItems.length}
+          onEditImage={(gridIndex) => {
+            if (gridIndex >= savedItems.length) return; // no editor for pending items yet
+            setEditingMediaIndex(gridIndex);
+            setEditingImageUrl(savedItems[gridIndex]);
+          }}
+          onRemove={handleGridRemove}
+        />
 
-              return (
-                <div key={idx} className="relative w-16 h-16 rounded-xl overflow-hidden border border-border shadow-sm shrink-0 group/media bg-gray-900 transition-all hover:shadow-md">
-                  {isVideo ? (
-                    <div className="w-full h-full relative">
-                      <video 
-                        src={fullUrl} 
-                        className="w-full h-full object-cover" 
-                        muted 
-                        playsInline 
-                        preload="metadata"
-                      />
-                      <div className="absolute inset-0 bg-black/30 flex items-center justify-center">
-                        <Film size={16} className="text-white drop-shadow-md" />
-                      </div>
-                    </div>
-                  ) : (
-                    <img 
-                      src={fullUrl} 
-                      alt="Attached media" 
-                      className="w-full h-full object-cover" 
-                      onError={(e) => {
-                        e.target.onerror = null;
-                        e.target.src = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="%239ca3af" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>';
-                        e.target.className = "w-full h-full object-center p-3 bg-muted";
-                      }}
-                    />
-                  )}
-
-                  {/* Hover Overlay with Edit & Delete action buttons */}
-                  <div className="absolute inset-0 bg-black/60 opacity-0 group-hover/media:opacity-100 transition-all duration-200 flex items-center justify-center gap-1.5 p-1 z-10 backdrop-blur-[1px]">
-                    {!isVideo && (
-                      <button
-                        type="button"
-                        title="Edit image with Canvas"
-                        onClick={(e) => {
-                          e.preventDefault();
-                          e.stopPropagation();
-                          setEditingMediaIndex(idx);
-                          setEditingImageUrl(fullUrl);
-                        }}
-                        className="w-6 h-6 rounded-full bg-card hover:bg-muted text-foreground flex items-center justify-center shadow-md transition-all hover:scale-110 cursor-pointer"
-                      >
-                        <Pencil size={11} />
-                      </button>
-                    )}
-                    <button
-                      type="button"
-                      title="Remove attachment"
-                      onClick={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        handleRemoveMedia(url);
-                      }}
-                      className="w-6 h-6 rounded-full bg-red-500 hover:bg-red-600 text-white flex items-center justify-center shadow-md transition-all hover:scale-110 cursor-pointer"
-                    >
-                      <X size={11} />
-                    </button>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
-
-        {/* Inner Footer: Attachment tools & Character count + Platform Icon */}
+        {/* Toolbar: Attachment tools & Character count + Platform Icon */}
         <div className="flex items-center justify-between pt-1 text-muted-foreground relative">
-          {/* Left tools (Matches image order and styles) */}
-          <div className="flex items-center gap-4">
-            {/* Media Button */}
-            <div className="relative">
-              <button 
-                type="button" 
-                onClick={(e) => {
-                  e.preventDefault();
-                  setActivePopover(activePopover === 'media' ? null : 'media');
-                }}
-                className={`hover:text-foreground transition-colors cursor-pointer p-0.5 relative ${activePopover === 'media' ? 'text-black font-extrabold' : ''}`}
-                title="Attach media"
-              >
-                <Image size={15} />
-                <span className="absolute -top-1 -right-1 text-[7px] bg-card rounded-full border border-border w-2.5 h-2.5 flex items-center justify-center font-bold text-muted-foreground shadow-sm leading-none">+</span>
-              </button>
-              {activePopover === 'media' && (
-                <MediaDropdown 
-                  onClose={() => setActivePopover(null)} 
-                  onSelectImage={() => fileInputRef.current?.click()} 
-                  onSelectVideo={() => fileInputRef.current?.click()} 
-                  onSelectDrive={() => {
-                    const hasDriveAccess = hasAccess(PRODUCT_IDS.GOOGLE_DRIVE);
-                    if (!hasDriveAccess) {
-                      toast.error("Tính năng import từ Google Drive yêu cầu gói PRO hoặc AGENCY.", {
-                        action: {
-                          label: "Nâng cấp",
-                          onClick: () => window.location.href = '/pricing'
-                        }
-                      });
-                    } else {
-                      setIsDriveModalOpen(true);
-                    }
-                  }}
-                />
-              )}
-            </div>
-
-            {/* Emoji Button */}
-            <div className="relative">
-              <button 
-                type="button" 
-                onClick={(e) => {
-                  e.preventDefault();
-                  setActivePopover(activePopover === 'emoji' ? null : 'emoji');
-                }}
-                className={`hover:text-foreground transition-colors cursor-pointer p-0.5 ${activePopover === 'emoji' ? 'text-black' : ''}`}
-                title="Add emoji"
-              >
-                <Smile size={15} />
-              </button>
-              {activePopover === 'emoji' && (
-                <EmojiPickerPopover 
-                  onSelectEmoji={(emoji) => {
-                    insertAtCursor(emoji);
-                    setActivePopover(null);
-                  }}
-                  onClose={() => setActivePopover(null)}
-                />
-              )}
-            </div>
-
-            {/* Message Button (First Comment Modal) */}
-            <button 
+          <CaptionToolbar
+            activePopover={activePopover}
+            setActivePopover={setActivePopover}
+            onSelectMediaImage={() => fileInputRef.current?.click()}
+            onSelectMediaVideo={() => fileInputRef.current?.click()}
+            onSelectMediaDrive={() => setIsDriveModalOpen(true)}
+            onSelectEmoji={(emoji) => insertAtCursor(emoji)}
+            onInsertHashtag={(text) => insertAtCursor(text)}
+            onAddUtmUrl={(utmUrl) => insertAtCursor(utmUrl)}
+            iconSize={15}
+          >
+            {/* First Comment Button — AutoList-specific, not part of the
+                shared toolbar's fixed 4 buttons. */}
+            <button
               type="button"
               onClick={() => setShowFirstCommentModal(true)}
-              className={`hover:text-foreground transition-colors cursor-pointer p-0.5 ${post.firstComment ? 'text-[#a855f7] bg-purple-50 rounded-lg' : ''}`}
+              className={`text-muted-foreground hover:text-foreground transition-colors p-1.5 rounded-lg cursor-pointer ${post.firstComment ? 'text-[#a855f7] bg-purple-50' : ''}`}
               title="Add first comment"
             >
               <MessageSquare size={15} />
             </button>
+          </CaptionToolbar>
 
-            {/* Campaign URL Link (UTM) Button */}
-            <div className="relative">
-              <button 
-                type="button" 
-                onClick={(e) => {
-                  e.preventDefault();
-                  setActivePopover(activePopover === 'utm' ? null : 'utm');
-                }}
-                className={`hover:text-foreground transition-colors cursor-pointer p-0.5 ${activePopover === 'utm' ? 'text-black' : ''}`}
-                title="Campaign link generator"
-              >
-                <Link2 size={15} />
-              </button>
-              {activePopover === 'utm' && (
-                <UTMGeneratorPopover 
-                  onAddUrl={(utmUrl) => {
-                    insertAtCursor(utmUrl);
-                    setActivePopover(null);
-                  }}
-                  onClose={() => setActivePopover(null)}
-                />
-              )}
-            </div>
-
-            {/* Translation Button */}
-            <button 
-              type="button"
-              onClick={() => toast.info("Translation feature coming soon")}
-              className="hover:text-foreground transition-colors cursor-pointer p-0.5" 
-              title="Translate"
-            >
-              <Languages size={15} />
-            </button>
-
-            {/* Document Button */}
-            <button 
-              type="button" 
-              onClick={() => fileInputRef.current?.click()}
-              className="hover:text-foreground transition-colors cursor-pointer p-0.5" 
-              title="Add document"
-            >
-              <FileText size={15} />
-            </button>
-          </div>
-
-          {/* Right counter or Save action */}
+          {/* Right counter or unified Save action (caption + pending media) */}
           <div className="flex items-center gap-2.5 text-[10px] font-bold text-muted-foreground">
-            {caption !== (post.caption || "") && (
-              <button 
+            {hasUnsavedChanges && (
+              <button
                 type="button"
+                disabled={isSaving}
                 onClick={(e) => {
                   e.preventDefault();
-                  onUpdatePostFields(post.id, { caption });
+                  handleSaveCard();
                 }}
-                className="bg-green-600 hover:bg-green-700 text-white px-2 py-0.5 rounded-lg transition-all cursor-pointer shadow-sm text-[9px]"
+                className="bg-green-600 hover:bg-green-700 text-white px-2 py-0.5 rounded-lg transition-all cursor-pointer shadow-sm text-[9px] disabled:opacity-60 disabled:cursor-not-allowed"
               >
-                Save
+                {isSaving ? "Saving..." : "Save"}
               </button>
             )}
             <span className="flex items-center gap-1.5 select-none font-medium">
               {caption.length} / 2000
-              
+
               {/* Selected Platform icons preview */}
               {((post.platforms && post.platforms.length > 0) ? post.platforms : (selectedPlatforms || [])).length > 0 ? (
                 <span className="flex items-center gap-1 ml-1 animate-in fade-in duration-200">
@@ -553,15 +420,15 @@ export function AutoListPostCard({
       {/* Bottom Bar: On switch & Trash delete */}
       <div className="flex items-center justify-end gap-3 text-xs">
         <div className="flex items-center gap-1.5 font-semibold text-muted-foreground">
-          <Switch 
-            checked={post.status !== 'PAUSED'} 
-            onCheckedChange={(checked) => onToggleStatus(post.id, checked ? 'DRAFT' : 'PAUSED')} 
+          <Switch
+            checked={post.status !== 'PAUSED'}
+            onCheckedChange={(checked) => onToggleStatus(post.id, checked ? 'DRAFT' : 'PAUSED')}
             className="scale-90"
           />
           <span className="text-[11px] font-bold text-muted-foreground">{post.status !== 'PAUSED' ? 'On' : 'Off'}</span>
         </div>
-        
-        <button 
+
+        <button
           type="button"
           onClick={(e) => {
             e.preventDefault();
@@ -576,7 +443,7 @@ export function AutoListPostCard({
 
       {/* First Comment Modal Overlay */}
       {showFirstCommentModal && (
-        <FirstCommentModal 
+        <FirstCommentModal
           value={post.firstComment || ''}
           onAccept={(text) => {
             onUpdatePostFields(post.id, { firstComment: text });
@@ -587,7 +454,7 @@ export function AutoListPostCard({
       )}
 
       {/* Google Drive Picker Modal */}
-      <GoogleDrivePickerModal 
+      <GoogleDrivePickerModal
         isOpen={isDriveModalOpen}
         onClose={() => setIsDriveModalOpen(false)}
         activeBrand={activeBrand}
@@ -607,6 +474,7 @@ export function AutoListPostCard({
           isOpen={!!editingImageUrl}
           imageUrl={editingImageUrl}
           brandId={activeBrand?.id}
+          eager
           onClose={() => {
             setEditingImageUrl(null);
             setEditingMediaIndex(null);

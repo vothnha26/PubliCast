@@ -21,7 +21,7 @@
  *
  * @returns {{ platform: string, platformPostId: string|null }}
  */
-export function resolvePlatformTarget(post) {
+export function resolvePlatformTarget(post, targetSocialAccountId = null) {
   if (!post) return { platform: '', platformPostId: null };
 
   const platforms = Array.isArray(post.platforms)
@@ -32,13 +32,13 @@ export function resolvePlatformTarget(post) {
 
   const firstPlatform = (platforms[0] || post.platform || '').trim().toUpperCase();
 
-  // A map entry is either a legacy plain string id, or the current
-  // { socialAccountId: id } shape — resolve either down to a single id
-  // string, same as getIdForAccount()/getFirstIdForPlatform() server-side.
-  const firstIdFromEntry = (entry) => {
+  const getIdFromEntry = (entry) => {
     if (entry == null) return null;
     if (typeof entry === 'string') return entry;
     if (typeof entry === 'object') {
+      if (targetSocialAccountId && entry[targetSocialAccountId]) {
+        return entry[targetSocialAccountId];
+      }
       const values = Object.values(entry);
       return values.length > 0 ? values[0] : null;
     }
@@ -51,21 +51,16 @@ export function resolvePlatformTarget(post) {
       const parsed = JSON.parse(parsedMap);
       parsedMap = parsed && typeof parsed === 'object' ? parsed : null;
     } catch (_) {
-      // Plain text ID, not JSON — not a per-platform map, so there's no
-      // firstPlatform to key into; treat the whole string as the id itself.
       return { platform: firstPlatform, platformPostId: parsedMap.trim() || null };
     }
   }
 
   let platformPostId = null;
   if (parsedMap && typeof parsedMap === 'object') {
-    platformPostId = firstIdFromEntry(parsedMap[firstPlatform]);
+    platformPostId = getIdFromEntry(parsedMap[firstPlatform]);
     if (platformPostId == null) {
-      // No entry for the platform we resolved from post.platforms — fall
-      // back to whichever platform's id happens to exist, same tolerance
-      // the old code had for mismatched/missing platform metadata.
       for (const entry of Object.values(parsedMap)) {
-        platformPostId = firstIdFromEntry(entry);
+        platformPostId = getIdFromEntry(entry);
         if (platformPostId != null) break;
       }
     }
@@ -74,7 +69,7 @@ export function resolvePlatformTarget(post) {
   return { platform: firstPlatform, platformPostId: platformPostId ? String(platformPostId).trim() : null };
 }
 
-export function getPlatformPostUrl(post) {
+export function getPlatformPostUrl(post, targetSocialAccountId = null) {
   if (!post) return null;
 
   // 1. Direct permalink in metadata/options if available
@@ -86,7 +81,7 @@ export function getPlatformPostUrl(post) {
   if (post.url) return post.url;
 
   // 2. Extract platform and platformPostId
-  const { platform: firstPlatform, platformPostId } = resolvePlatformTarget(post);
+  const { platform: firstPlatform, platformPostId } = resolvePlatformTarget(post, targetSocialAccountId);
 
   // 3. Platform-specific URL patterns
   if (platformPostId) {

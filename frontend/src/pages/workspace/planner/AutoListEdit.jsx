@@ -1,14 +1,14 @@
 import * as React from "react";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import {
-  AlertTriangle, Youtube, PlayCircle, Instagram,
-  Facebook, Loader2, Calendar, Plus, AlertCircle
+  AlertTriangle, Loader2, Calendar, Plus
 } from "lucide-react";
-import { validatePostForm } from "@/utils/postValidation";
-import { PlatformIcon } from "../../../components/shared/PlatformIcon";
+import { validatePostAgainstAllPresets } from "@/utils/postValidation";
 import { useBrand } from "../../../context/BrandContext";
-import socialService from "../../../services/social.service";
+import { PLATFORMS, PLATFORM_API_KEY } from "../../../constants/platforms";
+import { getNetworkEntrySlot, setNetworkEntrySlot } from "../../../utils/networkEntrySlot";
+import { ChannelAvatar } from "../../../components/workspace/post-creator/ChannelAvatar";
 import autoListService from "../../../services/auto-list.service";
 import postService from "../../../services/post.service";
 import { toast } from "sonner";
@@ -20,15 +20,7 @@ import { AutoListTimingCard } from "./components/autolist/AutoListTimingCard";
 import { AutoListToolbar } from "./components/autolist/AutoListToolbar";
 import { AutoListPostCard } from "./components/autolist/AutoListPostCard";
 import { AutoListConfigCard } from "./components/autolist/AutoListConfigCard";
-
-const PLATFORM_ICONS = {
-  YOUTUBE: <Youtube size={18} className="text-[#FF0000]" />,
-  TIKTOK: <PlayCircle size={18} className="text-[#010101]" />,
-  INSTAGRAM: <Instagram size={18} className="text-[#E1306C]" />,
-  FACEBOOK: <Facebook size={18} className="text-[#1877F2]" />,
-  THREADS: <PlatformIcon platform="Threads" size={18} variant="flat" className="text-black" />,
-  BLUESKY: <PlatformIcon platform="Bluesky" size={18} variant="flat" className="text-[#0085FF]" />,
-};
+import { AutoListPlatformsCard } from "./components/autolist/AutoListPlatformsCard";
 
 export function AutoListEdit() {
   const { id } = useParams();
@@ -40,43 +32,43 @@ export function AutoListEdit() {
   const [name, setName] = useState("New autolist 1");
   const [repeat, setRepeat] = useState(false);
   const [selectedDays, setSelectedDays] = useState(['Mo', 'Tu', 'We', 'Th', 'Fr']);
-  const [connectedPlatforms, setConnectedPlatforms] = useState([]);
-  const [selectedPlatforms, setSelectedPlatforms] = useState([]);
+  // One entry per connected SocialAccount (not deduped by platform) — a brand
+  // with 2 YouTube channels needs both individually selectable/targetable.
+  const [connectedAccounts, setConnectedAccounts] = useState([]);
+  const [selectedAccountIds, setSelectedAccountIds] = useState([]);
   const [scheduleType, setScheduleType] = useState('INTERVAL'); // INTERVAL or SPECIFIC
   const [intervalMinutes, setIntervalMinutes] = useState(60);
   const [specificTimes, setSpecificTimes] = useState([{ time: '09:00', days: ['Mo', 'Tu', 'We', 'Th', 'Fr'] }]);
-  
-  // Preset Configuration states
+
+  // Global (platform-agnostic) preset states
   const [autoPublish, setAutoPublish] = useState(true);
   const [useUrlShortener, setUseUrlShortener] = useState(true);
   const [globalFirstComment, setGlobalFirstComment] = useState('');
-  const [facebookContentType, setFacebookContentType] = useState('post');
-  const [facebookTitle, setFacebookTitle] = useState('');
-  const [facebookReelThumbnail, setFacebookReelThumbnail] = useState('');
-  const [instagramContentType, setInstagramContentType] = useState('post');
-  const [instagramCollaborators, setInstagramCollaborators] = useState([]);
-  const [instagramAudio, setInstagramAudio] = useState(null);
-  const [instagramShowOnFeed, setInstagramShowOnFeed] = useState(true);
-  // Threads
-  const [threadsWhoCanReply, setThreadsWhoCanReply] = useState('everyone');
-  // YouTube
-  const [youtubeVideoType, setYoutubeVideoType] = useState('video');
-  const [youtubePrivacy, setYoutubePrivacy] = useState('public');
-  const [youtubeMadeForKids, setYoutubeMadeForKids] = useState(false);
-  const [youtubeTitle, setYoutubeTitle] = useState('');
-  const [youtubeCategory, setYoutubeCategory] = useState('22');
-  const [youtubePlaylistId, setYoutubePlaylistId] = useState('');
-  const [youtubeTags, setYoutubeTags] = useState('');
-  const [youtubeThumbnail, setYoutubeThumbnail] = useState('');
-  const [youtubeFirstComment, setYoutubeFirstComment] = useState('');
-  // TikTok presets
-  const [tiktokPrivacy, setTiktokPrivacy] = useState('public');
-  const [tiktokAllowComments, setTiktokAllowComments] = useState(true);
-  const [tiktokAllowDuet, setTiktokAllowDuet] = useState(true);
-  const [tiktokAllowStitch, setTiktokAllowStitch] = useState(true);
-  const [tiktokAiGenerated, setTiktokAiGenerated] = useState(false);
-  const [tiktokCommercialContent, setTiktokCommercialContent] = useState(false);
-  
+
+  // Per-channel presets — reuses the exact same shape the Post Composer
+  // uses for per-account overrides (networkCustom[platform].perAccount
+  // [accountId].settings, via getNetworkEntrySlot/setNetworkEntrySlot from
+  // utils/networkEntrySlot.js), so 2 channels of the same platform (e.g. 2
+  // YouTube channels) can each have independent preset values instead of
+  // one config shared by both, without inventing a second parallel model.
+  const [networkCustom, setNetworkCustom] = useState({});
+  const setNetworkSetting = (platform, field, value, accountId) => {
+    setNetworkCustom(prev => {
+      const entry = prev[platform];
+      const currentSlot = getNetworkEntrySlot(entry, accountId);
+      const nextSettings = { ...(currentSlot.settings || {}), [field]: value };
+      return {
+        ...prev,
+        [platform]: setNetworkEntrySlot(entry, accountId, { settings: nextSettings }),
+      };
+    });
+  };
+
+  // Which channel's preset panel is currently shown in AutoListConfigCard —
+  // defaults to the first selected account and re-syncs whenever the
+  // selection changes (e.g. the active channel gets deselected).
+  const [activeChannelAccountId, setActiveChannelAccountId] = useState(null);
+
   // Post states
   const [posts, setPosts] = useState([]);
 
@@ -84,19 +76,61 @@ export function AutoListEdit() {
   const [isSaving, setIsSaving] = useState(false);
   const { activeBrand } = useBrand();
 
+  const selectedAccounts = useMemo(
+    () => connectedAccounts.filter(a => selectedAccountIds.includes(a.id)),
+    [connectedAccounts, selectedAccountIds]
+  );
+
+  useEffect(() => {
+    if (selectedAccounts.length === 0) {
+      setActiveChannelAccountId(null);
+      return;
+    }
+    if (!selectedAccounts.some(a => a.id === activeChannelAccountId)) {
+      setActiveChannelAccountId(selectedAccounts[0].id);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedAccounts]);
+  // Flat unique platform-name list, still needed by downstream consumers that
+  // only care "is this platform targeted" (validation, post cards) and don't
+  // need per-channel granularity.
+  const selectedPlatformKeys = useMemo(
+    () => [...new Set(selectedAccounts.map(a => a.platform))],
+    [selectedAccounts]
+  );
+
+  // Effective preset PER SELECTED ACCOUNT of each platform — a brand can
+  // have 2+ YouTube channels, each with its own Title/Audience/etc, and at
+  // publish time the backend applies each channel's own preset via
+  // networkOverrides (see _applyAutoListPresets). Validation must therefore
+  // check every channel of a platform, not just one representative account,
+  // or a post gets silently flagged/cleared based on the wrong channel's
+  // settings. Consumed by both the summary banner below and each
+  // AutoListPostCard.
+  const validationPresets = useMemo(() => {
+    const presetsForPlatform = (platform) =>
+      selectedAccounts
+        .filter(a => a.platform === platform)
+        .map(a => getNetworkEntrySlot(networkCustom[platform], a.id).settings || {});
+    return {
+      facebook: presetsForPlatform(PLATFORM_API_KEY[PLATFORMS.FACEBOOK]),
+      youtube: presetsForPlatform(PLATFORM_API_KEY[PLATFORMS.YOUTUBE]),
+      instagram: presetsForPlatform(PLATFORM_API_KEY[PLATFORMS.INSTAGRAM]),
+    };
+  }, [selectedAccounts, networkCustom]);
+
   const init = async () => {
     if (!activeBrand) return;
     setIsLoading(true);
     try {
-      // Load connected platforms
-      const metricsRes = await socialService.getMetrics(activeBrand.id);
-      const metricsList = metricsRes || [];
-      const platforms = metricsList.map(m => ({
-        id: m.platform,
-        name: m.platform.charAt(0) + m.platform.slice(1).toLowerCase(),
-        icon: PLATFORM_ICONS[m.platform] || <PlayCircle size={18} />
-      }));
-      setConnectedPlatforms(platforms);
+      // Derive selectable channels from the brand's actual connected social
+      // accounts (same source ChannelsList/ComposerHeader use) — one row per
+      // account, not deduped by platform. GOOGLE_DRIVE is a media-source
+      // integration, not a publishable channel, and disconnected accounts
+      // shouldn't be selectable here.
+      const accounts = (activeBrand.socialAccounts || [])
+        .filter((a) => a.platform !== PLATFORMS.GOOGLE_DRIVE && a.isConnected !== false);
+      setConnectedAccounts(accounts);
 
       // Load list details if editing
       if (!isNew) {
@@ -107,7 +141,7 @@ export function AutoListEdit() {
           setRepeat(!!list.loopEnabled);
           setScheduleType(list.scheduleType);
           setIntervalMinutes(list.intervalMinutes || 60);
-          
+
           if (list.specificTimes) {
             try {
               const parsed = JSON.parse(list.specificTimes);
@@ -125,8 +159,8 @@ export function AutoListEdit() {
           } else {
             setSpecificTimes([]);
           }
-          
-          setSelectedPlatforms(list.targetPlatforms.split(',').filter(Boolean));
+
+          setSelectedAccountIds(list.targetSocialAccountIds ? list.targetSocialAccountIds.split(',').filter(Boolean) : []);
           setSelectedDays(list.activeDays ? list.activeDays.split(',').filter(Boolean) : ['Mo', 'Tu', 'We', 'Th', 'Fr']);
           // Post order is now strictly from DB
           setPosts(list.posts || []);
@@ -139,30 +173,7 @@ export function AutoListEdit() {
               if (parsed.useUrlShortener !== undefined) setUseUrlShortener(parsed.useUrlShortener);
               if (parsed.globalFirstComment !== undefined) setGlobalFirstComment(parsed.globalFirstComment);
               else if (parsed.firstComment !== undefined) setGlobalFirstComment(parsed.firstComment);
-              if (parsed.facebookContentType !== undefined) setFacebookContentType(parsed.facebookContentType);
-              if (parsed.facebookTitle !== undefined) setFacebookTitle(parsed.facebookTitle);
-              if (parsed.facebookReelThumbnail !== undefined) setFacebookReelThumbnail(parsed.facebookReelThumbnail);
-              if (parsed.instagramContentType !== undefined) setInstagramContentType(parsed.instagramContentType);
-              if (parsed.instagramCollaborators !== undefined) setInstagramCollaborators(parsed.instagramCollaborators);
-              if (parsed.instagramAudio !== undefined) setInstagramAudio(parsed.instagramAudio);
-              if (parsed.instagramShowOnFeed !== undefined) setInstagramShowOnFeed(parsed.instagramShowOnFeed);
-              if (parsed.threadsWhoCanReply !== undefined) setThreadsWhoCanReply(parsed.threadsWhoCanReply);
-              else if (parsed.threadsContentType !== undefined) setThreadsWhoCanReply('everyone');
-              if (parsed.youtubeVideoType !== undefined) setYoutubeVideoType(parsed.youtubeVideoType);
-              if (parsed.youtubePrivacy !== undefined) setYoutubePrivacy(parsed.youtubePrivacy);
-              if (parsed.youtubeMadeForKids !== undefined) setYoutubeMadeForKids(parsed.youtubeMadeForKids);
-              if (parsed.youtubeTitle !== undefined) setYoutubeTitle(parsed.youtubeTitle);
-              if (parsed.youtubeCategory !== undefined) setYoutubeCategory(parsed.youtubeCategory);
-              if (parsed.youtubePlaylistId !== undefined) setYoutubePlaylistId(parsed.youtubePlaylistId);
-              if (parsed.youtubeTags !== undefined) setYoutubeTags(parsed.youtubeTags);
-              if (parsed.youtubeThumbnail !== undefined) setYoutubeThumbnail(parsed.youtubeThumbnail);
-              if (parsed.youtubeFirstComment !== undefined) setYoutubeFirstComment(parsed.youtubeFirstComment);
-              if (parsed.tiktokPrivacy !== undefined) setTiktokPrivacy(parsed.tiktokPrivacy);
-              if (parsed.tiktokAllowComments !== undefined) setTiktokAllowComments(parsed.tiktokAllowComments);
-              if (parsed.tiktokAllowDuet !== undefined) setTiktokAllowDuet(parsed.tiktokAllowDuet);
-              if (parsed.tiktokAllowStitch !== undefined) setTiktokAllowStitch(parsed.tiktokAllowStitch);
-              if (parsed.tiktokAiGenerated !== undefined) setTiktokAiGenerated(parsed.tiktokAiGenerated);
-              if (parsed.tiktokCommercialContent !== undefined) setTiktokCommercialContent(parsed.tiktokCommercialContent);
+              if (parsed.networkCustom) setNetworkCustom(parsed.networkCustom);
             } catch (err) {
               console.error("Failed to parse metadata", err);
             }
@@ -170,8 +181,8 @@ export function AutoListEdit() {
         }
       } else {
         // Defaults for new autolist
-        if (platforms.length > 0) {
-          setSelectedPlatforms([platforms[0].id]);
+        if (accounts.length > 0) {
+          setSelectedAccountIds([accounts[0].id]);
         }
       }
     } catch (e) {
@@ -188,21 +199,28 @@ export function AutoListEdit() {
     }
   }, [id, isNew, activeBrand]);
 
-  const togglePlatform = (platformId) => {
-    setSelectedPlatforms(prev => 
-      prev.includes(platformId) ? prev.filter(p => p !== platformId) : [...prev, platformId]
+  const toggleAccount = (accountId) => {
+    setSelectedAccountIds(prev =>
+      prev.includes(accountId) ? prev.filter(a => a !== accountId) : [...prev, accountId]
     );
   };
 
   const toggleDay = (day) => {
-    setSelectedDays(prev => 
+    setSelectedDays(prev =>
       prev.includes(day) ? prev.filter(d => d !== day) : [...prev, day]
     );
   };
 
+  const buildConfigMetadata = () => ({
+    autoPublish,
+    useUrlShortener,
+    globalFirstComment,
+    networkCustom
+  });
+
   const handleSave = async () => {
-    if (selectedPlatforms.length === 0) {
-      toast.error("You must select at least one platform");
+    if (selectedAccountIds.length === 0) {
+      toast.error("You must select at least one channel");
       return;
     }
     if (scheduleType === 'INTERVAL' && selectedDays.length === 0) {
@@ -216,52 +234,23 @@ export function AutoListEdit() {
 
     // Collect all unique active days from specific times to maintain backward compatibility with backend if needed
     // Otherwise fallback to selectedDays for INTERVAL
-    const allActiveDays = scheduleType === 'SPECIFIC' 
+    const allActiveDays = scheduleType === 'SPECIFIC'
       ? [...new Set(specificTimes.flatMap(st => st.days || []))]
       : selectedDays;
 
     setIsSaving(true);
     try {
-      const configMetadata = {
-        autoPublish,
-        useUrlShortener,
-        globalFirstComment,
-        facebookContentType,
-        facebookTitle,
-        facebookReelThumbnail,
-        instagramContentType,
-        instagramCollaborators,
-        instagramAudio,
-        instagramShowOnFeed,
-        threadsWhoCanReply,
-        youtubeVideoType,
-        youtubePrivacy,
-        youtubeMadeForKids,
-        youtubeTitle,
-        youtubeCategory,
-        youtubePlaylistId,
-        youtubeTags,
-        youtubeThumbnail,
-        youtubeFirstComment,
-        tiktokPrivacy,
-        tiktokAllowComments,
-        tiktokAllowDuet,
-        tiktokAllowStitch,
-        tiktokAiGenerated,
-        tiktokCommercialContent
-      };
-
       const payload = {
         brandId: activeBrand.id,
         name,
-        targetPlatforms: selectedPlatforms.join(','),
+        targetSocialAccountIds: selectedAccountIds.join(','),
         scheduleType,
         intervalMinutes: scheduleType === 'INTERVAL' ? intervalMinutes : null,
         specificTimes: scheduleType === 'SPECIFIC' ? JSON.stringify(specificTimes) : null,
         activeDays: allActiveDays.join(','),
         loopEnabled: repeat,
         isActive: true,
-        metadata: JSON.stringify(configMetadata)
+        metadata: JSON.stringify(buildConfigMetadata())
       };
 
       let savedId = id;
@@ -312,7 +301,9 @@ export function AutoListEdit() {
         caption: "",
         type: "VIDEO",
         status: "DRAFT",
-        targetPlatforms: selectedPlatforms, // Array – post.service.js truyền thẳng
+        // targetPlatforms intentionally omitted — backend's
+        // _applyAutoListPresets derives it (and the precise per-channel
+        // selectedAccountIds) from the AutoList's targetSocialAccountIds.
         mediaUrls: [],
         autoListId: id
       });
@@ -327,8 +318,8 @@ export function AutoListEdit() {
   const handleInsertPost = async () => {
     if (isNew) {
       if (!activeBrand) return;
-      if (selectedPlatforms.length === 0) {
-        toast.error("You must select at least one network.");
+      if (selectedAccountIds.length === 0) {
+        toast.error("You must select at least one channel.");
         return;
       }
       if (scheduleType === 'INTERVAL' && selectedDays.length === 0) {
@@ -340,34 +331,23 @@ export function AutoListEdit() {
         return;
       }
 
-      const allActiveDays = scheduleType === 'SPECIFIC' 
+      const allActiveDays = scheduleType === 'SPECIFIC'
         ? [...new Set(specificTimes.flatMap(st => st.days || []))]
         : selectedDays;
 
       setIsSaving(true);
       try {
-        const configMetadata = {
-          autoPublish,
-          useUrlShortener,
-          facebookContentType,
-          instagramContentType,
-          threadsWhoCanReply,
-          youtubeVideoType,
-          youtubePrivacy,
-          youtubeMadeForKids
-        };
-
         const payload = {
           brandId: activeBrand.id,
           name,
-          targetPlatforms: selectedPlatforms.join(','),
+          targetSocialAccountIds: selectedAccountIds.join(','),
           scheduleType,
           intervalMinutes: scheduleType === 'INTERVAL' ? intervalMinutes : null,
           specificTimes: scheduleType === 'SPECIFIC' ? JSON.stringify(specificTimes) : null,
           activeDays: allActiveDays.join(','),
           loopEnabled: repeat,
           isActive: true,
-          metadata: JSON.stringify(configMetadata)
+          metadata: JSON.stringify(buildConfigMetadata())
         };
 
         const created = await autoListService.createAutoList(payload);
@@ -382,7 +362,6 @@ export function AutoListEdit() {
           caption: "",
           type: "VIDEO",
           status: "DRAFT",
-          targetPlatforms: selectedPlatforms, // Array
           mediaUrls: [],
           autoListId: savedId
         });
@@ -485,81 +464,86 @@ export function AutoListEdit() {
   return (
     <div className="flex-1 flex flex-col bg-background text-foreground min-h-screen overflow-y-auto animate-in slide-in-from-right duration-300">
       {/* Header */}
-      <AutoListHeader 
-        isNew={isNew} 
-        isSaving={isSaving} 
-        onSave={handleSave} 
-        onDelete={handleDeleteList} 
-        onBack={() => navigate("/planner/autolists")} 
+      <AutoListHeader
+        isNew={isNew}
+        isSaving={isSaving}
+        onSave={handleSave}
+        onDelete={handleDeleteList}
+        onBack={() => navigate("/planner/autolists")}
       />
 
       <div className="p-8 max-w-6xl mx-auto w-full space-y-8">
         {/* Error Alert */}
-        {selectedPlatforms.length === 0 && (
+        {selectedAccountIds.length === 0 && (
           <div className="bg-red-500/10 border border-red-500/20 rounded-2xl p-4 flex items-center gap-3 animate-in fade-in slide-in-from-top-2">
             <div className="w-6 h-6 bg-red-500/20 rounded-lg flex items-center justify-center text-red-500">
               <AlertTriangle size={14} />
             </div>
             <span className="text-[11px] font-bold text-red-500 uppercase tracking-tight">
-              You must select at least one network.
+              You must select at least one channel.
             </span>
           </div>
         )}
 
         {/* Unified Edit Autolist Form Panel */}
         <div className="bg-card border border-border rounded-3xl p-8 shadow-sm space-y-8 text-left">
-          {/* Row 1: Name and Platforms side-by-side */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
-            {/* Name Input */}
-            <div className="md:col-span-3 space-y-2">
-              <label className="block text-xs font-bold text-foreground uppercase tracking-wider">Name</label>
-              <div className="relative">
-                <label className="absolute -top-2 left-4 px-1.5 bg-card text-[9px] font-black text-muted-foreground uppercase tracking-widest z-10">Name</label>
-                <input 
-                  type="text" 
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  className="w-full px-5 py-3.5 border border-border bg-card text-foreground rounded-xl text-xs font-bold focus:border-foreground outline-none shadow-sm transition-all focus:ring-1 focus:ring-foreground/10 placeholder:text-muted-foreground"
-                  placeholder="Enter queue name..."
-                />
-              </div>
-            </div>
-
-            {/* Where to publish? */}
-            <div className="md:col-span-1 space-y-2">
-              <label className="block text-xs font-bold text-foreground uppercase tracking-wider">Where to publish?</label>
-              <div className="flex flex-wrap gap-2 pt-1">
-                {connectedPlatforms.length === 0 ? (
-                  <span className="text-[11px] font-semibold text-muted-foreground italic">No connections</span>
-                ) : (
-                  connectedPlatforms.map((p) => {
-                    const isSelected = selectedPlatforms.includes(p.id);
-                    return (
-                      <button
-                        key={p.id}
-                        type="button"
-                        onClick={() => togglePlatform(p.id)}
-                        className={`flex items-center gap-1.5 px-3 py-1.5 border rounded-lg text-xs font-medium cursor-pointer transition-all ${
-                          isSelected
-                            ? 'border-border bg-muted font-semibold text-foreground'
-                            : 'border-border bg-card text-muted-foreground hover:bg-muted'
-                        }`}
-                      >
-                        {p.icon}
-                        <span>{p.name}</span>
-                      </button>
-                    );
-                  })
-                )}
-              </div>
+          {/* Row 1: Name */}
+          <div className="space-y-2">
+            <label className="block text-xs font-bold text-foreground uppercase tracking-wider">Name</label>
+            <div className="relative">
+              <label className="absolute -top-2 left-4 px-1.5 bg-card text-[9px] font-black text-muted-foreground uppercase tracking-widest z-10">Name</label>
+              <input
+                type="text"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                className="w-full px-5 py-3.5 border border-border bg-card text-foreground rounded-xl text-xs font-bold focus:border-foreground outline-none shadow-sm transition-all focus:ring-1 focus:ring-foreground/10 placeholder:text-muted-foreground"
+                placeholder="Enter queue name..."
+              />
             </div>
           </div>
 
-          {/* Row 2: Configuration */}
+          {/* Row 2: Where to publish? — one row per channel, not per platform */}
+          <div className="space-y-3">
+            <label className="block text-xs font-bold text-foreground uppercase tracking-wider">Where to publish?</label>
+            <AutoListPlatformsCard
+              connectedAccounts={connectedAccounts}
+              selectedAccountIds={selectedAccountIds}
+              onToggleAccount={toggleAccount}
+            />
+          </div>
+
+          {/* Row 3: Configuration */}
           <div className="space-y-3">
             <label className="block text-xs font-bold text-foreground uppercase tracking-wider">Configuration</label>
-            <AutoListConfigCard 
-              selectedPlatforms={selectedPlatforms}
+
+            {/* Which channel's preset panel is shown below — only worth
+                showing when there's a choice to make. */}
+            {selectedAccounts.length > 1 && (
+              <div className="flex items-center gap-2 flex-wrap pb-1">
+                {selectedAccounts.map((account) => {
+                  const isActive = account.id === activeChannelAccountId;
+                  return (
+                    <button
+                      key={account.id}
+                      type="button"
+                      onClick={() => setActiveChannelAccountId(account.id)}
+                      title={account.displayName || account.username || account.accountName}
+                      className={`relative rounded-xl transition-all cursor-pointer ${
+                        isActive ? "ring-2 ring-foreground ring-offset-2 ring-offset-background scale-105" : "opacity-60 hover:opacity-100"
+                      }`}
+                    >
+                      <ChannelAvatar account={account} platform={account.platform} size={40} badgeSize={16} />
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+
+            <AutoListConfigCard
+              selectedAccounts={selectedAccounts}
+              networkCustom={networkCustom}
+              setNetworkSetting={setNetworkSetting}
+              activeChannelAccountId={activeChannelAccountId}
               autoPublish={autoPublish}
               setAutoPublish={setAutoPublish}
               repeat={repeat}
@@ -568,58 +552,12 @@ export function AutoListEdit() {
               setUseUrlShortener={setUseUrlShortener}
               globalFirstComment={globalFirstComment}
               setGlobalFirstComment={setGlobalFirstComment}
-              facebookContentType={facebookContentType}
-              setFacebookContentType={setFacebookContentType}
-              facebookTitle={facebookTitle}
-              setFacebookTitle={setFacebookTitle}
-              facebookReelThumbnail={facebookReelThumbnail}
-              setFacebookReelThumbnail={setFacebookReelThumbnail}
-              instagramContentType={instagramContentType}
-              setInstagramContentType={setInstagramContentType}
-              instagramCollaborators={instagramCollaborators}
-              setInstagramCollaborators={setInstagramCollaborators}
-              instagramAudio={instagramAudio}
-              setInstagramAudio={setInstagramAudio}
-              instagramShowOnFeed={instagramShowOnFeed}
-              setInstagramShowOnFeed={setInstagramShowOnFeed}
-              threadsWhoCanReply={threadsWhoCanReply}
-              setThreadsWhoCanReply={setThreadsWhoCanReply}
-              youtubeVideoType={youtubeVideoType}
-              setYoutubeVideoType={setYoutubeVideoType}
-              youtubePrivacy={youtubePrivacy}
-              setYoutubePrivacy={setYoutubePrivacy}
-              youtubeMadeForKids={youtubeMadeForKids}
-              setYoutubeMadeForKids={setYoutubeMadeForKids}
-              youtubeTitle={youtubeTitle}
-              setYoutubeTitle={setYoutubeTitle}
-              youtubeCategory={youtubeCategory}
-              setYoutubeCategory={setYoutubeCategory}
-              youtubePlaylistId={youtubePlaylistId}
-              setYoutubePlaylistId={setYoutubePlaylistId}
-              youtubeTags={youtubeTags}
-              setYoutubeTags={setYoutubeTags}
-              youtubeThumbnail={youtubeThumbnail}
-              setYoutubeThumbnail={setYoutubeThumbnail}
-              youtubeFirstComment={youtubeFirstComment}
-              setYoutubeFirstComment={setYoutubeFirstComment}
-              tiktokPrivacy={tiktokPrivacy}
-              setTiktokPrivacy={setTiktokPrivacy}
-              tiktokAllowComments={tiktokAllowComments}
-              setTiktokAllowComments={setTiktokAllowComments}
-              tiktokAllowDuet={tiktokAllowDuet}
-              setTiktokAllowDuet={setTiktokAllowDuet}
-              tiktokAllowStitch={tiktokAllowStitch}
-              setTiktokAllowStitch={setTiktokAllowStitch}
-              tiktokAiGenerated={tiktokAiGenerated}
-              setTiktokAiGenerated={setTiktokAiGenerated}
-              tiktokCommercialContent={tiktokCommercialContent}
-              setTiktokCommercialContent={setTiktokCommercialContent}
             />
           </div>
 
-          {/* Row 3: Timing */}
+          {/* Row 4: Timing */}
           <div className="border-t border-border pt-8">
-            <AutoListTimingCard 
+            <AutoListTimingCard
               scheduleType={scheduleType}
               setScheduleType={setScheduleType}
               intervalMinutes={intervalMinutes}
@@ -637,7 +575,7 @@ export function AutoListEdit() {
 
         {/* Queue Content list */}
         <div className="space-y-6 text-left pb-20">
-          <AutoListToolbar 
+          <AutoListToolbar
             onInsertPost={handleInsertPost}
             onAddWithAI={() => toast.info("AI feature coming soon")}
             onImportCSV={() => toast.info("CSV import coming soon")}
@@ -669,24 +607,9 @@ export function AutoListEdit() {
             <div className="space-y-4 max-w-4xl mx-auto w-full">
               {/* Overall Validation Warning Banner */}
               {(() => {
-                const invalidCount = posts.filter(p => {
-                  const mediaUrls = !p.mediaUrls ? [] : (Array.isArray(p.mediaUrls) ? p.mediaUrls : p.mediaUrls.split(',').filter(Boolean));
-                  const firstMedia = mediaUrls[0];
-                  const errs = validatePostForm({
-                    isLibrary: false,
-                    selectedPublishId: 'schedule',
-                    scheduledDate: p.scheduledAt || new Date(),
-                    selectedPlatforms: selectedPlatforms || [],
-                    facebookType: p.options?.facebookType || facebookContentType || 'post',
-                    youtubeType: p.options?.youtubeType || youtubeVideoType || 'video',
-                    instagramType: p.options?.instagramType || instagramContentType || 'post',
-                    videoFileUrl: firstMedia,
-                    uploadedVideoPath: firstMedia,
-                    mediaCount: mediaUrls.length,
-                    postMedia: mediaUrls.map(url => ({ path: url }))
-                  });
-                  return errs.length > 0;
-                }).length;
+                const invalidCount = posts.filter(p =>
+                  validatePostAgainstAllPresets(p, validationPresets, selectedPlatformKeys).length > 0
+                ).length;
 
                 if (invalidCount === 0) return null;
 
@@ -709,7 +632,7 @@ export function AutoListEdit() {
 
               <div className="space-y-4">
                 {posts.map((post, idx) => (
-                  <AutoListPostCard 
+                  <AutoListPostCard
                     key={post.id}
                     post={post}
                     index={idx + 1}
@@ -717,7 +640,8 @@ export function AutoListEdit() {
                     onToggleStatus={handleTogglePostStatus}
                     onUpdatePostFields={handleUpdatePostFields}
                     activeBrand={activeBrand}
-                    selectedPlatforms={selectedPlatforms}
+                    selectedPlatforms={selectedPlatformKeys}
+                    validationPresets={validationPresets}
                     onDragStart={handleDragStart}
                     onDragOver={handleDragOver}
                     onDragEnd={handleDragEnd}
@@ -726,7 +650,7 @@ export function AutoListEdit() {
                   />
                 ))}
               </div>
-              
+
               <div className="pt-2">
                 <button
                   type="button"

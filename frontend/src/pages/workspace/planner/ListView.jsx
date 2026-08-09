@@ -24,6 +24,7 @@ import { getPlatformPostUrl } from "../../../utils/postUrlHelper";
 import { PublishedPostDetailModal } from "./components/PublishedPostDetailModal";
 import { PublishProgressBadge } from "@/components/shared/PublishProgressBadge";
 import { usePostsRealtimeRefresh } from "../../../hooks/usePostsRealtimeRefresh";
+import { ChannelAvatar } from "@/components/workspace/post-creator/ChannelAvatar";
 
 const STATUS_STYLE = {
   published: "bg-green-50 text-green-700 border-green-100",
@@ -35,9 +36,9 @@ const STATUS_STYLE = {
   failed: "bg-rose-100 text-rose-800 border-rose-200"
 };
 
-const getPostLink = (platform, platformPostId, post = {}) => {
+const getPostLink = (platform, platformPostId, post = {}, socialAccountId = null) => {
   if (!platformPostId) return null;
-  return getPlatformPostUrl({ ...post, targetPlatforms: [platform], platformPostId });
+  return getPlatformPostUrl({ ...post, targetPlatforms: [platform], platformPostId }, socialAccountId);
 };
 
 export function ListView({ socialAccountId } = {}) {
@@ -271,6 +272,72 @@ export function ListView({ socialAccountId } = {}) {
     } finally {
       setActiveMenuId(null);
     }
+  };
+
+  const resolveTargetChannels = (post) => {
+    const brandAccounts = activeBrand?.socialAccounts || [];
+    const results = [];
+    const seenKeys = new Set();
+
+    const formatAccount = (sa, platformFallback) => {
+      const name = sa?.displayName || sa?.accountName || sa?.username || sa?.platformAccountId || platformFallback;
+      return {
+        account: sa,
+        name: name,
+        avatarUrl: sa?.avatarUrl || sa?.profilePictureUrl
+      };
+    };
+
+    if (Array.isArray(post.targets) && post.targets.length > 0) {
+      post.targets.forEach((t, idx) => {
+        const key = `${t.platform}-${t.socialAccountId || idx}`;
+        if (seenKeys.has(key)) return;
+        seenKeys.add(key);
+
+        const sa = brandAccounts.find(a => a.id === t.socialAccountId);
+        const formatted = formatAccount(sa, t.platform);
+        results.push({
+          key,
+          platform: t.platform,
+          socialAccountId: t.socialAccountId,
+          ...formatted
+        });
+      });
+      if (results.length > 0) return results;
+    }
+
+    if (post.selectedAccountIds && typeof post.selectedAccountIds === 'object') {
+      Object.entries(post.selectedAccountIds).forEach(([plat, accIds]) => {
+        if (Array.isArray(accIds) && accIds.length > 0) {
+          accIds.forEach((accId) => {
+            const key = `${plat}-${accId}`;
+            if (seenKeys.has(key)) return;
+            seenKeys.add(key);
+
+            const sa = brandAccounts.find(a => a.id === accId);
+            const formatted = formatAccount(sa, plat);
+            results.push({
+              key,
+              platform: plat,
+              socialAccountId: accId,
+              ...formatted
+            });
+          });
+        }
+      });
+      if (results.length > 0) return results;
+    }
+
+    return (post.platforms || []).map((plt) => {
+      const sa = brandAccounts.find(a => (a.platform || '').toUpperCase() === plt.toUpperCase());
+      const formatted = formatAccount(sa, plt);
+      return {
+        key: plt,
+        platform: plt,
+        socialAccountId: sa?.id || null,
+        ...formatted
+      };
+    });
   };
 
   return (
@@ -522,12 +589,21 @@ export function ListView({ socialAccountId } = {}) {
                             </td>
                             <td className="px-4 py-5">
                                <div className="flex items-center gap-1.5 flex-wrap">
-                                  {post.platforms.map(plt => {
-                                     const postUrl = post.status === 'published' ? getPostLink(plt, post.platformPostId, post) : null;
+                                  {resolveTargetChannels(post).map((target) => {
+                                     const postUrl = post.status === 'published' ? getPostLink(target.platform, post.platformPostId, post, target.socialAccountId) : null;
                                      return (
-                                       <div key={plt} className="flex items-center gap-1 bg-muted px-2 py-1 rounded-lg border border-border shadow-sm">
-                                          <PlatformIcon platform={plt} size={12} />
-                                          <span className="text-[9px] font-black uppercase tracking-tighter text-foreground">{plt}</span>
+                                       <div key={target.key} className="flex items-center gap-1.5 bg-muted/80 hover:bg-muted px-2.5 py-1 rounded-xl border border-border/80 shadow-sm transition-all">
+                                          <ChannelAvatar
+                                            account={target.account}
+                                            platform={target.platform}
+                                            fallbackText={target.name}
+                                            size={18}
+                                            badgeSize={10}
+                                            shape="circle"
+                                          />
+                                          <span className="text-[10px] font-bold text-foreground truncate max-w-[120px]" title={target.name}>
+                                            {target.name}
+                                          </span>
                                           {postUrl && (
                                             <a 
                                               href={postUrl} 
@@ -542,7 +618,7 @@ export function ListView({ socialAccountId } = {}) {
                                           )}
                                        </div>
                                      );
-                                   })}
+                                  })}
                                </div>
                             </td>
                             <td className="px-4 py-5">
@@ -778,9 +854,11 @@ export function ListView({ socialAccountId } = {}) {
 
                                  {/* Channel Cards Grid */}
                                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                                   {post.platforms.map((platform) => {
+                                   {resolveTargetChannels(post).map((targetChan) => {
+                                     const platform = targetChan.platform;
                                      const override = (post.networkOverrides || []).find(
-                                       (o) => (o.platform || '').toUpperCase() === platform.toUpperCase()
+                                       (o) => (o.platform || '').toUpperCase() === platform.toUpperCase() &&
+                                              (!o.socialAccountId || o.socialAccountId === targetChan.socialAccountId)
                                      );
                                      const isCustomized = override && override.useTemplate === false;
                                      const effectiveCaption = isCustomized && override.caption ? override.caption : post.caption;
@@ -788,31 +866,40 @@ export function ListView({ socialAccountId } = {}) {
                                        ? override.mediaUrls 
                                        : (post.mediaUrls || []);
                                      
-                                     const postUrl = post.status === 'published' ? getPostLink(platform, post.platformPostId, post) : null;
+                                     const postUrl = post.status === 'published' ? getPostLink(platform, post.platformPostId, post, targetChan.socialAccountId) : null;
                                      
                                      const targetProgress = post.publishProgress?.targets?.find(
-                                       (t) => (t.platform || '').toUpperCase() === platform.toUpperCase()
+                                       (t) => (t.platform || '').toUpperCase() === platform.toUpperCase() &&
+                                              (!t.socialAccountId || t.socialAccountId === targetChan.socialAccountId)
                                      );
                                      const channelStatus = targetProgress?.status || post.status;
+                                     const handleStr = targetChan.account?.username
+                                       ? (targetChan.account.username.startsWith('@') ? targetChan.account.username : `@${targetChan.account.username}`)
+                                       : `@${platform.toLowerCase()}_channel`;
 
                                      return (
                                        <div 
-                                         key={platform}
+                                         key={targetChan.key}
                                          className="bg-card border border-border rounded-2xl p-4 shadow-sm space-y-3 flex flex-col justify-between hover:border-primary/50 transition-all hover:shadow-md"
                                        >
                                          {/* Card Top: Platform + Account Info + Badge */}
                                          <div className="space-y-3">
                                            <div className="flex items-center justify-between pb-2 border-b border-border/60">
-                                             <div className="flex items-center gap-2">
-                                               <div className="p-2 rounded-xl bg-muted border border-border shrink-0 shadow-xs">
-                                                 <PlatformIcon platform={platform} size={16} />
-                                               </div>
-                                               <div className="flex flex-col">
-                                                 <span className="text-xs font-black capitalize text-foreground tracking-tight">
-                                                   {platform}
+                                             <div className="flex items-center gap-2 min-w-0">
+                                               <ChannelAvatar
+                                                 account={targetChan.account}
+                                                 platform={targetChan.platform}
+                                                 fallbackText={targetChan.name}
+                                                 size={32}
+                                                 badgeSize={14}
+                                                 shape="circle"
+                                               />
+                                               <div className="flex flex-col min-w-0">
+                                                 <span className="text-xs font-black capitalize text-foreground tracking-tight truncate max-w-[130px]">
+                                                   {targetChan.name}
                                                  </span>
-                                                 <span className="text-[10px] text-muted-foreground font-medium truncate max-w-[140px]">
-                                                   {override?.accountName || `@${platform.toLowerCase()}_account`}
+                                                 <span className="text-[10px] text-muted-foreground font-medium truncate max-w-[130px]">
+                                                   {handleStr}
                                                  </span>
                                                </div>
                                              </div>
@@ -867,7 +954,7 @@ export function ListView({ socialAccountId } = {}) {
                                                    <div className="flex items-center gap-1.5 pt-1.5 border-t border-border/40">
                                                      {effectiveMediaUrls.slice(0, 3).map((url, index) => (
                                                        <div key={index} className="w-10 h-10 rounded-lg overflow-hidden border border-border shrink-0 bg-muted relative">
-                                                         <img src={buildMediaUrl(url)} className="w-full h-full object-cover" alt="Media preview" />
+                                                         <PostMediaThumbnail mediaUrls={url} className="w-full h-full" />
                                                        </div>
                                                      ))}
                                                      {effectiveMediaUrls.length > 3 && (
