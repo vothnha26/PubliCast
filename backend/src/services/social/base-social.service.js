@@ -12,6 +12,14 @@ class BaseSocialService {
     throw new Error("Method 'getPublishedVideos()' must be implemented.");
   }
 
+  // Smart Fetch Sync hook — the only method allowed to call a platform's
+  // live API for published posts (see PostsSyncSchedulerService). Default
+  // no-op so platforms without a real posts-sync story (or MockSocialService
+  // in sandbox mode) don't break the shared QStash webhook dispatch.
+  async syncPublishedPosts(brandId, socialAccountId) {
+    return { synced: 0 };
+  }
+
   async getAnalyticsReport(auth, startDate, endDate) {
     throw new Error("Method 'getAnalyticsReport()' must be implemented.");
   }

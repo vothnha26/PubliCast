@@ -71,6 +71,21 @@ class SocialConnectionController {
     res.json({ success: true, message: 'Twitch account disconnected successfully' });
   });
 
+  // Smart Fetch manual-refresh escape hatch — see SocialService#syncPublishedPostsNow.
+  syncPublishedPostsNow = asyncHandler(async (req, res) => {
+    const { brandId, platform, socialAccountId } = req.body;
+    if (!brandId || !platform || !socialAccountId) {
+      return res.status(400).json({ message: 'brandId, platform, and socialAccountId are required' });
+    }
+
+    try {
+      const result = await socialService.syncPublishedPostsNow(brandId, platform, socialAccountId);
+      res.json({ success: true, message: 'Sync triggered successfully', data: result });
+    } catch (error) {
+      res.status(error.statusCode || 500).json({ message: error.message });
+    }
+  });
+
   setDefaultAccount = asyncHandler(async (req, res) => {
     const { brandId, socialAccountId } = req.body;
     if (!brandId || !socialAccountId) {
