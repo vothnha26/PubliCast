@@ -1,11 +1,8 @@
 const cron = require('node-cron');
-const redisClient = require('../../config/redis');
-const DistributedLockService = require('../social/distributed-lock.service');
+const lockService = require('../social/distributed-lock.singleton');
 const streakService = require('../workspace/streak.service');
 const { LOCK_CONFIG } = require('../../utils/constants');
 const logger = require('../../utils/logger');
-
-const lockService = new DistributedLockService(redisClient);
 
 // Publishing itself only ever grows a brand's streak (see streak.service's
 // recalculateStreak, hooked into update-db.step.js) — nothing decreases it

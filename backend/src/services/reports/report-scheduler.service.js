@@ -1,12 +1,9 @@
 const cron = require('node-cron');
 const reportService = require('./report.service');
 const reportRepository = require('../../repositories/workspace/report.repository');
-const redisClient = require('../../config/redis');
-const DistributedLockService = require('../social/distributed-lock.service');
+const lockService = require('../social/distributed-lock.singleton');
 const { LOCK_CONFIG } = require('../../utils/constants');
 const logger = require('../../utils/logger');
-
-const lockService = new DistributedLockService(redisClient);
 
 class ReportSchedulerService {
   constructor() {
