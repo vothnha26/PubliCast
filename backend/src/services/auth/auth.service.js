@@ -10,20 +10,22 @@ const googleOAuthService = require('../social/google-oauth.service');
 const brandService = require('../workspace/brand.service');
 const { eventEmitter, EVENTS } = require('../../events/event-emitter');
 const { USER_STATUS, AUTH_PROVIDERS, ERROR_MESSAGES, DEFAULT_CONFIG } = require('../../utils/constants');
-const redisClient = require('../../config/redis');
+const redisKeyValueService = require('./redis-keyvalue.singleton');
 const logger = require('../../utils/logger');
 const { OtpVerificationStrategy, LinkTokenVerificationStrategy, VerificationContext } = require('./verification.strategy');
 const verificationAttemptLimiter = require('../../middlewares/verification-attempt-limiter');
 const {
   UserExistenceValidator, EmailVerificationValidator, UserStatusValidator, PasswordValidator,
   ThrottleValidator, OtpUserExistenceValidator, OtpVerificationStatusValidator,
-  ResetTokenValidator, ResetUserValidator, PasswordConstraintValidator
+  ResetTokenValidator, ResetUserValidator, PasswordConstraintValidator,
+  RESEND_OTP_THROTTLE_PREFIX
 } = require('./validators');
 
 const FORGOT_PASSWORD_OTP_PREFIX = 'forgot-otp';
 const FORGOT_PASSWORD_ATTEMPTS_PREFIX = 'forgot-otp-attempts';
 const FORGOT_PASSWORD_OTP_EXPIRY_SECONDS = 5 * 60;
 const MAX_RESET_OTP_ATTEMPTS = 3;
+const PRE_AUTH_PREFIX = 'pre-auth';
 
 class AuthService {
   async register(name, email, password) {
@@ -151,8 +153,7 @@ class AuthService {
     await emailService.sendOTP(normalizedEmail, otp);
 
     // Set throttle key for 60 seconds
-    const throttleKey = `resend-otp-throttle:${normalizedEmail}`;
-    await redisClient.setEx(throttleKey, 60, '1');
+    await redisKeyValueService.set(RESEND_OTP_THROTTLE_PREFIX, normalizedEmail, '1', 60);
 
     return { message: 'Mã OTP mới đã được gửi vào email của bạn' };
   }
@@ -193,8 +194,7 @@ class AuthService {
     if (user.isTwoFactorEnabled) {
       const crypto = require('crypto');
       const preAuthToken = crypto.randomBytes(32).toString('hex');
-      const preAuthKey = `pre-auth:${preAuthToken}`;
-      await redisClient.setEx(preAuthKey, 300, user.id);
+      await redisKeyValueService.set(PRE_AUTH_PREFIX, preAuthToken, user.id, 300);
 
       return {
         require2FA: true,
@@ -461,8 +461,7 @@ class AuthService {
   }
 
   async loginVerify2FA(preAuthToken, code) {
-    const preAuthKey = `pre-auth:${preAuthToken}`;
-    const userId = await redisClient.get(preAuthKey);
+    const userId = await redisKeyValueService.get(PRE_AUTH_PREFIX, preAuthToken);
 
     if (!userId) {
       const error = new Error('Yêu cầu xác thực đã hết hạn hoặc không hợp lệ.');
@@ -478,7 +477,7 @@ class AuthService {
     const PRE_AUTH_TTL_SECONDS = 300;
     const { allowed } = await verificationAttemptLimiter.checkAllowed('2fa-login', preAuthToken, PRE_AUTH_TTL_SECONDS);
     if (!allowed) {
-      await redisClient.del(preAuthKey);
+      await redisKeyValueService.delete(PRE_AUTH_PREFIX, preAuthToken);
       const error = new Error('Quá nhiều lần thử sai. Vui lòng đăng nhập lại.');
       error.status = 429;
       throw error;
@@ -532,7 +531,7 @@ class AuthService {
     }
 
     // Đăng nhập thành công, xóa preAuthToken
-    await redisClient.del(preAuthKey);
+    await redisKeyValueService.delete(PRE_AUTH_PREFIX, preAuthToken);
     await verificationAttemptLimiter.reset('2fa-login', preAuthToken);
 
     // Cấp JWT tokens

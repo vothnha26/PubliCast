@@ -1,12 +1,13 @@
 const BaseValidator = require('./base.validator');
-const redisClient = require('../../../config/redis');
+const redisKeyValueService = require('../redis-keyvalue.singleton');
 const userRepository = require('../../../repositories/auth/user.repository');
 const { ERROR_MESSAGES } = require('../../../utils/constants');
 
+const RESEND_OTP_THROTTLE_PREFIX = 'resend-otp-throttle';
+
 class ThrottleValidator extends BaseValidator {
   async validate(context) {
-    const throttleKey = `resend-otp-throttle:${context.email}`;
-    const isThrottled = await redisClient.get(throttleKey);
+    const isThrottled = await redisKeyValueService.get(RESEND_OTP_THROTTLE_PREFIX, context.email);
     if (isThrottled) {
       const error = new Error('Vui lòng đợi 60 giây trước khi yêu cầu mã mới');
       error.status = 429;
@@ -44,5 +45,6 @@ class OtpVerificationStatusValidator extends BaseValidator {
 module.exports = {
   ThrottleValidator,
   OtpUserExistenceValidator,
-  OtpVerificationStatusValidator
+  OtpVerificationStatusValidator,
+  RESEND_OTP_THROTTLE_PREFIX
 };

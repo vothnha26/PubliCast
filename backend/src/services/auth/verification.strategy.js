@@ -1,5 +1,5 @@
 const crypto = require('crypto');
-const redisClient = require('../../config/redis');
+const redisKeyValueService = require('./redis-keyvalue.singleton');
 const otpService = require('./otp.service');
 const otplib = require('otplib');
 const authenticator = otplib.authenticator || otplib;
@@ -75,14 +75,12 @@ class LinkTokenVerificationStrategy extends VerificationStrategy {
 
   async generate(email) {
     const token = crypto.randomBytes(32).toString('hex');
-    const tokenKey = `${this.prefix}:${token}`;
-    await redisClient.setEx(tokenKey, this.expirySeconds, email);
+    await redisKeyValueService.set(this.prefix, token, email, this.expirySeconds);
     return token;
   }
 
   async verify(token) {
-    const tokenKey = `${this.prefix}:${token}`;
-    const email = await redisClient.get(tokenKey);
+    const email = await redisKeyValueService.get(this.prefix, token);
     if (!email) {
       const error = new Error('Đường dẫn khôi phục mật khẩu đã hết hạn hoặc không hợp lệ.');
       error.status = 400;
@@ -92,8 +90,7 @@ class LinkTokenVerificationStrategy extends VerificationStrategy {
   }
 
   async delete(token) {
-    const tokenKey = `${this.prefix}:${token}`;
-    await redisClient.del(tokenKey);
+    await redisKeyValueService.delete(this.prefix, token);
   }
 }
 
