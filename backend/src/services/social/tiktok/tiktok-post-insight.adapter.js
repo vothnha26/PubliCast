@@ -6,6 +6,15 @@ const logger = require('../../../utils/logger');
 
 const TIKTOK_POST_METRICS_TTL_MS = 24 * 60 * 60 * 1000;
 
+/**
+ * DEAD CODE / NOT WIRED UP: registered in core/insights/index.js but nothing
+ * calls postInsightFacade for TikTok (only YouTube's youtube-analytics.
+ * service.js does). The real, actively used TikTok post-metrics path is
+ * tiktok-video.service.js (DB-only reads + syncPublishedVideos Sync, against
+ * PostMetricDaily). This adapter's prismaModel (socialPostMetric) still
+ * exists but is no longer written to by the real path — do not wire a new
+ * caller here without first pointing it at PostMetricDaily instead.
+ */
 class TikTokPostInsightAdapter extends BasePostInsightAdapter {
   get platform() {
     return PLATFORMS.TIKTOK;

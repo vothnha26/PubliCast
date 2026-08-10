@@ -15,16 +15,8 @@ const logger = require('../../../utils/logger');
 // would just call the live API for data that hasn't actually changed yet.
 const POST_INSIGHTS_STALENESS_MS = 24 * 60 * 60 * 1000;
 
-let redisClient = null;
-try {
-  redisClient = require('../../../config/redis');
-} catch (_) {
-  // Redis không có — video-insights vẫn hoạt động nhưng không cache
-}
-
-const QuotaTrackerService = require('../quota-tracker.service');
+const quotaService = require('../quota-tracker.singleton');
 const YOUTUBE_QUOTA_SERVICE_NAME = 'youtube-analytics';
-const quotaService = redisClient ? new QuotaTrackerService(redisClient) : null;
 
 class YouTubeAnalyticsService {
   _createAuthenticatedClient(account) {
@@ -563,7 +555,6 @@ class YouTubeAnalyticsService {
   }
 
   async _isQuotaBudgetExceeded() {
-    if (!quotaService) return false;
     try {
       const usage = await quotaService.getCurrentUsage(YOUTUBE_QUOTA_SERVICE_NAME);
       // YOUTUBE_QUOTA_THRESHOLD (1500) is a remaining-budget floor out of the
@@ -579,7 +570,6 @@ class YouTubeAnalyticsService {
   }
 
   async _recordQuotaUsage() {
-    if (!quotaService) return;
     try {
       await quotaService.incrementAndGet(YOUTUBE_QUOTA_SERVICE_NAME, 1);
     } catch (err) {

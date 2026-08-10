@@ -165,6 +165,13 @@ class BlueskyController {
         keyPair
       });
 
+      // Smart Fetch cold-start mitigation — see OAuthController#_backfillPostsSync.
+      if (account?.id) {
+        blueskyService.syncPublishedPosts(brandId, account.id).catch(err => {
+          logger.warn(`[BlueskyController] OAuth-connect backfill sync failed for account ${account.id}: ${err.message}`);
+        });
+      }
+
       try {
         await notificationService.create({
           brandId,

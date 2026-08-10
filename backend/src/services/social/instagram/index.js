@@ -128,6 +128,12 @@ class InstagramService extends BaseSocialService {
     return instagramPost.getPublishedPosts(brandId, pageToken, limit, socialAccountId, startDate, endDate);
   }
 
+  // Smart Fetch Sync — the only method allowed to call Instagram's live
+  // Graph API for published posts. getPublishedVideos above is DB-only.
+  async syncPublishedPosts(brandId, socialAccountId) {
+    return instagramPost.syncPublishedPosts(brandId, socialAccountId);
+  }
+
   async publishPost(brandId, postData) {
     return instagramPost.publishPost(brandId, postData);
   }

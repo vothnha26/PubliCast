@@ -131,19 +131,10 @@ model Brand {
   competitorAnalysis        CompetitorAnalysis[]
   facebookPostMetrics       FacebookPostMetric[]
   socialPostMetrics         SocialPostMetric[]
-  youtubeChannelSnapshots   YouTubeChannelSnapshot[]
-  youtubeAudienceSnapshots  YouTubeAudienceSnapshot[]
-  tiktokChannelSnapshots    TikTokChannelSnapshot[]
-  instagramChannelSnapshots InstagramChannelSnapshot[]
-  threadsChannelSnapshots   ThreadsChannelSnapshot[]
-  blueskyChannelSnapshots   BlueskyChannelSnapshot[]
-  facebookChannelSnapshots  FacebookChannelSnapshot[]
+  channelMetricsDaily       ChannelMetricDaily[]
+  channelDemographics       ChannelDemographic[]
   youtubeVideoMetrics       YouTubeVideoMetric[]
-  tiktokVideoMetrics        TikTokVideoMetric[]
-  instagramPostMetrics      InstagramPostMetric[]
-  threadsPostMetrics        ThreadsPostMetric[]
-  blueskyPostMetrics        BlueskyPostMetric[]
-  facebookPostMetricsV2     FacebookPostMetricV2[]
+  postMetricsDaily          PostMetricDaily[]
   unifiedInbox              UnifiedInbox[]
   reports                   Report[]
   smartLinks                SmartLink[]
@@ -563,6 +554,12 @@ model SocialAccount {
   isDefault         Boolean      @default(false)
   connectedAt       DateTime
   lastSyncAt        DateTime?
+  // Separate from lastSyncAt (metrics-sync cooldown clock) — tracks the last
+  // time this account's published-post/video LIST (not per-post metrics) was
+  // pulled from the platform API, so YouTubePostsSyncScheduler has its own
+  // independent cooldown instead of being coupled to metrics-sync's
+  // schedule/failures.
+  lastPostsSyncAt   DateTime?
   syncStatus        SyncStatus   @default(PENDING)
   createdAt         DateTime     @default(now())
   updatedAt         DateTime     @updatedAt
@@ -588,25 +585,21 @@ model SocialAccount {
   // Shared post-metrics cache (Instagram, Threads — see SocialPostMetric)
   socialPostMetrics SocialPostMetric[]
 
-  // Per-platform daily channel snapshots — append-only history, one row per
-  // account per day (see §2 of the analytics redesign: replaces the
-  // "only ever read the latest sync" gap on the overwritten fields above).
-  youtubeChannelSnapshots   YouTubeChannelSnapshot[]
-  youtubeAudienceSnapshots  YouTubeAudienceSnapshot[]
-  tiktokChannelSnapshots    TikTokChannelSnapshot[]
-  instagramChannelSnapshots InstagramChannelSnapshot[]
-  threadsChannelSnapshots   ThreadsChannelSnapshot[]
-  blueskyChannelSnapshots   BlueskyChannelSnapshot[]
-  facebookChannelSnapshots  FacebookChannelSnapshot[]
+  // Daily channel snapshots — append-only history, one row per account per
+  // day per platform (see §2 of the analytics redesign: replaces the "only
+  // ever read the latest sync" gap on the overwritten fields above).
+  // Consolidated from 6 per-platform tables into one on 2026-08-09 (see
+  // ChannelMetricDaily's own comment).
+  channelMetricsDaily      ChannelMetricDaily[]
+  channelDemographics      ChannelDemographic[]
 
-  // Per-platform post/video metrics — append-only, one row per fetch (not
-  // per post), replacing SocialPostMetric's overwrite-on-upsert behavior.
-  youtubeVideoMetrics   YouTubeVideoMetric[]
-  tiktokVideoMetrics    TikTokVideoMetric[]
-  instagramPostMetrics  InstagramPostMetric[]
-  threadsPostMetrics    ThreadsPostMetric[]
-  blueskyPostMetrics    BlueskyPostMetric[]
-  facebookPostMetricsV2 FacebookPostMetricV2[]
+  // YouTubeVideoMetric: append-only, one row per fetch (not per post) — still
+  // live, not touched by the post_metrics_daily consolidation.
+  youtubeVideoMetrics YouTubeVideoMetric[]
+
+  // Unified post-level daily time series (Smart Fetch Sync target) — see
+  // PostMetricDaily's own comment for what this replaced.
+  postMetricsDaily PostMetricDaily[]
 
   channelGroupMembers ChannelGroupMember[]
 
@@ -1237,81 +1230,29 @@ model SocialPostMetric {
 // Telegram is intentionally absent — removed from the product.
 // ============================================
 
-model YouTubeChannelSnapshot {
-  id              String   @id @default(uuid())
+// Consolidates the former per-platform YouTube/TikTok/Instagram/Threads/
+// Bluesky/Facebook ChannelSnapshot models (6 near-identical tables) into one.
+// followersCount/Gained/Lost stay real columns because
+// channel-snapshot.repository.js's historical-backfill reconstruction does
+// real arithmetic on them; every other platform-specific counter (views,
+// likes, reach, impressions, mediaCount, etc.) lives in `metrics` JSON,
+// keyed by whatever name each platform's adapter already used as a column
+// name (e.g. YouTube: totalViewsCount/totalVideosCount; TikTok: views/
+// likes/comments/shares; Facebook: reach/impressions/pageViews). No
+// historical data was migrated from the old tables — this table starts
+// empty (2026-08-09 consolidation).
+model ChannelMetricDaily {
+  id              String       @id @default(uuid())
   brandId         String
   socialAccountId String
-  snapshotDate    DateTime @db.Date
+  platform        PlatformType
+  snapshotDate    DateTime     @db.Date
 
-  subscribersCount  Int @default(0)
-  totalViewsCount   Int @default(0)
-  totalVideosCount  Int @default(0)
-  subscribersGained Int @default(0)
-  subscribersLost   Int @default(0)
-
-  // Demographics/traffic-source/geography/search-terms — not per-day counters,
-  // kept as the raw blob for whichever day this snapshot covers.
-  rawInsightsJson String? @db.LongText
-
-  fetchedAt DateTime @default(now())
-  createdAt DateTime @default(now())
-
-  brand         Brand         @relation(fields: [brandId], references: [id], onDelete: Cascade)
-  socialAccount SocialAccount @relation(fields: [socialAccountId], references: [id], onDelete: Cascade)
-
-  @@unique([socialAccountId, snapshotDate])
-  @@index([brandId])
-  @@index([socialAccountId, snapshotDate])
-  @@map("youtube_channel_snapshots")
-}
-
-model YouTubeAudienceSnapshot {
-  id              String   @id @default(uuid())
-  brandId         String
-  socialAccountId String
-  snapshotDate    DateTime @db.Date
-
-  demographicsJson   String? @db.LongText
-  geographyJson      String? @db.LongText
-  trafficSourcesJson String? @db.LongText
-
-  fetchedAt DateTime @default(now())
-  createdAt DateTime @default(now())
-
-  brand         Brand         @relation(fields: [brandId], references: [id], onDelete: Cascade)
-  socialAccount SocialAccount @relation(fields: [socialAccountId], references: [id], onDelete: Cascade)
-
-  @@unique([socialAccountId, snapshotDate])
-  @@index([brandId])
-  @@index([socialAccountId, snapshotDate])
-  @@map("youtube_audience_snapshots")
-}
-
-model TikTokChannelSnapshot {
-  id              String   @id @default(uuid())
-  brandId         String
-  socialAccountId String
-  snapshotDate    DateTime @db.Date
-
-  followersCount  Int  @default(0)
-  followingCount  Int  @default(0)
-  likesCount      Int  @default(0)
-  videoCount      Int  @default(0)
+  followersCount  Int @default(0)
   followersGained Int?
   followersLost   Int?
-  // Each video's real lifetime cumulative view/like/comment/share count,
-  // bucketed into its post date — not a true "activity that occurred this
-  // day" delta (TikTok's API has no date-ranged analytics endpoint at all,
-  // only a video-list call), but genuinely real numbers. reach/clicks have
-  // no real API source and are intentionally absent — see
-  // tiktok-analytics.service.js's _processVideosForAnalytics comment on
-  // why the old *0.85/*0.1/*0.05 fabrications were removed.
-  views           Int?
-  likes           Int?
-  comments        Int?
-  shares          Int?
 
-  rawInsightsJson String? @db.LongText
+  metrics Json?
 
   fetchedAt DateTime @default(now())
   createdAt DateTime @default(now())
@@ -1319,28 +1260,34 @@ model TikTokChannelSnapshot {
   brand         Brand         @relation(fields: [brandId], references: [id], onDelete: Cascade)
   socialAccount SocialAccount @relation(fields: [socialAccountId], references: [id], onDelete: Cascade)
 
-  @@unique([socialAccountId, snapshotDate])
+  @@unique([socialAccountId, snapshotDate, platform])
   @@index([brandId])
   @@index([socialAccountId, snapshotDate])
-  @@map("tiktok_channel_snapshots")
+  @@map("channel_metrics_daily")
 }
 
-model InstagramChannelSnapshot {
-  id              String   @id @default(uuid())
+// Consolidates the former YouTube-only YouTubeAudienceSnapshot into a
+// platform-shared table, same pattern as ChannelMetricDaily — common
+// columns + platform discriminator + JSON columns for each distribution
+// (no typed/reconstructible columns needed here, unlike followersCount on
+// ChannelMetricDaily, since nothing about demographics needs day-over-day
+// delta arithmetic). Renamed from *Json string fields to typed Json columns
+// for the same 3 distributions YouTube already tracked (age, gender folded
+// into ageDistribution's row shape — see adapter), plus geography and
+// traffic source. No historical data was migrated from the old table — this
+// table starts empty (2026-08-09 consolidation, currently has zero live
+// callers of syncAudienceSnapshot anywhere in the codebase).
+model ChannelDemographic {
+  id              String       @id @default(uuid())
   brandId         String
   socialAccountId String
-  snapshotDate    DateTime @db.Date
+  platform        PlatformType
+  snapshotDate    DateTime     @db.Date
 
-  followersCount  Int  @default(0)
-  followingCount  Int  @default(0)
-  mediaCount      Int  @default(0)
-  followersGained Int?
-  followersLost   Int?
-  views           Int?
-  reach           Int?
-  profileViews    Int?
-
-  rawInsightsJson String? @db.LongText
+  ageDistribution         Json?
+  genderDistribution      Json?
+  countryDistribution     Json?
+  trafficSourceDistribution Json?
 
   fetchedAt DateTime @default(now())
   createdAt DateTime @default(now())
@@ -1348,100 +1295,10 @@ model InstagramChannelSnapshot {
   brand         Brand         @relation(fields: [brandId], references: [id], onDelete: Cascade)
   socialAccount SocialAccount @relation(fields: [socialAccountId], references: [id], onDelete: Cascade)
 
-  @@unique([socialAccountId, snapshotDate])
+  @@unique([socialAccountId, snapshotDate, platform])
   @@index([brandId])
   @@index([socialAccountId, snapshotDate])
-  @@map("instagram_channel_snapshots")
-}
-
-// Separate from InstagramChannelSnapshot per product decision — Threads no
-// longer shares InstagramAccount/SocialPostMetric with Instagram.
-model ThreadsChannelSnapshot {
-  id              String   @id @default(uuid())
-  brandId         String
-  socialAccountId String
-  snapshotDate    DateTime @db.Date
-
-  followersCount  Int  @default(0)
-  followingCount  Int?
-  mediaCount      Int?
-  followersGained Int?
-  followersLost   Int?
-  views           Int?
-  likes           Int?
-  replies         Int?
-  reposts         Int?
-
-  rawInsightsJson String? @db.LongText
-
-  fetchedAt DateTime @default(now())
-  createdAt DateTime @default(now())
-
-  brand         Brand         @relation(fields: [brandId], references: [id], onDelete: Cascade)
-  socialAccount SocialAccount @relation(fields: [socialAccountId], references: [id], onDelete: Cascade)
-
-  @@unique([socialAccountId, snapshotDate])
-  @@index([brandId])
-  @@index([socialAccountId, snapshotDate])
-  @@map("threads_channel_snapshots")
-}
-
-model BlueskyChannelSnapshot {
-  id              String   @id @default(uuid())
-  brandId         String
-  socialAccountId String
-  snapshotDate    DateTime @db.Date
-
-  followersCount  Int  @default(0)
-  followersGained Int?
-  followersLost   Int?
-  followsCount    Int  @default(0)
-  postsCount      Int  @default(0)
-  likes           Int?
-  replies         Int?
-  reposts         Int?
-  quotes          Int?
-
-  rawInsightsJson String? @db.LongText
-
-  fetchedAt DateTime @default(now())
-  createdAt DateTime @default(now())
-
-  brand         Brand         @relation(fields: [brandId], references: [id], onDelete: Cascade)
-  socialAccount SocialAccount @relation(fields: [socialAccountId], references: [id], onDelete: Cascade)
-
-  @@unique([socialAccountId, snapshotDate])
-  @@index([brandId])
-  @@index([socialAccountId, snapshotDate])
-  @@map("bluesky_channel_snapshots")
-}
-
-model FacebookChannelSnapshot {
-  id              String   @id @default(uuid())
-  brandId         String
-  socialAccountId String
-  snapshotDate    DateTime @db.Date
-
-  likesCount      Int  @default(0)
-  followersCount  Int  @default(0)
-  followersGained Int?
-  followersLost   Int?
-  reach           Int?
-  impressions     Int?
-  pageViews       Int?
-
-  rawInsightsJson String? @db.LongText
-
-  fetchedAt DateTime @default(now())
-  createdAt DateTime @default(now())
-
-  brand         Brand         @relation(fields: [brandId], references: [id], onDelete: Cascade)
-  socialAccount SocialAccount @relation(fields: [socialAccountId], references: [id], onDelete: Cascade)
-
-  @@unique([socialAccountId, snapshotDate])
-  @@index([brandId])
-  @@index([socialAccountId, snapshotDate])
-  @@map("facebook_channel_snapshots")
+  @@map("channel_demographics")
 }
 
 // Per-video insight, one row per fetch — was Redis-only (yt:video-insights:*,
@@ -1474,74 +1331,46 @@ model YouTubeVideoMetric {
   @@map("youtube_video_metrics")
 }
 
-// Was never persisted at all before — always a live API passthrough.
-model TikTokVideoMetric {
-  id              String @id @default(uuid())
+// Unified post-level daily time series across all 6 platforms — replaces
+// TikTokVideoMetric, InstagramPostMetric, ThreadsPostMetric,
+// BlueskyPostMetric, FacebookPostMetricV2 (all confirmed dead/unreachable
+// via full-codebase audit before this consolidation, 2026-08-09) with a
+// single table, mirroring ChannelMetricDaily's shape: common columns +
+// `platform` discriminator + `metrics` JSON for platform-specific counters
+// that don't generalize (Facebook's organicReach/watchRate, Bluesky's
+// quotes, Instagram's saves/clicks, etc.).
+//
+// Real calendar-day granularity — @@unique includes snapshotDate, so a post
+// re-synced multiple times the same day upserts that day's row in place; a
+// new day creates a new row. This is the "Smart Fetch" write target: ONLY
+// each platform's Sync scheduler (cron/OAuth-connect-backfill/manual
+// refresh) writes here — user-facing read paths (getPublishedPosts/
+// getPublishedVideos/detail views) are DB-only reads, never a live API
+// trigger. FacebookPostMetric/SocialPostMetric/YouTubeVideoMetric are left
+// in place (still live, still read elsewhere e.g. analytics.facade.js) —
+// not touched by this migration; only the 5 confirmed-dead tables above
+// were removed.
+model PostMetricDaily {
+  id              String       @id @default(uuid())
   brandId         String
   socialAccountId String
-  platformVideoId String
-
-  views    Int @default(0)
-  likes    Int @default(0)
-  comments Int @default(0)
-  shares   Int @default(0)
-
-  fetchedAt DateTime @default(now())
-  createdAt DateTime @default(now())
-
-  brand         Brand         @relation(fields: [brandId], references: [id], onDelete: Cascade)
-  socialAccount SocialAccount @relation(fields: [socialAccountId], references: [id], onDelete: Cascade)
-
-  @@index([brandId])
-  @@index([socialAccountId, platformVideoId, fetchedAt])
-  @@map("tiktok_video_metrics")
-}
-
-model InstagramPostMetric {
-  id              String    @id @default(uuid())
-  brandId         String
-  socialAccountId String
+  platform        PlatformType
   platformPostId  String
   postType        String?
   publishedAt     DateTime?
+  snapshotDate    DateTime     @db.Date
 
-  reach          Int   @default(0)
-  views          Int   @default(0)
-  likes          Int   @default(0)
-  comments       Int   @default(0)
-  shares         Int   @default(0)
-  saves          Int   @default(0)
-  clicks         Int   @default(0)
-  engagementRate Float @default(0)
+  reach    Int?
+  views    Int?
+  likes    Int?
+  comments Int?
+  shares   Int?
 
-  fetchedAt DateTime @default(now())
-  createdAt DateTime @default(now())
+  metrics Json?
 
-  brand         Brand         @relation(fields: [brandId], references: [id], onDelete: Cascade)
-  socialAccount SocialAccount @relation(fields: [socialAccountId], references: [id], onDelete: Cascade)
-
-  // No @@unique on platformPostId — every fetch appends, doesn't overwrite.
-  @@index([brandId])
-  @@index([socialAccountId, platformPostId, fetchedAt])
-  @@map("instagram_post_metrics")
-}
-
-// Separate from InstagramPostMetric — Threads reach/views are always null
-// (no real API source), kept as their own nullable columns rather than
-// forcing Instagram's non-nullable shape onto Threads' lesser data.
-model ThreadsPostMetric {
-  id              String    @id @default(uuid())
-  brandId         String
-  socialAccountId String
-  platformPostId  String
-  publishedAt     DateTime?
-
-  reach   Int? // always null today — no Threads API source exists
-  views   Int? // always null today — no Threads API source exists
-  likes   Int  @default(0)
-  replies Int  @default(0)
-  reposts Int  @default(0)
-  clicks  Int  @default(0)
+  captionSnippet String? @db.Text
+  thumbnailUrl   String? @db.Text
+  postUrl        String? @db.Text
 
   fetchedAt DateTime @default(now())
   createdAt DateTime @default(now())
@@ -1549,69 +1378,11 @@ model ThreadsPostMetric {
   brand         Brand         @relation(fields: [brandId], references: [id], onDelete: Cascade)
   socialAccount SocialAccount @relation(fields: [socialAccountId], references: [id], onDelete: Cascade)
 
+  @@unique([socialAccountId, platformPostId, snapshotDate])
   @@index([brandId])
-  @@index([socialAccountId, platformPostId, fetchedAt])
-  @@map("threads_post_metrics")
-}
-
-// Reduced shape per product decision — AT Protocol has no reach/impressions
-// concept for a post, so those columns are omitted entirely rather than
-// stored as always-0 placeholders.
-model BlueskyPostMetric {
-  id              String    @id @default(uuid())
-  brandId         String
-  socialAccountId String
-  platformPostId  String
-  publishedAt     DateTime?
-
-  likes   Int @default(0)
-  replies Int @default(0)
-  reposts Int @default(0)
-  quotes  Int @default(0)
-
-  fetchedAt DateTime @default(now())
-  createdAt DateTime @default(now())
-
-  brand         Brand         @relation(fields: [brandId], references: [id], onDelete: Cascade)
-  socialAccount SocialAccount @relation(fields: [socialAccountId], references: [id], onDelete: Cascade)
-
-  @@index([brandId])
-  @@index([socialAccountId, platformPostId, fetchedAt])
-  @@map("bluesky_post_metrics")
-}
-
-// V2 = append-only replacement for FacebookPostMetric (which stays in place,
-// still upsert-only, during the dual-write migration window — see §4 step 4
-// of the analytics redesign doc). Once callers cut over to reading V2,
-// FacebookPostMetric can be dropped in a follow-up migration.
-model FacebookPostMetricV2 {
-  id              String    @id @default(uuid())
-  brandId         String
-  socialAccountId String
-  platformPostId  String
-  postType        String?
-  publishedAt     DateTime?
-
-  reach          Int   @default(0)
-  impressions    Int   @default(0)
-  videoViews     Int   @default(0)
-  likes          Int   @default(0)
-  comments       Int   @default(0)
-  shares         Int   @default(0)
-  reactions      Int   @default(0)
-  linkClicks     Int   @default(0)
-  otherClicks    Int   @default(0)
-  engagementRate Float @default(0)
-
-  fetchedAt DateTime @default(now())
-  createdAt DateTime @default(now())
-
-  brand         Brand         @relation(fields: [brandId], references: [id], onDelete: Cascade)
-  socialAccount SocialAccount @relation(fields: [socialAccountId], references: [id], onDelete: Cascade)
-
-  @@index([brandId])
-  @@index([socialAccountId, platformPostId, fetchedAt])
-  @@map("facebook_post_metrics_v2")
+  @@index([socialAccountId, platformPostId])
+  @@index([brandId, platform, snapshotDate])
+  @@map("post_metrics_daily")
 }
 
 // ============================================

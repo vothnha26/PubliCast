@@ -42,6 +42,7 @@ class BaseChannelAdapter {
       model,
       brandId,
       socialAccountId,
+      this.platform,
       current,
       dailyRows,
       this.supportsBackfill

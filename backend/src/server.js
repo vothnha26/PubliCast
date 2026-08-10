@@ -76,6 +76,10 @@ const server = app.listen(PORT, async () => {
   const socialMetricsSyncSchedulerService = require('./services/social/social-metrics-sync-scheduler.service');
   socialMetricsSyncSchedulerService.start();
 
+  // Start Periodic Posts Sync Scheduler (15-minute published-post-list cycle, all 6 Smart-Fetch platforms)
+  const postsSyncSchedulerService = require('./services/social/posts-sync-scheduler.service');
+  postsSyncSchedulerService.start();
+
   // Start Outbox Dispatcher (polls outbox_events, delivers side-effects with retry)
   const outboxDispatcherService = require('./services/core/outbox-dispatcher.service');
   outboxDispatcherService.start();
@@ -106,6 +110,14 @@ async function shutdown(signal) {
     socialMetricsSyncSchedulerService.stop();
   } catch (err) {
     logger.error('Error stopping social metrics sync scheduler', err);
+  }
+
+  // Stop periodic posts sync scheduler
+  try {
+    const postsSyncSchedulerService = require('./services/social/posts-sync-scheduler.service');
+    postsSyncSchedulerService.stop();
+  } catch (err) {
+    logger.error('Error stopping posts sync scheduler', err);
   }
 
   // Stop token refresh scheduler

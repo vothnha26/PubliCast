@@ -82,7 +82,8 @@ class OAuthController {
     if (!brandId) return res.redirect(`${DEFAULT_CONFIG.FRONTEND_URL}/manage/connections?error=brand_id_missing`);
 
     try {
-      await youtubeService.connectChannel(brandId, code, redirectUri);
+      const account = await youtubeService.connectChannel(brandId, code, redirectUri);
+      this._backfillPostsSync(youtubeService, brandId, account?.id, 'YouTube');
       await this._notifySocialConnected(brandId, 'YouTube');
       return res.redirect(targetUrl);
     } catch (error) {
@@ -143,12 +144,14 @@ class OAuthController {
 
     try {
       if (platform === 'instagram') {
-        await instagramService.connectChannel(brandId, code, redirectUri);
+        const account = await instagramService.connectChannel(brandId, code, redirectUri);
+        this._backfillPostsSync(instagramService, brandId, account?.id, 'Instagram');
         await this._notifySocialConnected(brandId, 'Instagram');
         return res.redirect(`${frontendUrl}/manage/connections?tab=connections&success=instagram_connected`);
       }
 
-      await facebookService.connectChannel(brandId, code, redirectUri);
+      const account = await facebookService.connectChannel(brandId, code, redirectUri);
+      this._backfillPostsSync(facebookService, brandId, account?.id, 'Facebook');
       await this._notifySocialConnected(brandId, 'Facebook');
       return res.redirect(`${frontendUrl}/manage/connections?tab=connections&success=facebook_connected`);
     } catch (error) {
@@ -183,7 +186,8 @@ class OAuthController {
     if (!brandId) return res.redirect(`${frontendUrl}/manage/connections?error=brand_id_missing`);
 
     try {
-      await instagramService.connectChannel(brandId, code, redirectUri);
+      const account = await instagramService.connectChannel(brandId, code, redirectUri);
+      this._backfillPostsSync(instagramService, brandId, account?.id, 'Instagram');
       await this._notifySocialConnected(brandId, 'Instagram');
       return res.redirect(`${frontendUrl}/manage/connections?tab=connections&success=instagram_connected`);
     } catch (error) {
@@ -229,7 +233,8 @@ class OAuthController {
     await redisClient.del(cacheKey);
 
     try {
-      await tiktokService.connectChannel(brandId, code, redirectUri, codeVerifier);
+      const account = await tiktokService.connectChannel(brandId, code, redirectUri, codeVerifier);
+      this._backfillPostsSync(tiktokService, brandId, account?.id, 'TikTok');
       await this._notifySocialConnected(brandId, 'TikTok');
       return res.redirect(`${frontendUrl}/manage/connections?tab=connections&success=tiktok_connected`);
     } catch (error) {
@@ -269,13 +274,29 @@ class OAuthController {
 
     try {
       const threadsService = require('../../services/social/threads');
-      await threadsService.connectChannel(brandId, code, redirectUri);
+      const account = await threadsService.connectChannel(brandId, code, redirectUri);
+      this._backfillPostsSync(threadsService, brandId, account?.id, 'Threads');
       await this._notifySocialConnected(brandId, 'Threads');
       return res.redirect(`${frontendUrl}/manage/connections?tab=connections&success=threads_connected`);
     } catch (error) {
       return this._handleCallbackError(error, frontendUrl, res);
     }
   });
+
+  /**
+   * Smart Fetch cold-start mitigation: one immediate, non-blocking
+   * syncPublishedPosts() call right after a fresh OAuth connect, so the
+   * user's PostMetricDaily-backed published-posts view isn't empty until
+   * the next 15-min posts-sync cron tick. Fire-and-forget — never blocks
+   * the OAuth redirect, and a failure here just means the cron catches up
+   * on its next pass.
+   */
+  _backfillPostsSync(service, brandId, socialAccountId, platformName) {
+    if (!socialAccountId || typeof service.syncPublishedPosts !== 'function') return;
+    service.syncPublishedPosts(brandId, socialAccountId).catch(err => {
+      logger.warn(`[OAuthController] ${platformName} OAuth-connect backfill sync failed for account ${socialAccountId}: ${err.message}`);
+    });
+  }
 
   async _notifySocialConnected(brandId, platformName) {
     try {

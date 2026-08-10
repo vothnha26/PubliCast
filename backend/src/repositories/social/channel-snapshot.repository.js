@@ -1,8 +1,10 @@
 /**
- * Shared append-only daily channel-snapshot upsert, used by all 6 platforms'
- * *ChannelSnapshot Prisma models (YouTube/Facebook/Instagram/Threads/
- * Bluesky/TikTok). One row per socialAccountId per calendar day, upserted so
- * re-syncing the same day updates that row instead of duplicating it.
+ * Shared append-only daily channel-snapshot upsert, backing the single
+ * `ChannelMetricDaily` table used by all 6 platforms (YouTube/Facebook/
+ * Instagram/Threads/Bluesky/TikTok) — consolidated 2026-08-09 from 6
+ * near-identical per-platform tables. One row per (socialAccountId,
+ * snapshotDate, platform), upserted so re-syncing the same day updates that
+ * row instead of duplicating it.
  *
  * Only YouTube's API reports real historical daily follower deltas — the
  * other 5 platforms only ever expose a *current* point-in-time follower
@@ -26,39 +28,47 @@
  * never coerced to 0, which would misrepresent "not measured" as "measured
  * as zero" (e.g. TikTok has no real daily reach API; Bluesky has no
  * reach/impressions concept at all in AT Protocol).
+ *
+ * `followersCount`/`followersGained`/`followersLost` are the only fields
+ * kept as real typed columns on `ChannelMetricDaily` — every other
+ * platform-specific counter (views, likes, reach, impressions, mediaCount,
+ * YouTube's totalViewsCount, etc.) is written into the `metrics` JSON
+ * column instead, since the table is now shared across platforms with
+ * different metric shapes. This repository routes each field to the right
+ * place automatically based on whether its column name is one of the 3
+ * typed follower fields.
  */
+const FOLLOWER_COLUMNS = new Set(['followersCount', 'followersGained', 'followersLost']);
+
 class ChannelSnapshotRepository {
   /**
-   * @param {object} prismaModel - e.g. client.youTubeChannelSnapshot
+   * @param {object} prismaModel - client.channelMetricDaily
    * @param {string} brandId
    * @param {string} socialAccountId
+   * @param {string} platform - PLATFORMS constant, part of the unique key alongside socialAccountId+snapshotDate
    * @param {{
    *   staticColumns: Record<string, number>,
-   *   reconstructible: Array<{ column: string, currentValue: number, gainedKey: string, lostKey: string }>
+   *   reconstructible: Array<{ column: string, currentValue: number, gainedKey: string, lostKey: string, emitDeltaColumns: boolean }>
    * }} current
    *   `staticColumns` are cumulative counters with no real per-day delta at
    *   all (e.g. totalVideosCount/mediaCount/postsCount) — passed through
-   *   unchanged on every row, past or present.
+   *   unchanged on every row, past or present. Written into `metrics` JSON
+   *   unless the key is `followersCount`.
    *   `reconstructible` lists every cumulative counter that DOES have a real
-   *   per-day delta backing it (e.g. followers: column 'subscribersCount',
-   *   currentValue 1000, gainedKey/lostKey pointing at dailyRows fields,
-   *   emitDeltaColumns true since subscribersGained/Lost are real DB
-   *   columns; or YouTube's views: column 'totalViewsCount', gainedKey
-   *   'views', no lostKey, emitDeltaColumns FALSE since there is no
-   *   standalone `views` column on the model — only the reconstructed
-   *   cumulative totalViewsCount is stored). Each one gets its own
-   *   independent backward-reconstruction walk when supportsHistoricalBackfill
-   *   is true.
+   *   per-day delta backing it. `column: 'followersCount'` is written to the
+   *   typed column; any other column name (e.g. Instagram's `reachCount`,
+   *   YouTube's `totalViewsCount`) is written into `metrics` JSON instead.
+   *   Each entry gets its own independent backward-reconstruction walk when
+   *   supportsHistoricalBackfill is true.
    * @param {Array<{ date: string, [deltaKey: string]: number|null, columns: Record<string, number|null> }>} dailyRows
    *   Oldest → newest or any order; sorted internally. Delta keys referenced
    *   by `reconstructible` live directly on the row; `columns` holds every
-   *   other real per-day metric already named to match the Prisma model
-   *   (e.g. { reach: 120, impressions: 500 } for Facebook) — null means "no
-   *   real data source for this platform/metric", written through as null,
-   *   never coerced to 0.
+   *   other real per-day metric (e.g. { reach: 120, impressions: 500 } for
+   *   Facebook) — null means "no real data source for this platform/metric",
+   *   written through as null inside `metrics`, never coerced to 0.
    * @param {boolean} supportsHistoricalBackfill
    */
-  async upsertChannelSnapshots(prismaModel, brandId, socialAccountId, current, dailyRows, supportsHistoricalBackfill) {
+  async upsertChannelSnapshots(prismaModel, brandId, socialAccountId, platform, current, dailyRows, supportsHistoricalBackfill) {
     if (!Array.isArray(dailyRows) || dailyRows.length === 0) return [];
 
     const { staticColumns = {}, reconstructible = [] } = current;
@@ -75,19 +85,50 @@ class ChannelSnapshotRepository {
       const isToday = row.date === todayStr;
       const snapshotDate = new Date(row.date);
 
-      const data = { ...staticColumns, ...row.columns };
+      const typedData = {};
+      const metrics = { ...staticColumns, ...row.columns };
+
       for (const r of reconstructible) {
-        data[r.column] = isToday ? r.currentValue : running.get(r.column);
+        const value = isToday ? r.currentValue : running.get(r.column);
+        if (FOLLOWER_COLUMNS.has(r.column)) {
+          typedData[r.column] = value;
+        } else {
+          metrics[r.column] = value;
+        }
         if (r.emitDeltaColumns) {
-          data[r.gainedKey] = row[r.gainedKey] ?? null;
-          if (r.lostKey) data[r.lostKey] = row[r.lostKey] ?? null;
+          const gained = row[r.gainedKey] ?? null;
+          const lost = r.lostKey ? (row[r.lostKey] ?? null) : null;
+          if (FOLLOWER_COLUMNS.has(r.gainedKey)) {
+            typedData[r.gainedKey] = gained;
+          } else {
+            metrics[r.gainedKey] = gained;
+          }
+          if (r.lostKey) {
+            if (FOLLOWER_COLUMNS.has(r.lostKey)) {
+              typedData[r.lostKey] = lost;
+            } else {
+              metrics[r.lostKey] = lost;
+            }
+          }
         }
       }
 
+      // staticColumns/row.columns keys that happen to be follower-column
+      // names would be unusual (no current adapter does this) but route
+      // correctly if it ever happens.
+      for (const key of Object.keys(metrics)) {
+        if (FOLLOWER_COLUMNS.has(key)) {
+          typedData[key] = metrics[key];
+          delete metrics[key];
+        }
+      }
+
+      const data = { ...typedData, metrics };
+
       results.push(await prismaModel.upsert({
-        where: { socialAccountId_snapshotDate: { socialAccountId, snapshotDate } },
+        where: { socialAccountId_snapshotDate_platform: { socialAccountId, snapshotDate, platform } },
         update: { ...data, fetchedAt: new Date() },
-        create: { brandId, socialAccountId, snapshotDate, ...data }
+        create: { brandId, socialAccountId, platform, snapshotDate, ...data }
       }));
 
       if (supportsHistoricalBackfill) {

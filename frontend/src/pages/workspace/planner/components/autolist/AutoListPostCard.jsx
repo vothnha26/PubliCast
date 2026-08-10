@@ -21,6 +21,7 @@ import { uploadMediaFileWithMetadata } from "@/services/mediaUpload.service";
 import { buildMediaUrl } from "@/utils/url";
 import { PlatformIcon } from "@/components/shared/PlatformIcon";
 import { validatePostAgainstAllPresets } from "@/utils/postValidation";
+import socialService from "@/services/social.service";
 
 export function AutoListPostCard({
   post,
@@ -193,7 +194,7 @@ export function AutoListPostCard({
     }
   };
 
-  const validationErrors = validatePostAgainstAllPresets(post, validationPresets, selectedPlatforms);
+  const validationErrors = validatePostAgainstAllPresets(post, validationPresets, selectedPlatforms, pendingMedia);
 
   // Map platform keys to React Icons using shared PlatformIcon component
   const renderPlatformIcon = (platform) => {
@@ -458,13 +459,28 @@ export function AutoListPostCard({
         isOpen={isDriveModalOpen}
         onClose={() => setIsDriveModalOpen(false)}
         activeBrand={activeBrand}
-        onSelectFile={(file) => {
-          const url = file.thumbnailLink || file.webViewLink || '';
-          const currentMedia = post.mediaUrls ? post.mediaUrls.split(',').filter(Boolean) : [];
-          const updatedMedia = [...currentMedia, url];
-          onUpdatePostFields(post.id, { mediaUrls: updatedMedia });
+        onSelectFile={async (file) => {
           setIsDriveModalOpen(false);
-          toast.success(`Imported file from Google Drive`);
+          // Store the raw Drive thumbnailLink/webViewLink directly instead of
+          // downloading+re-uploading — those links carry no file extension,
+          // which broke isVideoPath's extension-based video detection and
+          // made platforms like YouTube/TikTok reject the post as "not a
+          // video" even when the imported file was one. Route through the
+          // same backend download endpoint the main Post Composer uses
+          // (usePostCreatorForm's handleSelectDriveFile), which re-uploads
+          // the file and returns a URL with the correct extension.
+          const toastId = `import-drive-${post.id}`;
+          toast.loading(`Importing "${file.name}" from Google Drive...`, { id: toastId });
+          try {
+            const res = await socialService.downloadGoogleDriveFile(activeBrand.id, file.id, file.name);
+            if (!res.videoUrl) throw new Error("Invalid response received from import service");
+            const currentMedia = getMediaUrls();
+            const updatedMedia = [...currentMedia, res.videoUrl];
+            await onUpdatePostFields(post.id, { mediaUrls: updatedMedia });
+            toast.success(`Imported "${file.name}" from Google Drive!`, { id: toastId });
+          } catch (err) {
+            toast.error(err?.response?.data?.message || err?.message || "Failed to import from Google Drive", { id: toastId });
+          }
         }}
       />
 

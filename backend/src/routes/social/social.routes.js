@@ -80,6 +80,8 @@ router.post('/bluesky/disconnect', verifyAuth, requireManageConnections, socialC
 // inside the controller (authorizationFacade called twice), not via this
 // single-brandId middleware — see reassignSocialAccount in social-connection.controller.js.
 router.post('/reassign', verifyAuth, socialConnectionController.reassignSocialAccount);
+// Smart Fetch manual-refresh escape hatch (rate-limited against lastPostsSyncAt)
+router.post('/posts/sync-now', verifyAuth, requireBrandMember, socialConnectionController.syncPublishedPostsNow);
 router.get('/tiktok/published-videos', verifyAuth, requireBrandMember, tiktokController.getTikTokPublishedVideos);
 router.get('/tiktok/comments', verifyAuth, requireBrandMember, tiktokController.getTikTokComments);
 router.get('/instagram/published-posts', verifyAuth, requireBrandMember, instagramController.getInstagramPublishedPosts);

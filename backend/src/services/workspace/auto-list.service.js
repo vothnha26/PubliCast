@@ -8,6 +8,7 @@ const { upsertPublishJob, removePublishJob } = require('./post/publish-qstash.se
 const authorizationFacade = require('../auth/authorization.facade');
 const validationFacade = require('./post/validators/validation.facade');
 const logger = require('../../utils/logger');
+const postService = require('./post.service');
 
 class AutoListService {
   async getAutoLists(brandId) {
@@ -33,8 +34,67 @@ class AutoListService {
     const preparedData = this._prepareAutoListData(data);
     await autoListRepository.update(id, preparedData);
 
+    // A post's actual publish fan-out reads PostTarget rows (see
+    // FetchPostStep/SocialPublishStep), which are only written when the post
+    // is first created (via _applyAutoListPresets + upsertPostTargets in
+    // PostService.createPost) from whatever targetSocialAccountIds the
+    // AutoList had *at that moment*. Changing the AutoList's channel
+    // selection afterward (e.g. adding channel #2 and #3 to a list created
+    // with only #1) previously only touched AutoList.targetSocialAccountIds
+    // — every post already queued kept its stale PostTarget rows, so it kept
+    // publishing to just the original channel(s) even though the UI showed
+    // 3 channels selected. Re-sync PostTarget for every not-yet-published
+    // post in the queue whenever the channel selection changes.
+    if (preparedData.targetSocialAccountIds !== undefined) {
+      await this._syncQueuedPostTargets(id, preparedData.targetSocialAccountIds);
+    }
+
     eventEmitter.emit(EVENTS.AUTOLIST.UPDATED, { autoListId: id });
     return autoListRepository.findById(id);
+  }
+
+  /**
+   * Re-derives targetPlatforms/selectedAccountIds from the AutoList's new
+   * targetSocialAccountIds and re-upserts PostTarget for every post in the
+   * queue that hasn't published yet (DRAFT/SCHEDULED) — mirrors the mapping
+   * PostService._applyAutoListPresets does at post-creation time.
+   */
+  async _syncQueuedPostTargets(autoListId, targetSocialAccountIdsCsv) {
+    const accountIds = (targetSocialAccountIdsCsv || '').split(',').map(v => v.trim()).filter(Boolean);
+    if (accountIds.length === 0) return;
+
+    const accounts = await prisma.socialAccount.findMany({ where: { id: { in: accountIds } } });
+    if (accounts.length === 0) return;
+
+    const targetPlatforms = [...new Set(accounts.map((a) => a.platform))];
+    const selectedAccountIds = accounts.reduce((acc, a) => {
+      (acc[a.platform] = acc[a.platform] || []).push(a.id);
+      return acc;
+    }, {});
+
+    const autoList = await autoListRepository.findById(autoListId);
+    if (!autoList) return;
+
+    const queuedPosts = (autoList.posts || []).filter(
+      p => p.status === POST_STATUS.DRAFT || p.status === POST_STATUS.SCHEDULED
+    );
+
+    const targetPlatformsCsv = targetPlatforms.join(',');
+
+    for (const post of queuedPosts) {
+      try {
+        await prisma.$transaction(async (tx) => {
+          // Post.targetPlatforms drives which platforms FetchPostStep even
+          // attempts (see fetch-post.step.js) — PostTarget alone isn't
+          // enough, since a platform newly added to the AutoList wouldn't
+          // be in the post's own targetPlatforms string yet.
+          await tx.post.update({ where: { id: post.id }, data: { targetPlatforms: targetPlatformsCsv } });
+          await postService.upsertPostTargets(post.id, targetPlatforms, selectedAccountIds, tx, post.brandId);
+        });
+      } catch (err) {
+        logger.warn(`[AutoListService] Failed to sync PostTarget for queued post ${post.id}:`, err.message);
+      }
+    }
   }
 
   async deleteAutoList(id, operatorId) {

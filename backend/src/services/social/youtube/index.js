@@ -46,6 +46,12 @@ class YouTubeService extends BaseSocialService {
     return youtubeVideo.getPublishedVideos(brandId, pageToken, limit, socialAccountId, forceSync, startDate, endDate);
   }
 
+  // Smart Fetch Sync — the only method allowed to call YouTube's live Data
+  // API for published videos. getPublishedVideos above is DB-only.
+  async syncPublishedPosts(brandId, socialAccountId) {
+    return youtubeVideo.syncPublishedVideos(brandId, socialAccountId);
+  }
+
   async trackVideo(brandId, videoUrl) {
     return youtubeVideo.trackVideo(brandId, videoUrl);
   }

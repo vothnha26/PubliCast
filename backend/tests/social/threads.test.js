@@ -14,11 +14,13 @@ jest.mock('../../src/repositories/workspace/brand.repository', () => ({
   findBrandWithSubscription: jest.fn().mockResolvedValue(null)
 }));
 jest.mock('../../src/config/prisma', () => ({
-  socialPostMetric: {
+  postMetricDaily: {
     findMany: jest.fn().mockResolvedValue([]),
     upsert: jest.fn().mockResolvedValue({})
   }
 }));
+
+const prisma = require('../../src/config/prisma');
 
 const threadsGateway = require('../../src/services/social/threads/threads.gateway');
 const socialAccountRepository = require('../../src/repositories/social/social-account.repository');
@@ -84,15 +86,23 @@ describe('ThreadsService (#97)', () => {
   });
 
   describe('getPublishedVideos', () => {
-    it('does not fabricate per-post views/reach/engagement from likes', async () => {
+    it('does not fabricate per-post views/reach/engagement from likes — reads DB-only, no gateway call', async () => {
       socialAccountRepository.findByBrandAndPlatform.mockResolvedValue([
         { id: 'sa_threads_1', platformAccountId: 'threads-1', accessToken: 'real-token' }
       ]);
-      threadsGateway.getThreadsMediaFeed.mockResolvedValue({
-        data: [{ id: 'p1', text: 'Hello', like_count: 50, timestamp: new Date().toISOString(), media_type: 'TEXT' }],
-        nextPageToken: null,
-        prevPageToken: null
-      });
+      prisma.postMetricDaily.findMany.mockResolvedValue([{
+        platformPostId: 'p1',
+        captionSnippet: 'Hello',
+        postType: 'TEXT',
+        publishedAt: new Date(),
+        likes: 50,
+        comments: 0,
+        shares: 0,
+        reach: null,
+        views: null,
+        snapshotDate: new Date(),
+        metrics: {}
+      }]);
 
       const result = await threadsService.getPublishedVideos('brand-1');
 
@@ -100,6 +110,38 @@ describe('ThreadsService (#97)', () => {
       expect(result.data[0].reach).toBeNull(); // not 50 * 8
       expect(result.data[0].engagement).toBeNull();
       expect(result.data[0].reactions).toBe(50);
+      expect(threadsGateway.getThreadsMediaFeed).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('syncPublishedPosts (IDOR guard)', () => {
+    it('does not sync when the socialAccountId belongs to a different brand', async () => {
+      socialAccountRepository.findById.mockResolvedValue({
+        id: 'sa_threads_1',
+        brandId: 'brand-OTHER',
+        platformAccountId: 'threads-1',
+        accessToken: 'real-token'
+      });
+
+      const result = await threadsService.syncPublishedPosts('brand-1', 'sa_threads_1');
+
+      expect(result).toEqual({ synced: 0 });
+      expect(threadsGateway.getThreadsMediaFeed).not.toHaveBeenCalled();
+    });
+
+    it('syncs when the socialAccountId belongs to the caller brand', async () => {
+      socialAccountRepository.findById.mockResolvedValue({
+        id: 'sa_threads_1',
+        brandId: 'brand-1',
+        platformAccountId: 'threads-1',
+        accessToken: 'real-token'
+      });
+      threadsGateway.getThreadsMediaFeed.mockResolvedValue({ data: [], nextPageToken: null });
+
+      const result = await threadsService.syncPublishedPosts('brand-1', 'sa_threads_1');
+
+      expect(result).toEqual({ synced: 0 });
+      expect(threadsGateway.getThreadsMediaFeed).toHaveBeenCalled();
     });
   });
 });

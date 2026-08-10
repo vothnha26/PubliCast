@@ -9,6 +9,14 @@ const blueskyGateway = require('./bluesky.gateway');
  * BlueskyPostInsightAdapter
  * Concrete Adapter cho Bluesky Post Metrics.
  * Đăng ký vào PostAdapterFactory trong Core Insights.
+ *
+ * DEAD CODE / NOT WIRED UP: registered in core/insights/index.js but nothing
+ * calls postInsightFacade for Bluesky (only YouTube's youtube-analytics.
+ * service.js does). The real, actively used Bluesky post-metrics path is
+ * bluesky.service.js (DB-only reads + syncPublishedPosts Sync, against
+ * PostMetricDaily). This adapter's prismaModel (socialPostMetric) still
+ * exists but is no longer written to by the real path — do not wire a new
+ * caller here without first pointing it at PostMetricDaily instead.
  */
 class BlueskyPostInsightAdapter extends BasePostInsightAdapter {
   get platform() {

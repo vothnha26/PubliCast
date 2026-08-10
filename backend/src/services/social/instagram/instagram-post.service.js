@@ -1,21 +1,11 @@
 const instagramGateway = require('./instagram.gateway');
 const socialAccountRepository = require('../../../repositories/social/social-account.repository');
 const { getHistoryWindowMonths } = require('../plan-history-window.util');
-const prisma = require('../../../config/prisma');
 const { PLATFORMS, POST_STATUS, POST_TYPES, DEFAULT_CONFIG } = require('../../../utils/constants');
 const { computeCommentScore } = require('../../../utils/comment-score.util');
 const InstagramPublishStrategyFactory = require('./publish-strategies/publish-strategy.factory');
 const logger = require('../../../utils/logger');
-
-const postCache = new Map();
-const CACHE_TTL_MS = 10 * 60 * 1000; // 10 minutes
-
-// getPublishedPosts()'s DB-first cache (see SocialPostMetric). Instagram's
-// own docs say metrics can lag up to 48h behind real activity — re-fetching
-// live more often than that cannot reliably return newer numbers, so a live
-// re-fetch is only worth its rate-limit cost once/day (same reasoning as
-// Facebook's FACEBOOK_POST_METRICS_TTL_MS).
-const SOCIAL_POST_METRICS_TTL_MS = 24 * 60 * 60 * 1000;
+const { upsertPostMetricsDaily, findLatestPostMetrics } = require('../post-metric-daily-persistence.util');
 
 // Instagram Graph API has no date-range filter for media, and (unlike
 // Facebook Pages) no batch/multi-id insights endpoint to reduce round-trips
@@ -42,49 +32,42 @@ class InstagramPostService {
       });
   }
 
+  /**
+   * Smart Fetch: DB-only read, no live Graph API call is ever triggered from
+   * this method — see FacebookPostService#getPublishedPosts for the full
+   * rationale (same pattern applied here). `pageToken` also reads DB only;
+   * deep pagination beyond what Sync has cached returns an empty page.
+   */
   async getPublishedPosts(brandId, pageToken = null, limit = 10, socialAccountId = null, startDate = null, endDate = null) {
-    const cacheKey = `${brandId}_${socialAccountId || 'default'}_${pageToken || 'first'}_${limit}_${startDate || ''}_${endDate || ''}`;
-    const cached = postCache.get(cacheKey);
-    if (cached && cached.expiry > Date.now()) return cached.data;
-
     try {
-      const { igAccountId, accessToken, socialAccountId: resolvedAccountId } = await this._getAccountCredentials(brandId, socialAccountId);
-
-      if (accessToken && accessToken.startsWith('mock-')) {
-        return { data: [], nextPageToken: null, prevPageToken: null };
-      }
-
-      // The initial load (no explicit pageToken) is DB-first (see
-      // SocialPostMetric) — Instagram's insights can lag up to 48h, so
-      // re-fetching live every tab-open burns rate-limit budget for numbers
-      // that provably haven't changed. Only when the DB has nothing fresh
-      // enough for the brand's plan window does this fall through to the
-      // live page-walk, same as before. An explicit pageToken (manual "next
-      // page" click) always goes live.
-      let result;
-      if (pageToken) {
-        result = await this._fetchSinglePage(igAccountId, accessToken, pageToken, limit);
-      } else {
-        const windowMonths = await getHistoryWindowMonths(brandId);
-        result = await this._fetchFromDbCache(brandId, resolvedAccountId, windowMonths);
-        if (!result) {
-          result = await this._fetchRecentWindow(brandId, igAccountId, accessToken, limit);
-          this._persistPostMetrics(brandId, resolvedAccountId, result.data).catch(err => {
-            console.warn('[InstagramPostService] Failed to persist post metrics cache:', err.message);
-          });
-        }
-      }
-
-      result = { ...result, data: this._filterByDateRange(result.data, startDate, endDate) };
-
-      postCache.set(cacheKey, { data: result, expiry: Date.now() + CACHE_TTL_MS });
-      return result;
+      const { socialAccountId: resolvedAccountId } = await this._getAccountCredentials(brandId, socialAccountId);
+      const rows = await findLatestPostMetrics(brandId, PLATFORMS.INSTAGRAM, resolvedAccountId, limit);
+      const data = this._filterByDateRange(rows.map(r => this._formatDbMetricRow(r)), startDate, endDate);
+      return { data, nextPageToken: null, prevPageToken: null };
     } catch (error) {
       if (error.message.includes('Instagram account not connected')) {
         return { data: [], nextPageToken: null, prevPageToken: null };
       }
       throw error;
     }
+  }
+
+  /**
+   * Sync-only: the ONE place allowed to call Instagram's live Graph API for
+   * published posts. Called from posts-sync-scheduler.service.js's cron
+   * webhook, connectChannel's OAuth-time backfill, and the manual-refresh
+   * endpoint — never from a read path.
+   */
+  async syncPublishedPosts(brandId, socialAccountId) {
+    const { igAccountId, accessToken } = await this._getAccountCredentials(brandId, socialAccountId);
+
+    if (accessToken && accessToken.startsWith('mock-')) {
+      return { synced: 0 };
+    }
+
+    const result = await this._fetchRecentWindow(brandId, igAccountId, accessToken, 50);
+    await this._persistPostMetrics(brandId, socialAccountId, result.data);
+    return { synced: result.data.length };
   }
 
   // See FacebookPostService#_filterByDateRange — same display-only
@@ -100,30 +83,12 @@ class InstagramPostService {
     });
   }
 
-  /** DB-first read path (see SocialPostMetric in schema.prisma). Mirrors
-   * FacebookPostService#_fetchFromDbCache: null (cache miss) unless the
-   * newest row for this account is fresher than SOCIAL_POST_METRICS_TTL_MS. */
-  async _fetchFromDbCache(brandId, socialAccountId, windowMonths) {
-    const cutoff = new Date();
-    cutoff.setMonth(cutoff.getMonth() - windowMonths);
-
-    const rows = await prisma.socialPostMetric.findMany({
-      where: { brandId, socialAccountId, platform: PLATFORMS.INSTAGRAM, publishedAt: { gte: cutoff } },
-      orderBy: { publishedAt: 'desc' }
-    });
-    if (rows.length === 0) return null;
-
-    const newestFetch = rows.reduce((max, r) => (r.fetchedAt > max ? r.fetchedAt : max), rows[0].fetchedAt);
-    if (Date.now() - newestFetch.getTime() >= SOCIAL_POST_METRICS_TTL_MS) return null;
-
-    return {
-      data: rows.map(r => this._formatDbMetricRow(r)),
-      nextPageToken: null,
-      prevPageToken: null
-    };
-  }
-
+  /** Builds getPublishedPosts()'s response shape from a PostMetricDaily row
+   * — clicks/linkClicks aren't typed columns on PostMetricDaily, so they
+   * live in `metrics` JSON. */
   _formatDbMetricRow(row) {
+    const m = row.metrics || {};
+    const clicks = m.clicks || 0;
     return {
       id: row.platformPostId,
       message: row.captionSnippet || DEFAULT_CONFIG.NO_CONTENT,
@@ -133,84 +98,43 @@ class InstagramPostService {
       postUrl: row.postUrl || null,
       date: row.publishedAt,
       status: POST_STATUS.PUBLISHED,
-      reach: row.reach,
-      views: row.views,
-      reactions: row.likes,
-      comments: row.comments,
-      shares: row.shares,
-      clicks: row.clicks,
-      linkClicks: Math.round(row.clicks * 0.2),
-      videoViews: row.postType === POST_TYPES.VIDEO ? row.views : 0,
+      reach: row.reach || 0,
+      views: row.views || 0,
+      reactions: row.likes || 0,
+      comments: row.comments || 0,
+      shares: row.shares || 0,
+      clicks,
+      linkClicks: Math.round(clicks * 0.2),
+      videoViews: row.postType === POST_TYPES.VIDEO ? (row.views || 0) : 0,
       videoTimeWatched: row.postType === POST_TYPES.VIDEO ? '0:20' : '0:00',
-      engagement: row.engagementRate,
-      commentScore: computeCommentScore({ comments: row.comments, likes: row.likes, shares: row.shares, reach: row.reach }),
+      engagement: m.engagementRate || 0,
+      commentScore: computeCommentScore({ comments: row.comments || 0, likes: row.likes || 0, shares: row.shares || 0, reach: row.reach || 0 }),
       spent: 0
     };
   }
 
-  /** Upserts the freshly-enriched page(s) of posts into SocialPostMetric so
-   * the next getPublishedPosts call for this brand/account can be DB-first
-   * instead of hitting the live Graph API again. Best-effort. */
+  /** Sync-only: upserts the freshly-enriched page(s) of posts into
+   * PostMetricDaily so the next getPublishedPosts call can be DB-only. */
   async _persistPostMetrics(brandId, socialAccountId, posts) {
-    for (const post of posts) {
-      await prisma.socialPostMetric.upsert({
-        where: { socialAccountId_platformPostId: { socialAccountId, platformPostId: post.id } },
-        create: {
-          brandId,
-          socialAccountId,
-          platform: PLATFORMS.INSTAGRAM,
-          platformPostId: post.id,
-          postType: post.type || null,
-          publishedAt: post.date ? new Date(post.date) : null,
-          reach: post.reach || 0,
-          views: post.views || 0,
-          likes: post.reactions || 0,
-          comments: post.comments || 0,
-          shares: post.shares || 0,
-          clicks: post.clicks || 0,
-          engagementRate: post.engagement || 0,
-          captionSnippet: post.message || null,
-          thumbnailUrl: post.thumbnailUrl || post.mediaUrl || null,
-          postUrl: post.postUrl || null
-        },
-        update: {
-          postType: post.type || null,
-          publishedAt: post.date ? new Date(post.date) : null,
-          reach: post.reach || 0,
-          views: post.views || 0,
-          likes: post.reactions || 0,
-          comments: post.comments || 0,
-          shares: post.shares || 0,
-          clicks: post.clicks || 0,
-          engagementRate: post.engagement || 0,
-          captionSnippet: post.message || null,
-          thumbnailUrl: post.thumbnailUrl || post.mediaUrl || null,
-          postUrl: post.postUrl || null,
-          fetchedAt: new Date()
-        }
-      }).catch(err => {
-        console.warn(`[InstagramPostService] Failed to upsert metrics for post ${post.id}:`, err.message);
-      });
-    }
-  }
+    const rows = posts.map(post => ({
+      platformPostId: post.id,
+      postType: post.type || null,
+      publishedAt: post.date ? new Date(post.date) : null,
+      reach: post.reach || 0,
+      views: post.views || 0,
+      likes: post.reactions || 0,
+      comments: post.comments || 0,
+      shares: post.shares || 0,
+      captionSnippet: post.message || null,
+      thumbnailUrl: post.thumbnailUrl || post.mediaUrl || null,
+      postUrl: post.postUrl || null,
+      metrics: {
+        clicks: post.clicks || 0,
+        engagementRate: post.engagement || 0
+      }
+    }));
 
-  async _fetchSinglePage(igAccountId, accessToken, pageToken, limit) {
-    const feedResult = await this._withTimeout(
-      instagramGateway.getInstagramMediaFeed(igAccountId, accessToken, pageToken, limit),
-      4000,
-      { data: [], nextPageToken: null, prevPageToken: null }
-    );
-
-    const feed = feedResult.data || [];
-    const postsWithInsights = await Promise.all(
-      feed.map(post => this._enrichPostWithInsights(post, accessToken))
-    );
-
-    return {
-      data: postsWithInsights,
-      nextPageToken: feedResult.nextPageToken || null,
-      prevPageToken: feedResult.prevPageToken || null
-    };
+    await upsertPostMetricsDaily(brandId, socialAccountId, PLATFORMS.INSTAGRAM, rows);
   }
 
   /** Walks pages from the start, stopping at whichever comes first: a post
@@ -339,13 +263,24 @@ class InstagramPostService {
 
   // socialAccountId picks a specific IG account when the brand has more than
   // one connected; omitted, falls back to the first one (correct as long as
-  // the brand only has one, still the common case).
+  // the brand only has one, still the common case). A socialAccountId that
+  // doesn't match any of the brand's own IG accounts must fail loudly rather
+  // than silently substituting a different account (would otherwise fetch/
+  // write data for the wrong account without any error surfaced).
   async _getAccountCredentials(brandId, socialAccountId = null) {
     const socialAccount = await socialAccountRepository.findByBrandAndPlatform(brandId, PLATFORMS.INSTAGRAM);
     if (!socialAccount || socialAccount.length === 0) {
       throw new Error('Instagram account not connected for this brand');
     }
-    const account = (socialAccountId && socialAccount.find(acc => acc.id === socialAccountId)) || socialAccount[0];
+    let account;
+    if (socialAccountId) {
+      account = socialAccount.find(acc => acc.id === socialAccountId);
+      if (!account) {
+        throw new Error('Instagram account not connected for this brand');
+      }
+    } else {
+      account = socialAccount[0];
+    }
     return {
       igAccountId: account.platformAccountId,
       accessToken: account.accessToken,

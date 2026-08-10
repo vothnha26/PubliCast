@@ -13,7 +13,7 @@
 const youtubeGateway = require('./youtube.gateway');
 const socialAccountRepository = require('../../../repositories/social/social-account.repository');
 const DistributedLockService = require('../distributed-lock.service');
-const QuotaTrackerService = require('../quota-tracker.service');
+const quotaService = require('../quota-tracker.singleton');
 const RedisHealthService = require('../redis-health.service');
 const logger = require('../../../utils/logger');
 const { PLATFORMS, LOCK_CONFIG, QUOTA_TTL_STRATEGY } = require('../../../utils/constants');
@@ -28,7 +28,6 @@ try {
 class YouTubeAnalyticsEnhancedService {
   constructor() {
     this.lockService = redisClient ? new DistributedLockService(redisClient) : null;
-    this.quotaService = redisClient ? new QuotaTrackerService(redisClient) : null;
     this.redisHealthService = redisClient ? new RedisHealthService(redisClient) : null;
   }
 
@@ -125,7 +124,7 @@ class YouTubeAnalyticsEnhancedService {
       }
 
       // Increment quota (1 unit for 1 basic metrics query)
-      const quotaUsage = await this.quotaService?.incrementAndGet('youtube-analytics', 1);
+      const quotaUsage = await quotaService?.incrementAndGet('youtube-analytics', 1);
       logger.debug('[QUOTA_INCREMENTED] Quota usage after fetch', {
         videoId,
         usage: quotaUsage
@@ -138,7 +137,7 @@ class YouTubeAnalyticsEnhancedService {
       ]);
 
       // Cache results
-      const ttl = await this.quotaService?.getCalculatedTTL(
+      const ttl = await quotaService?.getCalculatedTTL(
         'youtube-analytics',
         QUOTA_TTL_STRATEGY.YOUTUBE_ANALYTICS
       );
@@ -226,7 +225,7 @@ class YouTubeAnalyticsEnhancedService {
       if (!auth) return this._getStatusMessage();
 
       // Still increment quota count if quota service works
-      await this.quotaService?.incrementAndGet('youtube-analytics', 1);
+      await quotaService?.incrementAndGet('youtube-analytics', 1);
 
       return await this._buildInsights(auth, videoId);
     } catch (err) {

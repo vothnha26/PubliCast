@@ -1,4 +1,9 @@
+jest.mock('../../src/services/social/quota-tracker.singleton', () => ({
+  incrementAndGet: jest.fn().mockResolvedValue(1)
+}));
+
 const youtubeGateway = require('../../src/services/social/youtube/youtube.gateway');
+const mockQuotaService = require('../../src/services/social/quota-tracker.singleton');
 const { google } = require('googleapis');
 const { YOUTUBE_QUOTA_COSTS, YOUTUBE_API_PARTS } = require('../../src/services/social/youtube/youtube.constants');
 
@@ -28,17 +33,11 @@ jest.mock('googleapis', () => {
 
 describe('YouTubeGateway Quota Tracking Unit Tests', () => {
   let mockYoutubeInstance;
-  let mockQuotaService;
 
   beforeEach(() => {
     jest.clearAllMocks();
     mockYoutubeInstance = google.youtube();
-    
-    // Gán mock quotaService trực tiếp vào instance để kiểm thử độc lập
-    mockQuotaService = {
-      incrementAndGet: jest.fn().mockResolvedValue(1)
-    };
-    youtubeGateway.quotaService = mockQuotaService;
+    mockQuotaService.incrementAndGet.mockResolvedValue(1);
   });
 
   describe('_trackQuota Error Handling', () => {

@@ -12,7 +12,7 @@ class BlueskyChannelAdapter extends BaseChannelAdapter {
   }
 
   getPrismaModel(client) {
-    return client.blueskyChannelSnapshot;
+    return client.channelMetricDaily;
   }
 
   get supportsBackfill() {
