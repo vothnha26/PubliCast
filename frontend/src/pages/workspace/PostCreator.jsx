@@ -524,13 +524,14 @@ export function PostCreatorPage() {
         }`}>
 
           {/* Unified Top Headbar matching Figma / User Reference — below md,
-              the title + Tags button + RightPanelTabSwitcher (4 tabs) +
-              fullscreen/close buttons together don't fit 375px width;
-              scrolling horizontally instead of wrapping keeps every control
-              reachable without the title line-wrapping over them. */}
-          <div className="shrink-0 px-3 md:px-6 py-3.5 border-b border-border/60 bg-card flex items-center justify-between gap-3 overflow-x-auto scrollbar-none z-30">
-            <div className="flex items-center gap-3 shrink-0">
-              <h1 className="text-base font-bold text-foreground tracking-tight font-sans whitespace-nowrap">
+              the title + Tags button + RightPanelTabSwitcher (4 tabs) don't
+              fit 375px width alongside fullscreen/close. Close in particular
+              is the one control a user must always be able to reach without
+              scrolling, so it (with Fullscreen) stays pinned outside the
+              scroll region; only title+Tags+tabs scroll horizontally. */}
+          <div className="shrink-0 px-3 md:px-6 py-3.5 border-b border-border/60 bg-card flex items-center justify-between gap-2 z-30">
+            <div className="flex items-center gap-3 overflow-x-auto scrollbar-none min-w-0">
+              <h1 className="text-base font-bold text-foreground tracking-tight font-sans whitespace-nowrap shrink-0">
                 {isLibrary
                   ? (editingPost ? t("planner:postCreator.header.editTemplate") : t("planner:postCreator.header.createTemplate"))
                   : (editingPost ? t("planner:postCreator.header.editPost", "Create Post") : t("planner:postCreator.header.createPost", "Create Post"))}
@@ -545,33 +546,41 @@ export function PostCreatorPage() {
                 <span>{t("planner:postCreator.header.tags", "Tags")}</span>
                 <ChevronDown size={12} className="text-muted-foreground" />
               </button>
-            </div>
 
-            <div className="flex items-center gap-3 shrink-0">
-              <RightPanelTabSwitcher />
+              <div className="hidden md:block h-4 w-px bg-border/60 shrink-0" />
 
-              <div className="h-4 w-px bg-border/60 shrink-0" />
-
-              <div className="flex items-center gap-1">
-                <button
-                  type="button"
-                  onClick={() => setIsFullScreen(!isFullScreen)}
-                  className="p-2 rounded-xl text-muted-foreground hover:text-foreground hover:bg-muted transition-all cursor-pointer"
-                  title={isFullScreen ? "Thu nhỏ" : "Toàn màn hình"}
-                >
-                  {isFullScreen ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
-                </button>
-                <button
-                  type="button"
-                  onClick={closePostCreator}
-                  data-testid="post-creator-close-btn"
-                  className="p-2 rounded-xl text-muted-foreground hover:text-foreground hover:bg-muted transition-all cursor-pointer"
-                  title="Đóng"
-                >
-                  <X size={18} />
-                </button>
+              <div className="hidden md:block shrink-0">
+                <RightPanelTabSwitcher />
               </div>
             </div>
+
+            <div className="flex items-center gap-1 shrink-0">
+              <button
+                type="button"
+                onClick={() => setIsFullScreen(!isFullScreen)}
+                className="p-2 rounded-xl text-muted-foreground hover:text-foreground hover:bg-muted transition-all cursor-pointer"
+                title={isFullScreen ? "Thu nhỏ" : "Toàn màn hình"}
+              >
+                {isFullScreen ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
+              </button>
+              <button
+                type="button"
+                onClick={closePostCreator}
+                data-testid="post-creator-close-btn"
+                className="p-2 rounded-xl text-muted-foreground hover:text-foreground hover:bg-muted transition-all cursor-pointer"
+                title="Đóng"
+              >
+                <X size={18} />
+              </button>
+            </div>
+          </div>
+
+          {/* Below md, RightPanelTabSwitcher moves to its own row (hidden
+              from the scrollable title row above) since it's how mobile
+              users reach Notes/Templates/AI — burying it in a horizontal
+              scroll next to the title made it easy to miss entirely. */}
+          <div className="md:hidden shrink-0 px-3 py-2 border-b border-border/60 bg-card overflow-x-auto scrollbar-none">
+            <RightPanelTabSwitcher />
           </div>
 
           {/* Main 2-Column Content Body — stacks vertically (form above

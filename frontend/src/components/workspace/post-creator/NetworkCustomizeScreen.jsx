@@ -308,12 +308,14 @@ export function NetworkCustomizeScreen({ onClose }) {
         isFullScreen ? 'max-w-none rounded-none border-0' : 'max-w-[1530px] rounded-[24px] border border-border/40'
       }`}>
 
-        {/* Unified Top Headbar matching Figma / User Reference — same
-            overflow-x-auto treatment as PostCreator.jsx's header, for the
-            same reason: back button + title + Tags + RightPanelTabSwitcher
-            + fullscreen/close don't fit a 375px viewport. */}
-        <div className="shrink-0 px-3 md:px-6 py-3.5 border-b border-border/60 bg-card flex items-center justify-between gap-3 overflow-x-auto scrollbar-none z-30">
-          <div className="flex items-center gap-3 shrink-0">
+        {/* Unified Top Headbar matching Figma / User Reference — below md,
+            back + title + Tags + RightPanelTabSwitcher don't fit a 375px
+            viewport alongside fullscreen/close. Close is the one control a
+            user must always reach without scrolling, so it (with
+            Fullscreen) stays pinned outside the scroll region; only
+            back+title+Tags+tabs scroll horizontally. */}
+        <div className="shrink-0 px-3 md:px-6 py-3.5 border-b border-border/60 bg-card flex items-center justify-between gap-2 z-30">
+          <div className="flex items-center gap-3 overflow-x-auto scrollbar-none min-w-0">
             <button
               type="button"
               onClick={onClose}
@@ -322,7 +324,7 @@ export function NetworkCustomizeScreen({ onClose }) {
             >
               <ArrowLeft size={18} />
             </button>
-            <h1 className="text-base font-bold text-foreground tracking-tight font-sans whitespace-nowrap">
+            <h1 className="text-base font-bold text-foreground tracking-tight font-sans whitespace-nowrap shrink-0">
               {t("planner:postCreator.networkCustomize.title", "Customize per network")}
             </h1>
 
@@ -335,32 +337,39 @@ export function NetworkCustomizeScreen({ onClose }) {
               <span>{t("planner:postCreator.header.tags", "Tags")}</span>
               <ChevronDown size={12} className="text-muted-foreground" />
             </button>
-          </div>
 
-          <div className="flex items-center gap-3 shrink-0">
-            <RightPanelTabSwitcher />
+            <div className="hidden md:block h-4 w-px bg-border/60 shrink-0" />
 
-            <div className="h-4 w-px bg-border/60 shrink-0" />
-
-            <div className="flex items-center gap-1">
-              <button
-                type="button"
-                onClick={() => setIsFullScreen(!isFullScreen)}
-                className="p-2 rounded-xl text-muted-foreground hover:text-foreground hover:bg-muted transition-all cursor-pointer"
-                title={isFullScreen ? "Thu nhỏ" : "Toàn màn hình"}
-              >
-                {isFullScreen ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
-              </button>
-              <button
-                type="button"
-                onClick={handleExit}
-                className="p-2 rounded-xl text-muted-foreground hover:text-foreground hover:bg-muted transition-all cursor-pointer"
-                title="Đóng"
-              >
-                <X size={18} />
-              </button>
+            <div className="hidden md:block shrink-0">
+              <RightPanelTabSwitcher />
             </div>
           </div>
+
+          <div className="flex items-center gap-1 shrink-0">
+            <button
+              type="button"
+              onClick={() => setIsFullScreen(!isFullScreen)}
+              className="p-2 rounded-xl text-muted-foreground hover:text-foreground hover:bg-muted transition-all cursor-pointer"
+              title={isFullScreen ? "Thu nhỏ" : "Toàn màn hình"}
+            >
+              {isFullScreen ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
+            </button>
+            <button
+              type="button"
+              onClick={handleExit}
+              className="p-2 rounded-xl text-muted-foreground hover:text-foreground hover:bg-muted transition-all cursor-pointer"
+              title="Đóng"
+            >
+              <X size={18} />
+            </button>
+          </div>
+        </div>
+
+        {/* Below md, RightPanelTabSwitcher moves to its own row, same as
+            PostCreator.jsx — burying it in the title's horizontal scroll
+            made it easy to miss on mobile. */}
+        <div className="md:hidden shrink-0 px-3 py-2 border-b border-border/60 bg-card overflow-x-auto scrollbar-none">
+          <RightPanelTabSwitcher />
         </div>
 
         {/* Main 2-Column Content Body — stacks vertically below md, same
