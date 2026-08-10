@@ -10,6 +10,7 @@ import { useTranslation } from "react-i18next";
 import { getPlatformPostUrl } from "../../../utils/postUrlHelper";
 import { useLatestRequestId } from "../../../hooks/useLatestRequestId";
 import { usePostsRealtimeRefresh } from "../../../hooks/usePostsRealtimeRefresh";
+import { getBrandDateParts } from "../../../utils/brandTimezone";
 
 // Import SOLID Subcomponents
 import { UpgradeBanner } from "./components/UpgradeBanner";
@@ -221,18 +222,14 @@ export function WeeklyCalendarView({ socialAccountId, platform } = {}) {
       return matchesPlatform;
     });
     filtered.forEach(post => {
-      const date = new Date(post.publishedAt || post.scheduledAt || post.createdAt);
-      const year = date.getFullYear();
-      const month = String(date.getMonth() + 1).padStart(2, '0');
-      const day = String(date.getDate()).padStart(2, '0');
-      const dateStr = `${year}-${month}-${day}`;
-      const hour = date.getHours();
+      const { year, month, day, hour } = getBrandDateParts(post.publishedAt || post.scheduledAt || post.createdAt, activeBrand?.timezone);
+      const dateStr = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
       const key = `${dateStr}-${hour}`;
       if (!grid[key]) grid[key] = [];
       grid[key].push(post);
     });
     return grid;
-  }, [searchStatusTypeFiltered, visiblePlatforms]);
+  }, [searchStatusTypeFiltered, visiblePlatforms, activeBrand?.timezone]);
 
   // Date handlers
   const handlePrevWeek = () => {
@@ -335,6 +332,7 @@ export function WeeklyCalendarView({ socialAccountId, platform } = {}) {
               onDuplicateClick={handleDuplicatePost}
               onDetailClick={setDetailPost}
               visiblePlatforms={visiblePlatforms}
+              brandTimezone={activeBrand?.timezone}
             />
           ) : (
             <WeeklyGrid
@@ -349,6 +347,7 @@ export function WeeklyCalendarView({ socialAccountId, platform } = {}) {
               rowHeight={rowHeight}
               eventsData={eventsData}
               viewMode={calendarViewMode}
+              brandTimezone={activeBrand?.timezone}
             />
           )}
         </div>

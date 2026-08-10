@@ -4,13 +4,13 @@ import {
   BarChart2, MoreVertical, Tag, Play, Share2, Target, MousePointerClick,
   ChevronUp, Loader2
 } from "lucide-react";
-import { format } from "date-fns";
 import { useTranslation } from "react-i18next";
 import { resolvePlatformTarget, getPlatformPostUrl } from "@/utils/postUrlHelper";
 import socialService from "@/services/social.service";
 import { PlatformMetricsStrategyFactory } from "@/services/strategies/platformMetrics.strategy";
 import { useBrand } from "@/context/BrandContext";
 import { PlatformIcon } from "@/components/shared/PlatformIcon";
+import { formatInBrandTimezone } from "@/utils/brandTimezone";
 
 export function PublishedPostDetailModal({ post, onClose }) {
   const { t } = useTranslation("planner");
@@ -113,7 +113,9 @@ export function PublishedPostDetailModal({ post, onClose }) {
   const rawEng = metrics?.engagement || post?.stats?.engagement || post?.stats?.engagementRate || post?.engagementRate;
   const engagementRate = rawEng !== undefined && rawEng !== null && rawEng !== "-" ? (String(rawEng).endsWith("%") ? rawEng : `${rawEng}%`) : "-";
 
-  const formattedDate = publishedAt ? format(new Date(publishedAt), "MMM d, h:mm a") : "Jul 11, 4:14 PM";
+  const formattedDate = publishedAt
+    ? formatInBrandTimezone(publishedAt, activeBrand?.timezone, { locale: "en-US", month: "short", day: "numeric", year: undefined, hour: "numeric", minute: "2-digit", hour12: true })
+    : "Jul 11, 4:14 PM";
   const targetLabel = post?.targetPlatforms || post?.options?.targetType || t("postDetail.custom", "Custom");
 
   const isFacebook = platform === "FACEBOOK";

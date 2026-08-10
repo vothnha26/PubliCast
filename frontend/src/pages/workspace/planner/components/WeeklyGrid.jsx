@@ -4,6 +4,7 @@ import { buildMediaUrl } from '@/utils/url';
 import { PlatformIcon } from '@/components/shared/PlatformIcon';
 import { PostMediaThumbnail } from '@/components/shared/PostMediaThumbnail';
 import { PublishProgressBadge } from '@/components/shared/PublishProgressBadge';
+import { formatInBrandTimezone } from '@/utils/brandTimezone';
 
 const PLATFORM_COLORS = {
   YOUTUBE: "#FF0000",
@@ -35,7 +36,8 @@ export function WeeklyGrid({
   onCellDrop,
   rowHeight = 100,
   eventsData = [],
-  viewMode = 'WEEK'
+  viewMode = 'WEEK',
+  brandTimezone
 }) {
   const gridContainerRef = useRef(null);
 
@@ -270,8 +272,8 @@ export function WeeklyGrid({
                   {/* Scheduled Posts rendering */}
                   <div className="space-y-1.5 z-10 w-full">
                     {cellPosts.map(post => {
-                      const displayTime = (post.publishedAt || post.scheduledAt) 
-                        ? new Date(post.publishedAt || post.scheduledAt).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }) 
+                      const displayTime = (post.publishedAt || post.scheduledAt)
+                        ? formatInBrandTimezone(post.publishedAt || post.scheduledAt, brandTimezone, { locale: 'en-US', year: undefined, month: undefined, day: undefined, hour: 'numeric', minute: '2-digit', hour12: true })
                         : '';
                       
                       const hasMedia = post.mediaUrls && post.mediaUrls.length > 0;

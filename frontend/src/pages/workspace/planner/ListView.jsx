@@ -14,6 +14,7 @@ import postService from "../../../services/post.service";
 import { useBrand } from "../../../context/BrandContext";
 import { toast } from "sonner";
 import { format } from "date-fns";
+import { toBrandWallClockDate } from "../../../utils/brandTimezone";
 import { useConfirm } from "@/hooks/useConfirm";
 import { useBrandPermission } from "../../../hooks/useBrandPermission";
 import { AccessGuard } from "../../../components/shared/AccessGuard";
@@ -581,7 +582,7 @@ export function ListView({ socialAccountId } = {}) {
                                        {post.caption && post.caption !== post.title
                                          ? post.caption
                                          : (post.publishedAt || post.scheduledAt || post.createdAt
-                                             ? `${post.status?.toLowerCase() === 'published' ? 'Đã đăng' : 'Lên lịch'}: ${format(new Date(post.publishedAt || post.scheduledAt || post.createdAt), "HH:mm - dd/MM/yyyy")}`
+                                             ? `${post.status?.toLowerCase() === 'published' ? 'Đã đăng' : 'Lên lịch'}: ${format(toBrandWallClockDate(post.publishedAt || post.scheduledAt || post.createdAt, activeBrand?.timezone), "HH:mm - dd/MM/yyyy")}`
                                              : "—")}
                                      </span>
                                   </div>
@@ -624,10 +625,10 @@ export function ListView({ socialAccountId } = {}) {
                             <td className="px-4 py-5">
                                <div className="flex flex-col">
                                   <span className="text-[12px] font-bold text-foreground">
-                                    {(post.scheduledAt || post.publishedAt || post.createdAt) ? format(new Date(post.scheduledAt || post.publishedAt || post.createdAt), "MMM d, yyyy") : "—"}
+                                    {(post.scheduledAt || post.publishedAt || post.createdAt) ? format(toBrandWallClockDate(post.scheduledAt || post.publishedAt || post.createdAt, activeBrand?.timezone), "MMM d, yyyy") : "—"}
                                   </span>
                                   <span className="text-[10px] text-muted-foreground uppercase font-medium">
-                                    {(post.scheduledAt || post.publishedAt || post.createdAt) ? format(new Date(post.scheduledAt || post.publishedAt || post.createdAt), "hh:mm a") : "—"}
+                                    {(post.scheduledAt || post.publishedAt || post.createdAt) ? format(toBrandWallClockDate(post.scheduledAt || post.publishedAt || post.createdAt, activeBrand?.timezone), "hh:mm a") : "—"}
                                   </span>
                                </div>
                             </td>

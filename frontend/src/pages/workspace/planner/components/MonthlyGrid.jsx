@@ -3,6 +3,7 @@ import { format } from 'date-fns';
 import { BarChart3 } from 'lucide-react';
 import { buildMediaUrl } from '@/utils/url';
 import { PlatformIcon } from '@/components/shared/PlatformIcon';
+import { getBrandDateParts, formatInBrandTimezone } from '@/utils/brandTimezone';
 
 const PLATFORM_COLORS = {
   YOUTUBE: "#FF0000",
@@ -41,7 +42,8 @@ export function MonthlyGrid({
   onPostClick,
   onDuplicateClick,
   onDetailClick,
-  visiblePlatforms = {}
+  visiblePlatforms = {},
+  brandTimezone
 }) {
   const weekdayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
@@ -66,13 +68,13 @@ export function MonthlyGrid({
       const matchesPlatform = !post.platforms || post.platforms.length === 0 || post.platforms.some(p => visiblePlatforms[p.toUpperCase()] !== false);
       if (!matchesPlatform) return;
 
-      const date = new Date(post.publishedAt || post.scheduledAt || post.createdAt);
-      const dateStr = format(date, 'yyyy-MM-dd');
+      const { year, month, day } = getBrandDateParts(post.publishedAt || post.scheduledAt || post.createdAt, brandTimezone);
+      const dateStr = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
       if (!map[dateStr]) map[dateStr] = [];
       map[dateStr].push(post);
     });
     return map;
-  }, [postData, visiblePlatforms]);
+  }, [postData, visiblePlatforms, brandTimezone]);
 
   // Generate 42 days grid for Month view
   const daysInMonthGrid = useMemo(() => {
@@ -206,7 +208,7 @@ export function MonthlyGrid({
                     className={`flex items-center gap-1.5 px-2 py-1 border rounded-lg text-[10px] font-bold truncate transition-all hover:scale-[1.02] active:scale-[0.98] cursor-pointer shadow-sm group/mcard ${
                       STATUS_COLORS[post.status?.toLowerCase()] || 'bg-card border-border text-foreground'
                     }`}
-                    title={`${post.title || post.caption || "Untitled"} (${format(new Date(post.publishedAt || post.scheduledAt || post.createdAt), 'h:mma')})`}
+                    title={`${post.title || post.caption || "Untitled"} (${formatInBrandTimezone(post.publishedAt || post.scheduledAt || post.createdAt, brandTimezone, { locale: 'en-US', year: undefined, month: undefined, day: undefined, hour: 'numeric', minute: '2-digit', hour12: true })})`}
                   >
                     {/* Platform icon */}
                     <div className="flex gap-0.5 shrink-0">
@@ -221,7 +223,7 @@ export function MonthlyGrid({
                     <span className="text-[8px] opacity-75 font-black uppercase font-mono tracking-tight shrink-0 group-hover/mcard:hidden">
                       {(post.status?.toLowerCase() === "scheduled" || post.status?.toLowerCase() === "publishing") && post.publishProgress
                         ? `${post.publishProgress.published}/${post.publishProgress.total}`
-                        : format(new Date(post.publishedAt || post.scheduledAt || post.createdAt), 'h:mma')}
+                        : formatInBrandTimezone(post.publishedAt || post.scheduledAt || post.createdAt, brandTimezone, { locale: 'en-US', year: undefined, month: undefined, day: undefined, hour: 'numeric', minute: '2-digit', hour12: true })}
                     </span>
                     {post.status?.toLowerCase() === "published" && onDetailClick && (
                       <button
