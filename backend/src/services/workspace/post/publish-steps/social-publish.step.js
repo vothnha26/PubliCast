@@ -4,6 +4,8 @@ const { SEPARATORS, splitMediaUrls } = require('../../../../utils/constants');
 const logger = require('../../../../utils/logger');
 const { parsePlatformPostId, getIdForAccount } = require('../platform-post-id.util');
 const postTargetRepository = require('../../../../repositories/workspace/post-target.repository');
+const platformDailyLimitRepository = require('../../../../repositories/admin/platform-daily-limit.repository');
+const postingUsageDailyRepository = require('../../../../repositories/workspace/posting-usage-daily.repository');
 const socketInvalidationService = require('../../../core/socket-invalidation.service');
 const { CACHE_SCOPES } = require('../../../../utils/socket-constants');
 
@@ -97,6 +99,27 @@ class SocialPublishStep extends BaseStep {
           }
         }
 
+        // Layer 3 (final check): the pre-check in post.service.js#createPost
+        // runs at schedule time, but a scheduled post may sit for hours/days
+        // before this step actually runs — other posts to the same account
+        // could have consumed the day's cap in the meantime. Re-check right
+        // before the live API call so we never publish over the limit; on
+        // rejection, mark FAILED with a clear message instead of throwing,
+        // so the other fanned-out targets in this same Promise.all still run.
+        const dailyLimit = await platformDailyLimitRepository.findByPlatform(platform);
+        if (dailyLimit && socialAccountId) {
+          const publishedCount = await postTargetRepository.countPublishedInLast24h(socialAccountId, platform);
+          if (publishedCount >= dailyLimit.maxPostsPerDay) {
+            const limitMessage = `Daily posting limit of ${dailyLimit.maxPostsPerDay} reached for ${platform} in the last 24 hours. Please wait before scheduling more posts to this account.`;
+            logger.debug(`[SocialPublishStep] 🚫 Skipping publish for post ${post.id} to platform ${platform} (account: ${socialAccountId}): ${limitMessage}`);
+            await markTargetStatus(post.id, brandId, platform, socialAccountId, {
+              publishStatus: 'FAILED',
+              errorMessage: limitMessage
+            });
+            return { platform, socialAccountId, success: false, error: limitMessage };
+          }
+        }
+
         logger.debug(`[SocialPublishStep] 🚀 Publishing post ${post.id} to platform ${platform} (account: ${socialAccountId || 'default'})...`);
 
         const result = await service.publishPost(brandId, {
@@ -121,6 +144,11 @@ class SocialPublishStep extends BaseStep {
           publishedAt: result?.publishedAt || new Date(),
           errorMessage: null
         });
+        if (socialAccountId) {
+          postingUsageDailyRepository
+            .incrementTodayUsage(brandId, socialAccountId, platform, dailyLimit?.maxPostsPerDay)
+            .catch((err) => logger.debug(`[SocialPublishStep] Failed to record daily usage for post ${post.id} (${platform}/${socialAccountId}):`, err.message));
+        }
         return { platform, socialAccountId, success: true, result };
       } catch (error) {
         console.error(`[SocialPublishStep] ❌ Failed to publish post ${post.id} to platform ${platform} (account: ${socialAccountId || 'default'}):`, error);

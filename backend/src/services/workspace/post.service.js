@@ -1,5 +1,9 @@
 require('../../utils/polyfill');
 const postRepository = require('../../repositories/workspace/post.repository');
+const postTargetRepository = require('../../repositories/workspace/post-target.repository');
+const platformDailyLimitRepository = require('../../repositories/admin/platform-daily-limit.repository');
+const postingUsageDailyRepository = require('../../repositories/workspace/posting-usage-daily.repository');
+const socialAccountRepository = require('../../repositories/social/social-account.repository');
 const brandRepository = require('../../repositories/workspace/brand.repository');
 const subscriptionRepository = require('../../repositories/billing/subscription.repository');
 const socialPlatformFactory = require('../social/social-platform.factory');
@@ -339,6 +343,99 @@ class PostService {
    * default/only connected account for the brand (the common single-account
    * case), so older/simpler composer payloads keep working unchanged.
    */
+  /**
+   * Read-only preview of which (platform, socialAccountId) pairs
+   * upsertPostTargets would target, without writing any PostTarget rows —
+   * used by the Fair Use daily-limit check below, which needs to know the
+   * target accounts BEFORE the post (and its real PostTarget rows) exists.
+   * Mirrors upsertPostTargets' own selectedAccountIds/fallback-account
+   * resolution exactly; deliberately does not throw on an invalid account
+   * id (upsertPostTargets' own validation, run later in the same request,
+   * is the actual authority on that — this is only a best-effort preview
+   * for a pre-check).
+   */
+  async _resolveTargetAccounts(targetPlatforms, selectedAccountIds, brandId, client = prisma) {
+    const pairs = [];
+    for (const platform of targetPlatforms) {
+      const normalizedPlatform = platform.trim().toUpperCase();
+      let accountIds = [];
+
+      if (selectedAccountIds && typeof selectedAccountIds === 'object' && !Array.isArray(selectedAccountIds)) {
+        accountIds = selectedAccountIds[normalizedPlatform]
+          || selectedAccountIds[normalizedPlatform.toLowerCase()]
+          || [];
+      } else if (Array.isArray(selectedAccountIds)) {
+        const matchedAccounts = await client.socialAccount.findMany({
+          where: { id: { in: selectedAccountIds }, brandId, platform: normalizedPlatform },
+          select: { id: true }
+        });
+        accountIds = matchedAccounts.map(a => a.id);
+      }
+
+      if (!Array.isArray(accountIds)) accountIds = [];
+      accountIds = accountIds.filter(Boolean);
+
+      if (accountIds.length === 0) {
+        const fallbackAccount = await client.socialAccount.findFirst({
+          where: { brandId, platform: normalizedPlatform, isConnected: true },
+          orderBy: [{ isDefault: 'desc' }, { connectedAt: 'asc' }]
+        });
+        if (fallbackAccount) accountIds = [fallbackAccount.id];
+      }
+
+      for (const socialAccountId of accountIds) {
+        pairs.push({ platform: normalizedPlatform, socialAccountId });
+      }
+    }
+    return pairs;
+  }
+
+  /**
+   * Fair Use daily posting cap — protects a connected account from the
+   * platform itself rate-limiting/banning it for posting too fast,
+   * independent of PlanLimit.maxPostsPerMonth (billing-tier limit). Only
+   * relevant when this post will actually publish soon (isDirectPublishing);
+   * a DRAFT has no imminent publish intent to cap. Uses a rolling 24h
+   * window per (socialAccountId, platform) — see
+   * post-target.repository.js#countPublishedInLast24h for why not a
+   * calendar-day bucket. Throws (statusCode 403) on the first platform
+   * found over its cap; the error message names which one.
+   *
+   * `lock`: pass true only when called inside the Step 1 transaction below
+   * (has a `tx` client) — row-locks each target SocialAccount before the
+   * count-then-act check, closing the same race the monthly plan-limit
+   * check closes via subscriptionRepository.lockSubscriptionForUpdate. The
+   * outside-transaction pre-check call passes false (can't lock without a
+   * transaction; that call only exists to fast-fail obvious over-limit
+   * requests before paying for the transaction at all).
+   */
+  async _checkDailyPostingLimits(targetPlatforms, selectedAccountIds, brandId, client = prisma, lock = false) {
+    const pairs = await this._resolveTargetAccounts(targetPlatforms, selectedAccountIds, brandId, client);
+    // Same (platform, socialAccountId) can appear more than once if the
+    // caller passed duplicate targetPlatforms entries — check each real
+    // account only once.
+    const seen = new Set();
+    for (const { platform, socialAccountId } of pairs) {
+      const key = `${platform}:${socialAccountId}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+
+      const dailyLimit = await platformDailyLimitRepository.findByPlatform(platform, client);
+      if (!dailyLimit || dailyLimit.maxPostsPerDay == null) continue; // no cap configured for this platform
+
+      if (lock) {
+        await socialAccountRepository.lockSocialAccountForUpdate(socialAccountId, client);
+      }
+
+      const count = await postTargetRepository.countPublishedInLast24h(socialAccountId, platform, client);
+      if (count >= dailyLimit.maxPostsPerDay) {
+        const error = new Error(`Daily posting limit of ${dailyLimit.maxPostsPerDay} reached for ${platform} in the last 24 hours. Please wait before scheduling more posts to this account.`);
+        error.statusCode = 403;
+        throw error;
+      }
+    }
+  }
+
   async upsertPostTargets(postId, targetPlatforms, selectedAccountIds, tx, brandId) {
     await tx.postTarget.deleteMany({ where: { postId } });
 
@@ -498,6 +595,22 @@ class PostService {
       data.scheduledAt = new Date();
     }
 
+    // Fair Use daily posting cap — pre-check outside the transaction, same
+    // check-then-act race caveat as the monthly plan-limit pre-check above
+    // (closed by the locked re-check in Step 1 below). Only relevant once
+    // this post is actually headed toward publishing (DRAFT has no imminent
+    // publish intent). Resolves target accounts from the raw request here
+    // since PostTarget rows for this post don't exist yet (upsertPostTargets
+    // only runs in Step 2, after the post itself is created).
+    const targetPlatformsForLimitCheck = isDirectPublishing
+      ? (Array.isArray(postData.targetPlatforms)
+          ? postData.targetPlatforms
+          : (postData.targetPlatforms || '').split(SEPARATORS.COMMA).filter(Boolean))
+      : [];
+    if (targetPlatformsForLimitCheck.length > 0) {
+      await this._checkDailyPostingLimits(targetPlatformsForLimitCheck, postData.selectedAccountIds, brandId);
+    }
+
     logger.debug('[PostService] Final payload to database:', data);
 
     // Step 1: short, locked transaction — only the count-then-act invariant
@@ -506,6 +619,10 @@ class PostService {
     // concurrent createPost calls for the same brand no longer queue up
     // behind each other's slow per-platform work below.
     const created = await prisma.$transaction(async (tx) => {
+      if (targetPlatformsForLimitCheck.length > 0) {
+        await this._checkDailyPostingLimits(targetPlatformsForLimitCheck, postData.selectedAccountIds, brandId, tx, true);
+      }
+
       if (planLimit) {
         await subscriptionRepository.lockSubscriptionForUpdate(brandId, tx);
         const lockedCount = await postRepository.countActivePostsThisMonth(brandId, tx);
