@@ -47,11 +47,7 @@ jest.mock('../../src/config/prisma', () => {
     findMany: jest.fn().mockResolvedValue([])
   };
 
-  const mockFacebookPostMetric = {
-    findMany: jest.fn().mockResolvedValue([])
-  };
-
-  const mockTrackedVideo = {
+  const mockPostMetricDaily = {
     findMany: jest.fn().mockResolvedValue([])
   };
 
@@ -61,8 +57,7 @@ jest.mock('../../src/config/prisma', () => {
     socialAccount: mockSocialAccount,
     post: mockPost,
     analytics: mockAnalytics,
-    facebookPostMetric: mockFacebookPostMetric,
-    trackedVideo: mockTrackedVideo
+    postMetricDaily: mockPostMetricDaily
   };
 });
 

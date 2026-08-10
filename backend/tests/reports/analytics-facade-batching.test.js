@@ -4,14 +4,17 @@
  * platform facebookPostMetric/trackedVideo.findFirst — an N+1 fan-out.
  * These verify the batched findMany/groupBy replacements are actually used
  * (not per-row queries) and still produce the same channel/post metrics.
+ *
+ * facebookPostMetric/trackedVideo were later replaced by a single unified
+ * postMetricDaily lookup (both Facebook and YouTube persist into the same
+ * table via Smart Fetch) — see analytics.facade.js's dailyMetricRows query.
  */
 jest.mock('../../src/config/prisma', () => ({
   brand: { findUnique: jest.fn() },
   socialAccount: { findMany: jest.fn() },
   analytics: { findMany: jest.fn() },
   post: { groupBy: jest.fn(), findMany: jest.fn() },
-  facebookPostMetric: { findMany: jest.fn() },
-  trackedVideo: { findMany: jest.fn() }
+  postMetricDaily: { findMany: jest.fn() }
 }));
 jest.mock('../../src/services/social/social-platform.factory', () => ({
   getService: jest.fn(() => ({
@@ -69,27 +72,25 @@ describe('analyticsFacade.getAggregatedData batching (#76)', () => {
     expect(ytChannel.postsCount).toBe(2);
   });
 
-  it('batches facebookPostMetric/trackedVideo lookups by ID instead of one findFirst per post', async () => {
+  it('batches postMetricDaily lookups by ID instead of one findFirst per post', async () => {
     prisma.socialAccount.findMany.mockResolvedValue([]);
     prisma.post.groupBy.mockResolvedValue([]);
     prisma.post.findMany.mockResolvedValue([
       { id: 'post-1', title: 'Post 1', caption: 'c1', targetPlatforms: 'FACEBOOK', platformPostId: 'fb-post-1', publishedAt: DATE_FROM },
       { id: 'post-2', title: 'Post 2', caption: 'c2', targetPlatforms: 'YOUTUBE', platformPostId: 'yt-video-1', publishedAt: DATE_FROM }
     ]);
-    prisma.facebookPostMetric.findMany.mockResolvedValue([
-      { platformPostId: 'fb-post-1', likes: 10, comments: 2, shares: 1, reach: 500 }
-    ]);
-    prisma.trackedVideo.findMany.mockResolvedValue([
-      { videoId: 'yt-video-1', lastLikes: 20, lastComments: 3, lastViews: 1000 }
+    prisma.postMetricDaily.findMany.mockResolvedValue([
+      { platformPostId: 'fb-post-1', likes: 10, comments: 2, shares: 1, reach: 500, views: null },
+      { platformPostId: 'yt-video-1', likes: 20, comments: 3, shares: 0, reach: null, views: 1000 }
     ]);
 
     const result = await analyticsFacade.getAggregatedData('brand-1', DATE_FROM, DATE_TO, ['Facebook', 'YouTube']);
 
-    expect(prisma.facebookPostMetric.findMany).toHaveBeenCalledTimes(1);
-    expect(prisma.facebookPostMetric.findMany).toHaveBeenCalledWith({
-      where: { platformPostId: { in: ['fb-post-1'] }, brandId: 'brand-1' }
+    expect(prisma.postMetricDaily.findMany).toHaveBeenCalledTimes(1);
+    expect(prisma.postMetricDaily.findMany).toHaveBeenCalledWith({
+      where: { platformPostId: { in: ['fb-post-1', 'yt-video-1'] }, brandId: 'brand-1' },
+      orderBy: { snapshotDate: 'desc' }
     });
-    expect(prisma.trackedVideo.findMany).toHaveBeenCalledTimes(1);
 
     const fbPost = result.topPosts.find(p => p.platform === 'FACEBOOK');
     const ytPost = result.topPosts.find(p => p.platform === 'YOUTUBE');
@@ -97,14 +98,13 @@ describe('analyticsFacade.getAggregatedData batching (#76)', () => {
     expect(ytPost.likes).toBe(20);
   });
 
-  it('does not call facebookPostMetric/trackedVideo findMany at all when there are no matching posts', async () => {
+  it('does not call postMetricDaily findMany at all when there are no matching posts', async () => {
     prisma.socialAccount.findMany.mockResolvedValue([]);
     prisma.post.groupBy.mockResolvedValue([]);
     prisma.post.findMany.mockResolvedValue([]);
 
     await analyticsFacade.getAggregatedData('brand-1', DATE_FROM, DATE_TO, ['Facebook']);
 
-    expect(prisma.facebookPostMetric.findMany).not.toHaveBeenCalled();
-    expect(prisma.trackedVideo.findMany).not.toHaveBeenCalled();
+    expect(prisma.postMetricDaily.findMany).not.toHaveBeenCalled();
   });
 });
