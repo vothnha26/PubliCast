@@ -5,6 +5,9 @@ jest.mock('../../src/config/prisma', () => ({
   postMetricDaily: {
     upsert: jest.fn(),
     findMany: jest.fn()
+  },
+  brand: {
+    findUnique: jest.fn()
   }
 }));
 
@@ -15,6 +18,7 @@ describe('post-metric-daily-persistence.util', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    prisma.brand.findUnique.mockResolvedValue({ timezone: 'Asia/Ho_Chi_Minh' });
   });
 
   describe('upsertPostMetricsDaily', () => {
