@@ -114,6 +114,11 @@ class BrandRepository {
       const brandCopy = { ...brand };
       delete brandCopy.teamMembers;
 
+      const hasSocialAccounts = Array.isArray(brandCopy.socialAccounts) && brandCopy.socialAccounts.length > 0;
+      if (hasSocialAccounts && !brandCopy.onboardingCompleted) {
+        brandCopy.onboardingCompleted = true;
+      }
+
       const effectiveSubscription = proSubscriptionsByOwner[brand.ownerId] || brand.subscription;
 
       return {

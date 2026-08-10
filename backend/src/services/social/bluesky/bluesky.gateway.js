@@ -1,6 +1,7 @@
 const { BskyAgent, Agent, RichText } = require('@atproto/api');
 const BLUESKY_CONSTANTS = require('./bluesky.constants');
 const blueskyOAuthHelper = require('./bluesky-oauth.helper');
+const logger = require('../../../utils/logger');
 
 class BlueskyGateway {
   /**
@@ -102,13 +103,42 @@ class BlueskyGateway {
       body: videoBuffer
     });
 
+    let jobId = null;
+
     if (!uploadRes.ok) {
       const errData = await uploadRes.json().catch(() => ({}));
       const errMessage = errData.message || errData.error || `HTTP ${uploadRes.status}`;
-      throw new Error(`Failed to upload video to Bluesky video service: ${errMessage}`);
+
+      if (errData.jobStatus?.blob) {
+        logger.debug('[BlueskyGateway] Extracted blob from jobStatus in error response:', errData.jobStatus.blob);
+        return errData.jobStatus.blob;
+      }
+      if (errData.blob) {
+        logger.debug('[BlueskyGateway] Extracted blob from error response:', errData.blob);
+        return errData.blob;
+      }
+      const extractedJobId = errData.jobId || errData.jobStatus?.jobId;
+      if (extractedJobId) {
+        jobId = extractedJobId;
+      } else if (typeof errMessage === 'string' && errMessage.toLowerCase().includes('already processed')) {
+        if (errData.jobStatus?.blob) {
+          return errData.jobStatus.blob;
+        }
+        logger.warn('[BlueskyGateway] Video already processed by Bluesky service:', errData);
+        throw new Error(`Failed to upload video to Bluesky video service: ${errMessage}`);
+      } else {
+        throw new Error(`Failed to upload video to Bluesky video service: ${errMessage}`);
+      }
+    } else {
+      const jobData = await uploadRes.json();
+      jobId = jobData.jobId || jobData.jobStatus?.jobId;
+      if (jobData.jobStatus?.blob) {
+        return jobData.jobStatus.blob;
+      }
+      if (jobData.blob) {
+        return jobData.blob;
+      }
     }
-    const jobData = await uploadRes.json();
-    const jobId = jobData.jobId;
 
     let attempts = 0;
     while (attempts < BLUESKY_CONSTANTS.LIMITS.VIDEO_JOB_MAX_ATTEMPTS) {

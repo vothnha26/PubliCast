@@ -2,6 +2,7 @@ const youtubeVideoService = require('../../src/services/social/youtube/youtube-v
 const youtubeGateway = require('../../src/services/social/youtube/youtube.gateway');
 const socialAccountRepository = require('../../src/repositories/social/social-account.repository');
 const prisma = require('../../src/config/prisma');
+const { findLatestPostMetrics } = require('../../src/services/social/post-metric-daily-persistence.util');
 
 jest.mock('../../src/services/social/youtube/youtube.gateway');
 jest.mock('../../src/repositories/social/social-account.repository');
@@ -20,7 +21,26 @@ jest.mock('../../src/config/prisma', () => ({
     findUnique: jest.fn(),
     upsert: jest.fn()
   },
+  postMetricDaily: {
+    findFirst: jest.fn()
+  },
+  post: {
+    findFirst: jest.fn(),
+    findMany: jest.fn(),
+    create: jest.fn(),
+    update: jest.fn()
+  },
+  postTarget: {
+    upsert: jest.fn()
+  },
+  brand: {
+    findUnique: jest.fn()
+  },
   $transaction: jest.fn(ops => Promise.all(ops))
+}));
+jest.mock('../../src/services/social/post-metric-daily-persistence.util', () => ({
+  upsertPostMetricsDaily: jest.fn(),
+  findLatestPostMetrics: jest.fn()
 }));
 jest.mock('../../src/services/social/google-oauth.service', () => ({
   createClient: jest.fn().mockReturnValue({
@@ -46,6 +66,10 @@ describe('YouTubeVideoService Playlists Pagination Unit Tests', () => {
     jest.clearAllMocks();
     socialAccountRepository.findByBrandAndPlatform.mockResolvedValue([mockAccount]);
     prisma.$transaction.mockImplementation(ops => Promise.all(ops));
+    // Empty by default so getPublishedVideos falls through to the live-API
+    // path unless a test explicitly wants to exercise the DB-cache branch.
+    prisma.post.findMany.mockResolvedValue([]);
+    prisma.brand.findUnique.mockResolvedValue({ ownerId: 'user-owner-1' });
   });
 
   it('should return cached playlists from DB directly if forceRefresh is false and cache exists', async () => {
@@ -174,43 +198,67 @@ describe('YouTubeVideoService Playlists Pagination Unit Tests', () => {
     });
   });
 
-  describe('madeForKids Status Mapping', () => {
+  describe('getPublishedVideos channel scoping (cross-channel leak fix, Smart Fetch DB-only)', () => {
+    it('scopes the DB query to the given socialAccountId', async () => {
+      findLatestPostMetrics.mockResolvedValue([]);
+
+      await youtubeVideoService.getPublishedVideos('brand-123', null, 10, 'acc-123');
+
+      expect(findLatestPostMetrics).toHaveBeenCalledWith('brand-123', 'YOUTUBE', 'acc-123', 10);
+      expect(youtubeGateway.getPlaylistItems).not.toHaveBeenCalled();
+    });
+
+    it('does not scope the DB query by account when socialAccountId is omitted (brand-wide caller)', async () => {
+      findLatestPostMetrics.mockResolvedValue([]);
+
+      await youtubeVideoService.getPublishedVideos('brand-123', null, 10);
+
+      expect(findLatestPostMetrics).toHaveBeenCalledWith('brand-123', 'YOUTUBE', null, 10);
+    });
+  });
+
+  describe('_getAuthContext (IDOR guard)', () => {
+    it('rejects a socialAccountId that belongs to a different brand', async () => {
+      socialAccountRepository.findById.mockResolvedValue({
+        id: 'acc-other-brand',
+        brandId: 'brand-OTHER',
+        accessToken: 'token-x',
+        refreshToken: 'refresh-x'
+      });
+
+      await expect(
+        youtubeVideoService.updateVideo('brand-123', 'vid-1', { title: 'x' }, 'acc-other-brand')
+      ).rejects.toThrow('YouTube account not connected');
+    });
+  });
+
+  describe('madeForKids Status Mapping (Smart Fetch DB-only)', () => {
     it('should include madeForKids status in getPublishedVideos output', async () => {
-      youtubeGateway.getChannelList.mockResolvedValue({
-        data: { items: [{ contentDetails: { relatedPlaylists: { uploads: 'uploads-id-123' } } }] }
-      });
-      youtubeGateway.getPlaylistItems.mockResolvedValue({
-        data: { items: [{ contentDetails: { videoId: 'v-1' } }] }
-      });
-      youtubeGateway.getVideosList.mockResolvedValue({
-        data: {
-          items: [{
-            id: 'v-1',
-            snippet: { title: 'Kid Video', thumbnails: { default: { url: 'http://thumb' } }, publishedAt: '2026-07-28' },
-            statistics: { viewCount: '10', likeCount: '5', commentCount: '0' },
-            contentDetails: { duration: 'PT1M' },
-            status: { madeForKids: true }
-          }]
-        }
-      });
+      findLatestPostMetrics.mockResolvedValue([{
+        platformPostId: 'v-1',
+        captionSnippet: 'Kid Video',
+        thumbnailUrl: 'http://thumb',
+        publishedAt: new Date('2026-07-28'),
+        views: 10,
+        likes: 5,
+        comments: 0,
+        postUrl: null,
+        metrics: { madeForKids: true }
+      }]);
 
       const result = await youtubeVideoService.getPublishedVideos(mockBrandId);
       expect(result.videos[0].madeForKids).toBe(true);
     });
 
     it('should include madeForKids status in getVideoDetails output', async () => {
-      youtubeGateway.getVideosList.mockResolvedValue({
-        data: {
-          items: [{
-            id: 'v-2',
-            snippet: { title: 'Adult Video', description: 'Desc', thumbnails: { default: { url: 'http://thumb' } }, channelId: 'c-1', channelTitle: 'Chan' },
-            statistics: { viewCount: '100', likeCount: '50' },
-            status: { selfDeclaredMadeForKids: false }
-          }]
-        }
-      });
-      youtubeGateway.getChannelList.mockResolvedValue({
-        data: { items: [{ statistics: { subscriberCount: '1000' } }] }
+      prisma.postMetricDaily.findFirst.mockResolvedValue({
+        platformPostId: 'v-2',
+        captionSnippet: 'Adult Video',
+        thumbnailUrl: 'http://thumb',
+        publishedAt: null,
+        views: 100,
+        likes: 50,
+        metrics: { channelId: 'c-1', channelTitle: 'Chan', madeForKids: false }
       });
 
       const details = await youtubeVideoService.getVideoDetails(mockBrandId, 'v-2');

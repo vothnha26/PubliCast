@@ -96,6 +96,36 @@ const handleMetricsSync = async (req, res) => {
 };
 
 /**
+ * Handles one due-for-sync account from PostsSyncSchedulerService (see
+ * posts-sync-scheduler.service.js), for any of the 6 Smart-Fetch platforms.
+ * Smart Fetch: this is one of only 3 call sites allowed to invoke a
+ * platform's syncPublishedPosts()'s live API fetch (the others being
+ * OAuth-connect backfill and the manual refresh endpoint) — every
+ * getPublishedVideos/getPublishedPosts read path is DB-only against
+ * PostMetricDaily. Dispatches via socialPlatformFactory (OCP-friendly, same
+ * pattern as handleMetricsSync) instead of branching on platform here, then
+ * stamps lastPostsSyncAt so this account isn't re-claimed until its cooldown
+ * elapses again.
+ */
+const handlePostsSync = async (req, res) => {
+  const { socialAccountId, platform, brandId } = req.body;
+
+  logger.debug(`[QStash Posts Sync] Starting sync for platform: ${platform}, account: ${socialAccountId}`);
+
+  try {
+    const service = socialPlatformFactory.getService(platform);
+    await service.syncPublishedPosts(brandId, socialAccountId);
+    await socialAccountRepository.updateLastPostsSyncAt(socialAccountId);
+
+    logger.debug(`[QStash Posts Sync] Successfully synced account: ${socialAccountId}`);
+    return res.status(200).json({ success: true });
+  } catch (err) {
+    console.error(`[QStash Posts Sync] Failed to sync account: ${socialAccountId}. Error: ${err.message}`);
+    return res.status(500).json({ success: false, message: err.message });
+  }
+};
+
+/**
  * Handles the publish-post QStash delivery — replaces publish.worker.js's
  * BullMQ handler (see the old publish-post.handler.js, whose logic this
  * mirrors exactly). postRepository.claimForPublishing()'s atomic DB
@@ -177,4 +207,4 @@ const handlePublishPostFailed = async (req, res) => {
   }
 };
 
-module.exports = { handleSocialSync, handleMetricsSync, handlePublishPost, handlePublishPostFailed };
+module.exports = { handleSocialSync, handleMetricsSync, handlePostsSync, handlePublishPost, handlePublishPostFailed };

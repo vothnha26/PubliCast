@@ -36,18 +36,54 @@ class PresetStrategyFactory {
   /**
    * Lấy tất cả options đã được map từ metadata
    * @param {Object} metadata JSON metadata của AutoList
+   * @param {Object} [selectedAccountIds] { [platform]: string[] } — dùng để chọn
+   *   account "chính" (đầu tiên trong danh sách) của mỗi platform khi metadata
+   *   có networkCustom (per-channel presets, cùng shape với Post Composer:
+   *   networkCustom[platform].perAccount[accountId].settings), làm flat
+   *   fallback cho postData.options — tương tự cách Post.options vẫn là 1
+   *   object phẳng dù post nhắm tới nhiều account (per-account customization
+   *   thật sự nằm ở PostNetworkOverride.settings, không phải ở đây).
    * @returns {Object} Combined options
    */
-  mapAllPresets(metadata) {
+  mapAllPresets(metadata, selectedAccountIds) {
     if (!metadata) return {};
     const meta = typeof metadata === 'string' ? JSON.parse(metadata) : metadata;
-    
+
     let combinedOptions = {};
-    for (const strategy of this.strategies.values()) {
-      const mapped = strategy.mapToOptions(meta);
+    for (const [platformKey, strategy] of this.strategies.entries()) {
+      const flatMeta = this._resolveFlatMetaForPlatform(meta, platformKey, selectedAccountIds);
+      const mapped = strategy.mapToOptions(flatMeta);
       combinedOptions = { ...combinedOptions, ...mapped };
     }
     return combinedOptions;
+  }
+
+  /**
+   * Nếu metadata có networkCustom (per-channel presets — cùng shape với Post
+   * Composer's networkCustom, xem frontend/src/utils/networkEntrySlot.js),
+   * lấy settings của account ĐẦU TIÊN trong selectedAccountIds[platform] làm
+   * bộ giá trị phẳng đại diện cho platform đó, ghi đè lên `meta` gốc (cho các
+   * field global như GLOBAL strategy vẫn đọc thẳng `meta`, không bị mất do
+   * merge). Không có networkCustom (dữ liệu cũ / autolist chưa re-save) thì
+   * trả nguyên `meta` — giữ đúng hành vi cũ cho preset-mapping.test.js.
+   */
+  _resolveFlatMetaForPlatform(meta, platformKey, selectedAccountIds) {
+    if (!meta.networkCustom || platformKey === PRESET_KEYS.GLOBAL) return meta;
+
+    const platformUpper = platformKey.toUpperCase();
+    const entry = meta.networkCustom[platformUpper];
+    if (!entry) return meta;
+
+    const accountIds = Array.isArray(selectedAccountIds?.[platformUpper])
+      ? selectedAccountIds[platformUpper]
+      : [];
+    const primaryAccountId = accountIds[0];
+    const settings = primaryAccountId
+      ? entry.perAccount?.[primaryAccountId]?.settings
+      : entry.settings;
+    if (!settings) return meta;
+
+    return { ...meta, ...settings };
   }
 }
 

@@ -14,13 +14,14 @@ import { buildMediaUrl, isVideoPath } from "../utils/url";
 import { validatePostForm } from "../utils/postValidation";
 import { logger } from "../utils/logger";
 import postService from "../services/post.service";
-import { uploadMediaFile, uploadMediaFileWithMetadata } from "../services/mediaUpload.service";
+import { uploadMediaFileWithMetadata } from "../services/mediaUpload.service";
 import {
   NETWORK_TAB_TEMPLATE,
   buildDefaultNetworkCustom,
 } from "../constants/postComposerNetwork";
 import { createPlatformOptionsFromPost, createDefaultPlatformOptions } from "../utils/platformOptionsFactory";
 import { buildNetworkOverrides, mapNetworkOverridesToCustom } from "../utils/buildNetworkOverrides";
+import { getNetworkEntrySlot, setNetworkEntrySlot } from "../utils/networkEntrySlot";
 
 const toLocalDatetimeString = (dateInput) => {
   if (!dateInput) return "";
@@ -87,7 +88,18 @@ export function usePostCreatorForm() {
   // handler, which is out of scope here. Lifted from NetworkCustomizeScreen's
   // local state so ComposerFooter can show/toggle the same checkbox.
   const [createAnother, setCreateAnother] = useState(false);
+  // mediaThumbnailUrl is the preview value (blob URL while pending, or the
+  // final Cloudinary URL once uploaded/loaded from a template) — read
+  // directly by PreviewBody/ComposerBody as an <img>/<video poster> src, so a
+  // local blob works identically to a real URL for preview purposes.
+  // mediaThumbnailFile/mediaThumbnailPath mirror postMedia's {file, path}
+  // pending-upload pair: a freshly-picked thumbnail sets mediaThumbnailFile
+  // with path left null, and handleCreatePost's pending-upload scan uploads
+  // it at submit time exactly like postMedia items, instead of uploading
+  // eagerly on pick.
   const [mediaThumbnailUrl, setMediaThumbnailUrl] = useState("");
+  const [mediaThumbnailFile, setMediaThumbnailFile] = useState(null);
+  const [mediaThumbnailPath, setMediaThumbnailPath] = useState(null);
   const [scheduledDate, setScheduledDate] = useState(() => toLocalDatetimeString(new Date()));
   const [isLibrary, setIsLibrary] = useState(false);
 
@@ -423,25 +435,15 @@ export function usePostCreatorForm() {
     });
   };
 
-  // A platform's networkCustom entry either holds content directly
-  // (single-account platforms — unchanged from before) or, when the
-  // platform has ≥2 selected accounts, an entry.perAccount map keyed by
-  // socialAccountId so each account can have its own caption/media instead
-  // of all of them silently sharing entry.caption (composer-audit P0.4).
-  // These two helpers centralize that "read/write the right slot" branch so
-  // toggleUseTemplate/updateNetworkCaption/updateNetworkMedia don't each
-  // duplicate it.
-  const getNetworkEntrySlot = (entry, accountId) => {
-    if (!accountId) return entry || { useTemplate: true, caption: "", mediaUrls: [] };
-    return entry?.perAccount?.[accountId] || { useTemplate: true, caption: "", mediaUrls: [] };
-  };
+  // getNetworkEntrySlot/setNetworkEntrySlot now live in utils/networkEntrySlot.js
+  // (shared with AutoList's per-channel presets) — imported above.
 
-  const setNetworkEntrySlot = (entry, accountId, slot) => {
-    if (!accountId) return { ...entry, ...slot };
-    return {
-      ...entry,
-      perAccount: { ...(entry?.perAccount || {}), [accountId]: { ...getNetworkEntrySlot(entry, accountId), ...slot } },
-    };
+  const getEffectiveInitialMedia = () => {
+    return (postMedia && postMedia.length > 0)
+      ? [...postMedia]
+      : (videoFileUrl || uploadedVideoPath)
+        ? [{ previewUrl: videoFileUrl, path: uploadedVideoPath, file: videoFile }]
+        : [];
   };
 
   // Bật/tắt chế độ chỉnh nội dung riêng cho 1 nền tảng (Cài đặt theo mạng),
@@ -462,11 +464,7 @@ export function usePostCreatorForm() {
           : !current.caption) &&
         (current.mediaUrls?.length || 0) === 0;
 
-      const effectiveInitialMedia = (postMedia && postMedia.length > 0)
-        ? [...postMedia]
-        : (videoFileUrl || uploadedVideoPath)
-          ? [{ previewUrl: videoFileUrl, path: uploadedVideoPath, file: videoFile }]
-          : [];
+      const effectiveInitialMedia = getEffectiveInitialMedia();
 
       const seeded = isFirstCustomization
         ? isThreads
@@ -488,17 +486,48 @@ export function usePostCreatorForm() {
   };
 
   const updateNetworkCaption = (platformId, value, accountId = null) => {
-    setNetworkCustom((prev) => ({
-      ...prev,
-      [platformId]: setNetworkEntrySlot(prev[platformId], accountId, { useTemplate: false, caption: value }),
-    }));
+    setNetworkCustom((prev) => {
+      const entry = prev[platformId] || { useTemplate: true, caption: "", mediaUrls: [] };
+      const current = getNetworkEntrySlot(entry, accountId);
+      const wasTemplate = current.useTemplate !== false;
+      const effectiveInitialMedia = getEffectiveInitialMedia();
+
+      const mediaUrlsToKeep = wasTemplate && (current.mediaUrls?.length || 0) === 0
+        ? effectiveInitialMedia
+        : (current.mediaUrls || []);
+
+      return {
+        ...prev,
+        [platformId]: setNetworkEntrySlot(entry, accountId, {
+          ...current,
+          useTemplate: false,
+          caption: value,
+          mediaUrls: mediaUrlsToKeep
+        }),
+      };
+    });
   };
 
   const updateNetworkMedia = (platformId, mediaUrls, accountId = null) => {
-    setNetworkCustom((prev) => ({
-      ...prev,
-      [platformId]: setNetworkEntrySlot(prev[platformId], accountId, { useTemplate: false, mediaUrls }),
-    }));
+    setNetworkCustom((prev) => {
+      const entry = prev[platformId] || { useTemplate: true, caption: "", mediaUrls: [] };
+      const current = getNetworkEntrySlot(entry, accountId);
+      const wasTemplate = current.useTemplate !== false;
+
+      const captionToKeep = wasTemplate && !current.caption
+        ? caption
+        : (current.caption ?? "");
+
+      return {
+        ...prev,
+        [platformId]: setNetworkEntrySlot(entry, accountId, {
+          ...current,
+          useTemplate: false,
+          caption: captionToKeep,
+          mediaUrls
+        }),
+      };
+    });
   };
 
   // Writes one technical-setting field (YouTube categoryId, TikTok
@@ -521,25 +550,54 @@ export function usePostCreatorForm() {
 
   const updateThreadPostText = (index, text) => {
     setNetworkCustom((prev) => {
-      const threads = prev[PLATFORMS.THREADS] || { threadPosts: [{ text: "", mediaUrls: [] }] };
-      const newPosts = [...threads.threadPosts];
+      const threads = prev[PLATFORMS.THREADS] || { useTemplate: true, threadPosts: [{ text: "", mediaUrls: [] }] };
+      const wasTemplate = threads.useTemplate !== false;
+      const effectiveInitialMedia = getEffectiveInitialMedia();
+
+      const newPosts = [...(threads.threadPosts || [{ text: "", mediaUrls: [] }])];
       const curr = typeof newPosts[index] === 'object' && newPosts[index] !== null
         ? newPosts[index]
         : { text: typeof newPosts[index] === 'string' ? newPosts[index] : '', mediaUrls: [] };
-      newPosts[index] = { ...curr, text };
-      return { ...prev, [PLATFORMS.THREADS]: { ...threads, threadPosts: newPosts } };
+
+      const mediaToKeep = (index === 0 && wasTemplate && (curr.mediaUrls?.length || 0) === 0)
+        ? effectiveInitialMedia
+        : (curr.mediaUrls || []);
+
+      newPosts[index] = { ...curr, text, mediaUrls: mediaToKeep };
+      return {
+        ...prev,
+        [PLATFORMS.THREADS]: {
+          ...threads,
+          useTemplate: false,
+          threadPosts: newPosts
+        }
+      };
     });
   };
 
   const updateThreadPostMedia = (index, mediaUrls) => {
     setNetworkCustom((prev) => {
-      const threads = prev[PLATFORMS.THREADS] || { threadPosts: [{ text: "", mediaUrls: [] }] };
-      const newPosts = [...threads.threadPosts];
+      const threads = prev[PLATFORMS.THREADS] || { useTemplate: true, threadPosts: [{ text: "", mediaUrls: [] }] };
+      const wasTemplate = threads.useTemplate !== false;
+
+      const newPosts = [...(threads.threadPosts || [{ text: "", mediaUrls: [] }])];
       const curr = typeof newPosts[index] === 'object' && newPosts[index] !== null
         ? newPosts[index]
         : { text: typeof newPosts[index] === 'string' ? newPosts[index] : '', mediaUrls: [] };
-      newPosts[index] = { ...curr, mediaUrls };
-      return { ...prev, [PLATFORMS.THREADS]: { ...threads, threadPosts: newPosts } };
+
+      const textToKeep = (index === 0 && wasTemplate && !curr.text)
+        ? caption
+        : (curr.text ?? "");
+
+      newPosts[index] = { ...curr, text: textToKeep, mediaUrls };
+      return {
+        ...prev,
+        [PLATFORMS.THREADS]: {
+          ...threads,
+          useTemplate: false,
+          threadPosts: newPosts
+        }
+      };
     });
   };
 
@@ -621,12 +679,15 @@ export function usePostCreatorForm() {
       captionText: caption,
       youtubeTitle,
       youtubeMadeForKids,
-      networkCustom
+      networkCustom,
+      selectedAccountIds,
+      activeBrand
     });
   };
 
   // Playlists fetched data
   const [playlists, setPlaylists] = useState([]);
+  const [playlistsByAccount, setPlaylistsByAccount] = useState({});
   const [isLoadingPlaylists, setIsLoadingPlaylists] = useState(false);
 
   // Categories fetched data
@@ -749,17 +810,28 @@ export function usePostCreatorForm() {
   // could load for the wrong channel (or fail entirely if that first
   // account's token was stale) while the user was targeting a different one.
   const getSelectedYoutubeAccountId = () => {
+    if (activeNetworkAccountId) {
+      const activeAcc = activeBrand?.socialAccounts?.find(sa => sa.id === activeNetworkAccountId);
+      if (activeAcc && (activeAcc.platform || '').toUpperCase() === PLATFORMS.YOUTUBE) {
+        return activeNetworkAccountId;
+      }
+    }
     return activeBrand?.socialAccounts?.find(
       sa => (sa.platform || '').toUpperCase() === PLATFORMS.YOUTUBE && selectedAccountIds.includes(sa.id)
     )?.id || null;
   };
 
-  const fetchPlaylists = async (forceRefresh = false) => {
+  const fetchPlaylists = async (forceRefresh = false, explicitAccountId = null) => {
     if (!activeBrand) return;
+    const targetAccId = explicitAccountId || getSelectedYoutubeAccountId();
     setIsLoadingPlaylists(true);
     try {
-      const res = await socialService.getYouTubePlaylists(activeBrand.id, forceRefresh, getSelectedYoutubeAccountId());
-      setPlaylists(res.data || res || []);
+      const res = await socialService.getYouTubePlaylists(activeBrand.id, forceRefresh, targetAccId);
+      const list = res.data || res || [];
+      setPlaylists(list);
+      if (targetAccId) {
+        setPlaylistsByAccount(prev => ({ ...prev, [targetAccId]: list }));
+      }
       if (forceRefresh) {
         toast.success("YouTube Playlists synchronized successfully");
       }
@@ -1050,8 +1122,32 @@ export function usePostCreatorForm() {
         }
       });
 
-      const allPendingFiles = [...pendingPostMedia, ...pendingNetworkItems];
-      const totalPending = allPendingFiles.length;
+      // Thumbnail is a single optional slot with the same {file, path} shape
+      // as postMedia/networkCustom items — folded into the same pending scan
+      // so it uploads concurrently with everything else at submit time.
+      const pendingThumbnail = mediaThumbnailFile && !mediaThumbnailPath
+        ? { file: mediaThumbnailFile, path: mediaThumbnailPath }
+        : null;
+
+      // Deduplicate pending files by File instance or unique file signature
+      const uniquePendingFiles = [];
+      const seenFileKeys = new Set();
+
+      const addPendingFile = (item) => {
+        if (typeof item === 'object' && item && item.file && !item.path) {
+          const key = item.file.name ? `${item.file.name}_${item.file.size}_${item.file.lastModified}` : item.file;
+          if (!seenFileKeys.has(key)) {
+            seenFileKeys.add(key);
+            uniquePendingFiles.push(item);
+          }
+        }
+      };
+
+      pendingPostMedia.forEach(addPendingFile);
+      pendingNetworkItems.forEach(addPendingFile);
+      if (pendingThumbnail) addPendingFile(pendingThumbnail);
+
+      const totalPending = uniquePendingFiles.length;
 
       if (totalPending > 0) {
         let uploadedCount = 0;
@@ -1063,7 +1159,7 @@ export function usePostCreatorForm() {
         // one-at-a-time. A 3-video post that used to take 3x a single
         // upload's time now takes ~1x.
         const uploadResults = await Promise.allSettled(
-          allPendingFiles.map(async (item) => {
+          uniquePendingFiles.map(async (item) => {
             // Cloudinary's own upload response already carries width/height/
             // duration/frame rate/codec for videos — read from it here
             // instead of a separate probe pass, since this request happens
@@ -1085,7 +1181,7 @@ export function usePostCreatorForm() {
 
             uploadedCount++;
             setSubmitProgressText(`Đang tải lên ${uploadedCount}/${totalPending} file...`);
-            return item;
+            return { item, uploadResult };
           })
         );
 
@@ -1099,8 +1195,52 @@ export function usePostCreatorForm() {
           return; // Dừng submit ngay lập tức, giữ nguyên 100% state form!
         }
 
+        // Sync uploaded path and video metadata to all slots sharing the same file
+        uploadResults.forEach(res => {
+          if (res.status === 'fulfilled' && res.value?.uploadResult?.url) {
+            const { item, uploadResult } = res.value;
+            const targetFile = item.file;
+            const fileKey = targetFile?.name ? `${targetFile.name}_${targetFile.size}_${targetFile.lastModified}` : null;
+
+            const isMatch = (otherFile) => {
+              if (!otherFile) return false;
+              if (otherFile === targetFile) return true;
+              if (fileKey && otherFile.name) {
+                return `${otherFile.name}_${otherFile.size}_${otherFile.lastModified}` === fileKey;
+              }
+              return false;
+            };
+
+            postMedia.forEach(pm => {
+              if (isMatch(pm.file)) {
+                pm.path = uploadResult.url;
+                if (uploadResult.width) pm.width = uploadResult.width;
+                if (uploadResult.height) pm.height = uploadResult.height;
+              }
+            });
+
+            Object.values(networkCustom).forEach(entry => {
+              const slots = [entry, ...(entry?.perAccount ? Object.values(entry.perAccount) : [])];
+              slots.forEach(slot => {
+                if (Array.isArray(slot?.mediaUrls)) {
+                  slot.mediaUrls.forEach(m => {
+                    if (typeof m === 'object' && isMatch(m.file)) {
+                      m.path = uploadResult.url;
+                      if (uploadResult.width) m.width = uploadResult.width;
+                      if (uploadResult.height) m.height = uploadResult.height;
+                    }
+                  });
+                }
+              });
+            });
+          }
+        });
+
         setPostMedia([...postMedia]);
         setNetworkCustom({ ...networkCustom });
+        if (pendingThumbnail?.path) {
+          setMediaThumbnailPath(pendingThumbnail.path);
+        }
       }
 
       setSubmitProgressText(null);
@@ -1166,7 +1306,7 @@ export function usePostCreatorForm() {
         selectedAccountIds: selectedAccountIdsByPlatform,
         scheduledAt: ['schedule', 'review'].includes(selectedPublishId) ? (scheduledDate ? new Date(scheduledDate).toISOString() : null) : null,
         mediaUrls: postMediaUrls,
-        mediaThumbnailUrls: mediaThumbnailUrl ? [mediaThumbnailUrl] : [],
+        mediaThumbnailUrls: (mediaThumbnailPath || mediaThumbnailUrl) ? [mediaThumbnailPath || mediaThumbnailUrl] : [],
         reviewerIds: selectedReviewerIds,
         approvalPolicy: approvalPolicy,
         requesterNote: requesterNote || "Vui lòng phê duyệt bài viết này.",
@@ -1182,8 +1322,8 @@ export function usePostCreatorForm() {
           tags: youtubeTags,
           madeForKids: youtubeMadeForKids,
           firstComment: youtubeFirstComment || globalFirstComment,
-          youtubeThumbnail: mediaThumbnailUrl || youtubeThumbnail,
-          facebookReelThumbnail: mediaThumbnailUrl,
+          youtubeThumbnail: mediaThumbnailPath || mediaThumbnailUrl || youtubeThumbnail,
+          facebookReelThumbnail: mediaThumbnailPath || mediaThumbnailUrl,
           mediaCaptions,
           useUrlShortener
         }
@@ -1236,6 +1376,8 @@ export function usePostCreatorForm() {
         setGlobalFirstComment("");
         setYoutubeThumbnail("");
         setMediaThumbnailUrl("");
+        setMediaThumbnailFile(null);
+        setMediaThumbnailPath(null);
         setFacebookTitle("");
         setFacebookType(FACEBOOK_TYPE.POST);
         setFacebookReelThumbnail("");
@@ -1340,6 +1482,7 @@ export function usePostCreatorForm() {
     youtubeThumbnail,
     setYoutubeThumbnail,
     playlists,
+    playlistsByAccount,
     isLoadingPlaylists,
     videoFile,
     setVideoFile,
@@ -1451,6 +1594,10 @@ export function usePostCreatorForm() {
     setShowMediaViewer,
     mediaThumbnailUrl,
     setMediaThumbnailUrl,
+    mediaThumbnailFile,
+    setMediaThumbnailFile,
+    mediaThumbnailPath,
+    setMediaThumbnailPath,
     getBackupPayload,
     backupFormState,
     closePostCreatorTemporarily,

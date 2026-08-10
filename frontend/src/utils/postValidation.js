@@ -232,7 +232,9 @@ export function validatePostForm({
   postMedia = [],
   captionText = '',
   youtubeTitle = '',
-  networkCustom = {}
+  networkCustom = {},
+  selectedAccountIds = [],
+  activeBrand = null
 }) {
   const globalGuardResult = runGlobalGuards({
     isLibrary,
@@ -272,23 +274,42 @@ export function validatePostForm({
     const entry = networkCustom?.[platKey];
     const slotsToValidate = [];
 
-    if (entry) {
-      if (entry.useTemplate === false) {
+    const targetAccounts = (activeBrand?.socialAccounts || []).filter(
+      sa => (sa.platform || '').toUpperCase() === platUpper && selectedAccountIds.includes(sa.id)
+    );
+
+    if (targetAccounts.length > 0) {
+      targetAccounts.forEach(acc => {
+        const slot = entry?.perAccount?.[acc.id];
+        const isSlotCustom = slot?.useTemplate === false;
+        const slotSettings = slot?.settings || entry?.settings || {};
         slotsToValidate.push({
-          mediaItems: entry.mediaUrls || [],
-          caption: entry.caption !== undefined ? entry.caption : captionText,
-          accountLabel: '',
-          threadPosts: entry.threadPosts
+          mediaItems: isSlotCustom ? (slot.mediaUrls || []) : (entry?.useTemplate === false ? (entry.mediaUrls || []) : defaultMediaItems),
+          caption: isSlotCustom ? (slot.caption || '') : (entry?.useTemplate === false ? (entry.caption || '') : captionText),
+          settings: slotSettings,
+          accountLabel: targetAccounts.length > 1 ? (acc.displayName || `Account ${acc.id.slice(-4)}`) : '',
+          threadPosts: slot?.threadPosts || entry?.threadPosts
         });
-      } else if (entry.perAccount && Object.keys(entry.perAccount).length > 0) {
+      });
+    } else if (entry) {
+      if (entry.perAccount && Object.keys(entry.perAccount).length > 0) {
         Object.entries(entry.perAccount).forEach(([accId, slot]) => {
           const isSlotCustom = slot?.useTemplate === false;
           slotsToValidate.push({
-            mediaItems: isSlotCustom ? (slot.mediaUrls || []) : defaultMediaItems,
-            caption: isSlotCustom ? (slot.caption || '') : captionText,
+            mediaItems: isSlotCustom ? (slot.mediaUrls || []) : (entry?.useTemplate === false ? (entry.mediaUrls || []) : defaultMediaItems),
+            caption: isSlotCustom ? (slot.caption || '') : (entry?.useTemplate === false ? (entry.caption || '') : captionText),
+            settings: slot?.settings || entry.settings || {},
             accountLabel: `Account ${accId.slice(-4)}`,
-            threadPosts: slot.threadPosts
+            threadPosts: slot?.threadPosts || entry?.threadPosts
           });
+        });
+      } else if (entry.useTemplate === false) {
+        slotsToValidate.push({
+          mediaItems: entry.mediaUrls || [],
+          caption: entry.caption !== undefined ? entry.caption : captionText,
+          settings: entry.settings || {},
+          accountLabel: '',
+          threadPosts: entry.threadPosts
         });
       }
     }
@@ -297,12 +318,17 @@ export function validatePostForm({
       slotsToValidate.push({
         mediaItems: defaultMediaItems,
         caption: captionText,
+        settings: entry?.settings || {},
         accountLabel: '',
         threadPosts: entry?.threadPosts
       });
     }
 
     for (const slot of slotsToValidate) {
+      const slotSettings = slot.settings || {};
+      const slotYoutubeTitle = slotSettings.title !== undefined ? slotSettings.title : youtubeTitle;
+      const slotYoutubeMadeForKids = slotSettings.madeForKids !== undefined ? slotSettings.madeForKids : youtubeMadeForKids;
+
       const slotErrors = validateAccountSlot({
         platform,
         subType,
@@ -313,8 +339,8 @@ export function validatePostForm({
         videoDuration,
         videoWidth,
         videoHeight,
-        youtubeTitle,
-        youtubeMadeForKids,
+        youtubeTitle: slotYoutubeTitle,
+        youtubeMadeForKids: slotYoutubeMadeForKids,
         fallbackFile: videoFile,
         fallbackPath: uploadedVideoPath,
         fallbackUrl: videoFileUrl,
@@ -326,5 +352,59 @@ export function validatePostForm({
     }
   }
 
+  return [...new Set(errors)];
+}
+
+/**
+ * Validates an AutoList post against EVERY selected account of each
+ * platform (not just one representative account) — a brand can have 2+
+ * YouTube channels with different Title/Audience/etc, and at publish time
+ * the backend applies each channel's own preset via networkOverrides, so a
+ * post missing e.g. Title on channel B is a real publish-time error even
+ * if channel A's preset is fully filled in. Returns the union of errors
+ * across all channels of all selected platforms.
+ *
+ * @param {Object} post - the AutoList post ({ mediaUrls, options, scheduledAt })
+ * @param {{facebook: Object[], youtube: Object[], instagram: Object[]}} validationPresets -
+ *   one preset-settings object per selected account of that platform
+ * @param {string[]} selectedPlatformKeys - unique platform names targeted by the AutoList
+ * @param {{file: File, previewUrl: string}[]} pendingMedia - freshly-picked
+ *   media not yet uploaded/saved to post.mediaUrls (see AutoListPostCard's
+ *   pendingMedia state). Included so a file just picked but not yet saved
+ *   is still caught by e.g. "YouTube requires a video file" instead of only
+ *   validating after the user clicks Save.
+ */
+export function validatePostAgainstAllPresets(post, validationPresets, selectedPlatformKeys, pendingMedia = []) {
+  const savedMediaUrls = !post.mediaUrls ? [] : (Array.isArray(post.mediaUrls) ? post.mediaUrls : post.mediaUrls.split(',').filter(Boolean));
+  const pendingMediaItems = (pendingMedia || []).map(p => ({ path: p.previewUrl, file: p.file }));
+  const mediaUrls = [...savedMediaUrls, ...pendingMediaItems];
+  const firstMedia = mediaUrls[0];
+
+  const facebookPresets = validationPresets.facebook?.length ? validationPresets.facebook : [{}];
+  const youtubePresets = validationPresets.youtube?.length ? validationPresets.youtube : [{}];
+  const instagramPresets = validationPresets.instagram?.length ? validationPresets.instagram : [{}];
+
+  const errors = [];
+  for (const facebookPreset of facebookPresets) {
+    for (const youtubePreset of youtubePresets) {
+      for (const instagramPreset of instagramPresets) {
+        errors.push(...validatePostForm({
+          isLibrary: false,
+          selectedPublishId: 'schedule',
+          scheduledDate: post.scheduledAt || new Date(),
+          selectedPlatforms: selectedPlatformKeys || [],
+          facebookType: post.options?.facebookType || facebookPreset.contentType || 'post',
+          youtubeType: post.options?.youtubeType || youtubePreset.videoType || 'video',
+          instagramType: post.options?.instagramType || instagramPreset.contentType || 'post',
+          youtubeTitle: post.options?.youtubeTitle || youtubePreset.title || '',
+          youtubeMadeForKids: post.options?.youtubeMadeForKids ?? youtubePreset.madeForKids ?? null,
+          videoFileUrl: typeof firstMedia === 'string' ? firstMedia : firstMedia?.path,
+          uploadedVideoPath: typeof firstMedia === 'string' ? firstMedia : firstMedia?.path,
+          mediaCount: mediaUrls.length,
+          postMedia: mediaUrls.map(item => (typeof item === 'string' ? { path: item } : item))
+        }));
+      }
+    }
+  }
   return [...new Set(errors)];
 }

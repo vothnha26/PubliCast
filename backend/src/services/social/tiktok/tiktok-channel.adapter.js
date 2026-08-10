@@ -7,7 +7,7 @@ class TikTokChannelAdapter extends BaseChannelAdapter {
   }
 
   getPrismaModel(client) {
-    return client.tikTokChannelSnapshot;
+    return client.channelMetricDaily;
   }
 
   get supportsBackfill() {

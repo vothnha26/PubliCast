@@ -12,7 +12,7 @@ class ThreadsChannelAdapter extends BaseChannelAdapter {
   }
 
   getPrismaModel(client) {
-    return client.threadsChannelSnapshot;
+    return client.channelMetricDaily;
   }
 
   get supportsBackfill() {

@@ -54,32 +54,13 @@ const INSIGHTS_STRATEGIES = {
   }
 };
 const socialAccountRepository = require('../../../repositories/social/social-account.repository');
-const facebookPostMetricRepository = require('../../../repositories/social/facebook-post-metric.repository');
-const postInsightRepository = require('../../../repositories/social/post-insight.repository');
 const { getHistoryWindowMonths } = require('../plan-history-window.util');
 const { PLATFORMS, POST_STATUS, POST_TYPES, DEFAULT_CONFIG, SOCIAL_TECHNICAL, MEDIA_EXTENSIONS } = require('../../../utils/constants');
 const { matchesExtension } = require('../../../utils/media-type.utils');
 const FacebookPublishStrategyFactory = require('./publish-strategies/publish-strategy.factory');
 const prisma = require('../../../config/prisma');
 const { eventEmitter, EVENTS } = require('../../../events/event-emitter');
-const { postInsightFacade } = require('../../../core/insights');
-
-// getVideoDetails() read-through cache: Inbox preview was calling the Graph
-// API on every click, including once per top-level comment sharing the same
-// post (N+1) — same bug class already fixed for YouTube via TrackedVideo.
-// title/thumbnail don't need to be fresher than this.
-const VIDEO_DETAILS_CACHE_TTL_MS = 60 * 60 * 1000; // 1 hour
-// getPublishedPosts()'s and getPostDetails()'s DB-first cache (see
-// FacebookPostMetric). Facebook's own docs say most post-insights metrics
-// only refresh once every 24h
-// (developers.facebook.com/docs/graph-api/reference/insights) — re-fetching
-// live more often than that cannot return newer numbers for most metrics,
-// so a live re-fetch is only worth its BUC quota cost once/day.
-const FACEBOOK_POST_METRICS_TTL_MS = 24 * 60 * 60 * 1000;
-
-// Memory Cache: Key -> brandId_limit, Value -> { data, expiry }
-const postCache = new Map();
-const CACHE_TTL_MS = 10 * 60 * 1000; // 10 minutes
+const { upsertPostMetricsDaily, findLatestPostMetrics } = require('../post-metric-daily-persistence.util');
 
 class FacebookPostService {
   _withTimeout(promise, ms, fallback) {
@@ -99,50 +80,48 @@ class FacebookPostService {
       });
   }
 
+  /**
+   * Smart Fetch: DB-only read, no live Graph API call is ever triggered from
+   * this method. Freshness is entirely the responsibility of Sync (the posts
+   * -sync cron scheduler, the OAuth-connect-time backfill, and the manual
+   * refresh endpoint — see posts-sync-scheduler.service.js) writing into
+   * PostMetricDaily. `pageToken` (manual "next page") also reads DB only now
+   * — deep pagination beyond what Sync has cached returns an empty page
+   * rather than a live fetch, a deliberate accepted simplification.
+   * Returns an empty list if Sync hasn't populated anything yet — never
+   * falls back to a live call on empty.
+   */
   async getPublishedPosts(brandId, pageToken = null, limit = 10, socialAccountId = null, startDate = null, endDate = null) {
-    const cacheKey = `${brandId}_${pageToken || 'first'}_${limit}_${socialAccountId || 'default'}_${startDate || ''}_${endDate || ''}`;
-    const cached = postCache.get(cacheKey);
-    if (cached && cached.expiry > Date.now()) return cached.data;
-
     try {
-      const { pageId, pageAccessToken, socialAccountId: resolvedAccountId } = await this._getAccountCredentials(brandId, socialAccountId);
-
-      if ((pageAccessToken && pageAccessToken.startsWith('mock-')) || (pageId && pageId.startsWith('mock-')) || pageId === 'fb-page-mock') {
-        return { data: [], nextPageToken: null, prevPageToken: null };
-      }
-
-      // The initial load (no explicit pageToken) is DB-first: Facebook's own
-      // docs say most post-insights metrics only update once every 24h, so
-      // re-fetching live every time a user opens the tab burns BUC quota for
-      // numbers that provably haven't changed (see FACEBOOK_POST_METRICS
-      // cache TTL). Only when the DB has nothing fresh enough for the
-      // brand's plan window does this fall through to the live Batch
-      // Request walk, same as before. An explicit pageToken (manual "next
-      // page" click) always goes live — DB-first is only for the default view.
-      let result;
-      if (pageToken) {
-        result = await this._fetchSinglePage(pageId, pageAccessToken, pageToken, limit);
-      } else {
-        const windowMonths = await getHistoryWindowMonths(brandId);
-        result = await this._fetchFromDbCache(brandId, resolvedAccountId, windowMonths);
-        if (!result) {
-          result = await this._fetchRecentWindow(brandId, pageId, pageAccessToken, limit);
-          this._persistPostMetrics(brandId, resolvedAccountId, result.data).catch(err => {
-            console.warn('[FacebookPostService] Failed to persist post metrics cache:', err.message);
-          });
-        }
-      }
-
-      result = { ...result, data: this._filterByDateRange(result.data, startDate, endDate) };
-
-      postCache.set(cacheKey, { data: result, expiry: Date.now() + CACHE_TTL_MS });
-      return result;
+      const { socialAccountId: resolvedAccountId } = await this._getAccountCredentials(brandId, socialAccountId);
+      const rows = await findLatestPostMetrics(brandId, PLATFORMS.FACEBOOK, resolvedAccountId, limit);
+      const data = this._filterByDateRange(rows.map(r => this._formatDbMetricRow(r)), startDate, endDate);
+      return { data, nextPageToken: null, prevPageToken: null };
     } catch (error) {
       if (error.message.includes('Facebook account not connected')) {
         return { data: [], nextPageToken: null, prevPageToken: null };
       }
       throw error;
     }
+  }
+
+  /**
+   * Sync-only: the ONE place allowed to call Facebook's live Graph API for
+   * published posts. Called from posts-sync-scheduler.service.js's cron
+   * webhook, connectChannel's OAuth-time backfill, and the manual-refresh
+   * endpoint — never from a read path. Walks the recent-window feed exactly
+   * as the old cache-miss branch did, then persists into PostMetricDaily.
+   */
+  async syncPublishedPosts(brandId, socialAccountId) {
+    const { pageId, pageAccessToken } = await this._getAccountCredentials(brandId, socialAccountId);
+
+    if ((pageAccessToken && pageAccessToken.startsWith('mock-')) || (pageId && pageId.startsWith('mock-')) || pageId === 'fb-page-mock') {
+      return { synced: 0 };
+    }
+
+    const result = await this._fetchRecentWindow(brandId, pageId, pageAccessToken, 50);
+    await this._persistPostMetrics(brandId, socialAccountId, result.data);
+    return { synced: result.data.length };
   }
 
   // Applied after the DB-first/live fetch resolves, on top of the plan's
@@ -161,135 +140,103 @@ class FacebookPostService {
   }
 
   /**
-   * DB-first read path (see FacebookPostMetric in schema.prisma) — returns
-   * null (cache miss, caller falls through to a live fetch) unless the
-   * NEWEST row for this account is fresher than FACEBOOK_POST_METRICS_TTL_MS.
-   * Using only the newest row's freshness (not every row's) means a page
-   * that hasn't published anything new keeps serving cache indefinitely
-   * once it's been fetched live once — correct, since "no new posts" is
-   * itself accurately reflected by the cache.
+   * Builds getPublishedPosts()'s response shape from a PostMetricDaily row —
+   * platform-specific counters (reactions/linkClicks/otherClicks/
+   * engagementRate/videoViews/avgWatchTimeSeconds) live in `metrics` JSON
+   * since PostMetricDaily's typed columns only cover the 5 fields common
+   * across all 6 platforms (reach/views/likes/comments/shares).
    */
-  async _fetchFromDbCache(brandId, socialAccountId, windowMonths) {
-    const cutoff = new Date();
-    cutoff.setMonth(cutoff.getMonth() - windowMonths);
-
-    const rows = await facebookPostMetricRepository.findByAccountSincePublished(brandId, socialAccountId, cutoff);
-    if (rows.length === 0) return null;
-
-    const newestFetch = rows.reduce((max, r) => (r.fetchedAt > max ? r.fetchedAt : max), rows[0].fetchedAt);
-    if (Date.now() - newestFetch.getTime() >= FACEBOOK_POST_METRICS_TTL_MS) return null;
-
-    return {
-      data: rows.map(r => this._formatDbMetricRow(r)),
-      nextPageToken: null,
-      prevPageToken: null
-    };
-  }
-
   _formatDbMetricRow(row) {
-    const reach = row.reach || row.videoViews || 0;
-    const views = row.videoViews || row.reach || 0;
+    const m = row.metrics || {};
+    const reach = row.reach || m.videoViews || 0;
+    const views = m.videoViews || row.reach || 0;
+    const linkClicks = m.linkClicks || 0;
+    const otherClicks = m.otherClicks || 0;
     return {
       id: row.platformPostId,
       message: row.captionSnippet || DEFAULT_CONFIG.NO_CONTENT,
       type: row.postType,
       platform: 'facebook',
       mediaUrl: row.thumbnailUrl || '',
-      postUrl: `https://www.facebook.com/${row.platformPostId}`,
+      postUrl: row.postUrl || `https://www.facebook.com/${row.platformPostId}`,
       date: row.publishedAt,
       status: POST_STATUS.PUBLISHED,
       reach,
       views,
-      reactions: row.reactions,
-      comments: row.comments,
-      shares: row.shares,
-      clicks: row.linkClicks + row.otherClicks,
-      linkClicks: row.linkClicks,
-      videoViews: row.videoViews,
-      videoTimeWatched: row.avgWatchTimeSeconds ? `${Math.round(row.avgWatchTimeSeconds / 60)}:${String(Math.round(row.avgWatchTimeSeconds % 60)).padStart(2, '0')}` : '0:00',
-      engagement: row.engagementRate,
+      reactions: m.reactions ?? row.likes ?? 0,
+      comments: row.comments || 0,
+      shares: row.shares || 0,
+      clicks: linkClicks + otherClicks,
+      linkClicks,
+      videoViews: m.videoViews || 0,
+      videoTimeWatched: m.avgWatchTimeSeconds ? `${Math.round(m.avgWatchTimeSeconds / 60)}:${String(Math.round(m.avgWatchTimeSeconds % 60)).padStart(2, '0')}` : '0:00',
+      engagement: m.engagementRate || 0,
       spent: 0
     };
   }
 
-  /** Builds getPostDetails()'s response shape from structured FacebookPostMetric
-   * columns (#351: no JSON blob) — the DB-first counterpart to the live-fetch
-   * branch below, which builds the same shape from raw Graph API responses.
-   * Reaction breakdown by type isn't persisted (nothing queries it in SQL,
-   * unlike reach/views/comments) — a DB-first hit only has the total; the
-   * per-type split is only available right after a live fetch. */
+  /** Builds getPostDetails()'s response shape from a PostMetricDaily row —
+   * the DB-only counterpart to the live-fetch branch's shape. Reaction
+   * breakdown by type isn't persisted (nothing queries it in SQL, unlike
+   * reach/views/comments) — only the total is available. */
   _formatDetailMetricRow(row, platformPostId) {
+    const m = row.metrics || {};
+    const linkClicks = m.linkClicks || 0;
+    const otherClicks = m.otherClicks || 0;
     return {
       postDetails: {
         id: platformPostId,
         message: row.captionSnippet || DEFAULT_CONFIG.NO_CONTENT,
         type: row.postType,
         mediaUrl: row.thumbnailUrl || '',
-        permalinkUrl: row.permalinkUrl || `https://www.facebook.com/${platformPostId}`,
+        permalinkUrl: row.postUrl || `https://www.facebook.com/${platformPostId}`,
         date: row.publishedAt,
         platform: 'facebook'
       },
-      reach: row.reach,
-      views: row.videoViews,
-      clicks: row.linkClicks + row.otherClicks,
-      linkClicks: row.linkClicks,
-      comments: row.comments,
-      shares: row.shares,
+      reach: row.reach || 0,
+      views: m.videoViews || 0,
+      clicks: linkClicks + otherClicks,
+      linkClicks,
+      comments: row.comments || 0,
+      shares: row.shares || 0,
       reactions: {
-        total: row.reactions,
+        total: m.reactions ?? row.likes ?? 0,
         breakdown: {}
       }
     };
   }
 
-  /** Upserts the freshly-enriched page(s) of posts into FacebookPostMetric
-   * so the next getPublishedPosts call for this brand/account can be
-   * DB-first instead of hitting the live Graph API again. Best-effort —
-   * caller doesn't await this on the response path. */
+  /** Sync-only: upserts the freshly-enriched page(s) of posts into
+   * PostMetricDaily so the next getPublishedPosts call can be DB-only.
+   * Platform-specific counters not covered by PostMetricDaily's typed
+   * columns go into `metrics` JSON. */
   async _persistPostMetrics(brandId, socialAccountId, posts) {
-    for (const post of posts) {
+    const rows = posts.map(post => {
       const postType = post.type === POST_TYPES.REEL ? POST_TYPES.REEL : (post.type || POST_TYPES.IMAGE);
-      const shared = {
+      return {
+        platformPostId: post.id,
         postType,
         publishedAt: post.date ? new Date(post.date) : null,
         reach: post.reach || 0,
-        impressions: post.views || 0,
-        videoViews: post.videoViews || 0,
+        views: post.views || 0,
         likes: post.reactions || 0,
         comments: post.comments || 0,
         shares: post.shares || 0,
-        reactions: post.reactions || 0,
-        linkClicks: post.linkClicks || 0,
-        otherClicks: Math.max((post.clicks || 0) - (post.linkClicks || 0), 0),
-        engagementRate: post.engagement || 0,
         captionSnippet: post.message || null,
-        thumbnailUrl: post.mediaUrl || null
+        thumbnailUrl: post.mediaUrl || null,
+        postUrl: post.postUrl || null,
+        metrics: {
+          videoViews: post.videoViews || 0,
+          reactions: post.reactions || 0,
+          linkClicks: post.linkClicks || 0,
+          otherClicks: Math.max((post.clicks || 0) - (post.linkClicks || 0), 0),
+          engagementRate: post.engagement || 0,
+          avgWatchTimeSeconds: null
+        }
       };
+    });
 
-      await facebookPostMetricRepository.upsert(socialAccountId, post.id, {
-        create: { brandId, avgWatchTimeSeconds: null, ...shared },
-        update: { ...shared, fetchedAt: new Date() }
-      }).catch(err => {
-        console.warn(`[FacebookPostService] Failed to upsert metrics for post ${post.id}:`, err.message);
-      });
-    }
-  }
-
-  async _fetchSinglePage(pageId, pageAccessToken, pageToken, limit) {
-    const feedResult = await this._withTimeout(
-      facebookGateway.getPageFeed(pageId, pageAccessToken, pageToken, limit),
-      4000,
-      { data: [], nextPageToken: null, prevPageToken: null }
-    );
-
-    const feed = feedResult.data || [];
-    const postsWithInsights = await this._enrichPostsWithInsightsBatch(feed, pageAccessToken);
-
-    return {
-      data: postsWithInsights,
-      nextPageToken: feedResult.nextPageToken || null,
-      prevPageToken: feedResult.prevPageToken || null
-    };
+    await upsertPostMetricsDaily(brandId, socialAccountId, PLATFORMS.FACEBOOK, rows);
   }
 
   /** Walks pages from the start, stopping at whichever comes first: a post
@@ -484,46 +431,34 @@ class FacebookPostService {
    * about once every 24h, matching FACEBOOK_POST_METRICS_TTL_MS.
    */
   async getPostDetails(brandId, platformPostId, socialAccountId = null) {
-    return postInsightFacade.getPostInsights(brandId, PLATFORMS.FACEBOOK, platformPostId, { socialAccountId });
+    const row = await prisma.postMetricDaily.findFirst({
+      where: { brandId, platformPostId, platform: PLATFORMS.FACEBOOK },
+      orderBy: { snapshotDate: 'desc' }
+    });
+    if (!row) return null;
+    return this._formatDetailMetricRow(row, platformPostId);
   }
 
   /**
    * Lightweight post lookup for inbox thread headers (title/thumbnail/real
-   * Facebook permalink) — unlike getPostDetails/getPostAnalytics this makes
-   * a single Graph API call with no insights/reactions/caching, since the
-   * inbox thread view only needs enough to render a header and a working
-   * "view on Facebook" link, not analytics.
+   * Facebook permalink) — DB-only (Smart Fetch), reads the latest
+   * PostMetricDaily row with no insights/reactions, since the inbox thread
+   * view only needs enough to render a header and a working "view on
+   * Facebook" link, not analytics.
    */
   async getVideoDetails(brandId, platformPostId, socialAccountId = null) {
-    const cached = await facebookPostMetricRepository.findByBrandAndPost(brandId, platformPostId);
-    if (cached && Date.now() - cached.fetchedAt.getTime() < VIDEO_DETAILS_CACHE_TTL_MS) {
-      return {
-        id: platformPostId,
-        title: (cached.captionSnippet || 'Facebook Post').slice(0, 60),
-        thumbnailUrl: cached.thumbnailUrl || null,
-        channelTitle: 'Facebook',
-        postUrl: `https://www.facebook.com/${platformPostId}`
-      };
-    }
+    const cached = await prisma.postMetricDaily.findFirst({
+      where: { brandId, platformPostId, platform: PLATFORMS.FACEBOOK },
+      orderBy: { snapshotDate: 'desc' }
+    });
+    if (!cached) return null;
 
-    const { pageAccessToken } = await this._getAccountCredentials(brandId, socialAccountId);
-    if (pageAccessToken && pageAccessToken.startsWith('mock-')) {
-      return {
-        id: platformPostId,
-        title: 'Facebook Post',
-        thumbnailUrl: null,
-        channelTitle: 'Facebook',
-        postUrl: `https://www.facebook.com/${platformPostId}`
-      };
-    }
-
-    const post = await facebookGateway.getPostDetails(platformPostId, pageAccessToken);
     return {
-      id: post.id,
-      title: (post.message || post.story || 'Facebook Post').slice(0, 60),
-      thumbnailUrl: post.full_picture || null,
+      id: platformPostId,
+      title: (cached.captionSnippet || 'Facebook Post').slice(0, 60),
+      thumbnailUrl: cached.thumbnailUrl || null,
       channelTitle: 'Facebook',
-      postUrl: post.permalink_url || `https://www.facebook.com/${platformPostId}`
+      postUrl: cached.postUrl || `https://www.facebook.com/${platformPostId}`
     };
   }
 

@@ -27,6 +27,12 @@ class TikTokService extends BaseSocialService {
     return tiktokVideo.getPublishedVideos(brandId, pageToken, limit, socialAccountId, startDate, endDate);
   }
 
+  // Smart Fetch Sync — the only method allowed to call TikTok's live API
+  // for published videos. getPublishedVideos above is DB-only.
+  async syncPublishedPosts(brandId, socialAccountId) {
+    return tiktokVideo.syncPublishedVideos(brandId, socialAccountId);
+  }
+
   async getVideoComments(brandId, params = {}) {
     return tiktokComment.getVideoComments(brandId, params);
   }

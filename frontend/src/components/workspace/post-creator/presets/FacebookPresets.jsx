@@ -1,74 +1,10 @@
 import React from "react";
-import { useTranslation } from "react-i18next";
-import { ChevronDown } from "lucide-react";
 import { usePostCreatorFormContext } from "../../../../context/PostCreatorFormContext";
-import { PLATFORMS } from "../../../../constants/platforms";
+import { useFacebookPresetComposer } from "../../../../hooks/presets/useFacebookPresetComposer";
+import { FacebookPresetFields } from "./fields/FacebookPresetFields";
 
 export function FacebookPresets() {
-  const { t } = useTranslation(["planner"]);
-  const {
-    facebookOpen,
-    setFacebookOpen,
-    facebookTitle,
-    setFacebookTitle,
-    selectedAccountIds,
-    activeBrand,
-    networkCustom,
-    activeNetworkAccountId,
-    updateNetworkSetting
-  } = usePostCreatorFormContext();
-
-  // Same per-account settings pattern as YouTubePresets — see its comment
-  // for the full rationale (composer-audit P0.4 / SRS FR-3.4).
-  const facebookAccounts = (activeBrand?.socialAccounts || []).filter(
-    sa => (sa.platform || '').toUpperCase() === PLATFORMS.FACEBOOK.toUpperCase() && selectedAccountIds.includes(sa.id)
-  );
-  const hasAccountSettings = facebookAccounts.length > 1 && !!activeNetworkAccountId;
-  const accountSettings = hasAccountSettings
-    ? (networkCustom?.[PLATFORMS.FACEBOOK]?.perAccount?.[activeNetworkAccountId]?.settings || {})
-    : null;
-
-  const effectiveTitle = hasAccountSettings && accountSettings.title !== undefined ? accountSettings.title : facebookTitle;
-
-  const handleSettingChange = (key, flatSetter, value) => {
-    if (hasAccountSettings) {
-      updateNetworkSetting(PLATFORMS.FACEBOOK, key, value, activeNetworkAccountId);
-    } else {
-      flatSetter(value);
-    }
-  };
-
-  return (
-    <div className="border border-border rounded-3xl bg-card shadow-sm transition-all duration-300">
-      <div 
-        onClick={() => setFacebookOpen(!facebookOpen)}
-        className="p-5 flex items-center justify-between hover:bg-muted/50 transition-all cursor-pointer group rounded-3xl"
-      >
-        <div className="flex items-center gap-3">
-          <svg className="w-[18px] h-[18px] text-[#1877F2] fill-[#1877F2]" viewBox="0 0 24 24">
-            <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
-          </svg>
-          <span className="text-[12px] font-bold text-foreground font-sans">{t("planner:postCreator.presets.facebook.title")}</span>
-        </div>
-        <ChevronDown size={16} className={`text-muted-foreground transition-transform duration-300 ${facebookOpen ? 'rotate-180 text-black' : ''}`} />
-      </div>
-
-      {facebookOpen && (
-        <div className="border-t border-gray-50 p-6 rounded-b-3xl">
-          <div className="space-y-4 text-left">
-            <div>
-              <label className="block text-[11px] font-bold text-muted-foreground uppercase mb-2 font-sans">{t("planner:postCreator.presets.facebook.titleLabel")}</label>
-              <input
-                type="text"
-                value={effectiveTitle}
-                onChange={(e) => handleSettingChange('title', setFacebookTitle, e.target.value)}
-                placeholder={t("planner:postCreator.presets.facebook.titlePlaceholder")}
-                className="w-full px-4 py-3 bg-card border border-border rounded-2xl text-xs font-semibold focus:border-black outline-none font-sans"
-              />
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
-  );
+  const { facebookType } = usePostCreatorFormContext();
+  const preset = useFacebookPresetComposer();
+  return <FacebookPresetFields preset={preset} contentType={facebookType} />;
 }

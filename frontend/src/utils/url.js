@@ -45,9 +45,13 @@ export function buildMediaUrl(path) {
  *
  * @param {string} url - URL hoặc path cần kiểm tra
  * @param {File|null} file - File object (nếu có, kiểm tra MIME type)
+ * @param {string|null} mimeType - MIME type tường minh (vd. từ Google Drive
+ *   API), dùng khi URL không có đuôi file để suy luận (thumbnailLink/
+ *   webViewLink không mang phần mở rộng).
  */
-export function isVideoPath(url, file = null) {
+export function isVideoPath(url, file = null, mimeType = null) {
   if (file?.type?.startsWith('video/')) return true;
+  if (mimeType?.startsWith('video/')) return true;
   if (!url || typeof url !== 'string') return false;
 
   const VIDEO_EXTENSIONS = ['.mp4', '.mov', '.avi', '.webm'];

@@ -96,20 +96,13 @@ export function PreviewBody({ platformFilter } = {}) {
     const effectiveCaption = isPlatformCustomized
       ? (isThreadsPlatform
           ? (typeof firstThreadPost === 'string' ? firstThreadPost : firstThreadPost?.text || '')
-          : (platformCustom?.caption || ''))
+          : (platformCustom?.caption ?? caption))
       : caption;
 
-    // Mirrors NetworkCustomizeScreen's own mediaItems fallback: caption and
-    // media are customized independently (updateNetworkCaption only ever
-    // writes { useTemplate: false, caption }, never touching mediaUrls), so
-    // typing text alone flips isPlatformCustomized to true while
-    // mediaUrls/threadPosts[0].mediaUrls is still empty. Without this guard
-    // the preview would drop media it never actually had a per-network
-    // override for, the instant the user edited only the caption.
     const rawCustomMediaItems = isThreadsPlatform
       ? ((typeof firstThreadPost === 'object' ? firstThreadPost?.mediaUrls : []) || [])
       : (platformCustom?.mediaUrls || []);
-    const effectiveMediaItems = (isPlatformCustomized && rawCustomMediaItems.length > 0)
+    const effectiveMediaItems = isPlatformCustomized
       ? rawCustomMediaItems
       : postMedia;
 

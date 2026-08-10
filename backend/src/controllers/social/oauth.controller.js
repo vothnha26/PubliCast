@@ -25,16 +25,12 @@ class OAuthController {
     if (!brandId) return res.status(400).json({ message: 'brandId is required' });
 
     const scopes = GOOGLE_OAUTH_SCOPE_SETS.YOUTUBE;
-    // frontendOrigin (optional) lets multiple frontends (legacy app, publicast-frontend
-    // sandbox, ...) share this one OAuth flow — encoded into `state` so googleCallback
-    // knows which origin to redirect back to. Only http(s) origins from ALLOWED
-    // origins are accepted to prevent open-redirect via a spoofed frontendOrigin value;
-    // falls back to DEFAULT_CONFIG.FRONTEND_URL (legacy app) when absent/invalid.
+    // frontendOrigin (optional) lets frontends specify custom return URL (e.g. /manage/workplace/new?step=2)
     const allowedOrigins = (process.env.CORS_ALLOWED_ORIGINS || '').split(',').map(o => o.trim());
     const isValidOrigin = frontendOrigin
-      && /^https?:\/\/[^/]+$/.test(frontendOrigin)
-      && (allowedOrigins.includes(frontendOrigin) || /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(frontendOrigin));
-    const state = isValidOrigin ? `${brandId}::${frontendOrigin}` : brandId;
+      && /^https?:\/\/[^/]+/.test(frontendOrigin)
+      && (allowedOrigins.some(o => frontendOrigin.startsWith(o)) || /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?/.test(frontendOrigin));
+    const state = isValidOrigin ? `${brandId}::${encodeURIComponent(frontendOrigin)}` : brandId;
 
     const redirectUri = `${this._getRedirectBaseUrl(req)}/api/social/google/callback`;
     const url = googleOAuthService.getAuthUrl(scopes, state, redirectUri);
@@ -67,22 +63,31 @@ class OAuthController {
 
   googleCallback = asyncHandler(async (req, res) => {
     const { code, state } = req.query;
-    // state is either "<brandId>" (legacy shape) or "<brandId>::<frontendOrigin>"
-    // (see getGoogleAuthUrl above) — split defensively, first segment is always brandId.
     const [brandId, encodedFrontendOrigin] = (state || '').split('::');
-    const frontendUrl = encodedFrontendOrigin || DEFAULT_CONFIG.FRONTEND_URL;
+    let targetUrl = `${DEFAULT_CONFIG.FRONTEND_URL}/manage/connections?tab=connections`;
+
+    if (encodedFrontendOrigin) {
+      try {
+        const decoded = decodeURIComponent(encodedFrontendOrigin);
+        targetUrl = decoded.includes('?') ? `${decoded}&success=youtube_connected` : `${decoded}?success=youtube_connected`;
+      } catch (e) {
+        targetUrl = `${DEFAULT_CONFIG.FRONTEND_URL}/manage/connections?tab=connections&success=youtube_connected`;
+      }
+    } else {
+      targetUrl = `${DEFAULT_CONFIG.FRONTEND_URL}/manage/connections?tab=connections&success=youtube_connected`;
+    }
+
     const redirectUri = `${this._getRedirectBaseUrl(req)}/api/social/google/callback`;
 
-    if (!brandId) return res.redirect(`${frontendUrl}/manage/connections?error=brand_id_missing`);
+    if (!brandId) return res.redirect(`${DEFAULT_CONFIG.FRONTEND_URL}/manage/connections?error=brand_id_missing`);
 
     try {
-      // connectChannel ghi outbox row SOCIAL_SYNC_ENQUEUE trong cùng transaction lưu
-      // socialAccount (social-account.repository.js) — không cần emit sự kiện ở đây nữa.
-      await youtubeService.connectChannel(brandId, code, redirectUri);
+      const account = await youtubeService.connectChannel(brandId, code, redirectUri);
+      this._backfillPostsSync(youtubeService, brandId, account?.id, 'YouTube');
       await this._notifySocialConnected(brandId, 'YouTube');
-      return res.redirect(`${frontendUrl}/manage/connections?tab=connections&success=youtube_connected`);
+      return res.redirect(targetUrl);
     } catch (error) {
-      return this._handleCallbackError(error, frontendUrl, res);
+      return this._handleCallbackError(error, DEFAULT_CONFIG.FRONTEND_URL, res);
     }
   });
 
@@ -139,12 +144,14 @@ class OAuthController {
 
     try {
       if (platform === 'instagram') {
-        await instagramService.connectChannel(brandId, code, redirectUri);
+        const account = await instagramService.connectChannel(brandId, code, redirectUri);
+        this._backfillPostsSync(instagramService, brandId, account?.id, 'Instagram');
         await this._notifySocialConnected(brandId, 'Instagram');
         return res.redirect(`${frontendUrl}/manage/connections?tab=connections&success=instagram_connected`);
       }
 
-      await facebookService.connectChannel(brandId, code, redirectUri);
+      const account = await facebookService.connectChannel(brandId, code, redirectUri);
+      this._backfillPostsSync(facebookService, brandId, account?.id, 'Facebook');
       await this._notifySocialConnected(brandId, 'Facebook');
       return res.redirect(`${frontendUrl}/manage/connections?tab=connections&success=facebook_connected`);
     } catch (error) {
@@ -179,7 +186,8 @@ class OAuthController {
     if (!brandId) return res.redirect(`${frontendUrl}/manage/connections?error=brand_id_missing`);
 
     try {
-      await instagramService.connectChannel(brandId, code, redirectUri);
+      const account = await instagramService.connectChannel(brandId, code, redirectUri);
+      this._backfillPostsSync(instagramService, brandId, account?.id, 'Instagram');
       await this._notifySocialConnected(brandId, 'Instagram');
       return res.redirect(`${frontendUrl}/manage/connections?tab=connections&success=instagram_connected`);
     } catch (error) {
@@ -225,7 +233,8 @@ class OAuthController {
     await redisClient.del(cacheKey);
 
     try {
-      await tiktokService.connectChannel(brandId, code, redirectUri, codeVerifier);
+      const account = await tiktokService.connectChannel(brandId, code, redirectUri, codeVerifier);
+      this._backfillPostsSync(tiktokService, brandId, account?.id, 'TikTok');
       await this._notifySocialConnected(brandId, 'TikTok');
       return res.redirect(`${frontendUrl}/manage/connections?tab=connections&success=tiktok_connected`);
     } catch (error) {
@@ -265,13 +274,29 @@ class OAuthController {
 
     try {
       const threadsService = require('../../services/social/threads');
-      await threadsService.connectChannel(brandId, code, redirectUri);
+      const account = await threadsService.connectChannel(brandId, code, redirectUri);
+      this._backfillPostsSync(threadsService, brandId, account?.id, 'Threads');
       await this._notifySocialConnected(brandId, 'Threads');
       return res.redirect(`${frontendUrl}/manage/connections?tab=connections&success=threads_connected`);
     } catch (error) {
       return this._handleCallbackError(error, frontendUrl, res);
     }
   });
+
+  /**
+   * Smart Fetch cold-start mitigation: one immediate, non-blocking
+   * syncPublishedPosts() call right after a fresh OAuth connect, so the
+   * user's PostMetricDaily-backed published-posts view isn't empty until
+   * the next 15-min posts-sync cron tick. Fire-and-forget — never blocks
+   * the OAuth redirect, and a failure here just means the cron catches up
+   * on its next pass.
+   */
+  _backfillPostsSync(service, brandId, socialAccountId, platformName) {
+    if (!socialAccountId || typeof service.syncPublishedPosts !== 'function') return;
+    service.syncPublishedPosts(brandId, socialAccountId).catch(err => {
+      logger.warn(`[OAuthController] ${platformName} OAuth-connect backfill sync failed for account ${socialAccountId}: ${err.message}`);
+    });
+  }
 
   async _notifySocialConnected(brandId, platformName) {
     try {

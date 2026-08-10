@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import {
   X, Check, ChevronRight, ChevronLeft, Globe,
@@ -12,20 +12,76 @@ import socialService from "../../services/social.service";
 import teamService from "../../services/team.service";
 
 export function CreateWorkplacePage() {
-  const [step, setStep] = useState(1);
-  const [formData, setFormData] = useState({
-    name: "",
-    industry: "Technology",
-    logo: null,
-    emails: ""
-  });
-  const [isSaving, setIsSaving] = useState(false);
-  const [connectingPlatform, setConnectingPlatform] = useState(null);
-  const fileInputRef = useRef(null);
   const navigate = useNavigate();
   const location = useLocation();
   const { user } = useAuth();
   const { activeBrand, updateBrand, createBrand } = useBrand();
+
+  const [step, setStep] = useState(1);
+  const [formData, setFormData] = useState({
+    name: activeBrand?.name || "",
+    industry: activeBrand?.industry || "Technology",
+    logo: activeBrand?.logo || null
+  });
+  const [emailList, setEmailList] = useState([]);
+  const [emailInput, setEmailInput] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
+  const [connectingPlatform, setConnectingPlatform] = useState(null);
+
+  const addEmailFromInput = () => {
+    const trimmed = emailInput.trim().toLowerCase();
+    if (trimmed && trimmed.includes("@") && !emailList.includes(trimmed)) {
+      setEmailList(prev => [...prev, trimmed]);
+      setEmailInput("");
+    }
+  };
+
+  const handleEmailKeyDown = (e) => {
+    if (e.key === "Enter" || e.key === "," || e.key === " " || e.key === "Tab") {
+      e.preventDefault();
+      addEmailFromInput();
+    } else if (e.key === "Backspace" && !emailInput && emailList.length > 0) {
+      setEmailList(prev => prev.slice(0, -1));
+    }
+  };
+
+  const removeEmail = (emailToRemove) => {
+    setEmailList(prev => prev.filter(e => e !== emailToRemove));
+  };
+  const fileInputRef = useRef(null);
+
+  // Đồng bộ thông tin thương hiệu hiện tại vào formData
+  useEffect(() => {
+    if (activeBrand?.name && !formData.name) {
+      setFormData(prev => ({ ...prev, name: activeBrand.name }));
+    }
+  }, [activeBrand]);
+
+  // Kiểm tra nếu quay lại từ OAuth callback với query parameter
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const success = params.get("success");
+    const error = params.get("error");
+    const targetStep = params.get("step");
+
+    if (targetStep) {
+      setStep(parseInt(targetStep, 10));
+    }
+
+    if (success) {
+      const platformName = success.replace("_connected", "").toUpperCase();
+      toast.success(`Kết nối ${platformName} thành công!`);
+      setStep(2); // Giữ người dùng ở bước 2 Connect Platforms
+      // Dọn dẹp query param trên URL
+      const cleanUrl = location.pathname;
+      window.history.replaceState({}, document.title, cleanUrl);
+    } else if (error) {
+      toast.error(`Kết nối thất bại: ${params.get("message") || error}`);
+      setStep(2);
+      const cleanUrl = location.pathname;
+      window.history.replaceState({}, document.title, cleanUrl);
+    }
+  }, [location.search, location.pathname]);
 
   const closeTarget = (typeof location.state?.from === "string" && location.state.from.startsWith("/"))
     ? location.state.from
@@ -45,6 +101,34 @@ export function CreateWorkplacePage() {
 
   const isOnboarding = activeBrand && !activeBrand.onboardingCompleted;
 
+  const handleStep1Next = async () => {
+    if (!formData.name.trim()) return;
+    setIsSaving(true);
+    try {
+      if (isOnboarding) {
+        await profileService.editProfile({
+          fullName: user?.fullName,
+          industry: formData.industry,
+        });
+        await updateBrand(activeBrand.id, { 
+          name: formData.name.trim(),
+          onboardingCompleted: true 
+        });
+      } else {
+        const newBrand = await createBrand({ 
+          name: formData.name.trim(), 
+          industry: formData.industry,
+          onboardingCompleted: true
+        });
+      }
+      nextStep();
+    } catch (err) {
+      toast.error("Không thể lưu thông tin thương hiệu");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   const handleConnectPlatform = async (platformName) => {
     if (!activeBrand?.id) {
       toast.error("Vui lòng hoàn thành thông tin thương hiệu trước khi kết nối.");
@@ -54,18 +138,21 @@ export function CreateWorkplacePage() {
     setConnectingPlatform(platformName);
     try {
       let res;
+      // Đường dẫn hiện tại để backend redirect quay lại sau khi xác thực OAuth
+      const returnOrigin = `${window.location.origin}/manage/workplace/new?step=2`;
+
       switch (platformName.toUpperCase()) {
         case "YOUTUBE":
-          res = await socialService.getGoogleAuthUrl(activeBrand.id);
+          res = await socialService.getGoogleAuthUrl(activeBrand.id, returnOrigin);
           break;
         case "FACEBOOK":
-          res = await socialService.getFacebookAuthUrl(activeBrand.id);
+          res = await socialService.getFacebookAuthUrl(activeBrand.id, returnOrigin);
           break;
         case "TIKTOK":
-          res = await socialService.getTikTokAuthUrl(activeBrand.id);
+          res = await socialService.getTikTokAuthUrl(activeBrand.id, returnOrigin);
           break;
         case "INSTAGRAM":
-          res = await socialService.getInstagramAuthUrl(activeBrand.id);
+          res = await socialService.getInstagramAuthUrl(activeBrand.id, returnOrigin);
           break;
         default:
           toast.error("Nền tảng chưa hỗ trợ OAuth tự động.");
@@ -87,28 +174,21 @@ export function CreateWorkplacePage() {
   const handleFinalize = async () => {
     setIsSaving(true);
     try {
-      let targetBrandId = activeBrand?.id;
+      // Brand đã được tạo/cập nhật xong ở handleStep1Next (step 1) — Finalize
+      // chỉ còn việc gửi lời mời, không tạo/update brand lần nữa (làm vậy
+      // trước đây tạo ra một workspace trùng tên mỗi lần hoàn tất wizard).
+      const targetBrandId = activeBrand?.id;
 
-      if (isOnboarding) {
-        await profileService.editProfile({
-          fullName: user?.fullName,
-          industry: formData.industry,
-        });
-        await updateBrand(activeBrand.id, { name: formData.name.trim() });
-      } else {
-        const newBrand = await createBrand({ name: formData.name.trim(), industry: formData.industry });
-        if (newBrand?.id) targetBrandId = newBrand.id;
+      // Gom cả email đang nhập dở trong ô input nếu có
+      const finalEmails = [...emailList];
+      const pendingInput = emailInput.trim().toLowerCase();
+      if (pendingInput && pendingInput.includes("@") && !finalEmails.includes(pendingInput)) {
+        finalEmails.push(pendingInput);
       }
 
-      // Xử lý gửi lời mời thành viên nhóm nếu có nhập email
-      const emailList = formData.emails
-        .split(/[\n,;]+/)
-        .map(e => e.trim())
-        .filter(e => e && e.includes("@"));
-
-      if (emailList.length > 0 && targetBrandId) {
+      if (finalEmails.length > 0 && targetBrandId) {
         let successCount = 0;
-        for (const email of emailList) {
+        for (const email of finalEmails) {
           try {
             await teamService.inviteMember({
               brandId: targetBrandId,
@@ -211,11 +291,11 @@ export function CreateWorkplacePage() {
                 </div>
 
                 <button 
-                  onClick={nextStep}
-                  disabled={!formData.name}
+                  onClick={handleStep1Next}
+                  disabled={!formData.name || isSaving}
                   className="w-full py-4 bg-foreground text-background rounded-2xl font-bold text-sm shadow-xl hover:bg-foreground/90 transition-all disabled:opacity-30 disabled:cursor-not-allowed flex items-center justify-center gap-2 cursor-pointer"
                 >
-                   Next: Connectivity <ChevronRight size={18} />
+                   {isSaving ? <Loader2 size={18} className="animate-spin" /> : <>Next: Connectivity <ChevronRight size={18} /></>}
                 </button>
              </div>
            )}
@@ -274,22 +354,43 @@ export function CreateWorkplacePage() {
                 </div>
 
                 <div className="space-y-4 mb-10">
-                   <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest ml-1">Team Member Emails</label>
-                   <textarea 
-                     placeholder="Enter emails separated by comma or newline..." 
-                     value={formData.emails}
-                     onChange={(e) => setFormData({ ...formData, emails: e.target.value })}
-                     className="w-full px-5 py-4 rounded-2xl border border-border bg-background text-foreground focus:border-foreground outline-none text-sm font-medium h-32 resize-none shadow-inner" 
-                   />
-                   <div className="flex items-center gap-2 px-1">
-                      <div className="w-2 h-2 rounded-full bg-purple-500" />
-                      <span className="text-[10px] font-bold text-muted-foreground uppercase">Pro: Up to 10 members in this workplace</span>
-                   </div>
-                </div>
+                    <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest ml-1">Team Member Emails</label>
+                    
+                    {/* Tag Emails Container */}
+                    <div className="min-h-32 p-4 rounded-2xl border border-border bg-background flex flex-wrap gap-2 items-start focus-within:border-foreground transition-all shadow-inner">
+                       {emailList.map((email, idx) => (
+                          <span key={idx} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-purple-500/10 text-purple-600 font-bold text-xs border border-purple-500/20 animate-in fade-in zoom-in-95">
+                             {email}
+                             <button type="button" onClick={() => removeEmail(email)} className="hover:text-purple-900 cursor-pointer">
+                                <X size={14} />
+                             </button>
+                          </span>
+                       ))}
+                       <input 
+                         type="email"
+                         value={emailInput}
+                         onChange={(e) => setEmailInput(e.target.value)}
+                         onKeyDown={handleEmailKeyDown}
+                         onBlur={addEmailFromInput}
+                         placeholder={emailList.length === 0 ? "Type email and press Enter, comma or space..." : "Add more email..."}
+                         className="flex-1 min-w-[200px] bg-transparent outline-none text-sm font-medium py-1 placeholder:text-muted-foreground/60"
+                       />
+                    </div>
+
+                    <div className="flex items-center justify-between px-1">
+                       <div className="flex items-center gap-2">
+                          <div className="w-2 h-2 rounded-full bg-purple-500" />
+                          <span className="text-[10px] font-bold text-muted-foreground uppercase">Pro: Up to 10 members in this workplace</span>
+                       </div>
+                       {emailList.length > 0 && (
+                          <span className="text-[10px] font-black text-purple-600 uppercase">{emailList.length} member(s) added</span>
+                       )}
+                    </div>
+                 </div>
 
                 <div className="flex gap-3">
                    <button onClick={prevStep} disabled={isSaving} className="flex-1 py-4 border border-border rounded-2xl font-bold text-sm text-muted-foreground hover:bg-muted cursor-pointer disabled:opacity-50">Back</button>
-                   <button onClick={handleFinalize} disabled={isSaving || !formData.name} className="flex-[2] py-4 bg-foreground text-background rounded-2xl font-bold text-sm shadow-xl flex items-center justify-center gap-2 hover:bg-foreground/90 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed">
+                   <button onClick={handleFinalize} disabled={isSaving} className="flex-[2] py-4 bg-foreground text-background rounded-2xl font-bold text-sm shadow-xl flex items-center justify-center gap-2 hover:bg-foreground/90 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed">
                       {isSaving ? <Loader2 size={18} className="animate-spin" /> : <><Sparkles size={18} /> Finalize Workplace</>}
                    </button>
                 </div>

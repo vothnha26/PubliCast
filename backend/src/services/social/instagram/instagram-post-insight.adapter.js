@@ -8,6 +8,15 @@ const logger = require('../../../utils/logger');
  * InstagramPostInsightAdapter
  * Concrete Adapter cho Instagram Post/Reel Metrics.
  * Tuân thủ Meta Graph API v26.0+ và phân loại chi tiết theo Media Types.
+ *
+ * DEAD CODE / NOT WIRED UP: registered in core/insights/index.js but nothing
+ * calls postInsightFacade for Instagram (only YouTube's youtube-analytics.
+ * service.js does) — see instagram-post.service.js for the real, actively
+ * used Instagram post-metrics path (DB-only reads + syncPublishedPosts Sync,
+ * against PostMetricDaily). prismaModel below also points at a table that
+ * was dropped in the PostMetricDaily migration — do not wire a new caller to
+ * this adapter without first pointing it at PostMetricDaily/the shared
+ * post-metric-daily-persistence.util instead.
  */
 class InstagramPostInsightAdapter extends BasePostInsightAdapter {
   get platform() {
@@ -15,7 +24,10 @@ class InstagramPostInsightAdapter extends BasePostInsightAdapter {
   }
 
   get prismaModel() {
-    return prisma.instagramPostMetric;
+    // instagramPostMetric no longer exists (dropped by the PostMetricDaily
+    // migration) — this getter is unreachable in practice (see class doc),
+    // but throws instead of silently returning undefined if ever called.
+    throw new Error('InstagramPostInsightAdapter is dead code: instagramPostMetric was dropped. Use PostMetricDaily via instagram-post.service.js instead.');
   }
 
   get isUniqueKeyed() {

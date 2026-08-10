@@ -20,10 +20,12 @@ class FetchPostStep extends BaseStep {
     let targetsByPlatform = {};
     if (Array.isArray(post.targets)) {
       for (const target of post.targets) {
-        if (!targetsByPlatform[target.platform]) {
-          targetsByPlatform[target.platform] = [];
+        const platKey = (target.platform || '').trim().toUpperCase();
+        if (!platKey) continue;
+        if (!targetsByPlatform[platKey]) {
+          targetsByPlatform[platKey] = [];
         }
-        targetsByPlatform[target.platform].push(target.socialAccountId);
+        targetsByPlatform[platKey].push(target.socialAccountId);
       }
     }
 

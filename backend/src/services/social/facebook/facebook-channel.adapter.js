@@ -7,7 +7,7 @@ class FacebookChannelAdapter extends BaseChannelAdapter {
   }
 
   getPrismaModel(client) {
-    return client.facebookChannelSnapshot;
+    return client.channelMetricDaily;
   }
 
   get supportsBackfill() {

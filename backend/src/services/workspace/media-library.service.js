@@ -144,18 +144,26 @@ class MediaLibraryService {
 
     await this._assertFolderBelongsToBrand(folderId, brandId);
 
+    const mediaId = fileInfo.public_id || fileInfo.mediaId || fileInfo.id || `cld_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+    const storageUrl = fileInfo.secure_url || fileInfo.url || fileInfo.path || '';
+    const filename = fileInfo.original_filename || fileInfo.filename || fileInfo.name || 'uploaded_media';
+    const rawMime = fileInfo.mimetype || fileInfo.mimeType;
+    const mimeType = rawMime && !rawMime.endsWith('/undefined')
+      ? rawMime
+      : (fileInfo.resource_type ? `${fileInfo.resource_type}/${fileInfo.format || (fileInfo.resource_type === 'video' ? 'mp4' : 'png')}` : 'application/octet-stream');
+
     const media = await mediaLibraryRepository.create({
       brandId,
       uploadedByUserId: userId,
-      filename: fileInfo.original_filename || fileInfo.filename,
-      mimeType: fileInfo.mimetype || `${fileInfo.resource_type}/${fileInfo.format}`,
-      sizeBytes: fileInfo.bytes,
-      storageUrl: fileInfo.secure_url,
-      mediaId: fileInfo.public_id,
+      filename,
+      mimeType,
+      sizeBytes: fileInfo.bytes || fileInfo.sizeBytes || fileInfo.size || 0,
+      storageUrl,
+      mediaId,
       folderId: folderId || null,
-      width: fileInfo.width,
-      height: fileInfo.height,
-      durationSeconds: fileInfo.duration,
+      width: fileInfo.width || null,
+      height: fileInfo.height || null,
+      durationSeconds: fileInfo.duration || null,
       uploadedAt: new Date()
     });
 

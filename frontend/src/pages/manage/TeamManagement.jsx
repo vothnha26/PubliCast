@@ -82,9 +82,18 @@ export function TeamManagementPage() {
     const requestId = teamRequest.start();
     setLoading(true);
     try {
-      const response = await teamService.getMembers(activeBrand.id);
+      // Lọc bỏ query param "tab" khỏi searchParamsString gửi backend
+      const cleanParams = new URLSearchParams(searchParamsString);
+      cleanParams.delete("tab");
+      const queryString = cleanParams.toString();
+
+      const response = await teamService.getMembers(activeBrand.id, queryString);
       if (!teamRequest.isLatest(requestId)) return;
-      setTeamData(response.data || response);
+      if (Array.isArray(response)) {
+        setTeamData({ data: response, meta: response.meta || {} });
+      } else {
+        setTeamData({ data: response?.data || response?.members || [], meta: response?.meta || {} });
+      }
     } catch (error) {
       if (!teamRequest.isLatest(requestId)) return;
       toast.error(error.message || t("team.loadMembersFailed"));

@@ -137,9 +137,7 @@ export function buildNetworkOverrides({
     }
 
     const effectiveEntryFor = (accountId) =>
-      accountsForPlatform.length > 1 && entry.perAccount?.[accountId]
-        ? entry.perAccount[accountId]
-        : entry;
+      entry.perAccount?.[accountId] || entry;
 
     if (accountsForPlatform.length > 0) {
       accountsForPlatform.forEach((acc) => {

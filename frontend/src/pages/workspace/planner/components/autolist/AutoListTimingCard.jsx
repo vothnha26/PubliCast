@@ -44,18 +44,17 @@ export function AutoListTimingCard({
 }) {
   const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone || "Asia/Ho_Chi_Minh";
 
+  // Publish Interval is restricted to Hours/Days — minutes are too granular
+  // for realistic posting cadences and were removed per product requirement.
   const [val, setVal] = React.useState(() => {
-    const mins = intervalMinutes || 30;
+    const mins = intervalMinutes || 60;
     if (mins % 1440 === 0) return mins / 1440;
-    if (mins % 60 === 0) return mins / 60;
-    return mins;
+    return Math.max(1, Math.round(mins / 60));
   });
 
   const [unit, setUnit] = React.useState(() => {
-    const mins = intervalMinutes || 30;
-    if (mins % 1440 === 0) return 'd';
-    if (mins % 60 === 0) return 'h';
-    return 'm';
+    const mins = intervalMinutes || 60;
+    return mins % 1440 === 0 ? 'd' : 'h';
   });
 
   React.useEffect(() => {
@@ -63,12 +62,9 @@ export function AutoListTimingCard({
       if (intervalMinutes % 1440 === 0) {
         setVal(intervalMinutes / 1440);
         setUnit('d');
-      } else if (intervalMinutes % 60 === 0) {
-        setVal(intervalMinutes / 60);
-        setUnit('h');
       } else {
-        setVal(intervalMinutes);
-        setUnit('m');
+        setVal(Math.max(1, Math.round(intervalMinutes / 60)));
+        setUnit('h');
       }
     }
   }, [intervalMinutes]);
@@ -77,21 +73,17 @@ export function AutoListTimingCard({
     const rawVal = e.target.value;
     const numericVal = parseInt(rawVal) || 0;
     setVal(rawVal);
-    
-    let multiplier = 1;
-    if (unit === 'h') multiplier = 60;
-    if (unit === 'd') multiplier = 1440;
+
+    const multiplier = unit === 'd' ? 1440 : 60;
     setIntervalMinutes(numericVal * multiplier);
   };
 
   const handleUnitChange = (e) => {
     const newUnit = e.target.value;
     setUnit(newUnit);
-    
+
     const numericVal = parseInt(val) || 0;
-    let multiplier = 1;
-    if (newUnit === 'h') multiplier = 60;
-    if (newUnit === 'd') multiplier = 1440;
+    const multiplier = newUnit === 'd' ? 1440 : 60;
     setIntervalMinutes(numericVal * multiplier);
   };
 
@@ -180,7 +172,6 @@ export function AutoListTimingCard({
                     onChange={handleUnitChange}
                     className="w-full px-4 py-2 bg-card border border-border text-foreground rounded-xl text-xs font-bold focus:border-foreground outline-none shadow-sm appearance-none cursor-pointer pr-8"
                   >
-                    <option value="m">Phút</option>
                     <option value="h">Giờ</option>
                     <option value="d">Ngày</option>
                   </select>
@@ -190,7 +181,7 @@ export function AutoListTimingCard({
               <p className="text-[11px] text-muted-foreground font-semibold mt-1">
                 ⚙️ Bài viết trong hàng đợi sẽ được đăng cách nhau mỗi{" "}
                 <span className="text-foreground font-bold">
-                  {val || 0} {unit === 'm' ? 'phút' : unit === 'h' ? 'giờ' : 'ngày'}
+                  {val || 0} {unit === 'h' ? 'giờ' : 'ngày'}
                 </span>
               </p>
             </div>

@@ -16,6 +16,9 @@ router.post('/social-sync', qstashAuth, qstashController.handleSocialSync);
 // POST /api/webhooks/qstash/metrics-sync
 router.post('/metrics-sync', qstashAuth, qstashController.handleMetricsSync);
 
+// POST /api/webhooks/qstash/posts-sync
+router.post('/posts-sync', qstashAuth, qstashController.handlePostsSync);
+
 // POST /api/webhooks/qstash/publish-post
 router.post('/publish-post', qstashAuth, qstashController.handlePublishPost);
 

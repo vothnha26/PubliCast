@@ -20,7 +20,11 @@ export const ReplyComposer = ({ replyText, setReplyText, onReply, isReplying, pl
   const emojiButtonRef = useRef(null);
   const [isEmojiOpen, setIsEmojiOpen] = useState(false);
   const [emojiPosition, setEmojiPosition] = useState(null);
-  const [attachmentUrl, setAttachmentUrl] = useState(null);
+  // Upload is deferred until Send — picking a file only stores it locally
+  // (attachmentFile) with a local blob preview (attachmentPreviewUrl); the
+  // actual Cloudinary upload happens in handleSubmit, right before onReply.
+  const [attachmentFile, setAttachmentFile] = useState(null);
+  const [attachmentPreviewUrl, setAttachmentPreviewUrl] = useState(null);
   const [isUploading, setIsUploading] = useState(false);
 
   // Rendered via portal (see below) so the picker isn't clipped by this
@@ -36,10 +40,24 @@ export const ReplyComposer = ({ replyText, setReplyText, onReply, isReplying, pl
   const normalizedPlatform = (platform || "").toUpperCase();
   const attachmentSupported = PLATFORMS_SUPPORTING_ATTACHMENT.includes(normalizedPlatform);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    onReply(attachmentUrl || undefined);
-    setAttachmentUrl(null);
+    let uploadedUrl;
+    if (attachmentFile) {
+      setIsUploading(true);
+      try {
+        uploadedUrl = await uploadMediaFile(attachmentFile, activeBrand.id);
+      } catch (err) {
+        toast.error(t("inbox.attachmentUploadFailed", "Tải ảnh lên thất bại."));
+        setIsUploading(false);
+        return;
+      }
+      setIsUploading(false);
+    }
+    onReply(uploadedUrl || undefined);
+    if (attachmentPreviewUrl) URL.revokeObjectURL(attachmentPreviewUrl);
+    setAttachmentFile(null);
+    setAttachmentPreviewUrl(null);
   };
 
   const handleEmojiClick = (emojiData) => {
@@ -55,19 +73,19 @@ export const ReplyComposer = ({ replyText, setReplyText, onReply, isReplying, pl
     fileInputRef.current?.click();
   };
 
-  const handleFileChange = async (e) => {
+  const handleFileChange = (e) => {
     const file = e.target.files?.[0];
     e.target.value = "";
     if (!file || !activeBrand?.id) return;
-    setIsUploading(true);
-    try {
-      const url = await uploadMediaFile(file, activeBrand.id);
-      setAttachmentUrl(url);
-    } catch (err) {
-      toast.error(t("inbox.attachmentUploadFailed", "Tải ảnh lên thất bại."));
-    } finally {
-      setIsUploading(false);
-    }
+    if (attachmentPreviewUrl) URL.revokeObjectURL(attachmentPreviewUrl);
+    setAttachmentFile(file);
+    setAttachmentPreviewUrl(URL.createObjectURL(file));
+  };
+
+  const handleRemoveAttachment = () => {
+    if (attachmentPreviewUrl) URL.revokeObjectURL(attachmentPreviewUrl);
+    setAttachmentFile(null);
+    setAttachmentPreviewUrl(null);
   };
 
   return (
@@ -81,13 +99,13 @@ export const ReplyComposer = ({ replyText, setReplyText, onReply, isReplying, pl
           className="w-full p-4 text-[13px] bg-transparent text-foreground placeholder:text-muted-foreground border-none focus:ring-0 resize-none min-h-[100px]"
         />
 
-        {attachmentUrl && (
+        {attachmentPreviewUrl && (
           <div className="px-4 pb-2">
             <div className="relative inline-block">
-              <img src={attachmentUrl} alt="Attachment preview" className="h-16 w-16 object-cover rounded-lg border border-border" />
+              <img src={attachmentPreviewUrl} alt="Attachment preview" className="h-16 w-16 object-cover rounded-lg border border-border" />
               <button
                 type="button"
-                onClick={() => setAttachmentUrl(null)}
+                onClick={handleRemoveAttachment}
                 className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-foreground text-background flex items-center justify-center cursor-pointer"
                 title="Remove attachment"
               >
@@ -135,10 +153,10 @@ export const ReplyComposer = ({ replyText, setReplyText, onReply, isReplying, pl
             </div>
             <button
               onClick={handleSubmit}
-              disabled={isReplying || (!replyText && !attachmentUrl)}
+              disabled={isReplying || isUploading || (!replyText && !attachmentFile)}
               className="flex items-center gap-2 px-6 py-2 bg-primary text-primary-foreground rounded-xl text-[12px] font-bold hover:scale-105 active:scale-95 transition-all disabled:opacity-20 cursor-pointer"
             >
-              {isReplying ? <Loader2 size={16} className="animate-spin" /> : t("inbox.sendCtrlEnter")}
+              {isReplying || isUploading ? <Loader2 size={16} className="animate-spin" /> : t("inbox.sendCtrlEnter")}
             </button>
           </div>
         </div>

@@ -19,8 +19,10 @@ class SocialService {
     return data;
   }
 
-  async getGoogleAuthUrl(brandId) {
-    const data = await apiV2.get(`/social/google/url?brandId=${brandId}`);
+  async getGoogleAuthUrl(brandId, frontendOrigin) {
+    const params = new URLSearchParams({ brandId });
+    if (frontendOrigin) params.append('frontendOrigin', frontendOrigin);
+    const data = await apiV2.get(`/social/google/url?${params.toString()}`);
     return data;
   }
 

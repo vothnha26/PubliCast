@@ -1,13 +1,17 @@
 const blueskyService = require('../../src/services/social/bluesky/bluesky.service');
 const blueskyGateway = require('../../src/services/social/bluesky/bluesky.gateway');
 const socialAccountRepository = require('../../src/repositories/social/social-account.repository');
-const QuotaTrackerService = require('../../src/services/social/quota-tracker.service');
+const mockQuotaTracker = require('../../src/services/social/quota-tracker.singleton');
 const { PLATFORMS, QUOTA_TTL_STRATEGY } = require('../../src/utils/constants');
 const BLUESKY_CONSTANTS = require('../../src/services/social/bluesky/bluesky.constants');
 
 jest.mock('../../src/services/social/bluesky/bluesky.gateway');
 jest.mock('../../src/repositories/social/social-account.repository');
-jest.mock('../../src/services/social/quota-tracker.service');
+jest.mock('../../src/services/social/quota-tracker.singleton', () => ({
+  getSummary: jest.fn(),
+  incrementAndGet: jest.fn(),
+  incrementAndGetHourly: jest.fn()
+}));
 jest.mock('../../src/utils/encryption', () => ({
   decrypt: jest.fn(val => val || 'decrypted_token'),
   encrypt: jest.fn(val => val)
@@ -36,9 +40,9 @@ describe('BlueskyExtendedService (Video, Quota Rate-Limit, Social Actions)', () 
     socialAccountRepository.findByBrandAndPlatformFirst.mockResolvedValue(mockAccount);
     blueskyGateway.createAgent.mockReturnValue({});
     blueskyGateway.resumeSession.mockResolvedValue(true);
-    jest.spyOn(blueskyService.quotaTracker, 'getSummary').mockResolvedValue({ totalUsed: 0 });
-    jest.spyOn(blueskyService.quotaTracker, 'incrementAndGet').mockResolvedValue(3);
-    jest.spyOn(blueskyService.quotaTracker, 'incrementAndGetHourly').mockResolvedValue(3);
+    mockQuotaTracker.getSummary.mockResolvedValue({ totalUsed: 0 });
+    mockQuotaTracker.incrementAndGet.mockResolvedValue(3);
+    mockQuotaTracker.incrementAndGetHourly.mockResolvedValue(3);
   });
 
   describe('Phần A — Video Upload', () => {
@@ -115,7 +119,7 @@ describe('BlueskyExtendedService (Video, Quota Rate-Limit, Social Actions)', () 
     });
 
     it('sẽ ném lỗi nếu số điểm quota theo giờ vượt ngưỡng HOURLY_LIMIT (5000)', async () => {
-      jest.spyOn(blueskyService.quotaTracker, 'incrementAndGetHourly').mockResolvedValueOnce(
+      mockQuotaTracker.incrementAndGetHourly.mockResolvedValueOnce(
         QUOTA_TTL_STRATEGY.BLUESKY.HOURLY_LIMIT + 1
       );
 
@@ -125,7 +129,7 @@ describe('BlueskyExtendedService (Video, Quota Rate-Limit, Social Actions)', () 
     });
 
     it('sẽ ném lỗi nếu số điểm quota theo ngày vượt ngưỡng DAILY_LIMIT (35000)', async () => {
-      jest.spyOn(blueskyService.quotaTracker, 'incrementAndGet').mockResolvedValueOnce(
+      mockQuotaTracker.incrementAndGet.mockResolvedValueOnce(
         QUOTA_TTL_STRATEGY.BLUESKY.DAILY_LIMIT + 1
       );
 
@@ -141,12 +145,12 @@ describe('BlueskyExtendedService (Video, Quota Rate-Limit, Social Actions)', () 
 
       await blueskyService.publishPost(mockBrandId, { caption: 'Valid post' });
 
-      expect(blueskyService.quotaTracker.incrementAndGetHourly).toHaveBeenCalledWith(
+      expect(mockQuotaTracker.incrementAndGetHourly).toHaveBeenCalledWith(
         `bluesky:${mockAccountId}`,
         QUOTA_TTL_STRATEGY.BLUESKY.POINTS.CREATE,
         3600
       );
-      expect(blueskyService.quotaTracker.incrementAndGet).toHaveBeenCalledWith(
+      expect(mockQuotaTracker.incrementAndGet).toHaveBeenCalledWith(
         `bluesky:${mockAccountId}`,
         QUOTA_TTL_STRATEGY.BLUESKY.POINTS.CREATE
       );
@@ -175,7 +179,7 @@ describe('BlueskyExtendedService (Video, Quota Rate-Limit, Social Actions)', () 
       const res = await blueskyService.likePost(mockBrandId, { uri: 'at://post/1', cid: 'bafk1' });
 
       expect(res).toEqual({ uri: 'at://like/1' });
-      expect(blueskyService.quotaTracker.incrementAndGet).toHaveBeenCalledWith(
+      expect(mockQuotaTracker.incrementAndGet).toHaveBeenCalledWith(
         `bluesky:${mockAccountId}`,
         QUOTA_TTL_STRATEGY.BLUESKY.POINTS.CREATE
       );
@@ -190,7 +194,7 @@ describe('BlueskyExtendedService (Video, Quota Rate-Limit, Social Actions)', () 
       await blueskyService.repost(mockBrandId, { uri: 'at://post/1', cid: 'bafk1' });
       await blueskyService.followUser(mockBrandId, { did: 'did:plc:other' });
 
-      expect(blueskyService.quotaTracker.incrementAndGet).toHaveBeenCalledWith(
+      expect(mockQuotaTracker.incrementAndGet).toHaveBeenCalledWith(
         `bluesky:${mockAccountId}`,
         QUOTA_TTL_STRATEGY.BLUESKY.POINTS.CREATE
       );
@@ -204,7 +208,7 @@ describe('BlueskyExtendedService (Video, Quota Rate-Limit, Social Actions)', () 
       const res = await blueskyService.deleteLike(mockBrandId, { likeUri: 'at://like/1' });
 
       expect(res).toBe(true);
-      expect(blueskyService.quotaTracker.incrementAndGet).toHaveBeenCalledWith(
+      expect(mockQuotaTracker.incrementAndGet).toHaveBeenCalledWith(
         `bluesky:${mockAccountId}`,
         QUOTA_TTL_STRATEGY.BLUESKY.POINTS.DELETE
       );

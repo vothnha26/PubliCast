@@ -125,16 +125,7 @@ export function DashboardPage() {
     }
   }, [location, navigate, t]);
 
-  // Một brand mới tạo có onboardingCompleted=false cho tới khi user hoàn tất
-  // setup — đưa họ sang trang onboarding thay vì hiện Dashboard rỗng. Trang
-  // /manage/workplace/new set cờ này true khi Finalize (qua updateBrand).
-  // Dùng cờ thật thay vì so activeBrand.name === "New Workspace" — so tên
-  // vỡ nếu user chọn đặt tên brand thật trùng đúng placeholder mặc định.
-  useEffect(() => {
-    if (activeBrand && !activeBrand.onboardingCompleted) {
-      navigate("/manage/workplace/new", { replace: true });
-    }
-  }, [activeBrand, navigate]);
+
 
   useEffect(() => {
     const loadPosts = async () => {

@@ -2,6 +2,7 @@ const instagramService = require('../../src/services/social/instagram');
 const instagramGateway = require('../../src/services/social/instagram/instagram.gateway');
 const socialAccountRepository = require('../../src/repositories/social/social-account.repository');
 const instagramAnalyticsService = require('../../src/services/social/instagram/instagram-analytics.service');
+const prisma = require('../../src/config/prisma');
 const { PLATFORMS, POST_TYPES } = require('../../src/utils/constants');
 
 jest.mock('../../src/services/social/instagram/instagram.gateway', () => {
@@ -35,7 +36,7 @@ jest.mock('../../src/repositories/workspace/brand.repository', () => ({
   findBrandWithSubscription: jest.fn().mockResolvedValue(null)
 }));
 jest.mock('../../src/config/prisma', () => ({
-  socialPostMetric: {
+  postMetricDaily: {
     findMany: jest.fn().mockResolvedValue([]),
     upsert: jest.fn().mockResolvedValue({})
   }
@@ -180,7 +181,7 @@ describe('Instagram Integration Service Tests', () => {
     // instagram-media.insights.md) and Graph API rejects the request when
     // it's requested alongside other metrics for a new post. `views` is the
     // supported replacement metric.
-    it('enriches published posts using the "views" metric, not the deprecated "impressions" metric', async () => {
+    it('enriches published posts using the "views" metric, not the deprecated "impressions" metric (Sync-only live fetch)', async () => {
       socialAccountRepository.findByBrandAndPlatform.mockResolvedValue([{
         id: 'sa_ig_test', platformAccountId: 'ig_123',
         accessToken: 'ig_access_token'
@@ -196,18 +197,19 @@ describe('Instagram Integration Service Tests', () => {
         { name: 'shares', values: [{ value: 1 }] }
       ]);
 
-      const result = await instagramService.getPublishedVideos('brand_views_metric_test');
+      await instagramService.syncPublishedPosts('brand_views_metric_test', 'sa_ig_test');
 
       expect(instagramGateway.getInstagramMediaInsights).toHaveBeenCalledWith('media_1', 'ig_access_token');
-      expect(result.data[0].views).toBe(42);
-      expect(result.data[0].reach).toBe(30);
+      const upsertedRow = prisma.postMetricDaily.upsert.mock.calls[0][0].create;
+      expect(upsertedRow.views).toBe(42);
+      expect(upsertedRow.reach).toBe(30);
     });
 
     // Regression guard: for VIDEO/Reels posts, `media_url` points at the raw
     // .mp4 file — an <img> tag can't render that as a thumbnail. The
     // dedicated `thumbnail_url` field (the actual preview image) must be
     // surfaced separately as `thumbnailUrl`, not collapsed into `mediaUrl`.
-    it('exposes a separate thumbnailUrl distinct from the raw video mediaUrl for VIDEO posts', async () => {
+    it('exposes a separate thumbnailUrl distinct from the raw video mediaUrl for VIDEO posts (Sync-only live fetch)', async () => {
       socialAccountRepository.findByBrandAndPlatform.mockResolvedValue([{
         id: 'sa_ig_test', platformAccountId: 'ig_123',
         accessToken: 'ig_access_token'
@@ -227,10 +229,13 @@ describe('Instagram Integration Service Tests', () => {
       });
       instagramGateway.getInstagramMediaInsights.mockResolvedValue([]);
 
-      const result = await instagramService.getPublishedVideos('brand_thumbnail_test');
+      await instagramService.syncPublishedPosts('brand_thumbnail_test', 'sa_ig_test');
 
-      expect(result.data[0].mediaUrl).toBe('https://instagram.example.com/video.mp4');
-      expect(result.data[0].thumbnailUrl).toBe('https://scontent.example.com/preview.jpg');
+      // PostMetricDaily only persists thumbnailUrl (mediaUrl for video posts
+      // collapses into it on the Sync/persist side — see _persistPostMetrics),
+      // so this now asserts on the persisted row instead of the read-path DTO.
+      const upsertedRow = prisma.postMetricDaily.upsert.mock.calls[0][0].create;
+      expect(upsertedRow.thumbnailUrl).toBe('https://scontent.example.com/preview.jpg');
     });
 
     it('should publish single photo post successfully via Photo strategy', async () => {

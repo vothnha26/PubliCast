@@ -2,7 +2,7 @@ const socialPlatformFactory = require('./social-platform.factory');
 const socialAccountRepository = require('../../repositories/social/social-account.repository');
 const googleDriveService = require('./google-drive.service');
 const notificationService = require('../core/notification.service');
-const { PLATFORMS, NOTIFICATION_TYPES } = require('../../utils/constants');
+const { PLATFORMS, NOTIFICATION_TYPES, ANALYTICS } = require('../../utils/constants');
 const logger = require('../../utils/logger');
 
 // getAggregatedMetrics feeds both the client API response and (formerly)
@@ -95,6 +95,34 @@ class SocialService {
    * enforced anywhere else. Scoped to brandId so a caller can't flip the
    * default flag on another brand's account.
    */
+  /**
+   * Manual-refresh escape hatch for Smart Fetch: the sanctioned way a user
+   * can force PostMetricDaily freshness for one account outside the 15-min
+   * posts-sync cron — never an implicit side effect of a GET request. Rate-
+   * limited against the same lastPostsSyncAt cooldown the scheduler itself
+   * respects, so a user mashing "refresh" can't burn platform API quota.
+   */
+  async syncPublishedPostsNow(brandId, platform, socialAccountId) {
+    const account = await socialAccountRepository.findById(socialAccountId);
+    if (!account || account.brandId !== brandId || account.platform !== platform) {
+      const error = new Error('Social account not found');
+      error.statusCode = 404;
+      throw error;
+    }
+
+    const cooldownMs = ANALYTICS.COOLDOWN_HOURS * 60 * 60 * 1000;
+    if (account.lastPostsSyncAt && Date.now() - account.lastPostsSyncAt.getTime() < cooldownMs) {
+      const error = new Error(`This account was already synced recently — please wait before refreshing again.`);
+      error.statusCode = 429;
+      throw error;
+    }
+
+    const service = socialPlatformFactory.getService(platform);
+    const result = await service.syncPublishedPosts(brandId, socialAccountId);
+    await socialAccountRepository.updateLastPostsSyncAt(socialAccountId);
+    return result;
+  }
+
   async setDefaultAccount(brandId, socialAccountId) {
     const account = await socialAccountRepository.findById(socialAccountId);
     if (!account || account.brandId !== brandId) {

@@ -7,8 +7,8 @@ import { Viewport } from "../image-editor/Viewport";
 import { SettingsPanel, FILTER_PRESETS } from "../image-editor/SettingsPanel";
 import { getFinetuneFilterString } from "../image-editor/utils";
 
-export function ImageEditorModal({ isOpen, imageUrl, currentTransform, brandId, onClose, onSave }) {
-  const editor = useImageEditor({ imageUrl, currentTransform, brandId, onSave, onClose });
+export function ImageEditorModal({ isOpen, imageUrl, currentTransform, brandId, onClose, onSave, eager = false }) {
+  const editor = useImageEditor({ imageUrl, currentTransform, brandId, onSave, onClose, eager });
 
   if (!isOpen) return null;
 

@@ -8,6 +8,14 @@ const threadsGateway = require('./threads.gateway');
  * ThreadsPostInsightAdapter
  * Concrete Adapter cho Threads Post Metrics.
  * Đăng ký vào PostAdapterFactory trong Core Insights.
+ *
+ * DEAD CODE / NOT WIRED UP: registered in core/insights/index.js but nothing
+ * calls postInsightFacade for Threads (only YouTube's youtube-analytics.
+ * service.js does). The real, actively used Threads post-metrics path is
+ * threads/index.js (DB-only reads + syncPublishedPosts Sync, against
+ * PostMetricDaily). This adapter's prismaModel (socialPostMetric) still
+ * exists but is no longer written to by the real path — do not wire a new
+ * caller here without first pointing it at PostMetricDaily instead.
  */
 class ThreadsPostInsightAdapter extends BasePostInsightAdapter {
   get platform() {

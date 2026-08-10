@@ -344,9 +344,22 @@ class PostService {
 
     for (const platform of targetPlatforms) {
       const normalizedPlatform = platform.trim().toUpperCase();
-      let accountIds = Array.isArray(selectedAccountIds?.[normalizedPlatform])
-        ? selectedAccountIds[normalizedPlatform].filter(Boolean)
-        : [];
+      let accountIds = [];
+
+      if (selectedAccountIds && typeof selectedAccountIds === 'object' && !Array.isArray(selectedAccountIds)) {
+        accountIds = selectedAccountIds[normalizedPlatform]
+          || selectedAccountIds[normalizedPlatform.toLowerCase()]
+          || [];
+      } else if (Array.isArray(selectedAccountIds)) {
+        const matchedAccounts = await tx.socialAccount.findMany({
+          where: { id: { in: selectedAccountIds }, brandId, platform: normalizedPlatform },
+          select: { id: true }
+        });
+        accountIds = matchedAccounts.map(a => a.id);
+      }
+
+      if (!Array.isArray(accountIds)) accountIds = [];
+      accountIds = accountIds.filter(Boolean);
 
       if (accountIds.length === 0) {
         const fallbackAccount = await tx.socialAccount.findFirst({
@@ -1070,6 +1083,13 @@ class PostService {
         acc[t.platform].push(t.socialAccountId);
         return acc;
       }, {}),
+      targets: (p.targets || []).map(t => ({
+        id: t.id,
+        platform: t.platform,
+        socialAccountId: t.socialAccountId,
+        publishStatus: t.publishStatus,
+        errorMessage: t.errorMessage
+      })),
       // Per-platform publish progress ("N/M platforms published") — lets the
       // UI show live progress for a SCHEDULED/PUBLISHING post without
       // waiting for the aggregate Post.status, which only flips once every
@@ -1256,12 +1276,19 @@ class PostService {
    * Delegate việc map AutoList metadata -> post options cho presetStrategyFactory
    * (Tuân thủ nguyên tắc SOLID: OCP, SRP, DIP).
    */
-  _mapAutoListPresets(meta) {
-    return presetStrategyFactory.mapAllPresets(meta);
+  _mapAutoListPresets(meta, selectedAccountIds) {
+    return presetStrategyFactory.mapAllPresets(meta, selectedAccountIds);
   }
 
   /**
-   * Apply preset options and target platforms from AutoList metadata if post belongs to an AutoList
+   * Apply target social accounts and preset options from AutoList metadata if post belongs to an AutoList.
+   *
+   * AutoList.targetSocialAccountIds là danh sách socialAccountId cụ thể (không
+   * phải tên platform) — cho phép AutoList nhắm đúng 1 channel khi brand có
+   * nhiều channel cùng platform (vd. 2 kênh YouTube). Từ danh sách account đó
+   * suy ra targetPlatforms (Post.targetPlatforms vẫn cần, dạng tên platform)
+   * và selectedAccountIds ({ [platform]: [accountId] }) để upsertPostTargets
+   * gắn đúng account thay vì fallback account mặc định/đầu tiên của platform.
    */
   async _applyAutoListPresets(postData) {
     if (!postData || !postData.autoListId) return postData;
@@ -1270,26 +1297,69 @@ class PostService {
       const autoList = await autoListRepository.findById(postData.autoListId);
       if (!autoList) return postData;
 
-      // Default targetPlatforms from AutoList if not explicitly provided
-      if ((!postData.targetPlatforms || postData.targetPlatforms.length === 0) && autoList.targetPlatforms) {
-        postData.targetPlatforms = autoList.targetPlatforms.split(',').filter(Boolean);
+      const accountIds = (autoList.targetSocialAccountIds || '').split(',').filter(Boolean);
+
+      if (accountIds.length > 0 && (!postData.targetPlatforms || postData.targetPlatforms.length === 0)) {
+        const accounts = await prisma.socialAccount.findMany({ where: { id: { in: accountIds } } });
+
+        postData.targetPlatforms = [...new Set(accounts.map((a) => a.platform))];
+
+        postData.selectedAccountIds = accounts.reduce((acc, a) => {
+          (acc[a.platform] = acc[a.platform] || []).push(a.id);
+          return acc;
+        }, {});
       }
 
       // Merge preset options from AutoList metadata
       if (autoList.metadata) {
         const meta = typeof autoList.metadata === 'string' ? JSON.parse(autoList.metadata) : autoList.metadata;
-        const presetOptions = this._mapAutoListPresets(meta);
+        const presetOptions = this._mapAutoListPresets(meta, postData.selectedAccountIds);
 
         postData.options = {
           ...presetOptions,
           ...(postData.options || {})
         };
+
+        // Per-channel differentiation (vd. 2 kênh YouTube khác privacy nhau):
+        // ghi networkOverrides cho platform nào có >1 account được chọn, mỗi
+        // account 1 override riêng lấy từ networkCustom (cùng shape Post
+        // Composer dùng) — upsertNetworkOverrides đã sẵn sàng xử lý mảng
+        // này, không cần đụng publish pipeline.
+        if (meta.networkCustom && postData.selectedAccountIds) {
+          const overrides = this._buildAutoListNetworkOverrides(meta, postData.selectedAccountIds);
+          if (overrides.length > 0) {
+            postData.networkOverrides = [...(postData.networkOverrides || []), ...overrides];
+          }
+        }
       }
     } catch (err) {
       console.warn(`[_applyAutoListPresets] Failed to apply AutoList presets for ${postData.autoListId}:`, err.message);
     }
 
     return postData;
+  }
+
+  /**
+   * Với mỗi platform có từ 2 account trở lên trong selectedAccountIds, tạo 1
+   * networkOverrides entry / account (trừ account "chính" account[0], vốn đã
+   * được phản ánh trong postData.options phẳng bởi _mapAutoListPresets) —
+   * settings lấy từ meta.networkCustom[platform].perAccount[accountId].settings,
+   * cùng shape entry.perAccount Post Composer dùng (xem
+   * frontend/src/utils/networkEntrySlot.js).
+   */
+  _buildAutoListNetworkOverrides(meta, selectedAccountIds) {
+    const overrides = [];
+    for (const [platform, accountIds] of Object.entries(selectedAccountIds)) {
+      if (!Array.isArray(accountIds) || accountIds.length < 2) continue;
+      const entry = meta.networkCustom[platform];
+      if (!entry) continue;
+      for (const accountId of accountIds) {
+        const settings = entry.perAccount?.[accountId]?.settings;
+        if (!settings) continue;
+        overrides.push({ platform, socialAccountId: accountId, settings });
+      }
+    }
+    return overrides;
   }
 
   _preparePostData(postData, userId, brandId) {
