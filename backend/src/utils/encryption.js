@@ -1,13 +1,26 @@
 const crypto = require('crypto');
 
-// Generate 32-byte key from ENCRYPTION_KEY env var
+// Generate 32-byte key from ENCRYPTION_KEY env var. scryptSync is
+// deliberately CPU-expensive (~80ms/call measured locally — it's a KDF
+// meant to resist brute-forcing, not a cheap hash) and was being re-run on
+// EVERY encrypt()/decrypt() call — every _decryptAccount() call (accessToken
+// + refreshToken = 2 calls) on every socialAccount row read anywhere in the
+// app. Since ENCRYPTION_KEY + the salt are both constant for the process
+// lifetime, the derived key is always identical — deriving it once and
+// reusing it is safe and removes ~80ms of synchronous, event-loop-blocking
+// work from every token encrypt/decrypt (measured: 5 concurrent
+// getPublishedVideos() calls that should overlap via Promise.all instead
+// serialized to ~465ms each because this blocked the event loop between
+// them — #inbox-getInboxPosts-N-plus-1, 2026-08-10).
+let cachedEncryptionKey = null;
 const getEncryptionKey = () => {
+  if (cachedEncryptionKey) return cachedEncryptionKey;
   const rawKey = process.env.ENCRYPTION_KEY;
   if (!rawKey) {
     throw new Error('ENCRYPTION_KEY environment variable is not defined.');
   }
-  // Use scryptSync to derive a consistent 32-byte key from any strong passphrase/key
-  return crypto.scryptSync(rawKey, 'publicast-salt', 32);
+  cachedEncryptionKey = crypto.scryptSync(rawKey, 'publicast-salt', 32);
+  return cachedEncryptionKey;
 };
 
 /**
@@ -74,5 +87,9 @@ function decrypt(encryptedData) {
 
 module.exports = {
   encrypt,
-  decrypt
+  decrypt,
+  // Test-only: clears the cached derived key so a test can simulate
+  // ENCRYPTION_KEY changing/disappearing between calls (real process
+  // lifetime never does this — the env var is read once at startup).
+  _resetKeyCacheForTests: () => { cachedEncryptionKey = null; }
 };

@@ -2,7 +2,6 @@ const express = require('express');
 const oauthController = require('../../controllers/social/oauth.controller');
 const youtubeController = require('../../controllers/social/youtube.controller');
 const facebookController = require('../../controllers/social/facebook.controller');
-const facebookWebhookController = require('../../controllers/social/facebook-webhook.controller');
 const tiktokController = require('../../controllers/social/tiktok.controller');
 const instagramController = require('../../controllers/social/instagram.controller');
 const googleDriveController = require('../../controllers/social/google-drive.controller');

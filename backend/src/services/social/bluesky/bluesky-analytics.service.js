@@ -43,9 +43,9 @@ class BlueskyAnalyticsService {
 
   /**
    * Real per-post engagement pulled from the account's own author feed —
-   * each feed item already carries like/repost/reply/quote counts (no
-   * extra getPostMetrics call needed per post; getAuthorFeed returns them
-   * inline). AT Protocol's public API has no reach/impressions concept for
+   * each feed item already carries like/repost/reply/quote counts inline,
+   * no separate per-post metrics call needed. AT Protocol's public API has
+   * no reach/impressions concept for
    * a developer app, so unlike Instagram/Facebook this never populates
    * `impressions`/`reach` — see saveBlueskyAnalytics in
    * social-account.repository.js for where that's left honestly at 0
@@ -142,7 +142,7 @@ class BlueskyAnalyticsService {
         acquired: d.acquired,
         lost: d.lost
       })),
-      balance: sortedDates.map((d) => ({ date: d.date, name: d.name, acquired: d.acquired, lost: d.lost, totalContent: d.totalContent })),
+      balance: sortedDates.map((d) => ({ date: d.date, name: d.name, acquired: d.acquired, lost: d.lost, totalFollowers: d.followers, totalContent: d.totalContent })),
       interactions: {
         likes: feedStats.totalLikes,
         replies: feedStats.totalReplies,

@@ -4,6 +4,7 @@ import { buildMediaUrl } from '@/utils/url';
 import { PlatformIcon } from '@/components/shared/PlatformIcon';
 import { PostMediaThumbnail } from '@/components/shared/PostMediaThumbnail';
 import { PublishProgressBadge } from '@/components/shared/PublishProgressBadge';
+import { formatInBrandTimezone } from '@/utils/brandTimezone';
 
 const PLATFORM_COLORS = {
   YOUTUBE: "#FF0000",
@@ -35,7 +36,8 @@ export function WeeklyGrid({
   onCellDrop,
   rowHeight = 100,
   eventsData = [],
-  viewMode = 'WEEK'
+  viewMode = 'WEEK',
+  brandTimezone
 }) {
   const gridContainerRef = useRef(null);
 
@@ -148,8 +150,14 @@ export function WeeklyGrid({
     }
   }, [rowHeight]);
 
+  // Week view needs 7 day-columns at min-w-[100px] each (700px), which
+  // overflows a 375px viewport. Wrapping the whole grid (header + scrollable
+  // body) in one overflow-x-auto — instead of putting it only on the body —
+  // keeps the day-name header scrolling in lockstep with the body columns
+  // under it, rather than one scrolling and the other staying put.
   return (
-    <div className="w-full h-full bg-card border border-border rounded-3xl shadow-sm overflow-hidden flex flex-col">
+    <div className="w-full h-full bg-card border border-border rounded-3xl shadow-sm overflow-x-auto overflow-y-hidden flex flex-col">
+      <div className="min-w-[780px] h-full flex flex-col">
       {/* Days Header */}
       <div className="flex border-b border-border bg-card shrink-0 no-print">
         {/* Time column spacer */}
@@ -270,8 +278,8 @@ export function WeeklyGrid({
                   {/* Scheduled Posts rendering */}
                   <div className="space-y-1.5 z-10 w-full">
                     {cellPosts.map(post => {
-                      const displayTime = (post.publishedAt || post.scheduledAt) 
-                        ? new Date(post.publishedAt || post.scheduledAt).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }) 
+                      const displayTime = (post.publishedAt || post.scheduledAt)
+                        ? formatInBrandTimezone(post.publishedAt || post.scheduledAt, brandTimezone, { locale: 'en-US', year: undefined, month: undefined, day: undefined, hour: 'numeric', minute: '2-digit', hour12: true })
                         : '';
                       
                       const hasMedia = post.mediaUrls && post.mediaUrls.length > 0;
@@ -375,6 +383,7 @@ export function WeeklyGrid({
             })}
           </div>
         ))}
+      </div>
       </div>
     </div>
   );

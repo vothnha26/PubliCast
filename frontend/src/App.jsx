@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState } from "react";
 import { Routes, Route, useLocation, useNavigate, Navigate } from "react-router-dom";
 import { SidebarWorkspace } from "./layout/SidebarWorkspace";
 import { SidebarAdmin } from "./layout/SidebarAdmin";
@@ -11,10 +11,7 @@ import { SplashScreen } from "./components/shared/SplashScreen";
 import { useAuthStore } from "./store/useAuthStore";
 import ProtectedRoute from "./components/ProtectedRoute";
 import { FeatureGate } from "./components/shared/FeatureGate";
-import { QueryClient } from "@tanstack/react-query";
-import { PersistQueryClientProvider } from "@tanstack/react-query-persist-client";
-import { createAsyncStoragePersister } from "@tanstack/query-async-storage-persister";
-import { get as idbGet, set as idbSet, del as idbDel } from "idb-keyval";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { PRODUCT_IDS } from "./constants/products";
 import { CACHE_CONFIG } from "./constants/cache-config.constants";
 
@@ -29,29 +26,6 @@ const queryClient = new QueryClient({
   }
 });
 export { queryClient };
-
-// Persists React Query's cache to IndexedDB so a refresh doesn't discard
-// data the user already fetched (e.g. channel insights) — the server-side
-// socket `data_invalidate` event (see services/socket.js) is what keeps it
-// from ever going stale, not a short TTL, so persisting across reloads is
-// safe rather than serving stale data indefinitely.
-//
-// The storage key is namespaced per-user (see the userId param below) so a
-// shared/public machine can't have User B's session read User A's cached
-// channel/post/insight data from IndexedDB after A logs out — logout()
-// also calls queryClient.clear() as the primary defense, but a fixed key
-// meant even a missed clear() call anywhere would still cross-contaminate
-// the next login on the same browser profile.
-function createIdbPersister(userId) {
-  return createAsyncStoragePersister({
-    storage: {
-      getItem: idbGet,
-      setItem: idbSet,
-      removeItem: idbDel
-    },
-    key: userId ? `publicast-query-cache:${userId}` : "publicast-query-cache:anonymous"
-  });
-}
 
 // Auth Pages
 import { LoginPage } from "./pages/auth/Login";
@@ -122,10 +96,10 @@ export default function App() {
   // Keeps the splash mounted through its own fade-out animation even after
   // `loading` (checkAuth in flight) has already flipped to false.
   const [showSplash, setShowSplash] = useState(true);
-
-  // Recreated whenever the logged-in user changes — see createIdbPersister's
-  // comment on why the storage key is namespaced per-user.
-  const idbPersister = useMemo(() => createIdbPersister(user?.id), [user?.id]);
+  // Sidebar renders as an off-canvas drawer below the md breakpoint (see
+  // SidebarWorkspace.jsx) — only relevant there, a no-op above md where the
+  // sidebar is always visible inline.
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
 
   const getRedirectPath = () => {
     if (!user) return "/dashboard";
@@ -137,6 +111,7 @@ export default function App() {
 
   useEffect(() => {
     window.scrollTo(0, 0);
+    setMobileSidebarOpen(false);
   }, [currentPath]);
 
   // Auto-logout when both access token and refresh token have expired
@@ -163,16 +138,20 @@ export default function App() {
   const isStaff = currentPath.startsWith("/staff");
 
   return (
-    <PersistQueryClientProvider client={queryClient} persistOptions={{ persister: idbPersister }}>
+    <QueryClientProvider client={queryClient}>
       <div className="w-full h-screen flex flex-col overflow-hidden" style={{ fontFamily: "'DM Sans', sans-serif" }}>
         {/* Topbar ALWAYS on top across full width (except landing/login/admin/staff) */}
-        {!isNoLayout && !isSuperadmin && !isStaff && <Topbar />}
+        {!isNoLayout && !isSuperadmin && !isStaff && (
+          <Topbar onMenuClick={() => setMobileSidebarOpen((v) => !v)} />
+        )}
 
-        <div className="flex flex-1 overflow-hidden">
+        <div className="flex flex-1 overflow-hidden relative">
           {/* Sidebar below Topbar */}
           {!isNoLayout && !isStaff && (
             <>
-              {isSuperadmin ? <SidebarAdmin /> : <SidebarWorkspace />}
+              {isSuperadmin ? <SidebarAdmin /> : (
+                <SidebarWorkspace mobileOpen={mobileSidebarOpen} onMobileClose={() => setMobileSidebarOpen(false)} />
+              )}
             </>
           )}
 
@@ -271,6 +250,6 @@ export default function App() {
         <UpsellModal />
         {!isNoLayout && !isSuperadmin && !isStaff && <HelpChatWidget />}
       </div>
-    </PersistQueryClientProvider>
+    </QueryClientProvider>
   );
 }

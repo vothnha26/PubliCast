@@ -5,8 +5,12 @@ describe('Encryption Utility Unit Tests', () => {
   const originalEnv = process.env.ENCRYPTION_KEY;
 
   beforeEach(() => {
-    // Set a consistent test encryption key
+    // Set a consistent test encryption key. Also reset encryption.js's
+    // derived-key cache (see its own comment) so tests that delete
+    // ENCRYPTION_KEY mid-test still exercise the "key missing" path instead
+    // of transparently reusing a previously cached key.
     process.env.ENCRYPTION_KEY = 'test-secret-key-12345';
+    encryption._resetKeyCacheForTests();
   });
 
   afterAll(() => {
@@ -88,6 +92,7 @@ describe('Encryption Utility Unit Tests', () => {
       const encrypted = encryption.encrypt(plaintext);
 
       delete process.env.ENCRYPTION_KEY;
+      encryption._resetKeyCacheForTests();
       const decrypted = encryption.decrypt(encrypted);
 
       expect(decrypted).toBe(encrypted);

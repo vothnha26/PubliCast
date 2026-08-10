@@ -152,6 +152,46 @@ class ChannelSnapshotRepository {
 
     return results;
   }
+
+  /**
+   * Derives today's { gained, lost } follower delta for platforms whose API
+   * has no real per-day delta endpoint (TikTok, Bluesky — see this file's
+   * class doc) from the account's own snapshot history: today's just-fetched
+   * `currentFollowersCount` minus yesterday's already-persisted
+   * `followersCount` on ChannelMetricDaily. This is a real arithmetic
+   * difference between two genuine cumulative totals the platform actually
+   * reported — not the fabricated-percentage approach removed elsewhere
+   * (e.g. TikTok's old like_count*0.05 "acquired" estimate) — so it's safe
+   * to surface as real data, unlike a guessed number.
+   *
+   * Returns { gained: 0, lost: 0 } (never null) when there's no prior
+   * snapshot to diff against (first sync ever, or a gap before this
+   * account's ChannelMetricDaily history starts) — a documented zero
+   * baseline, not "no data measured" the way other null follower fields on
+   * this table mean; see this file's class doc for that distinction.
+   *
+   * @param {string} socialAccountId
+   * @param {string} platform - PLATFORMS constant
+   * @param {number} currentFollowersCount - today's real, just-fetched total
+   * @returns {Promise<{ gained: number, lost: number }>}
+   */
+  async deriveTodaysFollowerBalance(socialAccountId, platform, currentFollowersCount) {
+    const todayStr = new Date().toISOString().split('T')[0];
+    const previous = await prisma.channelMetricDaily.findFirst({
+      where: {
+        socialAccountId,
+        platform,
+        snapshotDate: { lt: new Date(todayStr) }
+      },
+      orderBy: { snapshotDate: 'desc' },
+      select: { followersCount: true }
+    });
+
+    if (!previous) return { gained: 0, lost: 0 };
+
+    const delta = (currentFollowersCount || 0) - (previous.followersCount || 0);
+    return delta >= 0 ? { gained: delta, lost: 0 } : { gained: 0, lost: -delta };
+  }
 }
 
 module.exports = new ChannelSnapshotRepository();

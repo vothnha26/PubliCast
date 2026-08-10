@@ -28,3 +28,8 @@ test_cases/api/
 postman/
 backend/uploads/
 backend/scratch/
+
+# Load-test artifacts (JMeter)
+*.jtl
+jmeter.log
+doc_links.txt

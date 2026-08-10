@@ -1,20 +1,13 @@
 const tiktokGateway = require('./tiktok.gateway');
 const socialAccountRepository = require('../../../repositories/social/social-account.repository');
-const DistributedLockService = require('../distributed-lock.service');
+const channelSnapshotRepository = require('../../../repositories/social/channel-snapshot.repository');
+const lockService = require('../distributed-lock.singleton');
 const { PLATFORMS, DEFAULT_CONFIG, LOCK_CONFIG } = require('../../../utils/constants');
 const logger = require('../../../utils/logger');
 
-let redisClient = null;
-try {
-  redisClient = require('../../../config/redis');
-} catch (_) {
-  // Redis unavailable (e.g. some test environments) — lock is skipped below,
-  // refresh proceeds unlocked rather than hard-failing the whole sync.
-}
-
 class TikTokAnalyticsService {
   constructor() {
-    this.lockService = redisClient ? new DistributedLockService(redisClient) : null;
+    this.lockService = lockService;
   }
 
   _sleep(ms) {
@@ -249,6 +242,30 @@ class TikTokAnalyticsService {
     }
 
     const analyticsData = await this.getAnalyticsReport({ accessToken: account.accessToken }, startDate, endDate, userInfo.follower_count);
+
+    // TikTok's video-list API has no per-day follower-delta endpoint (see
+    // _calculateTotalsAndFormatResponse's own comment) — derive today's
+    // real gained/lost from the account's own ChannelMetricDaily history
+    // (today's just-fetched total minus yesterday's persisted total)
+    // instead of leaving the "Balance of Followers" chart with no data at
+    // all. Zero on the very first sync (no prior snapshot to diff against),
+    // not a fabricated guess.
+    if (analyticsData) {
+      const balance = await channelSnapshotRepository.deriveTodaysFollowerBalance(
+        account.id,
+        PLATFORMS.TIKTOK,
+        userInfo.follower_count || 0
+      ).catch(() => ({ gained: 0, lost: 0 }));
+      const todayStr = new Date().toISOString().split('T')[0];
+      analyticsData.balance = (analyticsData.growth || []).map((g) => ({
+        date: g.date,
+        name: g.name,
+        acquired: g.date === todayStr ? balance.gained : 0,
+        lost: g.date === todayStr ? balance.lost : 0,
+        totalFollowers: g.followers,
+        totalContent: g.totalContent
+      }));
+    }
 
     const accountData = {
       pageId: userInfo.open_id,

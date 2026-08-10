@@ -319,6 +319,15 @@ export function ChannelInsightsTab({ socialAccountId, platform: platformInput })
                       type: "area",
                       value: 0,
                     },
+                    {
+                      key: "followers",
+                      label: "Total Followers",
+                      color: "bg-[#22C55E] text-white",
+                      chartColor: "#22C55E",
+                      type: "line",
+                      yAxisId: "right",
+                      value: metrics?.followersCount || 0,
+                    },
                   ];
 
                   return (

@@ -1,5 +1,8 @@
 const jwtUtils = require('../../utils/jwt.utils');
 const redisClient = require('../../config/redis');
+const redisKeyValueService = require('./redis-keyvalue.singleton');
+
+const REFRESH_TOKEN_PREFIX = 'refresh';
 
 class TokenService {
   /**
@@ -21,10 +24,11 @@ class TokenService {
     // Hash and save refresh token to Redis if available
     const hashedRefreshToken = jwtUtils.hashRefreshToken(refreshToken);
     if (redisClient.isOpen) {
-      await redisClient.setEx(
-        `refresh:${user.id}`,
-        jwtUtils.getRefreshTokenRedisExpiry(),
-        hashedRefreshToken
+      await redisKeyValueService.set(
+        REFRESH_TOKEN_PREFIX,
+        user.id,
+        hashedRefreshToken,
+        jwtUtils.getRefreshTokenRedisExpiry()
       );
     } else {
       console.warn('Redis is not connected. Refresh token not persisted.');
@@ -35,23 +39,23 @@ class TokenService {
 
   /**
    * Remove refresh token from Redis
-   * @param {string} userId 
+   * @param {string} userId
    */
   async clearTokens(userId) {
     if (redisClient.isOpen) {
-      await redisClient.del(`refresh:${userId}`);
+      await redisKeyValueService.delete(REFRESH_TOKEN_PREFIX, userId);
     }
   }
 
   /**
    * Verify refresh token against Redis
-   * @param {string} userId 
-   * @param {string} refreshToken 
+   * @param {string} userId
+   * @param {string} refreshToken
    * @returns {Promise<boolean>}
    */
   async verifyRefreshTokenInRedis(userId, refreshToken) {
     if (!redisClient.isOpen) return false;
-    const storedHash = await redisClient.get(`refresh:${userId}`);
+    const storedHash = await redisKeyValueService.get(REFRESH_TOKEN_PREFIX, userId);
     const tokenHash = jwtUtils.hashRefreshToken(refreshToken);
     return storedHash === tokenHash;
   }

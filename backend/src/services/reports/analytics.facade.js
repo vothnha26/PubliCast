@@ -1,15 +1,32 @@
 const prisma = require('../../config/prisma');
 const { getFirstIdForPlatform } = require('../workspace/post/platform-post-id.util');
+const dashboardMetricsCache = require('./dashboard-metrics-cache.singleton');
+const socialPlatformFactory = require('../social/social-platform.factory');
 
 class AnalyticsFacade {
   /**
    * Aggregate analytics data for a brand within a date range and for specific platforms.
-   * @param {string} brandId 
-   * @param {Date} dateFrom 
-   * @param {Date} dateTo 
+   * Cache-Aside against Redis (dashboard-metrics-cache.service.js) — this
+   * method issues ~6 Prisma queries plus one live getPublishedVideos() call
+   * per connected account, so repeated dashboard loads/refreshes within the
+   * same sync window would otherwise re-pay that cost for data that hasn't
+   * changed. Invalidated by EVENTS.SOCIAL.METRICS_SYNCED, not by polling —
+   * see dashboard-metrics.subscriber.js.
+   * @param {string} brandId
+   * @param {Date} dateFrom
+   * @param {Date} dateTo
    * @param {string[]} platforms - Array of platforms, e.g. ["Facebook", "YouTube"]
    */
   async getAggregatedData(brandId, dateFrom, dateTo, platforms, socialAccountId = null) {
+    const cached = await dashboardMetricsCache.get(brandId, dateFrom, dateTo, platforms, socialAccountId);
+    if (cached) return cached;
+
+    const result = await this._computeAggregatedData(brandId, dateFrom, dateTo, platforms, socialAccountId);
+    await dashboardMetricsCache.set(brandId, dateFrom, dateTo, platforms, socialAccountId, result);
+    return result;
+  }
+
+  async _computeAggregatedData(brandId, dateFrom, dateTo, platforms, socialAccountId = null) {
     // 1. Fetch Brand Info
     const brand = await prisma.brand.findUnique({
       where: { id: brandId }
@@ -30,6 +47,7 @@ class AnalyticsFacade {
         youtubeChannel: true,
         facebookPage: true,
         instagramAccount: true,
+        threadsAccount: true,
         tikTokAccount: true
       }
     });
@@ -194,7 +212,6 @@ class AnalyticsFacade {
 
     // 4. Query & Fetch published posts from all active channels to find top performing posts
     const allPlatformPosts = [];
-    const socialPlatformFactory = require('../social/social-platform.factory');
 
     await Promise.allSettled(
       activeAccounts.map(async (acc) => {
@@ -296,21 +313,26 @@ class AnalyticsFacade {
       }
     }
 
-    const fbPostIds = postPlatformPairs
-      .filter(p => p.platformUpper === 'FACEBOOK' && p.currentPlatformPostId)
-      .map(p => p.currentPlatformPostId);
-    const ytVideoIds = postPlatformPairs
-      .filter(p => p.platformUpper === 'YOUTUBE' && p.currentPlatformPostId)
+    // Both Facebook and YouTube (and every other Smart-Fetch platform) now
+    // persist into the same unified PostMetricDaily table, so one query
+    // covers both instead of a separate facebookPostMetric/trackedVideo
+    // lookup per platform (#post-metrics-daily-consolidation).
+    const metricPostIds = postPlatformPairs
+      .filter(p => (p.platformUpper === 'FACEBOOK' || p.platformUpper === 'YOUTUBE') && p.currentPlatformPostId)
       .map(p => p.currentPlatformPostId);
 
-    const fbMetrics = fbPostIds.length > 0 ? await prisma.facebookPostMetric.findMany({
-      where: { platformPostId: { in: fbPostIds }, brandId }
+    const dailyMetricRows = metricPostIds.length > 0 ? await prisma.postMetricDaily.findMany({
+      where: { platformPostId: { in: metricPostIds }, brandId },
+      orderBy: { snapshotDate: 'desc' }
     }) : [];
-    const ytMetrics = ytVideoIds.length > 0 ? await prisma.trackedVideo.findMany({
-      where: { videoId: { in: ytVideoIds }, brandId }
-    }) : [];
-    const fbMetricByPostId = new Map(fbMetrics.map(m => [m.platformPostId, m]));
-    const ytMetricByVideoId = new Map(ytMetrics.map(m => [m.videoId, m]));
+    // Keep only the newest snapshotDate row per platformPostId (rows are
+    // ordered newest-first above, so the first one seen wins).
+    const metricByPostId = new Map();
+    for (const row of dailyMetricRows) {
+      if (!metricByPostId.has(row.platformPostId)) {
+        metricByPostId.set(row.platformPostId, row);
+      }
+    }
 
     for (const { post, platformUpper, currentPlatformPostId } of postPlatformPairs) {
       let likes = 0;
@@ -318,20 +340,13 @@ class AnalyticsFacade {
       let shares = 0;
       let reachOrViews = 0;
 
-      if (platformUpper === 'FACEBOOK' && currentPlatformPostId) {
-        const fbMetric = fbMetricByPostId.get(currentPlatformPostId);
-        if (fbMetric) {
-          likes = fbMetric.likes || 0;
-          comments = fbMetric.comments || 0;
-          shares = fbMetric.shares || 0;
-          reachOrViews = fbMetric.reach || 0;
-        }
-      } else if (platformUpper === 'YOUTUBE' && currentPlatformPostId) {
-        const ytMetric = ytMetricByVideoId.get(currentPlatformPostId);
-        if (ytMetric) {
-          likes = ytMetric.lastLikes || 0;
-          comments = ytMetric.lastComments || 0;
-          reachOrViews = ytMetric.lastViews || 0;
+      if ((platformUpper === 'FACEBOOK' || platformUpper === 'YOUTUBE') && currentPlatformPostId) {
+        const metric = metricByPostId.get(currentPlatformPostId);
+        if (metric) {
+          likes = metric.likes || 0;
+          comments = metric.comments || 0;
+          shares = metric.shares || 0;
+          reachOrViews = metric.reach ?? metric.views ?? 0;
         }
       }
 

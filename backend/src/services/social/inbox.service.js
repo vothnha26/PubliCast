@@ -217,19 +217,29 @@ class InboxService {
       platformMap[sa.platform].push(sa.id);
     });
 
-    // 1. Fetch via InboxFacade for supported platforms
-    for (const p of supportedPlatforms) {
-      if (platformMap[p]) {
-        try {
-          const pPosts = await inboxFacade.fetchPlatformPosts(brandId, p, platformMap[p]);
-          posts.push(...pPosts);
-        } catch (err) {
-          console.error(`[getInboxPosts] Failed to fetch posts via inboxFacade for platform ${p}:`, err.message);
-        }
+    // 1. Fetch via InboxFacade for supported platforms — each adapter calls
+    // that platform's getPublishedVideos(), a DB-only Smart Fetch read (see
+    // this method's caller for the full note), not a live API call. Each
+    // platform is an independent DB round-trip (~100-160ms measured
+    // locally), so a brand connected to all 4 of these was paying their sum
+    // sequentially (~400-600ms) for no reason — Promise.allSettled runs
+    // them concurrently instead, same pattern branch 2 below already used.
+    const connectedSupportedPlatforms = supportedPlatforms.filter(p => platformMap[p]);
+    const facadeResults = await Promise.allSettled(
+      connectedSupportedPlatforms.map(p => inboxFacade.fetchPlatformPosts(brandId, p, platformMap[p]))
+    );
+    facadeResults.forEach((result, idx) => {
+      if (result.status === 'fulfilled') {
+        posts.push(...result.value);
+      } else {
+        console.error(`[getInboxPosts] Failed to fetch posts via inboxFacade for platform ${connectedSupportedPlatforms[idx]}:`, result.reason?.message || result.reason);
       }
-    }
+    });
 
-    // 2. Fetch via legacy handlers for unsupported platforms (Instagram, TikTok)
+    // 2. Fetch via legacy handlers for platforms without an InboxDisplayAdapter
+    // yet (Instagram, TikTok) — same underlying DB-only getPublishedVideos()
+    // call as branch 1 above, just invoked directly instead of through the
+    // adapter/facade layer.
     const legacyNormalizers = {
       INSTAGRAM: (res, socialAccountId) => (res?.data || []).map(p => ({
         id: p.id,
@@ -336,14 +346,20 @@ class InboxService {
     const scopedPlatforms = [...new Set(scopedAccounts.map(sa => sa.platform))];
     const scopedChannelIds = scopedAccounts.map(sa => sa.platformAccountId).filter(Boolean);
 
-    // 1. Fetch published posts for the brand from Prisma DB.
-    // Post has no direct socialAccountId FK (only a platform-type string in
-    // targetPlatforms), so scoping to a specific account can only be done at
-    // platform-type granularity here — best effort when a brand has more
-    // than one connected account on the same platform.
-    let dbPosts = [];
-    try {
-      dbPosts = await prisma.post.findMany({
+    // Steps 1/2/2b/3 below are independent of each other (each only needs
+    // scopedPlatforms/scopedChannelIds resolved above, not one another's
+    // result) but used to run as 4 sequential awaits — turning what should
+    // be "as slow as the slowest of the 4" into "the sum of all 4". Running
+    // them concurrently instead cuts real wall-clock latency without adding
+    // any caching layer (this method's own queries are DB-only, no live
+    // platform API call — see the 2b comment below).
+    const [dbPostsResult, trackedVideosResult, platformPostsResult, inboxItemsResult] = await Promise.all([
+      // 1. Fetch published posts for the brand from Prisma DB.
+      // Post has no direct socialAccountId FK (only a platform-type string in
+      // targetPlatforms), so scoping to a specific account can only be done
+      // at platform-type granularity here — best effort when a brand has
+      // more than one connected account on the same platform.
+      prisma.post.findMany({
         where: {
           brandId,
           isDeleted: false,
@@ -354,39 +370,48 @@ class InboxService {
         },
         orderBy: { createdAt: 'desc' },
         take: 50
-      });
-    } catch (e) {
-      console.error("[getInboxPosts] Prisma dbPosts query error:", e);
-    }
+      }).catch(e => {
+        console.error("[getInboxPosts] Prisma dbPosts query error:", e);
+        return [];
+      }),
 
-    // 2. Fetch tracked YouTube videos for the brand
-    let trackedVideos = [];
-    try {
-      trackedVideos = await prisma.trackedVideo.findMany({
+      // 2. Fetch tracked YouTube videos for the brand
+      prisma.trackedVideo.findMany({
         where: {
           brandId,
           ...(socialAccountIds.length > 0 ? { channelId: { in: scopedChannelIds } } : {})
         },
         orderBy: { addedAt: 'desc' },
         take: 50
-      });
-    } catch (e) {
-      console.error("[getInboxPosts] Prisma trackedVideos query error:", e);
-    }
+      }).catch(e => {
+        console.error("[getInboxPosts] Prisma trackedVideos query error:", e);
+        return [];
+      }),
 
-    // 2b. Fetch real published posts directly from each connected platform's
-    // API (YouTube/Facebook/Instagram/TikTok). dbPosts/trackedVideos above
-    // only cover posts PubliCast itself published or the user manually
-    // tracked — a video/post published outside PubliCast (or before the
-    // account was connected) never gets a Post/TrackedVideo row, so it was
-    // invisible here even though the channel stats page (which calls these
-    // same platform APIs directly) shows it fine.
-    const platformPosts = await this._fetchAllPlatformPosts(brandId, socialAccountIds, queryParams.platform);
+      // 2b. Fetch published posts for every connected platform via each
+      // platform's own getPublishedVideos()/inbox display adapter — dbPosts/
+      // trackedVideos above only cover posts PubliCast itself published or
+      // the user manually tracked, missing anything published outside
+      // PubliCast (or before the account was connected). Despite the
+      // historical name "_fetchAllPlatformPosts", this is DB-only: every
+      // platform's getPublishedVideos() reads PostMetricDaily (Smart Fetch
+      // contract, see youtube-video.service.js's doc comment), never a
+      // platform's live API — only the cron scheduler/OAuth-connect/manual-
+      // refresh are allowed to do that. Same read cost/freshness as the
+      // channel stats page that also calls getPublishedVideos().
+      this._fetchAllPlatformPosts(brandId, socialAccountIds, queryParams.platform),
 
-    // 3. Fetch inbox items for comment stats
-    const initialWhere = { inbox: { brandId }, parentItemId: null };
-    const where = this.queryPipeline.apply(initialWhere, queryParams);
-    const { items } = await inboxRepository.findManyAndCount(where, { skip: 0, take: 200 });
+      // 3. Fetch inbox items for comment stats
+      inboxRepository.findManyAndCount(
+        this.queryPipeline.apply({ inbox: { brandId }, parentItemId: null }, queryParams),
+        { skip: 0, take: 200 }
+      )
+    ]);
+
+    const dbPosts = dbPostsResult;
+    const trackedVideos = trackedVideosResult;
+    const platformPosts = platformPostsResult;
+    const { items } = inboxItemsResult;
 
     const postsMap = new Map();
 

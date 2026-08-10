@@ -272,6 +272,23 @@ const SYSTEM_PLANS = {
 
 const ANALYTICS = {
   COOLDOWN_HOURS: parseInt(process.env.SOCIAL_SYNC_COOLDOWN_HOURS) || 12,
+  // Age-tiered sync cooldown: an account whose most-recently-published post
+  // (per PostMetricDaily.publishedAt) is still young gets synced far more
+  // often than COOLDOWN_HOURS, since engagement moves fastest in a post's
+  // first hours/days; an account that hasn't posted in a while backs off
+  // beyond COOLDOWN_HOURS instead of polling it at the same fixed rate as an
+  // active one forever. Ordered narrowest-first — findDueForPostsSync/
+  // findDueForMetricsSync walk this list and use the first tier whose
+  // maxAgeHours the latest post's age falls under. `null` maxAgeHours is the
+  // catch-all tier (age beyond every other tier, OR the account has never
+  // had a post synced yet) and must be last.
+  SYNC_COOLDOWN_TIERS: [
+    { maxAgeHours: 6, cooldownHours: 1 },
+    { maxAgeHours: 24, cooldownHours: 2 },
+    { maxAgeHours: 24 * 3, cooldownHours: 6 },
+    { maxAgeHours: 24 * 14, cooldownHours: 12 },
+    { maxAgeHours: null, cooldownHours: 24 }
+  ],
   // How many recent Analytics rows to fetch for merging into a real growth
   // time series (see social-account.repository.js's findById/
   // findByBrandAndPlatform). Each row already embeds its own ~31-day
@@ -298,6 +315,7 @@ const ANALYTICS = {
     FACEBOOK_DETAILED: 'FACEBOOK_DETAILED',
     TIKTOK_DETAILED: 'TIKTOK_DETAILED',
     INSTAGRAM_DETAILED: 'INSTAGRAM_DETAILED',
+    THREADS_DETAILED: 'THREADS_DETAILED',
     BLUESKY_DETAILED: 'BLUESKY_DETAILED'
   },
   METRICS: {
@@ -581,7 +599,9 @@ const REDIS_NAMESPACES = {
   SYNC_CACHE: 'sync',
   SMART_LINK_VISITOR: 'sl:visitor',
   HMAC_NONCE: 'hmac:nonce',
-  INTEGRATION_RATE_LIMIT: 'integration:rl'
+  INTEGRATION_RATE_LIMIT: 'integration:rl',
+  DASHBOARD_METRICS: 'dash:metrics',
+  SOCIAL_METRICS: 'social:metrics'
 };
 
 const REDIS_TTL = {
@@ -589,7 +609,20 @@ const REDIS_TTL = {
   SMART_LINK_VISITOR_SEC: 86400, // 24 giờ — 1 IP tính là 1 unique visitor/ngày cho 1 SmartLink
   AUTO_REPLY_RATE_LIMIT_WINDOW_SEC: 60,
   HMAC_NONCE_SEC: 300, // = ±5 phút timestamp window cho HMAC verify-token (Convo integration)
-  INTEGRATION_RATE_LIMIT_WINDOW_SEC: 60
+  INTEGRATION_RATE_LIMIT_WINDOW_SEC: 60,
+  // Safety-net TTL, not the primary freshness mechanism — METRICS_SYNCED
+  // (see dashboard-metrics-cache.service.js) actively deletes a brand's
+  // cached entries the moment a real sync happens. This TTL only bounds
+  // staleness if that invalidation is ever missed (crash, deploy race),
+  // and is kept under the metrics cron's own 15-min cadence
+  // (social-metrics-sync-scheduler.service.js) so a missed invalidation
+  // self-heals well before the next scheduled sync would've run anyway.
+  DASHBOARD_METRICS_SEC: 10 * 60,
+  // Same safety-net role as DASHBOARD_METRICS_SEC above, for
+  // SocialService.getAggregatedMetrics (GET /v2/social/metrics — the
+  // Channel Insights page's data source). Same METRICS_SYNCED-driven
+  // invalidation, same TTL.
+  SOCIAL_METRICS_SEC: 10 * 60
 };
 
 // Max auto-replies (1 LLM call + 1 platform reply each) allowed per social

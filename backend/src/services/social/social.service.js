@@ -2,6 +2,7 @@ const socialPlatformFactory = require('./social-platform.factory');
 const socialAccountRepository = require('../../repositories/social/social-account.repository');
 const googleDriveService = require('./google-drive.service');
 const notificationService = require('../core/notification.service');
+const socialMetricsCache = require('./social-metrics-cache.singleton');
 const { PLATFORMS, NOTIFICATION_TYPES, ANALYTICS } = require('../../utils/constants');
 const logger = require('../../utils/logger');
 
@@ -29,10 +30,18 @@ class SocialService {
    * API quota (YouTube's daily cap in particular) or needs a throttle lock.
    */
   async getAggregatedMetrics(brandId) {
+    const cached = await socialMetricsCache.get(brandId);
+    if (cached) return cached;
+
     const allAccounts = await socialAccountRepository.findByBrandAndPlatform(brandId, null); // passing null to platform to get all platforms
     const accounts = allAccounts.filter(account => socialPlatformFactory.isSupported(account.platform));
 
-    return stripSensitiveAccountFields(accounts);
+    // Cache the ALREADY-STRIPPED result only — see social-metrics-cache.
+    // service.js's security note on why the raw (token-bearing) accounts
+    // must never reach Redis.
+    const stripped = stripSensitiveAccountFields(accounts);
+    await socialMetricsCache.set(brandId, stripped);
+    return stripped;
   }
 
   /**

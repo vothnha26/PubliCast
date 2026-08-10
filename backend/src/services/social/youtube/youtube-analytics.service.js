@@ -2,18 +2,11 @@ const youtubeGateway = require('./youtube.gateway');
 const googleOAuthService = require('../google-oauth.service');
 const socialAccountRepository = require('../../../repositories/social/social-account.repository');
 const competitorRepository = require('../../../repositories/social/competitor.repository');
-const postInsightRepository = require('../../../repositories/social/post-insight.repository');
 const prisma = require('../../../config/prisma');
 const { eventEmitter, EVENTS } = require('../../../events/event-emitter');
 const { PLATFORMS, SEPARATORS, ANALYTICS, SOCIAL_TECHNICAL, YT_VIDEO_INSIGHTS } = require('../../../utils/constants');
 const { YOUTUBE_QUOTA_THRESHOLD, YOUTUBE_DAILY_QUOTA_LIMIT } = ANALYTICS;
-const { postInsightFacade } = require('../../../core/insights');
 const logger = require('../../../utils/logger');
-
-// getPostInsights' DB-first staleness window — YouTube Analytics data
-// itself lags 24-48h at the source, so re-fetching more often than this
-// would just call the live API for data that hasn't actually changed yet.
-const POST_INSIGHTS_STALENESS_MS = 24 * 60 * 60 * 1000;
 
 const quotaService = require('../quota-tracker.singleton');
 const YOUTUBE_QUOTA_SERVICE_NAME = 'youtube-analytics';
@@ -602,18 +595,6 @@ class YouTubeAnalyticsService {
       });
     }
     return rows;
-  }
-
-  // ────────────────────────────────────────────────────────────
-  // VIDEO INSIGHTS (basic lifetime video analytics)
-  // ────────────────────────────────────────────────────────────
-
-  /**
-   * Lấy 6 chỉ số phân tích cơ bản của 1 post/video YouTube cụ thể.
-   * Uỷ quyền trực tiếp sang postInsightFacade (Facade Pattern).
-   */
-  async getPostInsights(brandId, videoId) {
-    return postInsightFacade.getPostInsights(brandId, PLATFORMS.YOUTUBE, videoId);
   }
 
   /** Chuyển country code → flag emoji */

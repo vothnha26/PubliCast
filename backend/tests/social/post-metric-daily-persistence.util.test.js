@@ -87,11 +87,15 @@ describe('post-metric-daily-persistence.util', () => {
   });
 
   describe('findLatestPostMetrics', () => {
-    it('dedupes to the newest snapshotDate row per platformPostId and returns them newest-published-first', async () => {
+    it('dedupes to the newest snapshotDate row per platformPostId, preserving the DB\'s publishedAt-desc order', async () => {
+      // Mock rows are pre-sorted the way MySQL would actually return them
+      // for `ORDER BY publishedAt DESC, snapshotDate DESC, platformPostId ASC`
+      // — post-2's publishedAt (01-02) is newer than post-1's (01-01), so it
+      // sorts first; post-1's two snapshot rows are adjacent, newest first.
       prisma.postMetricDaily.findMany.mockResolvedValue([
+        { platformPostId: 'post-2', snapshotDate: new Date('2026-01-03'), publishedAt: new Date('2026-01-02') },
         { platformPostId: 'post-1', snapshotDate: new Date('2026-01-03'), publishedAt: new Date('2026-01-01') },
-        { platformPostId: 'post-1', snapshotDate: new Date('2026-01-02'), publishedAt: new Date('2026-01-01') },
-        { platformPostId: 'post-2', snapshotDate: new Date('2026-01-03'), publishedAt: new Date('2026-01-02') }
+        { platformPostId: 'post-1', snapshotDate: new Date('2026-01-02'), publishedAt: new Date('2026-01-01') }
       ]);
 
       const result = await findLatestPostMetrics(brandId, platform, socialAccountId, 10);
@@ -124,20 +128,41 @@ describe('post-metric-daily-persistence.util', () => {
       expect(result).toHaveLength(2);
     });
 
-    it('orders the DB query by snapshotDate first so recently-synced posts are not skipped once an account has many days of history', async () => {
-      // A post with a late-sorting platformPostId ("post-z") synced daily
-      // for many days used to be excluded entirely by an
-      // orderBy:[{platformPostId:'asc'}] + take:limit*5 query, because the
-      // fetch window sampled only the alphabetically-first ids. Assert the
-      // query orders by snapshotDate desc first.
+    it('orders the DB query by publishedAt first so posts are picked by real recency, not alphabetical platformPostId', async () => {
+      // Every post synced on the same day shares one snapshotDate (Sync runs
+      // once and stamps them together), so ordering by snapshotDate alone
+      // left ties broken by platformPostId asc — an alphabetically-arbitrary
+      // set of posts could win the `take limit*5` cut regardless of which
+      // ones were actually most recently published (#YT-published-videos-
+      // empty, 2026-08-10). Assert the query orders by publishedAt desc first.
       prisma.postMetricDaily.findMany.mockResolvedValue([]);
 
       await findLatestPostMetrics(brandId, platform, socialAccountId, 10);
 
       expect(prisma.postMetricDaily.findMany.mock.calls[0][0].orderBy).toEqual([
+        { publishedAt: 'desc' },
         { snapshotDate: 'desc' },
         { platformPostId: 'asc' }
       ]);
+    });
+
+    it('filters by publishedAt range (inclusive end-of-day) when startDate/endDate are given, applied before the limit cut', async () => {
+      prisma.postMetricDaily.findMany.mockResolvedValue([]);
+
+      await findLatestPostMetrics(brandId, platform, socialAccountId, 10, '2026-07-12', '2026-08-10');
+
+      const where = prisma.postMetricDaily.findMany.mock.calls[0][0].where;
+      expect(where.OR[0].publishedAt.gte).toEqual(new Date('2026-07-12'));
+      expect(where.OR[0].publishedAt.lte).toEqual(new Date(new Date('2026-08-10').getTime() + 24 * 60 * 60 * 1000 - 1));
+      expect(where.OR[1]).toEqual({ AND: [{ publishedAt: null }, { snapshotDate: where.OR[0].publishedAt }] });
+    });
+
+    it('does not filter by date when startDate/endDate are omitted', async () => {
+      prisma.postMetricDaily.findMany.mockResolvedValue([]);
+
+      await findLatestPostMetrics(brandId, platform, socialAccountId, 10);
+
+      expect(prisma.postMetricDaily.findMany.mock.calls[0][0].where).toEqual({ brandId, platform, socialAccountId });
     });
 
     it('does not lose the newest post once many older posts each have several days of history', async () => {

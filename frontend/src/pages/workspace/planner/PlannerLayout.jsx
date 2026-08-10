@@ -92,15 +92,18 @@ export function PlannerLayout() {
 
   return (
     <div className="flex-1 flex flex-col overflow-hidden bg-background">
-      {/* Top Tabs Header */}
-      <div className="bg-card border-b border-border px-6 flex items-center justify-between" style={{ height: 48 }}>
-        <div className="flex gap-8 h-full">
+      {/* Top Tabs Header — below md, the 5 tabs + timezone selector don't
+          fit 375px width. Tabs scroll horizontally (standard mobile tab-bar
+          pattern, e.g. Instagram/YouTube) rather than wrapping or shrinking
+          text, so every tab stays reachable and legible. */}
+      <div className="bg-card border-b border-border px-6 flex items-center justify-between gap-2" style={{ height: 48 }}>
+        <div className="flex gap-8 h-full overflow-x-auto scrollbar-none min-w-0">
           {tabs.map((tab) => (
             <NavLink
               key={tab.id}
               to={tab.path}
-              className={({ isActive }) => 
-                `h-full flex items-center text-[13px] font-medium transition-all relative px-1 ${
+              className={({ isActive }) =>
+                `h-full flex items-center text-[13px] font-medium transition-all relative px-1 shrink-0 whitespace-nowrap ${
                   isActive ? "text-foreground" : "text-muted-foreground hover:text-foreground"
                 }`
               }
@@ -119,7 +122,7 @@ export function PlannerLayout() {
         </div>
 
         {/* Timezone Selector Dropdown */}
-        <div className="relative" ref={tzRef}>
+        <div className="relative shrink-0" ref={tzRef}>
           <button
             onClick={() => setIsTzOpen(!isTzOpen)}
             className="flex items-center gap-2 px-2.5 py-1 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors border border-transparent hover:border-border cursor-pointer"

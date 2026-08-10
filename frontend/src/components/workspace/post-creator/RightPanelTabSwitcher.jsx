@@ -33,7 +33,7 @@ export function RightPanelTabSwitcher({ className = "" }) {
             key={tab.id}
             type="button"
             onClick={() => setRightPanelTab(isActive ? null : tab.id)}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-[12px] font-bold tracking-wide transition-all cursor-pointer font-sans ${
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-[12px] font-bold tracking-wide transition-all cursor-pointer font-sans shrink-0 whitespace-nowrap ${
               isActive
                 ? "bg-composer-accent text-composer-accent-foreground shadow-sm"
                 : "text-muted-foreground hover:text-foreground hover:bg-card/60"

@@ -12,12 +12,14 @@ const TIKTOK_VIDEO_LIST_QUOTA_SERVICE = 'tiktok-video-list';
 class TikTokVideoService {
   // DB-only read — Smart Fetch: no live TikTok API call happens here.
   // pageToken beyond what Sync has already cached returns empty rather
-  // than falling back to a live fetch (accepted simplification).
+  // than falling back to a live fetch (accepted simplification). Uses
+  // _getAccountLite (only needs account.id) instead of _getAccount — see
+  // social-account.repository.js's findByIdLite() doc comment for why.
   async getPublishedVideos(brandId, pageToken = 0, limit = 10, socialAccountId = null, startDate = null, endDate = null) {
     try {
-      const account = await this._getAccount(brandId, socialAccountId);
-      const rows = await findLatestPostMetrics(brandId, PLATFORMS.TIKTOK, account.id, limit);
-      const videos = this._filterByDateRange(rows.map(r => this._formatDbMetricRow(r)), startDate, endDate);
+      const account = await this._getAccountLite(brandId, socialAccountId);
+      const rows = await findLatestPostMetrics(brandId, PLATFORMS.TIKTOK, account.id, limit, startDate, endDate);
+      const videos = rows.map(r => this._formatDbMetricRow(r));
       return { videos, nextPageToken: null, prevPageToken: null };
     } catch (err) {
       if (err.message.includes('TikTok account not connected')) {
@@ -173,20 +175,6 @@ class TikTokVideoService {
     }
   }
 
-  // Display-only narrowing on top of whatever page of live results was
-  // already fetched — see FacebookPostService#_filterByDateRange for the
-  // same pattern (TikTok has no DB-first cache/historyWindowMonths gate at
-  // this layer, so this is the only date filtering applied here).
-  _filterByDateRange(videos, startDate, endDate) {
-    if (!startDate && !endDate) return videos;
-    return (videos || []).filter((video) => {
-      if (!video.publishedAt) return true;
-      const videoTime = new Date(video.publishedAt).getTime();
-      if (startDate && videoTime < new Date(startDate).getTime()) return false;
-      if (endDate && videoTime > new Date(endDate).getTime() + 24 * 60 * 60 * 1000 - 1) return false;
-      return true;
-    });
-  }
 
   async _getAccount(brandId, socialAccountId = null) {
     let account;
@@ -201,6 +189,32 @@ class TikTokVideoService {
       }
     } else {
       const socialAccount = await socialAccountRepository.findByBrandAndPlatform(brandId, PLATFORMS.TIKTOK);
+      if (!socialAccount || socialAccount.length === 0) {
+        throw new Error('TikTok account not connected');
+      }
+      account = socialAccount[0];
+    }
+    if (!account) {
+      throw new Error('TikTok account not connected');
+    }
+    return account;
+  }
+
+  /**
+   * Lite variant of _getAccount() above — for getPublishedVideos()'s DB-only
+   * read path, which only ever needs account.id (to scope the
+   * findLatestPostMetrics query), never token/tikTokAccount fields the way
+   * syncPublishedVideos() (a real API call) does.
+   */
+  async _getAccountLite(brandId, socialAccountId = null) {
+    let account;
+    if (socialAccountId) {
+      account = await socialAccountRepository.findByIdLite(socialAccountId);
+      if (account && String(account.brandId) !== String(brandId)) {
+        account = null;
+      }
+    } else {
+      const socialAccount = await socialAccountRepository.findByBrandAndPlatformLite(brandId, PLATFORMS.TIKTOK);
       if (!socialAccount || socialAccount.length === 0) {
         throw new Error('TikTok account not connected');
       }

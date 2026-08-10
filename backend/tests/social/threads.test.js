@@ -76,18 +76,23 @@ describe('ThreadsService (#97)', () => {
         null
       );
 
-      const parsed = JSON.parse(result.audienceDemographicsJson);
-      const dayWithPost = parsed.growth.find(d => d.totalContent > 0);
+      // getAnalyticsReport returns a flat object (growth/interactions
+      // directly on the result) — it used to wrap everything inside a
+      // pre-stringified `audienceDemographicsJson` field instead, which
+      // caused saveInstagramAnalytics's own JSON.stringify() (writing to
+      // that same DB column) to double-encode it, silently losing every
+      // field this method computes (bug fixed 2026-08-10).
+      const dayWithPost = result.growth.find(d => d.totalContent > 0);
 
       expect(dayWithPost).toBeDefined();
       expect(dayWithPost.views).toBe(0); // not 100 * 12
-      expect(parsed.interactions.viewsBreakdown).toBeUndefined();
+      expect(result.interactions.viewsBreakdown).toBeUndefined();
     });
   });
 
   describe('getPublishedVideos', () => {
     it('does not fabricate per-post views/reach/engagement from likes — reads DB-only, no gateway call', async () => {
-      socialAccountRepository.findByBrandAndPlatform.mockResolvedValue([
+      socialAccountRepository.findByBrandAndPlatformLite.mockResolvedValue([
         { id: 'sa_threads_1', platformAccountId: 'threads-1', accessToken: 'real-token' }
       ]);
       prisma.postMetricDaily.findMany.mockResolvedValue([{

@@ -3,6 +3,7 @@ import { format } from 'date-fns';
 import { BarChart3 } from 'lucide-react';
 import { buildMediaUrl } from '@/utils/url';
 import { PlatformIcon } from '@/components/shared/PlatformIcon';
+import { getBrandDateParts, formatInBrandTimezone } from '@/utils/brandTimezone';
 
 const PLATFORM_COLORS = {
   YOUTUBE: "#FF0000",
@@ -41,7 +42,8 @@ export function MonthlyGrid({
   onPostClick,
   onDuplicateClick,
   onDetailClick,
-  visiblePlatforms = {}
+  visiblePlatforms = {},
+  brandTimezone
 }) {
   const weekdayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
@@ -66,13 +68,13 @@ export function MonthlyGrid({
       const matchesPlatform = !post.platforms || post.platforms.length === 0 || post.platforms.some(p => visiblePlatforms[p.toUpperCase()] !== false);
       if (!matchesPlatform) return;
 
-      const date = new Date(post.publishedAt || post.scheduledAt || post.createdAt);
-      const dateStr = format(date, 'yyyy-MM-dd');
+      const { year, month, day } = getBrandDateParts(post.publishedAt || post.scheduledAt || post.createdAt, brandTimezone);
+      const dateStr = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
       if (!map[dateStr]) map[dateStr] = [];
       map[dateStr].push(post);
     });
     return map;
-  }, [postData, visiblePlatforms]);
+  }, [postData, visiblePlatforms, brandTimezone]);
 
   // Generate 42 days grid for Month view
   const daysInMonthGrid = useMemo(() => {
@@ -122,8 +124,15 @@ export function MonthlyGrid({
     }
   };
 
+  // 7 columns at 100% width squeeze each day cell to ~53px on a 375px
+  // viewport — technically doesn't overflow (grid uses % widths, not a
+  // fixed min-width), but the day number/post chips become unreadable and
+  // hard to tap. Wrapping in overflow-x-auto with a min-width on the grid
+  // itself (same pattern as WeeklyGrid) keeps every cell a usable size and
+  // lets the header row scroll in lockstep with the day cells below it.
   return (
-    <div className="w-full h-full bg-card border border-border rounded-3xl shadow-sm overflow-hidden flex flex-col min-h-[500px]">
+    <div className="w-full h-full bg-card border border-border rounded-3xl shadow-sm overflow-x-auto overflow-y-hidden flex flex-col min-h-[500px]">
+      <div className="min-w-[700px] flex-1 flex flex-col">
       {/* Weekday headers */}
       <div className="grid grid-cols-7 border-b border-border bg-muted/40 py-3 text-center no-print">
         {weekdayNames.map((dayName, idx) => (
@@ -206,7 +215,7 @@ export function MonthlyGrid({
                     className={`flex items-center gap-1.5 px-2 py-1 border rounded-lg text-[10px] font-bold truncate transition-all hover:scale-[1.02] active:scale-[0.98] cursor-pointer shadow-sm group/mcard ${
                       STATUS_COLORS[post.status?.toLowerCase()] || 'bg-card border-border text-foreground'
                     }`}
-                    title={`${post.title || post.caption || "Untitled"} (${format(new Date(post.publishedAt || post.scheduledAt || post.createdAt), 'h:mma')})`}
+                    title={`${post.title || post.caption || "Untitled"} (${formatInBrandTimezone(post.publishedAt || post.scheduledAt || post.createdAt, brandTimezone, { locale: 'en-US', year: undefined, month: undefined, day: undefined, hour: 'numeric', minute: '2-digit', hour12: true })})`}
                   >
                     {/* Platform icon */}
                     <div className="flex gap-0.5 shrink-0">
@@ -221,7 +230,7 @@ export function MonthlyGrid({
                     <span className="text-[8px] opacity-75 font-black uppercase font-mono tracking-tight shrink-0 group-hover/mcard:hidden">
                       {(post.status?.toLowerCase() === "scheduled" || post.status?.toLowerCase() === "publishing") && post.publishProgress
                         ? `${post.publishProgress.published}/${post.publishProgress.total}`
-                        : format(new Date(post.publishedAt || post.scheduledAt || post.createdAt), 'h:mma')}
+                        : formatInBrandTimezone(post.publishedAt || post.scheduledAt || post.createdAt, brandTimezone, { locale: 'en-US', year: undefined, month: undefined, day: undefined, hour: 'numeric', minute: '2-digit', hour12: true })}
                     </span>
                     {post.status?.toLowerCase() === "published" && onDetailClick && (
                       <button
@@ -251,6 +260,7 @@ export function MonthlyGrid({
             </div>
           );
         })}
+      </div>
       </div>
     </div>
   );
