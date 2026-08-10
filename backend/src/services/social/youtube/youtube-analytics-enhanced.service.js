@@ -12,23 +12,17 @@
 
 const youtubeGateway = require('./youtube.gateway');
 const socialAccountRepository = require('../../../repositories/social/social-account.repository');
-const DistributedLockService = require('../distributed-lock.service');
+const lockService = require('../distributed-lock.singleton');
 const quotaService = require('../quota-tracker.singleton');
-const RedisHealthService = require('../redis-health.service');
+const redisHealthService = require('../redis-health.singleton');
+const redisClient = require('../../../config/redis');
 const logger = require('../../../utils/logger');
 const { PLATFORMS, LOCK_CONFIG, QUOTA_TTL_STRATEGY } = require('../../../utils/constants');
 
-let redisClient = null;
-try {
-  redisClient = require('../../../config/redis');
-} catch (_) {
-  logger.warn('[YouTubeAnalyticsEnhanced] Redis not available, caching disabled');
-}
-
 class YouTubeAnalyticsEnhancedService {
   constructor() {
-    this.lockService = redisClient ? new DistributedLockService(redisClient) : null;
-    this.redisHealthService = redisClient ? new RedisHealthService(redisClient) : null;
+    this.lockService = lockService;
+    this.redisHealthService = redisHealthService;
   }
 
   /**
@@ -307,7 +301,6 @@ class YouTubeAnalyticsEnhancedService {
    * @private
    */
   async _readCache(key) {
-    if (!redisClient) return null;
     try {
       const cached = await redisClient.get(key);
       return cached ? JSON.parse(cached) : null;
@@ -323,7 +316,6 @@ class YouTubeAnalyticsEnhancedService {
    * @private
    */
   async _writeCache(key, value, ttl) {
-    if (!redisClient) return;
     try {
       await redisClient.setEx(key, ttl || 7200, JSON.stringify(value));
     } catch (err) {

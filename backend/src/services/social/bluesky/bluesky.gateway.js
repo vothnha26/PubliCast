@@ -236,20 +236,6 @@ class BlueskyGateway {
     return res.data;
   }
 
-  async getPostMetrics(agent, uri) {
-    const thread = await this.getPostThread(agent, { uri, depth: 0, parentHeight: 0 });
-    if (thread?.$type === BLUESKY_CONSTANTS.RECORD_TYPES.THREAD_VIEW_POST) {
-      const post = thread.post;
-      return {
-        likes: post.likeCount || 0,
-        reposts: post.repostCount || 0,
-        replies: post.replyCount || 0,
-        quotes: post.quoteCount || 0
-      };
-    }
-    return { likes: 0, reposts: 0, replies: 0, quotes: 0 };
-  }
-
   async likePost(agent, uri, cid) {
     return agent.like(uri, cid);
   }
