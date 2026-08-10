@@ -1,6 +1,7 @@
 const { BskyAgent, Agent, RichText } = require('@atproto/api');
 const BLUESKY_CONSTANTS = require('./bluesky.constants');
 const blueskyOAuthHelper = require('./bluesky-oauth.helper');
+const logger = require('../../../utils/logger');
 
 class BlueskyGateway {
   /**
