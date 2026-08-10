@@ -96,23 +96,50 @@ async function upsertPostMetricsDaily(brandId, socialAccountId, platform, posts)
  * empty array if Sync hasn't populated anything yet — callers must not
  * fall back to a live fetch on empty (that would defeat Smart Fetch).
  *
+ * startDate/endDate MUST be applied here, before the dedupe+`take limit`
+ * cut below — not by the caller filtering this function's already-limited
+ * result. Every post synced on the same day shares one `snapshotDate`
+ * (Sync runs once and stamps all of them together), so ordering by
+ * `snapshotDate desc` alone leaves ties broken by `platformPostId asc`
+ * (alphabetical id, unrelated to publish recency) to pick which N survive
+ * the `take` cap. A caller-side date filter applied AFTER that cut could
+ * legitimately end up with zero results even when real matching posts
+ * exist in the table, simply because they lost the alphabetical draw
+ * before ever being filtered (#YT-published-videos-empty, 2026-08-10).
+ *
  * @param {string} brandId
  * @param {string} platform
  * @param {string|null} socialAccountId
  * @param {number} limit
+ * @param {string|null} startDate - 'yyyy-MM-dd', inclusive, matched against publishedAt (falls back to snapshotDate when publishedAt is null)
+ * @param {string|null} endDate - 'yyyy-MM-dd', inclusive (end of day)
  */
-async function findLatestPostMetrics(brandId, platform, socialAccountId = null, limit = 10) {
-  // Order by snapshotDate desc first (NOT platformPostId first — that would
-  // sample the alphabetically-earliest posts instead of the most recently
-  // synced ones) so the dedupe loop below keeps each post's newest row
-  // before the `take` cap can exclude a recently-published post.
+async function findLatestPostMetrics(brandId, platform, socialAccountId = null, limit = 10, startDate = null, endDate = null) {
+  const dateFilter = {};
+  if (startDate) dateFilter.gte = new Date(startDate);
+  if (endDate) dateFilter.lte = new Date(new Date(endDate).getTime() + 24 * 60 * 60 * 1000 - 1);
+  // publishedAt is the real recency signal but can be null ("platform has no
+  // real data for this field" — see upsertPostMetricsDaily's doc comment);
+  // OR in snapshotDate as a fallback so a null-publishedAt post synced
+  // within range still matches, mirroring the old in-memory fallback
+  // (row.publishedAt || row.snapshotDate) this replaces.
+  const dateWhere = (startDate || endDate)
+    ? { OR: [{ publishedAt: dateFilter }, { AND: [{ publishedAt: null }, { snapshotDate: dateFilter }] }] }
+    : {};
+
+  // Order by publishedAt desc (falling back to snapshotDate when null via
+  // MySQL's COALESCE, since NULLS handling differs across DBs and Prisma
+  // has no portable "order by A ?? B") so the dedupe loop below keeps each
+  // post's most publish-recent row, and the `take` cap drops the actually-
+  // oldest posts instead of an alphabetically-arbitrary set of them.
   const rows = await prisma.postMetricDaily.findMany({
     where: {
       brandId,
       platform,
-      ...(socialAccountId ? { socialAccountId } : {})
+      ...(socialAccountId ? { socialAccountId } : {}),
+      ...dateWhere
     },
-    orderBy: [{ snapshotDate: 'desc' }, { platformPostId: 'asc' }],
+    orderBy: [{ publishedAt: 'desc' }, { snapshotDate: 'desc' }, { platformPostId: 'asc' }],
     take: limit * 5 // over-fetch since multiple days per post can appear before dedupe
   });
 
@@ -124,14 +151,6 @@ async function findLatestPostMetrics(brandId, platform, socialAccountId = null, 
     latest.push(row);
     if (latest.length >= limit) break;
   }
-
-  // Re-sort by publishedAt/snapshotDate desc for display (the platformPostId
-  // grouping above scrambles chronological order).
-  latest.sort((a, b) => {
-    const aTime = (a.publishedAt || a.snapshotDate).getTime();
-    const bTime = (b.publishedAt || b.snapshotDate).getTime();
-    return bTime - aTime;
-  });
 
   return latest;
 }

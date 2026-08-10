@@ -426,7 +426,8 @@ export function HashtagManager() {
                     </div>
 
                     <div className="bg-card rounded-2xl border border-gray-150 shadow-xs overflow-hidden">
-                      <table className="w-full text-left">
+                      <div className="overflow-x-auto">
+                      <table className="w-full text-left min-w-[560px]">
                         <thead>
                           <tr className="bg-slate-50 border-b border-gray-150">
                             {[
@@ -474,6 +475,7 @@ export function HashtagManager() {
                           ))}
                         </tbody>
                       </table>
+                      </div>
                     </div>
                   </>
                 )}

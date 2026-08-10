@@ -65,12 +65,25 @@ const createMemoryRedisClient = () => {
       if (!record.expiresAt) return -1;
       return Math.max(0, Math.ceil((record.expiresAt - Date.now()) / 1000));
     },
-    del: async (...keys) => {
+    del: async (...args) => {
+      const keys = Array.isArray(args[0]) ? args[0] : args;
       let deleted = 0;
       keys.forEach((key) => {
         if (store.delete(key)) deleted += 1;
       });
       return deleted;
+    },
+    sAdd: async (key, member) => {
+      const record = getRecord(key);
+      const set = record ? new Set(JSON.parse(record.value)) : new Set();
+      const sizeBefore = set.size;
+      set.add(member);
+      store.set(key, { value: JSON.stringify([...set]), expiresAt: record?.expiresAt || null });
+      return set.size - sizeBefore;
+    },
+    sMembers: async (key) => {
+      const record = getRecord(key);
+      return record ? JSON.parse(record.value) : [];
     },
     flushDb: async () => {
       store.clear();

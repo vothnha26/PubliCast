@@ -14,6 +14,7 @@ import postService from "../../../services/post.service";
 import { useBrand } from "../../../context/BrandContext";
 import { toast } from "sonner";
 import { format } from "date-fns";
+import { toBrandWallClockDate } from "../../../utils/brandTimezone";
 import { useConfirm } from "@/hooks/useConfirm";
 import { useBrandPermission } from "../../../hooks/useBrandPermission";
 import { AccessGuard } from "../../../components/shared/AccessGuard";
@@ -419,9 +420,10 @@ export function ListView({ socialAccountId } = {}) {
       </div>
 
       {/* Table Container */}
-      <div className="bg-card border border-border rounded-3xl shadow-sm flex flex-col min-h-[400px]">
+      <div className="bg-card border border-border rounded-3xl shadow-sm flex flex-col min-h-[400px] overflow-hidden">
          {loading ? (
-            <table className="w-full text-left">
+            <div className="overflow-x-auto">
+            <table className="w-full text-left min-w-[720px]">
                <thead>
                   <tr className="bg-muted/50 border-b border-border">
                      <th className="px-6 py-4 w-10">
@@ -476,6 +478,7 @@ export function ListView({ socialAccountId } = {}) {
                   ))}
                </tbody>
             </table>
+            </div>
          ) : posts.length === 0 ? (
             <div className="flex-1 flex flex-col items-center justify-center text-center p-12">
                <div className="w-16 h-16 bg-muted rounded-2xl flex items-center justify-center text-muted-foreground mb-4">
@@ -492,7 +495,8 @@ export function ListView({ socialAccountId } = {}) {
             </div>
          ) : (
             <>
-            <table className="w-full text-left">
+            <div className="overflow-x-auto">
+            <table className="w-full text-left min-w-[720px]">
                <thead>
                   <tr className="bg-muted/50 border-b border-border">
                      <th className="px-6 py-4 w-10">
@@ -581,7 +585,7 @@ export function ListView({ socialAccountId } = {}) {
                                        {post.caption && post.caption !== post.title
                                          ? post.caption
                                          : (post.publishedAt || post.scheduledAt || post.createdAt
-                                             ? `${post.status?.toLowerCase() === 'published' ? 'Đã đăng' : 'Lên lịch'}: ${format(new Date(post.publishedAt || post.scheduledAt || post.createdAt), "HH:mm - dd/MM/yyyy")}`
+                                             ? `${post.status?.toLowerCase() === 'published' ? 'Đã đăng' : 'Lên lịch'}: ${format(toBrandWallClockDate(post.publishedAt || post.scheduledAt || post.createdAt, activeBrand?.timezone), "HH:mm - dd/MM/yyyy")}`
                                              : "—")}
                                      </span>
                                   </div>
@@ -624,10 +628,10 @@ export function ListView({ socialAccountId } = {}) {
                             <td className="px-4 py-5">
                                <div className="flex flex-col">
                                   <span className="text-[12px] font-bold text-foreground">
-                                    {(post.scheduledAt || post.publishedAt || post.createdAt) ? format(new Date(post.scheduledAt || post.publishedAt || post.createdAt), "MMM d, yyyy") : "—"}
+                                    {(post.scheduledAt || post.publishedAt || post.createdAt) ? format(toBrandWallClockDate(post.scheduledAt || post.publishedAt || post.createdAt, activeBrand?.timezone), "MMM d, yyyy") : "—"}
                                   </span>
                                   <span className="text-[10px] text-muted-foreground uppercase font-medium">
-                                    {(post.scheduledAt || post.publishedAt || post.createdAt) ? format(new Date(post.scheduledAt || post.publishedAt || post.createdAt), "hh:mm a") : "—"}
+                                    {(post.scheduledAt || post.publishedAt || post.createdAt) ? format(toBrandWallClockDate(post.scheduledAt || post.publishedAt || post.createdAt, activeBrand?.timezone), "hh:mm a") : "—"}
                                   </span>
                                </div>
                             </td>
@@ -1021,7 +1025,8 @@ export function ListView({ socialAccountId } = {}) {
                    })}
                </tbody>
             </table>
-            
+            </div>
+
             {/* Footer Pagination */}
             <div className="px-6 py-4 bg-muted/30 border-t border-border flex items-center justify-between gap-4 flex-wrap">
                <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-widest">

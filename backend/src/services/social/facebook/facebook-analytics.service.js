@@ -526,6 +526,7 @@ class FacebookAnalyticsService {
         name: d.name,
         acquired: d.acquired,
         lost: d.lost,
+        totalFollowers: d.followers,
         totalContent: d.totalContent
       })),
       clicks: sortedDates.map(d => ({

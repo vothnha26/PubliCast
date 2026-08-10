@@ -30,7 +30,7 @@ describe('TikTokVideoService', () => {
 
   describe('getPublishedVideos (DB-only Smart Fetch read)', () => {
     it('reads from PostMetricDaily and never calls the live gateway', async () => {
-      socialAccountRepository.findById.mockResolvedValue({ id: socialAccountId, brandId, platformAccountId: 'tt-1' });
+      socialAccountRepository.findByIdLite.mockResolvedValue({ id: socialAccountId, brandId, platformAccountId: 'tt-1' });
       findLatestPostMetrics.mockResolvedValue([{
         platformPostId: 'v1',
         captionSnippet: 'Hello',
@@ -53,22 +53,25 @@ describe('TikTokVideoService', () => {
     });
 
     it('returns an empty list instead of throwing when no TikTok account is connected', async () => {
-      socialAccountRepository.findByBrandAndPlatform.mockResolvedValue([]);
+      socialAccountRepository.findByBrandAndPlatformLite.mockResolvedValue([]);
 
       const result = await tiktokVideoService.getPublishedVideos(brandId);
 
       expect(result).toEqual({ videos: [], nextPageToken: null, prevPageToken: null });
     });
 
-    it('filters DB-read results by the requested date range', async () => {
-      socialAccountRepository.findById.mockResolvedValue({ id: socialAccountId, brandId, platformAccountId: 'tt-1' });
+    it('passes the requested date range through to findLatestPostMetrics (DB applies the filter, not this method)', async () => {
+      socialAccountRepository.findByIdLite.mockResolvedValue({ id: socialAccountId, brandId, platformAccountId: 'tt-1' });
+      // findLatestPostMetrics now applies the date filter itself (before its
+      // own limit cut) — the DB would already exclude 'old' from its result,
+      // so the mock only returns what a filtered query would.
       findLatestPostMetrics.mockResolvedValue([
-        { platformPostId: 'old', publishedAt: new Date('2025-01-01'), views: 1, likes: 1, comments: 0, shares: 0, metrics: {} },
         { platformPostId: 'new', publishedAt: new Date('2026-06-01'), views: 1, likes: 1, comments: 0, shares: 0, metrics: {} }
       ]);
 
       const result = await tiktokVideoService.getPublishedVideos(brandId, 0, 10, socialAccountId, '2026-01-01', '2026-12-31');
 
+      expect(findLatestPostMetrics).toHaveBeenCalledWith(brandId, 'TIKTOK', socialAccountId, 10, '2026-01-01', '2026-12-31');
       expect(result.videos.map(v => v.id)).toEqual(['new']);
     });
   });

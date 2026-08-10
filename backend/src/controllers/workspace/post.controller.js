@@ -1,9 +1,12 @@
+const crypto = require('crypto');
 const postService = require('../../services/workspace/post.service');
 const asyncHandler = require('../../utils/async-handler');
 const videoProcessorFacade = require('../../services/workspace/video/video-processor.facade');
 const TranscriptionStrategyFactory = require('../../services/workspace/ai/transcription/transcription-strategy.factory');
 const { TASK_STATUS, REDIS_PREFIXES, QUEUE_CONFIG } = require('../../constants/video-publish.constants');
 const logger = require('../../utils/logger');
+const redisClient = require('../../config/redis');
+const { videoQueue } = require('../../queues/video.queue');
 
 class PostController {
   /**
@@ -161,10 +164,6 @@ class PostController {
    * 'rate_limited' (the last one only when the caller must surface a 429).
    */
   async _submitTrimJob({ userId, videoUrl, startTime, endTime, aspectRatio, keyframes, adjustments, filterPreset, resize, keepAudio, audioUrl, audioVolume, textOverlays, subtitles, brandId }) {
-    const crypto = require('crypto');
-    const redisClient = require('../../config/redis');
-    const { videoQueue } = require('../../queues/video.queue');
-
     const taskDataString = JSON.stringify({
       userId, videoUrl, startTime, endTime, aspectRatio, keyframes,
       adjustments, filterPreset, resize, keepAudio, audioUrl, audioVolume,
@@ -333,7 +332,6 @@ class PostController {
    */
   getTrimStatus = asyncHandler(async (req, res) => {
     const { taskId } = req.params;
-    const redisClient = require('../../config/redis');
     const userId = req.user.id;
 
     const taskKey = `${REDIS_PREFIXES.TASK_VIDEO_TRIM}${taskId}`;

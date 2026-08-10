@@ -2,7 +2,6 @@ const express = require('express');
 const oauthController = require('../../controllers/social/oauth.controller');
 const youtubeController = require('../../controllers/social/youtube.controller');
 const facebookController = require('../../controllers/social/facebook.controller');
-const facebookWebhookController = require('../../controllers/social/facebook-webhook.controller');
 const tiktokController = require('../../controllers/social/tiktok.controller');
 const instagramController = require('../../controllers/social/instagram.controller');
 const googleDriveController = require('../../controllers/social/google-drive.controller');
@@ -29,8 +28,6 @@ router.get('/google-drive/auth-url', verifyAuth, oauthController.getGoogleDriveA
 router.get('/google-drive/callback', oauthController.googleDriveCallback);
 router.get('/facebook/url', verifyAuth, oauthController.getFacebookAuthUrl);
 router.get('/facebook/callback', oauthController.facebookCallback);
-router.get('/facebook/webhook', facebookWebhookController.verifyWebhook);
-router.post('/facebook/webhook', facebookWebhookController.handleWebhookEvent);
 router.get('/instagram/url', verifyAuth, oauthController.getInstagramAuthUrl);
 router.get('/instagram/callback', oauthController.instagramCallback);
 router.get('/tiktok/url', verifyAuth, oauthController.getTikTokAuthUrl);

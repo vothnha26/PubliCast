@@ -2,6 +2,7 @@ require('dotenv').config();
 const app = require('./app');
 const logger = require('./utils/logger');
 const prisma = require('./config/prisma');
+const redisClient = require('./config/redis');
 
 const PORT = parseInt(process.env.PORT, 10) || 3000;
 
@@ -159,7 +160,6 @@ async function shutdown(signal) {
 
     // Đóng Redis Connection
     try {
-      const redisClient = require('./config/redis');
       if (redisClient.isOpen && typeof redisClient.quit === 'function') {
         await redisClient.quit();
         logger.info('Redis connection closed.');

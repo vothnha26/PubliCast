@@ -1,20 +1,22 @@
 const cron = require('node-cron');
 const inboxService = require('./inbox.service');
 const prisma = require('../../config/prisma');
-const redisClient = require('../../config/redis');
-const DistributedLockService = require('./distributed-lock.service');
+const lockService = require('./distributed-lock.singleton');
 const socketManager = require('../workspace/socket/socket.manager');
 const socialPlatformFactory = require('./social-platform.factory');
 const logger = require('../../utils/logger');
 const { LOCK_CONFIG } = require('../../utils/constants');
 
-const lockService = new DistributedLockService(redisClient);
-
 /**
  * InboxSyncSchedulerService
  * Periodic Background Scheduler to automatically sync inbox comments and messages
  * from connected social platforms (YouTube, TikTok, Facebook, Instagram) every 15 minutes.
- * Acts as a resilient fallback mechanism if real-time webhooks fail or drop.
+ * The only sync mechanism for Facebook/Instagram inbox — their webhook-driven
+ * real-time path (facebook-webhook.service.js + webhooks/ strategies) was
+ * removed (2026-08-10) after establishing that a webhook-driven approach
+ * doesn't generalize to TikTok/YouTube/Bluesky's actual APIs, so Facebook/
+ * Instagram now poll on this same 15-minute cadence as every other platform
+ * instead of keeping a one-off webhook path only they had.
  */
 class InboxSyncSchedulerService {
   constructor() {

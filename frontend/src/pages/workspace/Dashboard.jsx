@@ -20,6 +20,7 @@ import { useTranslation } from "react-i18next";
 import { usePostCreator } from "../../context/PostCreatorContext";
 import { useMetricsQuery } from "../../hooks/queries/useMetricsQuery";
 import { mergeAnalyticsRows } from "../../utils/mergeAnalyticsRows";
+import { toBrandWallClockDate } from "../../utils/brandTimezone";
 
 const PLATFORM_COLORS = {
   YouTube: "#FF0000",
@@ -88,9 +89,9 @@ const PLATFORM_METRICS_STRATEGIES = {
     getVideos: (m) => m.instagramAccount?.mediaCount || 0,
   },
   THREADS: {
-    getSubscribers: (m) => m.instagramAccount?.followersCount || 0,
+    getSubscribers: (m) => m.threadsAccount?.followersCount || 0,
     getViews: (m) => 0,
-    getVideos: (m) => m.instagramAccount?.mediaCount || 0,
+    getVideos: (m) => m.threadsAccount?.mediaCount || 0,
   },
   TIKTOK: {
     getSubscribers: (m) => m.tikTokAccount?.followersCount || 0,
@@ -281,7 +282,7 @@ export function DashboardPage() {
         className="flex-1 overflow-y-auto bg-background text-foreground animate-pulse p-6 flex flex-col gap-5"
       >
         {/* Stat Cards Row Skeleton */}
-        <div className="grid grid-cols-5 gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
           {[1, 2, 3, 4, 5].map((n) => (
             <div key={n} className="bg-card p-6 rounded-2xl border border-border shadow-sm h-[110px] space-y-3">
               <div className="w-20 h-3 bg-muted rounded" />
@@ -300,8 +301,8 @@ export function DashboardPage() {
         </div>
 
         {/* Two Column Skeleton */}
-        <div className="grid grid-cols-12 gap-6">
-          <div className="col-span-7 bg-card border border-border rounded-3xl p-6 shadow-sm h-[320px] space-y-4">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+          <div className="lg:col-span-7 bg-card border border-border rounded-3xl p-6 shadow-sm h-[320px] space-y-4">
             <div className="flex justify-between">
               <div className="w-24 h-4 bg-muted/80 rounded" />
               <div className="w-16 h-4 bg-muted/80 rounded" />
@@ -311,7 +312,7 @@ export function DashboardPage() {
             ))}
           </div>
 
-          <div className="col-span-5 flex flex-col gap-6">
+          <div className="lg:col-span-5 flex flex-col gap-6">
             <div className="bg-card border border-border rounded-3xl p-6 shadow-sm h-[200px] space-y-3">
               <div className="w-32 h-4 bg-muted rounded" />
               {[1, 2, 3].map((n) => (
@@ -339,7 +340,7 @@ export function DashboardPage() {
       </div>
 
       {/* Stat Cards Row */}
-      <div className="grid grid-cols-5 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
         <StatCard
           label={t("stats.totalFollowers")}
           value={stats.subscribers.toLocaleString()}
@@ -389,9 +390,9 @@ export function DashboardPage() {
       </div>
 
       {/* Two Column */}
-      <div className="grid grid-cols-12 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* Recent Posts Queue (Cột trái) */}
-        <div className="col-span-7 bg-card border border-border rounded-3xl p-6 shadow-sm flex flex-col gap-5 min-h-[350px]">
+        <div className="lg:col-span-7 bg-card border border-border rounded-3xl p-6 shadow-sm flex flex-col gap-5 min-h-[350px]">
           <div className="flex items-center justify-between">
             <span className="text-sm font-bold text-foreground uppercase tracking-wider">{t("recentQueue.title")}</span>
             <div className="flex items-center gap-3">
@@ -450,9 +451,9 @@ export function DashboardPage() {
                         </h4>
                         <div className="flex items-center gap-2">
                           <span className="text-[10px] text-muted-foreground font-medium">
-                            {post.scheduledAt 
-                              ? t("recentQueue.scheduledAt", { date: new Date(post.scheduledAt).toLocaleDateString(t("common:langLocale")) }) 
-                              : t("recentQueue.createdAt", { date: new Date(post.createdAt).toLocaleDateString(t("common:langLocale")) })
+                            {post.scheduledAt
+                              ? t("recentQueue.scheduledAt", { date: toBrandWallClockDate(post.scheduledAt, activeBrand?.timezone).toLocaleDateString(t("common:langLocale")) })
+                              : t("recentQueue.createdAt", { date: toBrandWallClockDate(post.createdAt, activeBrand?.timezone).toLocaleDateString(t("common:langLocale")) })
                             }
                           </span>
                           <span className="text-[10px] text-muted-foreground">•</span>
@@ -481,7 +482,7 @@ export function DashboardPage() {
         </div>
 
         {/* Platform Status and Reach (Cột phải) */}
-        <div className="col-span-5 flex flex-col gap-6">
+        <div className="lg:col-span-5 flex flex-col gap-6">
           {/* Posting Goals */}
           {activeBrand && <PostingGoalWidget brandId={activeBrand.id} />}
 

@@ -6,7 +6,12 @@ const { getHistoryWindowMonths } = require('../plan-history-window.util');
 const videoPersistenceUtil = require('./youtube-video-persistence.util');
 const { upsertPostMetricsDaily, findLatestPostMetrics } = require('../post-metric-daily-persistence.util');
 const prisma = require('../../../config/prisma');
-const { PLATFORMS, POST_STATUS, SEPARATORS, YOUTUBE_API } = require('../../../utils/constants');
+const { PLATFORMS, POST_STATUS, SEPARATORS, YOUTUBE_API, ANALYTICS } = require('../../../utils/constants');
+
+// getPostInsights' DB-first staleness window — YouTube Analytics data itself
+// lags 24-48h at the source, so re-fetching more often than this would just
+// call the live API for data that hasn't actually changed yet.
+const POST_INSIGHTS_STALENESS_MS = 24 * 60 * 60 * 1000;
 
 class YouTubeVideoService {
   /**
@@ -33,10 +38,10 @@ class YouTubeVideoService {
   async getPublishedVideos(brandId, pageToken = null, limit = 10, socialAccountId = null, forceSync = false, startDate = null, endDate = null) {
     startDate = await this._clampStartDate(brandId, startDate);
 
-    const rows = await findLatestPostMetrics(brandId, PLATFORMS.YOUTUBE, socialAccountId, parseInt(limit, 10) || 10);
+    const rows = await findLatestPostMetrics(brandId, PLATFORMS.YOUTUBE, socialAccountId, parseInt(limit, 10) || 10, startDate, endDate);
     const videos = rows.map(r => this._formatDbMetricRow(r));
 
-    return { videos: videoPersistenceUtil.filterByDateRange(videos, startDate, endDate), nextPageToken: null, prevPageToken: null, fromDb: true };
+    return { videos, nextPageToken: null, prevPageToken: null, fromDb: true };
   }
 
   _formatDbMetricRow(row) {
@@ -111,6 +116,94 @@ class YouTubeVideoService {
     }));
 
     await upsertPostMetricsDaily(brandId, socialAccountId, PLATFORMS.YOUTUBE, rows);
+  }
+
+  /**
+   * Lấy 6 chỉ số phân tích lifetime của 1 video cụ thể (views/watchTime/
+   * avgViewDuration/likes/comments/shares) từ YouTube Analytics API.
+   * DB-first cache against PostMetricDaily — same table/pattern as
+   * getPublishedVideos/syncPublishedVideos above, keyed on this video's own
+   * platformPostId row instead of a separate table (was YouTubeVideoMetric
+   * before the PostMetricDaily consolidation).
+   */
+  async getPostInsights(brandId, videoId) {
+    const cachedRow = await prisma.postMetricDaily.findFirst({
+      where: { brandId, platformPostId: videoId, platform: PLATFORMS.YOUTUBE },
+      orderBy: { fetchedAt: 'desc' }
+    });
+
+    if (cachedRow && Date.now() - cachedRow.fetchedAt.getTime() < POST_INSIGHTS_STALENESS_MS) {
+      return this._formatInsightsRow(cachedRow);
+    }
+
+    const { auth, account } = await this._getAuthContext(brandId, true);
+    if (!auth) {
+      return this._emptyInsights();
+    }
+
+    const metrics = await this._fetchVideoInsightsFromAPI(auth, videoId);
+    await upsertPostMetricsDaily(brandId, account.id, PLATFORMS.YOUTUBE, [{
+      platformPostId: videoId,
+      postType: 'VIDEO',
+      likes: metrics.likes,
+      comments: metrics.comments,
+      views: metrics.views,
+      metrics: {
+        watchTime: metrics.watchTime,
+        totalWatchHrs: metrics.totalWatchHrs,
+        avgViewDuration: metrics.avgViewDuration,
+        shares: metrics.shares
+      }
+    }]).catch(err => {
+      console.warn('[YouTubeVideoService] Failed to persist post insights:', err.message);
+    });
+
+    return metrics;
+  }
+
+  async _fetchVideoInsightsFromAPI(auth, videoId) {
+    try {
+      const res = await youtubeGateway.getAnalyticsReportQuery(auth, {
+        ids: 'channel==MINE',
+        startDate: ANALYTICS.LIFETIME_START_DATE,
+        endDate: new Date().toISOString().split('T')[0],
+        metrics: 'views,likes,comments,shares,estimatedMinutesWatched,averageViewDuration',
+        filters: `video==${videoId}`
+      });
+
+      const row = res.data?.rows?.[0];
+      if (!row) return this._emptyInsights();
+
+      const views = parseInt(row[0] || 0, 10);
+      const likes = parseInt(row[1] || 0, 10);
+      const comments = parseInt(row[2] || 0, 10);
+      const shares = parseInt(row[3] || 0, 10);
+      const watchMinutes = parseFloat(row[4] || 0);
+      const avgViewDuration = Math.round(parseFloat(row[5] || 0));
+      const totalWatchHrs = Math.round((watchMinutes / 60) * 10) / 10;
+
+      return { views, watchTime: totalWatchHrs, totalWatchHrs, avgViewDuration, likes, comments, shares };
+    } catch (err) {
+      console.warn(`[YouTubeVideoService] Failed to fetch post insights for ${videoId}:`, err.message);
+      return this._emptyInsights();
+    }
+  }
+
+  _formatInsightsRow(row) {
+    const m = row.metrics || {};
+    return {
+      views: row.views || 0,
+      watchTime: m.totalWatchHrs || 0,
+      totalWatchHrs: m.totalWatchHrs || 0,
+      avgViewDuration: m.avgViewDuration || 0,
+      likes: row.likes || 0,
+      comments: row.comments || 0,
+      shares: m.shares || 0
+    };
+  }
+
+  _emptyInsights() {
+    return { views: 0, watchTime: 0, totalWatchHrs: 0, avgViewDuration: 0, likes: 0, comments: 0, shares: 0 };
   }
 
   async trackVideo(brandId, videoUrl) {

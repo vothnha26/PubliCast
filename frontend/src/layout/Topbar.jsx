@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate, Link, useLocation } from "react-router-dom";
 import {
   BarChart2, MessageSquare, Calendar, Link2, Image, Zap, Sparkles, X,
-  ChevronDown, Settings, Bell, Search, Check, Star
+  ChevronDown, Settings, Bell, Search, Check, Star, Menu
 } from "lucide-react";
 import { useBrand } from "../context/BrandContext";
 import { useDebounce } from "../hooks/useDebounce";
@@ -13,7 +13,7 @@ import { useTranslation } from "react-i18next";
 import { useLanguage } from "../context/LanguageContext";
 import { AccountMenu } from "./AccountMenu";
 
-export function Topbar() {
+export function Topbar({ onMenuClick } = {}) {
   const { t } = useTranslation("topbar");
   const { language, setLanguage } = useLanguage();
   const navigate = useNavigate();
@@ -129,6 +129,17 @@ export function Topbar() {
           color: "var(--foreground)",
           gap: 16 }}
       >
+        {/* Mobile-only: opens SidebarWorkspace's off-canvas drawer */}
+        {!isSuperadmin && onMenuClick && (
+          <button
+            onClick={onMenuClick}
+            className="md:hidden shrink-0 p-1.5 -ml-1 rounded-md hover:bg-[var(--muted)] transition-colors"
+            aria-label={t("nav.openMenu", "Open menu")}
+          >
+            <Menu size={20} className="text-[var(--foreground)]" />
+          </button>
+        )}
+
         {/* Left: Logo */}
         <Link to="/" className="flex items-center gap-2 no-underline shrink-0 mr-4">
           <div className="w-8 h-8 flex items-center justify-center">
@@ -195,7 +206,7 @@ export function Topbar() {
         )}
 
         {/* Center: Main Tools / Superadmin Title */}
-        <div className="flex-1 flex items-center justify-center gap-1">
+        <div className="flex-1 flex items-center justify-center md:justify-center gap-1 overflow-x-auto scrollbar-none min-w-0">
           {isSuperadmin ? (
             <div className="flex items-center gap-2">
               <span style={{ fontSize: 13, fontWeight: 700, color: "#EF4444", textTransform: "uppercase", letterSpacing: "1.5px" }}>
@@ -216,7 +227,7 @@ export function Topbar() {
                 <button
                   key={i}
                   onClick={() => navigate(tool.path)}
-                  className="flex items-center gap-2 px-2.5 py-1.5 rounded-md hover:bg-[var(--muted)] transition-colors relative"
+                  className="shrink-0 flex items-center gap-2 px-2.5 py-1.5 rounded-md hover:bg-[var(--muted)] transition-colors relative"
                   style={{ color: "var(--foreground)", backgroundColor: isActive ? "var(--muted)" : "transparent" }}
                   title={tool.label}
                 >

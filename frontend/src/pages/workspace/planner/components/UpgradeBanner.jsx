@@ -15,8 +15,12 @@ export function UpgradeBanner({ postedCount = 0, limit = 20 }) {
 
   if (isDismissed) return null;
 
+  // Below sm, the icon+long description text and the two action buttons
+  // don't fit side by side on a 375px viewport — stacking them (text block
+  // above, buttons below, both full-width) avoids the cramped multi-line
+  // wrap the horizontal layout forced.
   return (
-    <div className="bg-card border border-border rounded-2xl p-3.5 sm:p-4 flex items-center justify-between shadow-sm relative overflow-hidden group min-h-[72px] no-print transition-all">
+    <div className="bg-card border border-border rounded-2xl p-3.5 sm:p-4 flex flex-col sm:flex-row sm:items-center gap-3 sm:justify-between shadow-sm relative overflow-hidden group sm:min-h-[72px] no-print transition-all">
       {/* Zebra Lime/Yellow Stripes Graphic on the right */}
       <div className="absolute right-0 top-0 bottom-0 w-[320px] pointer-events-none select-none overflow-hidden hidden md:block opacity-40 dark:opacity-10">
         <svg className="w-full h-full object-cover" viewBox="0 0 300 100" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -27,7 +31,7 @@ export function UpgradeBanner({ postedCount = 0, limit = 20 }) {
         </svg>
       </div>
 
-      <div className="flex gap-3.5 items-center relative z-10 pr-4">
+      <div className="flex gap-3.5 items-center relative z-10 sm:pr-4">
         {/* Yellow Diamond Badge */}
         <div className="w-10 h-10 rounded-full bg-lime-500/10 border border-lime-500/30 flex items-center justify-center shrink-0 shadow-sm">
           {/* Diamond yellow background */}
@@ -50,8 +54,8 @@ export function UpgradeBanner({ postedCount = 0, limit = 20 }) {
         </div>
       </div>
       
-      <div className="flex items-center gap-2.5 relative z-10 shrink-0">
-        <button className="px-4 py-2 bg-foreground text-background rounded-full text-[11px] font-bold transition-all shadow-md hover:scale-[1.02] active:scale-[0.98] cursor-pointer">
+      <div className="flex items-center gap-2.5 relative z-10 sm:shrink-0">
+        <button className="flex-1 sm:flex-none px-4 py-2 bg-foreground text-background rounded-full text-[11px] font-bold transition-all shadow-md hover:scale-[1.02] active:scale-[0.98] cursor-pointer">
           {t("upgrade.button", { defaultValue: "Upgrade your plan" })}
         </button>
         <button

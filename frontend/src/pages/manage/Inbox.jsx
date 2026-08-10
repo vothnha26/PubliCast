@@ -1,8 +1,8 @@
 import { useState, useEffect, useRef, useMemo } from "react";
 import { 
-  Search, RefreshCw, Youtube, Facebook, Instagram, Filter, MoreHorizontal, 
+  Search, RefreshCw, Youtube, Facebook, Instagram, Filter, MoreHorizontal,
   Loader2, MessageSquare, AlertCircle, EyeOff, CheckCircle, ExternalLink, Check,
-  Settings, Sparkles, Trash2, Plus
+  Settings, Sparkles, Trash2, Plus, ArrowLeft
 } from "lucide-react";
 import { useFilters } from "../../hooks/useFilters";
 import { useDebounce } from "../../hooks/useDebounce";
@@ -58,6 +58,12 @@ export function InboxPage() {
   const [fetchedPosts, setFetchedPosts] = useState([]);
   const [inboxData, setInboxData] = useState({ data: [], meta: {} });
   const [activeConv, setActiveConv] = useState(null);
+  // Mobile-only master/detail toggle for BY_POST mode — unlike ListView's
+  // activeConv (nullable, doubles as the selection state), activePostId
+  // below always has a value (falls back to postsList[0]), so there's no
+  // natural "nothing selected yet" signal to hide/show the grid vs. detail
+  // panel on a narrow viewport. This is purely a UI toggle, not data state.
+  const [mobileShowPostDetail, setMobileShowPostDetail] = useState(false);
   const [thread, setThread] = useState([]);
   const [videoContext, setVideoContext] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -710,18 +716,25 @@ export function InboxPage() {
       <div className="flex-1 flex overflow-hidden p-4 gap-4 relative">
         {viewMode === INBOX_VIEW_MODE.BY_POST ? (
           <>
-            {/* Left Panel: Posts Grid (Reels/Shorts thumbnails) */}
-            <PostsGridSidebar
-              posts={filteredPostsList}
-              activePostId={activePostId}
-              onSelectPost={handleSelectPost}
-              loading={loading || postsLoading}
-              collapsed={isPostsPanelCollapsed}
-              onToggleCollapsed={setIsPostsPanelCollapsed}
-            />
+            {/* Left Panel: Posts Grid (Reels/Shorts thumbnails) — below md,
+                hidden once the user taps a post (mobileShowPostDetail),
+                same master/detail pattern as ListView's activeConv toggle
+                further down. From md up, both panels always show. */}
+            <div className={`${mobileShowPostDetail ? 'hidden md:block' : 'block'} md:contents`}>
+              <PostsGridSidebar
+                posts={filteredPostsList}
+                activePostId={activePostId}
+                onSelectPost={(post, updateUrl) => { handleSelectPost(post, updateUrl); setMobileShowPostDetail(true); }}
+                loading={loading || postsLoading}
+                collapsed={isPostsPanelCollapsed}
+                onToggleCollapsed={setIsPostsPanelCollapsed}
+              />
+            </div>
 
             {/* Shared Center/Main Area: Video/Post Preview + Thread */}
+            <div className={`${mobileShowPostDetail ? 'flex' : 'hidden md:flex'} flex-1 min-w-0`}>
             <ThreadDetailView
+              onMobileBack={() => setMobileShowPostDetail(false)}
               activeConv={currentActiveConv}
               videoContext={videoContext}
               thread={displayThread}
@@ -737,12 +750,18 @@ export function InboxPage() {
               onPostNewComment={handlePostNewComment}
               isPostingNewComment={isPostingNewComment}
             />
+            </div>
           </>
         ) : (
           /* ListView (Traditional 2-column Inbox) */
           <>
-            {/* Sidebar (List) */}
-            <div className="w-[380px] bg-card rounded-2xl border border-border shadow-sm flex flex-col overflow-hidden">
+            {/* Sidebar (List) — below md, this is a mobile master/detail:
+                hidden once a conversation is selected (ThreadDetailView/the
+                fallback detail pane below takes over full-width instead of
+                squeezing into a fixed 380px column that doesn't fit a
+                375px viewport). From md up, both panels show side by side
+                as before. */}
+            <div className={`w-full md:w-[380px] bg-card rounded-2xl border border-border shadow-sm flex-col overflow-hidden ${activeConv ? 'hidden md:flex' : 'flex'}`}>
               <div className="p-3.5 border-b border-border flex items-center justify-between gap-2">
                  <div className="relative flex-1 group">
                     <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
@@ -811,8 +830,10 @@ export function InboxPage() {
               )}
             </div>
 
-            {/* Main Content (Thread) */}
-            <div className="flex-1 bg-card rounded-2xl border border-border shadow-sm flex flex-col overflow-hidden relative">
+            {/* Main Content (Thread) — hidden on mobile until a conversation
+                is selected, mirroring the list panel's toggle above, so the
+                two never squeeze side by side on a narrow viewport. */}
+            <div className={`flex-1 bg-card rounded-2xl border border-border shadow-sm flex-col overflow-hidden relative ${activeConv ? 'flex' : 'hidden md:flex'}`}>
                {!activeConv ? (
                  <div className="flex-1 flex flex-col items-center justify-center p-12 text-center animate-in fade-in duration-500">
                     <div className="relative mb-8">
@@ -828,6 +849,16 @@ export function InboxPage() {
                  <>
                    <div className="px-6 py-4 border-b border-border flex items-center justify-between bg-card">
                       <div className="flex items-center gap-3">
+                         {/* Mobile-only: returns to the conversation list
+                             instead of showing both panels squeezed side by
+                             side (see the list panel's toggle above). */}
+                         <button
+                           onClick={() => setActiveConv(null)}
+                           className="md:hidden shrink-0 p-1.5 -ml-1 rounded-lg hover:bg-muted text-muted-foreground transition-colors"
+                           aria-label={t("inbox.backToList", "Back")}
+                         >
+                           <ArrowLeft size={18} />
+                         </button>
                          <div className="relative shrink-0 w-10 h-10">
                             {activeConv.participants?.length > 1 ? (
                               <>

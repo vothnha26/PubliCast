@@ -27,7 +27,8 @@ export function MediaListTable({ filteredMedia, setDetail, selected, toggleSelec
 
   return (
     <div style={{ background: "#FFF", border: "0.5px solid #E5E7EB", borderRadius: 12, overflow: "hidden" }}>
-      <table style={{ width: "100%", borderCollapse: "collapse" }}>
+      <div className="overflow-x-auto">
+      <table style={{ width: "100%", minWidth: 640, borderCollapse: "collapse" }}>
         <thead>
           <tr style={{ background: "#FAFAFA", borderBottom: "0.5px solid #E5E7EB" }}>
             {[
@@ -122,6 +123,7 @@ export function MediaListTable({ filteredMedia, setDetail, selected, toggleSelec
           ))}
         </tbody>
       </table>
+      </div>
     </div>
   );
 }

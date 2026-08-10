@@ -123,20 +123,4 @@ describe('youtube-video-persistence.util', () => {
     });
   });
 
-  describe('filterByDateRange', () => {
-    it('returns all videos unchanged when no range given', () => {
-      const videos = [{ publishedAt: '2026-01-01' }];
-      expect(videoPersistenceUtil.filterByDateRange(videos, null, null)).toBe(videos);
-    });
-
-    it('filters out videos outside the given range', () => {
-      const videos = [
-        { publishedAt: '2026-01-01T00:00:00.000Z' },
-        { publishedAt: '2026-06-01T00:00:00.000Z' }
-      ];
-      const result = videoPersistenceUtil.filterByDateRange(videos, '2026-05-01', '2026-12-31');
-      expect(result).toHaveLength(1);
-      expect(result[0].publishedAt).toBe('2026-06-01T00:00:00.000Z');
-    });
-  });
 });

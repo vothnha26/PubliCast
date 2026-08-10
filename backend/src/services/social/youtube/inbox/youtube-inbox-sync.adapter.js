@@ -6,6 +6,7 @@ const { parseGoogleApiError } = require('../youtube-error.util');
 const socialAccountRepository = require('../../../../repositories/social/social-account.repository');
 const inboxRepository = require('../../../../repositories/social/inbox.repository');
 const { PLATFORMS, INBOX_STATUS, INBOX_TYPES } = require('../../../../utils/constants');
+const logger = require('../../../../utils/logger');
 
 class YouTubeInboxSyncAdapter extends BaseInboxSyncAdapter {
   get platform() {
@@ -180,8 +181,31 @@ class YouTubeInboxSyncAdapter extends BaseInboxSyncAdapter {
     ) || socialAccount[0];
 
     const auth = googleOAuthService.createClient();
-    auth.setCredentials({ access_token: account.accessToken });
-    
+    auth.setCredentials({
+      access_token: account.accessToken,
+      refresh_token: account.refreshToken,
+      expiry_date: account.tokenExpiresAt ? account.tokenExpiresAt.getTime() : undefined
+    });
+
+    // Without a refresh_token + listener, an expired access_token fails
+    // outright ("invalid authentication credentials") instead of the
+    // googleapis client silently refreshing it — matches the pattern in
+    // youtube-analytics.service.js's _createAuthenticatedClient.
+    auth.on('tokens', async (tokens) => {
+      try {
+        if (tokens.refresh_token) {
+          await socialAccountRepository.updateTokens(account.id, tokens);
+        } else if (tokens.access_token) {
+          await socialAccountRepository.updateTokens(account.id, {
+            ...tokens,
+            refresh_token: account.refreshToken
+          });
+        }
+      } catch (err) {
+        logger.warn(`[YouTubeInboxSyncAdapter] Error updating tokens for account ${account.id}: ${err.message}`);
+      }
+    });
+
     return { account, auth };
   }
 

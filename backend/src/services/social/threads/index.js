@@ -222,7 +222,8 @@ class ThreadsService extends BaseSocialService {
     const balance = sortedDates.map(b => ({
       date: b.date,
       acquired: b.acquired,
-      lost: b.lost
+      lost: b.lost,
+      totalFollowers: b.followersCount
     }));
 
     const summary = {
@@ -259,29 +260,38 @@ class ThreadsService extends BaseSocialService {
       typesBreakdown.VIDEO = 0;
     }
 
+    // Returns a flat object — growth/balance/summary/etc. directly on the
+    // result, matching Facebook/Instagram/TikTok/Bluesky's getAnalyticsReport
+    // shape. This used to wrap the whole thing as a pre-stringified
+    // `audienceDemographicsJson` field instead, which meant
+    // saveInstagramAnalytics's own `JSON.stringify(analyticsData)` (it's
+    // written to the same SocialAnalytics.audienceDemographicsJson column)
+    // double-encoded it — `{"audienceDemographicsJson":"{\"growth\":...}"}` —
+    // and every field this function computed (balance, summary, growth...)
+    // silently vanished from what the DB actually stored (bug fixed
+    // 2026-08-10: Threads' Balance of Followers chart, and everything else
+    // reading this JSON, saw none of it).
     return {
-      audienceDemographicsJson: JSON.stringify({
-        growth: analytics.map(a => ({
-          date: a.date,
-          views: a.views,
-          reactions: a.likes,
-          comments: a.replies,
-          shares: a.reposts,
-          totalContent: a.totalContent
-        })),
-        balance: balance,
-        clicks: analytics.map(a => ({ date: a.date, totalClicks: Math.floor(a.likes * 0.1) })),
-        summary: summary,
-        interactions: {
-          comments: summary.replies,
-          shares: summary.reposts,
-          typesBreakdown: typesBreakdown
-          // viewsBreakdown removed — it derived a 90/10 organic/promoted
-          // split from summary.views using a fixed ratio, with no real
-          // organic/sponsored breakdown source fetched anywhere here (#97,
-          // same fabrication pattern already removed for Facebook/Instagram in #69).
-        }
-      })
+      growth: analytics.map(a => ({
+        date: a.date,
+        views: a.views,
+        reactions: a.likes,
+        comments: a.replies,
+        shares: a.reposts,
+        totalContent: a.totalContent
+      })),
+      balance: balance,
+      clicks: analytics.map(a => ({ date: a.date, totalClicks: Math.floor(a.likes * 0.1) })),
+      summary: summary,
+      interactions: {
+        comments: summary.replies,
+        shares: summary.reposts,
+        typesBreakdown: typesBreakdown
+        // viewsBreakdown removed — it derived a 90/10 organic/promoted
+        // split from summary.views using a fixed ratio, with no real
+        // organic/sponsored breakdown source fetched anywhere here (#97,
+        // same fabrication pattern already removed for Facebook/Instagram in #69).
+      }
     };
   }
 
@@ -311,7 +321,7 @@ class ThreadsService extends BaseSocialService {
     // Insights, xem getAnalyticsReport). followingCount/mediaCount không có
     // API thật nào của Threads trả về (getAccountDetails/getInsights đều
     // không có field này) — để null, không bịa số như 300/10 trước đây (#97).
-    const summary = JSON.parse(report.audienceDemographicsJson).summary;
+    const summary = report.summary;
 
     // 5. Lưu vào Database
     return require('../../../repositories/social/social-account.repository').upsertThreadsAccount(brandId, {
@@ -353,7 +363,7 @@ class ThreadsService extends BaseSocialService {
     // report's summary instead — see getAnalyticsReport. followingCount/
     // mediaCount have no real Threads API source anywhere; null, not a
     // fabricated 300/10 (#97).
-    const summary = JSON.parse(report.audienceDemographicsJson).summary;
+    const summary = report.summary;
 
     // enqueueSync: false — đây CHÍNH LÀ sync job đang chạy; xem ghi chú tương tự ở
     // youtube-analytics.service.js syncChannelMetrics.
@@ -381,7 +391,11 @@ class ThreadsService extends BaseSocialService {
    */
   async getPublishedVideos(brandId, pageToken = null, limit = 10, socialAccountId = null, startDate = null, endDate = null) {
     try {
-      const account = await require('../../../repositories/social/social-account.repository').findByBrandAndPlatform(brandId, PLATFORMS.THREADS);
+      // findByBrandAndPlatformLite (not findByBrandAndPlatform) — this read
+      // path only ever uses activeAccount.id below, never the 8 platform-
+      // account includes/analytics history the heavy version loads. See
+      // social-account.repository.js's findByIdLite() doc comment.
+      const account = await require('../../../repositories/social/social-account.repository').findByBrandAndPlatformLite(brandId, PLATFORMS.THREADS);
       if (!account || account.length === 0) {
         return { data: [], nextPageToken: null, prevPageToken: null };
       }
@@ -391,8 +405,8 @@ class ThreadsService extends BaseSocialService {
       // (correct as long as the brand only has one, still the common case).
       const activeAccount = (socialAccountId && account.find(acc => acc.id === socialAccountId)) || account[0];
 
-      const rows = await findLatestPostMetrics(brandId, PLATFORMS.THREADS, activeAccount.id, limit);
-      const data = this._filterByDateRange(rows.map(r => this._formatDbMetricRow(r)), startDate, endDate);
+      const rows = await findLatestPostMetrics(brandId, PLATFORMS.THREADS, activeAccount.id, limit, startDate, endDate);
+      const data = rows.map(r => this._formatDbMetricRow(r));
       return { data, nextPageToken: null, prevPageToken: null };
     } catch (error) {
       console.error('Threads getPublishedVideos error:', error);
@@ -428,19 +442,6 @@ class ThreadsService extends BaseSocialService {
     const result = await this._fetchThreadsRecentWindow(brandId, pageId, accessToken, windowMonths, 50);
     await this._persistThreadsPostMetrics(brandId, socialAccountId, result.data);
     return { synced: result.data.length };
-  }
-
-  // See FacebookPostService#_filterByDateRange — same display-only
-  // narrowing applied after the DB-first/live fetch resolves.
-  _filterByDateRange(posts, startDate, endDate) {
-    if (!startDate && !endDate) return posts;
-    return (posts || []).filter((post) => {
-      if (!post.date) return true;
-      const postTime = new Date(post.date).getTime();
-      if (startDate && postTime < new Date(startDate).getTime()) return false;
-      if (endDate && postTime > new Date(endDate).getTime() + 24 * 60 * 60 * 1000 - 1) return false;
-      return true;
-    });
   }
 
   _formatThreadsPost(post) {

@@ -371,7 +371,7 @@ export function PlatformDashboardPage() {
            <div className="flex items-center gap-3 bg-card px-3 py-1.5 rounded-xl border border-border shadow-sm">
               <div className="w-6 h-6 rounded-lg overflow-hidden border border-border">
                 <img 
-                  src={metrics?.profilePictureUrl || metrics?.instagramAccount?.profilePictureUrl} 
+                  src={metrics?.profilePictureUrl || metrics?.instagramAccount?.profilePictureUrl || metrics?.threadsAccount?.profilePictureUrl}
                   alt="Avatar" 
                   referrerPolicy="no-referrer"
                   onError={(e) => {

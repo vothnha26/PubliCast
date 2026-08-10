@@ -1,12 +1,9 @@
 const cron = require('node-cron');
 const prisma = require('../../config/prisma');
-const redisClient = require('../../config/redis');
-const DistributedLockService = require('../social/distributed-lock.service');
+const lockService = require('../social/distributed-lock.singleton');
 const notificationService = require('./notification.service');
 const { LOCK_CONFIG, NOTIFICATION_TYPES, POST_STATUS } = require('../../utils/constants');
 const logger = require('../../utils/logger');
-
-const lockService = new DistributedLockService(redisClient);
 
 // Recap content is a lightweight DB rollup (published post count for the
 // window) rather than analyticsFacade.getAggregatedData — that pipeline

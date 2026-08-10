@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from "react";
-import { AlertCircle, EyeOff, CheckCircle, ExternalLink, Loader2, MessageSquare, Youtube, Facebook, Instagram } from "lucide-react";
+import { AlertCircle, EyeOff, CheckCircle, ExternalLink, Loader2, MessageSquare, Youtube, Facebook, Instagram, ArrowLeft } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { SafeAvatar } from "./ConversationItem";
 import { VideoContextCard } from "./VideoContextCard";
@@ -7,6 +7,10 @@ import { InlineCommentThread } from "./InlineCommentThread";
 import { ReplyComposer } from "./ReplyComposer";
 
 export const ThreadDetailView = ({
+  // Mobile-only: renders a back button (returns to PostsGridSidebar's grid)
+  // when provided — Inbox.jsx only passes this in BY_POST mode, where the
+  // grid/detail panels toggle on a narrow viewport.
+  onMobileBack,
   activeConv,
   videoContext,
   thread = [],
@@ -128,6 +132,15 @@ export const ThreadDetailView = ({
       {/* Top Header of Detail Panel (Post / Video Title) */}
       <div className="px-6 py-4 border-b border-border flex items-center justify-between bg-card shrink-0">
         <div className="flex items-center gap-3">
+          {onMobileBack && (
+            <button
+              onClick={onMobileBack}
+              className="md:hidden shrink-0 p-1.5 -ml-1 rounded-lg hover:bg-muted text-muted-foreground transition-colors"
+              aria-label={t("inbox.backToList", "Back")}
+            >
+              <ArrowLeft size={18} />
+            </button>
+          )}
           <div className="w-9 h-9 rounded-full overflow-hidden border border-border bg-muted flex items-center justify-center shrink-0">
             <SafeAvatar
               src={displayAvatar}

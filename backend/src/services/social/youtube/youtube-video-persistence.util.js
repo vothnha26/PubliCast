@@ -2,20 +2,6 @@ const prisma = require('../../../config/prisma');
 const { PLATFORMS, POST_STATUS, YOUTUBE_API } = require('../../../utils/constants');
 const logger = require('../../../utils/logger');
 
-// See FacebookPostService#_filterByDateRange (same repo pattern) — a
-// display-only narrowing on top of whatever page of results was already
-// fetched/cached, never widening it.
-function filterByDateRange(videos, startDate, endDate) {
-  if (!startDate && !endDate) return videos;
-  return (videos || []).filter((video) => {
-    if (!video.publishedAt) return true;
-    const videoTime = new Date(video.publishedAt).getTime();
-    if (startDate && videoTime < new Date(startDate).getTime()) return false;
-    if (endDate && videoTime > new Date(endDate).getTime() + 24 * 60 * 60 * 1000 - 1) return false;
-    return true;
-  });
-}
-
 function formatVideoList(items) {
   return (items || [])
     .filter(v => v.status?.privacyStatus !== 'private')
@@ -156,7 +142,6 @@ async function upsertPublishedVideosToDb(brandId, videos, socialAccountId = null
 }
 
 module.exports = {
-  filterByDateRange,
   formatVideoList,
   formatVideoDetails,
   formatTrackedVideoAsDetails,
