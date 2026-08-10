@@ -48,6 +48,7 @@ export function TikTokCommunityTab({
 
   const totalAcquired = balanceData.reduce((sum, d) => sum + (d.acquired || 0), 0);
   const totalLost = balanceData.reduce((sum, d) => sum + (d.lost || 0), 0);
+  const latestTotalFollowers = balanceData.length > 0 ? balanceData[balanceData.length - 1]?.totalFollowers ?? 0 : 0;
 
   // Growth configuration
   const growthConfig = [
@@ -87,6 +88,15 @@ export function TikTokCommunityTab({
       chartColor: "#F472B6",
       type: "line",
       value: totalLost
+    },
+    {
+      key: "totalFollowers",
+      label: "Total Followers",
+      color: "bg-[#8E9BEE] text-white",
+      chartColor: "#8E9BEE",
+      type: "line",
+      yAxisId: "right",
+      value: latestTotalFollowers
     }
   ];
 
