@@ -25,5 +25,13 @@
     "react/prop-types": "off",
     "react/no-unescaped-entities": "warn",
     "react/no-unknown-property": "warn"
-  }
+  },
+  "overrides": [
+    {
+      "files": ["**/*.test.js", "**/*.test.jsx"],
+      "env": {
+        "jest": true
+      }
+    }
+  ]
 }
