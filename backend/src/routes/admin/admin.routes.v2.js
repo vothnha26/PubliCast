@@ -4,6 +4,7 @@ const auditLogController = require('../../controllers/admin/audit-log.controller
 const revenueController = require('../../controllers/admin/revenue.controller');
 const productController = require('../../controllers/admin/product.controller');
 const platformLimitController = require('../../controllers/admin/platform-limit.controller');
+const postingUsageMonitoringController = require('../../controllers/admin/posting-usage-monitoring.controller');
 const userController = require('../../controllers/admin/user.controller');
 const templateController = require('../../controllers/admin/template.controller');
 const feedController = require('../../controllers/admin/feed.controller');
@@ -50,6 +51,9 @@ router.post('/platform-limits', platformLimitController.createPlatformLimit);
 router.put('/platform-limits/:id', platformLimitController.updatePlatformLimit);
 router.patch('/platform-limits/:id/lock', platformLimitController.toggleLock);
 router.delete('/platform-limits/:id', platformLimitController.deletePlatformLimit);
+
+// ── Fair Use Posting Usage Monitoring V2 ──
+router.get('/posting-usage/monthly', postingUsageMonitoringController.getMonthlyOverview);
 
 // ── Users V2 ──
 router.get('/users', userController.listUsers);
