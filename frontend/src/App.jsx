@@ -95,6 +95,10 @@ export default function App() {
   // Keeps the splash mounted through its own fade-out animation even after
   // `loading` (checkAuth in flight) has already flipped to false.
   const [showSplash, setShowSplash] = useState(true);
+  // Sidebar renders as an off-canvas drawer below the md breakpoint (see
+  // SidebarWorkspace.jsx) — only relevant there, a no-op above md where the
+  // sidebar is always visible inline.
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
 
   const getRedirectPath = () => {
     if (!user) return "/dashboard";
@@ -106,6 +110,7 @@ export default function App() {
 
   useEffect(() => {
     window.scrollTo(0, 0);
+    setMobileSidebarOpen(false);
   }, [currentPath]);
 
   // Auto-logout when both access token and refresh token have expired
@@ -135,13 +140,17 @@ export default function App() {
     <QueryClientProvider client={queryClient}>
       <div className="w-full h-screen flex flex-col overflow-hidden" style={{ fontFamily: "'DM Sans', sans-serif" }}>
         {/* Topbar ALWAYS on top across full width (except landing/login/admin/staff) */}
-        {!isNoLayout && !isSuperadmin && !isStaff && <Topbar />}
+        {!isNoLayout && !isSuperadmin && !isStaff && (
+          <Topbar onMenuClick={() => setMobileSidebarOpen((v) => !v)} />
+        )}
 
-        <div className="flex flex-1 overflow-hidden">
+        <div className="flex flex-1 overflow-hidden relative">
           {/* Sidebar below Topbar */}
           {!isNoLayout && !isStaff && (
             <>
-              {isSuperadmin ? <SidebarAdmin /> : <SidebarWorkspace />}
+              {isSuperadmin ? <SidebarAdmin /> : (
+                <SidebarWorkspace mobileOpen={mobileSidebarOpen} onMobileClose={() => setMobileSidebarOpen(false)} />
+              )}
             </>
           )}
 
