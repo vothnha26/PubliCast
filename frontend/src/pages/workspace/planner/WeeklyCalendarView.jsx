@@ -283,8 +283,13 @@ export function WeeklyCalendarView({ socialAccountId, platform } = {}) {
     openPostCreator({ defaultSocialAccountId: socialAccountId });
   };
 
+  // Below md, UpgradeBanner (now stacks vertically, taller) + PlannerToolbar
+  // can together exceed the viewport height before the grid even starts —
+  // overflow-hidden here (fine on desktop, where WeeklyGrid's own internal
+  // scroll is enough) left everything below that point completely
+  // unreachable, with no way to scroll down to it.
   return (
-    <div className="flex-1 flex flex-col p-6 space-y-6 overflow-hidden">
+    <div className="flex-1 flex flex-col p-6 space-y-6 overflow-y-auto md:overflow-hidden">
       {/* 1. Plan Upgrade Banner */}
       <UpgradeBanner postedCount={monthlyPostCount} limit={activeBrand?.currentPlan?.limits?.maxPostsPerMonth || 20} />
 
@@ -317,7 +322,7 @@ export function WeeklyCalendarView({ socialAccountId, platform } = {}) {
       />
 
       {/* 3. Main Grid layout: Lịch bên trái, Tích hợp bên phải */}
-      <div className="flex-1 min-h-0 flex flex-col lg:flex-row gap-6 items-stretch mb-6">
+      <div className="flex-1 min-h-[500px] md:min-h-0 flex flex-col lg:flex-row gap-6 items-stretch mb-6">
         {/* Main Calendar Content - Always 100% full width */}
         <div className="flex-1 min-w-0 h-full overflow-hidden">
           {loading ? (

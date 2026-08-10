@@ -124,8 +124,15 @@ export function MonthlyGrid({
     }
   };
 
+  // 7 columns at 100% width squeeze each day cell to ~53px on a 375px
+  // viewport — technically doesn't overflow (grid uses % widths, not a
+  // fixed min-width), but the day number/post chips become unreadable and
+  // hard to tap. Wrapping in overflow-x-auto with a min-width on the grid
+  // itself (same pattern as WeeklyGrid) keeps every cell a usable size and
+  // lets the header row scroll in lockstep with the day cells below it.
   return (
-    <div className="w-full h-full bg-card border border-border rounded-3xl shadow-sm overflow-hidden flex flex-col min-h-[500px]">
+    <div className="w-full h-full bg-card border border-border rounded-3xl shadow-sm overflow-x-auto overflow-y-hidden flex flex-col min-h-[500px]">
+      <div className="min-w-[700px] flex-1 flex flex-col">
       {/* Weekday headers */}
       <div className="grid grid-cols-7 border-b border-border bg-muted/40 py-3 text-center no-print">
         {weekdayNames.map((dayName, idx) => (
@@ -253,6 +260,7 @@ export function MonthlyGrid({
             </div>
           );
         })}
+      </div>
       </div>
     </div>
   );

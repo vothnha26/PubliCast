@@ -150,8 +150,14 @@ export function WeeklyGrid({
     }
   }, [rowHeight]);
 
+  // Week view needs 7 day-columns at min-w-[100px] each (700px), which
+  // overflows a 375px viewport. Wrapping the whole grid (header + scrollable
+  // body) in one overflow-x-auto — instead of putting it only on the body —
+  // keeps the day-name header scrolling in lockstep with the body columns
+  // under it, rather than one scrolling and the other staying put.
   return (
-    <div className="w-full h-full bg-card border border-border rounded-3xl shadow-sm overflow-hidden flex flex-col">
+    <div className="w-full h-full bg-card border border-border rounded-3xl shadow-sm overflow-x-auto overflow-y-hidden flex flex-col">
+      <div className="min-w-[780px] h-full flex flex-col">
       {/* Days Header */}
       <div className="flex border-b border-border bg-card shrink-0 no-print">
         {/* Time column spacer */}
@@ -377,6 +383,7 @@ export function WeeklyGrid({
             })}
           </div>
         ))}
+      </div>
       </div>
     </div>
   );
