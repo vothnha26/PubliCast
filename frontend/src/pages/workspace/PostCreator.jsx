@@ -523,10 +523,14 @@ export function PostCreatorPage() {
           isFullScreen ? 'max-w-none rounded-none border-0' : 'max-w-[1530px] rounded-[24px] border border-border/40'
         }`}>
 
-          {/* Unified Top Headbar matching Figma / User Reference */}
-          <div className="shrink-0 px-6 py-3.5 border-b border-border/60 bg-card flex items-center justify-between z-30">
-            <div className="flex items-center gap-3">
-              <h1 className="text-base font-bold text-foreground tracking-tight font-sans">
+          {/* Unified Top Headbar matching Figma / User Reference — below md,
+              the title + Tags button + RightPanelTabSwitcher (4 tabs) +
+              fullscreen/close buttons together don't fit 375px width;
+              scrolling horizontally instead of wrapping keeps every control
+              reachable without the title line-wrapping over them. */}
+          <div className="shrink-0 px-3 md:px-6 py-3.5 border-b border-border/60 bg-card flex items-center justify-between gap-3 overflow-x-auto scrollbar-none z-30">
+            <div className="flex items-center gap-3 shrink-0">
+              <h1 className="text-base font-bold text-foreground tracking-tight font-sans whitespace-nowrap">
                 {isLibrary
                   ? (editingPost ? t("planner:postCreator.header.editTemplate") : t("planner:postCreator.header.createTemplate"))
                   : (editingPost ? t("planner:postCreator.header.editPost", "Create Post") : t("planner:postCreator.header.createPost", "Create Post"))}
@@ -535,7 +539,7 @@ export function PostCreatorPage() {
               {/* Tags Dropdown Button */}
               <button
                 type="button"
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-border/80 bg-card hover:bg-muted text-xs font-semibold text-foreground transition-all cursor-pointer font-sans shadow-xs"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-border/80 bg-card hover:bg-muted text-xs font-semibold text-foreground transition-all cursor-pointer font-sans shadow-xs shrink-0"
               >
                 <Tag size={13} className="text-muted-foreground" />
                 <span>{t("planner:postCreator.header.tags", "Tags")}</span>
@@ -543,7 +547,7 @@ export function PostCreatorPage() {
               </button>
             </div>
 
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 shrink-0">
               <RightPanelTabSwitcher />
 
               <div className="h-4 w-px bg-border/60 shrink-0" />
@@ -570,10 +574,13 @@ export function PostCreatorPage() {
             </div>
           </div>
 
-          {/* Main 2-Column Content Body */}
-          <div className="flex-1 flex overflow-hidden min-h-0">
+          {/* Main 2-Column Content Body — stacks vertically (form above
+              preview, both independently scrollable) below md, since a
+              side-by-side flex here left each column only a few dozen px
+              wide on a 375px viewport. */}
+          <div className="flex-1 flex flex-col md:flex-row overflow-y-auto md:overflow-hidden min-h-0">
             {/* Cột 1: COMPOSE (Bên trái) */}
-            <div className="flex-[1.1] flex flex-col min-h-0">
+            <div className="md:flex-[1.1] flex flex-col min-h-0 shrink-0 md:shrink">
               <ComposerHeader />
               <ComposerBody />
             </div>
@@ -582,7 +589,7 @@ export function PostCreatorPage() {
                 collapses entirely when rightPanelTab is null (re-clicking the
                 active tab in RightPanelTabSwitcher toggles it off). */}
             {rightPanelTab && (
-              <div className="flex-[0.9] flex flex-col min-h-0 overflow-hidden bg-muted/20 border-l border-border/40">
+              <div className="md:flex-[0.9] flex flex-col min-h-0 overflow-hidden bg-muted/20 border-t md:border-t-0 md:border-l border-border/40">
                 {rightPanelTab === 'notes' ? (
                   <NotesPanel />
                 ) : rightPanelTab === 'templates' ? (

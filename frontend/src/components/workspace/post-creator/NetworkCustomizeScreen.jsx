@@ -308,25 +308,28 @@ export function NetworkCustomizeScreen({ onClose }) {
         isFullScreen ? 'max-w-none rounded-none border-0' : 'max-w-[1530px] rounded-[24px] border border-border/40'
       }`}>
 
-        {/* Unified Top Headbar matching Figma / User Reference */}
-        <div className="shrink-0 px-6 py-3.5 border-b border-border/60 bg-card flex items-center justify-between z-30">
-          <div className="flex items-center gap-3">
+        {/* Unified Top Headbar matching Figma / User Reference — same
+            overflow-x-auto treatment as PostCreator.jsx's header, for the
+            same reason: back button + title + Tags + RightPanelTabSwitcher
+            + fullscreen/close don't fit a 375px viewport. */}
+        <div className="shrink-0 px-3 md:px-6 py-3.5 border-b border-border/60 bg-card flex items-center justify-between gap-3 overflow-x-auto scrollbar-none z-30">
+          <div className="flex items-center gap-3 shrink-0">
             <button
               type="button"
               onClick={onClose}
-              className="p-1.5 rounded-xl text-muted-foreground hover:text-foreground hover:bg-muted transition-all cursor-pointer"
+              className="p-1.5 rounded-xl text-muted-foreground hover:text-foreground hover:bg-muted transition-all cursor-pointer shrink-0"
               title="Quay lại"
             >
               <ArrowLeft size={18} />
             </button>
-            <h1 className="text-base font-bold text-foreground tracking-tight font-sans">
+            <h1 className="text-base font-bold text-foreground tracking-tight font-sans whitespace-nowrap">
               {t("planner:postCreator.networkCustomize.title", "Customize per network")}
             </h1>
 
             {/* Tags Dropdown Button */}
             <button
               type="button"
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-border/80 bg-card hover:bg-muted text-xs font-semibold text-foreground transition-all cursor-pointer font-sans shadow-xs"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-border/80 bg-card hover:bg-muted text-xs font-semibold text-foreground transition-all cursor-pointer font-sans shadow-xs shrink-0"
             >
               <Tag size={13} className="text-muted-foreground" />
               <span>{t("planner:postCreator.header.tags", "Tags")}</span>
@@ -334,7 +337,7 @@ export function NetworkCustomizeScreen({ onClose }) {
             </button>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 shrink-0">
             <RightPanelTabSwitcher />
 
             <div className="h-4 w-px bg-border/60 shrink-0" />
@@ -360,10 +363,11 @@ export function NetworkCustomizeScreen({ onClose }) {
           </div>
         </div>
 
-        {/* Main 2-Column Content Body */}
-        <div className="flex-1 flex overflow-hidden min-h-0">
+        {/* Main 2-Column Content Body — stacks vertically below md, same
+            reasoning as PostCreator.jsx's main body. */}
+        <div className="flex-1 flex flex-col md:flex-row overflow-y-auto md:overflow-hidden min-h-0">
           {/* Left Column: Workspace & Channels & Footer */}
-          <div className="flex-[1.1] flex flex-col min-h-0">
+          <div className="md:flex-[1.1] flex flex-col min-h-0 shrink-0 md:shrink">
 
           {/* Unified Header matching ComposerHeader layout & single border-b */}
           <div className="shrink-0 px-8 py-3 border-b border-border flex flex-col gap-3 bg-card z-10">
@@ -655,7 +659,7 @@ export function NetworkCustomizeScreen({ onClose }) {
             null (re-clicking the active tab in RightPanelTabSwitcher toggles
             it off), same as PostCreator.jsx's right column. */}
         {rightPanelTab && (
-          <div className="flex-[0.9] flex flex-col min-h-0 overflow-hidden bg-muted/20 border-l border-border/40">
+          <div className="md:flex-[0.9] flex flex-col min-h-0 overflow-hidden bg-muted/20 border-t md:border-t-0 md:border-l border-border/40">
             {rightPanelTab === "notes" ? (
               <NotesPanel />
             ) : rightPanelTab === "templates" ? (

@@ -80,10 +80,10 @@ export function PublishSplitButton({ variant = "dark" }) {
   const editablePublishOptions = getEditPublishOptions();
 
   const containerClass = variant === "accent"
-    ? `relative flex items-center rounded-full transition-all ${
+    ? `relative flex items-center rounded-full transition-all shrink-0 ${
         hasCreatePermission ? "bg-composer-accent text-composer-accent-foreground" : "bg-gray-200 text-muted-foreground"
       }`
-    : `relative flex items-center rounded-full transition-all ${
+    : `relative flex items-center rounded-full transition-all shrink-0 ${
         hasCreatePermission ? "bg-[#0A0A0A] text-white" : "bg-gray-200 text-muted-foreground"
       }`;
 
