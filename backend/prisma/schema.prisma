@@ -2083,6 +2083,7 @@ model OutboxEvent {
   aggregateId String // vd postId - dùng để dedupe/trace, KHÔNG dùng làm khóa unique cưỡng bức
   payload     String            @db.Text // JSON.stringify
   status      OutboxEventStatus @default(PENDING)
+  priority    Int               @default(100) // số nhỏ hơn = ưu tiên xử lý trước, xem OUTBOX_PRIORITY
   attempts    Int               @default(0)
   maxAttempts Int               @default(5)
   nextRunAt   DateTime          @default(now()) // dispatcher chỉ pick WHERE nextRunAt <= now()
@@ -2091,7 +2092,7 @@ model OutboxEvent {
   createdAt   DateTime          @default(now())
   updatedAt   DateTime          @updatedAt
 
-  @@index([status, nextRunAt])
+  @@index([status, priority, nextRunAt])
   @@index([status, updatedAt])
   @@index([aggregateId])
   @@index([eventType])

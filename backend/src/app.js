@@ -168,6 +168,8 @@ const { initSocialSubscriber } = require('./events/subscribers/social.subscriber
 initSocialSubscriber();
 const { initMetricsCacheSubscriber } = require('./events/subscribers/metrics-cache.subscriber');
 initMetricsCacheSubscriber();
+const { initNotificationSubscriber } = require('./events/subscribers/notification.subscriber');
+initNotificationSubscriber();
 
 // ── Static file serving ────────────────────────────────────────────────────
 // Reports contain a brand's private analytics — they're only fetchable

@@ -5,6 +5,14 @@ const notificationService = require('./notification.service');
 const { LOCK_CONFIG, NOTIFICATION_TYPES, POST_STATUS } = require('../../utils/constants');
 const logger = require('../../utils/logger');
 
+// Every brand's recap notification is created within the same cron tick — with
+// thousands of active brands that's thousands of email Outbox rows landing at
+// once, which (even at LOW priority) would still occupy the dispatcher's batch
+// back-to-back for many poll cycles before anything else gets a look-in. Spread
+// each brand's email nextRunAt randomly across this window so the burst turns
+// into a trickle instead of a spike.
+const RECAP_EMAIL_SPREAD_MS = 20 * 60 * 1000;
+
 // Recap content is a lightweight DB rollup (published post count for the
 // window) rather than analyticsFacade.getAggregatedData — that pipeline
 // calls live platform APIs per account and is built for one on-demand
@@ -106,12 +114,13 @@ class RecapSchedulerService {
       ? `"${brand.name}" published ${publishedCount} post${publishedCount === 1 ? '' : 's'} today.`
       : `"${brand.name}" published ${publishedCount} post${publishedCount === 1 ? '' : 's'} this week.`;
 
+    const emailNextRunAt = new Date(Date.now() + Math.random() * RECAP_EMAIL_SPREAD_MS);
     await notificationService.notifyBrandMembers(brand.id, {
       type: NOTIFICATION_TYPES.SYSTEM,
       title,
       message,
       actionUrl: '/analytics'
-    }, preferenceKey);
+    }, preferenceKey, { nextRunAt: emailNextRunAt });
   }
 }
 

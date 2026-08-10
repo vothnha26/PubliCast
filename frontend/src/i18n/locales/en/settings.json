@@ -33,7 +33,8 @@
       "dailyRecapDesc": "A daily summary of what was published today.",
       "weeklyReport": "Weekly report card",
       "weeklyReportDesc": "A weekly summary of what was published this week."
-    }
+    },
+    "systemManagedNote": "A few essential system notifications (e.g. successful channel connections, plan/pricing changes) are always sent and can't be turned off, so you never miss something critical."
   },
   "profile": {
     "title": "Personal profile",

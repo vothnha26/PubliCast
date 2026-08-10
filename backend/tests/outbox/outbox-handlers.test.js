@@ -23,7 +23,12 @@ jest.mock('../../src/services/workspace/brand.service', () => ({
 }));
 
 jest.mock('../../src/services/core/email.service', () => ({
-  sendOTP: jest.fn().mockResolvedValue(true)
+  sendOTP: jest.fn().mockResolvedValue(true),
+  sendNotificationEmail: jest.fn().mockResolvedValue(true)
+}));
+
+jest.mock('../../src/repositories/auth/user.repository', () => ({
+  findById: jest.fn()
 }));
 
 const { upsertPublishJob, removePublishJob } = require('../../src/services/workspace/post/publish-qstash.service');
@@ -31,6 +36,7 @@ const { qstashClient } = require('../../src/config/qstash');
 const initPostSubscribers = require('../../src/events/subscribers/post.subscriber');
 const brandService = require('../../src/services/workspace/brand.service');
 const emailService = require('../../src/services/core/email.service');
+const userRepository = require('../../src/repositories/auth/user.repository');
 const { OUTBOX_HANDLERS } = require('../../src/services/core/outbox-handlers');
 const { OUTBOX_EVENT_TYPES } = require('../../src/constants/outbox.constants');
 
@@ -73,6 +79,34 @@ describe('OUTBOX_HANDLERS', () => {
     it('calls emailService.sendOTP with the payload email and otp', async () => {
       await OUTBOX_HANDLERS[OUTBOX_EVENT_TYPES.USER_SEND_WELCOME_OTP]({ email: 'a@b.com', otp: '123456' });
       expect(emailService.sendOTP).toHaveBeenCalledWith('a@b.com', '123456');
+    });
+  });
+
+  describe('NOTIFICATION_EMAIL', () => {
+    it('looks up the user fresh and sends the notification email to their address', async () => {
+      userRepository.findById.mockResolvedValue({ id: 'user-1', email: 'user1@example.com' });
+
+      await OUTBOX_HANDLERS[OUTBOX_EVENT_TYPES.NOTIFICATION_EMAIL]({
+        userId: 'user-1',
+        title: 'Post failed',
+        message: 'Your post failed to publish',
+        actionUrl: 'http://localhost:5173/planner'
+      });
+
+      expect(userRepository.findById).toHaveBeenCalledWith('user-1');
+      expect(emailService.sendNotificationEmail).toHaveBeenCalledWith(
+        'user1@example.com', 'Post failed', 'Your post failed to publish', 'http://localhost:5173/planner'
+      );
+    });
+
+    it('no-ops without throwing when the user no longer exists (deleted between enqueue and dispatch)', async () => {
+      userRepository.findById.mockResolvedValue(null);
+
+      await expect(
+        OUTBOX_HANDLERS[OUTBOX_EVENT_TYPES.NOTIFICATION_EMAIL]({ userId: 'deleted-user', title: 't', message: 'm' })
+      ).resolves.toBeUndefined();
+
+      expect(emailService.sendNotificationEmail).not.toHaveBeenCalled();
     });
   });
 

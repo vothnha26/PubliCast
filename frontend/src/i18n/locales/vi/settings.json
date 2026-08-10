@@ -33,7 +33,8 @@
       "dailyRecapDesc": "Tóm tắt những gì đã được đăng trong ngày.",
       "weeklyReport": "Báo cáo hàng tuần",
       "weeklyReportDesc": "Tóm tắt những gì đã được đăng trong tuần."
-    }
+    },
+    "systemManagedNote": "Một số thông báo hệ thống quan trọng (ví dụ: kết nối kênh thành công, thay đổi về gói dịch vụ) luôn được gửi và không thể tắt, nhằm đảm bảo bạn không bỏ lỡ thông tin thiết yếu."
   },
   "profile": {
     "title": "Hồ sơ cá nhân",
