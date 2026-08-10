@@ -20,6 +20,7 @@ import { useTranslation } from "react-i18next";
 import { usePostCreator } from "../../context/PostCreatorContext";
 import { useMetricsQuery } from "../../hooks/queries/useMetricsQuery";
 import { mergeAnalyticsRows } from "../../utils/mergeAnalyticsRows";
+import { toBrandWallClockDate } from "../../utils/brandTimezone";
 
 const PLATFORM_COLORS = {
   YouTube: "#FF0000",
@@ -88,9 +89,9 @@ const PLATFORM_METRICS_STRATEGIES = {
     getVideos: (m) => m.instagramAccount?.mediaCount || 0,
   },
   THREADS: {
-    getSubscribers: (m) => m.instagramAccount?.followersCount || 0,
+    getSubscribers: (m) => m.threadsAccount?.followersCount || 0,
     getViews: (m) => 0,
-    getVideos: (m) => m.instagramAccount?.mediaCount || 0,
+    getVideos: (m) => m.threadsAccount?.mediaCount || 0,
   },
   TIKTOK: {
     getSubscribers: (m) => m.tikTokAccount?.followersCount || 0,
@@ -450,9 +451,9 @@ export function DashboardPage() {
                         </h4>
                         <div className="flex items-center gap-2">
                           <span className="text-[10px] text-muted-foreground font-medium">
-                            {post.scheduledAt 
-                              ? t("recentQueue.scheduledAt", { date: new Date(post.scheduledAt).toLocaleDateString(t("common:langLocale")) }) 
-                              : t("recentQueue.createdAt", { date: new Date(post.createdAt).toLocaleDateString(t("common:langLocale")) })
+                            {post.scheduledAt
+                              ? t("recentQueue.scheduledAt", { date: toBrandWallClockDate(post.scheduledAt, activeBrand?.timezone).toLocaleDateString(t("common:langLocale")) })
+                              : t("recentQueue.createdAt", { date: toBrandWallClockDate(post.createdAt, activeBrand?.timezone).toLocaleDateString(t("common:langLocale")) })
                             }
                           </span>
                           <span className="text-[10px] text-muted-foreground">•</span>
