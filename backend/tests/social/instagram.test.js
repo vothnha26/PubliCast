@@ -39,6 +39,9 @@ jest.mock('../../src/config/prisma', () => ({
   postMetricDaily: {
     findMany: jest.fn().mockResolvedValue([]),
     upsert: jest.fn().mockResolvedValue({})
+  },
+  brand: {
+    findUnique: jest.fn().mockResolvedValue({ timezone: null })
   }
 }));
 jest.mock('../../src/services/social/connection-conflict.guard', () => ({
