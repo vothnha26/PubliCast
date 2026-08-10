@@ -124,6 +124,44 @@ class EmailService {
 </html>`;
   }
 
+  async sendNotificationEmail(email, title, message, actionUrl) {
+    const strategy = this.getStrategy();
+    const text = actionUrl ? `${message}\n\n${actionUrl}` : message;
+    const html = this._buildNotificationHtml(title, message, actionUrl);
+    await strategy.send(email, title, text, html);
+  }
+
+  _buildNotificationHtml(title, message, actionUrl) {
+    return `<!DOCTYPE html>
+<html lang="vi">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><title>${title}</title></head>
+<body style="margin:0;padding:0;background:#F8F8F7;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#F8F8F7;padding:40px 20px;">
+    <tr><td align="center">
+      <table width="480" cellpadding="0" cellspacing="0" style="background:#fff;border-radius:20px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.08);">
+        <tr><td style="background:#2D1D35;padding:32px;text-align:center;">
+          <div style="display:inline-flex;align-items:center;gap:10px;">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M7 11V7a5 5 0 0 1 10 0v4"/><path d="M11 11h2"/><rect width="18" height="11" x="3" y="11" rx="2"/></svg>
+            <span style="font-size:20px;font-weight:800;color:#fff;letter-spacing:-0.5px;">PubliCast</span>
+          </div>
+        </td></tr>
+        <tr><td style="padding:40px 40px 32px;">
+          <h1 style="margin:0 0 16px;font-size:20px;font-weight:800;color:#0A0A0A;text-align:center;letter-spacing:-0.5px;">${title}</h1>
+          <p style="margin:0 0 32px;font-size:14px;color:#6B7280;text-align:center;line-height:1.6;">${message}</p>
+          ${actionUrl ? `<div style="text-align:center;margin-bottom:8px;">
+            <a href="${actionUrl}" style="display:inline-block;background:#0A0A0A;color:#fff;text-decoration:none;font-size:14px;font-weight:700;padding:14px 36px;border-radius:12px;letter-spacing:-0.2px;">Xem chi tiết →</a>
+          </div>` : ''}
+        </td></tr>
+        <tr><td style="background:#F8F8F7;padding:20px 40px;text-align:center;border-top:1px solid #F3F4F6;">
+          <p style="margin:0;font-size:11px;color:#9CA3AF;">© 2026 PubliCast · Nền tảng quản lý mạng xã hội đa kênh</p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`;
+  }
+
   async sendReport(emails, subject, text, buffer, filename, contentType) {
     const strategy = this.getStrategy();
     const attachments = [{

@@ -214,6 +214,35 @@ describe('NotificationService', () => {
       expect(authorizationFacade.checkBrandAccess).not.toHaveBeenCalled();
       expect(notificationRepository.create).toHaveBeenCalled();
     });
+
+    it('emits NOTIFICATION.CREATED with the notification, preferenceKey and emailOptions instead of pushing socket/outbox inline', async () => {
+      const { eventEmitter, EVENTS } = require('../../src/events/event-emitter');
+      const savedNotification = {
+        id: 'notif-4', userId: 'user-1', brandId: null,
+        title: 'Post failed', message: 'Your post failed to publish', type: 'SYSTEM',
+        isRead: false, isGlobal: false, actionUrl: '/planner', createdAt: new Date(), readReceipts: []
+      };
+      notificationRepository.create.mockResolvedValue(savedNotification);
+
+      const emitSpy = jest.fn();
+      eventEmitter.on(EVENTS.NOTIFICATION.CREATED, emitSpy);
+      try {
+        const nextRunAt = new Date();
+        await notificationService.create(
+          { userId: 'user-1', title: 'Post failed', message: 'Your post failed to publish', actionUrl: '/planner', preferenceKey: 'notifyPostFailure' },
+          null,
+          { nextRunAt }
+        );
+
+        expect(emitSpy).toHaveBeenCalledWith(expect.objectContaining({
+          notification: expect.objectContaining({ id: 'notif-4' }),
+          preferenceKey: 'notifyPostFailure',
+          emailOptions: { nextRunAt }
+        }));
+      } finally {
+        eventEmitter.off(EVENTS.NOTIFICATION.CREATED, emitSpy);
+      }
+    });
   });
 
   describe('getNotifications', () => {

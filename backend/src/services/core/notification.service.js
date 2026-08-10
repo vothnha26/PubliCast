@@ -8,6 +8,7 @@ const authorizationFacade = require('../auth/authorization.facade');
 const prisma = require('../../config/prisma');
 const { NOTIFICATION_TYPES, NOTIFICATION_LABELS, USER_ROLES } = require('../../utils/constants');
 const notificationRealtime = require('./notification.realtime');
+const { eventEmitter, EVENTS } = require('../../events/event-emitter');
 
 // Maps each event-driven notification to the UserSettings boolean that
 // gates it. Only categories with a real per-user toggle appear here —
@@ -68,8 +69,14 @@ class NotificationService {
    *   toggle gates this event. Only checked when `userId` is set — isGlobal
    *   broadcasts and brand-scoped notifications (no single target user) are
    *   never filtered here; use notifyBrandMembers for the latter.
+   * @param {object|null} actor
+   * @param {object} [emailOptions] - forwarded to the email Outbox row if this
+   *   preferenceKey queues one (see notification.subscriber.js). Only
+   *   `nextRunAt` is used today — lets bulk fan-outs (recap scan) spread
+   *   thousands of same-instant rows across a window instead of bursting the
+   *   dispatcher's batch all at once.
    */
-  async create(notificationData, actor = null) {
+  async create(notificationData, actor = null, emailOptions = {}) {
     if (actor) {
       await this._assertCreatePermission(notificationData, actor);
     }
@@ -82,32 +89,13 @@ class NotificationService {
 
     const data = this._buildCreateData(rest);
     const notification = await notificationRepository.create(data);
-    
-    // Broadcast notification via WebSocket SocketManager
-    try {
-      const socketManager = require('../workspace/socket/socket.manager');
-      const { SOCKET_EVENTS } = require('../../utils/socket-constants');
-      if (notification.userId) {
-        socketManager.emitToUser(notification.userId, SOCKET_EVENTS.NOTIFICATION_CREATED, {
-          notificationId: notification.id,
-          title: notification.title,
-          message: notification.message
-        });
-      } else {
-        // Global system notification
-        if (socketManager.io) {
-          socketManager.io.emit(SOCKET_EVENTS.NOTIFICATION_CREATED, {
-            notificationId: notification.id,
-            title: notification.title,
-            message: notification.message
-          });
-        }
-      }
-    } catch (wsErr) {
-      console.error('⚠️ [NotificationService] Real-time websocket dispatch failed:', wsErr.message);
-    }
 
-    notificationRealtime.broadcast('notification.created', { notificationId: notification.id });
+    // Fan out to whatever should happen after a notification exists (socket
+    // push, queuing an email) via Observer instead of calling each side-effect
+    // inline — see events/subscribers/notification.subscriber.js. Adding a new
+    // delivery channel later means adding a listener there, not touching this
+    // method or any of its 8+ callers again.
+    eventEmitter.emit(EVENTS.NOTIFICATION.CREATED, { notification, preferenceKey, emailOptions });
     return this._formatNotification(notification);
   }
 
@@ -118,10 +106,10 @@ class NotificationService {
    * to one create() call per member (owner + active team members) instead,
    * each filtered independently by that member's own toggle.
    */
-  async notifyBrandMembers(brandId, notificationData, preferenceKey) {
+  async notifyBrandMembers(brandId, notificationData, preferenceKey, emailOptions = {}) {
     const recipientUserIds = await this._getBrandRecipientUserIds(brandId);
     await Promise.all(recipientUserIds.map((userId) =>
-      this.create({ ...notificationData, brandId, userId, preferenceKey }).catch((err) => {
+      this.create({ ...notificationData, brandId, userId, preferenceKey }, null, emailOptions).catch((err) => {
         console.error(`[NotificationService] Failed to notify user ${userId} for brand ${brandId}:`, err.message);
       })
     ));

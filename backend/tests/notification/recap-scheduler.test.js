@@ -28,7 +28,8 @@ describe('RecapSchedulerService Unit Tests', () => {
     expect(notifySpy).toHaveBeenCalledWith(
       'brand-1',
       expect.objectContaining({ title: 'Daily post recap', message: expect.stringContaining('3 posts') }),
-      'notifyDailyRecap'
+      'notifyDailyRecap',
+      expect.objectContaining({ nextRunAt: expect.any(Date) })
     );
   });
 
@@ -42,7 +43,8 @@ describe('RecapSchedulerService Unit Tests', () => {
     expect(notifySpy).toHaveBeenCalledWith(
       'brand-1',
       expect.objectContaining({ title: 'Weekly report card', message: expect.stringContaining('1 post') }),
-      'notifyWeeklyReport'
+      'notifyWeeklyReport',
+      expect.objectContaining({ nextRunAt: expect.any(Date) })
     );
   });
 
@@ -70,7 +72,7 @@ describe('RecapSchedulerService Unit Tests', () => {
 
     await recapSchedulerService._scanAndSend('daily');
 
-    expect(notifySpy).toHaveBeenCalledWith('brand-ok', expect.anything(), 'notifyDailyRecap');
-    expect(notifySpy).not.toHaveBeenCalledWith('brand-fail', expect.anything(), expect.anything());
+    expect(notifySpy).toHaveBeenCalledWith('brand-ok', expect.anything(), 'notifyDailyRecap', expect.anything());
+    expect(notifySpy).not.toHaveBeenCalledWith('brand-fail', expect.anything(), expect.anything(), expect.anything());
   });
 });

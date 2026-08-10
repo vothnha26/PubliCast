@@ -16,13 +16,24 @@ const OUTBOX_EVENT_TYPES = {
   SOCIAL_SYNC_ENQUEUE: 'SOCIAL_SYNC_ENQUEUE',   // QStash publishJSON to /api/webhooks/qstash/social-sync
   USER_DEFAULT_BRAND_CREATE: 'USER_DEFAULT_BRAND_CREATE', // brandService.createDefaultBrand(userId) — thay eventEmitter fire-and-forget (#108 I10)
   USER_SEND_WELCOME_OTP: 'USER_SEND_WELCOME_OTP',         // emailService.sendOTP(email, otp) — thay eventEmitter fire-and-forget (#108 I10)
-  INTEGRATION_REVOCATION_WEBHOOK: 'INTEGRATION_REVOCATION_WEBHOOK' // revocationWebhookService.dispatch(payload) — critical-event push to external integrations (Convo), see plan.txt mục 6
+  INTEGRATION_REVOCATION_WEBHOOK: 'INTEGRATION_REVOCATION_WEBHOOK', // revocationWebhookService.dispatch(payload) — critical-event push to external integrations (Convo), see plan.txt mục 6
+  NOTIFICATION_EMAIL: 'NOTIFICATION_EMAIL' // emailService.sendNotificationEmail(payload) — email song song với in-app notification, xem notification.subscriber.js
+};
+
+// Số nhỏ hơn = xử lý trước (claimBatch ORDER BY priority ASC). Ngăn "thủy triều"
+// email hàng loạt (daily/weekly recap, có thể hàng nghìn row cùng lúc) chiếm hết
+// batch và làm OTP/post-failure — vốn cần gửi gần như ngay lập tức — bị trễ theo.
+const OUTBOX_PRIORITY = {
+  HIGH: 10,   // OTP, post failure, channel disconnect, billing — người dùng đang chờ
+  NORMAL: 100, // mặc định — mọi loại không khai báo priority riêng
+  LOW: 500    // daily/weekly recap — không khẩn cấp, có thể trễ vài phút không sao
 };
 
 const OUTBOX_DISPATCHER_CONFIG = {
   POLL_INTERVAL_MS: 5000,
   BATCH_SIZE: 20,
   DEFAULT_MAX_ATTEMPTS: 5,
+  DEFAULT_PRIORITY: OUTBOX_PRIORITY.NORMAL,
   BACKOFF_BASE_MS: 5000,        // cùng độ lớn với publish.queue.js hiện có (5000ms)
   BACKOFF_FACTOR: 2,            // exponential: 5s,10s,20s,40s,80s
   BACKOFF_MAX_MS: 5 * 60 * 1000, // trần 5 phút tránh backoff tăng vô hạn
@@ -33,4 +44,4 @@ const OUTBOX_DISPATCHER_CONFIG = {
   STALE_PROCESSING_MS: 2 * 60 * 1000
 };
 
-module.exports = { OUTBOX_EVENT_STATUS, OUTBOX_EVENT_TYPES, OUTBOX_DISPATCHER_CONFIG };
+module.exports = { OUTBOX_EVENT_STATUS, OUTBOX_EVENT_TYPES, OUTBOX_PRIORITY, OUTBOX_DISPATCHER_CONFIG };

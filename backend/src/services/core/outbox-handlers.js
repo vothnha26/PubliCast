@@ -13,6 +13,7 @@ const { POST_DOMAIN_EVENT_HANDLERS } = initPostSubscribers;
 const brandService = require('../workspace/brand.service');
 const emailService = require('../core/email.service');
 const revocationWebhookService = require('../integrations/revocation-webhook.service');
+const userRepository = require('../../repositories/auth/user.repository');
 
 const OUTBOX_HANDLERS = {
   [OUTBOX_EVENT_TYPES.POST_PUBLISH_UPSERT]: async (payload) => {
@@ -54,6 +55,14 @@ const OUTBOX_HANDLERS = {
     // delivery to payload.clientId, never re-sends to a client that
     // already got a 2xx.
     await revocationWebhookService.sendToClient(payload.clientId, payload.eventPayload);
+  },
+  [OUTBOX_EVENT_TYPES.NOTIFICATION_EMAIL]: async (payload) => {
+    // Looked up fresh (not carried in the payload at enqueue time) so an
+    // email change between enqueue and dispatch is respected, and so a user
+    // deleted in the meantime is a legitimate no-op rather than a failure.
+    const user = await userRepository.findById(payload.userId);
+    if (!user?.email) return;
+    await emailService.sendNotificationEmail(user.email, payload.title, payload.message, payload.actionUrl);
   }
 };
 

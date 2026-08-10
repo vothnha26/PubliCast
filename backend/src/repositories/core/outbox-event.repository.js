@@ -9,7 +9,9 @@ class OutboxEventRepository {
         eventType,
         aggregateId,
         payload: JSON.stringify(payload),
-        maxAttempts: options.maxAttempts ?? OUTBOX_DISPATCHER_CONFIG.DEFAULT_MAX_ATTEMPTS
+        priority: options.priority ?? OUTBOX_DISPATCHER_CONFIG.DEFAULT_PRIORITY,
+        maxAttempts: options.maxAttempts ?? OUTBOX_DISPATCHER_CONFIG.DEFAULT_MAX_ATTEMPTS,
+        ...(options.nextRunAt ? { nextRunAt: options.nextRunAt } : {})
       }
     });
   }
@@ -18,12 +20,14 @@ class OutboxEventRepository {
    * Lấy 1 batch outbox event đến hạn xử lý và khóa chúng an toàn cho nhiều dispatcher
    * instance chạy song song (FOR UPDATE SKIP LOCKED), rồi chuyển sang PROCESSING trong
    * cùng transaction. Phải được gọi bên trong prisma.$transaction(tx => ...).
+   * ORDER BY priority trước nextRunAt: event khẩn cấp (OTP, post failure — priority
+   * thấp = ưu tiên cao) luôn được nhặt trước event hàng loạt (recap) dù cùng đến hạn.
    */
   async claimBatch(limit, tx) {
     const rows = await tx.$queryRaw`
       SELECT id FROM outbox_events
       WHERE status = ${OUTBOX_EVENT_STATUS.PENDING} AND nextRunAt <= NOW()
-      ORDER BY nextRunAt ASC
+      ORDER BY priority ASC, nextRunAt ASC
       LIMIT ${limit}
       FOR UPDATE SKIP LOCKED
     `;

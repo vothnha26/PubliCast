@@ -5,7 +5,8 @@ import {
   Mail, Lock, Smartphone, ExternalLink,
   MessageCircle, Send, Paperclip, CheckCircle2, Search,
   AlertTriangle, Loader2, Plus, FileText, ChevronRight,
-  Sun, Moon, Bell, BellOff
+  Sun, Moon, Bell, BellOff, XCircle, Link2, Users,
+  CalendarX, BarChart3, Info
 } from "lucide-react";
 import profileService from "../../services/profile.service";
 import ticketService from "../../services/ticket.service";
@@ -905,16 +906,16 @@ export function SettingsPage() {
             ) : (
               <div className="space-y-6 max-w-2xl">
                 {/* Master toggle — overrides every category below */}
-                <div className="p-6 rounded-2xl bg-slate-50 border border-slate-100 flex items-center justify-between">
+                <div className="p-6 rounded-2xl bg-slate-50 dark:bg-[var(--muted)]/20 border border-slate-100 dark:border-[var(--border)] flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     {notificationSettings.notificationsEnabled ? (
-                      <Bell size={20} className="text-foreground" />
+                      <Bell size={20} className="text-[var(--foreground)]" />
                     ) : (
-                      <BellOff size={20} className="text-muted-foreground" />
+                      <BellOff size={20} className="text-[var(--muted-foreground)]" />
                     )}
                     <div>
-                      <div className="text-sm font-bold text-foreground">{t("notifications.masterToggle")}</div>
-                      <div className="text-[11px] text-muted-foreground font-medium">{t("notifications.masterToggleDesc")}</div>
+                      <div className="text-sm font-bold text-[var(--foreground)]">{t("notifications.masterToggle")}</div>
+                      <div className="text-[11px] text-[var(--muted-foreground)] font-medium">{t("notifications.masterToggleDesc")}</div>
                     </div>
                   </div>
                   <div
@@ -922,7 +923,7 @@ export function SettingsPage() {
                     data-testid="toggle-notifications-master"
                     className={`w-10 h-6 rounded-full flex items-center p-1 cursor-pointer transition-all shrink-0 ${
                       savingNotificationKey === 'notificationsEnabled' ? 'opacity-50' : ''
-                    } ${notificationSettings.notificationsEnabled ? 'bg-green-600' : 'bg-gray-300'}`}
+                    } ${notificationSettings.notificationsEnabled ? 'bg-green-600' : 'bg-gray-300 dark:bg-[var(--muted)]'}`}
                   >
                     <div className={`w-4 h-4 bg-card rounded-full shadow-sm transform transition-all ${notificationSettings.notificationsEnabled ? 'translate-x-4' : 'translate-x-0'}`} />
                   </div>
@@ -930,59 +931,80 @@ export function SettingsPage() {
 
                 <div className={`space-y-6 transition-opacity ${!notificationSettings.notificationsEnabled ? 'opacity-40 pointer-events-none' : ''}`}>
                   <div className="space-y-1.5">
-                    <h3 className="text-xs font-black text-muted-foreground uppercase tracking-widest">{t("notifications.groups.activity")}</h3>
-                    <div className="rounded-2xl border border-border divide-y divide-border overflow-hidden">
+                    <h3 className="text-xs font-black text-[var(--muted-foreground)] uppercase tracking-widest">{t("notifications.groups.activity")}</h3>
+                    <div className="rounded-2xl border border-[var(--border)] divide-y divide-[var(--border)] overflow-hidden">
                       {[
-                        { key: 'notifyPostFailure', label: t("notifications.items.postFailure"), desc: t("notifications.items.postFailureDesc") },
-                        { key: 'notifyPublishSuccess', label: t("notifications.items.publishSuccess"), desc: t("notifications.items.publishSuccessDesc") },
-                        { key: 'notifyChannelDisconnect', label: t("notifications.items.channelDisconnect"), desc: t("notifications.items.channelDisconnectDesc") },
-                        { key: 'notifyCollaboration', label: t("notifications.items.collaboration"), desc: t("notifications.items.collaborationDesc") },
-                        { key: 'notifyEmptyQueue', label: t("notifications.items.emptyQueue"), desc: t("notifications.items.emptyQueueDesc") },
-                        { key: 'notifyBilling', label: t("notifications.items.billing"), desc: t("notifications.items.billingDesc") },
-                      ].map((item) => (
-                        <div key={item.key} className="p-4 flex items-center justify-between gap-4 bg-card">
-                          <div className="min-w-0">
-                            <div className="text-sm font-bold text-foreground">{item.label}</div>
-                            <div className="text-[11px] text-muted-foreground font-medium">{item.desc}</div>
+                        { key: 'notifyPostFailure', icon: XCircle, iconClass: 'text-red-500', label: t("notifications.items.postFailure"), desc: t("notifications.items.postFailureDesc") },
+                        { key: 'notifyPublishSuccess', icon: CheckCircle2, iconClass: 'text-green-600', label: t("notifications.items.publishSuccess"), desc: t("notifications.items.publishSuccessDesc") },
+                        { key: 'notifyChannelDisconnect', icon: Link2, iconClass: 'text-amber-500', label: t("notifications.items.channelDisconnect"), desc: t("notifications.items.channelDisconnectDesc") },
+                        { key: 'notifyCollaboration', icon: Users, iconClass: 'text-blue-500', label: t("notifications.items.collaboration"), desc: t("notifications.items.collaborationDesc") },
+                        { key: 'notifyEmptyQueue', icon: CalendarX, iconClass: 'text-orange-500', label: t("notifications.items.emptyQueue"), desc: t("notifications.items.emptyQueueDesc") },
+                        { key: 'notifyBilling', icon: CreditCard, iconClass: 'text-violet-500', label: t("notifications.items.billing"), desc: t("notifications.items.billingDesc") },
+                      ].map((item) => {
+                        const ItemIcon = item.icon;
+                        return (
+                          <div key={item.key} className="p-4 flex items-center justify-between gap-4 bg-[var(--card)]">
+                            <div className="flex items-center gap-3 min-w-0">
+                              <ItemIcon size={16} className={`${item.iconClass} shrink-0`} />
+                              <div className="min-w-0">
+                                <div className="text-sm font-bold text-[var(--foreground)]">{item.label}</div>
+                                <div className="text-[11px] text-[var(--muted-foreground)] font-medium">{item.desc}</div>
+                              </div>
+                            </div>
+                            <div
+                              onClick={() => toggleNotificationSetting(item.key)}
+                              data-testid={`toggle-${item.key}`}
+                              className={`w-10 h-6 rounded-full flex items-center p-1 cursor-pointer transition-all shrink-0 ${
+                                savingNotificationKey === item.key ? 'opacity-50' : ''
+                              } ${notificationSettings[item.key] ? 'bg-green-600' : 'bg-gray-300 dark:bg-[var(--muted)]'}`}
+                            >
+                              <div className={`w-4 h-4 bg-card rounded-full shadow-sm transform transition-all ${notificationSettings[item.key] ? 'translate-x-4' : 'translate-x-0'}`} />
+                            </div>
                           </div>
-                          <div
-                            onClick={() => toggleNotificationSetting(item.key)}
-                            data-testid={`toggle-${item.key}`}
-                            className={`w-10 h-6 rounded-full flex items-center p-1 cursor-pointer transition-all shrink-0 ${
-                              savingNotificationKey === item.key ? 'opacity-50' : ''
-                            } ${notificationSettings[item.key] ? 'bg-green-600' : 'bg-gray-300'}`}
-                          >
-                            <div className={`w-4 h-4 bg-card rounded-full shadow-sm transform transition-all ${notificationSettings[item.key] ? 'translate-x-4' : 'translate-x-0'}`} />
-                          </div>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   </div>
 
                   <div className="space-y-1.5">
-                    <h3 className="text-xs font-black text-muted-foreground uppercase tracking-widest">{t("notifications.groups.insights")}</h3>
-                    <div className="rounded-2xl border border-border divide-y divide-border overflow-hidden">
+                    <h3 className="text-xs font-black text-[var(--muted-foreground)] uppercase tracking-widest">{t("notifications.groups.insights")}</h3>
+                    <div className="rounded-2xl border border-[var(--border)] divide-y divide-[var(--border)] overflow-hidden">
                       {[
-                        { key: 'notifyDailyRecap', label: t("notifications.items.dailyRecap"), desc: t("notifications.items.dailyRecapDesc") },
-                        { key: 'notifyWeeklyReport', label: t("notifications.items.weeklyReport"), desc: t("notifications.items.weeklyReportDesc") },
-                      ].map((item) => (
-                        <div key={item.key} className="p-4 flex items-center justify-between gap-4 bg-card">
-                          <div className="min-w-0">
-                            <div className="text-sm font-bold text-foreground">{item.label}</div>
-                            <div className="text-[11px] text-muted-foreground font-medium">{item.desc}</div>
+                        { key: 'notifyDailyRecap', icon: Sun, iconClass: 'text-yellow-500', label: t("notifications.items.dailyRecap"), desc: t("notifications.items.dailyRecapDesc") },
+                        { key: 'notifyWeeklyReport', icon: BarChart3, iconClass: 'text-indigo-500', label: t("notifications.items.weeklyReport"), desc: t("notifications.items.weeklyReportDesc") },
+                      ].map((item) => {
+                        const ItemIcon = item.icon;
+                        return (
+                          <div key={item.key} className="p-4 flex items-center justify-between gap-4 bg-[var(--card)]">
+                            <div className="flex items-center gap-3 min-w-0">
+                              <ItemIcon size={16} className={`${item.iconClass} shrink-0`} />
+                              <div className="min-w-0">
+                                <div className="text-sm font-bold text-[var(--foreground)]">{item.label}</div>
+                                <div className="text-[11px] text-[var(--muted-foreground)] font-medium">{item.desc}</div>
+                              </div>
+                            </div>
+                            <div
+                              onClick={() => toggleNotificationSetting(item.key)}
+                              data-testid={`toggle-${item.key}`}
+                              className={`w-10 h-6 rounded-full flex items-center p-1 cursor-pointer transition-all shrink-0 ${
+                                savingNotificationKey === item.key ? 'opacity-50' : ''
+                              } ${notificationSettings[item.key] ? 'bg-green-600' : 'bg-gray-300 dark:bg-[var(--muted)]'}`}
+                            >
+                              <div className={`w-4 h-4 bg-card rounded-full shadow-sm transform transition-all ${notificationSettings[item.key] ? 'translate-x-4' : 'translate-x-0'}`} />
+                            </div>
                           </div>
-                          <div
-                            onClick={() => toggleNotificationSetting(item.key)}
-                            data-testid={`toggle-${item.key}`}
-                            className={`w-10 h-6 rounded-full flex items-center p-1 cursor-pointer transition-all shrink-0 ${
-                              savingNotificationKey === item.key ? 'opacity-50' : ''
-                            } ${notificationSettings[item.key] ? 'bg-green-600' : 'bg-gray-300'}`}
-                          >
-                            <div className={`w-4 h-4 bg-card rounded-full shadow-sm transform transition-all ${notificationSettings[item.key] ? 'translate-x-4' : 'translate-x-0'}`} />
-                          </div>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
+                  </div>
+
+                  {/* System-managed: always on, not user-configurable — surfaced here so the
+                      toggle list above doesn't silently imply full control over every alert. */}
+                  <div className="flex items-start gap-2.5 p-4 rounded-2xl bg-blue-50 dark:bg-blue-500/10 border border-blue-100 dark:border-blue-500/20">
+                    <Info size={15} className="text-blue-500 shrink-0 mt-0.5" />
+                    <p className="text-[11px] text-blue-700 dark:text-blue-300 leading-relaxed font-medium">
+                      {t("notifications.systemManagedNote")}
+                    </p>
                   </div>
                 </div>
               </div>
