@@ -1597,6 +1597,21 @@ class SocialAccountRepository {
       })
     ]);
   }
+
+  /**
+   * Row-lock a single SocialAccount for the Fair Use daily-posting-limit
+   * re-check (post.service.js#createPost's Step 1). Unlike the monthly
+   * plan-limit check (locked per-brand via subscriptionRepository.
+   * lockSubscriptionForUpdate — one subscription row per brand), the daily
+   * cap is per (socialAccountId, platform), so two concurrent createPost
+   * calls targeting different accounts of the same brand must not block
+   * each other — only calls targeting the SAME account should serialize.
+   * Must be called inside the same transaction as the count-then-act check
+   * that follows it.
+   */
+  async lockSocialAccountForUpdate(socialAccountId, tx) {
+    await tx.$queryRaw`SELECT id FROM social_accounts WHERE id = ${socialAccountId} FOR UPDATE`;
+  }
 }
 
 module.exports = new SocialAccountRepository();
