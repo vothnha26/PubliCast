@@ -133,17 +133,17 @@ export function AutoListConfigCard({
         <div className="border border-border rounded-3xl overflow-hidden bg-card shadow-sm transition-all duration-300">
           <div
             onClick={() => setGlobalExpanded(!globalExpanded)}
-            className="p-5 flex items-center justify-between hover:bg-muted/50 transition-all cursor-pointer group"
+            className="p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-muted/50 transition-all cursor-pointer group"
           >
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 shrink-0">
               <Settings size={18} className="text-muted-foreground group-hover:text-foreground transition-colors" />
               <span className="text-[12px] font-bold text-foreground font-sans">Global presets</span>
               <span className="px-2 py-0.5 bg-[#D1FAE5] text-[#065F46] rounded-lg text-[9px] font-bold font-sans">New</span>
             </div>
 
-            <div className="flex items-center gap-6" onClick={(e) => e.stopPropagation()}>
-              <div className="flex items-center gap-2">
-                <span className="text-[11px] font-semibold text-muted-foreground flex items-center gap-1 font-sans">
+            <div className="flex items-center gap-6 overflow-x-auto scrollbar-none" onClick={(e) => e.stopPropagation()}>
+              <div className="flex items-center gap-2 shrink-0">
+                <span className="text-[11px] font-semibold text-muted-foreground flex items-center gap-1 font-sans whitespace-nowrap">
                   Auto publish
                   <HelpCircle size={12} className="text-muted-foreground cursor-help" title="Automatically publish posts in the queue when their scheduled time arrives" />
                 </span>
@@ -154,8 +154,8 @@ export function AutoListConfigCard({
                 />
               </div>
 
-              <div className="flex items-center gap-2">
-                <span className="text-[11px] font-semibold text-muted-foreground font-sans">Repeat</span>
+              <div className="flex items-center gap-2 shrink-0">
+                <span className="text-[11px] font-semibold text-muted-foreground font-sans whitespace-nowrap">Repeat</span>
                 <Switch
                   checked={!!repeat}
                   onCheckedChange={setRepeat}
@@ -163,7 +163,7 @@ export function AutoListConfigCard({
                 />
               </div>
 
-              <ChevronDown size={16} className={`text-muted-foreground transition-transform duration-300 ${globalExpanded ? 'rotate-180 text-foreground' : ''}`} />
+              <ChevronDown size={16} className={`text-muted-foreground transition-transform duration-300 shrink-0 ${globalExpanded ? 'rotate-180 text-foreground' : ''}`} />
             </div>
           </div>
 

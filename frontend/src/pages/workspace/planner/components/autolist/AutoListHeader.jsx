@@ -3,31 +3,31 @@ import { ArrowLeft, Loader2, Check } from "lucide-react";
 
 export function AutoListHeader({ isNew, isSaving, onSave, onDelete, onBack }) {
   return (
-    <div className="px-8 py-4 flex items-center justify-between border-b border-border bg-card/95 backdrop-blur-md sticky top-0 z-50 shrink-0">
-      <div className="flex items-center gap-4">
-        <h2 className="text-base font-bold text-foreground">
+    <div className="px-3 md:px-8 py-4 flex items-center justify-between gap-3 border-b border-border bg-card/95 backdrop-blur-md sticky top-0 z-50 shrink-0 overflow-x-auto scrollbar-none">
+      <div className="flex items-center gap-4 shrink-0">
+        <h2 className="text-base font-bold text-foreground whitespace-nowrap">
           {isNew ? "Create autolist" : "Edit autolist"}
         </h2>
         {!isNew && (
-          <button 
+          <button
             onClick={onDelete}
-            className="text-red-500 hover:text-red-600 text-xs font-bold transition-colors cursor-pointer border border-transparent hover:border-red-500/20 rounded-lg px-2.5 py-1 hover:bg-red-500/10"
+            className="text-red-500 hover:text-red-600 text-xs font-bold transition-colors cursor-pointer border border-transparent hover:border-red-500/20 rounded-lg px-2.5 py-1 hover:bg-red-500/10 whitespace-nowrap shrink-0"
           >
             Delete Autolist
           </button>
         )}
       </div>
-      <div className="flex items-center gap-4">
-        <button 
+      <div className="flex items-center gap-4 shrink-0">
+        <button
           onClick={onBack}
-          className="flex items-center gap-1 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+          className="flex items-center gap-1 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors cursor-pointer whitespace-nowrap shrink-0"
         >
           <ArrowLeft size={14} /> Back
         </button>
         <button
           onClick={onSave}
           disabled={isSaving}
-          className="flex items-center gap-1.5 px-4 py-2 bg-foreground hover:bg-foreground/90 disabled:opacity-50 text-background rounded-xl text-xs font-bold hover:scale-105 active:scale-95 transition-all shadow-sm cursor-pointer"
+          className="flex items-center gap-1.5 px-4 py-2 bg-foreground hover:bg-foreground/90 disabled:opacity-50 text-background rounded-xl text-xs font-bold hover:scale-105 active:scale-95 transition-all shadow-sm cursor-pointer whitespace-nowrap shrink-0"
         >
           {isSaving ? <Loader2 size={12} className="animate-spin" /> : <Check size={12} />}
           {isNew ? "Create queue" : "Save settings"}
