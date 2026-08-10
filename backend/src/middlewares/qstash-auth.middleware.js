@@ -6,11 +6,10 @@ const logger = require('../utils/logger');
  * qstashAuth middleware
  * Verifies the Upstash-Signature header so only genuine QStash deliveries
  * reach the handler — mirrors sepayAuth's role for the SePay webhook.
- * Uses req.rawBody (captured by app.js's express.json() verify callback,
- * same mechanism facebook-webhook.controller.js relies on) rather than a
- * route-level express.raw() — the global express.json() upstream already
- * consumes the request stream, so a second raw parser here would see an
- * empty body and fail verification against QStash's signed hash.
+ * Uses req.rawBody (captured by app.js's express.json() verify callback)
+ * rather than a route-level express.raw() — the global express.json()
+ * upstream already consumes the request stream, so a second raw parser here
+ * would see an empty body and fail verification against QStash's signed hash.
  */
 const qstashAuth = async (req, res, next) => {
   try {
