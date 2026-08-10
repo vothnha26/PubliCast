@@ -38,11 +38,14 @@ class InstagramPostService {
    * rationale (same pattern applied here). `pageToken` also reads DB only;
    * deep pagination beyond what Sync has cached returns an empty page.
    */
+  // Uses _getAccountCredentialsLite (only needs socialAccountId, unlike the
+  // token/igAccountId sync callers below) — see social-account.repository.js's
+  // findByIdLite() doc comment for why.
   async getPublishedPosts(brandId, pageToken = null, limit = 10, socialAccountId = null, startDate = null, endDate = null) {
     try {
-      const { socialAccountId: resolvedAccountId } = await this._getAccountCredentials(brandId, socialAccountId);
-      const rows = await findLatestPostMetrics(brandId, PLATFORMS.INSTAGRAM, resolvedAccountId, limit);
-      const data = this._filterByDateRange(rows.map(r => this._formatDbMetricRow(r)), startDate, endDate);
+      const { socialAccountId: resolvedAccountId } = await this._getAccountCredentialsLite(brandId, socialAccountId);
+      const rows = await findLatestPostMetrics(brandId, PLATFORMS.INSTAGRAM, resolvedAccountId, limit, startDate, endDate);
+      const data = rows.map(r => this._formatDbMetricRow(r));
       return { data, nextPageToken: null, prevPageToken: null };
     } catch (error) {
       if (error.message.includes('Instagram account not connected')) {
@@ -68,19 +71,6 @@ class InstagramPostService {
     const result = await this._fetchRecentWindow(brandId, igAccountId, accessToken, 50);
     await this._persistPostMetrics(brandId, socialAccountId, result.data);
     return { synced: result.data.length };
-  }
-
-  // See FacebookPostService#_filterByDateRange — same display-only
-  // narrowing applied after the DB-first/live fetch resolves.
-  _filterByDateRange(posts, startDate, endDate) {
-    if (!startDate && !endDate) return posts;
-    return (posts || []).filter((post) => {
-      if (!post.date) return true;
-      const postTime = new Date(post.date).getTime();
-      if (startDate && postTime < new Date(startDate).getTime()) return false;
-      if (endDate && postTime > new Date(endDate).getTime() + 24 * 60 * 60 * 1000 - 1) return false;
-      return true;
-    });
   }
 
   /** Builds getPublishedPosts()'s response shape from a PostMetricDaily row
@@ -269,6 +259,32 @@ class InstagramPostService {
   // write data for the wrong account without any error surfaced).
   async _getAccountCredentials(brandId, socialAccountId = null) {
     const socialAccount = await socialAccountRepository.findByBrandAndPlatform(brandId, PLATFORMS.INSTAGRAM);
+    if (!socialAccount || socialAccount.length === 0) {
+      throw new Error('Instagram account not connected for this brand');
+    }
+    let account;
+    if (socialAccountId) {
+      account = socialAccount.find(acc => acc.id === socialAccountId);
+      if (!account) {
+        throw new Error('Instagram account not connected for this brand');
+      }
+    } else {
+      account = socialAccount[0];
+    }
+    return {
+      igAccountId: account.platformAccountId,
+      accessToken: account.accessToken,
+      socialAccountId: account.id
+    };
+  }
+
+  /**
+   * Lite variant of _getAccountCredentials() above — for getPublishedPosts()'s
+   * DB-only read path, which only ever reads socialAccountId off the
+   * result, never igAccountId/accessToken the way the sync callers do.
+   */
+  async _getAccountCredentialsLite(brandId, socialAccountId = null) {
+    const socialAccount = await socialAccountRepository.findByBrandAndPlatformLite(brandId, PLATFORMS.INSTAGRAM);
     if (!socialAccount || socialAccount.length === 0) {
       throw new Error('Instagram account not connected for this brand');
     }

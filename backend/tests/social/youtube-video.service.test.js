@@ -204,7 +204,7 @@ describe('YouTubeVideoService Playlists Pagination Unit Tests', () => {
 
       await youtubeVideoService.getPublishedVideos('brand-123', null, 10, 'acc-123');
 
-      expect(findLatestPostMetrics).toHaveBeenCalledWith('brand-123', 'YOUTUBE', 'acc-123', 10);
+      expect(findLatestPostMetrics).toHaveBeenCalledWith('brand-123', 'YOUTUBE', 'acc-123', 10, expect.any(String), null);
       expect(youtubeGateway.getPlaylistItems).not.toHaveBeenCalled();
     });
 
@@ -213,7 +213,7 @@ describe('YouTubeVideoService Playlists Pagination Unit Tests', () => {
 
       await youtubeVideoService.getPublishedVideos('brand-123', null, 10);
 
-      expect(findLatestPostMetrics).toHaveBeenCalledWith('brand-123', 'YOUTUBE', null, 10);
+      expect(findLatestPostMetrics).toHaveBeenCalledWith('brand-123', 'YOUTUBE', null, 10, expect.any(String), null);
     });
   });
 
@@ -263,6 +263,83 @@ describe('YouTubeVideoService Playlists Pagination Unit Tests', () => {
 
       const details = await youtubeVideoService.getVideoDetails(mockBrandId, 'v-2');
       expect(details.madeForKids).toBe(false);
+    });
+  });
+
+  describe('getPostInsights', () => {
+    const { upsertPostMetricsDaily } = require('../../src/services/social/post-metric-daily-persistence.util');
+
+    it('returns empty metrics when no account is connected', async () => {
+      prisma.postMetricDaily.findFirst.mockResolvedValue(null);
+      socialAccountRepository.findByBrandAndPlatform.mockResolvedValue([]);
+
+      const result = await youtubeVideoService.getPostInsights(mockBrandId, 'video123');
+
+      expect(result).toEqual({
+        views: 0,
+        watchTime: 0,
+        totalWatchHrs: 0,
+        avgViewDuration: 0,
+        likes: 0,
+        comments: 0,
+        shares: 0
+      });
+      expect(youtubeGateway.getAnalyticsReportQuery).not.toHaveBeenCalled();
+    });
+
+    it('returns the cached PostMetricDaily row when fresh (within 24h)', async () => {
+      prisma.postMetricDaily.findFirst.mockResolvedValue({
+        views: 500,
+        likes: 50,
+        comments: 5,
+        fetchedAt: new Date(),
+        metrics: { totalWatchHrs: 2, avgViewDuration: 120, shares: 3 }
+      });
+
+      const result = await youtubeVideoService.getPostInsights(mockBrandId, 'video123');
+
+      expect(result).toEqual({
+        views: 500,
+        watchTime: 2,
+        totalWatchHrs: 2,
+        avgViewDuration: 120,
+        likes: 50,
+        comments: 5,
+        shares: 3
+      });
+      expect(youtubeGateway.getAnalyticsReportQuery).not.toHaveBeenCalled();
+    });
+
+    it('fetches live metrics and persists into PostMetricDaily on cache miss (stale or absent)', async () => {
+      prisma.postMetricDaily.findFirst.mockResolvedValue(null);
+      socialAccountRepository.findByBrandAndPlatform.mockResolvedValue([mockAccount]);
+      upsertPostMetricsDaily.mockResolvedValue([]);
+      youtubeGateway.getAnalyticsReportQuery.mockResolvedValue({
+        data: { rows: [['1000', '100', '10', '5', '120.0', '120']] }
+      });
+
+      const result = await youtubeVideoService.getPostInsights(mockBrandId, 'video123');
+
+      expect(result).toEqual({
+        views: 1000,
+        watchTime: 2,
+        totalWatchHrs: 2,
+        avgViewDuration: 120,
+        likes: 100,
+        comments: 10,
+        shares: 5
+      });
+      expect(upsertPostMetricsDaily).toHaveBeenCalledWith(
+        mockBrandId,
+        mockAccount.id,
+        'YOUTUBE',
+        [expect.objectContaining({
+          platformPostId: 'video123',
+          likes: 100,
+          comments: 10,
+          views: 1000
+        })]
+      );
     });
   });
 });

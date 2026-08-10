@@ -93,9 +93,9 @@ class FacebookPostService {
    */
   async getPublishedPosts(brandId, pageToken = null, limit = 10, socialAccountId = null, startDate = null, endDate = null) {
     try {
-      const { socialAccountId: resolvedAccountId } = await this._getAccountCredentials(brandId, socialAccountId);
-      const rows = await findLatestPostMetrics(brandId, PLATFORMS.FACEBOOK, resolvedAccountId, limit);
-      const data = this._filterByDateRange(rows.map(r => this._formatDbMetricRow(r)), startDate, endDate);
+      const { socialAccountId: resolvedAccountId } = await this._getAccountCredentialsLite(brandId, socialAccountId);
+      const rows = await findLatestPostMetrics(brandId, PLATFORMS.FACEBOOK, resolvedAccountId, limit, startDate, endDate);
+      const data = rows.map(r => this._formatDbMetricRow(r));
       return { data, nextPageToken: null, prevPageToken: null };
     } catch (error) {
       if (error.message.includes('Facebook account not connected')) {
@@ -122,21 +122,6 @@ class FacebookPostService {
     const result = await this._fetchRecentWindow(brandId, pageId, pageAccessToken, 50);
     await this._persistPostMetrics(brandId, socialAccountId, result.data);
     return { synced: result.data.length };
-  }
-
-  // Applied after the DB-first/live fetch resolves, on top of the plan's
-  // historyWindowMonths — this is a display-only narrowing (the caller
-  // picked a shorter range in the UI's date picker) and never widens what
-  // the plan already fetched/cached.
-  _filterByDateRange(posts, startDate, endDate) {
-    if (!startDate && !endDate) return posts;
-    return (posts || []).filter((post) => {
-      if (!post.date) return true;
-      const postTime = new Date(post.date).getTime();
-      if (startDate && postTime < new Date(startDate).getTime()) return false;
-      if (endDate && postTime > new Date(endDate).getTime() + 24 * 60 * 60 * 1000 - 1) return false;
-      return true;
-    });
   }
 
   /**
@@ -504,6 +489,40 @@ class FacebookPostService {
       }
     } else {
       const socialAccount = await socialAccountRepository.findByBrandAndPlatform(brandId, PLATFORMS.FACEBOOK);
+      if (!socialAccount || socialAccount.length === 0) {
+        throw new Error('Facebook account not connected for this brand');
+      }
+      account = socialAccount[0];
+    }
+
+    if (!account) {
+      throw new Error('Facebook account not connected for this brand');
+    }
+
+    return {
+      pageId: account.platformAccountId,
+      pageAccessToken: account.accessToken,
+      socialAccountId: account.id
+    };
+  }
+
+  /**
+   * Same shape/IDOR contract as _getAccountCredentials() above, but backed
+   * by findByIdLite()/findByBrandAndPlatformLite() — for the DB-only
+   * getPublishedPosts() read path, which only ever reads pageId/
+   * pageAccessToken/socialAccountId off the result, never the other 7
+   * platforms' account tables or analytics history findById() also loads.
+   * See findByIdLite()'s doc comment for the measured cost difference.
+   */
+  async _getAccountCredentialsLite(brandId, socialAccountId = null) {
+    let account;
+    if (socialAccountId) {
+      account = await socialAccountRepository.findByIdLite(socialAccountId);
+      if (!account || (brandId && String(account.brandId) !== String(brandId))) {
+        throw new Error('Facebook account not connected for this brand');
+      }
+    } else {
+      const socialAccount = await socialAccountRepository.findByBrandAndPlatformLite(brandId, PLATFORMS.FACEBOOK);
       if (!socialAccount || socialAccount.length === 0) {
         throw new Error('Facebook account not connected for this brand');
       }
