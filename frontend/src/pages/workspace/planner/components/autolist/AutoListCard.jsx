@@ -51,8 +51,13 @@ export function AutoListCard({ list, onToggle, onRefresh, onDelete, onNavigate }
     return t("autolists.card.minutes", { n: minutes });
   };
 
+  // Circle progress (64px) + info block + 4 action buttons (~40px each) in
+  // one flex row overflow a 375px viewport — stacking the action row below
+  // the info block on mobile (both still full-width) instead keeps every
+  // button reachable without squeezing the whole card.
   return (
-    <div className={`bg-card/90 backdrop-blur-md border border-border rounded-3xl p-6 shadow-sm flex items-center gap-6 hover:shadow-md hover:-translate-y-0.5 transition-all duration-300 group text-left ${leftBorderClass}`}>
+    <div className={`bg-card/90 backdrop-blur-md border border-border rounded-3xl p-6 shadow-sm flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-6 hover:shadow-md hover:-translate-y-0.5 transition-all duration-300 group text-left ${leftBorderClass}`}>
+      <div className="flex items-center gap-4 sm:gap-6 min-w-0">
       {/* Circular Progress */}
       <div className="relative w-16 h-16 shrink-0">
         <svg className="w-full h-full -rotate-90">
@@ -131,6 +136,7 @@ export function AutoListCard({ list, onToggle, onRefresh, onDelete, onNavigate }
             </span>
           </div>
         </div>
+      </div>
       </div>
 
       {/* Actions */}

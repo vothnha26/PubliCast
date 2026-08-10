@@ -1,13 +1,11 @@
-const { postInsightFacade, channelInsightFacade, audienceInsightFacade, postAdapterFactory, channelAdapterFactory, audienceAdapterFactory } = require('../../src/core/insights');
+const { channelInsightFacade, audienceInsightFacade, channelAdapterFactory, audienceAdapterFactory } = require('../../src/core/insights');
 const socialAuthFactory = require('../../src/core/auth/social-auth.factory');
 const youtubeGateway = require('../../src/services/social/youtube/youtube.gateway');
-const postInsightRepository = require('../../src/repositories/social/post-insight.repository');
 const channelSnapshotRepository = require('../../src/repositories/social/channel-snapshot.repository');
 const { PLATFORMS } = require('../../src/utils/constants');
 
 jest.mock('../../src/core/auth/social-auth.factory');
 jest.mock('../../src/services/social/youtube/youtube.gateway');
-jest.mock('../../src/repositories/social/post-insight.repository');
 jest.mock('../../src/repositories/social/channel-snapshot.repository');
 
 describe('Core Insights Architecture (Vertical Slice: YouTube)', () => {
@@ -16,12 +14,6 @@ describe('Core Insights Architecture (Vertical Slice: YouTube)', () => {
   });
 
   describe('Factories', () => {
-    it('should correctly register and retrieve YouTube PostInsightAdapter', () => {
-      expect(postAdapterFactory.isSupported(PLATFORMS.YOUTUBE)).toBe(true);
-      const adapter = postAdapterFactory.getAdapter(PLATFORMS.YOUTUBE);
-      expect(adapter.platform).toBe(PLATFORMS.YOUTUBE);
-    });
-
     it('should correctly register and retrieve YouTube ChannelAdapter', () => {
       expect(channelAdapterFactory.isSupported(PLATFORMS.YOUTUBE)).toBe(true);
       const adapter = channelAdapterFactory.getAdapter(PLATFORMS.YOUTUBE);
@@ -35,64 +27,7 @@ describe('Core Insights Architecture (Vertical Slice: YouTube)', () => {
     });
 
     it('should throw error for unsupported platform', () => {
-      expect(() => postAdapterFactory.getAdapter('UNSUPPORTED')).toThrow();
-    });
-  });
-
-  describe('PostInsightFacade & YouTubePostInsightAdapter', () => {
-    it('should return empty metrics if auth fails', async () => {
-      socialAuthFactory.getAuthClient.mockResolvedValue(null);
-
-      const result = await postInsightFacade.getPostInsights('brand1', PLATFORMS.YOUTUBE, 'video123');
-
-      expect(result).toEqual({
-        views: 0,
-        watchTime: 0,
-        totalWatchHrs: 0,
-        avgViewDuration: 0,
-        likes: 0,
-        comments: 0,
-        shares: 0
-      });
-    });
-
-    it('should return cached metrics if cache hit', async () => {
-      const mockAuth = { auth: {}, socialAccountId: 'acc123' };
-      const mockCacheData = { views: 500, likes: 50, comments: 5 };
-      socialAuthFactory.getAuthClient.mockResolvedValue(mockAuth);
-      postInsightRepository.getFresh.mockResolvedValue({
-        rawInsightsJson: JSON.stringify(mockCacheData)
-      });
-
-      const result = await postInsightFacade.getPostInsights('brand1', PLATFORMS.YOUTUBE, 'video123');
-
-      expect(result).toEqual(mockCacheData);
-      expect(youtubeGateway.getAnalyticsReportQuery).not.toHaveBeenCalled();
-    });
-
-    it('should fetch live metrics from API and persist when cache miss', async () => {
-      const mockAuth = { auth: {}, socialAccountId: 'acc123' };
-      socialAuthFactory.getAuthClient.mockResolvedValue(mockAuth);
-      postInsightRepository.getFresh.mockResolvedValue(null);
-      youtubeGateway.getAnalyticsReportQuery.mockResolvedValue({
-        data: {
-          rows: [['1000', '100', '10', '5', '120.0', '120']]
-        }
-      });
-      postInsightRepository.persist.mockResolvedValue({});
-
-      const result = await postInsightFacade.getPostInsights('brand1', PLATFORMS.YOUTUBE, 'video123');
-
-      expect(result).toEqual({
-        views: 1000,
-        watchTime: 2,
-        totalWatchHrs: 2,
-        avgViewDuration: 120,
-        likes: 100,
-        comments: 10,
-        shares: 5
-      });
-      expect(postInsightRepository.persist).toHaveBeenCalled();
+      expect(() => channelAdapterFactory.getAdapter('UNSUPPORTED')).toThrow();
     });
   });
 
@@ -124,6 +59,35 @@ describe('Core Insights Architecture (Vertical Slice: YouTube)', () => {
         expect.any(Array),
         true
       );
+    });
+
+    // Regression test (2026-08-10): the subscribers-count reconstructible
+    // entry's `column` must be the literal 'followersCount' — that's the
+    // only name ChannelSnapshotRepository's FOLLOWER_COLUMNS set recognizes
+    // to route into the typed followersCount DB column. It used to be
+    // 'subscribersCount' (YouTube's own terminology), which silently fell
+    // through into the `metrics` JSON blob instead, leaving followersCount
+    // stuck at 0 in every ChannelMetricDaily row despite the real value
+    // being present under metrics.subscribersCount.
+    it('routes the subscriber-count reconstructible entry to the typed followersCount column', async () => {
+      channelSnapshotRepository.upsertChannelSnapshots.mockResolvedValue([{ id: 'snap1' }]);
+
+      const analyticsData = {
+        statistics: { videoCount: '7', subscriberCount: '16', viewCount: '5664' },
+        growthRows: [{ date: '2026-08-10', subscribersGained: 0, subscribersLost: 0, views: 100 }]
+      };
+
+      await channelInsightFacade.upsertChannelSnapshots(
+        PLATFORMS.YOUTUBE,
+        'brand1',
+        'acc123',
+        analyticsData
+      );
+
+      const [, , , , current] = channelSnapshotRepository.upsertChannelSnapshots.mock.calls[0];
+      const subscriberEntry = current.reconstructible.find((r) => r.currentValue === 16);
+      expect(subscriberEntry).toBeDefined();
+      expect(subscriberEntry.column).toBe('followersCount');
     });
   });
 

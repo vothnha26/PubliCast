@@ -22,18 +22,7 @@ import {
 import { createPlatformOptionsFromPost, createDefaultPlatformOptions } from "../utils/platformOptionsFactory";
 import { buildNetworkOverrides, mapNetworkOverridesToCustom } from "../utils/buildNetworkOverrides";
 import { getNetworkEntrySlot, setNetworkEntrySlot } from "../utils/networkEntrySlot";
-
-const toLocalDatetimeString = (dateInput) => {
-  if (!dateInput) return "";
-  const d = new Date(dateInput);
-  if (isNaN(d.getTime())) return "";
-  const year = d.getFullYear();
-  const month = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
-  const hours = String(d.getHours()).padStart(2, '0');
-  const minutes = String(d.getMinutes()).padStart(2, '0');
-  return `${year}-${month}-${day}T${hours}:${minutes}`;
-};
+import { toBrandDatetimeString, brandDatetimeStringToUTC } from "../utils/brandTimezone";
 
 export function usePostCreatorForm() {
   const { 
@@ -100,7 +89,7 @@ export function usePostCreatorForm() {
   const [mediaThumbnailUrl, setMediaThumbnailUrl] = useState("");
   const [mediaThumbnailFile, setMediaThumbnailFile] = useState(null);
   const [mediaThumbnailPath, setMediaThumbnailPath] = useState(null);
-  const [scheduledDate, setScheduledDate] = useState(() => toLocalDatetimeString(new Date()));
+  const [scheduledDate, setScheduledDate] = useState(() => toBrandDatetimeString(new Date(), activeBrand?.timezone));
   const [isLibrary, setIsLibrary] = useState(false);
 
   // Global Presets States
@@ -883,7 +872,7 @@ export function usePostCreatorForm() {
         // was open for a *different* post (#composer-audit P0).
         setSelectedAccountIds(Object.values(editingPost.selectedAccountIds || {}).flat());
 
-        setScheduledDate(editingPost.scheduledAt ? toLocalDatetimeString(editingPost.scheduledAt) : toLocalDatetimeString(new Date()));
+        setScheduledDate(editingPost.scheduledAt ? toBrandDatetimeString(editingPost.scheduledAt, activeBrand?.timezone) : toBrandDatetimeString(new Date(), activeBrand?.timezone));
         setIsLibrary(editingPost.isLibrary || false);
         
         // Load publish mode từ post status dùng lookup map
@@ -919,7 +908,7 @@ export function usePostCreatorForm() {
         setSelectedPlatforms(loadedPlatforms);
         setActivePlatform(loadedPlatforms[0] || DEFAULT_PLATFORM);
 
-        setScheduledDate(defaultScheduledAt ? toLocalDatetimeString(defaultScheduledAt) : toLocalDatetimeString(new Date()));
+        setScheduledDate(defaultScheduledAt ? toBrandDatetimeString(defaultScheduledAt, activeBrand?.timezone) : toBrandDatetimeString(new Date(), activeBrand?.timezone));
         setIsLibrary(initialIsLibrary || false);
         setSelectedPublishId(defaultScheduledAt ? "schedule" : "now");
         
@@ -947,7 +936,7 @@ export function usePostCreatorForm() {
         setTitle("");
         setAltText("");
         
-        setScheduledDate(defaultScheduledAt ? toLocalDatetimeString(defaultScheduledAt) : toLocalDatetimeString(new Date()));
+        setScheduledDate(defaultScheduledAt ? toBrandDatetimeString(defaultScheduledAt, activeBrand?.timezone) : toBrandDatetimeString(new Date(), activeBrand?.timezone));
         setIsLibrary(initialIsLibrary || false);
         setSelectedPublishId(defaultScheduledAt ? PUBLISH_MODE.SCHEDULE : PUBLISH_MODE.NOW);
         
@@ -1304,7 +1293,7 @@ export function usePostCreatorForm() {
         altText,
         targetPlatforms: selectedPlatforms.filter(p => connectedPlatformKeys.includes(p)).map(p => p.toUpperCase()),
         selectedAccountIds: selectedAccountIdsByPlatform,
-        scheduledAt: ['schedule', 'review'].includes(selectedPublishId) ? (scheduledDate ? new Date(scheduledDate).toISOString() : null) : null,
+        scheduledAt: ['schedule', 'review'].includes(selectedPublishId) ? (scheduledDate ? brandDatetimeStringToUTC(scheduledDate, activeBrand?.timezone)?.toISOString() ?? null : null) : null,
         mediaUrls: postMediaUrls,
         mediaThumbnailUrls: (mediaThumbnailPath || mediaThumbnailUrl) ? [mediaThumbnailPath || mediaThumbnailUrl] : [],
         reviewerIds: selectedReviewerIds,
@@ -1365,7 +1354,7 @@ export function usePostCreatorForm() {
         // Đóng form lập tức để trả về giao diện ngầm không phải chờ
         closePostCreator();
         setActivePlatform(DEFAULT_PLATFORM);
-        setScheduledDate(toLocalDatetimeString(new Date()));
+        setScheduledDate(toBrandDatetimeString(new Date(), activeBrand?.timezone));
         setIsLibrary(false);
         setSelectedPublishId(PUBLISH_MODE.NOW);
         setYoutubeType(YOUTUBE_TYPE.VIDEO);

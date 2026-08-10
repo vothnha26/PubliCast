@@ -50,7 +50,8 @@ jest.mock('../../src/services/social/youtube/youtube.gateway', () => mockYtGatew
 // Mock GoogleOAuth
 jest.mock('../../src/services/social/google-oauth.service', () => ({
   createClient: jest.fn().mockReturnValue({
-    setCredentials: jest.fn()
+    setCredentials: jest.fn(),
+    on: jest.fn()
   })
 }));
 

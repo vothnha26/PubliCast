@@ -129,11 +129,8 @@ model Brand {
   channelGroups             ChannelGroup[]
   analytics                 Analytics[]
   competitorAnalysis        CompetitorAnalysis[]
-  facebookPostMetrics       FacebookPostMetric[]
-  socialPostMetrics         SocialPostMetric[]
   channelMetricsDaily       ChannelMetricDaily[]
   channelDemographics       ChannelDemographic[]
-  youtubeVideoMetrics       YouTubeVideoMetric[]
   postMetricsDaily          PostMetricDaily[]
   unifiedInbox              UnifiedInbox[]
   reports                   Report[]
@@ -568,6 +565,7 @@ model SocialAccount {
   analytics            Analytics[]
   inboxItems           InboxItem[]
   instagramAccount     InstagramAccount?
+  threadsAccount       ThreadsAccount?
   facebookPage         FacebookPage?
   tikTokAccount        TikTokAccount?
   youtubeChannel       YouTubeChannel?
@@ -579,12 +577,6 @@ model SocialAccount {
   postTargets          PostTarget[]
   youtubePlaylistCache YouTubePlaylistCache[]
 
-  // Facebook dedicated metrics
-  facebookPostMetrics FacebookPostMetric[] @relation("FacebookPostMetricAccount")
-
-  // Shared post-metrics cache (Instagram, Threads — see SocialPostMetric)
-  socialPostMetrics SocialPostMetric[]
-
   // Daily channel snapshots — append-only history, one row per account per
   // day per platform (see §2 of the analytics redesign: replaces the "only
   // ever read the latest sync" gap on the overwritten fields above).
@@ -593,12 +585,11 @@ model SocialAccount {
   channelMetricsDaily      ChannelMetricDaily[]
   channelDemographics      ChannelDemographic[]
 
-  // YouTubeVideoMetric: append-only, one row per fetch (not per post) — still
-  // live, not touched by the post_metrics_daily consolidation.
-  youtubeVideoMetrics YouTubeVideoMetric[]
-
   // Unified post-level daily time series (Smart Fetch Sync target) — see
-  // PostMetricDaily's own comment for what this replaced.
+  // PostMetricDaily's own comment for what this replaced. FacebookPostMetric/
+  // SocialPostMetric/YouTubeVideoMetric were folded into this table on
+  // 2026-08-10 (all 3 were either dead code paths or, for YouTube, migrated
+  // to this same unified pattern — see youtube-video.service.js#getPostInsights).
   postMetricsDaily PostMetricDaily[]
 
   channelGroupMembers ChannelGroupMember[]
@@ -699,6 +690,34 @@ model InstagramAccount {
   socialAccount SocialAccount @relation(fields: [socialAccountId], references: [id], onDelete: Cascade)
 
   @@map("instagram_accounts")
+}
+
+// Split out from InstagramAccount on 2026-08-10 — Threads previously shared
+// that table (discriminated only by the parent SocialAccount.platform
+// column, since Threads was piggybacking on Instagram's Graph API account
+// model), but Threads has no equivalent of facebookPageId/accountType/
+// businessCategoryName (Instagram-only concepts: Instagram Business
+// Accounts hang off a linked Facebook Page; Threads auth is its own
+// standalone OAuth flow with no Page linkage). Sharing the table caused a
+// real bug: saveInstagramAnalytics hardcoded analyticsType to
+// INSTAGRAM_DETAILED even for Threads syncs, since there was nothing about
+// the shared table forcing that call site to distinguish the two. A
+// dedicated table removes the temptation to reuse Instagram-shaped
+// repository methods for Threads by making "this is a different model" the
+// obvious, type-checked default instead of a discipline the caller had to
+// remember.
+model ThreadsAccount {
+  id              String  @id @default(uuid())
+  socialAccountId String  @unique
+  followersCount  Int     @default(0)
+  followingCount  Int     @default(0)
+  mediaCount      Int     @default(0)
+  biography       String?
+  website         String?
+
+  socialAccount SocialAccount @relation(fields: [socialAccountId], references: [id], onDelete: Cascade)
+
+  @@map("threads_accounts")
 }
 
 model FacebookPage {
@@ -1110,107 +1129,14 @@ model CompetitorAnalysis {
 // FACEBOOK ANALYTICS (Dedicated)
 // ============================================
 
-/// Số liệu tổng quan Facebook theo khoảng thời gian.
-/// Tab Overview: followers, clicks, reach, impressions (organic vs promoted).
-/// Analytics từng bài post Facebook.
-/// Tab Posts: Types panel (Group/Count + Views donut chart), List of Posts.
-model FacebookPostMetric {
-  id              String           @id @default(uuid())
-  brandId         String
-  socialAccountId String
-  platformPostId  String // Facebook post ID
-  postType        FacebookPostType // Group trong Types panel
-  publishedAt     DateTime?
-
-  // Reach & Impressions (Organic vs Promoted - cho donut chart)
-  reach               Int @default(0)
-  organicReach        Int @default(0)
-  promotedReach       Int @default(0)
-  impressions         Int @default(0)
-  organicImpressions  Int @default(0)
-  promotedImpressions Int @default(0)
-
-  // Views (dành cho Video/Reel)
-  videoViews          Int    @default(0)
-  organicVideoViews   Int    @default(0)
-  promotedVideoViews  Int    @default(0)
-  avgWatchTimeSeconds Float? // Thời gian xem trung bình
-  watchRate           Float? // % người xem đến cuối video
-
-  // Interactions
-  likes           Int @default(0)
-  comments        Int @default(0)
-  shares          Int @default(0)
-  saves           Int @default(0)
-  reactions       Int @default(0) // Tổng all reaction types
-  linkClicks      Int @default(0)
-  otherClicks     Int @default(0)
-  negativeActions Int @default(0) // Ẩn bài, hủy theo dõi, báo spam
-
-  // Engagement Rate tổng hợp
-  engagementRate Float @default(0)
-
-  // Snapshot để hiển thị danh sách
-  captionSnippet String? @db.Text
-  thumbnailUrl   String? @db.Text
-  permalinkUrl   String? @db.Text
-
-  fetchedAt DateTime @default(now())
-  createdAt DateTime @default(now())
-
-  brand         Brand         @relation(fields: [brandId], references: [id], onDelete: Cascade)
-  socialAccount SocialAccount @relation("FacebookPostMetricAccount", fields: [socialAccountId], references: [id], onDelete: Cascade)
-
-  @@unique([socialAccountId, platformPostId])
-  @@index([brandId])
-  @@index([socialAccountId])
-  @@map("facebook_post_metrics")
-}
-
-// DB-first cache for published-post metrics on platforms whose insights
-// endpoints don't warrant a dedicated per-platform table the way Facebook's
-// richer FacebookPostMetric does (no REEL/STANDARD branching, no separate
-// reactions-breakdown call) — currently Instagram and Threads. `platform`
-// disambiguates within the shared table rather than one model per platform,
-// since both write/read the same shape (see instagram-post.service.js /
-// threads/index.js's getPublishedPosts DB-first path). Mirrors
-// FacebookPostMetric's role: getPublishedPosts reads this before ever
-// hitting the live Graph API, only re-fetching live once fetchedAt is
-// older than that platform's insights-refresh cadence.
-model SocialPostMetric {
-  id              String       @id @default(uuid())
-  brandId         String
-  socialAccountId String
-  platform        PlatformType
-  platformPostId  String
-  postType        String? // platform-specific type string, e.g. IMAGE/VIDEO/CAROUSEL/REEL/STORY — not a shared enum since each platform's set differs
-  publishedAt     DateTime?
-
-  reach    Int @default(0)
-  views    Int @default(0)
-  likes    Int @default(0)
-  comments Int @default(0)
-  shares   Int @default(0)
-  saves    Int @default(0)
-  clicks   Int @default(0)
-
-  engagementRate Float @default(0)
-
-  captionSnippet String? @db.Text
-  thumbnailUrl   String? @db.Text
-  postUrl        String? @db.Text
-
-  fetchedAt DateTime @default(now())
-  createdAt DateTime @default(now())
-
-  brand         Brand         @relation(fields: [brandId], references: [id], onDelete: Cascade)
-  socialAccount SocialAccount @relation(fields: [socialAccountId], references: [id], onDelete: Cascade)
-
-  @@unique([socialAccountId, platformPostId])
-  @@index([brandId])
-  @@index([socialAccountId])
-  @@map("social_post_metrics")
-}
+// FacebookPostMetric and SocialPostMetric (the DB-first cache for
+// Instagram/Threads/TikTok/Bluesky's per-post detail view) were both folded
+// into PostMetricDaily on 2026-08-10 — both backed a detail-view adapter
+// layer (see core/insights/index.js's post-adapter registrations, since
+// removed) that no live code path ever called; every platform's actual
+// getPublishedPosts/getPostDetails read path had already moved to
+// PostMetricDaily via the Smart Fetch Sync pattern. See migration
+// 20260810120000_drop_legacy_post_metric_tables for the backfill.
 
 // ============================================
 // ANALYTICS REDESIGN — per-platform channel snapshots & post/video metrics
@@ -1301,35 +1227,13 @@ model ChannelDemographic {
   @@map("channel_demographics")
 }
 
-// Per-video insight, one row per fetch — was Redis-only (yt:video-insights:*,
-// 2h TTL), never persisted before. Redis stays as the short-TTL cache to
-// avoid re-hitting the YouTube Analytics API; this table is the permanent
-// record of what was fetched.
-model YouTubeVideoMetric {
-  id              String @id @default(uuid())
-  brandId         String
-  socialAccountId String
-  platformVideoId String
-
-  views        Int   @default(0)
-  likes        Int   @default(0)
-  comments     Int   @default(0)
-  avgWatchTime Float @default(0)
-
-  // trafficSource/deviceType/demographics/geography/searchTerms — the 6
-  // dimensions getVideoInsights() already fetches, never stored until now.
-  rawInsightsJson String? @db.LongText
-
-  fetchedAt DateTime @default(now())
-  createdAt DateTime @default(now())
-
-  brand         Brand         @relation(fields: [brandId], references: [id], onDelete: Cascade)
-  socialAccount SocialAccount @relation(fields: [socialAccountId], references: [id], onDelete: Cascade)
-
-  @@index([brandId])
-  @@index([socialAccountId, platformVideoId, fetchedAt])
-  @@map("youtube_video_metrics")
-}
+// YouTubeVideoMetric (per-video insight, one row per fetch) was folded into
+// PostMetricDaily on 2026-08-10 — youtube-video.service.js#getPostInsights
+// now reads/writes the same unified table every other platform's
+// getPublishedPosts/syncPublishedPosts already used (Smart Fetch pattern),
+// instead of a YouTube-only table + a separate BasePostInsightAdapter
+// Template Method layer. See migration
+// 20260810120000_drop_legacy_post_metric_tables for the backfill.
 
 // Unified post-level daily time series across all 6 platforms — replaces
 // TikTokVideoMetric, InstagramPostMetric, ThreadsPostMetric,
@@ -1346,10 +1250,10 @@ model YouTubeVideoMetric {
 // each platform's Sync scheduler (cron/OAuth-connect-backfill/manual
 // refresh) writes here — user-facing read paths (getPublishedPosts/
 // getPublishedVideos/detail views) are DB-only reads, never a live API
-// trigger. FacebookPostMetric/SocialPostMetric/YouTubeVideoMetric are left
-// in place (still live, still read elsewhere e.g. analytics.facade.js) —
-// not touched by this migration; only the 5 confirmed-dead tables above
-// were removed.
+// trigger. FacebookPostMetric/SocialPostMetric/YouTubeVideoMetric were left
+// in place by this migration (2026-08-09) but folded into this table the
+// next day (2026-08-10) once confirmed dead/redundant — see their removal
+// comments above and migration 20260810120000_drop_legacy_post_metric_tables.
 model PostMetricDaily {
   id              String       @id @default(uuid())
   brandId         String
@@ -1382,6 +1286,11 @@ model PostMetricDaily {
   @@index([brandId])
   @@index([socialAccountId, platformPostId])
   @@index([brandId, platform, snapshotDate])
+  // Feeds the age-tiered sync cooldown (findDueForPostsSync/
+  // findDueForMetricsSync) — "what's this account's most recently published
+  // post" needs an efficient MAX(publishedAt) per socialAccountId, which
+  // the existing (socialAccountId, platformPostId) index doesn't serve.
+  @@index([socialAccountId, publishedAt])
   @@map("post_metrics_daily")
 }
 

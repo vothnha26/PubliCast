@@ -91,11 +91,10 @@ export const useAuthStore = create((set, get) => ({
       }
       await authService.logout();
     } finally {
-      // Primary defense against a shared/public machine's next login
-      // reading the previous user's cached channel/post/insight data —
-      // clear() drops the in-memory React Query cache immediately; the
-      // per-user IndexedDB key (see App.jsx's createIdbPersister) is the
-      // secondary defense in case this call is ever missed elsewhere.
+      // Defense against a shared/public machine's next login reading the
+      // previous user's cached channel/post/insight data — the query cache
+      // is in-memory only (no IndexedDB persistence), so this clear() is
+      // the only thing preventing cross-user leakage within the same tab.
       try {
         const { queryClient } = await import('../App');
         queryClient.clear();

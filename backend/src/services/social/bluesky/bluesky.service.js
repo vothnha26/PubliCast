@@ -3,6 +3,7 @@ const blueskyGateway = require('./bluesky.gateway');
 const blueskyAnalytics = require('./bluesky-analytics.service');
 const blueskyOAuthHelper = require('./bluesky-oauth.helper');
 const socialAccountRepository = require('../../../repositories/social/social-account.repository');
+const channelSnapshotRepository = require('../../../repositories/social/channel-snapshot.repository');
 const quotaTracker = require('../quota-tracker.singleton');
 const { getHistoryWindowMonths } = require('../plan-history-window.util');
 const { decrypt } = require('../../../utils/encryption');
@@ -339,6 +340,28 @@ class BlueskyService extends BaseSocialService {
       return null;
     });
 
+    // AT Protocol has no per-day follower-delta endpoint — derive today's
+    // real gained/lost from the account's own ChannelMetricDaily history
+    // (today's just-fetched total minus yesterday's persisted total)
+    // instead of leaving the "Balance of Followers" chart at a permanent
+    // zero. Zero on the very first sync (no prior snapshot to diff
+    // against), not a fabricated guess — see
+    // channel-snapshot.repository.js#deriveTodaysFollowerBalance.
+    if (report) {
+      const balance = await channelSnapshotRepository.deriveTodaysFollowerBalance(
+        socialAccountId,
+        PLATFORMS.BLUESKY,
+        profile.followersCount || 0
+      ).catch(() => ({ gained: 0, lost: 0 }));
+      const todayStr = new Date().toISOString().split('T')[0];
+      for (const entry of [...(report.growth || []), ...(report.balance || [])]) {
+        if (entry.date === todayStr) {
+          entry.acquired = balance.gained;
+          entry.lost = balance.lost;
+        }
+      }
+    }
+
     await socialAccountRepository.updateBlueskyMetrics(socialAccountId, {
       followersCount: profile.followersCount,
       followsCount: profile.followsCount,
@@ -365,8 +388,12 @@ class BlueskyService extends BaseSocialService {
   }
 
   // DB-only read — Smart Fetch: no live AT Protocol call happens here.
+  // Uses _getAccountLite (id/brandId only) instead of _getAccount — this
+  // path never touches token/blueskyAccount.did, only account.id — see
+  // social-account.repository.js's findByIdLite() doc comment for the
+  // measured cost difference (~68ms -> ~1-3ms per call).
   async getPublishedVideos(brandId, pageToken = null, limit = 10, socialAccountId = null) {
-    const account = await this._getAccount(brandId, socialAccountId);
+    const account = await this._getAccountLite(brandId, socialAccountId);
     if (!account) return { data: [], nextPageToken: null, prevPageToken: null };
 
     const rows = await findLatestPostMetrics(brandId, PLATFORMS.BLUESKY, account.id, limit);
@@ -563,6 +590,25 @@ class BlueskyService extends BaseSocialService {
     }
 
     return socialAccountRepository.findByBrandAndPlatformFirst(brandId, PLATFORMS.BLUESKY);
+  }
+
+  /**
+   * Lite variant of _getAccount() above — for getPublishedVideos()'s DB-only
+   * read path, which only ever needs account.id (to scope the
+   * findLatestPostMetrics query), never token/blueskyAccount.did the way
+   * syncPublishedPosts()/getPostComments() (both real API calls) do.
+   */
+  async _getAccountLite(brandId, socialAccountId = null) {
+    if (socialAccountId) {
+      const account = await socialAccountRepository.findByIdLite(socialAccountId);
+      if (account && brandId && String(account.brandId) !== String(brandId)) {
+        throw new Error('Social account does not belong to this brand');
+      }
+      return account;
+    }
+
+    const accounts = await socialAccountRepository.findByBrandAndPlatformLite(brandId, PLATFORMS.BLUESKY);
+    return accounts?.[0] || null;
   }
 
   _extractThreadReplies(threadNode, results = [], parentUri = null) {

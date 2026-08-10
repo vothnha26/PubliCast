@@ -1,12 +1,9 @@
 const cron = require('node-cron');
-const redisClient = require('../../config/redis');
-const DistributedLockService = require('./distributed-lock.service');
+const lockService = require('./distributed-lock.singleton');
 const socialAccountRepository = require('../../repositories/social/social-account.repository');
 const { qstashClient } = require('../../config/qstash');
 const logger = require('../../utils/logger');
-const { LOCK_CONFIG, ANALYTICS, PLATFORMS } = require('../../utils/constants');
-
-const lockService = new DistributedLockService(redisClient);
+const { LOCK_CONFIG, PLATFORMS } = require('../../utils/constants');
 
 // Every platform whose getPublishedVideos/getPublishedPosts read path was
 // converted to DB-only (Smart Fetch) — the only platforms this scheduler
@@ -36,6 +33,12 @@ const SCAN_BATCH_SIZE = 500;
  * looping in-process. The actual live-fetch-and-persist work happens in each
  * platform's syncPublishedPosts()/syncPublishedVideos(), dispatched via
  * socialPlatformFactory from the shared QStash webhook handler.
+ *
+ * "Due" is age-tiered per account (ANALYTICS.SYNC_COOLDOWN_TIERS, applied in
+ * findDueForPostsSync/_buildCooldownTierCase off each account's most
+ * recently published post) rather than a single fixed cooldown — an account
+ * that just posted resyncs its list far more often than one that's gone
+ * quiet, since a post's engagement moves fastest in its first hours/days.
  */
 class PostsSyncSchedulerService {
   constructor() {
@@ -92,11 +95,7 @@ class PostsSyncSchedulerService {
   }
 
   async _queueDueAccountsForPlatform(platform) {
-    const dueAccounts = await socialAccountRepository.findDueForPostsSync(
-      ANALYTICS.COOLDOWN_HOURS,
-      SCAN_BATCH_SIZE,
-      platform
-    );
+    const dueAccounts = await socialAccountRepository.findDueForPostsSync(SCAN_BATCH_SIZE, platform);
 
     if (dueAccounts.length === 0) {
       logger.info(`ℹ️ [PostsSyncScheduler] No ${platform} accounts due for sync.`);

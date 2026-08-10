@@ -1,12 +1,9 @@
 const cron = require('node-cron');
 const prisma = require('../../config/prisma');
-const redisClient = require('../../config/redis');
-const DistributedLockService = require('../social/distributed-lock.service');
+const lockService = require('../social/distributed-lock.singleton');
 const notificationService = require('./notification.service');
 const { LOCK_CONFIG, NOTIFICATION_TYPES, POST_STATUS } = require('../../utils/constants');
 const logger = require('../../utils/logger');
-
-const lockService = new DistributedLockService(redisClient);
 
 // Once a week per brand rather than daily — an empty queue is a steady
 // state a lot of brands sit in intentionally (posting ad hoc, not on a

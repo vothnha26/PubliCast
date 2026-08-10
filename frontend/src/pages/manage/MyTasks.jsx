@@ -192,8 +192,10 @@ export function MyTasksPage() {
         </div>
       </div>
 
-      {/* Upgrade Banner */}
-      <div className="bg-card rounded-3xl p-6 border border-border flex items-center justify-between mb-8 shadow-sm">
+      {/* Upgrade Banner — stacks vertically below sm, same reasoning as
+          planner/components/UpgradeBanner.jsx: icon+long text and the
+          button don't fit side by side on a 375px viewport. */}
+      <div className="bg-card rounded-3xl p-6 border border-border flex flex-col sm:flex-row sm:items-center gap-4 justify-between mb-8 shadow-sm">
         <div className="flex gap-4 items-center">
           <div className="w-12 h-12 rounded-full bg-emerald-500/10 flex items-center justify-center shrink-0">
             <Diamond size={24} className="text-emerald-600" />
@@ -206,21 +208,22 @@ export function MyTasksPage() {
             </p>
           </div>
         </div>
-        <button 
+        <button
           onClick={() => navigate("/pricing")}
-          className="px-5 py-2.5 bg-foreground text-background rounded-xl text-xs font-bold hover:bg-foreground/90 transition-all shadow-sm active:scale-95 cursor-pointer"
+          className="px-5 py-2.5 bg-foreground text-background rounded-xl text-xs font-bold hover:bg-foreground/90 transition-all shadow-sm active:scale-95 cursor-pointer shrink-0"
         >
           Upgrade your plan
         </button>
       </div>
 
-      {/* Tabs Layout */}
-      <div className="flex gap-8 border-b border-border mb-6">
+      {/* Tabs Layout — below md, scrolls horizontally instead of wrapping
+          (same tab-bar pattern as PlannerLayout.jsx). */}
+      <div className="flex gap-8 border-b border-border mb-6 overflow-x-auto scrollbar-none">
         {TABS.map((tab) => (
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
-            className={`pb-3 text-sm font-semibold transition-all relative flex items-center gap-1.5 cursor-pointer ${activeTab === tab.id ? 'text-foreground' : 'text-muted-foreground'}`}
+            className={`pb-3 text-sm font-semibold transition-all relative flex items-center gap-1.5 cursor-pointer shrink-0 whitespace-nowrap ${activeTab === tab.id ? 'text-foreground' : 'text-muted-foreground'}`}
           >
             {tab.label}
             <span className={`px-1.5 py-0.5 text-[10px] font-bold rounded-md ${activeTab === tab.id ? 'bg-foreground text-background' : 'bg-muted text-muted-foreground'}`}>
@@ -297,7 +300,8 @@ export function MyTasksPage() {
         </div>
       ) : (
         <div className="bg-card rounded-3xl border border-border overflow-hidden shadow-sm">
-          <table className="w-full border-collapse">
+          <div className="overflow-x-auto">
+          <table className="w-full border-collapse min-w-[640px]">
             <thead>
               <tr className="border-b border-border bg-muted/50">
                 <th className="px-6 py-4 text-left text-[11px] font-bold text-muted-foreground uppercase tracking-wider">Date</th>
@@ -408,6 +412,7 @@ export function MyTasksPage() {
               })}
             </tbody>
           </table>
+          </div>
         </div>
       )}
 

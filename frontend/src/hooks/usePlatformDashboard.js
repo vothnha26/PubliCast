@@ -414,7 +414,7 @@ export function usePlatformDashboard(platform) {
         videos: 0
       };
     }
-    if (platform === "instagram" || platform === "threads") {
+    if (platform === "instagram") {
       if (!metrics.instagramAccount) return { subscribers: 0, views: 0, videos: 0 };
       return {
         subscribers: metrics.instagramAccount.followersCount,
@@ -422,6 +422,16 @@ export function usePlatformDashboard(platform) {
         likes: realData.summary?.likes || 0,
         videos: metrics.instagramAccount.mediaCount || 0,
         profilePictureUrl: metrics.profilePictureUrl || metrics.instagramAccount.profilePictureUrl || ''
+      };
+    }
+    if (platform === "threads") {
+      if (!metrics.threadsAccount) return { subscribers: 0, views: 0, videos: 0 };
+      return {
+        subscribers: metrics.threadsAccount.followersCount,
+        views: realData.summary?.views || 0,
+        likes: realData.summary?.likes || 0,
+        videos: metrics.threadsAccount.mediaCount || 0,
+        profilePictureUrl: metrics.profilePictureUrl || metrics.threadsAccount.profilePictureUrl || ''
       };
     }
     if (platform === "tiktok") {

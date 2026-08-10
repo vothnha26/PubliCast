@@ -90,7 +90,7 @@ describe('BlueskyService — real metrics sync and published posts', () => {
 
   describe('getPublishedVideos (Smart Fetch: DB-only read)', () => {
     it('reads from PostMetricDaily and never calls the live AT Protocol API', async () => {
-      socialAccountRepository.findByBrandAndPlatformFirst.mockResolvedValueOnce(mockAccount);
+      socialAccountRepository.findByBrandAndPlatformLite.mockResolvedValueOnce([mockAccount]);
       findLatestPostMetrics.mockResolvedValueOnce([{
         platformPostId: 'at://did:plc:testuser123/app.bsky.feed.post/p1',
         captionSnippet: 'hi',
@@ -113,7 +113,7 @@ describe('BlueskyService — real metrics sync and published posts', () => {
     });
 
     it('returns an empty result when no Bluesky account is connected', async () => {
-      socialAccountRepository.findByBrandAndPlatformFirst.mockResolvedValueOnce(null);
+      socialAccountRepository.findByBrandAndPlatformLite.mockResolvedValueOnce([]);
 
       const result = await blueskyService.getPublishedVideos(mockBrandId, null, 10, null);
 

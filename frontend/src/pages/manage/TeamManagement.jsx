@@ -270,7 +270,8 @@ export function TeamManagementPage() {
               </div>
             ) : (
               <div className="bg-card border border-border rounded-3xl shadow-sm overflow-hidden">
-                <table className="w-full border-collapse">
+                <div className="overflow-x-auto">
+                <table className="w-full border-collapse min-w-[640px]">
                   <thead>
                     <tr className="bg-muted/50 border-b border-border">
                       {[t("team.colMember"), t("team.colRole"), t("team.colStatus"), t("team.colJoined"), t("team.colInvitedBy"), ""].map((h, idx) => (
@@ -348,6 +349,7 @@ export function TeamManagementPage() {
                     ))}
                   </tbody>
                 </table>
+                </div>
               </div>
             )}
           </div>

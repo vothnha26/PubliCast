@@ -41,7 +41,7 @@ const MANAGE_ITEMS = [
 // AccountMenu dropdown on the Topbar (visible on every page, not just
 // Manage mode) — kept here would just duplicate the same destinations.
 
-export function SidebarWorkspace() {
+export function SidebarWorkspace({ mobileOpen = false, onMobileClose } = {}) {
   const { t } = useTranslation("topbar");
   const location = useLocation();
   const navigate = useNavigate();
@@ -82,10 +82,21 @@ export function SidebarWorkspace() {
   const goToWorkspace = () => navigate("/dashboard");
 
   return (
-    <aside
-      style={{ width: 220, background: "var(--sidebar)", borderRight: "1px solid var(--sidebar-border)", overflowX: "hidden" }}
-      className="flex flex-col h-full shrink-0 transition-colors duration-200"
-    >
+    <>
+      {/* Backdrop — mobile only, dismisses the drawer on tap outside it */}
+      {mobileOpen && (
+        <div
+          className="fixed inset-0 bg-black/40 z-30 md:hidden"
+          onClick={onMobileClose}
+          aria-hidden="true"
+        />
+      )}
+      <aside
+        style={{ width: 220, background: "var(--sidebar)", borderRight: "1px solid var(--sidebar-border)", overflowX: "hidden" }}
+        className={`flex flex-col h-full shrink-0 transition-transform duration-200 fixed md:static inset-y-0 left-0 z-40 md:z-auto md:translate-x-0 ${
+          mobileOpen ? "translate-x-0" : "-translate-x-full"
+        }`}
+      >
       {isManageMode ? (
         <div className="flex-1 py-6 px-3 overflow-y-auto scrollbar-none">
           {/* Section Label + explicit switch back to Workspace */}
@@ -271,6 +282,7 @@ export function SidebarWorkspace() {
            })}
          </div>
       </div>
-    </aside>
+      </aside>
+    </>
   );
 }

@@ -1,4 +1,5 @@
 const prisma = require('../../config/prisma');
+const { Prisma } = require('@prisma/client');
 const { PLATFORMS, ANALYTICS, PRISMA_TIMEOUTS } = require('../../utils/constants');
 const { encrypt, decrypt } = require('../../utils/encryption');
 const { OUTBOX_EVENT_TYPES } = require('../../constants/outbox.constants');
@@ -612,7 +613,7 @@ class SocialAccountRepository {
   }
 
   /** Xem ghi chú options.enqueueSync ở upsertFacebookAccount phía trên. */
-  async upsertInstagramAccount(brandId, accountData, tokens, platform = PLATFORMS.INSTAGRAM, options = {}) {
+  async upsertInstagramAccount(brandId, accountData, tokens, options = {}) {
     const { enqueueSync = true } = options;
     const { igAccountId, facebookPageId, username, displayName, profilePictureUrl, followersCount = 0, followingCount = 0, mediaCount = 0, biography = '', website = '', accountType = 'BUSINESS', businessCategoryName = '' } = accountData;
 
@@ -623,7 +624,7 @@ class SocialAccountRepository {
         where: {
           brandId_platform_platformAccountId: {
             brandId,
-            platform: platform,
+            platform: PLATFORMS.INSTAGRAM,
             platformAccountId: igAccountId
           }
         },
@@ -670,7 +671,7 @@ class SocialAccountRepository {
         },
         create: {
           brandId,
-          platform: platform,
+          platform: PLATFORMS.INSTAGRAM,
           platformAccountId: igAccountId,
           username: finalUsername,
           displayName,
@@ -701,26 +702,15 @@ class SocialAccountRepository {
 
       if (accountData.analytics) {
         const { startDate, endDate } = accountData.analytics;
-        await this.saveInstagramAnalytics(brandId, account.id, accountData.analytics, startDate, endDate, tx);
-
-        // Snapshot rows are platform-specific even though the account row
-        // itself is shared (see upsertThreadsAccount below) — Threads was
-        // fully migrated off SocialPostMetric/InstagramAccount sharing
-        // (schema.prisma's comment on ThreadsChannelSnapshot) except for
-        // this one live-account relation, so it must never end up writing
-        // into InstagramChannelSnapshot under the wrong platform.
-        if (platform === PLATFORMS.INSTAGRAM) {
-          await this.upsertInstagramChannelSnapshots(brandId, account.id, followersCount, followingCount, mediaCount, accountData.analytics.balance, accountData.analytics.growth, tx);
-        } else if (platform === PLATFORMS.THREADS) {
-          await this.upsertThreadsChannelSnapshots(brandId, account.id, followersCount, accountData.analytics.balance, accountData.analytics.growth, tx);
-        }
+        await this.saveInstagramAnalytics(brandId, account.id, accountData.analytics, startDate, endDate, tx, PLATFORMS.INSTAGRAM);
+        await this.upsertInstagramChannelSnapshots(brandId, account.id, followersCount, followingCount, mediaCount, accountData.analytics.balance, accountData.analytics.growth, tx);
       }
 
       if (enqueueSync) {
         await outboxEventRepository.create(
           OUTBOX_EVENT_TYPES.SOCIAL_SYNC_ENQUEUE,
           account.id,
-          { socialAccountId: account.id, platform, brandId },
+          { socialAccountId: account.id, platform: PLATFORMS.INSTAGRAM, brandId },
           {},
           tx
         );
@@ -798,8 +788,108 @@ class SocialAccountRepository {
    * Threads call site instead of relying on remembering to pass
    * PLATFORMS.THREADS as the 4th positional argument correctly.
    */
+  /**
+   * Threads' own upsert — was a thin delegate to upsertInstagramAccount
+   * (sharing InstagramAccount + INSTAGRAM_DETAILED analyticsType) until
+   * 2026-08-10's ThreadsAccount split (see schema.prisma's comment on that
+   * model for why). Independent now: no accountType/businessCategoryName/
+   * facebookPageId fields (Instagram-only concepts Threads never had real
+   * data for), writes into `threadsAccount` instead of `instagramAccount`,
+   * and always passes PLATFORMS.THREADS to saveInstagramAnalytics/
+   * upsertThreadsChannelSnapshots — no `platform` param needed since this
+   * function only ever serves one platform.
+   */
   async upsertThreadsAccount(brandId, accountData, tokens, options = {}) {
-    return this.upsertInstagramAccount(brandId, accountData, tokens, PLATFORMS.THREADS, options);
+    const { enqueueSync = true } = options;
+    const { igAccountId, username, displayName, profilePictureUrl, followersCount = 0, followingCount = 0, mediaCount = 0, biography = '', website = '' } = accountData;
+
+    const finalUsername = username || displayName || 'threads_user';
+
+    return prisma.$transaction(async (tx) => {
+      const account = await tx.socialAccount.upsert({
+        where: {
+          brandId_platform_platformAccountId: {
+            brandId,
+            platform: PLATFORMS.THREADS,
+            platformAccountId: igAccountId
+          }
+        },
+        update: {
+          username: finalUsername,
+          displayName,
+          profilePictureUrl,
+          accessToken: encrypt(tokens.access_token),
+          refreshToken: tokens.refresh_token ? encrypt(tokens.refresh_token) : undefined,
+          tokenExpiresAt: tokens.expiry_date ? new Date(tokens.expiry_date) : undefined,
+          scopes: tokens.scope,
+          isConnected: true,
+          lastSyncAt: new Date(),
+          updatedAt: new Date(),
+          threadsAccount: {
+            upsert: {
+              create: {
+                followersCount: parseInt(followersCount) || 0,
+                followingCount: parseInt(followingCount) || 0,
+                mediaCount: parseInt(mediaCount) || 0,
+                biography,
+                website
+              },
+              update: {
+                followersCount: parseInt(followersCount) || 0,
+                followingCount: parseInt(followingCount) || 0,
+                mediaCount: parseInt(mediaCount) || 0,
+                biography,
+                website
+              }
+            }
+          }
+        },
+        create: {
+          brandId,
+          platform: PLATFORMS.THREADS,
+          platformAccountId: igAccountId,
+          username: finalUsername,
+          displayName,
+          profilePictureUrl,
+          accessToken: encrypt(tokens.access_token),
+          refreshToken: tokens.refresh_token ? encrypt(tokens.refresh_token) : '',
+          tokenExpiresAt: tokens.expiry_date ? new Date(tokens.expiry_date) : undefined,
+          scopes: tokens.scope || '',
+          lastSyncAt: new Date(),
+          connectedAt: new Date(),
+          threadsAccount: {
+            create: {
+              followersCount: parseInt(followersCount) || 0,
+              followingCount: parseInt(followingCount) || 0,
+              mediaCount: parseInt(mediaCount) || 0,
+              biography,
+              website
+            }
+          }
+        },
+        include: {
+          threadsAccount: true
+        }
+      });
+
+      if (accountData.analytics) {
+        const { startDate, endDate } = accountData.analytics;
+        await this.saveInstagramAnalytics(brandId, account.id, accountData.analytics, startDate, endDate, tx, PLATFORMS.THREADS);
+        await this.upsertThreadsChannelSnapshots(brandId, account.id, followersCount, accountData.analytics.balance, accountData.analytics.growth, tx);
+      }
+
+      if (enqueueSync) {
+        await outboxEventRepository.create(
+          OUTBOX_EVENT_TYPES.SOCIAL_SYNC_ENQUEUE,
+          account.id,
+          { socialAccountId: account.id, platform: PLATFORMS.THREADS, brandId },
+          {},
+          tx
+        );
+      }
+
+      return this.findById(account.id, tx);
+    }, { timeout: PRISMA_TIMEOUTS.INTERACTIVE_TRANSACTION_MS });
   }
 
   /**
@@ -855,8 +945,11 @@ class SocialAccountRepository {
     );
   }
 
-  async saveInstagramAnalytics(brandId, socialAccountId, analyticsData, startDate, endDate, client = prisma) {
+  async saveInstagramAnalytics(brandId, socialAccountId, analyticsData, startDate, endDate, client = prisma, platform = PLATFORMS.INSTAGRAM) {
     const now = new Date();
+    const analyticsType = platform === PLATFORMS.THREADS
+      ? ANALYTICS.TYPES.THREADS_DETAILED
+      : ANALYTICS.TYPES.INSTAGRAM_DETAILED;
 
     const followersTotal = analyticsData.summary?.followers || 0;
     const followersGain = analyticsData.balance?.reduce((sum, item) => sum + (item.acquired || 0), 0) || 0;
@@ -879,7 +972,7 @@ class SocialAccountRepository {
         dateTo: endDate ? new Date(endDate) : now,
         granularity: ANALYTICS.GRANULARITY.DAILY,
         fetchedAt: now,
-        analyticsType: ANALYTICS.TYPES.INSTAGRAM_DETAILED
+        analyticsType
       }
     });
 
@@ -911,6 +1004,7 @@ class SocialAccountRepository {
         facebookPage: true,
         tikTokAccount: true,
         instagramAccount: true,
+        threadsAccount: true,
         redditAccount: true,
         blueskyAccount: true,
         twitchAccount: true,
@@ -921,6 +1015,40 @@ class SocialAccountRepository {
             socialAnalytics: true
           }
         }
+      }
+    });
+    return this._decryptAccount(account);
+  }
+
+  /**
+   * Same lookup as findById(), without the 8 platform-account includes or
+   * analytics history — for read paths that only need id/brandId/platform/
+   * platformAccountId/token (IDOR ownership check + calling that platform's
+   * API), not the full account shape. findById()'s include list made every
+   * platform's DB-only getPublishedVideos()/getPublishedPosts() pay for
+   * loading every OTHER platform's account table plus the account's full
+   * analytics history just to resolve which socialAccount it already had
+   * the id for — measured ~68ms/call vs ~1-3ms here, and importantly the
+   * heavy version does NOT parallelize the way it looks like it should:
+   * 5 platforms' findById() called concurrently via Promise.all still took
+   * ~680ms (not ~150ms), while 5 of this lite version took ~15ms
+   * (#inbox-getInboxPosts-N-plus-1, 2026-08-10). Only use findById() where
+   * the caller genuinely needs the joined platform-specific fields
+   * (youtubeChannel, facebookPage, etc.) or analytics.
+   */
+  async findByIdLite(id, client = prisma) {
+    const account = await client.socialAccount.findUnique({
+      where: { id },
+      select: {
+        id: true,
+        brandId: true,
+        platform: true,
+        platformAccountId: true,
+        username: true,
+        displayName: true,
+        accessToken: true,
+        refreshToken: true,
+        isConnected: true
       }
     });
     return this._decryptAccount(account);
@@ -1057,6 +1185,7 @@ class SocialAccountRepository {
       include: {
         youtubeChannel: true,
         instagramAccount: true,
+        threadsAccount: true,
         facebookPage: true,
         tikTokAccount: true,
         blueskyAccount: true,
@@ -1073,6 +1202,36 @@ class SocialAccountRepository {
             socialAnalytics: true
           }
         }
+      }
+    });
+    return this._decryptAccounts(accounts);
+  }
+
+  /**
+   * Same lookup as findByBrandAndPlatform(), without the 8 platform-account
+   * includes, channelMetricsDaily, or analytics — see findByIdLite()'s doc
+   * comment for why this exists and the measured cost difference. Use for
+   * read paths that only need id/platformAccountId/token per account
+   * (resolving "which account(s) does this brand have on this platform" to
+   * call that platform's own DB-only getPublishedVideos()), not the full
+   * joined account shape.
+   */
+  async findByBrandAndPlatformLite(brandId, platform) {
+    const where = { brandId };
+    if (platform) where.platform = platform;
+
+    const accounts = await prisma.socialAccount.findMany({
+      where,
+      select: {
+        id: true,
+        brandId: true,
+        platform: true,
+        platformAccountId: true,
+        username: true,
+        displayName: true,
+        accessToken: true,
+        refreshToken: true,
+        isConnected: true
       }
     });
     return this._decryptAccounts(accounts);
@@ -1413,7 +1572,7 @@ class SocialAccountRepository {
         // Bluesky's public AT Protocol API has no reach/impressions concept
         // (see bluesky.service.js getAnalyticsReport) — left at 0 rather
         // than fabricated, unlike engagement counts which ARE real
-        // (fetched per-post via getPostMetrics/getAuthorFeed).
+        // (fetched inline via getAuthorFeed, per post).
         impressions: 0,
         reach: 0,
         engagements,
@@ -1456,26 +1615,57 @@ class SocialAccountRepository {
 
 
   /**
-   * Connected accounts whose lastSyncAt is past the cooldown (or never
+   * Builds the CASE WHEN expression that maps "hours since this account's
+   * most recent PostMetricDaily.publishedAt" to a cooldown-hours value,
+   * from ANALYTICS.SYNC_COOLDOWN_TIERS (narrowest-first, `maxAgeHours: null`
+   * last as the catch-all). `postAgeHoursExpr` is the raw SQL expression
+   * (already interpolated into the query) that computes that age in hours;
+   * this only builds the tier-selection CASE around it. Shared by
+   * findDueForPostsSync/findDueForMetricsSync so both age-gate off the same
+   * tier table instead of each re-deriving it.
+   */
+  _buildCooldownTierCase(postAgeHoursExpr) {
+    const tiers = ANALYTICS.SYNC_COOLDOWN_TIERS;
+    const whenClauses = tiers
+      .filter(t => t.maxAgeHours !== null)
+      .map(t => Prisma.sql`WHEN ${postAgeHoursExpr} < ${t.maxAgeHours} THEN ${t.cooldownHours}`);
+    const catchAll = tiers.find(t => t.maxAgeHours === null);
+    return Prisma.sql`CASE ${Prisma.join(whenClauses, ' ')} ELSE ${catchAll.cooldownHours} END`;
+  }
+
+  /**
+   * Connected accounts whose lastSyncAt is past their cooldown (or never
    * synced) — used by SocialMetricsSyncScheduler to publish one QStash
    * message per due account instead of force-syncing every account on
    * every brand at the top of the hour regardless of how recently each was
    * synced (the previous behavior, which spiked platform API calls and
    * blocked the main process for however many brands existed).
+   *
+   * Cooldown is age-tiered per account (see ANALYTICS.SYNC_COOLDOWN_TIERS /
+   * _buildCooldownTierCase): an account whose most recently published post
+   * is still fresh gets a short cooldown (synced often, since engagement
+   * moves fastest early), while a quiet account's cooldown widens out —
+   * instead of every account polling at the same fixed COOLDOWN_HOURS
+   * regardless of how active it actually is. Falls back to the widest tier
+   * for an account with no PostMetricDaily row yet (MAX(publishedAt) NULL
+   * makes the age expression NULL, and every `< maxAgeHours` comparison
+   * against NULL is unknown/false in SQL, so CASE falls through to ELSE).
    */
-  async findDueForMetricsSync(cooldownHours, limit) {
-    const threshold = new Date(Date.now() - cooldownHours * 60 * 60 * 1000);
-    return prisma.socialAccount.findMany({
-      where: {
-        isConnected: true,
-        OR: [
-          { lastSyncAt: null },
-          { lastSyncAt: { lt: threshold } }
-        ]
-      },
-      select: { id: true, platform: true, brandId: true },
-      take: limit
-    });
+  async findDueForMetricsSync(limit) {
+    const postAgeHoursExpr = Prisma.sql`TIMESTAMPDIFF(HOUR, (SELECT MAX(pmd.publishedAt) FROM post_metrics_daily pmd WHERE pmd.socialAccountId = sa.id), NOW())`;
+    const cooldownCase = this._buildCooldownTierCase(postAgeHoursExpr);
+
+    const rows = await prisma.$queryRaw`
+      SELECT sa.id, sa.platform, sa.brandId
+      FROM social_accounts sa
+      WHERE sa.isConnected = true
+        AND (
+          sa.lastSyncAt IS NULL
+          OR sa.lastSyncAt < DATE_SUB(NOW(), INTERVAL (${cooldownCase}) HOUR)
+        )
+      LIMIT ${limit}
+    `;
+    return rows;
   }
 
   async updateSyncStatus(id, syncStatus) {
@@ -1497,20 +1687,26 @@ class SocialAccountRepository {
   // published-post list hasn't been re-pulled from the live API recently,
   // feeding PostsSyncSchedulerService (Smart Fetch's only Sync trigger
   // besides OAuth-connect backfill and the manual-refresh endpoint).
-  async findDueForPostsSync(cooldownHours, limit, platform = null) {
-    const threshold = new Date(Date.now() - cooldownHours * 60 * 60 * 1000);
-    return prisma.socialAccount.findMany({
-      where: {
-        ...(platform ? { platform } : {}),
-        isConnected: true,
-        OR: [
-          { lastPostsSyncAt: null },
-          { lastPostsSyncAt: { lt: threshold } }
-        ]
-      },
-      select: { id: true, platform: true, brandId: true },
-      take: limit
-    });
+  //
+  // Same age-tiered cooldown as findDueForMetricsSync (see
+  // _buildCooldownTierCase) — an account with a freshly published post
+  // resyncs its post list far more often than one that's gone quiet.
+  async findDueForPostsSync(limit, platform = null) {
+    const postAgeHoursExpr = Prisma.sql`TIMESTAMPDIFF(HOUR, (SELECT MAX(pmd.publishedAt) FROM post_metrics_daily pmd WHERE pmd.socialAccountId = sa.id), NOW())`;
+    const cooldownCase = this._buildCooldownTierCase(postAgeHoursExpr);
+
+    const rows = await prisma.$queryRaw`
+      SELECT sa.id, sa.platform, sa.brandId
+      FROM social_accounts sa
+      WHERE sa.isConnected = true
+        ${platform ? Prisma.sql`AND sa.platform = ${platform}` : Prisma.empty}
+        AND (
+          sa.lastPostsSyncAt IS NULL
+          OR sa.lastPostsSyncAt < DATE_SUB(NOW(), INTERVAL (${cooldownCase}) HOUR)
+        )
+      LIMIT ${limit}
+    `;
+    return rows;
   }
 
   async updateLastPostsSyncAt(id) {

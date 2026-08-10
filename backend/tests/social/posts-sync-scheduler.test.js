@@ -48,14 +48,13 @@ describe('PostsSyncSchedulerService', () => {
       for (const platform of SYNCED_PLATFORMS) {
         expect(socialAccountRepository.findDueForPostsSync).toHaveBeenCalledWith(
           expect.any(Number),
-          expect.any(Number),
           platform
         );
       }
     });
 
     it('publishes one QStash message per due account with the expected shape', async () => {
-      socialAccountRepository.findDueForPostsSync.mockImplementation(async (_cooldown, _limit, platform) => {
+      socialAccountRepository.findDueForPostsSync.mockImplementation(async (_limit, platform) => {
         return platform === 'YOUTUBE'
           ? [{ id: 'acc-1', platform: 'YOUTUBE', brandId: 'brand-1' }]
           : [];
@@ -81,7 +80,7 @@ describe('PostsSyncSchedulerService', () => {
     });
 
     it('continues queuing remaining accounts when one publish fails', async () => {
-      socialAccountRepository.findDueForPostsSync.mockImplementation(async (_cooldown, _limit, platform) => {
+      socialAccountRepository.findDueForPostsSync.mockImplementation(async (_limit, platform) => {
         return platform === 'FACEBOOK'
           ? [
             { id: 'acc-1', platform: 'FACEBOOK', brandId: 'brand-1' },

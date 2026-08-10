@@ -72,6 +72,15 @@ export function InstagramCommunityTab({
       chartColor: "#F472B6",
       type: "line",
       value: communityGrowthData?.reduce((acc, curr) => acc + (curr.lost || 0), 0) || 0
+    },
+    {
+      key: "followers",
+      label: "Total Followers",
+      color: "bg-[#8E9BEE] text-white",
+      chartColor: "#8E9BEE",
+      type: "line",
+      yAxisId: "right",
+      value: followersCount
     }
   ];
 

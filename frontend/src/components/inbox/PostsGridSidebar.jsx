@@ -21,7 +21,7 @@ export function PostsGridSidebar({
   const displayPosts = posts;
 
   return (
-    <div className={`${collapsed ? "w-14 self-start" : "w-[320px] h-full"} shrink-0 bg-card rounded-2xl border border-border shadow-sm flex flex-col overflow-hidden select-none transition-all duration-200`}>
+    <div className={`${collapsed ? "w-14 self-start" : "w-full md:w-[320px] h-full"} shrink-0 bg-card rounded-2xl border border-border shadow-sm flex flex-col overflow-hidden select-none transition-all duration-200`}>
       {/* Header Panel "Posts" + Mode Switcher Icons */}
       <div className={`p-3.5 border-b border-border flex items-center bg-card ${collapsed ? "justify-center" : "justify-between"}`}>
         {!collapsed && <h3 className="text-xs font-bold text-foreground tracking-wide">Posts</h3>}

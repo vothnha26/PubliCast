@@ -1,12 +1,9 @@
 const cron = require('node-cron');
-const redisClient = require('../../config/redis');
-const DistributedLockService = require('./distributed-lock.service');
+const lockService = require('./distributed-lock.singleton');
 const socialAccountRepository = require('../../repositories/social/social-account.repository');
 const { qstashClient } = require('../../config/qstash');
 const logger = require('../../utils/logger');
-const { LOCK_CONFIG, ANALYTICS } = require('../../utils/constants');
-
-const lockService = new DistributedLockService(redisClient);
+const { LOCK_CONFIG } = require('../../utils/constants');
 
 // Cap on how many due accounts one scan claims — QStash's flowControl below
 // bounds concurrent delivery regardless, but this also bounds how large a
@@ -26,9 +23,12 @@ const SCAN_BATCH_SIZE = 500;
  * however long the full sequential pass took.
  *
  * Now the cron only queries SocialAccount.lastSyncAt to find accounts
- * actually due (respecting ANALYTICS.COOLDOWN_HOURS, same threshold
- * SyncCacheProxy already enforces per-request) and publishes one QStash
- * message per due account to the metrics-sync webhook. QStash's flowControl
+ * actually due — per-account cooldown is age-tiered off each account's most
+ * recently published post (ANALYTICS.SYNC_COOLDOWN_TIERS, see
+ * findDueForMetricsSync/_buildCooldownTierCase): a freshly-active account
+ * syncs far more often than the flat COOLDOWN_HOURS SyncCacheProxy still
+ * uses for its own separate per-request cooldown check. Publishes one
+ * QStash message per due account to the metrics-sync webhook. QStash's flowControl
  * caps how many sync calls run concurrently — if a large batch of accounts
  * all fall due at once (e.g. after downtime), delivery is throttled instead
  * of hitting platform APIs / the DB pool all at once — and failed syncs
@@ -84,10 +84,7 @@ class SocialMetricsSyncSchedulerService {
   }
 
   async queueDueAccounts() {
-    const dueAccounts = await socialAccountRepository.findDueForMetricsSync(
-      ANALYTICS.COOLDOWN_HOURS,
-      SCAN_BATCH_SIZE
-    );
+    const dueAccounts = await socialAccountRepository.findDueForMetricsSync(SCAN_BATCH_SIZE);
 
     if (dueAccounts.length === 0) {
       logger.info('ℹ️ [SocialMetricsSyncScheduler] No accounts due for sync.');
