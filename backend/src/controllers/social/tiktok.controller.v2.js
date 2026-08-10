@@ -1,6 +1,6 @@
 const tiktokService = require('../../services/social/tiktok');
 const asyncHandler = require('../../utils/async-handler');
-const { sendSuccess } = require('../../utils/response.util');
+const { v2Success: sendSuccess } = require('../../utils/response.helper');
 
 class TikTokControllerV2 {
   getTikTokPublishedVideos = asyncHandler(async (req, res) => {

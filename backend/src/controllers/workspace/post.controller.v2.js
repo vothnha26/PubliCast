@@ -1,6 +1,6 @@
 const postService = require('../../services/workspace/post.service');
 const asyncHandler = require('../../utils/async-handler');
-const { sendSuccess } = require('../../utils/response.util');
+const { v2Success: sendSuccess } = require('../../utils/response.helper');
 
 /**
  * v2 of POST /api/posts/upload, GET /api/posts/platform-limits, and

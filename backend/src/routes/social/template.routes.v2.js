@@ -1,5 +1,5 @@
 const express = require('express');
-const templateController = require('../../controllers/social/template.controller');
+const templateController = require('../../controllers/social/template.controller.v2');
 const { verifyAuth } = require('../../middlewares/auth.middleware');
 
 const router = express.Router();
