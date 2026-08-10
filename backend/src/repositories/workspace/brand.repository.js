@@ -33,6 +33,7 @@ class BrandRepository {
           include: {
             youtubeChannel: true,
             instagramAccount: true,
+            threadsAccount: true,
             facebookPage: true,
             tikTokAccount: true
           }
