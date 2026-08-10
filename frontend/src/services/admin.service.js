@@ -16,6 +16,11 @@ class AdminService {
     return data;
   }
 
+  async getPostingUsageMonthlyOverview(year, month) {
+    const data = await apiV2.get(`/admin/posting-usage/monthly?year=${year}&month=${month}`);
+    return data;
+  }
+
   async togglePlatformLock(isLocked) {
     const data = await apiV2.post('/admin/platform-lock', { isLocked });
     return data;

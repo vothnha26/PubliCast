@@ -78,6 +78,7 @@ import { AdminHelpArticles } from "./pages/admin/AdminHelpArticles";
 import { AuditLog } from "./pages/admin/AuditLog";
 import { RevenueDashboard } from "./pages/admin/RevenueDashboard";
 import { AdminPlatformLock } from "./pages/admin/AdminPlatformLock";
+import { AdminPostingUsage } from "./pages/admin/AdminPostingUsage";
 
 // Landing
 import { LandingPage } from "./pages/landing/LandingPage";
@@ -223,6 +224,7 @@ export default function App() {
                 <Route path="/admin/audit" element={<ProtectedRoute allowedRoles={['ADMIN']}><AuditLog /></ProtectedRoute>} />
                 <Route path="/admin/revenue" element={<ProtectedRoute allowedRoles={['ADMIN']}><RevenueDashboard /></ProtectedRoute>} />
                 <Route path="/admin/platform-lock" element={<ProtectedRoute allowedRoles={['ADMIN']}><AdminPlatformLock /></ProtectedRoute>} />
+                <Route path="/admin/posting-usage" element={<ProtectedRoute allowedRoles={['ADMIN']}><AdminPostingUsage /></ProtectedRoute>} />
    
                 {/* Protected Staff Routes */}
                 <Route path="/staff/chats" element={<ProtectedRoute allowedRoles={['STAFF']}><StaffChatPage /></ProtectedRoute>} />

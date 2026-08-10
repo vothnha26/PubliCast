@@ -7,6 +7,7 @@ const instagramController = require('../../controllers/social/instagram.controll
 const googleDriveController = require('../../controllers/social/google-drive.controller');
 const socialAnalyticsController = require('../../controllers/social/social-analytics.controller');
 const socialConnectionController = require('../../controllers/social/social-connection.controller');
+const postingUsageController = require('../../controllers/workspace/posting-usage.controller');
 const threadsController = require('../../controllers/social/threads.controller');
 const blueskyController = require('../../controllers/social/bluesky.controller');
 const redditController = require('../../controllers/social/reddit.controller');
@@ -335,5 +336,27 @@ router.post('/bluesky/disconnect', verifyAuth, requireManageConnections, socialC
 
 // ── Account Reassignment V2 ──
 router.post('/reassign', verifyAuth, socialConnectionController.reassignSocialAccount);
+
+/**
+ * @openapi
+ * /v2/social/posting-usage:
+ *   get:
+ *     summary: Fair Use daily posting usage per connected account (rolling 24h)
+ *     tags: [Social V2]
+ *     security: [{ cookieAuth: [] }]
+ *     parameters:
+ *       - in: query
+ *         name: brandId
+ *         required: true
+ *         schema: { type: string }
+ *     responses:
+ *       200:
+ *         description: Per-account daily usage returned
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/V2EnvelopeResponse'
+ */
+router.get('/posting-usage', verifyAuth, requireBrandMember, postingUsageController.getDailyUsage);
 
 module.exports = router;

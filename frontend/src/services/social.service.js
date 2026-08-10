@@ -258,6 +258,11 @@ class SocialService {
     return data;
   }
 
+  async getPostingUsage(brandId) {
+    const data = await apiV2.get(`/social/posting-usage?brandId=${brandId}`);
+    return data;
+  }
+
   // --- Twitch ---
   async getTwitchAuthUrl(brandId) {
     const data = await apiV2.get(`/social/twitch/url?brandId=${brandId}`);

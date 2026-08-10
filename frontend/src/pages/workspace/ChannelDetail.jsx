@@ -6,6 +6,7 @@ import { ChannelPublishTab } from "./channel-tabs/ChannelPublishTab";
 import { ChannelCommunityTab } from "./channel-tabs/ChannelCommunityTab";
 import { ChannelInsightsTab } from "./channel-tabs/ChannelInsightsTab";
 import { CHANNEL_TAB_KEYS } from "../../constants/channelTabs";
+import { DailyPostingUsageBadge } from "../../components/shared/DailyPostingUsageBadge";
 
 const VALID_TABS = [
   CHANNEL_TAB_KEYS.PUBLISH,
@@ -74,6 +75,7 @@ export function ChannelDetailPage() {
             </div>
           </div>
         </div>
+        <DailyPostingUsageBadge brandId={activeBrand?.id} socialAccountId={socialAccountId} />
       </div>
 
       {/* Tab content */}

@@ -1,5 +1,6 @@
 const prisma = require('../../config/prisma');
 const logger = require('../../utils/logger');
+const { getBrandToday } = require('../../utils/brand-timezone.util');
 
 /**
  * Shared Sync-only persistence for the unified post-level daily time series
@@ -40,8 +41,10 @@ const logger = require('../../utils/logger');
 async function upsertPostMetricsDaily(brandId, socialAccountId, platform, posts) {
   if (!Array.isArray(posts) || posts.length === 0) return [];
 
-  const todayStr = new Date().toISOString().split('T')[0];
-  const snapshotDate = new Date(todayStr);
+  // "Today" resolved in the brand's own timezone, not the server's — see
+  // channel-snapshot.repository.js's identical comment for why.
+  const brand = await prisma.brand.findUnique({ where: { id: brandId }, select: { timezone: true } });
+  const snapshotDate = getBrandToday(brand?.timezone);
   const results = [];
 
   for (const post of posts) {

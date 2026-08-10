@@ -56,8 +56,18 @@ jest.mock('../../src/config/prisma', () => ({
   platformLimit: {
     findMany: jest.fn().mockResolvedValue([])
   },
+  platformDailyLimit: {
+    findUnique: jest.fn().mockResolvedValue(null)
+  },
   post: {
     findMany: jest.fn().mockResolvedValue([])
+  },
+  socialAccount: {
+    findFirst: jest.fn().mockResolvedValue(null),
+    findMany: jest.fn().mockResolvedValue([])
+  },
+  postTarget: {
+    count: jest.fn().mockResolvedValue(0)
   },
   mediaLibrary: {
     updateMany: jest.fn().mockResolvedValue({ count: 0 })
@@ -66,12 +76,17 @@ jest.mock('../../src/config/prisma', () => ({
     mediaLibrary: { updateMany: jest.fn().mockResolvedValue({ count: 0 }) },
     postTarget: {
       deleteMany: jest.fn().mockResolvedValue({ count: 0 }),
-      createMany: jest.fn().mockResolvedValue({ count: 0 })
+      createMany: jest.fn().mockResolvedValue({ count: 0 }),
+      count: jest.fn().mockResolvedValue(0)
     },
     socialAccount: {
       findFirst: jest.fn().mockResolvedValue(null),
       findMany: jest.fn().mockResolvedValue([])
-    }
+    },
+    platformDailyLimit: {
+      findUnique: jest.fn().mockResolvedValue(null)
+    },
+    $queryRaw: jest.fn().mockResolvedValue([])
   }))
 }));
 
@@ -448,6 +463,168 @@ describe('PostService Unit Tests', () => {
       const result = await postService.createPost({ title: 'New Post', status: 'DRAFT' }, 'user-111', 'brand-abc');
       expect(result.title).toBe('New Post');
       expect(postRepository.create).toHaveBeenCalled();
+    });
+  });
+
+  describe('POST_009 - createPost (Fair Use Daily Posting Limit)', () => {
+    const prisma = require('../../src/config/prisma');
+
+    beforeEach(() => {
+      authorizationFacade.hasPermission.mockResolvedValue(true);
+      prisma.socialAccount.findFirst.mockResolvedValue({ id: 'acc-fb-1', brandId: 'brand-abc', platform: 'FACEBOOK', isConnected: true });
+    });
+
+    it('is skipped entirely for a DRAFT post — no imminent publish intent to cap', async () => {
+      prisma.platformDailyLimit.findUnique.mockResolvedValue({ platform: 'FACEBOOK', maxPostsPerDay: 5 });
+      prisma.postTarget.count.mockResolvedValue(999); // would be way over any cap
+
+      postRepository.create.mockResolvedValue({ ...mockPostData, status: 'DRAFT' });
+
+      const result = await postService.createPost(
+        { title: 'Draft post', status: 'DRAFT', targetPlatforms: 'FACEBOOK' },
+        'user-111',
+        'brand-abc'
+      );
+
+      expect(result).toBeDefined();
+      expect(prisma.platformDailyLimit.findUnique).not.toHaveBeenCalled();
+    });
+
+    it('allows a SCHEDULED post when under the daily cap', async () => {
+      prisma.platformDailyLimit.findUnique.mockResolvedValue({ platform: 'FACEBOOK', maxPostsPerDay: 5 });
+      prisma.postTarget.count.mockResolvedValue(3); // 3/5
+
+      postRepository.create.mockResolvedValue({
+        ...mockPostData,
+        id: 'post-daily-1',
+        status: 'SCHEDULED',
+        scheduledAt: new Date(Date.now() + 3600000)
+      });
+
+      const result = await postService.createPost(
+        { title: 'Under cap', status: 'SCHEDULED', scheduledAt: new Date(Date.now() + 3600000).toISOString(), targetPlatforms: 'FACEBOOK' },
+        'user-111',
+        'brand-abc'
+      );
+
+      expect(result.status).toBe('scheduled');
+      expect(postRepository.create).toHaveBeenCalled();
+    });
+
+    it('rejects a SCHEDULED post with a 403 when the target account is already at its daily cap', async () => {
+      prisma.platformDailyLimit.findUnique.mockResolvedValue({ platform: 'FACEBOOK', maxPostsPerDay: 5 });
+      prisma.postTarget.count.mockResolvedValue(5); // 5/5 — at the cap
+
+      await expect(
+        postService.createPost(
+          { title: 'Over cap', status: 'SCHEDULED', scheduledAt: new Date(Date.now() + 3600000).toISOString(), targetPlatforms: 'FACEBOOK' },
+          'user-111',
+          'brand-abc'
+        )
+      ).rejects.toThrow(/Daily posting limit of 5 reached for FACEBOOK/);
+
+      expect(postRepository.create).not.toHaveBeenCalled();
+    });
+
+    it('is a no-op for a platform with no PlatformDailyLimit configured', async () => {
+      prisma.platformDailyLimit.findUnique.mockResolvedValue(null); // no cap configured
+      prisma.postTarget.count.mockResolvedValue(999);
+
+      postRepository.create.mockResolvedValue({
+        ...mockPostData,
+        id: 'post-daily-2',
+        status: 'SCHEDULED',
+        scheduledAt: new Date(Date.now() + 3600000)
+      });
+
+      const result = await postService.createPost(
+        { title: 'No cap configured', status: 'SCHEDULED', scheduledAt: new Date(Date.now() + 3600000).toISOString(), targetPlatforms: 'FACEBOOK' },
+        'user-111',
+        'brand-abc'
+      );
+
+      expect(result.status).toBe('scheduled');
+      expect(postRepository.create).toHaveBeenCalled();
+    });
+
+    it('rolling-window boundary: allows exactly one post below the cap (count = maxPostsPerDay - 1)', async () => {
+      prisma.platformDailyLimit.findUnique.mockResolvedValue({ platform: 'FACEBOOK', maxPostsPerDay: 5 });
+      prisma.postTarget.count.mockResolvedValue(4); // 4/5 — one slot left
+
+      postRepository.create.mockResolvedValue({
+        ...mockPostData,
+        id: 'post-daily-boundary-under',
+        status: 'SCHEDULED',
+        scheduledAt: new Date(Date.now() + 3600000)
+      });
+
+      const result = await postService.createPost(
+        { title: 'Last slot', status: 'SCHEDULED', scheduledAt: new Date(Date.now() + 3600000).toISOString(), targetPlatforms: 'FACEBOOK' },
+        'user-111',
+        'brand-abc'
+      );
+
+      expect(result.status).toBe('scheduled');
+      expect(postRepository.create).toHaveBeenCalled();
+    });
+
+    it('rolling-window boundary: rejects the moment count reaches exactly the cap (count = maxPostsPerDay)', async () => {
+      prisma.platformDailyLimit.findUnique.mockResolvedValue({ platform: 'FACEBOOK', maxPostsPerDay: 5 });
+      prisma.postTarget.count.mockResolvedValue(5); // exactly at cap — >= check must reject, not just >
+
+      await expect(
+        postService.createPost(
+          { title: 'Exactly at cap', status: 'SCHEDULED', scheduledAt: new Date(Date.now() + 3600000).toISOString(), targetPlatforms: 'FACEBOOK' },
+          'user-111',
+          'brand-abc'
+        )
+      ).rejects.toMatchObject({ statusCode: 403 });
+    });
+
+    it('race condition: the locked in-transaction check (lock=true) row-locks the SocialAccount and re-counts, catching a slot filled by a concurrent request after the pre-check passed', async () => {
+      const socialAccountRepository = require('../../src/repositories/social/social-account.repository');
+      const lockSpy = jest.spyOn(socialAccountRepository, 'lockSocialAccountForUpdate').mockResolvedValue(undefined);
+
+      // Pre-check (outside the tx, lock=false) sees 4/5 and lets the request
+      // through to the transaction.
+      prisma.platformDailyLimit.findUnique.mockResolvedValue({ platform: 'FACEBOOK', maxPostsPerDay: 5 });
+      prisma.postTarget.count.mockResolvedValue(4);
+
+      // By the time the locked in-tx re-check runs, a concurrent request has
+      // already published the 5th post — the tx-scoped client must see this
+      // updated count (its own findUnique/count, per the lock=true code path
+      // in _checkDailyPostingLimits), independent of the pre-check's reads.
+      const { $transaction } = prisma;
+      $transaction.mockImplementationOnce((cb) => cb({
+        mediaLibrary: { updateMany: jest.fn().mockResolvedValue({ count: 0 }) },
+        postTarget: {
+          deleteMany: jest.fn().mockResolvedValue({ count: 0 }),
+          createMany: jest.fn().mockResolvedValue({ count: 0 }),
+          count: jest.fn().mockResolvedValue(5) // now at cap
+        },
+        socialAccount: {
+          findFirst: jest.fn().mockResolvedValue({ id: 'acc-fb-1', brandId: 'brand-abc', platform: 'FACEBOOK', isConnected: true }),
+          findMany: jest.fn().mockResolvedValue([])
+        },
+        platformDailyLimit: {
+          findUnique: jest.fn().mockResolvedValue({ platform: 'FACEBOOK', maxPostsPerDay: 5 })
+        },
+        $queryRaw: jest.fn().mockResolvedValue([])
+      }));
+
+      await expect(
+        postService.createPost(
+          { title: 'Lost the race', status: 'SCHEDULED', scheduledAt: new Date(Date.now() + 3600000).toISOString(), targetPlatforms: 'FACEBOOK' },
+          'user-111',
+          'brand-abc'
+        )
+      ).rejects.toMatchObject({ statusCode: 403 });
+
+      // The lock must be acquired inside the transaction before the re-check.
+      expect(lockSpy).toHaveBeenCalledWith('acc-fb-1', expect.anything());
+      expect(postRepository.create).not.toHaveBeenCalled();
+
+      lockSpy.mockRestore();
     });
   });
 

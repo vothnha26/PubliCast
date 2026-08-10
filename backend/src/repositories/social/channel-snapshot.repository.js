@@ -39,6 +39,7 @@
  * typed follower fields.
  */
 const prisma = require('../../config/prisma');
+const { getBrandToday } = require('../../utils/brand-timezone.util');
 
 const FOLLOWER_COLUMNS = new Set(['followersCount', 'followersGained', 'followersLost']);
 
@@ -74,7 +75,14 @@ class ChannelSnapshotRepository {
     if (!Array.isArray(dailyRows) || dailyRows.length === 0) return [];
 
     const { staticColumns = {}, reconstructible = [] } = current;
-    const todayStr = new Date().toISOString().split('T')[0];
+    // "Today" is resolved in the brand's own timezone, not the server's —
+    // dailyRows' own row.date strings come from each platform's analytics
+    // API (already calendar dates in whatever timezone that API reports
+    // them in) and are compared against this as plain strings, so only the
+    // "what day is it right now" reference point needs the brand's
+    // timezone; the per-row dates themselves are left as-is.
+    const brand = await prisma.brand.findUnique({ where: { id: brandId }, select: { timezone: true } });
+    const todayStr = getBrandToday(brand?.timezone).toISOString().split('T')[0];
 
     const rowsToProcess = supportsHistoricalBackfill
       ? [...dailyRows].sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0))

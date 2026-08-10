@@ -132,6 +132,7 @@ model Brand {
   channelMetricsDaily       ChannelMetricDaily[]
   channelDemographics       ChannelDemographic[]
   postMetricsDaily          PostMetricDaily[]
+  postingUsageDaily         PostingUsageDaily[]
   unifiedInbox              UnifiedInbox[]
   reports                   Report[]
   smartLinks                SmartLink[]
@@ -591,6 +592,9 @@ model SocialAccount {
   // 2026-08-10 (all 3 were either dead code paths or, for YouTube, migrated
   // to this same unified pattern — see youtube-video.service.js#getPostInsights).
   postMetricsDaily PostMetricDaily[]
+
+  // Fair Use daily-cap usage log — see PostingUsageDaily's own comment.
+  postingUsageDaily PostingUsageDaily[]
 
   channelGroupMembers ChannelGroupMember[]
 
@@ -1968,6 +1972,67 @@ model PlatformLimit {
   updatedAt         DateTime     @updatedAt
 
   @@unique([platform, subType])
+}
+
+/**
+ * Fair Use daily posting cap per platform (account-level protection against
+ * a platform rate-limiting/banning the account for posting too fast), not
+ * per subType — deliberately a separate model from PlatformLimit above.
+ * PlatformLimit's own key is (platform, subType) because caption/file-size/
+ * format limits genuinely differ per content type (POST vs REEL vs STORY);
+ * a daily posting cap does not — Facebook's real limit is one number for
+ * the whole account regardless of whether a given post is a POST or a REEL.
+ * Storing it on PlatformLimit would mean the same value duplicated across
+ * every subType row for a platform (3 rows for FACEBOOK/INSTAGRAM), with no
+ * enforcement that an admin editing one keeps the others in sync.
+ *
+ * Enforced via a rolling 24h window (PostTarget.publishedAt >= now-24h),
+ * not this table — this only holds the configured ceiling. See
+ * posting-usage-daily.repository.js for the separate calendar-day usage
+ * log this cap is checked against (for enforcement) and reported from (for
+ * admin analytics).
+ */
+model PlatformDailyLimit {
+  id             String       @id @default(uuid())
+  platform       PlatformType @unique
+  maxPostsPerDay Int
+  isLocked       Boolean      @default(false)
+  lockReason     String?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+}
+
+/**
+ * Calendar-day usage log for the Fair Use daily posting cap — write-only
+ * side effect of a real successful publish (incremented in
+ * social-publish.step.js right after a PostTarget flips to PUBLISHED),
+ * never read to decide whether to allow a publish. That enforcement
+ * decision uses a rolling 24h COUNT(*) over PostTarget directly (see
+ * post-target.repository.js#countPublishedInLast24h) — a calendar-day
+ * bucket here would let a post at 23:59 and another at 00:01 both count
+ * against "today"'s (now empty) bucket, defeating the whole point of the
+ * cap. This table exists purely so admin analytics ("what % of accounts
+ * are hitting their daily cap this month") can query cheap pre-aggregated
+ * rows instead of re-scanning raw PostTarget history — a rolling window
+ * has no fixed daily buckets to hang a report page on.
+ */
+model PostingUsageDaily {
+  id              String       @id @default(uuid())
+  brandId         String
+  socialAccountId String
+  platform        PlatformType
+  snapshotDate    DateTime     @db.Date // calendar-day, in Brand.timezone
+  publishedCount  Int          @default(0)
+  limitAtDate     Int? // PlatformDailyLimit.maxPostsPerDay at write time — preserves history if the admin changes the cap later
+  fetchedAt       DateTime     @default(now())
+  createdAt       DateTime     @default(now())
+
+  brand         Brand         @relation(fields: [brandId], references: [id], onDelete: Cascade)
+  socialAccount SocialAccount @relation(fields: [socialAccountId], references: [id], onDelete: Cascade)
+
+  @@unique([socialAccountId, snapshotDate, platform])
+  @@index([brandId])
+  @@index([platform, snapshotDate])
 }
 
 model AutoReplySetting {
