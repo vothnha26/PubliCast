@@ -609,31 +609,14 @@ class InboxService {
       ]
     };
 
-    let { items } = await inboxRepository.findManyAndCount(initialWhere, { skip: 0, take: 50 });
-
-    if (!items || items.length === 0) {
-      // If DB has 0 synced comments for this post, attempt live sync for the specific video/post
-      try {
-        const inbox = await inboxRepository.findOrCreateInbox(brandId);
-        const dbPost = await prisma.post.findFirst({
-          where: { OR: [{ id: postId }, { platformPostId: { contains: postId } }], brandId }
-        });
-        let platform = (postId && String(postId).startsWith('at://'))
-          ? PLATFORMS.BLUESKY
-          : (postId && postId.length === 11 ? PLATFORMS.YOUTUBE : null);
-        if (!platform && dbPost?.targetPlatforms) {
-          platform = dbPost.targetPlatforms.split(',')[0]?.trim()?.toUpperCase();
-        }
-
-        if (platform && inboxSyncFactory.isSupported(platform)) {
-          await inboxFacade.syncPostComments(brandId, platform, postId, inbox);
-          const reCheck = await inboxRepository.findManyAndCount(initialWhere, { skip: 0, take: 50 });
-          items = reCheck.items;
-        }
-      } catch (err) {
-        console.warn(`[getCommentsByPost] Live sync fallback failed for ${postId}:`, err.message);
-      }
-    }
+    // No auto live-sync fallback here on purpose — this is a read path
+    // (fired every time a user opens a post in the inbox), and silently
+    // calling a platform's live API on every click of an unsynced post
+    // burns real API quota (YouTube's daily cap in particular) with no user
+    // awareness or rate limiting. If DB has 0 synced comments, return empty
+    // and let the user hit the existing manual Sync button (handleSync in
+    // Inbox.jsx) when they actually want to fetch new comments.
+    const { items } = await inboxRepository.findManyAndCount(initialWhere, { skip: 0, take: 50 });
 
     if (!items || items.length === 0) {
       return { data: [], thread: [], videoContext: null };
