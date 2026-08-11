@@ -32,7 +32,15 @@ export function useInstagramPresetComposer() {
     sa => (sa.platform || '').toUpperCase() === PLATFORMS.INSTAGRAM.toUpperCase() && selectedAccountIds.includes(sa.id)
   );
 
-  const targetAccountId = activeNetworkAccountId || (instagramAccounts.length === 1 ? instagramAccounts[0]?.id : null);
+  // accountId must be null for the single-account case — matches the
+  // convention every other write path uses (updateNetworkMedia/
+  // updateNetworkCaption). Falling back to the account's real id here
+  // instead of null would write settings into entry.perAccount[id] while
+  // media/caption stay on the top-level entry — buildNetworkOverrides's
+  // effectiveEntryFor prefers perAccount[id] when present, so it would then
+  // read that shadow slot's empty useTemplate/mediaUrls instead of the real
+  // customized content.
+  const targetAccountId = instagramAccounts.length > 1 ? activeNetworkAccountId : null;
 
   const igEntry = networkCustom?.[PLATFORMS.INSTAGRAM];
   const accountSettings = targetAccountId
