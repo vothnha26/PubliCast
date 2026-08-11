@@ -89,25 +89,42 @@ describe('YouTubeService', () => {
   });
 
   describe('connectChannel', () => {
-    it('should exchange code and upsert account', async () => {
+    it('persists the account from identity alone (fast path), without waiting on analytics', async () => {
       const mockTokens = { access_token: 'abc', refresh_token: 'def' };
-      const mockChannelData = { channelId: 'UC123', statistics: {}, snippet: {} };
-      
+      const mockIdentity = { channelId: 'UC123', statistics: {}, snippet: {} };
+      let resolveAnalytics;
+
       googleOAuthService.getTokens.mockResolvedValue(mockTokens);
       googleOAuthService.createClient.mockReturnValue({
         setCredentials: jest.fn()
       });
-      
-      const getChannelInfoSpy = jest.spyOn(youtubeAnalytics, 'getChannelInfo').mockResolvedValue(mockChannelData);
+
+      const getChannelIdentitySpy = jest.spyOn(youtubeAnalytics, 'getChannelIdentity').mockResolvedValue(mockIdentity);
+      // Held open (not resolved yet) to prove connectChannel's returned
+      // promise does NOT await analytics/backfill — the whole point of the
+      // fast/slow split. Resolved and awaited at the end so the background
+      // .then() chain settles before the test (and jest's module registry)
+      // tears down, avoiding an unhandled rejection / "import after teardown".
+      const getAnalyticsReportSpy = jest.spyOn(youtubeAnalytics, 'getAnalyticsReport')
+        .mockReturnValue(new Promise((resolve) => { resolveAnalytics = resolve; }));
       socialAccountRepository.upsertYouTubeAccount.mockResolvedValue({ id: 'sa1' });
+
+      const brandRepository = require('../../src/repositories/workspace/brand.repository');
+      jest.spyOn(brandRepository, 'findBrandWithSubscription').mockResolvedValue(null);
 
       const result = await youtubeService.connectChannel('brand1', 'code123');
 
       expect(googleOAuthService.getTokens).toHaveBeenCalledWith('code123', undefined);
-      expect(socialAccountRepository.upsertYouTubeAccount).toHaveBeenCalledWith('brand1', mockChannelData, mockTokens);
+      expect(getChannelIdentitySpy).toHaveBeenCalled();
+      expect(socialAccountRepository.upsertYouTubeAccount).toHaveBeenCalledWith('brand1', mockIdentity, mockTokens);
       expect(result.id).toBe('sa1');
-      
-      getChannelInfoSpy.mockRestore();
+
+      resolveAnalytics({ growth: [] });
+      await new Promise((resolve) => setImmediate(resolve));
+
+      getChannelIdentitySpy.mockRestore();
+      getAnalyticsReportSpy.mockRestore();
+      brandRepository.findBrandWithSubscription.mockRestore();
     });
   });
 

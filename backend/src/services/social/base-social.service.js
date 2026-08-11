@@ -1,4 +1,5 @@
 const appConfig = require('../../config/app.config');
+const logger = require('../../utils/logger');
 
 /**
  * Lớp cơ sở trừu tượng (Abstract Base Class) định nghĩa giao diện chung cho các Social Platform Services.
@@ -26,6 +27,61 @@ class BaseSocialService {
 
   async connectChannel(brandId, code, redirectUri) {
     throw new Error("Method 'connectChannel()' must be implemented.");
+  }
+
+  /**
+   * TEMPLATE METHOD: standardized connect-channel pipeline. Every platform's
+   * connectChannel() used to do "exchange token → fetch identity → fetch
+   * FULL historical analytics (up to 60s, real API calls) → persist" as one
+   * long await chain — the OAuth callback response (and the user staring at
+   * a blank redirect) blocked on the slowest step. This flips the order:
+   * only identity (fast: token exchange + basic profile, no analytics) is
+   * awaited before persisting the account and returning, so the redirect
+   * fires almost immediately. Historical analytics + channel-snapshot
+   * backfill run in the background afterward (fire-and-forget) and simply
+   * update the already-connected account when done.
+   *
+   * Hook methods (implemented per platform):
+   *  1. connectExchangeAuth(code, redirectUri, extra)   — token/auth exchange
+   *  2. connectFetchIdentity(authResult, extra)          — basic profile/channel
+   *     info only, NO analytics/insights call
+   *  3. connectPersistAccount(brandId, identity, authResult, extra) — conflict
+   *     check + upsert, called WITHOUT analytics data
+   *  4. connectBackfillHistory(brandId, account, identity, authResult, extra)
+   *     — OPTIONAL. Fetches historical analytics and re-upserts to backfill.
+   *     Runs unawaited; the default no-op is fine for platforms (TikTok)
+   *     that don't backfill anything at connect time.
+   */
+  async executeConnectPipeline(brandId, code, redirectUri, extra = {}) {
+    const authResult = await this.connectExchangeAuth(code, redirectUri, extra);
+    const identity = await this.connectFetchIdentity(authResult, extra);
+    const account = await this.connectPersistAccount(brandId, identity, authResult, extra);
+
+    Promise.resolve()
+      .then(() => this.connectBackfillHistory(brandId, account, identity, authResult, extra))
+      .catch((err) => {
+        logger.error(`[${this.constructor.name}] Post-connect historical backfill failed for account ${account?.id} (connect still succeeded):`, err);
+      });
+
+    return account;
+  }
+
+  async connectExchangeAuth(code, redirectUri, extra = {}) {
+    throw new Error("Hook method 'connectExchangeAuth()' must be implemented by subclass.");
+  }
+
+  async connectFetchIdentity(authResult, extra = {}) {
+    throw new Error("Hook method 'connectFetchIdentity()' must be implemented by subclass.");
+  }
+
+  async connectPersistAccount(brandId, identity, authResult, extra = {}) {
+    throw new Error("Hook method 'connectPersistAccount()' must be implemented by subclass.");
+  }
+
+  // Default no-op — platforms with no connect-time historical backfill
+  // (TikTok) don't need to override this.
+  async connectBackfillHistory(brandId, account, identity, authResult, extra = {}) {
+    return null;
   }
 
   async syncChannelMetrics(socialAccountId, startDate, endDate) {

@@ -14,7 +14,53 @@ class YouTubeService extends BaseSocialService {
   }
 
   async connectChannel(brandId, code, redirectUri) {
-    return youtubeAnalytics.connectChannel(brandId, code, redirectUri);
+    return this.executeConnectPipeline(brandId, code, redirectUri);
+  }
+
+  // --- Connect Pipeline Hook Implementations ---
+  async connectExchangeAuth(code, redirectUri) {
+    const googleOAuthService = require('../google-oauth.service');
+    const tokens = await googleOAuthService.getTokens(code, redirectUri);
+    const client = googleOAuthService.createClient(redirectUri);
+    client.setCredentials(tokens);
+    return { tokens, client };
+  }
+
+  async connectFetchIdentity({ client }) {
+    return youtubeAnalytics.getChannelIdentity(client);
+  }
+
+  async connectPersistAccount(brandId, identity, { tokens }) {
+    const { ConnectionConflictGuard, ConnectionConflictError } = require('../connection-conflict.guard');
+    const { PLATFORMS } = require('../../../utils/constants');
+    const conflictResult = await ConnectionConflictGuard.validateConflict(brandId, PLATFORMS.YOUTUBE, identity.channelId);
+    if (conflictResult.conflict) {
+      throw new ConnectionConflictError(
+        conflictResult.type,
+        identity.displayName,
+        identity.channelId,
+        PLATFORMS.YOUTUBE,
+        conflictResult.existingAccount.brand.name
+      );
+    }
+    const socialAccountRepository = require('../../../repositories/social/social-account.repository');
+    return socialAccountRepository.upsertYouTubeAccount(brandId, identity, tokens);
+  }
+
+  async connectBackfillHistory(brandId, account, identity, { client, tokens }) {
+    const { getHistoryWindowMonths } = require('../plan-history-window.util');
+    const windowMonths = await getHistoryWindowMonths(brandId);
+    const backfillStart = new Date();
+    backfillStart.setMonth(backfillStart.getMonth() - windowMonths);
+    const startDate = backfillStart.toISOString().split('T')[0];
+    const endDate = new Date().toISOString().split('T')[0];
+
+    const analytics = await youtubeAnalytics.getAnalyticsReport(client, startDate, endDate);
+    const socialAccountRepository = require('../../../repositories/social/social-account.repository');
+    // enqueueSync: false — this only backfills historical data for the
+    // account the fast path already connected; it must not enqueue a
+    // second SOCIAL_SYNC_ENQUEUE outbox event for the same connect.
+    return socialAccountRepository.upsertYouTubeAccount(brandId, { ...identity, analytics }, tokens, { enqueueSync: false });
   }
 
   async syncChannelMetrics(socialAccountId, startDate, endDate) {

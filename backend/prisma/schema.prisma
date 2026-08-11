@@ -1702,6 +1702,7 @@ model MediaLibrary {
 
   @@index([brandId])
   @@index([source])
+  @@index([isUsed, createdAt])
   @@map("media_library")
 }
 

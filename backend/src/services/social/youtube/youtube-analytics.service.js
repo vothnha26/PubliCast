@@ -75,6 +75,55 @@ class YouTubeAnalyticsService {
     return [];
   }
 
+  /**
+   * Fast-path identity fetch for the connect pipeline (executeConnectPipeline
+   * in base-social.service.js) — same channel-list call as getChannelInfo's
+   * fetchRealData, but stops there instead of also awaiting the full
+   * historical getAnalyticsReport() call (up to 60s). Auth-failure detection
+   * is duplicated from getChannelInfo's catch block on purpose: a revoked/
+   * invalid token must still fail loudly here so connectChannel's caller
+   * (the OAuth callback) can show a real error instead of silently
+   * connecting an empty-data channel.
+   */
+  async getChannelIdentity(auth) {
+    const accessToken = auth?.credentials?.access_token;
+    if (accessToken && accessToken.startsWith('mock-')) {
+      return this._getEmptyChannelInfo(null);
+    }
+
+    try {
+      const response = await youtubeGateway.getChannelList(auth, true);
+      if (!response.data.items || response.data.items.length === 0) {
+        throw new Error('No YouTube channel found for this account');
+      }
+      const channel = response.data.items[0];
+      return {
+        channelId: channel.id,
+        username: channel.snippet.customUrl || channel.snippet.title,
+        displayName: channel.snippet.title,
+        profilePictureUrl: channel.snippet.thumbnails.default.url,
+        statistics: channel.statistics,
+        snippet: channel.snippet,
+        uploadsPlaylistId: channel.contentDetails.relatedPlaylists.uploads
+      };
+    } catch (error) {
+      if (error.message === 'No YouTube channel found for this account') {
+        throw error;
+      }
+      const { parseGoogleApiError } = require('./youtube-error.util');
+      const { status, reason } = parseGoogleApiError(error);
+      const errMsg = error.message ? error.message.toLowerCase() : '';
+      const isAuthError = status === 401 || reason === 'authError' || reason === 'unauthorized' || reason === 'invalid_grant'
+        || error.code === 'invalid_grant' || error.code === 401
+        || errMsg.includes('invalid_grant') || errMsg.includes('invalid credentials')
+        || errMsg.includes('unauthorized') || errMsg.includes('401');
+      if (isAuthError) {
+        console.error(`[YouTube Analytics] Authentication failure during connect identity fetch: ${error.message}`);
+      }
+      throw error;
+    }
+  }
+
   async getChannelInfo(auth, startDate, endDate, account = null) {
     const accessToken = auth?.credentials?.access_token;
     if (accessToken && accessToken.startsWith('mock-')) {

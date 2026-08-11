@@ -43,6 +43,18 @@ class FacebookAnalyticsService {
     return this._calculateTotalsAndFormatResponse(sortedDates, currentFollowersCount || 0, feedStats, []);
   }
 
+  /**
+   * Fast-path identity fetch for the connect pipeline (executeConnectPipeline
+   * in base-social.service.js) — just the page details call, without also
+   * awaiting getAnalyticsReport's full historical insights fetch (up to 60s).
+   */
+  async getPageIdentity(pageId, pageAccessToken) {
+    if (pageAccessToken && pageAccessToken.startsWith('mock-')) {
+      return this._getEmptyChannelInfo(pageId);
+    }
+    return facebookGateway.getPageDetails(pageId, pageAccessToken);
+  }
+
   async getChannelInfo(auth, startDate, endDate, socialAccountId = null) {
     let account = null;
     if (socialAccountId) {

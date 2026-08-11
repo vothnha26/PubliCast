@@ -15,70 +15,110 @@ class InstagramService extends BaseSocialService {
   }
 
   async connectChannel(brandId, code, redirectUri) {
+    return this.executeConnectPipeline(brandId, code, redirectUri);
+  }
+
+  // --- Connect Pipeline Hook Implementations ---
+  async connectExchangeAuth(code, redirectUri) {
     const facebookGateway = require('../facebook/facebook.gateway');
+    const instagramGateway = require('./instagram.gateway');
     const tokens = await facebookGateway.exchangeCodeForToken(code, redirectUri);
-    
-    // Diagnostics
+
     const permissions = await facebookGateway.getUserPermissions(tokens.access_token).catch(() => []);
     const pages = await facebookGateway.getUserPages(tokens.access_token);
 
     logger.debug('[Instagram Connect Diagnostics]', {
       permissions,
       pagesCount: pages.length,
-      pages: pages.map(p => ({ id: p.id, name: p.name }))
+      pages: pages.map((p) => ({ id: p.id, name: p.name }))
     });
 
     if (pages.length === 0) {
-      const scopes = permissions.map(p => `${p.permission}:${p.status}`).join(', ');
+      const scopes = permissions.map((p) => `${p.permission}:${p.status}`).join(', ');
       throw new Error(`Không tìm thấy Trang Facebook. Quyền đã cấp: [${scopes || 'none'}]. Hãy đảm bảo tài khoản FB của bạn có quyền Quản trị (Admin) trên Trang.`);
     }
 
-    // Tìm kiếm page có linked Instagram business account
+    // Find the first page with a linked Instagram business account. Uses the
+    // lightweight gateway call directly (identity only, no analytics/insights
+    // fetch) — previously this looped calling instagramAnalytics.getChannelInfo
+    // per page, which meant the full 60s-timeout analytics fetch could run
+    // once per page just to find the right one, before persisting anything.
     let selectedPage = null;
-    let igAccountData = null;
-
+    let igIdentity = null;
     for (const page of pages) {
-      const igInfo = await instagramAnalytics.getChannelInfo({ pageId: page.id, pageAccessToken: page.access_token }).catch(() => null);
+      const igInfo = await instagramGateway.getInstagramAccountForPage(page.id, page.access_token).catch(() => null);
       if (igInfo && igInfo.igAccountId) {
         selectedPage = page;
-        igAccountData = igInfo;
+        igIdentity = igInfo;
         break;
       }
     }
 
-    if (!selectedPage || !igAccountData) {
+    if (!selectedPage || !igIdentity) {
       throw new Error('No Instagram Professional Account linked to your Facebook Pages was found.');
     }
 
+    return { tokens, selectedPage, igIdentity };
+  }
+
+  async connectFetchIdentity({ igIdentity }) {
+    return igIdentity;
+  }
+
+  async connectPersistAccount(brandId, identity, { tokens, selectedPage }) {
     const { ConnectionConflictGuard, ConnectionConflictError } = require('../connection-conflict.guard');
-    const conflictResult = await ConnectionConflictGuard.validateConflict(brandId, require('../../../utils/constants').PLATFORMS.INSTAGRAM, igAccountData.igAccountId);
-    
+    const { PLATFORMS } = require('../../../utils/constants');
+    const conflictResult = await ConnectionConflictGuard.validateConflict(brandId, PLATFORMS.INSTAGRAM, identity.igAccountId);
     if (conflictResult.conflict) {
       throw new ConnectionConflictError(
         conflictResult.type,
-        igAccountData.displayName,
-        igAccountData.igAccountId,
-        require('../../../utils/constants').PLATFORMS.INSTAGRAM,
+        identity.displayName,
+        identity.igAccountId,
+        PLATFORMS.INSTAGRAM,
         conflictResult.existingAccount.brand.name
       );
     }
-    
-    return require('../../../repositories/social/social-account.repository').upsertInstagramAccount(brandId, {
-      igAccountId: igAccountData.igAccountId,
+
+    const socialAccountRepository = require('../../../repositories/social/social-account.repository');
+    return socialAccountRepository.upsertInstagramAccount(brandId, {
+      igAccountId: identity.igAccountId,
       facebookPageId: selectedPage.id,
-      username: igAccountData.username,
-      displayName: igAccountData.displayName,
-      profilePictureUrl: igAccountData.profilePictureUrl,
-      followersCount: igAccountData.followersCount,
-      followingCount: igAccountData.followingCount,
-      mediaCount: igAccountData.mediaCount,
-      biography: igAccountData.biography,
-      website: igAccountData.website,
-      analytics: igAccountData.analytics
+      username: identity.username,
+      displayName: identity.displayName,
+      profilePictureUrl: identity.profilePictureUrl,
+      followersCount: identity.followersCount,
+      followingCount: identity.followingCount,
+      mediaCount: identity.mediaCount,
+      biography: identity.biography,
+      website: identity.website
     }, {
       access_token: selectedPage.access_token,
       refresh_token: tokens.access_token
     });
+  }
+
+  async connectBackfillHistory(brandId, account, identity, { tokens, selectedPage }) {
+    const analyticsData = await instagramAnalytics.getAnalyticsReport(identity.igAccountId, selectedPage.access_token, undefined, undefined, identity.followersCount);
+    const socialAccountRepository = require('../../../repositories/social/social-account.repository');
+    // enqueueSync: false — this only backfills historical data for the
+    // account the fast path already connected; it must not enqueue a
+    // second SOCIAL_SYNC_ENQUEUE outbox event for the same connect.
+    return socialAccountRepository.upsertInstagramAccount(brandId, {
+      igAccountId: identity.igAccountId,
+      facebookPageId: selectedPage.id,
+      username: identity.username,
+      displayName: identity.displayName,
+      profilePictureUrl: identity.profilePictureUrl,
+      followersCount: identity.followersCount,
+      followingCount: identity.followingCount,
+      mediaCount: identity.mediaCount,
+      biography: identity.biography,
+      website: identity.website,
+      analytics: analyticsData
+    }, {
+      access_token: selectedPage.access_token,
+      refresh_token: tokens.access_token
+    }, { enqueueSync: false });
   }
 
   async syncChannelMetrics(socialAccountId, startDate, endDate, force = false) {

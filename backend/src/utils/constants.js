@@ -811,6 +811,13 @@ const LOCK_CONFIG = {
     // without a slow scan run risking self-blocking the next cycle's lock.
     TTL_SEC: 5 * 60
   },
+  MEDIA_CLEANUP_SCHEDULER: {
+    KEY: 'lock:media-cleanup-scheduler:scan',
+    // Covers a DB query + a batch of QStash publishJSON calls (the actual
+    // Cloudinary destroy + DB delete happen per-item in the media-cleanup
+    // QStash webhook, not here) — mirrors SOCIAL_METRICS_SYNC_SCHEDULER's TTL.
+    TTL_SEC: 10 * 60
+  },
   POSTS_SYNC_SCHEDULER: {
     KEY: 'lock:posts-sync-scheduler:scan',
     TTL_SEC: 5 * 60
