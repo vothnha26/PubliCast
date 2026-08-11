@@ -108,12 +108,6 @@ class SocialAccountRepository {
         }
       });
 
-      if (pageData.analytics) {
-        const { startDate, endDate } = pageData.analytics;
-        await this.saveFacebookAnalytics(brandId, account.id, pageData.analytics, startDate, endDate, tx);
-        await this.upsertFacebookChannelSnapshots(brandId, account.id, followersCount, likesCount, pageData.analytics.balance, pageData.analytics.growth, tx);
-      }
-
       if (enqueueSync) {
         await outboxEventRepository.create(
           OUTBOX_EVENT_TYPES.SOCIAL_SYNC_ENQUEUE,
@@ -124,8 +118,29 @@ class SocialAccountRepository {
         );
       }
 
-      return this.findById(account.id, tx);
-    }, { timeout: PRISMA_TIMEOUTS.INTERACTIVE_TRANSACTION_MS });
+      return account.id;
+    }, { timeout: PRISMA_TIMEOUTS.INTERACTIVE_TRANSACTION_MS }).then(async (accountId) => {
+      // Historical-backfill writes (saveFacebookAnalytics/upsertFacebookChannelSnapshots
+      // loop through one upsert per day) run OUTSIDE the transaction above —
+      // a first-time connect can pull weeks of Insights data, and looping
+      // that many sequential writes inside a 20s interactive transaction
+      // risked Prisma closing it mid-run (P2028), which then poisoned the
+      // connection pool for unrelated requests right after. The account
+      // itself is already committed at this point, so a backfill failure
+      // here must not roll back a successful connect — it's logged and
+      // surfaced without undoing the connection.
+      if (pageData.analytics) {
+        const { startDate, endDate } = pageData.analytics;
+        try {
+          await this.saveFacebookAnalytics(brandId, accountId, pageData.analytics, startDate, endDate);
+          await this.upsertFacebookChannelSnapshots(brandId, accountId, followersCount, likesCount, pageData.analytics.balance, pageData.analytics.growth);
+        } catch (err) {
+          logger.error(`[SocialAccountRepository] Facebook historical backfill failed for account ${accountId} (connect still succeeded):`, err);
+        }
+      }
+
+      return this.findById(accountId);
+    });
   }
 
   /**
@@ -225,12 +240,6 @@ class SocialAccountRepository {
         }
       });
 
-      if (accountData.analytics) {
-        const { startDate, endDate } = accountData.analytics;
-        await this.saveTikTokAnalytics(brandId, account.id, accountData.analytics, startDate, endDate, tx);
-        await this.upsertTikTokChannelSnapshots(brandId, account.id, followersCount, followingCount, likesCount, videoCount, accountData.analytics.growth, tx);
-      }
-
       if (enqueueSync) {
         await outboxEventRepository.create(
           OUTBOX_EVENT_TYPES.SOCIAL_SYNC_ENQUEUE,
@@ -241,8 +250,22 @@ class SocialAccountRepository {
         );
       }
 
-      return this.findById(account.id, tx);
-    }, { timeout: PRISMA_TIMEOUTS.INTERACTIVE_TRANSACTION_MS });
+      return account.id;
+    }, { timeout: PRISMA_TIMEOUTS.INTERACTIVE_TRANSACTION_MS }).then(async (accountId) => {
+      // Historical backfill runs outside the transaction — see the matching
+      // comment in upsertFacebookAccount for why (P2028 + poisoned pool risk).
+      if (accountData.analytics) {
+        const { startDate, endDate } = accountData.analytics;
+        try {
+          await this.saveTikTokAnalytics(brandId, accountId, accountData.analytics, startDate, endDate);
+          await this.upsertTikTokChannelSnapshots(brandId, accountId, followersCount, followingCount, likesCount, videoCount, accountData.analytics.growth);
+        } catch (err) {
+          logger.error(`[SocialAccountRepository] TikTok historical backfill failed for account ${accountId} (connect still succeeded):`, err);
+        }
+      }
+
+      return this.findById(accountId);
+    });
   }
 
   /**
@@ -466,20 +489,6 @@ class SocialAccountRepository {
         }
       });
 
-      if (analytics) {
-        const growthRows = Array.isArray(analytics.growth) ? analytics.growth : [];
-        const firstDate = growthRows[0]?.date;
-        const lastDate = growthRows[growthRows.length - 1]?.date;
-        await this.saveYouTubeAnalytics(brandId, account.id, analytics, firstDate, lastDate, tx);
-
-        // growthRows spans the whole requested window (30 days by default,
-        // or the full connect-time backfill range) — explode every day into
-        // its own snapshot row instead of only upserting "today", so a
-        // first connect immediately has real day-by-day history instead of
-        // starting from a single point and accumulating one row per sync.
-        await this.upsertYouTubeChannelSnapshots(brandId, account.id, statistics, growthRows, tx);
-      }
-
       if (enqueueSync) {
         await outboxEventRepository.create(
           OUTBOX_EVENT_TYPES.SOCIAL_SYNC_ENQUEUE,
@@ -490,8 +499,29 @@ class SocialAccountRepository {
         );
       }
 
-      return this.findById(account.id, tx);
-    }, { timeout: PRISMA_TIMEOUTS.INTERACTIVE_TRANSACTION_MS });
+      return account.id;
+    }, { timeout: PRISMA_TIMEOUTS.INTERACTIVE_TRANSACTION_MS }).then(async (accountId) => {
+      // Historical backfill runs outside the transaction — see the matching
+      // comment in upsertFacebookAccount for why (P2028 + poisoned pool risk).
+      // growthRows spans the whole requested window (30 days by default, or
+      // the full connect-time backfill range) — explode every day into its
+      // own snapshot row instead of only upserting "today", so a first
+      // connect immediately has real day-by-day history instead of starting
+      // from a single point and accumulating one row per sync.
+      if (analytics) {
+        const growthRows = Array.isArray(analytics.growth) ? analytics.growth : [];
+        const firstDate = growthRows[0]?.date;
+        const lastDate = growthRows[growthRows.length - 1]?.date;
+        try {
+          await this.saveYouTubeAnalytics(brandId, accountId, analytics, firstDate, lastDate);
+          await this.upsertYouTubeChannelSnapshots(brandId, accountId, statistics, growthRows);
+        } catch (err) {
+          logger.error(`[SocialAccountRepository] YouTube historical backfill failed for account ${accountId} (connect still succeeded):`, err);
+        }
+      }
+
+      return this.findById(accountId);
+    });
   }
 
   /**
@@ -700,12 +730,6 @@ class SocialAccountRepository {
         }
       });
 
-      if (accountData.analytics) {
-        const { startDate, endDate } = accountData.analytics;
-        await this.saveInstagramAnalytics(brandId, account.id, accountData.analytics, startDate, endDate, tx, PLATFORMS.INSTAGRAM);
-        await this.upsertInstagramChannelSnapshots(brandId, account.id, followersCount, followingCount, mediaCount, accountData.analytics.balance, accountData.analytics.growth, tx);
-      }
-
       if (enqueueSync) {
         await outboxEventRepository.create(
           OUTBOX_EVENT_TYPES.SOCIAL_SYNC_ENQUEUE,
@@ -716,8 +740,22 @@ class SocialAccountRepository {
         );
       }
 
-      return this.findById(account.id, tx);
-    }, { timeout: PRISMA_TIMEOUTS.INTERACTIVE_TRANSACTION_MS });
+      return account.id;
+    }, { timeout: PRISMA_TIMEOUTS.INTERACTIVE_TRANSACTION_MS }).then(async (accountId) => {
+      // Historical backfill runs outside the transaction — see the matching
+      // comment in upsertFacebookAccount for why (P2028 + poisoned pool risk).
+      if (accountData.analytics) {
+        const { startDate, endDate } = accountData.analytics;
+        try {
+          await this.saveInstagramAnalytics(brandId, accountId, accountData.analytics, startDate, endDate, undefined, PLATFORMS.INSTAGRAM);
+          await this.upsertInstagramChannelSnapshots(brandId, accountId, followersCount, followingCount, mediaCount, accountData.analytics.balance, accountData.analytics.growth);
+        } catch (err) {
+          logger.error(`[SocialAccountRepository] Instagram historical backfill failed for account ${accountId} (connect still succeeded):`, err);
+        }
+      }
+
+      return this.findById(accountId);
+    });
   }
 
   /**
@@ -872,12 +910,6 @@ class SocialAccountRepository {
         }
       });
 
-      if (accountData.analytics) {
-        const { startDate, endDate } = accountData.analytics;
-        await this.saveInstagramAnalytics(brandId, account.id, accountData.analytics, startDate, endDate, tx, PLATFORMS.THREADS);
-        await this.upsertThreadsChannelSnapshots(brandId, account.id, followersCount, accountData.analytics.balance, accountData.analytics.growth, tx);
-      }
-
       if (enqueueSync) {
         await outboxEventRepository.create(
           OUTBOX_EVENT_TYPES.SOCIAL_SYNC_ENQUEUE,
@@ -888,8 +920,22 @@ class SocialAccountRepository {
         );
       }
 
-      return this.findById(account.id, tx);
-    }, { timeout: PRISMA_TIMEOUTS.INTERACTIVE_TRANSACTION_MS });
+      return account.id;
+    }, { timeout: PRISMA_TIMEOUTS.INTERACTIVE_TRANSACTION_MS }).then(async (accountId) => {
+      // Historical backfill runs outside the transaction — see the matching
+      // comment in upsertFacebookAccount for why (P2028 + poisoned pool risk).
+      if (accountData.analytics) {
+        const { startDate, endDate } = accountData.analytics;
+        try {
+          await this.saveInstagramAnalytics(brandId, accountId, accountData.analytics, startDate, endDate, undefined, PLATFORMS.THREADS);
+          await this.upsertThreadsChannelSnapshots(brandId, accountId, followersCount, accountData.analytics.balance, accountData.analytics.growth);
+        } catch (err) {
+          logger.error(`[SocialAccountRepository] Threads historical backfill failed for account ${accountId} (connect still succeeded):`, err);
+        }
+      }
+
+      return this.findById(accountId);
+    });
   }
 
   /**
