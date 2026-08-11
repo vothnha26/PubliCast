@@ -39,7 +39,11 @@ class BlueskyController {
   getBlueskyAuthUrl = asyncHandler(async (req, res) => {
     const { brandId } = req.query;
     if (!brandId) return res.status(400).json({ message: 'brandId is required' });
+    const url = await this._buildBlueskyAuthUrl(req, brandId);
+    return res.json({ url });
+  });
 
+  async _buildBlueskyAuthUrl(req, brandId) {
     const baseUrl = this._getRedirectBaseUrl(req);
     const redirectUri = `${baseUrl}/api/social/bluesky/callback`;
     const clientId = process.env.BLUESKY_CLIENT_ID || `${baseUrl}/api/social/bluesky/client-metadata.json`;
@@ -94,7 +98,7 @@ class BlueskyController {
       });
 
       const authUrl = `${oauthHost}/oauth/authorize?client_id=${encodeURIComponent(clientId)}&request_uri=${encodeURIComponent(requestUri)}`;
-      return res.json({ url: authUrl });
+      return authUrl;
     } catch (err) {
       logger.warn('[BlueskyController] PAR flow failed, falling back to direct authorize:', { message: err.message, stack: err.stack });
 
@@ -109,9 +113,9 @@ class BlueskyController {
       });
 
       const fallbackUrl = `${oauthHost}/oauth/authorize?${params.toString()}`;
-      return res.json({ url: fallbackUrl });
+      return fallbackUrl;
     }
-  });
+  }
 
   blueskyCallback = asyncHandler(async (req, res) => {
     const { code, state } = req.query;
