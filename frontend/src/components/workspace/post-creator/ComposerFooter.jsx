@@ -59,7 +59,7 @@ export function ComposerFooter({ isNetworkCustomize = false, onCloseNetworkCusto
 
       {/* Right side: Customize per network button / Next Available date selector / Publish button — pinned, never scrolls */}
       <div className="flex items-center gap-2 shrink-0">
-        {!isNetworkCustomize && !isLibrary && selectedAccountIds.length > 1 && (
+        {!isNetworkCustomize && !isLibrary && selectedAccountIds.length >= 1 && (
           <button
             type="button"
             onClick={() => setIsNetworkCustomizeOpen(true)}
