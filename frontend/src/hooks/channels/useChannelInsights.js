@@ -3,11 +3,12 @@ import { eachDayOfInterval, format } from "date-fns";
 import { toast } from "sonner";
 import { useBrand } from "../../context/BrandContext";
 import socialService from "../../services/social.service";
-import postService from "../../services/post.service";
 import socketClient from "../../services/socket";
 import { useMetricsQuery } from "../queries/useMetricsQuery";
+import { useChannelInsightsSummaryQuery } from "../queries/useChannelInsightsSummaryQuery";
 import { useDateRangeQuery } from "../useDateRangeQuery";
 import { parseAnalyticsData } from "../../utils/parseAnalyticsData";
+import { normalizePublishedVideosResponse } from "../../utils/normalizePublishedVideosResponse";
 import { PLATFORMS } from "../../constants/platforms";
 
 const DEFAULT_PAGE_SIZE = 10;
@@ -15,33 +16,42 @@ const DEFAULT_PAGE_SIZE = 10;
 /**
  * Single-account variant of the metrics/published-content half of
  * usePlatformDashboard.js — selects by socialAccountId instead of platform.
+ *
+ * The page's initial published-videos page + platformLimits come from
+ * useChannelInsightsSummaryQuery (one batched request, shared with
+ * DailyPostingUsageBadge/channel-groups on the same page) instead of each
+ * being fetched here independently — metrics stays on its own
+ * useMetricsQuery since that's already cached/invalidated correctly and
+ * shared across the whole dashboard, not just this page. Paging past page 1
+ * (fetchPublishedVideos below) still calls the platform-specific endpoint
+ * directly — the summary only ever fetches the first page.
  */
 export function useChannelInsights(socialAccountId, platformInput) {
   const platform = (platformInput || "").toLowerCase();
   const { activeBrand } = useBrand();
 
   const [dateRange, setDateRange] = useDateRangeQuery(29);
-  const [platformLimits, setPlatformLimits] = useState([]);
+
+  const summaryQuery = useChannelInsightsSummaryQuery(activeBrand?.id, socialAccountId);
+  const platformLimits = summaryQuery.data?.platformLimits || [];
 
   const [publishedVideos, setPublishedVideos] = useState([]);
   const [isPublishedLoading, setIsPublishedLoading] = useState(false);
   const [nextPageToken, setNextPageToken] = useState(null);
   const [prevPageToken, setPrevPageToken] = useState(null);
 
-  // Fetch Platform Limits (No arguments required for postService.getPlatformLimits())
+  // Seed published-videos state from the summary's first page once it
+  // arrives — a plain effect (not derived state) because fetchPublishedVideos
+  // below writes into this same state for page 2+/refresh, and both need to
+  // share one source of truth the rest of the hook reads from.
   useEffect(() => {
-    const fetchLimits = async () => {
-      try {
-        const res = await postService.getPlatformLimits();
-        if (res && res.success && Array.isArray(res.data)) {
-          setPlatformLimits(res.data);
-        }
-      } catch (err) {
-        console.error("Failed to fetch platform limits in useChannelInsights", err);
-      }
-    };
-    fetchLimits();
-  }, []);
+    if (!summaryQuery.data || summaryQuery.isFetching) return;
+    const normalized = normalizePublishedVideosResponse(platform, summaryQuery.data.publishedVideos);
+    setPublishedVideos(normalized.items);
+    setNextPageToken(normalized.nextPageToken);
+    setPrevPageToken(normalized.prevPageToken);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [summaryQuery.data, socialAccountId]);
 
   const isPlatformLocked = useMemo(() => {
     if (!platform) return false;
@@ -82,54 +92,36 @@ export function useChannelInsights(socialAccountId, platformInput) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeBrand?.id, metrics?.syncStatus]);
 
+  // Fetches one page of published-videos directly (bypassing the summary
+  // endpoint) — used for paging past page 1 and for the socket-driven
+  // refresh below. The FIRST page on mount comes from
+  // useChannelInsightsSummaryQuery instead (see the effect above); this is
+  // never auto-called on mount, only on an explicit page change or
+  // invalidation.
   const fetchPublishedVideos = useCallback(async (pageToken = null, limit = DEFAULT_PAGE_SIZE) => {
     if (!activeBrand || !socialAccountId) return;
     setIsPublishedLoading(true);
     const startDate = dateRange.from?.toISOString().slice(0, 10);
     const endDate = dateRange.to?.toISOString().slice(0, 10);
     try {
+      let res;
       if (platform === PLATFORMS.FACEBOOK) {
-        const res = await socialService.getFacebookPublishedPosts(activeBrand.id, pageToken, limit, socialAccountId, startDate, endDate);
-        setPublishedVideos(res || []);
-        setNextPageToken(res?.nextPageToken || null);
-        setPrevPageToken(res?.prevPageToken || null);
+        res = await socialService.getFacebookPublishedPosts(activeBrand.id, pageToken, limit, socialAccountId, startDate, endDate);
       } else if (platform === PLATFORMS.INSTAGRAM) {
-        const res = await socialService.getInstagramPublishedPosts(activeBrand.id, pageToken, limit, socialAccountId, startDate, endDate);
-        setPublishedVideos(res || []);
-        setNextPageToken(res?.nextPageToken || null);
-        setPrevPageToken(res?.prevPageToken || null);
+        res = await socialService.getInstagramPublishedPosts(activeBrand.id, pageToken, limit, socialAccountId, startDate, endDate);
       } else if (platform === PLATFORMS.TIKTOK) {
-        const res = await socialService.getTikTokPublishedVideos(activeBrand.id, pageToken, limit, socialAccountId, startDate, endDate);
-        setPublishedVideos(res?.videos || res || []);
-        setNextPageToken(res?.nextPageToken || null);
-        setPrevPageToken(res?.prevPageToken || null);
+        res = await socialService.getTikTokPublishedVideos(activeBrand.id, pageToken, limit, socialAccountId, startDate, endDate);
       } else if (platform === PLATFORMS.THREADS) {
-        const res = await socialService.getThreadsPublishedPosts(activeBrand.id, pageToken, limit, socialAccountId, startDate, endDate);
-        setPublishedVideos(res || []);
-        setNextPageToken(res?.nextPageToken || null);
-        setPrevPageToken(res?.prevPageToken || null);
+        res = await socialService.getThreadsPublishedPosts(activeBrand.id, pageToken, limit, socialAccountId, startDate, endDate);
       } else if (platform === PLATFORMS.BLUESKY) {
-        const res = await socialService.getBlueskyPublishedPosts(activeBrand.id, pageToken, limit, socialAccountId);
-        const postsList = Array.isArray(res) ? res : (res?.data || []);
-        const mapped = postsList.map((p) => ({
-          id: p.id,
-          message: p.message || "",
-          date: p.date,
-          mediaUrl: p.mediaUrl || null,
-          reach: p.reach || 0,
-          views: p.views || 0,
-          likes: p.likes || 0,
-          comments: p.comments || 0,
-        }));
-        setPublishedVideos(mapped);
-        setNextPageToken(res?.nextPageToken || null);
-        setPrevPageToken(res?.prevPageToken || null);
+        res = await socialService.getBlueskyPublishedPosts(activeBrand.id, pageToken, limit, socialAccountId);
       } else {
-        const res = await socialService.getPublishedVideos(activeBrand.id, pageToken, limit, socialAccountId, startDate, endDate);
-        setPublishedVideos(res.videos || []);
-        setNextPageToken(res.nextPageToken || null);
-        setPrevPageToken(res.prevPageToken || null);
+        res = await socialService.getPublishedVideos(activeBrand.id, pageToken, limit, socialAccountId, startDate, endDate);
       }
+      const normalized = normalizePublishedVideosResponse(platform, res);
+      setPublishedVideos(normalized.items);
+      setNextPageToken(normalized.nextPageToken);
+      setPrevPageToken(normalized.prevPageToken);
     } catch (error) {
       console.error("Failed to fetch channel published content:", error);
       // 429 already shows a global rate-limit toast via the apiV2 response
@@ -142,22 +134,21 @@ export function useChannelInsights(socialAccountId, platformInput) {
     }
   }, [activeBrand?.id, socialAccountId, platform, dateRange]);
 
-  useEffect(() => {
-    fetchPublishedVideos();
-  }, [fetchPublishedVideos]);
-
   // Real-time socket listener for published-videos invalidation. Metrics
   // invalidation doesn't need handling here — services/socket.js already
   // invalidates any React Query key matching [CACHE_SCOPES.METRICS,
   // brandId, ...] on the same `data_invalidate` event, which useMetricsQuery
-  // above is keyed into automatically.
+  // above is keyed into automatically. Refetches the summary (page 1) rather
+  // than calling fetchPublishedVideos directly, so a background sync while
+  // the user hasn't paged away from page 1 goes through the same batched
+  // path everything else on this page uses.
   useEffect(() => {
     if (!activeBrand?.id) return;
     socketClient.emit("join_room", { brandId: activeBrand.id });
 
     const handleDataInvalidate = (data) => {
       if (data?.brandId === activeBrand.id && data.scope === "published_videos") {
-        fetchPublishedVideos();
+        summaryQuery.refetch();
       }
     };
 
@@ -165,7 +156,8 @@ export function useChannelInsights(socialAccountId, platformInput) {
     return () => {
       socketClient.off("data_invalidate", handleDataInvalidate);
     };
-  }, [activeBrand?.id, fetchPublishedVideos]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeBrand?.id]);
 
   const realData = useMemo(() => parseAnalyticsData(metrics, platform, dateRange), [metrics, platform, dateRange]);
 
@@ -300,7 +292,10 @@ export function useChannelInsights(socialAccountId, platformInput) {
     metrics,
     loading,
     publishedVideos,
-    isPublishedLoading,
+    // True during either the initial summary fetch (first page) or an
+    // explicit fetchPublishedVideos call (paging past page 1) — both write
+    // into the same publishedVideos state, so callers only need one flag.
+    isPublishedLoading: isPublishedLoading || summaryQuery.isLoading,
     nextPageToken,
     prevPageToken,
     fetchPublishedVideos,

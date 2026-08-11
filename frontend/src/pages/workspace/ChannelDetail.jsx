@@ -7,6 +7,7 @@ import { ChannelCommunityTab } from "./channel-tabs/ChannelCommunityTab";
 import { ChannelInsightsTab } from "./channel-tabs/ChannelInsightsTab";
 import { CHANNEL_TAB_KEYS } from "../../constants/channelTabs";
 import { DailyPostingUsageBadge } from "../../components/shared/DailyPostingUsageBadge";
+import { useChannelInsightsSummaryQuery } from "../../hooks/queries/useChannelInsightsSummaryQuery";
 
 const VALID_TABS = [
   CHANNEL_TAB_KEYS.PUBLISH,
@@ -21,6 +22,15 @@ export function ChannelDetailPage() {
   const { activeBrand } = useBrand();
 
   const account = (activeBrand?.socialAccounts || []).find((a) => a.id === socialAccountId);
+
+  // Fetched once here (header renders on every tab) instead of inside
+  // DailyPostingUsageBadge itself — that used to be its own independent
+  // request; now it shares the same batched channel-insights-summary
+  // request ChannelInsightsTab's data comes from, via the same cached
+  // React Query key (see useChannelInsightsSummaryQuery), so switching
+  // tabs doesn't refetch it.
+  const summaryQuery = useChannelInsightsSummaryQuery(activeBrand?.id, socialAccountId);
+  const postingUsage = (summaryQuery.data?.postingUsage || []).find((u) => u.socialAccountId === socialAccountId) || null;
 
   if (!VALID_TABS.includes(tab)) {
     return <Navigate to={`/channels/${socialAccountId}/${CHANNEL_TAB_KEYS.PUBLISH}`} replace />;
@@ -75,7 +85,7 @@ export function ChannelDetailPage() {
             </div>
           </div>
         </div>
-        <DailyPostingUsageBadge brandId={activeBrand?.id} socialAccountId={socialAccountId} />
+        <DailyPostingUsageBadge usage={postingUsage} loading={summaryQuery.isLoading} />
       </div>
 
       {/* Tab content */}

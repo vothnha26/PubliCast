@@ -9,5 +9,6 @@ export const CACHE_SCOPES = Object.freeze({
   CONNECTIONS: 'connections',
   SMART_LINKS: 'smart_links',
   COMPETITORS: 'competitors',
-  BILLING: 'billing'
+  BILLING: 'billing',
+  CHANNEL_INSIGHTS_SUMMARY: 'channel_insights_summary'
 });
