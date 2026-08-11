@@ -53,6 +53,7 @@ export function PreviewBody({ platformFilter } = {}) {
     setShowUploadModal,
     setUploadModalTab,
     setMediaTypeFilter,
+    setUploadTargetContext,
     isEditByNetwork,
     isNetworkCustomizeOpen,
     activeNetworkTab,
@@ -69,6 +70,7 @@ export function PreviewBody({ platformFilter } = {}) {
     setIsUploadingThumbnail(true);
     setMediaTypeFilter?.("image");
     setUploadModalTab("computer");
+    setUploadTargetContext?.(null);
     setShowUploadModal(true);
   };
 

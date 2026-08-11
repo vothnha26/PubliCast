@@ -16,6 +16,12 @@ export const usePostCreatorStore = create((set, get) => ({
   postMedia: [], // Mảng chứa các đối tượng { file, previewUrl, path, caption } — ≥2 photos here auto-routes to a Facebook album server-side (facebook-post.service.js), no separate album-only flow needed
   videoSettings: null,
   postCreatorFormBackup: null,
+  // fileKey (`${name}_${size}_${lastModified}`) -> { progress, path, error }.
+  // Global (not local component state) because upload-on-select starts in
+  // MediaUploadModal but must keep progressing after the modal unmounts —
+  // the composer thumbnail grid reads this by fileKey wherever it renders
+  // (postMedia, per-network custom slots, thread posts, thumbnail).
+  mediaUploads: {},
 
   trackUploadedAsset: (url) => {
     if (!url || typeof url !== 'string') return;
@@ -26,6 +32,28 @@ export const usePostCreatorStore = create((set, get) => ({
   },
 
   clearTrackedAssets: () => set({ uploadedAssetsThisSession: [] }),
+
+  setMediaUploadProgress: (fileKey, percent) => set((state) => ({
+    mediaUploads: { ...state.mediaUploads, [fileKey]: { ...state.mediaUploads[fileKey], progress: percent } }
+  })),
+
+  setMediaUploadResult: (fileKey, result) => set((state) => ({
+    mediaUploads: {
+      ...state.mediaUploads,
+      [fileKey]: { ...state.mediaUploads[fileKey], progress: 100, path: result.path, error: null }
+    }
+  })),
+
+  setMediaUploadError: (fileKey, error) => set((state) => ({
+    mediaUploads: { ...state.mediaUploads, [fileKey]: { ...state.mediaUploads[fileKey], error } }
+  })),
+
+  clearMediaUpload: (fileKey) => set((state) => {
+    if (!(fileKey in state.mediaUploads)) return state;
+    const next = { ...state.mediaUploads };
+    delete next[fileKey];
+    return { mediaUploads: next };
+  }),
 
   setVideoFile: (val) => set({ videoFile: val }),
   setVideoFileUrl: (val) => set({ videoFileUrl: val }),
@@ -70,6 +98,7 @@ export const usePostCreatorStore = create((set, get) => ({
     uploadedVideoPath: options.defaultVideoPath !== undefined ? options.defaultVideoPath : state.uploadedVideoPath,
     isUploadingVideo: options.isUploadingVideo || false,
     uploadedAssetsThisSession: [],
+    mediaUploads: {},
     videoSettings: options.videoSettings !== undefined ? options.videoSettings : (options.post?.options?.videoSettings || state.videoSettings || null),
     postMedia: options.postMedia !== undefined ? options.postMedia : (
       options.post?.mediaUrls?.map(url => ({
@@ -118,6 +147,7 @@ export const usePostCreatorStore = create((set, get) => ({
       uploadedVideoPath: "",
       isUploadingVideo: false,
       uploadedAssetsThisSession: [],
+      mediaUploads: {},
       videoSettings: null,
       postCreatorFormBackup: null,
       postMedia: [],

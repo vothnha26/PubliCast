@@ -272,6 +272,14 @@ export function PostCreatorPage() {
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [uploadModalTab, setUploadModalTab] = useState("computer");
   const [mediaTypeFilter, setMediaTypeFilter] = useState(MEDIA_FILTER_TYPES.ALL);
+  // Snapshot of which network tab/account was active when the upload modal
+  // was opened — onAccept must route files to THIS target, not whatever
+  // tab happens to be active when Accept is clicked. The modal's uploads
+  // start immediately on file selection (before Accept), so if the user
+  // switches network tabs while the modal is still open, reading the live
+  // activeNetworkTab at Accept time would silently reassign already-picked
+  // files to the wrong platform (or drop them from the shared template).
+  const [uploadTargetContext, setUploadTargetContext] = useState(null);
   const [showImageMenu, setShowImageMenu] = useState(false);
   const [showImageEditor, setShowImageEditor] = useState(false);
   const [showVideoEditor, setShowVideoEditor] = useState(false);
@@ -462,6 +470,8 @@ export function PostCreatorPage() {
     setUploadModalTab,
     mediaTypeFilter,
     setMediaTypeFilter,
+    uploadTargetContext,
+    setUploadTargetContext,
     showImageMenu,
     setShowImageMenu,
     showImageEditor,
@@ -505,7 +515,7 @@ export function PostCreatorPage() {
     selectedReviewerIds, approvalPolicy, requesterNote, isLoadingReviewers, postMedia,
     threadsWhoCanReply, isEditByNetwork, activeNetworkTab, activeNetworkAccountId, networkCustom, notes, videoSettings,
     threadsOpen, isUploadingThumbnail, newNoteText, blockedProductId, showReviewersModal,
-    reviewerSearchQuery, showUploadModal, uploadModalTab, mediaTypeFilter, showImageMenu,
+    reviewerSearchQuery, showUploadModal, uploadModalTab, mediaTypeFilter, uploadTargetContext, showImageMenu,
     showImageEditor, showVideoEditor, editingPostMediaIndex, imageTransform, showAltTextModal,
     useUrlShortener, templates, loadingTemplates, hasCreatePermission, hasApprovePermission,
     isFullScreen
@@ -692,6 +702,34 @@ export function PostCreatorPage() {
               ? ((typeof activeThreadPost === 'object' ? activeThreadPost?.mediaUrls : []) || [])
               : postMedia;
 
+          // Resolves where an accepted upload batch should land, using the
+          // target snapshotted when the modal was opened (uploadTargetContext)
+          // instead of the render-time values above — those drift if the
+          // user switches network tabs while the modal is still open
+          // (uploads start on file-select, before Accept), which previously
+          // silently misfiled or dropped media picked for a different
+          // platform. Falls back to the live values only for the thumbnail
+          // flow's non-media-grid uses of activeThreadIndex/activeThreadPost.
+          const resolveAcceptTarget = () => {
+            if (uploadTargetContext === null) {
+              return { kind: 'template' };
+            }
+            const { platform, accountId } = uploadTargetContext;
+            if (platform === 'threads') {
+              const threadIndex = networkCustom?.threads?.activeThreadIndex || 0;
+              const threadPost = networkCustom?.threads?.threadPosts?.[threadIndex];
+              return { kind: 'threads', threadIndex, threadPost };
+            }
+            const entry = networkCustom?.[platform];
+            const slot = accountId ? entry?.perAccount?.[accountId] : entry;
+            return {
+              kind: 'network',
+              platform,
+              accountId,
+              current: (slot?.useTemplate === false ? (slot?.mediaUrls || []) : postMedia)
+            };
+          };
+
           return (
             <>
               <MediaUploadModal
@@ -699,18 +737,20 @@ export function PostCreatorPage() {
                 initialTab={uploadModalTab}
                 multiple={!isUploadingThumbnail}
                 mediaTypeFilter={mediaTypeFilter}
+                brandId={activeBrand?.id}
                 onClose={() => {
                   setShowUploadModal(false);
                   setIsUploadingThumbnail(false);
                 }}
                 onAccept={async (items) => {
                   if (isUploadingThumbnail) {
-                    // Thumbnail upload is deferred like every other media
-                    // item now — mediaThumbnailUrl only needs to be a valid
-                    // <img>/<video poster> src for preview (PreviewBody/
-                    // ComposerBody), which a local blob satisfies just as
-                    // well as a real Cloudinary URL. The actual upload
-                    // happens in handleCreatePost's pending-file scan.
+                    // Same upload-on-select path as every other media item
+                    // now (previously deferred to handleCreatePost's
+                    // pending-file scan) — the modal already started the
+                    // Cloudinary upload the moment the file was picked, so
+                    // thumbItem.path may already be set; if not, the
+                    // usePostCreatorForm sync effect fills mediaThumbnailPath
+                    // in once the store's mediaUploads entry resolves.
                     const thumbItem = items[0];
                     setIsUploadingThumbnail(false);
                     if (!thumbItem) return;
@@ -729,23 +769,30 @@ export function PostCreatorPage() {
                   const newItems = items.map(item => ({
                     file: item.file,
                     previewUrl: item.previewUrl || item.path,
-                    path: item.path
+                    path: item.path,
+                    fileKey: item.fileKey
                   }));
 
-                  // Track bất kỳ path nào mới upload trong session
+                  // Library/URL-tab items already carry a real path at accept
+                  // time (no upload involved) — track those now. Items from
+                  // the "computer" tab are tracked as soon as their
+                  // upload-on-select promise resolves (see
+                  // MediaUploadModal's startUploadForFile), not here.
                   const trackAssetFn = usePostCreatorStore.getState().trackUploadedAsset;
                   if (trackAssetFn) {
                     newItems.forEach(item => {
-                      if (item.path) trackAssetFn(item.path);
+                      if (item.path && !item.file) trackAssetFn(item.path);
                     });
                   }
 
-                  if (isCustomizingThreads) {
-                    const current = (typeof activeThreadPost === 'object' ? activeThreadPost?.mediaUrls : []) || [];
-                    updateThreadPostMedia(activeThreadIndex, [...current, ...newItems]);
-                  } else if (isCustomizingNonThreadsPlatform) {
-                    const current = activeNetworkMedia;
-                    updateNetworkMedia(activeNetworkTab, [...current, ...newItems], effectiveNetworkAccountId);
+                  const acceptTarget = resolveAcceptTarget();
+                  setUploadTargetContext?.(null);
+
+                  if (acceptTarget.kind === 'threads') {
+                    const current = (typeof acceptTarget.threadPost === 'object' ? acceptTarget.threadPost?.mediaUrls : []) || [];
+                    updateThreadPostMedia(acceptTarget.threadIndex, [...current, ...newItems]);
+                  } else if (acceptTarget.kind === 'network') {
+                    updateNetworkMedia(acceptTarget.platform, [...acceptTarget.current, ...newItems], acceptTarget.accountId);
                   } else {
                     setPostMedia(prev => {
                       const updated = [...prev, ...newItems];

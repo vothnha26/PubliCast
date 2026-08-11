@@ -23,6 +23,7 @@ import { createPlatformOptionsFromPost, createDefaultPlatformOptions } from "../
 import { buildNetworkOverrides, mapNetworkOverridesToCustom } from "../utils/buildNetworkOverrides";
 import { getNetworkEntrySlot, setNetworkEntrySlot } from "../utils/networkEntrySlot";
 import { toBrandDatetimeString, brandDatetimeStringToUTC } from "../utils/brandTimezone";
+import { syncUploadedPathToAllSlots } from "../utils/postCreatorMediaSync";
 
 export function usePostCreatorForm() {
   const { 
@@ -141,6 +142,84 @@ export function usePostCreatorForm() {
   const [isEditByNetwork, setIsEditByNetwork] = useState(false);
   const [activeNetworkTab, setActiveNetworkTab] = useState(NETWORK_TAB_TEMPLATE);
   const [networkCustom, setNetworkCustom] = useState(() => buildDefaultNetworkCustom());
+
+  // handleCreatePost is a plain closure recreated on every render — if the
+  // user clicks Submit before React re-renders usePostCreatorForm() after
+  // an upload-on-select resolves (setNetworkCustom/setPostMedia happening
+  // in the background, in the mediaUploads subscription effect below),
+  // handleCreatePost's own networkCustom/postMedia are stale and
+  // buildNetworkOverrides silently builds the override from an empty
+  // mediaUrls array. These refs always mirror the latest state so
+  // handleCreatePost can read the true current value regardless of which
+  // render its closure was captured in.
+  const networkCustomRef = useRef(networkCustom);
+  const postMediaRef = useRef(postMedia);
+  useEffect(() => { networkCustomRef.current = networkCustom; }, [networkCustom]);
+  useEffect(() => { postMediaRef.current = postMedia; }, [postMedia]);
+
+  // Mirrors handleCreatePost's own pending-upload sync (see
+  // syncUploadedPathToAllSlots), but fires as soon as an upload-on-select
+  // finishes rather than waiting for Submit — MediaUploadModal starts the
+  // upload the moment a file is picked and writes progress/result into
+  // usePostCreatorStore's mediaUploads map (keyed by fileKey) because the
+  // modal itself may unmount before the upload completes. This subscribes
+  // to that map and, the moment a fileKey's path first appears, patches
+  // `.path` onto every postMedia/networkCustom item still carrying that
+  // File — so by the time the user reaches Submit, handleCreatePost's own
+  // pending-scan (`item.file && !item.path`) naturally has nothing left to
+  // do for files that already finished uploading.
+  useEffect(() => {
+    const unsubscribe = usePostCreatorStore.subscribe((state, prevState) => {
+      if (state.mediaUploads === prevState.mediaUploads) return;
+      for (const [fileKey, entry] of Object.entries(state.mediaUploads)) {
+        const prevEntry = prevState.mediaUploads[fileKey];
+        if (entry?.path && entry.path !== prevEntry?.path) {
+          // Functional updaters, not the postMedia/networkCustom closed over
+          // by this effect: two uploads finishing close together (or a
+          // setNetworkCustom from unrelated user action landing between
+          // this effect's re-subscribes) would otherwise let a stale
+          // closure's setNetworkCustom({...networkCustom}) overwrite a
+          // newer state update — functional form always mutates whatever
+          // React's latest state actually is at flush time.
+          setPostMedia((prevPostMedia) => {
+            setNetworkCustom((prevNetworkCustom) => {
+              syncUploadedPathToAllSlots({
+                fileKey,
+                targetFile: null,
+                uploadResult: entry,
+                postMedia: prevPostMedia,
+                networkCustom: prevNetworkCustom
+              });
+              return { ...prevNetworkCustom };
+            });
+            return [...prevPostMedia];
+          });
+
+          // The thumbnail slot isn't a postMedia/networkCustom item, so it's
+          // outside syncUploadedPathToAllSlots's scan — patch it directly
+          // when its own file is the one that just finished uploading.
+          setMediaThumbnailFile((prevFile) => {
+            if (prevFile) {
+              const thumbKey = prevFile.name
+                ? `${prevFile.name}_${prevFile.size}_${prevFile.lastModified}`
+                : null;
+              if (thumbKey === fileKey) {
+                setMediaThumbnailPath((prevPath) => {
+                  if (!prevPath) {
+                    setMediaThumbnailUrl(entry.path);
+                    return entry.path;
+                  }
+                  return prevPath;
+                });
+              }
+            }
+            return prevFile;
+          });
+        }
+      }
+    });
+    return unsubscribe;
+  }, [setPostMedia]);
   // Which account's sub-tab is active within the current network platform
   // tab, when that platform has ≥2 selected accounts (see NetworkTabSwitcher's
   // account sub-tabs, mirroring its existing Threads-post sub-tab pattern).
@@ -1061,14 +1140,48 @@ export function usePostCreatorForm() {
       return;
     }
 
+    // handleCreatePost itself closes over postMedia/networkCustom from
+    // whatever render created this click handler — if an upload-on-select
+    // finished (the store's mediaUploads subscription patched React state)
+    // between that render and this click, but React hasn't flushed a
+    // re-render back into a fresh handleCreatePost closure yet, this
+    // function's own postMedia/networkCustom params are stale (missing
+    // items updateNetworkMedia/setPostMedia already wrote in the
+    // background). Read through the refs instead of the closure variables
+    // for the rest of this function so every downstream use — this
+    // pending-upload re-sync, the postMediaUrls build, and
+    // buildNetworkOverrides — sees the true latest state regardless of
+    // which render's closure handleCreatePost happened to run in.
+    const currentPostMedia = postMediaRef.current;
+    const currentNetworkCustom = networkCustomRef.current;
+
+    // Re-applying every resolved mediaUploads entry here — directly against
+    // the current postMedia/networkCustom arrays, mutated in place exactly
+    // like the subscription effect does — closes the gap regardless of
+    // whether that effect already ran for it.
+    const resolvedUploads = usePostCreatorStore.getState().mediaUploads;
+    Object.entries(resolvedUploads).forEach(([fileKey, entry]) => {
+      if (!entry?.path) return;
+      syncUploadedPathToAllSlots({ fileKey, targetFile: null, uploadResult: entry, postMedia: currentPostMedia, networkCustom: currentNetworkCustom });
+      if (mediaThumbnailFile && !mediaThumbnailPath) {
+        const thumbKey = mediaThumbnailFile.name
+          ? `${mediaThumbnailFile.name}_${mediaThumbnailFile.size}_${mediaThumbnailFile.lastModified}`
+          : null;
+        if (thumbKey === fileKey) {
+          setMediaThumbnailPath(entry.path);
+          setMediaThumbnailUrl(entry.path);
+        }
+      }
+    });
+
     setIsCreating(true);
     setSubmitProgressText(null);
     try {
       // 1. Quét và tập hợp tất cả các file media chưa upload (has file && !path)
-      const pendingPostMedia = postMedia.filter((item) => item.file && !item.path);
+      const pendingPostMedia = currentPostMedia.filter((item) => item.file && !item.path);
       const pendingNetworkItems = [];
 
-      Object.entries(networkCustom).forEach(([platform, entry]) => {
+      Object.entries(currentNetworkCustom).forEach(([platform, entry]) => {
         if (!selectedPlatforms.includes(platform)) return;
 
         const slotsToScan = [];
@@ -1190,43 +1303,12 @@ export function usePostCreatorForm() {
             const { item, uploadResult } = res.value;
             const targetFile = item.file;
             const fileKey = targetFile?.name ? `${targetFile.name}_${targetFile.size}_${targetFile.lastModified}` : null;
-
-            const isMatch = (otherFile) => {
-              if (!otherFile) return false;
-              if (otherFile === targetFile) return true;
-              if (fileKey && otherFile.name) {
-                return `${otherFile.name}_${otherFile.size}_${otherFile.lastModified}` === fileKey;
-              }
-              return false;
-            };
-
-            postMedia.forEach(pm => {
-              if (isMatch(pm.file)) {
-                pm.path = uploadResult.url;
-                if (uploadResult.width) pm.width = uploadResult.width;
-                if (uploadResult.height) pm.height = uploadResult.height;
-              }
-            });
-
-            Object.values(networkCustom).forEach(entry => {
-              const slots = [entry, ...(entry?.perAccount ? Object.values(entry.perAccount) : [])];
-              slots.forEach(slot => {
-                if (Array.isArray(slot?.mediaUrls)) {
-                  slot.mediaUrls.forEach(m => {
-                    if (typeof m === 'object' && isMatch(m.file)) {
-                      m.path = uploadResult.url;
-                      if (uploadResult.width) m.width = uploadResult.width;
-                      if (uploadResult.height) m.height = uploadResult.height;
-                    }
-                  });
-                }
-              });
-            });
+            syncUploadedPathToAllSlots({ fileKey, targetFile, uploadResult, postMedia: currentPostMedia, networkCustom: currentNetworkCustom });
           }
         });
 
-        setPostMedia([...postMedia]);
-        setNetworkCustom({ ...networkCustom });
+        setPostMedia([...currentPostMedia]);
+        setNetworkCustom({ ...currentNetworkCustom });
         if (pendingThumbnail?.path) {
           setMediaThumbnailPath(pendingThumbnail.path);
         }
@@ -1249,8 +1331,8 @@ export function usePostCreatorForm() {
         return item.path || item.url || item.previewUrl || '';
       };
 
-      const effectiveUploadedPath = uploadedVideoPath || (postMedia.length > 0 ? getMediaUrl(postMedia[0]) : "");
-      const hasMedia = !!(effectiveUploadedPath || (postMedia && postMedia.length > 0 && getMediaUrl(postMedia[0])));
+      const effectiveUploadedPath = uploadedVideoPath || (currentPostMedia.length > 0 ? getMediaUrl(currentPostMedia[0]) : "");
+      const hasMedia = !!(effectiveUploadedPath || (currentPostMedia && currentPostMedia.length > 0 && getMediaUrl(currentPostMedia[0])));
       const isVid = isVideoPath(videoFileUrl || effectiveUploadedPath, videoFile);
 
       const platformConfig = PLATFORM_CONFIGS[activePlatform];
@@ -1260,8 +1342,8 @@ export function usePostCreatorForm() {
 
       let postMediaUrls;
       let mediaCaptions;
-      if (postMedia && postMedia.length > 0) {
-        const validItems = postMedia.filter(item => getMediaUrl(item));
+      if (currentPostMedia && currentPostMedia.length > 0) {
+        const validItems = currentPostMedia.filter(item => getMediaUrl(item));
         postMediaUrls = validItems.map(item => getMediaUrl(item));
         mediaCaptions = validItems.map(item => (typeof item === 'object' ? item.caption || "" : ""));
       } else {
@@ -1301,9 +1383,9 @@ export function usePostCreatorForm() {
         requesterNote: requesterNote || "Vui lòng phê duyệt bài viết này.",
         options: {
           videoDuration,
-          videoWidth: postMedia[0]?.width || videoWidth,
-          videoHeight: postMedia[0]?.height || videoHeight,
-          videoFrameRate: postMedia[0]?.frameRate || null,
+          videoWidth: currentPostMedia[0]?.width || videoWidth,
+          videoHeight: currentPostMedia[0]?.height || videoHeight,
+          videoFrameRate: currentPostMedia[0]?.frameRate || null,
           ...getPlatformOptions(),
           privacyStatus: youtubePrivacy,
           categoryId: youtubeCategory,
@@ -1319,7 +1401,7 @@ export function usePostCreatorForm() {
       };
 
       const networkOverrides = buildNetworkOverrides({
-        networkCustom,
+        networkCustom: currentNetworkCustom,
         selectedPlatforms,
         selectedAccountIds,
         activeBrand
