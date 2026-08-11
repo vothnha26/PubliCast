@@ -70,7 +70,14 @@ async function handleEmailOutbox({ notification, preferenceKey, emailOptions = {
     await outboxEventRepository.create(
       OUTBOX_EVENT_TYPES.NOTIFICATION_EMAIL,
       notification.id,
-      { userId: notification.userId, title: notification.title, message: notification.message, actionUrl },
+      {
+        userId: notification.userId,
+        title: notification.title,
+        message: notification.message,
+        actionUrl,
+        template: emailOptions.template,
+        templateData: emailOptions.templateData
+      },
       { priority, nextRunAt: emailOptions.nextRunAt }
     );
   } catch (err) {

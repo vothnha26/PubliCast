@@ -4,6 +4,17 @@ const ConsoleStrategy = require('./email/console.strategy');
 const appConfig = require('../../config/app.config');
 const logger = require('../../utils/logger');
 
+/**
+ * Named React Email templates a caller can select via
+ * notificationService.create()'s emailOptions.template (see
+ * social.service.js#_notifyPlatformDisconnected for the first consumer).
+ * Add a new dedicated template by: creating the component under
+ * src/emails/, adding a key here, and a branch in _buildNotificationHtml.
+ */
+const EMAIL_TEMPLATES = {
+  CHANNEL_DISCONNECTED: 'channelDisconnected'
+};
+
 class EmailService {
   constructor() {
     this.strategy = null;
@@ -27,6 +38,28 @@ class EmailService {
 
   setStrategy(strategy) {
     this.strategy = strategy;
+  }
+
+  /**
+   * Renders a React Email component (see src/emails/) to an HTML string.
+   * require('../../emails/register') triggers Babel's JSX transform,
+   * scoped only to src/emails/ — see that file's comment.
+   *
+   * Uses react-dom/server's renderToStaticMarkup directly rather than
+   * @react-email/render — that package's render() internally does
+   * `await import('react-dom/server')`, which throws
+   * "A dynamic import callback was invoked without --experimental-vm-modules"
+   * under Jest's CJS test environment (works fine under plain Node/prod).
+   * renderToStaticMarkup is synchronous and is what @react-email/render
+   * calls under the hood anyway, so output is equivalent — just prepend the
+   * doctype it adds on top for email-client compatibility.
+   */
+  _renderEmail(Component, props) {
+    require('../../emails/register');
+    const React = require('react');
+    const ReactDOMServer = require('react-dom/server');
+    const markup = ReactDOMServer.renderToStaticMarkup(React.createElement(Component, props));
+    return `<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">${markup}`;
   }
 
   async sendOTP(email, otp) {
@@ -64,102 +97,40 @@ class EmailService {
 
     const text = `Chào bạn,\n\n${inviterName} đã mời bạn tham gia thương hiệu "${brandName}" với tư cách thành viên.\n\nVui lòng truy cập liên kết sau để chấp nhận lời mời:\n${inviteUrl}\n\nLiên kết này sẽ hết hạn sau 7 ngày.`;
 
-    const html = this._buildInvitationHtml(inviterName, brandName, inviteUrl, isResend);
+    require('../../emails/register');
+    const { TeamInvitationEmail } = require('../../emails/TeamInvitationEmail');
+    const html = await this._renderEmail(TeamInvitationEmail, { inviterName, brandName, inviteUrl, isResend });
 
     await strategy.send(email, subject, text, html);
   }
 
-  _buildInvitationHtml(inviterName, brandName, inviteUrl, isResend = false) {
-    const initials = brandName.charAt(0).toUpperCase();
-    return `<!DOCTYPE html>
-<html lang="vi">
-<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><title>Lời mời PubliCast</title></head>
-<body style="margin:0;padding:0;background:#F8F8F7;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
-  <table width="100%" cellpadding="0" cellspacing="0" style="background:#F8F8F7;padding:40px 20px;">
-    <tr><td align="center">
-      <table width="480" cellpadding="0" cellspacing="0" style="background:#fff;border-radius:20px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.08);">
-        <!-- Header -->
-        <tr><td style="background:#2D1D35;padding:32px;text-align:center;">
-          <div style="display:inline-flex;align-items:center;gap:10px;">
-            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M7 11V7a5 5 0 0 1 10 0v4"/><path d="M11 11h2"/><rect width="18" height="11" x="3" y="11" rx="2"/></svg>
-            <span style="font-size:20px;font-weight:800;color:#fff;letter-spacing:-0.5px;">PubliCast</span>
-          </div>
-          ${isResend ? '<div style="margin-top:10px;display:inline-block;background:rgba(255,255,255,0.1);color:rgba(255,255,255,0.7);font-size:10px;font-weight:700;padding:4px 12px;border-radius:999px;letter-spacing:1px;text-transform:uppercase;">Nhắc lại lời mời</div>' : ''}
-        </td></tr>
-        <!-- Body -->
-        <tr><td style="padding:40px 40px 32px;">
-          <!-- Brand avatar -->
-          <div style="text-align:center;margin-bottom:28px;">
-            <div style="display:inline-flex;align-items:center;justify-content:center;width:64px;height:64px;background:#0A0A0A;border-radius:16px;">
-              <span style="font-size:28px;font-weight:800;color:#fff;">${initials}</span>
-            </div>
-          </div>
-          <h1 style="margin:0 0 12px;font-size:22px;font-weight:800;color:#0A0A0A;text-align:center;letter-spacing:-0.5px;">Bạn được mời vào<br><span style="color:#7C3AED;">${brandName}</span></h1>
-          <p style="margin:0 0 32px;font-size:14px;color:#6B7280;text-align:center;line-height:1.6;">
-            <strong style="color:#374151;">${inviterName}</strong> đã mời bạn tham gia với tư cách thành viên cộng tác trên nền tảng PubliCast.
-          </p>
-          <!-- CTA Button -->
-          <div style="text-align:center;margin-bottom:32px;">
-            <a href="${inviteUrl}" style="display:inline-block;background:#0A0A0A;color:#fff;text-decoration:none;font-size:14px;font-weight:700;padding:14px 36px;border-radius:12px;letter-spacing:-0.2px;">
-              ✅ Chấp nhận lời mời →
-            </a>
-          </div>
-          <!-- Info box -->
-          <div style="background:#F8F8F7;border:1px solid #E5E7EB;border-radius:12px;padding:16px 20px;margin-bottom:28px;">
-            <p style="margin:0;font-size:12px;color:#6B7280;line-height:1.7;">
-              Nếu nút không hoạt động, hãy sao chép và dán liên kết sau vào trình duyệt:<br>
-              <a href="${inviteUrl}" style="color:#7C3AED;word-break:break-all;font-size:11px;">${inviteUrl}</a>
-            </p>
-          </div>
-          <p style="margin:0;font-size:11px;color:#9CA3AF;text-align:center;">Liên kết này sẽ hết hạn sau <strong>7 ngày</strong>. Nếu bạn không mong đợi email này, hãy bỏ qua.</p>
-        </td></tr>
-        <!-- Footer -->
-        <tr><td style="background:#F8F8F7;padding:20px 40px;text-align:center;border-top:1px solid #F3F4F6;">
-          <p style="margin:0;font-size:11px;color:#9CA3AF;">© 2026 PubliCast · Nền tảng quản lý mạng xã hội đa kênh</p>
-        </td></tr>
-      </table>
-    </td></tr>
-  </table>
-</body>
-</html>`;
-  }
-
-  async sendNotificationEmail(email, title, message, actionUrl) {
+  /**
+   * Sends a notification-driven email. `template` (one of EMAIL_TEMPLATES)
+   * selects a dedicated React Email component from src/emails/; when
+   * omitted or unrecognized, falls back to GenericNotificationEmail using
+   * just title/message/actionUrl — the original behavior before dedicated
+   * templates existed.
+   */
+  async sendNotificationEmail(email, title, message, actionUrl, template, templateData) {
     const strategy = this.getStrategy();
     const text = actionUrl ? `${message}\n\n${actionUrl}` : message;
-    const html = this._buildNotificationHtml(title, message, actionUrl);
+    const html = await this._buildNotificationHtml(title, message, actionUrl, template, templateData);
     await strategy.send(email, title, text, html);
   }
 
-  _buildNotificationHtml(title, message, actionUrl) {
-    return `<!DOCTYPE html>
-<html lang="vi">
-<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><title>${title}</title></head>
-<body style="margin:0;padding:0;background:#F8F8F7;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
-  <table width="100%" cellpadding="0" cellspacing="0" style="background:#F8F8F7;padding:40px 20px;">
-    <tr><td align="center">
-      <table width="480" cellpadding="0" cellspacing="0" style="background:#fff;border-radius:20px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.08);">
-        <tr><td style="background:#2D1D35;padding:32px;text-align:center;">
-          <div style="display:inline-flex;align-items:center;gap:10px;">
-            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M7 11V7a5 5 0 0 1 10 0v4"/><path d="M11 11h2"/><rect width="18" height="11" x="3" y="11" rx="2"/></svg>
-            <span style="font-size:20px;font-weight:800;color:#fff;letter-spacing:-0.5px;">PubliCast</span>
-          </div>
-        </td></tr>
-        <tr><td style="padding:40px 40px 32px;">
-          <h1 style="margin:0 0 16px;font-size:20px;font-weight:800;color:#0A0A0A;text-align:center;letter-spacing:-0.5px;">${title}</h1>
-          <p style="margin:0 0 32px;font-size:14px;color:#6B7280;text-align:center;line-height:1.6;">${message}</p>
-          ${actionUrl ? `<div style="text-align:center;margin-bottom:8px;">
-            <a href="${actionUrl}" style="display:inline-block;background:#0A0A0A;color:#fff;text-decoration:none;font-size:14px;font-weight:700;padding:14px 36px;border-radius:12px;letter-spacing:-0.2px;">Xem chi tiết →</a>
-          </div>` : ''}
-        </td></tr>
-        <tr><td style="background:#F8F8F7;padding:20px 40px;text-align:center;border-top:1px solid #F3F4F6;">
-          <p style="margin:0;font-size:11px;color:#9CA3AF;">© 2026 PubliCast · Nền tảng quản lý mạng xã hội đa kênh</p>
-        </td></tr>
-      </table>
-    </td></tr>
-  </table>
-</body>
-</html>`;
+  async _buildNotificationHtml(title, message, actionUrl, template, templateData) {
+    // Must run before requiring any .jsx file below — this is what teaches
+    // require() how to resolve/transform the .jsx extension in the first
+    // place (see src/emails/register.js).
+    require('../../emails/register');
+
+    if (template === EMAIL_TEMPLATES.CHANNEL_DISCONNECTED && templateData) {
+      const { ChannelDisconnectedEmail } = require('../../emails/ChannelDisconnectedEmail');
+      return this._renderEmail(ChannelDisconnectedEmail, { ...templateData, reconnectUrl: actionUrl });
+    }
+
+    const { GenericNotificationEmail } = require('../../emails/GenericNotificationEmail');
+    return this._renderEmail(GenericNotificationEmail, { title, message, actionUrl });
   }
 
   async sendReport(emails, subject, text, buffer, filename, contentType) {
@@ -176,3 +147,4 @@ class EmailService {
 }
 
 module.exports = new EmailService();
+module.exports.EMAIL_TEMPLATES = EMAIL_TEMPLATES;

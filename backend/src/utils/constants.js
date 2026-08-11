@@ -427,6 +427,23 @@ const NOTIFICATION_TYPES = {
   SYSTEM: 'system'
 };
 
+// Each key names a UserSettings boolean column that gates that event's
+// notification (and, for a subset, its email — see
+// notification.subscriber.js's EMAIL_PREFERENCE_PRIORITY). Passed as
+// notificationService.create()'s/notifyBrandMembers()'s preferenceKey —
+// use these instead of the raw string so a rename is a single edit here,
+// not a grep-and-replace across every caller.
+const NOTIFICATION_PREFERENCE_KEYS = {
+  POST_FAILURE: 'notifyPostFailure',
+  PUBLISH_SUCCESS: 'notifyPublishSuccess',
+  CHANNEL_DISCONNECT: 'notifyChannelDisconnect',
+  COLLABORATION: 'notifyCollaboration',
+  BILLING: 'notifyBilling',
+  EMPTY_QUEUE: 'notifyEmptyQueue',
+  DAILY_RECAP: 'notifyDailyRecap',
+  WEEKLY_REPORT: 'notifyWeeklyReport'
+};
+
 const DEFAULT_CONFIG = {
   LOCALE: 'vi-VN',
   TIMEZONE: 'Asia/Ho_Chi_Minh',
@@ -860,6 +877,7 @@ module.exports = {
   YOUTUBE_SEARCH_TYPES,
   YOUTUBE_CONSTRAINTS,
   NOTIFICATION_TYPES,
+  NOTIFICATION_PREFERENCE_KEYS,
   DEFAULT_CONFIG,
   FACEBOOK_API,
   TIKTOK_API,

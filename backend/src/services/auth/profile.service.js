@@ -3,22 +3,14 @@ const brandService = require('../../services/workspace/brand.service');
 const brandRepository = require('../../repositories/workspace/brand.repository');
 const tokenService = require('./token.service');
 const prisma = require('../../config/prisma');
-const { ERROR_MESSAGES } = require('../../utils/constants');
+const { ERROR_MESSAGES, NOTIFICATION_PREFERENCE_KEYS: NOTIFICATION_PREFERENCE_KEY_MAP } = require('../../utils/constants');
 const logger = require('../../utils/logger');
 
 // Keep in sync with notification.service.js's PREFERENCE_KEYS — this is the
-// full set of per-category toggles a client is allowed to write.
-const NOTIFICATION_PREFERENCE_KEYS = [
-  'notificationsEnabled',
-  'notifyPostFailure',
-  'notifyPublishSuccess',
-  'notifyChannelDisconnect',
-  'notifyCollaboration',
-  'notifyBilling',
-  'notifyEmptyQueue',
-  'notifyDailyRecap',
-  'notifyWeeklyReport'
-];
+// full set of per-category toggles a client is allowed to write. Adds
+// 'notificationsEnabled' (the global on/off switch, not a per-category key)
+// on top of the shared NOTIFICATION_PREFERENCE_KEYS map from constants.js.
+const NOTIFICATION_PREFERENCE_KEYS = ['notificationsEnabled', ...Object.values(NOTIFICATION_PREFERENCE_KEY_MAP)];
 
 class ProfileService {
   /**
@@ -312,7 +304,7 @@ class ProfileService {
       // Matches the Prisma schema's @default for each column so a missing
       // row reports the same values a real one would have right after
       // creation, instead of undefined.
-      const schemaDefault = key === 'notifyDailyRecap' || key === 'notifyWeeklyReport' ? false : true;
+      const schemaDefault = key === NOTIFICATION_PREFERENCE_KEY_MAP.DAILY_RECAP || key === NOTIFICATION_PREFERENCE_KEY_MAP.WEEKLY_REPORT ? false : true;
       result[key] = settings ? settings[key] : schemaDefault;
     }
     return result;
