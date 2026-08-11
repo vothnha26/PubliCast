@@ -273,6 +273,22 @@ class PostService {
 
     const targetSet = new Set(targetPlatforms.map((p) => p.trim().toUpperCase()));
 
+    // Validate every override's platform up front (pure) before touching the
+    // DB, then resolve every referenced socialAccountId in one batched
+    // findMany instead of one findUnique PER override in the loop below —
+    // each round-trip is real network latency against the DB, multiplied by
+    // however many accounts the composer's "customize per network" mode
+    // customized for this post.
+    const requestedAccountIds = [...new Set(
+      networkOverrides.map((o) => o.socialAccountId).filter(Boolean)
+    )];
+    const accountsById = requestedAccountIds.length > 0
+      ? new Map(
+          (await tx.socialAccount.findMany({ where: { id: { in: requestedAccountIds } } }))
+            .map((a) => [a.id, a])
+        )
+      : new Map();
+
     for (const override of networkOverrides) {
       const platform = override.platform?.trim().toUpperCase();
       if (!platform || !Object.values(PLATFORMS).includes(platform)) {
@@ -290,7 +306,7 @@ class PostService {
       if (socialAccountId) {
         // Reject an account that doesn't belong to this brand/platform up
         // front, rather than letting the FK constraint fail obscurely later.
-        const account = await tx.socialAccount.findUnique({ where: { id: socialAccountId } });
+        const account = accountsById.get(socialAccountId);
         if (!account || account.brandId !== brandId || account.platform !== platform) {
           const error = new Error(`socialAccountId "${socialAccountId}" is not a valid ${platform} account for this brand.`);
           error.statusCode = 400;
@@ -437,55 +453,86 @@ class PostService {
   }
 
   async upsertPostTargets(postId, targetPlatforms, selectedAccountIds, tx, brandId) {
-    await tx.postTarget.deleteMany({ where: { postId } });
+    // Batches what used to be up to 2 sequential DB round-trips PER
+    // targeted platform (a findMany to validate requested ids, then either
+    // a findFirst fallback lookup or another findMany, then createMany)
+    // into a small fixed number of round-trips total. Each round-trip is
+    // real network latency against the DB — negligible on a local instance
+    // but multiplies up noticeably against a remote one, which is what made
+    // createPost slow for a post targeting several platforms.
+    const normalizedPlatforms = targetPlatforms.map((p) => p.trim().toUpperCase());
 
-    for (const platform of targetPlatforms) {
-      const normalizedPlatform = platform.trim().toUpperCase();
-      let accountIds = [];
-
-      if (selectedAccountIds && typeof selectedAccountIds === 'object' && !Array.isArray(selectedAccountIds)) {
-        accountIds = selectedAccountIds[normalizedPlatform]
-          || selectedAccountIds[normalizedPlatform.toLowerCase()]
-          || [];
-      } else if (Array.isArray(selectedAccountIds)) {
-        const matchedAccounts = await tx.socialAccount.findMany({
-          where: { id: { in: selectedAccountIds }, brandId, platform: normalizedPlatform },
-          select: { id: true }
-        });
-        accountIds = matchedAccounts.map(a => a.id);
+    // The composer always sends selectedAccountIds as { PLATFORM: [ids] };
+    // the flat-array shape is a legacy/defensive fallback also handled by
+    // _resolveTargetAccounts elsewhere. Object shape resolves per platform
+    // here with no DB access; flat-array resolves per platform once real
+    // accounts are loaded below (an id belongs to whichever platform it's
+    // actually registered under).
+    const isObjectShape = selectedAccountIds && typeof selectedAccountIds === 'object' && !Array.isArray(selectedAccountIds);
+    const requestedIdsByPlatform = new Map();
+    if (isObjectShape) {
+      for (const platform of normalizedPlatforms) {
+        const ids = selectedAccountIds[platform] || selectedAccountIds[platform.toLowerCase()] || [];
+        requestedIdsByPlatform.set(platform, (Array.isArray(ids) ? ids : []).filter(Boolean));
       }
+    }
+    const flatRequestedIds = Array.isArray(selectedAccountIds) ? selectedAccountIds.filter(Boolean) : [];
 
-      if (!Array.isArray(accountIds)) accountIds = [];
-      accountIds = accountIds.filter(Boolean);
+    const allRequestedIds = [...new Set([...requestedIdsByPlatform.values()].flat().concat(flatRequestedIds))];
+    const platformsNeedingFallback = isObjectShape
+      ? normalizedPlatforms.filter((p) => requestedIdsByPlatform.get(p).length === 0)
+      : normalizedPlatforms;
 
-      if (accountIds.length === 0) {
-        const fallbackAccount = await tx.socialAccount.findFirst({
-          where: { brandId, platform: normalizedPlatform, isConnected: true },
-          orderBy: [{ isDefault: 'desc' }, { connectedAt: 'asc' }]
-        });
-        if (fallbackAccount) {
-          accountIds = [fallbackAccount.id];
-        }
-      }
+    const [deleteResult, requestedAccounts, fallbackAccounts] = await Promise.all([
+      tx.postTarget.deleteMany({ where: { postId } }),
+      allRequestedIds.length > 0
+        ? tx.socialAccount.findMany({ where: { id: { in: allRequestedIds }, brandId, platform: { in: normalizedPlatforms } } })
+        : Promise.resolve([]),
+      platformsNeedingFallback.length > 0
+        ? tx.socialAccount.findMany({
+            where: { brandId, platform: { in: platformsNeedingFallback }, isConnected: true },
+            orderBy: [{ isDefault: 'desc' }, { connectedAt: 'asc' }]
+          })
+        : Promise.resolve([])
+    ]);
 
-      if (accountIds.length === 0) continue;
+    const requestedAccountsById = new Map(requestedAccounts.map((a) => [a.id, a]));
+    // First connected account per platform, in the same priority order the
+    // original per-platform findFirst returned (isDefault desc, then
+    // connectedAt asc) — findMany above already returns rows in that order.
+    const fallbackAccountByPlatform = new Map();
+    for (const acc of fallbackAccounts) {
+      if (!fallbackAccountByPlatform.has(acc.platform)) fallbackAccountByPlatform.set(acc.platform, acc);
+    }
 
-      const accounts = await tx.socialAccount.findMany({
-        where: { id: { in: accountIds }, brandId, platform: normalizedPlatform }
-      });
-      if (accounts.length !== accountIds.length) {
-        const error = new Error(`One or more selected accounts are not valid ${normalizedPlatform} accounts for this brand.`);
+    const targetRows = [];
+    for (const platform of normalizedPlatforms) {
+      const requestedIds = isObjectShape
+        ? requestedIdsByPlatform.get(platform)
+        : flatRequestedIds.filter((id) => requestedAccountsById.get(id)?.platform === platform);
+
+      let accounts = requestedIds
+        .map((id) => requestedAccountsById.get(id))
+        .filter((account) => account && account.brandId === brandId && account.platform === platform);
+
+      if (requestedIds.length > 0 && accounts.length !== requestedIds.length) {
+        const error = new Error(`One or more selected accounts are not valid ${platform} accounts for this brand.`);
         error.statusCode = 400;
         throw error;
       }
 
-      await tx.postTarget.createMany({
-        data: accounts.map((account) => ({
-          postId,
-          platform: normalizedPlatform,
-          socialAccountId: account.id
-        }))
-      });
+      if (accounts.length === 0) {
+        const fallback = fallbackAccountByPlatform.get(platform);
+        if (fallback) accounts = [fallback];
+      }
+
+      for (const account of accounts) {
+        targetRows.push({ postId, platform, socialAccountId: account.id });
+      }
+    }
+
+    if (targetRows.length > 0) {
+      await tx.postTarget.createMany({ data: targetRows });
     }
   }
 
