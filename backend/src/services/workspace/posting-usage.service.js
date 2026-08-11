@@ -11,13 +11,29 @@ const postTargetRepository = require('../../repositories/workspace/post-target.r
  */
 class PostingUsageService {
   async getDailyUsageForBrand(brandId) {
-    const allAccounts = await socialAccountRepository.findByBrandAndPlatform(brandId, null);
+    // channelMetricsDaily skipped — this summary only needs identity/token/
+    // platformAccountId fields, not the last-30-days history (see
+    // findByBrandAndPlatform's doc comment).
+    const allAccounts = await socialAccountRepository.findByBrandAndPlatform(brandId, null, { includeChannelMetricsDaily: false });
     const accounts = allAccounts.filter((account) => socialPlatformFactory.isSupported(account.platform));
 
     const limits = await platformDailyLimitRepository.findAll();
     const limitByPlatform = new Map(limits.map((limit) => [limit.platform, limit]));
 
-    return Promise.all(accounts.map(async (account) => {
+    // Batched instead of one countPublishedInLast24h call per account (each
+    // of which is itself 2 sequential round-trips) — was previously up to
+    // 2N sequential-per-account round-trips for a brand with N connected
+    // channels, real network latency on a remote DB.
+    const configuredAccounts = accounts.filter((account) => limitByPlatform.has(account.platform));
+    const countsByAccountId = await postTargetRepository.countPublishedInLast24hBatch(
+      configuredAccounts.map((account) => ({
+        socialAccountId: account.id,
+        platform: account.platform,
+        platformAccountId: account.platformAccountId
+      }))
+    );
+
+    return accounts.map((account) => {
       const limit = limitByPlatform.get(account.platform);
       if (!limit) {
         return {
@@ -32,7 +48,7 @@ class PostingUsageService {
         };
       }
 
-      const publishedCount = await postTargetRepository.countPublishedInLast24h(account.id, account.platform);
+      const publishedCount = countsByAccountId.get(account.id) || 0;
       return {
         socialAccountId: account.id,
         platform: account.platform,
@@ -43,7 +59,7 @@ class PostingUsageService {
         maxPostsPerDay: limit.maxPostsPerDay,
         remaining: Math.max(limit.maxPostsPerDay - publishedCount, 0)
       };
-    }));
+    });
   }
 }
 
