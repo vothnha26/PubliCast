@@ -77,7 +77,17 @@ export function useMediaLibrary() {
     try {
       const response = await mediaService.getMedia(activeBrand.id, searchParamsString);
       if (!mediaRequest.isLatest(requestId)) return;
-      setMediaData(response || { data: [], meta: { total: 0, page: 1, limit: 20, totalPages: 1 } });
+      // apiV2's response interceptor special-cases any { data: [...], meta }
+      // envelope whose data is an array: it returns the array itself (with
+      // .meta/.posts attached as extra properties) rather than { data, meta }
+      // — a shape built for post-list callers that read response.posts.
+      // Media Library's { data, meta } shape looks identical to the
+      // envelope but isn't a post list, so it gets the same array-shaped
+      // response; read it back out here instead of assuming response.data.
+      const normalized = Array.isArray(response)
+        ? { data: response, meta: response.meta || { total: response.length, page: 1, limit: response.length, totalPages: 1 } }
+        : (response || { data: [], meta: { total: 0, page: 1, limit: 20, totalPages: 1 } });
+      setMediaData(normalized);
     } catch (error) {
       if (!mediaRequest.isLatest(requestId)) return;
       toast.error(error.message || "Failed to load media files");
