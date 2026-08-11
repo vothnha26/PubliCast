@@ -8,6 +8,95 @@ const logger = require('../../utils/logger');
 const redisClient = require('../../config/redis');
 const { videoQueue } = require('../../queues/video.queue');
 
+/**
+ * Submits a single trim job to BullMQ, deduped/locked by a content hash of
+ * (userId, videoUrl, edit params). Shared by trimVideo (single clip) and
+ * the splitPoints branch (one call per resulting segment) so both paths
+ * get the same double-submit lock + FAILED-job cleanup + rollback semantics.
+ * Returns { taskId, status } where status is 'queued' | 'in_progress' |
+ * 'rate_limited' (the last one only when the caller must surface a 429).
+ *
+ * Extracted to module scope (not a class method) so post.controller.v2.js's
+ * trimVideo can share this exact logic without duplicating it.
+ */
+async function submitTrimJob({ userId, videoUrl, startTime, endTime, aspectRatio, keyframes, adjustments, filterPreset, resize, keepAudio, audioUrl, audioVolume, textOverlays, subtitles, brandId }) {
+  const taskDataString = JSON.stringify({
+    userId, videoUrl, startTime, endTime, aspectRatio, keyframes,
+    adjustments, filterPreset, resize, keepAudio, audioUrl, audioVolume,
+    textOverlays, subtitles
+  });
+  const taskHash = crypto.createHash('sha256').update(taskDataString).digest('hex');
+  const taskId = `trim_${taskHash}`;
+
+  const lockKey = `${REDIS_PREFIXES.LOCK_VIDEO_TRIM}${taskId}`;
+  const acquireLock = await redisClient.set(lockKey, 'LOCKED', { NX: true, EX: 10 });
+  if (!acquireLock) {
+    return { taskId, status: 'rate_limited' };
+  }
+
+  try {
+    const taskKey = `${REDIS_PREFIXES.TASK_VIDEO_TRIM}${taskId}`;
+    const existingTaskData = await redisClient.get(taskKey);
+
+    if (existingTaskData) {
+      const task = JSON.parse(existingTaskData);
+      if (task.status === TASK_STATUS.PROCESSING || task.status === TASK_STATUS.SUCCESS) {
+        return { taskId, status: 'in_progress' };
+      }
+      if (task.status === TASK_STATUS.FAILED) {
+        logger.debug(`[Queue Cleanup] Removing failed old job ${taskId} from BullMQ queue...`);
+        const oldJob = await videoQueue.getJob(taskId);
+        if (oldJob) {
+          await oldJob.remove();
+          logger.debug(`[Queue Cleanup] Successfully removed failed old job ${taskId}`);
+        }
+      }
+    }
+
+    await redisClient.set(taskKey, JSON.stringify({
+      status: TASK_STATUS.PROCESSING,
+      userId,
+      startTime: Date.now()
+    }), { EX: 86400 });
+
+    try {
+      await videoQueue.add(QUEUE_CONFIG.VIDEO.JOB_TRIM, {
+        videoUrl,
+        startTime: parseFloat(startTime),
+        endTime: parseFloat(endTime),
+        aspectRatio,
+        keyframes: Array.isArray(keyframes) ? keyframes : [],
+        adjustments,
+        filterPreset,
+        resize,
+        keepAudio,
+        audioUrl,
+        audioVolume: audioVolume !== undefined ? parseInt(audioVolume) : 50,
+        textOverlays: Array.isArray(textOverlays) ? textOverlays : [],
+        subtitles: Array.isArray(subtitles) ? subtitles : [],
+        brandId,
+        userId
+      }, { jobId: taskId });
+    } catch (queueErr) {
+      console.error(`[Queue Error] Failed to add job ${taskId} to BullMQ. Rolling back Redis state.`, queueErr.message);
+      await redisClient.del(taskKey);
+      throw queueErr;
+    }
+
+    return { taskId, status: 'queued' };
+  } finally {
+    await redisClient.del(lockKey);
+  }
+}
+
+/**
+ * Extracted to module scope for the same reason as submitTrimJob above.
+ */
+function getBulkIds(body) {
+  const targetIds = body.ids || body.postIds;
+  return (targetIds && Array.isArray(targetIds)) ? targetIds : null;
+}
+
 class PostController {
   /**
    * GET /api/posts
@@ -82,7 +171,7 @@ class PostController {
     const { brandId } = req.body;
     if (!brandId) return res.status(400).json({ message: 'brandId is required' });
     
-    const targetIds = this._getBulkIds(req.body);
+    const targetIds = getBulkIds(req.body);
     if (!targetIds) return res.status(400).json({ message: 'ids array is required' });
 
     const count = await postService.bulkApprove(targetIds, brandId);
@@ -96,7 +185,7 @@ class PostController {
     const { brandId, deleteFromSocials } = req.body;
     if (!brandId) return res.status(400).json({ message: 'brandId is required' });
     
-    const targetIds = this._getBulkIds(req.body);
+    const targetIds = getBulkIds(req.body);
     if (!targetIds) return res.status(400).json({ message: 'ids array is required' });
 
     const count = await postService.bulkDelete(targetIds, brandId, deleteFromSocials === true || deleteFromSocials === 'true');
@@ -110,7 +199,7 @@ class PostController {
     const { brandId } = req.body;
     if (!brandId) return res.status(400).json({ message: 'brandId is required' });
     
-    const targetIds = this._getBulkIds(req.body);
+    const targetIds = getBulkIds(req.body);
     if (!targetIds) return res.status(400).json({ message: 'ids array is required' });
 
     const count = await postService.bulkRestore(targetIds, brandId);
@@ -154,84 +243,6 @@ class PostController {
   });
 
 
-
-  /**
-   * Submits a single trim job to BullMQ, deduped/locked by a content hash of
-   * (userId, videoUrl, edit params). Shared by trimVideo (single clip) and
-   * the splitPoints branch (one call per resulting segment) so both paths
-   * get the same double-submit lock + FAILED-job cleanup + rollback semantics.
-   * Returns { taskId, status } where status is 'queued' | 'in_progress' |
-   * 'rate_limited' (the last one only when the caller must surface a 429).
-   */
-  async _submitTrimJob({ userId, videoUrl, startTime, endTime, aspectRatio, keyframes, adjustments, filterPreset, resize, keepAudio, audioUrl, audioVolume, textOverlays, subtitles, brandId }) {
-    const taskDataString = JSON.stringify({
-      userId, videoUrl, startTime, endTime, aspectRatio, keyframes,
-      adjustments, filterPreset, resize, keepAudio, audioUrl, audioVolume,
-      textOverlays, subtitles
-    });
-    const taskHash = crypto.createHash('sha256').update(taskDataString).digest('hex');
-    const taskId = `trim_${taskHash}`;
-
-    const lockKey = `${REDIS_PREFIXES.LOCK_VIDEO_TRIM}${taskId}`;
-    const acquireLock = await redisClient.set(lockKey, 'LOCKED', { NX: true, EX: 10 });
-    if (!acquireLock) {
-      return { taskId, status: 'rate_limited' };
-    }
-
-    try {
-      const taskKey = `${REDIS_PREFIXES.TASK_VIDEO_TRIM}${taskId}`;
-      const existingTaskData = await redisClient.get(taskKey);
-
-      if (existingTaskData) {
-        const task = JSON.parse(existingTaskData);
-        if (task.status === TASK_STATUS.PROCESSING || task.status === TASK_STATUS.SUCCESS) {
-          return { taskId, status: 'in_progress' };
-        }
-        if (task.status === TASK_STATUS.FAILED) {
-          logger.debug(`[Queue Cleanup] Removing failed old job ${taskId} from BullMQ queue...`);
-          const oldJob = await videoQueue.getJob(taskId);
-          if (oldJob) {
-            await oldJob.remove();
-            logger.debug(`[Queue Cleanup] Successfully removed failed old job ${taskId}`);
-          }
-        }
-      }
-
-      await redisClient.set(taskKey, JSON.stringify({
-        status: TASK_STATUS.PROCESSING,
-        userId,
-        startTime: Date.now()
-      }), { EX: 86400 });
-
-      try {
-        await videoQueue.add(QUEUE_CONFIG.VIDEO.JOB_TRIM, {
-          videoUrl,
-          startTime: parseFloat(startTime),
-          endTime: parseFloat(endTime),
-          aspectRatio,
-          keyframes: Array.isArray(keyframes) ? keyframes : [],
-          adjustments,
-          filterPreset,
-          resize,
-          keepAudio,
-          audioUrl,
-          audioVolume: audioVolume !== undefined ? parseInt(audioVolume) : 50,
-          textOverlays: Array.isArray(textOverlays) ? textOverlays : [],
-          subtitles: Array.isArray(subtitles) ? subtitles : [],
-          brandId,
-          userId
-        }, { jobId: taskId });
-      } catch (queueErr) {
-        console.error(`[Queue Error] Failed to add job ${taskId} to BullMQ. Rolling back Redis state.`, queueErr.message);
-        await redisClient.del(taskKey);
-        throw queueErr;
-      }
-
-      return { taskId, status: 'queued' };
-    } finally {
-      await redisClient.del(lockKey);
-    }
-  }
 
   /**
    * POST /api/posts/trim
@@ -300,7 +311,7 @@ class PostController {
       for (let i = 0; i < boundaries.length - 1; i++) {
         const segStart = boundaries[i];
         const segEnd = boundaries[i + 1];
-        const result = await this._submitTrimJob({ ...sharedParams, startTime: segStart, endTime: segEnd });
+        const result = await submitTrimJob({ ...sharedParams, startTime: segStart, endTime: segEnd });
         if (result.status === 'rate_limited') {
           res.set('Retry-After', '1');
           return res.status(429).json({ message: 'Yêu cầu đang được xử lý, vui lòng không gửi dồn dập.', taskId: result.taskId });
@@ -315,7 +326,7 @@ class PostController {
     }
 
     // Single-clip mode (unchanged behavior)
-    const result = await this._submitTrimJob({ ...sharedParams, startTime: rangeStart, endTime: rangeEnd });
+    const result = await submitTrimJob({ ...sharedParams, startTime: rangeStart, endTime: rangeEnd });
     if (result.status === 'rate_limited') {
       res.set('Retry-After', '1');
       return res.status(429).json({ message: 'Yêu cầu đang được xử lý, vui lòng không gửi dồn dập.', taskId: result.taskId });
@@ -438,13 +449,8 @@ class PostController {
       data: tracks
     });
   });
-
-  // ============= Private Helper Methods =============
-
-  _getBulkIds(body) {
-    const targetIds = body.ids || body.postIds;
-    return (targetIds && Array.isArray(targetIds)) ? targetIds : null;
-  }
 }
 
 module.exports = new PostController();
+module.exports.submitTrimJob = submitTrimJob;
+module.exports.getBulkIds = getBulkIds;

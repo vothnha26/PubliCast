@@ -1,6 +1,5 @@
 const express = require('express');
 const postControllerV2 = require('../../controllers/workspace/post.controller.v2');
-const postController = require('../../controllers/workspace/post.controller');
 const { verifyAuth } = require('../../middlewares/auth.middleware');
 const checkPermission = require('../../middlewares/permission.middleware');
 const checkBrandAccess = require('../../middlewares/brand-access.middleware');
@@ -90,7 +89,7 @@ router.use(verifyAuth);
  *             schema:
  *               $ref: '#/components/schemas/V2EnvelopeResponse'
  */
-router.get('/', checkBrandAccess, postController.getPosts);
+router.get('/', checkBrandAccess, postControllerV2.getPosts);
 router.post('/', checkPermission(PERMISSION_KEYS.CREATE_POSTS), postControllerV2.createPostV2);
 
 /**
@@ -184,7 +183,7 @@ router.post('/upload', checkPermission(PERMISSION_KEYS.CREATE_POSTS), resolvePos
  *             schema:
  *               $ref: '#/components/schemas/V2EnvelopeResponse'
  */
-router.post('/bulk-approve', checkPermission(PERMISSION_KEYS.APPROVE_POSTS), postController.bulkApprove);
+router.post('/bulk-approve', checkPermission(PERMISSION_KEYS.APPROVE_POSTS), postControllerV2.bulkApprove);
 
 /**
  * @openapi
@@ -216,9 +215,9 @@ router.post('/bulk-approve', checkPermission(PERMISSION_KEYS.APPROVE_POSTS), pos
  *             schema:
  *               $ref: '#/components/schemas/V2EnvelopeResponse'
  */
-router.delete('/bulk', checkPermission(PERMISSION_KEYS.DELETE_POSTS), postController.bulkDelete);
-router.post('/bulk-restore', checkPermission(PERMISSION_KEYS.CREATE_POSTS), postController.bulkRestore);
-router.delete('/trash', checkPermission(PERMISSION_KEYS.DELETE_POSTS), postController.emptyTrash);
+router.delete('/bulk', checkPermission(PERMISSION_KEYS.DELETE_POSTS), postControllerV2.bulkDelete);
+router.post('/bulk-restore', checkPermission(PERMISSION_KEYS.CREATE_POSTS), postControllerV2.bulkRestore);
+router.delete('/trash', checkPermission(PERMISSION_KEYS.DELETE_POSTS), postControllerV2.emptyTrash);
 
 /**
  * @openapi
@@ -237,9 +236,9 @@ router.delete('/trash', checkPermission(PERMISSION_KEYS.DELETE_POSTS), postContr
  *             schema:
  *               $ref: '#/components/schemas/V2EnvelopeResponse'
  */
-router.post('/trim', checkPermission(PERMISSION_KEYS.CREATE_POSTS), postController.trimVideo);
-router.get('/trim/:taskId/status', postController.getTrimStatus);
-router.post('/transcribe', checkPermission(PERMISSION_KEYS.CREATE_POSTS), postController.transcribeVideo);
+router.post('/trim', checkPermission(PERMISSION_KEYS.CREATE_POSTS), postControllerV2.trimVideo);
+router.get('/trim/:taskId/status', postControllerV2.getTrimStatus);
+router.post('/transcribe', checkPermission(PERMISSION_KEYS.CREATE_POSTS), postControllerV2.transcribeVideo);
 
 /**
  * @openapi
@@ -258,7 +257,7 @@ router.post('/transcribe', checkPermission(PERMISSION_KEYS.CREATE_POSTS), postCo
  *             schema:
  *               $ref: '#/components/schemas/V2EnvelopeResponse'
  */
-router.get('/music', postController.getMusicTracks);
+router.get('/music', postControllerV2.getMusicTracks);
 
 /**
  * @openapi
@@ -283,7 +282,7 @@ router.get('/music', postController.getMusicTracks);
  *             schema:
  *               $ref: '#/components/schemas/V2EnvelopeResponse'
  */
-router.put('/:id', checkPermission(PERMISSION_KEYS.CREATE_POSTS), postController.updatePost);
+router.put('/:id', checkPermission(PERMISSION_KEYS.CREATE_POSTS), postControllerV2.updatePost);
 
 /**
  * @openapi
@@ -323,6 +322,6 @@ router.put('/:id', checkPermission(PERMISSION_KEYS.CREATE_POSTS), postController
  *             schema:
  *               $ref: '#/components/schemas/V2EnvelopeResponse'
  */
-router.post('/:id/retry-failed', checkPermission(PERMISSION_KEYS.CREATE_POSTS), postController.retryFailedPlatforms);
+router.post('/:id/retry-failed', checkPermission(PERMISSION_KEYS.CREATE_POSTS), postControllerV2.retryFailedPlatforms);
 
 module.exports = router;
