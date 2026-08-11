@@ -61,7 +61,7 @@ class AuthController {
       throw err;
     }
 
-    setAuthCookies(res, result.accessToken, result.refreshToken);
+    setAuthCookies(res, result.accessToken, result.refreshToken, req);
 
     if (state === 'settings') {
       res.redirect(`${frontendUrl}/settings?tab=access&success=google_linked`);
@@ -109,7 +109,7 @@ class AuthController {
     const result = await authService.verifyOTP(email.trim(), otp.trim());
 
     if (result.accessToken && result.refreshToken) {
-      setAuthCookies(res, result.accessToken, result.refreshToken);
+      setAuthCookies(res, result.accessToken, result.refreshToken, req);
     }
 
     res.status(200).json({
@@ -197,7 +197,7 @@ class AuthController {
       }
 
       // Set tokens via HttpOnly cookies only — do NOT return raw tokens in body (XSS risk)
-      setAuthCookies(res, result.accessToken, result.refreshToken);
+      setAuthCookies(res, result.accessToken, result.refreshToken, req);
 
       res.status(200).json({
         message: ERROR_MESSAGES.LOGIN_SUCCESS,
@@ -228,7 +228,7 @@ class AuthController {
     const userId = decoded.id;
 
     const result = await authService.refreshTokens(refreshToken, userId);
-    setAuthCookies(res, result.accessToken, result.refreshToken);
+    setAuthCookies(res, result.accessToken, result.refreshToken, req);
 
     res.status(200).json({ message: 'Token refreshed successfully' });
   });
@@ -288,7 +288,7 @@ class AuthController {
     const result = await authService.loginVerify2FA(preAuthToken, code);
 
     // Set cookies
-    setAuthCookies(res, result.accessToken, result.refreshToken);
+    setAuthCookies(res, result.accessToken, result.refreshToken, req);
 
     res.status(200).json({
       message: ERROR_MESSAGES.LOGIN_SUCCESS,
