@@ -1625,8 +1625,9 @@ model FeedSource {
   @@map("feed_sources")
 }
 
-// Cached parsed RSS items for a FeedSource, refreshed periodically by
-// feed-scheduler.service.js rather than fetched live on every page view.
+// Cached parsed RSS items for a FeedSource, refreshed periodically by the
+// feed-refresh BullMQ queue (queues/feed.queue.js) rather than fetched live
+// on every page view.
 model FeedEntry {
   id           String    @id @default(uuid())
   feedSourceId String

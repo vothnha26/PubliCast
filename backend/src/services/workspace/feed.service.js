@@ -151,34 +151,18 @@ class FeedService {
       })
       .filter(Boolean);
 
-    if (rows.length === 0) return { added: 0 };
-
-    const result = await prisma.feedEntry.createMany({ data: rows, skipDuplicates: true });
-    return { added: result.count };
-  }
-
-  async refreshAllFeedSources() {
-    const feedSources = await prisma.feedSource.findMany({ select: { id: true, url: true, isSystem: true } });
-
-    let succeeded = 0;
-    let failed = 0;
-    let anySystemRefreshed = false;
-    for (const source of feedSources) {
-      try {
-        await this.refreshFeedSource(source.id);
-        succeeded += 1;
-        if (source.isSystem) anySystemRefreshed = true;
-      } catch (error) {
-        failed += 1;
-        logger.warn(`[FeedService] Refresh failed for feed source ${source.id} (${source.url}):`, error.message);
-      }
+    if (rows.length === 0) {
+      if (feedSource.isSystem) await this._purgeCuratedFeedsCache();
+      return { added: 0 };
     }
 
-    if (anySystemRefreshed) {
+    const result = await prisma.feedEntry.createMany({ data: rows, skipDuplicates: true });
+
+    if (feedSource.isSystem) {
       await this._purgeCuratedFeedsCache();
     }
 
-    return { total: feedSources.length, succeeded, failed };
+    return { added: result.count };
   }
 }
 

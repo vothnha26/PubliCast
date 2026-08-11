@@ -45,6 +45,12 @@ const server = app.listen(PORT, async () => {
   // delivery instead of BullMQ workers (see routes/webhooks/qstash.routes.js)
   // — no worker to init for either.
 
+  // Initialize BullMQ feed-refresh worker + its repeatable scan schedule
+  // (moved off node-cron — see queues/feed.queue.js / feed.worker.js)
+  require('./queues/feed.worker');
+  const { startFeedScheduler } = require('./queues/feed.queue');
+  await startFeedScheduler();
+
   // Start Token Auto-Refresh Service scheduler
   const tokenRefreshService = require('./services/social/token-refresh/token-refresh.service');
   tokenRefreshService.startScheduler();
@@ -64,10 +70,6 @@ const server = app.listen(PORT, async () => {
   // Start Daily Posting Streak Reset Scheduler
   const streakSchedulerService = require('./services/core/streak-scheduler.service');
   streakSchedulerService.start();
-
-  // Start Periodic Explore Feeds Refresh Scheduler (30-minute cycle)
-  const feedSchedulerService = require('./services/core/feed-scheduler.service');
-  feedSchedulerService.start();
 
   // Start Periodic Inbox Sync Scheduler (15-minute fallback cycle)
   const inboxSyncSchedulerService = require('./services/social/inbox-sync-scheduler.service');
@@ -151,8 +153,9 @@ async function shutdown(signal) {
     // Đóng các worker BullMQ dứt điểm và an toàn
     try {
       const videoWorker = require('./queues/video.worker');
+      const feedWorker = require('./queues/feed.worker');
       logger.debug('[Shutdown] Closing BullMQ Workers...');
-      await videoWorker.close();
+      await Promise.all([videoWorker.close(), feedWorker.close()]);
       logger.info('BullMQ workers closed.');
     } catch (err) {
       logger.error('Error closing BullMQ workers', err);
