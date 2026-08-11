@@ -1,5 +1,5 @@
 const express = require('express');
-const mediaFolderController = require('../../controllers/workspace/media-folder.controller');
+const mediaFolderController = require('../../controllers/workspace/media-folder.controller.v2');
 const { verifyAuth } = require('../../middlewares/auth.middleware');
 const checkPermission = require('../../middlewares/permission.middleware');
 const { PERMISSION_KEYS } = require('../../utils/constants');

@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const ticketController = require('../../controllers/workspace/ticket.controller');
+const ticketController = require('../../controllers/workspace/ticket.controller.v2');
 const { verifyAuth } = require('../../middlewares/auth.middleware');
 const { requireBrandMember } = require('../../middlewares/permission.middleware');
 

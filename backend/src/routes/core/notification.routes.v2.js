@@ -1,5 +1,5 @@
 const express = require('express');
-const notificationController = require('../../controllers/core/notification.controller');
+const notificationController = require('../../controllers/core/notification.controller.v2');
 const { verifyAuth, verifyAuthFromQuery } = require('../../middlewares/auth.middleware');
 const { authorize } = require('../../middlewares/authorization.middleware');
 const { USER_ROLES } = require('../../utils/constants');
