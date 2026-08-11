@@ -1216,40 +1216,113 @@ class SocialAccountRepository {
     });
   }
 
-  async findByBrandAndPlatform(brandId, platform) {
+  // Which per-platform sub-account table backs each PLATFORMS.* value, and
+  // the Prisma delegate to query it through — used by the query-splitting
+  // below (see findByBrandAndPlatform's doc comment) to only ever query the
+  // ONE table a given account's platform actually needs, instead of a
+  // single findMany that LEFT JOINs all 8 unconditionally regardless of
+  // which platform each row is (7 of them come back NULL for every row).
+  _platformSubAccountConfig = {
+    [PLATFORMS.YOUTUBE]: { relation: 'youtubeChannel', delegate: 'youTubeChannel' },
+    [PLATFORMS.INSTAGRAM]: { relation: 'instagramAccount', delegate: 'instagramAccount' },
+    [PLATFORMS.THREADS]: { relation: 'threadsAccount', delegate: 'threadsAccount' },
+    [PLATFORMS.FACEBOOK]: { relation: 'facebookPage', delegate: 'facebookPage' },
+    [PLATFORMS.TIKTOK]: { relation: 'tikTokAccount', delegate: 'tikTokAccount' },
+    [PLATFORMS.BLUESKY]: { relation: 'blueskyAccount', delegate: 'blueskyAccount' },
+    [PLATFORMS.REDDIT]: { relation: 'redditAccount', delegate: 'redditAccount' },
+    [PLATFORMS.TWITCH]: { relation: 'twitchAccount', delegate: 'twitchAccount' }
+  };
+
+  // includeChannelMetricsDaily (default true — unchanged behavior for every
+  // existing caller): the last-30-days ChannelMetricDaily history per
+  // account is a real cost on a remote DB and, as of this comment, no
+  // caller anywhere in the backend or frontend actually reads
+  // .channelMetricsDaily off the result — it was carried over from the
+  // 2026-08-09 ChannelMetricDaily consolidation but nothing was ever wired
+  // up to consume it here. Callers that only need account identity/tokens/
+  // per-platform sub-account + analytics (getAggregatedMetrics,
+  // posting-usage.service's per-brand summary) pass false to skip it rather
+  // than risk silently changing the response shape for callers that might
+  // rely on it in a way this grep-based audit missed.
+  //
+  // Query-split instead of one findMany with all 8 platform-account tables
+  // + channelMetricsDaily + analytics as `include` — Prisma compiles that
+  // into a single query LEFT JOINing every table for every row regardless
+  // of that row's actual platform (an account only ever matches ONE of the
+  // 8), which on a remote DB measured ~1.3s just for the 8-table join vs
+  // ~90ms for a bare findMany. Splitting into "base rows" + "one query per
+  // platform actually present, scoped to just that platform's accounts" +
+  // analytics keeps every query small and matched to real rows, run
+  // concurrently via Promise.all so the total wall time is close to the
+  // slowest single one rather than their sum.
+  async findByBrandAndPlatform(brandId, platform, { includeChannelMetricsDaily = true } = {}) {
     const where = { brandId };
     if (platform) where.platform = platform;
 
-    // channelMetricsDaily is scoped by this row's own socialAccountId FK, so
-    // it never needs a platform filter here (a SocialAccount only ever has
-    // one platform) — replaces the old facebookChannelSnapshots/
-    // youtubeChannelSnapshots includes, which only covered those 2
-    // platforms; every platform now gets its last-30-days history uniformly
-    // since the 2026-08-09 ChannelMetricDaily consolidation.
-    const accounts = await prisma.socialAccount.findMany({
-      where,
-      include: {
-        youtubeChannel: true,
-        instagramAccount: true,
-        threadsAccount: true,
-        facebookPage: true,
-        tikTokAccount: true,
-        blueskyAccount: true,
-        redditAccount: true,
-        twitchAccount: true,
-        channelMetricsDaily: {
-          orderBy: { snapshotDate: 'desc' },
-          take: 30
-        },
-        analytics: {
-          orderBy: { fetchedAt: 'desc' },
-          take: ANALYTICS.HISTORY_ROWS_TO_MERGE,
-          include: {
-            socialAnalytics: true
-          }
-        }
+    const baseAccounts = await prisma.socialAccount.findMany({ where });
+    if (baseAccounts.length === 0) return [];
+
+    const accountIds = baseAccounts.map((a) => a.id);
+    const platformsPresent = [...new Set(baseAccounts.map((a) => a.platform))]
+      .filter((p) => this._platformSubAccountConfig[p]);
+
+    const [subAccountResults, channelMetricsRows, analyticsRows] = await Promise.all([
+      Promise.all(platformsPresent.map((p) => {
+        const { relation, delegate } = this._platformSubAccountConfig[p];
+        const idsForPlatform = baseAccounts.filter((a) => a.platform === p).map((a) => a.id);
+        return prisma[delegate]
+          .findMany({ where: { socialAccountId: { in: idsForPlatform } } })
+          .then((rows) => ({ relation, rows }));
+      })),
+      includeChannelMetricsDaily
+        ? prisma.channelMetricDaily.findMany({
+            where: { socialAccountId: { in: accountIds } },
+            orderBy: { snapshotDate: 'desc' }
+          })
+        : Promise.resolve([]),
+      prisma.analytics.findMany({
+        where: { socialAccountId: { in: accountIds } },
+        orderBy: { fetchedAt: 'desc' },
+        include: { socialAnalytics: true }
+      })
+    ]);
+
+    // Re-apply each field's original per-account `take` limit (30 for
+    // channelMetricsDaily, ANALYTICS.HISTORY_ROWS_TO_MERGE for analytics) —
+    // querying by socialAccountId IN (...) across ALL accounts at once
+    // can't express a per-group LIMIT the way the original nested `include`
+    // could, so it's applied here after grouping instead.
+    const channelMetricsByAccount = new Map();
+    for (const row of channelMetricsRows) {
+      const list = channelMetricsByAccount.get(row.socialAccountId) || [];
+      if (list.length < 30) list.push(row);
+      channelMetricsByAccount.set(row.socialAccountId, list);
+    }
+    const analyticsByAccount = new Map();
+    for (const row of analyticsRows) {
+      const list = analyticsByAccount.get(row.socialAccountId) || [];
+      if (list.length < ANALYTICS.HISTORY_ROWS_TO_MERGE) list.push(row);
+      analyticsByAccount.set(row.socialAccountId, list);
+    }
+    const subAccountByAccountId = new Map();
+    for (const { relation, rows } of subAccountResults) {
+      for (const row of rows) {
+        const existing = subAccountByAccountId.get(row.socialAccountId) || {};
+        existing[relation] = row;
+        subAccountByAccountId.set(row.socialAccountId, existing);
       }
-    });
+    }
+
+    const accounts = baseAccounts.map((account) => ({
+      ...account,
+      ...Object.fromEntries(
+        Object.values(this._platformSubAccountConfig).map(({ relation }) => [relation, null])
+      ),
+      ...(subAccountByAccountId.get(account.id) || {}),
+      ...(includeChannelMetricsDaily ? { channelMetricsDaily: channelMetricsByAccount.get(account.id) || [] } : {}),
+      analytics: analyticsByAccount.get(account.id) || []
+    }));
+
     return this._decryptAccounts(accounts);
   }
 

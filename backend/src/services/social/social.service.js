@@ -35,7 +35,11 @@ class SocialService {
     const cached = await socialMetricsCache.get(brandId);
     if (cached) return cached;
 
-    const allAccounts = await socialAccountRepository.findByBrandAndPlatform(brandId, null); // passing null to platform to get all platforms
+    // passing null to platform to get all platforms; channelMetricsDaily
+    // skipped — nothing in this response's consumers reads it (see
+    // findByBrandAndPlatform's doc comment), and it's a real cost on a
+    // remote DB.
+    const allAccounts = await socialAccountRepository.findByBrandAndPlatform(brandId, null, { includeChannelMetricsDaily: false });
     const accounts = allAccounts.filter(account => socialPlatformFactory.isSupported(account.platform));
 
     // Cache the ALREADY-STRIPPED result only — see social-metrics-cache.
