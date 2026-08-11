@@ -62,7 +62,7 @@ const OUTBOX_HANDLERS = {
     // deleted in the meantime is a legitimate no-op rather than a failure.
     const user = await userRepository.findById(payload.userId);
     if (!user?.email) return;
-    await emailService.sendNotificationEmail(user.email, payload.title, payload.message, payload.actionUrl);
+    await emailService.sendNotificationEmail(user.email, payload.title, payload.message, payload.actionUrl, payload.template, payload.templateData);
   }
 };
 

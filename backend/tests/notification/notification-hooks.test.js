@@ -38,6 +38,10 @@ jest.mock('../../src/services/social/google-drive.service', () => ({
   downloadFile: jest.fn()
 }));
 
+jest.mock('../../src/config/prisma', () => ({
+  brand: { findUnique: jest.fn().mockResolvedValue({ name: 'Acme' }) }
+}));
+
 describe('Notification integration hooks', () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -130,7 +134,10 @@ describe('Notification integration hooks', () => {
         type: NOTIFICATION_TYPES.PLATFORM,
         title: `${PLATFORMS.YOUTUBE} disconnected`,
         actionUrl: '/manage/connections'
-      }), 'notifyChannelDisconnect');
+      }), 'notifyChannelDisconnect', expect.objectContaining({
+        template: 'channelDisconnected',
+        templateData: expect.objectContaining({ platform: PLATFORMS.YOUTUBE })
+      }));
     });
 
     // "creates a platform notification when social metric sync fails" was

@@ -1,11 +1,14 @@
 import * as React from "react";
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { X, Smile, Folder } from "lucide-react";
 import { EmojiPickerPopover } from "../popovers/EmojiPickerPopover";
+import { useClickOutside } from "../../../../hooks/useClickOutside";
 
 export function FirstCommentModal({ value, onAccept, onCancel }) {
   const [commentText, setCommentText] = useState(value || '');
   const [showEmoji, setShowEmoji] = useState(false);
+  const closeEmoji = useCallback(() => setShowEmoji(false), []);
+  const emojiRef = useClickOutside(showEmoji, closeEmoji);
 
   const insertCommentEmoji = (emoji) => {
     setCommentText(prev => prev + emoji);
@@ -40,7 +43,7 @@ export function FirstCommentModal({ value, onAccept, onCancel }) {
           />
           
           <div className="px-4 py-3 flex items-center justify-between border-t border-gray-50 bg-card">
-            <div className="flex items-center gap-3 relative">
+            <div className="flex items-center gap-3 relative" ref={emojiRef}>
               <button 
                 type="button"
                 onClick={() => setShowEmoji(!showEmoji)} 

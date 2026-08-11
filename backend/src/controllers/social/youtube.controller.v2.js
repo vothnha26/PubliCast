@@ -1,6 +1,6 @@
 const youtubeService = require('../../services/social/youtube');
 const asyncHandler = require('../../utils/async-handler');
-const { sendSuccess } = require('../../utils/response.util');
+const { v2Success: sendSuccess } = require('../../utils/response.helper');
 
 class YouTubeControllerV2 {
   trackYouTubeVideo = asyncHandler(async (req, res) => {

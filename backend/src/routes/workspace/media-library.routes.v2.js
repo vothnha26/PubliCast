@@ -1,6 +1,6 @@
 const express = require('express');
-const mediaLibraryController = require('../../controllers/workspace/media-library.controller');
-const mediaUploadController = require('../../controllers/workspace/media-upload.controller');
+const mediaLibraryController = require('../../controllers/workspace/media-library.controller.v2');
+const mediaUploadController = require('../../controllers/workspace/media-upload.controller.v2');
 const { verifyAuth } = require('../../middlewares/auth.middleware');
 const upload = require('../../middlewares/upload.middleware');
 const checkPermission = require('../../middlewares/permission.middleware');

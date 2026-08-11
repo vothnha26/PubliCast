@@ -11,7 +11,7 @@ const roleResolver = require('./role-resolver');
 const outboxEventRepository = require('../../repositories/core/outbox-event.repository');
 const revocationWebhookService = require('../integrations/revocation-webhook.service');
 const { OUTBOX_EVENT_TYPES } = require('../../constants/outbox.constants');
-const { TEAM_STATUS, PERMISSION_KEYS, NOTIFICATION_TYPES, WORKFLOW_STATUS } = require('../../utils/constants');
+const { TEAM_STATUS, PERMISSION_KEYS, NOTIFICATION_TYPES, WORKFLOW_STATUS, NOTIFICATION_PREFERENCE_KEYS } = require('../../utils/constants');
 const QueryPipeline = require('../../core/query-pipeline/query.pipeline');
 const TeamSearchFilter = require('./team/filters/search.filter');
 const TeamRoleFilter = require('./team/filters/role.filter');
@@ -162,7 +162,7 @@ class TeamService {
         title: `Bạn được mời vào "${brand.name}"`,
         message: `${inviter?.name || 'Ai đó'} đã mời bạn tham gia với vai trò ${role}.`,
         actionUrl: `/invite?token=${token}`,
-        preferenceKey: 'notifyCollaboration'
+        preferenceKey: NOTIFICATION_PREFERENCE_KEYS.COLLABORATION
       });
     } catch (notifErr) {
       // Không để lỗi notification chặn flow mời thành viên
@@ -235,7 +235,7 @@ class TeamService {
         title: `Lời mời gia nhập "${brand.name}" đã được gửi lại`,
         message: `${requester?.name || 'Ai đó'} đã gửi lại lời mời. Vui lòng kiểm tra email của bạn.`,
         actionUrl: `/invite?token=${token}`,
-        preferenceKey: 'notifyCollaboration'
+        preferenceKey: NOTIFICATION_PREFERENCE_KEYS.COLLABORATION
       });
     } catch (notifErr) {
       console.error('[TeamService] Failed to create resend notification:', notifErr.message);
@@ -375,7 +375,7 @@ class TeamService {
             title: `Bạn được mời vào "${brand.name}"`,
             message: `${inviter?.name || 'Ai đó'} đã mời bạn tham gia với vai trò ${role}.`,
             actionUrl: `/invite?token=${token}`,
-            preferenceKey: 'notifyCollaboration'
+            preferenceKey: NOTIFICATION_PREFERENCE_KEYS.COLLABORATION
           });
         } catch (notifErr) {
           console.error('[TeamService] Failed to create invite notification:', notifErr.message);
@@ -577,7 +577,7 @@ class TeamService {
         title: 'Vai trò của bạn đã được cập nhật',
         message: `Vai trò của bạn trong workspace đã được thay đổi thành ${role}.`,
         actionUrl: '/settings/team',
-        preferenceKey: 'notifyCollaboration'
+        preferenceKey: NOTIFICATION_PREFERENCE_KEYS.COLLABORATION
       });
     } catch (notifErr) {
       console.error('[TeamService] Failed to create role-update notification:', notifErr.message);
@@ -767,7 +767,7 @@ class TeamService {
             title: notifTitle,
             message: notifMessage,
             actionUrl: `/planner/list`,
-            preferenceKey: 'notifyCollaboration'
+            preferenceKey: NOTIFICATION_PREFERENCE_KEYS.COLLABORATION
           }).catch(err => console.error('[TeamService] Failed to notify requester:', err.message));
         }
 

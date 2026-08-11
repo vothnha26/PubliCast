@@ -6,7 +6,7 @@ const brandRepository = require('../../repositories/workspace/brand.repository')
 const userRepository = require('../../repositories/auth/user.repository');
 const authorizationFacade = require('../auth/authorization.facade');
 const prisma = require('../../config/prisma');
-const { NOTIFICATION_TYPES, NOTIFICATION_LABELS, USER_ROLES } = require('../../utils/constants');
+const { NOTIFICATION_TYPES, NOTIFICATION_LABELS, USER_ROLES, NOTIFICATION_PREFERENCE_KEYS } = require('../../utils/constants');
 const notificationRealtime = require('./notification.realtime');
 const { eventEmitter, EVENTS } = require('../../events/event-emitter');
 
@@ -14,16 +14,7 @@ const { eventEmitter, EVENTS } = require('../../events/event-emitter');
 // gates it. Only categories with a real per-user toggle appear here —
 // notifications without a preferenceKey (e.g. isGlobal pricing broadcasts)
 // are never filtered.
-const PREFERENCE_KEYS = [
-  'notifyPostFailure',
-  'notifyPublishSuccess',
-  'notifyChannelDisconnect',
-  'notifyCollaboration',
-  'notifyBilling',
-  'notifyEmptyQueue',
-  'notifyDailyRecap',
-  'notifyWeeklyReport'
-];
+const PREFERENCE_KEYS = Object.values(NOTIFICATION_PREFERENCE_KEYS);
 
 class NotificationService {
   constructor() {
@@ -71,10 +62,14 @@ class NotificationService {
    *   never filtered here; use notifyBrandMembers for the latter.
    * @param {object|null} actor
    * @param {object} [emailOptions] - forwarded to the email Outbox row if this
-   *   preferenceKey queues one (see notification.subscriber.js). Only
-   *   `nextRunAt` is used today — lets bulk fan-outs (recap scan) spread
-   *   thousands of same-instant rows across a window instead of bursting the
-   *   dispatcher's batch all at once.
+   *   preferenceKey queues one (see notification.subscriber.js). `nextRunAt`
+   *   lets bulk fan-outs (recap scan) spread thousands of same-instant rows
+   *   across a window instead of bursting the dispatcher's batch all at
+   *   once. `template`/`templateData` select a dedicated React Email
+   *   component (see src/emails/) instead of the generic notification
+   *   template — e.g. { template: 'channelDisconnected', templateData:
+   *   { platform, channelName, brandName } }. Neither is persisted on the
+   *   Notification row itself; they only flow through to the email.
    */
   async create(notificationData, actor = null, emailOptions = {}) {
     if (actor) {

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { 
   Loader2, Play, FileVideo, RefreshCw, X, 
   MoreVertical, Filter, ArrowUpDown, Home, Folder, 
@@ -12,6 +12,7 @@ import { PRODUCT_IDS } from '../../../../constants/products';
 import { useTranslation } from "react-i18next";
 import { usePostCreator } from '../../../../context/PostCreatorContext';
 import { useNavigate } from 'react-router-dom';
+import { useClickOutside } from '../../../../hooks/useClickOutside';
 
 // Custom icons mapping for category folders matching the screenshot design
 const FOLDERS = [
@@ -144,7 +145,9 @@ export function SidebarIntegrations({ activeBrand, onClose }) {
   const [viewMode, setViewMode] = useState('categories'); // 'categories' | 'files'
   const [selectedFolder, setSelectedFolder] = useState('my-drive');
   const [searchInDrive, setSearchInDrive] = useState('');
-  
+  const closeOptionsMenu = useCallback(() => setShowOptionsMenu(false), []);
+  const optionsMenuRef = useClickOutside(showOptionsMenu, closeOptionsMenu);
+
   // Filter & Sort state variables
   const [filterFormat, setFilterFormat] = useState('all'); // 'all' | 'mp4' | 'webm' | 'mov'
   const [filterSize, setFilterSize] = useState('all'); // 'all' | 'small' | 'medium' | 'large'
@@ -152,6 +155,10 @@ export function SidebarIntegrations({ activeBrand, onClose }) {
   const [sortOrder, setSortOrder] = useState('desc'); // 'asc' | 'desc'
   const [showFilterPopover, setShowFilterPopover] = useState(false);
   const [showSortPopover, setShowSortPopover] = useState(false);
+  const closeFilterPopover = useCallback(() => setShowFilterPopover(false), []);
+  const filterPopoverRef = useClickOutside(showFilterPopover, closeFilterPopover);
+  const closeSortPopover = useCallback(() => setShowSortPopover(false), []);
+  const sortPopoverRef = useClickOutside(showSortPopover, closeSortPopover);
   
   // Caching & Profile metadata states
   const [connectedAccount, setConnectedAccount] = useState(null);
@@ -417,9 +424,9 @@ export function SidebarIntegrations({ activeBrand, onClose }) {
                       </div>
                     )}
                     
-                    <div className="relative">
-                      <button 
-                        onClick={() => setShowOptionsMenu(!showOptionsMenu)} 
+                    <div className="relative" ref={optionsMenuRef}>
+                      <button
+                        onClick={() => setShowOptionsMenu(!showOptionsMenu)}
                         className="text-muted-foreground hover:text-foreground p-1 transition-colors cursor-pointer"
                       >
                         <MoreVertical size={14} />
@@ -534,8 +541,8 @@ export function SidebarIntegrations({ activeBrand, onClose }) {
                     <RefreshCw size={14} className={loading ? "animate-spin" : ""} />
                   </button>
                   {/* Filter Trigger & Popover */}
-                  <div className="relative">
-                    <button 
+                  <div className="relative" ref={filterPopoverRef}>
+                    <button
                       onClick={() => {
                         setShowFilterPopover(!showFilterPopover);
                         setShowSortPopover(false);
@@ -608,8 +615,8 @@ export function SidebarIntegrations({ activeBrand, onClose }) {
                   </div>
 
                   {/* Sort Trigger & Popover */}
-                  <div className="relative">
-                    <button 
+                  <div className="relative" ref={sortPopoverRef}>
+                    <button
                       onClick={() => {
                         setShowSortPopover(!showSortPopover);
                         setShowFilterPopover(false);

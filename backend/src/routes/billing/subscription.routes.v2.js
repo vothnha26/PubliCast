@@ -4,7 +4,7 @@ const { verifyAuth } = require('../../middlewares/auth.middleware');
 const checkPermission = require('../../middlewares/permission.middleware');
 const { requireBrandMember } = require('../../middlewares/permission.middleware');
 const { PERMISSION_KEYS } = require('../../utils/constants');
-const subscriptionController = require('../../controllers/billing/subscription.controller');
+const subscriptionController = require('../../controllers/billing/subscription.controller.v2');
 
 router.use(verifyAuth);
 

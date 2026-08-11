@@ -3,8 +3,10 @@ const socialAccountRepository = require('../../repositories/social/social-accoun
 const googleDriveService = require('./google-drive.service');
 const notificationService = require('../core/notification.service');
 const socialMetricsCache = require('./social-metrics-cache.singleton');
-const { PLATFORMS, NOTIFICATION_TYPES, ANALYTICS } = require('../../utils/constants');
+const { PLATFORMS, NOTIFICATION_TYPES, NOTIFICATION_PREFERENCE_KEYS, ANALYTICS } = require('../../utils/constants');
 const logger = require('../../utils/logger');
+const prisma = require('../../config/prisma');
+const { EMAIL_TEMPLATES } = require('../core/email.service');
 
 // getAggregatedMetrics feeds both the client API response and (formerly)
 // a Redis cache from the same repository result, which carries decrypted
@@ -90,10 +92,17 @@ class SocialService {
    * single account per platform, which is the common case today).
    */
   async disconnectAccount(brandId, platform, socialAccountId = null) {
+    // Looked up before deleting — deleteMany only returns { count }, and by
+    // the time the notification fires there's no record left to read the
+    // display name off of.
+    const channelName = socialAccountId
+      ? (await socialAccountRepository.findByIdLite(socialAccountId))?.displayName
+      : null;
+
     const result = socialAccountId
       ? await socialAccountRepository.deleteByIdAndBrand(brandId, socialAccountId)
       : await socialAccountRepository.deleteManyByBrandAndPlatform(brandId, platform);
-    await this._notifyPlatformDisconnected(brandId, platform);
+    await this._notifyPlatformDisconnected(brandId, platform, channelName);
 
     return result;
   }
@@ -148,14 +157,19 @@ class SocialService {
     return stripSensitiveAccountFieldsSingle(updated);
   }
 
-  async _notifyPlatformDisconnected(brandId, platform) {
+  async _notifyPlatformDisconnected(brandId, platform, channelName = null) {
     try {
+      const brand = await prisma.brand.findUnique({ where: { id: brandId }, select: { name: true } });
+
       await notificationService.notifyBrandMembers(brandId, {
         type: NOTIFICATION_TYPES.PLATFORM,
         title: `${platform} disconnected`,
         message: `${platform} has been disconnected. Reconnect it to keep publishing and syncing analytics.`,
         actionUrl: '/manage/connections'
-      }, 'notifyChannelDisconnect');
+      }, NOTIFICATION_PREFERENCE_KEYS.CHANNEL_DISCONNECT, {
+        template: EMAIL_TEMPLATES.CHANNEL_DISCONNECTED,
+        templateData: { platform, channelName, brandName: brand?.name }
+      });
     } catch (err) {
       console.error(`[SocialService] Failed to create ${platform} disconnect notification:`, err.message);
     }
@@ -168,7 +182,7 @@ class SocialService {
         title: `${account.platform} sync failed`,
         message: `${account.platform} could not sync analytics. ${error.message || 'Reconnect the platform to continue syncing.'}`,
         actionUrl: '/manage/connections'
-      }, 'notifyChannelDisconnect');
+      }, NOTIFICATION_PREFERENCE_KEYS.CHANNEL_DISCONNECT);
     } catch (err) {
       console.error(`[SocialService] Failed to create ${account.platform} sync failure notification:`, err.message);
     }

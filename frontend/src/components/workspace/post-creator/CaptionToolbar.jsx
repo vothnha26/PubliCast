@@ -1,9 +1,10 @@
-import React from "react";
+import React, { useCallback } from "react";
 import { ImageIcon, Plus, Smile, Link2, Search } from "lucide-react";
 import { MediaDropdown } from "./MediaDropdown";
 import { EmojiPickerPopover } from "./popovers/EmojiPickerPopover";
 import { HashtagPickerPopover } from "./popovers/HashtagPickerPopover";
 import { UTMGeneratorPopover } from "./popovers/UTMGeneratorPopover";
+import { useClickOutside } from "../../../hooks/useClickOutside";
 
 /**
  * The 4 caption-toolbar buttons common to both ComposerBody (full composer)
@@ -32,8 +33,11 @@ export function CaptionToolbar({
   children,
   rightSlot,
 }) {
+  const closePopover = useCallback(() => setActivePopover(null), [setActivePopover]);
+  const containerRef = useClickOutside(activePopover != null, closePopover);
+
   return (
-    <div className={`flex items-center gap-1 ${className}`}>
+    <div ref={containerRef} className={`flex items-center gap-1 ${className}`}>
       <div className="relative">
         <button
           type="button"

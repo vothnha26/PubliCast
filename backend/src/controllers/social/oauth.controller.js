@@ -20,10 +20,11 @@ class OAuthController {
     return process.env.BACKEND_BASE_URL || `${req.protocol}://${req.get('host')}`;
   }
 
-  getGoogleAuthUrl = asyncHandler(async (req, res) => {
-    const { brandId, frontendOrigin } = req.query;
-    if (!brandId) return res.status(400).json({ message: 'brandId is required' });
-
+  // brandId is presence-checked by the caller (both v1 and v2 public
+  // methods) before this runs — kept out of here so it stays a pure
+  // "given a valid brandId, build the URL" helper reusable by either
+  // response envelope.
+  _buildGoogleAuthUrl(req, brandId, frontendOrigin) {
     const scopes = GOOGLE_OAUTH_SCOPE_SETS.YOUTUBE;
     // frontendOrigin (optional) lets frontends specify custom return URL (e.g. /manage/workplace/new?step=2)
     const allowedOrigins = (process.env.CORS_ALLOWED_ORIGINS || '').split(',').map(o => o.trim());
@@ -33,15 +34,25 @@ class OAuthController {
     const state = isValidOrigin ? `${brandId}::${encodeURIComponent(frontendOrigin)}` : brandId;
 
     const redirectUri = `${this._getRedirectBaseUrl(req)}/api/social/google/callback`;
-    const url = googleOAuthService.getAuthUrl(scopes, state, redirectUri);
+    return googleOAuthService.getAuthUrl(scopes, state, redirectUri);
+  }
+
+  getGoogleAuthUrl = asyncHandler(async (req, res) => {
+    const { brandId, frontendOrigin } = req.query;
+    if (!brandId) return res.status(400).json({ message: 'brandId is required' });
+    const url = this._buildGoogleAuthUrl(req, brandId, frontendOrigin);
     res.json({ url });
   });
+
+  _buildGoogleDriveAuthUrl(req, brandId) {
+    const redirectUri = `${this._getRedirectBaseUrl(req)}/api/social/google-drive/callback`;
+    return googleDriveOAuthService.getAuthUrl(brandId, redirectUri);
+  }
 
   getGoogleDriveAuthUrl = asyncHandler(async (req, res) => {
     const { brandId } = req.query;
     if (!brandId) return res.status(400).json({ message: 'brandId is required' });
-    const redirectUri = `${this._getRedirectBaseUrl(req)}/api/social/google-drive/callback`;
-    const url = googleDriveOAuthService.getAuthUrl(brandId, redirectUri);
+    const url = this._buildGoogleDriveAuthUrl(req, brandId);
     res.json({ url });
   });
 
@@ -108,20 +119,23 @@ class OAuthController {
     }
   });
 
-  getFacebookAuthUrl = asyncHandler(async (req, res) => {
-    const { brandId } = req.query;
-    if (!brandId) return res.status(400).json({ message: 'brandId is required' });
-
+  _buildFacebookAuthUrl(req, brandId) {
     const appId = process.env.FACEBOOK_APP_ID;
     const redirectUri = `${this._getRedirectBaseUrl(req)}/api/social/facebook/callback`;
     const state = `facebook:${brandId}`;
-    const url = FACEBOOK_API.dialogUrl(
+    return FACEBOOK_API.dialogUrl(
       API_VERSIONS.FACEBOOK,
       appId,
       redirectUri,
       state,
       FACEBOOK_SCOPES.FACEBOOK
     );
+  }
+
+  getFacebookAuthUrl = asyncHandler(async (req, res) => {
+    const { brandId } = req.query;
+    if (!brandId) return res.status(400).json({ message: 'brandId is required' });
+    const url = this._buildFacebookAuthUrl(req, brandId);
     res.json({ url });
   });
 
@@ -159,21 +173,24 @@ class OAuthController {
     }
   });
 
-  getInstagramAuthUrl = asyncHandler(async (req, res) => {
-    const { brandId } = req.query;
-    if (!brandId) return res.status(400).json({ message: 'brandId is required' });
-
+  _buildInstagramAuthUrl(req, brandId) {
     const appId = process.env.FACEBOOK_APP_ID;
     // Reuse facebook callback to prevent Whitelist Redirect URI block issues on FB App Console
     const redirectUri = `${this._getRedirectBaseUrl(req)}/api/social/facebook/callback`;
     const state = `instagram:${brandId}`;
-    const url = FACEBOOK_API.dialogUrl(
+    return FACEBOOK_API.dialogUrl(
       API_VERSIONS.FACEBOOK,
       appId,
       redirectUri,
       state,
       FACEBOOK_SCOPES.INSTAGRAM
     );
+  }
+
+  getInstagramAuthUrl = asyncHandler(async (req, res) => {
+    const { brandId } = req.query;
+    if (!brandId) return res.status(400).json({ message: 'brandId is required' });
+    const url = this._buildInstagramAuthUrl(req, brandId);
     res.json({ url });
   });
 
@@ -198,7 +215,11 @@ class OAuthController {
   getTikTokAuthUrl = asyncHandler(async (req, res) => {
     const { brandId } = req.query;
     if (!brandId) return res.status(400).json({ message: 'brandId is required' });
+    const url = await this._buildTikTokAuthUrl(req, brandId);
+    res.json({ url });
+  });
 
+  async _buildTikTokAuthUrl(req, brandId) {
     const redirectUri = `${this._getRedirectBaseUrl(req)}/api/social/tiktok/callback`;
     logger.debug('[TikTok OAuth] Constructing auth URL', { redirectUri });
 
@@ -210,9 +231,8 @@ class OAuthController {
     const cacheKey = `tiktok_oauth_verifier:${brandId}`;
     await redisClient.setEx(cacheKey, 600, codeVerifier); // Hết hạn sau 10 phút
 
-    const url = tiktokGateway.getAuthUrl(SOCIAL_TECHNICAL.TIKTOK_SCOPES, brandId, redirectUri, codeChallenge);
-    res.json({ url });
-  });
+    return tiktokGateway.getAuthUrl(SOCIAL_TECHNICAL.TIKTOK_SCOPES, brandId, redirectUri, codeChallenge);
+  }
 
   tiktokCallback = asyncHandler(async (req, res) => {
     const { code, state } = req.query;
@@ -254,13 +274,16 @@ class OAuthController {
     res.status(200).json({ status: 'ok' });
   });
 
+  _buildThreadsAuthUrl(req, brandId) {
+    const threadsGateway = require('../../services/social/threads/threads.gateway');
+    const redirectUri = `${this._getRedirectBaseUrl(req)}/api/social/threads/callback`;
+    return threadsGateway.getAuthUrl(brandId, redirectUri);
+  }
+
   getThreadsAuthUrl = asyncHandler(async (req, res) => {
     const { brandId } = req.query;
     if (!brandId) return res.status(400).json({ message: 'brandId is required' });
-
-    const threadsGateway = require('../../services/social/threads/threads.gateway');
-    const redirectUri = `${this._getRedirectBaseUrl(req)}/api/social/threads/callback`;
-    const url = threadsGateway.getAuthUrl(brandId, redirectUri);
+    const url = this._buildThreadsAuthUrl(req, brandId);
     res.json({ url });
   });
 

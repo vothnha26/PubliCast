@@ -1,5 +1,5 @@
 const express = require('express');
-const channelGroupController = require('../../controllers/social/channel-group.controller');
+const channelGroupController = require('../../controllers/social/channel-group.controller.v2');
 const { verifyAuth } = require('../../middlewares/auth.middleware');
 const { requireBrandMember } = require('../../middlewares/permission.middleware');
 

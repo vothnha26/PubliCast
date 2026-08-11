@@ -1,9 +1,9 @@
 const express = require('express');
-const brandController = require('../../controllers/workspace/brand.controller');
-const teamController = require('../../controllers/workspace/team.controller');
-const roleController = require('../../controllers/workspace/role.controller');
-const permissionController = require('../../controllers/workspace/permission.controller');
-const approvalWorkflowController = require('../../controllers/workspace/approval-workflow.controller');
+const brandController = require('../../controllers/workspace/brand.controller.v2');
+const teamController = require('../../controllers/workspace/team.controller.v2');
+const roleController = require('../../controllers/workspace/role.controller.v2');
+const permissionController = require('../../controllers/workspace/permission.controller.v2');
+const approvalWorkflowController = require('../../controllers/workspace/approval-workflow.controller.v2');
 const { verifyAuth } = require('../../middlewares/auth.middleware');
 const { requireBrandMember } = require('../../middlewares/permission.middleware');
 const checkPermission = require('../../middlewares/permission.middleware');

@@ -1,5 +1,5 @@
 const express = require('express');
-const aiController = require('../../controllers/workspace/ai.controller');
+const aiController = require('../../controllers/workspace/ai.controller.v2');
 const { verifyAuth } = require('../../middlewares/auth.middleware');
 const { requireFeature } = require('../../middlewares/feature-gate.middleware');
 const { requireBrandMember } = require('../../middlewares/permission.middleware');
