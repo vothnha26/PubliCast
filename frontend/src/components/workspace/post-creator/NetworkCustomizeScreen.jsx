@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import {
   ArrowLeft, Calendar, AlertCircle, Plus,
@@ -24,6 +24,7 @@ import { MEDIA_FILTER_TYPES } from "../../../constants/mediaAcceptStrategy";
 import { PLATFORMS } from "../../../constants/platforms";
 import { MediaThumbnailGrid } from "./MediaThumbnailGrid";
 import { ShortsIcon } from "./ShortsIcon";
+import { useClickOutside } from "../../../hooks/useClickOutside";
 
 /**
  * Fullscreen "Customize post per network" overlay (Figma 4:289-4:512).
@@ -87,6 +88,8 @@ export function NetworkCustomizeScreen({ onClose }) {
   const [activePopover, setActivePopover] = useState(null);
   const [showTypeDropdown, setShowTypeDropdown] = useState(false);
   const [showChannelPicker, setShowChannelPicker] = useState(false);
+  const closeTypeDropdown = useCallback(() => setShowTypeDropdown(false), []);
+  const typeDropdownRef = useClickOutside(showTypeDropdown, closeTypeDropdown);
 
   // Flat list of tabs — one per connected+targeted CHANNEL (account), not
   // one per platform. A brand with 2 TikTok accounts selected gets 2 tabs,
@@ -561,7 +564,7 @@ export function NetworkCustomizeScreen({ onClose }) {
                       : t("planner:postCreator.networkCustomize.caption")}
                   </label>
                   {activeConfig?.supportedTypes?.length > 1 && (
-                    <div className="relative">
+                    <div className="relative" ref={typeDropdownRef}>
                       <button
                         type="button"
                         onClick={() => setShowTypeDropdown((v) => !v)}
