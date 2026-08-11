@@ -8,6 +8,7 @@ import {
   Folder, MapPin, Sparkles, Lock
 } from "lucide-react";
 import { usePostCreatorFormContext } from "../../../context/PostCreatorFormContext";
+import { usePostCreatorStore } from "../../../store/usePostCreatorStore";
 import { PlatformIcon } from "../../shared/PlatformIcon";
 import { MediaThumbnailGrid } from "./MediaThumbnailGrid";
 import { CaptionToolbar } from "./CaptionToolbar";
@@ -31,6 +32,9 @@ export function ComposerBody() {
   const [showStockPicker, setShowStockPicker] = useState(false);
   const [spoilersMap, setSpoilersMap] = useState({});
   const thumbnailInputRef = React.useRef(null);
+  // Reactive subscription (not getState()) so upload-on-select progress
+  // ticks re-render the thumbnail grid as it comes in.
+  const mediaUploads = usePostCreatorStore((state) => state.mediaUploads);
 
   const handleToggleSpoiler = (key) => {
     setSpoilersMap((prev) => ({
@@ -43,6 +47,7 @@ export function ComposerBody() {
     setIsUploadingThumbnail(true);
     setMediaTypeFilter?.(MEDIA_FILTER_TYPES.IMAGE);
     setUploadModalTab("computer");
+    setUploadTargetContext?.(null);
     setShowUploadModal(true);
   };
 
@@ -120,6 +125,7 @@ export function ComposerBody() {
     updateThreadPostMedia,
     rightPanelTab,
     setRightPanelTab,
+    setUploadTargetContext,
   } = usePostCreatorFormContext();
 
   // The Sparkles button here and the header's "AI Assistant" tab are two
@@ -144,6 +150,17 @@ export function ComposerBody() {
     : [];
   const hasAccountSubTabs = accountsForActiveTab.length > 1;
   const effectiveAccountId = hasAccountSubTabs ? activeNetworkAccountId : null;
+
+  // Snapshot of which platform/account the upload modal's picks should
+  // land on, captured when the modal opens rather than read live at Accept
+  // — switching network tabs while the modal is still open must not
+  // retarget files already selected for a different platform (see
+  // uploadTargetContext in PostCreator.jsx).
+  const currentUploadTarget = () =>
+    (isEditByNetwork && activeNetworkTab !== NETWORK_TAB_TEMPLATE && activeNetworkTab !== 'threads')
+      ? { platform: activeNetworkTab, accountId: effectiveAccountId }
+      : null;
+
   const activePlatformEntry = networkCustom[activeNetworkTab];
   const activeEntry = effectiveAccountId
     ? (activePlatformEntry?.perAccount?.[effectiveAccountId] || { useTemplate: true, caption: '', mediaUrls: [] })
@@ -392,6 +409,8 @@ export function ComposerBody() {
                 }}
                 onUploadThumbnail={handleThumbnailUpload}
                 onRemove={handleRemoveMediaItem}
+                getUploadProgress={(item) => item?.fileKey ? mediaUploads[item.fileKey]?.progress : null}
+                hasUploadError={(item) => item?.fileKey ? !!mediaUploads[item.fileKey]?.error : false}
               />
 
               {/* Single Thumbnail Image / Video display */}
@@ -534,9 +553,9 @@ export function ComposerBody() {
             <CaptionToolbar
               activePopover={activePopover}
               setActivePopover={setActivePopover}
-              onSelectMediaImage={() => { setUploadModalTab("computer"); setMediaTypeFilter?.(MEDIA_FILTER_TYPES.IMAGE); setShowUploadModal(true); }}
-              onSelectMediaVideo={() => { setUploadModalTab("computer"); setMediaTypeFilter?.(MEDIA_FILTER_TYPES.VIDEO); setShowUploadModal(true); }}
-              onSelectMediaLibrary={() => { setUploadModalTab("library"); setMediaTypeFilter?.(MEDIA_FILTER_TYPES.ALL); setShowUploadModal(true); }}
+              onSelectMediaImage={() => { setUploadModalTab("computer"); setMediaTypeFilter?.(MEDIA_FILTER_TYPES.IMAGE); setUploadTargetContext?.(currentUploadTarget()); setShowUploadModal(true); }}
+              onSelectMediaVideo={() => { setUploadModalTab("computer"); setMediaTypeFilter?.(MEDIA_FILTER_TYPES.VIDEO); setUploadTargetContext?.(currentUploadTarget()); setShowUploadModal(true); }}
+              onSelectMediaLibrary={() => { setUploadModalTab("library"); setMediaTypeFilter?.(MEDIA_FILTER_TYPES.ALL); setUploadTargetContext?.(currentUploadTarget()); setShowUploadModal(true); }}
               onSelectMediaStock={() => setShowStockPicker(true)}
               onSelectMediaDrive={() => {
                 if (!hasAccess(PRODUCT_IDS.GOOGLE_DRIVE)) {

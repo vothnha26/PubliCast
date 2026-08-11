@@ -76,7 +76,7 @@ class TeamControllerV2 {
 
     if (result.accessToken && result.refreshToken) {
       const { setAuthCookies } = require('../../utils/cookie.utils');
-      setAuthCookies(res, result.accessToken, result.refreshToken);
+      setAuthCookies(res, result.accessToken, result.refreshToken, req);
     }
 
     res.status(200).json({

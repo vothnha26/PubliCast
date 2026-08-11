@@ -45,7 +45,16 @@ export function useYouTubePresetComposer() {
     sa => (sa.platform || '').toUpperCase() === PLATFORMS.YOUTUBE.toUpperCase() && selectedAccountIds.includes(sa.id)
   );
 
-  const targetAccountId = activeNetworkAccountId || (youtubeAccounts.length === 1 ? youtubeAccounts[0]?.id : null);
+  // accountId must be null for the single-account case — matches the
+  // convention every other write path uses (updateNetworkMedia/
+  // updateNetworkCaption via ComposerBody's effectiveAccountId,
+  // NetworkCustomizeScreen's isMultiAccountPlatform check). Falling back to
+  // the account's real id here instead of null would write settings into
+  // entry.perAccount[id] while media/caption stay on the top-level entry —
+  // buildNetworkOverrides's effectiveEntryFor prefers perAccount[id] when
+  // present, so it would then read that shadow slot's empty
+  // useTemplate/mediaUrls instead of the real customized content.
+  const targetAccountId = youtubeAccounts.length > 1 ? activeNetworkAccountId : null;
 
   const ytEntry = networkCustom?.[PLATFORMS.YOUTUBE];
   const accountSettings = targetAccountId

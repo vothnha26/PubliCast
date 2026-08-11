@@ -91,6 +91,59 @@ class MediaLibraryService {
       throw error;
     }
 
+    await this._destroyStorageAsset(media);
+
+    try {
+      await mediaLibraryRepository.delete(id);
+    } catch (err) {
+      if (err.code === 'P2025' || (err.message && err.message.includes('Record to delete does not exist'))) {
+        return { success: true };
+      }
+      throw err;
+    }
+    return { success: true };
+  }
+
+  /**
+   * Deletes one MediaLibrary row flagged as orphan by the media-cleanup
+   * scheduler (isUsed=false and past the orphan-age cutoff at scan time).
+   * Order is deliberately the REVERSE of deleteMedia(): the DB row is
+   * conditional-deleted FIRST (atomic compare-and-delete on isUsed=false),
+   * and the Cloudinary/local asset is only destroyed after that delete
+   * actually wins. The scan → this webhook delivery gap can be up to an
+   * hour, during which the asset may have been attached to a post — if we
+   * destroyed storage first and only then found isUsed had flipped true, an
+   * in-use asset would already be irrecoverably gone. deleteIfStillUnused's
+   * WHERE clause closes that race at the DB level; only a delete that
+   * actually removed a row (count > 0) proceeds to destroy storage.
+   */
+  async deleteOrphanMediaAsset(id) {
+    const media = await mediaLibraryRepository.findById(id);
+    if (!media) {
+      return { skipped: true, reason: 'not_found' };
+    }
+    if (media.isUsed) {
+      return { skipped: true, reason: 'now_in_use' };
+    }
+
+    const deleteResult = await mediaLibraryRepository.deleteIfStillUnused(id);
+    if (deleteResult.count === 0) {
+      // isUsed flipped true (or the row was already deleted by something
+      // else) between the findById above and this statement.
+      return { skipped: true, reason: 'race_lost' };
+    }
+
+    await this._destroyStorageAsset(media);
+    return { skipped: false, id };
+  }
+
+  /**
+   * Destroys the physical asset (Cloudinary or local upload) backing a
+   * MediaLibrary row. Shared by deleteMedia (user-initiated) and
+   * deleteOrphanMediaAsset (scheduler-initiated) — the two differ only in
+   * whether the DB row or the storage asset is removed first.
+   */
+  async _destroyStorageAsset(media) {
     if (this._isLocalUploadUrl(media.storageUrl)) {
       try {
         const localPath = this._fromPublicUploadUrl(media.storageUrl);
@@ -103,35 +156,26 @@ class MediaLibraryService {
         }
         // ENOENT: the physical file is already gone — treat as already deleted.
       }
-    } else {
-      const resourceType = this._getResourceType(media.mimeType);
-      let result;
-      try {
-        result = await cloudinary.uploader.destroy(media.mediaId, { resource_type: resourceType });
-      } catch (err) {
-        const error = new Error(`Không thể xóa tệp trên Cloudinary: ${err.message}`);
-        error.status = 500;
-        throw error;
-      }
-      // Cloudinary resolves with { result: 'not found' } instead of rejecting
-      // when the resource doesn't exist — treat that the same as ENOENT above
-      // (already gone), only a genuine failure result blocks the DB delete.
-      if (result.result !== 'ok' && result.result !== 'not found') {
-        const error = new Error(`Cloudinary từ chối xóa tệp: ${result.result}`);
-        error.status = 500;
-        throw error;
-      }
+      return;
     }
 
+    const resourceType = this._getResourceType(media.mimeType);
+    let result;
     try {
-      await mediaLibraryRepository.delete(id);
+      result = await cloudinary.uploader.destroy(media.mediaId, { resource_type: resourceType });
     } catch (err) {
-      if (err.code === 'P2025' || (err.message && err.message.includes('Record to delete does not exist'))) {
-        return { success: true };
-      }
-      throw err;
+      const error = new Error(`Không thể xóa tệp trên Cloudinary: ${err.message}`);
+      error.status = 500;
+      throw error;
     }
-    return { success: true };
+    // Cloudinary resolves with { result: 'not found' } instead of rejecting
+    // when the resource doesn't exist — treat that the same as ENOENT above
+    // (already gone), only a genuine failure result blocks the DB delete.
+    if (result.result !== 'ok' && result.result !== 'not found') {
+      const error = new Error(`Cloudinary từ chối xóa tệp: ${result.result}`);
+      error.status = 500;
+      throw error;
+    }
   }
 
   /**

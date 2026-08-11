@@ -3,11 +3,14 @@ import { useState, useRef } from "react";
 import { X, Upload, Link2, File, Image as ImageIcon, Video, CheckCircle2, Loader2, Search, Folder, ChevronLeft } from "lucide-react";
 import { toast } from "sonner";
 import { useMediaLibrary } from "../../../../hooks/useMediaLibrary";
+import { usePostCreatorStore } from "../../../../store/usePostCreatorStore";
+import { uploadMediaFileWithMetadata } from "../../../../services/mediaUpload.service";
+import { buildFileKey } from "../../../../utils/postCreatorMediaSync";
 
-import { 
-  MEDIA_FILTER_TYPES, 
-  resolveMediaAcceptString, 
-  resolveMediaPromptText 
+import {
+  MEDIA_FILTER_TYPES,
+  resolveMediaAcceptString,
+  resolveMediaPromptText
 } from "../../../../constants/mediaAcceptStrategy";
 
 export function MediaUploadModal({
@@ -16,7 +19,8 @@ export function MediaUploadModal({
   onAccept,
   initialTab = "computer",
   multiple = false,
-  mediaTypeFilter = MEDIA_FILTER_TYPES.ALL
+  mediaTypeFilter = MEDIA_FILTER_TYPES.ALL,
+  brandId
 }) {
   const [activeTab, setActiveTab] = useState(initialTab); // 'computer' | 'url' | 'library'
   const [dragActive, setDragActive] = useState(false);
@@ -78,6 +82,36 @@ export function MediaUploadModal({
     }
   };
 
+  // Upload starts as soon as a file is picked/dropped — not deferred to
+  // Accept or Submit — so the network time it takes is spent while the user
+  // is still browsing the modal / composer instead of waiting at the end.
+  // Writes progress/result/error into the global store (keyed by fileKey)
+  // rather than local component state because this modal can be closed
+  // (unmounted) before the upload finishes — the composer still needs to
+  // read the in-flight progress after that happens. The promise itself is
+  // intentionally not cancelled on close: CloudinaryResumableUploader's
+  // chunk-resume bookkeeping in localStorage isn't designed for a safe
+  // mid-flight abort.
+  const startUploadForFile = (file) => {
+    const fileKey = buildFileKey(file);
+    if (!fileKey || !brandId) return;
+
+    const { setMediaUploadProgress, setMediaUploadResult, setMediaUploadError, trackUploadedAsset } =
+      usePostCreatorStore.getState();
+
+    uploadMediaFileWithMetadata(file, brandId, (percent) => {
+      setMediaUploadProgress(fileKey, percent);
+    })
+      .then((result) => {
+        setMediaUploadResult(fileKey, { path: result.url, ...result });
+        if (result.url) trackUploadedAsset(result.url);
+      })
+      .catch((err) => {
+        console.error("Upload-on-select failed for", file.name, err);
+        setMediaUploadError(fileKey, err);
+      });
+  };
+
   const handleDrop = (e) => {
     e.preventDefault();
     e.stopPropagation();
@@ -85,8 +119,10 @@ export function MediaUploadModal({
     if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
       if (multiple) {
         const files = Array.from(e.dataTransfer.files);
+        files.forEach(startUploadForFile);
         setSelectedFiles(prev => [...prev, ...files]);
       } else {
+        startUploadForFile(e.dataTransfer.files[0]);
         setSelectedFile(e.dataTransfer.files[0]);
       }
     }
@@ -96,8 +132,10 @@ export function MediaUploadModal({
     if (e.target.files && e.target.files.length > 0) {
       if (multiple) {
         const files = Array.from(e.target.files);
+        files.forEach(startUploadForFile);
         setSelectedFiles(prev => [...prev, ...files]);
       } else {
+        startUploadForFile(e.target.files[0]);
         setSelectedFile(e.target.files[0]);
       }
     }
@@ -135,11 +173,19 @@ export function MediaUploadModal({
         toast.error(multiple ? "Please select at least one file" : "Please select a file first");
         return;
       }
-      const items = files.map((file) => ({
-        file,
-        path: null,
-        previewUrl: URL.createObjectURL(file),
-      }));
+      const items = files.map((file) => {
+        const fileKey = buildFileKey(file);
+        // If upload-on-select already finished by the time Accept is
+        // pressed (small files often do), grab the real path now instead of
+        // making the composer wait for a store update it'll never see.
+        const existing = fileKey ? usePostCreatorStore.getState().mediaUploads[fileKey] : null;
+        return {
+          file,
+          path: existing?.path || null,
+          previewUrl: URL.createObjectURL(file),
+          fileKey,
+        };
+      });
       onAccept(items);
       onClose();
       setSelectedFiles([]);

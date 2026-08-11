@@ -25,4 +25,7 @@ router.post('/publish-post', qstashAuth, qstashController.handlePublishPost);
 // POST /api/webhooks/qstash/publish-post-failed (QStash failureCallback target)
 router.post('/publish-post-failed', qstashAuth, qstashController.handlePublishPostFailed);
 
+// POST /api/webhooks/qstash/media-cleanup
+router.post('/media-cleanup', qstashAuth, qstashController.handleMediaCleanup);
+
 module.exports = router;

@@ -16,7 +16,88 @@ class FacebookService extends BaseSocialService {
   }
 
   async connectChannel(brandId, code, redirectUri) {
-    return facebookAnalytics.connectChannel(brandId, code, redirectUri);
+    return this.executeConnectPipeline(brandId, code, redirectUri);
+  }
+
+  // --- Connect Pipeline Hook Implementations ---
+  async connectExchangeAuth(code, redirectUri) {
+    const facebookGateway = require('./facebook.gateway');
+    const logger = require('../../../utils/logger');
+    const tokens = await facebookGateway.exchangeCodeForToken(code, redirectUri);
+    const permissions = await facebookGateway.getUserPermissions(tokens.access_token).catch(() => []);
+    const pages = await facebookGateway.getUserPages(tokens.access_token);
+
+    logger.debug('[Facebook Connect Diagnostics]', {
+      permissions,
+      pagesCount: pages.length,
+      pages: pages.map((p) => ({ id: p.id, name: p.name }))
+    });
+
+    if (pages.length === 0) {
+      const scopes = permissions.map((p) => `${p.permission}:${p.status}`).join(', ');
+      throw new Error(`Không tìm thấy Trang Facebook. Quyền đã cấp: [${scopes || 'none'}]. Hãy đảm bảo tài khoản FB của bạn có quyền Quản trị (Admin) trên Trang.`);
+    }
+
+    const selectedPage = pages[0];
+    return { tokens, selectedPage, pageId: selectedPage.id, pageAccessToken: selectedPage.access_token };
+  }
+
+  async connectFetchIdentity({ pageId, pageAccessToken }) {
+    return facebookAnalytics.getPageIdentity(pageId, pageAccessToken);
+  }
+
+  async connectPersistAccount(brandId, pageInfo, { tokens, selectedPage, pageId }) {
+    const { ConnectionConflictGuard, ConnectionConflictError } = require('../connection-conflict.guard');
+    const { PLATFORMS } = require('../../../utils/constants');
+    const conflictResult = await ConnectionConflictGuard.validateConflict(brandId, PLATFORMS.FACEBOOK, pageId);
+    if (conflictResult.conflict) {
+      throw new ConnectionConflictError(
+        conflictResult.type,
+        selectedPage.name,
+        pageId,
+        PLATFORMS.FACEBOOK,
+        conflictResult.existingAccount.brand.name
+      );
+    }
+
+    const socialAccountRepository = require('../../../repositories/social/social-account.repository');
+    return socialAccountRepository.upsertFacebookAccount(brandId, {
+      pageId,
+      username: selectedPage.name,
+      displayName: selectedPage.name,
+      profilePictureUrl: pageInfo.profilePictureUrl,
+      category: pageInfo.category,
+      likesCount: pageInfo.likesCount,
+      followersCount: pageInfo.followersCount,
+      about: pageInfo.about,
+      website: pageInfo.website
+    }, {
+      access_token: selectedPage.access_token,
+      refresh_token: tokens.access_token
+    });
+  }
+
+  async connectBackfillHistory(brandId, account, pageInfo, { selectedPage, pageId, pageAccessToken, tokens }) {
+    const analyticsData = await facebookAnalytics.getAnalyticsReport(pageId, pageAccessToken, undefined, undefined, pageInfo.followersCount);
+    const socialAccountRepository = require('../../../repositories/social/social-account.repository');
+    // enqueueSync: false — this only backfills historical data for the
+    // account the fast path already connected; it must not enqueue a
+    // second SOCIAL_SYNC_ENQUEUE outbox event for the same connect.
+    return socialAccountRepository.upsertFacebookAccount(brandId, {
+      pageId,
+      username: selectedPage.name,
+      displayName: selectedPage.name,
+      profilePictureUrl: pageInfo.profilePictureUrl,
+      category: pageInfo.category,
+      likesCount: pageInfo.likesCount,
+      followersCount: pageInfo.followersCount,
+      about: pageInfo.about,
+      website: pageInfo.website,
+      analytics: analyticsData
+    }, {
+      access_token: selectedPage.access_token,
+      refresh_token: tokens.access_token
+    }, { enqueueSync: false });
   }
 
   async syncChannelMetrics(socialAccountId, startDate, endDate) {

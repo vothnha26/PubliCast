@@ -30,6 +30,16 @@ export function MediaThumbnailGrid({
   // markup here. Defaults to false for every item when the caller (e.g.
   // ComposerBody) has no such concept.
   isPending = () => false,
+  // Upload-on-select progress: returns 0-100 while the item's Cloudinary
+  // upload is in flight, or null/undefined once it's done/not applicable.
+  // Renders a percent badge over the thumbnail instead of the plain amber
+  // pending dot, so the user sees real progress rather than just "pending".
+  getUploadProgress = () => null,
+  // True when the item's upload-on-select failed (network error, etc.) —
+  // renders a red dashed border + warning badge instead of the amber
+  // pending style. No auto-retry: the existing remove button is the
+  // recovery path (remove, then re-pick the file).
+  hasUploadError = () => false,
 }) {
   const { t } = useTranslation(["planner", "common"]);
   const [activeMenuIndex, setActiveMenuIndex] = useState(null);
@@ -44,13 +54,34 @@ export function MediaThumbnailGrid({
         const isSpoilerActive = !!spoilersMap[index];
         const hasAltText = typeof item === "object" && !!item?.caption?.trim();
         const pending = isPending(item, index);
+        const uploadProgress = getUploadProgress(item, index);
+        const uploadFailed = hasUploadError(item, index);
+        const isUploading = typeof uploadProgress === "number" && uploadProgress < 100;
 
         return (
           <div key={index} className="relative group">
             <div className={`${thumbnailSize} rounded-2xl overflow-hidden border shadow-md bg-muted flex items-center justify-center relative ${
-              pending ? "border-2 border-dashed border-amber-400/60" : "border-border"
+              uploadFailed
+                ? "border-2 border-dashed border-red-500/70"
+                : pending || isUploading
+                  ? "border-2 border-dashed border-amber-400/60"
+                  : "border-border"
             }`}>
-              {pending && <div className="absolute top-1 left-1 w-2 h-2 rounded-full bg-amber-400 shadow-sm z-10" />}
+              {uploadFailed ? (
+                <div className="absolute top-1 left-1 w-2 h-2 rounded-full bg-red-500 shadow-sm z-10" />
+              ) : (pending || isUploading) && (
+                <div className="absolute top-1 left-1 w-2 h-2 rounded-full bg-amber-400 shadow-sm z-10" />
+              )}
+              {isUploading && !uploadFailed && (
+                <div className="absolute inset-0 bg-black/40 flex items-center justify-center z-10">
+                  <span className="text-[10px] font-bold text-white">{Math.round(uploadProgress)}%</span>
+                </div>
+              )}
+              {uploadFailed && (
+                <div className="absolute inset-0 bg-red-950/50 flex items-center justify-center z-10">
+                  <span className="text-[9px] font-bold text-white text-center px-1">Lỗi tải lên</span>
+                </div>
+              )}
               {isVid ? (
                 <>
                   <video src={mediaUrl} poster={mediaPosterUrl || undefined} className="w-full h-full object-cover" />
@@ -84,10 +115,12 @@ export function MediaThumbnailGrid({
               )}
             </div>
 
-            {pending ? (
-              // Editing an unsaved item isn't wired up yet — just a direct
-              // remove button, matching AutoList's pre-existing pending-item
-              // UX (no 3-dot menu with options that don't apply).
+            {pending || isUploading || uploadFailed ? (
+              // Editing an unsaved/in-flight/failed item isn't wired up —
+              // just a direct remove button, matching AutoList's
+              // pre-existing pending-item UX (no 3-dot menu with options
+              // that don't apply). Failed uploads have no auto-retry: this
+              // is the recovery path (remove, then re-pick the file).
               <button
                 type="button"
                 onClick={() => onRemove?.(index)}
@@ -106,7 +139,7 @@ export function MediaThumbnailGrid({
               </button>
             )}
 
-            {!pending && activeMenuIndex === index && (
+            {!pending && !isUploading && !uploadFailed && activeMenuIndex === index && (
               <>
                 <div className="fixed inset-0 z-30" onClick={() => setActiveMenuIndex(null)} />
                 <div className="absolute bottom-full left-0 mb-2 min-w-[220px] w-max bg-card rounded-2xl shadow-2xl border border-border py-2 z-40 text-left text-xs font-sans text-foreground animate-in fade-in slide-in-from-bottom-1">

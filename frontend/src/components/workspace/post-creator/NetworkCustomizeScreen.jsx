@@ -67,6 +67,7 @@ export function NetworkCustomizeScreen({ onClose }) {
     setShowUploadModal,
     setUploadModalTab,
     setMediaTypeFilter,
+    setUploadTargetContext,
     getValidationErrors,
     selectedPublishId,
     scheduledDate,
@@ -641,9 +642,9 @@ export function NetworkCustomizeScreen({ onClose }) {
                     setActivePopover={setActivePopover}
                     iconSize={16}
                     className="px-4 py-2.5 border-t border-border bg-muted/30 rounded-b-2xl"
-                    onSelectMediaImage={() => { setUploadModalTab("computer"); setMediaTypeFilter?.(MEDIA_FILTER_TYPES.IMAGE); setShowUploadModal(true); }}
-                    onSelectMediaVideo={() => { setUploadModalTab("computer"); setMediaTypeFilter?.(MEDIA_FILTER_TYPES.VIDEO); setShowUploadModal(true); }}
-                    onSelectMediaLibrary={() => { setUploadModalTab("library"); setMediaTypeFilter?.(MEDIA_FILTER_TYPES.ALL); setShowUploadModal(true); }}
+                    onSelectMediaImage={() => { setUploadModalTab("computer"); setMediaTypeFilter?.(MEDIA_FILTER_TYPES.IMAGE); setUploadTargetContext?.(activePlatform ? { platform: activePlatform, accountId: isMultiAccountPlatform(activePlatform) ? activeNetworkAccountId : null } : null); setShowUploadModal(true); }}
+                    onSelectMediaVideo={() => { setUploadModalTab("computer"); setMediaTypeFilter?.(MEDIA_FILTER_TYPES.VIDEO); setUploadTargetContext?.(activePlatform ? { platform: activePlatform, accountId: isMultiAccountPlatform(activePlatform) ? activeNetworkAccountId : null } : null); setShowUploadModal(true); }}
+                    onSelectMediaLibrary={() => { setUploadModalTab("library"); setMediaTypeFilter?.(MEDIA_FILTER_TYPES.ALL); setUploadTargetContext?.(activePlatform ? { platform: activePlatform, accountId: isMultiAccountPlatform(activePlatform) ? activeNetworkAccountId : null } : null); setShowUploadModal(true); }}
                     onSelectEmoji={(emoji) => handleCaptionChange(captionValue + emoji)}
                     onInsertHashtag={(text) => handleCaptionChange(`${captionValue}${text}`)}
                     onAddUtmUrl={(utmUrl) => handleCaptionChange(`${captionValue}${utmUrl}`)}

@@ -67,7 +67,7 @@ class TeamController {
 
     if (result.accessToken && result.refreshToken) {
       const { setAuthCookies } = require('../../utils/cookie.utils');
-      setAuthCookies(res, result.accessToken, result.refreshToken);
+      setAuthCookies(res, result.accessToken, result.refreshToken, req);
     }
 
     // Auth is via the HttpOnly cookies set above — the raw tokens must not

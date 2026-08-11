@@ -2,6 +2,7 @@ const socialPlatformFactory = require('../../services/social/social-platform.fac
 const socialAccountRepository = require('../../repositories/social/social-account.repository');
 const postService = require('../../services/workspace/post.service');
 const postRepository = require('../../repositories/workspace/post.repository');
+const mediaLibraryService = require('../../services/workspace/media-library.service');
 const { getHistoryWindowMonths } = require('../../services/social/plan-history-window.util');
 const { POST_STATUS } = require('../../utils/constants');
 const logger = require('../../utils/logger');
@@ -207,4 +208,35 @@ const handlePublishPostFailed = async (req, res) => {
   }
 };
 
-module.exports = { handleSocialSync, handleMetricsSync, handlePostsSync, handlePublishPost, handlePublishPostFailed };
+/**
+ * Handles one orphan-media candidate from MediaCleanupSchedulerService (see
+ * media-cleanup-scheduler.service.js). deleteOrphanMediaAsset re-checks
+ * isUsed=false via an atomic compare-and-delete at the DB level before
+ * touching Cloudinary — see its own doc comment for why the delete order is
+ * reversed compared to the user-initiated deleteMedia path. `skipped: true`
+ * (not_found / now_in_use / race_lost) is a normal, expected outcome, not a
+ * failure — still returns 200 so QStash doesn't retry it.
+ */
+const handleMediaCleanup = async (req, res) => {
+  const { mediaLibraryId } = req.body;
+
+  logger.debug(`[QStash Media Cleanup] Processing orphan candidate: ${mediaLibraryId}`);
+
+  try {
+    const result = await mediaLibraryService.deleteOrphanMediaAsset(mediaLibraryId);
+    if (result.skipped) {
+      logger.debug(`[QStash Media Cleanup] Skipped ${mediaLibraryId}: ${result.reason}`);
+    } else {
+      logger.debug(`[QStash Media Cleanup] Deleted orphan media: ${mediaLibraryId}`);
+    }
+    return res.status(200).json({ success: true, ...result });
+  } catch (err) {
+    console.error(`[QStash Media Cleanup] Failed to clean up media ${mediaLibraryId}. Error: ${err.message}`);
+    // Non-2xx tells QStash to retry per the message's configured retry count
+    // — a genuine failure here (Cloudinary/DB network error) is worth
+    // retrying, unlike the skipped outcomes above which are terminal.
+    return res.status(500).json({ success: false, message: err.message });
+  }
+};
+
+module.exports = { handleSocialSync, handleMetricsSync, handlePostsSync, handlePublishPost, handlePublishPostFailed, handleMediaCleanup };

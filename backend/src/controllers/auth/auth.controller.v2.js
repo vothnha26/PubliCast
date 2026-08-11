@@ -22,7 +22,7 @@ class AuthControllerV2 {
       const { email, otp } = req.body;
       const result = await authService.verifyOTP(email, otp);
       if (result.accessToken && result.refreshToken) {
-        setAuthCookies(res, result.accessToken, result.refreshToken);
+        setAuthCookies(res, result.accessToken, result.refreshToken, req);
       }
       return v2Success(res, { user: result.user }, 'Email verified successfully.');
     } catch (err) {
@@ -49,7 +49,7 @@ class AuthControllerV2 {
         return v2Success(res, { require2FA: true, preAuthToken: result.preAuthToken }, '2FA required.');
       }
 
-      setAuthCookies(res, result.accessToken, result.refreshToken);
+      setAuthCookies(res, result.accessToken, result.refreshToken, req);
       return v2Success(res, { user: result.user, role: result.role }, 'Login successful.');
     } catch (err) {
       next(err);
@@ -80,7 +80,7 @@ class AuthControllerV2 {
       }
       const decoded = jwtUtils.verifyRefreshToken(refreshToken);
       const result = await authService.refreshTokens(refreshToken, decoded.id);
-      setAuthCookies(res, result.accessToken, result.refreshToken);
+      setAuthCookies(res, result.accessToken, result.refreshToken, req);
       return v2Success(res, null, 'Token refreshed successfully.');
     } catch (err) {
       next(err);
@@ -150,7 +150,7 @@ class AuthControllerV2 {
     try {
       const { preAuthToken, code } = req.body;
       const result = await authService.loginVerify2FA(preAuthToken, code);
-      setAuthCookies(res, result.accessToken, result.refreshToken);
+      setAuthCookies(res, result.accessToken, result.refreshToken, req);
       return v2Success(res, { user: result.user, role: result.role, isBackupUsed: result.isBackupUsed }, '2FA verification successful.');
     } catch (err) {
       next(err);

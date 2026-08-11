@@ -15,7 +15,11 @@ datasource db {
 model User {
   id                   String    @id @default(uuid())
   email                String    @unique
-  passwordHash         String
+  // Nullable — a user created via social login (Google) has no local
+  // password until they set one via "forgot password". PasswordValidator
+  // (login.validators.js) must treat a null hash as "wrong password", not
+  // call bcrypt.compare on it directly (bcrypt throws on a null hash).
+  passwordHash         String?
   name                 String
   avatarUrl            String?
   phone                String?
@@ -1702,6 +1706,7 @@ model MediaLibrary {
 
   @@index([brandId])
   @@index([source])
+  @@index([isUsed, createdAt])
   @@map("media_library")
 }
 

@@ -25,7 +25,7 @@ describe('Google Account Linking Integration Tests', () => {
       where: {
         user: {
           email: {
-            in: [testEmail, 'newgoogle@example.com']
+            in: [testEmail, 'newgoogle@example.com', 'newgoogle-settings@example.com']
           }
         }
       }
@@ -34,7 +34,7 @@ describe('Google Account Linking Integration Tests', () => {
     await prisma.user.deleteMany({
       where: {
         email: {
-          in: [testEmail, 'newgoogle@example.com']
+          in: [testEmail, 'newgoogle@example.com', 'newgoogle-settings@example.com']
         }
       }
     });
@@ -62,7 +62,7 @@ describe('Google Account Linking Integration Tests', () => {
       where: {
         user: {
           email: {
-            in: [testEmail, 'newgoogle@example.com']
+            in: [testEmail, 'newgoogle@example.com', 'newgoogle-settings@example.com']
           }
         }
       }
@@ -71,7 +71,7 @@ describe('Google Account Linking Integration Tests', () => {
     await prisma.user.deleteMany({
       where: {
         email: {
-          in: [testEmail, 'newgoogle@example.com']
+          in: [testEmail, 'newgoogle@example.com', 'newgoogle-settings@example.com']
         }
       }
     });
@@ -111,7 +111,7 @@ describe('Google Account Linking Integration Tests', () => {
     expect(googleAcc.providerId).toBe(googleAccountData.providerId);
   });
 
-  it('should reject signing in with Google using an email that has no existing account', async () => {
+  it('should auto-create a new account when signing in with Google using an email that has no existing account', async () => {
     const newEmail = 'newgoogle@example.com';
     const newGoogleUserData = {
       email: newEmail,
@@ -125,13 +125,47 @@ describe('Google Account Linking Integration Tests', () => {
     };
 
     // Act: Upsert social user (simulate Google Sign-In redirect callback for a new email).
-    // Google login must never auto-create an account — the user has to register
-    // via email/password + OTP first.
+    // Google has already verified the email belongs to whoever is
+    // authenticating, so that's sufficient identity proof — the account is
+    // created directly, no separate email/password + OTP registration step.
+    const result = await userRepository.upsertSocialUser(newGoogleUserData, newGoogleAccountData);
+
+    expect(result.isNew).toBe(true);
+    expect(result.user.email).toBe(newEmail);
+    expect(result.user.isActive).toBe(true);
+    expect(result.user.isEmailVerified).toBe(true);
+    expect(result.user.passwordHash).toBeNull();
+
+    // Assert: A user was created for this email, with the Google account linked
+    const userFromDb = await prisma.user.findUnique({
+      where: { email: newEmail },
+      include: { accounts: true }
+    });
+    expect(userFromDb).not.toBeNull();
+    expect(userFromDb.accounts).toHaveLength(1);
+    expect(userFromDb.accounts[0].provider).toBe('GOOGLE');
+    expect(userFromDb.accounts[0].providerId).toBe(newGoogleAccountData.providerId);
+  });
+
+  it('should reject a Google "Connect account" attempt (Settings flow) when the session user does not resolve', async () => {
+    const newEmail = 'newgoogle-settings@example.com';
+    const newGoogleUserData = {
+      email: newEmail,
+      name: 'New Google Settings User',
+      avatarUrl: 'http://example.com/new-avatar-2.jpg'
+    };
+    const newGoogleAccountData = {
+      provider: 'GOOGLE',
+      providerId: 'google-oauth2-settings-111'
+    };
+
+    // A currentUserId that doesn't resolve to a real user (expired/invalid
+    // session token during Settings' "Connect Google" flow) must not fall
+    // through to auto-creating an unrelated new account.
     await expect(
-      userRepository.upsertSocialUser(newGoogleUserData, newGoogleAccountData)
+      userRepository.upsertSocialUser(newGoogleUserData, newGoogleAccountData, 'nonexistent-user-id')
     ).rejects.toMatchObject({ code: 'GOOGLE_ACCOUNT_NOT_LINKED' });
 
-    // Assert: No user was created for this email
     const userFromDb = await prisma.user.findUnique({ where: { email: newEmail } });
     expect(userFromDb).toBeNull();
   });

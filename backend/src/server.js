@@ -83,6 +83,10 @@ const server = app.listen(PORT, async () => {
   const postsSyncSchedulerService = require('./services/social/posts-sync-scheduler.service');
   postsSyncSchedulerService.start();
 
+  // Start Periodic Media Cleanup Scheduler (hourly orphan Cloudinary asset scan)
+  const mediaCleanupSchedulerService = require('./services/workspace/media-cleanup-scheduler.service');
+  mediaCleanupSchedulerService.start();
+
   // Start Outbox Dispatcher (polls outbox_events, delivers side-effects with retry)
   const outboxDispatcherService = require('./services/core/outbox-dispatcher.service');
   outboxDispatcherService.start();
@@ -121,6 +125,14 @@ async function shutdown(signal) {
     postsSyncSchedulerService.stop();
   } catch (err) {
     logger.error('Error stopping posts sync scheduler', err);
+  }
+
+  // Stop periodic media cleanup scheduler
+  try {
+    const mediaCleanupSchedulerService = require('./services/workspace/media-cleanup-scheduler.service');
+    mediaCleanupSchedulerService.stop();
+  } catch (err) {
+    logger.error('Error stopping media cleanup scheduler', err);
   }
 
   // Stop token refresh scheduler

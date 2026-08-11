@@ -296,49 +296,93 @@ class ThreadsService extends BaseSocialService {
   }
 
   async connectChannel(brandId, code, redirectUri) {
-    const { ConnectionConflictGuard, ConnectionConflictError } = require('../connection-conflict.guard');
-    
+    return this.executeConnectPipeline(brandId, code, redirectUri);
+  }
+
+  // --- Connect Pipeline Hook Implementations ---
+  async connectExchangeAuth(code, redirectUri) {
     // 1. Đổi code lấy short-lived access token
     const shortTokenRes = await threadsGateway.exchangeCodeForToken(code, redirectUri);
     const shortToken = shortTokenRes.access_token;
-    const userId = shortTokenRes.user_id;
 
     // 2. Đổi lấy long-lived access token (60 ngày)
     const longTokenRes = await threadsGateway.getLongLivedToken(shortToken);
     const longToken = longTokenRes.access_token;
 
-    // 3. Lấy thông tin chi tiết profile thật
+    return { longToken };
+  }
+
+  async connectFetchIdentity({ longToken }) {
+    // Basic profile only — no followers_count (that only comes from real
+    // Insights data via getAnalyticsReport, fetched in the background).
     const profile = await threadsGateway.getAccountDetails(longToken);
-
-    // 4. Lấy analytics report thật (bao gồm followers_count thật từ Threads
-    // Insights API nếu token có quyền — xem getAnalyticsReport's summary)
-    const report = await this.getAnalyticsReport({
-      igAccountId: profile.id,
-      pageAccessToken: longToken
-    });
-
-    // followersCount lấy từ report.summary (đã ưu tiên giá trị thật từ
-    // Insights, xem getAnalyticsReport). followingCount/mediaCount không có
-    // API thật nào của Threads trả về (getAccountDetails/getInsights đều
-    // không có field này) — để null, không bịa số như 300/10 trước đây (#97).
-    const summary = report.summary;
-
-    // 5. Lưu vào Database
-    return require('../../../repositories/social/social-account.repository').upsertThreadsAccount(brandId, {
+    return {
       igAccountId: profile.id,
       username: profile.username,
       displayName: profile.name || profile.username,
       profilePictureUrl: profile.threads_profile_picture_url || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=150&q=80',
-      followersCount: summary.followersCount || 0,
+      biography: profile.threads_biography || ''
+    };
+  }
+
+  async connectPersistAccount(brandId, identity, { longToken }) {
+    const { ConnectionConflictGuard, ConnectionConflictError } = require('../connection-conflict.guard');
+    const conflictResult = await ConnectionConflictGuard.validateConflict(brandId, PLATFORMS.THREADS, identity.igAccountId);
+    if (conflictResult.conflict) {
+      throw new ConnectionConflictError(
+        conflictResult.type,
+        identity.displayName,
+        identity.igAccountId,
+        PLATFORMS.THREADS,
+        conflictResult.existingAccount.brand.name
+      );
+    }
+
+    return require('../../../repositories/social/social-account.repository').upsertThreadsAccount(brandId, {
+      igAccountId: identity.igAccountId,
+      username: identity.username,
+      displayName: identity.displayName,
+      profilePictureUrl: identity.profilePictureUrl,
+      followersCount: 0,
       followingCount: null,
       mediaCount: null,
-      biography: profile.threads_biography || '',
-      website: '',
-      analytics: report
+      biography: identity.biography,
+      website: ''
     }, {
       access_token: longToken,
       refresh_token: '' // Threads long-lived token tự gia hạn không cần refresh_token
     });
+  }
+
+  async connectBackfillHistory(brandId, account, identity, { longToken }) {
+    // Real analytics report — includes real followers_count from Threads
+    // Insights API if the token has that permission (see getAnalyticsReport's
+    // summary). followingCount/mediaCount have no real API source (neither
+    // getAccountDetails nor getInsights returns them) — left null, never
+    // fabricated (#97).
+    const report = await this.getAnalyticsReport({
+      igAccountId: identity.igAccountId,
+      pageAccessToken: longToken
+    });
+
+    // enqueueSync: false — this only backfills historical data for the
+    // account the fast path already connected; it must not enqueue a
+    // second SOCIAL_SYNC_ENQUEUE outbox event for the same connect.
+    return require('../../../repositories/social/social-account.repository').upsertThreadsAccount(brandId, {
+      igAccountId: identity.igAccountId,
+      username: identity.username,
+      displayName: identity.displayName,
+      profilePictureUrl: identity.profilePictureUrl,
+      followersCount: report.summary.followersCount || 0,
+      followingCount: null,
+      mediaCount: null,
+      biography: identity.biography,
+      website: '',
+      analytics: report
+    }, {
+      access_token: longToken,
+      refresh_token: ''
+    }, { enqueueSync: false });
   }
 
   async syncChannelMetrics(socialAccountId, startDate, endDate, force = false) {
