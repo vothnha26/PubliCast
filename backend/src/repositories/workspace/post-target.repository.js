@@ -27,14 +27,29 @@ class PostTargetRepository {
    * social-publish.step.js (final check right before the live API call).
    * PostingUsageDaily is a separate, write-only calendar-day log for admin
    * analytics; never read here.
+   *
+   * Counts by the real channel identity (SocialAccount.platformAccountId),
+   * not by socialAccountId — SocialAccount.id is only unique per
+   * (brandId, platform, platformAccountId), so the same real YouTube/
+   * Facebook/etc. channel connected into two different brands gets two
+   * separate SocialAccount rows with different ids. Counting by
+   * socialAccountId would let that one real channel receive the cap twice
+   * over (once per brand), defeating the point of protecting the channel
+   * from the platform's own rate limit.
    */
   async countPublishedInLast24h(socialAccountId, platform, client = prisma) {
+    const account = await client.socialAccount.findUnique({
+      where: { id: socialAccountId },
+      select: { platformAccountId: true }
+    });
+    if (!account) return 0;
+
     return client.postTarget.count({
       where: {
-        socialAccountId,
         platform,
         publishStatus: 'PUBLISHED',
-        publishedAt: { gte: new Date(Date.now() - 24 * 60 * 60 * 1000) }
+        publishedAt: { gte: new Date(Date.now() - 24 * 60 * 60 * 1000) },
+        socialAccount: { platformAccountId: account.platformAccountId, platform }
       }
     });
   }
