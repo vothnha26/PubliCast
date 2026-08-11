@@ -17,30 +17,37 @@ class ThreadsInboxDisplayAdapter extends BaseInboxDisplayAdapter {
 
   async fetchPlatformPosts(brandId, socialAccountIds = [], options = {}) {
     const service = socialPlatformFactory.getService(PLATFORMS.THREADS);
-    const posts = [];
 
+    // One DB round-trip per connected account — a brand with several
+    // Threads accounts was paying their sum sequentially. Promise.allSettled
+    // runs them concurrently instead.
     const idsToFetch = socialAccountIds.length > 0 ? socialAccountIds : [null];
-    for (const saId of idsToFetch) {
-      try {
-        const res = await service.getPublishedVideos(brandId, null, 50, saId);
-        const threadsPosts = (res?.data || []).map(p => ({
-          id: p.id,
-          title: p.text?.slice(0, 60) || p.message?.slice(0, 60) || null,
-          thumbnailUrl: p.mediaUrl || p.thumbnailUrl || null,
-          platform: PLATFORMS.THREADS,
-          publishedAt: p.date || p.createdAt || null,
-          postUrl: p.postUrl || p.permalink || this.buildPostUrl(p.id),
-          socialAccountId: saId,
-          likes: parseInt(p.like_count || p.likes || 0, 10),
-          comments: parseInt(p.reply_count || p.comments || 0, 10),
-          shares: parseInt(p.repost_count || p.shares || 0, 10),
-          views: parseInt(p.views || 0, 10)
-        }));
-        posts.push(...threadsPosts);
-      } catch (err) {
-        console.error(`[ThreadsInboxDisplayAdapter] Failed to fetch posts for account ${saId}:`, err.message);
+    const results = await Promise.allSettled(
+      idsToFetch.map(saId => service.getPublishedVideos(brandId, null, 50, saId))
+    );
+
+    const posts = [];
+    results.forEach((result, idx) => {
+      const saId = idsToFetch[idx];
+      if (result.status !== 'fulfilled') {
+        console.error(`[ThreadsInboxDisplayAdapter] Failed to fetch posts for account ${saId}:`, result.reason?.message || result.reason);
+        return;
       }
-    }
+      const threadsPosts = (result.value?.data || []).map(p => ({
+        id: p.id,
+        title: p.text?.slice(0, 60) || p.message?.slice(0, 60) || null,
+        thumbnailUrl: p.mediaUrl || p.thumbnailUrl || null,
+        platform: PLATFORMS.THREADS,
+        publishedAt: p.date || p.createdAt || null,
+        postUrl: p.postUrl || p.permalink || this.buildPostUrl(p.id),
+        socialAccountId: saId,
+        likes: parseInt(p.like_count || p.likes || 0, 10),
+        comments: parseInt(p.reply_count || p.comments || 0, 10),
+        shares: parseInt(p.repost_count || p.shares || 0, 10),
+        views: parseInt(p.views || 0, 10)
+      }));
+      posts.push(...threadsPosts);
+    });
 
     return posts;
   }

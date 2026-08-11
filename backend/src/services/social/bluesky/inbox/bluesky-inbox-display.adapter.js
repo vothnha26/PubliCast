@@ -17,30 +17,37 @@ class BlueskyInboxDisplayAdapter extends BaseInboxDisplayAdapter {
 
   async fetchPlatformPosts(brandId, socialAccountIds = [], options = {}) {
     const service = socialPlatformFactory.getService(PLATFORMS.BLUESKY);
-    const posts = [];
 
+    // One DB round-trip per connected account — a brand with several
+    // Bluesky accounts was paying their sum sequentially. Promise.allSettled
+    // runs them concurrently instead.
     const idsToFetch = socialAccountIds.length > 0 ? socialAccountIds : [null];
-    for (const saId of idsToFetch) {
-      try {
-        const res = await service.getPublishedVideos(brandId, null, 50, saId);
-        const bskyPosts = (res?.data || []).map(p => ({
-          id: p.id || p.uri,
-          title: p.text?.slice(0, 60) || p.message?.slice(0, 60) || null,
-          thumbnailUrl: p.mediaUrl || p.thumbnailUrl || null,
-          platform: PLATFORMS.BLUESKY,
-          publishedAt: p.createdAt || p.date || null,
-          postUrl: p.postUrl || this.buildPostUrl(p.id || p.uri),
-          socialAccountId: saId,
-          likes: parseInt(p.likeCount || p.likes || 0, 10),
-          comments: parseInt(p.replyCount || p.comments || 0, 10),
-          shares: parseInt(p.repostCount || p.quoteCount || p.shares || 0, 10),
-          views: parseInt(p.views || 0, 10)
-        }));
-        posts.push(...bskyPosts);
-      } catch (err) {
-        console.error(`[BlueskyInboxDisplayAdapter] Failed to fetch posts for account ${saId}:`, err.message);
+    const results = await Promise.allSettled(
+      idsToFetch.map(saId => service.getPublishedVideos(brandId, null, 50, saId))
+    );
+
+    const posts = [];
+    results.forEach((result, idx) => {
+      const saId = idsToFetch[idx];
+      if (result.status !== 'fulfilled') {
+        console.error(`[BlueskyInboxDisplayAdapter] Failed to fetch posts for account ${saId}:`, result.reason?.message || result.reason);
+        return;
       }
-    }
+      const bskyPosts = (result.value?.data || []).map(p => ({
+        id: p.id || p.uri,
+        title: p.text?.slice(0, 60) || p.message?.slice(0, 60) || null,
+        thumbnailUrl: p.mediaUrl || p.thumbnailUrl || null,
+        platform: PLATFORMS.BLUESKY,
+        publishedAt: p.createdAt || p.date || null,
+        postUrl: p.postUrl || this.buildPostUrl(p.id || p.uri),
+        socialAccountId: saId,
+        likes: parseInt(p.likeCount || p.likes || 0, 10),
+        comments: parseInt(p.replyCount || p.comments || 0, 10),
+        shares: parseInt(p.repostCount || p.quoteCount || p.shares || 0, 10),
+        views: parseInt(p.views || 0, 10)
+      }));
+      posts.push(...bskyPosts);
+    });
 
     return posts;
   }

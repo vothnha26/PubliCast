@@ -13,32 +13,40 @@ class FacebookInboxDisplayAdapter extends BaseInboxDisplayAdapter {
 
   async fetchPlatformPosts(brandId, socialAccountIds = [], options = {}) {
     const service = socialPlatformFactory.getService(PLATFORMS.FACEBOOK);
-    const posts = [];
 
+    // One DB round-trip per connected account — a brand with several
+    // Facebook pages was paying their sum sequentially. Promise.allSettled
+    // runs them concurrently instead (same pattern as _fetchAllPlatformPosts
+    // above this call, which already parallelizes across platforms).
     const idsToFetch = socialAccountIds.length > 0 ? socialAccountIds : [null];
-    for (const saId of idsToFetch) {
-      try {
-        const res = await service.getPublishedVideos(brandId, null, 50, saId);
-        const fbPosts = (res?.data || []).map(p => ({
-          id: p.id,
-          title: p.message?.slice(0, 60) || null,
-          thumbnailUrl: p.mediaUrl || null,
-          platform: PLATFORMS.FACEBOOK,
-          publishedAt: p.date || null,
-          postUrl: p.postUrl || this.buildPostUrl(p.id),
-          socialAccountId: saId,
-          views: parseInt(p.video_views || p.views || 0, 10),
-          likes: parseInt(p.reactions?.summary?.total_count || p.reactions || p.likes || 0, 10),
-          comments: parseInt(p.comments?.summary?.total_count || p.comments || 0, 10),
-          shares: parseInt(p.shares?.count || p.shares || 0, 10),
-          clicks: parseInt(p.clicks || 0, 10),
-          reach: parseInt(p.reach || p.impressions || 0, 10),
-        }));
-        posts.push(...fbPosts);
-      } catch (err) {
-        console.error(`[FacebookInboxDisplayAdapter] Failed to fetch posts for account ${saId}:`, err.message);
+    const results = await Promise.allSettled(
+      idsToFetch.map(saId => service.getPublishedVideos(brandId, null, 50, saId))
+    );
+
+    const posts = [];
+    results.forEach((result, idx) => {
+      const saId = idsToFetch[idx];
+      if (result.status !== 'fulfilled') {
+        console.error(`[FacebookInboxDisplayAdapter] Failed to fetch posts for account ${saId}:`, result.reason?.message || result.reason);
+        return;
       }
-    }
+      const fbPosts = (result.value?.data || []).map(p => ({
+        id: p.id,
+        title: p.message?.slice(0, 60) || null,
+        thumbnailUrl: p.mediaUrl || null,
+        platform: PLATFORMS.FACEBOOK,
+        publishedAt: p.date || null,
+        postUrl: p.postUrl || this.buildPostUrl(p.id),
+        socialAccountId: saId,
+        views: parseInt(p.video_views || p.views || 0, 10),
+        likes: parseInt(p.reactions?.summary?.total_count || p.reactions || p.likes || 0, 10),
+        comments: parseInt(p.comments?.summary?.total_count || p.comments || 0, 10),
+        shares: parseInt(p.shares?.count || p.shares || 0, 10),
+        clicks: parseInt(p.clicks || 0, 10),
+        reach: parseInt(p.reach || p.impressions || 0, 10),
+      }));
+      posts.push(...fbPosts);
+    });
 
     return posts;
   }
