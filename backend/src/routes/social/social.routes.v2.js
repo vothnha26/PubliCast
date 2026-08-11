@@ -5,6 +5,7 @@ const tiktokController = require('../../controllers/social/tiktok.controller.v2'
 const instagramController = require('../../controllers/social/instagram.controller.v2');
 const googleDriveController = require('../../controllers/social/google-drive.controller.v2');
 const socialAnalyticsController = require('../../controllers/social/social-analytics.controller.v2');
+const channelInsightsSummaryController = require('../../controllers/social/channel-insights-summary.controller.v2');
 const socialConnectionController = require('../../controllers/social/social-connection.controller.v2');
 const postingUsageController = require('../../controllers/workspace/posting-usage.controller.v2');
 const threadsController = require('../../controllers/social/threads.controller.v2');
@@ -73,6 +74,47 @@ router.get('/metrics', verifyAuth, checkPermission(PERMISSION_KEYS.VIEW_ANALYTIC
  */
 router.get('/metrics/version', verifyAuth, checkPermission(PERMISSION_KEYS.VIEW_ANALYTICS), (req, res, next) => {
   socialAnalyticsController.getMetricsVersion(req, res, next);
+});
+
+/**
+ * @openapi
+ * /v2/social/channel-insights-summary:
+ *   get:
+ *     summary: Batched read for the channel detail/insights page — metrics, posting-usage, published-videos (per the account's own platform), channel-groups, and platform-limits in one request
+ *     tags: [Social V2]
+ *     security: [{ cookieAuth: [] }]
+ *     parameters:
+ *       - in: query
+ *         name: brandId
+ *         required: true
+ *         schema: { type: string }
+ *       - in: query
+ *         name: socialAccountId
+ *         required: false
+ *         schema: { type: string }
+ *         description: When omitted, publishedVideos is returned as null (the other 4 fields are brand-wide regardless).
+ *       - in: query
+ *         name: pageToken
+ *         schema: { type: string }
+ *       - in: query
+ *         name: limit
+ *         schema: { type: integer }
+ *       - in: query
+ *         name: startDate
+ *         schema: { type: string }
+ *       - in: query
+ *         name: endDate
+ *         schema: { type: string }
+ *     responses:
+ *       200:
+ *         description: "{ metrics, postingUsage, publishedVideos, channelGroups, platformLimits }"
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/V2EnvelopeResponse'
+ */
+router.get('/channel-insights-summary', verifyAuth, checkPermission(PERMISSION_KEYS.VIEW_ANALYTICS), (req, res, next) => {
+  channelInsightsSummaryController.getSummary(req, res, next);
 });
 
 /**

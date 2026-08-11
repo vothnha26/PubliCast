@@ -1,33 +1,16 @@
-import { useState, useEffect, useCallback } from "react";
 import { useTranslation } from "react-i18next";
-import socialService from "../../services/social.service";
 
 /**
  * Fair Use daily posting cap indicator for a single connected account —
  * mirrors the same rolling-24h enforcement query the backend uses at
  * publish time, so what's shown here always matches what would block a post.
+ *
+ * Presentational only — usage/loading come from the parent (ChannelDetail.
+ * jsx), which reads them off useChannelInsightsSummaryQuery's batched
+ * result instead of this component firing its own independent request.
  */
-export function DailyPostingUsageBadge({ brandId, socialAccountId }) {
+export function DailyPostingUsageBadge({ usage, loading }) {
   const { t } = useTranslation("topbar");
-  const [usage, setUsage] = useState(null);
-  const [loading, setLoading] = useState(true);
-
-  const loadUsage = useCallback(async () => {
-    if (!brandId || !socialAccountId) return;
-    try {
-      const list = await socialService.getPostingUsage(brandId);
-      setUsage((list || []).find((u) => u.socialAccountId === socialAccountId) || null);
-    } catch (error) {
-      console.error("Failed to load daily posting usage:", error);
-    } finally {
-      setLoading(false);
-    }
-  }, [brandId, socialAccountId]);
-
-  useEffect(() => {
-    setLoading(true);
-    loadUsage();
-  }, [loadUsage]);
 
   if (loading || !usage || !usage.configured) return null;
 

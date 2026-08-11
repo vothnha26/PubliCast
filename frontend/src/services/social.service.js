@@ -46,6 +46,25 @@ class SocialService {
     return data;
   }
 
+  /**
+   * Batched read for the channel detail/insights page — metrics,
+   * posting-usage, published-videos (per the account's own platform),
+   * channel-groups, and platform-limits in one request. Replaces 5
+   * independent requests each component/hook on that page used to fire on
+   * its own mount, which on a remote DB meant 5 full round-trips racing
+   * each other for the same connection pool just to render one page.
+   */
+  async getChannelInsightsSummary(brandId, socialAccountId = null, { pageToken = null, limit = 10, startDate = null, endDate = null } = {}) {
+    const params = new URLSearchParams({ brandId });
+    if (socialAccountId) params.append('socialAccountId', socialAccountId);
+    if (pageToken) params.append('pageToken', pageToken);
+    if (limit) params.append('limit', limit);
+    if (startDate) params.append('startDate', startDate);
+    if (endDate) params.append('endDate', endDate);
+    const data = await apiV2.get(`/social/channel-insights-summary?${params.toString()}`);
+    return data;
+  }
+
   async addTrackedVideo(brandId, videoUrl) {
     const data = await apiV2.post('/social/youtube/track', { brandId, videoUrl });
     return data;

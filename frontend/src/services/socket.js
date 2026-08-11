@@ -1,5 +1,6 @@
 import { io } from 'socket.io-client';
 import logger from '../utils/logger';
+import { CACHE_SCOPES } from '../constants/cache-scopes.constants';
 
 let socketURL = import.meta.env.VITE_SOCKET_URL || import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000';
 // Nếu socket URL lấy từ VITE_API_BASE_URL, nó chứa hậu tố /api gây lỗi Invalid Namespace của Socket.io
@@ -90,11 +91,19 @@ class SocketClient {
     this.socket.on('data_invalidate', ({ scope, brandId, dataVersion }) => {
       logger.debug(`⚡ [SocketClient] Received data_invalidate for scope '${scope}', brandId '${brandId}'`);
       if (scope && brandId) {
-        if (scope === 'metrics' && typeof dataVersion === 'number') {
+        if (scope === CACHE_SCOPES.METRICS && typeof dataVersion === 'number') {
           this.lastKnownMetricsVersion.set(brandId, dataVersion);
         }
         import('../App').then(({ queryClient }) => {
           queryClient.invalidateQueries({ queryKey: [scope, brandId] });
+          // channel_insights_summary embeds its own copy of metrics
+          // (see channel-insights-summary.service.js) instead of reading
+          // useMetricsQuery's cache, so a metrics invalidation must also
+          // reach it explicitly — the [scope, brandId] prefix match above
+          // only covers ['metrics', brandId, ...] keys.
+          if (scope === CACHE_SCOPES.METRICS) {
+            queryClient.invalidateQueries({ queryKey: [CACHE_SCOPES.CHANNEL_INSIGHTS_SUMMARY, brandId] });
+          }
         }).catch(err => {
           console.warn('[SocketClient] Failed to import queryClient for invalidation:', err.message);
         });

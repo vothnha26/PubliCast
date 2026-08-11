@@ -9,8 +9,7 @@ import {
 import { useBrand } from "../context/BrandContext";
 import { useConnections } from "../context/ConnectionsContext";
 import { ChannelsList } from "./ChannelsList";
-import { useState, useEffect } from "react";
-import billingService from "../services/billing.service";
+import { useCurrentSubscriptionQuery } from "../hooks/queries/useCurrentSubscriptionQuery";
 import { useTheme } from "../context/ThemeContext";
 import { THEME_MODES } from "../constants/theme";
 import { useTranslation } from "react-i18next";
@@ -51,18 +50,7 @@ export function SidebarWorkspace({ mobileOpen = false, onMobileClose } = {}) {
   const { openConnections } = useConnections();
   const { theme, setTheme } = useTheme();
 
-  const [planInfo, setPlanInfo] = useState(null);
-
-  useEffect(() => {
-    if (!activeBrand) return;
-    billingService.getCurrentSubscription(activeBrand.id)
-      .then(res => {
-        setPlanInfo(res);
-      })
-      .catch(err => {
-        console.error("Failed to fetch current plan info in sidebar:", err);
-      });
-  }, [activeBrand]);
+  const { data: planInfo } = useCurrentSubscriptionQuery(activeBrand?.id);
 
   // /manage/inbox is a daily-use core feature, not a brand-management config
   // screen — it shouldn't switch the sidebar into the management menu the

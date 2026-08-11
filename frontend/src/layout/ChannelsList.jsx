@@ -1,5 +1,5 @@
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { useState, useEffect, useCallback } from "react";
+import { useState } from "react";
 import { Calendar, MessageSquare, BarChart3, Plus, MoreVertical, Star, Unlink, ChevronDown, ChevronRight, FolderPlus, Lock, PenSquare, Filter, X as XIcon } from "lucide-react";
 import { useBrand } from "../context/BrandContext";
 import { useConnections } from "../context/ConnectionsContext";
@@ -8,6 +8,7 @@ import { ChannelAvatar } from "../components/workspace/post-creator/ChannelAvata
 import { useTranslation } from "react-i18next";
 import socialService from "../services/social.service";
 import channelGroupService from "../services/channel-group.service";
+import { useChannelGroupsQuery, useInvalidateChannelGroups } from "../hooks/queries/useChannelGroupsQuery";
 import { ChannelGroupModal } from "../components/app/ChannelGroupModal";
 import { CHANNEL_GROUP_VISIBILITY } from "../constants/channelGroupVisibility";
 import { usePostCreatorStore } from "../store/usePostCreatorStore";
@@ -50,7 +51,8 @@ export function ChannelsList() {
   const [disconnectingId, setDisconnectingId] = useState(null);
   const [menuPos, setMenuPos] = useState({ top: 0, left: 0 });
 
-  const [groups, setGroups] = useState([]);
+  const { data: groups = [] } = useChannelGroupsQuery(activeBrand?.id);
+  const invalidateChannelGroups = useInvalidateChannelGroups();
   const [collapsedGroupIds, setCollapsedGroupIds] = useState([]);
   const [groupModalOpen, setGroupModalOpen] = useState(false);
   const [editingGroup, setEditingGroup] = useState(null);
@@ -62,20 +64,6 @@ export function ChannelsList() {
   // pipeline, no post-creator preset, and no channel-insights dashboard.
   // Excluded here so it doesn't show up as a selectable "channel" to post to.
   const socialAccounts = (activeBrand?.socialAccounts || []).filter((a) => a.platform !== PLATFORMS.GOOGLE_DRIVE);
-
-  const fetchGroups = useCallback(async () => {
-    if (!activeBrand?.id) return;
-    try {
-      const res = await channelGroupService.list(activeBrand.id);
-      setGroups(res?.data || res || []);
-    } catch (e) {
-      console.error("Failed to fetch channel groups:", e);
-    }
-  }, [activeBrand?.id]);
-
-  useEffect(() => {
-    fetchGroups();
-  }, [fetchGroups]);
 
   const groupedAccountIds = new Set(groups.flatMap((g) => g.members.map((m) => m.socialAccountId)));
   const ungroupedAccounts = socialAccounts.filter((a) => !groupedAccountIds.has(a.id));
@@ -109,13 +97,13 @@ export function ChannelsList() {
       await channelGroupService.update(createdGroup.id, activeBrand.id, { socialAccountIds });
     }
     toast.success(t("channelGroups.created", "Channel group created"));
-    await fetchGroups();
+    invalidateChannelGroups(activeBrand.id);
   };
 
   const handleUpdateGroup = async ({ name, color, visibility, socialAccountIds }) => {
     await channelGroupService.update(editingGroup.id, activeBrand.id, { name, color, visibility, socialAccountIds });
     toast.success(t("channelGroups.updated", "Channel group saved"));
-    await fetchGroups();
+    invalidateChannelGroups(activeBrand.id);
   };
 
   const handleDeleteGroup = async (group) => {
@@ -125,7 +113,7 @@ export function ChannelsList() {
       await channelGroupService.remove(group.id, activeBrand.id);
       if (activeFilterGroupId === group.id) setActiveFilterGroupId(null);
       toast.success(t("channelGroups.deleted", "Channel group deleted"));
-      await fetchGroups();
+      invalidateChannelGroups(activeBrand.id);
     } catch (e) {
       toast.error(e.message || t("channelGroups.deleteFailed", "Failed to delete channel group"));
     }
