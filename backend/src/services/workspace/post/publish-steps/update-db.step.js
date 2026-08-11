@@ -3,7 +3,7 @@ const postRepository = require('../../../../repositories/workspace/post.reposito
 const autoListRepository = require('../../../../repositories/workspace/auto-list.repository');
 const notificationService = require('../../../core/notification.service');
 const streakService = require('../../streak.service');
-const { POST_STATUS, NOTIFICATION_TYPES } = require('../../../../utils/constants');
+const { POST_STATUS, NOTIFICATION_TYPES, NOTIFICATION_PREFERENCE_KEYS } = require('../../../../utils/constants');
 const logger = require('../../../../utils/logger');
 const { parsePlatformPostId, setIdForAccount } = require('../platform-post-id.util');
 
@@ -261,7 +261,7 @@ class UpdatePostStatusStep extends BaseStep {
         title: 'Post published successfully',
         message: `"${post.title}" was published${platforms ? ` to ${platforms}` : ''}.`,
         actionUrl: '/planner',
-        preferenceKey: 'notifyPublishSuccess'
+        preferenceKey: NOTIFICATION_PREFERENCE_KEYS.PUBLISH_SUCCESS
       });
     } catch (err) {
       console.error('[UpdatePostStatusStep] Failed to create publish success notification:', err.message);
@@ -277,7 +277,7 @@ class UpdatePostStatusStep extends BaseStep {
         title: 'Post publishing failed',
         message: `"${post.title}" could not be published. ${failureReason}`,
         actionUrl: '/planner',
-        preferenceKey: 'notifyPostFailure'
+        preferenceKey: NOTIFICATION_PREFERENCE_KEYS.POST_FAILURE
       });
     } catch (err) {
       console.error('[UpdatePostStatusStep] Failed to create publish failure notification:', err.message);

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { 
   Search, ChevronLeft, ChevronRight, Filter, 
   MoreVertical, Plus, Image, Calendar as CalendarIcon,
@@ -12,6 +12,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { format } from 'date-fns';
 import postService from '../../../../services/post.service';
 import apiService from '../../../../services/api';
+import { useClickOutside } from '../../../../hooks/useClickOutside';
 import { buildMediaUrl } from '@/utils/url';
 import { PostMediaThumbnail } from '@/components/shared/PostMediaThumbnail';
 import { AccessGuard } from '../../../../components/shared/AccessGuard';
@@ -108,6 +109,8 @@ export function PlannerToolbar({
   const location = useLocation();
   
   const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
+  const closeDatePicker = useCallback(() => setIsDatePickerOpen(false), []);
+  const datePickerRef = useClickOutside(isDatePickerOpen, closeDatePicker);
   const [isMoreMenuOpen, setIsMoreMenuOpen] = useState(false);
   const [isPreviewFeedOpen, setIsPreviewFeedOpen] = useState(false);
   const [isFilterMenuOpen, setIsFilterMenuOpen] = useState(false);
@@ -179,7 +182,7 @@ export function PlannerToolbar({
             </button>
 
             {/* Date Navigation group */}
-            <div className="flex items-center bg-card border border-border rounded-lg overflow-visible relative shadow-2xs h-8">
+            <div ref={datePickerRef} className="flex items-center bg-card border border-border rounded-lg overflow-visible relative shadow-2xs h-8">
               <button 
                 onClick={onPrevWeek}
                 className="px-2 h-full hover:bg-muted text-muted-foreground hover:text-foreground transition-colors cursor-pointer border-none bg-transparent"

@@ -2,7 +2,7 @@ const cron = require('node-cron');
 const prisma = require('../../config/prisma');
 const lockService = require('../social/distributed-lock.singleton');
 const notificationService = require('./notification.service');
-const { LOCK_CONFIG, NOTIFICATION_TYPES, POST_STATUS } = require('../../utils/constants');
+const { LOCK_CONFIG, NOTIFICATION_TYPES, POST_STATUS, NOTIFICATION_PREFERENCE_KEYS } = require('../../utils/constants');
 const logger = require('../../utils/logger');
 
 // Once a week per brand rather than daily — an empty queue is a steady
@@ -89,7 +89,7 @@ class EmptyQueueSchedulerService {
       title: 'Empty content queue',
       message: `"${brand.name}" has no scheduled posts. Add some to keep your channels active.`,
       actionUrl: '/planner'
-    }, 'notifyEmptyQueue');
+    }, NOTIFICATION_PREFERENCE_KEYS.EMPTY_QUEUE);
   }
 }
 

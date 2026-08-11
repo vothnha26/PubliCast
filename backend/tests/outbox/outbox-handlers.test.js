@@ -95,7 +95,29 @@ describe('OUTBOX_HANDLERS', () => {
 
       expect(userRepository.findById).toHaveBeenCalledWith('user-1');
       expect(emailService.sendNotificationEmail).toHaveBeenCalledWith(
-        'user1@example.com', 'Post failed', 'Your post failed to publish', 'http://localhost:5173/planner'
+        'user1@example.com', 'Post failed', 'Your post failed to publish', 'http://localhost:5173/planner', undefined, undefined
+      );
+    });
+
+    it('forwards template/templateData to emailService for the dedicated channel-disconnected template', async () => {
+      userRepository.findById.mockResolvedValue({ id: 'user-1', email: 'user1@example.com' });
+
+      await OUTBOX_HANDLERS[OUTBOX_EVENT_TYPES.NOTIFICATION_EMAIL]({
+        userId: 'user-1',
+        title: 'FACEBOOK disconnected',
+        message: 'FACEBOOK has been disconnected.',
+        actionUrl: 'http://localhost:5173/manage/connections',
+        template: 'channelDisconnected',
+        templateData: { platform: 'FACEBOOK', channelName: 'My Page', brandName: 'Acme' }
+      });
+
+      expect(emailService.sendNotificationEmail).toHaveBeenCalledWith(
+        'user1@example.com',
+        'FACEBOOK disconnected',
+        'FACEBOOK has been disconnected.',
+        'http://localhost:5173/manage/connections',
+        'channelDisconnected',
+        { platform: 'FACEBOOK', channelName: 'My Page', brandName: 'Acme' }
       );
     });
 

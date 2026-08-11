@@ -6,7 +6,7 @@ const subscriptionRepository  = require('../../repositories/billing/subscription
 const addonRepository         = require('../../repositories/billing/addon.repository');
 const logger                  = require('../../utils/logger');
 const notificationService     = require('../core/notification.service');
-const { NOTIFICATION_TYPES, PERMISSION_KEYS } = require('../../utils/constants');
+const { NOTIFICATION_TYPES, PERMISSION_KEYS, NOTIFICATION_PREFERENCE_KEYS } = require('../../utils/constants');
 const authorizationFacade     = require('../auth/authorization.facade');
 
 const MAX_ADDON_QUANTITY = 100;
@@ -181,7 +181,7 @@ class SubscriptionService {
             title: 'Giao dịch đã hết hạn',
             message: 'Mã QR thanh toán đã hết hạn. Vui lòng thực hiện lại giao dịch.',
             actionUrl: '/settings/billing'
-          }, 'notifyBilling');
+          }, NOTIFICATION_PREFERENCE_KEYS.BILLING);
         } catch (notifErr) {
           logger.warn('[SubscriptionService] Failed to create expired QR notification', { error: notifErr.message });
         }
@@ -345,7 +345,7 @@ class SubscriptionService {
           ? `Gói ${pending.plan?.name || ''} đã được kích hoạt. Cảm ơn bạn đã sử dụng PubliCast!`
           : `Add-on ${pending.addon?.name || ''} đã được kích hoạt thành công.`,
         actionUrl: '/settings/billing'
-      }, 'notifyBilling');
+      }, NOTIFICATION_PREFERENCE_KEYS.BILLING);
     } catch (notifErr) {
       logger.warn('[SubscriptionService] Failed to create payment success notification', { error: notifErr.message });
     }

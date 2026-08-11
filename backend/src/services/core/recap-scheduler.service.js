@@ -2,7 +2,7 @@ const cron = require('node-cron');
 const prisma = require('../../config/prisma');
 const lockService = require('../social/distributed-lock.singleton');
 const notificationService = require('./notification.service');
-const { LOCK_CONFIG, NOTIFICATION_TYPES, POST_STATUS } = require('../../utils/constants');
+const { LOCK_CONFIG, NOTIFICATION_TYPES, POST_STATUS, NOTIFICATION_PREFERENCE_KEYS } = require('../../utils/constants');
 const logger = require('../../utils/logger');
 
 // Every brand's recap notification is created within the same cron tick — with
@@ -67,7 +67,7 @@ class RecapSchedulerService {
   }
 
   async _scanAndSend(cadence) {
-    const preferenceKey = cadence === 'daily' ? 'notifyDailyRecap' : 'notifyWeeklyReport';
+    const preferenceKey = cadence === 'daily' ? NOTIFICATION_PREFERENCE_KEYS.DAILY_RECAP : NOTIFICATION_PREFERENCE_KEYS.WEEKLY_REPORT;
     const { from, to } = this._resolveWindow(cadence);
 
     const brands = await prisma.brand.findMany({
