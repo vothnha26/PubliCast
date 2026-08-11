@@ -35,6 +35,23 @@ const QUEUE_CONFIG = Object.freeze({
     STALE_RETRYING_MS: 10 * 60 * 1000,
     POLL_INTERVAL_MS: 5 * 60 * 1000,
     BATCH_SIZE: 50
+  },
+  // Moved off node-cron (was running RSS fetches for every FeedSource
+  // sequentially in-process on the API server's event loop) onto BullMQ so
+  // each source is its own retryable job and the fetch work runs on the
+  // worker, not the request-serving process.
+  FEED: {
+    NAME: 'feed-refresh-queue',
+    JOB_SCAN: 'scan-feed-sources',
+    JOB_REFRESH: 'refresh-feed-source',
+    SCHEDULER_ID: 'feed-refresh-scan',
+    // RSS feeds don't need near-real-time freshness — hourly halves the
+    // fetch volume of the old 30-minute node-cron cadence.
+    CRON: '0 * * * *',
+    MAX_ATTEMPTS: 3,
+    // Caps how many per-source jobs run at once so a burst of scheduled
+    // fetches can't hammer the network/DB at the same moment.
+    CONCURRENCY: 5
   }
 });
 

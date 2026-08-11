@@ -241,48 +241,21 @@ describe('feed.service', () => {
     });
   });
 
-  describe('refreshAllFeedSources', () => {
-    it('keeps refreshing remaining sources when one fails', async () => {
-      prisma.feedSource.findMany.mockResolvedValue([
-        { id: 'feed-1', url: 'https://good.example.com' },
-        { id: 'feed-2', url: 'https://bad.example.com' }
-      ]);
-      prisma.feedSource.findUnique
-        .mockResolvedValueOnce({ id: 'feed-1', url: 'https://good.example.com' })
-        .mockResolvedValueOnce({ id: 'feed-2', url: 'https://bad.example.com' });
-      mockParseURL
-        .mockResolvedValueOnce({ items: [] })
-        .mockRejectedValueOnce(new Error('timeout'));
-
-      const result = await feedService.refreshAllFeedSources();
-
-      expect(result).toEqual({ total: 2, succeeded: 1, failed: 1 });
-    });
-
-    it('returns zeroed counts when there are no feed sources', async () => {
-      prisma.feedSource.findMany.mockResolvedValue([]);
-
-      const result = await feedService.refreshAllFeedSources();
-
-      expect(result).toEqual({ total: 0, succeeded: 0, failed: 0 });
-    });
-
-    it('purges the curated feeds CDN cache when a system feed was refreshed', async () => {
-      prisma.feedSource.findMany.mockResolvedValue([{ id: 'feed-1', url: 'https://example.com', isSystem: true }]);
-      prisma.feedSource.findUnique.mockResolvedValue({ id: 'feed-1', url: 'https://example.com' });
+  describe('refreshFeedSource cache purge', () => {
+    it('purges the curated feeds CDN cache when the refreshed source is a system feed', async () => {
+      prisma.feedSource.findUnique.mockResolvedValue({ id: 'feed-1', url: 'https://example.com', isSystem: true });
       mockParseURL.mockResolvedValue({ items: [] });
 
-      await feedService.refreshAllFeedSources();
+      await feedService.refreshFeedSource('feed-1');
 
       expect(cloudflareCache.purgeUrls).toHaveBeenCalledWith(['/api/v2/content-extras/feeds/curated']);
     });
 
-    it('does not purge the cache when only custom (non-system) feeds were refreshed', async () => {
-      prisma.feedSource.findMany.mockResolvedValue([{ id: 'feed-1', url: 'https://example.com', isSystem: false }]);
-      prisma.feedSource.findUnique.mockResolvedValue({ id: 'feed-1', url: 'https://example.com' });
+    it('does not purge the cache when the refreshed source is a custom (non-system) feed', async () => {
+      prisma.feedSource.findUnique.mockResolvedValue({ id: 'feed-1', url: 'https://example.com', isSystem: false });
       mockParseURL.mockResolvedValue({ items: [] });
 
-      await feedService.refreshAllFeedSources();
+      await feedService.refreshFeedSource('feed-1');
 
       expect(cloudflareCache.purgeUrls).not.toHaveBeenCalled();
     });
