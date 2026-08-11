@@ -20,6 +20,7 @@ import { useTheme } from "../../context/ThemeContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { LANGUAGES } from "../../constants/language";
 import { useTranslation } from "react-i18next";
+import { useCurrentSubscriptionQuery } from "../../hooks/queries/useCurrentSubscriptionQuery";
 
 export function SettingsPage() {
   const { t } = useTranslation("settings");
@@ -54,7 +55,7 @@ export function SettingsPage() {
   const [is2FALoading, setIs2FALoading] = useState(false);
 
   // Billing States
-  const [currentPlan, setCurrentPlan] = useState(null);
+  const { data: currentPlan } = useCurrentSubscriptionQuery(activeBrand?.id);
   const [paymentHistory, setPaymentHistory] = useState([]);
   const [loadingBilling, setLoadingBilling] = useState(false);
 
@@ -207,12 +208,8 @@ export function SettingsPage() {
   useEffect(() => {
     if (activeTab === "billing" && activeBrand?.id) {
       setLoadingBilling(true);
-      Promise.all([
-        billingService.getCurrentSubscription(activeBrand.id),
-        billingService.getSubscriptionHistory(activeBrand.id)
-      ])
-        .then(([currentPlanData, historyData]) => {
-          setCurrentPlan(currentPlanData);
+      billingService.getSubscriptionHistory(activeBrand.id)
+        .then((historyData) => {
           setPaymentHistory(historyData || []);
         })
         .catch(console.error)

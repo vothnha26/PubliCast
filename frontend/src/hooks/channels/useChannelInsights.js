@@ -4,7 +4,6 @@ import { toast } from "sonner";
 import { useBrand } from "../../context/BrandContext";
 import socialService from "../../services/social.service";
 import socketClient from "../../services/socket";
-import { useMetricsQuery } from "../queries/useMetricsQuery";
 import { useChannelInsightsSummaryQuery } from "../queries/useChannelInsightsSummaryQuery";
 import { useDateRangeQuery } from "../useDateRangeQuery";
 import { parseAnalyticsData } from "../../utils/parseAnalyticsData";
@@ -17,14 +16,15 @@ const DEFAULT_PAGE_SIZE = 10;
  * Single-account variant of the metrics/published-content half of
  * usePlatformDashboard.js — selects by socialAccountId instead of platform.
  *
- * The page's initial published-videos page + platformLimits come from
- * useChannelInsightsSummaryQuery (one batched request, shared with
+ * The page's initial published-videos page + platformLimits + metrics all
+ * come from useChannelInsightsSummaryQuery (one batched request, shared with
  * DailyPostingUsageBadge/channel-groups on the same page) instead of each
- * being fetched here independently — metrics stays on its own
- * useMetricsQuery since that's already cached/invalidated correctly and
- * shared across the whole dashboard, not just this page. Paging past page 1
- * (fetchPublishedVideos below) still calls the platform-specific endpoint
- * directly — the summary only ever fetches the first page.
+ * being fetched here independently — cached per [brandId, socialAccountId]
+ * rather than pulling the whole brand's accounts through useMetricsQuery
+ * (which Dashboard.jsx still uses directly, since it needs all accounts).
+ * Paging past page 1 (fetchPublishedVideos below) still calls the
+ * platform-specific endpoint directly — the summary only ever fetches the
+ * first page.
  */
 export function useChannelInsights(socialAccountId, platformInput) {
   const platform = (platformInput || "").toLowerCase();
@@ -66,19 +66,17 @@ export function useChannelInsights(socialAccountId, platformInput) {
     return lockedLimit ? lockedLimit.lockReason : null;
   }, [platformLimits, platform]);
 
-  const startDate = dateRange.from?.toISOString().slice(0, 10);
-  const endDate = dateRange.to?.toISOString().slice(0, 10);
-
-  // In-memory React Query cache, kept fresh by the `data_invalidate` socket
-  // event (services/socket.js already invalidates any query keyed
-  // [CACHE_SCOPES.METRICS, brandId, ...] on that event) instead of a
-  // client-side poll.
-  const metricsQuery = useMetricsQuery(activeBrand?.id, startDate, endDate);
+  // metrics comes from the same batched summary request as
+  // platformLimits/publishedVideos above — the page-load cache is now scoped
+  // per [brandId, socialAccountId] via useChannelInsightsSummaryQuery instead
+  // of pulling the whole brand's accounts through useMetricsQuery just to
+  // find() this one. Dashboard.jsx still uses useMetricsQuery directly since
+  // it genuinely needs all accounts.
   const metrics = useMemo(
-    () => (metricsQuery.data || []).find((m) => m?.id === socialAccountId) || null,
-    [metricsQuery.data, socialAccountId]
+    () => (summaryQuery.data?.metrics || []).find((m) => m?.id === socialAccountId) || null,
+    [summaryQuery.data, socialAccountId]
   );
-  const loading = metricsQuery.isLoading;
+  const loading = summaryQuery.isLoading;
 
   // Auto-poll while a background sync is in flight for this account — the
   // eventual data_invalidate covers the normal case, but polls as a
@@ -86,7 +84,7 @@ export function useChannelInsights(socialAccountId, platformInput) {
   useEffect(() => {
     if (!activeBrand || !metrics) return;
     if (metrics.syncStatus === "PENDING" || metrics.syncStatus === "PARTIAL") {
-      const intervalId = setInterval(() => metricsQuery.refetch(), 5000);
+      const intervalId = setInterval(() => summaryQuery.refetch(), 5000);
       return () => clearInterval(intervalId);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -136,8 +134,8 @@ export function useChannelInsights(socialAccountId, platformInput) {
 
   // Real-time socket listener for published-videos invalidation. Metrics
   // invalidation doesn't need handling here — services/socket.js already
-  // invalidates any React Query key matching [CACHE_SCOPES.METRICS,
-  // brandId, ...] on the same `data_invalidate` event, which useMetricsQuery
+  // invalidates [CACHE_SCOPES.CHANNEL_INSIGHTS_SUMMARY, brandId] whenever a
+  // metrics data_invalidate arrives (see socket.js), which summaryQuery
   // above is keyed into automatically. Refetches the summary (page 1) rather
   // than calling fetchPublishedVideos directly, so a background sync while
   // the user hasn't paged away from page 1 goes through the same batched

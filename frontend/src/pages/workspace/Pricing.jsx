@@ -5,6 +5,7 @@ import billingService from "../../services/billing.service";
 import PaymentModal from "../../components/billing/PaymentModal";
 import { toast } from "sonner";
 import { useBrand } from "../../context/BrandContext";
+import { useCurrentSubscriptionQuery } from "../../hooks/queries/useCurrentSubscriptionQuery";
 import { PLAN_TIERS } from "../../config/accessSchema";
 
 const COMPARISON_ROWS = [
@@ -33,7 +34,7 @@ const FAQ = [
 // Plan names in DB are UPPERCASE (FREE, STARTER, PRO, AGENCY)
 export function PricingPage() {
   const { activeBrand } = useBrand();
-  const [currentPlan, setCurrentPlan] = useState(null);
+  const { data: currentPlan } = useCurrentSubscriptionQuery(activeBrand?.id);
   const [dbPlans, setDbPlans] = useState([]);
   const [billingCycle, setBillingCycle] = useState("monthly");
   const [expandComparison, setExpandComparison] = useState(false);
@@ -44,12 +45,6 @@ export function PricingPage() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (activeBrand?.id) {
-      billingService.getCurrentSubscription(activeBrand.id)
-        .then(res => setCurrentPlan(res))
-        .catch(console.error);
-    }
-    
     billingService.getPlans()
       .then(res => {
         const sorted = (res || []).sort((a, b) => {

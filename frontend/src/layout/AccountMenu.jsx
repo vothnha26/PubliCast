@@ -5,7 +5,7 @@ import { useTranslation } from "react-i18next";
 import { useAuth } from "../context/AuthContext";
 import { useBrand } from "../context/BrandContext";
 import { useConnections } from "../context/ConnectionsContext";
-import billingService from "../services/billing.service";
+import { useCurrentSubscriptionQuery } from "../hooks/queries/useCurrentSubscriptionQuery";
 
 export function AccountMenu() {
   const { t } = useTranslation("topbar");
@@ -14,15 +14,10 @@ export function AccountMenu() {
   const { activeBrand } = useBrand();
   const { openConnections } = useConnections();
   const [open, setOpen] = useState(false);
-  const [planName, setPlanName] = useState("FREE");
   const ref = useRef(null);
 
-  useEffect(() => {
-    if (!activeBrand) return;
-    billingService.getCurrentSubscription(activeBrand.id)
-      .then((res) => setPlanName(res?.planName || "FREE"))
-      .catch(() => setPlanName("FREE"));
-  }, [activeBrand]);
+  const { data: subscription } = useCurrentSubscriptionQuery(activeBrand?.id);
+  const planName = subscription?.planName || "FREE";
 
   useEffect(() => {
     if (!open) return;

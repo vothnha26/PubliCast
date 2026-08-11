@@ -28,5 +28,14 @@ export const QUERY_KEYS = Object.freeze({
     CACHE_SCOPES.CHANNEL_INSIGHTS_SUMMARY,
     brandId,
     socialAccountId || 'none'
+  ],
+  currentSubscription: (brandId) => [
+    CACHE_SCOPES.BILLING,
+    'current',
+    brandId
+  ],
+  channelGroups: (brandId) => [
+    CACHE_SCOPES.CHANNEL_GROUPS,
+    brandId
   ]
 });
