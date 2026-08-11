@@ -43,7 +43,12 @@ class UserStatusValidator extends BaseValidator {
 class PasswordValidator extends BaseValidator {
   async validate(context) {
     const user = context.user;
-    const isValidPassword = await bcrypt.compare(context.password, user.passwordHash);
+    // A social-login-only user (Google) has no local passwordHash —
+    // bcrypt.compare throws on a null hash rather than returning false, so
+    // treat it as a login attempt against a nonexistent password directly.
+    const isValidPassword = user.passwordHash
+      ? await bcrypt.compare(context.password, user.passwordHash)
+      : false;
     if (!isValidPassword) {
       const error = new Error(ERROR_MESSAGES.INVALID_PASSWORD);
       error.status = 401;

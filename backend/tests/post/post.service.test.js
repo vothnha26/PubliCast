@@ -64,7 +64,8 @@ jest.mock('../../src/config/prisma', () => ({
   },
   socialAccount: {
     findFirst: jest.fn().mockResolvedValue(null),
-    findMany: jest.fn().mockResolvedValue([])
+    findMany: jest.fn().mockResolvedValue([]),
+    findUnique: jest.fn().mockResolvedValue(null)
   },
   postTarget: {
     count: jest.fn().mockResolvedValue(0)
@@ -81,7 +82,8 @@ jest.mock('../../src/config/prisma', () => ({
     },
     socialAccount: {
       findFirst: jest.fn().mockResolvedValue(null),
-      findMany: jest.fn().mockResolvedValue([])
+      findMany: jest.fn().mockResolvedValue([]),
+      findUnique: jest.fn().mockResolvedValue(null)
     },
     platformDailyLimit: {
       findUnique: jest.fn().mockResolvedValue(null)
@@ -472,6 +474,10 @@ describe('PostService Unit Tests', () => {
     beforeEach(() => {
       authorizationFacade.hasPermission.mockResolvedValue(true);
       prisma.socialAccount.findFirst.mockResolvedValue({ id: 'acc-fb-1', brandId: 'brand-abc', platform: 'FACEBOOK', isConnected: true });
+      // countPublishedInLast24h resolves the account's real channel identity
+      // (platformAccountId) before counting — must return a real value here
+      // or the function short-circuits to 0 before postTarget.count runs.
+      prisma.socialAccount.findUnique.mockResolvedValue({ platformAccountId: 'fb-channel-1' });
     });
 
     it('is skipped entirely for a DRAFT post — no imminent publish intent to cap', async () => {
@@ -604,7 +610,8 @@ describe('PostService Unit Tests', () => {
         },
         socialAccount: {
           findFirst: jest.fn().mockResolvedValue({ id: 'acc-fb-1', brandId: 'brand-abc', platform: 'FACEBOOK', isConnected: true }),
-          findMany: jest.fn().mockResolvedValue([])
+          findMany: jest.fn().mockResolvedValue([]),
+          findUnique: jest.fn().mockResolvedValue({ platformAccountId: 'fb-channel-1' })
         },
         platformDailyLimit: {
           findUnique: jest.fn().mockResolvedValue({ platform: 'FACEBOOK', maxPostsPerDay: 5 })

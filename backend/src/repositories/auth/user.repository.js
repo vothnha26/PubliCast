@@ -192,14 +192,39 @@ class UserRepository {
       return { user, isNew: false };
     }
 
-    // No existing user matched by currentUserId (Settings "Connect Google" flow)
-    // nor by email (Login flow). Never auto-create an account just because
-    // someone authenticated with a Google identity we've never seen — require
-    // registering via email/password + OTP first.
-    const error = new Error(ERROR_MESSAGES.GOOGLE_ACCOUNT_NOT_LINKED);
-    error.status = 404;
-    error.code = ERROR_CODES.GOOGLE_ACCOUNT_NOT_LINKED;
-    throw error;
+    // Settings "Connect Google" flow (currentUserId was passed but didn't
+    // resolve to a real user — an expired/invalid session token) is a
+    // different failure than "this email has no account yet" and must not
+    // silently create a new, unrelated account instead.
+    if (currentUserId) {
+      const error = new Error(ERROR_MESSAGES.GOOGLE_ACCOUNT_NOT_LINKED);
+      error.status = 404;
+      error.code = ERROR_CODES.GOOGLE_ACCOUNT_NOT_LINKED;
+      throw error;
+    }
+
+    // Login flow, no account exists for this Google identity yet — Google
+    // has already verified the email belongs to whoever is authenticating,
+    // so that's sufficient identity proof; auto-create the account instead
+    // of requiring a separate email/password + OTP registration. No
+    // passwordHash is set (nullable — see schema comment); the user can add
+    // one later via "forgot password" if they want local-password login too.
+    const createdUser = await prisma.user.create({
+      data: {
+        email: email.toLowerCase(),
+        name,
+        avatarUrl,
+        isActive: true,
+        isEmailVerified: true,
+        lastLoginAt: new Date(),
+        accounts: {
+          create: { provider, providerId, lastLoginAt: new Date() }
+        }
+      },
+      include: { accounts: true, customRole: true }
+    });
+
+    return { user: createdUser, isNew: true };
   }
 
   async createShellUser(email) {
