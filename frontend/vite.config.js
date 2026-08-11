@@ -49,6 +49,12 @@ export default defineConfig({
       // outside root by default; without this the dev server 403s on it.
       allow: [path.resolve(__dirname, '.'), path.resolve(__dirname, '../shared')],
     },
+    // Allow accessing the dev server through an ngrok tunnel — free-tier
+    // ngrok assigns a new random subdomain each run, so a suffix match
+    // (rather than one hardcoded hostname) keeps working across restarts.
+    // Only ngrok's own domains are allowed; Vite still blocks everything
+    // else by default (Host header DNS-rebinding protection).
+    allowedHosts: ['.ngrok-free.dev', '.ngrok-free.app', '.ngrok.io'],
     proxy: {
       '/api': {
         target: 'http://127.0.0.1:3000',
