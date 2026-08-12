@@ -56,14 +56,14 @@ jobs:
           echo "LOG_LEVEL=error" >> .env
           echo "JWT_SECRET=test-secret-key-for-testing" >> .env
 
-      - name: Run Unit Tests (Services Only)
+      - name: Run Unit Tests (Full Suite)
         working-directory: backend
         env:
           REDIS_HOST: localhost
           REDIS_PORT: 6379
           NODE_ENV: test
         run: |
-          npm run test -- tests/services/ --coverage --passWithNoTests
+          npm run test -- --coverage --passWithNoTests --maxWorkers=2
 
       - name: Upload Coverage Reports
         uses: actions/upload-artifact@v4
