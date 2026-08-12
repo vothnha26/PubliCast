@@ -1,21 +1,21 @@
 const brandService = require('../../services/workspace/brand.service');
 const asyncHandler = require('../../utils/async-handler');
-const logger = require('../../utils/logger');
 const { v2Success, v2Error } = require('../../utils/response.helper');
 
 class BrandControllerV2 {
   getBrands = asyncHandler(async (req, res) => {
     const userId = req.user.id;
     const brands = await brandService.getUserBrands(userId);
-    logger.debug("=== GET /v2/workspace/brands ===");
-    brands.forEach(b => {
-      logger.debug(`Brand: ${b.name} (${b.id})`);
-      logger.debug(`Social Accounts:`);
-      b.socialAccounts.forEach(sa => {
-        logger.debug(` - ${sa.platform}: isConnected = ${sa.isConnected}`);
-      });
-    });
     v2Success(res, brands, 'Brands retrieved successfully');
+  });
+
+  getBrandById = asyncHandler(async (req, res) => {
+    const userId = req.user.id;
+    const brandId = req.params.id;
+
+    const brand = await brandService.getFullBrand(brandId, userId);
+
+    v2Success(res, brand, 'Brand retrieved successfully');
   });
 
   createBrand = asyncHandler(async (req, res) => {

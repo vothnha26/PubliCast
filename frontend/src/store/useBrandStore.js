@@ -16,6 +16,11 @@ export const useBrandStore = create((set, get) => ({
   // profile → brands). Nếu chưa đăng nhập, request sẽ 401; interceptor của
   // apiV2 đã tự xử lý refresh/SESSION_EXPIRED, ở đây chỉ cần im lặng bỏ qua
   // thay vì hiện toast lỗi (đây không phải lỗi thật, chỉ là chưa có session).
+  // `brands` (list) uses the lightweight summary endpoint — full per-brand
+  // detail (social account tokens, nested platform tables, subscription
+  // tree) is fetched separately via loadActiveBrand() only for whichever
+  // brand becomes active, instead of eager-loading that detail for every
+  // brand in the switcher on every app load.
   fetchBrands: async (selectId = null) => {
     set({ loading: true });
     try {
@@ -29,14 +34,15 @@ export const useBrandStore = create((set, get) => ({
         const userDefaultBrandId = useAuthStore.getState().user?.defaultBrandId;
 
         if (savedBrandId === 'NONE') {
-          set({ activeBrand: null });
+          set({ activeBrand: null, defaultBrandId: userDefaultBrandId || null });
         } else {
-          const matchedBrand =
+          const matchedSummary =
             brandList.find(b => b.id === savedBrandId) ||
             (userDefaultBrandId && brandList.find(b => b.id === userDefaultBrandId)) ||
             brandList[0];
-          set({ activeBrand: matchedBrand, defaultBrandId: userDefaultBrandId || null });
-          localStorage.setItem(STORAGE_KEYS.ACTIVE_BRAND_ID, matchedBrand.id);
+          set({ defaultBrandId: userDefaultBrandId || null });
+          localStorage.setItem(STORAGE_KEYS.ACTIVE_BRAND_ID, matchedSummary.id);
+          await get().loadActiveBrand(matchedSummary.id);
         }
       } else {
         set({ activeBrand: null });
@@ -54,11 +60,24 @@ export const useBrandStore = create((set, get) => ({
     }
   },
 
-  selectBrand: (brandId) => {
+  // Fetches full detail for a single brand and sets it as `activeBrand`.
+  loadActiveBrand: async (brandId) => {
+    try {
+      const brand = await brandService.getBrandById(brandId);
+      set({ activeBrand: brand });
+      return brand;
+    } catch (error) {
+      console.error('Failed to load active brand:', error);
+      toast.error('Không thể tải thông tin thương hiệu');
+      return null;
+    }
+  },
+
+  selectBrand: async (brandId) => {
     const matched = get().brands.find(b => b.id === brandId);
     if (matched) {
-      set({ activeBrand: matched });
       localStorage.setItem(STORAGE_KEYS.ACTIVE_BRAND_ID, brandId);
+      await get().loadActiveBrand(brandId);
       toast.success(`Đã chuyển sang thương hiệu: ${matched.name}`);
     }
   },

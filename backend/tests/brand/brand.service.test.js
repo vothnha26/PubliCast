@@ -4,7 +4,8 @@ const outboxEventRepository = require('../../src/repositories/core/outbox-event.
 const { WORKSPACE_DEFAULTS } = require('../../src/utils/constants');
 
 jest.mock('../../src/repositories/workspace/brand.repository', () => ({
-  findManyByUserId: jest.fn(),
+  findManySummaryByUserId: jest.fn(),
+  findFullBrandById: jest.fn(),
   countActiveBrandsByOwnerId: jest.fn(),
   findOwnedBrandsWithSubscription: jest.fn(),
   create: jest.fn(),
@@ -51,13 +52,33 @@ describe('BrandService Unit Tests', () => {
 
   describe('getUserBrands', () => {
     it('should query the repository to find all brands for a user', async () => {
-      brandRepository.findManyByUserId.mockResolvedValue([mockBrandData]);
+      brandRepository.findManySummaryByUserId.mockResolvedValue([mockBrandData]);
 
       const result = await brandService.getUserBrands(mockUserId);
 
       expect(result).toHaveLength(1);
       expect(result[0]).toEqual(mockBrandData);
-      expect(brandRepository.findManyByUserId).toHaveBeenCalledWith(mockUserId);
+      expect(brandRepository.findManySummaryByUserId).toHaveBeenCalledWith(mockUserId);
+    });
+  });
+
+  describe('getFullBrand', () => {
+    it('should return the full brand detail from the repository', async () => {
+      brandRepository.findFullBrandById.mockResolvedValue(mockBrandData);
+
+      const result = await brandService.getFullBrand(mockBrandId, mockUserId);
+
+      expect(result).toEqual(mockBrandData);
+      expect(brandRepository.findFullBrandById).toHaveBeenCalledWith(mockBrandId, mockUserId);
+    });
+
+    it('should throw a 404 error when the brand is not found', async () => {
+      brandRepository.findFullBrandById.mockResolvedValue(null);
+
+      await expect(brandService.getFullBrand(mockBrandId, mockUserId)).rejects.toMatchObject({
+        message: 'Brand not found',
+        statusCode: 404
+      });
     });
   });
 

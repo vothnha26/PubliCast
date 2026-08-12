@@ -19,7 +19,50 @@ class BrandRepository {
     return bestSub;
   }
 
-  async findManyByUserId(userId) {
+  _resolveRoleAndPermissions(brand, userId) {
+    let role = 'USER';
+    let permissions = [];
+    const isOwner = brand.ownerId === userId;
+
+    if (isOwner) {
+      role = 'OWNER';
+    } else if (brand.teamMembers && brand.teamMembers.length > 0) {
+      const member = brand.teamMembers[0];
+      role = member.role;
+      if (member.customRole && member.customRole.permissions) {
+        permissions = member.customRole.permissions.map(p => ({
+          key: p.permissionKey,
+          isAllowed: p.isAllowed
+        }));
+      }
+    }
+
+    return { role, permissions, isOwner };
+  }
+
+  _buildCurrentPlan(effectiveSubscription) {
+    return effectiveSubscription ? {
+      name: effectiveSubscription.plan.name,
+      billingCycle: effectiveSubscription.plan.billingCycle,
+      status: effectiveSubscription.status,
+      limits: effectiveSubscription.plan.planLimit,
+      allowedProducts: effectiveSubscription.plan.products.map(p => p.id)
+    } : {
+      name: 'FREE',
+      billingCycle: 'MONTHLY',
+      status: 'ACTIVE',
+      limits: null,
+      allowedProducts: ['youtube_analytics', 'facebook_management']
+    };
+  }
+
+  // Lightweight listing for the brand switcher/picker UI — only the fields
+  // that Topbar/ConnectionsOverlay/BrandTableOverlay/BrandSettings actually
+  // read off list items (id, name, logoUrl, socialAccounts[].platform for
+  // icon badges, currentPlan for the max-brands limit calc). Full per-brand
+  // detail (tokens, nested platform tables, subscription tree) is fetched
+  // separately via findFullBrandById once a brand becomes the active one.
+  async findManySummaryByUserId(userId) {
     const brands = await prisma.brand.findMany({
       where: {
         deletedAt: null,
@@ -28,23 +71,22 @@ class BrandRepository {
           { teamMembers: { some: { userId: userId } } }
         ]
       },
-      include: {
+      select: {
+        id: true,
+        name: true,
+        logoUrl: true,
+        onboardingCompleted: true,
+        ownerId: true,
+        owner: { select: { email: true } },
         socialAccounts: {
-          include: {
-            youtubeChannel: true,
-            instagramAccount: true,
-            threadsAccount: true,
-            facebookPage: true,
-            tikTokAccount: true
-          }
+          select: { platform: true }
         },
         teamMembers: {
           where: { userId: userId },
-          include: {
+          select: {
+            role: true,
             customRole: {
-              include: {
-                permissions: true
-              }
+              include: { permissions: true }
             }
           }
         },
@@ -61,87 +103,141 @@ class BrandRepository {
       }
     });
 
-    // Gather all owners of the brands the user is associated with
-    const ownerIds = [...new Set(brands.map(b => b.ownerId))];
+    const activeSubsByOwner = new Map();
+    for (const b of brands) {
+      if (b.subscription?.status !== 'ACTIVE') continue;
+      if (!activeSubsByOwner.has(b.ownerId)) activeSubsByOwner.set(b.ownerId, []);
+      activeSubsByOwner.get(b.ownerId).push(b);
+    }
+
     const proSubscriptionsByOwner = {};
-
-    for (const ownerId of ownerIds) {
-      const activeBrandsWithSub = await prisma.brand.findMany({
-        where: {
-          ownerId,
-          deletedAt: null,
-          subscription: {
-            status: 'ACTIVE'
-          }
-        },
-        include: {
-          subscription: {
-            include: {
-              plan: {
-                include: {
-                  products: true,
-                  planLimit: true
-                }
-              }
-            }
-          }
-        }
-      });
-
-      const bestSub = this._getBestSubscription(activeBrandsWithSub);
+    for (const [ownerId, ownedBrands] of activeSubsByOwner) {
+      const bestSub = this._getBestSubscription(ownedBrands);
       if (bestSub) {
         proSubscriptionsByOwner[ownerId] = bestSub;
       }
     }
 
     return brands.map(brand => {
-      let role = 'USER';
-      let permissions = [];
-      const isOwner = brand.ownerId === userId;
-
-      if (isOwner) {
-        role = 'OWNER';
-      } else if (brand.teamMembers && brand.teamMembers.length > 0) {
-        const member = brand.teamMembers[0];
-        role = member.role;
-        if (member.customRole && member.customRole.permissions) {
-          permissions = member.customRole.permissions.map(p => ({
-            key: p.permissionKey,
-            isAllowed: p.isAllowed
-          }));
-        }
-      }
-
-      const brandCopy = { ...brand };
-      delete brandCopy.teamMembers;
-
-      const hasSocialAccounts = Array.isArray(brandCopy.socialAccounts) && brandCopy.socialAccounts.length > 0;
-      if (hasSocialAccounts && !brandCopy.onboardingCompleted) {
-        brandCopy.onboardingCompleted = true;
-      }
-
+      const { role, permissions, isOwner } = this._resolveRoleAndPermissions(brand, userId);
       const effectiveSubscription = proSubscriptionsByOwner[brand.ownerId] || brand.subscription;
 
       return {
-        ...brandCopy,
+        id: brand.id,
+        name: brand.name,
+        logoUrl: brand.logoUrl,
+        onboardingCompleted: brand.onboardingCompleted || brand.socialAccounts.length > 0,
+        owner: brand.owner,
+        socialAccounts: brand.socialAccounts,
         userRole: role,
         userPermissions: permissions,
         isOwner,
-        currentPlan: effectiveSubscription ? {
-          name: effectiveSubscription.plan.name,
-          billingCycle: effectiveSubscription.plan.billingCycle,
-          status: effectiveSubscription.status,
-          limits: effectiveSubscription.plan.planLimit,
-          allowedProducts: effectiveSubscription.plan.products.map(p => p.id)
-        } : {
-          name: 'FREE',
-          billingCycle: 'MONTHLY',
-          status: 'ACTIVE',
-          limits: null,
-          allowedProducts: ['youtube_analytics', 'facebook_management']
-        }
+        currentPlan: this._buildCurrentPlan(effectiveSubscription)
       };
     });
+  }
+
+  // Full detail for a single brand — used once the active brand is known,
+  // instead of the old approach of eager-loading this same detail (incl.
+  // encrypted access/refresh tokens per social account) for every brand in
+  // the switcher list on every app load.
+  async findFullBrandById(brandId, userId) {
+    const brand = await prisma.brand.findFirst({
+      where: {
+        id: brandId,
+        deletedAt: null,
+        OR: [
+          { ownerId: userId },
+          { teamMembers: { some: { userId: userId } } }
+        ]
+      },
+      include: {
+        socialAccounts: {
+          select: {
+            id: true,
+            brandId: true,
+            platform: true,
+            platformAccountId: true,
+            username: true,
+            displayName: true,
+            profilePictureUrl: true,
+            tokenExpiresAt: true,
+            scopes: true,
+            isConnected: true,
+            isDefault: true,
+            connectedAt: true,
+            lastSyncAt: true,
+            lastPostsSyncAt: true,
+            syncStatus: true,
+            createdAt: true,
+            updatedAt: true,
+            youtubeChannel: true,
+            instagramAccount: true,
+            threadsAccount: true,
+            facebookPage: true,
+            tikTokAccount: true
+          }
+        },
+        teamMembers: {
+          where: { userId: userId },
+          include: {
+            customRole: {
+              include: { permissions: true }
+            }
+          }
+        },
+        subscription: {
+          include: {
+            plan: {
+              include: {
+                products: true,
+                planLimit: true
+              }
+            }
+          }
+        }
+      }
+    });
+
+    if (!brand) return null;
+
+    const activeBrandsWithSub = await prisma.brand.findMany({
+      where: {
+        ownerId: brand.ownerId,
+        deletedAt: null,
+        subscription: { status: 'ACTIVE' }
+      },
+      include: {
+        subscription: {
+          include: {
+            plan: {
+              include: { products: true, planLimit: true }
+            }
+          }
+        }
+      }
+    });
+
+    const bestSub = this._getBestSubscription(activeBrandsWithSub);
+    const effectiveSubscription = bestSub || brand.subscription;
+
+    const { role, permissions, isOwner } = this._resolveRoleAndPermissions(brand, userId);
+
+    const brandCopy = { ...brand };
+    delete brandCopy.teamMembers;
+
+    const hasSocialAccounts = Array.isArray(brandCopy.socialAccounts) && brandCopy.socialAccounts.length > 0;
+    if (hasSocialAccounts && !brandCopy.onboardingCompleted) {
+      brandCopy.onboardingCompleted = true;
+    }
+
+    return {
+      ...brandCopy,
+      userRole: role,
+      userPermissions: permissions,
+      isOwner,
+      currentPlan: this._buildCurrentPlan(effectiveSubscription)
+    };
   }
 
   async findById(id) {
