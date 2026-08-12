@@ -2,6 +2,8 @@ module.exports = {
   testEnvironment: 'node',
   testMatch: ['<rootDir>/tests/**/*.test.js'],
   clearMocks: true,
+  collectCoverageFrom: ['src/**/*.js', '!src/server.js'],
+  coverageDirectory: '<rootDir>/coverage',
   setupFiles: ['<rootDir>/jest.setup.cjs'],
   // otplib's plugins (@otplib/plugin-base32-scure, @otplib/plugin-crypto-noble)
   // ship CommonJS dist/index.cjs builds, but those builds themselves
