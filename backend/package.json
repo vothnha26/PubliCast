@@ -8,6 +8,7 @@
     "dev": "nodemon src/server.js",
     "postinstall": "prisma generate && prisma generate --schema=./prisma/help-center/schema.prisma",
     "test": "jest --detectOpenHandles",
+    "test:coverage": "jest --detectOpenHandles --coverage",
     "lint": "eslint \"src/**/*.js\"",
     "lint:fix": "eslint \"src/**/*.js\" --fix",
     "format:check": "prettier --check \"src/**/*.js\"",

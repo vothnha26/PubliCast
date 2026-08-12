@@ -3,7 +3,8 @@ const blueskyGateway = require('../bluesky.gateway');
 const socialAuthFactory = require('../../../../core/auth/social-auth.factory');
 const inboxRepository = require('../../../../repositories/social/inbox.repository');
 const prisma = require('../../../../config/prisma');
-const { PLATFORMS, INBOX_TYPES, INBOX_STATUS, BLUESKY_CONSTANTS } = require('../../../../utils/constants');
+const { PLATFORMS, INBOX_TYPES, INBOX_STATUS } = require('../../../../utils/constants');
+const BLUESKY_CONSTANTS = require('../bluesky.constants');
 const logger = require('../../../../utils/logger');
 
 /**
