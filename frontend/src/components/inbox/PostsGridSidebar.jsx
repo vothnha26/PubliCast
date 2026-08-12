@@ -1,5 +1,5 @@
-import React, { useState } from "react";
-import { Play, Database, LayoutGrid, PanelLeftClose, PanelLeftOpen, Film } from "lucide-react";
+import React, { useState, useRef, useCallback } from "react";
+import { Play, Database, LayoutGrid, PanelLeftClose, PanelLeftOpen, Film, Loader2 } from "lucide-react";
 
 /**
  * PostsGridSidebar — Component hiển thị danh sách bài viết / Reels dạng Grid 3 cột
@@ -15,10 +15,26 @@ export function PostsGridSidebar({
   // expand it again from the same spot.
   collapsed = false,
   onToggleCollapsed,
+  // Infinite scroll — the posts list is fetched 20 at a time; onLoadMore
+  // fetches the next page and appends to `posts` when the sentinel row
+  // scrolls into view.
+  onLoadMore,
+  hasMore = false,
+  loadingMore = false,
 }) {
   const [viewStyle, setViewStyle] = useState("grid"); // 'stack' | 'grid'
 
   const displayPosts = posts;
+
+  const observerRef = useRef(null);
+  const sentinelRef = useCallback((node) => {
+    if (observerRef.current) observerRef.current.disconnect();
+    if (!node || !onLoadMore) return;
+    observerRef.current = new IntersectionObserver((entries) => {
+      if (entries[0].isIntersecting) onLoadMore();
+    }, { rootMargin: "200px" });
+    observerRef.current.observe(node);
+  }, [onLoadMore]);
 
   return (
     <div className={`${collapsed ? "w-14 self-start" : "w-full md:w-[320px] h-full"} shrink-0 bg-card rounded-2xl border border-border shadow-sm flex flex-col overflow-hidden select-none transition-all duration-200`}>
@@ -172,6 +188,12 @@ export function PostsGridSidebar({
                 </div>
               );
             })}
+          </div>
+        )}
+
+        {!loading && hasMore && (
+          <div ref={sentinelRef} className="flex items-center justify-center py-3">
+            {loadingMore && <Loader2 size={16} className="animate-spin text-muted-foreground" />}
           </div>
         )}
       </div>

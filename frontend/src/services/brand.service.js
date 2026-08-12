@@ -6,6 +6,11 @@ class BrandService {
     return data;
   }
 
+  async getBrandById(id) {
+    const data = await apiV2.get(`/workspace/brands/${id}`);
+    return data;
+  }
+
   async createBrand(brandData) {
     const data = await apiV2.post('/workspace/brands', brandData);
     return data;

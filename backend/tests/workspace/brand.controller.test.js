@@ -1,5 +1,6 @@
 jest.mock('../../src/services/workspace/brand.service', () => ({
   getUserBrands: jest.fn(),
+  getFullBrand: jest.fn(),
   createBrand: jest.fn(),
   updateBrand: jest.fn(),
   deleteBrand: jest.fn()
@@ -40,6 +41,20 @@ describe('BrandController v1/v2 parity', () => {
     const v2 = mockReqRes();
     await callHandler(brandControllerV2.getBrands, v2.req, v2.res);
     expect(v2.res.json).toHaveBeenCalledWith({ message: 'Brands retrieved successfully', data: [{ id: 'b1', name: 'Acme', socialAccounts: [] }] });
+  });
+
+  describe('getBrandById', () => {
+    it('v2 returns full brand detail for the given id', async () => {
+      brandService.getFullBrand.mockResolvedValue({ id: 'b1', name: 'Acme', socialAccounts: [{ id: 'sa1', accessToken: 'x' }] });
+
+      const v2 = mockReqRes({ params: { id: 'b1' } });
+      await callHandler(brandControllerV2.getBrandById, v2.req, v2.res);
+      expect(brandService.getFullBrand).toHaveBeenCalledWith('b1', 'user-1');
+      expect(v2.res.json).toHaveBeenCalledWith({
+        message: 'Brand retrieved successfully',
+        data: { id: 'b1', name: 'Acme', socialAccounts: [{ id: 'sa1', accessToken: 'x' }] }
+      });
+    });
   });
 
   describe('createBrand', () => {

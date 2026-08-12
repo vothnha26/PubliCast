@@ -64,6 +64,7 @@ router.use(verifyAuth);
  */
 router.get('/brands', brandController.getBrands);
 router.post('/brands', brandController.createBrand);
+router.get('/brands/:id', brandController.getBrandById);
 
 /**
  * @openapi

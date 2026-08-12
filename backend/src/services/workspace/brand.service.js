@@ -7,7 +7,17 @@ const { WORKSPACE_DEFAULTS } = require('../../utils/constants');
 
 class BrandService {
   async getUserBrands(userId) {
-    return await brandRepository.findManyByUserId(userId);
+    return await brandRepository.findManySummaryByUserId(userId);
+  }
+
+  async getFullBrand(brandId, userId) {
+    const brand = await brandRepository.findFullBrandById(brandId, userId);
+    if (!brand) {
+      const error = new Error('Brand not found');
+      error.statusCode = 404;
+      throw error;
+    }
+    return brand;
   }
 
   async createDefaultBrand(userId) {
