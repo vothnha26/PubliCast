@@ -321,7 +321,7 @@ class InboxService {
    * Queries real DB Posts & TrackedVideos, and aggregates comment statistics.
    */
   async getInboxPosts(brandId, queryParams = {}) {
-    const { page = 1, limit = 100, socialAccountId } = queryParams;
+    const { page = 1, limit = 20, socialAccountId } = queryParams;
     const { skip, take } = this._getPagination(page, limit);
 
     const socialAccountIds = (socialAccountId && socialAccountId !== 'All')
@@ -433,9 +433,13 @@ class InboxService {
 
       postsMap.set(postKey, {
         id: postKey,
-        title: postTitle,
-        thumbnailUrl: thumbnail,
-        mediaUrl: thumbnail,
+        // title/thumbnailUrl/mediaUrl live only inside videoContext now —
+        // every frontend reader of the post list (Inbox.jsx's
+        // InboxDisplayStrategy classes, ChannelCommunityTab.jsx,
+        // PostsGridSidebar.jsx) already falls back to
+        // `post.videoContext?.field` when the top-level field is absent, so
+        // duplicating them at both levels only doubled payload size for no
+        // reader that needed the top-level copy specifically.
         videoContext: {
           id: postKey,
           title: postTitle,
@@ -458,9 +462,6 @@ class InboxService {
         const title = video.title || `YouTube Video (${video.videoId})`;
         postsMap.set(video.videoId, {
           id: video.videoId,
-          title,
-          thumbnailUrl: thumb,
-          mediaUrl: thumb,
           videoContext: {
             id: video.videoId,
             title,
@@ -480,50 +481,40 @@ class InboxService {
     // Add real published posts fetched directly from each connected
     // platform's API — fills the gap dbPosts/trackedVideos leave for posts
     // never published through PubliCast or tracked manually.
+    //
+    // Engagement stats (views/likes/comments/shares/clicks) are deliberately
+    // NOT included here — this is the list response (Inbox's first screen,
+    // thumbnails only). They used to be duplicated on both the post object
+    // and its nested videoContext, roughly doubling payload size for no
+    // reader: PublishedPostDetailModal (opened via VideoContextCard's detail
+    // button, the actual "post detail" screen) fetches its own metrics via
+    // PlatformMetricsStrategyFactory and only used these as a brief fallback
+    // while that fetch was in flight.
     platformPosts.forEach((post) => {
       const existing = postsMap.get(post.id);
       if (!existing) {
         postsMap.set(post.id, {
           id: post.id,
-          title: post.title,
-          thumbnailUrl: post.thumbnailUrl,
-          mediaUrl: post.thumbnailUrl,
           videoContext: {
             id: post.id,
             title: post.title,
             thumbnailUrl: post.thumbnailUrl,
             channelTitle: `${post.platform} Channel`,
             postUrl: post.postUrl || null,
-            views: post.views || 0,
-            likes: post.likes || 0,
-            comments: post.comments || 0,
-            shares: post.shares || 0,
-            clicks: post.clicks || 0,
           },
           platform: post.platform,
           socialAccountId: post.socialAccountId || null,
           commentCount: post.comments || 0,
           unreadCount: 0,
-          views: post.views || 0,
-          likes: post.likes || 0,
-          comments: post.comments || 0,
-          shares: post.shares || 0,
-          clicks: post.clicks || 0,
           latestCommentAt: post.publishedAt || null,
           rawItem: null,
         });
       } else {
         existing.platform = post.platform || existing.platform;
         existing.socialAccountId = post.socialAccountId || existing.socialAccountId;
-        if (post.thumbnailUrl && (!existing.thumbnailUrl || existing.thumbnailUrl.includes('dicebear'))) {
-          existing.thumbnailUrl = post.thumbnailUrl;
-          existing.mediaUrl = post.thumbnailUrl;
-          if (existing.videoContext) existing.videoContext.thumbnailUrl = post.thumbnailUrl;
-        }
-        if (existing.videoContext) {
-          existing.videoContext.views = post.views || existing.videoContext.views || 0;
-          existing.videoContext.likes = post.likes || existing.videoContext.likes || 0;
-          existing.videoContext.comments = post.comments || existing.videoContext.comments || 0;
+        const existingThumb = existing.videoContext?.thumbnailUrl;
+        if (post.thumbnailUrl && (!existingThumb || existingThumb.includes('dicebear')) && existing.videoContext) {
+          existing.videoContext.thumbnailUrl = post.thumbnailUrl;
         }
       }
     });
@@ -540,9 +531,6 @@ class InboxService {
 
         postsMap.set(postId, {
           id: postId,
-          title: postTitle,
-          thumbnailUrl: thumbnail,
-          mediaUrl: thumbnail,
           videoContext: {
             id: postId,
             title: postTitle,

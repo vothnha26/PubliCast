@@ -56,6 +56,10 @@ export function InboxPage() {
   const [postCommentFilter, setPostCommentFilter] = useState(POST_COMMENT_FILTER.ALL);
   const [isPostsPanelCollapsed, setIsPostsPanelCollapsed] = useState(false);
   const [fetchedPosts, setFetchedPosts] = useState([]);
+  const [postsPage, setPostsPage] = useState(1);
+  const [hasMorePosts, setHasMorePosts] = useState(true);
+  const [loadingMorePosts, setLoadingMorePosts] = useState(false);
+  const POSTS_PAGE_SIZE = 20;
   const [inboxData, setInboxData] = useState({ data: [], meta: {} });
   const [activeConv, setActiveConv] = useState(null);
   // Mobile-only master/detail toggle for BY_POST mode — unlike ListView's
@@ -166,16 +170,48 @@ export function InboxPage() {
   // InboxItem media), which the ad-hoc postsList built from inboxData.data
   // below does not have. Without this, fetchedPosts stayed permanently []
   // and PostsGridSidebar fell back to a blank placeholder for every post.
+  //
+  // Paginated 20-at-a-time (infinite scroll in PostsGridSidebar) instead of
+  // fetching the whole brand's post history in one response — a brand with
+  // hundreds of published posts was paying for a payload/response time that
+  // scaled with total post count on every filter change, when the visible
+  // grid only ever shows a handful at once.
   const fetchPosts = async (showSkeleton = true) => {
     if (!activeBrand) return;
     if (showSkeleton) setPostsLoading(true);
     try {
-      const response = await inboxService.getInboxPosts(activeBrand.id, listQueryParamsString);
-      setFetchedPosts(response?.data || []);
+      const params = new URLSearchParams(listQueryParamsString);
+      params.set("page", "1");
+      params.set("limit", String(POSTS_PAGE_SIZE));
+      const response = await inboxService.getInboxPosts(activeBrand.id, params.toString());
+      const page = response?.data || [];
+      setFetchedPosts(page);
+      setPostsPage(1);
+      setHasMorePosts(page.length === POSTS_PAGE_SIZE);
     } catch (error) {
       console.error("Inbox posts load error:", error);
     } finally {
       if (showSkeleton) setPostsLoading(false);
+    }
+  };
+
+  const loadMorePosts = async () => {
+    if (!activeBrand || loadingMorePosts || !hasMorePosts) return;
+    setLoadingMorePosts(true);
+    try {
+      const nextPage = postsPage + 1;
+      const params = new URLSearchParams(listQueryParamsString);
+      params.set("page", String(nextPage));
+      params.set("limit", String(POSTS_PAGE_SIZE));
+      const response = await inboxService.getInboxPosts(activeBrand.id, params.toString());
+      const page = response?.data || [];
+      setFetchedPosts(prev => [...prev, ...page]);
+      setPostsPage(nextPage);
+      setHasMorePosts(page.length === POSTS_PAGE_SIZE);
+    } catch (error) {
+      console.error("Inbox posts load more error:", error);
+    } finally {
+      setLoadingMorePosts(false);
     }
   };
 
@@ -728,6 +764,9 @@ export function InboxPage() {
                 loading={loading || postsLoading}
                 collapsed={isPostsPanelCollapsed}
                 onToggleCollapsed={setIsPostsPanelCollapsed}
+                onLoadMore={loadMorePosts}
+                hasMore={hasMorePosts}
+                loadingMore={loadingMorePosts}
               />
             </div>
 
